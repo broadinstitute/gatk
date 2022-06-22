@@ -109,23 +109,17 @@ The steps of the workflow, in addition to the tools used in each step, are descr
 
 ### 1. Import sample gVCF files
 
-Custom tools used: CreateVariantIngestFiles
-
 This step validates that sample gVCF files contain required annotations and loads samples into BigQuery tables.
 
 ### 2. Train the filtering model
 
-GATK tools used: [SplitIntervals (GATK)](https://gatk.broadinstitute.org/hc/en-us/articles/5358914364699), [GatherVcfsCloud (GATK)](https://gatk.broadinstitute.org/hc/en-us/articles/5358884598555), [VariantRecalibrator](https://gatk.broadinstitute.org/hc/en-us/articles/5358906115227), [GatherTranches](https://gatk.broadinstitute.org/hc/en-us/articles/5358889613339)
-
-Custom tools used: ExtractFeatures, CreateFilteringFiles, CreateSiteFilteringFiles
+GATK tools used: [SplitIntervals](https://gatk.broadinstitute.org/hc/en-us/articles/5358914364699), [GatherVcfsCloud](https://gatk.broadinstitute.org/hc/en-us/articles/5358884598555), [VariantRecalibrator](https://gatk.broadinstitute.org/hc/en-us/articles/5358906115227), [GatherTranches](https://gatk.broadinstitute.org/hc/en-us/articles/5358889613339)
 
 This step splits alternate alleles, calculates annotations to be used for filtering, and creates a non-deterministic filtering model using VQSR and annotations from a random subset of the input samples. SNPs are recalibrated using the annotations `AS_FS`, `AS_ReadPosRankSum`, `AS_MQRankSum`, `AS_QD`, and `AS_SOR`. Indels are recalibrated using the annotations `AS_FS`, `AS_ReadPosRankSum`, `AS_MQRankSum`, `AS_QD`, `AS_SOR`, and `AS_MQ`.
 
 ### 3. Extract VCF files
 
-GATK tools used: [SplitIntervals (GATK)](https://gatk.broadinstitute.org/hc/en-us/articles/5358914364699)
-
-Custom tools used: ExtractCohort
+GATK tools used: [SplitIntervals](https://gatk.broadinstitute.org/hc/en-us/articles/5358914364699)
 
 This step calculates annotations including allele count (`AC`), allele number (`AN`), and allele frequency (`AF`), and creates and outputs a sharded joint VCF file. The output VCF file includes desired samples, calculated annotations, and flagged probable artifacts. The output VCF file is split so shards do not span multiple chromosomes.
 
