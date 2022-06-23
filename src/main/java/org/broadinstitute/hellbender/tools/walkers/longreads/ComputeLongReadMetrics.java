@@ -61,14 +61,14 @@ public final class ComputeLongReadMetrics extends ReadWalker {
     private Map<Integer, Long> prl_yield_hist = new TreeMap<>();
     private Map<Integer, Long> rl_hist = new TreeMap<>();
     private Map<Integer, Long> rl_yield_hist = new TreeMap<>();
-    private Map<Integer, Long> zmw_num_hist = new TreeMap<>();
+    private Map<Long, Long> zmw_num_hist = new TreeMap<>();
     private Map<Integer, Long> np_hist = new TreeMap<>();
     private Map<Integer, Long> range_gap_hist = new TreeMap<>();
 
     private List<Integer> polymerase_read_lengths = new ArrayList<>();
     private List<Integer> read_lengths = new ArrayList<>();
 
-    private int last_zmw = -1;
+    private long last_zmw = -1;
     private int prl = 0;
     private int last_range_stop = 0;
 
@@ -79,7 +79,7 @@ public final class ComputeLongReadMetrics extends ReadWalker {
         if (!sr.isSecondaryOrSupplementary() || sr.getReadUnmappedFlag()) {
             int np = sr.hasAttribute("np") ? sr.getIntegerAttribute("np") : 1;
             int rl = sr.getReadLength();
-            int zmw = last_zmw + 1;
+            long zmw = last_zmw + 1;
 
             int range_start = 0;
             int range_stop = 0;
@@ -87,7 +87,7 @@ public final class ComputeLongReadMetrics extends ReadWalker {
             if (sr.getReadName().contains("/")) {
                 String[] pieces = sr.getReadName().split("/");
                 if (pieces.length == 3) {
-                    zmw = Integer.valueOf(pieces[1]);
+                    zmw = Long.valueOf(pieces[1]);
 
                     if (pieces[2].contains("_")) {
                         String[] range = pieces[2].split("_");
@@ -98,7 +98,7 @@ public final class ComputeLongReadMetrics extends ReadWalker {
             }
 
             num_reads++;
-            yield += rl;
+            this.yield += rl;
             yield_times_passes += rl * np;
 
             increment(rl_hist, roundToNearest(rl, ROUND_TO_NEAREST));
@@ -223,7 +223,7 @@ public final class ComputeLongReadMetrics extends ReadWalker {
         }
 
         Map<Long, Long> zmw_hist = new TreeMap<>();
-        for (int zmw : zmw_num_hist.keySet()) {
+        for (long zmw : zmw_num_hist.keySet()) {
             increment(zmw_hist, zmw_num_hist.get(zmw));
         }
 
