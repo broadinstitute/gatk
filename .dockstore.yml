@@ -132,11 +132,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-<<<<<<< HEAD
          - rsa_metadata_from_python
-=======
-         - rsa_query_labels
->>>>>>> ah_var_store
    - name: GvsCreateVAT
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVAT.wdl
