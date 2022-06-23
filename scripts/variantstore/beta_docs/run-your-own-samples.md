@@ -98,7 +98,8 @@ If your data is not stored in the cloud, you’ll need to upload it to your work
 
 ---
 
-**Warning:** The workflow in the GVS beta workspace is configured based on the format of the TSV file. To avoid reconfiguring the workflow, do **not** rearrange or rename the columns in the TSV file.
+**Warning:**        
+The workflow in the GVS beta workspace is configured based on the format of the TSV file. To avoid reconfiguring the workflow, do **not** rearrange or rename the columns in the TSV file.
 
 ---
 
