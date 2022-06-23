@@ -113,6 +113,14 @@ The GVS workflow outputs a sharded joint VCF file containing filter sites and ge
 
 The [Terra GVS beta workspace](LINK) is configured to write the outputs of the workflow back to the `sample_set` data table.
 
+## Citing the GVS workflow
+
+If you use plan to publish data analyzed using the GVS workflow, please cite the [GVS beta workspace](LINK_TO_WORKSPACE).
+
+Details on citing Terra workspaces can be found here: [How to cite Terra](https://support.terra.bio/hc/en-us/articles/360035343652)
+
+Data Sciences Platform, Broad Institute (*Year, Month Day that the workspace was last modified*) <BILLINGPROJECT>/Genomic-Variant-Store-beta [workspace] Retrieved *Month Day, Year that workspace was retrieved*, <LINK_TO_WORKSPACE>
+
 ## Feedback
 
 Please help us improve our tools by contacting the [Broad Variants team](mailto:variants@broadinstitute.org) for workflow-related suggestions or questions.
