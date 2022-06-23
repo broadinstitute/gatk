@@ -89,48 +89,63 @@ task CoreStorageModelSizes {
         volatile: true
     }
     command <<<
+
+        sanity_check_project() {
+            local -n outfail="fail"
+
+            # Technically single quotes and exclamation points are allowed but none of that nonsense here.
+            # https://cloud.google.com/resource-manager/docs/creating-managing-projects#:~:text=A%20project%20name%20can%20contain,between%204%20and%2030%20characters.
+            valid='-_0-9a-zA-Z'
+
+            if [[ "~{project_name}" =~ [^$valid] ]]
+            then
+                echo "Invalid project name '~{project_name}': contains disallowed characters"
+                outfail=1
+            fi
+
+            project_name='~{project_name}'
+            project_name_length=${#project_name}
+            if [[ $project_name_length -lt 4 ]] || [[ $project_name_length -gt 30 ]]
+            then
+                echo "Invalid project name '~{project_name}', length must be between 4 and 30 characters inclusive."
+                outfail=1
+            fi
+        }
+
+        sanity_check_dataset_name() {
+            local -n outfail="fail"
+
+            valid="0-9A-Za-z_"
+
+            if [[ "~{dataset_name}" =~ [^$valid] ]]
+            then
+                echo "Invalid dataset name '~{dataset_name}': must contain only letters, numbers, or underscores."
+                outfail=1
+            fi
+
+            dataset_name='~{dataset_name}'
+            dataset_name_length=${#dataset_name}
+            if [[ $dataset_name_length -lt 1 ]] || [[ $dataset_name_length -gt 1024 ]]
+            then
+                echo "Invalid dataset name '~{dataset_name}': length must be between 1 and 1024 characters inclusive."
+                outfail=1
+            fi
+        }
+
         get_billable_bytes_in_gib() {
             local table_pattern="$1"
             local output_file_name="$2"
 
             bq query --location=US --project_id='~{project_name}' --format=csv --use_legacy_sql=false \
                 "SELECT round(sum(total_billable_bytes) / (1024*1024*1024),2) \
-                     FROM \`~{project_name}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS\` \
-                     WHERE table_name LIKE '${table_pattern}'" | tail -1 > ${output_file_name}
+                    FROM \`~{project_name}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS\` \
+                    WHERE table_name LIKE '${table_pattern}'" | tail -1 > ${output_file_name}
         }
 
         fail=0
-        valid='-_0-9a-zA-Z'
-        # Technically single quotes and exclamation points are allowed but none of that nonsense here.
-        # https://cloud.google.com/resource-manager/docs/creating-managing-projects#:~:text=A%20project%20name%20can%20contain,between%204%20and%2030%20characters.
-        if [[ ~{project_name} =~ [^$valid] ]]
-        then
-            echo "Invalid project name '~{project_name}': contains disallowed characters"
-            fail=1
-        fi
 
-        project_name='~{project_name}'
-        project_name_length=${#project_name}
-        if [[ $project_name_length -lt 4 ]] || [[ $project_name_length -gt 30 ]]
-        then
-            echo "Invalid project name '~{project_name}', length must be between 4 and 30 characters inclusive."
-            fail=1
-        fi
-
-        valid="0-9A-Za-z_"
-        if [[ ~{dataset_name} =~ [^$valid] ]]
-        then
-            echo "Invalid dataset name '~{dataset_name}': must contain only letters, numbers, or underscores."
-            fail=1
-        fi
-
-        dataset_name='~{dataset_name}'
-        dataset_name_length=${#dataset_name}
-        if [[ $dataset_name_length -lt 1 ]] || [[ $dataset_name_length -gt 1024 ]]
-        then
-            echo "Invalid dataset name '~{dataset_name}': length must be between 1 and 1024 characters inclusive."
-            fail=1
-        fi
+        sanity_check_project
+        sanity_check_dataset_name
 
         if [[ $fail -eq 1 ]]
         then
