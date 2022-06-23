@@ -8,7 +8,8 @@ import "GvsExtractCallset.wdl" as GvsExtractCallset
 workflow GvsExtractCohortFromSampleNames {
 
   input {
-    File cohort_sample_names
+    File? cohort_sample_names
+    Array[String]? cohort_sample_names_array
     String query_project
     String gvs_project
     String gvs_dataset
@@ -34,10 +35,12 @@ workflow GvsExtractCohortFromSampleNames {
     File? gatk_override
   }
 
+  File cohort_sample_names_file = if defined(cohort_sample_names) then cohort_sample_names else write_lines(cohort_sample_names_array)
+
   call GvsPrepareCallset.GvsPrepareCallset {
     input:
       extract_table_prefix            = cohort_table_prefix,
-      sample_names_to_extract         = cohort_sample_names,
+      sample_names_to_extract         = cohort_sample_names_file,
       project_id                      = gvs_project,
       query_labels                    = ["extraction_uuid=~{extraction_uuid}"],
       query_project                   = query_project,
