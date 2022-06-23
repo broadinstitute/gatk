@@ -211,11 +211,11 @@ command <<<
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
         bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false "SELECT step, call, event_key, event_bytes FROM ~{dataset_name}.cost_observability" > cost_observability_output.csv
-        diff cost_observability_output.csv ~{expected_output_csv} > diff
+        diff cost_observability_output.csv ~{expected_output_csv} > differences.txt
 
         if [[ -s differences.txt ]]; then
             echo "Differences found:"
-            cat diff
+            cat differences.txt
             exit 1
         fi
     >>>
