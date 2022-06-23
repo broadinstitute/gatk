@@ -98,9 +98,9 @@ Now that your samples are loaded into data table in Terra, it’s time to setup 
     1. At the bottom of the page, **name your new sample_set**. This will appear in the sample_set data table.
     1. Click **OK** to create the sample_set.
 1. Configure the workflow inputs.
-    1. Enter a name for the callset as a string with the format “*CALLSET_NAME*” for the `callset_identifier` variable. This string is used as to name several variables and files and should begin with a letter. Valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”.
-    1. Enter the name of your BigQuery dataset as a string with the format “*DATASET_NAME*” for the `dataset_name` variable.
-    1. Enter the name of the GCP project that holds the BigQuery dataset as a string with the format “*PROJECT_NAME*” for the `project_id` variable.
+    1. Enter a **name for the callset** as a string with the format “*CALLSET_NAME*” for the `callset_identifier` variable. This string is used as to name several variables and files and should begin with a letter. Valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”.
+    1. Enter the name of your **BigQuery dataset** as a string with the format “*DATASET_NAME*” for the `dataset_name` variable.
+    1. Enter the name of the **GCP project** that holds the BigQuery dataset as a string with the format “*PROJECT_NAME*” for the `project_id` variable.
 1. **Save** the workflow configuration.
 1. **Run** the workflow.
 
@@ -113,7 +113,7 @@ Below is an example of the time and cost of running the workflow with the `Use r
 
 | Number of Samples | Wall Clock Time | Cost $ | Cost per Sample |
 | ---  | --- | --- | --- |
-| 20 | 04:30:00 |  |  |
+| 10 | 04:30:00 | $0.84 | ~$0.08 |
 | 10379 | 05:38:00 | $683.33 | ~$0.07 |
 
 **Note:** For more information about controlling Cloud costs, see [this article](https://support.terra.bio/hc/en-us/articles/360029748111).
