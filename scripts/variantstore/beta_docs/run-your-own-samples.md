@@ -124,6 +124,11 @@ Now that your samples are loaded into data table in Terra, it’s time to setup 
 1. **Save** the workflow configuration.
 1. **Run** the workflow.
 
+### Adding additional data to the BigQuery dataset
+The workflow imports gVCFs to the BigQuery dataset. The example gVCFs for the workspace are listed as a set in the workspace sample_set table. Multiple sample sets may be added to the same BigQuery dataset to appear in the same callset, but the workflow only runs on one sample set at a time. 
+
+If you run the workflow with the example data pre-loaded into the workspace, and then load additional data into that same dataset, the example data will be in your callset. Be sure to make a new dataset for your own data if you run the example data (unless you want the example data in there too–the more the merrier!).
+
 ### Important configuration notes
 
 By default, the workflow is set up to write outputs to the workspace Google bucket. If you want to write the outputs to a different cloud storage location, you can specify the cloud path in the `extract_output_gcs_dir` optional input in the workflow configuration. 
