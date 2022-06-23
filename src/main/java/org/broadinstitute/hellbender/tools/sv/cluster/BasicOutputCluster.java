@@ -22,4 +22,8 @@ public class BasicOutputCluster<T extends SVLocatable> {
     public Set<Long> getMemberIds() {
         return members.keySet();
     }
+
+    public Set<Long> getAllIds() {
+        return getMemberIds();
+    }
 }

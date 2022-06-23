@@ -48,7 +48,7 @@ public final class SortingClusterCollapser<T extends SVLocatable, C extends Basi
         final List<C> output = engine.flush(force);
         final Set<Long> engineItemIds = engine.getItemIds();
         final Set<Long> finalizedItemIds = output.stream()
-                .map(BasicOutputCluster::getMemberIds)
+                .map(BasicOutputCluster::getAllIds)
                 .flatMap(Collection::stream)
                 .filter(id -> !engineItemIds.contains(id))  // Items could still be active in other clusters
                 .collect(Collectors.toSet());

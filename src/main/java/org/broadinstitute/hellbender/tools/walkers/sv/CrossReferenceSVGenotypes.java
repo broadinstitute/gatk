@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.sv;
 
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFFormatHeaderLine;
@@ -15,6 +14,7 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
@@ -23,7 +23,6 @@ import org.broadinstitute.hellbender.tools.sv.SVLocatable;
 import org.broadinstitute.hellbender.tools.sv.cluster.*;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -102,9 +101,7 @@ public final class CrossReferenceSVGenotypes extends MultiVariantWalker {
     private final SVClusterEngineArgumentsCollection clusterParameterArgs = new SVClusterEngineArgumentsCollection();
 
     private SAMSequenceDictionary dictionary;
-    private ReferenceSequenceFile reference;
     private VariantContextWriter writer;
-    private Set<String> samples;
     private SortingClusterCollapser<CrossRefSVCallRecord, CrossRefOutputCluster<CrossRefSVCallRecord>> buffer;
     private CrossRefLinkage linkage;
     private Iterator<VariantContext> testVariantSource;
@@ -112,18 +109,11 @@ public final class CrossReferenceSVGenotypes extends MultiVariantWalker {
     private Comparator<VariantContext> variantComparator;
 
     @Override
-    public boolean requiresReference() {
-        return true;
-    }
-
-    @Override
     public void onTraversalStart() {
-        reference = ReferenceUtils.createReferenceReader(referenceArguments.getReferenceSpecifier());
-        dictionary = reference.getSequenceDictionary();
+        dictionary = getBestAvailableSequenceDictionary();
         if (dictionary == null) {
             throw new UserException("Reference sequence dictionary required");
         }
-        samples = getSamplesForVariants();
 
         linkage = new CrossRefLinkage(dictionary);
         linkage.setDepthOnlyParams(clusterParameterArgs.getDepthParameters());
@@ -135,10 +125,16 @@ public final class CrossReferenceSVGenotypes extends MultiVariantWalker {
         buffer = new SortingClusterCollapser<>(engine, collapser, dictionary);
 
         variantComparator = IntervalUtils.getDictionaryOrderComparator(dictionary);
+        final FeatureDataSource<VariantContext> source = new FeatureDataSource<>(testVcf.toString());
+        final Object headerObject = source.getHeader();
+        if ( ! (headerObject instanceof VCFHeader) ) {
+            throw new GATKException("Header for " + source.getName() + " is not in VCF header format");
+        }
+        final VCFHeader header = (VCFHeader) headerObject;
         testVariantSource = new FeatureDataSource<VariantContext>(testVcf.toString()).iterator();
 
         writer = createVCFWriter(outputFile);
-        writer.writeHeader(createHeader());
+        writer.writeHeader(createHeader(header));
     }
 
     @Override
@@ -173,8 +169,7 @@ public final class CrossReferenceSVGenotypes extends MultiVariantWalker {
         buffer.flush(force).stream().map(SVCallRecordUtils::getVariantBuilder).map(VariantContextBuilder::make).forEach(writer::add);
     }
 
-    private VCFHeader createHeader() {
-        final VCFHeader header = getHeaderForVariants();
+    private VCFHeader createHeader(final VCFHeader header) {
         header.addMetaDataLine(new VCFFormatHeaderLine(GATKSVVCFConstants.GENOTYPE_SUPPORT_IDS_KEY, 1, VCFHeaderLineType.Integer, "Number of cross-referenced non-ref genotypes"));
         return header;
     }
@@ -182,7 +177,7 @@ public final class CrossReferenceSVGenotypes extends MultiVariantWalker {
     public static final class CrossRefClusterCollapser implements SVCollapser<CrossRefSVCallRecord, CrossRefOutputCluster<CrossRefSVCallRecord>> {
         @Override
         public CrossRefSVCallRecord collapse(final CrossRefOutputCluster<CrossRefSVCallRecord> cluster) {
-            final CrossRefSVCallRecord testRecord = cluster.getTestItem();
+            final SVCallRecord testRecord = cluster.getTestItem();
             final Map<String, Long> sampleToCarrierCountsMap = cluster.getMembers().stream()
                     .map(CrossRefSVCallRecord::getCarrierGenotypeList)
                     .flatMap(Collection::stream)
@@ -191,10 +186,7 @@ public final class CrossReferenceSVGenotypes extends MultiVariantWalker {
             final ArrayList<Genotype> newGenotypes = new ArrayList<>(oldGenotypes.size());
             for (final Genotype g : oldGenotypes) {
                 final GenotypeBuilder builder = new GenotypeBuilder(g);
-                final String sample = g.getSampleName();
-                if (sampleToCarrierCountsMap.containsKey(sample)) {
-                    builder.attribute(GATKSVVCFConstants.GENOTYPE_SUPPORT_IDS_KEY, sampleToCarrierCountsMap.get(sample));
-                }
+                builder.attribute(GATKSVVCFConstants.GENOTYPE_SUPPORT_IDS_KEY, sampleToCarrierCountsMap.getOrDefault(g.getSampleName(), 0L));
                 newGenotypes.add(builder.make());
             }
             return new CrossRefSVCallRecord(SVCallRecordUtils.copyCallWithNewGenotypes(testRecord, GenotypesContext.create(newGenotypes)), true);
@@ -276,15 +268,24 @@ public final class CrossReferenceSVGenotypes extends MultiVariantWalker {
 
     public static class CrossRefOutputCluster<T extends SVLocatable> extends BasicOutputCluster<T> {
 
+        final Long testItemId;
         final T testItem;
 
-        public CrossRefOutputCluster(final Map<Long, T> members, final T testItem) {
+        public CrossRefOutputCluster(final Map<Long, T> members, final Long testItemId, final T testItem) {
             super(members);
+            this.testItemId = Utils.nonNull(testItemId);
             this.testItem = Utils.nonNull(testItem);
         }
 
         public T getTestItem() {
             return testItem;
+        }
+
+        @Override
+        public Set<Long> getAllIds() {
+            final Set<Long> ids = new HashSet<>(super.getAllIds());
+            ids.add(testItemId);
+            return ids;
         }
     }
 
@@ -302,6 +303,13 @@ public final class CrossReferenceSVGenotypes extends MultiVariantWalker {
 
         public Long getTestItem() {
             return testItem;
+        }
+
+        @Override
+        public Set<Long> getAllIds() {
+            final Set<Long> ids = new HashSet<>(super.getAllIds());
+            ids.add(testItem);
+            return ids;
         }
     }
 }

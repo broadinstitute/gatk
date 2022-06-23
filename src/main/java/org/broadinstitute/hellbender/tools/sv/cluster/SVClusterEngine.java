@@ -76,20 +76,25 @@ public abstract class SVClusterEngine<T extends SVLocatable, C extends BasicClus
             return Collections.emptyList();
         }
         final int lastStart = lastItem.getPositionA();
-        final List<Map.Entry<Integer, C>> finalizedClusters = idToClusterMap.entrySet().stream()
+        final List<Map.Entry<Integer, C>> finalizedClusters = getClusterIds().stream()
+                .map(id -> new AbstractMap.SimpleEntry<>(id, getCluster(id)))
                 .filter(e -> lastStart > e.getValue().getMaxClusterableStart())
                 .collect(Collectors.toList());
         final List<R> output = finalizedClusters.stream().map(Map.Entry::getValue).map(this::createOutputCluster).collect(Collectors.toList());
         finalizedClusters.stream().map(Map.Entry::getKey).forEach(idToClusterMap::remove);
         final Set<Long> remainingItemIds = idToClusterMap.values().stream()
-                .map(C::getMembers).flatMap(Set::stream).collect(Collectors.toSet());
-        final Set<Long> currentItemIds = new HashSet<>(idToItemMap.keySet());
-        currentItemIds.stream().filter(id -> !remainingItemIds.contains(id)).forEach(idToItemMap::remove);
+                .map(C::getAllIds).flatMap(Set::stream).collect(Collectors.toSet());
+        final Set<Long> currentItemIds = getItemIds();
+        currentItemIds.stream().filter(id -> !remainingItemIds.contains(id)).forEach(this::removeItem);
         return output;
     }
 
-    private final List<R> hardFlush() {
-        final List<R> output = idToClusterMap.values().stream().map(this::createOutputCluster).collect(Collectors.toList());
+    protected void removeItem(final Long id) {
+        idToItemMap.remove(id);
+    }
+
+    protected List<R> hardFlush() {
+        final List<R> output = getClusters().stream().map(this::createOutputCluster).collect(Collectors.toList());
         idToClusterMap.clear();
         idToItemMap.clear();
         currentContig = null;
@@ -160,7 +165,7 @@ public abstract class SVClusterEngine<T extends SVLocatable, C extends BasicClus
         return idToClusterMap.get(id);
     }
 
-    protected final T getItem(final Long id) {
+    protected T getItem(final Long id) {
         Utils.validateArg(idToItemMap.containsKey(id), "Item ID " + id + " does not exist.");
         return idToItemMap.get(id);
     }
@@ -169,12 +174,14 @@ public abstract class SVClusterEngine<T extends SVLocatable, C extends BasicClus
         return currentContig;
     }
 
-    public final Set<Long> getItemIds() {
+    public Set<Long> getItemIds() {
         return idToItemMap.keySet();
     }
 
-    protected final void registerCluster(final C cluster) {
-        idToClusterMap.put(nextClusterId++, cluster);
+    protected Integer registerCluster(final C cluster) {
+        final Integer id = nextClusterId++;
+        idToClusterMap.put(id, cluster);
+        return id;
     }
 
 }

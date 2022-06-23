@@ -31,6 +31,10 @@ public class BasicCluster {
         return members;
     }
 
+    public Set<Long> getAllIds() {
+        return getMembers();
+    }
+
     public String getContig() {
         return contig;
     }

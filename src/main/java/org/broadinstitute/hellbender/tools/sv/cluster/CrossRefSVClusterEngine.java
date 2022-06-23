@@ -21,7 +21,7 @@ public class CrossRefSVClusterEngine<T extends CrossReferenceSVGenotypes.CrossRe
 
     @Override
     protected CrossReferenceSVGenotypes.CrossRefOutputCluster<T> createOutputCluster(final CrossReferenceSVGenotypes.CrossRefCluster cluster) {
-        return new CrossReferenceSVGenotypes.CrossRefOutputCluster<>(cluster.getMembers().stream().collect(Collectors.toMap(id -> id, this::getItem)), getItem(cluster.getTestItem()));
+        return new CrossReferenceSVGenotypes.CrossRefOutputCluster<>(cluster.getMembers().stream().collect(Collectors.toMap(id -> id, this::getItem)), cluster.getTestItem(), getItem(cluster.getTestItem()));
     }
 
     @Override
@@ -34,15 +34,54 @@ public class CrossRefSVClusterEngine<T extends CrossReferenceSVGenotypes.CrossRe
     }
 
     @Override
+    protected final T getItem(final Long id) {
+        if (testIdToTestItemMap.containsKey(id)) {
+            return testIdToTestItemMap.get(id);
+        }
+        return super.getItem(id);
+    }
+
+    @Override
+    protected void removeItem(final Long id) {
+        if (testIdToTestItemMap.containsKey(id)) {
+            testIdToTestItemMap.remove(id);
+            testIdToClusterIdMap.remove(id);
+        } else {
+            super.removeItem(id);
+        }
+    }
+
+    @Override
+    protected List<CrossReferenceSVGenotypes.CrossRefOutputCluster<T>> hardFlush() {
+        final List<CrossReferenceSVGenotypes.CrossRefOutputCluster<T>> output = super.hardFlush();
+        testIdToClusterIdMap.clear();
+        testIdToTestItemMap.clear();
+        return output;
+    }
+
+    @Override
+    public final Set<Long> getItemIds() {
+        final Set<Long> set = new HashSet<>(super.getItemIds());
+        set.addAll(testIdToTestItemMap.keySet());
+        return set;
+    }
+
+    @Override
     protected void cluster(final Long itemId) {
         final T item = getItem(itemId);
         if (item.isTestVariant()) {
             final List<Long> linkedItemIds = getItemIds().stream()
-                    .filter(other -> linkage.areClusterable(item, getItem(other)))
+                    .filter(other -> !getItem(other).isTestVariant() && linkage.areClusterable(item, getItem(other)))
                     .collect(Collectors.toList());
-            final int maxPos = Math.max(linkage.getMaxClusterableStartingPosition(item), getMaxClusterableStartingPositionByIds(linkedItemIds));
+            final int maxPos;
+            if (linkedItemIds.isEmpty()) {
+                maxPos = linkage.getMaxClusterableStartingPosition(item);
+            } else {
+                maxPos = Math.max(linkage.getMaxClusterableStartingPosition(item), getMaxClusterableStartingPositionByIds(linkedItemIds));
+            }
             final CrossReferenceSVGenotypes.CrossRefCluster cluster = new CrossReferenceSVGenotypes.CrossRefCluster(linkedItemIds, getCurrentContig(), maxPos, itemId);
-            registerCluster(cluster);
+            final Integer clusterId = registerCluster(cluster);
+            testIdToClusterIdMap.put(itemId, clusterId);
         } else {
             final int itemMaxClusterableStart = linkage.getMaxClusterableStartingPosition(item);
             final String itemContig = item.getContigA();
