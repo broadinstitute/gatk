@@ -1,12 +1,9 @@
 package org.broadinstitute.hellbender.utils.bigquery;
 
-import com.google.cloud.bigquery.FieldValue;
 import com.google.cloud.bigquery.FieldValueList;
-import com.google.cloud.bigquery.TableResult;
 import org.apache.avro.generic.GenericRecord;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
-import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import java.util.*;
 
@@ -26,11 +23,11 @@ public class BigQueryUtilsUnitTest extends GATKBaseTest {
     @Test(groups = {"cloud"})
     public void testExecuteQueryAllRecords() {
         final String query = String.format("SELECT * FROM `%s`", BIGQUERY_FULLY_QUALIFIED_TABLE);
-        Map<String, String> labels = new HashMap<String, String>();
+        Map<String, String> labels = new HashMap<>();
         labels.put("gatktestquery", "getallrecords" + runUuid);
-        final TableResult result = BigQueryUtils.executeQuery(query, labels);
+        final BigQueryResultAndStatistics resultAndStatistics = BigQueryUtils.executeQuery(query, labels);
 
-        checkQueryResults(result, getAllExpectedNamesAndAges(), query);
+        checkQueryResults(resultAndStatistics, getAllExpectedNamesAndAges(), query);
     }
 
     @Test(groups = {"cloud"})
@@ -42,39 +39,39 @@ public class BigQueryUtilsUnitTest extends GATKBaseTest {
         Map<String, String> labels = new HashMap<String, String>();
         labels.put("gatktestquery", "testwhereclause" + runUuid);
         System.out.print("testwhereclause" + runUuid);
-        final TableResult result = BigQueryUtils.executeQuery(query, labels);
+        final BigQueryResultAndStatistics resultAndStatistics = BigQueryUtils.executeQuery(query, labels);
 
-        checkQueryResults(result, expectedNamesAndAges, query);
+        checkQueryResults(resultAndStatistics, expectedNamesAndAges, query);
     }
 
     @Test(groups = {"cloud"})
     public void testExecuteQueryInBatchMode() {
         final String query = String.format("SELECT * FROM `%s`", BIGQUERY_FULLY_QUALIFIED_TABLE);
-        Map<String, String> labels = new HashMap<String, String>();
+        Map<String, String> labels = new HashMap<>();
         labels.put("gatktestquery", "testbatchmode" + runUuid);
-        final TableResult result = BigQueryUtils.executeQuery(query, true, labels);
+        final BigQueryResultAndStatistics resultAndStatistics = BigQueryUtils.executeQuery(query, true, labels);
 
-        checkQueryResults(result, getAllExpectedNamesAndAges(), query);
+        checkQueryResults(resultAndStatistics, getAllExpectedNamesAndAges(), query);
     }
 
     @Test(groups = {"cloud"})
     public void testExecuteQueryInBatchModeWithProject() {
         final String query = String.format("SELECT * FROM `%s`", BIGQUERY_FULLY_QUALIFIED_TABLE);
-        Map<String, String> labels = new HashMap<String, String>();
+        Map<String, String> labels = new HashMap<>();
         labels.put("gatktestquery", "testbatchmode" + runUuid);
-        final TableResult result = BigQueryUtils.executeQuery(BIGQUERY_TEST_PROJECT, query, true, labels);
+        final BigQueryResultAndStatistics resultAndStatistics = BigQueryUtils.executeQuery(BIGQUERY_TEST_PROJECT, query, true, labels);
 
-        checkQueryResults(result, getAllExpectedNamesAndAges(), query);
+        checkQueryResults(resultAndStatistics, getAllExpectedNamesAndAges(), query);
     }
 
     @Test(groups = {"cloud"})
     public void testSpecifiedExecuteQuery() {
         final String query = String.format("SELECT * FROM `%s`", BIGQUERY_TEST_TABLE);
-        Map<String, String> labels = new HashMap<String, String>();
+        Map<String, String> labels = new HashMap<>();
         labels.put("gatktestquery", "testspecifiedexecutequery" + runUuid);
-        final TableResult result = BigQueryUtils.executeQuery(BigQueryUtils.getBigQueryEndPoint(), BIGQUERY_TEST_PROJECT, BIGQUERY_TEST_DATASET, query, labels);
+        final BigQueryResultAndStatistics resultAndStatistics = BigQueryUtils.executeQuery(BigQueryUtils.getBigQueryEndPoint(), BIGQUERY_TEST_PROJECT, BIGQUERY_TEST_DATASET, query, labels);
 
-        checkQueryResults(result, getAllExpectedNamesAndAges(), query);
+        checkQueryResults(resultAndStatistics, getAllExpectedNamesAndAges(), query);
     }
 
     @Test(groups = {"cloud"})
@@ -86,9 +83,9 @@ public class BigQueryUtilsUnitTest extends GATKBaseTest {
         final List<String> fieldsToRetrieve = new LinkedList<>();
         final String noUDFs = null;
         fieldsToRetrieve.add("name");
-        Map<String, String> labels = new HashMap<String, String>();
+        Map<String, String> labels = new HashMap<>();
         labels.put("gatktestquery", "teststorageapi" + runUuid);
-        final StorageAPIAvroReader result = BigQueryUtils.executeQueryWithStorageAPI(query, fieldsToRetrieve, BIGQUERY_TEST_PROJECT, BIGQUERY_TEST_DATASET, noUDFs, false, labels);
+        final StorageAPIAvroReader result = BigQueryUtils.executeQueryWithStorageAPI(query, fieldsToRetrieve, BIGQUERY_TEST_PROJECT, BIGQUERY_TEST_DATASET, noUDFs, false, labels).storageAPIAvroReader;
 
         int rowCount = 0;
         final Set<String> retrievedNames = new HashSet<>();
@@ -114,16 +111,14 @@ public class BigQueryUtilsUnitTest extends GATKBaseTest {
 
     @Test(groups = {"cloud"})
     public void testQueryWithEmptyDatasetStorageAPI() {
-        final Map<String, String> expectedNamesAndAges = getAllExpectedNamesAndAges();
-
         final String query = String.format("SELECT * FROM `%s` WHERE false", BIGQUERY_FULLY_QUALIFIED_TABLE);
 
         final List<String> fieldsToRetrieve = new LinkedList<>();
         final String noUDFs = null;
         fieldsToRetrieve.add("name");
-        Map<String, String> labels = new HashMap<String, String>();
+        Map<String, String> labels = new HashMap<>();
         labels.put("gatktestquery", "testapiwithemptydata" + runUuid);
-        final StorageAPIAvroReader result = BigQueryUtils.executeQueryWithStorageAPI(query, fieldsToRetrieve, BIGQUERY_TEST_PROJECT, BIGQUERY_TEST_DATASET, noUDFs, false, labels);
+        final StorageAPIAvroReader result = BigQueryUtils.executeQueryWithStorageAPI(query, fieldsToRetrieve, BIGQUERY_TEST_PROJECT, BIGQUERY_TEST_DATASET, noUDFs, false, labels).storageAPIAvroReader;
 
         int rowCount = 0;
         final Set<String> retrievedNames = new HashSet<>();
@@ -139,9 +134,9 @@ public class BigQueryUtilsUnitTest extends GATKBaseTest {
     public void testQueryWithNullLabel() {
         final String query = String.format("SELECT * FROM `%s`", BIGQUERY_FULLY_QUALIFIED_TABLE);
         Map<String, String> labels = null;
-        final TableResult result = BigQueryUtils.executeQuery(query, labels);
+        final BigQueryResultAndStatistics resultAndStatistics = BigQueryUtils.executeQuery(query, labels);
 
-        checkQueryResults(result, getAllExpectedNamesAndAges(), query);
+        checkQueryResults(resultAndStatistics, getAllExpectedNamesAndAges(), query);
     }
 
     private Map<String, String> getAllExpectedNamesAndAges() {
@@ -152,9 +147,9 @@ public class BigQueryUtilsUnitTest extends GATKBaseTest {
         return expectedNamesAndAges;
     }
 
-    private static void checkQueryResults(final TableResult result, final Map<String, String> expectedNamesAndAges, final String query) {
+    private static void checkQueryResults(final BigQueryResultAndStatistics resultAndStatistics, final Map<String, String> expectedNamesAndAges, final String query) {
         int rowCount = 0;
-        for ( final FieldValueList row : result.iterateAll() ) {
+        for ( final FieldValueList row : resultAndStatistics.result.iterateAll() ) {
             rowCount++;
 
             final String name = row.get(0).getStringValue();
