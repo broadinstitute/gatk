@@ -35,7 +35,19 @@ workflow GvsExtractCohortFromSampleNames {
     File? gatk_override
   }
 
-  File cohort_sample_names_file = if defined(cohort_sample_names) then select_first([cohort_sample_names]) else write_lines(select_first([cohort_sample_names_array]))
+  # writing the array to a file has to be done in a task
+  # https://support.terra.bio/hc/en-us/community/posts/360071465631-write-lines-write-map-write-tsv-write-json-fail-when-run-in-a-workflow-rather-than-in-a-task
+  if (defined(cohort_sample_names_array)) {
+    call write_array_task {
+      input:
+        input_array = select_first([cohort_sample_names_array]),
+        docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+    }
+  }
+
+  File cohort_sample_names_file =
+    if defined(cohort_sample_names) then select_first([cohort_sample_names]) else select_first([write_array_task.output_file])
+
 
   call GvsPrepareCallset.GvsPrepareCallset {
     input:
@@ -79,3 +91,22 @@ workflow GvsExtractCohortFromSampleNames {
   }
 
 }
+
+task write_array_task {
+  input {
+    Array[String] input_array
+    String docker
+  }
+
+  command <<<
+  >>>
+
+  output {
+    File output_file = write_lines(input_array)
+  }
+
+  runtime {
+    docker: docker
+  }
+}
+
