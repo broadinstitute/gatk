@@ -12,11 +12,30 @@ To learn more about the GVS workflow, see the [Genomic Variant Store workflow ov
 
 ### What does it require as input?
 
-The GVS workflow takes in reblocked single sample gVCF files and their corresponding index files as `input_vcfs` and `input_vcf_indexes`, respectively.
+The GVS workflow takes in reblocked single sample gVCF files and their corresponding index files as `input_vcfs` and `input_vcf_indexes`, respectively. The workflow also requires specific annotations in input gVCF files.
+
+#### Reblocked gVCF files
 
 If your gVCF files have not been reblocked, you can reblock them using the [WARP reblocking workflow](https://github.com/broadinstitute/warp/blob/master/pipelines/broad/dna_seq/germline/joint_genotyping/reblocking/ReblockGVCF.wdl), which is configured in the [ReblockGVCF Terra workspace](https://app.terra.bio/#workspaces/warp-pipelines/ReblockGVCF). 
 
 For more information about reblocking, check out [WARP Whole Genome and Exome Pipelines Produce Reblocked GVCFs](https://broadinstitute.github.io/warp/blog/tags/reblock/).
+
+#### gVCF annotations
+
+Input gVCF files for the GVS workflow must include the annotations described in the table below:
+
+| Annotation | Description | Notes |
+| --- | --- | --- |
+| Ref | Reference allele. | --- |
+| Alt | Alternate allele. | --- |
+| AS_RAW_MQ, RAW_MQandDP, or RAW_MQ | RMS mapping quality (‘AS’: allele-specific). | Required for VQSR Data |
+| AS_RAW_MQRankSum or Map_QUAL_RANK_SUM_KEY | Z-score from Wilcoxon rank sum test of alternate versus reference read mapping qualities. | Required for VQSR Data |
+| QUALapprox | Sum of PL[0] values; used to approximate the QUAL score. | Required for VQSR Data |
+| AS_QUALapprox | Allele-specific sum of PL[0] values; used to approximate the QUAL score. | Required for VQSR Data |
+| AS_SB_TABLE or STRAND_BIAS_BY_SAMPLE | Allele-specific forward/reverse read counts for strand bias tests. | Required for VQSR Data |
+| AS_VarDP, VarDP, or DP | Depth over variant genotypes, or read depth  (‘AS’: allele-specific). | Required for VQSR Data |
+| call_GT | Genotype. | --- |
+| call_GQ | Genotype quality. | --- |
 
 ### What does it return as output?
 
@@ -52,7 +71,8 @@ If your data is already stored in the cloud, you’ll need to upload a TSV file 
 
 ---
 
-**Warning:** The workflow in the GVS beta workspace is configured based on the format of the TSV file. To avoid reconfiguring the workflow, do **not** rearrange or rename the columns in the TSV file.
+**Warning:**      
+The workflow in the GVS beta workspace is configured based on the format of the TSV file. To avoid reconfiguring the workflow, do **not** rearrange or rename the columns in the TSV file.
 
 ---
 
