@@ -99,7 +99,7 @@ task CoreStorageModelSizes {
 
             if [[ "~{project_name}" =~ [^$valid] ]]
             then
-                echo "Invalid project name '~{project_name}': contains disallowed characters"
+                echo "Invalid project name '~{project_name}': contains invalid characters, valid characters in [$valid]."
                 outfail=1
             fi
 
@@ -119,7 +119,7 @@ task CoreStorageModelSizes {
 
             if [[ "~{dataset_name}" =~ [^$valid] ]]
             then
-                echo "Invalid dataset name '~{dataset_name}': must contain only letters, numbers, or underscores."
+                echo "Invalid dataset name '~{dataset_name}': contains invalid characters, valid characters in [$valid]."
                 outfail=1
             fi
 
