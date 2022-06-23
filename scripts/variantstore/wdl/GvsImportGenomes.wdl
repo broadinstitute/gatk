@@ -399,7 +399,7 @@ task CurateInputLists {
                                              --output_files True
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:rsa_query_labels_20220621"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:rsa_metadata_from_python_20220621"
     memory: "3 GB"
     disks: "local-disk 100 HDD"
     bootDiskSizeGb: 15
