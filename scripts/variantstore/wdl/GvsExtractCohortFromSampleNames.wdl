@@ -45,9 +45,7 @@ workflow GvsExtractCohortFromSampleNames {
     }
   }
 
-  File cohort_sample_names_file =
-    if defined(cohort_sample_names) then select_first([cohort_sample_names]) else select_first([write_array_task.output_file])
-
+  File cohort_sample_names_file = select_first([write_array_task.output_file, cohort_sample_names])
 
   call GvsPrepareCallset.GvsPrepareCallset {
     input:
