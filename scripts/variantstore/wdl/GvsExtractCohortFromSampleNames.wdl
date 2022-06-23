@@ -35,7 +35,7 @@ workflow GvsExtractCohortFromSampleNames {
     File? gatk_override
   }
 
-  File cohort_sample_names_file = if defined(cohort_sample_names) then cohort_sample_names else write_lines(cohort_sample_names_array)
+  File cohort_sample_names_file = if defined(cohort_sample_names) then select_first([cohort_sample_names]) else write_lines(select_first([cohort_sample_names_array]))
 
   call GvsPrepareCallset.GvsPrepareCallset {
     input:
