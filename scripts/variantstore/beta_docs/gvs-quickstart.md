@@ -78,6 +78,8 @@ Your Terra proxy group needs to be granted specific roles in GCP so Terra can cr
 
 First, grant your proxy group the BigQuery Data Editor, BigQuery Job User, and BigQuery Read Session User roles on the Google Project that you created in Step 3 (above) that contains your BigQuery dataset. For step-by-step instructions, see the Google Cloud documentation article, [Manage access to projects, folders, and organizations](https://cloud.google.com/iam/docs/granting-changing-revoking-access).
 
+If you’ve done this correctly, you should see your Terra proxy group listed on the [Google Cloud IAM page](https://console.cloud.google.com/projectselector/iam-admin/iam?supportedpurview=project,folder,organizationId&_ga=2.2029297.1976628513.1656011094-413490265.1655328780) with the three roles listed above next to it.
+
 ### Step 7. Clone the GVS beta workspace
 
 The GVS beta workspace in Terra is read-only, so you’ll need to clone the workspace to create a copy where you can upload your own data and run the workflow. Clone the workspace using the billing project you created in Step 2 (above) by following the instructions in the article [Make your own project workspace](https://support.terra.bio/hc/en-us/articles/360026130851).

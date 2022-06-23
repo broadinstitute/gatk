@@ -80,17 +80,18 @@ Overall, the GVS workflow:
 1. Trains the filtering model.
 1. Extracts VCF files.
 
-The steps of the workflow, in addition to the tools used in each step, are described below.
+The steps of the workflow, in addition to the GATK tools used in each step, are described below. Custom tools are used throughout the workflow to read from and write to the BigQuery dataset.
 
 ### 1. Import sample GVCF files
 
-This step validates that sample GVCF files contain required annotations and loads samples into BigQuery tables.
+This step validates that sample GVCF files contain required annotations and loads samples into BigQuery tables. 
 
 ### 2. Train the filtering model
 
 GATK tools used: [SplitIntervals](https://gatk.broadinstitute.org/hc/en-us/articles/5358914364699), [GatherVcfsCloud](https://gatk.broadinstitute.org/hc/en-us/articles/5358884598555), [VariantRecalibrator](https://gatk.broadinstitute.org/hc/en-us/articles/5358906115227), [GatherTranches](https://gatk.broadinstitute.org/hc/en-us/articles/5358889613339)
 
-This step splits alternate alleles, calculates annotations to be used for filtering, and creates a filtering model using VQSR and annotations from a random subset of the input samples. SNPs are recalibrated using the annotations `AS_FS`, `AS_ReadPosRankSum`, `AS_MQRankSum`, `AS_QD`, and `AS_SOR`. Indels are recalibrated using the annotations `AS_FS`, `AS_ReadPosRankSum`, `AS_MQRankSum`, `AS_QD`, `AS_SOR`, and `AS_MQ`.
+This step splits alternate alleles, calculates annotations to be used for filtering, and creates a filtering model using VQSR and annotations from a random subset of the input samples.
+SNPs are recalibrated using the annotations `AS_FS`, `AS_ReadPosRankSum`, `AS_MQRankSum`, `AS_QD`, and `AS_SOR`. Indels are recalibrated using the annotations `AS_FS`, `AS_ReadPosRankSum`, `AS_MQRankSum`, `AS_QD`, `AS_SOR`, and `AS_MQ`.
 
 ### 3. Extract VCF files
 
