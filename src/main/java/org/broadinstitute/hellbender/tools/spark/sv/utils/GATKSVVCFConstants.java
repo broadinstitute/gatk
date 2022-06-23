@@ -104,6 +104,7 @@ public final class GATKSVVCFConstants {
 
     // Clustering
     public static final String CLUSTER_MEMBER_IDS_KEY = "MEMBERS";
+    public static final String GENOTYPE_SUPPORT_IDS_KEY = "GTS";
 
     // functional annotations
     public static final String LOF = "PREDICTED_LOF";

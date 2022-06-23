@@ -99,9 +99,9 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
     private VariantContextWriter vcfWriter;
     private SAMSequenceDictionary dictionary;
     private CanonicalSVClusterEngine<SVCallRecord> defragmenter;
-    private SVCollapser<SVCallRecord> defragmentCollapser;
+    private CanonicalSVCollapser defragmentCollapser;
     private CanonicalSVClusterEngine<SVCallRecord> clusterEngine;
-    private SVCollapser<SVCallRecord> clusterCollapser;
+    private CanonicalSVCollapser clusterCollapser;
     private List<GenomeLoc> callIntervals;
     private String currentContig;
     private SampleDB sampleDB;
@@ -109,6 +109,7 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
     private ReferenceSequenceFile reference;
     private final Set<String> allosomalContigs = new LinkedHashSet<>(Arrays.asList("X","Y","chrX","chrY"));
     private long nextItemId = 0L;
+    private Comparator<SVCallRecord> comparator;
 
     class CopyNumberAndEndRecord {
         private MutablePair<Integer, Integer> record;
@@ -222,6 +223,7 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
         clusterEngine = SVClusterEngineFactory.createCanonical(SVClusterEngine.CLUSTERING_TYPE.MAX_CLIQUE,
                 dictionary, true, clusterArgs, CanonicalSVLinkage.DEFAULT_MIXED_PARAMS, CanonicalSVLinkage.DEFAULT_PESR_PARAMS);
         clusterCollapser = new CanonicalSVCollapser(reference, altAlleleSummaryStrategy, breakpointSummaryStrategy, CanonicalSVCollapser.InsertionLengthSummaryStrategy.MEDIAN);
+        comparator = SVCallRecordUtils.getSVLocatableComparator(dictionary);
         vcfWriter = getVCFWriter();
 
         if (getSamplesForVariants().size() != 1) {
@@ -313,6 +315,7 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
         //Jack and Isaac cluster first and then defragment
         final List<SVCallRecord> clusteredCalls = clusterEngine.flush(true).stream()
                 .map(clusterCollapser::collapse)
+                .sorted(comparator)
                 .collect(Collectors.toList());
         write(clusteredCalls);
     }

@@ -303,9 +303,8 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
         }
 
         final Comparator<SVCallRecord> recordComparator = SVCallRecordUtils.getCallComparator(referenceSequenceFile.getSequenceDictionary());
-        final SVCollapser<SVCallRecord> collapser = SVTestUtils.defaultCollapser;
         final List<VariantContext> expectedVariants = engine.flush(true).stream()
-                .map(collapser::collapse)
+                .map(SVTestUtils.defaultCollapser::collapse)
                 .sorted(recordComparator)
                 .map(SVCallRecordUtils::getVariantBuilder)
                 .map(VariantContextBuilder::make)

@@ -64,12 +64,6 @@ public abstract class SVClusterEngine<T extends SVLocatable, C extends BasicClus
         return linkage.getMaxClusterableStartingPosition(itemIds.stream().map(this::getItem).collect(Collectors.toList()));
     }
 
-    protected final int getMinStartingPositionByIds(final Collection<Long> itemIds) {
-        Utils.nonNull(itemIds);
-        Utils.nonEmpty(itemIds);
-        return itemIds.stream().map(this::getItem).mapToInt(T::getPositionA).min().getAsInt();
-    }
-
     /**
      * Gets any available finalized clusters.
      */

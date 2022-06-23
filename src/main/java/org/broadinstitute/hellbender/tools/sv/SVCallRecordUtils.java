@@ -140,7 +140,7 @@ public final class SVCallRecordUtils {
      * @param genotypes replacement genotypes
      * @return new record
      */
-    public static SVCallRecord copyCallWithNewGenotypes(final SVCallRecord record, final GenotypesContext genotypes) {
+    public static <T extends SVCallRecord> SVCallRecord copyCallWithNewGenotypes(final T record, final GenotypesContext genotypes) {
         return new SVCallRecord(record.getId(), record.getContigA(), record.getPositionA(), record.getStrandA(), record.getContigB(),
                 record.getPositionB(), record.getStrandB(), record.getType(), record.getLength(), record.getAlgorithms(), record.getAlleles(),
                 genotypes, record.getAttributes());

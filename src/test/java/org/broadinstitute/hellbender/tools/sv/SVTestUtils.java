@@ -25,13 +25,13 @@ public class SVTestUtils {
     public final static int chr1Length = hg38Dict.getSequence("chr1").getSequenceLength();
 
     private final static GenomeLocParser glParser = new GenomeLocParser(SVTestUtils.hg38Dict);
-    public static final SVCollapser<SVCallRecord> defaultCollapser =
+    public static final SVCollapser<SVCallRecord, BasicOutputCluster<SVCallRecord>> defaultCollapser =
             new CanonicalSVCollapser(
                     hg38Reference,
                     CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE,
                     CanonicalSVCollapser.BreakpointSummaryStrategy.MEDIAN_START_MEDIAN_END,
                     CanonicalSVCollapser.InsertionLengthSummaryStrategy.MEDIAN);
-    public static final SVCollapser<SVCallRecord> defragmentCollapser =
+    public static final SVCollapser<SVCallRecord, BasicOutputCluster<SVCallRecord>> defragmentCollapser =
             new CanonicalSVCollapser(
                     hg38Reference,
                     CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE,

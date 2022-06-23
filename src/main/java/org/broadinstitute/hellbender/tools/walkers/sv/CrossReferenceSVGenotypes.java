@@ -2,8 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.sv;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
-import htsjdk.variant.variantcontext.StructuralVariantType;
-import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFFormatHeaderLine;
 import htsjdk.variant.vcf.VCFHeader;
@@ -17,13 +16,17 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
+import org.broadinstitute.hellbender.tools.sv.SVLocatable;
 import org.broadinstitute.hellbender.tools.sv.cluster.*;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * <p>Clusters structural variants based on coordinates, event type, and supporting algorithms. Primary use cases include:</p>
@@ -38,105 +41,6 @@ import java.util.*;
  *         Defragmentation of copy number variants produced with depth-based callers.
  *     </li>
  * </ul>
- *
- * <p>Clustering tasks can be accomplished using one of two algorithms. The SINGLE_LINKAGE algorithm produces clusters
- * for which all members cluster with <i>at least one</i> other member. The MAX_CLIQUE algorithm, however,
- * requires that all members cluster with <i>every other</i> member. The latter is in general non-polynomial in time and
- * space but implemented to minimize computations by traversing variants ordered by start position and efficiently
- * finalizing "active" clusters that are determined to be complete.</p>
- *
- * <p>The tool determines whether two given variants should cluster based following criteria:</p>
- * <ul>
- *     <li>
- *         Matching SV type. DEL and DUP are considered matching SV types if --enable-cnv is used and merged into
- *         a multi-allelic CNV type.
- *     </li>
- *     <li>
- *         Matching breakend strands (BND and INV only)
- *     </li>
- *     <li>
- *         Interval reciprocal overlap (inapplicable for BNDs).
- *     </li>
- *     <li>
- *         Distance between corresponding event breakends (breakend window).
- *     </li>
- *     <li>
- *         Sample reciprocal overlap, based on carrier status determined by available genotypes (GT fields). If
- *         no GT fields are called for a given variant, the tool attempts to find carriers based on copy number
- *         (CN field) and sample ploidy (as determined by the ECN FORMAT field).
- *     </li>
- * </ul>
- *
- * <p>For CNV defragmentation (DEFRAGMENT_CNV algorithm), the tool uses single-linkage clustering based
- * on the following linkage criteria:</p>
- * <ul>
- *     <li>
- *         Must be a DEL/DUP/CNV and only be supported by a depth algorithm.
- *     </li>
- *     <li>
- *         Matching SV type
- *     </li>
- *     <li>
- *         Overlapping after padding both sides of each variant by the fraction of event length specified by
- *         --defrag-padding-fraction.
- *     </li>
- *     <li>
- *         Sample overlap fraction (described above) specified by --defrag-sample-overlap.
- *     </li>
- * </ul>
- *
- * <p>Interval overlap, breakend window, and sample overlap parameters are defined for three combinations of event types
- * using the ALGORITHMS field, which describes the type of evidence that was used to call the variant:</p>
- * <ul>
- *     <li>
- *         Depth-only - both variants have solely "depth" ALGORITHMS
- *     </li>
- *     <li>
- *         PESR (paired-end/split-read) - both variants have at least one non-depth entry in ALGORITHMS
- *     </li>
- *     <li>
- *         Mixed - one variant is depth-only and the other is PESR
- *     </li>
- * </ul>
- *
- * <p>Users must supply one or more VCFs containing SVs with the following info fields:</p>
- *
- * <ul>
- *     <li>
- *         SVTYPE - event type (DEL, DUP, CNV, INS, INV, BND)
- *     </li>
- *     <li>
- *         SVLEN - variant length for INS only, if known
- *     </li>
- *     <li>
- *         STRANDS - breakend strands ("++", "+-", "-+", or "--") (BND and INV only)
- *     </li>
- *     <li>
- *         CHROM2 / END2 - mate coordinates (BND only)
- *     </li>
- *     <li>
- *         ALGORITHMS - list of supporting tools/algorithms. These names may be arbitrary, except for depth-based
- *         callers, which should be listed as "depth".
- *     </li>
- * </ul>
- *
- * <p>In addition, the following FORMAT fields must be defined:</p>
- *
- * <ul>
- *     <li>
- *         GT - genotype alleles
- *     </li>
- *     <li>
- *         ECN - expected copy number (i.e. ploidy)
- *     </li>
- *     <li>
- *         CN - genotype copy number (DEL/DUP/CNV only)
- *     </li>
- * </ul>
- *
- * <p>Note that for CNVs (DEL, DUP, multi-allelic CNV), GT alleles are set according to the CN/ECN fields. In
- * some cases, (e.g. diploid DUPs with CN 4), allele phasing cannot be determined unambiguously and GT is set with
- * no-call alleles.</p>
  *
  * <p>The tool generates a new VCF with clusters collapsed into single representative records. By default, a MEMBERS
  * field is generated that lists the input variant IDs contained in that record's cluster.</p>
@@ -160,22 +64,25 @@ import java.util.*;
  * <h3>Usage example</h3>
  *
  * <pre>
- *     gatk SVCluster \
- *       -V variants.vcf.gz \
- *       -O clustered.vcf.gz \
- *       --algorithm SINGLE_LINKAGE
+ *     gatk CrossReferenceSVGenotypes \
+ *       -V variants1.vcf.gz \
+ *       -V variants2.vcf.gz \
+ *       --test-vcf test.vcf.gz \
+ *       -O annotated.vcf.gz
  * </pre>
  *
  * @author Mark Walker &lt;markw@broadinstitute.org&gt;
  */
 @CommandLineProgramProperties(
-        summary = "Clusters structural variants",
-        oneLineSummary = "Clusters structural variants",
+        summary = "Cross references structural variant genotypes",
+        oneLineSummary = "Cross references structural variant genotypes",
         programGroup = StructuralVariantDiscoveryProgramGroup.class
 )
 @BetaFeature
 @DocumentedFeature
-public final class SVOverlap extends MultiVariantWalker {
+public final class CrossReferenceSVGenotypes extends MultiVariantWalker {
+
+    public static final String TEST_VCF_LONG_NAME = "test-vcf";
 
     @Argument(
             doc = "Output VCF",
@@ -185,11 +92,11 @@ public final class SVOverlap extends MultiVariantWalker {
     private GATKPath outputFile;
 
     @Argument(
-            doc = "VCF containing SVs to annotate",
-            fullName = "callset-vcf"
+            doc = "Test VCF to annotate using cross-referenced genotypes provided with one or more -"
+                    + StandardArgumentDefinitions.VARIANT_SHORT_NAME + " arguments",
+            fullName = TEST_VCF_LONG_NAME
     )
-    private GATKPath callsetVcf;
-
+    private GATKPath testVcf;
 
     @ArgumentCollection
     private final SVClusterEngineArgumentsCollection clusterParameterArgs = new SVClusterEngineArgumentsCollection();
@@ -198,12 +105,11 @@ public final class SVOverlap extends MultiVariantWalker {
     private ReferenceSequenceFile reference;
     private VariantContextWriter writer;
     private Set<String> samples;
-    private PartitionedSVClusterEngine<PartitionedSVCallRecord> engine;
-    private PartitionedCallSetLinkage linkage;
-    private Iterator<VariantContext> callsetVariants;
+    private SortingClusterCollapser<CrossRefSVCallRecord, CrossRefOutputCluster<CrossRefSVCallRecord>> buffer;
+    private CrossRefLinkage linkage;
+    private Iterator<VariantContext> testVariantSource;
     private VariantContext currentCallsetVariant;
     private Comparator<VariantContext> variantComparator;
-    private long nextItemId = 0L;
 
     @Override
     public boolean requiresReference() {
@@ -219,14 +125,17 @@ public final class SVOverlap extends MultiVariantWalker {
         }
         samples = getSamplesForVariants();
 
+        linkage = new CrossRefLinkage(dictionary);
         linkage.setDepthOnlyParams(clusterParameterArgs.getDepthParameters());
         linkage.setMixedParams(clusterParameterArgs.getMixedParameters());
         linkage.setEvidenceParams(clusterParameterArgs.getPESRParameters());
-        linkage = new PartitionedCallSetLinkage(dictionary);
-        engine = new PartitionedSVClusterEngine<>(linkage, dictionary);
+
+        final CrossRefSVClusterEngine engine = new CrossRefSVClusterEngine<>(linkage, dictionary);
+        final CrossRefClusterCollapser collapser = new CrossRefClusterCollapser();
+        buffer = new SortingClusterCollapser<>(engine, collapser, dictionary);
 
         variantComparator = IntervalUtils.getDictionaryOrderComparator(dictionary);
-        callsetVariants = new FeatureDataSource<VariantContext>(callsetVcf.toString()).iterator();
+        testVariantSource = new FeatureDataSource<VariantContext>(testVcf.toString()).iterator();
 
         writer = createVCFWriter(outputFile);
         writer.writeHeader(createHeader());
@@ -249,34 +158,52 @@ public final class SVOverlap extends MultiVariantWalker {
     @Override
     public void apply(final VariantContext variant, final ReadsContext readsContext,
                       final ReferenceContext referenceContext, final FeatureContext featureContext) {
-        while (currentCallsetVariant == null && callsetVariants.hasNext()) {
-            currentCallsetVariant = callsetVariants.next();
+        while (currentCallsetVariant == null && testVariantSource.hasNext()) {
+            currentCallsetVariant = testVariantSource.next();
             if (variantComparator.compare(currentCallsetVariant, variant) <= 0) {
-                engine.add(new PartitionedSVCallRecord(SVCallRecordUtils.create(currentCallsetVariant), true), nextItemId++);
+                buffer.add(new CrossRefSVCallRecord(SVCallRecordUtils.create(currentCallsetVariant), true));
                 currentCallsetVariant = null;
             }
         }
-        engine.add(new PartitionedSVCallRecord(SVCallRecordUtils.create(variant), false), nextItemId++);
+        buffer.add(new CrossRefSVCallRecord(SVCallRecordUtils.create(variant), false));
         flush(false);
     }
 
     private void flush(final boolean force) {
-        engine.flush(force).stream().forEach(this::processCluster);
-    }
-
-    private void processCluster(final PartitionedOutputCluster<PartitionedSVCallRecord> cluster) {
-        // TODO : implement
+        buffer.flush(force).stream().map(SVCallRecordUtils::getVariantBuilder).map(VariantContextBuilder::make).forEach(writer::add);
     }
 
     private VCFHeader createHeader() {
         final VCFHeader header = getHeaderForVariants();
-        header.addMetaDataLine(new VCFFormatHeaderLine("MGT", 1, VCFHeaderLineType.String, "Genotype from matched variant"));
+        header.addMetaDataLine(new VCFFormatHeaderLine(GATKSVVCFConstants.GENOTYPE_SUPPORT_IDS_KEY, 1, VCFHeaderLineType.Integer, "Number of cross-referenced non-ref genotypes"));
         return header;
     }
 
-    private static final class PartitionedCallSetLinkage extends CanonicalSVLinkage<PartitionedSVCallRecord> {
+    public static final class CrossRefClusterCollapser implements SVCollapser<CrossRefSVCallRecord, CrossRefOutputCluster<CrossRefSVCallRecord>> {
+        @Override
+        public CrossRefSVCallRecord collapse(final CrossRefOutputCluster<CrossRefSVCallRecord> cluster) {
+            final CrossRefSVCallRecord testRecord = cluster.getTestItem();
+            final Map<String, Long> sampleToCarrierCountsMap = cluster.getMembers().stream()
+                    .map(CrossRefSVCallRecord::getCarrierGenotypeList)
+                    .flatMap(Collection::stream)
+                    .collect(Collectors.groupingBy(Genotype::getSampleName, Collectors.counting()));
+            final GenotypesContext oldGenotypes = testRecord.getGenotypes();
+            final ArrayList<Genotype> newGenotypes = new ArrayList<>(oldGenotypes.size());
+            for (final Genotype g : oldGenotypes) {
+                final GenotypeBuilder builder = new GenotypeBuilder(g);
+                final String sample = g.getSampleName();
+                if (sampleToCarrierCountsMap.containsKey(sample)) {
+                    builder.attribute(GATKSVVCFConstants.GENOTYPE_SUPPORT_IDS_KEY, sampleToCarrierCountsMap.get(sample));
+                }
+                newGenotypes.add(builder.make());
+            }
+            return new CrossRefSVCallRecord(SVCallRecordUtils.copyCallWithNewGenotypes(testRecord, GenotypesContext.create(newGenotypes)), true);
+        }
+    }
 
-        public PartitionedCallSetLinkage(final SAMSequenceDictionary dictionary) {
+    public static final class CrossRefLinkage extends CanonicalSVLinkage<CrossRefSVCallRecord> {
+
+        public CrossRefLinkage(final SAMSequenceDictionary dictionary) {
             super(dictionary, false);
         }
 
@@ -329,4 +256,52 @@ public final class SVOverlap extends MultiVariantWalker {
         }
     }
 
+    public static final class CrossRefSVCallRecord extends SVCallRecord {
+
+        private final boolean isTestVariant;
+
+        public CrossRefSVCallRecord(final SVCallRecord record, final boolean isTestVariant) {
+            super(record);
+            this.isTestVariant = isTestVariant;
+        }
+
+        public static CrossRefSVCallRecord create(final SVCallRecord record, final boolean isTestVariant) {
+            return new CrossRefSVCallRecord(record, isTestVariant);
+        }
+
+        public boolean isTestVariant() {
+            return isTestVariant;
+        }
+    }
+
+    public static class CrossRefOutputCluster<T extends SVLocatable> extends BasicOutputCluster<T> {
+
+        final T testItem;
+
+        public CrossRefOutputCluster(final Map<Long, T> members, final T testItem) {
+            super(members);
+            this.testItem = Utils.nonNull(testItem);
+        }
+
+        public T getTestItem() {
+            return testItem;
+        }
+    }
+
+    public static class CrossRefCluster extends BasicCluster {
+
+        final Long testItem;
+
+        public CrossRefCluster(final List<Long> members,
+                               final String contig,
+                               final int maxClusterableStart,
+                               final Long testItem) {
+            super(members, contig, maxClusterableStart);
+            this.testItem = Utils.nonNull(testItem);
+        }
+
+        public Long getTestItem() {
+            return testItem;
+        }
+    }
 }

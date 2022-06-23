@@ -8,33 +8,34 @@ import org.broadinstitute.hellbender.tools.sv.SVLocus;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public final class CollapsingClusteringSortingBuffer<R extends SVLocatable, C extends BasicOutputCluster<R>> {
+public final class SortingClusterCollapser<T extends SVLocatable, C extends BasicOutputCluster<T>> {
 
     private final Map<Long, SVLocus> activeItemLoci;
     private final PriorityQueue<Long> activeItemIds;
-    private final SVCollapser<R> collapser;
-    private final CanonicalSVClusterEngine<R> engine;
+    private final SVCollapser<T, C> collapser;
+    private final SVClusterEngine<T, ?, C> engine;
     private final Comparator<SVLocatable> locusComparator;
-    private final Comparator<Long> idComparator;
-    private final PriorityQueue<R> outputBuffer;
+    private final PriorityQueue<T> outputBuffer;
+    private long nextItemId;
 
-    public CollapsingClusteringSortingBuffer(final CanonicalSVClusterEngine<R> engine,
-                                             final SVCollapser<R> collapser,
-                                             final SAMSequenceDictionary dictionary) {
+    public SortingClusterCollapser(final SVClusterEngine<T, ?, C> engine,
+                                   final SVCollapser<T, C> collapser,
+                                   final SAMSequenceDictionary dictionary) {
         this.engine = engine;
         this.collapser = collapser;
         this.activeItemLoci = new HashMap<>();
         this.locusComparator = SVCallRecordUtils.getSVLocatableComparator(dictionary);
-        this.idComparator = (o1, o2) -> locusComparator.compare(activeItemLoci.get(o1), activeItemLoci.get(o2));
+        final Comparator<Long> idComparator = (o1, o2) -> locusComparator.compare(activeItemLoci.get(o1), activeItemLoci.get(o2));
         this.activeItemIds = new PriorityQueue<>(idComparator);
         this.outputBuffer = new PriorityQueue<>(locusComparator);
+        this.nextItemId = 0L;
     }
 
-    public void add(final R item, final Long id) {
+    public void add(final T item) {
         final SVLocus locus = item.getAsLocus();
-        activeItemLoci.put(id, locus);
-        activeItemIds.add(id);
-        engine.add(item, id);
+        activeItemLoci.put(nextItemId, locus);
+        activeItemIds.add(nextItemId);
+        engine.add(item, nextItemId++);
     }
 
     /**
@@ -43,9 +44,8 @@ public final class CollapsingClusteringSortingBuffer<R extends SVLocatable, C ex
      * start position past this item's start position, which should be true for basic
      * {@link org.broadinstitute.hellbender.tools.sv.cluster.CanonicalSVCollapser.BreakpointSummaryStrategy} types.
      */
-    public List<R> flush(final boolean force) {
-        final Collection<BasicOutputCluster<R>> output = engine.flush(force).stream()
-                .collect(Collectors.toList());
+    public List<T> flush(final boolean force) {
+        final List<C> output = engine.flush(force);
         final Set<Long> engineItemIds = engine.getItemIds();
         final Set<Long> finalizedItemIds = output.stream()
                 .map(BasicOutputCluster::getMemberIds)
@@ -58,7 +58,7 @@ public final class CollapsingClusteringSortingBuffer<R extends SVLocatable, C ex
         }
         output.stream().map(collapser::collapse).forEachOrdered(outputBuffer::add);
         final SVLocus minActiveStart = activeItemLoci.get(activeItemIds.peek());
-        final ArrayList<R> finishedItems = new ArrayList<>();
+        final ArrayList<T> finishedItems = new ArrayList<>();
         while (!outputBuffer.isEmpty() && (minActiveStart == null || locusComparator.compare(outputBuffer.peek(), minActiveStart) < 0)) {
             finishedItems.add(outputBuffer.poll());
         }
