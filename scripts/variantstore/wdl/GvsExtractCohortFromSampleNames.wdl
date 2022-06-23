@@ -63,6 +63,7 @@ workflow GvsExtractCohortFromSampleNames {
 
   call GvsExtractCallset.GvsExtractCallset {
     input:
+      go = GvsPrepareCallset.done,
       project_id = gvs_project,
       query_project = query_project,
       dataset_name = gvs_dataset,
