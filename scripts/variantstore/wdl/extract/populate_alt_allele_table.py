@@ -39,7 +39,7 @@ def populate_alt_allele_table(call_set_identifier, query_project, vet_table_name
 
     sql = alt_allele_temp_function + query_with + alt_allele_positions
     query_return = utils.execute_with_retry(client, f"into alt allele from {vet_table_name}", sql)
-    utils.dump_job_stats([{'job': query_return['job'], 'label': query_return['label']}], client, fq_dataset, call_set_identifier, 'CreateAltAlleles', 'PopulateAltAlleleTable', vet_table_name)
+    utils.write_job_stats([{'job': query_return['job'], 'label': query_return['label']}], client, fq_dataset, call_set_identifier, 'CreateAltAlleles', 'PopulateAltAlleleTable', vet_table_name)
     return query_return['results']
 
 if __name__ == '__main__':

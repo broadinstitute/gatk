@@ -84,12 +84,12 @@ workflow GvsQuickstartIntegration {
             actual_vcfs = GvsUnified.output_vcfs
     }
 
-    call AssertCostIsTrackedandExpected {
+    call AssertCostIsTrackedAndExpected {
         input:
             go = GvsUnified.done,
             dataset_name = BuildGATKJarAndCreateDataset.dataset_name,
             project_id = project_id,
-            expected_output_csv = expected_output_prefix + "cost_observability_excpected.csv"
+            expected_output_csv = expected_output_prefix + "cost_observability_expected.csv"
     }
 
     output {
@@ -193,7 +193,7 @@ task AssertIdenticalOutputs {
     }
 }
 
-task AssertCostIsTrackedandExpected {
+task AssertCostIsTrackedAndExpected {
     meta {
         # we want to check the databbase each time this runs
         volatile: true
@@ -216,7 +216,9 @@ task AssertCostIsTrackedandExpected {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
         bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false "SELECT step, call, event_key, event_bytes FROM ~{dataset_name}.cost_observability" > cost_observability_output.csv
+        set +o errexit
         diff cost_observability_output.csv ~{expected_output_csv} > differences.txt
+        set -o errexit
 
         if [[ -s differences.txt ]]; then
             echo "Differences found:"

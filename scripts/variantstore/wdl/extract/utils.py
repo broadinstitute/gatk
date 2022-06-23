@@ -55,15 +55,15 @@ def utf8len(s):
     return len(s.encode('utf-8'))
 
 
-def dump_job_stats(jobs, client, fq_dataset, call_set_identifier, step, call, shard_identifier):
+def write_job_stats(jobs, client, fq_dataset, call_set_identifier, step, call, shard_identifier):
     total = 0
 
     for query_return in jobs:
         job = client.get_job(query_return['job'])
         bytes_billed = int(0 if job.total_bytes_billed is None else job.total_bytes_billed)
         total = total + bytes_billed
-        print(query_return['label'], "-- jobid:  (", job.job_id, ") <====> Cache Hit:", job.cache_hit, bytes_billed/(1024 * 1024), " MBs")
-    print("\nTotal GBs billed ", total/(1024 * 1024 * 1024), " GBs\n")
+        print(query_return['label'], "-- jobid:  (", job.job_id, ") <====> Cache Hit:", job.cache_hit, bytes_billed/(1024 * 1024), " MiBs")
+    print("\nTotal GiBs billed ", total/(1024 * 1024 * 1024), " GiBs\n")
 
     # populate cost_observability data
     sql = f"""INSERT INTO `{fq_dataset}.cost_observability`

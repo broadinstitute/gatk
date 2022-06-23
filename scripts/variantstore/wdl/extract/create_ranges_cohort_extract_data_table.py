@@ -291,7 +291,7 @@ def make_extract_table(call_set_identifier,
     populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_table_vet_data, sample_ids)
 
   finally:
-    utils.dump_job_stats(JOBS, client, f"{fq_destination_dataset}", call_set_identifier, 'GvsPrepareRanges', 'PrepareRangesCallsetTask', output_table_prefix)
+    utils.write_job_stats(JOBS, client, f"{fq_destination_dataset}", call_set_identifier, 'GvsPrepareRanges', 'PrepareRangesCallsetTask', output_table_prefix)
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(allow_abbrev=False, description='Extract a cohort from BigQuery Variant Store ')

@@ -186,7 +186,7 @@ task ExtractAnAcAfFromVCF {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:rsa_metadata_from_python_20220621"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:rsa_metadata_from_python_20220623"
         maxRetries: 3
         memory: "16 GB"
         preemptible: 3
@@ -317,7 +317,7 @@ task PrepAnnotationJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:rsa_metadata_from_python_20220621"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:rsa_metadata_from_python_20220623"
         memory: "8 GB"
         preemptible: 5
         cpu: "1"
