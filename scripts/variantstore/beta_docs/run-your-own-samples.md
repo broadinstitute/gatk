@@ -163,7 +163,7 @@ Below is an example of the time and cost of running the workflow with the `Use r
 ### Workspace Citation
 Details on citing Terra workspaces can be found here: [How to cite Terra](https://support.terra.bio/hc/en-us/articles/360035343652)
 
-Data Sciences Platform, Broad Institute (*Year, Month Day that this workspace was last modified*) <BILLINGPROJECT>/Genomic-Variant-Store-beta [workspace] Retrieved *Month Day, Year that workspace was retrieved*, <LINK_TO_WORKSPACE>
+Data Sciences Platform, Broad Institute (*Year, Month Day that the workspace was last modified*) <BILLINGPROJECT>/Genomic-Variant-Store-beta [workspace] Retrieved *Month Day, Year that workspace was retrieved*, <LINK_TO_WORKSPACE>
 
 ### License
 **Copyright Broad Institute, 2020 | BSD-3**  
