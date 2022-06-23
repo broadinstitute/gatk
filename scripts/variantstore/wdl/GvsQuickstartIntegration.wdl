@@ -194,6 +194,11 @@ task AssertIdenticalOutputs {
 }
 
 task AssertCostIsTrackedandExpected {
+    meta {
+        # we want to check the databbase each time this runs
+        volatile: true
+    }
+
     input {
         Boolean go = true
         String dataset_name
@@ -201,7 +206,7 @@ task AssertCostIsTrackedandExpected {
         File expected_output_csv
     }
 
-command <<<
+    command <<<
         set -o errexit
         set -o nounset
         set -o pipefail
