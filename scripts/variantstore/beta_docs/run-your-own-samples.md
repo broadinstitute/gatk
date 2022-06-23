@@ -1,28 +1,28 @@
 # Upload data to Terra and run the GVS workflow
 
-In this tutorial, you will learn how to upload your own sample gVCF and index files to a Terra workspace and run the Genomic Variant Store (GVS) workflow using that data.
+In this tutorial, you will learn how to upload your own sample GVCF and index files to a Terra workspace and run the Genomic Variant Store (GVS) workflow using that data.
 
 ## What is the GVS?
 
 The [GVS](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/gvs-product-sheet.pdf) is a solution for variant discovery on a large scale developed by the Data Sciences Platform at the Broad Institute of MIT and Harvard.
 
-The [GVS workflow](https://github.com/broadinstitute/gatk/blob/rc-vs-483-beta-user-wdl/scripts/variantstore/wdl/GvsJointVariantCalling.wdl) is an open-source, cloud-optimized workflow for joint calling at using the GVS. The workflow takes in single sample gVCF files with indices and produces sharded joint VCF files with indices, a manifest file, and metrics.
+The [GVS workflow](https://github.com/broadinstitute/gatk/blob/rc-vs-483-beta-user-wdl/scripts/variantstore/wdl/GvsJointVariantCalling.wdl) is an open-source, cloud-optimized workflow for joint calling at using the GVS. The workflow takes in single sample GVCF files with indices and produces sharded joint VCF files with indices, a manifest file, and metrics.
 
 To learn more about the GVS workflow, see the [Genomic Variant Store workflow overview](https://github.com/broadinstitute/gatk/blob/km-gvs-docs/scripts/variantstore/gvs-overview.md).
 
 ### What does it require as input?
 
-The GVS workflow takes in reblocked single sample gVCF files and their corresponding index files as `input_vcfs` and `input_vcf_indexes`, respectively. The workflow also requires specific annotations in input gVCF files.
+The GVS workflow takes in reblocked single sample GVCF files and their corresponding index files as `input_vcfs` and `input_vcf_indexes`, respectively. The workflow also requires specific annotations in input GVCF files.
 
-#### Reblocked gVCF files
+#### Reblocked GVCF files
 
-If your gVCF files have not been reblocked, you can reblock them using the [WARP reblocking workflow](https://github.com/broadinstitute/warp/blob/master/pipelines/broad/dna_seq/germline/joint_genotyping/reblocking/ReblockGVCF.wdl), which is configured in the [ReblockGVCF Terra workspace](https://app.terra.bio/#workspaces/warp-pipelines/ReblockGVCF). 
+If your GVCF files have not been reblocked, you can reblock them using the [WARP reblocking workflow](https://github.com/broadinstitute/warp/blob/master/pipelines/broad/dna_seq/germline/joint_genotyping/reblocking/ReblockGVCF.wdl), which is configured in the [ReblockGVCF Terra workspace](https://app.terra.bio/#workspaces/warp-pipelines/ReblockGVCF). 
 
 For more information about reblocking, check out [WARP Whole Genome and Exome Pipelines Produce Reblocked GVCFs](https://broadinstitute.github.io/warp/blog/tags/reblock/).
 
-#### gVCF annotations
+#### GVCF annotations
 
-Input gVCF files for the GVS workflow must include the annotations described in the table below:
+Input GVCF files for the GVS workflow must include the annotations described in the table below:
 
 | Annotation | Description | Notes |
 | --- | --- | --- |
@@ -51,7 +51,7 @@ Before you can begin uploading your data to Terra, you’ll need to setup some a
 
 ## Upload data to your workspace
 
-To run the GVS workflow, your single sample gVCF files need to be stored in the cloud and loaded into a data table in your clone of the [GVS workspace](<LINK_TO_WORKSPACE>). The procedure is a little different, depending on whether your samples are already stored in the cloud. Follow the step-by-step instructions below to load your sample files into the workspace based on where your files are stored.
+To run the GVS workflow, your single sample GVCF files need to be stored in the cloud and loaded into a data table in your clone of the [GVS workspace](<LINK_TO_WORKSPACE>). The procedure is a little different, depending on whether your samples are already stored in the cloud. Follow the step-by-step instructions below to load your sample files into the workspace based on where your files are stored.
 
 ### Data stored in the cloud
 
@@ -65,7 +65,7 @@ If your data is already stored in the cloud, you’ll need to upload a TSV file 
 
 4. **Open the TSV file** with a spreadsheet editor of your choice.
 
-5. **Replace the cloud paths** to the example gVCF and index files in the second and third columns with the cloud paths to your gVCF and index files.
+5. **Replace the cloud paths** to the example GVCF and index files in the second and third columns with the cloud paths to your GVCF and index files.
 
 6. **Update the `sample_id` field** for each sample to anything you’d like. These will be used to name the samples in the output joint VCF file.
 
@@ -92,7 +92,7 @@ If your data is not stored in the cloud, you’ll need to upload it to your work
 
 4. **Open the TSV file** with a spreadsheet editor of your choice.
 
-5. **Replace the cloud paths** to the example gVCF and index files in the second and third columns with the names of your gVCF and index files for each sample in your dataset.
+5. **Replace the cloud paths** to the example GVCF and index files in the second and third columns with the names of your GVCF and index files for each sample in your dataset.
 
 6. **Update the `sample_id` field** to anything you’d like for each sample in your dataset. These will be used to name the samples in the output joint VCF file.
 
@@ -126,7 +126,7 @@ Now that your samples are loaded into data table in Terra, it’s time to setup 
 1. **Run** the workflow.
 
 ### Adding additional data to the BigQuery dataset
-The workflow imports gVCFs to the BigQuery dataset. The example gVCFs for the workspace are listed as a set in the workspace sample_set table. Multiple sample sets may be added to the same BigQuery dataset to appear in the same callset, but the workflow only runs on one sample set at a time. 
+The workflow imports GVCFs to the BigQuery dataset. The example GVCFs for the workspace are listed as a set in the workspace sample_set table. Multiple sample sets may be added to the same BigQuery dataset to appear in the same callset, but the workflow only runs on one sample set at a time. 
 
 If you run the workflow with the example data pre-loaded into the workspace, and then load additional data into that same dataset, the example data will be in your callset. Be sure to make a new dataset for your own data if you run the example data (unless you want the example data in there too–the more the merrier!).
 

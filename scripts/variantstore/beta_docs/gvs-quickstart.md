@@ -12,13 +12,13 @@ The [GVS beta workspace](LINK_TO_WORKSPACE) contains a fully reproducible exampl
 
 ![Diagram depicting the Genomic Variant Store workflow. Sample GVCF files are imported into the core data model. A filtering model is trained using Variant Quality Score Recalibration, or VQSR, and then applied while the samples are extracted as cohorts in sharded joint VCF files. Each step integrates BigQuery and GATK tools.](/scripts/variantstore/beta_docs/genomic-variant-store_diagram.png)
 
-The [GVS workflow](https://github.com/broadinstitute/gatk/blob/rc-vs-483-beta-user-wdl/scripts/variantstore/wdl/GvsJointVariantCalling.wdl) is an open-source, cloud-optimized workflow for joint calling at using the GVS. The workflow takes in single sample gVCF files with indices and produces sharded joint VCF files with indices, a manifest file, and metrics.
+The [GVS workflow](https://github.com/broadinstitute/gatk/blob/rc-vs-483-beta-user-wdl/scripts/variantstore/wdl/GvsJointVariantCalling.wdl) is an open-source, cloud-optimized workflow for joint calling at using the GVS. The workflow takes in single sample GVCF files with indices and produces sharded joint VCF files with indices, a manifest file, and metrics.
 
 To learn more about the GVS workflow, see the [Genomic Variant Store workflow overview](https://github.com/broadinstitute/gatk/blob/km-gvs-docs/scripts/variantstore/gvs-overview.md).
 
 ### What data does it require as input?
 
-The GVS workflow takes in reblocked single sample gVCF files and their corresponding index files as `input_vcfs` and `input_vcf_indexes`, respectively. While the GVS workflow has been tested with 100,000 single sample gVCF files as input, only datasets of up to 10,000 files are being used for beta testing.
+The GVS workflow takes in reblocked single sample GVCF files and their corresponding index files as `input_vcfs` and `input_vcf_indexes`, respectively. While the GVS workflow has been tested with 100,000 single sample GVCF files as input, only datasets of up to 10,000 files are being used for beta testing.
 
 Example GVCF and index files in the Data tab of the [GVS beta workspace](LINK_TO_WORKSPACE) are hosted in a public Google bucket and links are provided in the sample data table.
 
@@ -38,7 +38,7 @@ For troubleshooting or questions, contact the [Broad Variants team](mailto:varia
 
 ### Step 1. Register for Terra
 
-The GVS workflow requires the Terra data model to run properly.  If you are new to Terra, you’ll need to [register for a Terra account](https://support.terra.bio/hc/en-us/articles/360028235911).
+The GVS workflow requires a Terra data table to run properly.  If you are new to Terra, you’ll need to [register for a Terra account](https://support.terra.bio/hc/en-us/articles/360028235911).
 
 If you already have a Terra account, you can skip this step.
 
@@ -84,7 +84,7 @@ The GVS beta workspace in Terra is read-only, so you’ll need to clone the work
 
 ## Running the workflow
 
-The workflow in the GVS beta workspace is pre-configured to use 10 sample gVCF files as a sample set in the sample_set data table in the workspace Data tab.
+The workflow in the GVS beta workspace is pre-configured to use 10 sample GVCF files as a sample set in the sample_set data table in the workspace Data tab.
 
 The workflow is configured to call this input from the data table. To run:
 
