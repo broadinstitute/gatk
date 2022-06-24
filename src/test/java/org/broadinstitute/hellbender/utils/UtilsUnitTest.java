@@ -8,6 +8,7 @@ import com.google.common.collect.Sets;
 import com.google.common.primitives.Ints;
 import htsjdk.samtools.util.Log.LogLevel;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.logging.log4j.Level;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -28,7 +29,8 @@ import static org.testng.Assert.assertEquals;
  * Testing framework for general purpose utilities class.
  *
  */
-public final class UtilsUnitTest extends GATKBaseTest {
+public final class
+UtilsUnitTest extends GATKBaseTest {
 
     @Test
     public void testForceJVMLocaleToUSEnglish() {
@@ -977,5 +979,37 @@ public final class UtilsUnitTest extends GATKBaseTest {
     public void testTestFilterCollectionByExpressions(Set<String> values, Collection<String> filters, boolean exactMatch, Set<String> expected) {
         Set<String> actual = Utils.filterCollectionByExpressions(values, filters, exactMatch);
         Assert.assertEquals(actual, expected);
+    }
+
+    @DataProvider(name = "concatMultipleArraysData")
+    public Object[][] concatMultipleArraysData() {
+        return new Object[][]{
+                //new Object[]{ ArrayUtils.EMPTY_BYTE_ARRAY, },
+                new Object[]{ ArrayUtils.EMPTY_BYTE_ARRAY, new byte[] { } },
+                new Object[]{ new byte[] {100, 100}, new byte[] {100, 100} },
+                new Object[]{ new byte[] {100, 100}, new byte[] {100, 100}, new byte[] { } },
+                new Object[]{ ArrayUtils.EMPTY_BYTE_ARRAY, new byte[] { }, new byte[] { } },
+                new Object[]{ new byte[] {100, 100, 100, 100}, new byte[] {100, 100}, new byte[] {100, 100} },
+        };
+    }
+
+    @Test(dataProvider = "concatMultipleArraysData")
+    public void testConcatMultipleArrays(byte[] expected, byte[] ... arrays) {
+        Assert.assertEquals(Utils.concat(arrays), expected);
+    }
+
+    @DataProvider(name = "concatTwoArraysData")
+    public Object[][] concatTwoArraysData() {
+        return new Object[][]{
+                new Object[]{ new byte[] { }, new byte[] { }, ArrayUtils.EMPTY_BYTE_ARRAY },
+                new Object[]{ new byte[] {100, 100}, new byte[] { }, new byte[] {100, 100} },
+                new Object[]{ new byte[] { }, new byte[] {100, 100}, new byte[] {100, 100} },
+                new Object[]{ new byte[] {100, 100}, new byte[] {100, 100}, new byte[] {100, 100, 100, 100} },
+        };
+    }
+
+    @Test(dataProvider = "concatTwoArraysData")
+    public void testConcatTwoArrays(byte[] arr1, byte[] arr2, byte[] expected) {
+        Assert.assertEquals(Utils.concat(arr1, arr2), expected);
     }
 }
