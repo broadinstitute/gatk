@@ -186,6 +186,8 @@ public class SVCallRecord implements SVLocatable {
     private static Pair<Boolean, Boolean> inferStrands(final StructuralVariantType type,
                                                        final Boolean inputStrandA,
                                                        final Boolean inputStrandB) {
+        Utils.validateArg((inputStrandA == null && inputStrandB == null) || (inputStrandA != null && inputStrandB != null),
+                "Attempted to create variant with one strand defined but not the other");
         if (type.equals(StructuralVariantType.CNV)) {
             Utils.validateArg(inputStrandA == null && inputStrandB == null, "Attempted to create CNV with non-null strands");
             return Pair.of(null, null);
@@ -207,9 +209,10 @@ public class SVCallRecord implements SVLocatable {
             return Pair.of(Boolean.FALSE, Boolean.TRUE);
         } else {
             if (type.equals(StructuralVariantType.INV)) {
-            Utils.validateArg(inputStrandA != null && inputStrandB != null, "Cannot create variant of type " + type + " with null strands");
-                Utils.validateArg(inputStrandA.equals(inputStrandB), "Inversions must have matching strands but found " +
-                        inputStrandA + " / " + inputStrandB);
+                if (inputStrandA != null && inputStrandB != null) {
+                    Utils.validateArg(inputStrandA.equals(inputStrandB), "Inversions must have matching strands but found " +
+                            inputStrandA + " / " + inputStrandB);
+                }
             }
             return Pair.of(inputStrandA, inputStrandB);
         }

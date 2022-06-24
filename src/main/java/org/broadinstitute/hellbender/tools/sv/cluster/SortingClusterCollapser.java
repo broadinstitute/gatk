@@ -59,7 +59,7 @@ public final class SortingClusterCollapser<T extends SVLocatable, C extends Basi
         output.stream().map(collapser::collapse).forEachOrdered(outputBuffer::add);
         final SVLocus minActiveStart = activeItemLoci.get(activeItemIds.peek());
         final ArrayList<T> finishedItems = new ArrayList<>();
-        while (!outputBuffer.isEmpty() && (minActiveStart == null || locusComparator.compare(outputBuffer.peek(), minActiveStart) < 0)) {
+        while (!outputBuffer.isEmpty() && (force || minActiveStart == null || locusComparator.compare(outputBuffer.peek(), minActiveStart) < 0)) {
             finishedItems.add(outputBuffer.poll());
         }
         finishedItems.trimToSize();

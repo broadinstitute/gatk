@@ -147,6 +147,18 @@ public final class SVCallRecordUtils {
     }
 
     /**
+     * Creates shallow copy of the given record with attributes replaced.
+     * @param record base record
+     * @param attr replacement attributes
+     * @return new record
+     */
+    public static <T extends SVCallRecord> SVCallRecord copyCallWithNewAttributes(final T record, final Map<String, Object> attr) {
+        return new SVCallRecord(record.getId(), record.getContigA(), record.getPositionA(), record.getStrandA(), record.getContigB(),
+                record.getPositionB(), record.getStrandB(), record.getType(), record.getLength(), record.getAlgorithms(), record.getAlleles(),
+                record.getGenotypes(), attr);
+    }
+
+    /**
      * Get string representation for the given record's strands.
      */
     private static String getStrandString(final SVCallRecord record) {
@@ -311,10 +323,8 @@ public final class SVCallRecordUtils {
         final String contigB;
         final int positionB;
         if (type.equals(StructuralVariantType.BND)) {
-            // If END2 and CONTIG2 are both defined, use those.
-            // If neither is defined, use start contig and position.
-            // If only CONTIG2 is defined, END2 is taken as END
-            // Having only END2 but not CONTIG2 is unacceptable
+            // If END2 and CHROM2 are both defined, use those.
+            // If neither is defined, use start contig and position
             final boolean hasContig2 = variant.hasAttribute(GATKSVVCFConstants.CONTIG2_ATTRIBUTE);
             final boolean hasEnd2 = variant.hasAttribute(GATKSVVCFConstants.END2_ATTRIBUTE);
             if (!(hasContig2 && hasEnd2)) {
@@ -362,6 +372,9 @@ public final class SVCallRecordUtils {
         Utils.nonNull(variant);
         Utils.nonNull(type);
         final String strandsAttr = variant.getAttributeAsString(GATKSVVCFConstants.STRANDS_ATTRIBUTE, null);
+        if (variant.getStructuralVariantType() == StructuralVariantType.INV && strandsAttr == null) {
+            return null;
+        }
         Utils.validateArg(strandsAttr != null, "Strands field not found for variant " + variant.getID() + " of type " + type);
         if (strandsAttr.length() != 2) {
             throw new IllegalArgumentException("Strands field is not 2 characters long for variant " + variant.getID());

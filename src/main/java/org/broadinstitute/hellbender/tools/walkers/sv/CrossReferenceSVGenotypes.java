@@ -6,6 +6,7 @@ import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFFormatHeaderLine;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLineType;
+import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.BetaFeature;
@@ -105,7 +106,7 @@ public final class CrossReferenceSVGenotypes extends MultiVariantWalker {
     private SortingClusterCollapser<CrossRefSVCallRecord, CrossRefOutputCluster<CrossRefSVCallRecord>> buffer;
     private CrossRefLinkage linkage;
     private Iterator<VariantContext> testVariantSource;
-    private VariantContext currentCallsetVariant;
+    private VariantContext currentTestVariant;
     private Comparator<VariantContext> variantComparator;
 
     @Override
@@ -139,7 +140,8 @@ public final class CrossReferenceSVGenotypes extends MultiVariantWalker {
 
     @Override
     public Object onTraversalSuccess() {
-        flush(true);
+        flushTestVariants(null);
+        flushClusters(true);
         return super.onTraversalSuccess();
     }
 
@@ -154,23 +156,35 @@ public final class CrossReferenceSVGenotypes extends MultiVariantWalker {
     @Override
     public void apply(final VariantContext variant, final ReadsContext readsContext,
                       final ReferenceContext referenceContext, final FeatureContext featureContext) {
-        while (currentCallsetVariant == null && testVariantSource.hasNext()) {
-            currentCallsetVariant = testVariantSource.next();
-            if (variantComparator.compare(currentCallsetVariant, variant) <= 0) {
-                buffer.add(new CrossRefSVCallRecord(SVCallRecordUtils.create(currentCallsetVariant), true));
-                currentCallsetVariant = null;
-            }
-        }
+        flushTestVariants(variant);
         buffer.add(new CrossRefSVCallRecord(SVCallRecordUtils.create(variant), false));
-        flush(false);
+        flushClusters(false);
     }
 
-    private void flush(final boolean force) {
-        buffer.flush(force).stream().map(SVCallRecordUtils::getVariantBuilder).map(VariantContextBuilder::make).forEach(writer::add);
+    private void flushTestVariants(final VariantContext variant) {
+        while (true) {
+            if (currentTestVariant == null && testVariantSource.hasNext()) {
+                currentTestVariant = testVariantSource.next();
+            }
+            if (currentTestVariant != null && (variant == null || variantComparator.compare(currentTestVariant, variant) <= 0)) {
+                buffer.add(new CrossRefSVCallRecord(SVCallRecordUtils.create(currentTestVariant), true));
+                currentTestVariant = null;
+            } else {
+                break;
+            }
+        }
+    }
+
+    private void flushClusters(final boolean force) {
+        buffer.flush(force).stream()
+                .map(SVCallRecordUtils::getVariantBuilder)
+                .map(VariantContextBuilder::make)
+                .forEach(writer::add);
     }
 
     private VCFHeader createHeader(final VCFHeader header) {
-        header.addMetaDataLine(new VCFFormatHeaderLine(GATKSVVCFConstants.GENOTYPE_SUPPORT_IDS_KEY, 1, VCFHeaderLineType.Integer, "Number of cross-referenced non-ref genotypes"));
+        header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.CROSS_REFERENCE_SITE_SUPPORT_INFO, 1, VCFHeaderLineType.Integer, "Number of cross-referenced sites matching this variant"));
+        header.addMetaDataLine(new VCFFormatHeaderLine(GATKSVVCFConstants.CROSS_REFERENCE_GENOTYPE_SUPPORT_FORMAT, 1, VCFHeaderLineType.Integer, "Number of cross-referenced non-ref genotypes"));
         return header;
     }
 
@@ -186,10 +200,14 @@ public final class CrossReferenceSVGenotypes extends MultiVariantWalker {
             final ArrayList<Genotype> newGenotypes = new ArrayList<>(oldGenotypes.size());
             for (final Genotype g : oldGenotypes) {
                 final GenotypeBuilder builder = new GenotypeBuilder(g);
-                builder.attribute(GATKSVVCFConstants.GENOTYPE_SUPPORT_IDS_KEY, sampleToCarrierCountsMap.getOrDefault(g.getSampleName(), 0L));
+                final Long supportCount = sampleToCarrierCountsMap.getOrDefault(g.getSampleName(), 0L);
+                builder.attribute(GATKSVVCFConstants.CROSS_REFERENCE_GENOTYPE_SUPPORT_FORMAT, supportCount);
                 newGenotypes.add(builder.make());
             }
-            return new CrossRefSVCallRecord(SVCallRecordUtils.copyCallWithNewGenotypes(testRecord, GenotypesContext.create(newGenotypes)), true);
+            final CrossRefSVCallRecord recordWithGenotypes = new CrossRefSVCallRecord(SVCallRecordUtils.copyCallWithNewGenotypes(testRecord, GenotypesContext.create(newGenotypes)), true);
+            final Map<String, Object> attributes = new HashMap<>(recordWithGenotypes.getAttributes());
+            attributes.put(GATKSVVCFConstants.CROSS_REFERENCE_SITE_SUPPORT_INFO, cluster.getMembers().size());
+            return new CrossRefSVCallRecord(SVCallRecordUtils.copyCallWithNewAttributes(recordWithGenotypes, attributes), true);
         }
     }
 

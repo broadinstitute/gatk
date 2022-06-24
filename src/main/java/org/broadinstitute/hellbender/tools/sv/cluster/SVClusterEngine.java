@@ -2,8 +2,11 @@ package org.broadinstitute.hellbender.tools.sv.cluster;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
 import org.broadinstitute.hellbender.tools.sv.SVLocatable;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.*;
@@ -36,7 +39,8 @@ public abstract class SVClusterEngine<T extends SVLocatable, C extends BasicClus
 
     protected final SVClusterLinkage<T> linkage;
     // TODO move to outer, must sort on collapsed items
-    protected final Comparator<T> itemComparator;
+    protected final Comparator<SVLocatable> itemComparator;
+    protected final Comparator<Locatable> intervalComparator;
 
     private Map<Integer, C> idToClusterMap; // Active clusters
     private final Map<Long, T> idToItemMap; // Active items
@@ -48,6 +52,7 @@ public abstract class SVClusterEngine<T extends SVLocatable, C extends BasicClus
                            final SAMSequenceDictionary dictionary) {
         this.linkage = Utils.nonNull(linkage);
         itemComparator = SVCallRecordUtils.getSVLocatableComparator(dictionary);
+        intervalComparator = IntervalUtils.getDictionaryOrderComparator(dictionary);
         idToItemMap = new HashMap<>();
         idToClusterMap = new HashMap<>();
         currentContig = null;
@@ -71,21 +76,32 @@ public abstract class SVClusterEngine<T extends SVLocatable, C extends BasicClus
         return hard ? hardFlush() : softFlush();
     }
 
+    private boolean intervalMayClusterWith(final SimpleInterval interval, final C cluster) {
+        final int maxStart = cluster.getMaxClusterableStart();
+        return intervalComparator.compare(interval, new SimpleInterval(cluster.getContig(), maxStart, maxStart)) <= 0;
+    }
+
+    private boolean intervalMayClusterWith(final SimpleInterval interval, final T item) {
+        final int maxStart = linkage.getMaxClusterableStartingPosition(item);
+        return intervalComparator.compare(interval, new SimpleInterval(item.getContigA(), maxStart, maxStart)) <= 0;
+    }
+
     private final List<R> softFlush() {
         if (lastItem == null) {
             return Collections.emptyList();
         }
-        final int lastStart = lastItem.getPositionA();
+        final SimpleInterval lastStart = new SimpleInterval(lastItem.getContigA(), lastItem.getPositionA(), lastItem.getPositionA());
         final List<Map.Entry<Integer, C>> finalizedClusters = getClusterIds().stream()
                 .map(id -> new AbstractMap.SimpleEntry<>(id, getCluster(id)))
-                .filter(e -> lastStart > e.getValue().getMaxClusterableStart())
+                .filter(e -> !intervalMayClusterWith(lastStart, e.getValue()))
                 .collect(Collectors.toList());
         final List<R> output = finalizedClusters.stream().map(Map.Entry::getValue).map(this::createOutputCluster).collect(Collectors.toList());
         finalizedClusters.stream().map(Map.Entry::getKey).forEach(idToClusterMap::remove);
-        final Set<Long> remainingItemIds = idToClusterMap.values().stream()
-                .map(C::getAllIds).flatMap(Set::stream).collect(Collectors.toSet());
-        final Set<Long> currentItemIds = getItemIds();
-        currentItemIds.stream().filter(id -> !remainingItemIds.contains(id)).forEach(this::removeItem);
+        final Set<Long> outputItemIds = output.stream().map(R::getAllIds).flatMap(Collection::stream).collect(Collectors.toSet());
+        final Set<Long> remainingClusterItemIds = idToClusterMap.values().stream().map(C::getAllIds).flatMap(Collection::stream).collect(Collectors.toSet());
+        getItemIds().stream().filter(id -> outputItemIds.contains(id) && !remainingClusterItemIds.contains(id)).forEach(this::removeItem);
+        // Remove items not in clusters but also no longer clusterable with any new items
+        getItemIds().stream().filter(id -> !intervalMayClusterWith(lastStart, getItem(id)) && !remainingClusterItemIds.contains(id)).forEach(this::removeItem);
         return output;
     }
 
