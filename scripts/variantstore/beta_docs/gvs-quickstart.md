@@ -1,10 +1,10 @@
 # Genomic Variant Store Beta Quickstart
 
-In this Quickstart, you will learn how to use the Genomic Variant Store (GVS) in a [Terra workspace](LINK_TO_WORKSPACE) with provided example data.
+In this Quickstart, you will learn how to use the Genomic Variant Store (GVS) in a [Terra workspace](https://app.terra.bio/#workspaces/help-terra/Genomic%20Variant%20Store%20beta%20dev%20version) with provided example data.
 
-The [GVS](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/gvs-product-sheet.pdf) is a solution for variant discovery on a large scale developed by the Data Sciences Platform at the Broad Institute of MIT and Harvard.
+The [GVS](../gvs-product-sheet.pdf) is a solution for variant discovery on a large scale developed by the Data Sciences Platform at the Broad Institute of MIT and Harvard.
 
-The [GVS beta workspace](LINK_TO_WORKSPACE) contains a fully reproducible example workflow for variant discovery using the GVS workflow.
+The [GVS beta workspace](https://app.terra.bio/#workspaces/help-terra/Genomic%20Variant%20Store%20beta%20dev%20version) contains a fully reproducible example workflow for variant discovery using the GVS workflow.
 
 ## Workflow Overview
 
@@ -12,14 +12,14 @@ The [GVS beta workspace](LINK_TO_WORKSPACE) contains a fully reproducible exampl
 
 The [GVS workflow](https://github.com/broadinstitute/gatk/blob/rc-vs-483-beta-user-wdl/scripts/variantstore/wdl/GvsJointVariantCalling.wdl) is an open-source, cloud-optimized workflow for joint calling at using the GVS. The workflow takes in single sample GVCF files with indices and produces sharded joint VCF files with indices, a manifest file, and metrics.
 
-To learn more about the GVS workflow, see the [Genomic Variant Store workflow overview](https://github.com/broadinstitute/gatk/blob/km-gvs-docs/scripts/variantstore/gvs-overview.md).
+To learn more about the GVS workflow, see the [Genomic Variant Store workflow overview](./gvs-overview.md).
 
 ### What data does it require as input?
 
 - unblocked single sample GVCF files (`input_vcfs`)
 - GVCF index files (`input_vcf_indexes`)
 
-Example GVCF and index files in the Data tab of the [GVS beta workspace](LINK_TO_WORKSPACE) are hosted in a public Google bucket and links are provided in the sample data table.
+Example GVCF and index files in the Data tab of the [GVS beta workspace](https://app.terra.bio/#workspaces/help-terra/Genomic%20Variant%20Store%20beta%20dev%20version) are hosted in a public Google bucket and links are provided in the sample data table.
 
 While the GVS workflow has been tested with 100,000 single sample GVCF files as input, only datasets of up to 10,000 files are being used for beta testing.
 
@@ -33,7 +33,7 @@ The following files are stored in the workspace Google bucket and links to the f
 
 ## Setup
 
-You will need to set up several accounts and projects before you can begin testing the GVS workflow in the [GVS beta workspace](LINK_TO_WORKSPACE). To configure the prerequisites of the workflow, follow the instructions below.
+You will need to set up several accounts and projects before you can begin testing the GVS workflow in the [GVS beta workspace](https://app.terra.bio/#workspaces/help-terra/Genomic%20Variant%20Store%20beta%20dev%20version). To configure the prerequisites of the workflow, follow the instructions below.
 
 For troubleshooting or questions, contact the [Broad Variants team](mailto:variants@broadinstitute.org).
 
@@ -110,7 +110,7 @@ The workflow is configured to call this input from the data table. To run:
 1. Save the workflow configuration.
 1. Run the workflow.
 
-To run the GVS workflow on your own sample data, follow the instructions in the tutorial, [Upload data to Terra and run the GVS workflow](<LINK_TO_DOC>).
+To run the GVS workflow on your own sample data, follow the instructions in the tutorial, [Upload data to Terra and run the GVS workflow](./run-your-own-samples.md).
    
 ### Important configuration notes
 
@@ -147,10 +147,12 @@ Below is an example of the time and cost of running the workflow.
     * Your Bucket ID, Submission ID, and Workflow ID
     * Any relevant log information
 
-### Workspace Citation
+### Citing the GVS workflow
+If you use plan to publish data analyzed using the GVS workflow, please cite the [GVS beta workspace](https://app.terra.bio/#workspaces/help-terra/Genomic%20Variant%20Store%20beta%20dev%20version).
+
 Details on citing Terra workspaces can be found here: [How to cite Terra](https://support.terra.bio/hc/en-us/articles/360035343652)
 
-Data Sciences Platform, Broad Institute (*Year, Month Day that the workspace was last modified*) <BILLINGPROJECT>/Genomic-Variant-Store-beta [workspace] Retrieved *Month Day, Year that workspace was retrieved*, <LINK_TO_WORKSPACE>
+Data Sciences Platform, Broad Institute (*Year, Month Day that the workspace was last modified*) gvs-prod/Genomic-Variant-Store-beta [workspace] Retrieved *Month Day, Year that workspace was retrieved*, https://app.terra.bio/#workspaces/help-terra/Genomic%20Variant%20Store%20beta%20dev%20version
 
 ### License
 **Copyright Broad Institute, 2020 | BSD-3**  
