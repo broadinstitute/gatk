@@ -116,10 +116,6 @@ To run the GVS workflow on your own sample data, follow the instructions in the 
 
 By default, the workflow is set up to write outputs to the workspace Google bucket. If you want to write the outputs to a different cloud storage location, you can specify the cloud path in the `extract_output_gcs_dir` optional input in the workflow configuration. 
 
-### Reference data description and location
-
-The required and optional references and resources for the workflows are set in the workflow configurations. The reference genome is hg38 (aka GRCh38).
-
 ### Time and cost estimates
 Below is an example of the time and cost of running the workflow.
 

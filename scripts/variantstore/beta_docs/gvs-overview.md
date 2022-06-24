@@ -52,7 +52,9 @@ The workflow also requires specific annotations in input GVCF files, which are d
 
 The GVS workflow inputs are described in the sections below and are specified in the Terra GVS beta workspace [workflow configuration](https://app.terra.bio/#workspaces/help-terra/Genomic%20Variant%20Store%20beta%20dev%20version/workflows/help-terra/GvsJointVariantCalling).
 
-#### Sample data input
+The workflow is configured to use hg38 (aka GRCh38) as the reference genome.
+
+#### Sample data
 
 The GVS workflow takes in reblocked single sample GVCF files and their corresponding index files as `input_vcfs` and `input_vcf_indexes`, respectively. While the GVS workflow has been tested with 100,000 single sample GVCF files as input, only datasets of up to 10,000 samples are being used for beta testing.
 
