@@ -410,10 +410,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
             rScriptExecutor = new RScriptExecutor();
             if(!rScriptExecutor.externalExecutableExists()) {
                 if(!disableRScriptExecutor) {
-                    throw new UserException("Rscript not found in environment path. Fix executor or run with --dont-run-rscript argument to generate Rscript without running.");
-                /* Utils.warnUser(logger, String.format(
-                        "Rscript not found in environment path. %s will be generated but PDF plots will not.",
-                        RSCRIPT_FILE)); */
+                    throw new UserException("Rscript not found in environment path. Fix executor or run with --dont-run-rscript argument to generate rscript file without running.");
                 }
             }
         }
