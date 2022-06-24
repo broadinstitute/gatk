@@ -50,7 +50,7 @@ The workflow also requires specific annotations in input GVCF files, which are d
 
 ### Inputs
 
-The GVS workflow inputs are described in the sections below and are specified in the Terra GVS beta workspace [workflow configuration](https://app.terra.bio/#workspaces/help-terra/Genomic%20Variant%20Store%20beta%20dev%20version/workflows/help-terra/GvsJointVariantCalling).
+The GVS workflow inputs are described in the sections below and are specified in the Terra GVS beta workspace [workflow configuration](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta/workflows/help-terra/GvsJointVariantCalling).
 
 The workflow is configured to use hg38 (aka GRCh38) as the reference genome.
 
@@ -58,7 +58,7 @@ The workflow is configured to use hg38 (aka GRCh38) as the reference genome.
 
 The GVS workflow takes in reblocked single sample GVCF files and their corresponding index files as `input_vcfs` and `input_vcf_indexes`, respectively. While the GVS workflow has been tested with 100,000 single sample GVCF files as input, only datasets of up to 10,000 samples are being used for beta testing.
 
-The [GVS beta workspace](https://app.terra.bio/#workspaces/help-terra/Genomic%20Variant%20Store%20beta%20dev%20version) has been configured with example reblocked GVCF files that you can use to test the workflow.
+The [GVS beta workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta) has been configured with example reblocked GVCF files that you can use to test the workflow.
 
 #### Input descriptions
 
@@ -114,15 +114,15 @@ The final outputs of the GVS workflow are described in the table below:
 
 The GVS workflow outputs a sharded joint VCF file containing filter sites and genotypes flagged as probable artifacts and annotations calculated during the `GvsExtractCallset` subworkflow, including allele count (`AC`), allele number (`AN`), and allele frequency (`AF`). The output VCF file is sharded so that no shards span multiple chromosomes. 
 
-The [GVS beta workspace](https://app.terra.bio/#workspaces/help-terra/Genomic%20Variant%20Store%20beta%20dev%20version) is configured to write the outputs of the workflow back to the `sample_set` data table.
+The [GVS beta workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta) is configured to write the outputs of the workflow back to the `sample_set` data table.
 
 ## Citing the GVS workflow
 
-If you use plan to publish data analyzed using the GVS workflow, please cite the [GVS beta workspace](https://app.terra.bio/#workspaces/help-terra/Genomic%20Variant%20Store%20beta%20dev%20version).
+If you use plan to publish data analyzed using the GVS workflow, please cite the [GVS beta workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta).
 
 Details on citing Terra workspaces can be found here: [How to cite Terra](https://support.terra.bio/hc/en-us/articles/360035343652)
 
-Data Sciences Platform, Broad Institute (*Year, Month Day that the workspace was last modified*) gvs-prod/Genomic-Variant-Store-beta [workspace] Retrieved *Month Day, Year that workspace was retrieved*, https://app.terra.bio/#workspaces/help-terra/Genomic%20Variant%20Store%20beta%20dev%20version
+Data Sciences Platform, Broad Institute (*Year, Month Day that the workspace was last modified*) gvs-prod/Genomic_Variant_Store_Beta [workspace] Retrieved *Month Day, Year that workspace was retrieved*, https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta
 
 ## Feedback
 
