@@ -12,7 +12,11 @@ To learn more about the GVS workflow, see the [Genomic Variant Store workflow ov
 
 ### What does it require as input?
 
-The GVS workflow takes in reblocked single sample GVCF files and their corresponding index files as `input_vcfs` and `input_vcf_indexes`, respectively. The workflow also requires specific annotations in input GVCF files.
+- unblocked single sample GVCF files (`input_vcfs`) with specific annotations described below
+- GVCF index files (`input_vcf_indexes`)
+
+While the GVS workflow has been tested with 100,000 single sample GVCF files as input, only datasets of up to 10,000 files are being used for beta testing.
+
 
 #### Reblocked GVCF files
 

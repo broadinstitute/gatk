@@ -1,10 +1,8 @@
-# Genomic Variant Store Quickstart
+# Genomic Variant Store Beta Quickstart
 
 In this Quickstart, you will learn how to use the Genomic Variant Store (GVS) in a [Terra workspace](LINK_TO_WORKSPACE) with provided example data.
 
 The [GVS](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/gvs-product-sheet.pdf) is a solution for variant discovery on a large scale developed by the Data Sciences Platform at the Broad Institute of MIT and Harvard.
-
-**Note:** Only datasets of up to 10,000 samples are being used for beta testing.
 
 The [GVS beta workspace](LINK_TO_WORKSPACE) contains a fully reproducible example workflow for variant discovery using the GVS workflow.
 
@@ -18,9 +16,12 @@ To learn more about the GVS workflow, see the [Genomic Variant Store workflow ov
 
 ### What data does it require as input?
 
-The GVS workflow takes in reblocked single sample GVCF files and their corresponding index files as `input_vcfs` and `input_vcf_indexes`, respectively. While the GVS workflow has been tested with 100,000 single sample GVCF files as input, only datasets of up to 10,000 files are being used for beta testing.
+- unblocked single sample GVCF files (`input_vcfs`)
+- GVCF index files (`input_vcf_indexes`)
 
 Example GVCF and index files in the Data tab of the [GVS beta workspace](LINK_TO_WORKSPACE) are hosted in a public Google bucket and links are provided in the sample data table.
+
+While the GVS workflow has been tested with 100,000 single sample GVCF files as input, only datasets of up to 10,000 files are being used for beta testing.
 
 ### What does it return as output?
 
@@ -66,9 +67,14 @@ Create a dataset in BigQuery inside the GCP project you created in Step 3 (above
 
 ### Step 5. Find your Terra proxy group
 
-Proxy groups permit Terra to interface with GCP on your behalf, allowing you to run workflows on data in the cloud.
+Proxy groups permit Terra to interface with GCP on your behalf, allowing you to run workflows on data in the cloud. Follow these steps to find your Terra proxy group.
 
-Find your Terra proxy group by selecting the main menu (three horizontal line icon) at the top left of any Terra page. Next, click on your account name, followed by Profile. Here, you should see a field called Proxy Group, which lists your proxy group underneath. For more information on proxy groups in Terra, see [Pet service accounts and proxy groups](https://support.terra.bio/hc/en-us/articles/360031023592). 
+1. Select the main menu (three horizontal line icon) at the top left of any Terra page. 
+1. Click on your account name to open a dropdown menu.
+1. Select Profile to open your profile in Terra. 
+1. Find the Proxy Group field, which lists your proxy group underneath. 
+
+For more information on proxy groups in Terra, see [Pet service accounts and proxy groups](https://support.terra.bio/hc/en-us/articles/360031023592). 
 
 You will need your proxy group to grant Terra access to your GCP project and BigQuery dataset in the next step.
 

@@ -17,7 +17,7 @@ The filtering model is based on the [WARP Joint Genotyping workflow](https://git
 ---
 
 **Want to try out the GVS workflow?**     
-To get started using the GVS workflow in Terra with example data, follow the instructions in the [GVS Quickstart](<LINK_TO_QS>). To run the GVS workflow on your own sample data, follow the instructions in the tutorial, [Upload data to Terra and run the GVS workflow](<LINK_TO_DOC>).
+To get started using the GVS workflow in Terra with example data, follow the instructions in the [GVS Beta Quickstart](<LINK_TO_QS>). To run the GVS workflow on your own sample data, follow the instructions in the tutorial, [Upload data to Terra and run the GVS workflow](<LINK_TO_DOC>).
 
 ---
 
@@ -40,7 +40,7 @@ The following table provides a quick overview of the GVS workflow features:
 
 #### Terra, Google Cloud, and BigQuery
 
-The GVS workflow needs to be run in [Terra](https://app.terra.bio/), a cloud-based platform for biomedical research. The workflow relies on the structure of workspace data tables to call input sample files. The workflow also requires that you have a Terra account, billing project, and BigQuery dataset with permissions that allow Terra to access it. For step-by-step instructions for setting up these requirements, see the [GVS Quickstart](<LINK_TO_QUICKSTART>).
+The GVS workflow needs to be run in [Terra](https://app.terra.bio/), a cloud-based platform for biomedical research. The workflow relies on the structure of workspace data tables to call input sample files. The workflow also requires that you have a Terra account, billing project, and BigQuery dataset with permissions that allow Terra to access it. For step-by-step instructions for setting up these requirements, see the [GVS Beta Quickstart](<LINK_TO_QUICKSTART>).
 
 #### Input GVCF files
 
