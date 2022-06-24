@@ -37,6 +37,20 @@ import java.util.stream.Collectors;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
+    // If true, update the expected outputs in tests that assert an exact match vs. prior output,
+    // instead of actually running the tests. Can be used with "./gradlew test -Dtest.single=ModelSegmentsIntegrationTest"
+    // to update all of the exact-match tests at once. After you do this, you should look at the
+    // diffs in the new expected outputs in git to confirm that they are consistent with expectations.
+    public static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = false;
+
+    /*
+     * Make sure that someone didn't leave the UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS toggle turned on
+     */
+    @Test
+    public void assertThatExpectedOutputUpdateToggleIsDisabled() {
+        Assert.assertFalse(UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS, "The toggle to update expected outputs should not be left enabled");
+    }
+
     private static final File TEST_SUB_DIR = new File(toolsTestDir, "copynumber");
     private static final File LARGE_TEST_RESOURCES_SUB_DIR = new File(largeFileTestDir, "org/broadinstitute/hellbender/tools/copynumber");
     private static final File EXACT_MATCH_EXPECTED_SUB_DIR = new File(TEST_SUB_DIR, "model-segments-expected");
@@ -175,7 +189,7 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
                                                final File denoisedCopyRatiosFile,
                                                final File allelicCountsFile,
                                                final File normalAllelicCountsFile) {
-        final File outputDir = createTempDir("testDir");
+        final File outputDir = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? EXACT_MATCH_EXPECTED_SUB_DIR : createTempDir("testDir");
         final ArgumentsBuilder argsBuilder = buildArgsBuilderSingleSample(
                 outputDir, outputPrefix, denoisedCopyRatiosFile, allelicCountsFile, normalAllelicCountsFile);
         runCommandLine(argsBuilder);
@@ -433,7 +447,7 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
                                                   final List<File> denoisedCopyRatiosFiles,
                                                   final List<File> allelicCountsFiles,
                                                   final File normalAllelicCountsFile) {
-        final File outputDir = createTempDir("testDir");
+        final File outputDir = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? EXACT_MATCH_EXPECTED_SUB_DIR : createTempDir("testDir");
 
         // test joint segmentation
         final ArgumentsBuilder argsBuilder = buildArgsBuilderMultipleSamples(
