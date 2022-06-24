@@ -356,6 +356,12 @@ public class VariantRecalibrator extends MultiVariantWalker {
     @VisibleForTesting
     protected int max_attempts = 1;
 
+    @Advanced
+    @Argument(fullName="dont-run-rscript",
+            doc="Disable the RScriptExecutor to allow RScript to be generated but not run",
+            optional=true)
+    private boolean disableRScriptExecutor = false;
+
     /////////////////////////////
     // Debug Arguments
     /////////////////////////////
@@ -403,9 +409,9 @@ public class VariantRecalibrator extends MultiVariantWalker {
         if (RSCRIPT_FILE != null) {
             rScriptExecutor = new RScriptExecutor();
             if(!rScriptExecutor.externalExecutableExists()) {
-                Utils.warnUser(logger, String.format(
-                        "Rscript not found in environment path. %s will be generated but PDF plots will not.",
-                        RSCRIPT_FILE));
+                if(!disableRScriptExecutor) {
+                    throw new UserException("Rscript not found in environment path. Fix executor or run with --dont-run-rscript argument to generate rscript file without running.");
+                }
             }
         }
 
@@ -719,12 +725,14 @@ public class VariantRecalibrator extends MultiVariantWalker {
                     //skip R plots for scattered tranches because the format is different and the R code parses them
                     logger.info("Tranches plot will not be generated since we are running in scattered mode");
                 } else if (RSCRIPT_FILE != null) { //we don't use the RSCRIPT_FILE for tranches, but here it's an indicator if we're setup to run R
-                    // Execute the RScript command to plot the table of truth values
-                    rScriptExecutor.addScript(new Resource(PLOT_TRANCHES_RSCRIPT, VariantRecalibrator.class));
-                    rScriptExecutor.addArgs(TRANCHES_FILE.getAbsoluteFile(), TARGET_TITV);
-                    // Print out the command line to make it clear to the user what is being executed and how one might modify it
-                    logger.info("Executing: " + rScriptExecutor.getApproximateCommandLine());
-                    rScriptExecutor.exec();
+                    if(!disableRScriptExecutor) {
+                        // Execute the RScript command to plot the table of truth values
+                        rScriptExecutor.addScript(new Resource(PLOT_TRANCHES_RSCRIPT, VariantRecalibrator.class));
+                        rScriptExecutor.addArgs(TRANCHES_FILE.getAbsoluteFile(), TARGET_TITV);
+                        // Print out the command line to make it clear to the user what is being executed and how one might modify it
+                        logger.info("Executing: " + rScriptExecutor.getApproximateCommandLine());
+                        rScriptExecutor.exec();
+                    }
                 }
                 return true;
             }
@@ -1136,9 +1144,11 @@ private GATKReportTable makeVectorTable(final String tableName,
 
         // Execute Rscript command to generate the clustering plots
         final RScriptExecutor executor = new RScriptExecutor();
-        executor.addScript(RSCRIPT_FILE);
-        logger.info("Executing: " + executor.getApproximateCommandLine());
-        executor.exec();
+        if(!disableRScriptExecutor) {
+            executor.addScript(RSCRIPT_FILE);
+            logger.info("Executing: " + executor.getApproximateCommandLine());
+            executor.exec();
+        }
     }
 
     // The Arrange function is how we place the 4 model plots on one page
