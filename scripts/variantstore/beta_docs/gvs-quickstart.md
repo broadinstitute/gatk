@@ -57,6 +57,8 @@ If you already have a Terra billing account that you would like to use to test t
 
 To create a new GCP project for testing the GVS workflow, follow the instructions in the Google Cloud documentation article, [Creating and managing projects](https://cloud.google.com/resource-manager/docs/creating-managing-projects#creating_a_project).
 
+When the project has been created successfully, you will see it appear in your list of projects.
+
 If you already have a GCP project that you would like to use to test the GVS workflow, you can skip this step.
 
 ### Step 4. Create a BigQuery dataset
@@ -64,6 +66,8 @@ If you already have a GCP project that you would like to use to test the GVS wor
 BigQuery datasets store the tables created during the execution of the GVS workflow. A new dataset should be created for each callset you want to create using the workflow. Samples can be added to BiqQuery datasets cumulatively and any samples in the dataset will be included in the extracted callset. 
 
 Create a dataset in BigQuery inside the GCP project you created in Step 3 (above) by following the instructions in the Google Cloud documentation article, [Creating datasets](https://cloud.google.com/bigquery/docs/datasets#create-dataset).
+
+Click on the arrow next to the name of your GCP project. When the BigQuery dataset has been created successfully, it will appear under the name of the GCP project.
 
 ### Step 5. Find your Terra proxy group
 
@@ -82,9 +86,9 @@ You will need your proxy group to grant Terra access to your GCP project and Big
 
 Your Terra proxy group needs to be granted specific roles in GCP so Terra can create, read, and write to BigQuery tables as part of the GVS workflow.
 
-First, grant your proxy group the BigQuery Data Editor, BigQuery Job User, and BigQuery Read Session User roles on the Google Project that you created in Step 3 (above) that contains your BigQuery dataset. For step-by-step instructions, see the Google Cloud documentation article, [Manage access to projects, folders, and organizations](https://cloud.google.com/iam/docs/granting-changing-revoking-access#grant-single-role).
+Grant your proxy group the BigQuery Data Editor, BigQuery Job User, and BigQuery Read Session User roles on the Google Project that you created in Step 3 (above) that contains your BigQuery dataset. For step-by-step instructions, see the Google Cloud documentation article, [Manage access to projects, folders, and organizations](https://cloud.google.com/iam/docs/granting-changing-revoking-access#grant-single-role).
 
-If you’ve done this correctly, you should see your Terra proxy group listed on the [Google Cloud IAM page](https://console.cloud.google.com/projectselector/iam-admin/iam?supportedpurview=project,folder,organizationId&_ga=2.2029297.1976628513.1656011094-413490265.1655328780) with the three roles listed above next to it.
+If you’ve done this correctly, you should see your Terra proxy group listed in the table of principals along with the roles you granted it.
 
 ### Step 7. Clone the GVS beta workspace
 
