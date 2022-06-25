@@ -746,6 +746,12 @@ public final class ModelSegments extends CommandLineProgram {
                 "Must provide at least one denoised-copy-ratios file or allelic-counts file.");
         Utils.validateArg(!(inputAllelicCountsFiles.isEmpty() && inputNormalAllelicCountsFile != null),
                 "Must provide an allelic-counts file for the case sample to run in matched-normal mode.");
+        Utils.validateArg(!(inputNormalAllelicCountsFile != null && genotypingArguments.minTotalAlleleCountCase > 0),
+                "The minimum total count for filtering allelic counts in case samples must be set to zero in matched-normal mode. " +
+                        "If the effect of statistical noise due to low depth in case samples on segmentation is a concern, " +
+                        "consider using only denoised copy ratios or externally preprocessing allelic-count files " +
+                        "to remove sites that are poorly covered across all samples.");
+
 
         runMode = (inputDenoisedCopyRatiosFiles.size() > 1 || inputAllelicCountsFiles.size() > 1)
                 ? RunMode.MULTIPLE_SAMPLE
