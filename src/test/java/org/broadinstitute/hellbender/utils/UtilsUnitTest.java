@@ -1022,7 +1022,7 @@ UtilsUnitTest extends GATKBaseTest {
                 // arr1, arr2, constructor, expected
                 new Object[]{ new Integer[] { }, new Integer[] { }, (IntFunction<Integer[]>)Integer[]::new,
                         new Integer[] { } },
-                new Object[]{ new Integer[] { }, new Integer[] {1, 2, 3}, (IntFunction<Integer[]>)Integer[]::new,
+                new Object[]{ new Integer[] {1, 2, 3}, new Integer[] { }, (IntFunction<Integer[]>)Integer[]::new,
                         new Integer[] {1, 2, 3} },
                 new Object[]{ new Integer[] { }, new Integer[] {4, 5, 6}, (IntFunction<Integer[]>)Integer[]::new,
                         new Integer[] {4, 5, 6} },
