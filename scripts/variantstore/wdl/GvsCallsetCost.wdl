@@ -2,11 +2,11 @@ version 1.0
 
 workflow GvsCallsetCost {
     input {
-        String project_name
+        String project_identifier
         String dataset_name
         String workspace_namespace
         String workspace_name
-        String callset_name
+        String callset_identifier
         Array[String] excluded_submission_ids = []
     }
 
@@ -19,7 +19,7 @@ workflow GvsCallsetCost {
 
     call CoreStorageModelSizes {
         input:
-            project_name = project_name,
+            project_identifier = project_identifier,
             dataset_name = dataset_name
     }
 
@@ -27,14 +27,14 @@ workflow GvsCallsetCost {
 #        input:
 #            project_id = project_id,
 #            dataset_name = dataset_name,
-#            callset_name = callset_name
+#            callset_identifier = callset_identifier
 #    }
 #
 #    call BigQueryStorageAPIScannedCost {
 #        input:
 #            project_id = project_id,
 #            dataset_name = dataset_name,
-#            callset_name = callset_name
+#            callset_identifier = callset_identifier
 #    }
 
     output {
@@ -80,7 +80,7 @@ task WorkflowComputeCosts {
 
 task CoreStorageModelSizes {
     input {
-        String project_name
+        String project_identifier
         String dataset_name
     }
     meta {
@@ -97,17 +97,17 @@ task CoreStorageModelSizes {
             # https://cloud.google.com/resource-manager/docs/creating-managing-projects#:~:text=A%20project%20name%20can%20contain,between%204%20and%2030%20characters.
             valid='-_0-9a-zA-Z'
 
-            if [[ "~{project_name}" =~ [^$valid] ]]
+            if [[ "~{project_identifier}" =~ [^$valid] ]]
             then
-                echo "Invalid project name '~{project_name}': contains invalid characters, valid characters in [$valid]."
+                echo "Invalid project name '~{project_identifier}': contains invalid characters, valid characters in [$valid]."
                 outfail=1
             fi
 
-            project_name='~{project_name}'
-            project_name_length=${#project_name}
-            if [[ $project_name_length -lt 4 ]] || [[ $project_name_length -gt 30 ]]
+            project_identifier='~{project_identifier}'
+            project_identifier_length=${#project_identifier}
+            if [[ $project_identifier_length -lt 4 ]] || [[ $project_identifier_length -gt 30 ]]
             then
-                echo "Invalid project name '~{project_name}', length must be between 4 and 30 characters inclusive."
+                echo "Invalid project name '~{project_identifier}', length must be between 4 and 30 characters inclusive."
                 outfail=1
             fi
         }
@@ -136,9 +136,9 @@ task CoreStorageModelSizes {
             local table_pattern="$1"
             local output_file_name="$2"
 
-            bq query --location=US --project_id='~{project_name}' --format=csv --use_legacy_sql=false \
+            bq query --location=US --project_id='~{project_identifier}' --format=csv --use_legacy_sql=false \
                 "SELECT round(sum(total_billable_bytes) / (1024*1024*1024),2) \
-                    FROM \`~{project_name}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS\` \
+                    FROM \`~{project_identifier}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS\` \
                     WHERE table_name LIKE '${table_pattern}'" | tail -1 > ${output_file_name}
         }
 
@@ -175,7 +175,7 @@ task CoreStorageModelSizes {
 #    input {
 #        String project_id
 #        String dataset_name
-#        String callset_name
+#        String callset_identifier
 #    }
 #
 #    command <<<
@@ -202,7 +202,7 @@ task CoreStorageModelSizes {
 #    input {
 #        String project_id
 #        String dataset_name
-#        String callset_name
+#        String callset_identifier
 #    }
 #
 #    command <<<
