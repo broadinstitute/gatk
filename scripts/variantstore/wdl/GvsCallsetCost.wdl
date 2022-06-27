@@ -79,7 +79,7 @@ task ValidateInputs {
             local minimum_length="$4"
             local maximum_length="$5"
 
-
+            # Do not check for valid characters if the `valid_characters` variable is empty.
             if [[ ${#valid_characters} -gt 0 ]]
             then
                 if [[ "${input}" =~ [^${valid_characters}] ]]
@@ -115,7 +115,7 @@ task ValidateInputs {
             1 \
             1024
 
-        # The following non-Google restrictions are arbitrary but comforting, relax if necessary.
+        # The following non-Google restrictions are arbitrary but comforting and could be relaxed.
         sanity_check_input \
             "call set identifier" \
             "~{call_set_identifier}" \
