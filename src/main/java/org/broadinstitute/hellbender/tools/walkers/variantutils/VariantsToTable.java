@@ -27,7 +27,6 @@ import java.util.*;
 import java.util.function.Function;
 
 import static org.broadinstitute.hellbender.utils.Utils.split;
-import static org.broadinstitute.hellbender.utils.Utils.stream;
 
 /**
  * Extract fields from a VCF file to a tab-delimited table
@@ -134,9 +133,6 @@ public final class VariantsToTable extends VariantWalker {
             doc="The name of a standard VCF field or an INFO field to include in the output table", optional=true)
     protected List<String> fieldsToTake = new ArrayList<>();
 
-
-
-
     /**
      * Any annotation name in the FORMAT field (e.g., GQ, PL) to include in the output table.
      * This argument accepts any number of inputs e.g. -GF GQ -GF PL
@@ -218,9 +214,10 @@ public final class VariantsToTable extends VariantWalker {
             logger.warn("No fields were specified. All fields will be included in output table.");
 
             // add all mandatory VCF fields (except INFO)
-            for(VCFHeader.HEADER_FIELDS header : VCFHeader.HEADER_FIELDS.values()){
-                if(header.name() != "INFO")
-                    fieldsToTake.add(header.name());
+            for(VCFHeader.HEADER_FIELDS headerField : VCFHeader.HEADER_FIELDS.values()){
+                if(!headerField.name().equals(VCFHeader.HEADER_FIELDS.INFO.name())) {
+                    fieldsToTake.add(headerField.name());
+                }
             }
 
             // add all INFO fields present in VCF header
@@ -230,7 +227,8 @@ public final class VariantsToTable extends VariantWalker {
 
             // add all FORMAT fields present in VCF header
             for (final VCFFormatHeaderLine formatLine : inputHeader.getFormatHeaderLines()) {
-                if(formatLine.getID().equals("GT")){
+                // ensure GT field listed as first FORMAT field
+                if(formatLine.getID().equals("GT")) {
                     genotypeFieldsToTake.add(0, formatLine.getID());
                 }
                 else {
