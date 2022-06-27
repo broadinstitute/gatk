@@ -6,7 +6,7 @@ workflow GvsCallsetCost {
         String dataset_name
         String workspace_namespace
         String workspace_name
-        String callset_identifier
+        String call_set_identifier
         Array[String] excluded_submission_ids = []
     }
 
@@ -27,14 +27,14 @@ workflow GvsCallsetCost {
 #        input:
 #            project_id = project_id,
 #            dataset_name = dataset_name,
-#            callset_identifier = callset_identifier
+#            call_set_identifier = call_set_identifier
 #    }
 #
 #    call BigQueryStorageAPIScannedCost {
 #        input:
 #            project_id = project_id,
 #            dataset_name = dataset_name,
-#            callset_identifier = callset_identifier
+#            call_set_identifier = call_set_identifier
 #    }
 
     output {
@@ -175,7 +175,7 @@ task CoreStorageModelSizes {
 #    input {
 #        String project_id
 #        String dataset_name
-#        String callset_identifier
+#        String call_set_identifier
 #    }
 #
 #    command <<<
@@ -202,7 +202,7 @@ task CoreStorageModelSizes {
 #    input {
 #        String project_id
 #        String dataset_name
-#        String callset_identifier
+#        String call_set_identifier
 #    }
 #
 #    command <<<
