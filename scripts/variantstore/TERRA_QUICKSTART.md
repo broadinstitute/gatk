@@ -10,15 +10,14 @@ Through this QuickStart you will learn how to use the Broad Genomic Variant Stor
 This quickstart assumes that you are familiar with Terra workspaces, the data model and providing input parameters and launching workflows.
 
 1. You will need to have or create a BigQuery dataset (we'll call this `dataset_name` later on).
-2. Grant the "BigQuery Data Editor" role on that **dataset** to your Terra PROXY group.  Your proxy group name can be found on your Terra Profile page and look something like `PROXY_12345678901234567890@firecloud.org`.
-3. Grant the following roles on the Google **project** (we'll call this `project_id` later on) containing the dataset to your proxy group:
+22. Grant the following roles on the Google **project** (we'll call this `project_id` later on) containing the dataset to your proxy group:
     - BigQuery data editor
     - BigQuery job user
     - BigQuery Read Session User
-4. These tools expect re-blocked gVCF files as input, which are provided in this workspace
+3. These tools expect re-blocked gVCF files as input, which are provided in this workspace
 
 ## 1. Import Data
-A sample set for the quickstart has already been created with 10 samples and paths to re-blocked gVCFs for each sample.  Run the two import workflows against this sample set by selecting "sample_set" as the root entity type ("Step 1" on the workflow submission page) and `gvs_demo-10` for the data ("Step 2" on the workflow submission page).  If you are creating your own sample set, note that the sample table should have columns for the re-blocked gVCFs (`hg38_reblocked_gvcf` or `reblocked_gvcf_path`) and their index files.
+A sample set for the quickstart has already been created with 10 samples and paths to re-blocked gVCFs for each sample.  Run the two import workflows against this sample set by selecting "sample_set" as the root entity type ("Step 1" on the workflow submission page) and `gvs_demo-10` for the data ("Step 2" on the workflow submission page).  If you are creating your own sample set, note that the sample table should have columns for the re-blocked gVCFs (`hg38_reblocked_v2_vcf` or `reblocked_gvcf_path`) and their index files.
 
 ## 1.1 Assign Gvs IDs and Create Loading Tables
 To optimize the internal queries, each sample must have a unique and consecutive integer ID assigned. Run the `GvsAssignIds` workflow, which will create an appropriate ID for each sample in the sample set and update the BigQuery dataset with the sample name to ID mapping info.
@@ -44,8 +43,8 @@ These are the required parameters which must be supplied to the workflow:
 | --------------------- | ----------- |
 | dataset_name          | the name of the dataset you created above       |
 | external_sample_names | `this.samples.sample_id` (the sample identifier from the `gvs_demo_10` sample set) |
-| input_vcf_indexes     | `this.samples.hg38_reblocked_gvcf_index` (reblocked gvcf index file for each sample) |
-| input_vcfs            | `this.samples.hg38_reblocked_gvcf` (reblocked gvcf file for each sample) |
+| input_vcf_indexes     | `this.samples.hg38_reblocked_v2_vcf_index` (reblocked gvcf index file for each sample) |
+| input_vcfs            | `this.samples.hg38_reblocked_v2_vcf` (reblocked gvcf file for each sample) |
 | project_id            | the name of the google project containing the dataset |
 
 ## 2. Create Alt Allele Table
@@ -57,6 +56,7 @@ This is done by running the `GvsCreateAltAllele` workflow with the following par
 
 | Parameter         | Description |
 | ----------------- | ----------- |
+| call_set_identifier | a unique name to identify this callset (e.g. `my_gvs_demo`); you will want to make note of this for later steps |
 | dataset_name      | the name of the dataset you created above  |
 | project_id        | the name of the google project containing the dataset |
 
@@ -71,9 +71,7 @@ This is done by running the `GvsCreateFilterSet` workflow with the following par
 | --------------------------------- | ----------- |
 | dataset_name                      | the name of the dataset you created above  |
 | filter_set_name                   | a unique name to identify this filter set (e.g. `my_demo_filters`); you will want to make note of this for use in step 5 |
-| INDEL_VQSR_max_gaussians_override | you don't need to set this unless a previous run of IndelsVariantRecalibrator task failed to converge, start with 3 and lower as needed |
 | project_id                        | the name of the google project containing the dataset |
-| SNP_VQSR_max_gaussians_override   | you don't need to set this unless a previous run of SNPsVariantRecalibratorClassic task failed to converge, start with 5 and lower as needed |
 
 ## 4. Prepare Callset
 This step performs the heavy lifting in BigQuery to gather all the data required to create a jointly called VCF.
