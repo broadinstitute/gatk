@@ -5,14 +5,12 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
-import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.VariantType;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -38,6 +36,8 @@ public final class ScoreVariantAnnotationsIntegrationTest extends CommandLinePro
     public void assertThatExpectedOutputUpdateToggleIsDisabled() {
         Assert.assertFalse(UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS, "The toggle to update expected outputs should not be left enabled.");
     }
+
+    private static final double CALIBRATION_SENSITIVITY_THRESHOLD = 0.9;
 
     private static final File PACKAGE_TEST_FILES_DIR = new File(largeFileTestDir,
             "org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/");
@@ -65,7 +65,8 @@ public final class ScoreVariantAnnotationsIntegrationTest extends CommandLinePro
         return argsBuilder;
     };
     private static final BiFunction<ArgumentsBuilder, Double, ArgumentsBuilder> ADD_CALIBRATION_SENSITIVITY_THRESHOLD = (argsBuilder, calibrationSensitivityThreshold) -> {
-        argsBuilder.add(ScoreVariantAnnotations.CALIBRATION_SENSITIVITY_THRESHOLD_LONG_NAME, calibrationSensitivityThreshold);
+        argsBuilder.add(ScoreVariantAnnotations.SNP_CALIBRATION_SENSITIVITY_THRESHOLD_LONG_NAME, calibrationSensitivityThreshold);
+        argsBuilder.add(ScoreVariantAnnotations.INDEL_CALIBRATION_SENSITIVITY_THRESHOLD_LONG_NAME, calibrationSensitivityThreshold);
         return argsBuilder;
     };
     private static final Function<ArgumentsBuilder, ArgumentsBuilder> ADD_ISOLATION_FOREST_PYTHON_SCRIPT = argsBuilder -> {
@@ -120,12 +121,10 @@ public final class ScoreVariantAnnotationsIntegrationTest extends CommandLinePro
         final String modelPrefix = new File(INPUT_FROM_TRAIN_EXPECTED_TEST_FILES_DIR, trainTag).toString();
         final Function<ArgumentsBuilder, ArgumentsBuilder> addModelPrefix = ab ->
                 ADD_MODEL_PREFIX.apply(ab, modelPrefix);
-        final double calibrationSensitivityThreshold = 0.9;
         final Function<ArgumentsBuilder, ArgumentsBuilder> addCalibrationSensitivityThreshold = ab ->
-                ADD_CALIBRATION_SENSITIVITY_THRESHOLD.apply(ab, calibrationSensitivityThreshold);
+                ADD_CALIBRATION_SENSITIVITY_THRESHOLD.apply(ab, CALIBRATION_SENSITIVITY_THRESHOLD);
         addModelPrefix.andThen(addCalibrationSensitivityThreshold).apply(argsBuilder);
 
-        argsBuilder.add(StandardArgumentDefinitions.VERBOSITY_NAME, "INFO");
         runCommandLine(argsBuilder);
 
         if (!UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS) {
@@ -135,10 +134,9 @@ public final class ScoreVariantAnnotationsIntegrationTest extends CommandLinePro
 
     private static void assertExpectedOutputs(final String tag,
                                               final String outputPrefix) {
+        // vcf.idx files are not reproducible
         SystemCommandUtilsTest.runSystemCommand(String.format("diff %s/%s.vcf %s.vcf",
                 EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
-//        SystemCommandUtilsTest.runSystemCommand(String.format("diff %s/%s.vcf.idx %s.vcf.idx",
-//                EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
         SystemCommandUtilsTest.runSystemCommand(String.format("h5diff %s/%s.annot.hdf5 %s.annot.hdf5",
                 EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
         SystemCommandUtilsTest.runSystemCommand(String.format("h5diff %s/%s.scores.hdf5 %s.scores.hdf5",

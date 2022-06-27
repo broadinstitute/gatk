@@ -141,7 +141,6 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
         final File outputDir = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? EXPECTED_TEST_FILES_DIR : createTempDir("extract");
         final String outputPrefix = String.format("%s/%s", outputDir, tag);
         argsBuilder.addOutput(outputPrefix);
-        argsBuilder.add(StandardArgumentDefinitions.VERBOSITY_NAME, "INFO");
         runCommandLine(argsBuilder);
 
         if (!UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS) {
@@ -151,12 +150,11 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
 
     private static void assertOutputs(final String tag,
                                       final String outputPrefix) {
+        // vcf.idx files are not reproducible
         SystemCommandUtilsTest.runSystemCommand(String.format("h5diff %s/%s.annot.hdf5 %s.annot.hdf5",
                 EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
         SystemCommandUtilsTest.runSystemCommand(String.format("diff %s/%s.vcf %s.vcf",
                 EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
-//        SystemCommandUtilsTest.runSystemCommand(String.format("diff %s/%s.vcf.idx %s.vcf.idx",
-//                EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
         if (tag.contains("posUn")) {
             SystemCommandUtilsTest.runSystemCommand(String.format("h5diff %s/%s.unlabeled.annot.hdf5 %s.unlabeled.annot.hdf5",
                     EXPECTED_TEST_FILES_DIR, tag, outputPrefix));

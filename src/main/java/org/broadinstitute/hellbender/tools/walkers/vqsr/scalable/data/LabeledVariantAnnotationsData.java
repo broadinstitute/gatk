@@ -40,9 +40,9 @@ public final class LabeledVariantAnnotationsData {
 
     private static final int INITIAL_SIZE = 10_000_000;
 
-    // TODO make labels enum?
     public static final String TRAINING_LABEL = "training";
     public static final String CALIBRATION_LABEL = "calibration";
+    public static final String SNP_LABEL = "snp";
 
     private final List<String> sortedAnnotationNames;
     final List<String> sortedLabels;

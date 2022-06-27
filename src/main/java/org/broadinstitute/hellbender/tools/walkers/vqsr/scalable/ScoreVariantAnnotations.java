@@ -24,8 +24,6 @@ import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.Python
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.VariantAnnotationsScorer;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 
 import java.io.File;
@@ -57,15 +55,21 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
 
     public static final String MODEL_PREFIX_LONG_NAME = "model-prefix";
     public static final String PYTHON_SCRIPT_LONG_NAME = "python-script";
-    public static final String CALIBRATION_SENSITIVITY_THRESHOLD_LONG_NAME = "calibration-sensitivity-threshold";
+    public static final String SNP_CALIBRATION_SENSITIVITY_THRESHOLD_LONG_NAME = "snp-calibration-sensitivity-threshold";
+    public static final String INDEL_CALIBRATION_SENSITIVITY_THRESHOLD_LONG_NAME = "indel-calibration-sensitivity-threshold";
 
-    // TODO expose all of these?
-    private static final String SCORE_KEY = "SCORE";
-    private static final String CALIBRATION_SENSITIVITY_KEY = "CALIBRATION_SENSITIVITY";
-    protected static final String LOW_SCORE_FILTER_NAME = String.format("LOW_%s", SCORE_KEY);
-    private static final String SCORE_AND_CALIBRATION_SENSITIVITY_FORMAT = "%.4f";
+    public static final String SCORE_KEY_LONG_NAME = "score-key";
+    public static final String CALIBRATION_SENSITIVITY_KEY_LONG_NAME = "calibration-sensitivity-key";
+    public static final String LOW_SCORE_FILTER_NAME_LONG_NAME = "low-score-filter-name";
+    public static final String DOUBLE_FORMAT_LONG_NAME = "double-format";
 
-    private static final String SCORES_HDF5_SUFFIX = ".scores.hdf5";
+    public static final String DEFAULT_SCORE_KEY = "SCORE";
+    public static final String DEFAULT_CALIBRATION_SENSITIVITY_KEY = "CALIBRATION_SENSITIVITY";
+    public static final String DEFAULT_LOW_SCORE_FILTER_NAME = String.format("LOW_%s", DEFAULT_SCORE_KEY);
+    public static final String DEFAULT_DOUBLE_FORMAT = "%.4f";
+    public static final String IS_SNP_KEY = LabeledVariantAnnotationsData.SNP_LABEL;
+
+    public static final String SCORES_HDF5_SUFFIX = ".scores.hdf5";
 
     @Argument(
             fullName = PYTHON_SCRIPT_LONG_NAME,
@@ -78,12 +82,40 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
 
     // TODO should we allow separate SNP and INDEL thresholds? alternatively, users could apply this tool twice, once for each variant type.
     @Argument(
-            fullName = CALIBRATION_SENSITIVITY_THRESHOLD_LONG_NAME,
-            doc = "If specified, sites with scores corresponding to a calibration sensitivity that is greater than or equal to this threshold will be hard filtered.",
+            fullName = SNP_CALIBRATION_SENSITIVITY_THRESHOLD_LONG_NAME,
+            doc = "If specified, SNPs with scores corresponding to a calibration sensitivity that is greater than or equal to this threshold will be hard filtered.",
             optional = true,
             minValue = 0.,
             maxValue = 1.)
-    private Double calibrationSensitivityThreshold;
+    private Double snpCalibrationSensitivityThreshold;
+
+    @Argument(
+            fullName = INDEL_CALIBRATION_SENSITIVITY_THRESHOLD_LONG_NAME,
+            doc = "If specified, indels with scores corresponding to a calibration sensitivity that is greater than or equal to this threshold will be hard filtered.",
+            optional = true,
+            minValue = 0.,
+            maxValue = 1.)
+    private Double indelCalibrationSensitivityThreshold;
+
+    @Argument(
+            fullName = SCORE_KEY_LONG_NAME,
+            doc = "Annotation key to use for score values in output.")
+    private String scoreKey = DEFAULT_SCORE_KEY;
+
+    @Argument(
+            fullName = CALIBRATION_SENSITIVITY_KEY_LONG_NAME,
+            doc = "Annotation key to use for calibration-sensitivity values in output.")
+    private String calibrationSensitivityKey = DEFAULT_CALIBRATION_SENSITIVITY_KEY;
+
+    @Argument(
+            fullName = LOW_SCORE_FILTER_NAME_LONG_NAME,
+            doc = "Name to use for low-score filter in output.")
+    private String lowScoreFilterName = DEFAULT_LOW_SCORE_FILTER_NAME;
+
+    @Argument(
+            fullName = DOUBLE_FORMAT_LONG_NAME,
+            doc = "Format string to use for formatting score and calibration-sensitivity values in output.")
+    private String doubleFormat = DEFAULT_DOUBLE_FORMAT;
 
     private File outputScoresFile;
     private Iterator<Double> scoresIterator;
@@ -210,7 +242,7 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
             writeAnnotationsToHDF5AndClearData();
             readAnnotationsAndWriteScoresToHDF5();
             scoresIterator = Arrays.stream(VariantAnnotationsScorer.readScores(outputScoresFile)).iterator();
-            isSNPIterator = LabeledVariantAnnotationsData.readLabel(outputAnnotationsFile, "snp").iterator();
+            isSNPIterator = LabeledVariantAnnotationsData.readLabel(outputAnnotationsFile, LabeledVariantAnnotationsData.SNP_LABEL).iterator();
         }
         if (n == 1) {
             if (scoresIterator.hasNext()) {
@@ -225,7 +257,7 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
 
     private void readAnnotationsAndWriteScoresToHDF5() {
         final List<String> annotationNames = LabeledVariantAnnotationsData.readAnnotationNames(outputAnnotationsFile);
-        final List<Boolean> isSNP = LabeledVariantAnnotationsData.readLabel(outputAnnotationsFile, "snp");
+        final List<Boolean> isSNP = LabeledVariantAnnotationsData.readLabel(outputAnnotationsFile, LabeledVariantAnnotationsData.SNP_LABEL);
         final double[][] allAnnotations = LabeledVariantAnnotationsData.readAnnotations(outputAnnotationsFile);
         final int numAll = allAnnotations.length;
         final List<Double> allScores = new ArrayList<>(Collections.nCopies(numAll, Double.NaN));
@@ -267,28 +299,29 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
                 : Collections.singletonList(scoresIterator.next());
         final double score = Collections.max(scores);
         final int scoreIndex = scores.indexOf(score);
-        builder.attribute(SCORE_KEY, formatDouble(score));
+        builder.attribute(scoreKey, formatDouble(score));
 
         final List<Boolean> isSNP = useASAnnotations
                 ? altAlleles.stream().map(a -> isSNPIterator.next()).collect(Collectors.toList())
                 : Collections.singletonList(isSNPIterator.next());
         final boolean isSNPMax = isSNP.get(scoreIndex);
-        builder.attribute("snp", isSNPMax);
+        builder.attribute(IS_SNP_KEY, isSNPMax);
 
         final Function<Double, Double> calibrationSensitivityConverter = isSNPMax ? snpCalibrationSensitivityConverter : indelCalibrationSensitivityConverter;
         if (calibrationSensitivityConverter != null) {
             final double calibrationSensitivity = calibrationSensitivityConverter.apply(score);
-            builder.attribute(CALIBRATION_SENSITIVITY_KEY, formatDouble(calibrationSensitivity));
+            builder.attribute(calibrationSensitivityKey, formatDouble(calibrationSensitivity));
+            final Double calibrationSensitivityThreshold = isSNPMax ? snpCalibrationSensitivityThreshold : indelCalibrationSensitivityThreshold;
             if (calibrationSensitivityThreshold != null && calibrationSensitivity >= calibrationSensitivityThreshold) {
-                builder.filter(LOW_SCORE_FILTER_NAME); // TODO does this sufficiently cover the desired behavior when dealing with previously filtered sites, etc.?
+                builder.filter(lowScoreFilterName); // TODO does this sufficiently cover the desired behavior when dealing with previously filtered sites, etc.?
             }
         }
 
         vcfWriter.add(builder.make());
     }
 
-    private static String formatDouble(final double x) {
-        return String.format(SCORE_AND_CALIBRATION_SENSITIVITY_FORMAT, x);
+    private String formatDouble(final double x) {
+        return String.format(doubleFormat, x);
     }
 
     /**
@@ -300,15 +333,15 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
         final Set<VCFHeaderLine> inputHeaders = inputHeader.getMetaDataInSortedOrder();
 
         final Set<VCFHeaderLine> hInfo = new HashSet<>(inputHeaders);
-        hInfo.add(new VCFInfoHeaderLine(SCORE_KEY, 1, VCFHeaderLineType.Float,
+        hInfo.add(new VCFInfoHeaderLine(scoreKey, 1, VCFHeaderLineType.Float,
                 "Score according to the model applied by ScoreVariantAnnotations"));
-        hInfo.add(new VCFInfoHeaderLine(CALIBRATION_SENSITIVITY_KEY, 1, VCFHeaderLineType.Float,
-                String.format("Calibration sensitivity corresponding to the value of %s", SCORE_KEY)));
-        hInfo.add(new VCFFilterHeaderLine(LOW_SCORE_FILTER_NAME, "Low score (corresponding to high calibration sensitivity)"));
+        hInfo.add(new VCFInfoHeaderLine(calibrationSensitivityKey, 1, VCFHeaderLineType.Float,
+                String.format("Calibration sensitivity corresponding to the value of %s", scoreKey)));
+        hInfo.add(new VCFFilterHeaderLine(lowScoreFilterName, "Low score (corresponding to high calibration sensitivity)"));
 
         hInfo.addAll(getDefaultToolVCFHeaderLines());
         // TODO extract
-        hInfo.add(new VCFInfoHeaderLine("snp", 1, VCFHeaderLineType.Flag, "This site was considered a SNP during filtering"));
+        hInfo.add(new VCFInfoHeaderLine(IS_SNP_KEY, 1, VCFHeaderLineType.Flag, "This site was considered a SNP during filtering"));
         hInfo.addAll(sortedLabels.stream()
                 .map(l -> new VCFInfoHeaderLine(l, 1, VCFHeaderLineType.Flag, String.format("This site was labeled as %s according to resources", l)))
                 .collect(Collectors.toList()));
