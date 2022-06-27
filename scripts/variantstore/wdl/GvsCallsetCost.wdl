@@ -195,48 +195,6 @@ task CoreStorageModelSizes {
     }
     command <<<
 
-        sanity_check_project() {
-            local -n outfail="fail"
-
-            # Technically single quotes and exclamation points are allowed but none of that nonsense here.
-            # https://cloud.google.com/resource-manager/docs/creating-managing-projects#:~:text=A%20project%20name%20can%20contain,between%204%20and%2030%20characters.
-            valid='-_0-9a-zA-Z'
-
-            if [[ "~{project_id}" =~ [^$valid] ]]
-            then
-                echo "Invalid project name '~{project_id}': contains invalid characters, valid characters in [$valid]."
-                outfail=1
-            fi
-
-            project_id='~{project_id}'
-            project_id_length=${#project_id}
-            if [[ $project_id_length -lt 4 ]] || [[ $project_id_length -gt 30 ]]
-            then
-                echo "Invalid project name '~{project_id}', length must be between 4 and 30 characters inclusive."
-                outfail=1
-            fi
-        }
-
-        sanity_check_dataset_name() {
-            local -n outfail="fail"
-
-            valid="0-9A-Za-z_"
-
-            if [[ "~{dataset_name}" =~ [^$valid] ]]
-            then
-                echo "Invalid dataset name '~{dataset_name}': contains invalid characters, valid characters in [$valid]."
-                outfail=1
-            fi
-
-            dataset_name='~{dataset_name}'
-            dataset_name_length=${#dataset_name}
-            if [[ $dataset_name_length -lt 1 ]] || [[ $dataset_name_length -gt 1024 ]]
-            then
-                echo "Invalid dataset name '~{dataset_name}': length must be between 1 and 1024 characters inclusive."
-                outfail=1
-            fi
-        }
-
         get_billable_bytes_in_gib() {
             local table_pattern="$1"
             local output_file_name="$2"
@@ -246,16 +204,6 @@ task CoreStorageModelSizes {
                     FROM \`~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS\` \
                     WHERE table_name LIKE '${table_pattern}'" | tail -1 > ${output_file_name}
         }
-
-        fail=0
-
-        sanity_check_project
-        sanity_check_dataset_name
-
-        if [[ $fail -eq 1 ]]
-        then
-            exit 1
-        fi
 
         get_billable_bytes_in_gib "vet_%"        vet_gib.txt
         get_billable_bytes_in_gib "ref_ranges_%" ref_ranges_gib.txt
