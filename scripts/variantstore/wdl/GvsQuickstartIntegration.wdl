@@ -7,7 +7,7 @@ workflow GvsQuickstartIntegration {
 
     input {
         String branch_name
-        String expected_output_prefix = "gs://broad-dsp-spec-ops/quickstart_integration/2022-06-03/"
+        String expected_output_prefix = "gs://gvs-internal-quickstart/integration/2022-06-15/"
 
         Array[String] external_sample_names = [
                                               "ERS4367795",
@@ -23,29 +23,29 @@ workflow GvsQuickstartIntegration {
                                               ]
 
         Array[File] input_vcfs = [
-                                 "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00405.haplotypeCalls.er.raw.vcf.gz.vcf.gz",
-                                 "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00408.haplotypeCalls.er.raw.vcf.gz.vcf.gz",
-                                 "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00418.haplotypeCalls.er.raw.vcf.gz.vcf.gz",
-                                 "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00420.haplotypeCalls.er.raw.vcf.gz.vcf.gz",
-                                 "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00423.haplotypeCalls.er.raw.vcf.gz.vcf.gz",
-                                 "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00427.haplotypeCalls.er.raw.vcf.gz.vcf.gz",
-                                 "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00429.haplotypeCalls.er.raw.vcf.gz.vcf.gz",
-                                 "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00444.haplotypeCalls.er.raw.vcf.gz.vcf.gz",
-                                 "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00447.haplotypeCalls.er.raw.vcf.gz.vcf.gz",
-                                 "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00450.haplotypeCalls.er.raw.vcf.gz.vcf.gz"
+                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00405.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
+                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00408.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
+                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00418.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
+                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00420.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
+                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00423.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
+                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00427.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
+                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00429.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
+                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00444.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
+                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00447.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
+                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00450.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz"
                                  ]
 
         Array[File] input_vcf_indexes = [
-                                        "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00405.haplotypeCalls.er.raw.vcf.gz.vcf.gz.tbi",
-                                        "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00408.haplotypeCalls.er.raw.vcf.gz.vcf.gz.tbi",
-                                        "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00418.haplotypeCalls.er.raw.vcf.gz.vcf.gz.tbi",
-                                        "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00420.haplotypeCalls.er.raw.vcf.gz.vcf.gz.tbi",
-                                        "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00423.haplotypeCalls.er.raw.vcf.gz.vcf.gz.tbi",
-                                        "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00427.haplotypeCalls.er.raw.vcf.gz.vcf.gz.tbi",
-                                        "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00429.haplotypeCalls.er.raw.vcf.gz.vcf.gz.tbi",
-                                        "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00444.haplotypeCalls.er.raw.vcf.gz.vcf.gz.tbi",
-                                        "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00447.haplotypeCalls.er.raw.vcf.gz.vcf.gz.tbi",
-                                        "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00450.haplotypeCalls.er.raw.vcf.gz.vcf.gz.tbi",
+                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00405.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
+                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00408.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
+                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00418.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
+                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00420.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
+                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00423.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
+                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00427.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
+                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00429.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
+                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00444.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
+                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00447.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
+                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00450.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi"
                                         ]
 
         Int? extract_scatter_count
