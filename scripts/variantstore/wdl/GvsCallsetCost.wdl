@@ -84,7 +84,7 @@ task ValidateInputs {
             then
                 if [[ "${input}" =~ [^${valid_characters}] ]]
                 then
-                    echo "Invalid ${description} '${input}': contains invalid characters, valid characters in [$valid]."
+                    echo "Invalid ${description} '${input}': contains invalid characters, valid characters in [${valid_characters}]."
                     outfail=1
                 fi
             fi
