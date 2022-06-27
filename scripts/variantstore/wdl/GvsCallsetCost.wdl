@@ -2,7 +2,7 @@ version 1.0
 
 workflow GvsCallsetCost {
     input {
-        String project_identifier
+        String project_id
         String dataset_name
         String workspace_namespace
         String workspace_name
@@ -19,7 +19,7 @@ workflow GvsCallsetCost {
 
     call CoreStorageModelSizes {
         input:
-            project_identifier = project_identifier,
+            project_id = project_id,
             dataset_name = dataset_name
     }
 
@@ -80,7 +80,7 @@ task WorkflowComputeCosts {
 
 task CoreStorageModelSizes {
     input {
-        String project_identifier
+        String project_id
         String dataset_name
     }
     meta {
@@ -97,17 +97,17 @@ task CoreStorageModelSizes {
             # https://cloud.google.com/resource-manager/docs/creating-managing-projects#:~:text=A%20project%20name%20can%20contain,between%204%20and%2030%20characters.
             valid='-_0-9a-zA-Z'
 
-            if [[ "~{project_identifier}" =~ [^$valid] ]]
+            if [[ "~{project_id}" =~ [^$valid] ]]
             then
-                echo "Invalid project name '~{project_identifier}': contains invalid characters, valid characters in [$valid]."
+                echo "Invalid project name '~{project_id}': contains invalid characters, valid characters in [$valid]."
                 outfail=1
             fi
 
-            project_identifier='~{project_identifier}'
-            project_identifier_length=${#project_identifier}
-            if [[ $project_identifier_length -lt 4 ]] || [[ $project_identifier_length -gt 30 ]]
+            project_id='~{project_id}'
+            project_id_length=${#project_id}
+            if [[ $project_id_length -lt 4 ]] || [[ $project_id_length -gt 30 ]]
             then
-                echo "Invalid project name '~{project_identifier}', length must be between 4 and 30 characters inclusive."
+                echo "Invalid project name '~{project_id}', length must be between 4 and 30 characters inclusive."
                 outfail=1
             fi
         }
@@ -136,9 +136,9 @@ task CoreStorageModelSizes {
             local table_pattern="$1"
             local output_file_name="$2"
 
-            bq query --location=US --project_id='~{project_identifier}' --format=csv --use_legacy_sql=false \
+            bq query --location=US --project_id='~{project_id}' --format=csv --use_legacy_sql=false \
                 "SELECT round(sum(total_billable_bytes) / (1024*1024*1024),2) \
-                    FROM \`~{project_identifier}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS\` \
+                    FROM \`~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS\` \
                     WHERE table_name LIKE '${table_pattern}'" | tail -1 > ${output_file_name}
         }
 
