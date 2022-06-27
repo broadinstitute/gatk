@@ -99,7 +99,7 @@ task ValidateInputs {
 
         fail=0
 
-        # Technically single quotes and exclamation points are allowed in project names but none of that nonsense here.
+        # Technically single quotes and exclamation points are allowed in project ids but none of that nonsense here.
         # https://cloud.google.com/resource-manager/docs/creating-managing-projects#:~:text=A%20project%20name%20can%20contain,between%204%20and%2030%20characters.
         sanity_check_input \
             "project id" \
