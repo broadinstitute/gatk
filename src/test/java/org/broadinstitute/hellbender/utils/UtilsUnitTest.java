@@ -19,6 +19,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.function.IntFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -981,10 +982,10 @@ UtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(actual, expected);
     }
 
-    @DataProvider(name = "concatMultipleArraysData")
-    public Object[][] concatMultipleArraysData() {
+    @DataProvider(name = "concatMultipleByteArraysData")
+    public Object[][] concatMultipleByteArraysData() {
         return new Object[][]{
-                //new Object[]{ ArrayUtils.EMPTY_BYTE_ARRAY, },
+                // expected, arrays
                 new Object[]{ ArrayUtils.EMPTY_BYTE_ARRAY, new byte[] { } },
                 new Object[]{ new byte[] {100, 100}, new byte[] {100, 100} },
                 new Object[]{ new byte[] {100, 100}, new byte[] {100, 100}, new byte[] { } },
@@ -993,14 +994,16 @@ UtilsUnitTest extends GATKBaseTest {
         };
     }
 
-    @Test(dataProvider = "concatMultipleArraysData")
-    public void testConcatMultipleArrays(byte[] expected, byte[] ... arrays) {
+    // expected listed first to accomodate varargs arrays having to be last parameter
+    @Test(dataProvider = "concatMultipleByteArraysData")
+    public void testConcatMultipleByteArrays(byte[] expected, byte[] ... arrays) {
         Assert.assertEquals(Utils.concat(arrays), expected);
     }
 
-    @DataProvider(name = "concatTwoArraysData")
-    public Object[][] concatTwoArraysData() {
+    @DataProvider(name = "concatTwoByteArraysData")
+    public Object[][] concatTwoByteArraysData() {
         return new Object[][]{
+                // arr1, arr2, expected
                 new Object[]{ new byte[] { }, new byte[] { }, ArrayUtils.EMPTY_BYTE_ARRAY },
                 new Object[]{ new byte[] {100, 100}, new byte[] { }, new byte[] {100, 100} },
                 new Object[]{ new byte[] { }, new byte[] {100, 100}, new byte[] {100, 100} },
@@ -1008,8 +1011,29 @@ UtilsUnitTest extends GATKBaseTest {
         };
     }
 
-    @Test(dataProvider = "concatTwoArraysData")
-    public void testConcatTwoArrays(byte[] arr1, byte[] arr2, byte[] expected) {
+    @Test(dataProvider = "concatTwoByteArraysData")
+    public void testConcatTwoByteArrays(byte[] arr1, byte[] arr2, byte[] expected) {
         Assert.assertEquals(Utils.concat(arr1, arr2), expected);
     }
+
+    @DataProvider(name = "concatAnyTypeArraysData")
+    public Object[][] concatAnyTypeArraysData() {
+        return new Object[][]{
+                // arr1, arr2, constructor, expected
+                new Object[]{ new Integer[] { }, new Integer[] { }, (IntFunction<Integer[]>)Integer[]::new,
+                        new Integer[] { } },
+                new Object[]{ new Integer[] { }, new Integer[] {1, 2, 3}, (IntFunction<Integer[]>)Integer[]::new,
+                        new Integer[] {1, 2, 3} },
+                new Object[]{ new Integer[] { }, new Integer[] {4, 5, 6}, (IntFunction<Integer[]>)Integer[]::new,
+                        new Integer[] {4, 5, 6} },
+                new Object[]{ new Integer[] {1, 2, 3}, new Integer[] {4, 5, 6}, (IntFunction<Integer[]>)Integer[]::new,
+                        new Integer[] {1, 2, 3, 4, 5, 6} },
+        };
+    }
+
+    @Test(dataProvider = "concatAnyTypeArraysData")
+    public void testConcatAnyTypeArrays(Integer[] arr1, Integer[] arr2, IntFunction<Integer[]> constructor, Integer[] expected) {
+        Assert.assertEquals(Utils.concat(arr1, arr2, constructor), expected);
+    }
+
 }
