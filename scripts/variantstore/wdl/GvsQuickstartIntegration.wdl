@@ -212,8 +212,6 @@ task AssertCostIsTrackedAndExpected {
         set -o pipefail
         set -o xtrace
 
-        echo '~{expected_output_csv}' > schema.json
-
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
         bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false "SELECT step, call, event_key, event_bytes FROM ~{dataset_name}.cost_observability" > cost_observability_output.csv
         set +o errexit
@@ -233,5 +231,6 @@ task AssertCostIsTrackedAndExpected {
     }
 
     output {
+      File differences = "differences.txt"
     }
 }
