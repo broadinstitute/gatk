@@ -8,13 +8,14 @@ workflow GvsCreateFilterSet {
     Boolean go = true
     String dataset_name
     String project_id
+    String call_set_identifier
 
     String filter_set_name
     Array[String] indel_recalibration_annotation_values = ["AS_FS", "AS_ReadPosRankSum", "AS_MQRankSum", "AS_QD", "AS_SOR"]
     Array[String] snp_recalibration_annotation_values = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"]
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
-    File gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/rc-add-withdrawn-back/gatk-package-4.2.0.0-527-ge5b9dd6-SNAPSHOT-local.jar"
+    File gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/gg_VS-479_gatk_cost_to_metadata_20220627/gatk-package-4.2.0.0-542-g1896bf3-SNAPSHOT-local.jar"
 
     Int? INDEL_VQSR_max_gaussians_override = 4
     Int? INDEL_VQSR_mem_gb_override
@@ -108,6 +109,7 @@ workflow GvsCreateFilterSet {
         service_account_json_path  = service_account_json_path,
         query_project              = project_id,
         dataset_id                 = dataset_name,
+        call_set_identifier        = call_set_identifier
     }
   }
 
@@ -287,6 +289,8 @@ task ExtractFilterTask {
     String fq_alt_allele_table
     String alt_allele_table_timestamp
 
+    String cost_observability_tablename = "cost_observability"
+
     String output_file
     Int? excess_alleles_threshold
 
@@ -295,12 +299,15 @@ task ExtractFilterTask {
     String? service_account_json_path
     String query_project
     String dataset_id
+    String call_set_identifier
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+  String intervals_name = basename(intervals)
+
 
   command <<<
     set -e
@@ -325,7 +332,12 @@ task ExtractFilterTask {
       ~{"--excess-alleles-threshold " + excess_alleles_threshold} \
       -L ~{intervals} \
       --dataset-id ~{dataset_id} \
-      --project-id ~{query_project}
+      --project-id ~{query_project} \
+      --cost-observability-tablename ~{cost_observability_tablename} \
+      --call-set-identifier ~{call_set_identifier} \
+      --wdl-step GvsCreateFilterSet \
+      --wdl-call ExtractFilterTask \
+      --shard-identifier ~{intervals}
   >>>
 
   runtime {

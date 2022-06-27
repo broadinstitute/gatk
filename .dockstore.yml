@@ -89,6 +89,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - gg_VS-479_gatk_cost_to_metadata
    - name: GvsCreateAltAllele
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateAltAllele.wdl
@@ -188,6 +189,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - gg_VS-479_gatk_cost_to_metadata
    - name: GvsCalculatePrecisionAndSensitivity
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCalculatePrecisionAndSensitivity.wdl
@@ -203,6 +205,7 @@ workflows:
          - master
          - ah_var_store
          - vs_447_fixup_non_fq_invocations
+         - gg_VS-479_gatk_cost_to_metadata
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl

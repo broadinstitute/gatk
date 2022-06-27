@@ -14,6 +14,7 @@ workflow GvsUnified {
         String project_id
 
         Array[String] external_sample_names
+        String call_set_identifier
         Boolean samples_are_controls = false
 
         File? gatk_override
@@ -33,7 +34,7 @@ workflow GvsUnified {
         # End GvsImportGenomes
 
         # Begin GvsCreateFilterSet
-        String filter_set_name
+        String filter_set_name = call_set_identifier
         Array[String] indel_recalibration_annotation_values = ["AS_FS", "AS_ReadPosRankSum", "AS_MQRankSum", "AS_QD", "AS_SOR"]
         Array[String] snp_recalibration_annotation_values = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"]
 
@@ -110,6 +111,7 @@ workflow GvsUnified {
             go = GvsCreateAltAllele.done,
             dataset_name = dataset_name,
             project_id = project_id,
+            call_set_identifier = call_set_identifier,
             filter_set_name = filter_set_name,
             indel_recalibration_annotation_values = indel_recalibration_annotation_values,
             snp_recalibration_annotation_values = snp_recalibration_annotation_values,
