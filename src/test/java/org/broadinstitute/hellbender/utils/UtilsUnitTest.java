@@ -30,8 +30,7 @@ import static org.testng.Assert.assertEquals;
  * Testing framework for general purpose utilities class.
  *
  */
-public final class
-UtilsUnitTest extends GATKBaseTest {
+public final class UtilsUnitTest extends GATKBaseTest {
 
     @Test
     public void testForceJVMLocaleToUSEnglish() {
@@ -988,9 +987,9 @@ UtilsUnitTest extends GATKBaseTest {
                 // expected, arrays
                 new Object[]{ ArrayUtils.EMPTY_BYTE_ARRAY, new byte[] { } },
                 new Object[]{ new byte[] {100, 100}, new byte[] {100, 100} },
-                new Object[]{ new byte[] {100, 100}, new byte[] {100, 100}, new byte[] { } },
-                new Object[]{ ArrayUtils.EMPTY_BYTE_ARRAY, new byte[] { }, new byte[] { } },
-                new Object[]{ new byte[] {100, 100, 100, 100}, new byte[] {100, 100}, new byte[] {100, 100} },
+                new Object[]{ new byte[] {100, 100, 10, 10}, new byte[] {100, 100}, new byte[] { }, new byte[] {10,10} },
+                new Object[]{ ArrayUtils.EMPTY_BYTE_ARRAY, new byte[] { }, new byte[] { }, new byte[] { } },
+                new Object[]{ new byte[] {10, 10, 15, 15, 20, 20}, new byte[] {10, 10}, new byte[] {15, 15}, new byte[] {20, 20} },
         };
     }
 
@@ -1010,9 +1009,10 @@ UtilsUnitTest extends GATKBaseTest {
         return new Object[][]{
                 // arr1, arr2, expected
                 new Object[]{ new byte[] { }, new byte[] { }, ArrayUtils.EMPTY_BYTE_ARRAY },
-                new Object[]{ new byte[] {100, 100}, new byte[] { }, new byte[] {100, 100} },
-                new Object[]{ new byte[] { }, new byte[] {100, 100}, new byte[] {100, 100} },
-                new Object[]{ new byte[] {100, 100}, new byte[] {100, 100}, new byte[] {100, 100, 100, 100} },
+                new Object[]{ new byte[] {10, 10}, new byte[] { }, new byte[] {10, 10} },
+                new Object[]{ new byte[] { }, new byte[] {10, 10}, new byte[] {10, 10} },
+                new Object[]{ new byte[] {10}, new byte[] {15, 15}, new byte[] {10, 15, 15} },
+                new Object[]{ new byte[] {10, 10}, new byte[] {15, 15}, new byte[] {10, 10, 15, 15} },
         };
     }
 
@@ -1033,6 +1033,8 @@ UtilsUnitTest extends GATKBaseTest {
                         new Integer[] {4, 5, 6} },
                 new Object[]{ new Integer[] {1, 2, 3}, new Integer[] {4, 5, 6}, (IntFunction<Integer[]>)Integer[]::new,
                         new Integer[] {1, 2, 3, 4, 5, 6} },
+                new Object[]{ new Integer[] {4, 5, 6}, new Integer[] {1, 2, 3}, (IntFunction<Integer[]>)Integer[]::new,
+                        new Integer[] {4, 5, 6, 1, 2, 3} },
         };
     }
 
@@ -1044,7 +1046,7 @@ UtilsUnitTest extends GATKBaseTest {
    @DataProvider(name = "concatAnyTypeWithNullArrayData")
    public Object[][] concatAnyTypeWithNullArrayData(){
        return new Object[][]{
-               new Object[]{null, new Integer[]{1, 2, 3}, (IntFunction<Integer[]>) Integer[]::new},
+               new Object[]{null, new Integer[] {1, 2, 3}, (IntFunction<Integer[]>) Integer[]::new},
                new Object[]{new Integer[] {1, 2, 3}, null, (IntFunction<Integer[]>) Integer[]::new},
                new Object[]{null, null, (IntFunction<Integer[]>) Integer[]::new}
        };
