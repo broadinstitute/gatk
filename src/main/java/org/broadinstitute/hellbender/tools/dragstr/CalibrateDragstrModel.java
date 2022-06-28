@@ -263,6 +263,7 @@ public class CalibrateDragstrModel extends GATKTool {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private PrintWriter openSitesOutputWriter(final String sitesOutput) {
         return sitesOutput == null ? new PrintWriter(new NullOutputStream())
                 : new PrintWriter(BucketUtils.createFile(sitesOutput));
