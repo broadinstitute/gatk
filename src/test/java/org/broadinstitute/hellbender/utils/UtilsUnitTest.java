@@ -1000,6 +1000,11 @@ UtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(Utils.concat(arrays), expected);
     }
 
+    @Test
+    public void testConcatMultipleWithNoArrays(){
+        Assert.assertEquals(Utils.concat(), ArrayUtils.EMPTY_BYTE_ARRAY);
+    }
+
     @DataProvider(name = "concatTwoByteArraysData")
     public Object[][] concatTwoByteArraysData() {
         return new Object[][]{
@@ -1034,6 +1039,20 @@ UtilsUnitTest extends GATKBaseTest {
     @Test(dataProvider = "concatAnyTypeArraysData")
     public void testConcatAnyTypeArrays(Integer[] arr1, Integer[] arr2, IntFunction<Integer[]> constructor, Integer[] expected) {
         Assert.assertEquals(Utils.concat(arr1, arr2, constructor), expected);
+    }
+
+   @DataProvider(name = "concatAnyTypeWithNullArrayData")
+   public Object[][] concatAnyTypeWithNullArrayData(){
+       return new Object[][]{
+               new Object[]{null, new Integer[]{1, 2, 3}, (IntFunction<Integer[]>) Integer[]::new},
+               new Object[]{new Integer[] {1, 2, 3}, null, (IntFunction<Integer[]>) Integer[]::new},
+               new Object[]{null, null, (IntFunction<Integer[]>) Integer[]::new}
+       };
+   }
+
+    @Test(expectedExceptions = IllegalArgumentException.class, dataProvider = "concatAnyTypeWithNullArrayData")
+    public void testConcatAnyTypeWithNullArray(Integer[] arr1, Integer[] arr2, IntFunction<Integer[]> constructor){
+        Utils.concat(arr1, arr2, constructor);
     }
 
 }
