@@ -71,7 +71,7 @@ The table below describes the GVS workflow input variables:
 | external_sample_names | Unique sample IDs used in creation of output VCF file; `sample_id` in the sample data table in Terra. | Array of strings |
 | input_vcfs | Cloud paths to the sample GVCF files. | Array of files |
 | input_vcf_indexes | Cloud paths to the sample GVCF index files. | Array of files |
-| callset_identifier | Used to name the filter model, BigQuery extract tables, and final joint VCF shards; should begin with a letter; valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”. | String |
+| call_set_identifier | Used to name the filter model, BigQuery extract tables, and final joint VCF shards; should begin with a letter; valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”. | String |
 | extract_output_gcs_dir | Optional; desired cloud path for output files. | String |
 
 ## Tasks and tools

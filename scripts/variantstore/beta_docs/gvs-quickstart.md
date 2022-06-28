@@ -104,7 +104,7 @@ The workflow is configured to call this input from the data table. To run:
 1. In the configuration page, select the sample_set entity in Step 1.
 1. Select the sample_set dataset in Step 2.
 1. Configure the workflow inputs.
-    1. Enter a name for the callset as a string with the format “*CALLSET_NAME*” for the `callset_identifier` variable. This string is used as to name several variables and files and should begin with a letter. Valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”.
+    1. Enter a name for the callset as a string with the format “*CALLSET_NAME*” for the `call_set_identifier` variable. This string is used as to name several variables and files and should begin with a letter. Valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”.
     1. Enter the name of the BigQuery dataset you created in Step 4 of Setup as a string with the format “*DATASET_NAME*” for the `dataset_name` variable.
     1. Enter the name of the GCP project you created in Step 3 of Setup as a string with the format “*PROJECT_NAME*” for the `project_id` variable.
 1. Save the workflow configuration.

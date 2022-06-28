@@ -123,7 +123,7 @@ Now that your samples are loaded into data table in Terra, it’s time to setup 
     1. At the bottom of the page, **name your new sample_set**. This will appear in the sample_set data table.
     1. Click **OK** to create the sample_set.
 1. Configure the workflow inputs.
-    1. Enter a **name for the callset** as a string with the format “*CALLSET_NAME*” for the `callset_identifier` variable. This string is used as to name several variables and files and should begin with a letter. Valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”.
+    1. Enter a **name for the callset** as a string with the format “*CALLSET_NAME*” for the `call_set_identifier` variable. This string is used as to name several variables and files and should begin with a letter. Valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”.
     1. Enter the name of your **BigQuery dataset** as a string with the format “*DATASET_NAME*” for the `dataset_name` variable.
     1. Enter the name of the **GCP project** that holds the BigQuery dataset as a string with the format “*PROJECT_NAME*” for the `project_id` variable.
 1. **Save** the workflow configuration.
