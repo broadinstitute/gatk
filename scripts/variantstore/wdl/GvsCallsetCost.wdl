@@ -120,9 +120,10 @@ task ReadCostObservabilityTable {
     }
     command <<<
         bq query --location=US --project_id='~{project_id}' --format=prettyjson --use_legacy_sql=false \
-            "SELECT step, event_key, sum(event_bytes) AS sum_event_bytes \
+            "SELECT step, event_key, round(sum(event_bytes) / (1024*1024*1024), 2) AS sum_event_gibibytes \
                 FROM \`~{project_id}.~{dataset_name}.cost_observability\` \
-                WHERE call_set_identifier = '~{call_set_identifier}' GROUP BY step, event_key" > cost_observability.json
+                WHERE call_set_identifier = '~{call_set_identifier}' GROUP BY step, event_key ORDER BY step" \
+            > cost_observability.json
     >>>
     runtime {
         docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:390.0.0"
