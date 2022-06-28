@@ -10,18 +10,8 @@ workflow GvsCallsetCost {
         Array[String] excluded_submission_ids = []
     }
 
-    call ValidateInputs {
-        input:
-            project_id = project_id,
-            dataset_name = dataset_name,
-            workspace_namespace = workspace_namespace,
-            workspace_name = workspace_name,
-            call_set_identifier = call_set_identifier
-    }
-
     call WorkflowComputeCosts {
         input:
-            go = ValidateInputs.done,
             workspace_namespace = workspace_namespace,
             workspace_name = workspace_name,
             excluded_submission_ids = excluded_submission_ids
@@ -29,7 +19,6 @@ workflow GvsCallsetCost {
 
     call CoreStorageModelSizes {
         input:
-            go = ValidateInputs.done,
             project_id = project_id,
             dataset_name = dataset_name
     }
@@ -57,98 +46,6 @@ workflow GvsCallsetCost {
     }
 }
 
-task ValidateInputs {
-    meta {
-        description: "Sanity check inputs before running anything"
-        # OK for this to call cache so it's not `volatile`.
-    }
-    input {
-        String project_id
-        String dataset_name
-        String workspace_namespace
-        String workspace_name
-        String call_set_identifier
-    }
-    command <<<
-
-        sanity_check_input() {
-            local -n outfail="fail"
-            local description="$1"
-            local input="$2"
-            local valid_characters="$3"
-            local minimum_length="$4"
-            local maximum_length="$5"
-
-            # Do not check for valid characters if the `valid_characters` variable is empty.
-            if [[ ${#valid_characters} -gt 0 ]]
-            then
-                if [[ "${input}" =~ [^${valid_characters}] ]]
-                then
-                    echo "Invalid ${description} '${input}': contains invalid characters, valid characters in [${valid_characters}]."
-                    outfail=1
-                fi
-            fi
-
-            local input_length=${#input}
-            if [[ ${input_length} -lt ${minimum_length} ]] || [[ ${input_length} -gt ${maximum_length} ]]
-            then
-                echo "Invalid ${description} '$input', length must be between ${minimum_length} and ${maximum_length} characters inclusive."
-                outfail=1
-            fi
-        }
-
-        fail=0
-
-        # Technically single quotes and exclamation points are allowed in project ids but none of that nonsense here.
-        # https://cloud.google.com/resource-manager/docs/creating-managing-projects#:~:text=A%20project%20name%20can%20contain,between%204%20and%2030%20characters.
-        sanity_check_input \
-            "project id" \
-            "~{project_id}" \
-            '-_0-9a-zA-Z' \
-            4 \
-            30
-
-        sanity_check_input \
-            "dataset name" \
-            "~{dataset_name}" \
-            "0-9A-Za-z_" \
-            1 \
-            1024
-
-        # The following non-Google restrictions are arbitrary but comforting and could be relaxed.
-        sanity_check_input \
-            "call set identifier" \
-            "~{call_set_identifier}" \
-            '-_0-9a-zA-Z' \
-            1 \
-            100
-
-        sanity_check_input \
-            "workspace namespace" \
-            "~{workspace_namespace}" \
-            '' \
-            1 \
-            100
-
-        sanity_check_input \
-            "workspace name" \
-            "~{workspace_name}" \
-            '' \
-            1 \
-            100
-
-        if [[ $fail -eq 1 ]]
-        then
-            exit 1
-        fi
-    >>>
-    runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:390.0.0"
-    }
-    output {
-        Boolean done = true
-    }
-}
 
 task WorkflowComputeCosts {
     meta {
@@ -156,7 +53,6 @@ task WorkflowComputeCosts {
         volatile: true
     }
     input {
-        Boolean go = true
         String workspace_namespace
         String workspace_name
         Array[String] excluded_submission_ids
@@ -189,7 +85,6 @@ task CoreStorageModelSizes {
         volatile: true
     }
     input {
-        Boolean go = true
         String project_id
         String dataset_name
     }
