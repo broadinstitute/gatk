@@ -188,6 +188,14 @@ workflows:
        branches:
          - master
          - ah_var_store
+   - name: GvsJointVariantCalling
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCalling.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - rc-vs-483-beta-user-wdl
    - name: GvsCalculatePrecisionAndSensitivity
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCalculatePrecisionAndSensitivity.wdl
