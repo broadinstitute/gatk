@@ -36,6 +36,7 @@ import java.util.stream.Stream;
 
 public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
     // null print stream for the tests
+    @SuppressWarnings("deprecation")
     private static final PrintStream nullMessageStream = new PrintStream(new NullOutputStream());
 
 //======================================================================================================================
