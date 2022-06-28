@@ -15,9 +15,9 @@ workflow GvsJointVariantCalling {
 
     # the callset_identifier string is used to name many different things throughout this workflow (BQ tables, vcfs etc),
     # and so make sure nothing is broken by creative users, we replace spaces and underscores with hyphens
-    String extract_output_file_base_name = sub(callset_identifier, "\s+|\_+", "-")
-    String extract_table_prefix = sub(callset_identifier, "\s+|\_+", "-")
-    String filter_set_name = sub(callset_identifier, "\s+|\_+", "-")
+    String extract_output_file_base_name = sub(callset_identifier, "\\s+|\_+", "-")
+    String extract_table_prefix = sub(callset_identifier, "\\s+|\_+", "-")
+    String filter_set_name = sub(callset_identifier, "\\s+|\_+", "-")
     if(false) {
       Int extract_maxretries_override = ""
       Int extract_preemptible_override = ""
