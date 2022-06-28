@@ -231,6 +231,7 @@ task AssertCostIsTrackedAndExpected {
     }
 
     output {
+      File cost_observability_output_csv = "cost_observability_output.csv"
       File differences = "differences.txt"
     }
 }

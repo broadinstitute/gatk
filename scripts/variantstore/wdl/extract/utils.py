@@ -68,7 +68,7 @@ def write_job_stats(jobs, client, fq_dataset, call_set_identifier, step, call, s
     # populate cost_observability data
     sql = f"""INSERT INTO `{fq_dataset}.cost_observability`
             (call_set_identifier, step, call, shard_identifier, event_key, call_start_timestamp, event_timestamp, event_bytes)
-            VALUES('{call_set_identifier}', '{step}', '{call}', '{shard_identifier}', 'BigQuery Query Billed',
+            VALUES('{call_set_identifier}', '{step}', '{call}', '{shard_identifier}', 'BigQuery Query Scanned',
             CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(), {total})"""
     query = client.query(sql)
     query.result()
