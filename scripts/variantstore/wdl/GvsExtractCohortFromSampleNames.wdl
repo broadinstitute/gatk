@@ -12,6 +12,7 @@ workflow GvsExtractCohortFromSampleNames {
     String query_project
     String gvs_project
     String gvs_dataset
+    String call_set_identifier
     String cohort_table_prefix
 
     # not using the defaults in GvsPrepareCallset because we're using pre created datasets defined by the caller
@@ -53,6 +54,7 @@ workflow GvsExtractCohortFromSampleNames {
       project_id = gvs_project,
       query_project = query_project,
       dataset_name = gvs_dataset,
+      call_set_identifier = call_set_identifier,
       cohort_project_id = destination_project_id,
       cohort_dataset_name = destination_dataset_name,
       extract_table_prefix = cohort_table_prefix,

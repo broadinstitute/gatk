@@ -127,8 +127,9 @@ workflow GvsUnified {
     call PrepareRangesCallset.GvsPrepareCallset {
         input:
             go = GvsCreateFilterSet.done,
-            project_id = project_id,
             dataset_name = dataset_name,
+            project_id = project_id,
+            call_set_identifier = call_set_identifier,
             control_samples = samples_are_controls,
             extract_table_prefix = extract_table_prefix,
             query_project = query_project,

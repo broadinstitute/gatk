@@ -277,6 +277,10 @@ workflow GvsCreateFilterSet {
 
 task ExtractFilterTask {
   input {
+    String query_project
+    String dataset_id
+    String call_set_identifier
+
     File reference
     File reference_index
     File reference_dict
@@ -297,9 +301,6 @@ task ExtractFilterTask {
     # Runtime Options:
     File? gatk_override
     String? service_account_json_path
-    String query_project
-    String dataset_id
-    String call_set_identifier
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
@@ -337,7 +338,7 @@ task ExtractFilterTask {
       --call-set-identifier ~{call_set_identifier} \
       --wdl-step GvsCreateFilterSet \
       --wdl-call ExtractFilterTask \
-      --shard-identifier ~{intervals}
+      --shard-identifier ~{intervals_name}
   >>>
 
   runtime {

@@ -69,7 +69,6 @@ public class ExtractFeatures extends ExtractTool {
         fullName = "query-labels",
         doc = "Key-value pairs to be added to the extraction BQ query. Ex: --query-labels key1=value1 --query-labels key2=value2",
         optional = true)
-
     protected List<String> queryLabels = new ArrayList<>();
 
     @Argument(
@@ -114,9 +113,9 @@ public class ExtractFeatures extends ExtractTool {
     @Override
     protected String[] customCommandLineValidation() {
         final List<String> errors = new ArrayList<>();
-        if (costObservabilityTableName != null || callSetIdentifier != null || wdlStep != null || wdlCall != null || shardIdentifier != null) {
-            if (costObservabilityTableName == null || callSetIdentifier == null || wdlStep == null || wdlCall == null || shardIdentifier == null) {
-                errors.add("Parameters `cost-observability-tablename`, `call-set-identifier`, 'wdl-step', 'wdl-call', and 'shardIdentifier' must either ALL be set or ALL NOT BE set");
+        if (projectID != null || datasetID != null || costObservabilityTableName != null || callSetIdentifier != null || wdlStep != null || wdlCall != null || shardIdentifier != null) {
+            if (projectID == null || datasetID == null || costObservabilityTableName == null || callSetIdentifier == null || wdlStep == null || wdlCall == null || shardIdentifier == null) {
+                errors.add("Parameters 'project-id', 'dataset-id', `cost-observability-tablename`, `call-set-identifier`, 'wdl-step', 'wdl-call', and 'shardIdentifier' must either ALL be set or ALL NOT BE set");
             }
         }
         if (!errors.isEmpty()) {
