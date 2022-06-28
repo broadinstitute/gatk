@@ -141,9 +141,6 @@ public class ReferenceConfidenceVariantContextMergerUnitTest extends GATKBaseTes
         final List<Allele> A_C_del = Arrays.asList(Aref, C, del);
 
 
-
-
-
         // first test the case of a single record
         tests.add(new Object[]{"test00",Arrays.asList(vcA_C_ALT),
                 loc, false, false,
@@ -211,30 +208,29 @@ public class ReferenceConfidenceVariantContextMergerUnitTest extends GATKBaseTes
 
         // test creation of AD with proper allele indexing with and without PLs
 
+        final Genotype gA_ATC_ALT_AD_and_PLs = new GenotypeBuilder("A_ATC").PL(new int[]{30, 20, 10, 71, 72, 73}).AD(new int[]{20,10,40}).alleles(noCalls).make();
+        final VariantContext vcA_ATC_ALT_AD_and_PLs = new VariantContextBuilder(VCbase).alleles(A_ATC_ALT).genotypes(gA_ATC_ALT_AD_and_PLs).make();
+        final Genotype gA_C_G_ALT_AD_and_PLs = new GenotypeBuilder("A_C_G").PL(new int[]{40, 20, 30, 20, 10, 30, 71, 72, 73, 74}).AD(new int[]{30,0,8}).alleles(noCalls).make();
+        final VariantContext vcA_C_G_ALT_AD_and_PLs = new VariantContextBuilder(VCbase).alleles(A_C_G_ALT).genotypes(gA_C_G_ALT_AD_and_PLs).make();
+        final List<Allele> A_C_G_ATC = Arrays.asList(Aref, ATC, C, G); // the test hard codes the filtering out of Allele.NON_REF_ALLELE alleles
+
+        // 3 and 2 alt alleles w no overlaps should give 4 AD values
+        tests.add(new Object[]{"test12",Arrays.asList(vcA_ATC_ALT_AD_and_PLs, vcA_C_G_ALT_AD_and_PLs), loc, false, false,
+                new VariantContextBuilder(VCbase).alleles(A_C_G_ATC).genotypes(
+                        new GenotypeBuilder("A_ATC").AD(new int[]{20,10,40,40}).PL(new int[]{30,20,10,71,72,73,71,72,73,73}).alleles(noCalls).make(),
+                        new GenotypeBuilder("A_C_G").AD(new int[]{30,0,0,8}).PL(new int[]{40,71,74,20,72,30,20,73,10,30}).alleles(noCalls).make()).make()});
+
+
         final Genotype gA_C_G_ALT_noPLs = new GenotypeBuilder("A_C_G").AD(new int[]{60,9,0}).alleles(noCalls).make();
         final VariantContext vcA_C_G_noPLs = new VariantContextBuilder(VCbase2).alleles(A_C_G_ALT).genotypes(gA_C_G_ALT_noPLs).make();
         final VariantContext vcA_C_G_ALT_noPLs = new VariantContextBuilder(VCbase).alleles(A_C_G_ALT).genotypes(gA_C_G_ALT_noPLs).make();
 
-        final Genotype gA_C_G_ALT_AD_and_PLs = new GenotypeBuilder("A_C_G").PL(new int[]{40, 20, 30, 20, 10, 30, 71, 72, 73, 74}).AD(new int[]{30,0,8}).alleles(noCalls).make();
-        final VariantContext vcA_C_G_ALT_AD_and_PLs = new VariantContextBuilder(VCbase).alleles(A_C_G_ALT).genotypes(gA_C_G_ALT_AD_and_PLs).make();
-
-
-        final List<Allele> A_C_G_ATC = Arrays.asList(Aref, ATC, C, G); // why no Allele.NON_REF_ALLELE?
-        // we've got 3 different alt alleles + 1 ref ---so we want 4 AD values
-
-        final Genotype gA_ATC_ALT_AD = new GenotypeBuilder("A_ATC").PL(standardPLs).AD(new int[]{20,10,40}).alleles(noCalls).make();
-        final VariantContext vcA_ATC_ALT_AD_and_PLs = new VariantContextBuilder(VCbase).alleles(A_ATC_ALT).genotypes(gA_ATC_ALT_AD).make();
-        // 3 and 2 alt alleles w no overlaps should give 4 AD values
-        tests.add(new Object[]{"test12",Arrays.asList(vcA_ATC_ALT_AD_and_PLs, vcA_C_G_ALT_AD_and_PLs), loc, true, true,
-                new VariantContextBuilder(VCbase).alleles(A_C_G_ATC).genotypes(
-                        new GenotypeBuilder("A_ATC.test").AD(new int[]{20,10,40,40}).PL(new int[]{30,20,10,71,72,73,71,72,73,73}).alleles(noCalls).make(),
-                        new GenotypeBuilder("A_C_G.test").AD(new int[]{30,0,0,8}).PL(new int[]{40,71,74,20,72,30,20,73,10,30}).alleles(noCalls).make()).make()});
-
+        //final List<Allele> A_C_G = Arrays.asList(Aref, C, G);
         // 2 and 2 alt alleles w all overlaps should give 3 AD values
-        tests.add(new Object[]{"test13",Arrays.asList(vcA_C_G_noPLs, vcA_C_G_ALT_noPLs), loc, false, true,
+        tests.add(new Object[]{"test13",Arrays.asList(vcA_C_G_noPLs, vcA_C_G_ALT_noPLs), loc, false, false,
                 new VariantContextBuilder(VCbase).alleles(A_C_G).genotypes(
-                        new GenotypeBuilder("A_C_G.test2").AD(new int[]{60,9,0}).alleles(noCalls).make(),
-                        new GenotypeBuilder("A_C_G.test").AD(new int[]{60,9,0}).alleles(noCalls).make()).make()});
+                        new GenotypeBuilder("A_C_G").AD(new int[]{60,9,0}).alleles(noCalls).make(),
+                        new GenotypeBuilder("A_C_G").AD(new int[]{60,9,0}).alleles(noCalls).make()).make()});
 
         return tests.toArray(new Object[][]{});
     }
