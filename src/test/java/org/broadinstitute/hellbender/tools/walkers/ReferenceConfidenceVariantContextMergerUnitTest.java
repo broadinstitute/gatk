@@ -207,12 +207,12 @@ public class ReferenceConfidenceVariantContextMergerUnitTest extends GATKBaseTes
                         new GenotypeBuilder("A_C_G.test").PL(new int[]{40, 20, 30, 20, 10, 30}).alleles(noCalls).make()).make()});
 
         // test creation of AD with proper allele indexing with and without PLs
-
+        // Note: this test hard codes the filtering out of Allele.NON_REF_ALLELE alleles, so no AD value is expected
         final Genotype gA_ATC_ALT_AD_and_PLs = new GenotypeBuilder("A_ATC").PL(new int[]{30, 20, 10, 71, 72, 73}).AD(new int[]{20,10}).alleles(noCalls).make();
         final VariantContext vcA_ATC_ALT_AD_and_PLs = new VariantContextBuilder(VCbase).alleles(A_ATC_ALT).genotypes(gA_ATC_ALT_AD_and_PLs).make();
         final Genotype gA_C_G_ALT_AD_and_PLs = new GenotypeBuilder("A_C_G").PL(new int[]{40, 20, 30, 20, 10, 30, 71, 72, 73, 74}).AD(new int[]{30,0,8}).alleles(noCalls).make();
         final VariantContext vcA_C_G_ALT_AD_and_PLs = new VariantContextBuilder(VCbase).alleles(A_C_G_ALT).genotypes(gA_C_G_ALT_AD_and_PLs).make();
-        final List<Allele> A_C_G_ATC = Arrays.asList(Aref, ATC, C, G); // the test hard codes the filtering out of Allele.NON_REF_ALLELE alleles
+        final List<Allele> A_C_G_ATC = Arrays.asList(Aref, ATC, C, G);
 
         // 1 and 2 alt alleles (excluding Allele.NON_REF_ALLELEs) w no overlaps should give 4 AD values (1 ref, and 3 distinct alt alleles)
         tests.add(new Object[]{"test12",Arrays.asList(vcA_ATC_ALT_AD_and_PLs, vcA_C_G_ALT_AD_and_PLs), loc, false, false,
