@@ -226,6 +226,7 @@ workflows:
          - master
          - ah_var_store
          - vs_472_workflow_compute_costs
+         - vs_473_core_storage_model_cost
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl

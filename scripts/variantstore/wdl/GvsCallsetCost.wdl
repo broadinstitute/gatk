@@ -2,11 +2,11 @@ version 1.0
 
 workflow GvsCallsetCost {
     input {
-#        String project_id
-#        String dataset_name
+        String project_id
+        String dataset_name
         String workspace_namespace
         String workspace_name
-#        String callset_name
+        String call_set_identifier
         Array[String] excluded_submission_ids = []
     }
 
@@ -17,38 +17,41 @@ workflow GvsCallsetCost {
             excluded_submission_ids = excluded_submission_ids
     }
 
-#    call BigQueryWriteAPICost {
-#        input:
-#            project_id = project_id,
-#            dataset_name = dataset_name
-#    }
-#
+    call CoreStorageModelSizes {
+        input:
+            project_id = project_id,
+            dataset_name = dataset_name
+    }
+
 #    call BigQueryScannedCost {
 #        input:
 #            project_id = project_id,
 #            dataset_name = dataset_name,
-#            callset_name = callset_name
+#            call_set_identifier = call_set_identifier
 #    }
 #
 #    call BigQueryStorageAPIScannedCost {
 #        input:
 #            project_id = project_id,
 #            dataset_name = dataset_name,
-#            callset_name = callset_name
+#            call_set_identifier = call_set_identifier
 #    }
 
     output {
         File workflow_compute_costs = WorkflowComputeCosts.costs
         File workflow_compute_costs_log = WorkflowComputeCosts.log
+        String vet_gib = CoreStorageModelSizes.vet_gib
+        String ref_ranges_gib = CoreStorageModelSizes.ref_ranges_gib
+        String alt_allele_gib = CoreStorageModelSizes.alt_allele_gib
     }
 }
+
 
 task WorkflowComputeCosts {
     meta {
         description: "Calculate workflow compute costs by calling Firecloud APIs for submissions in the specified workspace"
         volatile: true
     }
-
     input {
         String workspace_namespace
         String workspace_name
@@ -75,29 +78,41 @@ task WorkflowComputeCosts {
     }
 }
 
-#task BigQueryWriteAPICost {
-#    meta {
-#        description: "Estimate GvsImportGenomes use of the BQ Write API via core storage costs from the sizes of vet_% and ref_ranges_% tables."
-#        volatile: true
-#    }
-#
-#    input {
-#        String project_id
-#        String dataset_name
-#    }
-#    command <<<
-#    >>>
-#
-#    runtime {
-#        docker: ""
-#    }
-#
-#    output {
-#        Float vet_gib = read_float("")
-#        Float ref_ranges_gib = read_float("")
-#        Float import_genomes_cost = 3
-#    }
-#}
+task CoreStorageModelSizes {
+    meta {
+        description: "Read sizes of vet_%, ref_ranges_%, and alt_allele tables from `INFORMATION_SCHEMA.PARTITIONS`."
+        # Definitely don't cache this, the values will change while the inputs to this task will not!
+        volatile: true
+    }
+    input {
+        String project_id
+        String dataset_name
+    }
+    command <<<
+
+        get_billable_bytes_in_gib() {
+            local table_pattern="$1"
+            local output_file_name="$2"
+
+            bq query --location=US --project_id='~{project_id}' --format=csv --use_legacy_sql=false \
+                "SELECT round(sum(total_billable_bytes) / (1024*1024*1024),2) \
+                    FROM \`~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS\` \
+                    WHERE table_name LIKE '${table_pattern}'" | tail -1 > ${output_file_name}
+        }
+
+        get_billable_bytes_in_gib "vet_%"        vet_gib.txt
+        get_billable_bytes_in_gib "ref_ranges_%" ref_ranges_gib.txt
+        get_billable_bytes_in_gib "alt_allele"   alt_allele_gib.txt
+    >>>
+    runtime {
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:390.0.0"
+    }
+    output {
+        Float vet_gib = read_float("vet_gib.txt")
+        Float ref_ranges_gib = read_float("ref_ranges_gib.txt")
+        Float alt_allele_gib = read_float("alt_allele_gib.txt")
+    }
+}
 
 #task BigQueryScannedCost {
 #    meta {
@@ -108,7 +123,7 @@ task WorkflowComputeCosts {
 #    input {
 #        String project_id
 #        String dataset_name
-#        String callset_name
+#        String call_set_identifier
 #    }
 #
 #    command <<<
@@ -135,7 +150,7 @@ task WorkflowComputeCosts {
 #    input {
 #        String project_id
 #        String dataset_name
-#        String callset_name
+#        String call_set_identifier
 #    }
 #
 #    command <<<
