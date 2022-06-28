@@ -215,7 +215,7 @@ task AssertCostIsTrackedAndExpected {
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
         bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false "SELECT step, call, event_key, event_bytes FROM ~{dataset_name}.cost_observability" > cost_observability_output.csv
         set +o errexit
-        diff cost_observability_output.csv ~{expected_output_csv} > differences.txt
+        diff -w cost_observability_output.csv ~{expected_output_csv} > differences.txt
         set -o errexit
 
         if [[ -s differences.txt ]]; then
