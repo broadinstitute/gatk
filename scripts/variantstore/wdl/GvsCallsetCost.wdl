@@ -10,12 +10,12 @@ workflow GvsCallsetCost {
         Array[String] excluded_submission_ids = []
     }
 
-    # call WorkflowComputeCosts {
-    #     input:
-    #         workspace_namespace = workspace_namespace,
-    #         workspace_name = workspace_name,
-    #         excluded_submission_ids = excluded_submission_ids
-    # }
+    call WorkflowComputeCosts {
+        input:
+            workspace_namespace = workspace_namespace,
+            workspace_name = workspace_name,
+            excluded_submission_ids = excluded_submission_ids
+    }
 
     call CoreStorageModelSizes {
         input:
@@ -31,8 +31,8 @@ workflow GvsCallsetCost {
     }
 
     output {
-        # File workflow_compute_costs = WorkflowComputeCosts.costs
-        # File workflow_compute_costs_log = WorkflowComputeCosts.log
+        File workflow_compute_costs = WorkflowComputeCosts.costs
+        File workflow_compute_costs_log = WorkflowComputeCosts.log
         String vet_gib = CoreStorageModelSizes.vet_gib
         String ref_ranges_gib = CoreStorageModelSizes.ref_ranges_gib
         String alt_allele_gib = CoreStorageModelSizes.alt_allele_gib
