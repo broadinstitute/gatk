@@ -108,11 +108,11 @@ public class FeatureOutputStream <F extends Feature> implements FeatureSink<F> {
     @Override
     public void close() {
         try {
+            outputStream.close(); // do this first so that the timestamp on the index will be later
             if (indexCreator != null) {
                 final Index index = indexCreator.finalizeIndex(locationAware.getPosition());
                 index.writeBasedOnFeaturePath(featurePath);
             }
-            outputStream.close();
         } catch (final IOException e) {
             throw new GATKException("Error closing output", e);
         }
