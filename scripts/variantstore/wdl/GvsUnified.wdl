@@ -12,10 +12,9 @@ workflow GvsUnified {
         # Begin GvsAssignIds
         String dataset_name
         String project_id
+        String call_set_identifier
 
         Array[String] external_sample_names
-        String call_set_identifier
-        Boolean samples_are_controls = false
 
         File? gatk_override
         String? service_account_json_path
@@ -77,7 +76,6 @@ workflow GvsUnified {
             dataset_name = dataset_name,
             project_id = project_id,
             external_sample_names = external_sample_names,
-            samples_are_controls = samples_are_controls,
             assign_ids_gatk_override = gatk_override,
             service_account_json_path = service_account_json_path
     }
@@ -129,7 +127,6 @@ workflow GvsUnified {
             go = GvsCreateFilterSet.done,
             dataset_name = dataset_name,
             project_id = project_id,
-            control_samples = samples_are_controls,
             extract_table_prefix = extract_table_prefix,
             query_project = query_project,
             destination_project = destination_project,
@@ -146,7 +143,6 @@ workflow GvsUnified {
             dataset_name = dataset_name,
             project_id = project_id,
             call_set_identifier = call_set_identifier,
-            control_samples = samples_are_controls,
             extract_table_prefix = extract_table_prefix,
             filter_set_name = filter_set_name,
             query_project = query_project,
