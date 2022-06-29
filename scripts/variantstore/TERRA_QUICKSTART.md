@@ -10,7 +10,7 @@ Through this QuickStart you will learn how to use the Broad Genomic Variant Stor
 This quickstart assumes that you are familiar with Terra workspaces, the data model and providing input parameters and launching workflows.
 
 1. You will need to have or create a BigQuery dataset (we'll call this `dataset_name` later on).
-22. Grant the following roles on the Google **project** (we'll call this `project_id` later on) containing the dataset to your proxy group:
+2. Grant the following roles on the Google **project** (we'll call this `project_id` later on) containing the dataset to your proxy group:
     - BigQuery data editor
     - BigQuery job user
     - BigQuery Read Session User
