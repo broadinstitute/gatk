@@ -16,7 +16,7 @@ To learn more about the GVS workflow, see the [Genomic Variant Store workflow ov
 
 ### What data does it require as input?
 
-- unblocked single sample GVCF files (`input_vcfs`)
+- reblocked single sample GVCF files (`input_vcfs`)
 - GVCF index files (`input_vcf_indexes`)
 
 Example GVCF and index files in the Data tab of the [GVS beta workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta) are hosted in a public Google bucket and links are provided in the sample data table.
