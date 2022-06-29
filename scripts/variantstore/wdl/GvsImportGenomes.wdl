@@ -16,13 +16,28 @@ workflow GvsImportGenomes {
     Boolean skip_loading_vqsr_fields = false
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
-    # If increasing this, also consider increasing `load_data_preemptible_override` and `load_data_maxretries_override`.
-    Int load_data_batch_size = 5
+    Int? load_data_batch_size
     Int? load_data_preemptible_override
     Int? load_data_maxretries_override
     File? load_data_gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/gg_VS-443_VETIngestValidation_20220531/gatk-package-4.2.0.0-531-gf8f4ede-SNAPSHOT-local.jar"
     String? service_account_json_path
   }
+
+  Int num_samples = length(external_sample_names)
+
+  Int effective_load_data_batch_size = if (defined(load_data_batch_size)) then select_first([load_data_batch_size])
+                                       else if (num_samples <= 100) then 1
+                                            else if (num_samples <= 5000) then 5
+                                                 else if (num_samples <= 20000) then 10
+                                                      else 20
+
+  Int effective_load_data_preemptible = if (defined(load_data_preemptible_override)) then select_first([load_data_preemptible_override])
+                                                 else if (effective_load_data_batch_size <= 10) then 5 else 8
+
+  Int effective_load_data_maxretries = if (defined(load_data_maxretries_override)) then select_first([load_data_maxretries_override])
+                                       else if (effective_load_data_batch_size <= 5) then 3
+                                            else if (effective_load_data_batch_size <= 10) then 5
+                                                 else 8
 
   # return an error if the lengths are not equal
   Int input_length = length(input_vcfs)
@@ -58,7 +73,7 @@ workflow GvsImportGenomes {
 
   call CreateFOFNs {
     input:
-      batch_size = load_data_batch_size,
+      batch_size = effective_load_data_batch_size,
       input_vcf_index_list = CurateInputLists.input_vcf_indexes,
       input_vcf_list = CurateInputLists.input_vcfs,
       sample_name_list = CurateInputLists.sample_name_list,
@@ -76,8 +91,8 @@ workflow GvsImportGenomes {
         input_vcfs = read_lines(CreateFOFNs.vcf_batch_vcf_fofns[i]),
         interval_list = interval_list,
         gatk_override = load_data_gatk_override,
-        load_data_preemptible_override = load_data_preemptible_override,
-        load_data_maxretries_override = load_data_maxretries_override,
+        load_data_preemptible_override = effective_load_data_preemptible,
+        load_data_maxretries_override = effective_load_data_maxretries,
         sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
         sample_map = GetUningestedSampleIds.sample_map,
         service_account_json_path = service_account_json_path,

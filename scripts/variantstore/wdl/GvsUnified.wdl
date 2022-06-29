@@ -26,9 +26,11 @@ workflow GvsUnified {
         Array[File] input_vcf_indexes
         File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
 
+
         # The larger the `load_data_batch_size` the greater the probability of preemptions and non-retryable
-        # BigQuery errors. So if increasing the batch size, then preemptible and maxretries should also be increased.
-        Int load_data_batch_size = 5
+        # BigQuery errors so if specifying this adjust preemptible and maxretries accordingly. Or just take the defaults,
+        # those should work fine in most cases.
+        Int? load_data_batch_size
         Int? load_data_preemptible_override
         Int? load_data_maxretries_override
         # End GvsImportGenomes
