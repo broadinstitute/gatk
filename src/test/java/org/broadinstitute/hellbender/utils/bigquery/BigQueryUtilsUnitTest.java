@@ -154,7 +154,6 @@ public class BigQueryUtilsUnitTest extends GATKBaseTest {
 
             final String name = row.get(0).getStringValue();
             final String age = row.get(1).isNull() ? null : row.get(1).getStringValue();
-            System.err.println("Hola ------> " + resultAndStatistics.queryStatistics.getEstimatedBytesProcessed());
 
             Assert.assertTrue(expectedNamesAndAges.containsKey(name), "Unexpected name " + name + " returned from query " + query);
             Assert.assertEquals(expectedNamesAndAges.get(name), age, "Wrong age " + age + " returned for name " + name + " in query " + query);
