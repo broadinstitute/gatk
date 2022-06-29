@@ -57,6 +57,7 @@ This is done by running the `GvsCreateAltAllele` workflow with the following par
 
 | Parameter         | Description |
 | ----------------- | ----------- |
+| call_set_identifier      | a unique, descriptive name for the callset, this can be the same as the `dataset_name`  |
 | dataset_name      | the name of the dataset you created above  |
 | project_id        | the name of the google project containing the dataset |
 
@@ -82,6 +83,7 @@ This is done by running the `GvsPrepareRangesCallset` workflow with the followin
 
 | Parameter            | Description |
 |--------------------- | ----------- |
+| call_set_identifier      | a unique, descriptive name for the callset, this can be the same as the `dataset_name` and it should be the same as the `call_set_identifier` from step 2  |
 | dataset_name         | the name of the dataset you created above  |
 | extract_table_prefix | A unique, descriptive name for the tables containing the callset (for simplicity, you can use the same name you used for `filter_set_name` in step 3); you will want to make note of this for use in the next step |
 | project_id           | the name of the google project containing the dataset |
