@@ -43,6 +43,7 @@ workflow GvsJointVariantCalling {
 
     call GvsUnified.GvsUnified {
         input:
+            call_set_identifier = call_set_identifier,
             dataset_name = dataset_name,
             project_id = project_id,
             external_sample_names = external_sample_names,
