@@ -25,25 +25,30 @@ workflow GvsImportGenomes {
 
   Int num_samples = length(external_sample_names)
 
+  if ((num_samples > 20000) && !(defined(load_data_batch_size))) {
+    call Utils.TerminateWorkflow as DieForTooManySamplesWithoutExplicitLoadDataBatchSize {
+      input:
+        message = "Importing " + num_samples + " samples but `load_data_batch_size` not explicitly specified; limit for auto batch-sizing is 20000 samples."
+    }
+  }
+
   Int effective_load_data_batch_size = if (defined(load_data_batch_size)) then select_first([load_data_batch_size])
-                                       else if (num_samples <= 100) then 1
-                                            else if (num_samples <= 5000) then 5
-                                                 else if (num_samples <= 20000) then 10
-                                                      else 20
+                                       else if num_samples < 1000 then 1
+                                            else num_samples / 1000
 
   Int effective_load_data_preemptible = if (defined(load_data_preemptible_override)) then select_first([load_data_preemptible_override])
-                                                 else if (effective_load_data_batch_size <= 10) then 5 else 8
+                                        else if effective_load_data_batch_size < 4 then 1
+                                             else effective_load_data_batch_size / 4
 
   Int effective_load_data_maxretries = if (defined(load_data_maxretries_override)) then select_first([load_data_maxretries_override])
-                                       else if (effective_load_data_batch_size <= 5) then 3
-                                            else if (effective_load_data_batch_size <= 10) then 5
-                                                 else 8
+                                       else if (effective_load_data_batch_size < 4) then 1
+                                            else effective_load_data_batch_size / 4
 
   # return an error if the lengths are not equal
   Int input_length = length(input_vcfs)
   Int input_indexes_length = length(input_vcf_indexes)
   if ((input_length != length(external_sample_names)) || (input_indexes_length != length(external_sample_names))) {
-    call Utils.TerminateWorkflow {
+    call Utils.TerminateWorkflow as DieForMismatchedVcfAndIndexLengths {
       input:
         message = "The lengths of workflow inputs `external_sample_names` (" + length(external_sample_names) +
                   "), `input_vcfs` (" + input_length + ") and `input_vcf_indexes` (" + input_indexes_length + ") should be the same.\n\n" +
