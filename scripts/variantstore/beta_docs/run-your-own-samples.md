@@ -137,7 +137,28 @@ If you run the workflow with the example data pre-loaded into the workspace, and
 ### Important configuration notes
 
 By default, the workflow is set up to write outputs to the workspace Google bucket. If you want to write the outputs to a different cloud storage location, you can specify the cloud path in the `extract_output_gcs_dir` optional input in the workflow configuration. 
-
+To access the interval lists for all of the output VCF shards:
+Click into your job from the job history tab. This page for your job will have a table with metadata from your job in it (such as workflow ID and the Run Cost) and the table will have a Links column.
+The icons/links in that column have additional job information.
+Job Manager
+Workflow Dashboard
+Execution directory
+There are two ways to get the interval lists from here. You can either use the UI in the Job Manager, or navigate for the correct path from the Execution directory.
+Using the Job Manager:
+If you prefer to use the job manager, click on the job manager link from the links column. From the List View tab, click into the GvsUnified page. This page's List View tab will show a list of all the sub-workflows in your job. From there, click into the GvsExtractCallset sub-workflow page. This page's List View tab will show a list of all tasks in the extract sub-workflow. You are interested in the SplitIntervals task which should be the 8th task. In the SplitIntervals row, find the icon in the outputs column and click on it. A popover will load, which will contain an array of the interval_files. These are the paths for the interval lists.
+If the popover does not load, you can click into the SplitIntervals Execution directory (which is in the Links column of this table).
+Using the Execution directory:
+Your jobs Execution directory contains artifacts from your job, including logs and the interval lists.
+You can access the interval lists by navigating to the directory for the SplitIntervals task inside the GvsExtractCallset sub-workflow.
+Once you have clicked on the link to the Execution directory, it will drop you into your workflow bucket.
+From there, click into the call-GvsUnified --> GvsUnified --> <unified job id (this will be the only option, so no lookup is needed)>
+Then select the extract sub-workflow: call-GvsExtractCallset --> GvsExtractCallset --> <extract job id (only option--no lookup needed)>
+Finally, select the SplitIntervals task: call-SplitIntervals and find the glob-<> directory. Inside that directory are the interval lists for the call set.
+The interval list paths will look something like this:
+gs://<workspace bucket id>/<submission id>/GvsJointVariantCalling/<workflow id>/call-GvsUnified/GvsUnified/<unified job id (only option--no lookup needed)>/call-GvsExtractCallset/GvsExtractCallset/<extract job id (only option--no lookup needed)>/call-SplitIntervals/glob-<task id>/0000000000-<callset id>.vcf.gz.interval_list
+(Note: there will also be a glob-<task id> file with a list of interval lists, but not their paths)
+Note:
+The interval lists are named consistently with the vcfs: 00000000.vcf.gz.interval-list will go with 00000000.vcf.gz and 00000000.vcf.gz.tbi 
 ### Time and cost estimates
 Below are several examples of the time and cost of running the workflow.
 
