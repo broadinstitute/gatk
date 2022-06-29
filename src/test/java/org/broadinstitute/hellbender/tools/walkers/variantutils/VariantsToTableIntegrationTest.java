@@ -240,8 +240,8 @@ public final class VariantsToTableIntegrationTest extends CommandLineProgramTest
 
     @Test
     public void testNoFieldsSpecified() throws IOException {
-        final File inputFile = new File(getToolTestDataDir(), "extraheaderlinesdeleted_dbsnp_138.snippet.vcf");
-        final File outputFile = createTempFile(getToolTestDataDir(), "noFieldsSpecifiedOutput.table");
+        final File inputFile = new File(getToolTestDataDir(), "VCFWithoutGenotypes_dbsnp_138.snippet.vcf");
+        final File outputFile = createTempFile("noFieldsSpecifiedOutput", ".table");
         final File expectedFile = new File(getToolTestDataDir(), "expected.noFieldsSpecified.table");
 
         final String[] args = new String[] {"--variant", inputFile.getAbsolutePath(),
@@ -253,8 +253,8 @@ public final class VariantsToTableIntegrationTest extends CommandLineProgramTest
 
     @Test
     public void testNoFieldsSpecifiedWithSamples() throws IOException {
-        final File inputFile = new File(getToolTestDataDir(), "1000G.phase3.snippet.vcf");
-        final File outputFile = createTempFile(getToolTestDataDir(), "noFieldsSpecifiedWithSamplesOutput.table");
+        final File inputFile = new File(getToolTestDataDir(), "VCFWithGenotypes_1000G.phase3.snippet.vcf");
+        final File outputFile = createTempFile("noFieldsSpecifiedWithSamplesOutput", ".table");
         final File expectedFile = new File(getToolTestDataDir(), "expected.noFieldsSpecifiedWithSamples.table");
 
         final String[] args = new String[] {"--variant", inputFile.getAbsolutePath(),
@@ -264,4 +264,17 @@ public final class VariantsToTableIntegrationTest extends CommandLineProgramTest
         IntegrationTestSpec.assertEqualTextFiles(outputFile, expectedFile);
     }
 
+    @Test
+    public void testNoFieldsSpecifiedFormatFieldInHeaderNoSamples() throws IOException {
+        final File inputFile = new File(getToolTestDataDir(), "VCFWithoutGenotypesWithFormatField_dbsnp_138.snippet.vcf");
+        final File outputFile = createTempFile("noFieldsSpecifiedNoSamplesOutput", ".table");
+        final File expectedFile = new File(getToolTestDataDir(), "expected.noFieldsSpecifiedNoSamples.table");
+
+        final String[] args = new String[] {"--variant", inputFile.getAbsolutePath(),
+                "-O", outputFile.getAbsolutePath()};
+        runCommandLine(args);
+
+        IntegrationTestSpec.assertEqualTextFiles(outputFile, expectedFile);
+    }
+    
 }

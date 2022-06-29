@@ -35,7 +35,8 @@ import static org.broadinstitute.hellbender.utils.Utils.split;
  *     This tool extracts specified fields for each variant in a VCF file to a tab-delimited table, which may be easier
  *     to work with than a VCF. By default, the tool only extracts PASS or . (unfiltered) variants in the VCF file. Filtered variants may be
  *     included in the output by adding the --show-filtered flag. The tool can extract both INFO (i.e. site-level) fields and
- *     FORMAT (i.e. sample-level) fields.
+ *     FORMAT (i.e. sample-level) fields. If the tool is run without specifying any fields, it defaults to include all fields
+ *     declared in the VCF header.
  * </p>
  *
  * <h4>INFO/site-level fields</h4>
@@ -97,6 +98,12 @@ import static org.broadinstitute.hellbender.utils.Utils.split;
  *     1      65068538   SNP    49,0          35,4
  *     1      111146235  SNP    69,1          77,4
  * </pre>
+ * <pre>
+ *     gatk VariantsToTable \
+ *     -V input.vcf \
+ *     -O output.table
+ * </pre>
+ * <p>would produce a file that includes all fields declared in the VCF header.</p>
  *
  * <h3>Notes</h3>
  * <ul>
@@ -211,7 +218,7 @@ public final class VariantsToTable extends VariantWalker {
 
         // if no fields specified, default to include all fields listed in header into table
         if(fieldsToTake.isEmpty() && genotypeFieldsToTake.isEmpty() && asFieldsToTake.isEmpty() && asGenotypeFieldsToTake.isEmpty()){
-            logger.warn("No fields were specified. All fields will be included in output table.");
+            logger.warn("No fields were specified. All fields declared in the VCF header will be included in the output table.");
 
             // add all mandatory VCF fields (except INFO)
             for(VCFHeader.HEADER_FIELDS headerField : VCFHeader.HEADER_FIELDS.values()){
@@ -228,7 +235,7 @@ public final class VariantsToTable extends VariantWalker {
             // add all FORMAT fields present in VCF header
             for (final VCFFormatHeaderLine formatLine : inputHeader.getFormatHeaderLines()) {
                 // ensure GT field listed as first FORMAT field
-                if(formatLine.getID().equals("GT")) {
+                if(formatLine.getID().equals(VCFConstants.GENOTYPE_KEY)) {
                     genotypeFieldsToTake.add(0, formatLine.getID());
                 }
                 else {
@@ -238,7 +245,7 @@ public final class VariantsToTable extends VariantWalker {
         }
 
         // if fields specified, but none are genotype fields, set samples to empty
-        if (genotypeFieldsToTake.isEmpty() && asGenotypeFieldsToTake.isEmpty() && (!fieldsToTake.isEmpty() || !asFieldsToTake.isEmpty())) {
+        if (genotypeFieldsToTake.isEmpty() && asGenotypeFieldsToTake.isEmpty()) {
                 samples = Collections.emptySortedSet();
         }
         else {
