@@ -65,7 +65,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_441_cost_observability
+         - rsa_metadata_from_python
    - name: GvsAoUReblockGvcf
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsAoUReblockGvcf.wdl
@@ -98,7 +98,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_447_fixup_non_fq_invocations
+         - rsa_metadata_from_python
    - name: GvsCreateTables
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateTables.wdl
@@ -132,7 +132,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_query_labels
+         - rsa_metadata_from_python
    - name: GvsCreateVAT
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVAT.wdl
@@ -188,6 +188,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_metadata_from_python
    - name: GvsJointVariantCalling
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCalling.wdl
@@ -210,7 +211,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_reblock_quickstart_v2
+         - rsa_metadata_from_python
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl

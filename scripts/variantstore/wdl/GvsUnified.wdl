@@ -14,6 +14,8 @@ workflow GvsUnified {
         String project_id
 
         Array[String] external_sample_names
+        String call_set_identifier
+        Boolean samples_are_controls = false
 
         File? gatk_override
         String? service_account_json_path
@@ -32,7 +34,7 @@ workflow GvsUnified {
         # End GvsImportGenomes
 
         # Begin GvsCreateFilterSet
-        String filter_set_name
+        String filter_set_name = call_set_identifier
         Array[String] indel_recalibration_annotation_values = ["AS_FS", "AS_ReadPosRankSum", "AS_MQRankSum", "AS_QD", "AS_SOR"]
         Array[String] snp_recalibration_annotation_values = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"]
 
@@ -59,7 +61,7 @@ workflow GvsUnified {
 
         File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
 
-        String extract_output_file_base_name = filter_set_name
+        String extract_output_file_base_name = sub(filter_set_name, " ", "-")
 
         Int? extract_maxretries_override
         Int? extract_preemptible_override
@@ -97,6 +99,7 @@ workflow GvsUnified {
 
     call CreateAltAllele.GvsCreateAltAllele {
         input:
+            call_set_identifier = call_set_identifier,
             go = GvsImportGenomes.done,
             dataset_name = dataset_name,
             project_id = project_id,
@@ -122,6 +125,7 @@ workflow GvsUnified {
 
     call PrepareRangesCallset.GvsPrepareCallset {
         input:
+            call_set_identifier = call_set_identifier,
             go = GvsCreateFilterSet.done,
             project_id = project_id,
             dataset_name = dataset_name,
