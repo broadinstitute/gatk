@@ -282,7 +282,7 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
         final ClusteringParameters depthParameters = ClusteringParameters.createDepthParameters(0.5, 2000, 0);
         final ClusteringParameters mixedParameters = ClusteringParameters.createMixedParameters(0.1, 2000, 0);
         final ClusteringParameters pesrParameters = ClusteringParameters.createPesrParameters(0.1, 500, 0);
-        final SVClusterEngine<SVCallRecord> engine = SVClusterEngineFactory.createCanonical(
+        final SVClusterEngine engine = SVClusterEngineFactory.createCanonical(
                 SVClusterEngine.CLUSTERING_TYPE.SINGLE_LINKAGE,
                 CanonicalSVCollapser.BreakpointSummaryStrategy.MEDIAN_START_MEDIAN_END,
                 CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE,
@@ -431,18 +431,15 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
 
         Assert.assertEquals(header.getSampleNamesInOrder().size(), 156);
 
-        Assert.assertEquals(records.size(), 1705);
+        Assert.assertEquals(records.size(), 1700);
 
         // Check for one record
         int expectedRecordsFound = 0;
         for (final VariantContext variant : records) {
             Assert.assertTrue(variant.hasAttribute(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY));
             Assert.assertTrue(variant.hasAttribute(GATKSVVCFConstants.ALGORITHMS_ATTRIBUTE));
-            if (variant.getID().equals("SVx0000041c")) {
+            if (variant.getContig().equals("chr22") && variant.getStart() == 38898103 && variant.getEnd() == 38902679) {
                 expectedRecordsFound++;
-                Assert.assertEquals(variant.getContig(), "chr22");
-                Assert.assertEquals(variant.getStart(), 38898103);
-                Assert.assertEquals(variant.getEnd(), 38902679);
                 final List<String> algorithms = variant.getAttributeAsStringList(GATKSVVCFConstants.ALGORITHMS_ATTRIBUTE, null);
                 Assert.assertEquals(algorithms.size(), 2);
                 Assert.assertTrue(algorithms.contains(GATKSVVCFConstants.DEPTH_ALGORITHM));
@@ -505,11 +502,8 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
         for (final VariantContext variant : records) {
             Assert.assertTrue(variant.hasAttribute(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY));
             Assert.assertTrue(variant.hasAttribute(GATKSVVCFConstants.ALGORITHMS_ATTRIBUTE));
-            if (variant.getID().equals("SVx00000203")) {
+            if (variant.getContig().equals("chrY") && variant.getStart() == 10676436 && variant.getEnd() == 10694243) {
                 expectedRecordsFound++;
-                Assert.assertEquals(variant.getContig(), "chrY");
-                Assert.assertEquals(variant.getStart(), 10676436);
-                Assert.assertEquals(variant.getEnd(), 10694243);
                 final List<String> algorithms = variant.getAttributeAsStringList(GATKSVVCFConstants.ALGORITHMS_ATTRIBUTE, null);
                 Assert.assertEquals(algorithms.size(), 1);
                 Assert.assertTrue(algorithms.contains("manta"));

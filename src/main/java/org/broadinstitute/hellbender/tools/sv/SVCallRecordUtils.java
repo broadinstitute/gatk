@@ -5,6 +5,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.sv.cluster.CanonicalSVCollapser;
@@ -12,6 +13,7 @@ import org.broadinstitute.hellbender.tools.sv.cluster.PloidyTable;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -125,7 +127,7 @@ public final class SVCallRecordUtils {
             genotypeBuilder.attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, ploidy);
             if (isCNV) {
                 genotypeBuilder.attribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT, ploidy);
-                genotypeBuilder.alleles(CanonicalSVCollapser.getCNVGenotypeAllelesFromCopyNumber(altAlleles, refAllele, ploidy, ploidy));
+                genotypeBuilder.alleles(CanonicalSVCollapser.getCNVGenotypeAllelesFromCopyNumber(altAlleles, refAllele, ploidy, ploidy, false));
             } else {
                 genotypeBuilder.alleles(Collections.nCopies(ploidy, refAlleleDefault ? refAllele : Allele.NO_CALL));
             }
@@ -144,6 +146,11 @@ public final class SVCallRecordUtils {
         return new SVCallRecord(record.getId(), record.getContigA(), record.getPositionA(), record.getStrandA(), record.getContigB(),
                 record.getPositionB(), record.getStrandB(), record.getType(), record.getLength(), record.getAlgorithms(), record.getAlleles(),
                 genotypes, record.getAttributes());
+    }
+    public static SVCallRecord copyCallWithNewAttributes(final SVCallRecord record, final Map<String, Object> attr) {
+        return new SVCallRecord(record.getId(), record.getContigA(), record.getPositionA(), record.getStrandA(), record.getContigB(),
+                record.getPositionB(), record.getStrandB(), record.getType(), record.getLength(), record.getAlgorithms(), record.getAlleles(),
+                record.getGenotypes(), attr);
     }
 
     /**
@@ -328,9 +335,20 @@ public final class SVCallRecordUtils {
             contigB = contigA;
             positionB = variant.getEnd();
         }
+
+        final List<Allele> alleles;
+        if (type == StructuralVariantType.CNV) {
+            alleles = new ArrayList<>(3);
+            alleles.add(variant.getReference());
+            alleles.add(Allele.SV_SIMPLE_DEL);
+            alleles.add(Allele.SV_SIMPLE_DUP);
+        } else {
+            alleles = variant.getAlleles();
+        }
+
         final Map<String, Object> sanitizedAttributes = sanitizeAttributes(attributes);
         return new SVCallRecord(id, contigA, positionA, strand1, contigB, positionB, strand2, type, length, algorithms,
-                variant.getAlleles(), variant.getGenotypes(), sanitizedAttributes);
+                alleles, variant.getGenotypes(), sanitizedAttributes);
     }
 
     private static Map<String, Object> sanitizeAttributes(final Map<String, Object> attributes) {
@@ -362,6 +380,9 @@ public final class SVCallRecordUtils {
         Utils.nonNull(variant);
         Utils.nonNull(type);
         final String strandsAttr = variant.getAttributeAsString(GATKSVVCFConstants.STRANDS_ATTRIBUTE, null);
+        if (strandsAttr == null && type == StructuralVariantType.INV) {
+            return null;
+        }
         Utils.validateArg(strandsAttr != null, "Strands field not found for variant " + variant.getID() + " of type " + type);
         if (strandsAttr.length() != 2) {
             throw new IllegalArgumentException("Strands field is not 2 characters long for variant " + variant.getID());
@@ -418,5 +439,60 @@ public final class SVCallRecordUtils {
     // TODO this is sort of hacky but the Allele compareTo() method doesn't give stable ordering
     public static List<Allele> sortAlleles(final Collection<Allele> alleles) {
         return alleles.stream().sorted(Comparator.nullsFirst(Comparator.comparing(Allele::getDisplayString))).collect(Collectors.toList());
+    }
+
+    /**
+     * Asserts presence of {@link GATKSVVCFConstants#EXPECTED_COPY_NUMBER_FORMAT} and
+     * {@link GATKSVVCFConstants#COPY_NUMBER_FORMAT} attributes.
+     */
+    public static void assertHasCopyStateFields(final Genotype g) {
+        Utils.nonNull(g);
+        if (!g.hasExtendedAttribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT)) {
+            throw new IllegalArgumentException("Encountered missing " +
+                    GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT + " attribute in " + "genotype: " + g);
+        }
+        if (!g.hasExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT)) {
+            throw new IllegalArgumentException("Encountered missing " +
+                    GATKSVVCFConstants.COPY_NUMBER_FORMAT + " attribute in " + "genotype: " + g);
+        }
+    }
+
+    /**
+     * Infers DUP genotype alleles based on copy number and ploidy, assuming single-copy DUP alleles.
+     * @param record
+     * @param logger if not null, log warning when genotype alleles could not be called
+     * @return copy of record with new genotypes
+     */
+    public static SVCallRecord convertToBiallelicDupGenotypes(final SVCallRecord record, final Logger logger) {
+        Utils.nonNull(record);
+        if (record.getType() != StructuralVariantType.DUP) {
+            return record;
+        }
+        final ArrayList<Genotype> newGenotypes = new ArrayList<>(record.getGenotypes().size());
+        for (final Genotype g : record.getGenotypes()) {
+            assertHasCopyStateFields(g);
+            final int expectedCopyNumber = VariantContextGetters.getAttributeAsInt(g, GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, -1);
+            final Integer copyNumber = VariantContextGetters.getAttributeAsInt(g, GATKSVVCFConstants.COPY_NUMBER_FORMAT, -1);
+            final List<Allele> genotypeAlleles = CanonicalSVCollapser.getCNVGenotypeAllelesFromCopyNumber(
+                    record.getAltAlleles(), record.getRefAllele(),
+                    expectedCopyNumber, copyNumber, true);
+            final Genotype newGenotype = new GenotypeBuilder(g).alleles(genotypeAlleles).make();
+            newGenotypes.add(newGenotype);
+            if (logger != null && newGenotype.isNoCall()) {
+                logger.warn("Genotype alleles in DUP record " + record.getId() +
+                        " on " + record.getContigA() + " could not be determined from copy number " +
+                        "info for sample " + g.getSampleName() + " with copy number " + copyNumber + " and ploidy " +
+                        expectedCopyNumber);
+            }
+        }
+        return copyCallWithNewGenotypes(record, GenotypesContext.create(newGenotypes));
+    }
+
+    /**
+     * Counts unique alleles in the given set of genotypes.
+     */
+    public static Map<Allele, Long> getAlleleCounts(final Collection<Genotype> genotypes) {
+        return genotypes.stream().map(Genotype::getAlleles).flatMap(Collection::stream)
+                .collect(Collectors.groupingBy(a -> a, Collectors.counting()));
     }
 }

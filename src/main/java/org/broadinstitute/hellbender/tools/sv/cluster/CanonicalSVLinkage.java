@@ -82,17 +82,10 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
 
     @Override
     public boolean areClusterable(final SVCallRecord a, final SVCallRecord b) {
-        if (a.getType() != b.getType()) {
-            if (!clusterDelWithDup) {
-                // CNV clustering disabled, so no type mixing
-                return false;
-            } else if (!(a.isSimpleCNV() && b.isSimpleCNV())) {
-                // CNV clustering enabled, but at least one was not a CNV type
-                return false;
-            }
+        if (!typesMatch(a, b)) {
+            return false;
         }
-        // Strands match
-        if (a.getStrandA() != b.getStrandA() || a.getStrandB() != b.getStrandB()) {
+        if (!strandsMatch(a, b)) {
             return false;
         }
         // Checks appropriate parameter set
@@ -105,6 +98,34 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
         } else {
             return false;
         }
+    }
+
+    /**
+     * Tests if SVTYPEs match, allowing for DEL/DUP/CNVs to match in some cases.
+     */
+    protected boolean typesMatch(final SVCallRecord a, final SVCallRecord b) {
+        final StructuralVariantType aType = a.getType();
+        final StructuralVariantType bType = b.getType();
+        if (aType == bType) {
+            return true;
+        }
+        // Allow CNVs to cluster with both DELs and DUPs, but only allow DEL/DUP clustering if enabled
+        if (a.isSimpleCNV() && b.isSimpleCNV()) {
+            if (clusterDelWithDup || (aType == StructuralVariantType.CNV || bType == StructuralVariantType.CNV)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Test if breakend strands match. True if one has null strands.
+     */
+    protected boolean strandsMatch(final SVCallRecord a, final SVCallRecord b) {
+        if (a.nullStrands() || b.nullStrands()) {
+            return true;
+        }
+        return a.getStrandA() == b.getStrandA() && a.getStrandB() == b.getStrandB();
     }
 
     /**
@@ -154,7 +175,7 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
     private static int getLengthForOverlap(final SVCallRecord record) {
         Utils.validate(record.isIntrachromosomal(), "Record even must be intra-chromosomal");
         if (record.getType() == StructuralVariantType.INS) {
-            return record.getLength() == null ? INSERTION_ASSUMED_LENGTH_FOR_OVERLAP : record.getLength();
+            return record.getLength() == null ? INSERTION_ASSUMED_LENGTH_FOR_OVERLAP : Math.max(record.getLength(), 1);
         } else if (record.getType() == StructuralVariantType.BND) {
             return record.getPositionB() - record.getPositionA() + 1;
         } else {

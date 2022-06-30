@@ -326,7 +326,7 @@ public final class SVCluster extends MultiVariantWalker {
     private ReferenceSequenceFile reference;
     private PloidyTable ploidyTable;
     private VariantContextWriter writer;
-    private SVClusterEngine<SVCallRecord> clusterEngine;
+    private SVClusterEngine clusterEngine;
     private Set<String> samples;
     private String currentContig;
     private int numVariantsBuilt = 0;

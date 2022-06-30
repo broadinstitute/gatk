@@ -105,6 +105,32 @@ public final class GATKSVVCFConstants {
     // Clustering
     public static final String CLUSTER_MEMBER_IDS_KEY = "MEMBERS";
 
+    // Concordance
+
+    public static final String GENOTYPE_CONCORDANCE_INFO = "GENOTYPE_CONCORDANCE";
+    public static final String NON_REF_GENOTYPE_CONCORDANCE_INFO = "NON_REF_GENOTYPE_CONCORDANCE";
+
+    public static final String HET_PPV_INFO = "HET_PPV";
+    public static final String HET_SENSITIVITY_INFO = "HET_SENSITIVITY";
+    public static final String HET_SPECIFICITY_INFO = "HET_SPECIFICITY";
+
+    public static final String HOMVAR_PPV_INFO = "HOMVAR_PPV";
+    public static final String HOMVAR_SENSITIVITY_INFO = "HOMVAR_SENSITIVITY";
+    public static final String HOMVAR_SPECIFICITY_INFO = "HOMVAR_SPECIFICITY";
+
+    public static final String VAR_PPV_INFO = "VAR_PPV";
+    public static final String VAR_SENSITIVITY_INFO = "VAR_SENSITIVITY";
+    public static final String VAR_SPECIFICITY_INFO = "VAR_SPECIFICITY";
+
+    public static final String TRUTH_CN_EQUAL_FORMAT = "TRUTH_CN_EQUAL";
+    public static final String COPY_NUMBER_CONCORDANCE_INFO = "CNV_CONCORDANCE";
+
+    public static final String TRUTH_VARIANT_ID_INFO = "TRUTH_VID";
+
+    public static final String TRUTH_ALLELE_COUNT_INFO = "TRUTH_AC";
+    public static final String TRUTH_ALLELE_NUMBER_INFO = "TRUTH_AN";
+    public static final String TRUTH_ALLELE_FREQUENCY_INFO = "TRUTH_AF";
+
     // functional annotations
     public static final String LOF = "PREDICTED_LOF";
     public static final String INT_EXON_DUP = "PREDICTED_INTRAGENIC_EXON_DUP";

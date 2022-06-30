@@ -1036,7 +1036,7 @@ public class CanonicalSVCollapserUnitTest {
                                 createGenotypeTestAttributes(2, 3)
                         )
                 },
-                // Simple DUP diploid hom var - has ambiguous alleles
+                // Simple DUP diploid hom var
                 {
                         "sample1",
                         Lists.newArrayList(
@@ -1051,7 +1051,7 @@ public class CanonicalSVCollapserUnitTest {
                         Collections.singletonList(Allele.SV_SIMPLE_DUP),
                         GenotypeBuilder.create(
                                 "sample1",
-                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL),
+                                Lists.newArrayList(Allele.SV_SIMPLE_DUP, Allele.SV_SIMPLE_DUP),
                                 createGenotypeTestAttributes(2, 4)
                         )
                 },
@@ -1093,7 +1093,7 @@ public class CanonicalSVCollapserUnitTest {
                                 createGenotypeTestAttributes(3, 4)
                         )
                 },
-                // Simple DUP triploid with 2 alts - ambiguous alleles
+                // Simple DUP triploid with 2 alts
                 {
                         "sample1",
                         Lists.newArrayList(
@@ -1108,7 +1108,7 @@ public class CanonicalSVCollapserUnitTest {
                         Collections.singletonList(Allele.SV_SIMPLE_DUP),
                         GenotypeBuilder.create(
                                 "sample1",
-                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL, Allele.NO_CALL),
+                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DUP, Allele.SV_SIMPLE_DUP),
                                 createGenotypeTestAttributes(3, 5)
                         )
                 },
@@ -1152,7 +1152,7 @@ public class CanonicalSVCollapserUnitTest {
                         Collections.singletonList(Allele.SV_SIMPLE_DUP),
                         GenotypeBuilder.create(
                                 "sample1",
-                                Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL, Allele.NO_CALL),
+                                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DUP, Allele.SV_SIMPLE_DUP),
                                 createGenotypeTestAttributes(3, 5)
                         )
                 },
@@ -1825,12 +1825,12 @@ public class CanonicalSVCollapserUnitTest {
     @Test(expectedExceptions = { IllegalArgumentException.class })
     public void testUnsupportedCNVAltAlleles() throws IllegalArgumentException {
         final List<Allele> siteAltAlleles = Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_INS);
-        CanonicalSVCollapser.getCNVGenotypeAllelesFromCopyNumber(siteAltAlleles, Allele.REF_A, 2, 1);
+        CanonicalSVCollapser.getCNVGenotypeAllelesFromCopyNumber(siteAltAlleles, Allele.REF_A, 2, 1, false);
     }
 
     @Test(expectedExceptions = { IllegalArgumentException.class })
     public void testUnsupportedCNVAltAllele() throws IllegalArgumentException {
         final List<Allele> siteAltAlleles = Collections.singletonList(Allele.SV_SIMPLE_INS);
-        CanonicalSVCollapser.getCNVGenotypeAllelesFromCopyNumber(siteAltAlleles, Allele.REF_A, 2, 2);
+        CanonicalSVCollapser.getCNVGenotypeAllelesFromCopyNumber(siteAltAlleles, Allele.REF_A, 2, 2, false);
     }
 }

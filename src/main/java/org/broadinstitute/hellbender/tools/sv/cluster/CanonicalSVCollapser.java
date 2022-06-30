@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
  * Class for collapsing a collection of similar {@link SVCallRecord} objects, such as clusters produced by
  * {@link CanonicalSVLinkage}, into a single representative call.
  */
-public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
+public class CanonicalSVCollapser {
 
     /**
      * Define strategies for collapsing variant intervals.
@@ -109,8 +109,8 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
         this.insertionLengthSummaryStrategy = insertionLengthSummaryStrategy;
     }
 
-    @Override
-    public SVCallRecord collapse(final Collection<SVCallRecord> items) {
+    public SVCallRecord collapse(final SVClusterEngine.OutputCluster cluster) {
+        final List<SVCallRecord> items = cluster.getItems();
         validateRecords(items);
         final String id = collapseIds(items);
         final List<String> algorithms = collapseAlgorithms(items);
@@ -136,9 +136,11 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
 
         final List<Genotype> genotypes = collapseAllGenotypes(items, refAllele, altAlleles);
         final List<Genotype> harmonizedGenotypes = harmonizeAltAlleles(altAlleles, genotypes);
+        final Boolean strandA = type == StructuralVariantType.CNV ? null : exampleCall.getStrandA();
+        final Boolean strandB = type == StructuralVariantType.CNV ? null : exampleCall.getStrandB();
 
-        return new SVCallRecord(id, exampleCall.getContigA(), start, exampleCall.getStrandA(), exampleCall.getContigB(),
-                end, exampleCall.getStrandB(), type, length, algorithms, alleles, harmonizedGenotypes, attributes, dictionary);
+        return new SVCallRecord(id, exampleCall.getContigA(), start, strandA, exampleCall.getContigB(),
+                end, strandB, type, length, algorithms, alleles, harmonizedGenotypes, attributes, dictionary);
     }
 
     /**
@@ -312,7 +314,7 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
         final List<Allele> alleles;
         if (altAlleles.contains(Allele.SV_SIMPLE_DEL) || altAlleles.contains(Allele.SV_SIMPLE_DUP)) {
             // For CNVs, collapse genotype using copy number
-            alleles = getCNVGenotypeAllelesFromCopyNumber(altAlleles, refAllele, expectedCopyNumber, copyNumber);
+            alleles = getCNVGenotypeAllelesFromCopyNumber(altAlleles, refAllele, expectedCopyNumber, copyNumber, true);
         } else {
             alleles = collapseNonCNVGenotypeAlleles(genotypes, expectedCopyNumber, refAllele);
         }
@@ -472,13 +474,15 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
      * @param refAllele  reference allele
      * @param expectedCopyNumber  expected copy number (i.e. ploidy)
      * @param copyNumber  copy number state
+     * @param biallelicDups  assume duplications as biallelic (i.e. no multi-copy alleles)
      * @return  alleles for the sample at the site
      * @throws {@link IllegalArgumentException} if the alt allele(s) are not CNV(s)
      */
     public static List<Allele> getCNVGenotypeAllelesFromCopyNumber(final List<Allele> siteAltAlleles,
                                                                    final Allele refAllele,
                                                                    final int expectedCopyNumber,
-                                                                   final Integer copyNumber) {
+                                                                   final Integer copyNumber,
+                                                                   final boolean biallelicDups) {
         Utils.nonNull(siteAltAlleles);
         Utils.nonNull(refAllele);
         Utils.validateArg(siteAltAlleles.size() <= 2, "No support for variants with over 2 alleles");
@@ -503,7 +507,7 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
         if (altAllele.equals(Allele.SV_SIMPLE_DEL)) {
             return getDeletionAllelesFromCopyNumber(refAllele, expectedCopyNumber, copyNumber);
         } else if (altAllele.equals(Allele.SV_SIMPLE_DUP)) {
-            return getDuplicationAllelesFromCopyNumber(refAllele, expectedCopyNumber, copyNumber);
+            return getDuplicationAllelesFromCopyNumber(refAllele, expectedCopyNumber, copyNumber, biallelicDups);
         } else {
             throw new IllegalArgumentException("Unsupported CNV alt allele: " + altAllele.getDisplayString());
         }
@@ -519,52 +523,46 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
     public static List<Allele> getDeletionAllelesFromCopyNumber(final Allele refAllele, final int expectedCopyNumber,
                                                                 final int copyNumber) {
         Utils.nonNull(refAllele);
-        Utils.validateArg(copyNumber <= expectedCopyNumber, "Invalid deletion copy number " +
-                copyNumber + " when ploidy is " + expectedCopyNumber);
-        Utils.validateArg(expectedCopyNumber >= 0, "Invalid expected copy number: " + expectedCopyNumber);
+        Utils.validateArg(expectedCopyNumber >= 0, "Negative expected copy number");
         if (expectedCopyNumber == 0) {
             return Collections.emptyList();
-        } else if (expectedCopyNumber == copyNumber) {
+        } else if (expectedCopyNumber <= copyNumber) {
             // Most common in practice - use faster method
             return Collections.nCopies(expectedCopyNumber, refAllele);
         } else {
-            final List<Allele> alleles = new ArrayList<>(expectedCopyNumber);
-            for (int i = 0; i < copyNumber; i++) {
-                alleles.add(refAllele);
-            }
-            for (int i = copyNumber; i < expectedCopyNumber; i++) {
-                alleles.add(Allele.SV_SIMPLE_DEL);
-            }
-            return alleles;
+            final int numAlt = expectedCopyNumber - copyNumber;
+            return makeBiallelicList(Allele.SV_SIMPLE_DEL, refAllele, numAlt, expectedCopyNumber);
         }
     }
 
     /**
      * Generates genotype alleles for duplication genotypes from the given copy number. Genotypes that cannot be
-     * determined unambiguously (e.g. diploid sites) result in {@link Allele#NO_CALL} alleles.
+     * determined unambiguously (e.g. diploid sites) result in {@link Allele#NO_CALL} alleles. If assuming
+     * no multi-copy alleles, we return no-call alleles if the apparent copy number exceeds twice the ploidy.
      * @param refAllele  reference allele for the site
      * @param expectedCopyNumber  expected copy number for the genotype
      * @param copyNumber  copy number for the genotype
+     * @param biallelicDups  assume duplications as biallelic (i.e. no multi-copy alleles)
      * @return  genotype alleles
      */
     public static List<Allele> getDuplicationAllelesFromCopyNumber(final Allele refAllele, final int expectedCopyNumber,
-                                                                   final int copyNumber) {
+                                                                   final int copyNumber, final boolean biallelicDups) {
         Utils.nonNull(refAllele);
-        Utils.validateArg(copyNumber >= expectedCopyNumber, "Invalid duplication copy number " +
-                copyNumber + " when ploidy is " + expectedCopyNumber);
-        Utils.validateArg(expectedCopyNumber >= 0, "Invalid expected copy number: " + expectedCopyNumber);
-        if (expectedCopyNumber == copyNumber) {
+        Utils.validateArg(expectedCopyNumber >= 0, "Negative expected copy number");
+        if (expectedCopyNumber >= copyNumber) {
             // Most common in practice - use faster method
             return Collections.nCopies(expectedCopyNumber, refAllele);
         } else if (expectedCopyNumber == 0) {
             return Collections.emptyList();
-        } else if (expectedCopyNumber == 1) {
-            // At this point know it's a DUP, and since it's haploid the phasing is unambiguous
-            // TODO : May not be a simple DUP, need a more general Allele for possible multi-copy DUP
-            return Collections.singletonList(Allele.SV_SIMPLE_DUP);
-        } else if (copyNumber == expectedCopyNumber + 1) {
-            // Case where we can resolve alleles
-            return makeBiallelicList(Allele.SV_SIMPLE_DUP, refAllele, 1, expectedCopyNumber);
+        }
+        final int numAlt = copyNumber - expectedCopyNumber;
+        if (numAlt == 1 || biallelicDups) {
+            if (expectedCopyNumber == 1) {
+                // Common case on chrY - use faster method
+                return Collections.singletonList(Allele.SV_SIMPLE_DUP);
+            }
+            // Case where we assume no multi-copy alleles or can resolve alleles
+            return makeBiallelicList(Allele.SV_SIMPLE_DUP, refAllele, Math.min(numAlt, expectedCopyNumber), expectedCopyNumber);
         } else {
             // DUP alleles cannot be resolved in other cases
             return Collections.nCopies(expectedCopyNumber, Allele.NO_CALL);
@@ -583,8 +581,8 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
                                                                        final int expectedCopyNumber,
                                                                        final int copyNumber) {
         Utils.nonNull(refAllele);
-        Utils.validateArg(copyNumber >= 0, "Invalid multi-allelic CNV copy number: " + copyNumber);
-        Utils.validateArg(expectedCopyNumber >= 0, "Invalid expected copy number: " + expectedCopyNumber);
+        Utils.validateArg(copyNumber >= 0, "Negative multi-allelic CNV copy number");
+        Utils.validateArg(expectedCopyNumber >= 0, "Negative expected copy number");
         if (expectedCopyNumber == 0) {
             return Collections.emptyList();
         } else if (expectedCopyNumber == 1) {

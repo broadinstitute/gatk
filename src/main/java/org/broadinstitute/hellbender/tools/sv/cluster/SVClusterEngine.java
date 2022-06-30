@@ -5,11 +5,13 @@ import com.google.common.collect.BoundType;
 import com.google.common.collect.SortedMultiset;
 import com.google.common.collect.TreeMultiset;
 import htsjdk.samtools.SAMSequenceDictionary;
+import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
 import org.broadinstitute.hellbender.tools.sv.SVLocatable;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -27,7 +29,7 @@ import java.util.stream.Collectors;
  *
  * @param <T> class of items to cluster
  */
-public class SVClusterEngine<T extends SVLocatable> {
+public class SVClusterEngine {
 
     /**
      * Available clustering algorithms
@@ -37,13 +39,13 @@ public class SVClusterEngine<T extends SVLocatable> {
         MAX_CLIQUE
     }
 
-    private final SVCollapser<T> collapser; // Flattens clusters into a single representative item for output
-    private final SVClusterLinkage<T> linkage;
+    private final Function<OutputCluster, SVCallRecord> collapser; // Flattens clusters into a single representative item for output
+    private final SVClusterLinkage<SVCallRecord> linkage;
     private Map<Integer, Cluster> idToClusterMap; // Active clusters
-    private final Map<Integer, T> idToItemMap; // Active items
+    private final Map<Integer, SVCallRecord> idToItemMap; // Active items
     protected final CLUSTERING_TYPE clusteringType;
     private final ItemSortingBuffer buffer;
-    private final Comparator<T> itemComparator;
+    private final Comparator<SVCallRecord> itemComparator;
 
     private String currentContig;
     private int nextItemId;
@@ -56,8 +58,8 @@ public class SVClusterEngine<T extends SVLocatable> {
      * @param collapser function that ingests a collection of clustered items and returns a single representative item
      */
     public SVClusterEngine(final CLUSTERING_TYPE clusteringType,
-                           final SVCollapser<T> collapser,
-                           final SVClusterLinkage<T> linkage,
+                           final Function<OutputCluster, SVCallRecord> collapser,
+                           final SVClusterLinkage<SVCallRecord> linkage,
                            final SAMSequenceDictionary dictionary) {
         this.clusteringType = clusteringType;
         this.collapser = Utils.nonNull(collapser);
@@ -78,7 +80,7 @@ public class SVClusterEngine<T extends SVLocatable> {
      * Flushes all active clusters, adding them to the output buffer. Results from the output buffer are then copied out
      * and the buffer is cleared. This should be called between contigs to save memory.
      */
-    public final List<T> forceFlush() {
+    public final List<SVCallRecord> forceFlush() {
         flushClusters();
         return buffer.forceFlush();
     }
@@ -86,21 +88,21 @@ public class SVClusterEngine<T extends SVLocatable> {
     /**
      * Gets any available finalized clusters.
      */
-    public final List<T> flush() {
+    public final List<SVCallRecord> flush() {
         return buffer.flush();
     }
 
     @VisibleForTesting
-    public SVCollapser<T> getCollapser() {
+    public Function<OutputCluster, SVCallRecord> getCollapser() {
         return collapser;
     }
 
     @VisibleForTesting
-    public SVClusterLinkage<T> getLinkage() {
+    public SVClusterLinkage<SVCallRecord> getLinkage() {
         return linkage;
     }
 
-    public T getMinActiveStartingPositionItem() {
+    public SVCallRecord getMinActiveStartingPositionItem() {
         Utils.validate(minActiveStartingPositionItemId == null || idToItemMap.containsKey(minActiveStartingPositionItemId),
                 "Unregistered item id " + minActiveStartingPositionItemId);
         return idToItemMap.get(minActiveStartingPositionItemId);
@@ -117,7 +119,7 @@ public class SVClusterEngine<T extends SVLocatable> {
      * Adds and clusters the given item. Note that items must be added in order of increasing start position.
      * @param item item to cluster
      */
-    public final void add(final T item) {
+    public final void add(final SVCallRecord item) {
         // Start a new cluster if on a new contig
         if (!item.getContigA().equals(currentContig)) {
             flushClusters();
@@ -131,7 +133,7 @@ public class SVClusterEngine<T extends SVLocatable> {
         processClusters(clusterIdsToProcess);
     }
 
-    private final int registerItem(final T item) {
+    private final int registerItem(final SVCallRecord item) {
         Utils.validate(item.getPositionA() >= lastStart, "Items must be added in order of increasing start coordinate");
         lastStart = item.getPositionA();
         final int itemId = nextItemId++;
@@ -154,7 +156,7 @@ public class SVClusterEngine<T extends SVLocatable> {
      * @return the IDs for clusters that are complete and ready for processing
      */
     private final List<Integer> cluster(final Integer itemId) {
-        final T item = getItem(itemId);
+        final SVCallRecord item = getItem(itemId);
         // Get list of item IDs from active clusters that cluster with this item
         final Set<Integer> linkedItems = idToClusterMap.values().stream().map(Cluster::getItemIds)
                 .flatMap(List::stream)
@@ -268,7 +270,8 @@ public class SVClusterEngine<T extends SVLocatable> {
         final Cluster cluster = getCluster(clusterIndex);
         idToClusterMap.remove(clusterIndex);
         final List<Integer> clusterItemIds = cluster.getItemIds();
-        buffer.add(collapser.collapse(clusterItemIds.stream().map(idToItemMap::get).collect(Collectors.toList())));
+        final OutputCluster outputCluster = new OutputCluster(clusterItemIds.stream().map(idToItemMap::get).collect(Collectors.toList()));
+        buffer.add(collapser.apply(outputCluster));
         // Clean up item id map
         if (clusterItemIds.size() == 1) {
             // Singletons won't be present in any other clusters
@@ -296,9 +299,9 @@ public class SVClusterEngine<T extends SVLocatable> {
      */
     private final void findAndSetMinActiveStart() {
         minActiveStartingPositionItemId = null;
-        T minActiveStartingPositionItem = null;
+        SVCallRecord minActiveStartingPositionItem = null;
         for (final Integer itemId : idToItemMap.keySet()) {
-            final T item = idToItemMap.get(itemId);
+            final SVCallRecord item = idToItemMap.get(itemId);
             if (minActiveStartingPositionItemId == null || itemComparator.compare(item, minActiveStartingPositionItem) < 0) {
                 minActiveStartingPositionItemId = itemId;
                 minActiveStartingPositionItem = idToItemMap.get(itemId);
@@ -358,7 +361,7 @@ public class SVClusterEngine<T extends SVLocatable> {
         return idToClusterMap.get(id);
     }
 
-    private final T getItem(final int id) {
+    private final SVCallRecord getItem(final int id) {
         Utils.validateArg(idToItemMap.containsKey(id), "Item ID " + id + " does not exist.");
         return idToItemMap.get(id);
     }
@@ -373,9 +376,20 @@ public class SVClusterEngine<T extends SVLocatable> {
         final Cluster cluster = getCluster(clusterId);
         final List<Integer> clusterItems = cluster.getItemIds();
         clusterItems.add(itemId);
-        final T item = getItem(itemId);
+        final SVCallRecord item = getItem(itemId);
         final int itemClusterableStartPosition = linkage.getMaxClusterableStartingPosition(item);
         cluster.setMaxClusterableStart(Math.max(cluster.getMaxClusterableStart(), itemClusterableStartPosition));
+    }
+
+    public static final class OutputCluster {
+        final List<SVCallRecord> items;
+        public OutputCluster(final List<SVCallRecord> items) {
+            this.items = items;
+        }
+
+        public List<SVCallRecord> getItems() {
+            return items;
+        }
     }
 
     /**
@@ -422,14 +436,14 @@ public class SVClusterEngine<T extends SVLocatable> {
     }
 
     private final class ItemSortingBuffer {
-        private SortedMultiset<T> buffer;
+        private SortedMultiset<SVCallRecord> buffer;
 
         public ItemSortingBuffer() {
             Utils.nonNull(itemComparator);
             this.buffer = TreeMultiset.create(itemComparator);
         }
 
-        public void add(final T record) {
+        public void add(final SVCallRecord record) {
             buffer.add(record);
         }
 
@@ -437,16 +451,16 @@ public class SVClusterEngine<T extends SVLocatable> {
          * Returns any records that can be safely flushed based on the current minimum starting position
          * of items still being actively clustered.
          */
-        public List<T> flush() {
+        public List<SVCallRecord> flush() {
             if (buffer.isEmpty()) {
                 return Collections.emptyList();
             }
-            final T minActiveStartItem = getMinActiveStartingPositionItem();
+            final SVCallRecord minActiveStartItem = getMinActiveStartingPositionItem();
             if (minActiveStartItem == null) {
                 forceFlush();
             }
-            final SortedMultiset<T> finalizedRecordView = buffer.headMultiset(minActiveStartItem, BoundType.CLOSED);
-            final ArrayList<T> finalizedRecords = new ArrayList<>(finalizedRecordView);
+            final SortedMultiset<SVCallRecord> finalizedRecordView = buffer.headMultiset(minActiveStartItem, BoundType.CLOSED);
+            final ArrayList<SVCallRecord> finalizedRecords = new ArrayList<>(finalizedRecordView);
             // Clearing a view of the buffer also clears the items from the buffer itself
             finalizedRecordView.clear();
             return finalizedRecords;
@@ -456,8 +470,8 @@ public class SVClusterEngine<T extends SVLocatable> {
          * Returns all buffered records, regardless of any active clusters. To be used only when certain that no
          * active clusters can be clustered with any future inputs.
          */
-        public List<T> forceFlush() {
-            final List<T> result = new ArrayList<>(buffer);
+        public List<SVCallRecord> forceFlush() {
+            final List<SVCallRecord> result = new ArrayList<>(buffer);
             buffer.clear();
             return result;
         }
