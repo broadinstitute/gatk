@@ -989,7 +989,7 @@ public final class UtilsUnitTest extends GATKBaseTest {
                 new Object[]{ new byte[] {100, 100}, new byte[] {100, 100} },
                 new Object[]{ new byte[] {100, 100, 10, 10}, new byte[] {100, 100}, new byte[] { }, new byte[] {10,10} },
                 new Object[]{ ArrayUtils.EMPTY_BYTE_ARRAY, new byte[] { }, new byte[] { }, new byte[] { } },
-                new Object[]{ new byte[] {10, 10, 15, 15, 20, 20}, new byte[] {10, 10}, new byte[] {15, 15}, new byte[] {20, 20} },
+                new Object[]{ new byte[] {12, 10, 15, 15, 20, 20}, new byte[] {12, 10}, new byte[] {15, 15}, new byte[] {20, 20} },
         };
     }
 
@@ -1012,7 +1012,7 @@ public final class UtilsUnitTest extends GATKBaseTest {
                 new Object[]{ new byte[] {10, 10}, new byte[] { }, new byte[] {10, 10} },
                 new Object[]{ new byte[] { }, new byte[] {10, 10}, new byte[] {10, 10} },
                 new Object[]{ new byte[] {10}, new byte[] {15, 15}, new byte[] {10, 15, 15} },
-                new Object[]{ new byte[] {10, 10}, new byte[] {15, 15}, new byte[] {10, 10, 15, 15} },
+                new Object[]{ new byte[] {12, 10}, new byte[] {15, 15}, new byte[] {12, 10, 15, 15} },
         };
     }
 
