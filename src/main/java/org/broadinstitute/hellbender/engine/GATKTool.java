@@ -697,6 +697,10 @@ public abstract class GATKTool extends CommandLineProgram {
         return hasFeatures() ? features.getHeader(featureDescriptor) : null;
     }
 
+    public final GATKPath getReferencePath(){
+        return referenceArguments.getReferenceSpecifier();
+    }
+
     /**
      * Initialize our data sources, make sure that all tool requirements for input data have been satisfied
      * and start the progress meter.
