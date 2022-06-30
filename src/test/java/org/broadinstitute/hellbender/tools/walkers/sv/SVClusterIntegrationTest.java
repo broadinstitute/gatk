@@ -282,7 +282,7 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
         final ClusteringParameters depthParameters = ClusteringParameters.createDepthParameters(0.5, 2000, 0);
         final ClusteringParameters mixedParameters = ClusteringParameters.createMixedParameters(0.1, 2000, 0);
         final ClusteringParameters pesrParameters = ClusteringParameters.createPesrParameters(0.1, 500, 0);
-        final SVClusterEngine<SVCallRecord> engine = SVClusterEngineFactory.createCanonical(
+        final SVClusterEngine engine = SVClusterEngineFactory.createCanonical(
                 SVClusterEngine.CLUSTERING_TYPE.SINGLE_LINKAGE,
                 CanonicalSVCollapser.BreakpointSummaryStrategy.MEDIAN_START_MEDIAN_END,
                 CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE,

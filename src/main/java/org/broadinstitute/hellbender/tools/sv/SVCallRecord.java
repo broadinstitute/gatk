@@ -127,6 +127,13 @@ public class SVCallRecord implements SVLocatable {
                 baseRecord.getPositionB(), strandB, type, length, algorithms, alleles, genotypes, attributes);
     }
 
+    public SVCallRecord(final SVCallRecord record) {
+        this(record.id, record.getContigA(), record.getPositionA(), record.getStrandA(),
+                record.getContigB(), record.getPositionB(), record.getStrandB(),
+                record.getType(), record.getLength(), record.getAlgorithms(), record.getAlleles(), record.getGenotypes(),
+                record.getAttributes());
+    }
+
     /**
      * Ensures start/end loci are valid and ordered
      */
@@ -215,7 +222,9 @@ public class SVCallRecord implements SVLocatable {
             return Pair.of(Boolean.FALSE, Boolean.TRUE);
         } else {
             if (type.equals(StructuralVariantType.INV)) {
-            Utils.validateArg(inputStrandA != null && inputStrandB != null, "Cannot create variant of type " + type + " with null strands");
+                if (inputStrandA == null && inputStrandB == null) {
+                    return Pair.of(Boolean.TRUE, Boolean.TRUE);
+                }
                 Utils.validateArg(inputStrandA.equals(inputStrandB), "Inversions must have matching strands but found " +
                         inputStrandA + " / " + inputStrandB);
             }

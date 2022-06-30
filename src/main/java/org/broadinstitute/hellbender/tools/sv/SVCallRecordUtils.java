@@ -145,6 +145,11 @@ public final class SVCallRecordUtils {
                 record.getPositionB(), record.getStrandB(), record.getType(), record.getLength(), record.getAlgorithms(), record.getAlleles(),
                 genotypes, record.getAttributes());
     }
+    public static SVCallRecord copyCallWithNewAttributes(final SVCallRecord record, final Map<String, Object> attr) {
+        return new SVCallRecord(record.getId(), record.getContigA(), record.getPositionA(), record.getStrandA(), record.getContigB(),
+                record.getPositionB(), record.getStrandB(), record.getType(), record.getLength(), record.getAlgorithms(), record.getAlleles(),
+                record.getGenotypes(), attr);
+    }
 
     /**
      * Get string representation for the given record's strands.
@@ -362,6 +367,9 @@ public final class SVCallRecordUtils {
         Utils.nonNull(variant);
         Utils.nonNull(type);
         final String strandsAttr = variant.getAttributeAsString(GATKSVVCFConstants.STRANDS_ATTRIBUTE, null);
+        if (strandsAttr == null && type == StructuralVariantType.INV) {
+            return null;
+        }
         Utils.validateArg(strandsAttr != null, "Strands field not found for variant " + variant.getID() + " of type " + type);
         if (strandsAttr.length() != 2) {
             throw new IllegalArgumentException("Strands field is not 2 characters long for variant " + variant.getID());

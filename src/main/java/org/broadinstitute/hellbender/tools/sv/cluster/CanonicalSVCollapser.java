@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
  * Class for collapsing a collection of similar {@link SVCallRecord} objects, such as clusters produced by
  * {@link CanonicalSVLinkage}, into a single representative call.
  */
-public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
+public class CanonicalSVCollapser {
 
     /**
      * Define strategies for collapsing variant intervals.
@@ -109,8 +109,8 @@ public class CanonicalSVCollapser implements SVCollapser<SVCallRecord> {
         this.insertionLengthSummaryStrategy = insertionLengthSummaryStrategy;
     }
 
-    @Override
-    public SVCallRecord collapse(final Collection<SVCallRecord> items) {
+    public SVCallRecord collapse(final SVClusterEngine.OutputCluster cluster) {
+        final List<SVCallRecord> items = cluster.getItems();
         validateRecords(items);
         final String id = collapseIds(items);
         final List<String> algorithms = collapseAlgorithms(items);

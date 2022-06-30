@@ -104,6 +104,14 @@ public final class GATKSVVCFConstants {
 
     // Clustering
     public static final String CLUSTER_MEMBER_IDS_KEY = "MEMBERS";
+    public static final String CROSS_REFERENCE_GENOTYPE_SUPPORT_FORMAT = "XRG";
+    public static final String CROSS_REFERENCE_SITE_SUPPORT_INFO = "XRS";
+    public static final String CROSS_REFERENCE_CARRIER_COUNT_INFO = "XRCC";
+    public static final String CROSS_REFERENCE_CARRIER_FREQ_INFO = "XRCF";
+    public static final String CROSS_REFERENCE_MEMBERS_INFO = "XRMEMBERS";
+
+    public static final String CARRIER_COUNT_INFO = "CC";
+    public static final String CARRIER_FREQ_INFO = "CF";
 
     // functional annotations
     public static final String LOF = "PREDICTED_LOF";

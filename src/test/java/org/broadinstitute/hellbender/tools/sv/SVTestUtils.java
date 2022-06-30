@@ -25,7 +25,7 @@ public class SVTestUtils {
     public final static int chr1Length = hg38Dict.getSequence("chr1").getSequenceLength();
 
     private final static GenomeLocParser glParser = new GenomeLocParser(SVTestUtils.hg38Dict);
-    public static final SVCollapser<SVCallRecord> defaultCollapser =
+    public static final CanonicalSVCollapser defaultCollapser =
             new CanonicalSVCollapser(
                     hg38Reference,
                     CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE,
@@ -44,20 +44,20 @@ public class SVTestUtils {
         return linkage;
     }
 
-    public static SVClusterEngine<SVCallRecord> getNewDefaultSingleLinkageEngine() {
-        return new SVClusterEngine<>(SVClusterEngine.CLUSTERING_TYPE.SINGLE_LINKAGE, defaultCollapser, getNewDefaultLinkage(), hg38Dict);
+    public static SVClusterEngine getNewDefaultSingleLinkageEngine() {
+        return new SVClusterEngine(SVClusterEngine.CLUSTERING_TYPE.SINGLE_LINKAGE, defaultCollapser::collapse, getNewDefaultLinkage(), hg38Dict);
     }
 
-    public static SVClusterEngine<SVCallRecord> getNewDefaultMaxCliqueEngine() {
-        return new SVClusterEngine<>(SVClusterEngine.CLUSTERING_TYPE.MAX_CLIQUE, defaultCollapser, getNewDefaultLinkage(), hg38Dict);
+    public static SVClusterEngine getNewDefaultMaxCliqueEngine() {
+        return new SVClusterEngine(SVClusterEngine.CLUSTERING_TYPE.MAX_CLIQUE, defaultCollapser::collapse, getNewDefaultLinkage(), hg38Dict);
     }
 
     public static final ClusteringParameters defaultDepthOnlyParameters = ClusteringParameters.createDepthParameters(0.8, 0, 0);
     public static final ClusteringParameters defaultMixedParameters = ClusteringParameters.createMixedParameters(0.8, 1000, 0);
     public static final ClusteringParameters defaultEvidenceParameters = ClusteringParameters.createPesrParameters(0.5, 500, 0);
 
-    public static final SVClusterEngine<SVCallRecord> defaultSingleLinkageEngine = getNewDefaultSingleLinkageEngine();
-    public static final SVClusterEngine<SVCallRecord> defaultMaxCliqueEngine = getNewDefaultMaxCliqueEngine();
+    public static final SVClusterEngine defaultSingleLinkageEngine = getNewDefaultSingleLinkageEngine();
+    public static final SVClusterEngine defaultMaxCliqueEngine = getNewDefaultMaxCliqueEngine();
 
     public final static int start = 10001;
 

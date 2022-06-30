@@ -82,17 +82,10 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
 
     @Override
     public boolean areClusterable(final SVCallRecord a, final SVCallRecord b) {
-        if (a.getType() != b.getType()) {
-            if (!clusterDelWithDup) {
-                // CNV clustering disabled, so no type mixing
-                return false;
-            } else if (!(a.isSimpleCNV() && b.isSimpleCNV())) {
-                // CNV clustering enabled, but at least one was not a CNV type
-                return false;
-            }
+        if (!typesMatch(a, b)) {
+            return false;
         }
-        // Strands match
-        if (a.getStrandA() != b.getStrandA() || a.getStrandB() != b.getStrandB()) {
+        if (!strandsMatch(a, b)) {
             return false;
         }
         // Checks appropriate parameter set
@@ -105,6 +98,19 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
         } else {
             return false;
         }
+    }
+
+    protected boolean typesMatch(final SVCallRecord a, final SVCallRecord b) {
+        if (a.getType() == b.getType()) {
+            return true;
+        } else if (clusterDelWithDup && (a.isSimpleCNV() && b.isSimpleCNV())) {
+            return true;
+        }
+        return false;
+    }
+
+    protected boolean strandsMatch(final SVCallRecord a, final SVCallRecord b) {
+        return a.getStrandA() == b.getStrandA() && a.getStrandB() == b.getStrandB();
     }
 
     /**
@@ -154,7 +160,7 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
     private static int getLengthForOverlap(final SVCallRecord record) {
         Utils.validate(record.isIntrachromosomal(), "Record even must be intra-chromosomal");
         if (record.getType() == StructuralVariantType.INS) {
-            return record.getLength() == null ? INSERTION_ASSUMED_LENGTH_FOR_OVERLAP : record.getLength();
+            return record.getLength() == null ? INSERTION_ASSUMED_LENGTH_FOR_OVERLAP : Math.max(record.getLength(), 1);
         } else if (record.getType() == StructuralVariantType.BND) {
             return record.getPositionB() - record.getPositionA() + 1;
         } else {
