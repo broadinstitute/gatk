@@ -5,6 +5,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.testng.annotations.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 
@@ -236,4 +237,44 @@ public final class VariantsToTableIntegrationTest extends CommandLineProgramTest
         spec.setTrimWhiteSpace(false);
         spec.executeTest("testMoltenOutputWithMultipleAlleles", this);
     }
+
+    @Test
+    public void testNoFieldsSpecifiedNoSamples() throws IOException {
+        final File inputFile = new File(getToolTestDataDir(), "VCFWithoutGenotypes_dbsnp_138.snippet.vcf");
+        final File outputFile = createTempFile("noFieldsSpecifiedOutput", ".table");
+        final File expectedFile = new File(getToolTestDataDir(), "expected.noFieldsSpecifiedNoSamples.table");
+
+        final String[] args = new String[] {"--variant", inputFile.getAbsolutePath(),
+                "-O", outputFile.getAbsolutePath()};
+        runCommandLine(args);
+
+        IntegrationTestSpec.assertEqualTextFiles(outputFile, expectedFile);
+    }
+
+    @Test
+    public void testNoFieldsSpecifiedWithSamples() throws IOException {
+        final File inputFile = new File(getToolTestDataDir(), "VCFWithGenotypes_1000G.phase3.snippet.vcf");
+        final File outputFile = createTempFile("noFieldsSpecifiedWithSamplesOutput", ".table");
+        final File expectedFile = new File(getToolTestDataDir(), "expected.noFieldsSpecifiedWithSamples.table");
+
+        final String[] args = new String[] {"--variant", inputFile.getAbsolutePath(),
+                "-O", outputFile.getAbsolutePath()};
+        runCommandLine(args);
+
+        IntegrationTestSpec.assertEqualTextFiles(outputFile, expectedFile);
+    }
+
+    @Test
+    public void testNoFieldsSpecifiedFormatFieldInHeaderNoSamples() throws IOException {
+        final File inputFile = new File(getToolTestDataDir(), "VCFWithoutGenotypesWithFormatField_dbsnp_138.snippet.vcf");
+        final File outputFile = createTempFile("noFieldsSpecifiedNoSamplesOutput", ".table");
+        final File expectedFile = new File(getToolTestDataDir(), "expected.noFieldsSpecifiedNoSamples.table");
+
+        final String[] args = new String[] {"--variant", inputFile.getAbsolutePath(),
+                "-O", outputFile.getAbsolutePath()};
+        runCommandLine(args);
+
+        IntegrationTestSpec.assertEqualTextFiles(outputFile, expectedFile);
+    }
+    
 }
