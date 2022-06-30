@@ -64,8 +64,8 @@ public class ExtractFeaturesEngine {
     private final int excessAllelesThreshold;
     private final List<String> queryLabels;
 
-    private long bigQueryQueryByteScanned;
-    private long storageAPIByteScanned;
+    private long bigQueryQueryBytesScanned;
+    private long storageAPIBytesScanned;
 
 //    /** Set of sample names seen in the variant data from BigQuery. */
 //    private final Set<String> sampleNames = new HashSet<>();
@@ -141,18 +141,18 @@ public class ExtractFeaturesEngine {
                 userDefinedFunctions,
                 useBatchQueries,
                 cleanQueryLabels);
-        this.bigQueryQueryByteScanned = storageAPIAvroReaderAndBigQueryStatistics.queryStatistics.getTotalBytesProcessed();
-        this.storageAPIByteScanned = storageAPIAvroReaderAndBigQueryStatistics.storageAPIAvroReader.getEstimatedTotalBytesScanned();
+        this.bigQueryQueryBytesScanned = storageAPIAvroReaderAndBigQueryStatistics.queryStatistics.getTotalBytesProcessed();
+        this.storageAPIBytesScanned = storageAPIAvroReaderAndBigQueryStatistics.storageAPIAvroReader.getEstimatedTotalBytesScanned();
 
         createVQSRInputFromTableResult(storageAPIAvroReaderAndBigQueryStatistics.storageAPIAvroReader);
     }
 
-    public long getStorageAPIByteScanned() {
-        return this.storageAPIByteScanned;
+    public long getStorageAPIBytesScanned() {
+        return this.storageAPIBytesScanned;
     }
 
-    public long getBigQueryQueryByteScanned() {
-        return this.bigQueryQueryByteScanned;
+    public long getBigQueryQueryBytesScanned() {
+        return this.bigQueryQueryBytesScanned;
     }
 
     static Map<String, String>  createQueryLabels(List<String> labelStringList) {

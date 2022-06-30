@@ -65,7 +65,7 @@ public class CostObservability {
         int maxRetries = 3;
 
         while (true) {
-            // This uses the _default stream since it (a) commits immediately and (b) doesn't count
+            // This uses the default stream since it (a) commits immediately and (b) doesn't count
             // towards the CreateStreamWriter quota
             try (JsonStreamWriter writer =
                          JsonStreamWriter.newBuilder(costObservabilityTable.toString(), getCostObservabilityTableSchema()).build()) {

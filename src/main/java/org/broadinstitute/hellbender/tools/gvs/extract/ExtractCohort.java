@@ -185,7 +185,7 @@ public class ExtractCohort extends ExtractTool {
     private Double vqsLodINDELThreshold = null;
 
     /**
-    * If this flag is enabled, sites that have been marked as filtered (i.e. have anything other than `.` or `PASS`
+    * If this flag is enabled, sites that have been marked as filtered (i.e. have anything other than '.' or 'PASS'
     * in the FILTER field) will be excluded from the output.
     */
     @Argument(
@@ -275,7 +275,7 @@ public class ExtractCohort extends ExtractTool {
         final List<String> errors = new ArrayList<>();
         if (projectID != null || datasetID != null || costObservabilityTableName != null || callSetIdentifier != null || wdlStep != null || wdlCall != null || shardIdentifier != null) {
             if (projectID == null || datasetID == null || costObservabilityTableName == null || callSetIdentifier == null || wdlStep == null || wdlCall == null || shardIdentifier == null) {
-                errors.add("Parameters 'project-id', 'dataset-id', `cost-observability-tablename`, `call-set-identifier`, 'wdl-step', 'wdl-call', and 'shardIdentifier' must either ALL be set or ALL NOT BE set");
+                errors.add("Parameters 'project-id', 'dataset-id', 'cost-observability-tablename', 'call-set-identifier', 'wdl-step', 'wdl-call', and 'shardIdentifier' must either ALL be set or ALL NOT BE set");
             }
         }
         if (!errors.isEmpty()) {
@@ -419,10 +419,6 @@ public class ExtractCohort extends ExtractTool {
     public Object onTraversalSuccess() {
         if (costObservabilityTableName != null) {
             CostObservability costObservability = new CostObservability(projectID, datasetID, costObservabilityTableName);
-            // TODO - is this needed?
-//            costObservability.writeCostObservability(callSetIdentifier, wdlStep, wdlCall, shardIdentifier,
-//                    new Date(), new Date(), "BigQuery Query Scanned",
-//                    sampleList.getBigQueryQueryByteScanned() + engine.getBigQueryQueryByteScanned());
             costObservability.writeCostObservability(callSetIdentifier, wdlStep, wdlCall, shardIdentifier,
                     new Date(), new Date(), "Storage API Scanned",
                     engine.getTotalEstimatedBytesScanned());

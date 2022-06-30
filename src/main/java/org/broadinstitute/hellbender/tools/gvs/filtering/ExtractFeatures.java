@@ -115,7 +115,7 @@ public class ExtractFeatures extends ExtractTool {
         final List<String> errors = new ArrayList<>();
         if (projectID != null || datasetID != null || costObservabilityTableName != null || callSetIdentifier != null || wdlStep != null || wdlCall != null || shardIdentifier != null) {
             if (projectID == null || datasetID == null || costObservabilityTableName == null || callSetIdentifier == null || wdlStep == null || wdlCall == null || shardIdentifier == null) {
-                errors.add("Parameters 'project-id', 'dataset-id', `cost-observability-tablename`, `call-set-identifier`, 'wdl-step', 'wdl-call', and 'shardIdentifier' must either ALL be set or ALL NOT BE set");
+                errors.add("Parameters 'project-id', 'dataset-id', 'cost-observability-tablename', 'call-set-identifier', 'wdl-step', 'wdl-call', and 'shardIdentifier' must either ALL be set or ALL NOT BE set");
             }
         }
         if (!errors.isEmpty()) {
@@ -192,10 +192,10 @@ public class ExtractFeatures extends ExtractTool {
             CostObservability costObservability = new CostObservability(projectID, datasetID, costObservabilityTableName);
             costObservability.writeCostObservability(callSetIdentifier, wdlStep, wdlCall, shardIdentifier,
                     new Date(), new Date(), "BigQuery Query Scanned",
-                    sampleList.getBigQueryQueryByteScanned() + engine.getBigQueryQueryByteScanned());
+                    sampleList.getBigQueryQueryByteScanned() + engine.getBigQueryQueryBytesScanned());
             costObservability.writeCostObservability(callSetIdentifier, wdlStep, wdlCall, shardIdentifier,
                     new Date(), new Date(), "Storage API Scanned",
-                    engine.getStorageAPIByteScanned());
+                    engine.getStorageAPIBytesScanned());
         }
         return null;
     }
