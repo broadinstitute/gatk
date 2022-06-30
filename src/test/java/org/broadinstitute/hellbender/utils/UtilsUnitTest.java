@@ -8,6 +8,7 @@ import com.google.common.collect.Sets;
 import com.google.common.primitives.Ints;
 import htsjdk.samtools.util.Log.LogLevel;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.logging.log4j.Level;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -18,6 +19,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.function.IntFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -978,4 +980,81 @@ public final class UtilsUnitTest extends GATKBaseTest {
         Set<String> actual = Utils.filterCollectionByExpressions(values, filters, exactMatch);
         Assert.assertEquals(actual, expected);
     }
+
+    @DataProvider(name = "concatMultipleByteArraysData")
+    public Object[][] concatMultipleByteArraysData() {
+        return new Object[][]{
+                // expected, arrays
+                new Object[]{ ArrayUtils.EMPTY_BYTE_ARRAY, new byte[] { } },
+                new Object[]{ new byte[] {100, 100}, new byte[] {100, 100} },
+                new Object[]{ new byte[] {100, 100, 10, 10}, new byte[] {100, 100}, new byte[] { }, new byte[] {10,10} },
+                new Object[]{ ArrayUtils.EMPTY_BYTE_ARRAY, new byte[] { }, new byte[] { }, new byte[] { } },
+                new Object[]{ new byte[] {12, 10, 15, 15, 20, 20}, new byte[] {12, 10}, new byte[] {15, 15}, new byte[] {20, 20} },
+        };
+    }
+
+    // expected listed first to accomodate varargs arrays having to be last parameter
+    @Test(dataProvider = "concatMultipleByteArraysData")
+    public void testConcatMultipleByteArrays(byte[] expected, byte[] ... arrays) {
+        Assert.assertEquals(Utils.concat(arrays), expected);
+    }
+
+    @Test
+    public void testConcatMultipleWithNoArrays(){
+        Assert.assertEquals(Utils.concat(), ArrayUtils.EMPTY_BYTE_ARRAY);
+    }
+
+    @DataProvider(name = "concatTwoByteArraysData")
+    public Object[][] concatTwoByteArraysData() {
+        return new Object[][]{
+                // arr1, arr2, expected
+                new Object[]{ new byte[] { }, new byte[] { }, ArrayUtils.EMPTY_BYTE_ARRAY },
+                new Object[]{ new byte[] {10, 10}, new byte[] { }, new byte[] {10, 10} },
+                new Object[]{ new byte[] { }, new byte[] {10, 10}, new byte[] {10, 10} },
+                new Object[]{ new byte[] {10}, new byte[] {15, 15}, new byte[] {10, 15, 15} },
+                new Object[]{ new byte[] {12, 10}, new byte[] {15, 15}, new byte[] {12, 10, 15, 15} },
+        };
+    }
+
+    @Test(dataProvider = "concatTwoByteArraysData")
+    public void testConcatTwoByteArrays(byte[] arr1, byte[] arr2, byte[] expected) {
+        Assert.assertEquals(Utils.concat(arr1, arr2), expected);
+    }
+
+    @DataProvider(name = "concatAnyTypeArraysData")
+    public Object[][] concatAnyTypeArraysData() {
+        return new Object[][]{
+                // arr1, arr2, constructor, expected
+                new Object[]{ new Integer[] { }, new Integer[] { }, (IntFunction<Integer[]>)Integer[]::new,
+                        new Integer[] { } },
+                new Object[]{ new Integer[] {1, 2, 3}, new Integer[] { }, (IntFunction<Integer[]>)Integer[]::new,
+                        new Integer[] {1, 2, 3} },
+                new Object[]{ new Integer[] { }, new Integer[] {4, 5, 6}, (IntFunction<Integer[]>)Integer[]::new,
+                        new Integer[] {4, 5, 6} },
+                new Object[]{ new Integer[] {1, 2, 3}, new Integer[] {4, 5, 6}, (IntFunction<Integer[]>)Integer[]::new,
+                        new Integer[] {1, 2, 3, 4, 5, 6} },
+                new Object[]{ new Integer[] {4, 5, 6}, new Integer[] {1, 2, 3}, (IntFunction<Integer[]>)Integer[]::new,
+                        new Integer[] {4, 5, 6, 1, 2, 3} },
+        };
+    }
+
+    @Test(dataProvider = "concatAnyTypeArraysData")
+    public void testConcatAnyTypeArrays(Integer[] arr1, Integer[] arr2, IntFunction<Integer[]> constructor, Integer[] expected) {
+        Assert.assertEquals(Utils.concat(arr1, arr2, constructor), expected);
+    }
+
+   @DataProvider(name = "concatAnyTypeWithNullArrayData")
+   public Object[][] concatAnyTypeWithNullArrayData(){
+       return new Object[][]{
+               new Object[]{null, new Integer[] {1, 2, 3}, (IntFunction<Integer[]>) Integer[]::new},
+               new Object[]{new Integer[] {1, 2, 3}, null, (IntFunction<Integer[]>) Integer[]::new},
+               new Object[]{null, null, (IntFunction<Integer[]>) Integer[]::new}
+       };
+   }
+
+    @Test(expectedExceptions = IllegalArgumentException.class, dataProvider = "concatAnyTypeWithNullArrayData")
+    public void testConcatAnyTypeWithNullArray(Integer[] arr1, Integer[] arr2, IntFunction<Integer[]> constructor){
+        Utils.concat(arr1, arr2, constructor);
+    }
+
 }
