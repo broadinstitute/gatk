@@ -239,10 +239,10 @@ public final class VariantsToTableIntegrationTest extends CommandLineProgramTest
     }
 
     @Test
-    public void testNoFieldsSpecified() throws IOException {
+    public void testNoFieldsSpecifiedNoSamples() throws IOException {
         final File inputFile = new File(getToolTestDataDir(), "VCFWithoutGenotypes_dbsnp_138.snippet.vcf");
         final File outputFile = createTempFile("noFieldsSpecifiedOutput", ".table");
-        final File expectedFile = new File(getToolTestDataDir(), "expected.noFieldsSpecified.table");
+        final File expectedFile = new File(getToolTestDataDir(), "expected.noFieldsSpecifiedNoSamples.table");
 
         final String[] args = new String[] {"--variant", inputFile.getAbsolutePath(),
                 "-O", outputFile.getAbsolutePath()};

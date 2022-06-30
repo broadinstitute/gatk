@@ -246,7 +246,7 @@ public final class VariantsToTable extends VariantWalker {
 
         // if fields specified, but none are genotype fields, set samples to empty
         if (genotypeFieldsToTake.isEmpty() && asGenotypeFieldsToTake.isEmpty()) {
-                samples = Collections.emptySortedSet();
+            samples = Collections.emptySortedSet();
         }
         else {
             final Map<String, VCFHeader> vcfHeaders = Collections.singletonMap(getDrivingVariantsFeatureInput().getName(), getHeaderForVariants());
