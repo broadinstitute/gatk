@@ -45,6 +45,11 @@ def mock_get_workflow_metadata(_workspace_namespace, _workspace_name, submission
 
 
 class TestWorkflowComputeCosts(unittest.TestCase):
+
+    @staticmethod
+    def __count_gvs_workflows(costs: dict):
+        return len([k for k in costs.keys() if k.startswith('Gvs')])
+
     def test_empty_submission_list(self):
         costs = compute_costs(workspace_namespace=WORKSPACE_NAMESPACE,
                               workspace_name=WORKSPACE_NAME,
@@ -54,7 +59,7 @@ class TestWorkflowComputeCosts(unittest.TestCase):
                               get_workflow_metadata=None
                               )
         # Asserts both empty costs and the non-invocation of `get_submission` and `get_workflow_metadata`.
-        self.assertEqual(len(costs), 0, msg="Costs should be empty when there are no submissions in the workspace.")
+        self.assertEqual(self.__count_gvs_workflows(costs), 0, msg="Costs should be empty when there are no submissions in the workspace.")
 
     def check_totals(self, costs):
         expected_links = [w['link'] for w in costs['workflows']]
@@ -71,7 +76,7 @@ class TestWorkflowComputeCosts(unittest.TestCase):
                               get_workflow_metadata=mock_get_workflow_metadata
                               )
 
-        self.assertEqual(len(costs), 2, msg="Expecting exactly two workflow names in costs dictionary")
+        self.assertEqual(self.__count_gvs_workflows(costs), 2, msg="Expecting exactly two workflow names in costs dictionary")
         integration = costs['GvsQuickstartIntegration']
 
         expected = [{'cost': 0.885638,
@@ -108,7 +113,7 @@ class TestWorkflowComputeCosts(unittest.TestCase):
                               get_workflow_metadata=mock_get_workflow_metadata
                               )
 
-        self.assertEqual(len(costs), 2, msg="Expecting exactly two kinds of workflows in costs dictionary")
+        self.assertEqual(self.__count_gvs_workflows(costs), 2, msg="Expecting exactly two kinds of workflows in costs dictionary")
 
         integration = costs['GvsQuickstartIntegration']
         expected = [{'cost': 0.885638,

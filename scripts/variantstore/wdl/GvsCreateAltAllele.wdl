@@ -7,6 +7,7 @@ workflow GvsCreateAltAllele {
     Boolean go = true
     String dataset_name
     String project_id
+    String call_set_identifier
 
     String? service_account_json_path
   }
@@ -38,6 +39,7 @@ workflow GvsCreateAltAllele {
   scatter (idx in range(length(GetVetTableNames.vet_tables))) {
     call PopulateAltAlleleTable {
       input:
+        call_set_identifier = call_set_identifier,
         dataset_name = dataset_name,
         project_id = project_id,
         create_table_done = CreateAltAlleleTable.done,
@@ -173,6 +175,7 @@ task PopulateAltAlleleTable {
 
     String create_table_done
     String vet_table_name
+    String call_set_identifier
 
     String? service_account_json_path
 
@@ -194,13 +197,14 @@ task PopulateAltAlleleTable {
     fi
 
     python3 /app/populate_alt_allele_table.py \
+      --call_set_identifier ~{call_set_identifier} \
       --query_project ~{project_id} \
       --vet_table_name ~{vet_table_name} \
       --fq_dataset ~{project_id}.~{dataset_name} \
       $SERVICE_ACCOUNT_STANZA
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:rsa_query_labels_20220621"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:rsa_metadata_from_python_20220628"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     cpu: 1

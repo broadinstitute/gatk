@@ -7,7 +7,7 @@ workflow GvsQuickstartIntegration {
 
     input {
         String branch_name
-        String expected_output_prefix = "gs://broad-dsp-spec-ops/quickstart_integration/2022-06-03/"
+        String expected_output_prefix = "gs://gvs-internal-quickstart/integration/2022-06-28/"
 
         Array[String] external_sample_names = [
                                               "ERS4367795",
@@ -23,35 +23,36 @@ workflow GvsQuickstartIntegration {
                                               ]
 
         Array[File] input_vcfs = [
-                                 "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00405.haplotypeCalls.er.raw.vcf.gz.vcf.gz",
-                                 "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00408.haplotypeCalls.er.raw.vcf.gz.vcf.gz",
-                                 "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00418.haplotypeCalls.er.raw.vcf.gz.vcf.gz",
-                                 "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00420.haplotypeCalls.er.raw.vcf.gz.vcf.gz",
-                                 "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00423.haplotypeCalls.er.raw.vcf.gz.vcf.gz",
-                                 "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00427.haplotypeCalls.er.raw.vcf.gz.vcf.gz",
-                                 "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00429.haplotypeCalls.er.raw.vcf.gz.vcf.gz",
-                                 "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00444.haplotypeCalls.er.raw.vcf.gz.vcf.gz",
-                                 "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00447.haplotypeCalls.er.raw.vcf.gz.vcf.gz",
-                                 "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00450.haplotypeCalls.er.raw.vcf.gz.vcf.gz"
+                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00405.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
+                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00408.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
+                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00418.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
+                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00420.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
+                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00423.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
+                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00427.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
+                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00429.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
+                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00444.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
+                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00447.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
+                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00450.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz"
                                  ]
 
         Array[File] input_vcf_indexes = [
-                                        "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00405.haplotypeCalls.er.raw.vcf.gz.vcf.gz.tbi",
-                                        "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00408.haplotypeCalls.er.raw.vcf.gz.vcf.gz.tbi",
-                                        "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00418.haplotypeCalls.er.raw.vcf.gz.vcf.gz.tbi",
-                                        "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00420.haplotypeCalls.er.raw.vcf.gz.vcf.gz.tbi",
-                                        "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00423.haplotypeCalls.er.raw.vcf.gz.vcf.gz.tbi",
-                                        "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00427.haplotypeCalls.er.raw.vcf.gz.vcf.gz.tbi",
-                                        "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00429.haplotypeCalls.er.raw.vcf.gz.vcf.gz.tbi",
-                                        "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00444.haplotypeCalls.er.raw.vcf.gz.vcf.gz.tbi",
-                                        "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00447.haplotypeCalls.er.raw.vcf.gz.vcf.gz.tbi",
-                                        "gs://fc-2b4456d7-974b-4b67-90f8-63c2fd2c03d4/gvcfs/HG00450.haplotypeCalls.er.raw.vcf.gz.vcf.gz.tbi"
+                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00405.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
+                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00408.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
+                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00418.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
+                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00420.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
+                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00423.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
+                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00427.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
+                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00429.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
+                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00444.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
+                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00447.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
+                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00450.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi"
                                         ]
 
         Int? extract_scatter_count
 
         Int load_data_batch_size = 1
     }
+    String project_id = "gvs-internal"
 
     call Utils.BuildGATKJarAndCreateDataset {
         input:
@@ -63,7 +64,7 @@ workflow GvsQuickstartIntegration {
         input:
             call_set_identifier = branch_name,
             dataset_name = BuildGATKJarAndCreateDataset.dataset_name,
-            project_id = "gvs-internal",
+            project_id = project_id,
             external_sample_names = external_sample_names,
             gatk_override = BuildGATKJarAndCreateDataset.jar,
             input_vcfs = input_vcfs,
@@ -81,6 +82,14 @@ workflow GvsQuickstartIntegration {
         input:
             expected_output_prefix = expected_output_prefix,
             actual_vcfs = GvsUnified.output_vcfs
+    }
+
+    call AssertCostIsTrackedAndExpected {
+        input:
+            go = GvsUnified.done,
+            dataset_name = BuildGATKJarAndCreateDataset.dataset_name,
+            project_id = project_id,
+            expected_output_csv = expected_output_prefix + "cost_observability_expected.csv"
     }
 
     output {
@@ -181,5 +190,48 @@ task AssertIdenticalOutputs {
     output {
         File fofn = "expected/expected_fofn.txt"
         Boolean done = true
+    }
+}
+
+task AssertCostIsTrackedAndExpected {
+    meta {
+        # we want to check the databbase each time this runs
+        volatile: true
+    }
+
+    input {
+        Boolean go = true
+        String dataset_name
+        String project_id
+        File expected_output_csv
+    }
+
+    command <<<
+        set -o errexit
+        set -o nounset
+        set -o pipefail
+        set -o xtrace
+
+        echo "project_id = ~{project_id}" > ~/.bigqueryrc
+        bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false "SELECT step, call, event_key, event_bytes FROM ~{dataset_name}.cost_observability" > cost_observability_output.csv
+        set +o errexit
+        diff -w cost_observability_output.csv ~{expected_output_csv} > differences.txt
+        set -o errexit
+
+        if [[ -s differences.txt ]]; then
+            echo "Differences found:"
+            cat differences.txt
+            exit 1
+        fi
+    >>>
+
+    runtime {
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:latest"
+        disks: "local-disk 10 HDD"
+    }
+
+    output {
+      File cost_observability_output_csv = "cost_observability_output.csv"
+      File differences = "differences.txt"
     }
 }

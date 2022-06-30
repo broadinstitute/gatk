@@ -11,7 +11,7 @@ import utils
 client = None
 
 
-def populate_alt_allele_table(query_project, vet_table_name, fq_dataset, sa_key_path):
+def populate_alt_allele_table(call_set_identifier, query_project, vet_table_name, fq_dataset, sa_key_path):
     global client
     # add labels for DSP Cloud Cost Control Labeling and Reporting to default_config
     default_config = QueryJobConfig(priority="INTERACTIVE", use_query_cache=True, labels={'service':'gvs','team':'variants','managedby':'create_alt_allele'})
@@ -38,12 +38,14 @@ def populate_alt_allele_table(query_project, vet_table_name, fq_dataset, sa_key_
                   position2 as (select * from `{fq_vet_table}` WHERE call_GT IN ('1/2', '1|2', '2/1', '2|1'))"""
 
     sql = alt_allele_temp_function + query_with + alt_allele_positions
-    result = utils.execute_with_retry(client, f"into alt allele from {vet_table_name}", sql)
-    return result
+    query_return = utils.execute_with_retry(client, f"into alt allele from {vet_table_name}", sql)
+    utils.write_job_stats([{'job': query_return['job'], 'label': query_return['label']}], client, fq_dataset, call_set_identifier, 'CreateAltAlleles', 'PopulateAltAlleleTable', vet_table_name)
+    return query_return['results']
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False, description='Populate an alt_allele table for the BigQuery Variant Store')
 
+    parser.add_argument('--call_set_identifier',type=str, help='callset identifier used to track costs in cost_observability table', default='false')
     parser.add_argument('--query_project',type=str, help='Google project where query should be executed', required=True)
     parser.add_argument('--vet_table_name',type=str, help='vet table name to ingest', required=True)
     parser.add_argument('--fq_dataset',type=str, help='project and dataset for data', required=True)
@@ -53,4 +55,8 @@ if __name__ == '__main__':
     # Execute the parse_args() method
     args = parser.parse_args()
 
-    populate_alt_allele_table(args.query_project, args.vet_table_name, args.fq_dataset, args.sa_key_path)
+    populate_alt_allele_table(args.call_set_identifier,
+                              args.query_project,
+                              args.vet_table_name,
+                              args.fq_dataset,
+                              args.sa_key_path)

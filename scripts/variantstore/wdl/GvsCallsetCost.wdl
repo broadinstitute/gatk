@@ -69,7 +69,7 @@ task WorkflowComputeCosts {
     >>>
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:vs_472_workflow_compute_costs-2022-06-21"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:rsa_metadata_from_python_20220628"
     }
 
     output {

@@ -37,6 +37,7 @@ workflow GvsExtractCohortFromSampleNames {
 
   call GvsPrepareCallset.GvsPrepareCallset {
     input:
+      call_set_identifier             = cohort_table_prefix,
       extract_table_prefix            = cohort_table_prefix,
       sample_names_to_extract         = cohort_sample_names,
       project_id                      = gvs_project,
