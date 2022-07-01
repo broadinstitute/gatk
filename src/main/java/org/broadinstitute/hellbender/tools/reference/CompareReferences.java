@@ -62,34 +62,31 @@ public class CompareReferences extends GATKTool {
         for(Map.Entry<GATKPath, ReferenceDataSource> entry : referenceSources.entrySet()){
             SAMSequenceDictionary dictionary = entry.getValue().getSequenceDictionary();
             for(SAMSequenceRecord record : dictionary.getSequences()){
-                System.out.println();
                 String name = record.getSequenceName();
                 int length = record.getSequenceLength();
                 String md5 = record.getMd5();
                 String reference = entry.getKey().toPath().getFileName().toString();
-                System.out.printf("Name: %s Length: %d md5: %s ref: %s\n", name, length, md5, reference);
                 TableEntry newEntry = new TableEntry(name, length, md5, reference);
 
                 // map each MD5 to List of TableEntry objects containing length, md5, and name
                 if (!table.containsKey(md5)) {
-                    table.put(md5, new ArrayList<TableEntry>());
+                    table.put(md5, new ArrayList<TableEntry>(references.size() + 1));
                 }
                 table.get(md5).add(newEntry);
             }
         }
 
         // MD5  Length  Ref1  Ref2
-        //System.out.printf("%s\t%s\t%s\t%s\n", "MD5", "Length", , , "");
-
+        System.out.printf("%s\t%s\t%s\t%s\n", "MD5", "Length", getReferencePath().toPath().getFileName().toString(), references.get(0).toPath().getFileName().toString());
 
         // use string format to output as a table
         for(Map.Entry<String, List<TableEntry>> entry : table.entrySet()){
             String currMd5 = entry.getKey();
-
+            System.out.printf("%s\t%d\t", currMd5, entry.getValue().get(0).sequenceLength);
             for(TableEntry currEntry : entry.getValue()){
-                //System.out.printf("%s\t%d\t%s\t");
+                System.out.printf("%s\t", currEntry.sequenceName);
             }
-
+            System.out.println();
         }
 
 
