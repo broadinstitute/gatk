@@ -168,6 +168,18 @@ There will also be a `glob-<task id>` file with a list of interval lists, but no
 Note:
 The interval lists are named consistently with the vcfs: 00000000.vcf.gz.interval-list will go with 00000000.vcf.gz and 00000000.vcf.gz.tbi 
 
+### Time and cost estimates
+Below are several examples of the time and cost of running the workflow.
+
+| Number of Samples | Wall Clock Time | Cost $  | Cost per Sample |
+|-------------------|-----------------|---------|-----------------|
+| 10                | 04:30:00        | $0.84   | ~$0.08          |
+| 1000              | 07:24:00        | $$$     | ~$0.07          |
+| 2500              | 08:45:00        | $$$     | ~$0.07          |
+| 5000              | 12:00:00        | $$$     | ~$0.07          |
+| 10000             | 00:00:00        | $683.33 | ~$0.07          |
+
+**Note:** For more information about controlling Cloud costs, see [this article](https://support.terra.bio/hc/en-us/articles/360029748111).
 
 ---
 
