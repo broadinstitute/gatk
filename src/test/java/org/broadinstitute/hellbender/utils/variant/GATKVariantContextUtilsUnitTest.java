@@ -18,7 +18,7 @@ import htsjdk.variant.vcf.*;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.FeatureManager;
-import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
+import org.broadinstitute.hellbender.testutils.*;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
@@ -2274,6 +2274,325 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
 
         final int[] matches = GATKVariantContextUtils.matchAllelesOnly(variant1, variant2);
         Assert.assertTrue(Arrays.equals(matches, gtMatch), "Failed");
+    }
+
+    @DataProvider(name = "testVariantContextNotEqualsDataProvider")
+    Object[][] testVariantContextNotEqualsDataProvider(){
+        final Genotype g1 = new GenotypeBuilder("g1", Arrays.asList(Aref, T)).make();
+        final Genotype g1Copy = new GenotypeBuilder(g1).make();
+        final Genotype g2 = new GenotypeBuilder("g2", Arrays.asList(Aref, G)).make();
+        final Genotype g3 = new GenotypeBuilder("g3", Arrays.asList(Aref, C)).make();
+        final Genotype g4 = new GenotypeBuilder("g1", Arrays.asList(Aref, T)).GQ(14).make();
+
+        final Map<String, Object> attr1 = new HashMap<>();
+        attr1.put("string", "value");
+        attr1.put("list", Arrays.asList(1, 2, 3, 4));
+        attr1.put("list2", Arrays.asList(1, 2, 3, 4, 5));
+
+        final Map<String, Object> attr2 = new HashMap<>();
+        attr2.put("string", "notvalue");
+        attr2.put("string2", "value");
+        attr2.put("list", Arrays.asList(1, 2, 3, 4));
+        attr2.put("list2", "1,2,3,4,5");
+
+        final VariantContext vc1 = new VariantContextBuilder("vc1", "1", 1, 1, Arrays.asList(Aref, T, G))
+                .genotypes(Arrays.asList(g1, g2))
+                .make();
+        final VariantContext vc2 = new VariantContextBuilder("vc2", "1", 1, 1, Arrays.asList(Aref, T, G, C))
+                .genotypes(Arrays.asList(g1Copy, g2))
+                .make();
+        final VariantContext vc3 = new VariantContextBuilder("vc3", "1", 1, 1, Arrays.asList(Aref))
+                .make();
+        final VariantContext vc4 = new VariantContextBuilder("vc4", "1", 1, 1, Arrays.asList(Aref, T, G, C))
+                .genotypes(Arrays.asList(g1, g2, g3))
+                .make();
+        final VariantContext vc5 = new VariantContextBuilder("vc5", "1", 1, 1, Arrays.asList(Aref, T, G))
+                .genotypes(Arrays.asList(g4, g2))
+                .make();
+        final VariantContext vc6 = new VariantContextBuilder("vc6", "1", 1, 1, Arrays.asList(Aref, T, G))
+                .genotypes(Arrays.asList(g1, g2))
+                .id("testID")
+                .filter("testFilter")
+                .log10PError(-0.01)
+                .attributes(attr1)
+                .make();
+        final VariantContext vc7 = new VariantContextBuilder("vc7", "2", 2, 2, Arrays.asList(Aref, T, C))
+                .genotypes(Arrays.asList(g1, g3))
+                .id("testID2")
+                .filters(new HashSet<>(Arrays.asList("testFilter", "testFilter2")))
+                .log10PError(-0.02)
+                .attributes(attr2)
+                .make();
+
+
+
+        return new Object[][]{
+                //Source and Alleles different, one of the genotypes in vc2 is a copy of one in vc1, so genotypes should not be a mismatch
+                {vc1, vc2, Collections.<VariantContextAttributeEnum>emptySet(), Collections.<String>emptyList(),
+                        Collections.<GenotypeAttributeEnum>emptySet(), Collections.<String>emptyList(),
+                        new HashSet<>(Arrays.asList(VariantContextAttributeEnum.SOURCE, VariantContextAttributeEnum.ALLELES)),
+                        Collections.<String>emptySet(), Collections.emptyList(), false},
+                //Different alleles, 2 genotypes vs no genotypes, type should be different because vc3 has no genotypes, ignore Source
+                {vc1, vc3, new HashSet<>(Arrays.asList(VariantContextAttributeEnum.SOURCE)),
+                        Collections.<String>emptyList(), Collections.<GenotypeAttributeEnum>emptySet(), Collections.<String>emptyList(),
+                        new HashSet<>(Arrays.asList(VariantContextAttributeEnum.ALLELES, VariantContextAttributeEnum.GENOTYPES, VariantContextAttributeEnum.TYPE)),
+                        Collections.<String>emptySet(), Collections.emptyList(), false},
+                //2 genotypes vs 3 genotypes (where vc1's genotypes are a subset of vc2's), different alleles, ignore Source
+                {vc1, vc4, new HashSet<>(Arrays.asList(VariantContextAttributeEnum.SOURCE)),
+                        Collections.<String>emptyList(), Collections.<GenotypeAttributeEnum>emptySet(), Collections.<String>emptyList(),
+                        new HashSet<>(Arrays.asList(VariantContextAttributeEnum.ALLELES, VariantContextAttributeEnum.GENOTYPES)),
+                        Collections.<String>emptySet(), Collections.emptyList(), false},
+                //Ignore genotype comparison and source, different alleles and type
+                {vc1, vc3, new HashSet<>(Arrays.asList(VariantContextAttributeEnum.SOURCE, VariantContextAttributeEnum.GENOTYPES)),
+                        Collections.<String>emptyList(), Collections.<GenotypeAttributeEnum>emptySet(), Collections.<String>emptyList(),
+                        new HashSet<>(Arrays.asList(VariantContextAttributeEnum.ALLELES, VariantContextAttributeEnum.TYPE)),
+                        Collections.<String>emptySet(), Collections.emptyList(), false},
+                //Genotypes match but have different values for GQ
+                {vc1, vc5, new HashSet<>(Arrays.asList(VariantContextAttributeEnum.SOURCE)), Collections.<String>emptyList(),
+                        Collections.<GenotypeAttributeEnum>emptySet(), Collections.<String>emptyList(),
+                        new HashSet<>(Arrays.asList(VariantContextAttributeEnum.GENOTYPES)),
+                        Collections.<String>emptySet(), Collections.emptyList(), false},
+                //Different source, alleles, contig, start, end, genotypes, id, filters, phred_scaled_quality, attributes
+                {vc6, vc7, Collections.<VariantContextAttributeEnum>emptySet(), Collections.<String>emptyList(),
+                        new HashSet<>(Arrays.asList(GenotypeAttributeEnum.GQ)), Collections.<String>emptyList(),
+                        new HashSet<>(Arrays.asList(VariantContextAttributeEnum.SOURCE, VariantContextAttributeEnum.CONTIG, VariantContextAttributeEnum.START,
+                                VariantContextAttributeEnum.END, VariantContextAttributeEnum.GENOTYPES, VariantContextAttributeEnum.ID, VariantContextAttributeEnum.ALLELES,
+                                VariantContextAttributeEnum.FILTERS, VariantContextAttributeEnum.PHRED_SCALED_QUALITY, VariantContextAttributeEnum.ATTRIBUTES)),
+                        new HashSet<>(Arrays.asList("string", "string2")), Collections.emptyList(), false},
+                //Ignore all the differences except attributes
+                {vc6, vc7, new HashSet<>(Arrays.asList(VariantContextAttributeEnum.SOURCE, VariantContextAttributeEnum.CONTIG, VariantContextAttributeEnum.START,
+                        VariantContextAttributeEnum.END, VariantContextAttributeEnum.GENOTYPES, VariantContextAttributeEnum.ID, VariantContextAttributeEnum.ALLELES,
+                        VariantContextAttributeEnum.FILTERS, VariantContextAttributeEnum.PHRED_SCALED_QUALITY)), Collections.<String>emptyList(),
+                        new HashSet<>(Arrays.asList(GenotypeAttributeEnum.GQ)), Collections.<String>emptyList(),
+                        new HashSet<>(Arrays.asList(VariantContextAttributeEnum.ATTRIBUTES)),
+                        new HashSet<>(Arrays.asList("string", "string2")), Collections.emptyList(), false},
+                //Add "string" to attributesWithJitter so we only check for presence, not value, and ignore string2 by ignoring extra attributes in actual
+                {vc7, vc6, new HashSet<>(Arrays.asList(VariantContextAttributeEnum.CONTIG, VariantContextAttributeEnum.START,
+                        VariantContextAttributeEnum.END, VariantContextAttributeEnum.GENOTYPES, VariantContextAttributeEnum.ID, VariantContextAttributeEnum.ALLELES,
+                        VariantContextAttributeEnum.FILTERS, VariantContextAttributeEnum.PHRED_SCALED_QUALITY)), Collections.<String>emptyList(),
+                        new HashSet<>(Arrays.asList(GenotypeAttributeEnum.GQ)), Collections.<String>emptyList(),
+                        new HashSet<>(Arrays.asList(VariantContextAttributeEnum.SOURCE)),
+                        Collections.<String>emptySet(), Arrays.asList("string"), true}
+        };
+    }
+
+    @Test(dataProvider =  "testVariantContextNotEqualsDataProvider")
+    void testVariantContextNotEquals(final VariantContext actual, final VariantContext expected, final Set<VariantContextAttributeEnum> variantContextAttributesToIgnore,
+                                     final List<String> variantContextExtendedAttributesToIgnore, final Set<GenotypeAttributeEnum> genotypeAttributesToIgnore,
+                                     final List<String> genotypeExtendedAttributesToIgnore, final Set<VariantContextAttributeEnum> variantContextMismatches,
+                                     final Set<String> variantContextExtendedMismatches, final List<String> variantContextExtendedAttributesWithJitter,
+                                     final boolean ignoreActualExtraAttributes){
+        final VariantContextComparison.Builder comparison = new VariantContextComparison.Builder(actual, expected)
+                .addVariantContextAttributesToIgnore(variantContextAttributesToIgnore)
+                .addVariantContextExtendedAttributesToIgnore(variantContextExtendedAttributesToIgnore)
+                .addVariantContextExtendedAttributesWithJitter(variantContextExtendedAttributesWithJitter)
+                .addGenotypeAttributesToIgnore(genotypeAttributesToIgnore)
+                .addGenotypeExtendedAttributesToIgnore(genotypeExtendedAttributesToIgnore);
+        if(ignoreActualExtraAttributes){
+            comparison.ignoreActualExtraAttributes();
+        }
+        final VariantContextComparisonResults results = comparison
+                .build()
+                .getResults();
+
+        Assert.assertFalse(results.isMatch(), "Variant contexts comparison returned match but VCs have mismatch in the following attributes: "
+                + variantContextMismatches.stream().map(attr -> attr.getName()).collect(Collectors.joining(",")));
+
+        Assert.assertEquals(results.getMismatchedAttributes(), variantContextMismatches, "Variant contexts comparison detected the following mismatched attributes: ("
+                + results.getMismatchedAttributes().stream().map(attr -> attr.getName()).collect(Collectors.joining(","))
+                + ") but the actual mismatched attributes are: (" + variantContextMismatches.stream().map(attr -> attr.getName()).collect(Collectors.joining(",")) + ")");
+
+        Assert.assertEquals(results.getMismatchedExtendedAttributes(), variantContextExtendedMismatches,
+                "Variant contexts comparison detected the following mismatched attributes: ("
+                        + results.getMismatchedExtendedAttributes().stream().collect(Collectors.joining(","))
+                        + ") but the actual mismatched attributes are: (" + variantContextExtendedMismatches.stream().collect(Collectors.joining(",")) + ")");
+    }
+
+    @DataProvider(name = "testVariantContextEqualsDataProvider")
+    Object[][] testVariantContextEqualsDataProvider(){
+        final Genotype g1 = new GenotypeBuilder("g1", Arrays.asList(Aref, T)).make();
+        final Genotype g1Copy = new GenotypeBuilder(g1).make();
+        final Genotype g2 = new GenotypeBuilder("g2", Arrays.asList(Aref, G)).make();
+        final Genotype g3 = new GenotypeBuilder("g3", Arrays.asList(Aref, C)).make();
+
+        final Map<String, Object> attr1 = new HashMap<>();
+        attr1.put("string", "value");
+        attr1.put("list", Arrays.asList(1, 2, 3, 4));
+        attr1.put("list2", Arrays.asList(1, 2, 3, 4, 5));
+
+        final Map<String, Object> attr2 = new HashMap<>();
+        attr2.put("string", "notvalue");
+        attr2.put("string2", "value");
+        attr2.put("list", Arrays.asList(1, 2, 3, 4));
+        attr2.put("list2", "1,2,3,4,5");
+
+        final VariantContext vc1 = new VariantContextBuilder("vc1", "1", 1, 1, Arrays.asList(Aref, T, G))
+                .genotypes(Arrays.asList(g1, g2))
+                .make();
+        final VariantContext vc2 = new VariantContextBuilder("vc2", "1", 1, 1, Arrays.asList(Aref, T, G, C))
+                .genotypes(Arrays.asList(g1Copy, g2))
+                .make();
+        final VariantContext vc3 = new VariantContextBuilder("vc3", "1", 1, 1, Arrays.asList(Aref, T, G, C))
+                .genotypes(Arrays.asList(g1, g2, g3))
+                .make();
+        final VariantContext vc4 = new VariantContextBuilder("vc1", "1", 1, 1, Arrays.asList(Aref, T, G))
+                .genotypes(Arrays.asList(g1, g2))
+                .attributes(attr1)
+                .make();
+        final VariantContext vc5 = new VariantContextBuilder("vc1", "1", 1, 1, Arrays.asList(Aref, T, G))
+                .genotypes(Arrays.asList(g1, g2))
+                .attributes(attr2)
+                .make();
+
+
+
+        return new Object[][]{
+                //Nothing is different; they're the same VC
+                {vc1, vc1, Collections.<VariantContextAttributeEnum>emptySet(), Collections.<String>emptyList(),
+                        Collections.<GenotypeAttributeEnum>emptySet(), Collections.<String>emptyList(),
+                        Collections.emptyList(), false},
+                //Source and alleles are different, so we'll ignore them
+                {vc1, vc2, new HashSet<>(Arrays.asList(VariantContextAttributeEnum.SOURCE, VariantContextAttributeEnum.ALLELES)),
+                        Collections.<String>emptyList(), Collections.<GenotypeAttributeEnum>emptySet(),
+                        Collections.<String>emptyList(), Collections.emptyList(), false},
+                //Genotypes and source are different, so we'll ignore them
+                {vc2, vc3, new HashSet<>(Arrays.asList(VariantContextAttributeEnum.SOURCE, VariantContextAttributeEnum.GENOTYPES)),
+                        Collections.<String>emptyList(), Collections.<GenotypeAttributeEnum>emptySet(),
+                        Collections.<String>emptyList(), Collections.emptyList(), false},
+                //Actual has extra attributes, so ignore those
+                {vc4, vc1, Collections.<VariantContextAttributeEnum>emptySet(), Collections.<String>emptyList(),
+                        Collections.<GenotypeAttributeEnum>emptySet(), Collections.<String>emptyList(),
+                        Collections.emptyList(), true},
+                //Ignore the mismatched attributes
+                {vc5, vc4, Collections.<VariantContextAttributeEnum>emptySet(), Arrays.asList("string", "string2"),
+                        Collections.<GenotypeAttributeEnum>emptySet(), Collections.<String>emptyList(),
+                        Collections.emptyList(), false},
+        };
+    }
+
+    @Test(dataProvider =  "testVariantContextEqualsDataProvider")
+    void testVariantContextEquals(final VariantContext actual, final VariantContext expected, final Set<VariantContextAttributeEnum> variantContextAttributesToIgnore,
+                                     final List<String> variantContextExtendedAttributesToIgnore, final Set<GenotypeAttributeEnum> genotypeAttributesToIgnore,
+                                     final List<String> genotypeExtendedAttributesToIgnore, final List<String> variantContextExtendedAttributesWithJitter,
+                                     final boolean ignoreActualExtraAttributes){
+        final VariantContextComparison.Builder comparison = new VariantContextComparison.Builder(actual, expected)
+                .addVariantContextAttributesToIgnore(variantContextAttributesToIgnore)
+                .addVariantContextExtendedAttributesToIgnore(variantContextExtendedAttributesToIgnore)
+                .addVariantContextExtendedAttributesWithJitter(variantContextExtendedAttributesWithJitter)
+                .addGenotypeAttributesToIgnore(genotypeAttributesToIgnore)
+                .addGenotypeExtendedAttributesToIgnore(genotypeExtendedAttributesToIgnore);
+        if(ignoreActualExtraAttributes){
+            comparison.ignoreActualExtraAttributes();
+        }
+        final VariantContextComparisonResults results = comparison
+                .build()
+                .getResults();
+
+        Assert.assertTrue(results.isMatch(), "Expected VCs to match, but did not with message: " + results.getResultStringVerbose());
+    }
+
+    @DataProvider(name = "testGenotypeNotEqualsDataProvider")
+    Object[][] testGenotypeNotEqualsDataProvider(){
+        final Genotype g1 = new GenotypeBuilder("g1", Arrays.asList(Aref, T, C)).make();
+        final Genotype g2 = new GenotypeBuilder("g2", Arrays.asList(Aref, T)).make();
+        final Genotype g3 = new GenotypeBuilder("g3", Arrays.asList(Aref, T)).phased(true).make();
+        final Genotype g4 = new GenotypeBuilder("g4", Arrays.asList(Aref, T, C)).attribute("string", "test").attribute("list", Arrays.asList(1, 2, 3)).make();
+        final Genotype g5 = new GenotypeBuilder("g5", Arrays.asList(Aref, T, C)).attribute("string", "test2").attribute("list", "1,2,3").make();
+        final Genotype g6 = new GenotypeBuilder("g6", Arrays.asList(Gref, C, A)).AD(new int[]{1, 2, 3}).DP(1).GQ(1).PL(new int[]{1, 2, 3}).filter("test").make();
+        final Genotype g7 = new GenotypeBuilder("g7", Arrays.asList(Gref, C, A)).AD(new int[]{3, 2, 3}).DP(2).GQ(2).PL(new int[]{3, 2, 3}).filter("test2").make();
+
+        return new Object[][]{
+                //Sample name, ploidy, and alleles don't match (so genotype string also doesn't match)
+                {g1, g2, Collections.<GenotypeAttributeEnum>emptySet(), Collections.<String>emptyList(),
+                        new HashSet<>(Arrays.asList(GenotypeAttributeEnum.SAMPLE_NAME, GenotypeAttributeEnum.ALLELES, GenotypeAttributeEnum.GENOTYPE_STRING, GenotypeAttributeEnum.PLOIDY)),
+                        Collections.<String>emptySet()},
+                //Sample name and phased don't match (so genotype string also doesn't match), ignore sample name
+                {g2, g3, new HashSet<>(Arrays.asList(GenotypeAttributeEnum.SAMPLE_NAME)), Collections.<String>emptyList(),
+                        new HashSet<>(Arrays.asList(GenotypeAttributeEnum.GENOTYPE_STRING, GenotypeAttributeEnum.IS_PHASED)),
+                        Collections.<String>emptySet()},
+                //No attributes vs attributes
+                {g1, g4, Collections.<GenotypeAttributeEnum>emptySet(), Collections.<String>emptyList(),
+                        new HashSet<>(Arrays.asList(GenotypeAttributeEnum.SAMPLE_NAME, GenotypeAttributeEnum.EXTENDED_ATTRIBUTES)),
+                        new HashSet<>(Arrays.asList("string", "list"))},
+                //String attributes mismatch, list matching comma-separated string list
+                {g4, g5, Collections.<GenotypeAttributeEnum>emptySet(), Collections.<String>emptyList(),
+                        new HashSet<>(Arrays.asList(GenotypeAttributeEnum.SAMPLE_NAME, GenotypeAttributeEnum.EXTENDED_ATTRIBUTES)),
+                        new HashSet<>(Arrays.asList("string"))},
+                //Default vals for DP and GQ and no values for AD,PL,filter vs set values for those fields
+                {g1, g6, new HashSet<>(Arrays.asList(GenotypeAttributeEnum.ALLELES, GenotypeAttributeEnum.GENOTYPE_STRING, GenotypeAttributeEnum.SAMPLE_NAME)), Collections.<String>emptyList(),
+                        new HashSet<>(Arrays.asList(GenotypeAttributeEnum.AD, GenotypeAttributeEnum.DP, GenotypeAttributeEnum.GQ, GenotypeAttributeEnum.PL,
+                                GenotypeAttributeEnum.FILTERS, GenotypeAttributeEnum.LIKELIHOODS)),
+                        Collections.<String>emptySet()},
+                //Different vals for DP,GQ,AD,PL,filter
+                {g6, g7, new HashSet<>(Arrays.asList(GenotypeAttributeEnum.ALLELES, GenotypeAttributeEnum.GENOTYPE_STRING, GenotypeAttributeEnum.SAMPLE_NAME)), Collections.<String>emptyList(),
+                        new HashSet<>(Arrays.asList(GenotypeAttributeEnum.AD, GenotypeAttributeEnum.DP, GenotypeAttributeEnum.GQ, GenotypeAttributeEnum.PL,
+                                GenotypeAttributeEnum.FILTERS, GenotypeAttributeEnum.LIKELIHOODS)),
+                        Collections.<String>emptySet()}
+
+        };
+    }
+
+    @Test(dataProvider = "testGenotypeNotEqualsDataProvider")
+    void testGenotypeNotEquals(final Genotype actual, final Genotype expected, final Set<GenotypeAttributeEnum> attributesToIgnore,
+                               final List<String> extendedAttributesToIgnore, final Set<GenotypeAttributeEnum> attributeMismatches,
+                               final Set<String> extendedAttributeMismatches){
+
+        final GenotypeComparisonResults results = new GenotypeComparison.Builder(actual, expected)
+                .addAttributesToIgnore(attributesToIgnore)
+                .addExtendedAttributesToIgnore(extendedAttributesToIgnore)
+                .build()
+                .getResults();
+
+        Assert.assertFalse(results.isMatch(), "Genotypes comparison returned match but genotypes have mismatch in the following attributes: "
+                + attributeMismatches.stream().map(attr -> attr.getName()).collect(Collectors.joining(",")));
+
+        Assert.assertEquals(results.getMismatchedAttributes(), attributeMismatches, "Genotypes comparison detected the following mismatched attributes: ("
+                + results.getMismatchedAttributes().stream().map(attr -> attr.getName()).collect(Collectors.joining(","))
+                + ") but the actual mismatched attributes are: (" + attributeMismatches.stream().map(attr -> attr.getName()).collect(Collectors.joining(",")) + ")");
+
+        Assert.assertEquals(results.getMismatchedExtendedAttributes(), extendedAttributeMismatches,
+                "Genotypes comparison detected the following mismatched attributes: ("
+                        + results.getMismatchedExtendedAttributes().stream().collect(Collectors.joining(","))
+                        + ") but the actual mismatched attributes are: (" + extendedAttributeMismatches.stream().collect(Collectors.joining(",")) + ")");
+
+    }
+
+    @DataProvider(name = "testGenotypeEqualsDataProvider")
+    Object[][] testGenotypeEqualsDataProvider(){
+        final Genotype g1 = new GenotypeBuilder("g1", Arrays.asList(Aref, T, C)).make();
+        final Genotype g2 = new GenotypeBuilder("g2", Arrays.asList(Aref, T)).make();
+        final Genotype g3 = new GenotypeBuilder("g3", Arrays.asList(Aref, T, C))
+                .attribute("string", "test")
+                .attribute("list", Arrays.asList(1, 2, 3))
+                .make();
+        final Genotype g4 = new GenotypeBuilder("g3", Arrays.asList(Aref, T, C))
+                .attribute("string", "test2")
+                .attribute("list", "1,2,3")
+                .make();
+
+        return new Object[][]{
+                //Same genotypes
+                {g1, g1, Collections.<GenotypeAttributeEnum>emptySet(), Collections.<String>emptyList()},
+                //Ignore sample name, ploidy, and alleles (and genotype string)
+                {g1, g2, new HashSet<>(Arrays.asList(GenotypeAttributeEnum.SAMPLE_NAME, GenotypeAttributeEnum.ALLELES, GenotypeAttributeEnum.GENOTYPE_STRING, GenotypeAttributeEnum.PLOIDY)),
+                        Collections.<String>emptyList()},
+                //Ignore mismatched extended attribute
+                {g3, g4, Collections.<GenotypeAttributeEnum>emptySet(), Arrays.asList("string")},
+        };
+    }
+
+    @Test(dataProvider = "testGenotypeEqualsDataProvider")
+    void testGenotypeEquals(final Genotype actual, final Genotype expected, final Set<GenotypeAttributeEnum> attributesToIgnore,
+                               final List<String> extendedAttributesToIgnore){
+
+        final GenotypeComparisonResults results = new GenotypeComparison.Builder(actual, expected)
+                .addAttributesToIgnore(attributesToIgnore)
+                .addExtendedAttributesToIgnore(extendedAttributesToIgnore)
+                .build()
+                .getResults();
+
+        Assert.assertTrue(results.isMatch(), "Expected genotypes to match, but did not with message: " + results.getResultStringVerbose());
+
     }
 
     @DataProvider(name = "multiAllelic")

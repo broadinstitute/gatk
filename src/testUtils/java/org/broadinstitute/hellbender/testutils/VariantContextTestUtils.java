@@ -109,6 +109,25 @@ public final class VariantContextTestUtils {
         }
     }
 
+    private static boolean checkAttributeEquals(final String key, final Object actual, final Object expected) {
+        boolean passed = true;
+
+        final Object notationCorrectedActual = normalizeScientificNotation(actual);
+        final Object notationCorrectedExpected = normalizeScientificNotation(expected);
+        if (notationCorrectedExpected instanceof Double && notationCorrectedActual instanceof Double) {
+            // must be very tolerant because doubles are being rounded to 2 sig figs
+            passed = BaseTest.equalsDoubleSmart((Double) notationCorrectedActual, (Double) notationCorrectedExpected, 1e-2, "Attribute " + key) && passed;
+        } else if (actual instanceof Integer || expected instanceof Integer) {
+            Object actualNormalized = normalizeToInteger(actual);
+            Object expectedNormalized = normalizeToInteger(expected);
+            passed = checkFieldEquals(actualNormalized, expectedNormalized) && passed;
+        } else {
+            passed = checkFieldEquals(notationCorrectedActual, notationCorrectedExpected) && passed;
+        }
+
+        return passed;
+    }
+
     /**
      * Attempt to convert a String containing a signed integer (no separators) to an integer. If the attribute is not
      * a String, or does not contain an integer, the original object is returned.
@@ -333,6 +352,20 @@ public final class VariantContextTestUtils {
         Assert.assertEquals(actual.getPloidy(), expected.getPloidy(), "Genotype getPloidy");
     }
 
+    public static void assertGenotypesAreEqual(final Genotype actual, final Genotype expected, final Set<GenotypeAttributeEnum> attributesToIgnore,
+                                               final List<String> extendedAttributesToIgnore){
+        GenotypeComparisonResults results = new GenotypeComparison.Builder(actual, expected)
+                .addExtendedAttributesToIgnore(extendedAttributesToIgnore)
+                .addAttributesToIgnore(attributesToIgnore)
+                .build()
+                .getResults();
+
+        if(!results.isMatch()){
+            logger.error(results.getResultStringConcise());
+            throw new AssertionError("Genotype comparison failed");
+        }
+    }
+
     @SuppressWarnings("unchecked")
     private static void assertAttributesEquals(final Map<String, Object> actual, final Map<String, Object> expected) {
         final Set<String> expectedKeys = new LinkedHashSet<>(expected.keySet());
@@ -378,6 +411,78 @@ public final class VariantContextTestUtils {
             final Object value = expected.get(missingExpected);
             Assert.assertTrue(isMissing(value), "Attribute " + missingExpected + " missing in one but not in other" );
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    static List<String> checkAttributesEquals(final Map<String, Object> actual, final Map<String, Object> expected, final boolean ignoreActualExtraAttributes) {
+        final Set<String> expectedKeys = new LinkedHashSet<>(expected.keySet());
+        final List<String> errorKeys = new LinkedList<>();
+
+        for ( final Map.Entry<String, Object> act : actual.entrySet() ) {
+            final Object actualValue = act.getValue();
+            if ( expected.containsKey(act.getKey()) && expected.get(act.getKey()) != null ) {
+                final Object expectedValue = expected.get(act.getKey());
+                if (expectedValue instanceof List && actualValue instanceof List) {
+                    // both values are lists, compare element b element
+                    List<Object> expectedList = (List<Object>) expectedValue;
+                    List<Object> actualList = (List<Object>) actualValue;
+                    if(actualList.size() != expectedList.size()){
+                        errorKeys.add(act.getKey());
+                    }
+                    else{
+                        for (int i = 0; i < expectedList.size(); i++) {
+                            if(!checkAttributeEquals(act.getKey(), actualList.get(i), expectedList.get(i))){
+                                errorKeys.add(act.getKey());
+                                break;
+                            }
+                        }
+                    }
+                } else if (expectedValue instanceof List) {
+                    // expected is a List but actual is not; normalize to String and compare
+                    if(!(actualValue instanceof String)) {
+                        errorKeys.add(act.getKey());
+                    }
+                    else{
+                        final String expectedString = ((List<Object>) expectedValue).stream().map(v -> v.toString()).collect(Collectors.joining(","));
+                        if(!checkAttributeEquals(act.getKey(), actualValue, expectedString)) {
+                            errorKeys.add(act.getKey());
+                        }
+                    }
+                }
+                else if (actualValue instanceof List) {
+                    // actual is a List but expected is not; normalize to String and compare
+                    if(!(expectedValue instanceof String)) {
+                        errorKeys.add(act.getKey());
+                    }
+                    else{
+                        final String actualString = ((List<Object>) actualValue).stream().map(v -> v.toString()).collect(Collectors.joining(","));
+                        if(!checkAttributeEquals(act.getKey(), actualString, expectedValue)) {
+                            errorKeys.add(act.getKey());
+                        }
+                    }
+                } else {
+                    if(!checkAttributeEquals(act.getKey(), actualValue, expectedValue)){
+                        errorKeys.add(act.getKey());
+                    }
+                }
+            }
+            //Don't add keys that are in actual but not expected to error keys if specified
+            else if(!ignoreActualExtraAttributes){
+                errorKeys.add(act.getKey());
+            }
+            expectedKeys.remove(act.getKey());
+        }
+
+        // now expectedKeys contains only the keys found in expected but not in actual,
+        // and they must all be null
+        for ( final String missingExpected : expectedKeys ) {
+            final Object value = expected.get(missingExpected);
+            if(!isMissing(value)){
+                errorKeys.add(missingExpected);
+            }
+        }
+
+        return errorKeys;
     }
 
     private static boolean isMissing(final Object value) {
@@ -452,6 +557,28 @@ public final class VariantContextTestUtils {
         assertVariantContextsHaveSameGenotypes(actual, expected, attributesToIgnore);
     }
 
+    /**
+     * Compares the values of two VC fields for equality.  Accounts for the special case of int array equality (i.e.
+     * compares the contents of the arrays instead of checking if they are the same array in memory)
+     *
+     * @param actual the value of the field to be checked
+     * @param expected the expected value of the field
+     * @return true if they match, false if they do not
+     */
+    public static boolean checkFieldEquals(final Object actual, final Object expected){
+        if ( (actual == null) && (expected == null) ) {
+            return true;
+        }
+        if(actual == null || expected == null){
+            return false;
+        }
+        //Can't use equals for arrays because that will just compare memory addresses
+        if(actual instanceof int[] && expected instanceof int[]){
+            return Arrays.equals((int[])actual, (int[])expected);
+        }
+        return expected.equals(actual);
+    }
+
     @VisibleForTesting
     protected static boolean checkIgnoredAttributesExist(final Map<String,Object> expectedAttributes,
                                                        final Map<String,Object> actualAttributes,
@@ -463,8 +590,27 @@ public final class VariantContextTestUtils {
                 .collect(Collectors.toList()).isEmpty();
     }
 
+    /**
+     * Builds and returns a list of attributes from 'attributesToCheck' that exist in 'expectedAttributes' but not in
+     * 'actualAttributes'
+     *
+     * @param expectedAttributes attributes list from the expected VC
+     * @param actualAttributes attributes list from the VC to check
+     * @param attributesToCheck attributes list we want to verify the existence of
+     * @return a list of the names of the attributes from 'attributesToCheck' that exist in 'expectedAttributes' but
+     * not in 'actualAttributes'
+     */
+    protected static List<String> listMissingAttributes(final Map<String,Object> expectedAttributes,
+                                                     final Map<String,Object> actualAttributes,
+                                                     final List<String> attributesToCheck){
+        List<String> expectedContainedAttributes = attributesToCheck.stream()
+                .filter(p -> expectedAttributes.keySet().contains(p) && p != null)
+                .collect(Collectors.toList());
+        return expectedContainedAttributes.stream().filter(p -> p != null && !actualAttributes.keySet().contains(p))
+                .collect(Collectors.toList());
+    }
 
-    private static Map<String, Object> filterIgnoredAttributes(final Map<String,Object> attributes, final List<String> attributesToIgnore) {
+    protected static Map<String, Object> filterIgnoredAttributes(final Map<String,Object> attributes, final List<String> attributesToIgnore) {
         return attributes.entrySet().stream()
                 .filter(p -> !attributesToIgnore.contains(p.getKey()) && p.getValue() != null)
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));

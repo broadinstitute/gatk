@@ -414,6 +414,41 @@ public abstract class BaseTest {
                 + (message == null ? "" : "message: " + message));
     }
 
+    public static boolean equalsDoubleSmart(final double actual, final double expected) {
+        return equalsDoubleSmart(actual, expected, DEFAULT_FLOAT_TOLERANCE);
+    }
+
+    public static boolean equalsDoubleSmart(final double actual, final double expected, final double tolerance) {
+        return equalsDoubleSmart(actual, expected, tolerance, null);
+    }
+
+    public static boolean equalsDoubleSmart(final double actual, final double expected, final double tolerance, final String message) {
+
+        // Check for NaN:
+        if ( Double.isNaN(expected) && Double.isNaN(actual) ) {
+            return true;
+        }
+        else if(Double.isNaN(actual) || Double.isNaN(expected)){
+            return false;
+        }
+
+        // Check for Infinity:
+        if ( Double.isInfinite(expected) && Double.isInfinite(actual) ) {
+            return true;
+        }
+        else if(Double.isInfinite(actual) || Double.isInfinite(expected)){
+            return false;
+        }
+
+        // Calculate comparisons:
+        final double delta = Math.abs(actual - expected);
+        final double ratio = Math.abs(actual / expected - 1.0);
+
+        // Evaluate vs epsilon tolerance:
+        final boolean passed = delta < tolerance || ratio < tolerance;
+        return passed;
+    }
+
 
     /**
      * captures {@link System#out} while runnable is executing
