@@ -24,6 +24,7 @@ import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.writers.GVCFWriter;
 import org.broadinstitute.hellbender.utils.variant.writers.GVCFWriterUnitTest;
+import org.broadinstitute.hellbender.utils.variant.writers.MockVcfWriter;
 import org.broadinstitute.hellbender.utils.variant.writers.ReblockingGVCFWriter;
 import org.broadinstitute.hellbender.utils.variant.writers.ReblockingOptions;
 import org.testng.Assert;
@@ -50,7 +51,7 @@ public class ReblockGVCFUnitTest extends CommandLineProgramTest {
         //We need an annotation engine for cleanUpHighQualityVariant(), but this is just a dummy; annotations won't initialize properly without runCommandLine()
         reblocker.createAnnotationEngine();
         //...and a vcfwriter
-        reblocker.vcfWriter = new ReblockingGVCFWriter(new GVCFWriterUnitTest.MockWriter(), Arrays.asList(20, 100), true, null, new ReblockingOptions());
+        reblocker.vcfWriter = new ReblockingGVCFWriter(new MockVcfWriter(), Arrays.asList(20, 100), true, null, new ReblockingOptions());
         reblocker.dropLowQuals = true;
         reblocker.doQualApprox = true;
 
@@ -93,7 +94,7 @@ public class ReblockGVCFUnitTest extends CommandLineProgramTest {
     @Test
     public void testLowQualVariantToGQ0HomRef() {
         final ReblockGVCF reblocker = new ReblockGVCF();
-        reblocker.vcfWriter = new ReblockingGVCFWriter(new GVCFWriterUnitTest.MockWriter(), Arrays.asList(20, 100), true, null, new ReblockingOptions());
+        reblocker.vcfWriter = new ReblockingGVCFWriter(new MockVcfWriter(), Arrays.asList(20, 100), true, null, new ReblockingOptions());
 
         reblocker.dropLowQuals = true;
         final Genotype g = VariantContextTestUtils.makeG("sample1", 11, LONG_REF, Allele.NON_REF_ALLELE, 200, 100, 200, 11, 0, 37);
@@ -188,7 +189,7 @@ public class ReblockGVCFUnitTest extends CommandLineProgramTest {
     @Test
     public void testPosteriors() {
         final ReblockGVCF reblocker = new ReblockGVCF();
-        reblocker.vcfWriter = new ReblockingGVCFWriter(new GVCFWriterUnitTest.MockWriter(), Arrays.asList(20, 100), true, null, new ReblockingOptions());
+        reblocker.vcfWriter = new ReblockingGVCFWriter(new MockVcfWriter(), Arrays.asList(20, 100), true, null, new ReblockingOptions());
         reblocker.posteriorsKey = "GP";
 
         final GenotypeBuilder gb = new GenotypeBuilder("sample1", Arrays.asList(LONG_REF, LONG_REF));
