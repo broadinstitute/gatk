@@ -28,6 +28,9 @@ import java.util.PriorityQueue;
  * </pre>
  */
 public final class MultiSampleEdge extends BaseEdge {
+
+    private static final long serialVersionUID = 0x1337L;
+
     private int currentSingleSampleMultiplicity;
     private final int singleSampleCapacity;
     private final PriorityQueue<Integer> singleSampleMultiplicities;

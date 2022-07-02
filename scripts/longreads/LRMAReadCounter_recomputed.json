@@ -1,0 +1,4 @@
+{
+  "LRMAReadCounter.docker_image": "broadinstitute/gatk-dev:2020-01-28-4.1.4.0-65-g71d21bfb3-SNAPSHOT",
+  "LRMAReadCounter.bam_files": ["gs://broad-dsde-methods-long-reads-outgoing/ONT10xSingleFlowcell/v2/eQTL.1.FAL25331.GA50000/alignments/1.FAL25331.GA50000.annotated.bam", "gs://broad-dsde-methods-long-reads-outgoing/ONT10xSingleFlowcell/v2/eQTL.1.PAE08116.1-E3-H3/alignments/1.PAE08116.1-E3-H3.annotated.bam", "gs://broad-dsde-methods-long-reads-outgoing/ONT10xSingleFlowcell/v2/eQTL.2.FAK99791.GA40000/alignments/2.FAK99791.GA40000.annotated.bam", "gs://broad-dsde-methods-long-reads-outgoing/ONT10xSingleFlowcell/v2/eQTL.2.PAE06444.1-A9-D9/alignments/2.PAE06444.1-A9-D9.annotated.bam"]
+}

@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
+import java.io.Serializable;
 import java.util.Collection;
 import java.util.Comparator;
 
@@ -11,7 +12,10 @@ import java.util.Comparator;
  *
  * Works equally well for all graph types (kmer or sequence)
  */
-public class BaseEdge {
+public class BaseEdge implements Serializable {
+
+    private static final long serialVersionUID = 0x1337L;
+
     private int multiplicity;
     private boolean isRef;
 
@@ -44,10 +48,22 @@ public class BaseEdge {
 
     /**
      * Get the DOT format label for this edge, to be displayed when printing this edge to a DOT file
-     * @return a non-null string
+     * @return a non-null {@link String}
      */
     public String getDotLabel() {
         return Integer.toString(getMultiplicity());
+    }
+
+    /**
+     * Get the DOT format string containing extra information in the form of key/value pairs ala:
+     *     key=value
+     *
+     * If value is a {@link String} then it must include enclosing quotes.
+     *
+     * @return a non-null {@link String}
+     */
+    public String getDotExtraInfo() {
+        return "";
     }
 
     /**
@@ -126,6 +142,13 @@ public class BaseEdge {
         Utils.nonNull(edges);
         final boolean anyRef = edges.stream().anyMatch(e -> e.isRef());
         return new BaseEdge(anyRef, multiplicity);
+    }
+
+    /**
+     * @return {@link String} Containing the values of any attributes that need to be added this edge for GEXF serialization.
+     */
+    public String getGexfAttributesString() {
+        return "";
     }
 
     @Override

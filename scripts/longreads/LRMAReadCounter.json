@@ -1,0 +1,4 @@
+{
+  "LRMAReadCounter.docker_image": "broadinstitute/gatk-dev:2020-01-28-4.1.4.0-65-g71d21bfb3-SNAPSHOT",
+  "LRMAReadCounter.bam_files": ["gs://broad-dsde-methods-mgatzen/longreads/lrma/analyses/10x_tool/results/ont/sample1/1.consensus.bam.annotated.bam","gs://broad-dsde-methods-mgatzen/longreads/lrma/analyses/10x_tool/results/ont/sample2/2.consensus.bam.annotated.bam"]
+}
