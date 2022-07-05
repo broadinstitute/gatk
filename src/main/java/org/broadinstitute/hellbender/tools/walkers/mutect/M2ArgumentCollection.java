@@ -79,6 +79,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final String MUTECT3_REF_DOWNSAMPLE_LONG_NAME = "mutect3-ref-downsample";
     public static final String MUTECT3_ALT_DOWNSAMPLE_LONG_NAME = "mutect3-alt-downsample";
     public static final String MUTECT3_DATASET_LONG_NAME = "mutect3-dataset";
+    public static final String MUTECT3_TRAINING_TRUTH_LONG_NAME = "mutect3-training-truth";
 
     public static final int DEFAULT_MUTECT3_REF_DOWNSAMPLE = 10;
     public static final int DEFAULT_MUTECT3_ALT_DOWNSAMPLE = 20;
@@ -202,6 +203,14 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      */
     @Argument(fullName = MUTECT3_DATASET_LONG_NAME, optional = true, doc="Destination for Mutect3 data collection")
     public File mutect3Dataset;
+
+    /**
+     * VCF of known calls for a sample used for generating a Mutect3 training dataset.  Unfiltered variants contained
+     * in this VCF are considered good; other variants are considered artifacts.  If this VCF is not given the dataset
+     * is generated with an weak-labelling strategy based on allele fractions.
+     */
+    @Argument(fullName= MUTECT3_TRAINING_TRUTH_LONG_NAME, doc="VCF file of known variants for labeling Mutect3 training data", optional = true)
+    public FeatureInput<VariantContext> mutect3TrainingTruth;
 
     /**
      * Only variants with tumor LODs exceeding this threshold will be written to the VCF, regardless of filter status.
