@@ -11,9 +11,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
 
 import static org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils.extractCausalStatusRuntimeExceptionOrThrow;
 
@@ -28,30 +26,29 @@ public class CostObservability {
 
     public TableSchema getCostObservabilityTableSchema() {
         TableSchema.Builder builder = TableSchema.newBuilder();
-        TableFieldSchema.Builder fieldSchemaBuilder = TableFieldSchema.newBuilder();
         builder.addFields(
-                fieldSchemaBuilder.setName("call_set_identifier").setType(TableFieldSchema.Type.STRING).setMode(TableFieldSchema.Mode.REQUIRED).build()
+                TableFieldSchema.newBuilder().setName("call_set_identifier").setType(TableFieldSchema.Type.STRING).setMode(TableFieldSchema.Mode.REQUIRED).build()
         );
         builder.addFields(
-                fieldSchemaBuilder.setName("step").setType(TableFieldSchema.Type.STRING).setMode(TableFieldSchema.Mode.REQUIRED).build()
+                TableFieldSchema.newBuilder().setName("step").setType(TableFieldSchema.Type.STRING).setMode(TableFieldSchema.Mode.REQUIRED).build()
         );
         builder.addFields(
-                fieldSchemaBuilder.setName("call").setType(TableFieldSchema.Type.STRING).setMode(TableFieldSchema.Mode.NULLABLE).build()
+                TableFieldSchema.newBuilder().setName("call").setType(TableFieldSchema.Type.STRING).setMode(TableFieldSchema.Mode.NULLABLE).build()
         );
         builder.addFields(
-                fieldSchemaBuilder.setName("shard_identifier").setType(TableFieldSchema.Type.STRING).setMode(TableFieldSchema.Mode.NULLABLE).build()
+                TableFieldSchema.newBuilder().setName("shard_identifier").setType(TableFieldSchema.Type.STRING).setMode(TableFieldSchema.Mode.NULLABLE).build()
         );
         builder.addFields(
-                fieldSchemaBuilder.setName("call_start_timestamp").setType(TableFieldSchema.Type.TIMESTAMP).setMode(TableFieldSchema.Mode.REQUIRED).build()
+                TableFieldSchema.newBuilder().setName("call_start_timestamp").setType(TableFieldSchema.Type.TIMESTAMP).setMode(TableFieldSchema.Mode.REQUIRED).build()
         );
         builder.addFields(
-                fieldSchemaBuilder.setName("event_timestamp").setType(TableFieldSchema.Type.TIMESTAMP).setMode(TableFieldSchema.Mode.REQUIRED).build()
+                TableFieldSchema.newBuilder().setName("event_timestamp").setType(TableFieldSchema.Type.TIMESTAMP).setMode(TableFieldSchema.Mode.REQUIRED).build()
         );
         builder.addFields(
-                fieldSchemaBuilder.setName("event_key").setType(TableFieldSchema.Type.STRING).setMode(TableFieldSchema.Mode.REQUIRED).build()
+                TableFieldSchema.newBuilder().setName("event_key").setType(TableFieldSchema.Type.STRING).setMode(TableFieldSchema.Mode.REQUIRED).build()
         );
         builder.addFields(
-                fieldSchemaBuilder.setName("event_bytes").setType(TableFieldSchema.Type.INT64).setMode(TableFieldSchema.Mode.REQUIRED).build()
+                TableFieldSchema.newBuilder().setName("event_bytes").setType(TableFieldSchema.Type.INT64).setMode(TableFieldSchema.Mode.REQUIRED).build()
         );
         return builder.build();
     }

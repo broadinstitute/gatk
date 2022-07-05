@@ -34,6 +34,7 @@ import java.util.*;
 public class ExtractCohort extends ExtractTool {
     private static final Logger logger = LogManager.getLogger(ExtractCohort.class);
     private ExtractCohortEngine engine;
+    private SampleList sampleList;
 
     public enum VQSLODFilteringType { GENOTYPE, SITES, NONE }
 
@@ -336,7 +337,7 @@ public class ExtractCohort extends ExtractTool {
             );
         }
 
-        SampleList sampleList = new SampleList(sampleTableName, sampleFileName, projectID, printDebugInformation, "extract-cohort");
+        sampleList = new SampleList(sampleTableName, sampleFileName, projectID, printDebugInformation, "extract-cohort");
         Map<Long, String> sampleIdToName = sampleList.getMap();
 
         VCFHeader header = generateVcfHeader(new HashSet<>(sampleIdToName.values()), reference.getSequenceDictionary(), extraHeaderLines);
@@ -419,6 +420,10 @@ public class ExtractCohort extends ExtractTool {
     public Object onTraversalSuccess() {
         if (costObservabilityTableName != null) {
             CostObservability costObservability = new CostObservability(projectID, datasetID, costObservabilityTableName);
+            // Note - this is ONLY for the cost of querying the sample list.
+            costObservability.writeCostObservability(callSetIdentifier, wdlStep, wdlCall, shardIdentifier,
+                    new Date(), new Date(), "BigQuery Query Scanned",
+                    sampleList.getBigQueryQueryByteScanned());
             costObservability.writeCostObservability(callSetIdentifier, wdlStep, wdlCall, shardIdentifier,
                     new Date(), new Date(), "Storage API Scanned",
                     engine.getTotalEstimatedBytesScanned());
