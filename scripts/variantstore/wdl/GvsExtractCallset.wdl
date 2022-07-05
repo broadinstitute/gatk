@@ -22,7 +22,7 @@ workflow GvsExtractCallset {
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
     File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
-    File gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/gg_VS-479_gatk_cost_to_metadata_20220629/gatk-package-4.2.0.0-550-g5148fe9-SNAPSHOT-local.jar"
+    File gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/gg_VS-479_gatk_cost_to_metadata_20220705/gatk-package-4.2.0.0-558-gf0b438a-SNAPSHOT-local.jar"
 
     String output_file_base_name = filter_set_name
 
