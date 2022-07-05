@@ -7,7 +7,7 @@ workflow GvsQuickstartIntegration {
 
     input {
         String branch_name
-        String expected_output_prefix = "gs://gvs-internal-quickstart/integration/2022-06-28/"
+        String expected_output_prefix = "gs://gvs-internal-quickstart/integration/2022-07-05/"
 
         Array[String] external_sample_names = [
                                               "ERS4367795",
@@ -213,7 +213,7 @@ task AssertCostIsTrackedAndExpected {
         set -o xtrace
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
-        bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false "SELECT step, call, event_key, event_bytes FROM ~{dataset_name}.cost_observability" > cost_observability_output.csv
+        bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false --max_rows=1000 "SELECT step, call, event_key, event_bytes FROM ~{dataset_name}.cost_observability order by step, call, shard_identifier, event_key" > cost_observability_output.csv
         set +o errexit
         diff -w cost_observability_output.csv ~{expected_output_csv} > differences.txt
         set -o errexit
