@@ -1,14 +1,23 @@
 package org.broadinstitute.hellbender.tools.reference;
 
+import com.google.flatbuffers.Table;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
+import org.broadinstitute.hellbender.tools.walkers.readorientation.AltSiteRecord;
+import org.broadinstitute.hellbender.utils.tsv.DataLine;
+import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
+import org.broadinstitute.hellbender.utils.tsv.TableUtils;
+import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 import picard.cmdline.programgroups.ReferenceProgramGroup;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.*;
 
 /**
@@ -25,6 +34,9 @@ public class CompareReferences extends GATKTool {
 
     @Argument(fullName = "references-to-compare", shortName = "refcomp", doc = "Reference sequence file(s) to compare.")
     private List<GATKPath> references;
+
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "", optional = true)
+    private GATKPath output;
 
     private Map<GATKPath, ReferenceDataSource> referenceSources;
 
@@ -47,6 +59,18 @@ public class CompareReferences extends GATKTool {
 
     @Override
     public void traverse() {
+        Map<String, TableRow> tableOutput = buildTable();
+
+        if(output == null){
+            writeTableToStdOutput(tableOutput);
+        }
+        else{
+
+            writeTableToFileOutput(tableOutput);
+        }
+    }
+
+    private Map<String, TableRow> buildTable(){
         Map<String, TableRow> table = new LinkedHashMap<>();
 
         for(Map.Entry<GATKPath, ReferenceDataSource> entry : referenceSources.entrySet()){
@@ -57,15 +81,20 @@ public class CompareReferences extends GATKTool {
                 String md5 = record.getMd5();
                 GATKPath reference = entry.getKey();
                 TableEntry newEntry = new TableEntry(name, length, md5, reference);
+                TableRow newRow = null;
 
                 // map each MD5 to List of TableEntry objects containing length, md5, and name
                 if (!table.containsKey(md5)) {
-                    table.put(md5, new TableRow(md5, length, new ArrayList<>(referenceSources.keySet())));
+                    newRow = new TableRow(md5, length, new ArrayList<>(referenceSources.keySet()));
+                    table.put(md5, newRow);
                 }
                 table.get(md5).add(newEntry);
             }
         }
+        return table;
+    }
 
+    private void writeTableToStdOutput(Map<String, TableRow> table){
         // MD5  Length  Ref1  Ref2 ...
         System.out.printf("%s\t%s\t", "MD5", "Length");
         for(GATKPath file : referenceSources.keySet()){
@@ -87,6 +116,11 @@ public class CompareReferences extends GATKTool {
             }
             System.out.println();
         }
+    }
+
+    private void writeTableToFileOutput(){
+
+
     }
 
     private String getReferenceDisplayName(GATKPath reference){
@@ -148,6 +182,9 @@ public class CompareReferences extends GATKTool {
             this.md5 = md5;
             this.length = length;
             entries = new ArrayList<>(references.size());
+            for(int i = 0; i < references.size(); i++){
+                entries.add(null);
+            }
             columnIndices = new HashMap<>();
             for(int i = 0; i < references.size(); i++){
                 columnIndices.put(references.get(i), i);
@@ -169,6 +206,28 @@ public class CompareReferences extends GATKTool {
 
         public int getLength() {
             return length;
+        }
+    }
+
+    public static class CompareReferencesOutputTableWriter extends TableWriter<TableRow> {
+        public CompareReferencesOutputTableWriter(final Path output, TableRow row) throws IOException {
+
+            super(output, row.getEntries());
+            //writeMetadata(TableUtils.SAMPLE_METADATA_TAG, sample);
+        }
+
+        @Override
+        protected void composeLine(final AltSiteRecord record, final DataLine dataLine) {
+            // it'd be nice to set() less manually...
+            // Note that allele fraction f is not allele-specific, thus the same f array will be printed
+            // four times for each context
+            dataLine.set(AltSiteRecord.AltSiteRecordTableColumn.CONTEXT.toString(), record.getReferenceContext())
+                    .set(AltSiteRecord.AltSiteRecordTableColumn.REF_COUNT.toString(), record.getRefCount())
+                    .set(AltSiteRecord.AltSiteRecordTableColumn.ALT_COUNT.toString(), record.getAltCount())
+                    .set(AltSiteRecord.AltSiteRecordTableColumn.REF_F1R2.toString(), record.getRefF1R2())
+                    .set(AltSiteRecord.AltSiteRecordTableColumn.ALT_F1R2.toString(), record.getAltF1R2())
+                    .set(AltSiteRecord.AltSiteRecordTableColumn.DEPTH.toString(), record.getDepth())
+                    .set(AltSiteRecord.AltSiteRecordTableColumn.ALT_BASE.toString(), record.getAltAllele().toString());
         }
     }
 
