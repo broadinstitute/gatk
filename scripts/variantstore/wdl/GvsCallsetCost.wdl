@@ -23,19 +23,12 @@ workflow GvsCallsetCost {
             dataset_name = dataset_name
     }
 
-#    call BigQueryScannedCost {
-#        input:
-#            project_id = project_id,
-#            dataset_name = dataset_name,
-#            call_set_identifier = call_set_identifier
-#    }
-#
-#    call BigQueryStorageAPIScannedCost {
-#        input:
-#            project_id = project_id,
-#            dataset_name = dataset_name,
-#            call_set_identifier = call_set_identifier
-#    }
+    call ReadCostObservabilityTable {
+        input:
+            project_id = project_id,
+            dataset_name = dataset_name,
+            call_set_identifier = call_set_identifier,
+    }
 
     output {
         File workflow_compute_costs = WorkflowComputeCosts.costs
@@ -43,6 +36,7 @@ workflow GvsCallsetCost {
         String vet_gib = CoreStorageModelSizes.vet_gib
         String ref_ranges_gib = CoreStorageModelSizes.ref_ranges_gib
         String alt_allele_gib = CoreStorageModelSizes.alt_allele_gib
+        File cost_observability = ReadCostObservabilityTable.cost_observability
     }
 }
 
@@ -114,55 +108,28 @@ task CoreStorageModelSizes {
     }
 }
 
-#task BigQueryScannedCost {
-#    meta {
-#        description: "Determine BigQuery scanned cost for GVSCreateAltAllele, GVSCreateFilterSet, and GVSPrepareRanges"
-#        volatile: true
-#    }
-#
-#    input {
-#        String project_id
-#        String dataset_name
-#        String call_set_identifier
-#    }
-#
-#    command <<<
-#    >>>
-#
-#    runtime {
-#        docker: ""
-#    }
-#
-#    output {
-#        Float create_alt_allele_gib = read_float("")
-#        Float create_filter_set_gib = read_float("")
-#        Float prepare_ranges_gib    = read_float("")
-#        Float cost = 3
-#    }
-#}
-#
-#task BigQueryStorageAPIScannedCost {
-#    meta {
-#        description: "Determine BigQuery Storage API scanned cost for GvsCreateFilterSet and GvsExtractCallset"
-#        volatile: true
-#    }
-#
-#    input {
-#        String project_id
-#        String dataset_name
-#        String call_set_identifier
-#    }
-#
-#    command <<<
-#    >>>
-#
-#    runtime {
-#        docker: ""
-#    }
-#
-#    output {
-#        Float create_filter_set_gib = read_float("")
-#        Float extract_callset_gib = read_float("")
-#        Float cost = 3
-#    }
-#}
+task ReadCostObservabilityTable {
+    meta {
+        description: "Read data from cost_observability table for the specified parameters."
+        # Definitely don't cache this, the values will change while the inputs to this task will not!
+        volatile: true
+    }
+    input {
+        String project_id
+        String dataset_name
+        String call_set_identifier
+    }
+    command <<<
+        bq query --location=US --project_id='~{project_id}' --format=prettyjson --use_legacy_sql=false \
+            "SELECT step, event_key, round(sum(event_bytes) / (1024*1024*1024), 2) AS sum_event_gibibytes \
+                FROM \`~{project_id}.~{dataset_name}.cost_observability\` \
+                WHERE call_set_identifier = '~{call_set_identifier}' GROUP BY step, event_key ORDER BY step" \
+            > cost_observability.json
+    >>>
+    runtime {
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:390.0.0"
+    }
+    output {
+        File cost_observability = "cost_observability.json"
+    }
+}
