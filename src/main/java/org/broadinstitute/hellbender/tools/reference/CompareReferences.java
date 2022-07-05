@@ -7,11 +7,8 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
-import org.broadinstitute.hellbender.tools.LocalAssembler;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import picard.cmdline.programgroups.ReferenceProgramGroup;
 
-import java.nio.file.Path;
 import java.util.*;
 
 /**
@@ -24,7 +21,9 @@ import java.util.*;
 )
 public class CompareReferences extends GATKTool {
 
-    @Argument(fullName = "references-to-compare", shortName = "refcomp", doc = "Reference(s) to compare.")
+    public static final String MISSING_ENTRY = "---";
+
+    @Argument(fullName = "references-to-compare", shortName = "refcomp", doc = "Reference sequence file(s) to compare.")
     private List<GATKPath> references;
 
     private Map<GATKPath, ReferenceDataSource> referenceSources;
@@ -48,16 +47,7 @@ public class CompareReferences extends GATKTool {
 
     @Override
     public void traverse() {
-
-      /*  // get dictionaries for both references
-        SAMSequenceDictionary dict1 = referenceSources.get(getReferencePath()).getSequenceDictionary();
-        SAMSequenceDictionary dict2 = referenceSources.get(references.get(0)).getSequenceDictionary();
-
-        // go through dictionaries and find MD5s for all contigs
-        List<String> dict1Md5s = new ArrayList<>();
-        List<String> dict2Md5s = new ArrayList<>();*/
-
-        Map<String, List<TableEntry>> table = new LinkedHashMap<>();
+        Map<String, TableRow> table = new LinkedHashMap<>();
 
         for(Map.Entry<GATKPath, ReferenceDataSource> entry : referenceSources.entrySet()){
             SAMSequenceDictionary dictionary = entry.getValue().getSequenceDictionary();
@@ -65,40 +55,42 @@ public class CompareReferences extends GATKTool {
                 String name = record.getSequenceName();
                 int length = record.getSequenceLength();
                 String md5 = record.getMd5();
-                String reference = entry.getKey().toPath().getFileName().toString();
+                GATKPath reference = entry.getKey();
                 TableEntry newEntry = new TableEntry(name, length, md5, reference);
 
                 // map each MD5 to List of TableEntry objects containing length, md5, and name
                 if (!table.containsKey(md5)) {
-                    table.put(md5, new ArrayList<TableEntry>(references.size() + 1));
+                    table.put(md5, new TableRow(md5, length, new ArrayList<>(referenceSources.keySet())));
                 }
                 table.get(md5).add(newEntry);
             }
         }
 
-        // MD5  Length  Ref1  Ref2
-        System.out.printf("%s\t%s\t%s\t%s\n", "MD5", "Length", getReferencePath().toPath().getFileName().toString(), references.get(0).toPath().getFileName().toString());
+        // MD5  Length  Ref1  Ref2 ...
+        System.out.printf("%s\t%s\t", "MD5", "Length");
+        for(GATKPath file : referenceSources.keySet()){
+            System.out.printf("%s\t", getReferenceDisplayName(file));
+        }
+        System.out.println();
 
         // use string format to output as a table
-        for(Map.Entry<String, List<TableEntry>> entry : table.entrySet()){
-            String currMd5 = entry.getKey();
-            System.out.printf("%s\t%d\t", currMd5, entry.getValue().get(0).sequenceLength);
-            for(TableEntry currEntry : entry.getValue()){
-                System.out.printf("%s\t", currEntry.sequenceName);
+        for(TableRow row : table.values()){
+            String currMd5 = row.getMd5();
+            System.out.printf("%s\t%d", currMd5, row.getLength());
+            for(TableEntry currEntry : row.getEntries()){
+                if(currEntry == null){
+                    System.out.print("\t" + MISSING_ENTRY);
+                }
+                else{
+                    System.out.printf("\t%s", currEntry.sequenceName);
+                }
             }
             System.out.println();
         }
+    }
 
-
-
-
-            // md5
-            // length of seq
-            // name in ref 1
-            // name in ref 2 .. n
-            //
-           // System.out.printf("%s\t%d\t%s\n", )
-
+    private String getReferenceDisplayName(GATKPath reference){
+        return reference.toPath().getFileName().toString();
     }
 
     @Override
@@ -118,16 +110,66 @@ public class CompareReferences extends GATKTool {
     private static class TableEntry {
         private final String sequenceName;
         private final int sequenceLength;
-        private final String MD5;
-        private final String REFERENCE;
+        private final String md5;
+        private final GATKPath reference;
 
-        public TableEntry(String name, int length, String md5, String reference){
-            MD5 = md5;
+        public TableEntry(String name, int length, String md5, GATKPath reference){
+            this.md5 = md5;
             sequenceLength = length;
-            REFERENCE = reference;
+            this.reference = reference;
             sequenceName = name;
         }
 
+        public String getSequenceName() {
+            return sequenceName;
+        }
+
+        public int getSequenceLength() {
+            return sequenceLength;
+        }
+
+        public String getMd5() {
+            return md5;
+        }
+
+        public GATKPath getReference() {
+            return reference;
+        }
+    }
+
+    private static class TableRow {
+
+        private final String md5;
+        private final List<TableEntry> entries;
+        private final int length;
+        private final Map<GATKPath, Integer> columnIndices;
+
+        public TableRow(String md5, int length, List<GATKPath> references){
+            this.md5 = md5;
+            this.length = length;
+            entries = new ArrayList<>(references.size());
+            columnIndices = new HashMap<>();
+            for(int i = 0; i < references.size(); i++){
+                columnIndices.put(references.get(i), i);
+            }
+        }
+
+        public void add(TableEntry entry){
+            int idx = columnIndices.get(entry.getReference());
+            entries.set(idx, entry);
+        }
+
+        public String getMd5() {
+            return md5;
+        }
+
+        public List<TableEntry> getEntries() {
+            return entries;
+        }
+
+        public int getLength() {
+            return length;
+        }
     }
 
 
