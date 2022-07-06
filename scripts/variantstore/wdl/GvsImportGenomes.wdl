@@ -38,6 +38,9 @@ workflow GvsImportGenomes {
                                        else if num_samples < 1000 then 1
                                             else num_samples / 1000
 
+  # Both preemptible and maxretries should be scaled up alongside import batch size since the likelihood of preemptions
+  # and retryable random BQ import errors increases with import batch size / job run time.
+
   # At least 3, per limits above not more than 5.
   Int effective_load_data_preemptible = if (defined(load_data_preemptible_override)) then select_first([load_data_preemptible_override])
                                         else if effective_load_data_batch_size < 12 then 3
