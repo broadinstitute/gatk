@@ -17,27 +17,25 @@ public class GATKReadToBDGAlignmentRecordConverter {
     private SequenceDictionary dict;
     private ReadGroupDictionary readGroups;
 
-//    public GATKReadToBDGAlignmentRecordConverter(SAMFileHeader header) {
-//        this.header = header;
-//        this.dict = SequenceDictionary.fromSAMSequenceDictionary(header.getSequenceDictionary());
-//        this.readGroups = ReadGroupDictionary.fromSAMHeader(header);
-//    }
+    public GATKReadToBDGAlignmentRecordConverter(SAMFileHeader header) {
+        this.header = header;
+        this.dict = SequenceDictionary.fromSAMSequenceDictionary(header.getSequenceDictionary());
+        this.readGroups = ReadGroupDictionary.fromSAMHeader(header);
+    }
 
     public static AlignmentRecord convert( final GATKRead gatkRead, final SAMFileHeader header ) {
-//        SequenceDictionary dict = SequenceDictionary.fromSAMSequenceDictionary(header.getSequenceDictionary());
-        //ReadGroupDictionary readGroups = ReadGroupDictionary.fromSAMHeader(header);
-        return GATKReadToBDGAlignmentRecordConverter.convert(gatkRead, header, null, null);
+        SequenceDictionary dict = SequenceDictionary.fromSAMSequenceDictionary(header.getSequenceDictionary());
+        ReadGroupDictionary readGroups = ReadGroupDictionary.fromSAMHeader(header);
+        return GATKReadToBDGAlignmentRecordConverter.convert(gatkRead, header, dict, readGroups);
     }
 
     public static AlignmentRecord convert(
             final GATKRead gatkRead, final SAMFileHeader header, final SequenceDictionary dict, final ReadGroupDictionary readGroups ) {
-        //return converter.convert(gatkRead.convertToSAMRecord(header));
-        return null;
+        return converter.convert(gatkRead.convertToSAMRecord(header));
     }
 
     public static AlignmentRecord convert(
             final SAMRecord sam, final SequenceDictionary dict, final ReadGroupDictionary readGroups ) {
-        //return converter.convert(sam);
-        return null;
+        return converter.convert(sam);
     }
 }

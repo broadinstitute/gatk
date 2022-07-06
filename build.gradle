@@ -64,7 +64,7 @@ final htsjdkVersion = System.getProperty('htsjdk.version','2.24.1')
 final picardVersion = System.getProperty('picard.version','2.27.1')
 final barclayVersion = System.getProperty('barclay.version','4.0.2')
 final sparkVersion = System.getProperty('spark.version', '3.3.0')
-final scalaVersion = System.getProperty('scala.version', '2.13.8')
+final scalaVersion = System.getProperty('scala.version', '2.12')
 final hadoopVersion = System.getProperty('hadoop.version', '3.2.1')
 final disqVersion = System.getProperty('disq.version','0.3.6')
 final genomicsdbVersion = System.getProperty('genomicsdb.version','1.4.3')
@@ -225,7 +225,7 @@ configurations {
         // exclude Hadoop and Spark dependencies, since they are provided when running with Spark
         // (ref: http://unethicalblogger.com/2015/07/15/gradle-goodness-excluding-depends-from-shadow.html)
         exclude group: 'org.apache.hadoop'
-        exclude module: 'spark-core_2.13'
+        exclude module: 'spark-core_2.11'
         exclude group: 'org.slf4j'
         exclude module: 'jul-to-slf4j'
         exclude module: 'javax.servlet'
@@ -302,7 +302,7 @@ dependencies {
     implementation ('org.ojalgo:ojalgo-commons-math3:1.0.0') {
         exclude group: 'org.apache.commons'
     }
-    implementation ('org.apache.spark:spark-mllib_' + '2.13' + ':' + sparkVersion) {
+    implementation ('org.apache.spark:spark-mllib_' + scalaVersion + ':' + sparkVersion) {
         // JUL is used by Google Dataflow as the backend logger, so exclude jul-to-slf4j to avoid a loop
         exclude module: 'jul-to-slf4j'
         exclude module: 'javax.servlet'
@@ -311,8 +311,7 @@ dependencies {
     implementation 'com.thoughtworks.paranamer:paranamer:2.8'
 
     implementation 'org.bdgenomics.bdg-formats:bdg-formats:0.5.0'
-    //TODO: there is no 2.13-compatible version
-    implementation('org.bdgenomics.adam:adam-core-spark2_' + '2.12' + ':0.28.0') {
+    implementation('org.bdgenomics.adam:adam-core-spark2_' + scalaVersion + ':0.28.0') {
         exclude group: 'org.slf4j'
         exclude group: 'org.apache.hadoop'
         exclude group: 'org.scala-lang'
@@ -369,7 +368,7 @@ dependencies {
 
     // natural sort
     implementation('net.grey-panther:natural-comparator:1.1')
-    implementation('com.fasterxml.jackson.module:jackson-module-scala_' + '2.13' + ':2.13.0')
+    implementation('com.fasterxml.jackson.module:jackson-module-scala_' + scalaVersion + ':2.9.8')
 
     testUtilsImplementation sourceSets.main.output
     testUtilsImplementation 'org.testng:testng:' + testNGVersion
