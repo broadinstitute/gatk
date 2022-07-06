@@ -29,8 +29,9 @@ public final class BDGAlignmentRecordToGATKReadAdapter extends SAMRecordToGATKRe
     private final AlignmentRecord alignmentRecord;
 
     public BDGAlignmentRecordToGATKReadAdapter(final AlignmentRecord alignmentRecord, final SAMFileHeader header) {
-        super(new AlignmentRecordConverter().convert(alignmentRecord, header,
-                ReadGroupDictionary.fromSAMHeader(header)));
+        super(null);
+//        super(new AlignmentRecordConverter().convert(alignmentRecord, header,
+//                ReadGroupDictionary.fromSAMHeader(header)));
         this.alignmentRecord = alignmentRecord;
     }
 
