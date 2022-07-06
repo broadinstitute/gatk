@@ -75,11 +75,15 @@ public class CompareReferences extends GATKTool {
         Map<String, TableRow> tableOutput = table.getTable();
 
         // print header --> replace w loop over getColumns
-        System.out.printf("%s\t%s\t", "MD5", "Length");
+        for(String str : table.getColumnNames()){
+            System.out.print(str + "\t");
+        }
+        System.out.println();
+        /*System.out.printf("%s\t%s\t", "MD5", "Length");
         for(GATKPath file : referenceSources.keySet()){
             System.out.printf("%s\t", getReferenceDisplayName(file));
         }
-        System.out.println();
+        System.out.println();*/
 
         // use string format to output as a table
         for(TableRow row : tableOutput.values()){
