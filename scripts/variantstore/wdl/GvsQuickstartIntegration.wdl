@@ -216,8 +216,9 @@ task AssertCostIsTrackedAndExpected {
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
         bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false --max_rows=1000 \
             "SELECT step, call, event_key, event_bytes \
-            FROM `~{dataset_name}.cost_observability` order by step, call, shard_identifier, event_key \
-            WHERE NOT (call = 'ExtractTask' or (call = 'ExtractFilterTask' and event_key = 'Storage API Scanned')) ORDER BY step, call, event_key, shard_identifier" > cost_observability_output.csv
+            FROM `~{dataset_name}.cost_observability` \
+            WHERE NOT (call = 'ExtractTask' or (call = 'ExtractFilterTask' and event_key = 'Storage API Scanned')) \
+            ORDER BY step, call, event_key, shard_identifier" > cost_observability_output.csv
         set +o errexit
         diff -w cost_observability_output.csv ~{expected_output_csv} > differences.txt
         set -o errexit
