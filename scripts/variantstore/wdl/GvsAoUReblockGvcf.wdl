@@ -64,11 +64,15 @@ task ReblockAndCopy {
   String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
   String gvcf_path = if (defined(service_account_json)) then basename(gvcf) else gvcf
 
-  String dir = if defined(site_id) then (
-      if select_first([site_id]) == "bi" then "gs://prod-genomics-data-broad/" else
-      (if select_first([site_id]) == "bcm" then "gs://prod-genomics-data-baylor/" else
-      (if select_first([site_id]) == "uw" then "gs://prod-genomics-data-northwest/" else "null" )))
-    else ""
+  # janky lower
+  String site_id_lower = if defined(site_id) then (
+    sub(sub(sub(select_first([site_id]), "BI", "bi"), "BCM", "bcm"), "UW", "uw")
+  ) else "null"
+
+  String dir =
+      if site_id_lower == "bi" then "gs://prod-genomics-data-broad/" else
+      (if site_id_lower == "bcm" then "gs://prod-genomics-data-baylor/" else
+      (if site_id_lower == "uw" then "gs://prod-genomics-data-northwest/" else "null" ))
 
   String destination = dir + path
 
@@ -77,7 +81,7 @@ task ReblockAndCopy {
     set -x
 
     if [ ~{site_id} -a ~{dir} == "null" ]; then
-      echo "dir is not set to a valid value: ~{dir}. check site_id - only valid values are ['bi', 'bcm', 'uw']"
+      echo "dir is not set to a valid value. site_id is ~{site_id}. check site_id - only valid values are ['bi', 'bcm', 'uw']"
       exit 1
     fi
 
