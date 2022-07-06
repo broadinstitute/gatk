@@ -469,6 +469,7 @@ public final class SequenceDictionaryUtils {
         for (SAMSequenceRecord dictionaryEntry : dict.getSequences())
             contigNames.add(dictionaryEntry.getSequenceName());
         return contigNames;
+
     }
 
     public static List<String> getContigNamesList(final SAMSequenceDictionary refSeqDict) {

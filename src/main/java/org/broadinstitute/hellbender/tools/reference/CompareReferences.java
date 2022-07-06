@@ -1,18 +1,17 @@
 package org.broadinstitute.hellbender.tools.reference;
 
-import com.google.flatbuffers.Table;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
+import org.apache.spark.sql.sources.In;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
-import org.broadinstitute.hellbender.tools.walkers.readorientation.AltSiteRecord;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
-import org.broadinstitute.hellbender.utils.tsv.TableUtils;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 import picard.cmdline.programgroups.ReferenceProgramGroup;
 
@@ -31,6 +30,8 @@ import java.util.*;
 public class CompareReferences extends GATKTool {
 
     public static final String MISSING_ENTRY = "---";
+    public static final String MD5_COLUMN_NAME = "MD5";
+    public static final String LENGTH_COLUMN_NAME = "Length";
 
     @Argument(fullName = "references-to-compare", shortName = "refcomp", doc = "Reference sequence file(s) to compare.")
     private List<GATKPath> references;
@@ -58,44 +59,22 @@ public class CompareReferences extends GATKTool {
     }
 
     @Override
-    public void traverse() {
-        Map<String, TableRow> tableOutput = buildTable();
+    public void traverse(){
+        Table table = new Table(referenceSources);
+        table.build();
 
         if(output == null){
-            writeTableToStdOutput(tableOutput);
+            writeTableToStdOutput(table);
         }
         else{
-
-            writeTableToFileOutput(tableOutput);
+            writeTableToFileOutput(table);
         }
     }
 
-    private Map<String, TableRow> buildTable(){
-        Map<String, TableRow> table = new LinkedHashMap<>();
+    private void writeTableToStdOutput(Table table){
+        Map<String, TableRow> tableOutput = table.getTable();
 
-        for(Map.Entry<GATKPath, ReferenceDataSource> entry : referenceSources.entrySet()){
-            SAMSequenceDictionary dictionary = entry.getValue().getSequenceDictionary();
-            for(SAMSequenceRecord record : dictionary.getSequences()){
-                String name = record.getSequenceName();
-                int length = record.getSequenceLength();
-                String md5 = record.getMd5();
-                GATKPath reference = entry.getKey();
-                TableEntry newEntry = new TableEntry(name, length, md5, reference);
-                TableRow newRow = null;
-
-                // map each MD5 to List of TableEntry objects containing length, md5, and name
-                if (!table.containsKey(md5)) {
-                    newRow = new TableRow(md5, length, new ArrayList<>(referenceSources.keySet()));
-                    table.put(md5, newRow);
-                }
-                table.get(md5).add(newEntry);
-            }
-        }
-        return table;
-    }
-
-    private void writeTableToStdOutput(Map<String, TableRow> table){
-        // MD5  Length  Ref1  Ref2 ...
+        // print header --> replace w loop over getColumns
         System.out.printf("%s\t%s\t", "MD5", "Length");
         for(GATKPath file : referenceSources.keySet()){
             System.out.printf("%s\t", getReferenceDisplayName(file));
@@ -103,7 +82,7 @@ public class CompareReferences extends GATKTool {
         System.out.println();
 
         // use string format to output as a table
-        for(TableRow row : table.values()){
+        for(TableRow row : tableOutput.values()){
             String currMd5 = row.getMd5();
             System.out.printf("%s\t%d", currMd5, row.getLength());
             for(TableEntry currEntry : row.getEntries()){
@@ -118,12 +97,20 @@ public class CompareReferences extends GATKTool {
         }
     }
 
-    private void writeTableToFileOutput(){
-
-
+    private void writeTableToFileOutput(Table table) {
+        TableColumnCollection columns = new TableColumnCollection(table.getColumnNames());
+        try(CompareReferences.CompareReferencesOutputTableWriter writer = new CompareReferences.CompareReferencesOutputTableWriter(output.toPath(), columns)){
+            writer.writeHeaderIfApplies();
+            for(TableRow row : table.getTable().values()){
+                writer.writeRecord(row);
+            }
+        }
+        catch(IOException exception){
+            throw new UserException.CouldNotCreateOutputFile(output, "Failed to write output table.", exception);
+        }
     }
 
-    private String getReferenceDisplayName(GATKPath reference){
+    protected static String getReferenceDisplayName(GATKPath reference){
         return reference.toPath().getFileName().toString();
     }
 
@@ -139,6 +126,7 @@ public class CompareReferences extends GATKTool {
                 entry.getValue().close();
             }
         }
+
     }
 
     private static class TableEntry {
@@ -207,29 +195,83 @@ public class CompareReferences extends GATKTool {
         public int getLength() {
             return length;
         }
+
+        public Map<GATKPath, Integer> getColumnIndices(){
+            return columnIndices;
+        }
+    }
+
+    private static class Table{
+        private Map<String, TableRow> table;
+        private Map<GATKPath, ReferenceDataSource> referenceSources;
+        private List<String> columnNames;
+        public Table(Map<GATKPath, ReferenceDataSource> referenceSources){
+            this.referenceSources = referenceSources;
+            columnNames = generateColumnNames();
+        }
+
+        private List<String> generateColumnNames(){
+            List<String> columns = new ArrayList<>();
+            columns.add(MD5_COLUMN_NAME);
+            columns.add(LENGTH_COLUMN_NAME);
+            for(GATKPath path : referenceSources.keySet()){
+                columns.add(getReferenceDisplayName(path));
+            }
+            return columns;
+        }
+
+        public List<String> getColumnNames() {
+            return columnNames;
+        }
+
+        public Map<String, TableRow> getTable() {
+            return table;
+        }
+
+        public void build(){
+            table = new LinkedHashMap<>();
+
+            for(Map.Entry<GATKPath, ReferenceDataSource> entry : referenceSources.entrySet()){
+                SAMSequenceDictionary dictionary = entry.getValue().getSequenceDictionary();
+                for(SAMSequenceRecord record : dictionary.getSequences()){
+                    String name = record.getSequenceName();
+                    int length = record.getSequenceLength();
+                    String md5 = record.getMd5();
+                    GATKPath reference = entry.getKey();
+                    TableEntry newEntry = new TableEntry(name, length, md5, reference);
+                    TableRow newRow = null;
+
+                    // map each MD5 to List of TableEntry objects containing length, md5, and name
+                    if (!table.containsKey(md5)) {
+                        newRow = new TableRow(md5, length, new ArrayList<>(referenceSources.keySet()));
+                        table.put(md5, newRow);
+                    }
+                    table.get(md5).add(newEntry);
+                }
+            }
+        }
+
     }
 
     public static class CompareReferencesOutputTableWriter extends TableWriter<TableRow> {
-        public CompareReferencesOutputTableWriter(final Path output, TableRow row) throws IOException {
+        private TableColumnCollection columnCollection;
 
-            super(output, row.getEntries());
-            //writeMetadata(TableUtils.SAMPLE_METADATA_TAG, sample);
+        public CompareReferencesOutputTableWriter(final Path table, TableColumnCollection columns) throws IOException {
+            super(table, columns);
+            columnCollection = columns;
         }
 
         @Override
-        protected void composeLine(final AltSiteRecord record, final DataLine dataLine) {
-            // it'd be nice to set() less manually...
-            // Note that allele fraction f is not allele-specific, thus the same f array will be printed
-            // four times for each context
-            dataLine.set(AltSiteRecord.AltSiteRecordTableColumn.CONTEXT.toString(), record.getReferenceContext())
-                    .set(AltSiteRecord.AltSiteRecordTableColumn.REF_COUNT.toString(), record.getRefCount())
-                    .set(AltSiteRecord.AltSiteRecordTableColumn.ALT_COUNT.toString(), record.getAltCount())
-                    .set(AltSiteRecord.AltSiteRecordTableColumn.REF_F1R2.toString(), record.getRefF1R2())
-                    .set(AltSiteRecord.AltSiteRecordTableColumn.ALT_F1R2.toString(), record.getAltF1R2())
-                    .set(AltSiteRecord.AltSiteRecordTableColumn.DEPTH.toString(), record.getDepth())
-                    .set(AltSiteRecord.AltSiteRecordTableColumn.ALT_BASE.toString(), record.getAltAllele().toString());
+        protected void composeLine(final TableRow record, final DataLine dataLine) {
+            // change this !!!
+            dataLine.set(MD5_COLUMN_NAME, record.getMd5())
+                    .set(LENGTH_COLUMN_NAME, record.getLength());
+
+            List<String> columnNames = columnCollection.names();
+            List<TableEntry> entries = record.getEntries();
+            for (int i = 2; i < columnNames.size(); i++) {
+                dataLine.set(columnNames.get(i), entries.get(i-2) == null ? MISSING_ENTRY : entries.get(i-2).getSequenceName());
+            }
         }
     }
-
-
 }
