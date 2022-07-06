@@ -382,12 +382,19 @@ dependencies {
 }
 
 run {
-        jvmArgs = ['--add-exports', 'java.base/sun.nio.ch=ALL-UNNAMED']
-}
+        jvmArgs = ['--add-exports', 'java.base/sun.nio.ch=ALL-UNNAMED',
+                   '--add-opens', 'java.base/java.nio=ALL-UNNAMED',
+                   '--add-opens', 'java.base/java.io=ALL-UNNAMED'
+        ]
+    }
 
 test {
-        jvmArgs = ['--add-exports', 'java.base/sun.nio.ch=ALL-UNNAMED']
+        jvmArgs = ['--add-exports', 'java.base/sun.nio.ch=ALL-UNNAMED',
+                   '--add-opens', 'java.base/java.nio=ALL-UNNAMED',
+                   '--add-opens', 'java.base/java.io=ALL-UNNAMED'
+        ]
 }
+
 //add gatk launcher script to the jar as a resource
 processResources {
     from("gatk")
