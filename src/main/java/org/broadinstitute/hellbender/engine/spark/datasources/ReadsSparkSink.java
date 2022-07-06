@@ -158,8 +158,10 @@ public final class ReadsSparkSink {
     private static void writeReadsADAM(
             final JavaSparkContext ctx, final String outputFile, final JavaRDD<SAMRecord> reads,
             final SAMFileHeader header) throws IOException {
-        final SequenceDictionary seqDict = SequenceDictionary.fromSAMSequenceDictionary(header.getSequenceDictionary());
-        final ReadGroupDictionary readGroups = ReadGroupDictionary.fromSAMHeader(header);
+//        final SequenceDictionary seqDict = SequenceDictionary.fromSAMSequenceDictionary(header.getSequenceDictionary());
+        final SequenceDictionary seqDict = null;
+//        final ReadGroupDictionary readGroups = ReadGroupDictionary.fromSAMHeader(header);
+        final ReadGroupDictionary readGroups = null;
         final JavaPairRDD<Void, AlignmentRecord> rddAlignmentRecords =
                 reads.map(read -> {
                     read.setHeaderStrict(header);

@@ -8,13 +8,14 @@ import org.bdgenomics.adam.util.TwoBitFile;
 import org.bdgenomics.adam.util.TwoBitRecord;
 import org.bdgenomics.formats.avro.Strand;
 import org.bdgenomics.utils.io.ByteAccess;
+import org.bdgenomics.utils.io.ByteArrayByteAccess;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import scala.Tuple2;
-import scala.collection.JavaConversions;
+import scala.jdk.CollectionConverters;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -44,12 +45,13 @@ public class ReferenceTwoBitSparkSource implements ReferenceSparkSource, Seriali
         this.referenceURL = referencePathSpecifier.getRawInputString();
         Utils.validateArg(isTwoBit(referencePathSpecifier), "ReferenceTwoBitSource can only take .2bit files");
         byte[] bytes = ByteStreams.toByteArray(BucketUtils.openFile(this.referenceURL));
-        ByteAccess byteAccess = new DirectFullByteArrayByteAccess(bytes);
+        //TODO: what is the ramification of dropping DirectFullByteArrayByteAccess
+        ByteAccess byteAccess = new ByteArrayByteAccess(bytes);
         this.twoBitFile = new TwoBitFile(byteAccess);
         this.twoBitSeqEntries = new LinkedHashMap<>();
-        for (Tuple2<String, TwoBitRecord> pair: JavaConversions.seqAsJavaList(twoBitFile.seqRecords())) {
-            twoBitSeqEntries.put(pair._1, pair._2);
-        }
+//        for (Tuple2<String, TwoBitRecord> pair: JavaConversions.seqAsJavaList(twoBitFile.seqRecords())) {
+//            twoBitSeqEntries.put(pair._1, pair._2);
+//        }
     }
 
     /**
@@ -63,14 +65,16 @@ public class ReferenceTwoBitSparkSource implements ReferenceSparkSource, Seriali
     @Override
     public ReferenceBases getReferenceBases(SimpleInterval interval) throws IOException {
         final SimpleInterval queryInterval = cropIntervalAtContigEnd(interval);
-        final String bases = twoBitFile.extract(simpleIntervalToReferenceRegion(queryInterval));
+        //final String bases = twoBitFile.extract(simpleIntervalToReferenceRegion(queryInterval));
+        final String bases = null;
         return new ReferenceBases(bases.getBytes(), queryInterval);
     }
 
     @Override
     public SAMSequenceDictionary getReferenceSequenceDictionary(SAMSequenceDictionary optReadSequenceDictionaryToMatch) throws IOException {
         List<SAMSequenceRecord> records = twoBitSeqEntries.entrySet().stream()
-                .map(pair -> new SAMSequenceRecord(pair.getKey(), pair.getValue().dnaSize()))
+                //.map(pair -> new SAMSequenceRecord(pair.getKey(), pair.getValue().dnaSize()))
+                .map(pair -> new SAMSequenceRecord(pair.getKey(), 0))
                 .collect(Collectors.toList());
         return new SAMSequenceDictionary(records);
     }
@@ -92,7 +96,7 @@ public class ReferenceTwoBitSparkSource implements ReferenceSparkSource, Seriali
         // to truncate our interval at the contig end if necessary.
         final TwoBitRecord contigRecord = twoBitSeqEntries.get(interval.getContig());
         Utils.nonNull(contigRecord, () -> "Contig " + interval.getContig() + " not found in reference dictionary");
-        return new SimpleInterval(interval.getContig(), interval.getStart(), Math.min(interval.getEnd(), contigRecord.dnaSize()));
+        return new SimpleInterval(interval.getContig(), interval.getStart(), Math.min(interval.getEnd(), 0));
     }
 
 }
