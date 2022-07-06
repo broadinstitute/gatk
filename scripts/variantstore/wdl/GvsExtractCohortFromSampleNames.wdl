@@ -8,8 +8,10 @@ import "GvsExtractCallset.wdl" as GvsExtractCallset
 workflow GvsExtractCohortFromSampleNames {
 
   input {
-    File? cohort_sample_names
+    # cohort_sample_names_array will take precedence over cohort_sample_names if both are set 
     Array[String]? cohort_sample_names_array
+    File? cohort_sample_names
+
     String query_project
     String gvs_project
     String gvs_dataset
