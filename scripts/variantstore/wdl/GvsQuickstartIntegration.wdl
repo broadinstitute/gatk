@@ -55,49 +55,49 @@ workflow GvsQuickstartIntegration {
     }
     String project_id = "gvs-internal"
 
-#    call Utils.BuildGATKJarAndCreateDataset {
-#        input:
-#            branch_name = branch_name,
-#            dataset_prefix = "quickit"
-#    }
-#
-#    call Unified.GvsUnified {
-#        input:
-#            call_set_identifier = branch_name,
-#            dataset_name = BuildGATKJarAndCreateDataset.dataset_name,
-#            project_id = project_id,
-#            external_sample_names = external_sample_names,
-#            gatk_override = BuildGATKJarAndCreateDataset.jar,
-#            input_vcfs = input_vcfs,
-#            input_vcf_indexes = input_vcf_indexes,
-#            filter_set_name = "quickit",
-#            extract_table_prefix = "quickit",
-#            extract_scatter_count = extract_scatter_count,
-#            # Force filtering off as it is not deterministic and the initial version of this integration test does not
-#            # allow for inexact matching of actual and expected results.
-#            extract_do_not_filter_override = true,
-#            load_data_batch_size = load_data_batch_size,
-#    }
-#
-#    call AssertIdenticalOutputs {
-#        input:
-#            expected_output_prefix = expected_output_prefix,
-#            actual_vcfs = GvsUnified.output_vcfs
-#    }
+    call Utils.BuildGATKJarAndCreateDataset {
+        input:
+            branch_name = branch_name,
+            dataset_prefix = "quickit"
+    }
+
+    call Unified.GvsUnified {
+        input:
+            call_set_identifier = branch_name,
+            dataset_name = BuildGATKJarAndCreateDataset.dataset_name,
+            project_id = project_id,
+            external_sample_names = external_sample_names,
+            gatk_override = BuildGATKJarAndCreateDataset.jar,
+            input_vcfs = input_vcfs,
+            input_vcf_indexes = input_vcf_indexes,
+            filter_set_name = "quickit",
+            extract_table_prefix = "quickit",
+            extract_scatter_count = extract_scatter_count,
+            # Force filtering off as it is not deterministic and the initial version of this integration test does not
+            # allow for inexact matching of actual and expected results.
+            extract_do_not_filter_override = true,
+            load_data_batch_size = load_data_batch_size,
+    }
+
+    call AssertIdenticalOutputs {
+        input:
+            expected_output_prefix = expected_output_prefix,
+            actual_vcfs = GvsUnified.output_vcfs
+    }
 
     call AssertCostIsTrackedAndExpected {
         input:
-#            go = GvsUnified.done,
-            dataset_name = dataset_name,
+            go = GvsUnified.done,
+            dataset_name = BuildGATKJarAndCreateDataset.dataset_name,
             project_id = project_id,
             expected_output_csv = expected_output_prefix + "cost_observability_expected.csv"
     }
 
     output {
-#        Array[File] output_vcfs = GvsUnified.output_vcfs
-#        Array[File] output_vcf_indexes = GvsUnified.output_vcf_indexes
-#        Float total_vcfs_size_mb = GvsUnified.total_vcfs_size_mb
-#        File manifest = GvsUnified.manifest
+        Array[File] output_vcfs = GvsUnified.output_vcfs
+        Array[File] output_vcf_indexes = GvsUnified.output_vcf_indexes
+        Float total_vcfs_size_mb = GvsUnified.total_vcfs_size_mb
+        File manifest = GvsUnified.manifest
         Boolean done = true
     }
 }
@@ -196,7 +196,7 @@ task AssertIdenticalOutputs {
 
 task AssertCostIsTrackedAndExpected {
     meta {
-        # we want to check the databbase each time this runs
+        # we want to check the database each time this runs
         volatile: true
     }
 
@@ -252,7 +252,7 @@ task AssertCostIsTrackedAndExpected {
         if [[ $OBS_KEY == "ExtractFilterTask.GvsCreateFilterSet.BigQuery Query Scanned" ]]; then
           TOLERANCE=0.012   # 1.2% tolerance
         elif [[ $OBS_KEY == "ExtractTask.GvsCreateCallset.Storage API Scanned" ]]; then
-          TOLERANCE=0.001   # 0.6% tolerance
+          TOLERANCE=0.006   # 0.6% tolerance
         fi
 
         if [[ $OBS_BYTES -ne $EXP_BYTES ]]; then
@@ -266,7 +266,7 @@ task AssertCostIsTrackedAndExpected {
 
           if ! awk "BEGIN{ exit ($DIFF_FOUND > $TOLERANCE) }"
           then
-            echo "Further, the relative difference between these is $DIFF_FOUND, which is greater than the allowed tolerance ($TOLERANCE) - Fail!"
+            echo "FAIL!!! The relative difference between these is $DIFF_FOUND, which is greater than the allowed tolerance ($TOLERANCE)"
             echo "1" > ret_val.txt
           else
             echo "However, the relative difference between these is $DIFF_FOUND, which is below the allowed tolerance ($TOLERANCE)"
@@ -276,16 +276,6 @@ task AssertCostIsTrackedAndExpected {
 
         RET_VAL=`cat ret_val.txt`
         exit $RET_VAL
-
-#        set +o errexit
-#        diff -w cost_observability_output.csv ~{expected_output_csv} > differences.txt
-#        set -o errexit
-
-#        if [[ -s differences.txt ]]; then
-#            echo "Differences found:"
-#            cat differences.txt
-#            exit 1
-#        fi
 
     >>>
 
