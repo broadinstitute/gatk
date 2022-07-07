@@ -215,7 +215,7 @@ task AssertCostIsTrackedAndExpected {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
         bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false \
-            "SELECT select call, step, event_key, sum(event_bytes) \
+            "SELECT call, step, event_key, sum(event_bytes) \
               FROM \`~{dataset_name}.cost_observability\` \
               GROUP BY call, step, event_key \
               ORDER BY call, step, event_key" > cost_observability_output.csv
