@@ -50,8 +50,6 @@ workflow GvsQuickstartIntegration {
                                         ]
 
         Int? extract_scatter_count
-
-        Int load_data_batch_size = 1
     }
     String project_id = "gvs-internal"
 
@@ -76,7 +74,6 @@ workflow GvsQuickstartIntegration {
             # Force filtering off as it is not deterministic and the initial version of this integration test does not
             # allow for inexact matching of actual and expected results.
             extract_do_not_filter_override = true,
-            load_data_batch_size = load_data_batch_size,
     }
 
     call AssertIdenticalOutputs {

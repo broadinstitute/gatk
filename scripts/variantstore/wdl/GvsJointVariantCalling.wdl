@@ -22,6 +22,7 @@ workflow GvsJointVariantCalling {
       Int extract_maxretries_override = ""
       Int extract_preemptible_override = ""
       Int extract_scatter_count = ""
+      Int load_data_batch_size = ""
       Int load_data_preemptible_override = ""
       Int load_data_maxretries_override = ""
       Array[String] query_labels = []
@@ -64,7 +65,7 @@ workflow GvsJointVariantCalling {
             indel_recalibration_annotation_values = indel_recalibration_annotation_values,
             interval_list = interval_list,
             interval_weights_bed = interval_weights_bed,
-            load_data_batch_size = 5,
+            load_data_batch_size = load_data_batch_size,
             load_data_maxretries_override = load_data_maxretries_override,
             load_data_preemptible_override = load_data_preemptible_override,
             query_labels = query_labels,
