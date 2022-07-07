@@ -46,8 +46,8 @@ def train(annotations_file,
     # imputed_X_ni and X_ni and misalignment of features when training and scoring downstream.
     # We externally check for and fail in the presence of any entirely missing features, but we do a redundant check here.
     assert imputed_X_ni.shape == X_ni.shape, \
-        f'Shape of imputed annotations differs from shape of raw annotations; at least one feature must be completely missing ' \
-        f'and was dropped during imputation.'
+        f'Shape of imputed annotations differs from shape of raw annotations; at least one feature is completely missing ' \
+        f'and hence dropped during imputation.'
 
     print(f'Training IsolationForest with {imputed_X_ni.shape[0]} training sites x {imputed_X_ni.shape[1]} annotations...')
     clf = sklearn.ensemble.IsolationForest(**hyperparameters_kwargs)
