@@ -49,7 +49,6 @@ def train(annotations_file,
         f'Shape of imputed annotations differs from shape of raw annotations; at least one feature must be completely missing ' \
         f'and was dropped during imputation.'
 
-
     print(f'Training IsolationForest with {imputed_X_ni.shape[0]} training sites x {imputed_X_ni.shape[1]} annotations...')
     clf = sklearn.ensemble.IsolationForest(**hyperparameters_kwargs)
     clf.fit(imputed_X_ni)
