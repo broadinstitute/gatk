@@ -252,7 +252,7 @@ task AssertCostIsTrackedAndExpected {
         if [[ $OBS_KEY == "ExtractFilterTask.GvsCreateFilterSet.BigQuery Query Scanned" ]]; then
           TOLERANCE=0.012   # 1.2% tolerance
         elif [[ $OBS_KEY == "ExtractTask.GvsCreateCallset.Storage API Scanned" ]]; then
-          TOLERANCE=0.006   # 0.6% tolerance
+          TOLERANCE=0.001   # 0.6% tolerance
         fi
 
         if [[ $OBS_BYTES -ne $EXP_BYTES ]]; then
