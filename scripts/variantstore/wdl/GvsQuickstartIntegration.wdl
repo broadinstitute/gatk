@@ -228,6 +228,23 @@ task AssertCostIsTrackedAndExpected {
             cat differences.txt
             exit 1
         fi
+
+        echo "Test 1"
+
+        paste cost_observability_output.csv ~{expected_output_csv} | while read observed expected; do
+          echo "-in $expected -out $observed"
+        done
+
+        echo "Test 2"
+
+        key1="12.3"
+        result="12.2"
+        if [ $(bc <<< "$result <= $key1") -eq 1 ]
+        then
+          echo "$result is <= $key"
+        else
+          echo "result is > $key"
+        fi
     >>>
 
     runtime {
