@@ -191,7 +191,17 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
 
         // TODO validate modes
         if (snpScorer == null && indelScorer == null) {
-            throw new UserException.BadInput("At least one serialized scorer must be present in model files.");
+            throw new UserException.BadInput("At least one serialized scorer must be present in model files. " +
+                    "If a python model backend was used to train the input model, ensure that the " +
+                    PYTHON_SCRIPT_LONG_NAME + " argument is provided.");
+        }
+        if (variantTypesToExtract.contains(VariantType.SNP) && snpScorer == null) {
+            throw new UserException.BadInput("SNPs were indicated for extraction via the " + MODE_LONG_NAME + " argument, " +
+                    "but no serialized SNP scorer was available.");
+        }
+        if (variantTypesToExtract.contains(VariantType.INDEL) && indelScorer == null) {
+            throw new UserException.BadInput("INDELs were indicated for extraction via the " + MODE_LONG_NAME + " argument, " +
+                    "but no serialized INDEL scorer was available.");
         }
 
         // TODO extract method and constants
