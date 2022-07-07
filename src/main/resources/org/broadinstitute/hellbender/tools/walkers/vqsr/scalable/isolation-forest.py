@@ -43,7 +43,7 @@ def train(annotations_file,
     imputed_X_ni = imputer.fit_transform(X_ni)
 
     # SimpleImputer will drop any features that are completely missing, resulting in different shapes for
-    # imputed_X_ni and X_ni and misalignment of features when training and scoring downstream.
+    # imputed_X_ni and X_ni and misalignment of features when training and scoring downstream if not checked.
     # We externally check for and fail in the presence of any entirely missing features, but we do a redundant check here.
     assert imputed_X_ni.shape == X_ni.shape, \
         f'Shape of imputed annotations differs from shape of raw annotations; at least one feature is completely missing ' \
