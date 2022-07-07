@@ -59,7 +59,8 @@ public final class ArgumentsBuilderTest{
         Assert.assertEquals(args.getArgsArray(), new String[]{"--foo", file.getAbsolutePath()});
     }
 
-    private enum AnEnum { OPTION1, OPTION2}
+    private enum
+    AnEnum { OPTION1, OPTION2}
 
     @Test
     public void testAddEnum() {
