@@ -337,10 +337,11 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
         if (!completelyMissingAnnotationNames.isEmpty()) {
             throw new UserException.BadInput(
                     String.format("All values of the following annotations are missing in the training data for the %s model: %s. " +
-                                    "If this is a positive model, consider repeating the extraction step with this annotation dropped. " +
-                                    "If this is a negative model, also consider lowering the value of the %s argument so that more " +
-                                    "training data is used to train this model, which may ultimately admit data with non-missing values for the annotation " +
-                                    "(although note that this will affect the resulting model fit); " +
+                                    "Consider repeating the extraction step with this annotation dropped. " +
+                                    "If this is a negative model and the amount of negative training data is small, " +
+                                    "perhaps also consider lowering the value of the %s argument so that more " +
+                                    "training data is considered, which may ultimately admit data with non-missing values for the annotation " +
+                                    "(although note that this will also have implications for the resulting model fit); " +
                                     "alternatively, consider excluding the %s and %s arguments and running positive-only modeling.",
                             outputPrefix + outputPrefixTag, completelyMissingAnnotationNames,
                             CALIBRATION_SENSITIVITY_THRESHOLD_LONG_NAME, UNLABELED_ANNOTATIONS_HDF5_LONG_NAME, CALIBRATION_SENSITIVITY_THRESHOLD_LONG_NAME));
