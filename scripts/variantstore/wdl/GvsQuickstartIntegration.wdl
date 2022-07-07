@@ -211,7 +211,7 @@ task AssertCostIsTrackedAndExpected {
         set -o errexit
         set -o nounset
         set -o pipefail
-        set -o xtrace
+#        set -o xtrace
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
         bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false --max_rows=1000 \
@@ -232,14 +232,19 @@ task AssertCostIsTrackedAndExpected {
         echo "Test 1"
 
         paste cost_observability_output.csv ~{expected_output_csv} | while read observed expected; do
+          echo "A"
+          echo $expected
+          echo "B"
+          echo $observed
+          echo "C"
           echo "-in $expected -out $observed"
         done
 
         echo "Test 2"
 
-        key1="12.3"
-        result="12.2"
-        if [ $(bc <<< "$result <= $key1") -eq 1 ]
+        key1=12.3
+        result=12.2
+        if ! awk "BEGIN{ exit ($result <= $key1) }"
         then
           echo "$result is <= $key"
         else
