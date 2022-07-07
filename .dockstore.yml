@@ -73,7 +73,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - mmt_aou_site_id_fix
    - name: GvsRescatterCallsetInterval
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsRescatterCallsetInterval.wdl
