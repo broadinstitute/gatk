@@ -679,6 +679,9 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         // Calculate the likelihoods: CPU intensive part.
         final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods =
                 likelihoodCalculationEngine.computeReadLikelihoods(assemblyResult, samplesList, reads);
+        if (region.wasDownsampled()) {
+            readLikelihoods.setCoverageDownsamplingTrue();
+        }
 
         // Realign reads to their best haplotype.
         final SWParameters readToHaplotypeSWParameters = hcArgs.getReadToHaplotypeSWParameters();

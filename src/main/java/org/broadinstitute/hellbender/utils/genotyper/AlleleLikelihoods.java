@@ -38,6 +38,8 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
     private boolean isNaturalLog = false;
     private SimpleInterval subsettedGenomicLoc;
 
+    private boolean wasCoverageDownsampled = false;
+
     public boolean isNaturalLog() {
         return isNaturalLog;
     }
@@ -366,6 +368,10 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
             removeEvidence(s, evidenceToRemove);
         }
     }
+
+    public void setCoverageDownsamplingTrue() { wasCoverageDownsampled = true; }
+
+    public boolean getCoverageDownsamplingHistory() { return wasCoverageDownsampled; }
 
     /**
      * Adjusts likelihoods so that for each unit of evidence, the best allele likelihood is 0 and caps the minimum likelihood
@@ -706,6 +712,7 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
                 filteredEvidenceBySampleIndex,
                 newLikelihoodValues);
         result.isNaturalLog = isNaturalLog;
+        result.wasCoverageDownsampled = wasCoverageDownsampled;
         return result;
     }
 

@@ -76,6 +76,11 @@ public final class AssemblyRegion implements Locatable {
     private List<AlignmentAndReferenceContext> alignmentData = new ArrayList<>();
 
     /**
+     * Indicates whether reads in the region have been downsampled
+     */
+    private boolean hasBeenDownsampled;
+
+    /**
      * Create a new AssemblyRegion containing no reads
      *  @param activeSpan the span of this active region
      * @param isActive indicates whether this is an active region, or an inactive one
@@ -398,5 +403,9 @@ public final class AssemblyRegion implements Locatable {
     public boolean isFinalized() {
         return hasBeenFinalized;
     }
+
+    public void setWasDownsampled(final boolean value) { hasBeenDownsampled = value; }
+
+    public boolean wasDownsampled() { return hasBeenDownsampled; }
 
 }
