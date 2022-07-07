@@ -64,7 +64,7 @@ task ReblockAndCopy {
   String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
   String gvcf_path = if (defined(service_account_json)) then basename(gvcf) else gvcf
 
-  # janky lower
+  # this is WDL for .toLowerCase() for the three possible site codes
   String site_id_lower = if defined(site_id) then (
     sub(sub(sub(select_first([site_id]), "BI", "bi"), "BCM", "bcm"), "UW", "uw")
   ) else "null"
@@ -81,7 +81,7 @@ task ReblockAndCopy {
     set -x
 
     if [ ~{site_id} -a ~{dir} == "null" ]; then
-      echo "dir is not set to a valid value. site_id is ~{site_id}. check site_id - only valid values are ['bi', 'bcm', 'uw']"
+      echo "The additional output directory for the reblocked gVCFs cannot be set to a valid value because the site_id is '~{site_id}' and the only valid values are ['bi', 'bcm', 'uw']."
       exit 1
     fi
 
