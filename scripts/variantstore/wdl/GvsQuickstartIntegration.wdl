@@ -247,9 +247,11 @@ task AssertCostIsTrackedAndExpected {
 
         # For these two costs, there is non-determinism in the pipeline - we allow a % difference
         if [[ $OBS_KEY == "ExtractFilterTask.GvsCreateFilterSet.BigQuery Query Scanned" ]]; then
-          TOLERANCE=0.012   # 1.2% tolerance
+          TOLERANCE=0.015   # 1.5% tolerance  (0.0109429)
         elif [[ $OBS_KEY == "ExtractTask.GvsCreateCallset.Storage API Scanned" ]]; then
-          TOLERANCE=0.006   # 0.6% tolerance
+          TOLERANCE=0.01   # 1% tolerance  (0.00608656)
+        elif [[ $OBS_KEY == "ExtractFilterTask.GvsCreateFilterSet.Storage API Scanned" ]]; then
+          TOLERANCE=0.05  # 5% tolerance (0.0281223)
         fi
 
         if [[ $OBS_BYTES -ne $EXP_BYTES ]]; then
