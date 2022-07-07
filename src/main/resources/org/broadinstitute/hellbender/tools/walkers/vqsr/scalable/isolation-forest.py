@@ -39,6 +39,9 @@ def train(annotations_file,
     print('Hyperparameters:', hyperparameters_kwargs)
 
     print('Imputing annotations...')
+    # SimpleImputer will drop any features that are entirely missing, resulting in different shapes for
+    # imputed_X_ni and X_ni and misalignment of features when training and scoring downstream.
+    # We thus externally check for and fail in the presence of any entirely missing features.
     imputer = sklearn.impute.SimpleImputer(strategy='median')
     imputed_X_ni = imputer.fit_transform(X_ni)
 

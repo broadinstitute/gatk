@@ -80,7 +80,6 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
             fullName = MODEL_PREFIX_LONG_NAME)
     private String modelPrefix;
 
-    // TODO should we allow separate SNP and INDEL thresholds? alternatively, users could apply this tool twice, once for each variant type.
     @Argument(
             fullName = SNP_CALIBRATION_SENSITIVITY_THRESHOLD_LONG_NAME,
             doc = "If specified, SNPs with scores corresponding to a calibration sensitivity that is greater than or equal to this threshold will be hard filtered.",

@@ -13,7 +13,6 @@ import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.tuple.Triple;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -119,7 +118,8 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
     @Argument(
             fullName = StandardArgumentDefinitions.ANNOTATION_LONG_NAME,
             shortName = StandardArgumentDefinitions.ANNOTATION_SHORT_NAME,
-            doc = "Names of the annotations to extract.",
+            doc = "Names of the annotations to extract. Note that a requested annotation may in fact not be present " +
+                    "at any extraction site; NaN missing values will be generated for such annotations.",
             minElements = 1)
     List<String> annotationNames = new ArrayList<>();
 
@@ -210,17 +210,7 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
         resourceLabels.forEach(String::intern); // TODO not sure if this is necessary?
 
         // TODO let child tools specify required labels
-        if (!resourceLabels.contains(LabeledVariantAnnotationsData.TRAINING_LABEL)) {
-            throw new CommandLineException(
-                    "No training set found! Please provide sets of known polymorphic loci marked with the training=true feature input tag. " +
-                            "For example, --resource:hapmap,training=true,calibration=true hapmapFile.vcf");
-        }
 
-        if (!resourceLabels.contains(LabeledVariantAnnotationsData.CALIBRATION_LABEL)) {
-            throw new CommandLineException(
-                    "No calibration set found! Please provide sets of known polymorphic loci marked with the calibration=true feature input tag. " +
-                            "For example, --resource:hapmap,training=true,calibration=true hapmapFile.vcf");
-        }
 
         data = new LabeledVariantAnnotationsData(annotationNames, resourceLabels, useASAnnotations);
 

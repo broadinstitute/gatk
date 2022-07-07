@@ -1,10 +1,14 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 
 import com.google.common.collect.Lists;
+import htsjdk.samtools.util.Log;
 import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.hdf5.HDF5File;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.LabeledVariantAnnotationsData;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.VariantType;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -373,6 +377,42 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
                 .andThen(addPositiveAnnotations)
                 .andThen(addUnlabeledAnnotations)
                 .andThen(addCalibrationSensitivityThreshold)
+                .apply(argsBuilder);
+        runCommandLine(argsBuilder);
+    }
+
+    @Test(expectedExceptions = UserException.BadInput.class, groups = {"python"}) // python environment is required to run tool
+    public void testPositiveAnnotationForOneVariantTypeIsCompletelyMissing() { // TODO add analogous test that warning is emitted when annotation has zero variance?
+        final File outputDir = createTempDir("train");
+        final String outputPrefix = String.format("%s/test", outputDir);
+        final ArgumentsBuilder argsBuilder = BASE_ARGUMENTS_BUILDER_SUPPLIER.get();
+        argsBuilder.addOutput(outputPrefix);
+
+        // we will dummy up an annotations file that contains 2 annotations (ANNOT_1 and ANNOT_2)
+        // for 4 variants (2 SNPs and 2 INDELs); the INDELs will all have missing (i.e., NaN) ANNOT_1 values
+        final List<String> annotationNames = Arrays.asList("ANNOT_1", "ANNOT_2");
+        final double[][] annotations = new double[][]{
+                new double[]{1, 2},             // SNP
+                new double[]{3, 4},             // SNP
+                new double[]{Double.NaN, 2},    // INDEL
+                new double[]{Double.NaN, 4}};   // INDEL
+        final List<Boolean> isSubset = Collections.nCopies(4, true);
+
+        final File positiveAnnotationsHDF5 = LabeledVariantAnnotationsData.subsetAnnotationsToTemporaryFile(
+                annotationNames, annotations, isSubset);
+
+        try (final HDF5File positiveAnnotationsHDF5File = new HDF5File(positiveAnnotationsHDF5, HDF5File.OpenMode.READ_WRITE)) {
+            positiveAnnotationsHDF5File.makeDoubleArray("/labels/snp", new double[]{1, 1, 0, 0});
+            positiveAnnotationsHDF5File.makeDoubleArray("/labels/training", new double[]{1, 1, 1, 1});
+            positiveAnnotationsHDF5File.makeDoubleArray("/labels/calibration", new double[]{1, 1, 1, 1});
+        }
+        final Function<ArgumentsBuilder, ArgumentsBuilder> addPositiveAnnotations = ab ->
+                ADD_ANNOTATIONS_HDF5.apply(ab, positiveAnnotationsHDF5);
+
+        ADD_SNP_MODE.andThen(ADD_INDEL_MODE)
+                .andThen(ADD_ISOLATION_FOREST_PYTHON_SCRIPT)
+                .andThen(ADD_ISOLATION_FOREST_HYPERPARAMETERS_JSON)
+                .andThen(addPositiveAnnotations)
                 .apply(argsBuilder);
         runCommandLine(argsBuilder);
     }

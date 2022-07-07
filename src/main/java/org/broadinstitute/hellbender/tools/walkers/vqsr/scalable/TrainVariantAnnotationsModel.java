@@ -2,7 +2,9 @@ package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 
 import com.google.common.collect.Streams;
 import com.google.common.primitives.Doubles;
+import org.apache.commons.math3.stat.descriptive.moment.Variance;
 import org.apache.commons.math3.stat.descriptive.rank.Percentile;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -29,6 +31,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * TODO
@@ -69,12 +72,16 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
     @Argument(
             fullName = UNLABELED_ANNOTATIONS_HDF5_LONG_NAME,
             optional = true,
-            doc = "HDF5 file containing annotations extracted with ExtractVariantAnnotations.")
+            doc = "HDF5 file containing annotations extracted with ExtractVariantAnnotations. " +
+                    "If specified with " + CALIBRATION_SENSITIVITY_THRESHOLD_LONG_NAME + ", " +
+                    "a positive-unlabeled modeling approach will be used; otherwise, a positive-only modeling " +
+                    "approach will be used.")
     private File inputUnlabeledAnnotationsFile;
 
     @Argument(
             fullName = PYTHON_SCRIPT_LONG_NAME,
-            optional = true)
+            optional = true,
+            doc = "Python script used for specifying a custom modeling/scoring backend.") // TODO expand
     private File pythonScriptFile;
 
     @Argument(
@@ -90,10 +97,13 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
 
     @Argument(
             fullName = CALIBRATION_SENSITIVITY_THRESHOLD_LONG_NAME,
-            doc = "Calibration-sensitivity threshold that determines which sites will be used for training the negative model. " +
+            doc = "Calibration-sensitivity threshold that determines which sites will be used for training the negative model " +
+                    "in the positive-unlabeled modeling approach. " +
                     "Increasing this will decrease the corresponding positive-model score threshold; sites with scores below this score " +
                     "threshold will be used for training the negative model. Thus, this parameter should typically be chosen to " +
-                    "be close to 1, so that sites that score highly according to the positive model will not be used to train the negative model.",
+                    "be close to 1, so that sites that score highly according to the positive model will not be used to train the negative model. " +
+                    "The " + UNLABELED_ANNOTATIONS_HDF5_LONG_NAME + " argument must be specified in conjunction with this argument. " +
+                    "If separate thresholds for SNP and INDEL models are desired, run the tool separately for each mode with its respective threshold.",
             optional = true,
             minValue = 0.,
             maxValue = 1.)
@@ -133,7 +143,7 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
 
         Utils.validateArg((inputUnlabeledAnnotationsFile == null) == (calibrationSensitivityThreshold == null),
                 "Unlabeled annotations and calibration-sensitivity threshold must both be unspecified (for positive-only model training) " +
-                        "or specified (for positive-negative model training).");
+                        "or specified (for positive-unlabeled model training).");
 
         availableLabelsMode = inputUnlabeledAnnotationsFile != null && calibrationSensitivityThreshold != null
                 ? AvailableLabelsMode.POSITIVE_UNLABELED
@@ -145,10 +155,6 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
             final List<String> unlabeledAnnotationNames = LabeledVariantAnnotationsData.readAnnotationNames(inputUnlabeledAnnotationsFile);
             Utils.validateArg(annotationNames.equals(unlabeledAnnotationNames), "Annotation names must be identical for positive and unlabeled annotations.");
         }
-
-        // TODO test output and fail early
-        // TODO FAIL if annotations that are all NaN?
-        // TODO WARN if annotations that have zero variance?
 
         if (pythonScriptFile != null) {
             logger.info("Python script was provided, running in PYTHON mode...");
@@ -209,7 +215,6 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
 
             // negative model
             if (availableLabelsMode == AvailableLabelsMode.POSITIVE_UNLABELED) {
-                final List<String> unlabeledAnnotationNames = LabeledVariantAnnotationsData.readAnnotationNames(inputUnlabeledAnnotationsFile);
                 final double[][] unlabeledAnnotations = LabeledVariantAnnotationsData.readAnnotations(inputUnlabeledAnnotationsFile);
                 final List<Boolean> unlabeledIsSNP = LabeledVariantAnnotationsData.readLabel(inputUnlabeledAnnotationsFile, "snp");
                 final List<Boolean> isUnlabeledVariantType = variantType == VariantType.SNP ? unlabeledIsSNP : unlabeledIsSNP.stream().map(x -> !x).collect(Collectors.toList());
@@ -285,6 +290,7 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
 
     private void trainAndSerializeModel(final File trainingAnnotationsFile,
                                         final String outputPrefixTag) {
+        readAndValidateTrainingAnnotations(trainingAnnotationsFile, outputPrefixTag);
         final VariantAnnotationsModel model;
         switch (modelBackendMode) {
             case PYTHON:
@@ -297,6 +303,48 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
                 throw new GATKException.ShouldNeverReachHereException("Unknown model mode.");
         }
         model.trainAndSerialize(trainingAnnotationsFile, outputPrefix + outputPrefixTag);
+    }
+
+    // when training models on data that has been subset to a given variant type,
+    // we FAIL if any annotation is completely missing and WARN if any annotation has zero variance
+    private void readAndValidateTrainingAnnotations(final File trainingAnnotationsFile,
+                                                    final String outputPrefixTag) {
+        final List<String> annotationNames = LabeledVariantAnnotationsData.readAnnotationNames(trainingAnnotationsFile);
+        final double[][] annotations = LabeledVariantAnnotationsData.readAnnotations(trainingAnnotationsFile);
+
+        // these checks are redundant, but we err on the side of robustness
+        final int numAnnotationNames = annotationNames.size();
+        final int numData = annotations.length;
+        Utils.validateArg(numAnnotationNames > 0, "Number of annotation names must be positive.");
+        Utils.validateArg(numData > 0, "Number of data points must be positive.");
+        final int numFeatures = annotations[0].length;
+        Utils.validateArg(numAnnotationNames == numFeatures,
+                "Number of annotation names must match the number of features in the annotation data.");
+
+        final List<String> completelyMissingAnnotationNames = new ArrayList<>(numFeatures);
+        IntStream.range(0, numFeatures).forEach(
+                i -> {
+                    if (new Variance().evaluate(IntStream.range(0, numData).mapToDouble(n -> annotations[n][i]).toArray()) == 0.) {
+                        logger.warn(String.format("All values of the annotation %s are identical in the training data for the %s model.",
+                                annotationNames.get(i), outputPrefix + outputPrefixTag));
+                    }
+                    if (IntStream.range(0, numData).boxed().map(n -> annotations[n][i]).allMatch(x -> Double.isNaN(x))) {
+                        completelyMissingAnnotationNames.add(annotationNames.get(i));
+                    }
+                }
+        );
+
+        if (!completelyMissingAnnotationNames.isEmpty()) {
+            throw new UserException.BadInput(
+                    String.format("All values of the following annotations are missing in the training data for the %s model: %s. " +
+                                    "If this is a positive model, consider repeating the extraction step with this annotation dropped. " +
+                                    "If this is a negative model, also consider lowering the value of the %s argument so that more " +
+                                    "training data is used to train this model, which may ultimately admit data with non-missing values for the annotation " +
+                                    "(although note that this will affect the resulting model fit); " +
+                                    "alternatively, consider excluding the %s and %s arguments and running positive-only modeling.",
+                            outputPrefix + outputPrefixTag, completelyMissingAnnotationNames,
+                            CALIBRATION_SENSITIVITY_THRESHOLD_LONG_NAME, UNLABELED_ANNOTATIONS_HDF5_LONG_NAME, CALIBRATION_SENSITIVITY_THRESHOLD_LONG_NAME));
+        }
     }
 
     private File score(final File annotationsFile,

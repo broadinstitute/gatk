@@ -7,6 +7,7 @@ import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.FeatureContext;
@@ -61,6 +62,18 @@ public final class ExtractVariantAnnotations extends LabeledVariantAnnotationsWa
 
     @Override
     public void afterOnTraversalStart() {
+        if (!resourceLabels.contains(LabeledVariantAnnotationsData.TRAINING_LABEL)) {
+            throw new CommandLineException(
+                    "No training set found! Please provide sets of known polymorphic loci marked with the training=true feature input tag. " +
+                            "For example, --resource:hapmap,training=true,calibration=true hapmapFile.vcf");
+        }
+
+        if (!resourceLabels.contains(LabeledVariantAnnotationsData.CALIBRATION_LABEL)) {
+            throw new CommandLineException(
+                    "No calibration set found! Please provide sets of known polymorphic loci marked with the calibration=true feature input tag. " +
+                            "For example, --resource:hapmap,training=true,calibration=true hapmapFile.vcf");
+        }
+
         rng = RandomGeneratorFactory.createRandomGenerator(new Random(reservoirSamplingRandomSeed));
         unlabeledDataReservoir = maximumNumberOfUnlabeledVariants == 0
                 ? null

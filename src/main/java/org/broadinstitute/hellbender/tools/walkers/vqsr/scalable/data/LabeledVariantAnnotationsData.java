@@ -54,12 +54,13 @@ public final class LabeledVariantAnnotationsData {
                                          final Collection<String> labels,
                                          final boolean useASAnnotations,
                                          final int initialSize) {
-        this.data = new ArrayList<>(initialSize);
-        this.sortedAnnotationNames = ImmutableList.copyOf(annotationNames.stream().distinct().sorted().collect(Collectors.toList()));
+        data = new ArrayList<>(initialSize);
+        sortedAnnotationNames = ImmutableList.copyOf(annotationNames.stream().distinct().sorted().collect(Collectors.toList()));
+        Utils.validateArg(sortedAnnotationNames.size() > 0, "Number of annotation names must be positive.");
         if (sortedAnnotationNames.size() != annotationNames.size()) {
             logger.warn(String.format("Ignoring duplicate annotations: %s.", Utils.getDuplicatedItems(annotationNames)));
         }
-        this.sortedLabels = ImmutableList.copyOf(labels.stream().distinct().sorted().collect(Collectors.toList()));
+        sortedLabels = ImmutableList.copyOf(labels.stream().distinct().sorted().collect(Collectors.toList()));
         if (sortedLabels.size() != labels.size()) {
             logger.warn(String.format("Ignoring duplicate labels: %s.", Utils.getDuplicatedItems(labels)));
         }
@@ -131,15 +132,6 @@ public final class LabeledVariantAnnotationsData {
         return data.stream().flatMap(List::stream);
     }
 
-    // TODO remove this
-    static void logHeapUsage(final Logger logger,
-                             final String message) {
-        final int mb = 1024 * 1024;
-        final Runtime runtime = Runtime.getRuntime();
-        logger.debug("Used memory [MB]: " + (runtime.totalMemory() - runtime.freeMemory()) / mb);
-        logger.debug(message);
-    }
-
     /**
      * Writes a representation of the collection to an HDF5 file with the following directory structure:
      *
@@ -172,33 +164,26 @@ public final class LabeledVariantAnnotationsData {
         // TODO validate
         try (final HDF5File outputHDF5File = new HDF5File(outputFile, HDF5File.OpenMode.CREATE)) {
             IOUtils.canReadFile(outputHDF5File.getFile());
-            logHeapUsage(logger, "writing intervals");
             HDF5Utils.writeIntervals(outputHDF5File, "/intervals",
                     streamFlattenedData().map(datum -> datum.interval).collect(Collectors.toList()));
             if (!omitAllelesInHDF5) {
-                logHeapUsage(logger, "writing ref alleles");
                 outputHDF5File.makeStringArray("/alleles/ref",
                         streamFlattenedData().map(datum -> datum.refAllele.getDisplayString()).toArray(String[]::new));
                 if (!useASAnnotations) {
-                    logHeapUsage(logger, "writing alt alleles");
                     outputHDF5File.makeStringArray("/alleles/alt",
                             streamFlattenedData()
                                     .map(datum -> datum.altAlleles.stream().map(Allele::getDisplayString).collect(Collectors.joining(",")))
                                     .toArray(String[]::new));
                 } else {
-                    logHeapUsage(logger, "writing alt alleles");
                     outputHDF5File.makeStringArray("/alleles/alt",
                             streamFlattenedData().map(datum -> datum.altAlleles.get(0).getDisplayString()).toArray(String[]::new));
                 }
             }
             outputHDF5File.makeStringArray("/annotations/names", sortedAnnotationNames.toArray(new String[0]));
-            logHeapUsage(logger, "writing annotations");
             HDF5Utils.writeChunkedDoubleMatrix(outputHDF5File, "/annotations",
                     streamFlattenedData().map(datum -> datum.annotations).toArray(double[][]::new), MAXIMUM_CHUNK_SIZE);
-            logHeapUsage(logger, "writing snp");
             outputHDF5File.makeDoubleArray("/labels/snp",
                     streamFlattenedData().mapToDouble(datum -> datum.variantType == VariantType.SNP ? 1 : 0).toArray());
-            logHeapUsage(logger, "writing labels");
             for (final String label : sortedLabels) {
                 outputHDF5File.makeDoubleArray(String.format("/labels/%s", label),
                         streamFlattenedData().mapToDouble(datum -> datum.labels.contains(label) ? 1 : 0).toArray());
@@ -245,8 +230,12 @@ public final class LabeledVariantAnnotationsData {
      * Intended for passing annotations via the file interfaces of {@link VariantAnnotationsModel} and {@link VariantAnnotationsScorer}.
      */
     public static File subsetAnnotationsToTemporaryFile(final List<String> annotationNames,
-                                                         final double[][] allAnnotations,
-                                                         final List<Boolean> isSubset) {
+                                                        final double[][] allAnnotations,
+                                                        final List<Boolean> isSubset) {
+        Utils.validateArg(annotationNames.size() > 0, "Number of annotation names must be positive.");
+        Utils.validateArg(allAnnotations.length > 0, "Number of annotation data points must be positive.");
+        Utils.validateArg(annotationNames.size() == allAnnotations[0].length,
+                "Number of annotation names must match number of features in annotation data.");
         final double[][] subsetData = IntStream.range(0, isSubset.size()).boxed().filter(isSubset::get).map(i -> allAnnotations[i]).toArray(double[][]::new);
         final File subsetAnnotationsFile = IOUtils.createTempFile("subset.annot", ".hdf5");
         try (final HDF5File subsetAnnotationsHDF5File = new HDF5File(subsetAnnotationsFile, HDF5File.OpenMode.CREATE)) {
