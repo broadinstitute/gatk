@@ -231,11 +231,11 @@ task AssertCostIsTrackedAndExpected {
 
         echo "Test 1"
 
-        paste cost_observability_output.csv ~{expected_output_csv} | while read observed expected; do
+        paste -d '\t' cost_observability_output.csv ~{expected_output_csv} | while read -d '\t' observed expected; do
           echo "A"
-          echo $expected
-          echo "B"
           echo $observed
+          echo "B"
+          echo $expected
           echo "C"
           echo "-in $expected -out $observed"
         done
@@ -246,9 +246,9 @@ task AssertCostIsTrackedAndExpected {
         result=12.2
         if ! awk "BEGIN{ exit ($result <= $key1) }"
         then
-          echo "$result is <= $key"
+          echo "$result is <= $key1"
         else
-          echo "result is > $key"
+          echo "result is > $key1"
         fi
     >>>
 
