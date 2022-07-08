@@ -1,10 +1,8 @@
 package org.broadinstitute.hellbender.utils.bigquery;
 
 import com.google.cloud.bigquery.FieldValueList;
-import com.google.cloud.bigquery.TableResult;
 import com.google.protobuf.Descriptors;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.eclipse.jetty.util.ajax.JSON;
 import org.json.JSONObject;
 import org.testng.Assert;
 import org.testng.annotations.AfterTest;
@@ -12,7 +10,6 @@ import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -68,13 +65,13 @@ public class PendingBQWriterTest extends GATKBaseTest {
         Map<String, String> labels = new HashMap<String, String>();
         labels.put("gatktestwriteapi", "testwrite" + uuid);
 
-        TableResult result = BigQueryUtils.executeQuery("SELECT * FROM " + FQ_TEMP_TABLE_NAME, labels);
-        checkQueryResults(result, jsonObject);
+        BigQueryResultAndStatistics bigQueryResultAndStatistics = BigQueryUtils.executeQuery("SELECT * FROM " + FQ_TEMP_TABLE_NAME, labels);
+        checkQueryResults(bigQueryResultAndStatistics, jsonObject);
     }
 
-    private static void checkQueryResults(final TableResult result, final JSONObject expectedValues) {
+    private static void checkQueryResults(final BigQueryResultAndStatistics bigQueryResultAndStatistics, final JSONObject expectedValues) {
         int rowCount = 0;
-        for ( final FieldValueList row : result.iterateAll() ) {
+        for ( final FieldValueList row : bigQueryResultAndStatistics.result.iterateAll() ) {
             rowCount++;
 
             final long sample_id = row.get(0).getLongValue();

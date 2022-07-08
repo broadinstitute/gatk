@@ -7,6 +7,7 @@ workflow GvsExtractCallset {
     Boolean go = true
     String dataset_name
     String project_id
+    String call_set_identifier
 
     String cohort_project_id = project_id
     String cohort_dataset_name = dataset_name
@@ -21,7 +22,7 @@ workflow GvsExtractCallset {
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
     File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
-    File gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/rc-add-withdrawn-back/gatk-package-4.2.0.0-527-ge5b9dd6-SNAPSHOT-local.jar"
+    File gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/gg_VS-479_gatk_cost_to_metadata_20220705/gatk-package-4.2.0.0-558-gf0b438a-SNAPSHOT-local.jar"
 
     String output_file_base_name = filter_set_name
 
@@ -141,6 +142,8 @@ workflow GvsExtractCallset {
 
     call ExtractTask {
       input:
+        dataset_id                         = dataset_name,
+        call_set_identifier                = call_set_identifier,
         gatk_override                      = gatk_override,
         reference                          = reference,
         reference_index                    = reference_index,
@@ -264,6 +267,9 @@ task ValidateFilterSetName {
 
 task ExtractTask {
   input {
+    String dataset_id
+    String call_set_identifier
+
     File reference
     File reference_index
     File reference_dict
@@ -280,6 +286,8 @@ task ExtractTask {
     String read_project_id
     String output_file
     String? output_gcs_dir
+
+    String cost_observability_tablename = "cost_observability"
 
     Boolean emit_pls
     Boolean emit_ads
@@ -307,6 +315,7 @@ task ExtractTask {
   }
 
   String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
+  String intervals_name = basename(intervals)
 
   command <<<
     set -e
@@ -344,7 +353,13 @@ task ExtractTask {
         --project-id ~{read_project_id} \
         ~{true='--emit-pls' false='' emit_pls} \
         ~{true='--emit-ads' false='' emit_ads} \
-        ${FILTERING_ARGS}
+        ${FILTERING_ARGS} \
+        --dataset-id ~{dataset_id} \
+        --cost-observability-tablename ~{cost_observability_tablename} \
+        --call-set-identifier ~{call_set_identifier} \
+        --wdl-step GvsCreateCallset \
+        --wdl-call ExtractTask \
+        --shard-identifier ~{intervals_name}
 
     # Drop trailing slash if one exists
     OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')

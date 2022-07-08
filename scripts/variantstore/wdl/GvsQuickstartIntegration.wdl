@@ -7,7 +7,7 @@ workflow GvsQuickstartIntegration {
 
     input {
         String branch_name
-        String expected_output_prefix = "gs://gvs-internal-quickstart/integration/2022-06-28/"
+        String expected_output_prefix = "gs://gvs-internal-quickstart/integration/2022-07-05/"
 
         Array[String] external_sample_names = [
                                               "ERS4367795",
@@ -192,7 +192,7 @@ task AssertIdenticalOutputs {
 
 task AssertCostIsTrackedAndExpected {
     meta {
-        # we want to check the databbase each time this runs
+        # we want to check the database each time this runs
         volatile: true
     }
 
@@ -210,16 +210,71 @@ task AssertCostIsTrackedAndExpected {
         set -o xtrace
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
-        bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false "SELECT step, call, event_key, event_bytes FROM ~{dataset_name}.cost_observability" > cost_observability_output.csv
-        set +o errexit
-        diff -w cost_observability_output.csv ~{expected_output_csv} > differences.txt
-        set -o errexit
+        bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false \
+            "SELECT call, step, event_key, sum(event_bytes) \
+              FROM \`~{dataset_name}.cost_observability\` \
+              GROUP BY call, step, event_key \
+              ORDER BY call, step, event_key" > cost_observability_output.csv
 
-        if [[ -s differences.txt ]]; then
-            echo "Differences found:"
-            cat differences.txt
-            exit 1
+        # Put the exit code in a file because we are using a subshell (while) later and changes to the variable *in* the subshell are lost
+        echo "0" > ret_val.txt
+
+        paste cost_observability_output.csv ~{expected_output_csv} | while  IFS=$'\t' read observed expected; do
+        IFS=, read -ra OBS <<< "$observed"
+        IFS=, read -ra EXP <<< "$expected"
+        if [[ "${#OBS[@]}" -ne 4  || "${#EXP[@]}" -ne 4 ]]; then
+          echo "Unexpected number of rows found in the input files"
+          exit 1
         fi
+
+        OBS_KEY=${OBS[0]}.${OBS[1]}.${OBS[2]}
+        EXP_KEY=${EXP[0]}.${EXP[1]}.${EXP[2]}
+        if [[ "$OBS_KEY" != "$EXP_KEY" ]]; then
+          echo "Mismatched keys in results files - were these sorted properly?"
+          exit 1
+        fi
+
+        if [[ "$OBS_KEY" == "call.step.event_key" ]]; then
+          # Skip the header
+          continue;
+        fi
+
+        OBS_BYTES=${OBS[3]}
+        EXP_BYTES=${EXP[3]}
+
+        TOLERANCE=0
+
+        # For these two costs, there is non-determinism in the pipeline - we allow a % difference
+        if [[ $OBS_KEY == "ExtractFilterTask.GvsCreateFilterSet.BigQuery Query Scanned" ]]; then
+          TOLERANCE=0.015   # 1.5% tolerance  (Note - have seen as high as: 0.0109429)
+        elif [[ $OBS_KEY == "ExtractTask.GvsCreateCallset.Storage API Scanned" ]]; then
+          TOLERANCE=0.01   # 1% tolerance  (Note - have seen as high as: 0.00608656)
+        elif [[ $OBS_KEY == "ExtractFilterTask.GvsCreateFilterSet.Storage API Scanned" ]]; then
+          TOLERANCE=0.05  # 5% tolerance (Note - have seen as high as: 0.0281223)
+        fi
+
+        if [[ $OBS_BYTES -ne $EXP_BYTES ]]; then
+          echo "The bytes observed ($OBS_BYTES) for '$OBS_KEY' differ from those expected ($EXP_BYTES)"
+
+          if [[ $OBS_BYTES -ge $EXP_BYTES ]]; then
+            DIFF_FOUND=$(echo $OBS_BYTES $EXP_BYTES | awk '{print ($1-$2)/$1}')
+          else
+            DIFF_FOUND=$(echo $EXP_BYTES $OBS_BYTES | awk '{print ($1-$2)/$1}')
+          fi
+
+          if ! awk "BEGIN{ exit ($DIFF_FOUND > $TOLERANCE) }"
+          then
+            echo "FAIL!!! The relative difference between these is $DIFF_FOUND, which is greater than the allowed tolerance ($TOLERANCE)"
+            echo "1" > ret_val.txt
+          else
+            echo "However, the relative difference between these is $DIFF_FOUND, which is below the allowed tolerance ($TOLERANCE)"
+          fi
+        fi
+        done
+
+        RET_VAL=`cat ret_val.txt`
+        exit $RET_VAL
+
     >>>
 
     runtime {
@@ -229,6 +284,5 @@ task AssertCostIsTrackedAndExpected {
 
     output {
       File cost_observability_output_csv = "cost_observability_output.csv"
-      File differences = "differences.txt"
     }
 }

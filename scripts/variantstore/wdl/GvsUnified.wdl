@@ -12,6 +12,7 @@ workflow GvsUnified {
         # Begin GvsAssignIds
         String dataset_name
         String project_id
+        String call_set_identifier
 
         Array[String] external_sample_names
         String call_set_identifier
@@ -113,6 +114,7 @@ workflow GvsUnified {
             go = GvsCreateAltAllele.done,
             dataset_name = dataset_name,
             project_id = project_id,
+            call_set_identifier = call_set_identifier,
             filter_set_name = filter_set_name,
             indel_recalibration_annotation_values = indel_recalibration_annotation_values,
             snp_recalibration_annotation_values = snp_recalibration_annotation_values,
@@ -129,8 +131,8 @@ workflow GvsUnified {
         input:
             call_set_identifier = call_set_identifier,
             go = GvsCreateFilterSet.done,
-            project_id = project_id,
             dataset_name = dataset_name,
+            project_id = project_id,
             extract_table_prefix = extract_table_prefix,
             query_project = query_project,
             destination_project = destination_project,
@@ -146,6 +148,7 @@ workflow GvsUnified {
             go = GvsPrepareCallset.done,
             dataset_name = dataset_name,
             project_id = project_id,
+            call_set_identifier = call_set_identifier,
             extract_table_prefix = extract_table_prefix,
             filter_set_name = filter_set_name,
             query_project = query_project,
