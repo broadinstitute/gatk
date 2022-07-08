@@ -16,7 +16,6 @@ workflow GvsUnified {
 
         Array[String] external_sample_names
         String call_set_identifier
-        Boolean samples_are_controls = false
 
         File? gatk_override
         String? service_account_json_path
