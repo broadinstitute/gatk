@@ -26,10 +26,6 @@ import java.util.*;
 )
 public class CompareReferences extends GATKTool {
 
-    public static final String MISSING_ENTRY = "---";
-    public static final String MD5_COLUMN_NAME = "MD5";
-    public static final String LENGTH_COLUMN_NAME = "Length";
-
     @Argument(fullName = "references-to-compare", shortName = "refcomp", doc = "Reference sequence file(s) to compare.")
     private List<GATKPath> references;
 
@@ -92,15 +88,8 @@ public class CompareReferences extends GATKTool {
 
         // use string format to output as a table
         for(ReferenceSequenceTable.TableRow row : table){
-            String currMd5 = row.getMd5();
-            System.out.printf("%s\t%d", currMd5, row.getLength());
             for(ReferenceSequenceTable.TableEntry currEntry : row.getEntries()){
-                if(currEntry == null){
-                    System.out.print("\t" + MISSING_ENTRY);
-                }
-                else{
-                    System.out.printf("\t%s", currEntry.getSequenceName());
-                }
+                System.out.printf("%s\t", currEntry.getColumnValue());
             }
             System.out.println();
         }
@@ -147,15 +136,10 @@ public class CompareReferences extends GATKTool {
 
         @Override
         protected void composeLine(final ReferenceSequenceTable.TableRow record, final DataLine dataLine) {
-            // change this !!! (TableRow getColumns() method and iterate over that directly) --> TableEntry hold ANYTYPE
-
-            dataLine.set(MD5_COLUMN_NAME, record.getMd5())
-                    .set(LENGTH_COLUMN_NAME, record.getLength());
-
             List<String> columnNames = record.getColumnNames();
             ReferenceSequenceTable.TableEntry[] entries = record.getEntries();
-            for(int i = 2; i < columnNames.size(); i++){
-                dataLine.set(columnNames.get(i), entries[i-2] == null ? MISSING_ENTRY : entries[i-2].getSequenceName());
+            for(int i = 0; i < columnNames.size(); i++){
+                dataLine.set(entries[i].getColumnName(), entries[i].getColumnValue());
             }
         }
     }
