@@ -31,7 +31,6 @@ public class CompareReferencesIntegrationTest extends CommandLineProgramTest {
         final File output = createTempFile("testCompareReferencesMissingValue", ".table");
         final File expectedOutput = new File(getToolTestDataDir(), "expected.testCompareReferencesMissingValue.table");
 
-
         final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(),
                 "-O", output.getAbsolutePath()};
         runCommandLine(args);

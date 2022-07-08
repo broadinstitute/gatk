@@ -116,6 +116,15 @@ public final class ReferenceUtils {
         return reference.getSubsequenceAt(contig, start, start+length-1).getBases();
     }
 
+    /**
+     * Given a reference data source and a sequence interval, calculates the MD5 for the given sequence.
+     *
+     * Note: does not close the ReferenceDataSource it's passed.
+     *
+     * @param source The data source for the reference.
+     * @param interval The interval of the sequence.
+     * @return the sequence's MD5 as a String.
+     */
     public static String calculateMD5(ReferenceDataSource source, SimpleInterval interval){
         MessageDigest md5;
         try {

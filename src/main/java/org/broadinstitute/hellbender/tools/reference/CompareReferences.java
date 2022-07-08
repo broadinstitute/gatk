@@ -78,9 +78,15 @@ public class CompareReferences extends GATKTool {
     }
 
     private void writeTableToStdOutput(ReferenceSequenceTable table){
-        // print header --> change to use indices to get rid of tab at the end
-        for(String str : table.getColumnNames()){
-            System.out.print(str + "\t");
+        // print header
+        List<String> columnNames = table.getColumnNames();
+        for(int i = 0 ; i < columnNames.size(); i++){
+            if(i == 0){
+                System.out.print(columnNames.get(i));
+            }
+            else{
+                System.out.print("\t" + columnNames.get(i));
+            }
         }
         System.out.println();
 
@@ -131,7 +137,6 @@ public class CompareReferences extends GATKTool {
         }
     }
 
-
     public static class CompareReferencesOutputTableWriter extends TableWriter<ReferenceSequenceTable.TableRow> {
         private TableColumnCollection columnCollection;
 
@@ -142,22 +147,16 @@ public class CompareReferences extends GATKTool {
 
         @Override
         protected void composeLine(final ReferenceSequenceTable.TableRow record, final DataLine dataLine) {
-            // change this !!! (TableRow getColumns() method and iterate over that directly)
-            /*List<String> columnNames = record.getColumnNames();
-            List<TableEntry> entries = record.getEntries();
-            for(int i = 0; i < columnNames.size(); i++){
-                dataLine.set(columnNames.get(i), entries.get(i) == null ? MISSING_ENTRY : entries.get(i).getSequenceName());
-            }*/
+            // change this !!! (TableRow getColumns() method and iterate over that directly) --> TableEntry hold ANYTYPE
 
-           dataLine.set(MD5_COLUMN_NAME, record.getMd5())
+            dataLine.set(MD5_COLUMN_NAME, record.getMd5())
                     .set(LENGTH_COLUMN_NAME, record.getLength());
 
-            List<String> columnNames = columnCollection.names();
-            List<ReferenceSequenceTable.TableEntry> entries = record.getEntries();
-            for (int i = 2; i < columnNames.size(); i++) {
-                dataLine.set(columnNames.get(i), entries.get(i-2) == null ? MISSING_ENTRY : entries.get(i-2).getSequenceName());
+            List<String> columnNames = record.getColumnNames();
+            ReferenceSequenceTable.TableEntry[] entries = record.getEntries();
+            for(int i = 2; i < columnNames.size(); i++){
+                dataLine.set(columnNames.get(i), entries[i-2] == null ? MISSING_ENTRY : entries[i-2].getSequenceName());
             }
-
         }
     }
 }

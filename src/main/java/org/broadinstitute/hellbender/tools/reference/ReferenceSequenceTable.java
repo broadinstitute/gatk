@@ -11,7 +11,8 @@ import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import java.util.*;
 
 public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.TableRow> {
-    private Map<String, TableRow> table;
+    private Map<String, TableRow> tableByMD5;
+    private Map<String, Set<TableRow>> tableBySequenceName;
     private Map<GATKPath, ReferenceDataSource> referenceSources;
     private List<String> columnNames;
     private CompareReferences.MD5CalculationMode md5Mode;
@@ -37,7 +38,8 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
     }
 
     public void build() {
-        table = new LinkedHashMap<>();
+        tableByMD5 = new LinkedHashMap<>();
+        tableBySequenceName = new LinkedHashMap<>();
 
         for (Map.Entry<GATKPath, ReferenceDataSource> entry : referenceSources.entrySet()) {
             SAMSequenceDictionary dictionary = entry.getValue().getSequenceDictionary();
@@ -50,15 +52,28 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
                 TableRow newRow = null;
 
                 // map each MD5 to List of TableEntry objects containing length, md5, and name
-                if (!table.containsKey(md5)) {
+                if (!tableByMD5.containsKey(md5)) {
                     newRow = new TableRow(md5, length, new ArrayList<>(referenceSources.keySet()));
-                    table.put(md5, newRow);
+                    tableByMD5.put(md5, newRow);
                 }
-                table.get(md5).add(newEntry);
+                tableByMD5.get(md5).add(newEntry);
+
+                if(!tableBySequenceName.containsKey(name)){
+                    Set<TableRow> rowSet = new HashSet<>();
+                    tableBySequenceName.put(name, rowSet);
+                }
+                tableBySequenceName.get(name).add(tableByMD5.get(md5));
             }
         }
     }
 
+    public TableRow queryByMD5(String md5){
+        return tableByMD5.get(md5);
+    }
+
+    public Set<TableRow> queryBySequenceName(String sequenceName){
+        return tableBySequenceName.get(sequenceName);
+    }
 
     private String calculateMD5(SAMSequenceRecord record, ReferenceDataSource source) {
         final String md5FromDict = record.getMd5();
@@ -88,7 +103,7 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
 
     @Override
     public Iterator<TableRow> iterator() {
-        return table.values().iterator();
+        return tableByMD5.values().iterator();
     }
 
     public class TableEntry {
@@ -124,19 +139,14 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
     public class TableRow {
 
         private final String md5;
-        private final List<TableEntry> entries;
+        private final TableEntry[] entries;
         private final int length;
-        //private List<String> columnNames;
         private final Map<GATKPath, Integer> columnIndices;
 
         public TableRow(String md5, int length, List<GATKPath> references) {
             this.md5 = md5;
             this.length = length;
-
-            entries = new ArrayList<>(references.size());
-            for (int i = 0; i < references.size(); i++) {
-                entries.add(null);
-            }
+            entries = new TableEntry[references.size()];
 
             columnIndices = new HashMap<>();
             for (int i = 0; i < references.size(); i++) {
@@ -146,14 +156,14 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
 
         public void add(TableEntry entry) {
             int idx = columnIndices.get(entry.getReference());
-            entries.set(idx, entry);
+            entries[idx] = entry;
         }
 
         public String getMd5() {
             return md5;
         }
 
-        public List<TableEntry> getEntries() {
+        public TableEntry[] getEntries() {
             return entries;
         }
 
@@ -164,9 +174,21 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
         public Map<GATKPath, Integer> getColumnIndices() {
             return columnIndices;
         }
-
         public List<String> getColumnNames() {
             return columnNames;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            TableRow tableRow = (TableRow) o;
+            return md5.equals(tableRow.md5);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(md5);
         }
     }
 }
