@@ -190,7 +190,6 @@ workflows:
          - master
          - ah_var_store
          - rsa_metadata_from_python
-         - gg_VS-479_gatk_cost_to_metadata
    - name: GvsJointVariantCalling
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCalling.wdl
@@ -215,7 +214,6 @@ workflows:
          - master
          - ah_var_store
          - rsa_metadata_from_python
-         - gg_VS-479_gatk_cost_to_metadata
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl

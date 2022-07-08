@@ -7,7 +7,6 @@ workflow GvsQuickstartIntegration {
 
     input {
         String branch_name
-        String dataset_name = 'quickit_gg_VS_479_gatk_cost_to_metadata_6a21731'
         String expected_output_prefix = "gs://gvs-internal-quickstart/integration/2022-07-05/"
 
         Array[String] external_sample_names = [
