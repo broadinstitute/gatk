@@ -10,7 +10,6 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.FlowBasedProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import picard.cmdline.programgroups.OtherProgramGroup;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -55,6 +54,7 @@ public class SplitCRAM extends CommandLineProgram {
 
     public static final int DEFAULT_SHARD_RECORDS = 10000000;
     public static final String SHARD_RECORDS_FULL_NAME = "shard-records";
+    public static final String SHARD_MAX_OUTPUT_COUNT = "shard-max-output-count";
     public static final Pattern numeratorFormat = Pattern.compile("%[0-9]*d");
 
     @Argument(fullName = StandardArgumentDefinitions.INPUT_LONG_NAME, shortName = StandardArgumentDefinitions.INPUT_SHORT_NAME,
@@ -67,6 +67,9 @@ public class SplitCRAM extends CommandLineProgram {
 
     @Argument(fullName = SHARD_RECORDS_FULL_NAME, doc = "minimum threshold for number of records per shard.", optional = true)
     private long shardRecords = DEFAULT_SHARD_RECORDS;
+
+    @Argument(fullName = SHARD_MAX_OUTPUT_COUNT, doc = "maximal number of output shards to output.", optional = true)
+    private int shardMaxOutputCount;
 
     // locals
     CramContainerIterator cramContainerIterator;
@@ -93,6 +96,7 @@ public class SplitCRAM extends CommandLineProgram {
             // iterate
             while (cramContainerIterator.hasNext()) {
 
+                int shardOuputCount = 0;
                 try (final OutputStream os = nextOutputStream()) {
 
                     // write headers
@@ -114,6 +118,10 @@ public class SplitCRAM extends CommandLineProgram {
                     }
 
                     CramIO.writeCramEOF(cramContainerIterator.getCramHeader().getCRAMVersion(), os);
+                    shardOuputCount++;
+                    if ( shardMaxOutputCount != 0 && shardOuputCount >= shardMaxOutputCount ) {
+                        break;
+                    }
                 }
             }
         } catch (IOException e) {
