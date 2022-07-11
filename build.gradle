@@ -388,13 +388,14 @@ run {
                    '--add-opens', 'java.base/java.lang.invoke=ALL-UNNAMED'
         ]
     }
-
 test {
         jvmArgs = ['--add-exports', 'java.base/sun.nio.ch=ALL-UNNAMED',
                    '--add-opens', 'java.base/sun.nio.fs=ALL-UNNAMED',
                    '--add-opens', 'java.base/java.nio=ALL-UNNAMED',
                    '--add-opens', 'java.base/java.io=ALL-UNNAMED',
-                   '--add-opens', 'java.base/java.lang.invoke=ALL-UNNAMED'
+                   '--add-opens', 'java.base/java.lang.invoke=ALL-UNNAMED',
+                   '--add-opens', 'java.base/java.lang=ALL-UNNAMED' // required for jacoco
+
         ]
 }
 
@@ -560,10 +561,6 @@ task bundle(type: Zip) {
     doLast {
         logger.lifecycle("Created GATK distribution in ${destinationDir}/${archiveName}")
     }
-}
-
-jacoco {
-    toolVersion = "0.8.8"
 }
 
 jacocoTestReport {
