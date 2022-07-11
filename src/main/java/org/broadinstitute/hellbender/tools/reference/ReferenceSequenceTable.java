@@ -71,6 +71,15 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
         }
     }
 
+    // number of rows in table
+    public int size(){
+        int size = 0;
+        for(TableRow row : this){
+            size++;
+        }
+        return size;
+    }
+
     public TableRow queryByMD5(String md5){
         return tableByMD5.get(md5);
     }

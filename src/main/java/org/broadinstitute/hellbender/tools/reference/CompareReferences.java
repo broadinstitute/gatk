@@ -71,6 +71,8 @@ public class CompareReferences extends GATKTool {
         else{
             writeTableToFileOutput(table);
         }
+
+        analyzeTable(table);
     }
 
     private void writeTableToStdOutput(ReferenceSequenceTable table){
@@ -114,9 +116,35 @@ public class CompareReferences extends GATKTool {
 
     @Override
     public Object onTraversalSuccess() {
+
         return null;
     }
 
+    public void analyzeTable(ReferenceSequenceTable table) {
+        boolean noMissingEntries = true;
+        String output = "";
+        int currRow = 0;
+
+        for(ReferenceSequenceTable.TableRow row : table){
+            currRow++;
+            ReferenceSequenceTable.TableEntry[] entries = row.getEntries();
+
+            for(int i = 0; i < entries.length; i++){
+                if(entries[i].getColumnValue().equals(ReferenceSequenceTable.MISSING_ENTRY)){
+                    output += String.format("Row %d: Missing entry in %s column.\n", currRow, entries[i].getColumnName());
+                    noMissingEntries = false;
+                }
+            }
+        }
+
+        if(noMissingEntries){
+            output += "No missing entries. References are interchangeable.\n";
+        }
+        else{
+            output += "References are not an exact match. See table output for details.\n";
+        }
+        System.out.println(output);
+    }
     @Override
     public void closeTool() {
         for(Map.Entry<GATKPath, ReferenceDataSource> entry : referenceSources.entrySet()){

@@ -1,7 +1,11 @@
 package org.broadinstitute.hellbender.utils.reference;
 
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
+import org.broadinstitute.hellbender.engine.GATKPath;
+import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
@@ -89,6 +93,19 @@ public class ReferenceUtilsUnitTest extends GATKBaseTest {
 
             Assert.assertNotNull(dictionary, "Sequence dictionary null after loading");
             Assert.assertEquals(dictionary.size(), 4, "Wrong sequence dictionary size after loading");
+        }
+    }
+
+    @Test
+    public void testCalculateMD5(){
+        final File reference = new File( "src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini.fasta");
+        final ReferenceDataSource source = ReferenceDataSource.of(reference.toPath());
+        final SAMSequenceDictionary dictionary = source.getSequenceDictionary();
+        for (SAMSequenceRecord record : dictionary.getSequences()) {
+            SimpleInterval interval = new SimpleInterval(record.getSequenceName(), 1, record.getSequenceLength());
+            String md5FromDict = record.getMd5();
+            String md5Calculated = ReferenceUtils.calculateMD5(source, interval);
+            Assert.assertEquals(md5FromDict, md5Calculated);
         }
     }
 }
