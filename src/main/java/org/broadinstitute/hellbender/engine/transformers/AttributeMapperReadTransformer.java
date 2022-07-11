@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.ByteMapper;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -29,6 +30,9 @@ public class AttributeMapperReadTransformer implements ReadTransformer {
     @Argument(fullName = "attribute-mapping-name")
     public List<String> attributeMappingName;
 
+    @Argument(fullName = "attribute-shelf-value")
+    public byte attributShelfValue;
+
 
     // locals
     private Map<String, ByteMapper> mappers;
@@ -50,17 +54,32 @@ public class AttributeMapperReadTransformer implements ReadTransformer {
             if ( read.hasAttribute(attr) ) {
 
                 // map
+                final boolean isString = isStringAttribute(read, attr);
                 final byte[] src = read.getAttributeAsByteArray(attr);
                 final byte[] dst = new byte[src.length];
 
                 for (int i = 0; i < src.length; i++) {
-                    dst[i] = byteMapper.map(src[i]);
+                    dst[i] = (byte)(byteMapper.map((byte)(src[i] - attributShelfValue)) + attributShelfValue);
                 }
 
-                read.setAttribute(attr, dst);
+                if ( isString ) {
+                    read.setAttribute(attr, new String(dst));
+                } else {
+                    read.setAttribute(attr, dst);
+                }
             }
         });
 
         return read;
+    }
+
+    // at this point, there is no method on GATKRead to determine attribute types
+    // TODO: figure out if there is a better way of establishing this, or determine if to add a method to GATKRead
+    private boolean isStringAttribute(GATKRead read, String attr) {
+        if ( read instanceof SAMRecordToGATKReadAdapter ) {
+            return ((SAMRecordToGATKReadAdapter)read).getEncapsulatedSamRecord().getAttribute(attr) instanceof String;
+        } else {
+            return false;
+        }
     }
 }
