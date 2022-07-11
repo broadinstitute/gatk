@@ -134,7 +134,7 @@ jobs:
         if: ${{ needs.check-secrets.outputs.google-credentials == 'true' || matrix.testType != 'cloud'}}
         id: jacoco-tests
         run: |
-          ./gradlew -Dscala.version=${{ env.SCALA_VERSION }} jacocoTestReport
+          ./gradlew --daemon -Dscala.version=${{ env.SCALA_VERSION }} jacocoTestReport
 
       - uses: ./.github/actions/upload-gatk-test-results
         if: always()
