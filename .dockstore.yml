@@ -190,6 +190,7 @@ workflows:
          - master
          - ah_var_store
          - rsa_metadata_from_python
+         - gg_VS-492_BetaUserJarRelease
    - name: GvsJointVariantCalling
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCalling.wdl
@@ -199,6 +200,7 @@ workflows:
          - ah_var_store
          - rc-vs-483-beta-user-wdl
          - vs_486_rightsize_import_batches
+         - gg_VS-492_BetaUserJarRelease
    - name: GvsCalculatePrecisionAndSensitivity
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCalculatePrecisionAndSensitivity.wdl
@@ -214,6 +216,7 @@ workflows:
          - master
          - ah_var_store
          - rsa_metadata_from_python
+         - gg_VS-492_BetaUserJarRelease
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
