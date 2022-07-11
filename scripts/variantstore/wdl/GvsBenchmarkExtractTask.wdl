@@ -47,7 +47,7 @@ workflow GvsBenchmarkExtractTask {
 
         String output_file_base_name
         String? output_gcs_dir
-        File? gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/ah_var_store_20220708/gatk-package-4.2.0.0-552-g0f9780a-SNAPSHOT-local.jar"
+        File? gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-552-g0f9780a-SNAPSHOT-local.jar"
         Int local_disk_for_extract = 150
 
         String fq_samples_to_extract_table = "~{data_project}.~{default_dataset}.~{extract_table_prefix}__SAMPLES"
