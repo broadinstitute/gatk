@@ -562,6 +562,10 @@ task bundle(type: Zip) {
     }
 }
 
+jacoco {
+    toolVersion = "0.8.8"
+}
+
 jacocoTestReport {
     dependsOn test
 
