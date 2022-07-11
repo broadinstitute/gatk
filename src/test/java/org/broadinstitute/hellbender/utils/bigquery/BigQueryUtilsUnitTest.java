@@ -83,7 +83,11 @@ public class BigQueryUtilsUnitTest extends GATKBaseTest {
             rowCount++;
 
             Assert.assertTrue(expectedNamesAndAges.containsKey(name), "Unexpected name " + name + " returned from query " + query);
-            Assert.assertNull(row.get("age"), "Age was unexpectedly retrieved.");
+            Assert.expectThrows(org.apache.avro.AvroRuntimeException.class,
+                    new Assert.ThrowingRunnable() {
+                        public void run () { row.get("age");
+                        }
+                    });
         }
 
         final Set<String> expectedNames = new HashSet<>();
