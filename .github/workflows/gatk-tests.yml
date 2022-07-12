@@ -75,7 +75,7 @@ jobs:
       matrix:
         java: [ 17 ]
         experimental: [ false ]
-        scalaVersion: [ 2.12 ]
+        scalaVersion: [ 2.11 ]
         testType: [ cloud, integration, unit ]
       fail-fast: false
     continue-on-error: ${{ matrix.experimental }}
@@ -151,7 +151,7 @@ jobs:
       matrix:
         java: [ 17 ]
         experimental: [ false ]
-        scalaVersion: [ 2.12 ]
+        scalaVersion: [ 2.11 ]
         testType: [ integration, unit, variantcalling, conda ]
       fail-fast: false
     continue-on-error: ${{ matrix.experimental }}
