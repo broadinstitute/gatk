@@ -73,19 +73,10 @@ jobs:
     needs: check-secrets
     strategy:
       matrix:
-        java: [ 8, 17 ]
+        java: [ 17 ]
         experimental: [ false ]
-        scalaVersion: [ 2.11, 2.12 ]
+        scalaVersion: [ 2.12 ]
         testType: [ cloud, integration, unit ]
-        exclude:
-          - java: 17
-            scalaVersion: 2.11
-          - java: 8
-            scalaVersion: 2.12
-          - java: 8
-            testType: integration
-          - java: 8
-            testType: unit
       fail-fast: false
     continue-on-error: ${{ matrix.experimental }}
     env:
