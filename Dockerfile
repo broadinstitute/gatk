@@ -8,7 +8,7 @@ ADD . /gatk
 WORKDIR /gatk
 
 # Get an updated gcloud signing key, in case the one in the base image has expired
-RUN curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key --keyring /usr/share/keyrings/cloud.google.gpg add -
+RUN curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg add -
 
 #Get Java 17 temurin JDK
 RUN apt update && sudo apt upgrade
