@@ -183,6 +183,7 @@ configurations.all {
         force 'org.testng:testng:' + testNGVersion
         force 'org.broadinstitute:barclay:' + barclayVersion
         force 'com.twitter:chill_2.11:0.8.1'
+        force 'org.apache.commons:commons-math3:3.5'
 
         // make sure we don't pick up an incorrect version of the GATK variant of the google-nio library
         // via Picard, etc.
