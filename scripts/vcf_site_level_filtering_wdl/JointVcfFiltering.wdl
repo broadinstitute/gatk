@@ -182,7 +182,7 @@ task TrainVariantAnnotationModel {
 		Int command_mem = memory_mb - 1000
 	}
 	Int disk_size = ceil(size(annots, "GB") + 100)
-	command {
+	command <<<
 		set -e
 
 		conda install -y --name gatk dill
@@ -199,7 +199,7 @@ task TrainVariantAnnotationModel {
 			--hyperparameters-json ~{hyperparameters_json} \
 			-mode $mode
 
-	}
+	>>>
 	output {
 		Array[File] outputs = glob("~{basename}.~{mode}.*")
 	}
