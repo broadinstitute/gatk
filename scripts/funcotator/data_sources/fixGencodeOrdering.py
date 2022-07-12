@@ -38,7 +38,7 @@ def write_contig(contig, contig_dictionary, out_writer):
     gene_list = contig_dictionary[contig]
 
     # sort our contig by the start gene column(3)
-    gene_list.sort(key=lambda x: int(x[0][3]))
+    gene_list.sort(key=lambda x: int(x[0][3]) if len(x[0]) > 1 else -1)
 
     sys.stderr.write("\tWriting ...\n")
     # print what we have so far
@@ -88,7 +88,7 @@ if __name__ == "__main__":
                     percent_done = (float(gtf_csv_reader.line_num) / float(TOTAL_EXPECTED_LINES)) * 100.0
                     sys.stderr.write("\tRead " + "{0:1.0f}".format(percent_done) + "%\n")
 
-                if row[2] == "gene":
+                if row[0].startswith("#") or row[2] == "gene":
 
                     # Add our gene to the contig:
                     if gene[0][0] not in contig_dictionary:
