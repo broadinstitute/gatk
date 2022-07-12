@@ -21,7 +21,7 @@ RUN update-alternatives --install /usr/bin/java java /opt/jdk-17.0.1+12/bin/java
 RUN java --version
 
 # Get an updated gcloud signing key, in case the one in the base image has expired
-RUN curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
+RUN curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key --keyring /usr/share/keyrings/cloud.google.gpg add -
 RUN add-apt-repository universe && apt update
 RUN apt-get --assume-yes install git-lfs
 RUN git lfs install --force
