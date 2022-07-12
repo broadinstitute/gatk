@@ -7,6 +7,19 @@ RUN ls .
 ADD . /gatk
 WORKDIR /gatk
 
+#Get Java 17 temurin JDK
+RUN apt update && sudo apt upgrade
+RUN apt install wget
+RUN wget https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.1%2B12/OpenJDK17U-jdk_x64_linux_hotspot_17.0.1_12.tar.gz
+RUN tar -xvf OpenJDK17U-jdk_x64_linux_hotspot_17.*.tar.gz
+RUN mv jdk-17.0.1+12 /opt/
+
+ENV JAVA_HOME /opt/jdk-17.0.1+12
+ENV PATH $PATH:$JAVA_HOME/bin
+RUN echo $JAVA_HOME
+RUN update-alternatives --install /usr/bin/java java /opt/jdk-17.0.1+12/bin/java 1
+RUN java --version
+
 # Get an updated gcloud signing key, in case the one in the base image has expired
 RUN curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
 RUN add-apt-repository universe && apt update
