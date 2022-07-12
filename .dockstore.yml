@@ -215,8 +215,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_metadata_from_python
-         - gg_VS-492_BetaUserJarRelease
+         - rsa_vs_501_add_size_check
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
