@@ -402,7 +402,7 @@ public final class AssemblyBasedCallerUtils {
                     for (Haplotype hap : assemblyResultSet.getHaplotypeList()) {
                         if (hap.getEventMap()==null) {
                             if (!hap.isReference()) {
-                                throw new RuntimeException("empty event map for haplotype" + hap);
+                                //throw new RuntimeException("empty event map for haplotype" + hap);
                             }
                         } else {
                             if (hap.getEventMap().getVariantContexts().stream().anyMatch(v -> v.getStart() == delVariant.getStart()
