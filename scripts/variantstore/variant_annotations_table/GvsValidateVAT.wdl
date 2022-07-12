@@ -874,29 +874,38 @@ task ClinvarSignificance {
         #                                 "other",
         #                                 "not provided"]
 
-        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT
+        bq query --nouse_legacy_sql --project_id=~{query_project_id}  --format=csv 'SELECT
           distinct(unnested_clinvar_classification)
           FROM
-        ~{fq_vat_table}, UNNEST(clinvar_classification) AS unnested_clinvar_classification' > bq_clinvar_classes.csv
+        ~{fq_vat_table}, UNNEST(clinvar_classification) AS unnested_clinvar_classification'| sed "2 d" > bq_clinvar_classes.csv
 
-        INCLUVALUES=$(awk -v RS='^$' 'END{print  !(index($0,"benign") && \
-         index($0,"likely benign") && index($0,"uncertain significance") && \
-         index($0,"likely pathogenic") && index($0,"pathogenic") && \
-         index($0,"drug response") && index($0,"association") && \
-         index($0,"risk factor") && index($0,"protective") && \
-         index($0,"affects") && index($0,"conflicting data from submitters") && \
-         index($0,"other") && \
-         index($0,"not provided"))}'  bq_clinvar_classes.csv)
+        echo "affects" >> expected_clinvar_classes.csv
+        echo "association" >> expected_clinvar_classes.csv
+        echo "benign" >> expected_clinvar_classes.csv
+        echo "conflicting data from submitters" >> expected_clinvar_classes.csv
+        echo "drug response" >> expected_clinvar_classes.csv
+        echo "likely benign" >> expected_clinvar_classes.csv
+        echo "likely pathogenic" >> expected_clinvar_classes.csv
+        echo "not provided" >> expected_clinvar_classes.csv
+        echo "other" >> expected_clinvar_classes.csv
+        echo "pathogenic" >> expected_clinvar_classes.csv
+        echo "protective" >> expected_clinvar_classes.csv
+        echo "risk factor" >> expected_clinvar_classes.csv
+        echo "uncertain significance" >> expected_clinvar_classes.csv
+
+        comm -23 <(sort bq_clinvar_classes.csv) expected_clinvar_classes.csv > missing_clinvar_classes.csv
 
         NUMRESULTS=$( wc -l bq_clinvar_classes.csv | awk '{print $1;}' ) # we expect this to be 13+
+        NUMMISS=$( wc -l missing_clinvar_classes.csv | awk '{print $1;}' ) # we expect this to be 0
 
         echo "false" > ~{pf_file}
-        # if the result of the query has any rows, that means gvs_all_an has not been calculated correctly
-        if [[ $NUMRESULTS -ge 13 && $INCLUVALUES = "0" ]]; then
+        # if the result of the query less than 13 rows, that means clinvar_classification must not have all the expected values
+        if [[ $NUMRESULTS -ge 13 && $NUMMISS = "0" ]]; then
           echo "The VAT table ~{fq_vat_table} has the correct values for clinvar classification" > ~{results_file}
           echo "true" > ~{pf_file}
         else
-          echo "The VAT table ~{fq_vat_table} has incorrect values for clinvar classification" > ~{results_file}
+          echo "The VAT table ~{fq_vat_table} has missing values for clinvar classification" > ~{results_file}
+          cat missing_clinvar_classes.csv >> ~{results_file}
         fi
     >>>
     # ------------------------------------------------
