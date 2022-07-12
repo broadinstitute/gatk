@@ -7,7 +7,7 @@ cd "$script_path"
 WORKING_DIR=/home/runner/work/gatk
 
 set -e
-echo "Building docker image for Filtering WDL tests (skipping unit tests)..."
+echo "Building docker image for VCF Site Level Filtering WDL tests (skipping unit tests)..."
 
 #assume Dockerfile is in root
 echo "Building docker without running unit tests... ========="
@@ -26,13 +26,13 @@ fi
 echo "Docker build done =========="
 
 cd $WORKING_DIR/gatk/scripts/
-sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" filtering_wdl/jsons/filtering_travis.json >$WORKING_DIR/filtering_travis.json
+sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" vcf_site_level_filtering_wdl/jsons/vcf_site_level_filtering_travis.json >$WORKING_DIR/vcf_site_level_filtering_travis.json
 echo "JSON FILES (modified) ======="
-cat $WORKING_DIR/filtering_travis.json
+cat $WORKING_DIR/vcf_site_level_filtering_travis.json
 echo "=================="
 
 
 echo "Running Filtering WDL through cromwell"
-ln -fs $WORKING_DIR/gatk/scripts/filtering_wdl/JointVcfFiltering.wdl
-cd $WORKING_DIR/gatk/scripts/filtering_wdl/
-java -jar $CROMWELL_JAR run JointVcfFiltering.wdl -i $WORKING_DIR/filtering_travis.json
+ln -fs $WORKING_DIR/gatk/scripts/vcf_site_level_filtering_wdl/JointVcfFiltering.wdl
+cd $WORKING_DIR/gatk/scripts/vcf_site_level_filtering_wdl/
+java -jar $CROMWELL_JAR run JointVcfFiltering.wdl -i $WORKING_DIR/vcf_site_level_filtering_travis.json
