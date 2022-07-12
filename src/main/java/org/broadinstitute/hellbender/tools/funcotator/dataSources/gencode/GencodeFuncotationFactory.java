@@ -774,8 +774,14 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                     transcriptMapIdAndMetadata.fivePrimeUtrStart,
                     transcriptMapIdAndMetadata.fivePrimeUtrEnd + extraBases
             );
-
-            return transcriptFastaReferenceDataSource.queryAndPrefetch(transcriptInterval).getBaseString();
+            try {
+                basestring = transcriptFastaReferenceDataSource.queryAndPrefetch(transcriptInterval).getBaseString();
+            } catch (SAMException e) {
+                System.out.println(e.toString())
+                return "";
+            }
+            
+            return basestring
         }
         else {
             return "";
