@@ -316,12 +316,11 @@ task AssertTableSizesAreExpected {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
         bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false \
-            "SELECT 'vet_total' AS total_name, sum(total_billable_bytes) AS total_bytes
-            FROM \`~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS\`
-            WHERE table_name LIKE 'vet_%'
-            UNION ALL
-            SELECT 'ref_ranges_total' AS total_name, sum(total_billable_bytes) AS total_bytes
-            FROM \`~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS\`
+            "SELECT 'vet_total' AS total_name, sum(total_billable_bytes) AS total_bytes FROM \
+            `~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS\` WHERE table_name LIKE 'vet_%' \
+            UNION ALL \
+            SELECT 'ref_ranges_total' AS total_name, sum(total_billable_bytes) AS total_bytes \
+            FROM \`~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS\` \
             WHERE table_name LIKE 'ref_ranges_%'" > table_size_output.csv
 
         set +o errexit
@@ -341,7 +340,7 @@ task AssertTableSizesAreExpected {
     }
 
     output {
-        File table_size_output_csv = "cost_observability_output.csv"
+        File table_size_output_csv = "table_size_output.csv"
         File differences = "differences.txt"
     }
 }
