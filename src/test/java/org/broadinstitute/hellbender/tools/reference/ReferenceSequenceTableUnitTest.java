@@ -53,29 +53,49 @@ public class ReferenceSequenceTableUnitTest {
 
     }
 
-    @Test
-    public void testQueryBySequenceName(){
-        GATKPath ref1 = new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini.fasta");
-        GATKPath ref2 = new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini_chr2snp.fasta");
-        ReferenceSequenceTable table = tableGenerator(Arrays.asList(ref1, ref2), CompareReferences.MD5CalculationMode.USE_DICT);
+    @DataProvider(name = "testQueryBySequenceNameData")
+    public Object[][] testQueryBySequenceNameData() {
+        return new Object[][]{
+                new Object[]{ "2", 2,
+                        tableGenerator(Arrays.asList(new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini.fasta"),
+                        new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini_chr2snp.fasta")),
+                        CompareReferences.MD5CalculationMode.USE_DICT),
+                },
+                new Object[]{ "1", 1,
+                        tableGenerator(Arrays.asList(new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini.fasta"),
+                                        new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini_chr2snp.fasta")),
+                                CompareReferences.MD5CalculationMode.USE_DICT),
+                },
+                new Object[]{ "5", 0,
+                        tableGenerator(Arrays.asList(new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini.fasta"),
+                                        new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini_chr2snp.fasta")),
+                                CompareReferences.MD5CalculationMode.USE_DICT),
+                },
+        };
+    }
 
-        String expectedSequenceName = "2";
-        int expectedRows = 2;
 
+    @Test(dataProvider = "testQueryBySequenceNameData")
+    public void testQueryBySequenceName(String expectedSequenceName, int expectedRows, ReferenceSequenceTable table){
         Set<ReferenceSequenceTable.TableRow> rows = table.queryBySequenceName(expectedSequenceName);
-        Assert.assertEquals(rows.size(), expectedRows);
 
-        boolean contigPresent = false;
-        for(ReferenceSequenceTable.TableRow row : rows){
-             contigPresent = false;
-            for(ReferenceSequenceTable.TableEntry entry : row.getEntries()){
-                if(entry.getColumnValue().equals(expectedSequenceName)){
-                    contigPresent = true;
-                    continue;
+        if(expectedRows == 0){
+            Assert.assertNull(rows);
+        } else {
+            Assert.assertEquals(rows.size(), expectedRows);
+
+            boolean contigPresent = false;
+            for (ReferenceSequenceTable.TableRow row : rows) {
+                contigPresent = false;
+                for (ReferenceSequenceTable.TableEntry entry : row.getEntries()) {
+                    if (entry.getColumnValue().equals(expectedSequenceName)) {
+                        contigPresent = true;
+                        continue;
+                    }
                 }
+                Assert.assertTrue(contigPresent);
             }
         }
-        Assert.assertTrue(contigPresent);
     }
 
 }

@@ -99,13 +99,14 @@ public class ReferenceUtilsUnitTest extends GATKBaseTest {
     @Test
     public void testCalculateMD5(){
         final File reference = new File( "src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini.fasta");
-        final ReferenceDataSource source = ReferenceDataSource.of(reference.toPath());
-        final SAMSequenceDictionary dictionary = source.getSequenceDictionary();
-        for (SAMSequenceRecord record : dictionary.getSequences()) {
-            SimpleInterval interval = new SimpleInterval(record.getSequenceName(), 1, record.getSequenceLength());
-            String md5FromDict = record.getMd5();
-            String md5Calculated = ReferenceUtils.calculateMD5(source, interval);
-            Assert.assertEquals(md5FromDict, md5Calculated);
+        try(ReferenceDataSource source = ReferenceDataSource.of(reference.toPath())) {
+            final SAMSequenceDictionary dictionary = source.getSequenceDictionary();
+            for (SAMSequenceRecord record : dictionary.getSequences()) {
+                SimpleInterval interval = new SimpleInterval(record.getSequenceName(), 1, record.getSequenceLength());
+                String md5FromDict = record.getMd5();
+                String md5Calculated = ReferenceUtils.calculateMD5(source, interval);
+                Assert.assertEquals(md5Calculated, md5FromDict);
+            }
         }
     }
 }

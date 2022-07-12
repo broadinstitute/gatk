@@ -32,9 +32,13 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
         columns.add(MD5_COLUMN_NAME);
         columns.add(LENGTH_COLUMN_NAME);
         for (GATKPath path : referenceSources.keySet()) {
-            columns.add(CompareReferences.getReferenceDisplayName(path));
+            columns.add(getReferenceDisplayName(path));
         }
         return columns;
+    }
+
+    public static String getReferenceDisplayName(GATKPath reference){
+        return reference.toPath().getFileName().toString();
     }
 
     public List<String> getColumnNames() {
@@ -52,7 +56,7 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
                 int length = record.getSequenceLength();
                 String md5 = calculateMD5(record, entry.getValue());
                 GATKPath reference = entry.getKey();
-                TableEntry newEntry = new TableEntry(CompareReferences.getReferenceDisplayName(reference), name);
+                TableEntry newEntry = new TableEntry(getReferenceDisplayName(reference), name);
                 TableRow newRow = null;
 
                 // map each MD5 to List of TableEntry objects containing length, md5, and name
@@ -132,6 +136,10 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
         public String getColumnName() { return columnName; }
         public String getColumnValue() { return columnValue; }
 
+        public boolean isEmpty(){
+            return columnValue.equals(MISSING_ENTRY);
+        }
+
     }
 
     public class TableRow {
@@ -157,7 +165,7 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
                     columnIndices.put(LENGTH_COLUMN_NAME, i);
                 }
                 else{
-                    columnIndices.put(CompareReferences.getReferenceDisplayName(references.get(i-2)), i);
+                    columnIndices.put(getReferenceDisplayName(references.get(i-2)), i);
                 }
             }
 

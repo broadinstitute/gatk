@@ -110,13 +110,8 @@ public class CompareReferences extends GATKTool {
         }
     }
 
-    protected static String getReferenceDisplayName(GATKPath reference){
-        return reference.toPath().getFileName().toString();
-    }
-
     @Override
     public Object onTraversalSuccess() {
-
         return null;
     }
 
@@ -130,7 +125,7 @@ public class CompareReferences extends GATKTool {
             ReferenceSequenceTable.TableEntry[] entries = row.getEntries();
 
             for(int i = 0; i < entries.length; i++){
-                if(entries[i].getColumnValue().equals(ReferenceSequenceTable.MISSING_ENTRY)){
+                if(entries[i].isEmpty()){
                     output += String.format("Row %d: Missing entry in %s column.\n", currRow, entries[i].getColumnName());
                     noMissingEntries = false;
                 }
@@ -138,7 +133,7 @@ public class CompareReferences extends GATKTool {
         }
 
         if(noMissingEntries){
-            output += "No missing entries. References are interchangeable.\n";
+            output += "No missing entries.\n";
         }
         else{
             output += "References are not an exact match. See table output for details.\n";
