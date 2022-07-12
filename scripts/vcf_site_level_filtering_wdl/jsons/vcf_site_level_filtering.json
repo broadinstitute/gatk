@@ -7,8 +7,6 @@
   "JointVcfFiltering.sites_only_vcf": "/home/runner/work/gatk/gatk/src/test/resources/large/filteringJointVcf/test_10_samples.sites_only.vcf.gz",
   "JointVcfFiltering.sites_only_vcf_index": "/home/runner/work/gatk/gatk/src/test/resources/large/filteringJointVcf/test_10_samples.sites_only.vcf.gz.tbi",
   "JointVcfFiltering.basename": "test_10_samples",
-  "JointVcfFiltering.indel_sensitivity_threshold": 97.0,
-  "JointVcfFiltering.snp_sensitivity_threshold": 99.9,
   "JointVcfFiltering.snp_annotations": "-A ReadPosRankSum -A FS -A SOR -A QD -A AVERAGE_TREE_SCORE -A AVERAGE_ASSEMBLED_HAPS -A AVERAGE_FILTERED_HAPS",
   "JointVcfFiltering.indel_annotations": "-A MQRankSum -A ReadPosRankSum -A FS -A SOR -A QD -A AVERAGE_TREE_SCORE",
   "JointVcfFiltering.python_script": "/home/runner/work/gatk/gatk/src/main/resources/org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/isolation-forest.py",
