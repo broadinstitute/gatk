@@ -111,6 +111,10 @@ jobs:
         if: needs.check-secrets.outputs.google-credentials == 'true'
         run: echo "HELLBENDER_JSON_SERVICE_ACCOUNT_KEY=${{ steps.auth.outputs.credentials_file_path }}" >> $GITHUB_ENV
 
+      # See https://cloud.google.com/compute/docs/troubleshooting/known-issues#ubuntu-systems
+      - name: "get the updated signature key for google cloud"
+        run: curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key --keyring /usr/share/keyrings/cloud.google.gpg add -
+
       - name: 'Set up Cloud SDK'
         if: needs.check-secrets.outputs.google-credentials == 'true'
         uses: google-github-actions/setup-gcloud@v0
