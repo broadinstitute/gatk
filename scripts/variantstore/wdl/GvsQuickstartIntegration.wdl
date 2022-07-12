@@ -89,6 +89,14 @@ workflow GvsQuickstartIntegration {
             expected_output_csv = expected_output_prefix + "cost_observability_expected.csv"
     }
 
+    call AssertTableSizesAreExpected {
+        input:
+            go = GvsUnified.done,
+            dataset_name = BuildGATKJarAndCreateDataset.dataset_name,
+            project_id = project_id,
+            expected_output_csv = "gs://gvs-internal-quickstart/integration/2022-07-05/table_sizes_expected.csv"
+    }
+
     output {
         Array[File] output_vcfs = GvsUnified.output_vcfs
         Array[File] output_vcf_indexes = GvsUnified.output_vcf_indexes
@@ -283,6 +291,57 @@ task AssertCostIsTrackedAndExpected {
     }
 
     output {
-      File cost_observability_output_csv = "cost_observability_output.csv"
+        File cost_observability_output_csv = "cost_observability_output.csv"
+    }
+}
+
+task AssertTableSizesAreExpected {
+    meta {
+        # we want to check the database each time this runs
+        volatile: true
+    }
+
+    input {
+        Boolean go = true
+        String dataset_name
+        String project_id
+        File expected_output_csv
+    }
+
+    command <<<
+        set -o errexit
+        set -o nounset
+        set -o pipefail
+        set -o xtrace
+
+        echo "project_id = ~{project_id}" > ~/.bigqueryrc
+        bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false \
+            "SELECT 'vet_total' AS total_name, sum(total_billable_bytes) AS total_bytes
+            FROM \`~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS\`
+            WHERE table_name LIKE 'vet_%'
+            UNION ALL
+            SELECT 'ref_ranges_total' AS total_name, sum(total_billable_bytes) AS total_bytes
+            FROM \`~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS\`
+            WHERE table_name LIKE 'ref_ranges_%'" > table_size_output.csv
+
+        set +o errexit
+        diff -w table_size_output.csv ~{expected_output_csv} > differences.txt
+        set -o errexit
+
+        if [[ -s differences.txt ]]; then
+            echo "Differences found:"
+            cat differences.txt
+            exit 1
+        fi
+    >>>
+
+    runtime {
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:latest"
+        disks: "local-disk 10 HDD"
+    }
+
+    output {
+        File table_size_output_csv = "cost_observability_output.csv"
+        File differences = "differences.txt"
     }
 }
