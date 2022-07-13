@@ -59,7 +59,7 @@ task WorkflowComputeCosts {
             --workspace_namespace '~{workspace_namespace}' \
             --workspace_name '~{workspace_name}' \
             ~{sep=' ' excluded_ids} \
-            > costs_by_workflow.json 2> workflow_compute_costs.log
+            > costs_by_workflow.json
     >>>
 
     runtime {
