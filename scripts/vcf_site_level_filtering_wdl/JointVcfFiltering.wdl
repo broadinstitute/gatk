@@ -160,6 +160,7 @@ task ExtractVariantAnnotations {
 		File annots = "~{basename}.~{mode}.annot.hdf5"
 		File extracted_training_vcf = "~{basename}.~{mode}.vcf.gz"
 		File extracted_training_vcf_index = "~{basename}.~{mode}.vcf.gz.tbi"
+		Array[File] outputs = glob("~{basename}.~{mode}.*")
 	}
 	runtime {
 		docker: gatk_docker
