@@ -145,9 +145,9 @@ task ExtractVariantAnnotations {
 	Int disk_size = ceil(size(input_vcf, "GB") + 50)
 	command {
 		set -e
-		export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+		export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
-		gatk --java-options "-Xmx${command_mem}m" \
+		gatk --java-options "-Xmx~{command_mem}m" \
 			ExtractVariantAnnotations \
 			-V ~{input_vcf} \
 			-O ~{basename}.~{mode} \
@@ -188,11 +188,11 @@ task TrainVariantAnnotationModel {
 
 		conda install -y --name gatk dill
 
-		export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+		export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
 		mode=$(echo "~{mode}" | awk '{print toupper($0)}')
 
-		gatk --java-options "-Xmx${command_mem}m" \
+		gatk --java-options "-Xmx~{command_mem}m" \
 			TrainVariantAnnotationsModel \
 			--annotations-hdf5 ~{annots} \
 			-O ~{basename} \
@@ -239,9 +239,9 @@ task ScoreVariantAnnotations {
 
 		conda install -y --name gatk dill
 
-		export GATK_LOCAL_JAR=${default="/root/gatk.jar" gatk_override}
+		export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
-		gatk --java-options "-Xmx${command_mem}m" \
+		gatk --java-options "-Xmx~{command_mem}m" \
 			ScoreVariantAnnotations \
 			~{"-L " + interval_list} \
 			-V ~{vcf} \
