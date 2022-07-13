@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Sets;
 import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.SAMException;
 import htsjdk.samtools.reference.ReferenceSequence;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.tribble.Feature;
@@ -776,12 +777,11 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                     transcriptMapIdAndMetadata.fivePrimeUtrEnd + extraBases
             );
             try {
-                basestring = transcriptFastaReferenceDataSource.queryAndPrefetch(transcriptInterval).getBaseString();
+                return transcriptFastaReferenceDataSource.queryAndPrefetch(transcriptInterval).getBaseString();
             } catch (SAMException e) {
                 logger.warn(e.toString());
                 return "";
             }
-            return basestring;
         }
         else {
             return "";
