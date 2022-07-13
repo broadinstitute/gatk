@@ -32,7 +32,6 @@ workflow GvsCallsetCost {
 
     output {
         File workflow_compute_costs = WorkflowComputeCosts.costs
-        File workflow_compute_costs_log = WorkflowComputeCosts.log
         String vet_gib = CoreStorageModelSizes.vet_gib
         String ref_ranges_gib = CoreStorageModelSizes.ref_ranges_gib
         String alt_allele_gib = CoreStorageModelSizes.alt_allele_gib
@@ -68,7 +67,6 @@ task WorkflowComputeCosts {
 
     output {
         File costs = "costs_by_workflow.json"
-        File log = "workflow_compute_costs.log"
     }
 }
 
