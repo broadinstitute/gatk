@@ -13,7 +13,6 @@ workflow GvsJointVariantCallsetCost {
 
     # the call_set_identifier string is used to name many different things throughout this workflow (BQ tables, vcfs etc),
     # and so make sure nothing is broken by creative users, we replace spaces and underscores with hyphens
-    String filter_set_name = sub(call_set_identifier, "\\s+|\_+", "-")
 
     if(false) {
       Array[String] excluded_submission_ids = []
@@ -51,7 +50,7 @@ workflow GvsJointVariantCallsetCost {
 
     call GvsCallsetCost.GvsCallsetCost {
         input:
-            call_set_identifier = filter_set_name,
+            call_set_identifier = call_set_identifier,
             dataset_name = dataset_name,
             project_id = project_id,
             workspace_namespace = workspace_namespace,
@@ -123,6 +122,7 @@ workflow GvsJointVariantCallsetCost {
                 cat query_scan_cost.txt
                 cat ~{cost_observability_json} | jq '.| map(select(.event_key=="Storage API Scanned").sum_event_gibibytes | tonumber * 0.00107421875) |add' > storage_api_cost.txt
                 cat storage_api_cost.txt
+                echo ~{total_cost}
 
             >>>
 
