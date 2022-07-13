@@ -117,6 +117,8 @@ workflow GvsJointVariantCallsetCost {
 
             command <<<
                 set -e
+                cat ~{cost_observability_json}
+                cat ~{cost_observability_json} | jq '.| map(select(.event_key=="BigQuery Query Scanned")'
                 cat ~{cost_observability_json} | jq '.| map(select(.event_key=="BigQuery Query Scanned").sum_event_gibibytes | tonumber * 0.0048828125) |add' > query_scan_cost.txt
                 cat query_scan_cost.txt
                 cat ~{cost_observability_json} | jq '.| map(select(.event_key=="Storage API Scanned").sum_event_gibibytes | tonumber * 0.00107421875) |add' > storage_api_cost.txt
