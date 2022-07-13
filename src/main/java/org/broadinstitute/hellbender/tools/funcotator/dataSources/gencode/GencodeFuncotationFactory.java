@@ -45,6 +45,7 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.logging.*;
 
 import static org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfFeature.FeatureTag.*;
 
@@ -777,11 +778,10 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             try {
                 basestring = transcriptFastaReferenceDataSource.queryAndPrefetch(transcriptInterval).getBaseString();
             } catch (SAMException e) {
-                System.out.println(e.toString())
+                logger.warn(e.toString());
                 return "";
             }
-            
-            return basestring
+            return basestring;
         }
         else {
             return "";
@@ -1272,19 +1272,23 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         //       A warning will have been generated in createSequenceComparison if the sequenceComparison does not have
         //       coding sequence information.
         if ( sequenceComparison.hasSequenceInfo() ) {
-            final String codonChange = FuncotatorUtils.getCodonChangeString(sequenceComparison, exon.getStartCodon());
-            final String proteinChange = FuncotatorUtils.renderProteinChangeString(sequenceComparison, exon.getStartCodon());
+            try {
+                final String codonChange = FuncotatorUtils.getCodonChangeString(sequenceComparison, exon.getStartCodon());
+                final String proteinChange = FuncotatorUtils.renderProteinChangeString(sequenceComparison, exon.getStartCodon());
 
-            gencodeFuncotationBuilder.setCodonChange(codonChange)
-                                     .setProteinChange(proteinChange);
+                gencodeFuncotationBuilder.setCodonChange(codonChange)
+                                        .setProteinChange(proteinChange);
 
-            // Set the Variant Classification:
-            final GencodeFuncotation.VariantClassification varClass = createVariantClassification(variant, altAllele, variantType, exon, transcript.getExons().size(), sequenceComparison);
-            final GencodeFuncotation.VariantClassification secondaryVarClass;
-            gencodeFuncotationBuilder.setVariantClassification(varClass);
-            if ( varClass == GencodeFuncotation.VariantClassification.SPLICE_SITE ) {
-                secondaryVarClass = getVariantClassificationForCodingRegion(variant, altAllele, variantType, sequenceComparison);
-                gencodeFuncotationBuilder.setSecondaryVariantClassification(secondaryVarClass);
+                // Set the Variant Classification:
+                final GencodeFuncotation.VariantClassification varClass = createVariantClassification(variant, altAllele, variantType, exon, transcript.getExons().size(), sequenceComparison);
+                final GencodeFuncotation.VariantClassification secondaryVarClass;
+                gencodeFuncotationBuilder.setVariantClassification(varClass);
+                if ( varClass == GencodeFuncotation.VariantClassification.SPLICE_SITE ) {
+                    secondaryVarClass = getVariantClassificationForCodingRegion(variant, altAllele, variantType, sequenceComparison);
+                    gencodeFuncotationBuilder.setSecondaryVariantClassification(secondaryVarClass);
+                }
+            } catch (java.lang.StringIndexOutOfBoundsException e) {
+                logger.warn(e.toString());
             }
         }
         else {
@@ -2056,8 +2060,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                                 altAllele,
                                 sequenceComparison.getStrand())
                 );
-
-                final ProteinChangeInfo proteinChangeInfo = ProteinChangeInfo.create(
+                try {
+                    final ProteinChangeInfo proteinChangeInfo = ProteinChangeInfo.create(
                         refAllele,
                         altAllele,
                         sequenceComparison.getCodingSequenceAlleleStart(),
@@ -2067,10 +2071,12 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                         // Figure out if we are in a mitochondrial contig:
                         // TODO: Make this more robust by detecting the mito contig based on the reference used.  (issue https://github.com/broadinstitute/gatk/issues/5364).
                         FuncotatorConstants.MITOCHONDRIAL_CONTIG_NAMES.contains(variant.getContig())
-                );
-
-                // Set our protein change:
-                sequenceComparison.setProteinChangeInfo( proteinChangeInfo );
+                    );
+                    // Set our protein change:
+                    sequenceComparison.setProteinChangeInfo( proteinChangeInfo );
+                } catch (java.lang.StringIndexOutOfBoundsException e) {
+                    logger.warn(e.toString());
+                }
             }
             else {
                 logger.warn("Attempted to process transcript information for transcript WITHOUT sequence data.  Ignoring sequence information for Gencode Transcript ID: " + transcript.getTranscriptId());
