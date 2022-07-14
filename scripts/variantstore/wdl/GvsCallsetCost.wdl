@@ -32,7 +32,6 @@ workflow GvsCallsetCost {
 
     output {
         File workflow_compute_costs = WorkflowComputeCosts.costs
-        File workflow_compute_costs_log = WorkflowComputeCosts.log
         String vet_gib = CoreStorageModelSizes.vet_gib
         String ref_ranges_gib = CoreStorageModelSizes.ref_ranges_gib
         String alt_allele_gib = CoreStorageModelSizes.alt_allele_gib
@@ -59,16 +58,15 @@ task WorkflowComputeCosts {
             --workspace_namespace '~{workspace_namespace}' \
             --workspace_name '~{workspace_name}' \
             ~{sep=' ' excluded_ids} \
-            > costs_by_workflow.json 2> workflow_compute_costs.log
+            > costs_by_workflow.json
     >>>
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_07_08"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_07_13"
     }
 
     output {
         File costs = "costs_by_workflow.json"
-        File log = "workflow_compute_costs.log"
     }
 }
 
