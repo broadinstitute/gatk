@@ -41,6 +41,7 @@ workflow GvsJointVariantCallsetCost {
             vet_size = GvsCallsetCost.vet_gib,
             ref_size = GvsCallsetCost.ref_ranges_gib,
             cost_observability_json = GvsCallsetCost.cost_observability,
+            workflow_compute_costs = GvsCallsetCost.workflow_compute_costs,
             storage_api_cost = storage_api_cost,
             query_cost = query_cost,
             write_API_cost = write_API_cost,
@@ -61,6 +62,7 @@ workflow GvsJointVariantCallsetCost {
             Float vet_size
             Float ref_size
             File cost_observability_json
+            File workflow_compute_costs
             Float storage_api_cost
             Float query_cost
             Float write_API_cost
