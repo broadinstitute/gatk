@@ -21,31 +21,9 @@ workflow GvsJointVariantCallsetCost {
 
     ## TB : GB; 1 : 1024
 
-
-    ## Assign Ids
-    # compute cost only
-
-    ## Import Genomes
-    # compute cost plus
     Float write_API_cost = 0.025 ## BigQuery Storage Write API: $0.025 per 1 GB. The first 2 TB per month are free.
-
-    ## AltAllele
-    # compute cost plus
     Float query_cost = 0.0048828125 ## Queries (on-demand): $5 per TB. The first 1 TB per month is free.
-
-    ## Filter
-    # compute cost plus
-    # Int query_cost = 0.0048828125 ## Queries (on-demand): $5 per TB. The first 1 TB per month is free.
     Float storage_api_cost = 0.00107421875 ## Storage API GB Scanned / Streaming reads (BigQuery Storage Read API):  $1.1 per TB read. Customers can read up to 300 TB of data per month at no charge.
-
-    ## Prepare
-    # compute cost plus
-    #Int query_cost = 0.0048828125 ## Queries (on-demand): $5 per TB. The first 1 TB per month is free.
-
-
-    ## Extract
-    # compute cost plus
-    # Int storage_api_cost = 0.00107421875 ## Storage API GB Scanned / Streaming reads (BigQuery Storage Read API):  $1.1 per TB read. Customers can read up to 300 TB of data per month at no charge.
 
 
     call GvsCallsetCost.GvsCallsetCost {
@@ -63,12 +41,13 @@ workflow GvsJointVariantCallsetCost {
             vet_size = GvsCallsetCost.vet_gib,
             ref_size = GvsCallsetCost.ref_ranges_gib,
             cost_observability_json = GvsCallsetCost.cost_observability,
+            storage_api_cost = storage_api_cost,
             query_cost = query_cost,
             write_API_cost = write_API_cost,
     }
 
         output {
-            Float total_cost = FullCosts.costs
+            Float total_cost = FullCosts.total_cost
         }
 
   }
@@ -82,10 +61,10 @@ workflow GvsJointVariantCallsetCost {
             Float vet_size
             Float ref_size
             File cost_observability_json
+            Float storage_api_cost
             Float query_cost
             Float write_API_cost
         }
-
 
         ## Assign Ids
         # compute cost only
@@ -96,13 +75,12 @@ workflow GvsJointVariantCallsetCost {
 
         ## AltAllele
         # compute cost plus
-        Float alt_allele_cost = query_cost * vet_size
+        # query_cost
 
         ## Filter
         # compute cost plus
         # query_cost
         # storage_api_cost
-        # Float filter_cost = query_cost * alt_allele_size
 
         ## Prepare
         # compute cost plus
@@ -112,16 +90,18 @@ workflow GvsJointVariantCallsetCost {
         # compute cost plus
         # storage_api_cost
 
-        Float total_cost = import_genomes_cost + alt_allele_cost
-
             command <<<
                 set -e
-                cat ~{cost_observability_json}
-                cat ~{cost_observability_json} | jq '.| map(select(.event_key=="BigQuery Query Scanned").sum_event_gibibytes | tonumber * 0.0048828125) |add' > query_scan_cost.txt
-                cat query_scan_cost.txt
-                cat ~{cost_observability_json} | jq '.| map(select(.event_key=="Storage API Scanned").sum_event_gibibytes | tonumber * 0.00107421875) |add' > storage_api_cost.txt
-                cat storage_api_cost.txt
-                echo ~{total_cost}
+                cat ~{cost_observability_json} | jq '.| map(select(.event_key=="BigQuery Query Scanned").sum_event_gibibytes | tonumber * 0.0048828125) |add'
+                cat ~{cost_observability_json} | jq '.| map(select(.event_key=="Storage API Scanned").sum_event_gibibytes | tonumber * 0.00107421875) |add'
+                echo ~{import_genomes_cost}
+
+                cat ~{cost_observability_json} | jq '.| map((select(.event_key=="BigQuery Query Scanned").sum_event_gibibytes | tonumber * 0.0048828125), (select(.event_key=="Storage API Scanned").sum_event_gibibytes | tonumber * 0.00107421875)) | add '
+
+                cat ~{cost_observability_json} | jq '.| map( \
+                  (select(.event_key=="BigQuery Query Scanned").sum_event_gibibytes | tonumber * ~{query_cost}), \
+                  (select(.event_key=="Storage API Scanned").sum_event_gibibytes | tonumber * ~{storage_api_cost}) \
+                ) |add + ~{import_genomes_cost} ' > total_cost.txt
 
             >>>
 
@@ -130,7 +110,7 @@ workflow GvsJointVariantCallsetCost {
         }
 
         output {
-            Float costs = total_cost
+            Float total_cost = read_float("total_cost.txt")
         }
     }
 
