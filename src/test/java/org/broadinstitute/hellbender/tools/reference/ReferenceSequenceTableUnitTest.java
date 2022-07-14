@@ -80,7 +80,7 @@ public class ReferenceSequenceTableUnitTest {
         Set<ReferenceSequenceTable.TableRow> rows = table.queryBySequenceName(expectedSequenceName);
 
         if(expectedRows == 0){
-            Assert.assertNull(rows);
+            Assert.assertTrue(rows.isEmpty());
         } else {
             Assert.assertEquals(rows.size(), expectedRows);
 
@@ -97,5 +97,28 @@ public class ReferenceSequenceTableUnitTest {
             }
         }
     }
+
+    @DataProvider(name = "testGenerateReferencePairsData")
+    public Object[][] testGenerateReferencePairsData() {
+        return new Object[][]{
+                new Object[]{ Arrays.asList(new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini.fasta"),
+                        new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini_chr2snp.fasta")),
+                        1
+                },
+                new Object[]{ Arrays.asList(new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini.fasta"),
+                        new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini_chr2snp.fasta"),
+                        new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini_1renamed.fasta")),
+                        3
+                },
+        };
+    }
+
+    @Test(dataProvider = "testGenerateReferencePairsData")
+    public void testGenerateReferencePairs(List<GATKPath> references, int expectedPairs){
+        ReferenceSequenceTable table = tableGenerator(references, CompareReferences.MD5CalculationMode.USE_DICT);
+        List<ReferencePair> pairs = table.generateReferencePairs(references);
+        Assert.assertEquals(pairs.size(), expectedPairs);
+    }
+
 
 }

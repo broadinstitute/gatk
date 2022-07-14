@@ -35,6 +35,9 @@ public class CompareReferences extends GATKTool {
     @Argument(fullName = "md5-calculation-mode", shortName = "md5-calculation-mode", doc = "", optional = true)
     private MD5CalculationMode md5CalculationMode = MD5CalculationMode.USE_DICT;
 
+    @Argument(fullName = "display-only-differing-sequences", shortName = "", doc = "", optional = true)
+    private boolean onlyDisplayDifferingSequences = false;
+
     public enum MD5CalculationMode {
           USE_DICT,
           RECALCULATE_IF_MISSING,
@@ -72,7 +75,14 @@ public class CompareReferences extends GATKTool {
             writeTableToFileOutput(table);
         }
 
-        analyzeTable(table);
+        //analyzeTable(table);
+        //listDifferentSequenceSameName(table);
+
+        writeTableToStdOutput(table);
+        List<GATKPath> refs = new ArrayList<>();
+        refs.addAll(referenceSources.keySet());
+        List<ReferencePair> referencePairs = table.generateReferencePairs(refs);
+        table.analyzeTable(referencePairs);
     }
 
     private void writeTableToStdOutput(ReferenceSequenceTable table){
@@ -140,6 +150,45 @@ public class CompareReferences extends GATKTool {
         }
         System.out.println(output);
     }
+
+    public void listDifferentSequenceSameName(ReferenceSequenceTable table){
+        List<String> output = new ArrayList<>();
+        output.add("Sequence \tMD5 \tReference\n");
+
+        for(String sequenceName : table.getAllSequenceNames()){
+            Set<ReferenceSequenceTable.TableRow> rows = table.queryBySequenceName(sequenceName);
+            if(onlyDisplayDifferingSequences) {
+                if(rows.size() > 1) {
+                    output.addAll(displayBySequenceName(rows, sequenceName));
+                }
+            } else {
+                output.addAll(displayBySequenceName(rows, sequenceName));
+            }
+        }
+
+        for(String str : output){
+            System.out.print(str);
+        }
+        System.out.println();
+    }
+
+    public List<String> displayBySequenceName(Set<ReferenceSequenceTable.TableRow> rows, String sequenceName){
+        List<String> output = new ArrayList<>();
+        output.add(sequenceName);
+        for(ReferenceSequenceTable.TableRow row : rows) {
+            ReferenceSequenceTable.TableEntry[] entries = row.getEntries();
+            output.add("\n\t" + row.getMd5() + "\t");
+
+            for(int i = 2; i < entries.length; i++) {
+                if(entries[i].getColumnValue().equals(sequenceName)) {
+                    output.add(entries[i].getColumnName() + "\t");
+                }
+            }
+        }
+        output.add("\n");
+        return output;
+    }
+
     @Override
     public void closeTool() {
         for(Map.Entry<GATKPath, ReferenceDataSource> entry : referenceSources.entrySet()){
