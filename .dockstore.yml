@@ -231,8 +231,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_475_read_cost_observability
-         - vs_518_throw_on_fiss_api_error
+         - cost_robustitude
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
