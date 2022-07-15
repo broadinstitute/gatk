@@ -77,8 +77,8 @@ public class CompareReferences extends GATKTool {
 
         //analyzeTable(table);
         //listDifferentSequenceSameName(table);
+        //writeTableToStdOutput(table);
 
-        writeTableToStdOutput(table);
         List<GATKPath> refs = new ArrayList<>();
         refs.addAll(referenceSources.keySet());
         List<ReferencePair> referencePairs = table.generateReferencePairs(refs);

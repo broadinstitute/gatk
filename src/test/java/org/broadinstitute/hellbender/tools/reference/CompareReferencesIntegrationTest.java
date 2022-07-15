@@ -30,12 +30,10 @@ public class CompareReferencesIntegrationTest extends CommandLineProgramTest {
         final File ref1 = new File(getToolTestDataDir() + "hg19mini.fasta");
         final File ref2 = new File(getToolTestDataDir() + "hg19mini_1renamed.fasta");
         final File ref3 = new File(getToolTestDataDir() + "hg19mini_chr2snp.fasta");
-        //final File ref4 = new File(getToolTestDataDir() + "hg19mini_missingsequence.fasta");
         final File output = createTempFile("testCompareReferencesMultipleReferences", ".table");
         final File expectedOutput = new File(getToolTestDataDir(), "expected.testCompareReferencesMultipleReferences.table");
 
         final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-refcomp", ref3.getAbsolutePath(),
-                /*"-refcomp", ref4.getAbsolutePath(),*/
                 "-O", output.getAbsolutePath()};
         runCommandLine(args);
 
@@ -108,6 +106,20 @@ public class CompareReferencesIntegrationTest extends CommandLineProgramTest {
 
         final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath()};
         runCommandLine(args);
+    }
+
+    @Test
+    public void testCompareReferencesMultipleReferencesStdOut() throws IOException{
+        final File ref1 = new File(getToolTestDataDir() + "hg19mini.fasta");
+        final File ref2 = new File(getToolTestDataDir() + "hg19mini_1renamed.fasta");
+        final File ref3 = new File(getToolTestDataDir() + "hg19mini_chr2snp.fasta");
+        final File ref4 = new File(getToolTestDataDir() + "hg19mini_missingsequence.fasta");
+
+        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-refcomp", ref3.getAbsolutePath(),
+                "-refcomp", ref4.getAbsolutePath(),
+               };
+        runCommandLine(args);
+
     }
 
 }

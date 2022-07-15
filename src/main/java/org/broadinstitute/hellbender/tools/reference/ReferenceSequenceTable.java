@@ -165,9 +165,10 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
 
                 TableEntry ref1Value = entries[ref1Index];
                 TableEntry ref2Value = entries[ref2Index];
-                if (!(ref1Value.equals(ref2Value))) {
+                if (!ref1Value.equals(ref2Value)) {
                     pair.removeStatus(ReferencePair.Status.EXACT_MATCH);
-                } if(!(ref1Value.getColumnValue().equals(ref2Value.getColumnValue())) && !(ref1Value.getColumnValue().equals(MISSING_ENTRY) ^ ref2Value.getColumnValue().equals(MISSING_ENTRY))){
+                } if(!ref1Value.getColumnValue().equals(ref2Value.getColumnValue()) &&
+                        !(ref1Value.getColumnValue().equals(MISSING_ENTRY) ^ ref2Value.getColumnValue().equals(MISSING_ENTRY))){
                     pair.addStatus(ReferencePair.Status.DIFFER_IN_SEQUENCE_NAMES);
                 }
             }
@@ -178,28 +179,30 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
                 int ref1Index = pair.getRef1ColumnIndex();
                 int ref2Index = pair.getRef2ColumnIndex();
                 Set<ReferenceSequenceTable.TableRow> rows = queryBySequenceName(sequenceName);
+                int sequenceNameFound = 0;
+
                 for(TableRow row : rows) {
                     TableEntry[] entries = row.getEntries();
                     TableEntry ref1Value = entries[ref1Index];
                     TableEntry ref2Value = entries[ref2Index];
-                    if (rows.size() == 1) {
-                        if(ref1Value.getColumnValue().equals(MISSING_ENTRY) ^ ref2Value.getColumnValue().equals(MISSING_ENTRY)){
-                            pair.addStatus(ReferencePair.Status.DIFFER_IN_SEQUENCES_PRESENT);
-                        }
-                    }
-                    if (ref1Value.getColumnValue().equals(MISSING_ENTRY) ^ ref2Value.getColumnValue().equals(MISSING_ENTRY)){
-                        pair.addStatus(ReferencePair.Status.DIFFER_IN_SEQUENCE);
+
+                    if((ref1Value.getColumnValue().equals(sequenceName) ^ ref2Value.getColumnValue().equals(sequenceName)) && (ref1Value.getColumnValue().equals(MISSING_ENTRY) ^ ref2Value.getColumnValue().equals(MISSING_ENTRY))){
+                        sequenceNameFound++;
+                        continue;
                     }
                 }
 
-                    //pair.addStatus(ReferencePair.Status.DIFFER_IN_SEQUENCE);
-                //if(rows.size() == 1 &&)
+                if(sequenceNameFound == 2){
+                    pair.addStatus(ReferencePair.Status.DIFFER_IN_SEQUENCE);
+                }
+                if(sequenceNameFound == 1){
+                    pair.addStatus(ReferencePair.Status.DIFFER_IN_SEQUENCES_PRESENT);
+                }
             }
         }
         for(ReferencePair pair : refPairs){
             System.out.println(pair.toString());
         }
-
     }
 
     @Override
