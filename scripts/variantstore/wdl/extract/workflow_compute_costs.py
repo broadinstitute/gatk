@@ -47,11 +47,11 @@ def compute_costs(workspace_namespace, workspace_name, excluded_submission_ids,
         workflow_ids = [w['workflowId'] for w in workflows]
         for workflow_id in workflow_ids:
             workflow = get_workflow_metadata(workspace_namespace, workspace_name, submission_id, workflow_id)
-            workflow_name = workflow['workflowName']
-            if not workflow_name:
+            if 'workflowName' not in workflow:
                 warning(f"Workflow {workflow_id} has no workflow name, skipping cost calculation.")
                 continue
 
+            workflow_name = workflow['workflowName']
             if workflow_name.startswith('Gvs'):
                 if len(workflow_ids) == 1:
                     # If this run is < 1 day old the cost data may not yet be available.
