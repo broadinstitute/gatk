@@ -201,6 +201,7 @@ public class CountingReadFilter extends ReadFilter {
     protected static final class CountingAndReadFilter extends CountingBinopReadFilter {
 
         private static final long serialVersionUID = 1L;
+        private long totalCount = 0;
 
         private CountingAndReadFilter(final CountingReadFilter lhs, final CountingReadFilter rhs) {
             super(lhs, rhs);
@@ -212,6 +213,7 @@ public class CountingReadFilter extends ReadFilter {
             if (!accept) {
                 filteredCount++;
             }
+            totalCount++;
             return accept;
         }
 
@@ -249,7 +251,7 @@ public class CountingReadFilter extends ReadFilter {
                 }
             }
 
-            summaryLine.append(this.getFilteredCount() + " total reads filtered");
+            summaryLine.append(this.getFilteredCount() + " total reads filtered out of "+ this.totalCount+ " reads processed");
 
             return summaryLine.toString();
         }
