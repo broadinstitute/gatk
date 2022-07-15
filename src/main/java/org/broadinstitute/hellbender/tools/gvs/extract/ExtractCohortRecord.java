@@ -76,6 +76,15 @@ public class ExtractCohortRecord implements Locatable {
 
     // constructor for single base reference
     public ExtractCohortRecord(long location, long sampleId, String state) {
+        this(location, sampleId, state, null, null, null, null, null, null, null, null, null );
+    }
+
+    // constructor for spanning deletion single-base
+    public ExtractCohortRecord(long location, long sampleId, String state, String refAllele, String altAllele, String callGT, String callGQ) {
+        this(location, sampleId, state, refAllele, altAllele, callGT, null, callGQ, null, null, null, null );
+    }
+
+    public ExtractCohortRecord(long location, long sampleId, String state, String refAllele, String altAllele, String callGT, String callAD, String callGQ, String callRGQ, String qualapprox, String asQualapprox, String callPL) {
         this.location = location;
         this.sampleId = sampleId;
         this.contig = SchemaUtils.decodeContig(location);
@@ -83,15 +92,15 @@ public class ExtractCohortRecord implements Locatable {
         this.end = start;
         this.state = state;
 
-        this.refAllele = null;
-        this.altAllele = null;
-        this.callGT = null;
-        this.callAD = null;
-        this.callGQ = null;
-        this.callRGQ = null;
-        this.qualapprox = null;
-        this.asQualapprox = null;
-        this.callPL = null;
+        this.refAllele = refAllele;
+        this.altAllele = altAllele;
+        this.callGT = callGT;
+        this.callAD = callAD;
+        this.callGQ = callGQ;
+        this.callRGQ = callRGQ;
+        this.qualapprox = qualapprox;
+        this.asQualapprox = asQualapprox;
+        this.callPL = callPL;
     }
 
     @Override
