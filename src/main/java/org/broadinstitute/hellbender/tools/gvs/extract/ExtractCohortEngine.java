@@ -9,6 +9,7 @@ import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
+import io.opencensus.trace.Span;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -20,6 +21,7 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
 import org.broadinstitute.hellbender.tools.gvs.common.GQStateEnum;
 import org.broadinstitute.hellbender.tools.gvs.common.IngestConstants;
 import org.broadinstitute.hellbender.tools.gvs.common.SampleList;
@@ -458,7 +460,9 @@ public class ExtractCohortEngine {
                 case "6":  // Non Variant Block with 60 <= GQ (usually omitted from tables)
                     refCalls.add(new ReferenceGenotypeInfo(sampleName, 60));
                     break;
-                case "*":   // Spanning Deletion - do nothing. just mark the sample as seen
+                case "*":   // Spanning Deletion
+                    VariantContext vcStar = createVariantContextFromSampleRecord(sampleRecord, vqsLodMap, yngMap, VQSLODFilteringType);
+                    unmergedCalls.add(vcStar);
                     break;
                 case "m":   // Missing
                     // Nothing to do here -- just needed to mark the sample as seen so it doesn't get put in the high confidence ref band
@@ -1123,13 +1127,11 @@ public class ExtractCohortEngine {
             // handle the actual variant record
             currentPositionRecords.merge(variantSample, vetRow, this::mergeSampleRecord);
 
-            // if the variant record was a deletion, fabricate a spanning deletion row for the cache
-            // TODO: is it possible that we will have two records now in the reference cache, and will we need logic to get "all" the records?
-            // TODO: should we really build a VariantContext here, and let that sort out the length of the deletion for now, get the shortest of the alternates (biggest deletion)
-            // TODO: use the genotypes of this specific sample (e.g. 0/1 vs 1/2) to decide how big the spanning deletion is.  The current logic matches what we do on ingest though
-            // TODO: really, really, really think this through!!!
+            // if the variant record was a deletion, fabricate a spanning deletion row(s) for the cache
+            // so that a future request for reference state at a position underlying the deletion is
+            // properly handled
             handlePotentialSpanningDeletion(vetRow, referenceCache);
-            
+
             lastPosition = variantLocation;
             lastSample = variantSample;
         }
@@ -1150,16 +1152,103 @@ public class ExtractCohortEngine {
         long position = vetRow.getLocation();
         long sample = vetRow.getSampleId();
 
-        int smallestAltLength = Arrays.stream(vetRow.getAltAllele().split(",")).map(x -> x.length()).min(Integer::compare).orElse(0);
         int refLength = vetRow.getRefAllele().length();
 
-        if (refLength > smallestAltLength) {
-            referenceCache.get(sample).add(
-                    new ReferenceRecord(position+1, sample, refLength - smallestAltLength, "*")
-            );
+        List<Integer> orderedDeletionLengths =
+                Arrays.stream(vetRow.getAltAllele().split(","))
+                        .filter(x -> !x.equals(Allele.NO_CALL_STRING))
+                        .map(x -> refLength - x.length())
+                        .filter(x -> x > 0)
+                        .sorted()
+                        .collect(Collectors.toList());
+
+        if (orderedDeletionLengths.size() > 0) {
+
+            // if there is a single deletion, just encode it with the right zygosity
+            if (orderedDeletionLengths.size() == 1) {
+                boolean isHet
+                        = Arrays.stream(vetRow.getCallGT().replace("|", "/").split("/")).filter(x -> !x.equals(Allele.NO_CALL_STRING)).distinct().count() == 2;
+
+                mergeSpanningDeletionIntoCache(referenceCache.get(sample),
+                        new SpanningDeletionRecord(position + 1, sample, orderedDeletionLengths.get(0), isHet ? "0/1" : "1/1", vetRow.getCallGQ())
+                );
+            } else if (orderedDeletionLengths.size() == 2) {
+                // we need to add two different spanning deletions, one for the hom region and one for the het region
+                int shorter = orderedDeletionLengths.get(0); // 5
+                int longer = orderedDeletionLengths.get(1);  // 5
+                int lengthHomRegion = shorter;
+                int lengthHetRegion = longer - shorter;
+
+                mergeSpanningDeletionIntoCache(referenceCache.get(sample),
+                        new SpanningDeletionRecord(position + 1, sample, lengthHomRegion, "1/1", vetRow.getCallGQ())
+                );
+
+                // in the case of a single homozygous deletion, the length of the het region is zero so don't add it
+                if (lengthHetRegion > 0) {
+                    mergeSpanningDeletionIntoCache(referenceCache.get(sample),
+                            new SpanningDeletionRecord(position + lengthHomRegion + 1, sample, lengthHetRegion, "0/1", vetRow.getCallGQ())
+                    );
+                }
+            } else {
+                // there are only three options here -- no deletions (do nothing) one deletion or two deletions
+                throw new GATKException("Found > 2 different deletions in a single het genotype!!" + vetRow);
+            }
         }
     }
 
+    private void mergeSpanningDeletionIntoCache(TreeSet<ReferenceRecord> cache, SpanningDeletionRecord sdr) {
+        // extract out any ReferenceRecords that overlap this record
+        List<ReferenceRecord> recs = cache.stream().filter(x -> x.overlaps(sdr)).collect(Collectors.toList());
+        // make most common case efficient
+        if (recs.size() == 0) {
+            cache.add(sdr);
+        } else if (recs.size() == 1) {
+            if (! (recs.get(0) instanceof SpanningDeletionRecord)) {
+                ReferenceRecord existing = recs.get(0);
+
+                // if this is an upstream reference record, just truncate it with the spanning deletion record
+                if (existing.getStart() < sdr.getStart()) {
+                    cache.remove(existing);
+                    cache.add(new ReferenceRecord(existing.getLocation(), existing.getSampleId(), (int) (sdr.getLocation() - sdr.getLocation()), existing.getState()));
+                } else {
+                    throw new GATKException("Merging SpanningDeletionRecord " + sdr + " but found existing downstream non-SpanningDeletionRecord " + recs.get(0));
+                }
+            } else {
+
+                // There are two kinds of overlap we have to deal with.  Essentially we want the later record to override the
+                // earlier record in a region of overlap.
+                //
+                // (1) simple overlap -- intervals overlap at one end.  In this case we need to produce TWO records by just
+                // truncating the earlier one so they don't overlap
+                // (2) interior overlap -- one interval is completely inside the other.  In this case we need to create THREE
+                // records.  The first two records are the same as the simple overlap case, but then we need to generate a
+                // third record where the earlier records "resumes" after the end of the later record
+                SpanningDeletionRecord existing = (SpanningDeletionRecord) recs.get(0);
+
+                SpanningDeletionRecord earlier = (existing.getLocation() < sdr.getLocation()) ? existing : sdr;
+                SpanningDeletionRecord later = (existing.getLocation() >= sdr.getLocation()) ? existing : sdr;
+
+                // remove the existing row
+                cache.remove(existing);
+
+                // and replace it with a truncated earlier record, and the later record
+                SpanningDeletionRecord s1 = new SpanningDeletionRecord(earlier.getLocation(), earlier.getSampleId(), (int) (later.getLocation() - earlier.getLocation()), earlier.getGT(), earlier.getGQ());
+                cache.add(s1);
+                cache.add(later);
+
+                // and if the later record ends before the end of the earlier record emit the remainder (case 2 above)
+                if (later.getEnd() < earlier.getEnd()) {
+                    long newStart = later.getEndLocation() + 1;
+                    int newLength = (int) (earlier.getEndLocation() - newStart + 1);
+                    SpanningDeletionRecord s2 = new SpanningDeletionRecord(newStart, earlier.getSampleId(), newLength, earlier.getGT(), earlier.getGQ());
+                    cache.add(s2);
+                }
+            }
+        } else {
+            throw new GATKException("Found > 2 reference records that overlap for a diploid sample! " + recs + " and " + sdr);
+        }
+
+    }
     private void processReferenceData(Map<Long, ExtractCohortRecord> currentPositionRecords, Iterator<GenericRecord> sortedReferenceRangeIterator, Map<Long, TreeSet<ReferenceRecord>> referenceCache, long location, long fromSampleId, long toSampleId, SortedSet<Long> sampleIdsToExtract) {
         // in the case where there are two adjacent samples with variants, this method is called where from is greater than to
         // this is ok, there is just no reference data to process but subSet will throw an exception so we handle it with this if block
@@ -1180,7 +1269,14 @@ public class ExtractCohortEngine {
             r = processReferenceDataFromStream(sortedReferenceRangeIterator, referenceCache, location, sampleId);
         }
 
-        return new ExtractCohortRecord(location, sampleId, r.getState());
+        // handle spanning deletion record
+        if (r instanceof SpanningDeletionRecord) {
+            SpanningDeletionRecord sdr = (SpanningDeletionRecord) r;
+            Allele refAllele = getReferenceAllele(refSource, location, 1); // note this is location of the query/parameter, not the start of the deletion
+            return new ExtractCohortRecord(location, sampleId, sdr.getState(), refAllele.getBaseString(), Allele.SPAN_DEL_STRING, sdr.getGT(), sdr.getGQ());
+        } else {
+            return new ExtractCohortRecord(location, sampleId, r.getState());
+        }
     }
 
     // Refactoring opportunity:  Although this class is used as a singleton
@@ -1261,7 +1357,35 @@ public class ExtractCohortEngine {
         return inferredReferenceRecord;
     }
 
-    private static Allele getReferenceAllele(final ReferenceDataSource refSource, final long location, final int length) {
+    // Turns out some data has overlapping reference blocks.  Technically this is invalid,
+    // but it still exists in the wild and in WARP scientific test data.
+    private void mergeIntoReferenceCache(TreeSet<ReferenceRecord> cache, ReferenceRecord rec) {
+        if (cache.size() == 0) {
+            cache.add(rec);
+        } else {
+
+            // iterate through cache and look for an overlap
+            // NOTE: it might be possible to generalize this logic with similar logic
+            // from merging in SpanningDeletionRecords but keeping it separate for now
+            for (ReferenceRecord existing : cache) {
+                if (existing.overlaps(rec) && !(existing instanceof SpanningDeletionRecord)) {
+                    ReferenceRecord earlier = (existing.getLocation() < rec.getLocation()) ? existing : rec;
+                    ReferenceRecord later = (existing.getLocation() >= rec.getLocation()) ? existing : rec;
+
+                    // remove the existing row
+                    cache.remove(existing);
+
+                    // and replace it with a truncated earlier record, and the later record
+                    ReferenceRecord s1 = new ReferenceRecord(earlier.getLocation(), earlier.getSampleId(), (int) (later.getLocation() - earlier.getLocation()), earlier.getState());
+                    cache.add(s1);
+                    cache.add(later);
+                }
+            }
+
+        }
+    }
+
+    private static Allele getReferenceAllele(ReferenceDataSource refSource, long location, int length) {
         String contig = SchemaUtils.decodeContig(location);
         long position = SchemaUtils.decodePosition(location);
         return Allele.create(refSource.queryAndPrefetch(contig, position, position + length - 1).getBaseString(), true);
