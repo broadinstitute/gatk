@@ -41,15 +41,16 @@ workflow GvsJointVariantCallsetCost {
             vet_size = GvsCallsetCost.vet_gib,
             ref_size = GvsCallsetCost.ref_ranges_gib,
             cost_observability_json = GvsCallsetCost.cost_observability,
-            workflow_compute_costs = GvsCallsetCost.workflow_compute_costs,
+            workflow_cost_json = GvsCallsetCost.workflow_compute_costs,
             storage_api_cost = storage_api_cost,
             query_cost = query_cost,
             write_API_cost = write_API_cost,
     }
 
-        output {
-            Float total_cost = FullCosts.total_cost
-        }
+    output {
+            Float total_bq_cost = FullCosts.total_bq_cost
+            Float total_terra_cost = FullCosts.total_terra_cost
+    }
 
   }
 
@@ -62,7 +63,7 @@ workflow GvsJointVariantCallsetCost {
             Float vet_size
             Float ref_size
             File cost_observability_json
-            File workflow_compute_costs
+            File workflow_cost_json
             Float storage_api_cost
             Float query_cost
             Float write_API_cost
@@ -103,7 +104,9 @@ workflow GvsJointVariantCallsetCost {
                 cat ~{cost_observability_json} | jq '.| map( \
                   (select(.event_key=="BigQuery Query Scanned").sum_event_gibibytes | tonumber * ~{query_cost}), \
                   (select(.event_key=="Storage API Scanned").sum_event_gibibytes | tonumber * ~{storage_api_cost}) \
-                ) |add + ~{import_genomes_cost} ' > total_cost.txt
+                ) |add + ~{import_genomes_cost} ' > total_bq_cost.txt
+
+                cat ~{workflow_cost_json} | jq '.GvsJointVariantCalling.workflows | .[] | select(.link| contains("e6b67ab4-3128-4b82-8716-a233036cd1c6")).cost '  > total_terra_cost.txt
 
             >>>
 
@@ -112,7 +115,8 @@ workflow GvsJointVariantCallsetCost {
         }
 
         output {
-            Float total_cost = read_float("total_cost.txt")
+            Float total_bq_cost = read_float("total_bq_cost.txt")
+            Float total_terra_cost = read_float("total_terra_cost.txt")
         }
     }
 
