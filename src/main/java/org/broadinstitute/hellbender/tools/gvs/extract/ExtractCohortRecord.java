@@ -78,6 +78,11 @@ public class ExtractCohortRecord implements Locatable {
     public ExtractCohortRecord(long location, long sampleId, String state) {
         this(location, sampleId, state, null, null, null, null, null, null, null, null, null );
     }
+    
+    // constructor for spanning deletion single-base
+    public ExtractCohortRecord(long location, long sampleId, String state, String refAllele, String altAllele, String callGT, String callGQ) {
+        this(location, sampleId, state, refAllele, altAllele, callGT, null, callGQ, null, null, null, null );
+    }
 
     public ExtractCohortRecord(long location, long sampleId, String state, String refAllele, String altAllele, String callGT, String callAD, String callGQ, String callRGQ, String qualapprox, String asQualapprox, String callPL) {
         this.location = location;
