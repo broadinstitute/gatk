@@ -75,14 +75,17 @@ public class CompareReferences extends GATKTool {
             writeTableToFileOutput(table);
         }
 
-        //analyzeTable(table);
-        //listDifferentSequenceSameName(table);
+        //displayMissingEntries(table);
+        listDifferentSequenceSameName(table);
         //writeTableToStdOutput(table);
 
         List<GATKPath> refs = new ArrayList<>();
         refs.addAll(referenceSources.keySet());
-        List<ReferencePair> referencePairs = table.generateReferencePairs(refs);
-        table.analyzeTable(referencePairs);
+        //table.generateReferencePairs(refs);
+        List<ReferencePair> referencePairs = table.analyzeTable();
+        for(ReferencePair pair : referencePairs){
+            System.out.println(pair);
+        }
     }
 
     private void writeTableToStdOutput(ReferenceSequenceTable table){
@@ -125,7 +128,7 @@ public class CompareReferences extends GATKTool {
         return null;
     }
 
-    public void analyzeTable(ReferenceSequenceTable table) {
+    public void displayMissingEntries(ReferenceSequenceTable table) {
         boolean noMissingEntries = true;
         String output = "";
         int currRow = 0;

@@ -134,7 +134,8 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
             case RECALCULATE_IF_MISSING:
                 if (md5FromDict == null || md5FromDict.isEmpty()) {
                     md5 = ReferenceUtils.calculateMD5(source, referenceInterval);
-                } else {
+                }
+                else {
                     md5 = md5FromDict;
                 }
                 break;
@@ -155,27 +156,30 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
         return referencePairs;
     }
 
-    public void analyzeTable(List<ReferencePair> refPairs){
+    public List<ReferencePair> analyzeTable(){
+        List<ReferencePair> refPairs = generateReferencePairs(references);
 
         for(TableRow row : tableByMD5.values()) {
-            for (ReferencePair pair : refPairs) {
+            for(ReferencePair pair : refPairs) {
                 int ref1Index = pair.getRef1ColumnIndex();
                 int ref2Index = pair.getRef2ColumnIndex();
                 TableEntry[] entries = row.getEntries();
 
                 TableEntry ref1Value = entries[ref1Index];
                 TableEntry ref2Value = entries[ref2Index];
-                if (!ref1Value.equals(ref2Value)) {
+                if (!ref1Value.getColumnValue().equals(ref2Value.getColumnValue())) {
                     pair.removeStatus(ReferencePair.Status.EXACT_MATCH);
-                } if(!ref1Value.getColumnValue().equals(ref2Value.getColumnValue()) &&
-                        !(ref1Value.getColumnValue().equals(MISSING_ENTRY) ^ ref2Value.getColumnValue().equals(MISSING_ENTRY))){
+                }
+                if(!ref1Value.getColumnValue().equals(ref2Value.getColumnValue()) &&
+                        !(ref1Value.getColumnValue().equals(MISSING_ENTRY) || ref2Value.getColumnValue().equals(MISSING_ENTRY))){
                     pair.addStatus(ReferencePair.Status.DIFFER_IN_SEQUENCE_NAMES);
                 }
             }
         }
-
-        for(String sequenceName : tableBySequenceName.keySet()){
-            for(ReferencePair pair : refPairs){
+        for(ReferencePair pair : refPairs){
+            boolean superset = false;
+            boolean subset = false;
+            for(String sequenceName : tableBySequenceName.keySet()){
                 int ref1Index = pair.getRef1ColumnIndex();
                 int ref2Index = pair.getRef2ColumnIndex();
                 Set<ReferenceSequenceTable.TableRow> rows = queryBySequenceName(sequenceName);
@@ -186,23 +190,40 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
                     TableEntry ref1Value = entries[ref1Index];
                     TableEntry ref2Value = entries[ref2Index];
 
-                    if((ref1Value.getColumnValue().equals(sequenceName) ^ ref2Value.getColumnValue().equals(sequenceName)) && (ref1Value.getColumnValue().equals(MISSING_ENTRY) ^ ref2Value.getColumnValue().equals(MISSING_ENTRY))){
+                    if((ref1Value.getColumnValue().equals(sequenceName) ^ ref2Value.getColumnValue().equals(sequenceName))
+                            && (ref1Value.getColumnValue().equals(MISSING_ENTRY) ^ ref2Value.getColumnValue().equals(MISSING_ENTRY))){
                         sequenceNameFound++;
-                        continue;
+                    }
+                    if(ref1Value.getColumnValue().equals(MISSING_ENTRY) ^ ref2Value.getColumnValue().equals(MISSING_ENTRY)){
+                        if(ref1Value.getColumnValue().equals(MISSING_ENTRY)){
+                            subset = true;
+                        }
+                        else{
+                            superset = true;
+                        }
                     }
                 }
 
                 if(sequenceNameFound == 2){
                     pair.addStatus(ReferencePair.Status.DIFFER_IN_SEQUENCE);
-                }
-                if(sequenceNameFound == 1){
+                } else if(sequenceNameFound == 1){
                     pair.addStatus(ReferencePair.Status.DIFFER_IN_SEQUENCES_PRESENT);
+                } else if (sequenceNameFound > 2){
+                    throw new UserException.BadInput(String.format("Duplicate of sequence '%s' found in %s or %s.", sequenceName, pair.getRef1(), pair.getRef2()));
                 }
             }
+
+            if(superset ^ subset){
+                pair.removeStatus(ReferencePair.Status.DIFFER_IN_SEQUENCES_PRESENT);
+            }
+
+            if(superset && !subset){
+                pair.addStatus(ReferencePair.Status.SUPERSET);
+            } else if(subset && !superset) {
+                pair.addStatus(ReferencePair.Status.SUBSET);
+            }
         }
-        for(ReferencePair pair : refPairs){
-            System.out.println(pair.toString());
-        }
+        return refPairs;
     }
 
     @Override

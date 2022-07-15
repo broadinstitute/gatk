@@ -15,7 +15,8 @@ public class ReferencePair {
         DIFFER_IN_SEQUENCE_NAMES,
         DIFFER_IN_SEQUENCE,
         DIFFER_IN_SEQUENCES_PRESENT,
-        SUPER_SET;
+        SUPERSET,
+        SUBSET;
     }
     private EnumSet<Status> analysis;
 
@@ -41,6 +42,13 @@ public class ReferencePair {
 
     public int getRef2ColumnIndex() {
         return ref2ColumnIndex;
+    }
+
+    public String getRef1(){
+        return ref1.toPath().getFileName().toString();
+    }
+    public String getRef2(){
+        return ref2.toPath().getFileName().toString();
     }
 
     public String statusAsString(){

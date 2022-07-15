@@ -119,7 +119,16 @@ public class CompareReferencesIntegrationTest extends CommandLineProgramTest {
                 "-refcomp", ref4.getAbsolutePath(),
                };
         runCommandLine(args);
+    }
 
+    @Test
+    public void testCompareReferencesMissingSequencesStdOut() throws IOException{
+        final File ref1 = new File(getToolTestDataDir() + "hg19mini.fasta");
+        final File ref2 = new File(getToolTestDataDir() + "hg19mini_missingchr3.fasta");
+        final File ref3 = new File(getToolTestDataDir() + "hg19mini_missingsequence.fasta");
+
+        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-refcomp", ref3.getAbsolutePath()};
+        runCommandLine(args);
     }
 
 }
