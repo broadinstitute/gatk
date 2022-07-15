@@ -1183,8 +1183,10 @@ public class ExtractCohortEngine {
         return new ExtractCohortRecord(location, sampleId, r.getState());
     }
 
-    // TODO: use this as a return record, singleton
-    // TODO: so much hackery to instantiate this thing...
+    // Refactoring opportunity:  Although this class is used as a singleton
+    // the superclass ReferenceRecord requires a location, sample and length
+    // as part of its construction.  This could possibly be more cleanly refactored
+    // into a set of interfaces instead of an inheritance hierarchy
     public class InferredReferenceRecord extends ReferenceRecord {
         public InferredReferenceRecord(GQStateEnum inferredState) {
             super(SchemaUtils.chromAdjustment + 1, -1, -1, inferredState.getValue());
@@ -1240,7 +1242,6 @@ public class ExtractCohortEngine {
             if (refRow.getLocation() <= location) {
 
                 // always add to the appropriate cache for use downstream
-                //mergeIntoReferenceCache(referenceCache.get(refRow.getSampleId()), refRow);
                 referenceCache.get(refRow.getSampleId()).add(refRow);
 
                 // if this is for the requested sample, return the value
@@ -1251,7 +1252,6 @@ public class ExtractCohortEngine {
 
             // we are now past the position, put this one entry in the cache and return the inferred state
             if (refRow.getLocation() > location) {
-                //mergeIntoReferenceCache(referenceCache.get(refRow.getSampleId()), refRow);
                 referenceCache.get(refRow.getSampleId()).add(refRow);
                 return inferredReferenceRecord;
             }
