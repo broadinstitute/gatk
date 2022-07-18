@@ -338,11 +338,11 @@ public final class AssemblyBasedCallerUtils {
      * Handle pileup detected alternate alleles.
      */
     @VisibleForTesting
+    @SuppressWarnings("deprecation")
     static void processPileupAlleles(final AssemblyRegion region, final List<VariantContext> givenAlleles, final int maxMnpDistance,
                                      final int snpAdjacentToIndelLimit, final SmithWatermanAligner aligner, final Haplotype refHaplotype,
                                      final AssemblyResultSet assemblyResultSet, final int numHaplotypesPerIteration, final int hapFilteringKmerSize,
                                      final SWParameters haplotypeToReferenceSWParameters) {
-        final int assemblyRegionStart = region.getPaddedSpan().getStart();
         final int activeRegionStart = refHaplotype.getAlignmentStartHapwrtRef();
         final Map<Integer, VariantContext> assembledVariants = assemblyResultSet.getVariationEvents(maxMnpDistance).stream()
                 .collect(Collectors.groupingBy(VariantContext::getStart, Collectors.collectingAndThen(Collectors.toList(), AssemblyBasedCallerUtils::makeMergedVariantContext)));
@@ -419,10 +419,10 @@ public final class AssemblyBasedCallerUtils {
             final Allele longerRef = (assembledVC == null || givenVCRefLength > assembledVC.getReference().length()) ? givenVC.getReference() : assembledVC.getReference();
             final List<Allele> unassembledGivenAlleles = getAllelesNotPresentInAssembly(givenVC, assembledVC, givenVCRefLength, longerRef);
 
-            final List<Allele> unassembledNonSymbolicAlleles = unassembledGivenAlleles.stream().filter(a -> {
-                final byte[] bases = a.getBases();
-                return !(Allele.wouldBeNoCallAllele(bases) || Allele.wouldBeNullAllele(bases) || Allele.wouldBeStarAllele(bases) || Allele.wouldBeSymbolicAllele(bases));
-            }).collect(Collectors.toList());
+            final List<Allele> unassembledNonSymbolicAlleles = unassembledGivenAlleles.stream()
+                    //TODO, update the null allele check when htsjdk adds a NULL_ALLELE constant to Allele
+                    .filter(a -> !(a.equals(Allele.NO_CALL) || a.getDisplayString().equals(String.valueOf(VCFConstants.NULL_ALLELE)) || a.equals(Allele.SPAN_DEL) || a.isSymbolic()))
+                    .collect(Collectors.toList());
 
             // choose the highest-scoring haplotypes along with the reference for building force-calling haplotypes
             final List<Haplotype> baseHaplotypes = unassembledNonSymbolicAlleles.isEmpty() ? Collections.emptyList() : assembledHaplotypes.stream()
