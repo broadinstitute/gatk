@@ -118,12 +118,7 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
                 fullName = "sv-evidence-filter-threshold-probability")
         public double svEvidenceFilterThresholdProbability = 0.92;
 
-        @Argument(doc = "Filter method for selecting evidence to group into Assembly Intervals",
-                fullName = "sv-evidence-filter-type")
-        public SvEvidenceFilterType svEvidenceFilterType = SvEvidenceFilterType.DENSITY;
-
         // ---------- options -----------
-
         @Argument(doc = "Write GFA representation of assemblies in fastq-dir.", fullName = "write-gfas")
         public boolean writeGFAs = false;
 
@@ -266,8 +261,6 @@ public class StructuralVariationDiscoveryArgumentCollection implements Serializa
                         "User provided sort order: " + assembliesSortOrder);
         }
     }
-
-    public enum SvEvidenceFilterType {DENSITY, XGBOOST}
 
     public static class DiscoverVariantsFromContigAlignmentsArgumentCollection implements Serializable {
         private static final long serialVersionUID = 1L;

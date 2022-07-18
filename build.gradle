@@ -363,9 +363,6 @@ dependencies {
     // Required for COSMIC Funcotator data source:
     implementation 'org.xerial:sqlite-jdbc:3.36.0.3'
     
-    // Required for SV Discovery machine learning
-    implementation group: 'biz.k11i', name: 'xgboost-predictor', version: '0.3.0'
-
     // natural sort
     implementation('net.grey-panther:natural-comparator:1.1')
     implementation('com.fasterxml.jackson.module:jackson-module-scala_' + scalaVersion + ':2.9.8')
