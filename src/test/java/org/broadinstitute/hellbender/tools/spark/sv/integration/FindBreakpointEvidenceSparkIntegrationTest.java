@@ -31,7 +31,6 @@ public class FindBreakpointEvidenceSparkIntegrationTest extends CommandLineProgr
         final String alignerRefIndexImgLoc;
         final String outputDir;
         final float bamCoverage;
-        final String svEvidenceFilterType;
         final String svGenomeGapsFile;
         final String svGenomeUmapS100File;
 
@@ -41,7 +40,6 @@ public class FindBreakpointEvidenceSparkIntegrationTest extends CommandLineProgr
                                                        final String alignerRefIndexImgLoc,
                                                        final String outputDir,
                                                        final float bamCoverage,
-                                                       final String svEvidenceFilterType,
                                                        final String svGenomeGapsFile,
                                                        final String svGenomeUmapS100File) {
             this.expectedAlignedContigsLoc = expectedAlignedContigsLoc;
@@ -50,7 +48,6 @@ public class FindBreakpointEvidenceSparkIntegrationTest extends CommandLineProgr
             this.alignerRefIndexImgLoc = alignerRefIndexImgLoc;
             this.outputDir = outputDir;
             this.bamCoverage = bamCoverage;
-            this.svEvidenceFilterType = svEvidenceFilterType;
             this.svGenomeGapsFile = svGenomeGapsFile;
             this.svGenomeUmapS100File = svGenomeUmapS100File;
         }
@@ -65,7 +62,6 @@ public class FindBreakpointEvidenceSparkIntegrationTest extends CommandLineProgr
                     " --target-link-file "      + outputDir + "/targetLinks.bedpe" +
                     " --min-evidence-coverage-ratio " + 15 / bamCoverage +
                     " --min-coherent-evidence-coverage-ratio " + 7 / bamCoverage +
-                    " --sv-evidence-filter-type " + svEvidenceFilterType +
                     (svGenomeGapsFile.isEmpty() ? "" : " --sv-genome-gaps-file " + svGenomeGapsFile) +
                     (svGenomeUmapS100File.isEmpty() ? "" : " --sv-genome-umap-s100-file " + svGenomeUmapS100File);
         }
@@ -78,7 +74,6 @@ public class FindBreakpointEvidenceSparkIntegrationTest extends CommandLineProgr
                     ", aligner-ref-index-img-loc='" + alignerRefIndexImgLoc + '\'' +
                     ", output-dir='" + outputDir + '\'' +
                     ", bam-coverage='" + bamCoverage + '\'' +
-                    ", sv-evidence-filter-type='" + svEvidenceFilterType + '\'' +
                     '}';
         }
     }
