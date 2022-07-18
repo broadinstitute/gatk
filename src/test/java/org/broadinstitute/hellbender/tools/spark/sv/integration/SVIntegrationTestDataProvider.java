@@ -21,14 +21,10 @@ public class SVIntegrationTestDataProvider extends CommandLineProgramTest {
     private static final String LARGE_RESOURCES_FOLDER = publicTestDir + "large/";
     public static final String TEST_BAM = LARGE_RESOURCES_FOLDER + "/sv/SVIntegrationTest_hg19.bam";
     public static final String TEST_GENOME_GAPS_FILE = LARGE_RESOURCES_FOLDER + "/sv/SVIntegrationTest_hg19_gaps.bed.gz";
-    public static final String TEST_GENOME_UMAP100_FILE = LARGE_RESOURCES_FOLDER + "/sv/SVIntegrationTest_hg19_umap_s100.bed.gz";
     public static final String TEST_CONTIG_SAM = THIS_TEST_FOLDER + "/inputs/hg19_DEL_contigAssemblies.sam";
     public static final String EXTERNAL_CNV_CALLS = THIS_TEST_FOLDER + "/inputs/hg19_DEL_cnv_calls.vcf";
     public static final String KMER_KILL_LIST = THIS_TEST_FOLDER + "/inputs/dummy.kill.kmers";
     public static final float TEST_BAM_COVERAGE = 10;
-    public static final String DENSITY_FILTER = "DENSITY";
-    public static final String CLASSIFIER_FILTER = "XGBOOST";
-    public static final String TEST_CONTIG_SAM_CLASSIFIER = THIS_TEST_FOLDER + "/inputs/hg19_DEL_contigAssemblies_" + CLASSIFIER_FILTER + ".sam";
 
 
     // expected outputs

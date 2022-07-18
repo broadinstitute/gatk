@@ -92,20 +92,8 @@ public class FindBreakpointEvidenceSparkIntegrationTest extends CommandLineProgr
                                 SVIntegrationTestDataProvider.TEST_CONTIG_SAM,
                                 SVIntegrationTestDataProvider.TEST_BAM, SVIntegrationTestDataProvider.KMER_KILL_LIST,
                                 SVIntegrationTestDataProvider.ALIGNER_INDEX_IMG, tempDirNew.getAbsolutePath(),
-                                SVIntegrationTestDataProvider.TEST_BAM_COVERAGE, SVIntegrationTestDataProvider.DENSITY_FILTER,
+                                SVIntegrationTestDataProvider.TEST_BAM_COVERAGE,
                                 "", ""
-                        )
-                }
-        );
-        // Test pipeline using classifier filter
-        tests.add(
-                new Object[]{
-                        new FindBreakpointEvidenceSparkIntegrationTestArgs(
-                                SVIntegrationTestDataProvider.TEST_CONTIG_SAM_CLASSIFIER,
-                                SVIntegrationTestDataProvider.TEST_BAM, SVIntegrationTestDataProvider.KMER_KILL_LIST,
-                                SVIntegrationTestDataProvider.ALIGNER_INDEX_IMG, tempDirNew.getAbsolutePath(),
-                                SVIntegrationTestDataProvider.TEST_BAM_COVERAGE, SVIntegrationTestDataProvider.CLASSIFIER_FILTER,
-                                SVIntegrationTestDataProvider.TEST_GENOME_GAPS_FILE, SVIntegrationTestDataProvider.TEST_GENOME_UMAP100_FILE
                         )
                 }
         );
