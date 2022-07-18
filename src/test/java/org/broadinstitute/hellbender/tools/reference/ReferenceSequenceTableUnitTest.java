@@ -161,6 +161,11 @@ public class ReferenceSequenceTableUnitTest {
                         CompareReferences.MD5CalculationMode.USE_DICT),
                         new HashSet<>(Arrays.asList(ReferencePair.Status.DIFFER_IN_SEQUENCES_PRESENT, ReferencePair.Status.DIFFER_IN_SEQUENCE))
                 },
+                new Object[]{ tableGenerator(Arrays.asList(new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini_missingchr1.fasta"),
+                                new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini_missingchr1_renamedchr2.fasta")),
+                        CompareReferences.MD5CalculationMode.USE_DICT),
+                        new HashSet<>(Arrays.asList(ReferencePair.Status.DIFFER_IN_SEQUENCE_NAMES))
+                },
         };
     }
 
@@ -171,7 +176,6 @@ public class ReferenceSequenceTableUnitTest {
             Assert.assertEquals(pair.getStatus(), expectedStatus);
         }
     }
-
 
     public Map<ReferencePair, Set<ReferencePair.Status>> manuallySetReferencePairStatus(){
         ReferenceSequenceTable table = tableGenerator(Arrays.asList(new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini.fasta"),
@@ -220,6 +224,5 @@ public class ReferenceSequenceTableUnitTest {
             Assert.assertEquals(pair.getStatus(), expectedStatus.get(pair));
         }
     }
-
 
 }

@@ -242,7 +242,7 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
                 }
             }
 
-            if(superset ^ subset){
+            if(superset ^ subset && !pair.getStatus().contains(ReferencePair.Status.DIFFER_IN_SEQUENCE_NAMES)){
                 pair.removeStatus(ReferencePair.Status.DIFFER_IN_SEQUENCES_PRESENT);
 
                 if(superset && !subset){

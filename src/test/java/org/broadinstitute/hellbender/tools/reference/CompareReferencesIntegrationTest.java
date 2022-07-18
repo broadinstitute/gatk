@@ -105,8 +105,8 @@ public class CompareReferencesIntegrationTest extends CommandLineProgramTest {
     
     @Test(enabled = false)
     public void testCompareReferencesToStdOutput() throws IOException{
-        final File ref1 = new File(getToolTestDataDir() + "hg19mini.fasta");
-        final File ref2 = new File(getToolTestDataDir() + "hg19mini_missingchr1.fasta");
+        final File ref1 = new File(getToolTestDataDir() + "hg19mini_missingchr1.fasta");
+        final File ref2 = new File(getToolTestDataDir() + "hg19mini_missingchr1_renamedchr2.fasta");
 
         final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath()};
         runCommandLine(args);
