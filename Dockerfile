@@ -21,7 +21,7 @@ RUN tar -xvf OpenJDK17U-jdk_x64_linux_hotspot_17.*.tar.gz
 RUN mv jdk-17.0.1+12 /opt/
 
 ENV JAVA_HOME /opt/jdk-17.0.1+12
-ENV PATH $PATH:$JAVA_HOME/bin
+ENV PATH $JAVA_HOME/bin:$PATH
 RUN echo $JAVA_HOME
 RUN update-alternatives --install /usr/bin/java java /opt/jdk-17.0.1+12/bin/java 1
 RUN java -version

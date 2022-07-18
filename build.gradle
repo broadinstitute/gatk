@@ -526,7 +526,7 @@ task collectBundleIntoDir(type: Copy) {
     doFirst {
         assert file("gatk").exists()
         assert file("README.md").exists()
-        assert file("$docBuildDir/tabCompletion/gatk-completion.sh").exists()
+        //assert file("$docBuildDir/tabCompletion/gatk-completion.sh").exists()
         assert file("src/main/resources/org/broadinstitute/hellbender/utils/config/GATKConfig.properties").exists()
     }
 
