@@ -60,6 +60,12 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
         return columnNames;
     }
 
+    /**
+     * Given a GATKPath, return the name of the file as a String.
+     *
+     * @param reference The path to a reference.
+     * @return the name of the reference as a String.
+     */
     public static String getReferenceDisplayName(GATKPath reference){
         return reference.toPath().getFileName().toString();
     }
@@ -68,6 +74,9 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
         return columnIndices;
     }
 
+    /**
+     * Construct 2 tables of references: one keyed by MD5, one keyed by sequence name.
+     */
     public void build() {
         tableByMD5 = new LinkedHashMap<>();
         tableBySequenceName = new LinkedHashMap<>();
@@ -102,19 +111,22 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
         return tableBySequenceName.keySet();
     }
 
-    // number of rows in md5 keyed table
-    public int size(){
-        int size = 0;
-        for(TableRow row : this){
-            size++;
-        }
-        return size;
-    }
-
+    /**
+     * Given an MD5, returns its corresponding row
+     *
+     * @param md5 The MD5 as a String
+     * @return the corresponding TableRow from the tableByMD5
+     */
     public TableRow queryByMD5(String md5){
         return tableByMD5.get(md5);
     }
 
+    /**
+     * Given a sequence name, returns the set of its corresponding rows
+     *
+     * @param sequenceName The sequence name as a String
+     * @return the set of TableRows that contain the sequence name
+     */
     public Set<TableRow> queryBySequenceName(String sequenceName){
         return tableBySequenceName.get(sequenceName) == null ? Collections.emptySet() : tableBySequenceName.get(sequenceName);
     }
@@ -146,7 +158,12 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
         return md5;
     }
 
-    public List<ReferencePair> generateReferencePairs(List<GATKPath> references){
+    /**
+     * Generate ReferencePairs for pairwise comparison of all references present in the table
+     *
+     * @return the list of ReferencePairs for every pair of references
+     */
+    public List<ReferencePair> generateReferencePairs(){
         List<ReferencePair> referencePairs = new ArrayList<>();
         for(int i = 0; i < references.size(); i++){
             for(int j = i + 1; j < references.size(); j++){
@@ -156,8 +173,20 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
         return referencePairs;
     }
 
+    /**
+     * Analyze the table by doing a pairwise comparison for all table references. Generates all ReferencePairs, then analyzes
+     * each pair and assigns it an analysis as a set of the following statuses:
+     *      EXACT_MATCH,
+     *      DIFFER_IN_SEQUENCE_NAMES,
+     *      DIFFER_IN_SEQUENCE,
+     *      DIFFER_IN_SEQUENCES_PRESENT,
+     *      SUPERSET,
+     *      SUBSET
+     *
+     * @return list of ReferencePairs with updated status sets
+     */
     public List<ReferencePair> analyzeTable(){
-        List<ReferencePair> refPairs = generateReferencePairs(references);
+        List<ReferencePair> refPairs = generateReferencePairs();
 
         for(TableRow row : tableByMD5.values()) {
             for(ReferencePair pair : refPairs) {
@@ -198,7 +227,7 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
                         if(ref1Value.getColumnValue().equals(MISSING_ENTRY)){
                             subset = true;
                         }
-                        else{
+                        else if(ref2Value.getColumnValue().equals(MISSING_ENTRY)){
                             superset = true;
                         }
                     }
@@ -215,12 +244,12 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
 
             if(superset ^ subset){
                 pair.removeStatus(ReferencePair.Status.DIFFER_IN_SEQUENCES_PRESENT);
-            }
 
-            if(superset && !subset){
-                pair.addStatus(ReferencePair.Status.SUPERSET);
-            } else if(subset && !superset) {
-                pair.addStatus(ReferencePair.Status.SUBSET);
+                if(superset && !subset){
+                    pair.addStatus(ReferencePair.Status.SUPERSET);
+                } else if(subset && !superset) {
+                    pair.addStatus(ReferencePair.Status.SUBSET);
+                }
             }
         }
         return refPairs;
@@ -263,9 +292,6 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
     }
 
     public class TableRow {
-
-//        private static final int MD5_COLUMN_INDEX = 0;
-//        private static final int LENGTH_COLUMN_INDEX = 1;
         private final String md5;
         private final TableEntry[] entries;
         private final int length;

@@ -51,12 +51,21 @@ public class ReferencePair {
         return ref2.toPath().getFileName().toString();
     }
 
+    /**
+     * Displays a ReferencePair's status set
+     *
+     * @return the status set as a formatted String
+     */
     public String statusAsString(){
         String output = "";
         for(Status status : analysis){
             output += String.format("\t%s\n", status.name());
         }
         return output;
+    }
+
+    public EnumSet<Status> getStatus(){
+        return analysis;
     }
 
     public String toString(){
@@ -66,4 +75,16 @@ public class ReferencePair {
                 statusAsString());
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ReferencePair that = (ReferencePair) o;
+        return Objects.equals(ref1, that.ref1) && Objects.equals(ref2, that.ref2);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(ref1, ref2);
+    }
 }

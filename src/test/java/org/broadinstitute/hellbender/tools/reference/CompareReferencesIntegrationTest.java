@@ -99,33 +99,36 @@ public class CompareReferencesIntegrationTest extends CommandLineProgramTest {
         runCommandLine(args);
     }
 
-    @Test
+    // The following three tests run the tool on different combinations of reference files
+    // and produce output to stdout for the sake of manually inspecting outputs.
+    // Disabled, as no actual assertions made.
+    
+    @Test(enabled = false)
     public void testCompareReferencesToStdOutput() throws IOException{
         final File ref1 = new File(getToolTestDataDir() + "hg19mini.fasta");
-        final File ref2 = new File(getToolTestDataDir() + "hg19mini_missingsequence.fasta");
+        final File ref2 = new File(getToolTestDataDir() + "hg19mini_missingchr1.fasta");
 
         final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath()};
         runCommandLine(args);
     }
 
-    @Test
+    @Test(enabled = false)
     public void testCompareReferencesMultipleReferencesStdOut() throws IOException{
         final File ref1 = new File(getToolTestDataDir() + "hg19mini.fasta");
         final File ref2 = new File(getToolTestDataDir() + "hg19mini_1renamed.fasta");
         final File ref3 = new File(getToolTestDataDir() + "hg19mini_chr2snp.fasta");
-        final File ref4 = new File(getToolTestDataDir() + "hg19mini_missingsequence.fasta");
+        final File ref4 = new File(getToolTestDataDir() + "hg19mini_missingchr1.fasta");
 
         final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-refcomp", ref3.getAbsolutePath(),
-                "-refcomp", ref4.getAbsolutePath(),
-               };
+                "-refcomp", ref4.getAbsolutePath()};
         runCommandLine(args);
     }
 
-    @Test
+    @Test(enabled = false)
     public void testCompareReferencesMissingSequencesStdOut() throws IOException{
         final File ref1 = new File(getToolTestDataDir() + "hg19mini.fasta");
         final File ref2 = new File(getToolTestDataDir() + "hg19mini_missingchr3.fasta");
-        final File ref3 = new File(getToolTestDataDir() + "hg19mini_missingsequence.fasta");
+        final File ref3 = new File(getToolTestDataDir() + "hg19mini_missingchr1.fasta");
 
         final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-refcomp", ref3.getAbsolutePath()};
         runCommandLine(args);

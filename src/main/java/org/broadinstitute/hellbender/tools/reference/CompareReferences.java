@@ -29,13 +29,20 @@ public class CompareReferences extends GATKTool {
     @Argument(fullName = "references-to-compare", shortName = "refcomp", doc = "Reference sequence file(s) to compare.")
     private List<GATKPath> references;
 
-    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "", optional = true)
+    /**
+     * Output file will be written here.
+     *
+     * Note: If no output file provided, table will print to standard output.
+     */
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "If provided, file to output table.", optional = true)
     private GATKPath output;
 
-    @Argument(fullName = "md5-calculation-mode", shortName = "md5-calculation-mode", doc = "", optional = true)
+    @Argument(fullName = "md5-calculation-mode", shortName = "md5-calculation-mode", doc = "MD5CalculationMode indicating method of MD5 calculation.", optional = true)
     private MD5CalculationMode md5CalculationMode = MD5CalculationMode.USE_DICT;
+    @Argument(fullName = "display-sequences-by-name", doc = "If provided, the table by sequence name will be printed.", optional = true)
+    private boolean displaySequencesByName = false;
 
-    @Argument(fullName = "display-only-differing-sequences", shortName = "", doc = "", optional = true)
+    @Argument(fullName = "display-only-differing-sequences", doc = "If provided, only display sequence names ", optional = true)
     private boolean onlyDisplayDifferingSequences = false;
 
     public enum MD5CalculationMode {
@@ -75,19 +82,24 @@ public class CompareReferences extends GATKTool {
             writeTableToFileOutput(table);
         }
 
-        //displayMissingEntries(table);
-        listDifferentSequenceSameName(table);
-        //writeTableToStdOutput(table);
+        if(displaySequencesByName){
+            tableBySequenceName(table);
+        }
 
         List<GATKPath> refs = new ArrayList<>();
         refs.addAll(referenceSources.keySet());
-        //table.generateReferencePairs(refs);
+
         List<ReferencePair> referencePairs = table.analyzeTable();
         for(ReferencePair pair : referencePairs){
             System.out.println(pair);
         }
     }
 
+    /**
+     * Given a table, write table to standard output.
+     *
+     * @param table
+     */
     private void writeTableToStdOutput(ReferenceSequenceTable table){
         // print header
         List<String> columnNames = table.getColumnNames();
@@ -110,6 +122,11 @@ public class CompareReferences extends GATKTool {
         }
     }
 
+    /**
+     * Given a table, write table to file output.
+     *
+     * @param table
+     */
     private void writeTableToFileOutput(ReferenceSequenceTable table) {
         TableColumnCollection columns = new TableColumnCollection(table.getColumnNames());
         try(CompareReferences.CompareReferencesOutputTableWriter writer = new CompareReferences.CompareReferencesOutputTableWriter(output.toPath(), columns)){
@@ -128,33 +145,12 @@ public class CompareReferences extends GATKTool {
         return null;
     }
 
-    public void displayMissingEntries(ReferenceSequenceTable table) {
-        boolean noMissingEntries = true;
-        String output = "";
-        int currRow = 0;
-
-        for(ReferenceSequenceTable.TableRow row : table){
-            currRow++;
-            ReferenceSequenceTable.TableEntry[] entries = row.getEntries();
-
-            for(int i = 0; i < entries.length; i++){
-                if(entries[i].isEmpty()){
-                    output += String.format("Row %d: Missing entry in %s column.\n", currRow, entries[i].getColumnName());
-                    noMissingEntries = false;
-                }
-            }
-        }
-
-        if(noMissingEntries){
-            output += "No missing entries.\n";
-        }
-        else{
-            output += "References are not an exact match. See table output for details.\n";
-        }
-        System.out.println(output);
-    }
-
-    public void listDifferentSequenceSameName(ReferenceSequenceTable table){
+    /**
+     * Given a table, write table by sequence name to standard output
+     *
+     * @param table
+     */
+    public void tableBySequenceName(ReferenceSequenceTable table){
         List<String> output = new ArrayList<>();
         output.add("Sequence \tMD5 \tReference\n");
 
@@ -175,7 +171,7 @@ public class CompareReferences extends GATKTool {
         System.out.println();
     }
 
-    public List<String> displayBySequenceName(Set<ReferenceSequenceTable.TableRow> rows, String sequenceName){
+    private List<String> displayBySequenceName(Set<ReferenceSequenceTable.TableRow> rows, String sequenceName){
         List<String> output = new ArrayList<>();
         output.add(sequenceName);
         for(ReferenceSequenceTable.TableRow row : rows) {

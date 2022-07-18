@@ -56,6 +56,7 @@ public class ReferenceSequenceTableUnitTest {
     @DataProvider(name = "testQueryBySequenceNameData")
     public Object[][] testQueryBySequenceNameData() {
         return new Object[][]{
+                // sequence name, expected number of rows, table
                 new Object[]{ "2", 2,
                         tableGenerator(Arrays.asList(new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini.fasta"),
                         new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini_chr2snp.fasta")),
@@ -101,6 +102,7 @@ public class ReferenceSequenceTableUnitTest {
     @DataProvider(name = "testGenerateReferencePairsData")
     public Object[][] testGenerateReferencePairsData() {
         return new Object[][]{
+                // references, expected number of pairs
                 new Object[]{ Arrays.asList(new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini.fasta"),
                         new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini_chr2snp.fasta")),
                         1
@@ -116,8 +118,107 @@ public class ReferenceSequenceTableUnitTest {
     @Test(dataProvider = "testGenerateReferencePairsData")
     public void testGenerateReferencePairs(List<GATKPath> references, int expectedPairs){
         ReferenceSequenceTable table = tableGenerator(references, CompareReferences.MD5CalculationMode.USE_DICT);
-        List<ReferencePair> pairs = table.generateReferencePairs(references);
+        List<ReferencePair> pairs = table.generateReferencePairs();
         Assert.assertEquals(pairs.size(), expectedPairs);
+    }
+
+    @DataProvider(name = "testAnalyzeTableTwoRefsData")
+    public Object[][] testAnalyzeTableTwoReferencesData(){
+        return new Object[][]{
+                // table, set of expected statuses
+                new Object[]{ tableGenerator(Arrays.asList(new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini.fasta"),
+                                new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini_chr2snp.fasta")),
+                        CompareReferences.MD5CalculationMode.USE_DICT),
+                        new HashSet<>(Arrays.asList(ReferencePair.Status.DIFFER_IN_SEQUENCE))
+                },
+                new Object[]{ tableGenerator(Arrays.asList(new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini.fasta"),
+                                new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini_1renamed.fasta")),
+                        CompareReferences.MD5CalculationMode.USE_DICT),
+                        new HashSet<>(Arrays.asList(ReferencePair.Status.DIFFER_IN_SEQUENCE_NAMES))
+                },
+                new Object[]{ tableGenerator(Arrays.asList(new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini.fasta"),
+                                new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini_missingchr3.fasta")),
+                        CompareReferences.MD5CalculationMode.USE_DICT),
+                        new HashSet<>(Arrays.asList(ReferencePair.Status.SUPERSET))
+                },
+                new Object[]{ tableGenerator(Arrays.asList(new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini_missingchr3.fasta"),
+                                new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini.fasta")),
+                        CompareReferences.MD5CalculationMode.USE_DICT),
+                        new HashSet<>(Arrays.asList(ReferencePair.Status.SUBSET))
+                },
+                new Object[]{ tableGenerator(Arrays.asList(new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini_missingchr1.fasta"),
+                                new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini_missingchr3.fasta")),
+                        CompareReferences.MD5CalculationMode.USE_DICT),
+                        new HashSet<>(Arrays.asList(ReferencePair.Status.DIFFER_IN_SEQUENCES_PRESENT))
+                },
+                new Object[]{ tableGenerator(Arrays.asList(new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini.fasta"),
+                                new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini.fasta")),
+                        CompareReferences.MD5CalculationMode.USE_DICT),
+                        new HashSet<>(Arrays.asList(ReferencePair.Status.EXACT_MATCH))
+                },
+                new Object[]{ tableGenerator(Arrays.asList(new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini_chr2snp.fasta"),
+                                new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini_missingchr3.fasta")),
+                        CompareReferences.MD5CalculationMode.USE_DICT),
+                        new HashSet<>(Arrays.asList(ReferencePair.Status.DIFFER_IN_SEQUENCES_PRESENT, ReferencePair.Status.DIFFER_IN_SEQUENCE))
+                },
+        };
+    }
+
+    @Test(dataProvider = "testAnalyzeTableTwoRefsData")
+    public void testAnalyzeTableTwoReferences(ReferenceSequenceTable table, Set<ReferencePair.Status> expectedStatus){
+        List<ReferencePair> refPairs = table.analyzeTable();
+        for(ReferencePair pair : refPairs){
+            Assert.assertEquals(pair.getStatus(), expectedStatus);
+        }
+    }
+
+
+    public Map<ReferencePair, Set<ReferencePair.Status>> manuallySetReferencePairStatus(){
+        ReferenceSequenceTable table = tableGenerator(Arrays.asList(new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini.fasta"),
+                        new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini_1renamed.fasta"),
+                        new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini_chr2snp.fasta")),
+                CompareReferences.MD5CalculationMode.USE_DICT);
+
+        ReferencePair refPair1 = new ReferencePair(table, new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini.fasta"),
+                new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini_1renamed.fasta"));
+        refPair1.removeStatus(ReferencePair.Status.EXACT_MATCH);
+        refPair1.addStatus(ReferencePair.Status.DIFFER_IN_SEQUENCE_NAMES);
+
+        ReferencePair refPair2 = new ReferencePair(table, new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini.fasta"),
+                new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini_chr2snp.fasta"));
+        refPair2.removeStatus(ReferencePair.Status.EXACT_MATCH);
+        refPair2.addStatus(ReferencePair.Status.DIFFER_IN_SEQUENCE);
+
+        ReferencePair refPair3 = new ReferencePair(table, new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini_1renamed.fasta"),
+                new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini_chr2snp.fasta"));
+        refPair3.removeStatus(ReferencePair.Status.EXACT_MATCH);
+        refPair3.addStatus(ReferencePair.Status.DIFFER_IN_SEQUENCE_NAMES);
+        refPair3.addStatus(ReferencePair.Status.DIFFER_IN_SEQUENCE);
+
+        Map<ReferencePair, Set<ReferencePair.Status>> referencePairStatuses = new HashMap<>();
+            referencePairStatuses.put(refPair1, refPair1.getStatus());
+            referencePairStatuses.put(refPair2, refPair2.getStatus());
+            referencePairStatuses.put(refPair3, refPair3.getStatus());
+
+        return referencePairStatuses;
+    }
+
+    @DataProvider(name = "testAnalyzeTableMultipleRefsData")
+    public Object[][] testAnalyzeTableMultipleReferencesData(){
+        return new Object[][]{
+                new Object[]{tableGenerator(Arrays.asList(new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini.fasta"),
+                                new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini_1renamed.fasta"),
+                                new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini_chr2snp.fasta")),
+                        CompareReferences.MD5CalculationMode.USE_DICT), manuallySetReferencePairStatus()},
+        };
+    }
+
+    @Test(dataProvider = "testAnalyzeTableMultipleRefsData")
+    public void testAnalyzeTableMultipleReferences(ReferenceSequenceTable table, Map<ReferencePair, Set<ReferencePair.Status>> expectedStatus){
+        List<ReferencePair> refPairs = table.analyzeTable();
+        for(ReferencePair pair : refPairs){ ;
+            Assert.assertEquals(pair.getStatus(), expectedStatus.get(pair));
+        }
     }
 
 
