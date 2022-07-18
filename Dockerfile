@@ -9,6 +9,37 @@ WORKDIR /gatk
 
 # Get an updated gcloud signing key, in case the one in the base image has expired
 RUN curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg add -
+#RUN rm /etc/apt/sources.list.d/google-cloud-sdk.list
+#RUN apt update
+#RUN apt-key list
+#
+##Get Java 17 temurin JDK
+##RUN apt update && apt upgrade
+#RUN apt install wget
+#RUN wget https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.1%2B12/OpenJDK17U-jdk_x64_linux_hotspot_17.0.1_12.tar.gz
+#RUN tar -xvf OpenJDK17U-jdk_x64_linux_hotspot_17.*.tar.gz
+#RUN mv jdk-17.0.1+12 /opt/
+#
+#ENV JAVA_HOME /opt/jdk-17.0.1+12
+#ENV PATH $JAVA_HOME/bin:$PATH
+#RUN echo $JAVA_HOME
+#RUN update-alternatives --install /usr/bin/java java /opt/jdk-17.0.1+12/bin/java 1
+#RUN java -version
+
+RUN add-apt-repository universe && apt update
+RUN apt-get --assume-yes install git-lfs
+RUN git lfs install --force
+
+#Download only resources required for the build, not for testing
+RUN git lfs pull --include src/main/resources/large
+
+RUN export GRADLE_OPTS="-Xmx4048m -Dorg.gradle.daemon=false" && /gatk/gradlew clean collectBundleIntoDir shadowTestClassJar shadowTestJar -Drelease=$RELEASE
+RUN cp -r $( find /gatk/build -name "*bundle-files-collected" )/ /gatk/unzippedJar/
+RUN unzip -o -j $( find /gatk/unzippedJar -name "gatkPython*.zip" ) -d /gatk/unzippedJar/scripts
+
+# Using OpenJDK 8
+FROM broadinstitute/gatk:gatkbase-2.3.0
+
 RUN rm /etc/apt/sources.list.d/google-cloud-sdk.list
 RUN apt update
 RUN apt-key list
@@ -25,20 +56,6 @@ ENV PATH $JAVA_HOME/bin:$PATH
 RUN echo $JAVA_HOME
 RUN update-alternatives --install /usr/bin/java java /opt/jdk-17.0.1+12/bin/java 1
 RUN java -version
-
-RUN add-apt-repository universe && apt update
-RUN apt-get --assume-yes install git-lfs
-RUN git lfs install --force
-
-#Download only resources required for the build, not for testing
-RUN git lfs pull --include src/main/resources/large
-
-RUN export GRADLE_OPTS="-Xmx4048m -Dorg.gradle.daemon=false" && /gatk/gradlew clean collectBundleIntoDir shadowTestClassJar shadowTestJar -Drelease=$RELEASE
-RUN cp -r $( find /gatk/build -name "*bundle-files-collected" )/ /gatk/unzippedJar/
-RUN unzip -o -j $( find /gatk/unzippedJar -name "gatkPython*.zip" ) -d /gatk/unzippedJar/scripts
-
-# Using OpenJDK 8
-FROM broadinstitute/gatk:gatkbase-2.3.0
 
 WORKDIR /gatk
 
