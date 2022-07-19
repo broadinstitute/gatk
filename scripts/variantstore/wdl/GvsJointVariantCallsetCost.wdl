@@ -21,7 +21,7 @@ workflow GvsJointVariantCallsetCost {
 
     ## TB : GB; 1 : 1024
 
-    Float write_API_cost = 0.025 ## BigQuery Storage Write API: $0.025 per 1 GB. The first 2 TB per month are free.
+    Float write_API_cost = 0.0233 ## BigQuery Storage Write API: $0.025 per 1 GB. The first 2 TB per month are free.
     Float query_cost = 0.0048828125 ## Queries (on-demand): $5 per TB. The first 1 TB per month is free.
     Float storage_api_cost = 0.00107421875 ## Storage API GB Scanned / Streaming reads (BigQuery Storage Read API):  $1.1 per TB read. Customers can read up to 300 TB of data per month at no charge.
 
@@ -95,19 +95,14 @@ workflow GvsJointVariantCallsetCost {
 
             command <<<
                 set -e
-                cat ~{cost_observability_json} | jq '.| map(select(.event_key=="BigQuery Query Scanned").sum_event_gibibytes | tonumber * 0.0048828125) |add'
-                cat ~{cost_observability_json} | jq '.| map(select(.event_key=="Storage API Scanned").sum_event_gibibytes | tonumber * 0.00107421875) |add'
-                echo ~{import_genomes_cost}
-
-                cat ~{cost_observability_json} | jq '.| map((select(.event_key=="BigQuery Query Scanned").sum_event_gibibytes | tonumber * 0.0048828125), (select(.event_key=="Storage API Scanned").sum_event_gibibytes | tonumber * 0.00107421875)) | add '
-
-                cat ~{cost_observability_json} | jq '.| map( \
-                  (select(.event_key=="BigQuery Query Scanned").sum_event_gibibytes | tonumber * ~{query_cost}), \
-                  (select(.event_key=="Storage API Scanned").sum_event_gibibytes | tonumber * ~{storage_api_cost}) \
+                cat ~{cost_observability_json} | jq '.| map(
+                  (select(.event_key=="BigQuery Query Scanned").sum_event_gibibytes | tonumber * ~{query_cost}),
+                  (select(.event_key=="Storage API Scanned").sum_event_gibibytes | tonumber * ~{storage_api_cost})
                 ) |add + ~{import_genomes_cost} ' > total_bq_cost.txt
 
-                cat ~{workflow_cost_json} | jq '.GvsJointVariantCalling.workflows | .[] | select(.link| contains("e6b67ab4-3128-4b82-8716-a233036cd1c6")).cost '  > total_terra_cost.txt
+                cat total_bq_cost.txt
 
+                cat ~{workflow_cost_json} | jq '.GvsJointVariantCalling.workflows | .[] | select(.link| contains("9c96aac8-d1b1-4c87-83a4-11cc3496ad7d")).cost '  > total_terra_cost.txt
             >>>
 
         runtime {
