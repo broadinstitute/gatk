@@ -1115,17 +1115,10 @@ public final class FindBreakpointEvidenceSpark extends GATKSparkTool {
             final StructuralVariationDiscoveryArgumentCollection.FindBreakpointEvidenceSparkArgumentCollection params,
             final PartitionCrossingChecker partitionCrossingChecker
     ) {
-        switch(params.svEvidenceFilterType) {
-            case DENSITY:
-                return new BreakpointDensityFilter(
-                        evidenceItr, readMetadata, params.minEvidenceWeightPerCoverage,
-                        params.minCoherentEvidenceWeightPerCoverage, partitionCrossingChecker, params.minEvidenceMapQ
-                );
-            case XGBOOST:
-                return new XGBoostEvidenceFilter(evidenceItr, readMetadata, params, partitionCrossingChecker);
-            default:
-                throw new IllegalStateException("Unknown svEvidenceFilterType: " + params.svEvidenceFilterType);
-        }
+        return new BreakpointDensityFilter(
+            evidenceItr, readMetadata, params.minEvidenceWeightPerCoverage,
+            params.minCoherentEvidenceWeightPerCoverage, partitionCrossingChecker, params.minEvidenceMapQ
+        );
     }
 
     private static void writeTargetLinks(final Broadcast<ReadMetadata> broadcastMetadata,
