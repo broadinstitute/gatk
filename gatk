@@ -37,12 +37,22 @@ EXTRA_JAVA_OPTIONS_SPARK= "-DGATK_STACKTRACE_ON_USER_EXCEPTION=true " \
                    "-Dsamjdk.use_async_io_read_samtools=false " \
                    "-Dsamjdk.use_async_io_write_samtools=false " \
                    "-Dsamjdk.use_async_io_write_tribble=false " \
-                   "-Dsamjdk.compression_level=2 "
+                   "-Dsamjdk.compression_level=2 " \
+                    "--add-exports" "java.base/sun.nio.ch=ALL-UNNAMED" \
+                    "--add-opens" "java.base/sun.nio.fs=ALL-UNNAMED" \
+                    "--add-opens" "java.base/java.nio=ALL-UNNAMED" \
+                    "--add-opens" "java.base/java.io=ALL-UNNAMED" \
+                    "--add-opens" "java.base/java.lang.invoke=ALL-UNNAMED"
 
 PACKAGED_LOCAL_JAR_OPTIONS= ["-Dsamjdk.use_async_io_read_samtools=false",
                   "-Dsamjdk.use_async_io_write_samtools=true",
                   "-Dsamjdk.use_async_io_write_tribble=false",
-                  "-Dsamjdk.compression_level=2"]
+                  "-Dsamjdk.compression_level=2",
+                  "--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED",
+                  "--add-opens", "java.base/sun.nio.fs=ALL-UNNAMED",
+                  "--add-opens", "java.base/java.nio=ALL-UNNAMED",
+                  "--add-opens", "java.base/java.io=ALL-UNNAMED",
+                  "--add-opens", "java.base/java.lang.invoke=ALL-UNNAMED"]
 
 DEFAULT_SPARK_ARGS_PREFIX = '--conf'
 DEFAULT_SPARK_ARGS = {
