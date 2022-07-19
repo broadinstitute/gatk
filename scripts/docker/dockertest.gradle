@@ -36,6 +36,26 @@ task unpackTestJar(type: Copy){
     }
 }
 
+run {
+    jvmArgs = ['--add-exports', 'java.base/sun.nio.ch=ALL-UNNAMED',
+               '--add-opens', 'java.base/sun.nio.fs=ALL-UNNAMED',
+               '--add-opens', 'java.base/java.nio=ALL-UNNAMED',
+               '--add-opens', 'java.base/java.io=ALL-UNNAMED',
+               '--add-opens', 'java.base/java.lang.invoke=ALL-UNNAMED'
+    ]
+}
+
+test {
+    jvmArgs = ['--add-exports', 'java.base/sun.nio.ch=ALL-UNNAMED',
+               '--add-opens', 'java.base/sun.nio.fs=ALL-UNNAMED',
+               '--add-opens', 'java.base/java.nio=ALL-UNNAMED',
+               '--add-opens', 'java.base/java.io=ALL-UNNAMED',
+               '--add-opens', 'java.base/java.lang.invoke=ALL-UNNAMED',
+               '--add-opens', 'java.base/java.lang=ALL-UNNAMED' // required for jacoco
+
+    ]
+}
+
 task testOnPackagedReleaseJar(type: Test){
     String testClassesJar = "$System.env.TEST_JAR"
     String testDependencyJar = "$System.env.TEST_DEPENDENCY_JAR"
