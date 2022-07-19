@@ -291,7 +291,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        wdlTest: [ 'RUN_CNV_GERMLINE_COHORT_WDL', 'RUN_CNV_GERMLINE_CASE_WDL', 'RUN_CNV_SOMATIC_WDL', 'RUN_M2_WDL', 'RUN_CNN_WDL' ]
+        wdlTest: [ 'RUN_CNV_GERMLINE_COHORT_WDL', 'RUN_CNV_GERMLINE_CASE_WDL', 'RUN_CNV_SOMATIC_WDL', 'RUN_M2_WDL', 'RUN_CNN_WDL', 'RUN_VCF_SITE_LEVEL_FILTERING_WDL' ]
     continue-on-error: true
     name: WDL test ${{ matrix.wdlTest }} on cromwell
     steps:
@@ -349,3 +349,9 @@ jobs:
         run: |
           echo "Running CNN WDL";
           bash scripts/cnn_variant_cromwell_tests/run_cnn_variant_wdl.sh;
+
+      - name: "VCF_SITE_LEVEL_FILTERING_WDL_TEST"
+        if: ${{ matrix.wdlTest == 'RUN_VCF_SITE_LEVEL_FILTERING_WDL' }}
+        run: |
+          echo "Running VCF Site Level Filtering WDL";
+          bash scripts/vcf_site_level_filtering_cromwell_tests/run_vcf_site_level_filtering_wdl.sh;
