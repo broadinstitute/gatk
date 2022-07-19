@@ -26,8 +26,8 @@ workflow JointVcfFiltering {
 		String indel_annotations
 		File? gatk_override
 
-		String snp_training_resource_command_line = "--resource:hapmap,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/hapmap_3.3.hg38.vcf.gz --resource:omni,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/1000G_omni2.5.hg38.vcf.gz --resource:1000G,training=true,calibration=false gs://gcp-public-data--broad-references/hg38/v0/1000G_phase1.snps.high_confidence.hg38.vcf.gz"
-		String indel_training_resource_command_line = "--resource:mills,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz"
+		String snp_resource_args = "--resource:hapmap,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/hapmap_3.3.hg38.vcf.gz --resource:omni,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/1000G_omni2.5.hg38.vcf.gz --resource:1000G,training=true,calibration=false gs://gcp-public-data--broad-references/hg38/v0/1000G_phase1.snps.high_confidence.hg38.vcf.gz"
+		String indel_resource_args = "--resource:mills,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz"
 	}
 
 	parameter_meta {
@@ -42,7 +42,7 @@ workflow JointVcfFiltering {
 			input_vcf_index = sites_only_vcf_index,
 			mode = "SNP",
 			annotations = snp_annotations,
-			resources = snp_training_resource_command_line,
+			resources = snp_resource_args,
 			basename = basename,
 			interval_list = extract_interval_list,
 			gatk_override = gatk_override,
@@ -55,7 +55,7 @@ workflow JointVcfFiltering {
 			input_vcf_index = sites_only_vcf_index,
 			mode = "INDEL",
 			annotations = indel_annotations,
-			resources = indel_training_resource_command_line,
+			resources = indel_resource_args,
 			basename = basename,
 			interval_list = extract_interval_list,
 			gatk_override = gatk_override,

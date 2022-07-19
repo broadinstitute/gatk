@@ -350,7 +350,7 @@ jobs:
           echo "Running CNN WDL";
           bash scripts/cnn_variant_cromwell_tests/run_cnn_variant_wdl.sh;
 
-      - name: "VCF_SITE_LEVEL_FILTERING_WDL"
+      - name: "VCF_SITE_LEVEL_FILTERING_WDL_TEST"
         if: ${{ matrix.wdlTest == 'RUN_VCF_SITE_LEVEL_FILTERING_WDL' }}
         run: |
           echo "Running VCF Site Level Filtering WDL";
