@@ -201,7 +201,7 @@ public class CountingReadFilter extends ReadFilter {
     protected static final class CountingAndReadFilter extends CountingBinopReadFilter {
 
         private static final long serialVersionUID = 1L;
-        private long totalCount = 0;
+        protected long totalCount = 0;
 
         private CountingAndReadFilter(final CountingReadFilter lhs, final CountingReadFilter rhs) {
             super(lhs, rhs);
