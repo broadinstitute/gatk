@@ -31,7 +31,7 @@ RUN apt-get --assume-yes install git-lfs
 RUN git lfs install --force
 
 ##Get Java 17 temurin JDK
-RUN apt update && apt upgrade
+#RUN apt update && apt upgrade
 RUN apt install wget
 RUN wget https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.1%2B12/OpenJDK17U-jdk_x64_linux_hotspot_17.0.1_12.tar.gz
 RUN tar -xvf OpenJDK17U-jdk_x64_linux_hotspot_17.*.tar.gz
