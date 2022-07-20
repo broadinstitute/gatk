@@ -49,7 +49,6 @@ workflow GvsJointVariantCallsetCost {
 
     output {
             Float total_bq_cost = FullCosts.total_bq_cost
-            Float total_terra_cost = FullCosts.total_terra_cost
     }
 
   }
@@ -101,8 +100,6 @@ workflow GvsJointVariantCallsetCost {
                 ) |add + ~{import_genomes_cost} ' > total_bq_cost.txt
 
                 cat total_bq_cost.txt
-
-                cat ~{workflow_cost_json} | jq '.GvsJointVariantCalling.workflows | .[] | select(.link| contains("9c96aac8-d1b1-4c87-83a4-11cc3496ad7d")).cost '  > total_terra_cost.txt
             >>>
 
         runtime {
@@ -111,7 +108,6 @@ workflow GvsJointVariantCallsetCost {
 
         output {
             Float total_bq_cost = read_float("total_bq_cost.txt")
-            Float total_terra_cost = read_float("total_terra_cost.txt")
         }
     }
 
