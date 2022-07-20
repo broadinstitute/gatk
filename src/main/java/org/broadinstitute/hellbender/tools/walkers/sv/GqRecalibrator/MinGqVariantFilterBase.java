@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.walkers.sv.GqRecalibrator;
 
-import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
@@ -33,12 +32,11 @@ import static org.apache.commons.math3.util.FastMath.*;
 
 
 /**
- * Extract matrix of properties for each variant.
- * Also extract, numVariants x numTrios x 3 tensors of allele count and genotype quality.
- * These data will be used to train a variant filter based on min GQ (and stratified by other variant properties) that
+ * -Extract matrix of properties for each variant.
+ * -Also extract, numVariants x numTrios x 3 tensors of allele count and genotype quality.
+ * -These data will be used to train a variant filter based on min GQ (and stratified by other variant properties) that
  * maximizes the admission of variants with Mendelian inheritance pattern while omitting non-Mendelian variants.
- *
- * Derived class must implement abstract method trainFilter()
+ * -Derived class must implement abstract method trainFilter()
  */
 public abstract class MinGqVariantFilterBase extends VariantWalker {
     @Argument(fullName=StandardArgumentDefinitions.PEDIGREE_FILE_LONG_NAME,
@@ -79,6 +77,11 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
     @Argument(fullName="keep-multiallelic", shortName="km", doc="Keep multiallelic variants even if their GQ is less than min-GQ", optional=true)
     public boolean keepMultiallelic = true;
 
+    @Argument(fullName="use-copy-number-calls", doc="If true, attempt to use copy number info if genotype is NO CALL. "+
+                       "This also entails keeping track of copy number call quality (RD_GQ) and reconciling that with GQ",
+                       optional=true)
+    public boolean useCopyNumberCalls = false;
+
     @Argument(fullName="keep-non-var", shortName="kn", doc="In \"Filter\" mode: if true, keep variants with no HET or HOMVAR GTs (all REF or no-call), otherwise omit those variants", optional=true)
     public boolean keepNonVar = false;
 
@@ -108,7 +111,8 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
     final List<String> genomeTrackFiles = new ArrayList<>();
 
     @Argument(fullName="min-scaled-logits", shortName="sl", optional=true)
-    short minScaledLogits = (short) probToScaledLogits(0.5);
+    short minScaledLogits = probToScaledLogits(0.5);
+    short FAILING_GQ;
 
     @Argument(fullName="target-precision", doc="Desired minimum precision to achieve before maximizing recall", optional=true)
     public static double targetPrecision = 0.90;
@@ -142,7 +146,6 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
 
     List<TrackOverlapDetector> trackOverlapDetectors = null;
 
-    static final double PHRED_COEF = FastMath.log(10.0) / 10.0;
     static final Map<String, double[]> propertyBinsMap = new LinkedHashMap<>();
     // numVariants array of property-category bins
     protected int[] propertyBins = null;
@@ -164,13 +167,10 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
     protected final Map<String, Integer> sampleIndices = new HashMap<>(); // map from sampleId to numerical index, for samples used in training
     protected final PropertiesTable propertiesTable = new PropertiesTable();
     // direct links to important properties, so they don't need to be looked up in the table each time they are used:
-    protected PropertiesTable.ShortMatProperty sampleVariantGenotypeQualities = null;
+    protected PropertiesTable.ShortMatProperty sampleVariantCallQualities = null;
     protected PropertiesTable.ByteMatProperty sampleVariantAlleleCounts = null;
     protected PropertiesTable.ByteMatProperty sampleVariantNoCallCounts = null;
     protected List<String> variantIds = new ArrayList<>();
-    // map from variantIndex to array of known good/bad sample indices for that variant
-    protected final Map<Integer, Set<Integer>> goodSampleVariantIndices = new HashMap<>();
-    protected final Map<Integer, Set<Integer>> badSampleVariantIndices = new HashMap<>();
 
     protected Random randomGenerator = Utils.getRandomGenerator();
 
@@ -180,38 +180,43 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
     private int numSamples;
     private int numTrios;
 
+    private Set<String> vcfHeaderIds = null;
     private static final float PROB_EPS = 1.0e-3F;
-    private static final Set<String> BREAKPOINT_SV_TYPES = new HashSet<>(Arrays.asList("BND", "CTX"));
-    private static final double SV_EXPAND_RATIO = 1.0; // ratio of how much to expand SV gain range to SVLEN
-    private static final int BREAKPOINT_HALF_WIDTH = 50; // how wide to make breakpoint intervals for track overlap
-    private static final String[] DISTAL_TARGETS_KEYS = {"SOURCE", "CPX_INTERVALS"}; // keys for distal targets in VCF entries
     private static final String NO_CALL_COUNTS_KEY = "NO_CALL_COUNTS";
     private static final String SVLEN_KEY = "SVLEN";
-    private static final String EVIDENCE_KEY = "EVIDENCE";
+    private static final String EV_KEY = "EV";
+    private static final String CONC_ST_KEY = "CONC_ST";
     private static final String FILTER_KEY = "FILTER";
-    private static final String NO_EVIDENCE = "NO_EVIDENCE";
     private static final String ALGORITHMS_KEY = "ALGORITHMS";
-    private static final String NO_ALGORITHM = "NO_ALGORITHM";
+    private static final String EVIDENCE_KEY = "EVIDENCE";
+    private static final String STATUS_KEY = "STATUS";
+    private static final String NON_REF_GENOTYPE_CONCORDANCE_KEY = "NON_REF_GENOTYPE_CONCORDANCE";
+    private static final String VAR_PPV_KEY = "VAR_PPV";
+    private static final String VAR_SENSITIVITY_KEY = "VAR_SENSITIVITY";
+    private static final String TRUTH_AF_KEY = "TRUTH_AF";
     private static final String MIN_QUALITY_KEY = "MIN" + scaled_logit_property;
     private static final String EXCESSIVE_MIN_QUALITY_FILTER_KEY = "LOW_QUALITY";
     private static final String MULTIALLELIC_FILTER = "MULTIALLELIC";
     private static final String GOOD_VARIANT_TRUTH_KEY = "good_variant_ids";
     private static final String BAD_VARIANT_TRUTH_KEY = "bad_variant_ids";
-    private static final String CHR2_KEY = "CHR2";
-
+    private static final String CALL_QUALITY_KEY = "CALL_QUALITY";
     protected static final int FATHER_IND = 0;
     protected static final int MOTHER_IND = 1;
     protected static final int CHILD_IND = 2;
 
+    private static final String IS_COPY_NUMBER_CALL_KEY = "IS_CN_CALL";
+
     private static final String PE_GQ_KEY = "PE_GQ";
+    private static final String RD_CN_KEY = "RD_CN";
     private static final String RD_GQ_KEY = "RD_GQ";
     private static final String SR_GQ_KEY = "SR_GQ";
     private static final short MISSING_GQ_VAL = -1;
 
-    // properties used to gather main matrix / tensors during apply()
-    private Set<Trio> pedTrios = null;
-    private Map<String, Set<String>> goodSampleVariants = null;
-    private Map<String, Set<String>> badSampleVariants = null;
+
+    // properties used to gather main matrix / tensors during apply function
+    // map from variant ID to array of known good/bad sample indices for that variant
+    private Map<String, Set<Integer>> goodVariantSampleIndices = null;
+    private Map<String, Set<Integer>> badVariantSampleIndices = null;
 
 
     // train/validation split indices
@@ -250,10 +255,9 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
         }
         final SampleDBBuilder sampleDBBuilder = new SampleDBBuilder(PedigreeValidationType.STRICT);
         sampleDBBuilder.addSamplesFromPedigreeFiles(Collections.singletonList(pedigreeFile));
-
         final Set<String> vcfSamples = new HashSet<>(getHeaderForVariants().getGenotypeSamples());
         // get the trios from the pedigree file, keeping only those that are fully present in the input VCF
-        pedTrios = sampleDBBuilder.getFinalSampleDB()
+        final Set<Trio> pedTrios = sampleDBBuilder.getFinalSampleDB()
             .getTrios()
             .stream()
             .filter(trio -> vcfSamples.contains(trio.getPaternalID()) && vcfSamples.contains(trio.getMaternalID())
@@ -300,8 +304,8 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
             throw new GATKException("Unable to parse JSON from inputStream", ioException);
         }
         final Set<String> vcfSamples = new HashSet<>(getHeaderForVariants().getGenotypeSamples());
-        goodSampleVariants = new HashMap<>();
-        badSampleVariants = new HashMap<>();
+        final Map<String, Set<String>> goodVariantSampleIds = new HashMap<>();
+        final Map<String, Set<String>> badVariantSampleIds = new HashMap<>();
         for(final Map.Entry<String, Object> sampleTruthEntry : jsonObject.entrySet()) {
             final String sampleId = sampleTruthEntry.getKey();
             if(!vcfSamples.contains(sampleId)) {
@@ -310,31 +314,46 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
             final JSONObject sampleTruth = (JSONObject)sampleTruthEntry.getValue();
             for(final Object variantIdObj : (JSONArray)sampleTruth.get(GOOD_VARIANT_TRUTH_KEY)) {
                 final String variantId = (String)variantIdObj;
-                if(goodSampleVariants.containsKey(variantId)) {
-                    goodSampleVariants.get(variantId).add(sampleId);
+                if(goodVariantSampleIds.containsKey(variantId)) {
+                    goodVariantSampleIds.get(variantId).add(sampleId);
                 } else {
-                    goodSampleVariants.put(variantId, new HashSet<>(Collections.singleton(sampleId)) );
+                    goodVariantSampleIds.put(variantId, new HashSet<>(Collections.singleton(sampleId)) );
                 }
             }
             for(final Object variantIdObj : (JSONArray)sampleTruth.get(BAD_VARIANT_TRUTH_KEY)) {
                 final String variantId = (String)variantIdObj;
-                if(badSampleVariants.containsKey(variantId)) {
-                    badSampleVariants.get(variantId).add(sampleId);
+                if(badVariantSampleIds.containsKey(variantId)) {
+                    badVariantSampleIds.get(variantId).add(sampleId);
                 } else {
-                    badSampleVariants.put(variantId, new HashSet<>(Collections.singleton(sampleId)));
+                    badVariantSampleIds.put(variantId, new HashSet<>(Collections.singleton(sampleId)));
                 }
             }
         }
-        if(goodSampleVariants.isEmpty() && badSampleVariants.isEmpty()) {
+        if(goodVariantSampleIds.isEmpty() && badVariantSampleIds.isEmpty()) {
             System.out.println("Truth file specified (" + truthFile + "), but no samples/variants overlap with input VCF ("
                                + drivingVariantFile + "). Not using truth data.");
-            goodSampleVariants = null;
-            badSampleVariants = null;
+            goodVariantSampleIndices = null;
+            badVariantSampleIndices = null;
             return;
         }
         // Add any new samples that have truth but are not in trios file to the training samples
-        goodSampleVariants.values().stream().flatMap(Collection::stream).forEach(this::addSampleIndex);
-        badSampleVariants.values().stream().flatMap(Collection::stream).forEach(this::addSampleIndex);
+        goodVariantSampleIds.values().stream().flatMap(Collection::stream).forEach(this::addSampleIndex);
+        badVariantSampleIds.values().stream().flatMap(Collection::stream).forEach(this::addSampleIndex);
+
+        // Finally replace the sets of sample IDs with sets of sample indices. We'll use this data structure because
+        // it's smaller.
+        goodVariantSampleIndices = new HashMap<>();
+        goodVariantSampleIds.forEach(
+                (variantId, sampleIds) -> goodVariantSampleIndices.put(
+                        variantId, sampleIds.stream().mapToInt(sampleIndices::get).boxed().collect(Collectors.toSet())
+                    )
+        );
+        badVariantSampleIndices = new HashMap<>();
+        badVariantSampleIds.forEach(
+                (variantId, sampleIds) -> badVariantSampleIndices.put(
+                        variantId, sampleIds.stream().mapToInt(sampleIndices::get).boxed().collect(Collectors.toSet())
+                )
+        );
     }
 
     private void addSampleIndex(final String sampleId) {
@@ -380,6 +399,12 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
 
     @Override
     public void onTraversalStart() {
+        vcfHeaderIds = Stream.concat(
+            getHeaderForVariants().getInfoHeaderLines().stream().map(VCFCompoundHeaderLine::getID),
+            getHeaderForVariants().getFormatHeaderLines().stream().map(VCFCompoundHeaderLine::getID)
+        ).collect(Collectors.toSet());
+        // get failing GQ by converting min passing scaled logits to GQ, then decreasing by 1
+        FAILING_GQ = (short)(probToPhred(scaledLogitsToP(minScaledLogits)) - 1);
         // set propertyBinsMap bins
         propertyBinsMap.put(SVLEN_KEY, new double[] {50.0, 500.0, 5000.0});
         propertyBinsMap.put(VCFConstants.ALLELE_FREQUENCY_KEY, new double[] {maxInheritanceAf, 1.0 - maxInheritanceAf});
@@ -423,44 +448,40 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
     }
 
     private boolean getVariantIsTrainable(final VariantContext variantContext,
-                                          final Map<String, Integer> sampleAlleleCounts,
-                                          final Map<String, Integer> sampleNoCallCounts) {
+                                          final byte[] sampleAlleleCounts,
+                                          final byte[] sampleNoCallCounts) {
         if(keepMultiallelic && getIsMultiallelic(variantContext)) {
             return false;  // can't filter it, so can't train
         }
 
         // check if any of the samples have truth data and can be filtered. If so, the variant is trainable.
         // first check if any member of trios are filterable
-        final boolean inheritanceTrainable = pedTrios.stream().anyMatch(
-            trio -> {  // trainable if any trio is filterable: all samples present, no no-calls, at least one
-                       //                                      non-ref sample, and at leas tone filterable allele count
-                final String paternalId = trio.getPaternalID();
-                final String maternalId = trio.getMaternalID();
-                final String childId = trio.getChildID();
-                if(Stream.of(paternalId, maternalId, childId)
-                    .mapToInt(id -> sampleNoCallCounts.getOrDefault(id, 2))
-                    .max().orElse(2) > 0) {
-                    return false;  // missing member of trio, or trio has no-calls
+        final boolean inheritanceTrainable = Arrays.stream(trioSampleIndices).anyMatch(
+                trioIndices -> {  // trainable if any trio is filterable: all samples present, no no-calls, at least one
+                    //                                      non-ref sample, and at least one filterable allele count
+                    if(Arrays.stream(trioIndices).anyMatch(sampleIndex -> sampleNoCallCounts[sampleIndex] > 0)) {
+                        return false; // trio has no-calls
+                    }
+                    final int fatherAc = sampleAlleleCounts[trioIndices[FATHER_IND]];
+                    final int motherAc = sampleAlleleCounts[trioIndices[MOTHER_IND]];
+                    final int childAc = sampleAlleleCounts[trioIndices[CHILD_IND]];
+                    return (fatherAc > 0 || motherAc > 0 || childAc > 0) &&
+                            (alleleCountIsFilterable(fatherAc) || alleleCountIsFilterable(motherAc) ||
+                                    alleleCountIsFilterable(childAc));
                 }
-                final int fatherAc = sampleAlleleCounts.get(paternalId);
-                final int motherAc = sampleAlleleCounts.get(maternalId);
-                final int childAc = sampleAlleleCounts.get(childId);
-                return (fatherAc > 0 || motherAc > 0 || childAc > 0) &&
-                       (alleleCountIsFilterable(fatherAc) || alleleCountIsFilterable(motherAc) ||
-                        alleleCountIsFilterable(childAc));
-            }
         );
+
         if(inheritanceTrainable) {
             return true;
         }
         // next check if there are any samples in the truth set that are filterable
-        if(goodSampleVariants != null &&
-           !getFilterableTruthSampleIndices(variantContext, goodSampleVariants, sampleAlleleCounts,
+        if(goodVariantSampleIndices != null &&
+           !getFilterableTruthSampleIndices(variantContext, goodVariantSampleIndices, sampleAlleleCounts,
                                             sampleNoCallCounts).isEmpty()) {
            return true;
         }
-        return badSampleVariants != null &&
-              !getFilterableTruthSampleIndices(variantContext, badSampleVariants, sampleAlleleCounts,
+        return badVariantSampleIndices != null &&
+              !getFilterableTruthSampleIndices(variantContext, badVariantSampleIndices, sampleAlleleCounts,
                                                sampleNoCallCounts).isEmpty();
     }
 
@@ -493,12 +514,12 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
     /**
      * form numTrios x 3 matrix of genotype qualities for specified variantIndex (paternal, maternal, child)
      */
-    protected short[][] getTrioGenotypeQualitiesMatrix(final int variantIndex) {
-        final short[] sampleGenotypeQualities =  sampleVariantGenotypeQualities.values[variantIndex];
+    protected short[][] getTrioCallQualitiesMatrix(final int variantIndex) {
+        final short[] sampleCallQualities =  sampleVariantCallQualities.values[variantIndex];
         return Arrays.stream(trioSampleIndices)
-            .map(trioIndices -> new short[] {sampleGenotypeQualities[trioIndices[0]],
-                                             sampleGenotypeQualities[trioIndices[1]],
-                                             sampleGenotypeQualities[trioIndices[2]]}
+            .map(trioIndices -> new short[] {sampleCallQualities[trioIndices[0]],
+                                             sampleCallQualities[trioIndices[1]],
+                                             sampleCallQualities[trioIndices[2]]}
             )
             .toArray(short[][]::new);
     }
@@ -543,6 +564,15 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
                 .collect(Collectors.toSet());
     }
 
+    protected Set<Integer> getGoodSampleIndices(final int variantIndex) {
+        return goodVariantSampleIndices.getOrDefault(variantIds.get(variantIndex), Collections.emptySet());
+    }
+
+    protected Set<Integer> getBadSampleIndices(final int variantIndex) {
+        return badVariantSampleIndices.getOrDefault(variantIds.get(variantIndex), Collections.emptySet());
+    }
+
+
     private List<Set<Integer>> filterableButNotTrainable = null;
     /**
      * A sample Variant is trainable if a) it is filterable, and b) there is truth data (inheritance or known good/bad)
@@ -553,8 +583,8 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
                 .mapToObj(
                     vIndex -> {
                         final Set<Integer> inheritanceTrainable = getInheritanceTrainableSampleIndices(vIndex);
-                        final Set<Integer> goodSampleIndices = goodSampleVariantIndices.getOrDefault(vIndex, Collections.emptySet());
-                        final Set<Integer> badSampleIndices = badSampleVariantIndices.getOrDefault(vIndex, Collections.emptySet());
+                        final Set<Integer> goodSampleIndices = getGoodSampleIndices(vIndex);
+                        final Set<Integer> badSampleIndices = getBadSampleIndices(vIndex);
                         return IntStream.range(0, numSamples)
                             .filter(sIndex -> getSampleVariantIsFilterable(vIndex, sIndex))
                             .filter(sIndex -> !inheritanceTrainable.contains(sIndex))
@@ -575,89 +605,37 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
         }
     }
 
-    private SimpleInterval getDistalTarget(final String targetString) {
-        return new SimpleInterval(targetString.substring(targetString.indexOf("_") + 1));
-    }
-
     private void getTrackProperties(final TrackOverlapDetector trackOverlapDetector,
                                     final VariantContext variantContext) {
-        // get range of variant (use expanded location for insertions or duplications)
-        final List<Locatable> overlapCheckLocations = new ArrayList<>();
-        final String svType = variantContext.getAttributeAsString(VCFConstants.SVTYPE, null);
-        if(BREAKPOINT_SV_TYPES.contains(svType)) {
-            // Add checks at the breakpoint locations. They're points, so we want to check track overlaps in the regions
-            // around them
-            overlapCheckLocations.add(
-                new SimpleInterval(variantContext.getContig(),
-                             FastMath.max(1, variantContext.getStart() - BREAKPOINT_HALF_WIDTH),
-                             variantContext.getStart() + BREAKPOINT_HALF_WIDTH)
-            );
-            overlapCheckLocations.add(
-                new SimpleInterval(variantContext.getAttributeAsString(CHR2_KEY, null),
-                             FastMath.max(1, variantContext.getEnd() - BREAKPOINT_HALF_WIDTH),
-                              variantContext.getEnd() + BREAKPOINT_HALF_WIDTH)
-            );
-        } else {
-            // Insertions can have zero width but they have uncertainty in their true location. Expand their central
-            // interval for the purpose of checking track overlap. Do this for any type that's "narrow"
-            final int width = variantContext.getEnd() - variantContext.getStart();
-            final boolean is_narrow = width < 2 * BREAKPOINT_HALF_WIDTH;
-            final int expand = is_narrow ?
-                max(
-                    (int)(abs(variantContext.getAttributeAsInt(SVLEN_KEY, 0)) * SV_EXPAND_RATIO),
-                    BREAKPOINT_HALF_WIDTH
-                ) :
-                0;
-            overlapCheckLocations.add(
-                new SimpleInterval(variantContext.getContig(),
-                    FastMath.max(1, variantContext.getStart() - expand),
-                    variantContext.getStart() + expand)
-            );
-            // if the interval isn't narrow, add the end points as potential breakpoints to check
-            if(!is_narrow) {
-                overlapCheckLocations.add(
-                    new SimpleInterval(variantContext.getContig(),
-                                      FastMath.max(1, variantContext.getStart() - BREAKPOINT_HALF_WIDTH),
-                                      variantContext.getStart() + BREAKPOINT_HALF_WIDTH)
-                );
-                overlapCheckLocations.add(
-                    new SimpleInterval(variantContext.getContig(),
-                                 FastMath.max(1, variantContext.getEnd() - BREAKPOINT_HALF_WIDTH),
-                                 variantContext.getEnd() + BREAKPOINT_HALF_WIDTH)
-                );
-            }
-        }
-        // Check for other distal locations in "SOURCE" field
-        //   they may be null (filter out)
-        //   they may be of form SVTYPE_SIMPLEINTERVAL (chop off everything before "_")
-        Arrays.stream(DISTAL_TARGETS_KEYS)
-                .map(key -> variantContext.getAttributeAsStringList(key, null))
-                .filter(Objects::nonNull)
-                .flatMap(List::stream)
-                .map(this::getDistalTarget)
-                .forEach(overlapCheckLocations::add);
+        final List<SimpleInterval> genomeTrackOverlapLocations =
+            SimpleSvInterval.streamFrom(variantContext)
+                    .flatMap(SimpleSvInterval::streamGenomeTrackOverlapLocations)
+                    .distinct()
+                    .collect(Collectors.toList());
 
         final double[] overlaps;
         try {
             if (trackOverlapDetector.hasOther()) { // This track has paired intervals
-                overlaps = overlapCheckLocations.stream()
-                        .mapToDouble(location -> trackOverlapDetector.getPrimaryOverlapFraction(location)
-                                + trackOverlapDetector.getOtherOverlapfraction(location))
-                        .toArray();
+                overlaps = genomeTrackOverlapLocations.stream()
+                    .mapToDouble(location -> trackOverlapDetector.getPrimaryOverlapFraction(location) +
+                                             trackOverlapDetector.getOtherOverlapfraction(location))
+                    .toArray();
                 // check for spanning by streaming over all possible pairs
-                final boolean spans = IntStream.range(0, overlapCheckLocations.size() - 1)
-                        .anyMatch(
-                                i -> IntStream.range(i + 1, overlapCheckLocations.size()).anyMatch(
-                                        j -> trackOverlapDetector.spansPrimaryAndOther(overlapCheckLocations.get(i),
-                                                overlapCheckLocations.get(j))
-                                )
-                        );
+                final boolean spans = IntStream.range(0, genomeTrackOverlapLocations.size() - 1)
+                    .anyMatch(
+                        i -> IntStream.range(i + 1, genomeTrackOverlapLocations.size()).anyMatch(
+                            j -> trackOverlapDetector.spansPrimaryAndOther(
+                                genomeTrackOverlapLocations.get(i),
+                                genomeTrackOverlapLocations.get(j)
+                            )
+                        )
+                    );
                 propertiesTable.append(
                         trackOverlapDetector.getName() + "_spans",
                         spans
                 );
             } else {  // this track has simple intervals
-                overlaps = overlapCheckLocations.stream()
+                overlaps = genomeTrackOverlapLocations.stream()
                         .mapToDouble(trackOverlapDetector::getPrimaryOverlapFraction)
                         .toArray();
             }
@@ -667,11 +645,6 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
                 illegalArgumentException
             );
         }
-        // breakpoint types have no "center", otherwise get overlap of primary location
-        propertiesTable.append(
-            trackOverlapDetector.getName() + "_center",
-            BREAKPOINT_SV_TYPES.contains(svType) ? 0.0 : overlaps[0]
-        );
         propertiesTable.append(
             trackOverlapDetector.getName() + "_min",
             Arrays.stream(overlaps).min().orElse(0.0)
@@ -682,12 +655,14 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
         );
     }
 
-    public short getGenotypeAttributeAsShort(final Genotype genotype, final String key, Short defaultValue) {
+    private static short getGenotypeAttributeAsShort(final Genotype genotype, final String key, Short defaultValue) {
         if(key.equals(VCFConstants.GENOTYPE_QUALITY_KEY)) {
             return (short)genotype.getGQ();
         }
         Object x = genotype.getExtendedAttribute(key);
-        if ( x == null || x == VCFConstants.MISSING_VALUE_v4 ) {
+        if (x == null ||
+            x == VCFConstants.MISSING_VALUE_v4 ||
+            (x instanceof java.lang.Character && (char)x == VCFConstants.NO_CALL_ALLELE)) {
             if(defaultValue == null) {
                 throw new IllegalArgumentException("Genotype is missing value of " + key);
             } else {
@@ -695,11 +670,17 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
             }
         }
         if ( x instanceof Short ) return (Short)x;
-        return Short.parseShort((String)x); // throws an exception if this isn't a string
+        try {
+            //noinspection ConstantConditions
+            return Short.parseShort((String) x); // throws an exception if this isn't a string
+        } catch(ClassCastException classCastException) {
+            throw new GATKException("Unable to extract value " + x + " for key " + key);
+        }
     }
 
+    @SuppressWarnings("SameParameterValue")
     private short[] getGenotypeAttributeAsShort(final Iterable<Genotype> sampleGenotypes, final String attributeKey,
-                                            @SuppressWarnings("SameParameterValue")final Short missingAttributeValue) {
+                                                final Short missingAttributeValue) {
         short[] values = new short[sampleIds.size()];
         int index = 0;
         for(final Genotype genotype : sampleGenotypes) {
@@ -709,37 +690,129 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
         return values;
     }
 
-    private final Map<String, Integer> applySampleAlleleCounts = new HashMap<>();  // allocate once to avoid thrashing memory
-    private final Map<String, Integer> applySampleNoCallCounts = new HashMap<>();  // allocate once to avoid thrashing memory
-
-    private byte[] getCountsAsByteArray(final Map<String, Integer> counts) {
-        final byte[] byteArr = new byte[sampleIds.size()];
-        int idx = 0;
-        for(final String sampleId : sampleIds) {
-            final int count = counts.get(sampleId);
-            byteArr[idx] = (byte)count;
-            ++idx;
+    private static Set<String> getVcfPropertyAsStringSet(Object rawProperty) {
+        if ( rawProperty == null ||
+                rawProperty == VCFConstants.EMPTY_ALLELE ||
+                (rawProperty instanceof java.lang.Character && (char)rawProperty == VCFConstants.NO_CALL_ALLELE) ) {
+            return Collections.emptySet();
+        } else {
+            // Throws an exception if this isn't a String
+            if (rawProperty instanceof String) {
+                // Remove any weird brackets, and split by commas
+                return Arrays.stream(((String)rawProperty)
+                        .replaceAll("[\\[\\] ]", "")
+                        .split(",")
+                ).collect(Collectors.toSet());
+            } else {
+                throw new IllegalArgumentException("Value was not a String");
+            }
         }
-        return byteArr;
+    }
+
+    private static boolean isMissing(final List<String> values) {
+        return values == null || values.isEmpty() || (
+                values.size() == 1 && (values.get(0) == null || values.get(0).equals(VCFConstants.EMPTY_ALLELE))
+        );
+    }
+
+    private static Set<String> getInfoAttributeAsStringSet(final VariantContext variantContext, final String key) {
+        try {
+            final List<String> values = variantContext.getAttributeAsStringList(key, null);
+            return isMissing(values) ? Collections.emptySet() : new HashSet<>(values);
+        } catch(IllegalArgumentException illegalArgumentException) {
+            throw new IllegalArgumentException(
+                "Getting " + key + " from INFO field: " + illegalArgumentException.getMessage(),
+                illegalArgumentException
+            );
+        }
+    }
+
+    private static Set<String> getGenotypeAttributeAsStringSet(final Genotype genotype, final String key) {
+        Object rawProperty = genotype.getExtendedAttribute(key);
+        try {
+            return getVcfPropertyAsStringSet(rawProperty);
+        } catch(IllegalArgumentException illegalArgumentException) {
+            throw new IllegalArgumentException(
+                "Getting " + key + " for sample " + genotype.getSampleName() + ": " + illegalArgumentException.getMessage(),
+                illegalArgumentException
+           );
+        }
+    }
+
+    @SuppressWarnings("SameParameterValue")
+    private Set<String>[] getGenotypeAttributeAsStringSet(final Iterable<Genotype> sampleGenotypes,
+                                                          final String key) {
+        @SuppressWarnings("unchecked")
+        final Set<String>[] values = (Set<String>[]) new Set<?>[numSamples];
+        int index = 0;
+        for(final Genotype genotype : sampleGenotypes) {
+            values[index] = getGenotypeAttributeAsStringSet(genotype, key);
+            ++index;
+        }
+
+        return values;
     }
 
     private Set<Integer> getFilterableTruthSampleIndices(final VariantContext variantContext,
-                                                         final Map<String, Set<String>> truthSampleIds,
-                                                         final Map<String, Integer> sampleAlleleCounts,
-                                                         final Map<String, Integer> sampleNoCallCounts) {
-        if(truthSampleIds.containsKey(variantContext.getID())) {
+                                                         final Map<String, Set<Integer>> truthSampleIndices,
+                                                         final byte[] sampleAlleleCounts,
+                                                         final byte[] sampleNoCallCounts) {
+        if(truthSampleIndices.containsKey(variantContext.getID())) {
             // Get sample IDs of known bad variants that are filterable
-            final String[] filterableTruthSampleIds = truthSampleIds.get(variantContext.getID())
+            return truthSampleIndices.get(variantContext.getID())
                     .stream()
-                    .filter(sampleId -> genotypeIsFilterable(sampleAlleleCounts.get(sampleId),
-                                                             sampleNoCallCounts.get(sampleId)))
-                    .toArray(String[]::new);
-            if(filterableTruthSampleIds.length > 0) {
-                // get indices and GQ values of good samples for this variant
-                return Arrays.stream(filterableTruthSampleIds).map(sampleIndices::get).collect(Collectors.toSet());
-            }
+                    .filter(sampleIndex -> genotypeIsFilterable(sampleAlleleCounts[sampleIndex],
+                                                                sampleNoCallCounts[sampleIndex]))
+                    .collect(Collectors.toSet());
         }
         return Collections.emptySet();
+    }
+
+
+    private class AlleleCountsGetter {
+        final byte nonRefCounts;
+        final byte numCalledCounts;
+        final byte noCallCounts;
+        final short callQuality;
+        final boolean isCopyNumberCall;
+
+        AlleleCountsGetter(final Genotype genotype) {
+            byte numAlleles = 0;
+            byte noCallCounts = 0;
+            byte nonRefCounts = 0;
+            short callQuality = MISSING_GQ_VAL;
+            for(final Allele allele : genotype.getAlleles()) {
+                // Do normal counting of alleles from genotype field
+                ++numAlleles;
+                if(allele.isNoCall()) {
+                    ++noCallCounts;
+                } else if(!allele.isReference()) {
+                    ++nonRefCounts;
+                }
+            }
+
+            boolean isCopyNumberCall = false;
+            if(useCopyNumberCalls && genotype.isNoCall()) {
+                // Check if maybe this is a copy number call
+                // Get the value from this key, if it's available
+                final short rd_cn = getGenotypeAttributeAsShort(genotype, RD_CN_KEY, (short)-1);
+                if(rd_cn != -1) { // got copy number info, use it
+                    nonRefCounts = (byte)(rd_cn == 2 ? 0 : 1);
+                    noCallCounts = 0;
+                    numAlleles = 2;
+                    isCopyNumberCall = true;
+                    callQuality = getGenotypeAttributeAsShort(genotype, RD_GQ_KEY, MISSING_GQ_VAL);
+                }
+            }
+            if(!isCopyNumberCall) {
+                callQuality = getGenotypeAttributeAsShort(genotype, VCFConstants.GENOTYPE_QUALITY_KEY, MISSING_GQ_VAL);
+            }
+            this.nonRefCounts = nonRefCounts;
+            this.numCalledCounts = (byte)(numAlleles - noCallCounts);
+            this.noCallCounts = noCallCounts;
+            this.callQuality = callQuality;
+            this.isCopyNumberCall = isCopyNumberCall;
+        }
     }
 
     /**
@@ -747,45 +820,80 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
      */
     @Override
     public void apply(VariantContext variantContext, ReadsContext readsContext, ReferenceContext ref, FeatureContext featureContext) {
-        // get per-sample allele counts as a map indexed by sample ID
+        try {
+            wrapped_apply(variantContext, readsContext, ref, featureContext);
+        } catch(Exception exception) {
+            throw new IllegalArgumentException(
+                "Error processing variant " + variantContext.getID() + ": " + exception.getMessage(),
+                exception
+            );
+        }
+    }
+
+    private void wrapped_apply(VariantContext variantContext, ReadsContext readsContext, ReferenceContext ref, FeatureContext featureContext) {
+        /////////////////////////////////////// Process allele counts and quality //////////////////////////////////////
         int numCalledAlleles = 0;
         int numNonRefAlleles = 0;
         int numVariantInputVar = 0;
         int numVariantInputNoCall = 0;
         int numVariantInputRef = 0;
-        for(final Genotype genotype : variantContext.getGenotypes()) {
-            int noCallCounts = 0;
-            int nonRefCounts = 0;
-            for(final Allele allele : genotype.getAlleles()) {
-                if(allele.isNoCall()) {
-                    ++noCallCounts;
-                } else if(!allele.isReference()) {
-                    ++nonRefCounts;
-                }
-            }
-            applySampleAlleleCounts.put(genotype.getSampleName(), nonRefCounts);
-            applySampleNoCallCounts.put(genotype.getSampleName(), noCallCounts);
-            if(nonRefCounts > 0) {
+        final byte[] sampleAlleleCounts = new byte[numSamples];
+        final byte[] sampleNoCallCounts = new byte[numSamples];
+        final boolean[] isCopyNumberCall = new boolean[numSamples];
+        final short[] callQuality = new short[numSamples];
+        int sampleIndex = 0;
+        for(final Genotype genotype : variantContext.getGenotypesOrderedBy(sampleIds)) {
+            final AlleleCountsGetter alleleCountsGetter = new AlleleCountsGetter(genotype);
+            sampleAlleleCounts[sampleIndex] = alleleCountsGetter.nonRefCounts;
+            sampleNoCallCounts[sampleIndex] = alleleCountsGetter.noCallCounts;
+            isCopyNumberCall[sampleIndex] = alleleCountsGetter.isCopyNumberCall;
+            callQuality[sampleIndex] = alleleCountsGetter.callQuality;
+            ++sampleIndex;
+
+            if(alleleCountsGetter.nonRefCounts > 0) {
                 ++numVariantInputVar;
-            } else if(noCallCounts > 0) {
+            } else if(alleleCountsGetter.noCallCounts > 0) {
                 ++numVariantInputNoCall;
             } else {
                 ++numVariantInputRef;
             }
-            numNonRefAlleles += nonRefCounts;
-            numCalledAlleles += genotype.getAlleles().size() - noCallCounts;
+            numNonRefAlleles += alleleCountsGetter.nonRefCounts;
+            numCalledAlleles += alleleCountsGetter.numCalledCounts;
         }
         numInputVar += numVariantInputVar;
         numInputNoCall += numVariantInputNoCall;
         numInputRef += numVariantInputRef;
 
-        if(runMode == RunMode.Train && !getVariantIsTrainable(variantContext, applySampleAlleleCounts,
-                                                               applySampleNoCallCounts)) {
+        if(runMode == RunMode.Train && !getVariantIsTrainable(variantContext, sampleAlleleCounts, sampleNoCallCounts)) {
             // no need to train on unfilterable variants
             return;
         }
         ++numVariants;
-
+        /////////////////////////////////////////// Get values from FORMAT /////////////////////////////////////////////
+        propertiesTable.append(VCFConstants.ALLELE_COUNT_KEY, sampleAlleleCounts);
+        propertiesTable.append(NO_CALL_COUNTS_KEY, sampleNoCallCounts);
+        if(useCopyNumberCalls) {
+            // if using copy number calls, add the reconciled call quality, and whether this is a copy number call
+            propertiesTable.append(IS_COPY_NUMBER_CALL_KEY, isCopyNumberCall);
+            propertiesTable.append(CALL_QUALITY_KEY, callQuality);
+        }
+        final Iterable<Genotype> sampleGenotypes = variantContext.getGenotypesOrderedBy(sampleIds);
+        // Append various qualities
+        Stream.of(VCFConstants.GENOTYPE_QUALITY_KEY, PE_GQ_KEY, SR_GQ_KEY, RD_GQ_KEY)
+                .filter(filterKey -> vcfHeaderIds.contains(filterKey))
+                .forEach(
+                    genotypeAttributeKey -> propertiesTable.append(
+                        genotypeAttributeKey,
+                        getGenotypeAttributeAsShort(sampleGenotypes, genotypeAttributeKey, MISSING_GQ_VAL)
+                    )
+                );
+        // also get EV, set of per-genotype evidence, CONC_ST, genotype concordance contingency state
+        Stream.of(EV_KEY, CONC_ST_KEY)
+                .filter(formatKey -> vcfHeaderIds.contains(formatKey))
+                .forEach(
+                    formatKey -> propertiesTable.append(formatKey, getGenotypeAttributeAsStringSet(sampleGenotypes, formatKey))
+                );
+        //////////////////////////////////////// Get or estimate allele frequency //////////////////////////////////////
         float alleleFrequency = (float)variantContext.getAttributeAsDouble(VCFConstants.ALLELE_FREQUENCY_KEY, -1.0);
         if(alleleFrequency <= 0) {
             if(variantContext.getNSamples() <= minSamplesToEstimateAlleleFrequency) {
@@ -799,87 +907,50 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
             alleleFrequency = numCalledAlleles > 0 ? numNonRefAlleles / (float) numCalledAlleles : 0F;
         }
         propertiesTable.append(VCFConstants.ALLELE_FREQUENCY_KEY, alleleFrequency);
-
+        ///////////////////////////////////////////////// Get FILTER ///////////////////////////////////////////////////
+        propertiesTable.append(FILTER_KEY, variantContext.getFilters());
+        ////////////////////////////////////////////// Get INFO fields /////////////////////////////////////////////////
+        // SVTYPE is mandatory
         final String svType = variantContext.getAttributeAsString(VCFConstants.SVTYPE, null);
         if(svType == null) {
             throw new GATKException("Missing " + VCFConstants.SVTYPE + " for variant " + variantContext.getID());
         }
         propertiesTable.append(VCFConstants.SVTYPE, svType);
+        // Sometimes BNDs have no SVLEN, in that case set SVLEN to -1
+        propertiesTable.append(SVLEN_KEY, SimpleSvInterval.getOrInferSvLen(variantContext));
+        // get INFO fields that are sets of strings:
+        Stream.of(ALGORITHMS_KEY, EVIDENCE_KEY, STATUS_KEY)
+                .filter(infoKey -> vcfHeaderIds.contains(infoKey))
+                .forEach(
+                    infoKey -> propertiesTable.append(infoKey, getInfoAttributeAsStringSet(variantContext, infoKey))
+                );
+        // add INFO fields that are floats
+        Stream.of(NON_REF_GENOTYPE_CONCORDANCE_KEY, VAR_PPV_KEY, VAR_SENSITIVITY_KEY, TRUTH_AF_KEY)
+                .filter(infoKey -> vcfHeaderIds.contains(infoKey))
+                .forEach(
+                    infoKey -> propertiesTable.append(infoKey,
+                                                     (float)variantContext.getAttributeAsDouble(infoKey, Double.NaN))
+                );
 
-        final int svLen = variantContext.getAttributeAsInt(SVLEN_KEY, Integer.MIN_VALUE);
-        if(svLen == Integer.MIN_VALUE) {
-            throw new GATKException("Missing " + SVLEN_KEY + " for variant " + variantContext.getID());
-        }
-        propertiesTable.append(SVLEN_KEY, svLen);
-
-        propertiesTable.append(FILTER_KEY, variantContext.getFilters());
-
-        final Set<String> vcEvidence = Arrays.stream(
-                    variantContext.getAttributeAsString(EVIDENCE_KEY, NO_EVIDENCE)
-                        .replaceAll("[\\[\\] ]", "").split(",")
-            ).map(ev -> ev.equals(".") ? NO_EVIDENCE : ev).collect(Collectors.toSet());
-        if(vcEvidence.isEmpty()) {
-            throw new GATKException("Missing " + EVIDENCE_KEY + " for variant " + variantContext.getID());
-        }
-        propertiesTable.append(EVIDENCE_KEY, vcEvidence);
-
-
-        final Set<String> vcAlgorithms = Arrays.stream(
-                variantContext.getAttributeAsString(ALGORITHMS_KEY, NO_ALGORITHM)
-                        .replaceAll("[\\[\\] ]", "").split(",")
-        ).map(ev -> ev.equals(".") ? NO_ALGORITHM : ev).collect(Collectors.toSet());
-        if(vcAlgorithms.isEmpty()) {
-            throw new GATKException("Missing " + ALGORITHMS_KEY + " for variant " + variantContext.getID());
-        }
-        propertiesTable.append(ALGORITHMS_KEY, vcAlgorithms);
-
+        /////////////////////////////////////////  Get genome track overlaps ///////////////////////////////////////////
         for(final TrackOverlapDetector trackOverlapDetector : trackOverlapDetectors) {
             getTrackProperties(trackOverlapDetector, variantContext);
         }
 
-        propertiesTable.append(
-            VCFConstants.ALLELE_COUNT_KEY,
-            getCountsAsByteArray(applySampleAlleleCounts)
-        );
-
-        propertiesTable.append(
-            NO_CALL_COUNTS_KEY,
-            getCountsAsByteArray(applySampleNoCallCounts)
-        );
-
-        final Iterable<Genotype> sampleGenotypes = variantContext.getGenotypesOrderedBy(sampleIds);
-        Stream.of(VCFConstants.GENOTYPE_QUALITY_KEY, PE_GQ_KEY, RD_GQ_KEY, SR_GQ_KEY).forEach(
-            genotypeAttributeKey -> propertiesTable.append(
-                    genotypeAttributeKey,
-                    getGenotypeAttributeAsShort(sampleGenotypes, genotypeAttributeKey, MISSING_GQ_VAL)
-            )
-        );
-
+        //////////////////////// Wrap up: store data if training, filter variant context if filtering //////////////////
         if(runMode == RunMode.Train) {
             variantIds.add(variantContext.getID());
-            if(goodSampleVariants != null) {
-                goodSampleVariantIndices.put(
-                        numVariants - 1,
-                        getFilterableTruthSampleIndices(
-                                variantContext, goodSampleVariants, applySampleAlleleCounts, applySampleNoCallCounts
-                        )
-                );
-            }
-            if(badSampleVariants != null) {
-                badSampleVariantIndices.put(
-                        numVariants - 1,
-                        getFilterableTruthSampleIndices(
-                                variantContext, badSampleVariants, applySampleAlleleCounts, applySampleNoCallCounts
-                        )
-                );
-            }
         } else {
-            if(sampleVariantGenotypeQualities == null) {
-                sampleVariantGenotypeQualities = (PropertiesTable.ShortMatProperty) propertiesTable.get(VCFConstants.GENOTYPE_QUALITY_KEY);
+            if(sampleVariantCallQualities == null) {
+                variantIds.add(variantContext.getID());
+                sampleVariantCallQualities = useCopyNumberCalls ?
+                    (PropertiesTable.ShortMatProperty) propertiesTable.get(CALL_QUALITY_KEY) :
+                    (PropertiesTable.ShortMatProperty) propertiesTable.get(VCFConstants.GENOTYPE_QUALITY_KEY);
                 sampleVariantAlleleCounts = (PropertiesTable.ByteMatProperty) propertiesTable.get(VCFConstants.ALLELE_COUNT_KEY);
                 sampleVariantNoCallCounts = (PropertiesTable.ByteMatProperty) propertiesTable.get(NO_CALL_COUNTS_KEY);
                 propertiesTable.validateAndFinalize();
             } else {
+                variantIds.set(0, variantContext.getID()); // only one variant ID at a time in context when filtering
                 propertiesTable.oneHot();
             }
 
@@ -913,7 +984,7 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
 
         // filter all samples for this variant context in a batch to avoid DMatrix creation / prediction overhead
         final boolean maybeFilterable = !(keepMultiallelic && getIsMultiallelic(variantContext));
-        final int[] adjustedGq, adjustedLogits;
+        final short[] adjustedGq, adjustedLogits;
         if(maybeFilterable) {
             int numFilterableSamples = 0;
             int sampleIndex = 0;
@@ -927,7 +998,7 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
                 ++sampleIndex;
             }
             numFilterableGenotypes += numFilterableSamples;
-            final int[][] adjustedQuality = adjustedQualityBatch();
+            final short[][] adjustedQuality = adjustedQualityBatch();
             adjustedGq = adjustedQuality[0];
             adjustedLogits = adjustedQuality[1];
         } else {
@@ -946,46 +1017,33 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
         int numVariantOutputVar = 0;
         for(int sampleIndex = 0; sampleIndex < numSamples; ++sampleIndex) {
             final Genotype genotype = filterGenotypes[sampleIndex];
-            final int gq;
-            final int scaled_logits;
+            final short callQuality;
+            final short scaledLogits;
             if(sampleVariantFilterableForFilterVariantContext[sampleIndex]) {
                 //noinspection ConstantConditions
-                gq = adjustedGq[predictSampleIndex];
+                callQuality = adjustedGq[predictSampleIndex];
                 //noinspection ConstantConditions
-                scaled_logits = adjustedLogits[predictSampleIndex];
+                scaledLogits = adjustedLogits[predictSampleIndex];
                 ++predictSampleIndex;
             } else {
-                // still need to compute scaled_logits
-                gq = genotype.getGQ();
-                scaled_logits = probToScaledLogits(1.0 - phredToProb(gq));
+                // Still need to compute scaledLogits. Also: don't allow no-calls to have a passing quality
+                callQuality = maybeFilterable && filterGenotypes[sampleIndex].isNoCall() ?
+                    (short)Integer.min(sampleVariantCallQualities.values[0][sampleIndex], FAILING_GQ) :
+                    sampleVariantCallQualities.values[0][sampleIndex];
+                scaledLogits = probToScaledLogits(1.0 - phredToProb(callQuality));
             }
-            final Genotype filteredGenotype;
-            if (scaled_logits >= minScaledLogits) {
-                filteredGenotype = new GenotypeBuilder(genotype)
-                                    .GQ(gq)
-                                    .attribute(scaled_logit_property, scaled_logits)
-                                    .make();
-            } else {
-                filteredGenotype = new GenotypeBuilder(genotype)
-                        .alleles(GATKVariantContextUtils.noCallAlleles(genotype.getPloidy()))
-                        .GQ(gq)
-                        .attribute(scaled_logit_property, scaled_logits)
-                        .make();
+            final boolean needsFilter = sampleVariantFilterableForFilterVariantContext[sampleIndex] &&
+                                        scaledLogits < minScaledLogits;
+            final Genotype filteredGenotype = getFilteredGenotype(genotype, callQuality, scaledLogits, needsFilter);
+            if(needsFilter) {
                 ++numFiltered;
             }
+
             filterGenotypes[sampleIndex] = filteredGenotype;
-            int noCallCounts = 0;
-            int nonRefCounts = 0;
-            for (final Allele allele : filteredGenotype.getAlleles()) {
-                if (allele.isNoCall()) {
-                    ++noCallCounts;
-                } else if (!allele.isReference()) {
-                    ++nonRefCounts;
-                }
-            }
-            if (nonRefCounts > 0) {
+            final AlleleCountsGetter alleleCountsGetter = new AlleleCountsGetter(filteredGenotype);
+            if (alleleCountsGetter.nonRefCounts > 0) {
                 ++numVariantOutputVar;
-            } else if (noCallCounts > 0) {
+            } else if (alleleCountsGetter.noCallCounts > 0) {
                 ++numOutputNoCall;
             } else {
                 ++numOutputRef;
@@ -1005,6 +1063,26 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
         }
 
         return variantContextBuilder.make();
+    }
+
+    private Genotype getFilteredGenotype(final Genotype inputGenotype, final short callQuality,
+                                         final short scaledLogits, final boolean needsFilter) {
+        final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(inputGenotype)
+                .attribute(scaled_logit_property, scaledLogits);
+        if(needsFilter) {
+            // Set GT and copy-number calls to no-call
+            genotypeBuilder.alleles(GATKVariantContextUtils.noCallAlleles(inputGenotype.getPloidy()));
+            if(inputGenotype.hasExtendedAttribute(RD_CN_KEY)) {
+                genotypeBuilder.attribute(RD_CN_KEY, VCFConstants.NO_CALL_ALLELE);
+            }
+        }
+        if(inputGenotype.hasGQ()) {
+            genotypeBuilder.GQ(callQuality);
+        }
+        if(inputGenotype.hasExtendedAttribute(RD_GQ_KEY)) {
+            genotypeBuilder.attribute(RD_GQ_KEY, callQuality);
+        }
+        return genotypeBuilder.make();
     }
 
 
@@ -1183,7 +1261,7 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
                 .filter(
                     sampleIndex -> getSampleVariantIsFilterable(variantIndex, sampleIndex)
                 )
-                .map(sampleIndex -> sampleVariantGenotypeQualities.getAsInt(variantIndex, sampleIndex));
+                .map(sampleIndex -> sampleVariantCallQualities.getAsInt(variantIndex, sampleIndex));
     }
 
     private IntStream streamFilterableGq() {
@@ -1194,7 +1272,7 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
         final Stream.Builder<Short> hetBuilder = Stream.builder();
         final Stream.Builder<Short> homvarBuilder = Stream.builder();
         final byte[] sampleAlleleCounts = sampleVariantAlleleCounts.values[variantIndex];
-        final short[] sampleGqs = sampleVariantGenotypeQualities.values[variantIndex];
+        final short[] sampleGqs = sampleVariantCallQualities.values[variantIndex];
         for(int sampleIndex = 0; sampleIndex < numSamples; ++sampleIndex) {
             final byte alleleCount = sampleAlleleCounts[sampleIndex];
             if(alleleCount <= 1) {
@@ -1310,13 +1388,13 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
     protected FilterSummary getFilterSummary(final MinGq minGq, final int variantIndex, final String label) {
         final int[][] trioAlleleCountsMatrix = getTrioAlleleCountsMatrix(variantIndex);
         final int[][] trioNoCallCountsMatrix = getTrioNoCallCountsMatrix(variantIndex);
-        final short[][] trioGenotypeQualitiesMatrix = getTrioGenotypeQualitiesMatrix(variantIndex);
+        final short[][] trioCallQualitiesMatrix = getTrioCallQualitiesMatrix(variantIndex);
         final float variantAlleleFrequency = getAlleleFrequency(variantIndex);
         final int propertyBin = propertyBins[variantIndex];
         final double variantTruthWeight = propertyBinTruthWeights[propertyBin];
         final double variantInheritanceWeight = propertyBinInheritanceWeights[propertyBin];
         return getFilterSummary(minGq, trioAlleleCountsMatrix, trioNoCallCountsMatrix,
-                                trioGenotypeQualitiesMatrix, variantAlleleFrequency, new GoodBadGqs(variantIndex),
+                                trioCallQualitiesMatrix, variantAlleleFrequency, new GoodBadGqs(variantIndex),
                                 variantTruthWeight, variantInheritanceWeight, label);
     }
 
@@ -1355,7 +1433,7 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
 
     protected FilterSummary getFilterSummary(final MinGq minGq,
                                              final int[][] trioAlleleCountsMatrix, final int[][] trioNoCallCountsMatrix,
-                                             final short[][] trioGenotypeQualitiesMatrix, final float alleleFrequency,
+                                             final short[][] trioCallQualitiesMatrix, final float alleleFrequency,
                                              GoodBadGqs goodBadGqs,
                                              final double variantTruthWeight, final double variantInheritanceWeight,
                                              final String label) {
@@ -1406,7 +1484,7 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
         for (int trioIndex = 0; trioIndex < numTrios; ++trioIndex) {
             System.arraycopy(trioAlleleCountsMatrix[trioIndex], 0, trioAc, 0, 3);
             System.arraycopy(trioNoCallCountsMatrix[trioIndex], 0, trioNoCalls, 0, 3);
-            final short[] trioGq = trioGenotypeQualitiesMatrix[trioIndex];
+            final short[] trioGq = trioCallQualitiesMatrix[trioIndex];
             final int numVariantsTrio = countTrioVariantPassing(trioAc, trioNoCalls);
             numVariants += numVariantsTrio;
             final boolean trioIsMendelian = isMendelian(trioAc, trioNoCalls);
@@ -1441,8 +1519,8 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
         long numFalseNegatives = 0;
         long numTrueNegatives = 0;
 
-        final Set<Integer> goodSampleIndices = goodSampleVariantIndices.getOrDefault(variantIndex, Collections.emptySet());
-        final Set<Integer> badSampleIndices = badSampleVariantIndices.getOrDefault(variantIndex, Collections.emptySet());
+        final Set<Integer> goodSampleIndices = getGoodSampleIndices(variantIndex);
+        final Set<Integer> badSampleIndices = getBadSampleIndices(variantIndex);
         // copy these arrays so that a) I can make them ints without taking a huge amount of memory, and
         //                           b) I don't have to make two versions of filterTrioCall()
         final Integer[] sampleIndexToPredictionIndex = new Integer[numSamples];
@@ -1546,33 +1624,33 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
 
         GoodBadGqs(final int variantIndex) {
             final int[] emptyGqs = new int[0];
-            final Set<Integer> goodSampleIndices = goodSampleVariantIndices.get(variantIndex);
-            final Set<Integer> badSampleIndices = badSampleVariantIndices.get(variantIndex);
+            final Set<Integer> goodSampleIndices = getGoodSampleIndices(variantIndex);
+            final Set<Integer> badSampleIndices = getBadSampleIndices(variantIndex);
             final byte[] sampleAlleleCounts = sampleVariantAlleleCounts.values[variantIndex];
-            final short[] sampleGenotypeQualities = sampleVariantGenotypeQualities.values[variantIndex];
+            final short[] sampleCallQualities = sampleVariantCallQualities.values[variantIndex];
             this.goodHetGqs = goodSampleIndices == null ?
                 emptyGqs :
                 goodSampleIndices.stream()
                     .filter(sampleIndex -> sampleAlleleCounts[sampleIndex] == 1)
-                    .mapToInt(sampleIndex -> sampleGenotypeQualities[sampleIndex])
+                    .mapToInt(sampleIndex -> sampleCallQualities[sampleIndex])
                     .toArray();
             this.badHetGqs = badSampleIndices == null ?
                 emptyGqs :
                 badSampleIndices.stream()
                     .filter(sampleIndex -> sampleAlleleCounts[sampleIndex] == 1)
-                    .mapToInt(sampleIndex -> sampleGenotypeQualities[sampleIndex])
+                    .mapToInt(sampleIndex -> sampleCallQualities[sampleIndex])
                     .toArray();
             this.goodHomVarGqs = keepHomvar || goodSampleIndices == null ?
                 emptyGqs :
                 goodSampleIndices.stream()
                     .filter(sampleIndex -> sampleAlleleCounts[sampleIndex] > 1)
-                    .mapToInt(sampleIndex -> sampleGenotypeQualities[sampleIndex])
+                    .mapToInt(sampleIndex -> sampleCallQualities[sampleIndex])
                     .toArray();
             this.badHomVarGqs = keepHomvar || badSampleIndices == null ?
                 emptyGqs :
                 badSampleIndices.stream()
                     .filter(sampleIndex -> sampleAlleleCounts[sampleIndex] > 1)
-                    .mapToInt(sampleIndex -> sampleGenotypeQualities[sampleIndex])
+                    .mapToInt(sampleIndex -> sampleCallQualities[sampleIndex])
                     .toArray();
         }
     }
@@ -1587,7 +1665,7 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
 
         final int[][] trioAlleleCountsMatrix = getTrioAlleleCountsMatrix(variantIndex);
         final int[][] trioNoCallCountsMatrix = getTrioNoCallCountsMatrix(variantIndex);
-        final short[][] trioGenotypeQualitiesMatrix = getTrioGenotypeQualitiesMatrix(variantIndex);
+        final short[][] trioCallQualitiesMatrix = getTrioCallQualitiesMatrix(variantIndex);
         final float variantAlleleFrequency = getAlleleFrequency(variantIndex);
         final String label = propertyBinLabels[propertyBins[variantIndex]];
         if(backgroundFilterSummary == null) {
@@ -1596,7 +1674,7 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
                     .parallel()
                     .map(minGq -> new FilterQuality(
                             getFilterSummary(
-                                minGq, trioAlleleCountsMatrix, trioNoCallCountsMatrix, trioGenotypeQualitiesMatrix,
+                                minGq, trioAlleleCountsMatrix, trioNoCallCountsMatrix, trioCallQualitiesMatrix,
                                 variantAlleleFrequency, new GoodBadGqs(variantIndex), truthWeight,
                                  1.0 - truthWeight, label
                             )
@@ -1609,7 +1687,7 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
                     .parallel()
                     .map(minGq -> new FilterQuality(
                             getFilterSummary(
-                                minGq, trioAlleleCountsMatrix, trioNoCallCountsMatrix, trioGenotypeQualitiesMatrix,
+                                minGq, trioAlleleCountsMatrix, trioNoCallCountsMatrix, trioCallQualitiesMatrix,
                                 variantAlleleFrequency, new GoodBadGqs(variantIndex), truthWeight,
                                  1.0 - truthWeight, label
                             )
@@ -1645,10 +1723,10 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
             final Set<Integer> trainableSampleIndices;
             if(isTruthWeight) {
                 trainableSampleIndices = new HashSet<>(
-                        goodSampleVariantIndices.getOrDefault(variantIndex, Collections.emptySet())
+                        getGoodSampleIndices(variantIndex)
                 );
                 trainableSampleIndices.addAll(
-                        badSampleVariantIndices.getOrDefault(variantIndex, Collections.emptySet())
+                        getBadSampleIndices(variantIndex)
                 );
             } else {
                 trainableSampleIndices = getInheritanceTrainableSampleIndices(variantIndex);
@@ -1751,10 +1829,10 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
                 }
                 final Set<Integer> trainableSampleIndices = getInheritanceTrainableSampleIndices(variantIndex);
                         trainableSampleIndices.addAll(
-                            goodSampleVariantIndices.getOrDefault(variantIndex, Collections.emptySet())
+                                getGoodSampleIndices(variantIndex)
                         );
                         trainableSampleIndices.addAll(
-                                badSampleVariantIndices.getOrDefault(variantIndex, Collections.emptySet())
+                                getBadSampleIndices(variantIndex)
                         );
                 onlyMinGqTrainable += getNumTrainableSamples(variantIndex) - trainableSampleIndices.size();
             }
@@ -1896,12 +1974,12 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
 
     protected boolean samplePasses(final int variantIndex, final int sampleIndex) {
         return samplePasses(perVariantOptimalMinGq[variantIndex],
-                            sampleVariantGenotypeQualities.values[variantIndex][sampleIndex],
+                            sampleVariantCallQualities.values[variantIndex][sampleIndex],
                             sampleVariantAlleleCounts.values[variantIndex][sampleIndex]);
     }
 
     protected int fillSamplePasses(final int variantIndex, int flatIndex, final boolean[] samplePasses) {
-        final short[] sampleGqs = sampleVariantGenotypeQualities.values[variantIndex];
+        final short[] sampleGqs = sampleVariantCallQualities.values[variantIndex];
         final byte[] sampleAlleleCounts = sampleVariantAlleleCounts.values[variantIndex];
         final MinGq minGq = perVariantOptimalMinGq[variantIndex];
         for(int sampleIndex = 0; sampleIndex < numSamples; ++sampleIndex) {
@@ -2101,10 +2179,10 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
         for(final int variantIndex : variantIndices) {
             final Set<Integer> inheritanceTrainableSampleIndices = getInheritanceTrainableSampleIndices(variantIndex);
             final Set<Integer> truthTrainableSampleIndices = new HashSet<>(
-                    goodSampleVariantIndices.getOrDefault(variantIndex, Collections.emptySet())
+                    getGoodSampleIndices(variantIndex)
             );
             truthTrainableSampleIndices.addAll(
-                    badSampleVariantIndices.getOrDefault(variantIndex, Collections.emptySet())
+                    getBadSampleIndices(variantIndex)
             );
             final int propertyBin = propertyBins[variantIndex];
             final float minGqWeight = propertyBinMinGqWeights[propertyBin];
@@ -2298,10 +2376,28 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
             VCFConstants.ALLELE_COUNT_KEY, NO_CALL_COUNTS_KEY
         ));
 
+        if(progressVerbosity > 0) {
+            System.out.println("clearUnneededProperties()");
+        }
         for (final String propertyName : propertiesTable.getPropertyNames()) {
             if(!neededProperties.contains(propertyName)) {
+                if(progressVerbosity > 0) {
+                    System.out.format("\t%s", propertyName);
+                }
                 propertiesTable.get(propertyName).clearAllocatedRows();
             }
+        }
+        // We're doing this to try to prevent out-of-memory crashes, so garbage collect and wait for a few seconds to
+        // hopefully get the maximum benefit
+        System.gc();
+        try {
+            Thread.sleep(5);
+        } catch (InterruptedException e) {
+            // Not worth crashing over, just warn and continue
+            System.out.println("Unable to sleep after garbage collection");
+        }
+        if(progressVerbosity > 0) {
+            System.out.println("\tdone.");
         }
     }
 
@@ -2311,23 +2407,28 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
     protected abstract void saveModel(final OutputStream outputStream);
     protected abstract void loadModel(final InputStream inputStream);
 
-    protected int probToPhred(final double p) {
-        return (int)FastMath.round(-10.0 * FastMath.log10(p));
+    protected short probToPhred(final double p) {
+        return p >= 1 ?
+                Short.MAX_VALUE :
+                (short) FastMath.floor(1. - 10. * FastMath.log10(2. * (1. - p)));
     }
+
+    static final double PHRED_COEF = FastMath.log(10.0) / 10.0;
+
     protected double phredToProb(final double phred) {
-        return FastMath.exp(-PHRED_COEF * phred);
+        return 1.0 - 0.5 * FastMath.exp(-PHRED_COEF * (1.0 - phred));
     }
 
     private float[] outputProbabilitiesForAdjustedGq = null;
-    private int[][] outputQualitiesForAdjustedGq = null;
-    private int[] outputGqForAdjustedGq = null;
-    private int[] outputLogitsForAdjustedGq = null;
-    private int[][] adjustedQualityBatch() {
+    private short[][] outputQualitiesForAdjustedGq = null;
+    private short[] outputGqForAdjustedGq = null;
+    private short[] outputLogitsForAdjustedGq = null;
+    private short[][] adjustedQualityBatch() {
         if(outputProbabilitiesForAdjustedGq == null) {
             outputProbabilitiesForAdjustedGq = new float[numSamples];
-            outputGqForAdjustedGq = new int[numSamples];
-            outputLogitsForAdjustedGq = new int[numSamples];
-            outputQualitiesForAdjustedGq = new int[][] {outputGqForAdjustedGq, outputLogitsForAdjustedGq};
+            outputGqForAdjustedGq = new short[numSamples];
+            outputLogitsForAdjustedGq = new short[numSamples];
+            outputQualitiesForAdjustedGq = new short[][] {outputGqForAdjustedGq, outputLogitsForAdjustedGq};
         }
         final int numRows = predictBatch(outputProbabilitiesForAdjustedGq);
         for(int row = 0; row < numRows; ++row) {
@@ -2340,14 +2441,10 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
     // near p=0.5, each scaled logit is ~ 0.1% change in likelihood
     static final double LOGIT_SCALE = 1.0 / FastMath.log(0.501 / 0.499);
 
-    protected int probToScaledLogits(final double p) {
+    protected short probToScaledLogits(final double p) {
         return p == 0 ? Short.MIN_VALUE :
                         p == 1 ? Short.MAX_VALUE :
-                                 (int)FastMath.floor(LOGIT_SCALE * FastMath.log(p / (1.0 - p)));
-    }
-
-    protected double scaledLogitsToP(final int scaled_logits) {
-        return 1.0 / (1.0 + FastMath.exp(-scaled_logits / LOGIT_SCALE));
+                                 (short)FastMath.floor(LOGIT_SCALE * FastMath.log(p / (1.0 - p)));
     }
 
     protected float scaledLogitsToP(final float scaled_logits) {
@@ -2361,18 +2458,12 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
                 throw new GATKException("No variants contained in vcf: " + drivingVariantFile);
             }
 
-            if(goodSampleVariants != null) {
-                // no longer needed, clear them out
-                goodSampleVariants.clear();
-                goodSampleVariants = null;
-                badSampleVariants.clear();
-                badSampleVariants = null;
-            }
-
             setPropertyBins();
             setPropertyBinIsLargeAlleleFraction();
             propertiesTable.validateAndFinalize();
-            sampleVariantGenotypeQualities = (PropertiesTable.ShortMatProperty) propertiesTable.get(VCFConstants.GENOTYPE_QUALITY_KEY);
+            sampleVariantCallQualities = useCopyNumberCalls ?
+                    (PropertiesTable.ShortMatProperty) propertiesTable.get(CALL_QUALITY_KEY) :
+                    (PropertiesTable.ShortMatProperty) propertiesTable.get(VCFConstants.GENOTYPE_QUALITY_KEY);
             sampleVariantAlleleCounts = (PropertiesTable.ByteMatProperty) propertiesTable.get(VCFConstants.ALLELE_COUNT_KEY);
             sampleVariantNoCallCounts = (PropertiesTable.ByteMatProperty) propertiesTable.get(NO_CALL_COUNTS_KEY);
 
