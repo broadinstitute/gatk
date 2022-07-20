@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.genomicsdb;
 
 import com.googlecode.protobuf.format.JsonFormat;
+import htsjdk.samtools.util.FileExtensions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -12,6 +13,7 @@ import org.genomicsdb.model.GenomicsDBExportConfiguration;
 import org.genomicsdb.model.GenomicsDBVidMapProto;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -28,7 +30,7 @@ import static org.genomicsdb.GenomicsDBUtils.readEntireFile;
  * https://developers.google.com/protocol-buffers/docs/javatutorial#the-protocol-buffer-api
  * https://developers.google.com/protocol-buffers/docs/reference/java-generated
  */
-public class GenomicsDBUtils {
+public class GATKGenomicsDBUtils {
 
     private static final String SUM = "sum";
     private static final String ELEMENT_WISE_SUM = "element_wise_sum";
@@ -338,5 +340,20 @@ public class GenomicsDBUtils {
         }
     }
 
+    public static void assertVariantFileIsCompressedAndIndexed(final Path vcfPath) {
+        assertVariantFileIsCompressedAndIndexed(vcfPath, null);
+    }
 
+    public static void assertVariantFileIsCompressedAndIndexed(final Path vcfPath, final Path optionalVCFindexPath) {
+        if (!vcfPath.toString().toLowerCase().endsWith(FileExtensions.COMPRESSED_VCF)) {
+            throw new UserException("Input variant files must be block compressed vcfs when using " +
+                    GenomicsDBImport.BYPASS_FEATURE_READER + ", but " + vcfPath.toString() + " does not end with " +
+                    "the standard file extension " + FileExtensions.COMPRESSED_VCF);
+        }
+
+        Path indexPath = optionalVCFindexPath != null ?
+                optionalVCFindexPath :
+                vcfPath.resolveSibling(vcfPath.getFileName() + FileExtensions.COMPRESSED_VCF_INDEX);
+        IOUtils.assertFileIsReadable(indexPath);
+    }
 }
