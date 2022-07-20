@@ -48,7 +48,7 @@ workflow GvsImportGenomes {
 
   # At least 3, per limits above not more than 5.
   Int effective_load_data_maxretries = if (defined(load_data_maxretries_override)) then select_first([load_data_maxretries_override])
-                                       else if (effective_load_data_batch_size < 12) then 5
+                                       else if (effective_load_data_batch_size < 12) then 6
                                             else effective_load_data_batch_size / 2
 
   # return an error if the lengths are not equal
