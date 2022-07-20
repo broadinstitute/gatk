@@ -122,10 +122,10 @@ public class XGBoostMinGqVariantFilter extends MinGqVariantFilterBase {
         final int propertyBin = propertyBins[variantIndex];
         final Set<Integer> inheritanceTrainableSampleIndices = getInheritanceTrainableSampleIndices(variantIndex);
         final Set<Integer> truthTrainableSampleIndices = new HashSet<>(
-                goodSampleVariantIndices.getOrDefault(variantIndex, Collections.emptySet())
+                getGoodSampleIndices(variantIndex)
         );
         truthTrainableSampleIndices.addAll(
-                badSampleVariantIndices.getOrDefault(variantIndex, Collections.emptySet())
+                getBadSampleIndices(variantIndex)
         );
 
         final float minGqWeight = propertyBinMinGqWeights[propertyBin];
