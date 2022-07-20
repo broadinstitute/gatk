@@ -38,7 +38,7 @@ import java.util.*;
 
 public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRead, Serializable {
 
-    final static public int     MAX_CLASS = 12;
+
     public static final String     DEFAULT_FLOW_ORDER = "TGCA";
     private static final long serialVersionUID = 42L;
     private final Logger logger = LogManager.getLogger(this.getClass());
@@ -224,7 +224,8 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
                 throw new GATKException("read missing flow matrix attribute: " + FLOW_MATRIX_TAG_NAME);
             }
         }
-        implementMatrixMods(FlowBasedReadUtils.getFlowMatrixModsInstructions(fbargs.flowMatrixMods));
+
+        implementMatrixMods(FlowBasedReadUtils.getFlowMatrixModsInstructions(fbargs.flowMatrixMods, maxHmer));
 
         //Spread boundary flow probabilities when the read is unclipped
         //in this case the value of the hmer is uncertain
