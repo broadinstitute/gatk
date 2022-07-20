@@ -42,6 +42,7 @@ public class CompareReferencesIntegrationTest extends CommandLineProgramTest {
 
     @Test
     public void testCompareReferencesMissingValue() throws IOException{
+        // SNP on chr2 causes the sequence to have a different MD5 than the hg19mini sequence of the same name
         final File ref1 = new File(getToolTestDataDir() + "hg19mini.fasta");
         final File ref2 = new File(getToolTestDataDir() + "hg19mini_chr2snp.fasta");
         final File output = createTempFile("testCompareReferencesMissingValue", ".table");
@@ -102,11 +103,10 @@ public class CompareReferencesIntegrationTest extends CommandLineProgramTest {
     // The following three tests run the tool on different combinations of reference files
     // and produce output to stdout for the sake of manually inspecting outputs.
     // Disabled, as no actual assertions made.
-    
-    @Test(enabled = false)
+    @Test/*(enabled = false)*/
     public void testCompareReferencesToStdOutput() throws IOException{
-        final File ref1 = new File(getToolTestDataDir() + "hg19mini_missingchr1.fasta");
-        final File ref2 = new File(getToolTestDataDir() + "hg19mini_missingchr1_renamedchr2.fasta");
+        final File ref1 = new File(getToolTestDataDir() + "hg19mini.fasta");
+        final File ref2 = new File(getToolTestDataDir() + "hg19mini_1renamed.fasta");
 
         final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath()};
         runCommandLine(args);

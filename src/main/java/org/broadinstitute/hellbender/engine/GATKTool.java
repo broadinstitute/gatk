@@ -697,6 +697,11 @@ public abstract class GATKTool extends CommandLineProgram {
         return hasFeatures() ? features.getHeader(featureDescriptor) : null;
     }
 
+    /**
+     * Returns the path to the reference as a GATKPath
+     *
+     * @return path for the reference specified at the command line
+     */
     public final GATKPath getReferencePath(){
         return referenceArguments.getReferenceSpecifier();
     }

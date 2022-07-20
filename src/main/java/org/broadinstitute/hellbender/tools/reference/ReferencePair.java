@@ -4,34 +4,60 @@ import org.broadinstitute.hellbender.engine.GATKPath;
 
 import java.util.*;
 
+/**
+ * Class representing a pair of references and their differences.
+ *
+ */
 public class ReferencePair {
 
     private final GATKPath ref1;
+
     private final GATKPath ref2;
+
     private final int ref1ColumnIndex;
+
     private final int ref2ColumnIndex;
+
     public enum Status{
+        // references match exactly (table entries identical across references)
         EXACT_MATCH,
+        // found sequences with same MD5s but inconsistent names between the 2 references
         DIFFER_IN_SEQUENCE_NAMES,
+        // found sequences with same names but inconsistent MD5s between the 2 references
         DIFFER_IN_SEQUENCE,
+        // a sequence is present in one reference but not the other
         DIFFER_IN_SEQUENCES_PRESENT,
+        // ref1 is a superset of ref2
         SUPERSET,
+        // ref1 is a subset of ref2
         SUBSET;
     }
+
     private EnumSet<Status> analysis;
 
     public ReferencePair(ReferenceSequenceTable table, GATKPath reference1, GATKPath reference2){
         ref1 = reference1;
         ref2 = reference2;
-        ref1ColumnIndex = table.getColumnIndices().get(ref1.toPath().getFileName().toString());
-        ref2ColumnIndex = table.getColumnIndices().get(ref2.toPath().getFileName().toString());
+        ref1ColumnIndex = table.getColumnIndices().get(ReferenceSequenceTable.getReferenceColumnName(ref1));
+        ref2ColumnIndex = table.getColumnIndices().get(ReferenceSequenceTable.getReferenceColumnName(ref2));
+        // assume EXACT_MATCH until proven otherwise - if any discrepancies found, EXACT_MATCH status removed
         analysis = EnumSet.of(Status.EXACT_MATCH);
     }
 
+    /**
+     * Given a Status, add it to the ReferencePair's analysis
+     *
+     * @param status
+     */
     public void addStatus(Status status) {
         analysis.add(status);
     }
 
+    /**
+     * Given a Status, remove it from the ReferencePair's analysis, if present
+     *
+     * @param status
+     */
     public void removeStatus(Status status){
         analysis.remove(status);
     }
@@ -45,10 +71,10 @@ public class ReferencePair {
     }
 
     public String getRef1(){
-        return ref1.toPath().getFileName().toString();
+        return ReferenceSequenceTable.getReferenceColumnName(ref1);
     }
     public String getRef2(){
-        return ref2.toPath().getFileName().toString();
+        return ReferenceSequenceTable.getReferenceColumnName(ref2);
     }
 
     /**
@@ -64,14 +90,14 @@ public class ReferencePair {
         return output;
     }
 
-    public EnumSet<Status> getStatus(){
+    public EnumSet<Status> getAnalysis(){
         return analysis;
     }
 
     public String toString(){
         return String.format("REFERENCE PAIR: %s, %s\nStatus:\n%s",
-                ReferenceSequenceTable.getReferenceDisplayName(ref1),
-                ReferenceSequenceTable.getReferenceDisplayName(ref2),
+                ReferenceSequenceTable.getReferenceColumnName(ref1),
+                ReferenceSequenceTable.getReferenceColumnName(ref2),
                 statusAsString());
     }
 

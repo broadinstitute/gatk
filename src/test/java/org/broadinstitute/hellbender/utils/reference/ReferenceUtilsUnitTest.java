@@ -13,6 +13,7 @@ import org.testng.annotations.Test;
 import org.testng.annotations.DataProvider;
 
 import java.io.*;
+import java.util.Arrays;
 
 
 public class ReferenceUtilsUnitTest extends GATKBaseTest {
@@ -96,16 +97,25 @@ public class ReferenceUtilsUnitTest extends GATKBaseTest {
         }
     }
 
-    @Test
-    public void testCalculateMD5(){
-        final File reference = new File( "src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini.fasta");
+    @DataProvider(name = "testCalculateMD5Data")
+    public Object[][] testCalculateMD5Data() {
+        return new Object[][]{
+                // reference
+                new Object[]{ new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini.fasta")},
+                new Object[]{ new GATKPath("src/test/resources/large/Homo_sapiens_assembly38.20.21.fasta")},
+                //new Object[]{ new GATKPath(hg38Reference) },
+        };
+    }
+
+    @Test(dataProvider = "testCalculateMD5Data")
+    public void testCalculateMD5(GATKPath reference){
         try(ReferenceDataSource source = ReferenceDataSource.of(reference.toPath())) {
             final SAMSequenceDictionary dictionary = source.getSequenceDictionary();
             for (SAMSequenceRecord record : dictionary.getSequences()) {
                 SimpleInterval interval = new SimpleInterval(record.getSequenceName(), 1, record.getSequenceLength());
                 String md5FromDict = record.getMd5();
-                String md5Calculated = ReferenceUtils.calculateMD5(source, interval);
-                Assert.assertEquals(md5Calculated, md5FromDict);
+                String md5Calculated = ReferenceUtils.calculateMD5(reference, interval);
+                Assert.assertEquals(md5Calculated, md5FromDict, record.getSequenceName());
             }
         }
     }

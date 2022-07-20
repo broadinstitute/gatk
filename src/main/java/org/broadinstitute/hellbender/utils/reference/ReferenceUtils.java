@@ -6,6 +6,7 @@ import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.SAMTextHeaderCodec;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.BufferedLineReader;
+import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -121,11 +122,11 @@ public final class ReferenceUtils {
      *
      * Note: does not close the ReferenceDataSource it's passed.
      *
-     * @param source The data source for the reference.
+     * @param referencePath The path to the reference.
      * @param interval The interval of the sequence.
      * @return the sequence's MD5 as a String.
      */
-    public static String calculateMD5(ReferenceDataSource source, SimpleInterval interval){
+    public final static String calculateMD5(GATKPath referencePath, SimpleInterval interval){
         MessageDigest md5;
         try {
             md5 = MessageDigest.getInstance("MD5");
@@ -134,17 +135,19 @@ public final class ReferenceUtils {
             throw new GATKException("Incorrect MessageDigest algorithm specified in calculateMD5()", exception);
         }
 
-        Iterator<Byte> baseIterator = source.query(interval);
-        while(baseIterator.hasNext()){
-            Byte b = baseIterator.next();
-            md5.update(b);
-        }
+        try(final ReferenceDataSource source = ReferenceDataSource.of(referencePath.toPath(), true)) {
+            Iterator<Byte> baseIterator = source.query(interval);
+            while (baseIterator.hasNext()) {
+                Byte b = baseIterator.next();
+                md5.update(StringUtil.toUpperCase(b));
+            }
 
-        String hash = new BigInteger(1, md5.digest()).toString(16);
-        if (hash.length() != 32) {
-            final String zeros = "00000000000000000000000000000000";
-            hash = zeros.substring(0, 32 - hash.length()) + hash;
+            String hash = new BigInteger(1, md5.digest()).toString(16);
+            if (hash.length() != 32) {
+                final String zeros = "00000000000000000000000000000000";
+                hash = zeros.substring(0, 32 - hash.length()) + hash;
+            }
+            return hash;
         }
-        return hash;
     }
 }

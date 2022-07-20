@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.reference;
 
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.testng.Assert;
@@ -8,9 +9,9 @@ import org.testng.annotations.Test;
 
 import java.util.*;
 
-public class ReferenceSequenceTableUnitTest {
+public class ReferenceSequenceTableUnitTest extends GATKBaseTest {
 
-    public ReferenceSequenceTable tableGenerator(List<GATKPath> references, CompareReferences.MD5CalculationMode md5CalculationMode){
+    private ReferenceSequenceTable tableGenerator(List<GATKPath> references, CompareReferences.MD5CalculationMode md5CalculationMode){
         Map<GATKPath, ReferenceDataSource> referenceSources = new LinkedHashMap<>();
         for(GATKPath path : references){
             referenceSources.put(path, ReferenceDataSource.of(path.toPath()));
@@ -91,10 +92,10 @@ public class ReferenceSequenceTableUnitTest {
                 for (ReferenceSequenceTable.TableEntry entry : row.getEntries()) {
                     if (entry.getColumnValue().equals(expectedSequenceName)) {
                         contigPresent = true;
-                        continue;
+                        break;
                     }
                 }
-                Assert.assertTrue(contigPresent);
+                Assert.assertTrue(contigPresent, "Contig " + expectedSequenceName + " not found in all rows returned by queryBySequenceName(expectedSequenceName)");
             }
         }
     }
@@ -173,11 +174,11 @@ public class ReferenceSequenceTableUnitTest {
     public void testAnalyzeTableTwoReferences(ReferenceSequenceTable table, Set<ReferencePair.Status> expectedStatus){
         List<ReferencePair> refPairs = table.analyzeTable();
         for(ReferencePair pair : refPairs){
-            Assert.assertEquals(pair.getStatus(), expectedStatus);
+            Assert.assertEquals(pair.getAnalysis(), expectedStatus);
         }
     }
 
-    public Map<ReferencePair, Set<ReferencePair.Status>> manuallySetReferencePairStatus(){
+    private Map<ReferencePair, Set<ReferencePair.Status>> manuallySetReferencePairStatus(){
         ReferenceSequenceTable table = tableGenerator(Arrays.asList(new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini.fasta"),
                         new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini_1renamed.fasta"),
                         new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini_chr2snp.fasta")),
@@ -200,9 +201,9 @@ public class ReferenceSequenceTableUnitTest {
         refPair3.addStatus(ReferencePair.Status.DIFFER_IN_SEQUENCE);
 
         Map<ReferencePair, Set<ReferencePair.Status>> referencePairStatuses = new HashMap<>();
-            referencePairStatuses.put(refPair1, refPair1.getStatus());
-            referencePairStatuses.put(refPair2, refPair2.getStatus());
-            referencePairStatuses.put(refPair3, refPair3.getStatus());
+            referencePairStatuses.put(refPair1, refPair1.getAnalysis());
+            referencePairStatuses.put(refPair2, refPair2.getAnalysis());
+            referencePairStatuses.put(refPair3, refPair3.getAnalysis());
 
         return referencePairStatuses;
     }
@@ -221,7 +222,7 @@ public class ReferenceSequenceTableUnitTest {
     public void testAnalyzeTableMultipleReferences(ReferenceSequenceTable table, Map<ReferencePair, Set<ReferencePair.Status>> expectedStatus){
         List<ReferencePair> refPairs = table.analyzeTable();
         for(ReferencePair pair : refPairs){ ;
-            Assert.assertEquals(pair.getStatus(), expectedStatus.get(pair));
+            Assert.assertEquals(pair.getAnalysis(), expectedStatus.get(pair));
         }
     }
 
