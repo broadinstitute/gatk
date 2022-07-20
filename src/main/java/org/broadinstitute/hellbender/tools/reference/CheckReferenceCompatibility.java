@@ -6,9 +6,12 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.SequenceDictionaryValidationArgumentCollection;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.GATKTool;
+import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public class CheckReferenceCompatibility extends GATKTool {
 
@@ -32,12 +35,11 @@ public class CheckReferenceCompatibility extends GATKTool {
     @Override
     public void traverse() {
         if(dictionaryHasMD5s(dictionaryToCompare)){
-            // create ref seq table and analyzing
-            // ReferenceSequenceTable table = generateReferenceSequenceTable(dictionaryToCompare);
-
+            ReferenceSequenceTable table = generateReferenceSequenceTable(dictionaryToCompare);
+            List<ReferencePair> refPairs = table.analyzeTable();
         }
         else{
-            // warning: comparison lacking MD5
+            logger.warn("Comparison lacking MD5.");
             // tap into SequenceDictionaryUtils
         }
 
@@ -60,7 +62,7 @@ public class CheckReferenceCompatibility extends GATKTool {
                 throw new UserException.BadInput("Tool analyzes one BAM at a time.");
             }
             dictionaryToCompare = getHeaderForReads().getSequenceDictionary();
-            // dictionaryPath = getHeaderForReads().
+            dictionaryPath = readArguments.getReadPathSpecifiers().get(0);
         }
         else{
 
@@ -77,10 +79,17 @@ public class CheckReferenceCompatibility extends GATKTool {
         return true;
     }
 
-    /*private ReferenceSequenceTable generateReferenceSequenceTable(SAMSequenceDictionary dictionary){
-        ReferenceSequenceTable table = new ReferenceSequenceTable(dictionary, CompareReferences.MD5CalculationMode.USE_DICT);
+    private ReferenceSequenceTable generateReferenceSequenceTable(SAMSequenceDictionary dictionary){
+        Map<GATKPath, SAMSequenceDictionary> dictionaries = new LinkedHashMap<>();
+        dictionaries.put(dictionaryPath, dictionary);
+
+        for(GATKPath path : references){
+            dictionaries.put(getReferencePath(), ReferenceDataSource.of(path.toPath()).getSequenceDictionary());
+        }
+
+        ReferenceSequenceTable table = new ReferenceSequenceTable(dictionaries);
 
         return table;
-    }*/
+    }
 
 }
