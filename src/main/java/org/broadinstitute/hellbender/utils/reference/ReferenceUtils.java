@@ -121,6 +121,8 @@ public final class ReferenceUtils {
      * Given a reference data source and a sequence interval, calculates the MD5 for the given sequence.
      *
      * Note: does not close the ReferenceDataSource it's passed.
+     * Note: MD5 calculation mimics the MD5 calculation in {@link picard.sam.CreateSequenceDictionary}: allows IUPAC bases
+     *       but uppercases all bases.
      *
      * @param referencePath The path to the reference.
      * @param interval The interval of the sequence.

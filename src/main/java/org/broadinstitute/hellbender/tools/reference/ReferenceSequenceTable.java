@@ -27,27 +27,19 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
 
     private Map<String, TableRow> tableByMD5;
     private Map<String, Set<TableRow>> tableBySequenceName;
-    private Map<GATKPath, ReferenceDataSource> referenceSources;
+    private Map<GATKPath, SAMSequenceDictionary> referenceDictionaries;
     private List<String> columnNames;
     private CompareReferences.MD5CalculationMode md5Mode;
     private final Map<String, Integer> columnIndices;
     private List<GATKPath> references;
     private boolean tableBuilt;
 
-    /**
-     * Returns a ReferenceSequenceTable object.
-     *
-     * Note: table is not constructed until a call to build() is made. All methods which attempt to use
-     * the table before it has been constructed will crash.
-     *
-     * @param referenceSources map containing references and their data sources
-     * @param mode MD5 calculation mode
-     */
-    public ReferenceSequenceTable(Map<GATKPath, ReferenceDataSource> referenceSources, CompareReferences.MD5CalculationMode mode) {
-        this.referenceSources = referenceSources;
+
+    private ReferenceSequenceTable(CompareReferences.MD5CalculationMode mode, Map<GATKPath, SAMSequenceDictionary> dictionaries) {
+        referenceDictionaries = dictionaries;
         columnNames = generateColumnNames();
         md5Mode = mode;
-        references = new ArrayList<>(referenceSources.keySet());
+        references = new ArrayList<>(referenceDictionaries.keySet());
         tableBuilt = false;
 
         columnIndices = new HashMap<>();
@@ -64,11 +56,41 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
         }
     }
 
+    /**
+     * Returns a ReferenceSequenceTable object.
+     *
+     * Note: table is not constructed until a call to build() is made. All methods which attempt to use
+     * the table before it has been constructed will crash.
+     *
+     * @param referenceSources map containing references and their data sources
+     * @param mode MD5 calculation mode
+     */
+    public ReferenceSequenceTable(Map<GATKPath, ReferenceDataSource> referenceSources, CompareReferences.MD5CalculationMode mode){
+        this(mode, extract(referenceSources));
+    }
+
+    /**
+     * GATK path can't be used to recalculate MD5
+     * @param referenceDictionaries
+     */
+    public ReferenceSequenceTable(Map<GATKPath, SAMSequenceDictionary> referenceDictionaries){
+        this(CompareReferences.MD5CalculationMode.USE_DICT, referenceDictionaries);
+    }
+
+    private static Map<GATKPath, SAMSequenceDictionary> extract(Map<GATKPath, ReferenceDataSource> referenceSources){
+        Map<GATKPath, SAMSequenceDictionary> dictionaries = new LinkedHashMap<>();
+        for (Map.Entry<GATKPath, ReferenceDataSource> entry : referenceSources.entrySet()) {
+            SAMSequenceDictionary dictionary = entry.getValue().getSequenceDictionary();
+            dictionaries.put(entry.getKey(), dictionary);
+        }
+        return dictionaries;
+    }
+
     private List<String> generateColumnNames() {
         List<String> columns = new ArrayList<>();
         columns.add(MD5_COLUMN_NAME);
         columns.add(LENGTH_COLUMN_NAME);
-        for (GATKPath path : referenceSources.keySet()) {
+        for (GATKPath path : referenceDictionaries.keySet()) {
             columns.add(getReferenceColumnName(path));
         }
         return columns;
@@ -94,6 +116,12 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
         return columnIndices;
     }
 
+    private void checkTableBuildStatus(){
+        if(!tableBuilt){
+            throw new IllegalStateException("Table has not been built yet.");
+        }
+    }
+
     /**
      * Construct 2 tables of references: one keyed by MD5, one keyed by sequence name.
      */
@@ -101,8 +129,8 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
         tableByMD5 = new LinkedHashMap<>();
         tableBySequenceName = new LinkedHashMap<>();
 
-        for (Map.Entry<GATKPath, ReferenceDataSource> entry : referenceSources.entrySet()) {
-            SAMSequenceDictionary dictionary = entry.getValue().getSequenceDictionary();
+        for (Map.Entry<GATKPath, SAMSequenceDictionary> entry : referenceDictionaries.entrySet()) {
+            SAMSequenceDictionary dictionary = entry.getValue();
             for (SAMSequenceRecord record : dictionary.getSequences()) {
                 String name = record.getSequenceName();
                 int length = record.getSequenceLength();
@@ -113,7 +141,7 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
 
                 // map each MD5 to List of TableEntry objects containing length, md5, and name
                 if (!tableByMD5.containsKey(md5)) {
-                    newRow = new TableRow(md5, length, new ArrayList<>(referenceSources.keySet()));
+                    newRow = new TableRow(md5, length, new ArrayList<>(referenceDictionaries.keySet()));
                     tableByMD5.put(md5, newRow);
                 }
                 tableByMD5.get(md5).add(newEntry);
@@ -129,9 +157,7 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
     }
 
     public Set<String> getAllSequenceNames(){
-        if(!tableBuilt){
-            throw new IllegalStateException("Table has not been built yet.");
-        }
+        checkTableBuildStatus();
 
         return tableBySequenceName.keySet();
     }
@@ -143,9 +169,7 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
      * @return the corresponding TableRow from the tableByMD5
      */
     public TableRow queryByMD5(String md5){
-        if(!tableBuilt){
-            throw new IllegalStateException("Table has not been built yet.");
-        }
+        checkTableBuildStatus();
 
         return tableByMD5.get(md5);
     }
@@ -157,9 +181,7 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
      * @return the set of TableRows that contain the sequence name
      */
     public Set<TableRow> queryBySequenceName(String sequenceName){
-        if(!tableBuilt){
-            throw new IllegalStateException("Table has not been built yet.");
-        }
+        checkTableBuildStatus();
 
         Set<TableRow> rows = tableBySequenceName.get(sequenceName);
         return rows == null ? Collections.emptySet() : rows;
@@ -189,7 +211,7 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
             case ALWAYS_RECALCULATE:
                 md5 = ReferenceUtils.calculateMD5(referencePath, referenceInterval);
                 if(md5FromDict != null && !md5FromDict.equals(md5)){
-                    logger.warn(String.format("MD5 Mismatch for sequence %s. Found '%s', but calculated '%s'", record.getSequenceName(), md5FromDict, md5));
+                    logger.warn(String.format("MD5 Mismatch for sequence %s. Found '%s', but calculated '%s'. Sequence dictionary may be invalid.", record.getSequenceName(), md5FromDict, md5));
                 }
                 break;
         }
@@ -229,9 +251,7 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
      * @return list of ReferencePairs with updated status sets
      */
     public List<ReferencePair> analyzeTable(){
-        if(!tableBuilt){
-            throw new IllegalStateException("Table has not been built yet.");
-        }
+        checkTableBuildStatus();
 
         List<ReferencePair> refPairs = generateReferencePairs();
 
@@ -309,9 +329,7 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
 
     @Override
     public Iterator<TableRow> iterator() {
-        if(!tableBuilt){
-            throw new IllegalStateException("Table has not been built yet.");
-        }
+        checkTableBuildStatus();
 
         return tableByMD5.values().iterator();
     }
@@ -402,8 +420,7 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
             return row;
         }
 
-        // TableRow keyed by MD5 - equals() and hashCode() check only MD5 to allow for TableRow equality based on MD5 only
-        // 2 TableRows can be considered equal when they have matching MD5s
+        // TableRows keyed by MD5 -- TableRows considered equal when they have matching MD5s
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;

@@ -103,7 +103,7 @@ public class CompareReferencesIntegrationTest extends CommandLineProgramTest {
     // The following three tests run the tool on different combinations of reference files
     // and produce output to stdout for the sake of manually inspecting outputs.
     // Disabled, as no actual assertions made.
-    @Test/*(enabled = false)*/
+    @Test(enabled = false)
     public void testCompareReferencesToStdOutput() throws IOException{
         final File ref1 = new File(getToolTestDataDir() + "hg19mini.fasta");
         final File ref2 = new File(getToolTestDataDir() + "hg19mini_1renamed.fasta");

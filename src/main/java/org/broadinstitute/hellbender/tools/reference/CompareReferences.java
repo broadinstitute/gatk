@@ -121,9 +121,9 @@ public class CompareReferences extends GATKTool {
     @Override
     public void traverse(){
         ReferenceSequenceTable table = new ReferenceSequenceTable(referenceSources, md5CalculationMode);
-        logger.warn("Building reference sequence table.");
+        logger.info("Building reference sequence table.");
         table.build();
-        logger.warn("Finished building table.");
+        logger.info("Finished building table.");
 
         writeTable(table);
 
@@ -131,9 +131,9 @@ public class CompareReferences extends GATKTool {
             writeTableBySequenceName(table);
         }
 
-        logger.warn("Analyzing table.");
+        logger.info("Analyzing table.");
         List<ReferencePair> referencePairs = table.analyzeTable();
-        logger.warn("Finished analyzing table.");
+        logger.info("Finished analyzing table.");
         System.out.println("*********************************************************");
         for(ReferencePair pair : referencePairs){
             System.out.println(pair);
@@ -164,11 +164,6 @@ public class CompareReferences extends GATKTool {
              ? new UserException.CouldNotCreateOutputFile("System.out", "Failed to write output table.", exception)
              : new UserException.CouldNotCreateOutputFile(output, "Failed to write output table.", exception);
         }
-    }
-
-    @Override
-    public Object onTraversalSuccess() {
-        return null;
     }
 
     /**
@@ -223,6 +218,9 @@ public class CompareReferences extends GATKTool {
         }
     }
 
+    /**
+     * TableWriter to format and write the table output.
+     */
     public static class CompareReferencesOutputTableWriter extends TableWriter<ReferenceSequenceTable.TableRow> {
 
         public CompareReferencesOutputTableWriter(final Path table, TableColumnCollection columns) throws IOException {

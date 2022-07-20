@@ -25,7 +25,7 @@ public class ReferencePair {
         DIFFER_IN_SEQUENCE_NAMES,
         // found sequences with same names but inconsistent MD5s between the 2 references
         DIFFER_IN_SEQUENCE,
-        // a sequence is present in one reference but not the other
+        // at least one sequence is present in one reference but not the other
         DIFFER_IN_SEQUENCES_PRESENT,
         // ref1 is a superset of ref2
         SUPERSET,
