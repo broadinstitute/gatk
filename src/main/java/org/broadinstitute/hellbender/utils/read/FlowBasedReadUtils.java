@@ -354,10 +354,10 @@ public class FlowBasedReadUtils {
      *
      * For the implementation logic, see FlowBasedRead.fillFlowMatrix
      */
-    static public int[] getFlowMatrixModsInstructions(final String flowMatrixMods) {
+    static public int[] getFlowMatrixModsInstructions(final String flowMatrixMods, final int maxHmer) {
 
         if ( flowMatrixMods != null ) {
-            final int[] flowMatrixModsInstructions = new int[FlowBasedRead.MAX_CLASS + 1];
+            final int[] flowMatrixModsInstructions = new int[maxHmer + 1];
 
             final String[]    toks = flowMatrixMods.split(",");
             for ( int i = 0 ; i < toks.length - 1 ; i += 2 ) {
