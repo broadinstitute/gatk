@@ -168,7 +168,7 @@ There will also be a `glob-<task id>` file with a list of interval lists, but no
 Note:
 The interval lists are named consistently with the vcfs: 00000000.vcf.gz.interval-list will go with 00000000.vcf.gz and 00000000.vcf.gz.tbi 
 
-### Time and cost estimates
+### Time and cost
 Below are several examples of the time and cost of running the workflow.
 
 | Number of Samples | Elapsed Time (hh:mm) | Terra Cost | BigQuery Cost | Total Cost | Approximate Cost per Sample |
