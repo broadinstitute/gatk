@@ -21,9 +21,9 @@ workflow GvsJointVariantCallsetCost {
 
     ## TB : GB; 1 : 1024
 
-    Float write_API_cost = 0.0233 ## BigQuery Storage Write API: $0.025 per 1 GB. The first 2 TB per month are free.
-    Float query_cost = 0.0048828125 ## Queries (on-demand): $5 per TB. The first 1 TB per month is free.
-    Float storage_api_cost = 0.00107421875 ## Storage API GB Scanned / Streaming reads (BigQuery Storage Read API):  $1.1 per TB read. Customers can read up to 300 TB of data per month at no charge.
+    Float write_API_cost = 0.02684353333 ## BigQuery Storage Write API: $0.025 per 1 GB. The first 2 TB per month are free.
+    Float query_cost = 0.00536870666 ## Queries (on-demand): $5 per TB. The first 1 TB per month is free.
+    Float storage_api_cost = 0.00118111546 ## Storage API GB Scanned / Streaming reads (BigQuery Storage Read API):  $1.1 per TB read. Customers can read up to 300 TB of data per month at no charge.
 
 
     call GvsCallsetCost.GvsCallsetCost {
