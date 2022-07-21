@@ -16,6 +16,7 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.HaplotypeFilteringAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
@@ -171,6 +172,10 @@ public class HaplotypeCaller extends AssemblyRegionWalker {
      */
     @Override
     protected String[] customCommandLineValidation() {
+        if (hcArgs.dragenMode && hcArgs.flowMode != HaplotypeCallerArgumentCollection.FlowMode.NONE ) {
+            throw new UserException("dragen mode and flow mode can't be both specified");
+        }
+
         if (hcArgs.dragenMode) {
             final GATKReadFilterPluginDescriptor readFilterPlugin =
                     getCommandLineParser().getPluginDescriptor(GATKReadFilterPluginDescriptor.class);

@@ -6,6 +6,7 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.apache.commons.lang3.StringUtils;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -17,7 +18,7 @@ import org.testng.annotations.DataProvider;
 
 import java.util.*;
 
-public class FlowAnnotatorUnitTest {
+public class FlowAnnotatorUnitTest extends GATKBaseTest {
 
     private FlowAnnotatorBase[]     allAnnotators = {
             new IndelClassify(),

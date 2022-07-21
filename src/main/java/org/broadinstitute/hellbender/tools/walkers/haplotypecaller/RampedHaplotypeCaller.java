@@ -68,12 +68,17 @@ public class RampedHaplotypeCaller extends HaplotypeCaller {
     @Override
     public void onTraversalStart() {
         super.onTraversalStart();
-        setNonRandomDownsamplingMode(true);
     }
 
     @Override
     protected HaplotypeCallerEngine buildHaplotypeCallerEngine(final HaplotypeCallerArgumentCollection hcArgs, final AssemblyRegionArgumentCollection assemblyRegionArgs, final boolean createOutputBamIndex, final boolean createOutputBamMD5, final SAMFileHeader headerForReads, final CachingIndexedFastaSequenceFile referenceReader, final VariantAnnotatorEngine variantAnnotatorEngine) {
         return new RampedHaplotypeCallerEngine(hcArgs, assemblyRegionArgs, createOutputBamIndex, createOutputBamMD5, getHeaderForReads(), getReferenceReader(referenceArguments), variantAnnotatorEngine, rpArgs);
     }
+
+    @Override
+    public boolean nonRandomDownsamplingMode() {
+        return true;
+    }
+
 
 }

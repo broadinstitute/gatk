@@ -224,7 +224,7 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
                 throw new GATKException("read missing flow matrix attribute: " + FLOW_MATRIX_TAG_NAME);
             }
         }
-        implementMatrixMods(fbargs.getFlowMatrixModsInstructions());
+        implementMatrixMods(FlowBasedReadUtils.getFlowMatrixModsInstructions(fbargs.flowMatrixMods));
 
         //Spread boundary flow probabilities when the read is unclipped
         //in this case the value of the hmer is uncertain

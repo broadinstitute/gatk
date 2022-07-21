@@ -32,7 +32,7 @@ public class WellFormedFlowBasedReadFilterIntegrationTest extends CommandLinePro
                 "-I", input.getAbsolutePath(),
                 "-O", outputFile.getAbsolutePath(),
                 "--intervals", "chr9:81149486-81177047",
-                "--read-filter", "WellformedFlowBasedReadFilter"
+                "--read-filter", WellformedFlowBasedReadFilter.class.getSimpleName()
         };
 
         runCommandLine(args);  // no assert, just make sure we don't throw

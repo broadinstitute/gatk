@@ -21,8 +21,7 @@ import java.util.*;
         summary = "Divides annotations that were summed across samples by genomicsDB by the number of samples with het or hom var calls. " +
                 "This is an approximation of taking the average of these annotations.",
         oneLineSummary = "Divides annotations that were summed by genomicsDB by number of samples to calculate average.",
-        programGroup = FlowBasedProgramGroup.class,
-        omitFromCommandLine = true
+        programGroup = FlowBasedProgramGroup.class
 )
 @ExperimentalFeature
 public final class CalculateAverageCombinedAnnotations extends VariantWalker {

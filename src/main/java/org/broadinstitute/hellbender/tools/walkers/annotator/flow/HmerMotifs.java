@@ -2,8 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.annotator.flow;
 
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
@@ -15,6 +13,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Flow Annotation: motifs to the left and right of the indel
+ */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_FLOW_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_FLOW_ANNOTATORS_SUMMARY, summary="Right Motif Flow Annotation")
 public class HmerMotifs extends FlowAnnotatorBase implements StandardFlowBasedAnnotation {
 

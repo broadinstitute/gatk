@@ -15,6 +15,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Flow Annotation: type of variant: SNP/NON-H-INDEL/H-INDEL
+ */
 @DocumentedFeature(groupName= HelpConstants.DOC_CAT_FLOW_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_FLOW_ANNOTATORS_SUMMARY, summary="Variant type Flow Annotation")
 public class VariantType extends FlowAnnotatorBase implements StandardFlowBasedAnnotation {
         private final Logger logger = LogManager.getLogger(org.broadinstitute.hellbender.tools.walkers.annotator.flow.IndelClassify.class);

@@ -124,31 +124,4 @@ public class FlowBasedArgumentCollection implements Serializable {
     public boolean keepBoundaryFlows = false;
 
     public FlowBasedArgumentCollection() {}
-
-
-    /**
-     * This matrix contains logic for modifying the flow matrix as it is read in.
-     *
-     * If the value of [n] is not zero, then the hmer probability for hmer length n will be copied to the [n] position
-     * For the implementation logic, see fillFlowMatrix
-     */
-    private int[] flowMatrixModsInstructions = null;
-
-    public int[] getFlowMatrixModsInstructions() {
-
-        if ( flowMatrixMods != null && flowMatrixModsInstructions == null ) {
-            flowMatrixModsInstructions = new int[FlowBasedRead.MAX_CLASS + 1];
-
-            final String[]    toks = flowMatrixMods.split(",");
-            for ( int i = 0 ; i < toks.length - 1 ; i += 2 ) {
-                final int hmer = Utils.validIndex(Integer.parseInt(toks[i]), flowMatrixModsInstructions.length);
-                flowMatrixModsInstructions[hmer] = Integer.parseInt(toks[i + 1]);
-            }
-        }
-
-        return flowMatrixModsInstructions;
-    }
-
-    ;
-
 }

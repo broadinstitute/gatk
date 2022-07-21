@@ -17,6 +17,8 @@ import java.util.stream.IntStream;
 
 public final class ReservoirDownsamplerUnitTest extends GATKBaseTest {
 
+    private static final int NON_RANDOM_LOOP_COUNT = 10;
+
     private static class ReservoirDownsamplerTest extends TestDataProvider {
         int reservoirSize;
         int totalReads;
@@ -48,7 +50,7 @@ public final class ReservoirDownsamplerUnitTest extends GATKBaseTest {
         public Collection<GATKRead> createNamedReads() {
             final Collection<GATKRead> reads = new ArrayList<>(totalReads);
             final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(1, 1, 1000000);
-            reads.addAll(IntStream.range(0,totalReads).mapToObj(x -> ArtificialReadUtils.createArtificialRead(header, String.valueOf(x), 0,0, 1)).collect(Collectors.toList()));
+            reads.addAll(IntStream.range(0,totalReads).mapToObj(x -> ArtificialReadUtils.createArtificialRead(header, String.valueOf(x), 0,1, 100)).collect(Collectors.toList()));
             return reads;
         }
 
@@ -125,6 +127,34 @@ public final class ReservoirDownsamplerUnitTest extends GATKBaseTest {
 
         Assert.assertEquals(downsamplerForIterator.getNumberOfDiscardedItems(), test.expectedNumDiscardedItems);
         Assert.assertEquals(downsampledReadsFromIterator, downsampledReads);
+
+        // use the same downsampling parameters, but this time set nonRandomReplacementMode
+        // and validate that we get the results with deterministic replace mode
+        // note that we are not testing the resulting reads against the expected as it they be different
+        // (although the list  will be the same in size)
+        int     stableOrderHash = 0;
+        Utils.resetRandomGenerator();
+        for ( int i = 0 ; i < NON_RANDOM_LOOP_COUNT ; i++ ) {
+
+            final ReservoirDownsampler downsamplerForNonRandom = new ReservoirDownsampler(test.reservoirSize);
+            downsamplerForNonRandom.setNonRandomReplacementMode(true);
+            final ReadsDownsamplingIterator downsamplingIteratorForNonRandom = new ReadsDownsamplingIterator(
+                    test.createNamedReads().iterator(),
+                    downsamplerForNonRandom);
+            final List<GATKRead> downsampledReadForNonRandom = new ArrayList<>(test.reservoirSize);
+            downsamplingIteratorForNonRandom.forEach(downsampledReadForNonRandom::add);
+
+            Assert.assertEquals(downsamplerForNonRandom.getNumberOfDiscardedItems(), test.expectedNumDiscardedItems);
+            Assert.assertEquals(downsampledReadForNonRandom.size(), downsampledReads.size());
+
+            // calculate and check order hash
+            final int orderHash = downsampledReadForNonRandom.stream().map(gatkRead -> gatkRead.hashCode()).reduce(0, Integer::sum);
+            if ( i == 0 ) {
+                stableOrderHash = orderHash;
+            } else {
+                Assert.assertEquals(stableOrderHash, orderHash, "downsampling order nor stable although operating in NonRandomReplacementMode");
+            }
+        }
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)

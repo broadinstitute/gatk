@@ -1,8 +1,9 @@
-package org.broadinstitute.hellbender.tools;
+package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.Hidden;
+import org.broadinstitute.hellbender.tools.FlowBasedArgumentCollection;
 
 public class FlowBasedAlignmentArgumentCollection extends FlowBasedArgumentCollection {
 

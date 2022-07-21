@@ -67,7 +67,7 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
 
     private List<MultiIntervalLocalReadShard> readShards;
 
-    private boolean nonRandomDownsamplingMode;
+    private boolean nonRandomDownsamplingMode = nonRandomDownsamplingMode();
 
     /**
      * Initialize data sources for traversal.
@@ -255,9 +255,7 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
      */
     public abstract void apply( final AssemblyRegion region, final ReferenceContext referenceContext, final FeatureContext featureContext );
 
-    public void setNonRandomDownsamplingMode(boolean nonRandomDownsamplingMode) {
-        this.nonRandomDownsamplingMode = nonRandomDownsamplingMode;
+    public boolean nonRandomDownsamplingMode() {
+        return false;
     }
-
-
 }

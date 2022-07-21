@@ -347,4 +347,26 @@ public class FlowBasedReadUtils {
         }
     }
 
+    /**
+     * Retrieve flow matrix modifications matrix from its string argument format. This matrix contains
+     * logic for modifying the flow matrix as it is read in. If the value of [n] is not zero,
+     * then the hmer probability for hmer length n will be copied to the [n] position
+     *
+     * For the implementation logic, see FlowBasedRead.fillFlowMatrix
+     */
+    static public int[] getFlowMatrixModsInstructions(final String flowMatrixMods) {
+
+        if ( flowMatrixMods != null ) {
+            final int[] flowMatrixModsInstructions = new int[FlowBasedRead.MAX_CLASS + 1];
+
+            final String[]    toks = flowMatrixMods.split(",");
+            for ( int i = 0 ; i < toks.length - 1 ; i += 2 ) {
+                final int hmer = Utils.validIndex(Integer.parseInt(toks[i]), flowMatrixModsInstructions.length);
+                flowMatrixModsInstructions[hmer] = Integer.parseInt(toks[i + 1]);
+            }
+            return flowMatrixModsInstructions;
+        } else {
+            return null;
+        }
+    }
 }
