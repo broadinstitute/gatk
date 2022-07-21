@@ -82,7 +82,7 @@ public class GATKAnnotationPluginDescriptor extends CommandLinePluginDescriptor<
     @Argument(fullName = StandardArgumentDefinitions.PEDIGREE_FILE_LONG_NAME, shortName = StandardArgumentDefinitions.PEDIGREE_FILE_SHORT_NAME, doc="Pedigree file for determining the population \"founders\"", optional=true)
     private GATKPath pedigreeFile;
 
-    @Argument(fullName = "flow-order-for-annotations",  doc = "flow order used for this annotations. [readGroup:]flowOrder", optional = true)
+    @Argument(fullName = StandardArgumentDefinitions.FLOW_ORDER_FOR_ANNOTATIONS,  doc = "flow order used for this annotations. [readGroup:]flowOrder", optional = true)
     private List<String> flowOrder;
 
     /**

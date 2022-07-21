@@ -12,6 +12,8 @@ import org.testng.annotations.Test;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public final class ReservoirDownsamplerUnitTest extends GATKBaseTest {
 
@@ -42,6 +44,14 @@ public final class ReservoirDownsamplerUnitTest extends GATKBaseTest {
 
             return reads;
         }
+
+        public Collection<GATKRead> createNamedReads() {
+            final Collection<GATKRead> reads = new ArrayList<>(totalReads);
+            final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(1, 1, 1000000);
+            reads.addAll(IntStream.range(0,totalReads).mapToObj(x -> ArtificialReadUtils.createArtificialRead(header, String.valueOf(x), 0,0, 1)).collect(Collectors.toList()));
+            return reads;
+        }
+
     }
 
     @DataProvider(name = "ReservoirDownsamplerTestDataProvider")

@@ -4,7 +4,8 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramGroup;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
 
 /**
- * Tools that perform variant calling and genotyping for short variants (SNPs, SNVs and Indels)
+ * Tools that perform variant calling and genotyping for short variants (SNPs, SNVs and Indels) on
+ * flow-based sequencing platforms
  */
 public class FlowBasedProgramGroup implements CommandLineProgramGroup {
 

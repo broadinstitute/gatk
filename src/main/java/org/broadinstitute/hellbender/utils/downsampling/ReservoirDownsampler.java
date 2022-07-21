@@ -116,9 +116,8 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
                 isLinkedList = false;
             }
 
-            // replacing overwritten slot selection to a deterministic mechanism (optional)
+            // replacing overwritten slot selection by a deterministic mechanism or non-determinsitic one
             // should still provide similar distribution
-            // original line is left below for reference
             final int randomSlot = !nonRandomReplacementMode
                                         ? Utils.getRandomGenerator().nextInt(totalReadsSeen)
                                         : Math.abs(newRead.getName().hashCode()) % totalReadsSeen;

@@ -56,13 +56,8 @@ public final class ModeArgumentUtils {
 
         for ( int i = 0 ; i < argValues.length ; i += 2 ) {
             if ( !hasBeenSet(parser, argValues[i]) ) {
-                String parserMessage = setValue(parser, argValues[i], argValues[i+1]);
-
-                if ( StringUtils.isEmpty(parserMessage) ) {
-                    modifiedArgs.put(argValues[i], argValues[i + 1]);
-                } else {
-                    modifiedArgs.put(argValues[i], argValues[i + 1] + " (" + parserMessage + ")");
-                }
+                setValue(parser, argValues[i], argValues[i+1]);
+                modifiedArgs.put(argValues[i], argValues[i + 1]);
             } else {
                 logger.info("parameter not set by the '" + modeName + "' argument mode, as it was already set on the command line: " + argValues[i]);
             }
