@@ -17,6 +17,11 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.util.*;
 
+/**
+ * INFO level annotation of the counts of genotypes with respect to the reference allele. List of three counts in the
+ * following order: hom ref counts, het counts (of any allele), hom var counts (of any allele). In other words all alt
+ * alleles are lumped together.
+ */
 @DocumentedFeature(groupName= HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Counts of genotypes w.r.t. the reference allele: 0/0, 0/*, */*, i.e. all alts lumped together")
 public class RawGtCount implements InfoFieldAnnotation, ReducibleAnnotation {
     private static final String SEPARATOR = ",";
