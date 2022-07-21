@@ -698,15 +698,6 @@ public abstract class GATKTool extends CommandLineProgram {
     }
 
     /**
-     * Returns the path to the reference as a GATKPath
-     *
-     * @return path for the reference specified at the command line
-     */
-    public final GATKPath getReferencePath(){
-        return referenceArguments.getReferenceSpecifier();
-    }
-
-    /**
      * Initialize our data sources, make sure that all tool requirements for input data have been satisfied
      * and start the progress meter.
      *

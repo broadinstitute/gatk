@@ -118,9 +118,8 @@ public final class ReferenceUtils {
     }
 
     /**
-     * Given a reference data source and a sequence interval, calculates the MD5 for the given sequence.
+     * Given a reference path and a sequence interval, calculates the MD5 for the given sequence.
      *
-     * Note: does not close the ReferenceDataSource it's passed.
      * Note: MD5 calculation mimics the MD5 calculation in {@link picard.sam.CreateSequenceDictionary}: allows IUPAC bases
      *       but uppercases all bases.
      *
@@ -137,6 +136,7 @@ public final class ReferenceUtils {
             throw new GATKException("Incorrect MessageDigest algorithm specified in calculateMD5()", exception);
         }
 
+        // pass in true as the second argument ReferenceDataSource.of() to prevent modification of IUPAC bases or capitalization
         try(final ReferenceDataSource source = ReferenceDataSource.of(referencePath.toPath(), true)) {
             Iterator<Byte> baseIterator = source.query(interval);
             while (baseIterator.hasNext()) {

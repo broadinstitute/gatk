@@ -66,18 +66,28 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
      * @param mode MD5 calculation mode
      */
     public ReferenceSequenceTable(Map<GATKPath, ReferenceDataSource> referenceSources, CompareReferences.MD5CalculationMode mode){
-        this(mode, extract(referenceSources));
+        this(mode, extractDictionariesFromReferences(referenceSources));
     }
 
     /**
-     * GATK path can't be used to recalculate MD5
+     * Constructs a ReferenceSequenceTable from a collection of sequence dictionaries.
+     *
+     * Since the sequence dictionaries provided to this constructor may come from sources
+     * other than references (such as CRAMs, VCFs, etc.), we force MD5CalculationMode.USE_DICT
+     * mode here, since we can't necessarily go back to the original file to recalculate MD5s. The
+     * caller is responsible for making sure that all dictionaries passed in have an MD5 for all
+     * sequences, otherwise an error will occur during table build.
+     *
+     * Note: table is not constructed until a call to build() is made. All methods which attempt to use
+     * the table before it has been constructed will crash.
+     *
      * @param referenceDictionaries
      */
     public ReferenceSequenceTable(Map<GATKPath, SAMSequenceDictionary> referenceDictionaries){
         this(CompareReferences.MD5CalculationMode.USE_DICT, referenceDictionaries);
     }
 
-    private static Map<GATKPath, SAMSequenceDictionary> extract(Map<GATKPath, ReferenceDataSource> referenceSources){
+    private static Map<GATKPath, SAMSequenceDictionary> extractDictionariesFromReferences(Map<GATKPath, ReferenceDataSource> referenceSources){
         Map<GATKPath, SAMSequenceDictionary> dictionaries = new LinkedHashMap<>();
         for (Map.Entry<GATKPath, ReferenceDataSource> entry : referenceSources.entrySet()) {
             SAMSequenceDictionary dictionary = entry.getValue().getSequenceDictionary();
@@ -211,7 +221,7 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
             case ALWAYS_RECALCULATE:
                 md5 = ReferenceUtils.calculateMD5(referencePath, referenceInterval);
                 if(md5FromDict != null && !md5FromDict.equals(md5)){
-                    logger.warn(String.format("MD5 Mismatch for sequence %s. Found '%s', but calculated '%s'. Sequence dictionary may be invalid.", record.getSequenceName(), md5FromDict, md5));
+                    logger.warn(String.format("MD5 Mismatch for sequence %s in %s reference. Found '%s' in sequence dictionary, but calculated '%s'. Sequence dictionary may be invalid.", record.getSequenceName(), getReferenceColumnName(referencePath), md5FromDict, md5));
                 }
                 break;
         }
@@ -267,7 +277,7 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
                     pair.removeStatus(ReferencePair.Status.EXACT_MATCH);
                 }
                 if(!ref1Value.getColumnValue().equals(ref2Value.getColumnValue()) &&
-                        !(ref1Value.getColumnValue().equals(MISSING_ENTRY_DISPLAY_STRING) || ref2Value.getColumnValue().equals(MISSING_ENTRY_DISPLAY_STRING))){
+                        !(ref1Value.isEmpty() || ref2Value.isEmpty())){
                     pair.addStatus(ReferencePair.Status.DIFFER_IN_SEQUENCE_NAMES);
                 }
             }
@@ -288,14 +298,14 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
                     TableEntry ref2Value = entries[ref2Index];
 
                     if((ref1Value.getColumnValue().equals(sequenceName) ^ ref2Value.getColumnValue().equals(sequenceName))
-                            && (ref1Value.getColumnValue().equals(MISSING_ENTRY_DISPLAY_STRING) ^ ref2Value.getColumnValue().equals(MISSING_ENTRY_DISPLAY_STRING))){
+                            && (ref1Value.isEmpty() ^ ref2Value.isEmpty())){
                         sequenceNameFoundInOneRef++;
                     }
-                    if(ref1Value.getColumnValue().equals(MISSING_ENTRY_DISPLAY_STRING) ^ ref2Value.getColumnValue().equals(MISSING_ENTRY_DISPLAY_STRING)){
-                        if(ref1Value.getColumnValue().equals(MISSING_ENTRY_DISPLAY_STRING)){
+                    if(ref1Value.isEmpty() ^ ref2Value.isEmpty()){
+                        if(ref1Value.isEmpty()){
                             subset = true;
                         }
-                        else if(ref2Value.getColumnValue().equals(MISSING_ENTRY_DISPLAY_STRING)){
+                        else if(ref2Value.isEmpty()){
                             superset = true;
                         }
                     }
@@ -410,14 +420,6 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
 
         public List<String> getColumnNames() {
             return columnNames;
-        }
-
-        public String toString(){
-            String row = String.format("%s\t", this.md5);
-            for(int i = 0; i < entries.length; i++){
-                row += entries[i].columnValue;
-            }
-            return row;
         }
 
         // TableRows keyed by MD5 -- TableRows considered equal when they have matching MD5s

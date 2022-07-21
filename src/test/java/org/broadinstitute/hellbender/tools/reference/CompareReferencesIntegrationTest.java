@@ -100,18 +100,19 @@ public class CompareReferencesIntegrationTest extends CommandLineProgramTest {
         runCommandLine(args);
     }
 
-    // The following three tests run the tool on different combinations of reference files
-    // and produce output to stdout for the sake of manually inspecting outputs.
-    // Disabled, as no actual assertions made.
-    @Test(enabled = false)
+    // no assertions made, testing tool runs successfully without -O argument
+    @Test
     public void testCompareReferencesToStdOutput() throws IOException{
         final File ref1 = new File(getToolTestDataDir() + "hg19mini.fasta");
-        final File ref2 = new File(getToolTestDataDir() + "hg19mini_1renamed.fasta");
+        final File ref2 = new File(getToolTestDataDir() + "hg19mini_chr2snp.fasta");
 
         final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath()};
         runCommandLine(args);
     }
 
+    // The following tests run the tool on different combinations of reference files
+    // and produce output to stdout for the sake of manually inspecting outputs.
+    // Disabled, as no actual assertions made.
     @Test(enabled = false)
     public void testCompareReferencesMultipleReferencesStdOut() throws IOException{
         final File ref1 = new File(getToolTestDataDir() + "hg19mini.fasta");

@@ -56,7 +56,7 @@ import java.util.*;
  * <pre>
  * gatk CompareReferences \
  *   -R reference1.fasta \
- *   -ref-comp reference2.fasta
+ *   -refcomp reference2.fasta
  *   -O output.fasta \
  *   -md5-calculation-mode USE_DICT
  * </pre>
@@ -94,9 +94,12 @@ public class CompareReferences extends GATKTool {
     private boolean onlyDisplayDifferingSequences = false;
 
     public enum MD5CalculationMode {
-          USE_DICT,
-          RECALCULATE_IF_MISSING,
-          ALWAYS_RECALCULATE;
+        // use only MD5s found in dictionary; if MD5 missing, crashes
+        USE_DICT,
+        // use any MD5s found in dictionary and recalculate any missing MD5s
+        RECALCULATE_IF_MISSING,
+        // recalculate all MD5s, regardless of presence in dictionary
+        ALWAYS_RECALCULATE;
     }
 
     private Map<GATKPath, ReferenceDataSource> referenceSources;
@@ -110,7 +113,7 @@ public class CompareReferences extends GATKTool {
     public void onTraversalStart() {
         // add data source for -R reference
         referenceSources = new LinkedHashMap<>();
-        referenceSources.put(getReferencePath(), directlyAccessEngineReferenceDataSource());
+        referenceSources.put(referenceArguments.getReferenceSpecifier(), directlyAccessEngineReferenceDataSource());
 
         // add data sources for remaining references
         for(GATKPath path : references){
@@ -172,47 +175,39 @@ public class CompareReferences extends GATKTool {
      * @param table
      */
     public void writeTableBySequenceName(ReferenceSequenceTable table){
-        List<String> output = new ArrayList<>();
-        output.add("Sequence \tMD5 \tReference\n");
-
+        System.out.print("*********************************************************\n");
+        System.out.print("Name \tMD5 \tReference\n");
         for(String sequenceName : table.getAllSequenceNames()){
             Set<ReferenceSequenceTable.TableRow> rows = table.queryBySequenceName(sequenceName);
             if(onlyDisplayDifferingSequences) {
                 if(rows.size() > 1) {
-                    output.addAll(displayBySequenceName(rows, sequenceName));
+                    displayBySequenceName(rows, sequenceName);
                 }
             } else {
-                output.addAll(displayBySequenceName(rows, sequenceName));
+                displayBySequenceName(rows, sequenceName);
             }
         }
-
-        for(String str : output){
-            System.out.print(str);
-        }
-        System.out.println();
     }
 
-    private List<String> displayBySequenceName(Set<ReferenceSequenceTable.TableRow> rows, String sequenceName){
-        List<String> output = new ArrayList<>();
-        output.add(sequenceName);
+    private void displayBySequenceName(Set<ReferenceSequenceTable.TableRow> rows, String sequenceName){
+        System.out.print(sequenceName);
         for(ReferenceSequenceTable.TableRow row : rows) {
             ReferenceSequenceTable.TableEntry[] entries = row.getEntries();
-            output.add("\n\t" + row.getMd5() + "\t");
+            System.out.print("\n\t" + row.getMd5() + "\t");
 
             for(int i = 2; i < entries.length; i++) {
                 if(entries[i].getColumnValue().equals(sequenceName)) {
-                    output.add(entries[i].getColumnName() + "\t");
+                    System.out.print(entries[i].getColumnName() + "\t");
                 }
             }
         }
-        output.add("\n");
-        return output;
+        System.out.println();
     }
 
     @Override
     public void closeTool() {
         for(Map.Entry<GATKPath, ReferenceDataSource> entry : referenceSources.entrySet()){
-            if(!entry.getKey().equals(getReferencePath())){
+            if(!entry.getKey().equals(referenceArguments.getReferenceSpecifier())){
                 entry.getValue().close();
             }
         }
