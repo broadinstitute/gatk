@@ -2,16 +2,25 @@ package org.broadinstitute.hellbender.utils.reference;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.SAMTextHeaderCodec;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.BufferedLineReader;
+import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.hellbender.engine.GATKPath;
+import org.broadinstitute.hellbender.engine.ReferenceDataSource;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.math.BigInteger;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Iterator;
 
 /**
  * A collection of static methods for dealing with references.
@@ -106,5 +115,41 @@ public final class ReferenceUtils {
 
     public static byte[] getRefBasesAtPosition(final ReferenceSequenceFile reference, final String contig, final int start, final int length) {
         return reference.getSubsequenceAt(contig, start, start+length-1).getBases();
+    }
+
+    /**
+     * Given a reference path and a sequence interval, calculates the MD5 for the given sequence.
+     *
+     * Note: MD5 calculation mimics the MD5 calculation in {@link picard.sam.CreateSequenceDictionary}: allows IUPAC bases
+     *       but uppercases all bases.
+     *
+     * @param referencePath The path to the reference.
+     * @param interval The interval of the sequence.
+     * @return the sequence's MD5 as a String.
+     */
+    public final static String calculateMD5(GATKPath referencePath, SimpleInterval interval){
+        MessageDigest md5;
+        try {
+            md5 = MessageDigest.getInstance("MD5");
+        }
+        catch(NoSuchAlgorithmException exception){
+            throw new GATKException("Incorrect MessageDigest algorithm specified in calculateMD5()", exception);
+        }
+
+        // pass in true as the second argument ReferenceDataSource.of() to prevent modification of IUPAC bases or capitalization
+        try(final ReferenceDataSource source = ReferenceDataSource.of(referencePath.toPath(), true)) {
+            Iterator<Byte> baseIterator = source.query(interval);
+            while (baseIterator.hasNext()) {
+                Byte b = baseIterator.next();
+                md5.update(StringUtil.toUpperCase(b));
+            }
+
+            String hash = new BigInteger(1, md5.digest()).toString(16);
+            if (hash.length() != 32) {
+                final String zeros = "00000000000000000000000000000000";
+                hash = zeros.substring(0, 32 - hash.length()) + hash;
+            }
+            return hash;
+        }
     }
 }
