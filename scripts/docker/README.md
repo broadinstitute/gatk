@@ -23,7 +23,7 @@ This repo contains the scripts for creating and pushing two docker images:
 
 ``scripts/docker/gatkbase/build_docker_base.sh`` is a script to create the gatkbase docker image. 
 ``build_docker.sh`` is a script to create the full gatk4 docker image.
-``build_docker_remote.sh`` is a script to create the full gatk4 docker image using google cloud build remotely. NOTE: this requires the user first specify their project with the command `gcloud config set project <PROJECT>` to a project that has access to google cloud build. 
+``build_docker_remote.sh`` is a script to create the full gatk4 docker image using google cloud build remotely. This is useful if you can't build the docker image locally (if you have an M1 Macbook) NOTE: this requires the user first specify their project with the command `gcloud config set project <PROJECT>` to a project that has access to google cloud build. 
 
 ## GATK4 Docker image
 
@@ -48,7 +48,7 @@ sudo bash build_docker.sh -e ${GITHUB_TAG} -p -d ${STAGING_DIR}
 
 #### Create GATK4 docker image and upload into GCR
 
-This will attempt to build and automatically upload the docker image with a tag following this format: `us.gcr.io/broad-dsde-methods/broad-gatk-snapshots/gatk-remote-builds:<USERNAME>-<GITHUB_TAG>-<GIT_HASH>`
+This will attempt to build the docker remotely using google cloud build and tag it with the following this format: `us.gcr.io/broad-dsde-methods/broad-gatk-snapshots/gatk-remote-builds:<USERNAME>-<GITHUB_TAG>-<GIT_HASH>`
 
 From this directory, run:
 
@@ -65,7 +65,7 @@ sudo bash build_docker_remote.sh -e ${GITHUB_TAG} -d ${STAGING_DIR}
 
 #### Create GATK4 docker image and upload into GCR (with a custom gcr repo tag)
 
-From this directory, run:
+This will attempt to build the docker remotely using google cloud build. From this directory, run:
 
 ```bash
 # REPLACE VALUE OF GITHUB_TAG WITH DESIRED VERSION
