@@ -171,13 +171,19 @@ The interval lists are named consistently with the vcfs: 00000000.vcf.gz.interva
 ### Time and cost estimates
 Below are several examples of the time and cost of running the workflow.
 
-| Number of Samples | Wall Clock Time | Cost $  | Cost per Sample |
-|-------------------|----------------|---------|-----------------|
-| 10                | 04:30       | $0.84   | ~$0.08          | Terra run cost: $0.82, 6:27 PM - 9:55 PM --> 3:28
-| 1000              | 07:24       | $$$     | ~$0.07          | Terra run cost: $13.02, 12:58 PM - 7:51 PM --> 6:53
-| 2500              | 08:45       | $$$     | ~$0.07          | Terra run cost: $25.06, 7:28 PM - 3:23 AM --> 7:55
-| 5000              | 12:00       | $$$     | ~$0.07          | Terra run cost: $53.99, 3:06 PM - 3:12 AM --> 12:06
-| 10000             | 00:00       | $683.33 | ~$0.07          |
+
+| Number of Samples | Elapsed Time (hh:mm) | Terra Cost | BigQuery Cost | Total Cost | Approximate Cost per Sample |
+|-------------------|----------------------|------------|---------------|------------|-----------------------------|
+| 10                | 04:30                | $0.84      | $0.45         | $1.29      | $0.13                       |
+| 1000              | 07:24                | $13.02     | $41.10        | $54.12     | $0.05                       |
+| 2500              | 08:45                | $25.10     | $102.43       | $127.10    | $0.05                       |
+| 5000              | 12:00                | $54.00     | $215.06       | $269.06    | $0.05                       |
+| 5000              | 12:00                | $54.00     | $215.06       | $269.06    | $0.05                       |
+| 10000             | 13:41                | $60.58     | $411.65       | $472.23    | $0.05                       |
+
+
+**Note:** The time and cost listed above each represent a single run of the GVS workflow. Actual time and cost may vary depending on BigQuery and Terra load at the time of the callset creation.
+
 
 **Note:** For more information about controlling Cloud costs, see [this article](https://support.terra.bio/hc/en-us/articles/360029748111).
 
