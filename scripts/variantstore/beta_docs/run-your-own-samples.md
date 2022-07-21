@@ -171,15 +171,18 @@ The interval lists are named consistently with the vcfs: 00000000.vcf.gz.interva
 ### Time and cost estimates
 Below are several examples of the time and cost of running the workflow.
 
-| Number of Samples | Wall Clock Time | Cost $  | Cost per Sample |
-|-------------------|-----------------|---------|-----------------|
-| 10                | 04:30:00        | $0.84   | ~$0.08          |
-| 1000              | 07:24:00        | $$$     | ~$0.07          |
-| 2500              | 08:45:00        | $$$     | ~$0.07          |
-| 5000              | 12:00:00        | $$$     | ~$0.07          |
-| 10000             | 00:00:00        | $683.33 | ~$0.07          |
+| Number of Samples | Elapsed Time (hh:mm) | Terra Cost | BigQuery Cost | Total Cost | Approximate Cost per Sample |
+|-------------------|----------------------|------------|---------------|------------|-----------------------------|
+| 10                | 04:30                | $0.84      | $0.45         | $1.29      | $0.13                       |
+| 1000              | 07:24                | $13.02     | $41.10        | $54.12     | $0.05                       |
+| 2500              | 08:45                | $25.10     | $102.43       | $127.10    | $0.05                       |
+| 5000              | 12:00                | $54.00     | $215.06       | $269.06    | $0.05                       |
+| 10000             | 13:41                | $60.58     | $411.65       | $472.23    | $0.05                       |
 
-**Note:** For more information about controlling Cloud costs, see [this article](https://support.terra.bio/hc/en-us/articles/360029748111).
+
+**Note:** The time and cost listed above each represent a single run of the GVS workflow. Actual time and cost may vary depending on BigQuery and Terra load at the time of the callset creation.
+
+For more information about controlling Cloud costs, see [this article](https://support.terra.bio/hc/en-us/articles/360029748111).
 
 ---
 

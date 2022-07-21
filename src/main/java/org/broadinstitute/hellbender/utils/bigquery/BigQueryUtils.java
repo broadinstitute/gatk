@@ -51,9 +51,9 @@ public final class BigQueryUtils {
      * For more information on querying BigQuery tables, see: https://cloud.google.com/bigquery/sql-reference/
      * @param queryString The {@link BigQuery} query string to execute.  Must use standard SQL syntax.  Must contain the project ID, data set, and table name in the `FROM` clause for the table from which to retrieve data.
      * @param labels The {@link BigQuery} label to add the job run.  Must use Map<String, String>. Can be null to indicate no labels.
-     * @return A {@link TableResult} object containing the results of the query executed.
+     * @return A {@link BigQueryResultAndStatistics} object containing the results and the statistics for the query executed.
      */
-    public static TableResult executeQuery(final String queryString, final Map<String, String> labels) {
+    public static BigQueryResultAndStatistics executeQuery(final String queryString, final Map<String, String> labels) {
         return executeQuery(getBigQueryEndPoint(), queryString, false, labels );
     }
 
@@ -64,9 +64,9 @@ public final class BigQueryUtils {
      * @param queryString The {@link BigQuery} query string to execute.  Must use standard SQL syntax.  Must contain the project ID, data set, and table name in the `FROM` clause for the table from which to retrieve data.
      * @param runQueryInBatchMode If true, run the query in batch mode, which is lower priority but has no limit on the number of concurrent queries
      * @param labels The {@link BigQuery} label to add the job run.  Must use Map<String, String>. Can be null to indicate no labels.
-     * @return A {@link TableResult} object containing the results of the query executed.
+     * @return A {@link BigQueryResultAndStatistics} object containing the results and the statistics for the query executed.
      */
-    public static TableResult executeQuery(final String queryString, final boolean runQueryInBatchMode, final Map<String, String> labels) {
+    public static BigQueryResultAndStatistics executeQuery(final String queryString, final boolean runQueryInBatchMode, final Map<String, String> labels) {
         return executeQuery(getBigQueryEndPoint(), queryString, runQueryInBatchMode, labels);
     }
 
@@ -78,9 +78,9 @@ public final class BigQueryUtils {
      * @param queryString The {@link BigQuery} query string to execute.  Must use standard SQL syntax.  Must contain the project ID, data set, and table name in the `FROM` clause for the table from which to retrieve data.
      * @param runQueryInBatchMode If true, run the query in batch mode, which is lower priority but has no limit on the number of concurrent queries
      * @param labels The {@link BigQuery} label to add the job run.  Must use Map<String, String>. Can be null to indicate no labels.
-     * @return A {@link TableResult} object containing the results of the query executed.
+     * @return A {@link BigQueryResultAndStatistics} object containing the results and the statistics for the query executed.
      */
-    public static TableResult executeQuery(final String projectID, final String queryString, final boolean runQueryInBatchMode, final Map<String, String> labels) {
+    public static BigQueryResultAndStatistics executeQuery(final String projectID, final String queryString, final boolean runQueryInBatchMode, final Map<String, String> labels) {
         return executeQuery(getBigQueryEndPoint(projectID), queryString, runQueryInBatchMode, labels);
     }
 
@@ -92,9 +92,9 @@ public final class BigQueryUtils {
      * @param queryString The {@link BigQuery} query string to execute.  Must use standard SQL syntax.  Must contain the project ID, data set, and table name in the `FROM` clause for the table from which to retrieve data.
      * @param runQueryInBatchMode If true, run the query in batch mode, which is lower priority but has no limit on the number of concurrent queries
      * @param labels The {@link BigQuery} label to add the job run.  Must use Map<String, String>. Can be null to indicate no labels.
-     * @return A {@link TableResult} object containing the results of the query executed.
+     * @return A {@link BigQueryResultAndStatistics} object containing the results and statistics for the query executed.
      */
-    public static TableResult executeQuery(final BigQuery bigQuery, final String queryString, final boolean runQueryInBatchMode, final Map<String, String> labels) {
+    public static BigQueryResultAndStatistics executeQuery(final BigQuery bigQuery, final String queryString, final boolean runQueryInBatchMode, final Map<String, String> labels) {
 
         // Create a query configuration we can run based on our query string:
         final QueryJobConfiguration queryConfig =
@@ -105,9 +105,9 @@ public final class BigQueryUtils {
                         .build();
 
         logger.info("Executing Query: \n\n" + queryString);
-        final TableResult result = submitQueryAndWaitForResults( bigQuery, queryConfig );
-        logger.info("Query returned " + result.getTotalRows() + " results.");
-        return result;
+        final BigQueryResultAndStatistics resultAndStatistics = submitQueryAndWaitForResults( bigQuery, queryConfig );
+        logger.info("Query returned " + resultAndStatistics.result.getTotalRows() + " results.");
+        return resultAndStatistics;
     }
 
     /**
@@ -119,13 +119,13 @@ public final class BigQueryUtils {
      * @param dataSet The BigQuery {@code dataSet} containing the table from which to query data.
      * @param queryString The {@link BigQuery} query string to execute.  Must use standard SQL syntax.  Must contain the project ID, data set, and table ID in the `FROM` clause for the table from which to retrieve data.
      * @param labels The {@link BigQuery} label to add the job run.  Must use Map<String, String>. Can be null to indicate no labels.
-     * @return A {@link TableResult} object containing the results of the query executed.
+     * @return A {@link BigQueryResultAndStatistics} object containing the results and statistics for the query executed
      */
-    public static TableResult executeQuery(final BigQuery bigQuery,
-                                           final String projectID,
-                                           final String dataSet,
-                                           final String queryString,
-                                           final Map<String, String> labels) {
+    public static BigQueryResultAndStatistics executeQuery(final BigQuery bigQuery,
+                                                           final String projectID,
+                                                           final String dataSet,
+                                                           final String queryString,
+                                                           final Map<String, String> labels) {
 
         // Create a query configuration we can run based on our query string:
         final QueryJobConfiguration queryConfig =
@@ -339,10 +339,10 @@ public final class BigQueryUtils {
      * Executes the given {@code queryJobConfiguration} on the given {@code bigQuery} instance.
      * @param bigQuery The instance of {@link BigQuery} to use to connect to BigQuery.
      * @param queryJobConfiguration The {@link QueryJobConfiguration} object containing all required information to retrieve data from a BigQuery table.
-     * @return A {@link TableResult} object containing the results of the query executed.
+     * @return A {@link BigQueryResultAndStatistics} object containing the results of the query executed and corresponding statistics
      */
-    private static TableResult submitQueryAndWaitForResults( final BigQuery bigQuery,
-                                                             final QueryJobConfiguration queryJobConfiguration ) {
+    private static BigQueryResultAndStatistics submitQueryAndWaitForResults(final BigQuery bigQuery,
+                                                                            final QueryJobConfiguration queryJobConfiguration ) {
         // Create a job ID so that we can safely retry:
         final JobId jobId = JobId.of(UUID.randomUUID().toString());
 
@@ -376,8 +376,10 @@ public final class BigQueryUtils {
         logger.info("Retrieving query results...");
         final QueryResponse response = bigQuery.getQueryResults(jobId);
         final TableResult result;
+        final JobStatistics.QueryStatistics queryStatistics;
         try {
             result = queryJob.getQueryResults();
+            queryStatistics = queryJob.getStatistics();
 
             long bytesProcessed = ((JobStatistics.QueryStatistics) queryJob.getStatistics()).getTotalBytesProcessed();
             logger.info(String.format("%.2f MB actually scanned for job: %s", bytesProcessed / 1000000.0, queryJob.getJobId()));
@@ -387,7 +389,7 @@ public final class BigQueryUtils {
             throw new GATKException("Interrupted while waiting for query job to complete", ex);
         }
 
-        return result;
+        return new BigQueryResultAndStatistics(result, queryStatistics);
     }
 
     private static long getQueryCostBytesProcessedEstimate(String queryString, String projectID) {
@@ -404,7 +406,7 @@ public final class BigQueryUtils {
         return bytesProcessed;
     }
 
-    public static StorageAPIAvroReader executeQueryWithStorageAPI(final String queryString,
+    public static StorageAPIAvroReaderAndBigQueryStatistics executeQueryWithStorageAPI(final String queryString,
                                                                   final List<String> fieldsToRetrieve,
                                                                   final String projectID,
                                                                   final String datasetID,
@@ -430,22 +432,22 @@ public final class BigQueryUtils {
                 ") AS\n" +
                 queryString;
 
-        executeQuery(projectID, queryStringIntoTempTable, runQueryInBatchMode, labels);
+        BigQueryResultAndStatistics bigQueryResultAndStatistics = executeQuery(projectID, queryStringIntoTempTable, runQueryInBatchMode, labels);
 
         final Table tableInfo = getBigQueryEndPoint(projectID).getTable( TableId.of(projectID, datasetID, tempTableName) );
         logger.info(String.format("Query temp table created with %s rows and %s bytes in size", tableInfo.getNumRows(), tableInfo.getNumBytes()));
 
         TableReference tr = new TableReference(tempTableFullyQualified, fieldsToRetrieve);
 
-        return new StorageAPIAvroReader(tr);
+        return new StorageAPIAvroReaderAndBigQueryStatistics(new StorageAPIAvroReader(tr), bigQueryResultAndStatistics.queryStatistics);
     }
 
     public static boolean doRowsExistFor(String projectID, String datasetName, String tableName, String sampleId) {
         String template = "SELECT COUNT(*) FROM `%s.%s.%s` WHERE %s = %s";
         String query = String.format(template, projectID, datasetName, tableName, SchemaUtils.SAMPLE_ID_FIELD_NAME, sampleId);
 
-        TableResult result = BigQueryUtils.executeQuery(projectID, query, true, null);
-        for (final FieldValueList row : result.iterateAll()) {
+        BigQueryResultAndStatistics resultAndStatistics = BigQueryUtils.executeQuery(projectID, query, true, null);
+        for (final FieldValueList row : resultAndStatistics.result.iterateAll()) {
             final long count = row.get(0).getLongValue();
             return count != 0;
         }

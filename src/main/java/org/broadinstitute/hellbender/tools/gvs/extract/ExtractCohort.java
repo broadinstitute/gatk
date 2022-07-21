@@ -16,11 +16,7 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.gvs.common.GQStateEnum;
-import org.broadinstitute.hellbender.tools.gvs.common.SampleList;
-import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
-import org.broadinstitute.hellbender.tools.gvs.common.ExtractTool;
-import org.broadinstitute.hellbender.tools.gvs.common.FilterSensitivityTools;
+import org.broadinstitute.hellbender.tools.gvs.common.*;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
@@ -38,6 +34,7 @@ import java.util.*;
 public class ExtractCohort extends ExtractTool {
     private static final Logger logger = LogManager.getLogger(ExtractCohort.class);
     private ExtractCohortEngine engine;
+    private SampleList sampleList;
 
     public enum VQSLODFilteringType { GENOTYPE, SITES, NONE }
 
@@ -189,7 +186,7 @@ public class ExtractCohort extends ExtractTool {
     private Double vqsLodINDELThreshold = null;
 
     /**
-    * If this flag is enabled, sites that have been marked as filtered (i.e. have anything other than `.` or `PASS`
+    * If this flag is enabled, sites that have been marked as filtered (i.e. have anything other than '.' or 'PASS'
     * in the FILTER field) will be excluded from the output.
     */
     @Argument(
@@ -203,6 +200,36 @@ public class ExtractCohort extends ExtractTool {
             doc = "Reference state to be inferred from GVS, must match what was used during loading",
             optional = true)
     public GQStateEnum inferredReferenceState = GQStateEnum.SIXTY;
+
+    @Argument(
+            fullName = "cost-observability-tablename",
+            doc = "Name of the bigquery table in which to store cost observability metadata",
+            optional = true)
+    protected String costObservabilityTableName = null;
+
+    @Argument(
+            fullName = "call-set-identifier",
+            doc = "Name of callset identifier, which is used to track costs in cost_observability table",
+            optional = true)
+    protected String callSetIdentifier = null;
+
+    @Argument(
+            fullName = "wdl-step",
+            doc = "Name of the WDL step/task (used for cost observability)",
+            optional = true)
+    protected String wdlStep = null;
+
+    @Argument(
+            fullName = "wdl-call",
+            doc = "Name of the call in the WDL step/task (used for cost observability)",
+            optional = true)
+    protected String wdlCall = null;
+
+    @Argument(
+            fullName = "shard-identifier",
+            doc = "Identifier for which shard was used in the WDL (used for cost observability)",
+            optional = true)
+    protected String shardIdentifier = null;
 
     protected static VCFHeader generateVcfHeader(Set<String> sampleNames,
                                                  final SAMSequenceDictionary sequenceDictionary,
@@ -238,6 +265,24 @@ public class ExtractCohort extends ExtractTool {
         header.setSequenceDictionary(sequenceDictionary);
 
         return header;
+    }
+
+    /**
+     * Enforce that if cost information is being recorded to the cost-observability-tablename then *all* recorded
+     * parameters are set
+     */
+    @Override
+    protected String[] customCommandLineValidation() {
+        final List<String> errors = new ArrayList<>();
+        if (projectID != null || datasetID != null || costObservabilityTableName != null || callSetIdentifier != null || wdlStep != null || wdlCall != null || shardIdentifier != null) {
+            if (projectID == null || datasetID == null || costObservabilityTableName == null || callSetIdentifier == null || wdlStep == null || wdlCall == null || shardIdentifier == null) {
+                errors.add("Parameters 'project-id', 'dataset-id', 'cost-observability-tablename', 'call-set-identifier', 'wdl-step', 'wdl-call', and 'shardIdentifier' must either ALL be set or ALL NOT BE set");
+            }
+        }
+        if (!errors.isEmpty()) {
+            return errors.toArray(new String[0]);
+        }
+        return null;
     }
 
     @Override
@@ -292,7 +337,7 @@ public class ExtractCohort extends ExtractTool {
             );
         }
 
-        SampleList sampleList = new SampleList(sampleTableName, sampleFileName, projectID, printDebugInformation, "extract-cohort");
+        sampleList = new SampleList(sampleTableName, sampleFileName, projectID, printDebugInformation, "extract-cohort");
         Map<Long, String> sampleIdToName = sampleList.getMap();
 
         VCFHeader header = generateVcfHeader(new HashSet<>(sampleIdToName.values()), reference.getSequenceDictionary(), extraHeaderLines);
@@ -370,6 +415,21 @@ public class ExtractCohort extends ExtractTool {
 
         engine.traverse();
      }
+
+    @Override
+    public Object onTraversalSuccess() {
+        if (costObservabilityTableName != null) {
+            CostObservability costObservability = new CostObservability(projectID, datasetID, costObservabilityTableName);
+            // Note - this is ONLY for the cost of querying the sample list.
+            costObservability.writeCostObservability(callSetIdentifier, wdlStep, wdlCall, shardIdentifier,
+                    new Date(), new Date(), "BigQuery Query Scanned",
+                    sampleList.getBigQueryQueryByteScanned());
+            costObservability.writeCostObservability(callSetIdentifier, wdlStep, wdlCall, shardIdentifier,
+                    new Date(), new Date(), "Storage API Scanned",
+                    engine.getTotalEstimatedBytesScanned());
+        }
+        return null;
+    }
 
     @Override
     protected void onShutdown() {

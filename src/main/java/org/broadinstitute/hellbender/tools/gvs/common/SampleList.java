@@ -11,13 +11,15 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
+import org.broadinstitute.hellbender.utils.bigquery.BigQueryResultAndStatistics;
 import org.broadinstitute.hellbender.utils.bigquery.TableReference;
 
 public class SampleList {
     static final Logger logger = LogManager.getLogger(SampleList.class);
 
-    private Map<Long, String> sampleIdMap = new HashMap<>();
-    private Map<String, Long> sampleNameMap = new HashMap<>();
+    private final Map<Long, String> sampleIdMap = new HashMap<>();
+    private final Map<String, Long> sampleNameMap = new HashMap<>();
+    private long bigQueryQueryByteScanned = 0L;
 
     public SampleList(String sampleTableName, File sampleFile, String executionProjectId, boolean printDebugInformation, String originTool) {
         if (sampleTableName != null) {
@@ -47,6 +49,10 @@ public class SampleList {
 
     public Map<Long, String> getMap() {
         return sampleIdMap;
+    }
+
+    public long getBigQueryQueryByteScanned() {
+        return bigQueryQueryByteScanned;
     }
 
     protected void initializeMaps(TableReference sampleTable, String executionProjectId, boolean printDebugInformation, Optional<String> originTool) {
@@ -91,17 +97,17 @@ public class SampleList {
         }
 
         // Execute the query:
-        final TableResult result = BigQueryUtils.executeQuery(BigQueryUtils.getBigQueryEndPoint(executionProjectId) , sampleListQueryString, false, labelForQuery);
-
+        final BigQueryResultAndStatistics results = BigQueryUtils.executeQuery(BigQueryUtils.getBigQueryEndPoint(executionProjectId) , sampleListQueryString, false, labelForQuery);
+        bigQueryQueryByteScanned += results.queryStatistics.getTotalBytesProcessed();
 
         // Show our pretty results:
         if (printDebugInformation) {
             logger.info("Sample names returned:");
-            final String prettyQueryResults = BigQueryUtils.getResultDataPrettyString(result);
+            final String prettyQueryResults = BigQueryUtils.getResultDataPrettyString(results.result);
             logger.info("\n" + prettyQueryResults);
         }
 
-        return result;
+        return results.result;
     }
 
     public static Map<Integer, LinkedList<Set<Long>>> mapSampleIdsToTableIndexes(Set<Long> sampleIds) {

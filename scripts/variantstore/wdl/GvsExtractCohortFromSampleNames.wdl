@@ -8,10 +8,14 @@ import "GvsExtractCallset.wdl" as GvsExtractCallset
 workflow GvsExtractCohortFromSampleNames {
 
   input {
-    File cohort_sample_names
+    # cohort_sample_names_array will take precedence over cohort_sample_names if both are set 
+    Array[String]? cohort_sample_names_array
+    File? cohort_sample_names
+
     String query_project
     String gvs_project
     String gvs_dataset
+    String call_set_identifier
     String cohort_table_prefix
 
     # not using the defaults in GvsPrepareCallset because we're using pre created datasets defined by the caller
@@ -34,11 +38,23 @@ workflow GvsExtractCohortFromSampleNames {
     File? gatk_override
   }
 
+  # writing the array to a file has to be done in a task
+  # https://support.terra.bio/hc/en-us/community/posts/360071465631-write-lines-write-map-write-tsv-write-json-fail-when-run-in-a-workflow-rather-than-in-a-task
+  if (defined(cohort_sample_names_array)) {
+    call write_array_task {
+      input:
+        input_array = select_first([cohort_sample_names_array]),
+        docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+    }
+  }
+
+  File cohort_sample_names_file = select_first([write_array_task.output_file, cohort_sample_names])
+
   call GvsPrepareCallset.GvsPrepareCallset {
     input:
       call_set_identifier             = cohort_table_prefix,
       extract_table_prefix            = cohort_table_prefix,
-      sample_names_to_extract         = cohort_sample_names,
+      sample_names_to_extract         = cohort_sample_names_file,
       project_id                      = gvs_project,
       query_labels                    = ["extraction_uuid=~{extraction_uuid}"],
       query_project                   = query_project,
@@ -51,9 +67,11 @@ workflow GvsExtractCohortFromSampleNames {
 
   call GvsExtractCallset.GvsExtractCallset {
     input:
+      go = GvsPrepareCallset.done,
       project_id = gvs_project,
       query_project = query_project,
       dataset_name = gvs_dataset,
+      call_set_identifier = call_set_identifier,
       cohort_project_id = destination_project_id,
       cohort_dataset_name = destination_dataset_name,
       extract_table_prefix = cohort_table_prefix,
@@ -77,3 +95,22 @@ workflow GvsExtractCohortFromSampleNames {
   }
 
 }
+
+task write_array_task {
+  input {
+    Array[String] input_array
+    String docker
+  }
+
+  command <<<
+  >>>
+
+  output {
+    File output_file = write_lines(input_array)
+  }
+
+  runtime {
+    docker: docker
+  }
+}
+

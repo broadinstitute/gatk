@@ -25,10 +25,7 @@ import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculation
 import org.broadinstitute.hellbender.utils.GenotypeCounts;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
-import org.broadinstitute.hellbender.utils.bigquery.GATKAvroReader;
-import org.broadinstitute.hellbender.utils.bigquery.StorageAPIAvroReader;
-import org.broadinstitute.hellbender.utils.bigquery.TableReference;
+import org.broadinstitute.hellbender.utils.bigquery.*;
 import org.broadinstitute.hellbender.utils.localsort.AvroSortingCollection;
 import org.broadinstitute.hellbender.utils.localsort.SortingCollection;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -66,6 +63,9 @@ public class ExtractFeaturesEngine {
     private final double hqGenotypeABThreshold;
     private final int excessAllelesThreshold;
     private final List<String> queryLabels;
+
+    private long bigQueryQueryBytesScanned;
+    private long storageAPIBytesScanned;
 
 //    /** Set of sample names seen in the variant data from BigQuery. */
 //    private final Set<String> sampleNames = new HashSet<>();
@@ -133,7 +133,7 @@ public class ExtractFeaturesEngine {
         final String userDefinedFunctions = ExtractFeaturesBQ.getVQSRFeatureExtractUserDefinedFunctionsString();
         Map<String, String> cleanQueryLabels = createQueryLabels(queryLabels);
 
-        final StorageAPIAvroReader storageAPIAvroReader = BigQueryUtils.executeQueryWithStorageAPI(
+        final StorageAPIAvroReaderAndBigQueryStatistics storageAPIAvroReaderAndBigQueryStatistics = BigQueryUtils.executeQueryWithStorageAPI(
                 featureQueryString,
                 SchemaUtils.FEATURE_EXTRACT_FIELDS,
                 projectID,
@@ -141,8 +141,18 @@ public class ExtractFeaturesEngine {
                 userDefinedFunctions,
                 useBatchQueries,
                 cleanQueryLabels);
+        this.bigQueryQueryBytesScanned = storageAPIAvroReaderAndBigQueryStatistics.queryStatistics.getTotalBytesProcessed();
+        this.storageAPIBytesScanned = storageAPIAvroReaderAndBigQueryStatistics.storageAPIAvroReader.getEstimatedTotalBytesScanned();
 
-        createVQSRInputFromTableResult(storageAPIAvroReader);
+        createVQSRInputFromTableResult(storageAPIAvroReaderAndBigQueryStatistics.storageAPIAvroReader);
+    }
+
+    public long getStorageAPIBytesScanned() {
+        return this.storageAPIBytesScanned;
+    }
+
+    public long getBigQueryQueryBytesScanned() {
+        return this.bigQueryQueryBytesScanned;
     }
 
     static Map<String, String>  createQueryLabels(List<String> labelStringList) {

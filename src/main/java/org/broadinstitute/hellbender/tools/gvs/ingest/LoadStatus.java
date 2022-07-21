@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.gvs.ingest;
 import com.google.api.client.util.ExponentialBackOff;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.bigquery.FieldValueList;
-import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.bigquery.storage.v1beta2.*;
 import io.grpc.StatusRuntimeException;
 import org.apache.logging.log4j.LogManager;
@@ -11,6 +10,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
 import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
+import org.broadinstitute.hellbender.utils.bigquery.BigQueryResultAndStatistics;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -55,11 +55,11 @@ public class LoadStatus {
                 " FROM `" + projectID + "." + datasetName + "." + loadStatusTableName + "` " +
                 " WHERE " + SchemaUtils.SAMPLE_ID_FIELD_NAME + " = " + sampleId;
 
-        TableResult result = BigQueryUtils.executeQuery(projectID, query, true, null);
+        BigQueryResultAndStatistics results = BigQueryUtils.executeQuery(projectID, query, true, null);
 
         int startedCount = 0;
         int finishedCount = 0;
-        for ( final FieldValueList row : result.iterateAll() ) {
+        for ( final FieldValueList row : results.result.iterateAll() ) {
             final String status = row.get(0).getStringValue();
             if (LoadStatusValues.STARTED.toString().equals(status)) {
                 startedCount++;

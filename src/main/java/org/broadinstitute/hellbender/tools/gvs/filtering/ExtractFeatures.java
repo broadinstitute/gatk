@@ -9,20 +9,13 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
-import org.broadinstitute.hellbender.tools.gvs.common.SampleList;
-import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
-import org.broadinstitute.hellbender.tools.gvs.common.ExtractTool;
-import org.broadinstitute.hellbender.tools.gvs.common.FilterSensitivityTools;
+import org.broadinstitute.hellbender.tools.gvs.common.*;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bigquery.TableReference;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 @CommandLineProgramProperties(
         summary = "(\"ExtractFeatures\") - Extract features data from BQ to train filtering model.",
@@ -33,6 +26,7 @@ import java.util.Set;
 public class ExtractFeatures extends ExtractTool {
     private static final Logger logger = LogManager.getLogger(ExtractFeatures.class);
     private ExtractFeaturesEngine engine;
+    private SampleList sampleList;
 
     @Argument(
             fullName = "alt-allele-table",
@@ -75,12 +69,59 @@ public class ExtractFeatures extends ExtractTool {
         fullName = "query-labels",
         doc = "Key-value pairs to be added to the extraction BQ query. Ex: --query-labels key1=value1 --query-labels key2=value2",
         optional = true)
-
     protected List<String> queryLabels = new ArrayList<>();
+
+    @Argument(
+            fullName = "cost-observability-tablename",
+            doc = "Name of the bigquery table in which to store cost observability metadata",
+            optional = true)
+    protected String costObservabilityTableName = null;
+
+    @Argument(
+            fullName = "call-set-identifier",
+            doc = "Name of callset identifier, which is used to track costs in cost_observability table",
+            optional = true)
+    protected String callSetIdentifier = null;
+
+    @Argument(
+            fullName = "wdl-step",
+            doc = "Name of the WDL step/task (used for cost observability)",
+            optional = true)
+    protected String wdlStep = null;
+
+    @Argument(
+            fullName = "wdl-call",
+            doc = "Name of the call in the WDL step/task (used for cost observability)",
+            optional = true)
+    protected String wdlCall = null;
+
+    @Argument(
+            fullName = "shard-identifier",
+            doc = "Identifier for which shard was used in the WDL (used for cost observability)",
+            optional = true)
+    protected String shardIdentifier = null;
 
     @Override
     public boolean requiresIntervals() {
         return false;
+    }
+
+    /**
+     * Enforce that if cost information is being recorded to the cost-observability-tablename then *all* recorded
+     * parameters are set
+     */
+    @Override
+    protected String[] customCommandLineValidation() {
+        final List<String> errors = new ArrayList<>();
+        if (projectID != null || datasetID != null || costObservabilityTableName != null || callSetIdentifier != null || wdlStep != null || wdlCall != null || shardIdentifier != null) {
+            if (projectID == null || datasetID == null || costObservabilityTableName == null || callSetIdentifier == null || wdlStep == null || wdlCall == null || shardIdentifier == null) {
+                errors.add("Parameters 'project-id', 'dataset-id', 'cost-observability-tablename', 'call-set-identifier', 'wdl-step', 'wdl-call', and 'shardIdentifier' must either ALL be set or ALL NOT BE set");
+            }
+        }
+        if (!errors.isEmpty()) {
+            return errors.toArray(new String[0]);
+        }
+        return null;
     }
 
     @Override
@@ -88,7 +129,7 @@ public class ExtractFeatures extends ExtractTool {
         super.onStartup();
 
         TableReference sampleTableRef = new TableReference(sampleTableName, SchemaUtils.SAMPLE_FIELDS);
-        SampleList sampleList = new SampleList(sampleTableName, sampleFileName, projectID, printDebugInformation, "extract-features");
+        sampleList = new SampleList(sampleTableName, sampleFileName, projectID, printDebugInformation, "extract-features");
 
         Set<VCFHeaderLine> extraHeaderLines = new HashSet<>();
         extraHeaderLines.add(
@@ -143,6 +184,20 @@ public class ExtractFeatures extends ExtractTool {
         progressMeter.setRecordsBetweenTimeChecks(100L);
 
         engine.traverse();
+    }
+
+    @Override
+    public Object onTraversalSuccess() {
+        if (costObservabilityTableName != null) {
+            CostObservability costObservability = new CostObservability(projectID, datasetID, costObservabilityTableName);
+            costObservability.writeCostObservability(callSetIdentifier, wdlStep, wdlCall, shardIdentifier,
+                    new Date(), new Date(), "BigQuery Query Scanned",
+                    sampleList.getBigQueryQueryByteScanned() + engine.getBigQueryQueryBytesScanned());
+            costObservability.writeCostObservability(callSetIdentifier, wdlStep, wdlCall, shardIdentifier,
+                    new Date(), new Date(), "Storage API Scanned",
+                    engine.getStorageAPIBytesScanned());
+        }
+        return null;
     }
 
     @Override

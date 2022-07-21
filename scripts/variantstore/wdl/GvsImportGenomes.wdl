@@ -16,19 +16,46 @@ workflow GvsImportGenomes {
     Boolean skip_loading_vqsr_fields = false
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
-    # If increasing this, also consider increasing `load_data_preemptible_override` and `load_data_maxretries_override`.
-    Int load_data_batch_size = 5
+    Int? load_data_batch_size
     Int? load_data_preemptible_override
     Int? load_data_maxretries_override
-    File? load_data_gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/gg_VS-443_VETIngestValidation_20220531/gatk-package-4.2.0.0-531-gf8f4ede-SNAPSHOT-local.jar"
+    File? load_data_gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-552-g0f9780a-SNAPSHOT-local.jar"
     String? service_account_json_path
   }
+
+  Int num_samples = length(external_sample_names)
+  Int max_auto_batch_size = 20000
+
+  if ((num_samples > max_auto_batch_size) && !(defined(load_data_batch_size))) {
+    call Utils.TerminateWorkflow as DieDueToTooManySamplesWithoutExplicitLoadDataBatchSize {
+      input:
+        message = "Importing " + num_samples + " samples but `load_data_batch_size` not explicitly specified; limit for auto batch-sizing is " + max_auto_batch_size + " samples."
+    }
+  }
+
+  # At least 1, per limits above not more than 20.
+  Int effective_load_data_batch_size = if (defined(load_data_batch_size)) then select_first([load_data_batch_size])
+                                       else if num_samples < 1000 then 1
+                                            else num_samples / 1000
+
+  # Both preemptible and maxretries should be scaled up alongside import batch size since the likelihood of preemptions
+  # and retryable random BQ import errors increases with import batch size / job run time.
+
+  # At least 3, per limits above not more than 5.
+  Int effective_load_data_preemptible = if (defined(load_data_preemptible_override)) then select_first([load_data_preemptible_override])
+                                        else if effective_load_data_batch_size < 12 then 3
+                                             else effective_load_data_batch_size / 4
+
+  # At least 3, per limits above not more than 5.
+  Int effective_load_data_maxretries = if (defined(load_data_maxretries_override)) then select_first([load_data_maxretries_override])
+                                       else if (effective_load_data_batch_size < 12) then 6
+                                            else effective_load_data_batch_size / 2
 
   # return an error if the lengths are not equal
   Int input_length = length(input_vcfs)
   Int input_indexes_length = length(input_vcf_indexes)
   if ((input_length != length(external_sample_names)) || (input_indexes_length != length(external_sample_names))) {
-    call Utils.TerminateWorkflow {
+    call Utils.TerminateWorkflow as DieDueToMismatchedVcfAndIndexLengths {
       input:
         message = "The lengths of workflow inputs `external_sample_names` (" + length(external_sample_names) +
                   "), `input_vcfs` (" + input_length + ") and `input_vcf_indexes` (" + input_indexes_length + ") should be the same.\n\n" +
@@ -58,7 +85,7 @@ workflow GvsImportGenomes {
 
   call CreateFOFNs {
     input:
-      batch_size = load_data_batch_size,
+      batch_size = effective_load_data_batch_size,
       input_vcf_index_list = CurateInputLists.input_vcf_indexes,
       input_vcf_list = CurateInputLists.input_vcfs,
       sample_name_list = CurateInputLists.sample_name_list,
@@ -76,8 +103,8 @@ workflow GvsImportGenomes {
         input_vcfs = read_lines(CreateFOFNs.vcf_batch_vcf_fofns[i]),
         interval_list = interval_list,
         gatk_override = load_data_gatk_override,
-        load_data_preemptible_override = load_data_preemptible_override,
-        load_data_maxretries_override = load_data_maxretries_override,
+        load_data_preemptible = effective_load_data_preemptible,
+        load_data_maxretries = effective_load_data_maxretries,
         sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
         sample_map = GetUningestedSampleIds.sample_map,
         service_account_json_path = service_account_json_path,
@@ -149,8 +176,8 @@ task LoadData {
     Boolean skip_loading_vqsr_fields = false
 
     File? gatk_override
-    Int? load_data_preemptible_override
-    Int? load_data_maxretries_override
+    Int load_data_preemptible
+    Int load_data_maxretries
     String? service_account_json_path
   }
 
@@ -224,10 +251,10 @@ task LoadData {
   >>>
   runtime {
     docker: "us.gcr.io/broad-gatk/gatk:4.1.7.0"
-    maxRetries: select_first([load_data_maxretries_override, 3])
+    maxRetries: load_data_maxretries
     memory: "3.75 GB"
     disks: "local-disk 50 HDD"
-    preemptible: select_first([load_data_preemptible_override, 5])
+    preemptible: load_data_preemptible
     cpu: 1
   }
   output {
@@ -399,7 +426,7 @@ task CurateInputLists {
                                              --output_files True
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:rsa_metadata_from_python_20220628"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_07_14"
     memory: "3 GB"
     disks: "local-disk 100 HDD"
     bootDiskSizeGb: 15
