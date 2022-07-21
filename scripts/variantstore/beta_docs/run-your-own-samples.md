@@ -174,12 +174,11 @@ Below are several examples of the time and cost of running the workflow.
 
 | Number of Samples | Elapsed Time (hh:mm) | Terra Cost | BigQuery Cost | Total Cost | Approximate Cost per Sample |
 |-------------------|----------------------|------------|---------------|------------|-----------------------------|
-| 10                | 04:30                | $0.84      | $0.45         | $1.29      | $0.13                       |
-| 1000              | 07:24                | $13.02     | $41.10        | $54.12     | $0.05                       |
-| 2500              | 08:45                | $25.10     | $102.43       | $127.10    | $0.05                       |
-| 5000              | 12:00                | $54.00     | $215.06       | $269.06    | $0.05                       |
-| 5000              | 12:00                | $54.00     | $215.06       | $269.06    | $0.05                       |
-| 10000             | 13:41                | $60.58     | $411.65       | $472.23    | $0.05                       |
+| 10                | 04:30                | $0.84      | $0.51         | $1.35      | $0.14                       |
+| 1000              | 07:24                | $13.02     | $46.62        | $59.64     | $0.06                       |
+| 2500              | 08:45                | $25.10     | $116.18       | $141.28    | $0.06                       |
+| 5000              | 12:00                | $54.00     | $232.71       | $286.71    | $0.06                       |
+| 10000             | 13:41                | $138.1     | $466.87       | $604.97    | $0.06                       |
 
 
 **Note:** The time and cost listed above each represent a single run of the GVS workflow. Actual time and cost may vary depending on BigQuery and Terra load at the time of the callset creation.
