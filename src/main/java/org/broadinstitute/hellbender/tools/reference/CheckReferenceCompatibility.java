@@ -3,15 +3,23 @@ package org.broadinstitute.hellbender.tools.reference;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.SequenceDictionaryValidationArgumentCollection;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import picard.cmdline.programgroups.ReferenceProgramGroup;
 
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
+@CommandLineProgramProperties(
+        summary = "",
+        oneLineSummary = "",
+        programGroup = ReferenceProgramGroup.class
+)
 
 public class CheckReferenceCompatibility extends GATKTool {
 
@@ -36,10 +44,16 @@ public class CheckReferenceCompatibility extends GATKTool {
     public void traverse() {
         if(dictionaryHasMD5s(dictionaryToCompare)){
             ReferenceSequenceTable table = generateReferenceSequenceTable(dictionaryToCompare);
+            table.build();
             List<ReferencePair> refPairs = table.analyzeTable();
+            for(ReferencePair pair : refPairs){
+                System.out.println(pair);
+            }
         }
         else{
-            logger.warn("Comparison lacking MD5.");
+            logger.warn("****************************");
+            logger.warn("* Comparison lacking MD5.  *");
+            logger.warn("****************************");
             // tap into SequenceDictionaryUtils
         }
 
@@ -84,7 +98,7 @@ public class CheckReferenceCompatibility extends GATKTool {
         dictionaries.put(dictionaryPath, dictionary);
 
         for(GATKPath path : references){
-            dictionaries.put(getReferencePath(), ReferenceDataSource.of(path.toPath()).getSequenceDictionary());
+            dictionaries.put(path, ReferenceDataSource.of(path.toPath()).getSequenceDictionary());
         }
 
         ReferenceSequenceTable table = new ReferenceSequenceTable(dictionaries);
