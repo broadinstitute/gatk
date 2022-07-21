@@ -116,18 +116,16 @@ To run the GVS workflow on your own sample data, follow the instructions in the 
 
 By default, the workflow is set up to write outputs to the workspace Google bucket. If you want to write the outputs to a different cloud storage location, you can specify the cloud path in the `extract_output_gcs_dir` optional input in the workflow configuration. 
 
-### Time and cost estimates
-Below are several examples of the time and cost of running the workflow.
+### Time and cost
+Below is an example of the time and cost of running the workflow with the sample data pre-loaded in the workspace.
 
-| Number of Samples | Wall Clock Time | Cost $  | Cost per Sample |
-|-------------------|-----------------|---------|-----------------|
-| 10                | 04:30:00        | $0.84   | ~$0.08          |
-| 1000              | 07:24:00        | $$$     | ~$0.07          |
-| 2500              | 08:45:00        | $$$     | ~$0.07          |
-| 5000              | 12:00:00        | $$$     | ~$0.07          |
-| 10000             | 00:00:00        | $683.33 | ~$0.07          |
+| Number of Samples | Elapsed Time (hh:mm) | Terra Cost | BigQuery Cost | Total Cost | Approximate Cost per Sample |
+|-------------------|----------------------|------------|---------------|------------|-----------------------------|
+| 10                | 04:30                | $0.84      | $0.45         | $1.29      | $0.13                       |
 
-**Note:** For more information about controlling Cloud costs, see [this article](https://support.terra.bio/hc/en-us/articles/360029748111).
+**Note:** The time and cost listed above represent a single run of the GVS workflow. Actual time and cost may vary depending on BigQuery and Terra load at the time of the callset creation.
+
+For more information about controlling Cloud costs, see [this article](https://support.terra.bio/hc/en-us/articles/360029748111).
 
 ---
 
