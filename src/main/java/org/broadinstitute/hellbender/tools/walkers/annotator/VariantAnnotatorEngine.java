@@ -361,7 +361,7 @@ public final class VariantAnnotatorEngine {
                 }
             }
         }
-        //TODO this whole thing should be refactored if this is useful or ripped out.
+        //TODO see #7543. This spiderweb of cases should be addressed as part of a more comprehensive refactor of the annotation code with JumboAnnotations.
         if ((fragmentLikelihoods.isPresent() && haplotypeLikelihoods.isPresent()) || readHaplotypeAlleleLikelihoods.isPresent()) {
             jumboInfoAnnotations.stream()
                     .map(annot -> annot.annotate(ref, features, vc, likelihoods,
@@ -389,21 +389,15 @@ public final class VariantAnnotatorEngine {
         final GenotypesContext genotypes = GenotypesContext.create(vc.getNSamples());
         for ( final Genotype genotype : vc.getGenotypes() ) {
             final GenotypeBuilder gb = new GenotypeBuilder(genotype);
-            for ( final GenotypeAnnotation annotation : genotypeAnnotations) {
 
-                genotypeAnnotations.stream().filter(addAnnot)
-                        .forEach(annot -> annot.annotate(ref, vc, genotype, gb, likelihoods));
+            genotypeAnnotations.stream().filter(addAnnot)
+                    .forEach(annot -> annot.annotate(ref, vc, genotype, gb, likelihoods));
 
-                if (fragmentLikelihoods.isPresent() && haplotypeLikelihoods.isPresent()) {
-                    jumboGenotypeAnnotations.stream().filter(addAnnot).forEach(annot ->
-                            annot.annotate(ref, features, vc, genotype, gb, likelihoods, fragmentLikelihoods.get(), haplotypeLikelihoods.get()));
-                }
-
-
-                if (addAnnot.test(annotation)) {
-                    annotation.annotate(ref, vc, genotype, gb, likelihoods);
-                }
+            if (fragmentLikelihoods.isPresent() && haplotypeLikelihoods.isPresent()) {
+                jumboGenotypeAnnotations.stream().filter(addAnnot).forEach(annot ->
+                        annot.annotate(ref, features, vc, genotype, gb, likelihoods, fragmentLikelihoods.get(), haplotypeLikelihoods.get()));
             }
+
             genotypes.add(gb.make());
         }
 

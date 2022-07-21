@@ -247,8 +247,9 @@ public final class IntegrationTestSpec {
             if (isIndex) {
                 if (skipIndexes) {
                     Assert.assertTrue(expectedFile.exists());
+                } else {
+                    Assert.assertTrue(Files.equal(expectedFile, resultFile), "Resulting index file different from expected");
                 }
-                Assert.assertTrue(Files.equal(expectedFile, resultFile), "Resulting index file different from expected");
             } else if (expectedFileName.endsWith(".bam")) {
                 SamAssertionUtils.assertEqualBamFiles(resultFile, expectedFile, compareBamFilesSorted, stringency);
             } else {
@@ -256,28 +257,6 @@ public final class IntegrationTestSpec {
             }
         }
     }
-
-//    public static void assertMatchingFiles(final List<Path> resultFiles, final ValidationStringency stringency, final boolean trimWhiteSpace, final boolean skipIndexes, final List<Path> expectedFiles) throws IOException {
-//        Assert.assertEquals(resultFiles.size(), expectedFiles.size());
-//        for (int i = 0; i < resultFiles.size(); i++) {
-//            final Path resultFile = resultFiles.get(i);
-//            final String expectedFileName = expectedFiles.get(i).toString();
-//            final Path expectedFile = expectedFiles.get(i);
-//            final boolean isIndex = INDEX_EXTENSIONS.stream().anyMatch(ext -> expectedFileName.endsWith(ext));
-//            if (isIndex) {
-//                //optionally we might not want to make assertions about the exact bytes of the index files
-//                if (skipIndexes) {
-//                    Assert.assertEquals(java.nio.file.Files.readAllBytes(resultFile).length > 0, java.nio.file.Files.readAllBytes(expectedFile).length > 0, String.format("Resulting index file %s was missing or empty",expectedFileName));
-//                } else {
-//                    Assert.assertEquals(java.nio.file.Files.readAllBytes(resultFile), java.nio.file.Files.readAllBytes(expectedFile), String.format("Resulting index file %s different from expected", expectedFileName));
-//                }
-//            } else if (expectedFileName.endsWith(".bam")) {
-//                SamAssertionUtils.assertEqualBamFiles(resultFile, expectedFile, null, stringency);
-//            } else {
-//                assertEqualTextFiles(resultFile, expectedFile, null, trimWhiteSpace);
-//            }
-//        }
-//    }
 
     public static void assertEqualTextFiles(final File resultFile, final File expectedFile) throws IOException {
         assertEqualTextFiles(resultFile, expectedFile, null, true);
