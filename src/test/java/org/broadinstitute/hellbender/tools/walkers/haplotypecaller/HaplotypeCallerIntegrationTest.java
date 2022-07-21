@@ -1556,7 +1556,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
-    public void testGvcfBeforeRebase() throws Exception {
+    public void testGvcfFlowConsistentWithPreviousResults() throws Exception {
         final File input = new File(largeFileTestDir, "input_jukebox_for_test.bam");
         final File output = createTempFile("output", ".vcf");
 
@@ -1589,7 +1589,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
-    public void testGvcfBeforeRebaseUsingFlowModeStandard() throws Exception {
+    public void testGvcfUsingFlowModeStandardConsistentWithPreviousResults() throws Exception {
         final File input = new File(largeFileTestDir, "input_jukebox_for_test.bam");
         final File output = createTempFile("output", ".vcf");
 
@@ -1613,7 +1613,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
-    public void testGvcfBeforeRebaseUsingFlowModeAdvanced() throws Exception {
+    public void testGvcfUsingFlowModeAdvancedConsistentWithPreviousResults() throws Exception {
         final File input = new File(largeFileTestDir, "input_jukebox_for_test.bam");
         final File output = createTempFile("output", ".vcf");
 
@@ -1670,7 +1670,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
-    public void testVcfBeforeRebase() throws Exception {
+    public void testVcfFliowModeConsistentWithPreviousResults() throws Exception {
         Utils.resetRandomGenerator();
         final File input = new File(largeFileTestDir, "input_jukebox_for_test.bam");
         final File output = createTempFile("output", ".vcf");
@@ -2032,7 +2032,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         }
     }
     @Test
-    public void testVcfBeforeRebase_flowLikelihoodOptimizedComp() throws Exception {
+    public void testVcfFlowLikelihoodOptimizedCompConsistentWithPreviousResults() throws Exception {
         Utils.resetRandomGenerator();
         final File input = new File(largeFileTestDir, "input_jukebox_for_test.bam");
         final File output = createTempFile("output", ".vcf");
@@ -2062,7 +2062,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
-    public void testVcfBeforeRebase_flowLikelihoodParralelThreads() throws Exception {
+    public void testVcfFlowLikelihoodParralelThreadsConsistentWithPreviousResults() throws Exception {
         Utils.resetRandomGenerator();
         final File input = new File(largeFileTestDir, "input_jukebox_for_test.bam");
         final File output = createTempFile("output", ".vcf");
@@ -2093,7 +2093,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
-    public void testVcfBeforeRebase_flowBasedHMM() throws Exception {
+    public void testVcfFlowBasedHMMConsistentWithPreviousResults() throws Exception {
         Utils.resetRandomGenerator();
         final File input = new File(largeFileTestDir, "input_jukebox_for_test.bam");
         final File output = createTempFile("output", ".vcf");
@@ -2124,7 +2124,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
-    public void testVcfBeforeRebase_flowBasedHMM_stepwise() throws Exception {
+    public void testVcfFlowBasedHMMStepwiseConsistentWithPreviousResults() throws Exception {
         Utils.resetRandomGenerator();
         final File input = new File(largeFileTestDir, "input_jukebox_for_test.bam");
         final File output = createTempFile("output", ".vcf");
