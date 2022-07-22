@@ -139,9 +139,10 @@ public class AlleleSubsettingUtilsUnitTest extends GATKBaseTest {
 
         final GenotypesContext oldGs = selectedVCwithGTs.getGenotypes();
         final GenotypesContext actual = selectedVCwithGTs.getNAlleles() == originalVC.getNAlleles() ? oldGs :
-                                        AlleleSubsettingUtils.subsetAlleles(oldGs, 0, originalVC.getAlleles(),
+                                        AlleleSubsettingUtils.subsetAlleles(originalVC.getStart(), oldGs, 0, originalVC.getAlleles(),
                                                                             selectedVCwithGTs.getAlleles(), null,
-                                                                            GenotypeAssignmentMethod.DO_NOT_ASSIGN_GENOTYPES);
+                                                                            GenotypeAssignmentMethod.DO_NOT_ASSIGN_GENOTYPES,
+                                                                            null);
 
         Assert.assertEquals(actual.size(), expectedGenotypes.size());
         for ( final Genotype expected : expectedGenotypes ) {
@@ -324,8 +325,8 @@ public class AlleleSubsettingUtilsUnitTest extends GATKBaseTest {
         final Allele Aref = Allele.create("A", true);
         final List<Allele> alleles = Arrays.asList(Aref);
         final Genotype uniformativePL = new GenotypeBuilder("sample", alleles).PL(new int[] {0}).make();
-        final GenotypesContext result  = AlleleSubsettingUtils.subsetAlleles(GenotypesContext.create(uniformativePL), 2,
-                                                                      alleles, alleles, null, GenotypeAssignmentMethod.DO_NOT_ASSIGN_GENOTYPES);
+        final GenotypesContext result  = AlleleSubsettingUtils.subsetAlleles(10000, GenotypesContext.create(uniformativePL), 2,
+                                                                      alleles, alleles, null, GenotypeAssignmentMethod.DO_NOT_ASSIGN_GENOTYPES, null);
         final Genotype genotype = result.get(0);
         Assert.assertTrue(genotype.hasPL());
         Assert.assertEquals(genotype.getPL(), new int[]{0});
@@ -408,9 +409,9 @@ public class AlleleSubsettingUtilsUnitTest extends GATKBaseTest {
         final List<Allele> threeAllelesSorted = Arrays.asList(Aref, C, G);
         final Genotype g5 = new GenotypeBuilder("sample2", Arrays.asList(Aref, C)).PL(new double[] {0.0, 1.0, 2.0, 3.0, 4.0, 5.0}).make();
 
-        final GenotypesContext newGs = AlleleSubsettingUtils.subsetAlleles(GenotypesContext.create(g5),
+        final GenotypesContext newGs = AlleleSubsettingUtils.subsetAlleles(10000, GenotypesContext.create(g5),
                 2, threeAlleles, threeAllelesSorted, null,
-                GenotypeAssignmentMethod.DO_NOT_ASSIGN_GENOTYPES);
+                GenotypeAssignmentMethod.DO_NOT_ASSIGN_GENOTYPES, null);
 
         Assert.assertEquals(newGs.get(0).getPL(), new int[] {50, 20, 0, 40, 10, 30});
     }

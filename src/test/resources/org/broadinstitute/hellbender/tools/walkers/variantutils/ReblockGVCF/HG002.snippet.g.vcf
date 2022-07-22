@@ -2,6 +2,7 @@
 ##ALT=<ID=NON_REF,Description="Represents any possible alternative allele not already represented at this location by REF and ALT">
 ##FILTER=<ID=LowQual,Description="Low quality">
 ##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+##FORMAT=<ID=AF,Number=A,Type=Float,Description="Allele fractions of alternate alleles in the tumor">
 ##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
 ##FORMAT=<ID=GP,Number=G,Type=Float,Description="genotype posterior in Phred Scale">
 ##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
@@ -49,4 +50,4 @@
 ##INFO=<ID=ReadPosRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt vs. Ref read position bias">
 ##contig=<ID=chr2,length=242193529>
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	HG002
-chr2	103392924	.	AATATATAAAT	A,TATATATAAAT,AATATATATAAAT,<NON_REF>	44	.	AS_RAW_BaseQRankSum=||||;AS_RAW_MQ=0.00|0.00|0.00|0.00|2225.00;AS_RAW_MQRankSum=||||;AS_RAW_ReadPosRankSum=||||;AS_SB_TABLE=0,0|0,0|0,0|0,0|4,3;DP=16;DRAGstrInfo=2,3;DRAGstrParams=43.3,5.0,26.0;ExcessHet=3.0103;MLEAC=0,1,1,0;MLEAF=0.00,0.500,0.500,0.00;RAW_MQandDP=31239,16	GT:AD:DP:GP:GQ:PG:PL:SB	0/1:0,0,0,0,7:7:44,0,34.01,39.77,21.77,29.78,67,17,17.77,63.01,106,21,59.77,87,67.01:13:0,26,29.01,34.77,60.77,37.78,26,52,60.77,29.01,26,52,60.77,52,29.01:87,17,48,48,4,35,84,8,0,77,123,12,42,78,81:0,0,4,3
+chr2	103392924	.	AATATATAAAT	A,TATATATAAAT,AATATATATAAAT,<NON_REF>	44	.	AS_RAW_BaseQRankSum=||||;AS_RAW_MQ=0.00|0.00|0.00|0.00|2225.00;AS_RAW_MQRankSum=||||;AS_RAW_ReadPosRankSum=||||;AS_SB_TABLE=0,0|0,0|0,0|0,0|4,3;DP=16;DRAGstrInfo=2,3;DRAGstrParams=43.3,5.0,26.0;ExcessHet=3.0103;MLEAC=0,1,1,0;MLEAF=0.00,0.500,0.500,0.00;RAW_MQandDP=31239,16	GT:AD:AF:DP:GP:GQ:PG:PL:SB	0/1:0,0,0,0,7:0,0,0.7,0:7:44,0,34.01,39.77,21.77,29.78,67,17,17.77,63.01,106,21,59.77,87,67.01:13:0,26,29.01,34.77,60.77,37.78,26,52,60.77,29.01,26,52,60.77,52,29.01:87,17,48,48,4,35,84,8,0,77,123,12,42,78,81:0,0,4,3

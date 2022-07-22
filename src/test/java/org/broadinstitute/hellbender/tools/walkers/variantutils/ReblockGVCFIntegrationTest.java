@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.variantutils;
 
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
+import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.*;
 import org.apache.commons.lang3.tuple.Pair;
@@ -15,7 +16,9 @@ import org.broadinstitute.hellbender.testutils.CommandLineProgramTester;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculator;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -416,6 +419,8 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(testResult.getAlternateAlleles().size(), 3);
         Assert.assertTrue(testResult.getAlternateAlleles().contains(Allele.NON_REF_ALLELE));
         Assert.assertEquals(testResult.getReference().getBaseString().length(), 1);  //alleles are properly trimmed
+        Assert.assertTrue(testResult.getGenotype(0).hasExtendedAttribute(GATKVCFConstants.ALLELE_FRACTION_KEY));
+        Assert.assertEquals(VariantContextGetters.attributeToList(testResult.getGenotype(0).getExtendedAttribute(GATKVCFConstants.ALLELE_FRACTION_KEY)).size(), 3);
 
         final VariantContext newRefBlock = outVCs.getRight().get(1);
         Assert.assertTrue(newRefBlock.hasAttribute(VCFConstants.END_KEY));
@@ -424,6 +429,60 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(refG.isHomRef());
         Assert.assertEquals(newRefBlock.getAlternateAlleles().size(), 1);
         Assert.assertTrue(newRefBlock.getAlternateAlleles().contains(Allele.NON_REF_ALLELE));
+    }
+
+    @Test
+    public void testReblockedAnnotationLengthsNotAgreeingWithHeader() {
+        final File funkyDragenVariant = new File(getToolTestDataDir() + "dragenHotMess.g.vcf.gz");
+        final File output = createTempFile("reblockedgvcf", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("V", funkyDragenVariant)
+                .addReference(hg38Reference)
+                .addOutput(output);
+        runCommandLine(args);
+
+        final List<VariantContext> outVCs = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath()).getRight();
+
+        for (final VariantContext vc : outVCs) {
+            final int altCount = vc.getAlternateAlleles().size();
+            final Genotype g = vc.getGenotype(0);
+            Assert.assertEquals(VariantContextGetters.attributeToList(g.getAnyAttribute(GATKVCFConstants.ALLELE_FRACTION_KEY)).size(), altCount);
+            Assert.assertEquals(VariantContextGetters.attributeToList(g.getAnyAttribute(GATKVCFConstants.F1R2_KEY)).size(), altCount+1);
+            Assert.assertEquals(VariantContextGetters.attributeToList(g.getAnyAttribute(GATKVCFConstants.F2R1_KEY)).size(), altCount+1);
+            if (vc.getStart() == 1743714 || vc.getStart() == 1746263) {
+                Assert.assertFalse(g.hasExtendedAttribute("PRI"));
+            } else {
+                Assert.assertEquals(VariantContextGetters.attributeToList(g.getAnyAttribute("PRI")).size(), GenotypeLikelihoods.numLikelihoods(vc.getNAlleles(), g.getPloidy()));
+            }
+        }
+    }
+
+    @Test
+    public void testAnnotationLengthsNotAgreeingWithHeader() {
+        //At chr1:1743714 F1R2 is R-length and too long
+        //AF is A-length and too short
+        final File funkyDragenVariant = new File(getToolTestDataDir() + "badFormatAnnotationLengths.g.vcf");
+        final File output = createTempFile("reblockedgvcf", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("V", funkyDragenVariant)
+                .addReference(hg38Reference)
+                .addOutput(output);
+        runCommandLine(args);
+
+        final List<VariantContext> outVCs = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath()).getRight();
+
+        for (final VariantContext vc : outVCs) {
+            final int altCount = vc.getAlternateAlleles().size();
+            if (altCount > 1) {  //there's a ref block because of trimming
+                final Genotype g = vc.getGenotype(0);
+                Assert.assertEquals(VariantContextGetters.attributeToList(g.getAnyAttribute(GATKVCFConstants.ALLELE_FRACTION_KEY)).size(), altCount);
+                Assert.assertEquals(VariantContextGetters.attributeToList(g.getAnyAttribute(GATKVCFConstants.F1R2_KEY)).size(), altCount + 1);
+                Assert.assertEquals(VariantContextGetters.attributeToList(g.getAnyAttribute(GATKVCFConstants.F2R1_KEY)).size(), altCount + 1);
+                Assert.assertEquals(VariantContextGetters.attributeToList(g.getAnyAttribute("PRI")).size(), GenotypeLikelihoods.numLikelihoods(vc.getNAlleles(), g.getPloidy()));
+            }
+        }
     }
 
     @Test

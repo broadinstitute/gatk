@@ -5,6 +5,7 @@ import com.google.common.primitives.Doubles;
 import com.google.common.primitives.Ints;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.*;
+import org.apache.logging.log4j.LogManager;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.genotyper.GenotypePriorCalculator;
@@ -13,6 +14,7 @@ import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.collections.Permutation;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
+import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
@@ -29,6 +31,8 @@ import java.util.stream.IntStream;
  * @author David Benjamin &lt;davidben@broadinstitute.org&gt;
  */
 public final class AlleleSubsettingUtils {
+    private static final OneShotLogger logger = new OneShotLogger(LogManager.getLogger(AlleleSubsettingUtils.class));
+
     private AlleleSubsettingUtils() {}  // prevent instantiation
     private static final int PL_INDEX_OF_HOM_REF = 0;
     public static final int NUM_OF_STRANDS = 2; // forward and reverse strands
@@ -41,17 +45,20 @@ public final class AlleleSubsettingUtils {
      *
      * Will reorder subsetted alleles according to the ordering provided by the list allelesToKeep
      *
+     * @param start                    start position of the corresponding VC, for error reporting
      * @param originalGs               the original GenotypesContext
      * @param originalAlleles          the original alleles
      * @param allelesToKeep            the subset of alleles to use with the new Genotypes
      * @param assignmentMethod         assignment strategy for the (subsetted) PLs
+     * @param header                   VCF header to get expected annotation lengths
      * @return                         a new non-null GenotypesContext
      */
-    public static GenotypesContext subsetAlleles(final GenotypesContext originalGs, final int defaultPloidy,
+    public static GenotypesContext subsetAlleles(final int start, final GenotypesContext originalGs, final int defaultPloidy,
                                                  final List<Allele> originalAlleles,
                                                  final List<Allele> allelesToKeep,
                                                  final GenotypePriorCalculator gpc,
-                                                 final GenotypeAssignmentMethod assignmentMethod) {
+                                                 final GenotypeAssignmentMethod assignmentMethod,
+                                                 final VCFHeader header) {
         Utils.nonNull(originalGs, "original GenotypesContext must not be null");
         Utils.nonNull(allelesToKeep, "allelesToKeep is null");
         Utils.nonEmpty(allelesToKeep, "must keep at least one allele");
@@ -92,10 +99,17 @@ public final class AlleleSubsettingUtils {
 
             final GenotypeBuilder gb = new GenotypeBuilder(g);
             final Map<String, Object> attributes = new HashMap<>(g.getExtendedAttributes());
-            attributes.remove(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY);
-            //TODO: remove other G-length attributes, although that may require header parsing
-            attributes.remove(VCFConstants.GENOTYPE_POSTERIORS_KEY);
-            attributes.remove(GATKVCFConstants.GENOTYPE_PRIOR_KEY);
+            final int[] perSampleIndexesOfRelevantAlleles;
+            if (originalAlleles.contains(Allele.NON_REF_ALLELE)) {
+                perSampleIndexesOfRelevantAlleles = AlleleSubsettingUtils.getIndexesOfRelevantAllelesForGVCF(originalAlleles, allelesToKeep, start, g, false);
+            } else {
+                perSampleIndexesOfRelevantAlleles = AlleleSubsettingUtils.getIndexesOfRelevantAlleles(originalAlleles, allelesToKeep, start, g);
+            }
+            //if we have a valid VCF header, use the annotation information there to check and potentially correct array lengths
+            if (header != null) {
+                checkAndCorrectAnnotationArrayLengths(start, originalAlleles, allelesToKeep, header, g, ploidy, attributes, perSampleIndexesOfRelevantAlleles);
+            }
+
             gb.noPL().noGQ().noAttributes().attributes(attributes);  //if alleles are subset, old PLs and GQ are invalid
             if (newLog10GQ != Double.NEGATIVE_INFINITY && g.hasGQ()) {  //only put GQ if originally present
                 gb.log10PError(newLog10GQ);
@@ -123,6 +137,79 @@ public final class AlleleSubsettingUtils {
             newGTs.add(gb.make());
         }
         return newGTs;
+    }
+
+    /**
+     *  @param start
+     * @param originalAlleles
+     * @param allelesToKeep
+     * @param header
+     * @param g
+     * @param ploidy
+     * @param attributes    modified to contain only valid length annotations
+     * @param perSampleIndexesOfRelevantAlleles
+     */
+    private static void checkAndCorrectAnnotationArrayLengths(final int start, final List<Allele> originalAlleles,
+                                                              final List<Allele> allelesToKeep, final VCFHeader header, final Genotype g,
+                                                              final int ploidy, final Map<String, Object> attributes,
+                                                              final int[] perSampleIndexesOfRelevantAlleles) {
+        for (final Map.Entry<String,Object> entry : attributes.entrySet()) {
+            final List<Object> subsetValues;
+            final VCFFormatHeaderLine formatLine = header.getFormatHeaderLine(entry.getKey());
+            final VCFHeaderLineCount attributeCount = formatLine.getCountType();
+            final List<Object> originalValues = VariantContextGetters.attributeToList(g.getAnyAttribute(entry.getKey()));
+            if (attributeCount.equals(VCFHeaderLineCount.R)) {
+                final int lengthDiff = originalValues.size() - originalAlleles.size();
+                if (lengthDiff == 0) {
+                    subsetValues = AlleleSubsettingUtils.remapRLengthList(originalValues, perSampleIndexesOfRelevantAlleles, 0.0);
+                } else {
+                    logger.warn("At position " + start + " R-length attribute size didn't match expected count");
+                    if (lengthDiff == -1 && originalAlleles.contains(Allele.NON_REF_ALLELE)) {
+                        final List<Object> paddedValues = new ArrayList<>(originalValues);
+                        paddedValues.add(0);
+                        subsetValues = AlleleSubsettingUtils.remapRLengthList(paddedValues, perSampleIndexesOfRelevantAlleles, 0.0);
+                    } else if (lengthDiff == 1 && originalAlleles.contains(Allele.NON_REF_ALLELE)) {
+                        final List<Object> trimmedValues = new ArrayList<>(originalValues);
+                        trimmedValues.remove(trimmedValues.size() - 1);
+                        subsetValues = AlleleSubsettingUtils.remapRLengthList(trimmedValues, perSampleIndexesOfRelevantAlleles, 0.0);
+                    } else {
+                        logger.warn("R-length attribute cannot be subset and will be omitted");
+                        subsetValues = null;
+                    }
+                }
+            } else if (attributeCount.equals(VCFHeaderLineCount.A)) {
+                int lengthDiff = originalValues.size() - (originalAlleles.size() - 1); //-1 because we don't want to count REF
+                if (lengthDiff == 0) {
+                    subsetValues = AlleleSubsettingUtils.remapALengthList(originalValues, perSampleIndexesOfRelevantAlleles, 0.0);
+                } else {
+                    logger.warn("At position " + start + " A-length attribute size didn't match expected count");
+                    if (lengthDiff == -1 && originalAlleles.contains(Allele.NON_REF_ALLELE)) {
+                        final List<Object> paddedValues = new ArrayList<>(originalValues);
+                        paddedValues.add(0);
+                        subsetValues = AlleleSubsettingUtils.remapALengthList(paddedValues, perSampleIndexesOfRelevantAlleles, 0.0);
+                    } else if (lengthDiff == 1 && originalAlleles.contains(Allele.NON_REF_ALLELE)) {
+                        final List<Object> trimmedValues = new ArrayList<>(originalValues);
+                        trimmedValues.remove(trimmedValues.size() - 1);
+                        subsetValues = AlleleSubsettingUtils.remapALengthList(trimmedValues, perSampleIndexesOfRelevantAlleles, 0.0);
+                    } else {
+                        logger.warn("A-length attribute cannot be subset and will be omitted");
+                        subsetValues = null;
+                    }
+                }
+            } else if (attributeCount.equals(VCFHeaderLineCount.G)) {
+                int lengthDiff = originalValues.size() - GenotypeLikelihoods.numLikelihoods(originalAlleles.size(), ploidy);
+                if (lengthDiff == 0) {
+                    subsetValues = remapGLengthList(originalValues, originalAlleles, allelesToKeep, ploidy, 0);
+                } else {
+                    logger.warn("At position " + start + " G-length attribute size didn't match expected count -- " +
+                            "annotation cannot be subset to relevant ALT alleles and will be dropped");
+                    subsetValues = null; //if G-length values don't match up, it's not obvious how to fix them
+                }
+            } else {
+                subsetValues = originalValues;
+            }
+            attributes.put(entry.getKey(), subsetValues);
+        }
     }
 
 
@@ -596,5 +683,24 @@ public final class AlleleSubsettingUtils {
             }
         }
         return newValues;
+    }
+
+    /**
+     * Given a list of per-genotype attributes, subset to relevant values given new alt alleles
+     * @param originalList
+     * @param originalAlleles
+     * @param newAlleles
+     * @param ploidy
+     * @return
+     */
+    public static <T> List<T> remapGLengthList(final List<T> originalList, final List<Allele> originalAlleles, final List<Allele> newAlleles, final int ploidy, T filler) {
+        Utils.nonNull(originalList);
+        Utils.nonNull(originalAlleles);
+        Utils.nonNull(newAlleles);
+
+        final int[] subsettedValueIndices = subsettedPLIndices(ploidy, originalAlleles, newAlleles);
+        final List<T> subsettedValues = Arrays.stream(subsettedValueIndices)
+                .mapToObj(idx -> originalList.get(idx)).collect(Collectors.toList());
+        return subsettedValues;
     }
 }
