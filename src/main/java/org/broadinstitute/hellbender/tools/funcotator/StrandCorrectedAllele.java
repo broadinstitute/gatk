@@ -1,13 +1,12 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
 import htsjdk.tribble.annotation.Strand;
-import htsjdk.variant.variantcontext.SimpleAllele;
 
 /**
  * Class to represent a strand-corrected {@link htsjdk.variant.variantcontext.Allele}.
  * Created by jonn on 10/24/18.
  */
-public class StrandCorrectedAllele extends SimpleAllele {
+public class StrandCorrectedAllele extends htsjdk.variant.variantcontext.Allele {
     public static final long serialVersionUID = 1L;
 
     /**
