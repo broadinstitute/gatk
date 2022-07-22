@@ -11,19 +11,16 @@ workflow GvsJointVariantCallsetCost {
         String call_set_identifier
     }
 
-    # the call_set_identifier string is used to name many different things throughout this workflow (BQ tables, vcfs etc),
-    # and so make sure nothing is broken by creative users, we replace spaces and underscores with hyphens
-
     if(false) {
       Array[String] excluded_submission_ids = []
     }
-    File gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-552-g0f9780a-SNAPSHOT-local.jar"
 
-    ## TB : GB; 1 : 1024
+    ## TiB : GiB; 1 : 1024
+    ## BigQuery pricing can be found here: https://cloud.google.com/bigquery/pricing
 
-    Float write_API_cost = 0.02684353333 ## BigQuery Storage Write API: $0.025 per 1 GB. The first 2 TB per month are free.
-    Float query_cost = 0.00536870666 ## Queries (on-demand): $5 per TB. The first 1 TB per month is free.
-    Float storage_api_cost = 0.00118111546 ## Storage API GB Scanned / Streaming reads (BigQuery Storage Read API):  $1.1 per TB read. Customers can read up to 300 TB of data per month at no charge.
+    Float write_API_cost = 0.025 ## BigQuery Storage Write API: $0.025 per 1 GB. The first 2 TB per month are free.
+    Float query_cost = 0.005 ## Queries (on-demand): $5 per TB. The first 1 TB per month is free.
+    Float storage_api_cost = 0.0011 ## Storage API GB Scanned / Streaming reads (BigQuery Storage Read API):  $1.1 per TB read. Customers can read up to 300 TB of data per month at no charge.
 
 
     call GvsCallsetCost.GvsCallsetCost {
@@ -50,7 +47,6 @@ workflow GvsJointVariantCallsetCost {
     output {
             Float total_bq_cost = FullCosts.total_bq_cost
     }
-
   }
 
     task FullCosts {
@@ -92,15 +88,15 @@ workflow GvsJointVariantCallsetCost {
         # compute cost plus
         # storage_api_cost
 
-            command <<<
-                set -e
-                cat ~{cost_observability_json} | jq '.| map(
-                  (select(.event_key=="BigQuery Query Scanned").sum_event_gibibytes | tonumber * ~{query_cost}),
-                  (select(.event_key=="Storage API Scanned").sum_event_gibibytes | tonumber * ~{storage_api_cost})
-                ) |add + ~{import_genomes_cost} ' > total_bq_cost.txt
+        command <<<
+            set -e
+            cat ~{cost_observability_json} | jq '.| map(
+                (select(.event_key=="BigQuery Query Scanned").sum_event_gibibytes | tonumber * ~{query_cost}),
+                (select(.event_key=="Storage API Scanned").sum_event_gibibytes | tonumber * ~{storage_api_cost})
+            ) |add + ~{import_genomes_cost} ' > total_bq_cost.txt
 
-                cat total_bq_cost.txt
-            >>>
+            cat total_bq_cost.txt
+        >>>
 
         runtime {
             docker: "stedolan/jq:latest"
