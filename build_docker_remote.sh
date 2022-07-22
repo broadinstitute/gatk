@@ -31,11 +31,11 @@ done
 
 if [ -z "$GITHUB_TAG" ]; then
 	printf "Option -e requires an argument.\n \
-Usage: %s: -e <GITHUB_TAG> [-psl] \n \
+Usage: %s: -e <GITHUB_TAG> [-sdt] \n \
 where <GITHUB_TAG> is the github tag (or hash when -s is used) to use in building the docker image\n \
 (e.g. bash build_docker_remote.sh -e 4.2.6.1 )\n \
 Optional arguments:  \n \
--s \t The GITHUB_TAG (-e parameter) is actually a github hash, not tag.  git hashes cannot be pushed as latest, so -l is implied.  \n \
+-s \t The GITHUB_TAG (-e parameter) is actually a github hash, not tag.  \n \
 -d <STAGING_DIR> \t staging directory to grab code from repo and build the docker image.  If unspecified, then use whatever is in current dir (do not go to the repo).  NEVER SPECIFY YOUR WORKING DIR \n \
 -t <IMAGE_TAG>\t  The tag to assign image once it is finished constructing.  NOTE: currently this MUST be on either GCR or the Google Artifact Registry. \n" $0
 	exit 1
@@ -44,7 +44,7 @@ fi
 # Output the parameters
 echo -e "\n"
 echo -e "github tag/hash: ${GITHUB_TAG}"
-echo -e "github project: ${REPO_PRJ}:${GITHUB_TAG}\n\n"
+echo -e "github project: ${REPO}/${PROJECT}:${GITHUB_TAG}\n\n"
 echo "Other options (Blank is false)"
 echo "---------------"
 echo "This is a git hash: ${IS_HASH}"
@@ -62,10 +62,10 @@ if [ -n "$STAGING_DIR" ]; then
     mkdir -p ${STAGING_DIR}
     cd ${STAGING_DIR}
     set +e
-    rm -Rf ${STAGING_DIR}/${STAGING_CLONE_DIR}
+    rm -Rf ${STAGING_CLONE_DIR}
     set -e
     GIT_LFS_SKIP_SMUDGE=1 git clone https://github.com/${REPO}/${PROJECT}.git ${STAGING_CLONE_DIR}
-    cd ${STAGING_DIR}/${STAGING_CLONE_DIR}
+    cd ${STAGING_CLONE_DIR}
     STAGING_ABSOLUTE_PATH=$(pwd)
 
     echo "Now in $(pwd)"

@@ -23,7 +23,7 @@ This repo contains the scripts for creating and pushing two docker images:
 
 ``scripts/docker/gatkbase/build_docker_base.sh`` is a script to create the gatkbase docker image. 
 ``build_docker.sh`` is a script to create the full gatk4 docker image.
-``build_docker_remote.sh`` is a script to create the full gatk4 docker image using google cloud build remotely. This is useful if you can't build the docker image locally (if you have an M1 Macbook) NOTE: this requires the user first specify their project with the command `gcloud config set project <PROJECT>` to a project that has access to google cloud build. 
+``build_docker_remote.sh`` is a script to create the full gatk4 docker image using google cloud build remotely. This is useful if you can't build the docker image locally (for example if you have an M1 Macbook) NOTE: this requires the user first specify their project with the command `gcloud config set project <PROJECT>` to a project that has access to google cloud build. 
 
 ## GATK4 Docker image
 

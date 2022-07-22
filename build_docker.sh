@@ -91,10 +91,10 @@ if [ -n "$STAGING_DIR" ]; then
     mkdir -p ${STAGING_DIR}
     cd ${STAGING_DIR}
     set +e
-    rm -Rf ${STAGING_DIR}/${STAGING_CLONE_DIR}
+    rm -Rf ${STAGING_CLONE_DIR}
     set -e
     GIT_LFS_SKIP_SMUDGE=1 git clone https://github.com/${REPO}/${PROJECT}.git ${STAGING_CLONE_DIR}
-    cd ${STAGING_DIR}/${STAGING_CLONE_DIR}
+    cd ${STAGING_CLONE_DIR}
     STAGING_ABSOLUTE_PATH=$(pwd)
 
     echo "Now in $(pwd)"
