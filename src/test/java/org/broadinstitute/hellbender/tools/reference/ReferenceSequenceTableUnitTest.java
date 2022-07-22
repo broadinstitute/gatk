@@ -172,7 +172,7 @@ public class ReferenceSequenceTableUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "testAnalyzeTableTwoRefsData")
     public void testAnalyzeTableTwoReferences(ReferenceSequenceTable table, Set<ReferencePair.Status> expectedStatus){
-        List<ReferencePair> refPairs = table.analyzeTable();
+        List<ReferencePair> refPairs = table.compareAllReferences();
         for(ReferencePair pair : refPairs){
             Assert.assertEquals(pair.getAnalysis(), expectedStatus);
         }
@@ -220,7 +220,7 @@ public class ReferenceSequenceTableUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "testAnalyzeTableMultipleRefsData")
     public void testAnalyzeTableMultipleReferences(ReferenceSequenceTable table, Map<ReferencePair, Set<ReferencePair.Status>> expectedStatus){
-        List<ReferencePair> refPairs = table.analyzeTable();
+        List<ReferencePair> refPairs = table.compareAllReferences();
         for(ReferencePair pair : refPairs){ ;
             Assert.assertEquals(pair.getAnalysis(), expectedStatus.get(pair));
         }

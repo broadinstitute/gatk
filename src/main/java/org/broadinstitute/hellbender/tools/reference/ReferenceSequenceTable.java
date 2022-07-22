@@ -243,6 +243,27 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
         return referencePairs;
     }
 
+    public List<ReferencePair> generateReferencePairs(GATKPath dictionary){
+        List<ReferencePair> referencePairs = new ArrayList<>();
+        for(int i = 0; i < references.size(); i++){
+            GATKPath currRef = references.get(i);
+            if(!currRef.equals(dictionary)){
+                referencePairs.add(new ReferencePair(this, dictionary, currRef));
+            }
+        }
+        return referencePairs;
+    }
+
+    public List<ReferencePair> compareAllReferences(){
+        List<ReferencePair> refPairs = generateReferencePairs();
+        return analyzeTable(refPairs);
+    }
+
+    public List<ReferencePair> compareAgainstKeyReference(GATKPath dictionary){
+        List<ReferencePair> refPairs = generateReferencePairs(dictionary);
+        return analyzeTable(refPairs);
+    }
+
     /**
      * Analyze the table by doing a pairwise comparison for all table references. Generates all ReferencePairs, then
      * analyzes each pair. First, traverses the table by MD5 and checks for any discrepancies across the column values
@@ -260,10 +281,10 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
      *
      * @return list of ReferencePairs with updated status sets
      */
-    public List<ReferencePair> analyzeTable(){
+    public List<ReferencePair> analyzeTable(List<ReferencePair> refPairs){
         checkTableBuildStatus();
 
-        List<ReferencePair> refPairs = generateReferencePairs();
+        //List<ReferencePair> refPairs = generateReferencePairs();
 
         for(TableRow row : tableByMD5.values()) {
             for(ReferencePair pair : refPairs) {
@@ -318,7 +339,7 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
                 } else if(sequenceNameFoundInOneRef == 1){
                     pair.addStatus(ReferencePair.Status.DIFFER_IN_SEQUENCES_PRESENT);
                 } else if (sequenceNameFoundInOneRef > 2){
-                    throw new UserException.BadInput(String.format("Duplicate of sequence '%s' found in %s or %s.", sequenceName, pair.getRef1(), pair.getRef2()));
+                    throw new UserException.BadInput(String.format("Duplicate of sequence '%s' found in %s or %s.", sequenceName, pair.getRef1AsString(), pair.getRef2AsString()));
                 }
             }
 

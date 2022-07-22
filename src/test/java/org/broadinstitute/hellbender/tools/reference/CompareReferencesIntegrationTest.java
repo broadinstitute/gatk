@@ -55,8 +55,6 @@ public class CompareReferencesIntegrationTest extends CommandLineProgramTest {
         IntegrationTestSpec.assertEqualTextFiles(output, expectedOutput);
     }
 
-
-
     @DataProvider(name = "md5ArgumentData")
     public Object[][] md5ArgumentData() {
         return new Object[][]{

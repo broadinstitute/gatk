@@ -70,11 +70,17 @@ public class ReferencePair {
         return ref2ColumnIndex;
     }
 
-    public String getRef1(){
+    public String getRef1AsString(){
         return ReferenceSequenceTable.getReferenceColumnName(ref1);
     }
-    public String getRef2(){
+    public String getRef2AsString(){
         return ReferenceSequenceTable.getReferenceColumnName(ref2);
+    }
+    public GATKPath getRef1(){
+        return ref1;
+    }
+    public GATKPath getRef2() {
+        return ref2;
     }
 
     /**
