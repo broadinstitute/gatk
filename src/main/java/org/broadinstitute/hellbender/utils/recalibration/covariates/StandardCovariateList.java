@@ -34,15 +34,8 @@ public final class StandardCovariateList implements Iterable<Covariate>, Seriali
         final ContextCovariate contextCovariate = new ContextCovariate(rac);
         final CycleCovariate cycleCovariate = new CycleCovariate(rac);
 
-        if ( rac.EXTENDED_CONTEXT_LOOKAHEAD == 0 || rac.EXTENDED_CONTEXT_ALT_EMBEDDED ) {
-            additionalCovariates = Collections.unmodifiableList(Arrays.asList(contextCovariate, cycleCovariate));
-            allCovariates = Collections.unmodifiableList(Arrays.asList(readGroupCovariate, qualityScoreCovariate, contextCovariate, cycleCovariate));
-        } else {
-            final AltCovariate altCovariate = new AltCovariate(rac);
-
-            additionalCovariates = Collections.unmodifiableList(Arrays.asList(contextCovariate, cycleCovariate, altCovariate));
-            allCovariates = Collections.unmodifiableList(Arrays.asList(readGroupCovariate, qualityScoreCovariate, contextCovariate, cycleCovariate, altCovariate));
-        }
+        additionalCovariates = Collections.unmodifiableList(Arrays.asList(contextCovariate, cycleCovariate));
+        allCovariates = Collections.unmodifiableList(Arrays.asList(readGroupCovariate, qualityScoreCovariate, contextCovariate, cycleCovariate));
 
         //precompute for faster lookup (shows up on profile)
         indexByClass = new LinkedHashMap<>();
