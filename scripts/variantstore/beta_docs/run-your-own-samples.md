@@ -6,7 +6,7 @@ In this tutorial, you will learn how to upload your own sample GVCF and index fi
 
 The [GVS](../gvs-product-sheet.pdf) is a solution for variant discovery on a large scale developed by the Data Sciences Platform at the Broad Institute of MIT and Harvard.
 
-The [GVS workflow](https://github.com/broadinstitute/gatk/blob/rc-vs-483-beta-user-wdl/scripts/variantstore/wdl/GvsJointVariantCalling.wdl) is an open-source, cloud-optimized workflow for joint calling at a large scale using the Terra platform. The workflow takes in single sample GVCF files with indices and produces sharded joint VCF files with indices, a manifest file, and metrics.
+The [GVS workflow](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/wdl/GvsJointVariantCalling.wdl) is an open-source, cloud-optimized workflow for joint calling at a large scale using the Terra platform. The workflow takes in single sample GVCF files with indices and produces sharded joint VCF files with indices, a manifest file, and metrics.
 
 To learn more about the GVS workflow, see the [Genomic Variant Store workflow overview](./gvs-overview.md).
 
@@ -168,6 +168,21 @@ There will also be a `glob-<task id>` file with a list of interval lists, but no
 Note:
 The interval lists are named consistently with the vcfs: 00000000.vcf.gz.interval-list will go with 00000000.vcf.gz and 00000000.vcf.gz.tbi 
 
+### Time and cost
+Below are several examples of the time and cost of running the workflow.
+
+| Number of Samples | Elapsed Time (hh:mm) | Terra Cost | BigQuery Cost | Total Cost | Approximate Cost per Sample |
+|-------------------|----------------------|------------|---------------|------------|-----------------------------|
+| 10                | 04:30                | $0.84      | $0.51         | $1.35      | $0.14                       |
+| 1000              | 07:24                | $13.02     | $46.62        | $59.64     | $0.06                       |
+| 2500              | 08:45                | $25.10     | $116.18       | $141.28    | $0.06                       |
+| 5000              | 12:00                | $54.00     | $232.71       | $286.71    | $0.06                       |
+| 10000             | 13:41                | $138.1     | $466.87       | $604.97    | $0.06                       |
+
+
+**Note:** The time and cost listed above each represent a single run of the GVS workflow. Actual time and cost may vary depending on BigQuery and Terra load at the time of the callset creation.
+
+For more information about controlling Cloud costs, see [this article](https://support.terra.bio/hc/en-us/articles/360029748111).
 
 ---
 
