@@ -874,24 +874,24 @@ task ClinvarSignificance {
         #                                 "other",
         #                                 "not provided"]
 
-        bq query --nouse_legacy_sql --project_id=~{query_project_id}  --format=csv 'SELECT
+        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT
           distinct(unnested_clinvar_classification)
           FROM
         ~{fq_vat_table}, UNNEST(clinvar_classification) AS unnested_clinvar_classification'| sed "2 d" > bq_clinvar_classes.csv
 
-        echo "affects" >> expected_clinvar_classes.csv
-        echo "association" >> expected_clinvar_classes.csv
-        echo "benign" >> expected_clinvar_classes.csv
-        echo "conflicting data from submitters" >> expected_clinvar_classes.csv
-        echo "drug response" >> expected_clinvar_classes.csv
-        echo "likely benign" >> expected_clinvar_classes.csv
-        echo "likely pathogenic" >> expected_clinvar_classes.csv
-        echo "not provided" >> expected_clinvar_classes.csv
-        echo "other" >> expected_clinvar_classes.csv
-        echo "pathogenic" >> expected_clinvar_classes.csv
-        echo "protective" >> expected_clinvar_classes.csv
-        echo "risk factor" >> expected_clinvar_classes.csv
-        echo "uncertain significance" >> expected_clinvar_classes.csv
+        echo 'affects
+        association
+        benign
+        conflicting data from submitters
+        drug response
+        likely benign
+        likely pathogenic
+        not provided
+        other
+        pathogenic
+        protective
+        risk factor
+        uncertain significance' > expected_clinvar_classes.csv
 
         comm -23 <(sort bq_clinvar_classes.csv) expected_clinvar_classes.csv > missing_clinvar_classes.csv
 
@@ -899,8 +899,8 @@ task ClinvarSignificance {
         NUMMISS=$( wc -l missing_clinvar_classes.csv | awk '{print $1;}' ) # we expect this to be 0
 
         echo "false" > ~{pf_file}
-        # if the result of the query less than 13 rows, that means clinvar_classification must not have all the expected values
-        if [[ $NUMRESULTS -ge 13 && $NUMMISS = "0" ]]; then
+        # If the result of the query has fewer than 13 rows, that means clinvar_classification must not have all the expected values
+        if [[ $NUMRESULTS -ge 13 && $NUMMISS -eq 0 ]]; then
           echo "The VAT table ~{fq_vat_table} has the correct values for clinvar classification" > ~{results_file}
           echo "true" > ~{pf_file}
         else
