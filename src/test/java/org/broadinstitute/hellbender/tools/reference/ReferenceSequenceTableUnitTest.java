@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.reference;
 
+import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
@@ -18,6 +19,18 @@ public class ReferenceSequenceTableUnitTest extends GATKBaseTest {
         }
 
         ReferenceSequenceTable table = new ReferenceSequenceTable(referenceSources, md5CalculationMode);
+        table.build();
+
+        return table;
+    }
+
+    private ReferenceSequenceTable tableGenerator(List<GATKPath> references){
+        Map<GATKPath, SAMSequenceDictionary> dictionaries = new LinkedHashMap<>();
+        for(GATKPath path : references){
+            dictionaries.put(path, ReferenceDataSource.of(path.toPath()).getSequenceDictionary());
+        }
+
+        ReferenceSequenceTable table = new ReferenceSequenceTable(dictionaries);
         table.build();
 
         return table;

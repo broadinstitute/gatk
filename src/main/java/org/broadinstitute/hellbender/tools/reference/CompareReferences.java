@@ -136,7 +136,6 @@ public class CompareReferences extends GATKTool {
 
         logger.info("Analyzing table.");
         List<ReferencePair> referencePairs = table.compareAllReferences();
-        //List<ReferencePair> referencePairs = table.analyzeTable();
         logger.info("Finished analyzing table.");
         System.out.println("*********************************************************");
         for(ReferencePair pair : referencePairs){

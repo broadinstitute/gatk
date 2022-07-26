@@ -1,0 +1,3 @@
+#Current Reference: reads_data_source_test1_withoutmd5s.bam
+Reference	Compatibility
+hg19mini_missingchr3.fasta	Not compatible. Status: COMMON_SUBSET. Run CompareReferences tool for more information on reference differences.

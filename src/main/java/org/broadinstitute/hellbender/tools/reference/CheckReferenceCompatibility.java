@@ -2,10 +2,13 @@ package org.broadinstitute.hellbender.tools.reference;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.SequenceDictionaryValidationArgumentCollection;
+import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
@@ -22,6 +25,42 @@ import java.io.Writer;
 import java.nio.file.Path;
 import java.util.*;
 
+/**
+ * Check a BAM/VCF for compatibility against specified references.
+ *
+ * <p>This tool generates a table analyzing the compatibility of a sequence file against provided references. The tool works to compare
+ * BAM/CRAMs (specified using the -I argument) as well as VCFs (specified using the -V argument) against provided
+ * reference(s), specified using the -references-to-compare argument. The table can be directed to a file or standard
+ * output using provided command-line arguments.
+ *</p>
+ *
+ * <h3>Input</h3>
+ * <p>
+ * A BAM/CRAM/VCF and reference(s) for comparison.
+ * </p>
+ *
+ * <h3>Output</h3>
+ * <p>
+ * A TSV file or output stream displaying the compatibility table.
+ * <pre>
+ * #Current Reference: reads_data_source_test1_withmd5s_missingchr1.bam
+ * Reference	Compatibility
+ * hg19mini.fasta	Compatible, the sequence dictionary in reads_data_source_test1_withmd5s_missingchr1.bam is a subset of the hg19mini.fasta reference sequence dictionary. Missing sequence(s): [1]
+ * hg19mini_1renamed.fasta	Compatible, the sequence dictionary in reads_data_source_test1_withmd5s_missingchr1.bam is a subset of the hg19mini_1renamed.fasta reference sequence dictionary. Missing sequence(s): [chr1]
+ * hg19mini_chr2snp.fasta	Not compatible. Status: [DIFFER_IN_SEQUENCE, DIFFER_IN_SEQUENCES_PRESENT]. Run CompareReferences tool for more information on reference differences.
+ * </pre>
+ * </p>
+ *
+ * <h3>Usage example</h3>
+ * <pre>
+ * gatk CheckReferenceCompatibility \
+ *   -refcomp reference.fasta \
+ *   -I reads.bam \
+ *   -O output.table
+ * </pre>
+ *
+ */
+
 @CommandLineProgramProperties(
         summary = "",
         oneLineSummary = "",
@@ -33,6 +72,9 @@ public class CheckReferenceCompatibility extends GATKTool {
     @Argument(fullName = "references-to-compare", shortName = "refcomp", doc = "Reference sequence file(s) to compare.")
     private List<GATKPath> references;
 
+    @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME, shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME, doc = "A VCF file containing variants", optional = true)
+    public GATKPath vcfPath;
+
     /**
      * Output file will be written here.
      *
@@ -41,9 +83,9 @@ public class CheckReferenceCompatibility extends GATKTool {
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "If specified, output reference sequence table in TSV format to this file. Otherwise print it to stdout.", optional = true)
     private GATKPath output;
 
-
     private SAMSequenceDictionary dictionaryToCompare;
     private GATKPath dictionaryPath;
+    private String dictionaryName;
     private Map<GATKPath, SAMSequenceDictionary> dictionaries = new LinkedHashMap<>();
     private List<CompatibilityRecord> referenceCompatibilities = new ArrayList<>();
 
@@ -58,21 +100,29 @@ public class CheckReferenceCompatibility extends GATKTool {
     }
 
     private void initializeSequenceDictionaryForInput(){
-        if(hasReads()){
-            if(readArguments.getReadPathSpecifiers().size() > 1){
-                throw new UserException.BadInput("Tool analyzes one BAM at a time.");
+        // BAMs/CRAMs
+        if(hasReads() ^ vcfPath != null){
+            if (hasReads()) {
+                if (readArguments.getReadPathSpecifiers().size() > 1) {
+                    throw new UserException.BadInput("Tool analyzes one BAM at a time.");
+                }
+                dictionaryToCompare = getHeaderForReads().getSequenceDictionary();
+                dictionaryPath = readArguments.getReadPathSpecifiers().get(0);
+                dictionaryName = dictionaryPath.toPath().getFileName().toString();
             }
-            dictionaryToCompare = getHeaderForReads().getSequenceDictionary();
-            dictionaryPath = readArguments.getReadPathSpecifiers().get(0);
-
+            // VCFs
+            else {
+                try(final FeatureDataSource<VariantContext> vcfReader = new FeatureDataSource<>(vcfPath.toString())){
+                    VCFHeader header = (VCFHeader) vcfReader.getHeader();
+                    dictionaryToCompare = header.getSequenceDictionary();
+                    dictionaryPath = vcfPath;
+                    dictionaryName = dictionaryPath.toPath().getFileName().toString();
+                }
+            }
             dictionaries.put(dictionaryPath, dictionaryToCompare);
             for(GATKPath path : references){
                 dictionaries.put(path, ReferenceDataSource.of(path.toPath()).getSequenceDictionary());
             }
-        }
-        // VCFs
-        else{
-
         }
     }
 
@@ -84,13 +134,13 @@ public class CheckReferenceCompatibility extends GATKTool {
 
             List<ReferencePair> refPairs = table.compareAgainstKeyReference(dictionaryPath);
             for(ReferencePair pair : refPairs){
-                evaluateCompatibility(pair);
+                evaluateCompatibility(pair, table);
             }
         }
         else{
-            logger.warn("****************************");
-            logger.warn("* Comparison lacking MD5.  *");
-            logger.warn("****************************");
+            logger.warn("*************************************************************************************************************************");
+            logger.warn("* Comparison lacking MD5. All comparisons based on sequence name and length, which could hide mismatching references.  *");
+            logger.warn("*************************************************************************************************************************");
 
             for(Map.Entry<GATKPath, SAMSequenceDictionary> entry : dictionaries.entrySet()){
                 if(!entry.getValue().equals(dictionaryToCompare)){
@@ -101,12 +151,19 @@ public class CheckReferenceCompatibility extends GATKTool {
         writeOutput();
     }
 
-    public void writeOutput(){
+    /**
+     * Write compatibility information to output in table format.
+     *
+     * Note: if no output file specified, displays to standard output.
+     *
+     */
+    private void writeOutput(){
         TableColumnCollection columns = new TableColumnCollection(Arrays.asList("Reference", "Compatibility"));
         try(CheckReferenceCompatibilityTableWriter writer = output == null
                 ? new CheckReferenceCompatibilityTableWriter(new OutputStreamWriter(System.out), columns)
                 : new CheckReferenceCompatibilityTableWriter(output.toPath(), columns)
         ){
+            writer.writeComment(String.format("Current Reference: %s", dictionaryName));
             writer.writeHeaderIfApplies();
             for(CompatibilityRecord record : referenceCompatibilities){
                 writer.writeRecord(record);
@@ -118,48 +175,60 @@ public class CheckReferenceCompatibility extends GATKTool {
     }
 
     private boolean dictionaryHasMD5s(SAMSequenceDictionary dictionary){
-        for(SAMSequenceRecord record : dictionary.getSequences()){
+        for (SAMSequenceRecord record : dictionary.getSequences()) {
             String md5FromDict = record.getMd5();
-            if(md5FromDict == null){
+            if (md5FromDict == null) {
                 return false;
             }
         }
         return true;
     }
 
-    // for MD5s present
-    public void evaluateCompatibility(ReferencePair refPair){
-        if(refPair.getAnalysis().contains(ReferencePair.Status.EXACT_MATCH)){
-            referenceCompatibilities.add(new CompatibilityRecord(refPair.getRef1(), "Compatible, exact match"));
-            //System.out.println(String.format("%s: Compatible, exact match", refPair.getRef1AsString()));
+    /** Evaluate the compatibility of a given pair of references when MD5s are present.
+     *
+     * @param refPair ReferencePair containing the dictionary file and a reference it is being compared against
+     * @param table
+     */
+    private void evaluateCompatibility(ReferencePair refPair, ReferenceSequenceTable table){
+        EnumSet<ReferencePair.Status> status = refPair.getAnalysis();
+        if(status.contains(ReferencePair.Status.EXACT_MATCH)){
+            referenceCompatibilities.add(new CompatibilityRecord(refPair.getRef2(), "Compatible, the sequence dictionaries exactly match"));
         }
-        else if(refPair.getAnalysis().contains(ReferencePair.Status.SUBSET)){
-            referenceCompatibilities.add(new CompatibilityRecord(refPair.getRef1(),String.format("Compatible, %s is a subset of %s reference.", refPair.getRef1AsString(), refPair.getRef2AsString())));
-            //System.out.println(String.format("%s: Compatible, %s is a subset of %s reference.", refPair.getRef1AsString(), refPair.getRef1AsString(), refPair.getRef2AsString() ));
+        else if(status.contains(ReferencePair.Status.SUBSET) && status.size() == 1){
+            referenceCompatibilities.add(new CompatibilityRecord(refPair.getRef2(),String.format("Compatible, the sequence dictionary in %s is a subset of the %s reference sequence dictionary. Missing sequence(s): %s", refPair.getRef1AsString(), refPair.getRef2AsString(), getMissingSequencesIfSubset(dictionaries.get(refPair.getRef2())))));
         }
         else{
-            referenceCompatibilities.add(new CompatibilityRecord(refPair.getRef1(),"Not compatible. Run CompareReferences tool for more information on reference differences."));
-            //System.out.println(String.format("%s: Not compatible. Run CompareReferences tool for more information on reference differences.", refPair.getRef1AsString()));
+            referenceCompatibilities.add(new CompatibilityRecord(refPair.getRef2(), String.format("Not compatible. Status: %s. Run CompareReferences tool for more information on reference differences.", status)));
         }
     }
 
-    // for no MD5s
-    public void evaluateCompatibility(SAMSequenceDictionary dict, GATKPath dictPath){
-        String dictName = dictPath.toPath().getFileName().toString();
-        SequenceDictionaryUtils.SequenceDictionaryCompatibility compatibilityStatus = SequenceDictionaryUtils.compareDictionaries(dict, dictionaryToCompare, false);
+    /** Evaluate the compatibility of a given pair of references when MD5s are not present.
+     *
+     * Note: compatibility calls are made based on sequence name and length, alone, and are therefore imprecise.
+     *
+     * @param referenceDict SAMSequenceDictionary to be compared against the key sequence file
+     * @param referenceDictPath path to provided dictionary
+     */
+    private void evaluateCompatibility(SAMSequenceDictionary referenceDict, GATKPath referenceDictPath){
+        String referenceDictName = referenceDictPath.toPath().getFileName().toString();
+        SequenceDictionaryUtils.SequenceDictionaryCompatibility compatibilityStatus = SequenceDictionaryUtils.compareDictionaries(referenceDict, dictionaryToCompare, false);
         if(compatibilityStatus.equals(SequenceDictionaryUtils.SequenceDictionaryCompatibility.IDENTICAL)){
-            referenceCompatibilities.add(new CompatibilityRecord(dictPath, "All sequence name and lengths match."));
-            //System.out.println(String.format("%s: All sequence name and lengths match.", dictName));
+            referenceCompatibilities.add(new CompatibilityRecord(referenceDictPath, "All sequence names and lengths match in the sequence dictionaries. Since the MD5s are lacking, we can't confirm there aren't mismatching bases in the references."));
         }
         else if(compatibilityStatus.equals(SequenceDictionaryUtils.SequenceDictionaryCompatibility.SUPERSET)){
-            referenceCompatibilities.add(new CompatibilityRecord(dictPath, String.format("All present sequence names and lengths match, but %s is a subset of %s.", dictName, dictionaryPath)));
-            //System.out.println(String.format("%s: All present sequence names and lengths match, but %s is a subset of %s.", dictName, dictName, dictionaryPath));
+            referenceCompatibilities.add(new CompatibilityRecord(referenceDictPath, String.format("All sequence names and lengths present in the sequence dictionaries match, but %s is a subset of %s. Missing sequence(s): %s. Since the MD5s are lacking, we can't confirm there aren't mismatching bases in the references.", dictionaryName, referenceDictName, getMissingSequencesIfSubset(referenceDict))));
         }
         else{
-            referenceCompatibilities.add(new CompatibilityRecord(dictPath, "Not compatible. Run CompareReferences tool for more information on reference differences."));
-            //System.out.println(String.format("%s: Not compatible. Run CompareReferences tool for more information on reference differences.", dictName));
+            referenceCompatibilities.add(new CompatibilityRecord(referenceDictPath, String.format("Not compatible. Status: %s. Run CompareReferences tool for more information on reference differences.", compatibilityStatus)));
         }
+    }
 
+    private List<String> getMissingSequencesIfSubset(SAMSequenceDictionary referenceDict){
+        Set<String> commonSequences = SequenceDictionaryUtils.getCommonContigsByName(dictionaryToCompare, referenceDict);
+        List<String> missingSequences = SequenceDictionaryUtils.getContigNamesList(referenceDict);
+        missingSequences.removeAll(commonSequences);
+
+        return missingSequences;
     }
 
     @Override
@@ -172,7 +241,10 @@ public class CheckReferenceCompatibility extends GATKTool {
         super.closeTool();
     }
 
-    public static class CompatibilityRecord {
+    /**
+     * Minimal class representing a record in the compatibility output table.
+     */
+    private static class CompatibilityRecord {
         GATKPath ref;
         String compatibilityOutput;
 
@@ -190,7 +262,6 @@ public class CheckReferenceCompatibility extends GATKTool {
         }
     }
 
-
     /**
      * TableWriter to format and write the table output.
      */
@@ -206,13 +277,8 @@ public class CheckReferenceCompatibility extends GATKTool {
 
         @Override
         protected void composeLine(final CompatibilityRecord record, final DataLine dataLine){
-            for(int i = 0; i < 2; i++){
-                dataLine.set("Reference", record.getRefAsString())
-                        .set("Compatibility", record.getCompatibility());
-            }
+            dataLine.set("Reference", record.getRefAsString())
+                    .set("Compatibility", record.getCompatibility());
         }
     }
-
-
-
 }

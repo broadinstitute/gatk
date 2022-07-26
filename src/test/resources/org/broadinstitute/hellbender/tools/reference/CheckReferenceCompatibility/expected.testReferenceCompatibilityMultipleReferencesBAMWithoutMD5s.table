@@ -1,0 +1,5 @@
+#Current Reference: reads_data_source_test1_withoutmd5s.bam
+Reference	Compatibility
+hg19mini.fasta	All sequence names and lengths match in the sequence dictionaries. Since the MD5s are lacking, we can't confirm there aren't mismatching bases in the references.
+hg19mini_1renamed.fasta	Not compatible. Status: COMMON_SUBSET. Run CompareReferences tool for more information on reference differences.
+hg19mini_chr2snp.fasta	All sequence names and lengths match in the sequence dictionaries. Since the MD5s are lacking, we can't confirm there aren't mismatching bases in the references.

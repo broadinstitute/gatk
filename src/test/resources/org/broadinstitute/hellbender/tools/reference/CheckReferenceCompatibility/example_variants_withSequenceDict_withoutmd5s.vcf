@@ -1,0 +1,18 @@
+##fileformat=VCFv4.1
+##contig=<ID=1,length=16000,assembly=mini>
+##contig=<ID=2,length=16000,assembly=mini>
+##contig=<ID=3,length=16000,assembly=mini>
+##contig=<ID=4,length=16000,assembly=mini>
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+1	99	a	G	A	1.0	PASS	.
+1	198	b	GG	G	2.0	PASS	.
+1	200	c	G	A	3.0	PASS	.
+1	203	d	GGGG	G	4.0	PASS	.
+1	280	e	G	A	5.0	PASS	.
+1	284	f	GGG	G	6.0	PASS	.
+1	285	g	G	A	7.0	PASS	.
+1	286	h	G	A	8.0	PASS	.
+1	999	i	G	A	9.0	PASS	.
+1	1000	j	G	A	10.0	PASS	.
+4	775	y	G	A	232.46	PASS	.
+4	776	z	GGGG	G	232.46	PASS	.
