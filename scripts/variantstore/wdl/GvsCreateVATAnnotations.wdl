@@ -107,16 +107,6 @@ task ExtractAnAcAfFromVCF {
         gsutil cp ~{input_vcf_index} ~{local_input_vcf_index}
         gsutil cp ~{ref} Homo_sapiens_assembly38.fasta
 
-        # expected_subpopulations = [
-        # "afr",
-        # "amr",
-        # "eas",
-        # "eur",
-        # "mid",
-        # "oth",
-        # "sas"
-        #]
-
         echo_date "VAT: Convert input to BCF format"
         bcftools convert --threads 4 -O b -o original.bcf ~{local_input_vcf}
         rm ~{local_input_vcf}
@@ -166,11 +156,15 @@ task ExtractAnAcAfFromVCF {
         cat duplicates.tsv >> track_dropped.tsv
         rm duplicates.tsv ## clean up unneeded file
 
-        echo_date "VAT: calculate annotations for all subpopulations"
+        SUBPOPS=$(cut -f 2 ~{subpopulation_sample_list} | sort | uniq | tr '\n' ' ')
+        echo_date "VAT: calculate annotations for the following subpopulations '$SUBPOPS'"
+
+        VCF_FIELDS=$(grep ^#CHROM ~{custom_annotations_template} | sed s/^#/%/g | awk  '{gsub("\t","\\t%",$0); print;}')
+        echo_date "VAT: Here are the VCF fields to pull with bcftools: $VCF_FIELDS"
+
         ## AC_het,AC_hom and AC_Hemi are used to calculate the participant count
         bcftools plugin fill-tags --threads 4 -- deduplicated.bcf -S ~{subpopulation_sample_list} -t AC,AF,AN,AC_het,AC_hom,AC_Hemi | bcftools query -f \
-        '%CHROM\t%POS\t%REF\t%ALT\t%AC\t%AN\t%AF\t%AC_Hom\t%AC_Het\t%AC_Hemi\t%AC_afr\t%AN_afr\t%AF_afr\t%AC_Hom_afr\t%AC_Het_afr\t%AC_Hemi_afr\t%AC_amr\t%AN_amr\t%AF_amr\t%AC_Hom_amr\t%AC_Het_amr\t%AC_Hemi_amr\t%AC_eas\t%AN_eas\t%AF_eas\t%AC_Hom_eas\t%AC_Het_eas\t%AC_Hemi_eas\t%AC_eur\t%AN_eur\t%AF_eur\t%AC_Hom_eur\t%AC_Het_eur\t%AC_Hemi_eur\t%AC_mid\t%AN_mid\t%AF_mid\t%AC_Hom_mid\t%AC_Het_mid\t%AC_Hemi_mid\t%AC_oth\t%AN_oth\t%AF_oth\t%AC_Hom_oth\t%AC_Het_oth\t%AC_Hemi_oth\t%AC_sas\t%AN_sas\t%AF_sas\t%AC_Hom_sas\t%AC_Het_sas\t%AC_Hemi_sas\n' \
-        >> ~{custom_annotations_file_name}
+        "$VCF_FIELDS\n" >> ~{custom_annotations_file_name}
 
         ## for validation of the pipeline
         wc -l ~{custom_annotations_file_name} | awk '{print $1 -7}'  > count.txt
@@ -317,7 +311,7 @@ task PrepAnnotationJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_07_14"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_vattest_2022_07_28"
         memory: "8 GB"
         preemptible: 5
         cpu: "1"

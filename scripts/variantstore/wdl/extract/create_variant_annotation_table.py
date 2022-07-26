@@ -172,13 +172,13 @@ def get_subpopulation_calculations(subpop_annotations):
     max_af = None
     max_sc = None
     max_subpop = ""
-    for gvs_subpop in gvs_subpopulations: # note these will break if a subpopulation is missing
-        subpop_ac_val = subpop_annotations.get("_".join(["AC", gvs_subpop]))
-        subpop_an_val = subpop_annotations.get("_".join(["AN", gvs_subpop]))
-        subpop_af_val = subpop_annotations.get("_".join(["AF", gvs_subpop]))
+    for gvs_subpop in gvs_subpopulations:
+        subpop_ac_val = subpop_annotations.get("_".join(["AC", gvs_subpop]), 0)
+        subpop_an_val = subpop_annotations.get("_".join(["AN", gvs_subpop]), 0)
+        subpop_af_val = subpop_annotations.get("_".join(["AF", gvs_subpop]), None)
         # note the assumption is made that AC_Hom must be even because by it's nature it means there are two, but there could be an error
-        subpop_sc_val = int(subpop_annotations.get("_".join(["AC_Hom", gvs_subpop])) / 2 ) + subpop_annotations.get("_".join(["AC_Het", gvs_subpop])) + subpop_annotations.get("_".join(["AC_Hemi", gvs_subpop]))
-        # here we set the subpopulation ac/an/af values
+        subpop_sc_val = int(subpop_annotations.get("_".join(["AC_Hom", gvs_subpop]), 0) / 2 ) + subpop_annotations.get("_".join(["AC_Het", gvs_subpop]), 0) + subpop_annotations.get("_".join(["AC_Hemi", gvs_subpop]), 0)
+
         row["_".join(["gvs", gvs_subpop, "ac"])] = subpop_ac_val
         row["_".join(["gvs", gvs_subpop, "an"])] = subpop_an_val
         row["_".join(["gvs", gvs_subpop, "af"])] = subpop_af_val
@@ -377,9 +377,9 @@ def make_annotation_jsons(annotated_json, output_json, output_genes_json):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False, description='Create BQ load friendly jsons for VAT creation')
-    parser.add_argument('--annotated_json',type=str, help='nirvana created annotation json', required=True)
-    parser.add_argument('--output_vt_json',type=str, help='name of the vt json', required=True)
-    parser.add_argument('--output_genes_json',type=str, help='name of the genes json', required=True)
+    parser.add_argument('--annotated_json', type=str, help='nirvana created annotation json', required=True)
+    parser.add_argument('--output_vt_json', type=str, help='name of the vt json', required=True)
+    parser.add_argument('--output_genes_json', type=str, help='name of the genes json', required=True)
 
     args = parser.parse_args()
 

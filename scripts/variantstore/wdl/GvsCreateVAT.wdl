@@ -23,7 +23,6 @@ workflow GvsCreateVAT {
     Array[String] contig_array = ["chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrX", "chrY", "chrM"]
     File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
     File nirvana_data_directory = "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/NirvanaData.tar.gz"
-    File AnAcAf_annotations_template = "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/vat/custom_annotations_template.tsv"
 
     call MakeSubpopulationFiles {
         input:
@@ -46,7 +45,7 @@ workflow GvsCreateVAT {
                 nirvana_data_directory = nirvana_data_directory,
                 output_path = output_path,
                 service_account_json_path = service_account_json_path,
-                custom_annotations_template = AnAcAf_annotations_template,
+                custom_annotations_template = MakeSubpopulationFiles.custom_annotations_template_file,
                 ref = reference
         }
     }
@@ -128,6 +127,7 @@ task MakeSubpopulationFiles {
         }
     }
     String output_ancestry_filename =  "ancestry_mapping.tsv"
+    String custom_annotations_template_filename =  "custom_annotations_template.tsv"
     String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
     String updated_input_ancestry_file = basename(input_ancestry_file)
     String updated_input_vcfs_file = basename(inputFileofFileNames)
@@ -149,13 +149,14 @@ task MakeSubpopulationFiles {
         ## the ancestry file is processed down to a simple mapping from sample to subpopulation
         python3 /app/extract_subpop.py \
             --input_path ~{updated_input_ancestry_file} \
-            --output_path ~{output_ancestry_filename}
+            --output_path ~{output_ancestry_filename} \
+            --custom_annotations_template_path ~{custom_annotations_template_filename}
     >>>
 
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_07_14"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_vattest_2022_07_28"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -164,7 +165,8 @@ task MakeSubpopulationFiles {
     # ------------------------------------------------
     # Outputs:
     output {
-        File ancestry_mapping_list = "~{output_ancestry_filename}"
+        File ancestry_mapping_list = output_ancestry_filename
+        File custom_annotations_template_file = custom_annotations_template_filename
         Array[File] input_vcfs = read_lines(updated_input_vcfs_file)
         Array[File] input_vcf_indices = read_lines(updated_input_indices_file)
     }

@@ -140,6 +140,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - gg_VS-548_HandleSubsetsOfSubpopulations
    - name: GvsCreateVATAnnotations
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVATAnnotations.wdl
@@ -149,6 +150,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - gg_VS-548_HandleSubsetsOfSubpopulations
    - name: GvsCreateVATFromAnnotations
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVATFromAnnotations.wdl
@@ -158,6 +160,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - gg_VS-548_HandleSubsetsOfSubpopulations
    - name: GvsValidateVat
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/variant_annotations_table/GvsValidateVAT.wdl
@@ -167,6 +170,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - gg_VS-548_HandleSubsetsOfSubpopulations
    - name: GvsExtractCohortFromSampleNames
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCohortFromSampleNames.wdl
