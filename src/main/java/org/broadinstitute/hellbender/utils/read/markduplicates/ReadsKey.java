@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.read.markduplicates;
 
 import htsjdk.samtools.SAMFileHeader;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.MarkDuplicatesSparkArgumentCollection;
 import org.broadinstitute.hellbender.tools.spark.transforms.markduplicates.MarkDuplicatesSparkUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
@@ -30,11 +31,12 @@ public abstract class ReadsKey {
         return new KeyForFragment(read.getName().hashCode()) ;
     }
 
-    public static ReadsKey getKeyForFragment(int strandedUnclippedStart, boolean reverseStrand, int referenceIndex, byte library) {
-        return new KeyForFragment(longKeyForFragment(strandedUnclippedStart, reverseStrand, referenceIndex, library));
+    public static ReadsKey getKeyForFragment(int start, boolean reverseStrand, int referenceIndex, byte library) {
+        return new KeyForFragment(longKeyForFragment(start, reverseStrand, referenceIndex, library));
     }
 
     public static ReadsKey getKeyForPair(final SAMFileHeader header, final GATKRead first, final GATKRead second, final Map<String, Byte> libraryKeyMap) {
+
         return new KeyForPair(longKeyForFragment(ReadUtils.getStrandedUnclippedStart(first),
                                 first.isReverseStrand(),
                                 ReadUtils.getReferenceIndex(first, header),
@@ -52,6 +54,7 @@ public abstract class ReadsKey {
      *       be accessed by {@link org.broadinstitute.hellbender.engine.spark.GATKRegistrator} for kryo serialization
      */
     public static class KeyForFragment extends ReadsKey {
+
         final long keyValue;
 
         KeyForFragment(final long key) {
@@ -63,8 +66,10 @@ public abstract class ReadsKey {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             KeyForFragment that = (KeyForFragment) o;
+
             return keyValue == that.keyValue;
         }
+
         @Override
         public int hashCode() {
             return Objects.hash(keyValue);
@@ -109,14 +114,17 @@ public abstract class ReadsKey {
         public String toString() {
             return firstReadKeyValue + " " + secondReadKeyValue;
         }
+
     }
 
     // Helper methods for generating summary longs
-    private static long longKeyForFragment(int strandedUnclippedStart, boolean reverseStrand, int referenceIndex, byte library) {
-        return (((long)strandedUnclippedStart) << 32) |
+    private static long longKeyForFragment(int start, boolean reverseStrand, int referenceIndex, byte library) {
+        long key = (((long)start) << 32) |
                         (referenceIndex << 16 & (0xFFFF0000)) | // Note, the bitmasks are being used here because upcasting a negative int to a long in java results in the top bits being filled with 1s, which will ruin the rest of the key. So we mask it for saftey.
                         ((library << 8) & (0x0000FF00)) |
                         (reverseStrand ? 1 : 0);
+
+        return key;
     }
 
     private static long longKeyForPair(int strandedUnclippedStart, boolean reverseStrand, int referenceIndex) {

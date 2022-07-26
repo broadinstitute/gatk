@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
+import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -14,12 +15,16 @@ import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscovery
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
+import org.broadinstitute.hellbender.tools.walkers.annotator.HaplotypeFilteringAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
 import org.broadinstitute.hellbender.transformers.DRAGENMappingQualityReadTransformer;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
+import org.broadinstitute.hellbender.cmdline.ModeArgumentUtils;
 
 import java.util.Collection;
 import java.util.List;
@@ -140,7 +145,7 @@ import java.util.Optional;
         programGroup = ShortVariantDiscoveryProgramGroup.class
 )
 @DocumentedFeature
-public final class HaplotypeCaller extends AssemblyRegionWalker {
+public class HaplotypeCaller extends AssemblyRegionWalker {
 
     @ArgumentCollection
     private HaplotypeCallerArgumentCollection hcArgs = new HaplotypeCallerArgumentCollection();
@@ -148,7 +153,9 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
     /**
      * A raw, unfiltered, highly sensitive callset in VCF format.
      */
-    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "File to which variants should be written")
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+            doc = "File to which variants should be written")
     public GATKPath outputVCF = null;
 
     private VariantContextWriter vcfWriter;
@@ -161,9 +168,14 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
     }
 
     /**
-     * This is being used to set the mapping quality filter when in dragen mode. This is also where make alterations to the input arguments based on DragenMode.
+     * This is being used to set the mapping quality filter when in dragen and/or flow mode. This is also where make alterations to the input arguments based on DragenMode.
      */
+    @Override
     protected String[] customCommandLineValidation() {
+        if (hcArgs.dragenMode && hcArgs.flowMode != HaplotypeCallerArgumentCollection.FlowMode.NONE ) {
+            throw new UserException("dragen mode and flow mode can't be both specified");
+        }
+
         if (hcArgs.dragenMode) {
             final GATKReadFilterPluginDescriptor readFilterPlugin =
                     getCommandLineParser().getPluginDescriptor(GATKReadFilterPluginDescriptor.class);
@@ -174,6 +186,13 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
                     hcArgs.getDragenNameValuePairs(),
                     HaplotypeCallerArgumentCollection.DRAGEN_GATK_MODE_LONG_NAME);
         }
+        if (hcArgs.flowMode != HaplotypeCallerArgumentCollection.FlowMode.NONE) {
+            ModeArgumentUtils.setArgValues(
+                    getCommandLineParser(),
+                    hcArgs.flowMode.getNameValuePairs(),
+                    HaplotypeCallerArgumentCollection.FLOW_GATK_MODE_LONG_NAME);
+        }
+
         return null;
     }
 
@@ -203,6 +222,9 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
     public Collection<Annotation> makeVariantAnnotations() {
         final boolean confidenceMode = hcArgs.emitReferenceConfidence != ReferenceConfidenceMode.NONE;
         final Collection<Annotation> annotations = super.makeVariantAnnotations();
+        if (hcArgs.filterAlleles) {
+            annotations.add(new HaplotypeFilteringAnnotation());
+        }
         return confidenceMode? HaplotypeCallerEngine.filterReferenceConfidenceAnnotations(annotations): annotations;
     }
 
@@ -228,7 +250,7 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
 
         final VariantAnnotatorEngine variantAnnotatorEngine = new VariantAnnotatorEngine(makeVariantAnnotations(),
                 hcArgs.dbsnp.dbsnp, hcArgs.comps,  hcArgs.emitReferenceConfidence != ReferenceConfidenceMode.NONE, false);
-        hcEngine = new HaplotypeCallerEngine(hcArgs, assemblyRegionArgs, createOutputBamIndex, createOutputBamMD5, getHeaderForReads(), getReferenceReader(referenceArguments), variantAnnotatorEngine);
+        hcEngine = buildHaplotypeCallerEngine(hcArgs, assemblyRegionArgs, createOutputBamIndex, createOutputBamMD5, getHeaderForReads(), getReferenceReader(referenceArguments), variantAnnotatorEngine);
 
         // The HC engine will make the right kind (VCF or GVCF) of writer for us
         final SAMSequenceDictionary sequenceDictionary = getHeaderForReads().getSequenceDictionary();
@@ -236,7 +258,11 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
         hcEngine.writeHeader(vcfWriter, sequenceDictionary, getDefaultToolVCFHeaderLines());
     }
 
-    private static CachingIndexedFastaSequenceFile getReferenceReader(ReferenceInputArgumentCollection referenceArguments) {
+    protected HaplotypeCallerEngine buildHaplotypeCallerEngine(final HaplotypeCallerArgumentCollection hcArgs, final AssemblyRegionArgumentCollection assemblyRegionArgs, final boolean createOutputBamIndex, final boolean createOutputBamMD5, final SAMFileHeader headerForReads, final CachingIndexedFastaSequenceFile referenceReader, final VariantAnnotatorEngine variantAnnotatorEngine) {
+        return new HaplotypeCallerEngine(hcArgs, assemblyRegionArgs, createOutputBamIndex, createOutputBamMD5, getHeaderForReads(), getReferenceReader(referenceArguments), variantAnnotatorEngine);
+    }
+
+    protected static CachingIndexedFastaSequenceFile getReferenceReader(ReferenceInputArgumentCollection referenceArguments) {
         return new CachingIndexedFastaSequenceFile(referenceArguments.getReferenceSpecifier());
     }
 

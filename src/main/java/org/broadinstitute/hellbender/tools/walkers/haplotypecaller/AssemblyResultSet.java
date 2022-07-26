@@ -2,7 +2,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import htsjdk.samtools.util.Locatable;
-import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -47,6 +46,7 @@ public final class AssemblyResultSet {
     private OptionalInt lastMaxMnpDistanceUsed = OptionalInt.empty();
     private boolean debug;
     private static final Logger logger = LogManager.getLogger(AssemblyResultSet.class);
+    private LongHomopolymerHaplotypeCollapsingEngine haplotypeCollapsingEngine; // this is nullable - indicating no collapsing engine (flow-based specific)
 
     /**
      * Constructs a new empty assembly result set.
@@ -102,6 +102,8 @@ public final class AssemblyResultSet {
     }
 
     private Map<Haplotype, Haplotype> calculateOriginalByTrimmedHaplotypes(final Locatable span) {
+
+
         if ( debug ) {
             logger.info("Trimming active region " + getRegionForGenotyping() + " with " + getHaplotypeCount() + " haplotypes");
         }
@@ -129,15 +131,22 @@ public final class AssemblyResultSet {
         return sortedOriginalByTrimmedHaplotypes;
     }
 
+    // trim haplotypes to span merging haplotypes that are equal in bases
     private Map<Haplotype, Haplotype> trimDownHaplotypes(final Locatable span, final List<Haplotype> haplotypeList) {
+
         final Map<Haplotype,Haplotype> originalByTrimmedHaplotypes = new HashMap<>();
 
+        // Note that two haplotypes one of which is marked as reference are different,
+        // so trivially after trimming duplicate haplotypes could occur. We remove
+        // these duplcations. If one of the haplotypes before trimming was marked as
+        // reference - we mark the trimmed haplotype reference
+
         for ( final Haplotype h : haplotypeList ) {
-            final Haplotype trimmed = h.trim(span);
+            final Haplotype trimmed = h.trim(span, true);
 
             if ( trimmed != null ) {
                 if (originalByTrimmedHaplotypes.containsKey(trimmed)) {
-                    if (trimmed.isReference()) {
+                    if (h.isReference()) {
                         originalByTrimmedHaplotypes.remove(trimmed);
                         originalByTrimmedHaplotypes.put(trimmed, h);
                     }
@@ -151,7 +160,22 @@ public final class AssemblyResultSet {
                         " because it starts with or ends with an insertion or deletion when trimmed to " + span);
             }
         }
-        return originalByTrimmedHaplotypes;
+
+        // Now set reference status originalByTrimmedHaplotypes
+        final Map<Haplotype, Haplotype> fixedOriginalByTrimmedHaplotypes = new HashMap<>();
+        for (Haplotype h : originalByTrimmedHaplotypes.keySet()){
+            if (originalByTrimmedHaplotypes.get(h).isReference()){
+                Haplotype fixedHap = new Haplotype(h.getBases(), true);
+                fixedHap.setCigar(h.getCigar());
+                fixedHap.setGenomeLocation(h.getGenomeLocation());
+                fixedHap.setScore(h.getScore());
+                fixedHap.setAlignmentStartHapwrtRef(h.getAlignmentStartHapwrtRef());
+                fixedOriginalByTrimmedHaplotypes.put(fixedHap, originalByTrimmedHaplotypes.get(h));
+            } else {
+                fixedOriginalByTrimmedHaplotypes.put(h, originalByTrimmedHaplotypes.get(h));
+            }
+        }
+        return fixedOriginalByTrimmedHaplotypes;
     }
 
     private static Map<Haplotype, Haplotype> mapOriginalToTrimmed(final Map<Haplotype, Haplotype> originalByTrimmedHaplotypes, final List<Haplotype> trimmedHaplotypes) {
@@ -234,6 +258,7 @@ public final class AssemblyResultSet {
      * @return {@code true} if the assembly result set has been modified as a result of this call.
      */
     public boolean add(final Haplotype h) {
+
         Utils.nonNull(h, "input haplotype cannot be null");
         Utils.nonNull(h.getGenomeLocation(), "haplotype genomeLocation cannot be null");
         if (haplotypes.contains(h)) {
@@ -542,4 +567,24 @@ public final class AssemblyResultSet {
     public void setDebug(boolean debug) {
         this.debug = debug;
     }
+
+    public LongHomopolymerHaplotypeCollapsingEngine getHaplotypeCollapsingEngine() {
+        return haplotypeCollapsingEngine;
+    }
+
+    public void setHaplotypeCollapsingEngine(LongHomopolymerHaplotypeCollapsingEngine haplotypeCollapsingEngine) {
+        this.haplotypeCollapsingEngine = haplotypeCollapsingEngine;
+    }
+
+    public void clearHaplotypes() {
+        haplotypes.clear();;
+        refHaplotype = null;
+    }
+    public void replaceAllHaplotypes(Set<Haplotype> list) {
+        haplotypes.clear();;
+        refHaplotype = null;
+        for ( Haplotype h : list )
+            add(h);
+    }
+
 }

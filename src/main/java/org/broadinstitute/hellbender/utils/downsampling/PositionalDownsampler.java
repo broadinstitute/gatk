@@ -46,6 +46,10 @@ public final class PositionalDownsampler extends ReadsDownsampler {
         clearItems();
         resetStats();
     }
+    public PositionalDownsampler( final int targetCoverage, final SAMFileHeader header, final boolean nonRandomDownsamplingMode ) {
+        this(targetCoverage, header);
+        this.reservoir.setNonRandomReplacementMode(nonRandomDownsamplingMode);
+    }
 
     @Override
     public void submit( final GATKRead newRead ) {

@@ -20,10 +20,7 @@ import org.broadinstitute.hellbender.tools.spark.transforms.markduplicates.MarkD
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.utils.read.markduplicates.ReadsKey;
-import org.broadinstitute.hellbender.utils.read.markduplicates.sparkrecords.EmptyFragment;
-import org.broadinstitute.hellbender.utils.read.markduplicates.sparkrecords.Fragment;
-import org.broadinstitute.hellbender.utils.read.markduplicates.sparkrecords.Pair;
-import org.broadinstitute.hellbender.utils.read.markduplicates.sparkrecords.Passthrough;
+import org.broadinstitute.hellbender.utils.read.markduplicates.sparkrecords.*;
 import org.objenesis.instantiator.ObjectInstantiator;
 
 import java.util.ArrayList;
@@ -138,6 +135,7 @@ public class GATKRegistrator implements KryoRegistrator {
         kryo.register(SAMReadGroupRecord.class);
         kryo.register(EmptyFragment.class, new FieldSerializer(kryo, EmptyFragment.class));
         kryo.register(Fragment.class, new FieldSerializer(kryo, Fragment.class));
+        kryo.register(FlowModeFragment.class, new FieldSerializer(kryo, FlowModeFragment.class));
         kryo.register(Pair.class, new Pair.Serializer());
         kryo.register(Passthrough.class, new FieldSerializer(kryo, Passthrough.class));
         kryo.register(MarkDuplicatesSparkUtils.IndexPair.class, new FieldSerializer(kryo, MarkDuplicatesSparkUtils.IndexPair.class));

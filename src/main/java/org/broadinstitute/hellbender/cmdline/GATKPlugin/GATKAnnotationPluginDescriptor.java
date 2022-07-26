@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.PedigreeAnnotation;
+import org.broadinstitute.hellbender.tools.walkers.annotator.flow.FlowAnnotatorBase;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.config.ConfigFactory;
 import org.broadinstitute.hellbender.utils.config.GATKConfig;
@@ -80,6 +81,9 @@ public class GATKAnnotationPluginDescriptor extends CommandLinePluginDescriptor<
 
     @Argument(fullName = StandardArgumentDefinitions.PEDIGREE_FILE_LONG_NAME, shortName = StandardArgumentDefinitions.PEDIGREE_FILE_SHORT_NAME, doc="Pedigree file for determining the population \"founders\"", optional=true)
     private GATKPath pedigreeFile;
+
+    @Argument(fullName = StandardArgumentDefinitions.FLOW_ORDER_FOR_ANNOTATIONS,  doc = "flow order used for this annotations. [readGroup:]flowOrder", optional = true)
+    private List<String> flowOrder;
 
     /**
      * @return the class object for the base class of all plugins managed by this descriptor
@@ -413,6 +417,23 @@ public class GATKAnnotationPluginDescriptor extends CommandLinePluginDescriptor<
                             "founder-id",
                             allDiscoveredAnnotations.values().stream().filter(PedigreeAnnotation.class::isInstance).map(a -> a.getClass().getSimpleName()).collect(Collectors.joining(", "))));
         }
+
+        // Populating any discovered flow annotations with the flowOrder arguments from the command line.
+        if (flowOrder!=null && !flowOrder.isEmpty() && getResolvedInstances().stream()
+                .filter(FlowAnnotatorBase.class::isInstance)
+                .map(a -> (FlowAnnotatorBase) a)
+                .peek(a -> {
+                    a.setFlowOrder(flowOrder);
+                })
+                .count() == 0) {
+            // Throwing an exception if no flow based annotations were found
+            throw new CommandLineException(
+                    String.format(
+                            "Flow argument \"%s\" was specified without a flow based annotation being requested, (eg: %s))",
+                            StandardArgumentDefinitions.FLOW_ORDER_FOR_ANNOTATIONS,
+                            allDiscoveredAnnotations.values().stream().filter(FlowAnnotatorBase.class::isInstance).map(a -> a.getClass().getSimpleName()).collect(Collectors.joining(", "))));
+        }
+
     }
 
     /**

@@ -51,7 +51,7 @@ public final class ClipReadsIntegrationTest extends CommandLineProgramTest {
         final File expectedOutBam = new File(localTestData, "expected." + inBam + "." + optAbrv + extension);
         Assert.assertTrue(expectedOutBam.exists(), "expected output read file exists " + expectedOutBam.getAbsolutePath());
         Assert.assertTrue(outFileBam.exists(), "actual output read file exists " + outFileBam.getAbsolutePath());
-        SamAssertionUtils.assertSamsEqual(expectedOutBam, outFileBam, referenceFile);
+        SamAssertionUtils.assertSamsEqual(outFileBam, expectedOutBam,  referenceFile);
 
         if (doStats) {
             final File outFileStat = new File(tmpStatOutName);
@@ -67,6 +67,7 @@ public final class ClipReadsIntegrationTest extends CommandLineProgramTest {
     @DataProvider(name="clipOptions")
     public Object[][] clipOptions() {
         final String b1 = "clippingReadsTest.withRG.hg19";
+        final String b2 = "clipAdapters";
         final String cramFile = "clippingReadsTestCRAM";
         final String referenceFile = "valid.fasta"; // lives in tools test folder
         return new Object[][]{
@@ -86,6 +87,7 @@ public final class ClipReadsIntegrationTest extends CommandLineProgramTest {
                 {b1, null, ".bam", "-" + ClipReads.Q_TRIMMING_THRESHOLD_SHORT_NAME + " 10 -" + ClipReads.CYCLES_TO_TRIM_SHORT_NAME + " 1-5 -" + ClipReads.CLIP_SEQUENCE_SHORT_NAME + " CCCCC -" + ClipReads.CLIP_SEQUENCES_FILE_SHORT_NAME + " " + GATKBaseTest.publicTestDir + "seqsToClip.fasta", "QT_10_CT_15_X_CCCCC_XF", true},
                 {cramFile, referenceFile, ".cram", "-" + ClipReads.Q_TRIMMING_THRESHOLD_SHORT_NAME + " 10", "QT_10", true},
                 {cramFile, referenceFile, ".cram", "-" + ClipReads.Q_TRIMMING_THRESHOLD_SHORT_NAME + " 10", "QT_10", false},
+                {b2, null, ".bam", "--" + ClipReads.CLIP_ADAPTER_LONG_NAME + " -" + ClipReads.CLIP_REPRESENTATION_SHORT_NAME + " HARDCLIP_BASES" + " --" + ClipReads.MIN_READ_LENGTH_TO_REPORT_LONG_NAME + " 1", "CA", true}
         };
     }
 }

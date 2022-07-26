@@ -78,8 +78,8 @@ public class AdaptiveChainPruner<V extends BaseVertex, E extends BaseEdge> exten
         // Note that chains can we added twice to the queue, once for each side
         final PriorityQueue<Pair<Path<V,E>, Double>> chainsToAdd = new PriorityQueue<>(
                 Comparator.comparingDouble((Pair<Path<V,E>, Double> p) -> -p.getRight())
-                        .thenComparing((Pair<Path<V,E>, Double> p) -> p.getLeft().getFirstVertex().getSequence(), BaseUtils.BASES_COMPARATOR)
-                        .thenComparing((Pair<Path<V,E>, Double> p) -> p.getLeft().getBases(), BaseUtils.BASES_COMPARATOR)); // Handle rare edge case for non-determinism where two chains with equivalent score start on the same vertex
+                .thenComparing((Pair<Path<V,E>, Double> p) -> p.getLeft().getFirstVertex().getSequence(), BaseUtils.BASES_COMPARATOR)
+                .thenComparing((Pair<Path<V,E>, Double> p) -> p.getLeft().getBases(), BaseUtils.BASES_COMPARATOR)); // Handle rare edge case for non-determinism where two chains with equivalent score start on the same vertex
 
         // seed the subgraph of good chains by starting with some definitely-good chains.  These include the max-weight chain
         // and chains emanating from vertices with two incoming or two outgoing chains (plus one outgoing or incoming for a total of 3 or more) with good log odds
@@ -97,7 +97,7 @@ public class AdaptiveChainPruner<V extends BaseVertex, E extends BaseEdge> exten
         }
 
         final Set<Path<V,E>> goodChains = new LinkedHashSet<>();
-        final Set<V> verticesThatAlreadyHaveOutgoingGoodChains = new HashSet<>();
+        final Set<V> verticesThatAlreadyHaveOutgoingGoodChains = new LinkedHashSet<>();
         final MutableInt variantCount = new MutableInt(0);
 
         // starting from the high-confidence seed vertices, grow the "good" subgraph along chains with above-threshold log odds,
@@ -129,7 +129,7 @@ public class AdaptiveChainPruner<V extends BaseVertex, E extends BaseEdge> exten
             }
         }
 
-        return chains.stream().filter(c -> !goodChains.contains(c)).collect(Collectors.toSet());
+        return chains.stream().filter(c -> !goodChains.contains(c)).collect(Collectors.toList());
     }
 
     // find the chain containing the edge of greatest weight, taking care to break ties deterministically

@@ -5,7 +5,6 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.hellbender.engine.GATKPath;
-import org.broadinstitute.hellbender.utils.dragstr.DragstrParams;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.pairhmm.PairHMM;
 
@@ -25,6 +24,23 @@ public final class LikelihoodEngineArgumentCollection implements Serializable {
     public static final String ENABLE_DYNAMIC_READ_DISQUALIFICATION_FOR_GENOTYPING_LONG_NAME = "enable-dynamic-read-disqualification-for-genotyping";
     public static final String EXPECTED_MISMATCH_RATE_FOR_READ_DISQUALIFICATION_LONG_NAME = "expected-mismatch-rate-for-read-disqualification";
 
+    public static final String LIKELIHOOD_CALCULATION_ENGINE_FULL_NAME = "likelihood-calculation-engine";
+    public static final String PAIR_HMM_GAP_CONTINUATION_PENALTY_LONG_NAME = "pair-hmm-gap-continuation-penalty";
+    public static final String PAIR_HMM_IMPLEMENTATION_LONG_NAME = "pair-hmm-implementation";
+    public static final String PCR_INDEL_MODEL_LONG_NAME = "pcr-indel-model";
+    public static final String PHRED_SCALED_GLOBAL_READ_MISMAPPING_RATE_LONG_NAME = "phred-scaled-global-read-mismapping-rate";
+    public static final String DISABLE_SYMMETRIC_HMM_NORMALIZING_LONG_NAME = "disable-symmetric-hmm-normalizing";
+    public static final String DYNAMIC_READ_DISQUALIFICATION_THRESHOLD_LONG_NAME = "dynamic-read-disqualification-threshold";
+    public static final String FLOW_HMM_ENGINE_MIN_INDEL_ADJUST_LONG_NAME = "flow-hmm-engine-min-indel-adjust";
+    public static final String FLOW_HMM_ENGINE_FLAT_INSERTION_PENATLY_LONG_NAME = "flow-hmm-engine-flat-insertion-penatly";
+    public static final String FLOW_HMM_ENGINE_FLAT_DELETION_PENATLY_LONG_NAME = "flow-hmm-engine-flat-deletion-penatly";
+
+
+    @Advanced
+    @Argument(fullName = LIKELIHOOD_CALCULATION_ENGINE_FULL_NAME,
+            doc= "What likelihood calculation engine to use to calculate the relative likelihood of reads vs haplotypes", optional = true)
+    public ReadLikelihoodCalculationEngine.Implementation likelihoodEngineImplementation = ReadLikelihoodCalculationEngine.Implementation.PairHMM;
+
     /**
      * Bases with a quality below this threshold will reduced to the minimum usable qualiy score (6).
      */
@@ -41,18 +57,18 @@ public final class LikelihoodEngineArgumentCollection implements Serializable {
     public boolean dontUseDragstrPairHMMScores = false;
 
     @Advanced
-    @Argument(fullName="pair-hmm-gap-continuation-penalty", doc="Flat gap continuation penalty for use in the Pair HMM", optional = true)
+    @Argument(fullName= PAIR_HMM_GAP_CONTINUATION_PENALTY_LONG_NAME, doc="Flat gap continuation penalty for use in the Pair HMM", optional = true)
     public int gcpHMM = 10;
 
     @Advanced
     @Argument(fullName= EXPECTED_MISMATCH_RATE_FOR_READ_DISQUALIFICATION_LONG_NAME, doc="Error rate used to set expectation for post HMM read disqualification based on mismatches", optional = true)
-    public double expectedErrorRatePerBase = PairHMMLikelihoodCalculationEngine.DEFAULT_EXPECTED_ERROR_RATE_PER_BASE;
+    public double expectedErrorRatePerBase = ReadLikelihoodCalculationEngine.DEFAULT_EXPECTED_ERROR_RATE_PER_BASE;
 
     /**
      * The PairHMM implementation to use for genotype likelihood calculations. The various implementations balance a tradeoff of accuracy and runtime.
      */
     @Advanced
-    @Argument(fullName = "pair-hmm-implementation", shortName = "pairHMM", doc = "The PairHMM implementation to use for genotype likelihood calculations", optional = true)
+    @Argument(fullName = PAIR_HMM_IMPLEMENTATION_LONG_NAME, shortName = "pairHMM", doc = "The PairHMM implementation to use for genotype likelihood calculations", optional = true)
     public PairHMM.Implementation pairHMM = PairHMM.Implementation.FASTEST_AVAILABLE;
 
     /**
@@ -65,7 +81,7 @@ public final class LikelihoodEngineArgumentCollection implements Serializable {
      * definitely recommend setting this argument to NONE</b>.
      */
     @Advanced
-    @Argument(fullName = "pcr-indel-model", doc = "The PCR indel model to use", optional = true)
+    @Argument(fullName = PCR_INDEL_MODEL_LONG_NAME, doc = "The PCR indel model to use", optional = true)
     public PairHMMLikelihoodCalculationEngine.PCRErrorModel pcrErrorModel = PairHMMLikelihoodCalculationEngine.PCRErrorModel.CONSERVATIVE;
 
     /**
@@ -81,11 +97,11 @@ public final class LikelihoodEngineArgumentCollection implements Serializable {
      * Set this term to any negative number to turn off the global mapping rate.
      */
     @Advanced
-    @Argument(fullName="phred-scaled-global-read-mismapping-rate", doc="The global assumed mismapping rate for reads", optional = true)
+    @Argument(fullName= PHRED_SCALED_GLOBAL_READ_MISMAPPING_RATE_LONG_NAME, doc="The global assumed mismapping rate for reads", optional = true)
     public int phredScaledGlobalReadMismappingRate = 45;
 
     @Advanced
-    @Argument(fullName = "disable-symmetric-hmm-normalizing", doc="Toggle to revive legacy behavior of asymmetrically normalizing the arguments to the reference haplotype", optional = true)
+    @Argument(fullName = DISABLE_SYMMETRIC_HMM_NORMALIZING_LONG_NAME, doc="Toggle to revive legacy behavior of asymmetrically normalizing the arguments to the reference haplotype", optional = true)
     public boolean disableSymmetricallyNormalizeAllelesToReference = false;
 
     @Advanced
@@ -104,7 +120,7 @@ public final class LikelihoodEngineArgumentCollection implements Serializable {
      */
     @Advanced
     @Hidden
-    @Argument(fullName="dynamic-read-disqualification-threshold", doc="Constant used to scale the dynamic read disqualificaiton")
+    @Argument(fullName= DYNAMIC_READ_DISQUALIFICATION_THRESHOLD_LONG_NAME, doc="Constant used to scale the dynamic read disqualificaiton")
     public double readDisqualificationThresholdConstant = PairHMMLikelihoodCalculationEngine.DEFAULT_DYNAMIC_DISQUALIFICATION_SCALE_FACTOR;
 
     /**
@@ -116,4 +132,20 @@ public final class LikelihoodEngineArgumentCollection implements Serializable {
 
     @ArgumentCollection
     public PairHMMNativeArgumentCollection pairHMMNativeArgs = new PairHMMNativeArgumentCollection();
+
+
+    //TODO all of these are placeholder arguments and should really bbe either generalized or deleted:
+    @Hidden
+    @Argument(fullName= FLOW_HMM_ENGINE_MIN_INDEL_ADJUST_LONG_NAME, doc="FlowBasedHMM Indel qualities below this threshold will be reduced to this minimum")
+    public int minUsableIndelScoreToUse = FlowBasedHMMEngine.MIN_USABLE_Q_SCORE_DEFAULT;
+    @Hidden
+    @Argument(fullName= FLOW_HMM_ENGINE_FLAT_INSERTION_PENATLY_LONG_NAME, doc="FlowBasedHMM flat insertion penalty for frameshifts")
+    public int flatInsertionPenatly = 45;
+    @Hidden
+    @Argument(fullName= FLOW_HMM_ENGINE_FLAT_DELETION_PENATLY_LONG_NAME, doc="FlowBasedHMM flat deletion penalty for frameshifts")
+    public int flatDeletionPenalty = 45;
+
 }
+
+
+

@@ -51,6 +51,9 @@ public final class HaplotypeUnitTest extends GATKBaseTest {
         basicInsertTest("AACTG", "A", 7, h1Cigar, bases, h1bases);
         h1bases = "ACTGGTCAACTGGTCAATCAACTGGTCA";
         basicInsertTest("ACTGG", "A", 16, h1Cigar, bases, h1bases);
+        h1bases = "TGGTCAACTGGTCAACTGGTCAACTGGTCA";
+        basicInsertTest("TAC", "T", -1, h1Cigar, bases, h1bases);
+
     }
 
     @Test

@@ -335,7 +335,7 @@ public final class HaplotypeCallerGenotypingEngineUnitTest extends GATKBaseTest 
                 mergedAlleles.size(),
                 likelihoods,
                 originalVC,
-                new VariantAnnotatorEngine(Collections.emptyList(), null, features, false, true));
+                new VariantAnnotatorEngine(Collections.emptyList(), null, features, false, true), null);
 
         // Asserting that the two alleles were trimmed after calling removeExcessAltAlleles
         Assert.assertEquals(reducedVC.getNAlleles(), 2);

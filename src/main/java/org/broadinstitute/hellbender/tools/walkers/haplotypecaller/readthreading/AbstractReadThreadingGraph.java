@@ -882,7 +882,7 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
 
     /**
      * NOTE: this method is only used for dangling heads and not tails.
-     *
+     * 
      * Determine the maximum number of mismatches permitted on the branch.
      * Unless it's preset (e.g. by unit tests) it should be the length of the branch divided by the kmer size.
      *

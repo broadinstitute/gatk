@@ -213,12 +213,12 @@ public class FilterAlignmentArtifacts extends MultiVariantWalkerGroupedOnStart {
 
 
             // TODO: give this tool M2 Assembler args to allow override default M2ArgumentCollection?
-            final AssemblyResultSet assemblyResult = AssemblyBasedCallerUtils.assembleReads(assemblyRegion, Collections.emptyList(), MTAC, bamHeader, samplesList, logger, referenceReader, assemblyEngine, smithWatermanAligner, false);
+            final AssemblyResultSet assemblyResult = AssemblyBasedCallerUtils.assembleReads(assemblyRegion, Collections.emptyList(), MTAC, bamHeader, samplesList, logger, referenceReader, assemblyEngine, smithWatermanAligner, false, null, false);
             final AssemblyRegion regionForGenotyping = assemblyResult.getRegionForGenotyping();
 
             final Map<String,List<GATKRead>> reads = AssemblyBasedCallerUtils.splitReadsBySample(samplesList, bamHeader, regionForGenotyping.getReads());
 
-            final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods = likelihoodCalculationEngine.computeReadLikelihoods(assemblyResult,samplesList,reads);
+            final AlleleLikelihoods<GATKRead, Haplotype> readLikelihoods = likelihoodCalculationEngine.computeReadLikelihoods(assemblyResult,samplesList,reads,true);
             readLikelihoods.switchToNaturalLog();
             final SWParameters readToHaplotypeSWParameters = MTAC.getReadToHaplotypeSWParameters();
             final Map<GATKRead,GATKRead> readRealignments = AssemblyBasedCallerUtils.realignReadsToTheirBestHaplotype(readLikelihoods, assemblyResult.getReferenceHaplotype(), assemblyResult.getPaddedReferenceLoc(), smithWatermanAligner, readToHaplotypeSWParameters);

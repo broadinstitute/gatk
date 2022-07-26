@@ -18,7 +18,10 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEng
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.genotyper.*;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
+import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
+import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
@@ -26,6 +29,7 @@ import org.broadinstitute.hellbender.utils.dragstr.DragstrReferenceAnalyzer;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.*;
@@ -50,7 +54,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
     private final int maxGenotypeCountToEnumerate;
     private final Map<Integer, Integer> practicalAlleleCountForPloidy = new HashMap<>();
 
-    protected final boolean doPhysicalPhasing;
+    private final boolean doPhysicalPhasing;
 
     private final DragstrParams dragstrParams;
 
@@ -107,6 +111,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
      *                       That is, if maxMnpDistance = 1, substitutions at 10,11,12,14,15,17 are partitioned into a MNP
      *                       at 10-12, a MNP at 14-15, and a SNP at 17.  May not be negative.
      * @param withBamOut whether to annotate reads in readLikelihoods for future writing to bamout
+     * @param suspiciousLocations locations where possible alternative noisy error is affecting the result
      *
      * @return                                       A CalledHaplotypes object containing a list of VC's with genotyped events and called haplotypes
      *
@@ -122,7 +127,9 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                                                       final boolean emitReferenceConfidence,
                                                       final int maxMnpDistance,
                                                       final SAMFileHeader header,
-                                                      final boolean withBamOut) {
+                                                      final boolean withBamOut,
+                                                      final Set<Integer> suspiciousLocations,
+                                                      final AlleleLikelihoods<GATKRead, Haplotype> preFilteringAlleleLikelihoods) {
         // sanity check input arguments
         Utils.nonEmpty(haplotypes, "haplotypes input should be non-empty and non-null");
         Utils.validateArg(readLikelihoods != null && readLikelihoods.numberOfSamples() > 0, "readLikelihoods input should be non-empty and non-null");
@@ -159,7 +166,8 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                 continue;
             }
 
-            final List<VariantContext> eventsAtThisLoc = AssemblyBasedCallerUtils.getVariantContextsFromActiveHaplotypes(loc, haplotypes, !hcArgs.disableSpanningEventGenotyping);
+            final List<VariantContext> eventsAtThisLoc = AssemblyBasedCallerUtils.getVariantContextsFromActiveHaplotypes(loc,
+                    haplotypes, !hcArgs.disableSpanningEventGenotyping);
 
             final List<VariantContext> eventsAtThisLocWithSpanDelsReplaced = replaceSpanDels(eventsAtThisLoc,
                     Allele.create(ref[loc - refLoc.getStart()], true), loc);
@@ -171,8 +179,8 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             }
             
             int mergedAllelesListSizeBeforePossibleTrimming = mergedVC.getAlleles().size();
-
             final Map<Allele, List<Haplotype>> alleleMapper = AssemblyBasedCallerUtils.createAlleleMapper(mergedVC, loc, haplotypes, !hcArgs.disableSpanningEventGenotyping);
+
 
             if( hcArgs.assemblerArgs.debugAssembly && logger != null ) {
                 logger.info("Genotyping event at " + loc + " with alleles = " + mergedVC.getAlleles());
@@ -199,6 +207,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
 
                 readAlleleLikelihoods.contaminationDownsampling(configuration.getSampleContamination());
             }
+
             if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
                 HaplotypeCallerGenotypingDebugger.println("\n=============================================================================");
                 HaplotypeCallerGenotypingDebugger.println("Event at: " + mergedVC + " with " + readAlleleLikelihoods.evidenceCount() + " reads and "+readAlleleLikelihoods.filteredSampleEvidence(0).size()+" disqualified");
@@ -207,6 +216,20 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                 for (Map.Entry<Allele, List<Haplotype>> allele : alleleMapper.entrySet()) {
                     HaplotypeCallerGenotypingDebugger.println("Allele: "+allele.getKey()+" Haps: "+allele.getValue().stream().map(readLikelihoods::indexOfAllele).map(i -> Integer.toString(i)).collect(Collectors.joining(", ")));
                 }
+                HaplotypeCallerGenotypingDebugger.println("Read-allele matrix:");
+                String allele_string = readAlleleLikelihoods.alleles().stream().map(al -> al.toString()).collect(Collectors.joining(" "));
+                HaplotypeCallerGenotypingDebugger.println(allele_string);
+                for (int sn = 0 ; sn < readAlleleLikelihoods.numberOfSamples(); sn++){
+                    for (int evn = 0 ; evn < readAlleleLikelihoods.sampleEvidence(sn).size(); evn++) {
+                        String outputStr = readAlleleLikelihoods.sampleEvidence(sn).get(evn).getName();
+
+                        for (Allele curAllele : readAlleleLikelihoods.alleles()) {
+                            int idx = readAlleleLikelihoods.indexOfAllele(curAllele);
+                            outputStr = outputStr + " " + readAlleleLikelihoods.sampleMatrix(sn).get(idx, evn);
+                        }
+                        HaplotypeCallerGenotypingDebugger.println(outputStr);
+                    }
+                }
             }
 
             if (emitReferenceConfidence) {
@@ -214,6 +237,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                 readAlleleLikelihoods.addNonReferenceAllele(Allele.NON_REF_ALLELE);
                 mergedAllelesListSizeBeforePossibleTrimming++;
             }
+
             final GenotypesContext genotypes = calculateGLsForThisEvent(readAlleleLikelihoods, mergedVC, noCallAlleles, ref, loc - refLoc.getStart(), dragstrs);
             final GenotypePriorCalculator gpc = resolveGenotypePriorCalculator(dragstrs, loc - refLoc.getStart() + 1, snpHeterozygosity, indelHeterozygosity);
             final VariantContext call = calculateGenotypes(new VariantContextBuilder(mergedVC).genotypes(genotypes).make(), gpc, givenAlleles);
@@ -221,7 +245,13 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                 readAlleleLikelihoods = prepareReadAlleleLikelihoodsForAnnotation(readLikelihoods, perSampleFilteredReadList,
                         emitReferenceConfidence, alleleMapper, readAlleleLikelihoods, call, variantCallingRelevantOverlap);
 
-                VariantContext annotatedCall = makeAnnotatedCall(ref, refLoc, tracker, header, mergedVC, mergedAllelesListSizeBeforePossibleTrimming, readAlleleLikelihoods, call, annotationEngine);
+                VariantContext annotatedCall = makeAnnotatedCall(ref, refLoc, tracker, header, mergedVC,
+                        mergedAllelesListSizeBeforePossibleTrimming, readAlleleLikelihoods, call, annotationEngine, preFilteringAlleleLikelihoods);
+
+                if (suspiciousLocations.contains(loc)){
+                    annotatedCall.getCommonInfo().putAttribute(GATKVCFConstants.POSSIBLE_FP_ADJACENT_TP_KEY, true);
+                }
+
 
                 if (dragstrs != null && GATKVariantContextUtils.containsInlineIndel(annotatedCall)) {
                     final int strOffset = loc - refLoc.getStart() + 1;
@@ -251,21 +281,37 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
      * @return {@code null} iff there is no chance that we would be using DRAGstr in this region based
      *    on the reconstructed haplotypes.
      */
-    private DragstrReferenceAnalyzer constructDragstrReferenceSTRAnalyzerIfNecessary(final List<Haplotype> haplotypes,
+    private  DragstrReferenceAnalyzer constructDragstrReferenceSTRAnalyzerIfNecessary(final List<Haplotype> haplotypes,
                                                                                      final byte[] ref,
                                                                                      final SimpleInterval refLoc,
                                                                                      final SortedSet<Integer> startPosKeySet) {
         if (isDragstrSTRAnalyzerNecessary(startPosKeySet, haplotypes)) {
             final int offset = startPosKeySet.first() - refLoc.getStart();
             final int to = startPosKeySet.last() - refLoc.getStart() + 2;
-                // +2 = +1+1
-                // where one +1 is because starPosKeySet indexes are 1-based and offset/to are 0-based.
-                //   and the other +1 is because we need to analyze/include one base after each event position including the last.
+            // +2 = +1+1
+            // where one +1 is because starPosKeySet indexes are 1-based and offset/to are 0-based.
+            //   and the other +1 is because we need to analyze/include one base after each event position including the last.
             return  DragstrReferenceAnalyzer.of(ref, offset, to, dragstrParams.maximumPeriod());
         } else {
             return null;
         }
     }
+
+    /**
+     * Confirms whether there is the need to analyze the region's reference sequence for the presence of STRs.
+     * <p>
+     *     This is only the case when DRAGstr is activate, we are going to use their priors and there is some indel
+     *     amongst the haplotypes.
+     * </p>
+     */
+    private boolean isDragstrSTRAnalyzerNecessary(SortedSet<Integer> startPosKeySet, List<Haplotype> haplotypes) {
+        return !startPosKeySet.isEmpty() && dragstrParams != null
+                && !hcArgs.standardArgs.genotypeArgs.dontUseDragstrPriors &&
+                haplotypes.stream()
+                        .anyMatch(h -> h.getEventMap().getVariantContexts().stream()
+                                .anyMatch(GATKVariantContextUtils::containsInlineIndel));
+    }
+
 
     /**
      * Composes the appropriate test to determine if a read is to be retained for evidence/likelihood calculation for variants
@@ -275,7 +321,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
      */
     private BiPredicate<GATKRead, SimpleInterval> composeReadQualifiesForGenotypingPredicate(final HaplotypeCallerArgumentCollection hcArgs) {
         if (hcArgs.applyBQD || hcArgs.applyFRD) {
-                return (read, target) -> softUnclippedReadOverlapsInterval(read, target);
+            return (read, target) -> softUnclippedReadOverlapsInterval(read, target);
         } else {
             // NOTE: we must make this comparison in target -> read order because occasionally realignment/assembly produces
             // reads that consume no reference bases and this can cause them to overlap adjacent
@@ -297,28 +343,13 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                 && read.getSoftStart() <= read.getSoftEnd(); // is this possible, ever? this test was performed before extracting this method so we keep it just in case.
     }
 
-    /**
-     * Confirms whether there is the need to analyze the region's reference sequence for the presence of STRs.
-     * <p>
-     *     This is only the case when DRAGstr is activate, we are going to use their priors and there is some indel
-     *     amongst the haplotypes.
-     * </p>
-     */
-    private boolean isDragstrSTRAnalyzerNecessary(SortedSet<Integer> startPosKeySet, List<Haplotype> haplotypes) {
-        return !startPosKeySet.isEmpty() && dragstrParams != null
-                && !hcArgs.standardArgs.genotypeArgs.dontUseDragstrPriors &&
-                haplotypes.stream()
-                        .anyMatch(h -> h.getEventMap().getVariantContexts().stream()
-                                .anyMatch(GATKVariantContextUtils::containsInlineIndel));
-    }
-
     private GenotypePriorCalculator resolveGenotypePriorCalculator(final DragstrReferenceAnalyzer strs, final int pos,
                                                                    final double snpHeterozygosity, final double indelHeterozygosity) {
-       if (hcArgs.likelihoodArgs.dragstrParams == null || hcArgs.standardArgs.genotypeArgs.dontUseDragstrPriors) {
+        if (hcArgs.likelihoodArgs.dragstrParams == null || hcArgs.standardArgs.genotypeArgs.dontUseDragstrPriors) {
             return GenotypePriorCalculator.assumingHW(Math.log10(snpHeterozygosity), Math.log10(indelHeterozygosity));
         } else if (strs == null) {
             return GenotypePriorCalculator.givenHetToHomRatio(Math.log10(snpHeterozygosity), Math.log10(indelHeterozygosity), Math.log10(Math.min(snpHeterozygosity, indelHeterozygosity)), hcArgs.likelihoodArgs.dragstrHetHomRatio);
-       } else {
+        } else {
             final int period = strs.period(pos);
             final int repeats = strs.repeatLength(pos);
             return GenotypePriorCalculator.givenDragstrParams(dragstrParams, period, repeats, Math.log10(snpHeterozygosity), hcArgs.likelihoodArgs.dragstrHetHomRatio);
@@ -326,7 +357,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
     }
 
     @VisibleForTesting
-    static List<VariantContext> replaceSpanDels(final List<VariantContext> eventsAtThisLoc, final Allele refAllele, final int loc) {
+    static public List<VariantContext> replaceSpanDels(final List<VariantContext> eventsAtThisLoc, final Allele refAllele, final int loc) {
         return eventsAtThisLoc.stream().map(vc -> replaceWithSpanDelVC(vc, refAllele, loc)).collect(Collectors.toList());
     }
 
@@ -478,15 +509,20 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
     }
 
     @VisibleForTesting
-    static protected VariantContext makeAnnotatedCall(byte[] ref, SimpleInterval refLoc, FeatureContext tracker, SAMFileHeader header, VariantContext mergedVC, int mergedAllelesListSizeBeforePossibleTrimming, AlleleLikelihoods<GATKRead, Allele> readAlleleLikelihoods, VariantContext call, VariantAnnotatorEngine annotationEngine) {
+    static protected VariantContext makeAnnotatedCall(byte[] ref, SimpleInterval refLoc, FeatureContext tracker, SAMFileHeader header, VariantContext mergedVC, int mergedAllelesListSizeBeforePossibleTrimming, AlleleLikelihoods<GATKRead, Allele> readAlleleLikelihoods, VariantContext call, VariantAnnotatorEngine annotationEngine, final AlleleLikelihoods<GATKRead, Haplotype> preFilteringAlleleLikelihoods) {
         final SimpleInterval locus = new SimpleInterval(mergedVC);
         final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
         final SimpleInterval refLocInterval= new SimpleInterval(refLoc);
         final ReferenceDataSource refData = new ReferenceMemorySource(new ReferenceBases(ref, refLocInterval), sequenceDictionary);
         final ReferenceContext referenceContext = new ReferenceContext(refData, locus, refLocInterval);
 
-        final VariantContext untrimmedResult =  annotationEngine.annotateContext(call, tracker, referenceContext, readAlleleLikelihoods, a -> true);
+        final VariantContext untrimmedResult =  annotationEngine.annotateContext(call, tracker, referenceContext, readAlleleLikelihoods, Optional.empty(), Optional.empty(), Optional.ofNullable(preFilteringAlleleLikelihoods), a -> true);
 
+        // propagate the tag indicating that the VC was collapsed
+        if ( mergedVC.getAttribute(AssemblyBasedCallerUtils.EXT_COLLAPSED_TAG) != null ) {
+            untrimmedResult.getCommonInfo().putAttribute(AssemblyBasedCallerUtils.EXT_COLLAPSED_TAG,
+                    mergedVC.getAttribute(AssemblyBasedCallerUtils.EXT_COLLAPSED_TAG));
+        }
         // NOTE: We choose to reverseTrimAlleles() here as opposed to when we actually do the trimming because otherwise we would have to resolve
         //       the mismatching readAlleleLikelihoods object which is keyed to the old, possibly incorrectly trimmed alleles.
         return untrimmedResult.getAlleles().size() == mergedAllelesListSizeBeforePossibleTrimming ? untrimmedResult
@@ -499,7 +535,8 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
      * @param mergedVC               Input VC with event to genotype
      * @return                       GenotypesContext object wrapping genotype objects with PLs
      */
-    protected GenotypesContext calculateGLsForThisEvent(final AlleleLikelihoods<GATKRead, Allele> readLikelihoods, final VariantContext mergedVC, final List<Allele> noCallAlleles, final byte[] paddedReference, final int offsetForRefIntoEvent, final DragstrReferenceAnalyzer dragstrs) {
+    protected GenotypesContext calculateGLsForThisEvent(final AlleleLikelihoods<GATKRead, Allele> readLikelihoods,
+                                                        final VariantContext mergedVC, final List<Allele> noCallAlleles, final byte[] paddedReference, final int offsetForRefIntoEvent, final DragstrReferenceAnalyzer dragstrs) {
         Utils.nonNull(readLikelihoods, "readLikelihoods");
         Utils.nonNull(mergedVC, "mergedVC");
         final List<Allele> vcAlleles = mergedVC.getAlleles();

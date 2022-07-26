@@ -576,7 +576,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "--" + GenotypeCalculationArgumentCollection.NUM_REF_SAMPLES_LONG_NAME, "2500",
                 "-pairHMM", "AVX_LOGLESS_CACHING",
                 "--" + AssemblyBasedCallerArgumentCollection.ALLELE_EXTENSION_LONG_NAME, "2",
-                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false",
         };
 
         runCommandLine(args);
@@ -613,7 +613,6 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         .addInterval(new SimpleInterval("20:10009880-10012631"))
         .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, false)
         .add(AssemblyBasedCallerArgumentCollection.ALLELE_EXTENSION_LONG_NAME, "2")
-
         .add("pairHMM", "AVX_LOGLESS_CACHING")
         .addFlag("floor-blocks")
         .add("ERC", "GVCF")
@@ -1556,6 +1555,231 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(has28BaseDeletion);
     }
 
+    @Test
+    public void testGvcfFlowConsistentWithPreviousResults() throws Exception {
+        final File input = new File(largeFileTestDir, "input_jukebox_for_test.bam");
+        final File output = createTempFile("output", ".vcf");
+
+        final File expected = new File(TEST_FILES_DIR, "testGvcfBeforeRebase.expected.flowbased.vcf");
+        final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addReference(hg38Reference)
+                .addInterval("chr9:81149486-81177047")
+                .addOutput(outputPath)
+                .addInput(input)
+                .add("smith-waterman", "FASTEST_AVAILABLE")
+                .add("likelihood-calculation-engine", "FlowBased")
+                .add("mbq", "0")
+                .add("kmer-size", 10)
+                .add("flow-filter-alleles", true)
+                .add("flow-filter-alleles-sor-threshold", 40)
+                .add("flow-assembly-collapse-hmer-size", 12)
+                .add("flow-matrix-mods", "10,12,11,12")
+                .add("flow-likelihood-optimized-comp", true)
+                .add("ERC", "GVCF")
+                .add("flow-filter-lone-alleles", true)
+                .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, false);
+
+        runCommandLine(args);
+
+        if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
+            IntegrationTestSpec.assertEqualTextFiles(output, expected, "#");
+        }
+    }
+
+    @Test
+    public void testGvcfUsingFlowModeStandardConsistentWithPreviousResults() throws Exception {
+        final File input = new File(largeFileTestDir, "input_jukebox_for_test.bam");
+        final File output = createTempFile("output", ".vcf");
+
+        final File expected = new File(TEST_FILES_DIR, "testGvcfBeforeRebaseUsingFlowModeStandard.expected.flowbased.vcf");
+        final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addReference(hg38Reference)
+                .addInterval("chr9:81149486-81177047")
+                .addOutput(outputPath)
+                .addInput(input)
+                .add("flow-mode", "STANDARD")
+                .add("ERC", "GVCF")
+                .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, false);
+
+        runCommandLine(args);
+
+        if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
+            IntegrationTestSpec.assertEqualTextFiles(output, expected, "#");
+        }
+    }
+
+    @Test
+    public void testGvcfUsingFlowModeAdvancedConsistentWithPreviousResults() throws Exception {
+        final File input = new File(largeFileTestDir, "input_jukebox_for_test.bam");
+        final File output = createTempFile("output", ".vcf");
+
+        final File expected = new File(TEST_FILES_DIR, "testGvcfBeforeRebaseUsingFlowModeAdvanced.expected.flowbased.vcf");
+        final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addReference(hg38Reference)
+                .addInterval("chr9:81149486-81177047")
+                .addOutput(outputPath)
+                .addInput(input)
+                .add("flow-mode", "ADVANCED")
+                .add("ERC", "GVCF")
+                .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, false);
+
+        runCommandLine(args);
+
+        if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
+            IntegrationTestSpec.assertEqualTextFiles(output, expected, "#");
+        }
+    }
+
+    @Test
+    public void testGvcfKeepLoneAlleles() throws Exception {
+        final File input = new File(largeFileTestDir, "input_jukebox_for_test.bam");
+        final File output = createTempFile("output", ".vcf");
+
+        final File expected = new File(TEST_FILES_DIR, "testGvcfKeepLoneAlleles.expected.flowbased.vcf");
+        final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
+
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addReference(hg38Reference)
+                .addInterval("chr9:81149486-81177047")
+                .addOutput(outputPath)
+                .addInput(input)
+                .add("smith-waterman", "FASTEST_AVAILABLE")
+                .add("likelihood-calculation-engine", "FlowBased")
+                .add("mbq", "0")
+                .add("kmer-size", 10)
+                .add("flow-filter-alleles", true)
+                .add("flow-filter-alleles-sor-threshold", 40)
+                .add("flow-assembly-collapse-hmer-size", 12)
+                .add("flow-matrix-mods", "10,12,11,12")
+                .add("flow-likelihood-optimized-comp", true)
+                .add("ERC", "GVCF")
+                .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, false);
+
+        runCommandLine(args);
+
+        if ( !UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
+            IntegrationTestSpec.assertEqualTextFiles(output, expected, "#");
+        }
+    }
+
+    @Test
+    public void testVcfFliowModeConsistentWithPreviousResults() throws Exception {
+        Utils.resetRandomGenerator();
+        final File input = new File(largeFileTestDir, "input_jukebox_for_test.bam");
+        final File output = createTempFile("output", ".vcf");
+
+        final File expected = new File(TEST_FILES_DIR, "testVcfBeforeRebase.expected.flowbased.vcf");
+        final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addReference(hg38Reference)
+                .addInterval("chr9:81149486-81177047")
+                .addOutput(outputPath)
+                .addInput(input)
+                .add("smith-waterman", "FASTEST_AVAILABLE")
+                .add("likelihood-calculation-engine", "FlowBased")
+                .add("mbq", "0")
+                .add("kmer-size", 10)
+                .add("flow-filter-alleles", true)
+                .add("flow-filter-alleles-sor-threshold", 40)
+                .add("flow-assembly-collapse-hmer-size", 12)
+                .add("flow-matrix-mods", "10,12,11,12")
+                .add("flow-filter-lone-alleles", true)
+                .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, false);
+
+        runCommandLine(args);
+
+        if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
+            IntegrationTestSpec.assertEqualTextFiles(output, expected, "#");
+        }
+    }
+
+    @Test
+    public void testVcfWithAssemblyComplexityAnnotation() throws Exception {
+        Utils.resetRandomGenerator();
+        final File input = new File(largeFileTestDir, "input_jukebox_for_test.bam");
+        final File output = createTempFile("testVcfWithAssemblyComplexityAnnotation", ".vcf");
+        final File expected = new File(TEST_FILES_DIR, "testVcfWithAssemblyComplexityAnnotation.expected.flowbased.vcf");
+        final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addReference(hg38Reference)
+                .addInterval("chr9:81149486-81177047")
+                .addOutput(outputPath)
+                .addInput(input)
+                .add("smith-waterman", "FASTEST_AVAILABLE")
+                .add("likelihood-calculation-engine", "FlowBased")
+                .add("mbq", "0")
+                .add("kmer-size", 10)
+                .add("flow-filter-alleles", true)
+                .add("flow-filter-alleles-sor-threshold", 40)
+                .add("flow-assembly-collapse-hmer-size", 12)
+                .add("flow-matrix-mods", "10,12,11,12")
+                .add("flow-filter-lone-alleles", true)
+                .add("A", "AssemblyComplexity")
+                .addFlag("assembly-complexity-reference-mode")
+                .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, false);
+
+        runCommandLine(args);
+
+        if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
+            IntegrationTestSpec.assertEqualTextFiles(output, expected, "#");
+        }
+    }
+
+    @Test
+    public void testGvcfWithAssemblyComplexityAnnotationRevamp() throws Exception {
+        Utils.resetRandomGenerator();
+        final File input = new File(largeFileTestDir, "input_jukebox_for_test.bam");
+        final File output = createTempFile("testVcfWithAssemblyComplexityAnnotation", ".vcf");
+        final File expected = new File(TEST_FILES_DIR, "testGvcfWithAssemblyComplexityAnnotationRevamp.expected.flowbased.vcf");
+        final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addReference(hg38Reference)
+                .addInterval("chr9:81149486-81177047")
+                .addOutput(outputPath)
+                .addInput(input)
+                .add("mbq", 0).
+                addFlag("flow-filter-alleles")
+                .add("flow-filter-alleles-sor-threshold","3")
+                .add("flow-assembly-collapse-hmer-size ","12")
+                .add("flow-matrix-mods","10,12,11,12")
+                .add("bam-writer-type","CALLED_HAPLOTYPES_NO_READS")
+                .addFlag("apply-frd")
+                .add("ERC","GVCF")
+                .add("minimum-mapping-quality","1")
+                .add("mapping-quality-threshold-for-genotyping","1")
+                .addFlag("override-fragment-softclip-check")
+                .add("flow-likelihood-parallel-threads","2")
+                .addFlag("flow-likelihood-optimized-comp")
+                .addFlag("adaptive-pruning")
+                .add("pruning-lod-threshold","3.0")
+                .addFlag("enable-dynamic-read-disqualification-for-genotyping")
+                .add("dynamic-read-disqualification-threshold","10")
+                .add("G","StandardAnnotation")
+                .add("G","StandardHCAnnotation")
+                .add("G","AS_StandardAnnotation")
+                .add("GQB","10").add("GQB","20").add("GQB","30").add("GQB","40").add("GQB","50").add("GQB","60").add("GQB","70").add("GQB","80").add("GQB","90")
+                .add("likelihood-calculation-engine","FlowBased")
+                .add("A", "AssemblyComplexity")
+                .addFlag("assembly-complexity-reference-mode")
+                .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, false);
+
+        runCommandLine(args);
+
+        if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
+            IntegrationTestSpec.assertEqualTextFiles(output, expected, "#");
+        }
+    }
+
     /**
      * Helper method for testMaxAlternateAlleles
      *
@@ -1805,6 +2029,129 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
             } else {
                 IntegrationTestSpec.assertEqualTextFiles(hmmOutput, expected);
             }
+        }
+    }
+    @Test
+    public void testVcfFlowLikelihoodOptimizedCompConsistentWithPreviousResults() throws Exception {
+        Utils.resetRandomGenerator();
+        final File input = new File(largeFileTestDir, "input_jukebox_for_test.bam");
+        final File output = createTempFile("output", ".vcf");
+
+        final File expected = new File(TEST_FILES_DIR, "testVcfBeforeRebase.expected.flowbased.vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addReference(hg38Reference)
+                .addInterval("chr9:81149486-81177047")
+                .addOutput(output)
+                .addInput(input)
+                .add("smith-waterman", "FASTEST_AVAILABLE")
+                .add("likelihood-calculation-engine", "FlowBased")
+                .add("mbq", "0")
+                .add("kmer-size", 10)
+                .add("flow-filter-alleles", true)
+                .add("flow-filter-alleles-sor-threshold", 40)
+                .add("flow-assembly-collapse-hmer-size", 12)
+                .add("flow-matrix-mods", "10,12,11,12")
+                .add("flow-likelihood-optimized-comp", true)
+                .add("flow-filter-lone-alleles", true)
+                .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, false);
+
+        runCommandLine(args);
+
+        IntegrationTestSpec.assertEqualTextFiles(output, expected, "#");
+    }
+
+    @Test
+    public void testVcfFlowLikelihoodParralelThreadsConsistentWithPreviousResults() throws Exception {
+        Utils.resetRandomGenerator();
+        final File input = new File(largeFileTestDir, "input_jukebox_for_test.bam");
+        final File output = createTempFile("output", ".vcf");
+
+        final File expected = new File(TEST_FILES_DIR, "testVcfBeforeRebase.expected.flowbased.vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addReference(hg38Reference)
+                .addInterval("chr9:81149486-81177047")
+                .addOutput(output)
+                .addInput(input)
+                .add("smith-waterman", "FASTEST_AVAILABLE")
+                .add("likelihood-calculation-engine", "FlowBased")
+                .add("mbq", "0")
+                .add("kmer-size", 10)
+                .add("flow-filter-alleles", true)
+                .add("flow-filter-alleles-sor-threshold", 40)
+                .add("flow-assembly-collapse-hmer-size", 12)
+                .add("flow-matrix-mods", "10,12,11,12")
+                .add("flow-likelihood-optimized-comp", true)
+                .add("flow-likelihood-parallel-threads", 4)
+                .add("flow-filter-lone-alleles", true)
+                .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, false);
+
+        runCommandLine(args);
+
+        IntegrationTestSpec.assertEqualTextFiles(output, expected, "#");
+    }
+
+    @Test
+    public void testVcfFlowBasedHMMConsistentWithPreviousResults() throws Exception {
+        Utils.resetRandomGenerator();
+        final File input = new File(largeFileTestDir, "input_jukebox_for_test.bam");
+        final File output = createTempFile("output", ".vcf");
+
+        final File expected = new File(TEST_FILES_DIR, "test_flowBasedHMM.expected.vcf");
+        final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addReference(hg38Reference)
+                .addInterval("chr9:81149486-81177047")
+                .addOutput(outputPath)
+                .addInput(input)
+                .add("smith-waterman", "FASTEST_AVAILABLE")
+                .add("likelihood-calculation-engine", "FlowBasedHMM")
+                .add("mbq", "0")
+                .add("kmer-size", 10)
+                .add("flow-filter-alleles", true)
+                .add("flow-filter-alleles-sor-threshold", 40)
+                .add("flow-assembly-collapse-hmer-size", 12)
+                .add("flow-matrix-mods", "10,12,11,12")
+                .add("flow-filter-lone-alleles", true)
+                .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, false);
+
+        runCommandLine(args);
+        if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
+            IntegrationTestSpec.assertEqualTextFiles(output, expected, "#");
+        }
+    }
+
+    @Test
+    public void testVcfFlowBasedHMMStepwiseConsistentWithPreviousResults() throws Exception {
+        Utils.resetRandomGenerator();
+        final File input = new File(largeFileTestDir, "input_jukebox_for_test.bam");
+        final File output = createTempFile("output", ".vcf");
+
+        final File expected = new File(TEST_FILES_DIR, "test_flowBasedHMM_Stepwise.expected.vcf");
+        final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addReference(hg38Reference)
+                .addInterval("chr9:81149486-81177047")
+                .addOutput(outputPath)
+                .addInput(input)
+                .add("smith-waterman", "FASTEST_AVAILABLE")
+                .add("likelihood-calculation-engine", "FlowBasedHMM")
+                .add("mbq", "0")
+                .add("kmer-size", 10)
+                .add("flow-filter-alleles", true)
+                .add("flow-filter-alleles-sor-threshold", 40)
+                .add("flow-assembly-collapse-hmer-size", 12)
+                .add("flow-matrix-mods", "10,12,11,12")
+                .addFlag("use-flow-aligner-for-stepwise-hc-filtering")
+                .add("flow-filter-lone-alleles", true)
+                .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, false);
+
+        runCommandLine(args);
+        if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
+            IntegrationTestSpec.assertEqualTextFiles(output, expected, "#");
         }
     }
 }

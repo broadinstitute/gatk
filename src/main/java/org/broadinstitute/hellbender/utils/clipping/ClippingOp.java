@@ -202,6 +202,7 @@ public final class ClippingOp {
         System.arraycopy(read.getBaseQualities(), copyStart, newQuals, 0, newLength);
 
         final GATKRead hardClippedRead = read.copy();
+        hardClippedRead.hardClipAttributes(copyStart, newLength, read.getBasesNoCopy().length);
 
         hardClippedRead.setBaseQualities(newQuals);
         hardClippedRead.setBases(newBases);

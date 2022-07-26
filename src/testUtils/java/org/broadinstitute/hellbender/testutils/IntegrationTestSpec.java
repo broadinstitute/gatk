@@ -2,27 +2,34 @@ package org.broadinstitute.hellbender.testutils;
 
 import com.google.common.io.Files;
 import htsjdk.samtools.ValidationStringency;
+import htsjdk.samtools.util.BlockCompressedInputStream;
 import htsjdk.samtools.util.FileExtensions;
 import org.aeonbits.owner.util.Collections;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.filefilter.IOFileFilter;
+import org.apache.commons.io.filefilter.TrueFileFilter;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
 import org.testng.Assert;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.PrintStream;
+import java.io.*;
+import java.net.URI;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 public final class IntegrationTestSpec {
 
@@ -55,6 +62,18 @@ public final class IntegrationTestSpec {
 
     //Stringency for validation of bams.
     private ValidationStringency validationStringency;
+
+    //callback interface for determining if a file is binary or text (by filename). used by EqualZipFiles
+    public interface EqualZipFilesAssist {
+        boolean isFilenameText(String filename);
+    }
+
+    static public EqualZipFilesAssist EqualZipFilesAssist_AllText = new EqualZipFilesAssist() {
+        @Override
+        public boolean isFilenameText(String filename) {
+            return true;
+        }
+    };
 
     public IntegrationTestSpec(String args, List<String> expectedFileNames) {
         this.args = args;
@@ -161,7 +180,7 @@ public final class IntegrationTestSpec {
         executeTest(testName, testClass, args, expectedException);
 
         if (expectedException == null && !expectedFileNames.isEmpty()) {
-            assertMatchingFiles(tmpFiles, expectedFileNames, compareBamFilesSorted, validationStringency, trimWhiteSpace);
+            assertMatchingFiles(tmpFiles, expectedFileNames, compareBamFilesSorted, validationStringency, trimWhiteSpace, false);
             if (expectedIndexExtension != null) {
                 for (final File f : tmpFiles) {
                     final String indexPath = f.getAbsolutePath() + expectedIndexExtension;
@@ -215,10 +234,10 @@ public final class IntegrationTestSpec {
     }
 
     public static void assertMatchingFiles(final List<File> resultFiles, final List<String> expectedFiles, final boolean compareBamFilesSorted, final ValidationStringency stringency) throws IOException {
-        assertMatchingFiles(resultFiles, expectedFiles, compareBamFilesSorted, stringency, false);
+        assertMatchingFiles(resultFiles, expectedFiles, compareBamFilesSorted, stringency, false, false);
     }
 
-    public static void assertMatchingFiles(final List<File> resultFiles, final List<String> expectedFiles, final boolean compareBamFilesSorted, final ValidationStringency stringency, final boolean trimWhiteSpace) throws IOException {
+    public static void assertMatchingFiles(final List<File> resultFiles, final List<String> expectedFiles, final boolean compareBamFilesSorted, final ValidationStringency stringency, final boolean trimWhiteSpace, final boolean skipIndexes) throws IOException {
         Assert.assertEquals(resultFiles.size(), expectedFiles.size());
         for (int i = 0; i < resultFiles.size(); i++) {
             final File resultFile = resultFiles.get(i);
@@ -226,7 +245,11 @@ public final class IntegrationTestSpec {
             final File expectedFile = new File(expectedFileName);
             final boolean isIndex = INDEX_EXTENSIONS.stream().anyMatch(ext -> expectedFileName.endsWith(ext));
             if (isIndex) {
-                Assert.assertTrue(Files.equal(expectedFile, resultFile), "Resulting index file different from expected");
+                if (skipIndexes) {
+                    Assert.assertTrue(expectedFile.exists());
+                } else {
+                    Assert.assertTrue(Files.equal(expectedFile, resultFile), "Resulting index file different from expected");
+                }
             } else if (expectedFileName.endsWith(".bam")) {
                 SamAssertionUtils.assertEqualBamFiles(resultFile, expectedFile, compareBamFilesSorted, stringency);
             } else {
@@ -251,13 +274,18 @@ public final class IntegrationTestSpec {
         assertEqualTextFiles(resultFile, expectedFile, commentPrefix, true);
     }
 
-        /**
-         * Compares two text files and ignores all lines that start with the comment prefix.
-         */
     public static void assertEqualTextFiles(final Path resultFile, final Path expectedFile, final String commentPrefix, final boolean doTrimWhitespace) throws IOException {
+        assertEqualTextFiles(IOUtils.makeReaderMaybeGzipped(resultFile), IOUtils.makeReaderMaybeGzipped(expectedFile)
+                ,resultFile.toString(), expectedFile.toString(), commentPrefix, doTrimWhitespace);
+    }
 
-        XReadLines actual = new XReadLines(resultFile, doTrimWhitespace, commentPrefix);
-        XReadLines expected = new XReadLines(expectedFile, doTrimWhitespace, commentPrefix);
+    /**
+     * Compares two text files and ignores all lines that start with the comment prefix.
+     */
+    public static void assertEqualTextFiles(final Reader resultReader, final Reader expectedReader, final String resultName, final String expectedName, final String commentPrefix, final boolean doTrimWhitespace) throws IOException {
+
+        XReadLines actual = new XReadLines(resultReader, doTrimWhitespace, commentPrefix);
+        XReadLines expected = new XReadLines(expectedReader, doTrimWhitespace, commentPrefix);
 
         // For ease of debugging, we look at the lines first and only then check their counts.
         // For performance, we stream the lines through instead of loading everything first.
@@ -284,11 +312,24 @@ public final class IntegrationTestSpec {
             throw new AssertionError("File sizes are unequal - actual = " + actual.readLines().size() + ", expected = " + expected.readLines().size() + " AND detected unequal lines: " + numUnequalLines);
         }
         else if ( numUnequalLines != 0 ) {
-            throw new AssertionError("Detected unequal lines: " + numUnequalLines + " between files actual file = "+resultFile+", expected file = "+expectedFile);
+            throw new AssertionError("Detected unequal lines: " + numUnequalLines + " between files actual file = "+resultName+", expected file = "+expectedName);
         }
         else if (!sizeMatches) {
-            throw new AssertionError("File sizes are unequal - actual = " + (i + actual.readLines().size()) + ", expected = " + (i + expected.readLines().size()));
+            throw new AssertionError("File sizes are unequal - actual = " + (i + actual.readLines().size()) + ", expected = " + (i + expected.readLines().size()) + " between files actual file = "+resultName+", expected file = "+expectedName);
         }
+    }
+
+    public static void assertEqualZipFiles(final File resultFile, final File expectedFile, final EqualZipFilesAssist assist) throws IOException {
+
+        File expectedDir = IOUtils.createTempDir("expected");
+        File resultDir = IOUtils.createTempDir("result");
+
+        IOUtils.unzipToFolder(expectedFile.toPath(), expectedDir.toPath());
+        IOUtils.unzipToFolder(resultFile.toPath(), resultDir.toPath());
+
+        assertMatchingFiles(FileUtils.listFilesAndDirs(resultDir, TrueFileFilter.INSTANCE, TrueFileFilter.INSTANCE).stream().filter(File::isFile).collect(Collectors.toList()),
+                FileUtils.listFilesAndDirs(expectedDir, TrueFileFilter.INSTANCE, TrueFileFilter.INSTANCE).stream().filter(File::isFile).filter(File::isFile).map(File::toString).collect(Collectors.toList()),
+                false, ValidationStringency.DEFAULT_STRINGENCY, false, true);
     }
 
 }

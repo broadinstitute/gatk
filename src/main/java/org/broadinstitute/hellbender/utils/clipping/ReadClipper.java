@@ -47,10 +47,11 @@ import java.util.List;
  *
  */
 public class ReadClipper {
-    final static Logger logger = LogManager.getLogger(ReadClipper.class);
-    final GATKRead read;
-    boolean wasClipped;
-    List<ClippingOp> ops = null;
+    private final static Logger logger = LogManager.getLogger(ReadClipper.class);
+    private final GATKRead read;
+    private boolean wasClipped;
+    private List<ClippingOp> ops = null;
+    private final int extraBasesToClip;
 
     /**
      * Initializes a ReadClipper object.
@@ -65,9 +66,14 @@ public class ReadClipper {
      * @param read the read to clip
      */
     public ReadClipper(final GATKRead read) {
+        this(read,0);
+    }
+
+    public ReadClipper(final GATKRead read, int clipExtraBases) {
         Utils.nonNull(read);
         this.read = read;
         this.wasClipped = false;
+        this.extraBasesToClip = clipExtraBases;
     }
 
     /**
@@ -300,18 +306,24 @@ public class ReadClipper {
             }
         }
 
-        // It is extremely important that we cut the end first otherwise the read coordinates change.
+        // It is extremely important that we cut the (right) end first otherwise the read coordinates change.
         if (cutRight >= 0) {
+            cutRight -= extraBasesToClip;
             this.addOp(new ClippingOp(cutRight, read.getLength() - 1));
         }
         if (cutLeft >= 0) {
+            cutLeft += extraBasesToClip;
             this.addOp(new ClippingOp(0, cutLeft));
         }
 
         return clipRead(ClippingRepresentation.HARDCLIP_BASES);
     }
+
     public static GATKRead hardClipSoftClippedBases (final GATKRead read) {
         return new ReadClipper(read).hardClipSoftClippedBases();
+    }
+    public static GATKRead hardClipSoftClippedBases (final GATKRead read, int clipExtraBases) {
+        return new ReadClipper(read,clipExtraBases).hardClipSoftClippedBases();
     }
 
     /**
@@ -560,4 +572,5 @@ public class ReadClipper {
     public static GATKRead softClipByReadCoordinates(final GATKRead read, final int start, final int stop) {
         return (new ReadClipper(read)).softClipByReadCoordinates(start, stop);
     }
+
 }

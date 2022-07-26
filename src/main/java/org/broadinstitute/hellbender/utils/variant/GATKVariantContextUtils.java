@@ -15,6 +15,8 @@ import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.StrandBiasUtils;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -2208,6 +2210,67 @@ public final class GATKVariantContextUtils {
             }
         });
         return updated;
+    }
+
+    /**
+     * Main routine workhorse for {@link org.broadinstitute.hellbender.tools.walkers.variantutils.LeftAlignAndTrimVariants}.
+     * By definition, it will only take biallelic vc's. Splitting into multiple alleles has to be
+     * handled by calling routine.
+     *
+     * @param vc  Input VC with variants to left align
+     * @param ref Reference context
+     * @return new VC.
+     */
+    public static VariantContext leftAlignAndTrim(final VariantContext vc, final ReferenceContext ref, final int maxLeadingBases, final boolean trim) {
+        if (!vc.isIndel() || maxLeadingBases <= 0) {
+            return vc;
+        }
+
+
+        for(int leadingBases = Math.min(maxLeadingBases, 10); leadingBases <= maxLeadingBases; leadingBases = Math.min(2*leadingBases, maxLeadingBases)) {
+            final int refStart = Math.max(vc.getStart() - leadingBases, 1);
+
+            // reference sequence starting before the variant (to give space for left-alignment) and ending at the variant end
+            final byte[] refSeq = ref.getBases(new SimpleInterval(vc.getContig(), refStart, vc.getEnd()));
+
+            final int variantOffsetInRef = vc.getStart() - refStart;
+
+            final List<byte[]> sequences = vc.getAlleles().stream().map(a -> {
+                final byte[] result = new byte[variantOffsetInRef + a.length()];
+                System.arraycopy(refSeq, 0, result, 0, variantOffsetInRef);
+                System.arraycopy(a.getBases(), 0, result, variantOffsetInRef, a.length());
+                return result;
+            }).collect(Collectors.toList());
+
+            final List<IndexRange> alleleRanges = vc.getAlleles().stream()
+                    .map(a -> new IndexRange(variantOffsetInRef + 1, variantOffsetInRef + a.length()))  // +1 to ignore the shared base in front
+                    .collect(Collectors.toList());
+
+            // note that this also shifts the index ranges as a side effect, so below they can be used to output allele bases
+            final Pair<Integer, Integer> shifts = AlignmentUtils.normalizeAlleles(sequences, alleleRanges, variantOffsetInRef, trim);
+
+            if (shifts.getLeft() == 0 && shifts.getRight() == 0) {
+                return vc;
+            } else if (shifts.getLeft() == variantOffsetInRef && leadingBases < maxLeadingBases) {
+                continue;
+            }
+
+            final Map<Allele, Allele> alleleMap = IntStream.range(0, alleleRanges.size()).boxed()
+                    .collect(Collectors.toMap(
+                            n -> vc.getAlleles().get(n),
+                            n -> Allele.create(Arrays.copyOfRange(sequences.get(n), variantOffsetInRef - shifts.getLeft(), variantOffsetInRef - shifts.getRight() + vc.getAlleles().get(n).length()), n == 0)));
+
+            final GenotypesContext newGenotypes = GenotypesContext.create(vc.getNSamples());
+            for (final Genotype genotype : vc.getGenotypes()) {
+                final List<Allele> newAlleles = genotype.getAlleles().stream().map(a -> alleleMap.getOrDefault(a, Allele.NO_CALL)).collect(Collectors.toList());
+                newGenotypes.add(new GenotypeBuilder(genotype).alleles(newAlleles).make());
+            }
+
+            return new VariantContextBuilder(vc).start(vc.getStart() - shifts.getLeft()).stop(vc.getEnd() - shifts.getRight())
+                    .alleles(alleleMap.values()).genotypes(newGenotypes).make();
+        }
+
+        return vc;
     }
 
 

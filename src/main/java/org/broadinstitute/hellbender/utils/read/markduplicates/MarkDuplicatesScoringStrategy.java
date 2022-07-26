@@ -1,8 +1,8 @@
 package org.broadinstitute.hellbender.utils.read.markduplicates;
 
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.read.FlowBasedReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.util.function.ToIntFunction;
 
@@ -16,7 +16,8 @@ import java.util.function.ToIntFunction;
 public enum MarkDuplicatesScoringStrategy {
 
     SUM_OF_BASE_QUALITIES(MarkDuplicatesScoringStrategy::sumOfBaseQualities),
-    TOTAL_MAPPED_REFERENCE_LENGTH(MarkDuplicatesScoringStrategy::totalMappedReferenceLength);
+    TOTAL_MAPPED_REFERENCE_LENGTH(MarkDuplicatesScoringStrategy::totalMappedReferenceLength),
+    FLOW_SUM_OF_BASE_QUALITIES(FlowBasedReadUtils::flowSumOfBaseQualities);
 
     private final ToIntFunction<GATKRead> scoring;
 

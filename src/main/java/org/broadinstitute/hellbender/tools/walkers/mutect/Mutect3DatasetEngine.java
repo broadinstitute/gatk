@@ -170,7 +170,7 @@ public class Mutect3DatasetEngine implements AutoCloseable {
         }
 
         // haplotype equivalence counts, haplotype complexity, haplotype dominance
-        final Triple<int[], int[], double[]> assemblyComplexity = AssemblyComplexity.annotate(vc, logFragmentLikelihoods);
+        final Triple<int[], int[], double[]> assemblyComplexity = AssemblyComplexity.annotate(vc, logFragmentLikelihoods, false);
 
         // TODO: for now we don't really need normal reads
         final List<List<List<Integer>>> normalReadVectorsByAllele =  FeaturizedReadSets.getReadVectors(vc, normalSamples, likelihoods, logFragmentLikelihoods, maxRefCount, maxAltCount);

@@ -37,7 +37,11 @@ public final class IndependentSampleGenotypesModel implements GenotypingModel {
         calculators = new GenotypeLikelihoodCalculators();
     }
 
-    public <A extends Allele> GenotypingLikelihoods<A> calculateLikelihoods(final AlleleList<A> genotypingAlleles, final GenotypingData<A> data, final byte[] paddedReference, final int offsetForRefIntoEvent, final DragstrReferenceAnalyzer dragstrs) {
+    public <A extends Allele> GenotypingLikelihoods<A> calculateLikelihoods(final AlleleList<A> genotypingAlleles,
+                                                                            final GenotypingData<A> data,
+                                                                            final byte[] paddedReference,
+                                                                            final int offsetForRefIntoEvent,
+                                                                            final DragstrReferenceAnalyzer dragstrs) {
         Utils.nonNull(genotypingAlleles, "the allele cannot be null");
         Utils.nonNull(data, "the genotyping data cannot be null");
 
