@@ -26,7 +26,7 @@ public class CollectSVEvidenceUnitTest extends GATKBaseTest {
         final SAMFileHeader hdr = ArtificialReadUtils.createArtificialSamHeader();
         final SAMSequenceDictionary dict = hdr.getSequenceDictionary();
         Assert.assertTrue(dict.getSequences().size() >= 3, "need 3 sequences");
-        final LocusComparator lComp = new LocusComparatorImpl(dict);
+        final LocusComparator lComp = new LocusComparator(dict);
         final String curContig = dict.getSequence(1).getContig();
         final SimpleInterval interval =
                 new SimpleInterval(curContig, 1001, 2000);
@@ -43,7 +43,7 @@ public class CollectSVEvidenceUnitTest extends GATKBaseTest {
     @Test
     public void testEffectOfCigarAndMinQOnAlleleCounting() {
         final SAMFileHeader hdr = ArtificialReadUtils.createArtificialSamHeader();
-        final LocusComparator lComp = new LocusComparatorImpl(hdr.getSequenceDictionary());
+        final LocusComparator lComp = new LocusComparator(hdr.getSequenceDictionary());
         final GATKRead read = ArtificialReadUtils.createArtificialRead(hdr, "30M5D30M5I30M");
         final int readQ = read.getBaseQuality(0);
         Assert.assertEquals(read.getBase(0), (byte)'A');
@@ -56,12 +56,12 @@ public class CollectSVEvidenceUnitTest extends GATKBaseTest {
         sites.add(new SiteDepth(contig, start+30, sample, 0, 0, 0, 0));
         sites.add(new SiteDepth(contig, start+35, sample, 0, 0, 0, 0));
         sites.add(new SiteDepth(contig, start+95, sample, 0, 0, 0, 0));
-        AlleleCounter.walkReadMatches(read, readQ+1, sites, lComp);
+        SiteDepthCounter.walkReadMatches(read, readQ+1, sites, lComp);
         for ( final SiteDepth sd : sites ) {
             // no counts because quality too low
             Assert.assertEquals(sd.getDepth(0), 0);
         }
-        AlleleCounter.walkReadMatches(read, readQ, sites, lComp);
+        SiteDepthCounter.walkReadMatches(read, readQ, sites, lComp);
         Assert.assertEquals(sites.get(0).getDepth(0), 0); // upstream, so no count
         Assert.assertEquals(sites.get(1).getDepth(0), 1); // in first 30M, 1 count
         Assert.assertEquals(sites.get(2).getDepth(0), 0); // in 5D, so no count
@@ -182,5 +182,43 @@ public class CollectSVEvidenceUnitTest extends GATKBaseTest {
         Mockito.verify(mockSrWriter).write(new SplitReadEvidence(tool.sampleName, "1", 1100, 1, false));
         Mockito.verify(mockSrWriter).write(new SplitReadEvidence(tool.sampleName, "1", 1100, 2, true));
         Mockito.verifyNoMoreInteractions(mockSrWriter);
+    }
+
+    @Test
+    public void testCountCounter() {
+        final int N_GAUSSIAN = 10000;
+        final int N_OUTLIERS = 30;
+        final CollectSVEvidence.CountCounter cc = new CollectSVEvidence.CountCounter();
+        final Random rand = new Random(0);
+        final int[] values = new int[N_GAUSSIAN + N_OUTLIERS];
+        for ( int idx = 0; idx != N_GAUSSIAN; ++idx ) {
+            final int val = (int)Math.round(10 * rand.nextGaussian() + 30);
+            cc.addCount(values[idx] = val < 0 ? 0 : val);
+        }
+        for ( int idx = 0; idx != N_OUTLIERS; ++idx ) {
+            final int val = (int)Math.round(10000*rand.nextDouble()+200);
+            cc.addCount(values[idx + N_GAUSSIAN] = val);
+        }
+        Arrays.sort(values);
+        final int[] quartiles = cc.getQuartiles();
+        Assert.assertEquals(quartiles[0], values[(N_GAUSSIAN + N_OUTLIERS + 3) / 4]);
+        Assert.assertEquals(quartiles[1], values[(2*(N_GAUSSIAN + N_OUTLIERS) + 3) / 4]);
+        Assert.assertEquals(quartiles[2], values[(3*(N_GAUSSIAN + N_OUTLIERS) + 3) / 4]);
+        Assert.assertEquals(quartiles[3], values[values.length-1]);
+
+        int nZeroes = 0;
+        for ( int idx = 0; idx != N_GAUSSIAN + N_OUTLIERS; ++idx ) {
+            if ( values[idx] != 0 ) {
+                break;
+            }
+            nZeroes += 1;
+        }
+        Assert.assertEquals(cc.getNZeroCounts(), nZeroes);
+
+        long totalCounts = 0;
+        for ( int idx = 0; idx != N_GAUSSIAN + N_OUTLIERS; ++idx ) {
+            totalCounts += values[idx];
+        }
+        Assert.assertEquals(cc.getMeanCount(), (double)totalCounts/(N_GAUSSIAN + N_OUTLIERS));
     }
 }
