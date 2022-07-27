@@ -233,7 +233,7 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
      *
      * @return the list of ReferencePairs for every pair of references
      */
-    public List<ReferencePair> generateReferencePairs(){
+    public final List<ReferencePair> generateReferencePairs(){
         List<ReferencePair> referencePairs = new ArrayList<>();
         for(int i = 0; i < references.size(); i++){
             for(int j = i + 1; j < references.size(); j++){
@@ -248,7 +248,7 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
      *
      * @return the list of ReferencePairs
      */
-    public List<ReferencePair> generateReferencePairs(GATKPath dictionary){
+    public final List<ReferencePair> generateReferencePairsAgainstDictionary(GATKPath dictionary){
         List<ReferencePair> referencePairs = new ArrayList<>();
         for(int i = 0; i < references.size(); i++){
             GATKPath currRef = references.get(i);
@@ -274,7 +274,7 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
      * @return list of ReferencePairs keyed against the provided dictionary with updated status sets
      */
     public List<ReferencePair> compareAgainstKeyReference(GATKPath dictionary){
-        List<ReferencePair> refPairs = generateReferencePairs(dictionary);
+        List<ReferencePair> refPairs = generateReferencePairsAgainstDictionary(dictionary);
         return analyzeTable(refPairs);
     }
 

@@ -11,7 +11,7 @@ import java.io.IOException;
 
 public class CheckReferenceCompatibilityIntegrationTest extends CommandLineProgramTest {
 
-    private final String COMPARE_REFERENCES_TEST_FILES_DIRECTORY = "src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/";
+    private final String COMPARE_REFERENCES_TEST_FILES_DIRECTORY = toolsTestDir + "/reference/CompareReferences/";
 
     @DataProvider(name = "testReferenceCompatibilityBAMWithMD5sData")
     public Object[][] testReferenceCompatibilityBAMWithMD5sData() {
@@ -97,13 +97,14 @@ public class CheckReferenceCompatibilityIntegrationTest extends CommandLineProgr
     public void testReferenceCompatibilityMultipleReferencesBAMWithMD5s() throws IOException {
         final File ref1 = new File(COMPARE_REFERENCES_TEST_FILES_DIRECTORY + "hg19mini.fasta");
         final File ref2 = new File(COMPARE_REFERENCES_TEST_FILES_DIRECTORY + "hg19mini_1renamed.fasta");
-        final File ref3 = new File(COMPARE_REFERENCES_TEST_FILES_DIRECTORY + "hg19mini_chr2snp.fasta");
+        final File ref3 = new File(COMPARE_REFERENCES_TEST_FILES_DIRECTORY + "hg19mini_missingchr1.fasta");
+        final File ref4 = new File(COMPARE_REFERENCES_TEST_FILES_DIRECTORY + "hg19mini_chr2snp.fasta");
         final File dict = new File(getToolTestDataDir() + "reads_data_source_test1_withmd5s_missingchr1.bam");
         final File output = createTempFile("testReferenceCompatibilityMultipleReferencesWithMD5s", ".table");
         final File expectedOutput = new File(getToolTestDataDir(), "expected.testReferenceCompatibilityMultipleReferencesBAMWithMD5s.table");
 
         final String[] args = new String[] {"-refcomp", ref1.getAbsolutePath(), "-refcomp", ref2.getAbsolutePath(),
-                "-refcomp", ref3.getAbsolutePath(), "-I", dict.getAbsolutePath(), "-O", output.getAbsolutePath()};
+                "-refcomp", ref3.getAbsolutePath(), "-refcomp", ref4.getAbsolutePath(), "-I", dict.getAbsolutePath(), "-O", output.getAbsolutePath()};
         runCommandLine(args);
 
         IntegrationTestSpec.assertEqualTextFiles(output, expectedOutput);
@@ -133,23 +134,27 @@ public class CheckReferenceCompatibilityIntegrationTest extends CommandLineProgr
     public void testReferenceCompatibilityWithoutMD5sMismatch() throws IOException {
         final File ref1 = new File(COMPARE_REFERENCES_TEST_FILES_DIRECTORY + "hg19mini_chr2snp.fasta");
         final File dict = new File(getToolTestDataDir() + "reads_data_source_test1_withoutmd5s.bam");
+        final File output = createTempFile("testReferenceCompatibilityVCFWithMD5s", ".table");
+        final File expectedOutput = new File(getToolTestDataDir(), "expected.testReferenceCompatibilityWithoutMD5Mismatch.table");
 
-        final String[] args = new String[] {"-refcomp", ref1.getAbsolutePath() , "-I", dict.getAbsolutePath()};
+        final String[] args = new String[] {"-refcomp", ref1.getAbsolutePath() , "-I", dict.getAbsolutePath(), "-O", output.getAbsolutePath()};
         runCommandLine(args);
+
+        IntegrationTestSpec.assertEqualTextFiles(output, expectedOutput);
     }
 
-    // TODO: compatibility based on MD5 faulty since MD5s not in sequence dictionary (see ticket #730 "VCFHeader drops sequence dictionary attributes")
-    @Test(enabled = false)
+    // TODO: compatibility based on MD5 faulty since MD5s not in sequence dictionary (https://github.com/samtools/htsjdk/issues/730)
+    @Test
     public void testReferenceCompatibilityVCFWithMD5s() throws IOException {
-        final File ref1 = new File(COMPARE_REFERENCES_TEST_FILES_DIRECTORY + "hg19mini_missingchr1.fasta");
-        final File dict = new File(getToolTestDataDir() + "example_variants_withSequenceDict.vcf");
-        //final File output = createTempFile("testReferenceCompatibilityVCFWithMD5s", ".table");
+        final File ref1 = new File(COMPARE_REFERENCES_TEST_FILES_DIRECTORY + "hg19mini.fasta");
+        final File dict = new File(getToolTestDataDir() + "example_variants_withSequenceDict_withmd5.vcf");
+        final File output = createTempFile("testReferenceCompatibilityVCFWithMD5s", ".table");
         final File expectedOutput = new File(getToolTestDataDir(), "expected.testReferenceCompatibilityVCFWithMD5s.table");
 
-        final String[] args = new String[] {"-refcomp", ref1.getAbsolutePath() , "-V", dict.getAbsolutePath()/*, "-O", expectedOutput.getAbsolutePath()*/};
+        final String[] args = new String[] {"-refcomp", ref1.getAbsolutePath() , "-V", dict.getAbsolutePath(), "-O", output.getAbsolutePath()};
         runCommandLine(args);
 
-        //IntegrationTestSpec.assertEqualTextFiles(output, expectedOutput);
+        IntegrationTestSpec.assertEqualTextFiles(output, expectedOutput);
     }
 
     @DataProvider(name = "testReferenceCompatibilityVCFWithoutMD5sData")
@@ -187,19 +192,21 @@ public class CheckReferenceCompatibilityIntegrationTest extends CommandLineProgr
         IntegrationTestSpec.assertEqualTextFiles(output, expectedOutput);
     }
 
-    // for quick stdout testing
-    @Test(enabled = false)
-    public void testStdOutput() throws IOException{
-        final File ref1 = new File(COMPARE_REFERENCES_TEST_FILES_DIRECTORY + "hg19mini.fasta");
-        final File ref2 = new File(COMPARE_REFERENCES_TEST_FILES_DIRECTORY + "hg19mini_1renamed.fasta");
-        final File ref3 = new File(COMPARE_REFERENCES_TEST_FILES_DIRECTORY + "hg19mini_chr2snp.fasta");
-        final File dict = new File(getToolTestDataDir() + "reads_data_source_test1_withmd5s_missingchr1.bam");
-        //final File output = createTempFile("testReferenceCompatibilityMultipleReferencesWithMD5s", ".table");
-        final File expectedOutput = new File(getToolTestDataDir(), "expected.testReferenceCompatibilityMultipleReferencesBAMWithMD5s.table");
+    @Test(expectedExceptions = UserException.BadInput.class)
+    public void testReferenceCompatibilityBAMandVCF() throws IOException {
+        final File ref1 = new File(COMPARE_REFERENCES_TEST_FILES_DIRECTORY + "hg19mini_chr2snp.fasta");
+        final File bam = new File(getToolTestDataDir() + "reads_data_source_test1_withoutmd5s.bam");
+        final File vcf = new File(getToolTestDataDir() + "example_variants_withSequenceDict_withoutmd5s.vcf");
 
-        final String[] args = new String[] {"-refcomp", ref1.getAbsolutePath(), "-refcomp", ref2.getAbsolutePath(),
-                "-refcomp", ref3.getAbsolutePath(), "-I", dict.getAbsolutePath(), "-O", expectedOutput.getAbsolutePath()};
+        final String[] args = new String[] {"-refcomp", ref1.getAbsolutePath() , "-I", bam.getAbsolutePath(), "-V", vcf.getAbsolutePath()};
         runCommandLine(args);
     }
 
+    @Test(expectedExceptions = UserException.BadInput.class)
+    public void testReferenceCompatibilityNoBAMOrVCF() throws IOException {
+        final File ref1 = new File(COMPARE_REFERENCES_TEST_FILES_DIRECTORY + "hg19mini_chr2snp.fasta");
+
+        final String[] args = new String[]{"-refcomp", ref1.getAbsolutePath()};
+        runCommandLine(args);
+    }
 }

@@ -1,3 +1,3 @@
 #Current Reference: reads_data_source_test1_withoutmd5s_missingchr1.bam
-Reference	Compatibility
-hg19mini.fasta	All sequence names and lengths present in the sequence dictionaries match, but reads_data_source_test1_withoutmd5s_missingchr1.bam is a subset of hg19mini.fasta. Missing sequence(s): [1]. Since the MD5s are lacking, we can't confirm there aren't mismatching bases in the references.
+Reference	Compatibility	Summary
+hg19mini.fasta	COMPATIBLE_SUBSET	All sequence names and lengths present in the sequence dictionaries match, but reads_data_source_test1_withoutmd5s_missingchr1.bam is a subset of hg19mini.fasta. Missing sequence(s): [1]. Since the MD5s are lacking, we can't confirm there aren't mismatching bases in the references.
