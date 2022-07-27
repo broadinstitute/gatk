@@ -17,8 +17,9 @@ public final class CopyNumberTestUtils {
     /**
      * This test utility method asserts if two TSV files (each containing a header followed by a matrix of doubles)
      * are approximately equivalent, by checking if corresponding double values are equal up to some number of decimal
-     * points represented by the delta parameter. Note that the headers of both files need to be bitwise identical,
-     * and the number of columns and rows of each matrix encoded in TSV files must be equal as well.
+     * points represented by the delta parameter. This assertion will also succeed if both compared files contain NaNs
+     * in the matching fields. Note that the headers of both files need to be bitwise identical, and the number of
+     * columns and rows of each matrix encoded in TSV files must be equal as well.
      *
      * @param f1 first file to compare
      * @param f2 second file to compare
@@ -48,7 +49,8 @@ public final class CopyNumberTestUtils {
                     final List<String> splitLine1 = Arrays.asList(line1.split("\t"));
                     final List<String> splitLine2 = Arrays.asList(line2.split("\t"));
                     Assert.assertEquals(splitLine1.size(), splitLine2.size(),
-                            String.format("Line %d does not have the same number of fields in files %s and %s.", i, f1, f2));
+                            String.format("Line %d does not have the same number of fields in files %s and %s. " +
+                                    "Make sure that both files have equal number of header lines.", i, f1, f2));
 
                     for (int j = 0; j < splitLine1.size(); j++) {
                         final String field1 = splitLine1.get(j);
