@@ -1,7 +1,10 @@
 package org.broadinstitute.hellbender.tools.reference;
 
+import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.GATKPath;
+import org.broadinstitute.hellbender.engine.ReadsDataSource;
+import org.broadinstitute.hellbender.engine.ReadsPathDataSource;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -18,6 +21,20 @@ public class ReferenceSequenceTableUnitTest extends GATKBaseTest {
         }
 
         ReferenceSequenceTable table = new ReferenceSequenceTable(referenceSources, md5CalculationMode);
+        table.build();
+
+        return table;
+    }
+
+    private ReferenceSequenceTable tableGenerator(GATKPath dictionaryPath, SAMSequenceDictionary dictionary, List<GATKPath> references){
+        Map<GATKPath, SAMSequenceDictionary> dictionaries = new LinkedHashMap<>();
+
+        dictionaries.put(dictionaryPath, dictionary);
+        for (GATKPath path : references) {
+            dictionaries.put(path, ReferenceDataSource.of(path.toPath()).getSequenceDictionary());
+        }
+
+        ReferenceSequenceTable table = new ReferenceSequenceTable(dictionaries);
         table.build();
 
         return table;
@@ -115,11 +132,36 @@ public class ReferenceSequenceTableUnitTest extends GATKBaseTest {
                 },
         };
     }
-
     @Test(dataProvider = "testGenerateReferencePairsData")
     public void testGenerateReferencePairs(List<GATKPath> references, int expectedPairs){
         ReferenceSequenceTable table = tableGenerator(references, CompareReferences.MD5CalculationMode.USE_DICT);
         List<ReferencePair> pairs = table.generateReferencePairs();
+        Assert.assertEquals(pairs.size(), expectedPairs);
+    }
+
+    @DataProvider(name = "testGenerateReferencePairsAgainstDictionaryData")
+    public Object[][] testGenerateReferencePairsAgainstDictionaryData() {
+        return new Object[][]{
+                // references, dictionary, expected number of pairs
+                new Object[]{ Arrays.asList(new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini.fasta"),
+                        new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini_chr2snp.fasta")),
+                        new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CheckReferenceCompatibility/reads_data_source_test1_withmd5s.bam"),
+                        2
+                },
+                new Object[]{ Arrays.asList(new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini.fasta"),
+                        new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini_chr2snp.fasta"),
+                        new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini_1renamed.fasta")),
+                        new GATKPath("src/test/resources/org/broadinstitute/hellbender/tools/reference/CheckReferenceCompatibility/reads_data_source_test1_withmd5s.bam"),
+                        3
+                },
+        };
+    }
+    @Test(dataProvider = "testGenerateReferencePairsAgainstDictionaryData")
+    public void testGenerateReferencePairsAgainstDictionary(List<GATKPath> references, GATKPath dictPath, int expectedPairs){
+        ReadsDataSource readsDataSource = new ReadsPathDataSource(dictPath.toPath());
+        SAMSequenceDictionary dictionary = readsDataSource.getSequenceDictionary();
+        ReferenceSequenceTable table = tableGenerator(dictPath, dictionary, references);
+        List<ReferencePair> pairs = table.generateReferencePairsAgainstDictionary(dictPath);
         Assert.assertEquals(pairs.size(), expectedPairs);
     }
 
@@ -172,7 +214,7 @@ public class ReferenceSequenceTableUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "testAnalyzeTableTwoRefsData")
     public void testAnalyzeTableTwoReferences(ReferenceSequenceTable table, Set<ReferencePair.Status> expectedStatus){
-        List<ReferencePair> refPairs = table.analyzeTable();
+        List<ReferencePair> refPairs = table.compareAllReferences();
         for(ReferencePair pair : refPairs){
             Assert.assertEquals(pair.getAnalysis(), expectedStatus);
         }
@@ -220,7 +262,7 @@ public class ReferenceSequenceTableUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "testAnalyzeTableMultipleRefsData")
     public void testAnalyzeTableMultipleReferences(ReferenceSequenceTable table, Map<ReferencePair, Set<ReferencePair.Status>> expectedStatus){
-        List<ReferencePair> refPairs = table.analyzeTable();
+        List<ReferencePair> refPairs = table.compareAllReferences();
         for(ReferencePair pair : refPairs){ ;
             Assert.assertEquals(pair.getAnalysis(), expectedStatus.get(pair));
         }

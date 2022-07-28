@@ -1,0 +1,6 @@
+#Current Reference: reads_data_source_test1_withmd5s_missingchr1.bam
+Reference	Compatibility	Summary
+hg19mini.fasta	COMPATIBLE_SUBSET	The sequence dictionary in reads_data_source_test1_withmd5s_missingchr1.bam is a subset of the hg19mini.fasta reference sequence dictionary. Missing sequence(s): [1]
+hg19mini_1renamed.fasta	COMPATIBLE_SUBSET	The sequence dictionary in reads_data_source_test1_withmd5s_missingchr1.bam is a subset of the hg19mini_1renamed.fasta reference sequence dictionary. Missing sequence(s): [chr1]
+hg19mini_missingchr1.fasta	COMPATIBLE	The sequence dictionaries exactly match
+hg19mini_chr2snp.fasta	NOT_COMPATIBLE	Status: [DIFFER_IN_SEQUENCE, DIFFER_IN_SEQUENCES_PRESENT]. Run CompareReferences tool for more information on reference differences.
