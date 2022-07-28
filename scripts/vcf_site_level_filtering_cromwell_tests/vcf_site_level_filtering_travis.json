@@ -9,7 +9,5 @@
   "JointVcfFiltering.basename": "test_10_samples",
   "JointVcfFiltering.snp_annotations": "-A ReadPosRankSum -A FS -A SOR -A QD -A AVERAGE_TREE_SCORE -A AVERAGE_ASSEMBLED_HAPS -A AVERAGE_FILTERED_HAPS",
   "JointVcfFiltering.indel_annotations": "-A MQRankSum -A ReadPosRankSum -A FS -A SOR -A QD -A AVERAGE_TREE_SCORE",
-  "JointVcfFiltering.python_script": "/home/runner/work/gatk/gatk/src/main/resources/org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/isolation-forest.py",
-  "JointVcfFiltering.hyperparameters_json": "/home/runner/work/gatk/gatk/src/test/resources/large/org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/train/isolation-forest-hyperparameters.json"
-
+  "JointVcfFiltering.model_backend": "PYTHON_IFOREST"
 }

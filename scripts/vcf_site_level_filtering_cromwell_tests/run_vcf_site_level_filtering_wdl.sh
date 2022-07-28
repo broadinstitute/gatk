@@ -26,7 +26,7 @@ fi
 echo "Docker build done =========="
 
 cd $WORKING_DIR/gatk/scripts/
-sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" vcf_site_level_filtering_wdl/jsons/vcf_site_level_filtering_travis.json >$WORKING_DIR/vcf_site_level_filtering_travis.json
+sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" vcf_site_level_filtering_cromwell_tests/vcf_site_level_filtering_travis.json >$WORKING_DIR/vcf_site_level_filtering_travis.json
 echo "JSON FILES (modified) ======="
 cat $WORKING_DIR/vcf_site_level_filtering_travis.json
 echo "=================="
