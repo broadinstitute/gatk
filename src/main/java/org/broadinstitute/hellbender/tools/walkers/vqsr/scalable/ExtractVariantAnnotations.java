@@ -106,23 +106,23 @@ import java.util.stream.Collectors;
  *
  *         <p>
  *           |--- alleles<br>
- *           │    |--- alt<br>
- *           │    |--- ref<br>
+ *           |    |--- alt<br>
+ *           |    |--- ref<br>
  *           |--- annotations<br>
- *           │    |--- chunk_0<br>
- *           │    |--- ...<br>
- *           │    |--- chunk_{num_chunks - 1}<br>
- *           │    |--- names<br>
- *           │    |--- num_chunks<br>
- *           │    |--- num_columns<br>
- *           │    |--- num_rows<br>
+ *           |    |--- chunk_0<br>
+ *           |    |--- ...<br>
+ *           |    |--- chunk_{num_chunks - 1}<br>
+ *           |    |--- names<br>
+ *           |    |--- num_chunks<br>
+ *           |    |--- num_columns<br>
+ *           |    |--- num_rows<br>
  *           |--- intervals<br>
- *           │    |--- indexed_contig_names<br>
- *           │    |--- transposed_index_start_end<br>
+ *           |    |--- indexed_contig_names<br>
+ *           |    |--- transposed_index_start_end<br>
  *           |--- labels<br>
- *           │    |--- snp<br>
- *           │    |--- ... (e.g., training, calibration, etc.)<br>
- *           │    |--- ...<br>
+ *           |    |--- snp<br>
+ *           |    |--- ... (e.g., training, calibration, etc.)<br>
+ *           |    |--- ...<br>
  *         </p>
  *
  *         <p>

@@ -159,23 +159,23 @@ public final class LabeledVariantAnnotationsData {
      *
      *      <p>
      *          |--- alleles<br>
-     *          │    |--- alt<br>
-     *          │    |--- ref<br>
+     *          |    |--- alt<br>
+     *          |    |--- ref<br>
      *          |--- annotations<br>
-     *          │    |--- chunk_0<br>
-     *          │    |--- ...<br>
-     *          │    |--- chunk_{num_chunks - 1}<br>
-     *          │    |--- names<br>
-     *          │    |--- num_chunks<br>
-     *          │    |--- num_columns<br>
-     *          │    |--- num_rows<br>
+     *          |    |--- chunk_0<br>
+     *          |    |--- ...<br>
+     *          |    |--- chunk_{num_chunks - 1}<br>
+     *          |    |--- names<br>
+     *          |    |--- num_chunks<br>
+     *          |    |--- num_columns<br>
+     *          |    |--- num_rows<br>
      *          |--- intervals<br>
-     *          │    |--- indexed_contig_names<br>
-     *          │    |--- transposed_index_start_end<br>
+     *          |    |--- indexed_contig_names<br>
+     *          |    |--- transposed_index_start_end<br>
      *          |--- labels<br>
-     *          │    |--- snp<br>
-     *          │    |--- ... (e.g., training, calibration, etc.)<br>
-     *          │    |--- ...<br>
+     *          |    |--- snp<br>
+     *          |    |--- ... (e.g., training, calibration, etc.)<br>
+     *          |    |--- ...<br>
      *      </p>
      *
      * Here, each chunk is a double matrix, with dimensions given by (number of sites in the chunk) x (number of annotations).
