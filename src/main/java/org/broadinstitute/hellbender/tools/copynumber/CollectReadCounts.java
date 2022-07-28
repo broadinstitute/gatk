@@ -68,7 +68,7 @@ import java.util.stream.Collectors;
  *         to TSV format. Using HDF5 files with {@link CreateReadCountPanelOfNormals}
  *         can decrease runtime, by reducing time spent on IO, so this is the default output format.
  *         The HDF5 format contains information in the paths defined in {@link HDF5SimpleCountCollection}. HDF5 files may be viewed using
- *         <a href="https://support.hdfgroup.org/products/java/hdfview/">hdfview</a> or loaded in python using
+ *         <a href="https://support.hdfgroup.org/products/java/hdfview/">hdfview</a> or loaded in Python using
  *         <a href="http://www.pytables.org/">PyTables</a> or <a href="http://www.h5py.org/">h5py</a>.
  *         The TSV format has a SAM-style header containing a read group sample name, a sequence dictionary, a row specifying the column headers contained in
  *         {@link SimpleCountCollection.SimpleCountTableColumn}, and the corresponding entry rows.
