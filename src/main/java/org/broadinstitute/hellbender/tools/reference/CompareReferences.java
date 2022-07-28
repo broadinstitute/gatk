@@ -1,5 +1,8 @@
 package org.broadinstitute.hellbender.tools.reference;
 
+import htsjdk.samtools.reference.FastaReferenceWriter;
+import htsjdk.samtools.reference.FastaReferenceWriterBuilder;
+import htsjdk.samtools.reference.ReferenceSequence;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
@@ -9,6 +12,7 @@ import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
@@ -92,6 +96,9 @@ public class CompareReferences extends GATKTool {
 
     @Argument(fullName = "display-only-differing-sequences", doc = "If provided, only display sequence names that differ in their actual sequence.", optional = true)
     private boolean onlyDisplayDifferingSequences = false;
+
+    /*@Argument(fullName = "", doc = "", optional = true)
+    private boolean */
 
     public enum MD5CalculationMode {
         // use only MD5s found in dictionary; if MD5 missing, crashes
@@ -202,6 +209,24 @@ public class CompareReferences extends GATKTool {
             }
         }
         System.out.println();
+    }
+
+    public static void generateFastaForSequence(ReferenceDataSource source, String sequenceName, GATKPath output){
+        // FastaReferenceMaker - uses FastaReferenceWriter
+        // boolean argument to do alignment and if true, create temp file to feed into aligner
+        // -- if path not null, trigger call to this method
+        try {
+            int sequenceLength = source.getSequenceDictionary().getSequence(sequenceName).getSequenceLength();
+            FastaReferenceWriter writer = new FastaReferenceWriterBuilder()
+                    .setFastaFile(output.toPath())
+                    .setBasesPerLine(80)
+                    .build();
+            ReferenceSequence seq = source.queryAndPrefetch(new SimpleInterval(sequenceName, 1, sequenceLength));
+            writer.addSequence(seq);
+            writer.close();
+        } catch (IOException e) {
+            throw new UserException.CouldNotCreateOutputFile("Couldn't create " + output + ", encountered exception: " + e.getMessage(), e);
+        }
     }
 
     @Override
