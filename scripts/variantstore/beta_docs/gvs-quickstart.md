@@ -10,7 +10,7 @@ The [GVS beta workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Vari
 
 ![Diagram depicting the Genomic Variant Store workflow. Sample GVCF files are imported into the core data model. A filtering model is trained using Variant Quality Score Recalibration, or VQSR, and then applied while the samples are extracted as cohorts in sharded joint VCF files. Each step integrates BigQuery and GATK tools.](/scripts/variantstore/beta_docs/genomic-variant-store_diagram.png)
 
-The [GVS workflow](https://github.com/broadinstitute/gatk/blob/rc-vs-483-beta-user-wdl/scripts/variantstore/wdl/GvsJointVariantCalling.wdl) is an open-source, cloud-optimized workflow for joint calling at a large scale using the Terra platform. The workflow takes in single sample GVCF files with indices and produces sharded joint VCF files with indices, a manifest file, and metrics.
+The [GVS workflow](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/wdl/GvsJointVariantCalling.wdl) is an open-source, cloud-optimized workflow for joint calling at a large scale using the Terra platform. The workflow takes in single sample GVCF files with indices and produces sharded joint VCF files with indices, a manifest file, and metrics.
 
 To learn more about the GVS workflow, see the [Genomic Variant Store workflow overview](./gvs-overview.md).
 
@@ -116,16 +116,16 @@ To run the GVS workflow on your own sample data, follow the instructions in the 
 
 By default, the workflow is set up to write outputs to the workspace Google bucket. If you want to write the outputs to a different cloud storage location, you can specify the cloud path in the `extract_output_gcs_dir` optional input in the workflow configuration. 
 
-### Time and cost estimates
-Below is an example of the time and cost of running the workflow.
+### Time and cost
+Below is an example of the time and cost of running the workflow with the sample data pre-loaded in the workspace.
 
-| Number of Samples | Wall Clock Time | Cost $ | Cost per Sample |
-| ---  | --- | --- | --- |
-| 10 | 04:30:00 | $0.84 | ~$0.08 |
-| 1528 |
-| 10379 | 05:38:00 | $683.33 | $0.0658 |
+| Number of Samples | Elapsed Time (hh:mm) | Terra Cost | BigQuery Cost | Total Cost | Approximate Cost per Sample |
+|-------------------|----------------------|------------|---------------|------------|-----------------------------|
+| 10                | 04:30                | $0.84      | $0.51         | $1.35      | $0.14                       |
 
-**Note:** For more information about controlling Cloud costs, see [this article](https://support.terra.bio/hc/en-us/articles/360029748111).
+**Note:** The time and cost listed above represent a single run of the GVS workflow. Actual time and cost may vary depending on BigQuery and Terra load at the time of the callset creation.
+
+For more information about controlling Cloud costs, see [this article](https://support.terra.bio/hc/en-us/articles/360029748111).
 
 ---
 

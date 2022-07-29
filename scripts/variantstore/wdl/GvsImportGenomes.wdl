@@ -48,8 +48,8 @@ workflow GvsImportGenomes {
 
   # At least 3, per limits above not more than 5.
   Int effective_load_data_maxretries = if (defined(load_data_maxretries_override)) then select_first([load_data_maxretries_override])
-                                       else if (effective_load_data_batch_size < 12) then 3
-                                            else effective_load_data_batch_size / 4
+                                       else if (effective_load_data_batch_size < 12) then 6
+                                            else effective_load_data_batch_size / 2
 
   # return an error if the lengths are not equal
   Int input_length = length(input_vcfs)
@@ -426,7 +426,7 @@ task CurateInputLists {
                                              --output_files True
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_07_08"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_07_14"
     memory: "3 GB"
     disks: "local-disk 100 HDD"
     bootDiskSizeGb: 15

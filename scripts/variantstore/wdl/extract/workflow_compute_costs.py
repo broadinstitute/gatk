@@ -2,19 +2,26 @@ from logging import info, warning
 import urllib.parse
 
 
+def fapi_error_check(result):
+    j = result.json()
+    if result.status_code >= 400 and j and type(j == 'dict') and 'message' in j:
+        raise Exception(j['message'])
+    return j
+
+
 def fapi_list_submissions(workspace_namespace: str, workspace_name: str):
     from firecloud import api as fapi
-    return fapi.list_submissions(workspace_namespace, workspace_name).json()
+    return fapi_error_check(fapi.list_submissions(workspace_namespace, workspace_name))
 
 
 def fapi_get_submission(workspace_namespace: str, workspace_name: str, submission_id: str):
     from firecloud import api as fapi
-    return fapi.get_submission(workspace_namespace, workspace_name, submission_id).json()
+    return fapi_error_check(fapi.get_submission(workspace_namespace, workspace_name, submission_id))
 
 
 def fapi_get_workflow_metadata(workspace_namespace: str, workspace_name: str, submission_id: str, workflow_id: str):
     from firecloud import api as fapi
-    return fapi.get_workflow_metadata(workspace_namespace, workspace_name, submission_id, workflow_id).json()
+    return fapi_error_check(fapi.get_workflow_metadata(workspace_namespace, workspace_name, submission_id, workflow_id))
 
 
 def compute_costs(workspace_namespace, workspace_name, excluded_submission_ids,
@@ -40,11 +47,11 @@ def compute_costs(workspace_namespace, workspace_name, excluded_submission_ids,
         workflow_ids = [w['workflowId'] for w in workflows]
         for workflow_id in workflow_ids:
             workflow = get_workflow_metadata(workspace_namespace, workspace_name, submission_id, workflow_id)
-            workflow_name = workflow['workflowName']
-            if not workflow_name:
+            if 'workflowName' not in workflow:
                 warning(f"Workflow {workflow_id} has no workflow name, skipping cost calculation.")
                 continue
 
+            workflow_name = workflow['workflowName']
             if workflow_name.startswith('Gvs'):
                 if len(workflow_ids) == 1:
                     # If this run is < 1 day old the cost data may not yet be available.
