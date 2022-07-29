@@ -133,4 +133,24 @@ public class CompareReferencesIntegrationTest extends CommandLineProgramTest {
         runCommandLine(args);
     }
 
+    @Test
+    public void testCompareReferencesGenerateMismatchingSequenceFastas() throws IOException{
+        final File ref1 = new File(getToolTestDataDir() + "hg19mini.fasta");
+        final File ref2 = new File(getToolTestDataDir() + "hg19mini_chr2snp.fasta");
+        final File sequenceFastaOutputDir = new File("/Users/ocohen/workingcode/gatk/tempreferences/tempsequencefastas");
+
+        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-mismatching-sequence-output-directory", sequenceFastaOutputDir.getAbsolutePath()};
+        runCommandLine(args);
+    }
+
+    @Test
+    public void testCompareReferencesGenerateHg38SequenceFastas() throws IOException{
+        final File ref1 = new File(getToolTestDataDir() + "hg19mini.fasta");
+        final File ref2 = new File(getToolTestDataDir() + "hg19mini_chr2snp.fasta");
+        final File sequenceFastaOutputDir = new File("/Users/ocohen/workingcode/gatk/tempreferences/tempsequencefastas");
+
+        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-mismatching-sequence-output-directory", sequenceFastaOutputDir.getAbsolutePath()};
+        runCommandLine(args);
+    }
+
 }

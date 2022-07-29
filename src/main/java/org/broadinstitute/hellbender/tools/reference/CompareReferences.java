@@ -13,11 +13,13 @@ import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 import picard.cmdline.programgroups.ReferenceProgramGroup;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
@@ -97,8 +99,12 @@ public class CompareReferences extends GATKTool {
     @Argument(fullName = "display-only-differing-sequences", doc = "If provided, only display sequence names that differ in their actual sequence.", optional = true)
     private boolean onlyDisplayDifferingSequences = false;
 
-    /*@Argument(fullName = "", doc = "", optional = true)
-    private boolean */
+    @Argument(fullName = "mismatching-sequence-output-directory", doc = "If provided, will generate fasta files for sequences with mismatching MD5s.", optional = true)
+    private File sequenceOutputDirectory;
+
+    @Argument(fullName = "base-comparison", doc = "If provided, any mismatching sequences will be aligned for a base-comparison.", optional = true)
+    private boolean baseComparison = false;
+
 
     public enum MD5CalculationMode {
         // use only MD5s found in dictionary; if MD5 missing, crashes
@@ -147,6 +153,37 @@ public class CompareReferences extends GATKTool {
         System.out.println("*********************************************************");
         for(ReferencePair pair : referencePairs){
             System.out.println(pair);
+        }
+
+        if(sequenceOutputDirectory != null){
+            // if exactly 2 inputs (ie. 1 refpair)
+            if(referencePairs.size() == 1){
+                ReferencePair refPair = referencePairs.get(0);
+                // if mismatching MD5s found between the two inputs
+                if(refPair.getAnalysis().contains(ReferencePair.Status.DIFFER_IN_SEQUENCE)){
+                    // find the mismatch sequence
+                    for(String sequenceName : table.getAllSequenceNames()) {
+                        Set<ReferenceSequenceTable.TableRow> rows = table.queryBySequenceName(sequenceName);
+                        if (rows.size() == 2) {
+                            // generate fasta files for mismatching sequences
+                            GATKPath ref1Path = refPair.getRef1();
+                            GATKPath ref2Path = refPair.getRef2();
+
+                            String sequenceInRef1Name = ref1Path.toPath().getFileName() + "." + sequenceName;
+                            String sequenceInRef2Name = ref2Path.toPath().getFileName() + "." + sequenceName;
+
+                            /*File ref1SequenceOutput = IOUtils.createTempFileInDirectory(sequenceInRef1Name, ".fasta", sequenceOutputDirectory);
+                            File ref2SequenceOutput = IOUtils.createTempFileInDirectory(sequenceInRef2Name, ".fasta", sequenceOutputDirectory);*/
+
+                            File ref1SequenceOutput = new File(sequenceOutputDirectory,   sequenceInRef1Name + ".fasta");
+                            File ref2SequenceOutput = new File(sequenceOutputDirectory, sequenceInRef2Name + ".fasta");
+
+                            generateFastaForSequence(ReferenceDataSource.of(ref1Path.toPath()), sequenceName, new GATKPath(ref1SequenceOutput.toString()));
+                            generateFastaForSequence(ReferenceDataSource.of(ref1Path.toPath()), sequenceName, new GATKPath(ref2SequenceOutput.toString()));
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -212,9 +249,6 @@ public class CompareReferences extends GATKTool {
     }
 
     public static void generateFastaForSequence(ReferenceDataSource source, String sequenceName, GATKPath output){
-        // FastaReferenceMaker - uses FastaReferenceWriter
-        // boolean argument to do alignment and if true, create temp file to feed into aligner
-        // -- if path not null, trigger call to this method
         try {
             int sequenceLength = source.getSequenceDictionary().getSequence(sequenceName).getSequenceLength();
             FastaReferenceWriter writer = new FastaReferenceWriterBuilder()
