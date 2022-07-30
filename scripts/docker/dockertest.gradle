@@ -45,16 +45,16 @@ task unpackTestJar(type: Copy){
 //    ]
 //}
 
-test {
-    jvmArgs = ['--add-exports', 'java.base/sun.nio.ch=ALL-UNNAMED',
-               '--add-opens', 'java.base/sun.nio.fs=ALL-UNNAMED',
-               '--add-opens', 'java.base/java.nio=ALL-UNNAMED',
-               '--add-opens', 'java.base/java.io=ALL-UNNAMED',
-               '--add-opens', 'java.base/java.lang.invoke=ALL-UNNAMED',
-               '--add-opens', 'java.base/java.lang=ALL-UNNAMED' // required for jacoco
-
-    ]
-}
+//test {
+//    jvmArgs = ['--add-exports', 'java.base/sun.nio.ch=ALL-UNNAMED',
+//               '--add-opens', 'java.base/sun.nio.fs=ALL-UNNAMED',
+//               '--add-opens', 'java.base/java.nio=ALL-UNNAMED',
+//               '--add-opens', 'java.base/java.io=ALL-UNNAMED',
+//               '--add-opens', 'java.base/java.lang.invoke=ALL-UNNAMED',
+//               '--add-opens', 'java.base/java.lang=ALL-UNNAMED' // required for jacoco
+//
+//    ]
+//}
 
 task testOnPackagedReleaseJar(type: Test){
     String testClassesJar = "$System.env.TEST_JAR"
@@ -80,6 +80,14 @@ task testOnPackagedReleaseJar(type: Test){
         classpath.each {println it}
     }
 
+    jvmArgs = ['--add-exports', 'java.base/sun.nio.ch=ALL-UNNAMED',
+               '--add-opens', 'java.base/sun.nio.fs=ALL-UNNAMED',
+               '--add-opens', 'java.base/java.nio=ALL-UNNAMED',
+               '--add-opens', 'java.base/java.io=ALL-UNNAMED',
+               '--add-opens', 'java.base/java.lang.invoke=ALL-UNNAMED',
+               '--add-opens', 'java.base/java.lang=ALL-UNNAMED' // required for jacoco
+    ]
+
     classpath = files( gatkJar, testDependencyJar, testClassesJar)
     testClassesDirs = files(testClassesUnpacked)
 }
@@ -99,6 +107,15 @@ task jacocoTestReportOnPackagedReleaseJar(type: JacocoReport) {
 
     group = "Reporting"
     description = "Generate Jacoco coverage reports after running tests inside the docker image."
+
+    jvmArgs = ['--add-exports', 'java.base/sun.nio.ch=ALL-UNNAMED',
+               '--add-opens', 'java.base/sun.nio.fs=ALL-UNNAMED',
+               '--add-opens', 'java.base/java.nio=ALL-UNNAMED',
+               '--add-opens', 'java.base/java.io=ALL-UNNAMED',
+               '--add-opens', 'java.base/java.lang.invoke=ALL-UNNAMED',
+               '--add-opens', 'java.base/java.lang=ALL-UNNAMED' // required for jacoco
+
+    ]
 
     reports {
         xml.enabled = true
