@@ -98,6 +98,29 @@ public class CompareReferencesIntegrationTest extends CommandLineProgramTest {
         runCommandLine(args);
     }
 
+    @DataProvider(name = "cloudInputData")
+    public Object[][] cloudInputData() {
+        String testBucket = getGCPTestInputPath() + "org/broadinstitute/hellbender/tools/reference/";
+        return new Object[][]{
+                // ref1, ref2, expected output
+                new Object[]{ testBucket + "hg19mini.fasta",
+                        testBucket + "hg19mini_chr2snp.fasta",
+                        new File(getToolTestDataDir(), "expected.testCompareReferencesMissingValue.table")
+                },
+        };
+    }
+
+    @Test(dataProvider = "cloudInputData", groups = "bucket")
+    public void testCompareReferencesCloudInputs(String firstFasta, String secondFasta, File expected) throws IOException{
+        final File output = createTempFile("testCompareReferencesCloudInputs", ".table");
+
+        final String[] args = new String[] {"-R", firstFasta , "-refcomp", secondFasta,
+                "-O", output.getAbsolutePath()};
+        runCommandLine(args);
+
+        IntegrationTestSpec.assertEqualTextFiles(output, expected);
+    }
+
     // no assertions made, testing tool runs successfully without -O argument
     @Test
     public void testCompareReferencesToStdOutput() throws IOException{
