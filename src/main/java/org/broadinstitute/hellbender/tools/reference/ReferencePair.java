@@ -84,12 +84,6 @@ public class ReferencePair {
     public String getRef2AsString(){
         return ReferenceSequenceTable.getReferenceColumnName(ref2);
     }
-    public GATKPath getRef1(){
-        return ref1;
-    }
-    public GATKPath getRef2() {
-        return ref2;
-    }
 
     /**
      * Displays a ReferencePair's status set

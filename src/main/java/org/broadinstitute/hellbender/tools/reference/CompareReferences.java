@@ -155,7 +155,7 @@ public class CompareReferences extends GATKTool {
             System.out.println(pair);
         }
 
-        if(sequenceOutputDirectory != null){
+        if(baseComparison){
             // if exactly 2 inputs (ie. 1 refpair)
             if(referencePairs.size() == 1){
                 ReferencePair refPair = referencePairs.get(0);
@@ -178,8 +178,8 @@ public class CompareReferences extends GATKTool {
                             File ref1SequenceOutput = new File(sequenceOutputDirectory,   sequenceInRef1Name + ".fasta");
                             File ref2SequenceOutput = new File(sequenceOutputDirectory, sequenceInRef2Name + ".fasta");
 
-                            generateFastaForSequence(ReferenceDataSource.of(ref1Path.toPath()), sequenceName, new GATKPath(ref1SequenceOutput.toString()));
-                            generateFastaForSequence(ReferenceDataSource.of(ref1Path.toPath()), sequenceName, new GATKPath(ref2SequenceOutput.toString()));
+                            generateFastaForSequence(ReferenceDataSource.of(ref1Path.toPath(), true), sequenceName, new GATKPath(ref1SequenceOutput.toString()));
+                            generateFastaForSequence(ReferenceDataSource.of(ref2Path.toPath(), true), sequenceName, new GATKPath(ref2SequenceOutput.toString()));
                         }
                     }
                 }

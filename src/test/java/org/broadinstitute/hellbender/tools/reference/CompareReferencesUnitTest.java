@@ -26,4 +26,14 @@ public class CompareReferencesUnitTest extends CommandLineProgramTest {
 
         IntegrationTestSpec.assertEqualTextFiles(output, expectedOutput);
     }
+
+    @Test
+    public void generateSequenceFasta() throws IOException {
+        File ref = new File(hg38Reference);
+        File expectedOutput = new File("/Users/ocohen/workingcode/gatk/tempreferences/hg38.1.fasta");
+        String sequenceName = "chr1";
+
+        ReferenceDataSource source = ReferenceDataSource.of(ref.toPath(), true);
+        CompareReferences.generateFastaForSequence(source, sequenceName, new GATKPath(expectedOutput.toString()));
+    }
 }
