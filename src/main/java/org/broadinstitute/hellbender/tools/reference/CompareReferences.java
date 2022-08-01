@@ -14,6 +14,10 @@ import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
+import org.broadinstitute.hellbender.utils.runtime.ProcessController;
+import org.broadinstitute.hellbender.utils.runtime.ProcessOutput;
+import org.broadinstitute.hellbender.utils.runtime.ProcessSettings;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
@@ -157,33 +161,7 @@ public class CompareReferences extends GATKTool {
 
         if(baseComparison){
             // if exactly 2 inputs (ie. 1 refpair)
-            if(referencePairs.size() == 1){
-                ReferencePair refPair = referencePairs.get(0);
-                // if mismatching MD5s found between the two inputs
-                if(refPair.getAnalysis().contains(ReferencePair.Status.DIFFER_IN_SEQUENCE)){
-                    // find the mismatch sequence
-                    for(String sequenceName : table.getAllSequenceNames()) {
-                        Set<ReferenceSequenceTable.TableRow> rows = table.queryBySequenceName(sequenceName);
-                        if (rows.size() == 2) {
-                            // generate fasta files for mismatching sequences
-                            GATKPath ref1Path = refPair.getRef1();
-                            GATKPath ref2Path = refPair.getRef2();
-
-                            String sequenceInRef1Name = ref1Path.toPath().getFileName() + "." + sequenceName;
-                            String sequenceInRef2Name = ref2Path.toPath().getFileName() + "." + sequenceName;
-
-                            /*File ref1SequenceOutput = IOUtils.createTempFileInDirectory(sequenceInRef1Name, ".fasta", sequenceOutputDirectory);
-                            File ref2SequenceOutput = IOUtils.createTempFileInDirectory(sequenceInRef2Name, ".fasta", sequenceOutputDirectory);*/
-
-                            File ref1SequenceOutput = new File(sequenceOutputDirectory,   sequenceInRef1Name + ".fasta");
-                            File ref2SequenceOutput = new File(sequenceOutputDirectory, sequenceInRef2Name + ".fasta");
-
-                            generateFastaForSequence(ReferenceDataSource.of(ref1Path.toPath(), true), sequenceName, new GATKPath(ref1SequenceOutput.toString()));
-                            generateFastaForSequence(ReferenceDataSource.of(ref2Path.toPath(), true), sequenceName, new GATKPath(ref2SequenceOutput.toString()));
-                        }
-                    }
-                }
-            }
+            doBaseComparison(referencePairs, table);
         }
     }
 
@@ -261,6 +239,65 @@ public class CompareReferences extends GATKTool {
         } catch (IOException e) {
             throw new UserException.CouldNotCreateOutputFile("Couldn't create " + output + ", encountered exception: " + e.getMessage(), e);
         }
+    }
+
+    public void doBaseComparison(List<ReferencePair> referencePairs, ReferenceSequenceTable table){
+        if(referencePairs.size() == 1){
+            ReferencePair refPair = referencePairs.get(0);
+            // if mismatching MD5s found between the two inputs
+            if(refPair.getAnalysis().contains(ReferencePair.Status.DIFFER_IN_SEQUENCE)){
+                // find the mismatch sequence
+                for(String sequenceName : table.getAllSequenceNames()) {
+                    Set<ReferenceSequenceTable.TableRow> rows = table.queryBySequenceName(sequenceName);
+                    if (rows.size() == 2) {
+                        // generate fasta files for mismatching sequences
+                        GATKPath ref1Path = refPair.getRef1();
+                        GATKPath ref2Path = refPair.getRef2();
+
+                        String sequenceInRef1Name = ref1Path.toPath().getFileName() + "." + sequenceName;
+                        String sequenceInRef2Name = ref2Path.toPath().getFileName() + "." + sequenceName;
+
+                            /*File ref1SequenceOutput = IOUtils.createTempFileInDirectory(sequenceInRef1Name, ".fasta", sequenceOutputDirectory);
+                            File ref2SequenceOutput = IOUtils.createTempFileInDirectory(sequenceInRef2Name, ".fasta", sequenceOutputDirectory);*/
+
+                        File ref1SequenceOutput = new File(sequenceOutputDirectory,   sequenceInRef1Name + ".fasta");
+                        File ref2SequenceOutput = new File(sequenceOutputDirectory, sequenceInRef2Name + ".fasta");
+
+                        generateFastaForSequence(ReferenceDataSource.of(ref1Path.toPath(), true), sequenceName, new GATKPath(ref1SequenceOutput.toString()));
+                        generateFastaForSequence(ReferenceDataSource.of(ref2Path.toPath(), true), sequenceName, new GATKPath(ref2SequenceOutput.toString()));
+                    }
+                }
+            }
+        }
+    }
+
+    public static void runShellCommand(String[] command, Map<String, String> environment, File stdoutCaptureFile, boolean printStdout){
+        ProcessController processController = ProcessController.getThreadLocal();
+        final ProcessSettings prs = new ProcessSettings(command);
+        if(printStdout){
+            prs.getStderrSettings().printStandard(true);
+            prs.getStdoutSettings().printStandard(true);
+        }
+        if(stdoutCaptureFile != null){
+            prs.getStdoutSettings().setOutputFile(stdoutCaptureFile);
+        }
+        prs.setEnvironment(environment);
+        final ProcessOutput output = processController.exec(prs);
+    }
+
+    public static void runPythonCommand(String script, List<String> scriptArguments, Map<String, String> additionalEnvironmentVars, File stdoutCaptureFile, boolean printStdout){
+        Map<String, String> environment = new HashMap<>();
+        environment.putAll(System.getenv());
+        if(additionalEnvironmentVars != null){
+            environment.putAll(additionalEnvironmentVars);
+        }
+        List<String> args = new ArrayList<>();
+        args.add("python");
+        args.add(script);
+        args.addAll(scriptArguments);
+        runShellCommand(args.toArray(new String[]{}), environment, stdoutCaptureFile, printStdout);
+        /*PythonScriptExecutor executor = new PythonScriptExecutor(true);
+        boolean status = executor.executeScript(script, null, Arrays.asList(scriptArguments));*/
     }
 
     @Override

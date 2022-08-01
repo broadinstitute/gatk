@@ -9,6 +9,8 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 
 import static org.testng.Assert.*;
 
@@ -28,12 +30,18 @@ public class CompareReferencesUnitTest extends CommandLineProgramTest {
     }
 
     @Test
-    public void generateSequenceFasta() throws IOException {
-        File ref = new File(hg38Reference);
-        File expectedOutput = new File("/Users/ocohen/workingcode/gatk/tempreferences/hg38.1.fasta");
-        String sequenceName = "chr1";
+    public void testRunShellCommand(){
+        String[] command = {"echo", "hello"};
 
-        ReferenceDataSource source = ReferenceDataSource.of(ref.toPath(), true);
-        CompareReferences.generateFastaForSequence(source, sequenceName, new GATKPath(expectedOutput.toString()));
+        CompareReferences.runShellCommand(command, null, new File("/Users/ocohen/workingcode/hello.output"), true);
     }
+
+    @Test
+    public void testPythonCommand(){
+        String script = "/Users/ocohen/workingcode/all2vcf/src/mummer";
+        List<String> command = Arrays.asList("-h");
+        CompareReferences.runPythonCommand(script, command, null, null, true);
+    }
+
+
 }

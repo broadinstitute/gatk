@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
  * between command/script/module execution. Using -i doesn't buy you anything (for this version of the executor, at
  * least) since the process is terminated after each command completes.
  */
-public class PythonScriptExecutor extends PythonExecutorBase {
+public class  PythonScriptExecutor extends PythonExecutorBase {
     private static final Logger logger = LogManager.getLogger(PythonScriptExecutor.class);
 
     private final List<String> curatedCommandLineArgs = new ArrayList<>();
