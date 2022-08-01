@@ -156,7 +156,7 @@ task MakeSubpopulationFiles {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_vattest_2022_07_28"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_08_01"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
