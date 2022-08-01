@@ -198,9 +198,14 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rc-vs-483-beta-user-wdl
-         - vs_486_rightsize_import_batches
-         - gg_VS-492_BetaUserJarRelease
+   - name: GvsJointVariantCallsetCost
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCallsetCost.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - rc-wrap-the-cost
    - name: GvsCalculatePrecisionAndSensitivity
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCalculatePrecisionAndSensitivity.wdl
