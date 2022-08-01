@@ -220,8 +220,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_metadata_from_python
-         - gg_VS-492_BetaUserJarRelease
+         - mc_debug_temurin_issues
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
