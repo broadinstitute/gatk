@@ -21,16 +21,16 @@
 - Run the "Fetch WGS metadata for samples from list" notebook after you have placed the file with the list of the new samples to ingest in a GCS location the notebook (running with your @pmi-ops account) will have access to.  This will grab the samples from the workspace where they were reblocked and bring them into this callset workspace.
   - Set the `sample_list_file_path` variable in that notebook to the path of the file
   - Run the "now that the data have been copied, you can make sample sets if you wish" step if you want to automatically break up the new samples into smaller sample sets.  Set the `SUBSET_SIZE` and `set_name` variables to customize.
-- **This is based on VCF output; VDS output might need different increases.** For extracting VCFs as the final output for the callset, you will want to increase the Google quotas for the workspace project (you can find this in the workspace dashboard under Cloud Information > Google Project ID) to these levels (all in the workspace region):
-    1. Persistent Disk Standard (GB): 1,000,000 GB (1 PB)
-    2. CPUs: 64,000
-    3. In-use IP addresses: 5,000 (this is the most challenging one and will probably require contacting the GCP account team to facilitate)
-    4. VM instances: 64,000
-- Make a note of the Google project ID (`aou-genomics-curation-prod`), dataset name (`aou_wgs`) and callset identifier (e.g. "Bravo") as these will be inputs (`project_id` and `dataset_name`) to all or most of the GVS workflows. The [naming conventions for other aspects of GVS datasets are outlined here](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow).
+- **TBD This is based on VCF output; VDS output might need different increases.** For extracting VCFs as the final output for the callset, you will want to increase the Google quotas for the workspace project (you can find this in the workspace dashboard under Cloud Information > Google Project ID) to these levels (all in the workspace region):
+  - Persistent Disk Standard (GB): 1,000,000 GB (1 PB)
+  - CPUs: 64,000
+  - In-use IP addresses: 5,000 (this is the most challenging one and will probably require contacting the GCP account team to facilitate)
+  - VM instances: 64,000
+- Make a note of the Google project ID (`aou-genomics-curation-prod`), dataset name (`aou_wgs`) and callset identifier (e.g. "Bravo") as these will be inputs (`project_id`, `dataset_name` and `call_set_identifier`) to all or most of the GVS workflows. The [naming conventions for other aspects of GVS datasets are outlined here](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow).
 
 ## The Pipeline
 1. `GvsAssignIds` workflow
-   - To optimize the GVS internal queries, each sample must have a unique and consecutive integer ID assigned. Running the `GvsAssignIds` will create a unique GVS id for each sample (`sample_id`), update the BQ `sample_info` table (creating it if it doesn't exist), and update the data model. This workflow takes care of creating the BQ vet, ref_ranges and cost tables needed for the sample ids generated.
+   - To optimize the GVS internal queries, each sample must have a unique and consecutive integer ID assigned. Running the `GvsAssignIds` will create a unique GVS ID for each sample (`sample_id`) and update the BQ `sample_info` table (creating it if it doesn't exist). This workflow takes care of creating the BQ vet, ref_ranges and cost tables needed for the sample IDs generated.
    - Run at the `sample set` level ("Step 1" in workflow submission) with a sample set of all the new samples to be included in the callset (created by the "Fetch WGS metadata for samples from list" notebook mentioned above).
    - You will want to set the `external_sample_names` input based on the column in the workspace Data table, e.g. "this.samples.research_id".
    - If new controls are being added, they need to be done in a separate run, with the `samples_are_controls` input set to "true" (the referenced Data columns may also be different, e.g. "this.control_samples.control_sample_id").
@@ -59,7 +59,7 @@
    - This workflow does not use the Terra Entity model to run, so be sure to select `Run workflow with inputs defined by file paths`.
 9. Run the notebook to create callset stats (**TODO**, see [VS-388](https://broadworkbench.atlassian.net/browse/VS-388)), for which you need
     - permission to query table `spec-ops-aou:gvs_public_reference_data.gnomad_v3_sites`
-    - the Google project ID you used for all the GVS WDLs
+    - the Google project ID you used for all the GVS WDLs (`project_id` and `dataset_name` inputs)
     - the name of the BigQuery dataset you used for all the GVS WDLs
     - the `extract_table_prefix` input from `GvsExtractCallset` step
     - the `filter_set_name` input from `GvsCreateFilterSet` step
