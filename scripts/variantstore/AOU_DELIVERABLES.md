@@ -11,6 +11,7 @@
   - [GvsCreateFilterSet](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsCreateFilterSet) workflow
   - [GvsPrepareRangesCallset](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsPrepareRangesCallset) workflow (VCF output) or **TBD VDS Prepare** 
   - [GvsExtractCallset](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsExtractCallset) workflow (VCF output) or **TBD VDS Extract**
+  - [GvsCalculatePrecisionAndSensitivity](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCalculatePrecisionAndSensitivity) workflow
 - Run the "Fetch WGS metadata for samples from list" notebook after you have placed the file with the list of the **new** samples to ingest in a place the notebook will have access to.  This will grab the samples from the workspace where they were reblocked and bring them into this callset workspace.
   - Set the `sample_list_file_path` variable in that notebook to the path of the file
   - Run the "now that the data have been copied, you can make sample sets if you wish" step if you want to automatically break up the new samples into smaller sample sets.  Just be sure to set the `SUBSET_SIZE` and `set_name` variables beforehand.
@@ -19,34 +20,56 @@
     2. CPUs: 64,000
     3. In-use IP addresses: 5,000 (this is the most challenging one and will probably require contacting the GCP account team to facilitate)
     4. VM instances: 64,000
-- Make a note of the Google project id (`aou-genomics-curation-prod`), dataset name (`aou_wgs`) and callset indentifier (e.g. "Bravo") as these will be inputs to all the GVS workflows. The [naming conventions for other aspects of GVS datasets are outlined here](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow).
+- Make a note of the Google project ID (`aou-genomics-curation-prod`), dataset name (`aou_wgs`) and callset indentifier (e.g. "Bravo") as these will be inputs to all or most of the GVS workflows. The [naming conventions for other aspects of GVS datasets are outlined here](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow).
 
-## Workflows
-1. Run `GvsAssignIds` at the `sample set` level ("Step 1" in workflow submission) with a sample set of all the new samples to be included in the callset, which was created by the "Fetch WGS metadata for samples from list" notebook mentioned above.  You will want to set the `external_sample_names` input based on the column in the workspace Data table, e.g. "this.samples.research_id".  If new controls are being added, they need to be done in a separate run, with the `samples_are_controls` input set to "true" (the referenced Data columns may also be different, e.g. "this.control_samples.control_sample_id").
-2. Run `GvsImportGenomes` at the `sample set` level ("Step 1" in workflow submission). You can either run this on a sample_set of all the samples and rely on the workflow logic to break it up into batches (or manually set the `load_data_batch_size` input) or run it on smaller sample_sets created by the "Fetch WGS metadata for samples from list" notebook mentioned above.  You will want to set the `external_sample_names`, `input_vcfs` and `input_vcf_indexes` inputs based on the columns in the workspace Data table, e.g. "this.samples.research_id", "this.samples.reblocked_gvcf_v2" and "this.samples.reblocked_gvcf_index_v2".
-3. `GvsWithdrawSamples` if there are any samples to withdraw from the last callset.
-4. GvsCreateAltAllele
-5. GvsCreateFilterSet (see [naming conventions doc](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow) for guidance on what to name the filter set, which you will need to keep track of for the `GvsExtractCallset` WDL).
-6. GvsPrepareRangesCallset needs to be run twice, once with `control_samples` set to "true" (see [naming conventions doc](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow) for guidance on what to use for `extract_table_prefix` or cohort prefix, which you will need to keep track of for the `GvsExtractCallset` WDL).
-7. GvsExtractCallset needs to be run twice, once with `control_samples` set to "true", and with the `filter_set_name` and `extract_table_prefix` from step 5 & 6.  Include a valid (and secure) "output_gcs_dir" parameter, which is where the VCF and interval list files  will go.
-8. Run [process to create callset statistics](callset_QC/README.md), for which you need
-    1. permission to query table `spec-ops-aou:gvs_public_reference_data.gnomad_v3_sites`
-    2. the data_project you used for all the GVS WDLs
-    3. the default_dataset you used for all the GVS WDLs
-    4. the `extract_table_prefix` input from `GvsExtractCallset` step
-    5. the `filter_set_name` input from `GvsCreateFilterSet` step
+## The Pipeline
+1. `GvsAssignIds` workflow
+   - To optimize the GVS internal queries, each sample must have a unique and consecutive integer ID assigned. Running the `GvsAssignIds` will create a unique GVS id for each sample (`sample_id`), update the BQ `sample_info` table (creating it if it doesn't exist), and update the data model. This workflow takes care of creating the BQ vet, ref_ranges and cost tables needed for the sample ids generated.
+   - Run at the `sample set` level ("Step 1" in workflow submission) with a sample set of all the new samples to be included in the callset (created by the "Fetch WGS metadata for samples from list" notebook mentioned above).
+   - You will want to set the `external_sample_names` input based on the column in the workspace Data table, e.g. "this.samples.research_id".
+   - If new controls are being added, they need to be done in a separate run, with the `samples_are_controls` input set to "true" (the referenced Data columns may also be different, e.g. "this.control_samples.control_sample_id").
+2. `GvsImportGenomes` workflow
+   - This will import the re-blocked gVCF files into GVS. The workflow will check whether data for that sample has already been loaded into GVS. It is designed to be re-run (with the same inputs) if there is a failure during one of the workflow tasks (e.g. BigQuery write API interrupts).
+   - Run at the `sample set` level ("Step 1" in workflow submission).  You can either run this on a sample_set of all the samples and rely on the workflow logic to break it up into batches (or manually set the `load_data_batch_size` input) or run it on smaller sample_sets created by the "Fetch WGS metadata for samples from list" notebook mentioned above.  
+   - You will want to set the `external_sample_names`, `input_vcfs` and `input_vcf_indexes` inputs based on the columns in the workspace Data table, e.g. "this.samples.research_id", "this.samples.reblocked_gvcf_v2" and "this.samples.reblocked_gvcf_index_v2".
+3. `GvsWithdrawSamples` workflow
+   - Run if there are any samples to withdraw from the last callset.
+4. **Workflow to eradicate samples?** TBD
+5. `GvsCreateAltAllele` workflow
+   - **TODO:** needs to be made cumulative so that it can add date to the existing table instead of creating it from scratch on each run (see [VS-52](https://broadworkbench.atlassian.net/browse/VS-52))
+   - This step loads data into the `alt_allele` table from the `vet_*` tables in preparation for running the filtering step.
+   - This workflow does not use the Terra Entity model to run, so be sure to select `Run workflow with inputs defined by file paths`.
+6. `GvsCreateFilterSet` workflow
+   - This step calculates features from the `alt_allele` table, and trains the VQSR filtering model along with site-level QC filters and loads them into BigQuery into a series of `filter_set_*` tables.
+   - See [naming conventions doc](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow) for guidance on what to use for `filter_set_name`, which you will need to keep track of for the `GvsExtractCallset` WDL. If, for some reason, this step needs to be run multiple times, be sure to use a different `filter_set_name` (the doc has guidance for this, as well).
+   - This workflow does not use the Terra Entity model to run, so be sure to select `Run workflow with inputs defined by file paths`.
+7. `GvsPrepareRangesCallset` workflow
+   - This workflow transforms the data in the vet and ref_ranges tables into a schema optimized for VCF generation during the Extract step.
+   - It will need to be run twice, once with `control_samples` set to "true" (see [naming conventions doc](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow) for guidance on what to use for `extract_table_prefix` or cohort prefix, which you will need to keep track of for the `GvsExtractCallset` WDL); the default value is "false".
+   - This workflow does not use the Terra Entity model to run, so be sure to select `Run workflow with inputs defined by file paths`.
+8. `GvsExtractCallset` workflow
+   - This workflow extracts the data in BigQuery and transforms it into a sharded joint called VCF incorporating the VQSR filter set data.
+   - It also needs to be run twice, once with `control_samples` set to "true", and with the `filter_set_name` and `extract_table_prefix` from step 5 & 6.  Include a valid (and secure) "output_gcs_dir" parameter, which is where the VCF, interval list, manifest, and sample name list files will go.
+   - This workflow does not use the Terra Entity model to run, so be sure to select `Run workflow with inputs defined by file paths`.
+9. Run the notebook to create callset stats (TBD, see [VS-388](https://broadworkbench.atlassian.net/browse/VS-388)), for which you need
+    - permission to query table `spec-ops-aou:gvs_public_reference_data.gnomad_v3_sites`
+    - the data_project you used for all the GVS WDLs
+    - the default_dataset you used for all the GVS WDLs
+    - the `extract_table_prefix` input from `GvsExtractCallset` step
+    - the `filter_set_name` input from `GvsCreateFilterSet` step
+10.  `GvsCalculatePrecisionAndSensitivity` 
 
 ## Deliverables (via email once the above steps are complete)
 1. location of the VCFs and interval_list files (`output_gcs_dir` input from GvsExtractCallset)
 2. fully qualified name of the BigQuery dataset (input `dataset_name` in the workflows)
-3. [callset statistics](callset_QC/README.md) CSV
-4. [precision and sensitivity results](tieout/AoU_PRECISION_SENSITIVITY.md) TSV
+3. callset statistics CSV file (see step #9)
+4. TSV output from `GvsCalculatePrecisionAndSensitivity` workflow
 
 ## Running the VAT pipeline
 To create a BigQuery table of variant annotations, you may follow the instructions here:
 [process to create variant annotations table](variant_annotations_table/README.md)
 
-The pipeline takes in a jointVCF and outputs a variant annotations table in BigQuery.
+The pipeline takes in jointVCF shards and outputs a variant annotations table in BigQuery.
 
 
 
