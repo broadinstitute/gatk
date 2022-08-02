@@ -10,7 +10,6 @@ workflow GvsCreateVATFromAnnotations {
         File? genes_schema_json_file = "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/schemas/genes_schema.json"
         String output_path
         String table_suffix
-        String? service_account_json_path
     }
 
     Array[String] contig_array = ["chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrX", "chrY", "chrM"]
@@ -18,7 +17,6 @@ workflow GvsCreateVATFromAnnotations {
 
     call GetAnnotations {
         input:
-            service_account_json_path = service_account_json_path,
             inputFileofFileNames = inputFileofFileNames
     }
 
@@ -29,8 +27,7 @@ workflow GvsCreateVATFromAnnotations {
           input:
             annotation_json = GetAnnotations.input_jsons[i],
             output_file_suffix = basename(GetAnnotations.input_jsons[i], "_annotated.json.gz") + ".json.gz",
-            output_path = output_path,
-            service_account_json_path = service_account_json_path
+            output_path = output_path
        }
     }
 
@@ -43,7 +40,6 @@ workflow GvsCreateVATFromAnnotations {
          dataset_name = dataset_name,
          output_path = output_path,
          table_suffix = table_suffix,
-         service_account_json_path = service_account_json_path,
          prep_jsons_done = PrepAnnotationJson.done
   }
 
@@ -55,7 +51,6 @@ workflow GvsCreateVATFromAnnotations {
             dataset_name = dataset_name,
             output_path = output_path,
             table_suffix = table_suffix,
-            service_account_json_path = service_account_json_path,
             load_jsons_done = BigQueryLoadJson.done
       }
     }
@@ -65,28 +60,12 @@ workflow GvsCreateVATFromAnnotations {
 
 task GetAnnotations {
     input {
-        String? service_account_json_path
         File inputFileofFileNames
     }
-    parameter_meta {
-        inputFileofFileNames: {
-          localization_optional: true
-        }
-    }
-    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
-    String updated_input_files = if (defined(service_account_json_path)) then basename(inputFileofFileNames) else inputFileofFileNames
-
     command <<<
         set -e
 
-        if [ ~{has_service_account_file} = 'true' ]; then
-          gsutil cp ~{service_account_json_path} local.service_account.json
-          export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-          gcloud auth activate-service-account --key-file=local.service_account.json
-
-          gsutil cp ~{inputFileofFileNames} ~{updated_input_files}
-       fi
-
+      # nothing to do - it is just reading the lines from the input - TODO - is there a better way to do this?
     >>>
 
     # ------------------------------------------------
@@ -101,7 +80,7 @@ task GetAnnotations {
     # ------------------------------------------------
     # Outputs:
     output {
-        Array[File] input_jsons = read_lines(updated_input_files)
+        Array[File] input_jsons = read_lines(inputFileOfFileNames)
     }
 }
 
@@ -110,7 +89,6 @@ task PrepAnnotationJson {
         File annotation_json
         String output_file_suffix
         String output_path
-        String? service_account_json_path
     }
     parameter_meta {
         annotation_json: {
@@ -122,25 +100,12 @@ task PrepAnnotationJson {
     String output_vt_gcp_path = output_path + 'vt/'
     String output_genes_gcp_path = output_path + 'genes/'
 
-    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
-    String updated_annotation_json = if (defined(service_account_json_path)) then basename(annotation_json) else annotation_json
-
-
-
     command <<<
         set -e
 
-        if [ ~{has_service_account_file} = 'true' ]; then
-            gsutil cp ~{service_account_json_path} local.service_account.json
-            export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-            gcloud auth activate-service-account --key-file=local.service_account.json
-
-            gsutil cp ~{annotation_json} ~{updated_annotation_json}
-        fi
-
         ## the annotation jsons are split into the specific VAT schema
         python3 /app/create_variant_annotation_table.py \
-          --annotated_json ~{updated_annotation_json} \
+          --annotated_json ~{annotation_json} \
           --output_vt_json ~{output_vt_json} \
           --output_genes_json ~{output_genes_json}
 
@@ -179,7 +144,6 @@ task BigQueryLoadJson {
         String dataset_name
         String output_path
         String table_suffix
-        String? service_account_json_path
         Array[String] prep_jsons_done
     }
 
@@ -192,21 +156,11 @@ task BigQueryLoadJson {
     String vt_path = output_path + 'vt/*'
     String genes_path = output_path + 'genes/*'
 
-    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
-
     command <<<
 
        echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
        DATE=86400 ## 24 hours in seconds
-
-
-       if [ ~{has_service_account_file} = 'true' ]; then
-            gsutil cp ~{service_account_json_path} local.service_account.json
-            export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-            gcloud auth activate-service-account --key-file=local.service_account.json
-            gcloud config set project ~{project_id}
-       fi
 
        set +e
        bq show --project_id ~{project_id} ~{dataset_name}.~{variant_transcript_table} > /dev/null
@@ -392,25 +346,15 @@ task BigQueryExportVat {
         String dataset_name
         String output_path
         String table_suffix
-        String? service_account_json_path
         String load_jsons_done
     }
 
     String vat_table = "vat_" + table_suffix
     String export_path = output_path + "export/" + contig + "/*.tsv.gz"
 
-    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
-
     command <<<
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
-
-        if [ ~{has_service_account_file} = 'true' ]; then
-          gsutil cp ~{service_account_json_path} local.service_account.json
-          export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-          gcloud auth activate-service-account --key-file=local.service_account.json
-          gcloud config set project ~{project_id}
-        fi
 
         # note: tab delimiter and compression creates tsv.gz files
         bq query --nouse_legacy_sql --project_id=~{project_id} \

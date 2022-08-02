@@ -9,7 +9,6 @@ workflow GvsCreateVATAnnotations {
         File nirvana_data_directory
         String output_path
 
-        String? service_account_json_path
         File custom_annotations_template
         File ref
     }
@@ -20,7 +19,6 @@ workflow GvsCreateVATAnnotations {
         input:
             input_vcf = input_vcf,
             input_vcf_index = input_vcf_index,
-            service_account_json_path = service_account_json_path,
             subpopulation_sample_list = ancestry_mapping_list,
             custom_annotations_template = custom_annotations_template,
             ref = ref,
@@ -42,8 +40,7 @@ workflow GvsCreateVATAnnotations {
         input:
             annotation_json = AnnotateVCF.annotation_json,
             output_file_suffix = "${input_vcf_name}.json.gz",
-            output_path = output_path,
-            service_account_json_path = service_account_json_path
+            output_path = output_path
     }
 
     # ------------------------------------------------
@@ -61,7 +58,6 @@ task ExtractAnAcAfFromVCF {
     input {
         File input_vcf
         File input_vcf_index
-        String? service_account_json_path
         File subpopulation_sample_list
         File custom_annotations_template
         File ref
@@ -78,7 +74,6 @@ task ExtractAnAcAfFromVCF {
         }
     }
 
-    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
     String custom_annotations_file_name = "ac_an_af.tsv"
     String local_input_vcf = basename(input_vcf)
     String local_input_vcf_index = basename(input_vcf_index)
@@ -92,12 +87,6 @@ task ExtractAnAcAfFromVCF {
 
         # custom function to prepend the current datetime to an echo statement
         echo_date () { echo "`date "+%Y/%m/%d %H:%M:%S"` $1"; }
-
-        if [ ~{has_service_account_file} = 'true' ]; then
-            gsutil cp ~{service_account_json_path} local.service_account.json
-            export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-            gcloud auth activate-service-account --key-file=local.service_account.json
-        fi
 
         echo_date "VAT: Custom localization of inputs"
 
@@ -273,7 +262,6 @@ task PrepAnnotationJson {
         File annotation_json
         String output_file_suffix
         String output_path
-        String? service_account_json_path
     }
 
     String output_vt_json = "vat_vt_bq_load" + output_file_suffix
@@ -282,18 +270,10 @@ task PrepAnnotationJson {
     String output_genes_gcp_path = output_path + 'genes/'
     String output_annotations_gcp_path = output_path + 'annotations/'
 
-    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
-
     ## note: these temp files do not currently get cleaned up as some of them may be helpful for recovery.
 
     command <<<
         set -e
-
-        if [ ~{has_service_account_file} = 'true' ]; then
-            gsutil cp ~{service_account_json_path} local.service_account.json
-            export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-            gcloud auth activate-service-account --key-file=local.service_account.json
-        fi
 
         # for debugging purposes only
         gsutil cp ~{annotation_json} '~{output_annotations_gcp_path}'

@@ -16,7 +16,6 @@ workflow GvsCreateVAT {
         String output_path
 
         Int? merge_vcfs_disk_size_override
-        String? service_account_json_path
         File ancestry_file
     }
 
@@ -27,7 +26,6 @@ workflow GvsCreateVAT {
     call MakeSubpopulationFiles {
         input:
             input_ancestry_file = ancestry_file,
-            service_account_json_path = service_account_json_path,
             inputFileofFileNames = inputFileofFileNames,
             inputFileofIndexFileNames = inputFileofIndexFileNames
     }
@@ -44,7 +42,6 @@ workflow GvsCreateVAT {
                 ancestry_mapping_list = MakeSubpopulationFiles.ancestry_mapping_list,
                 nirvana_data_directory = nirvana_data_directory,
                 output_path = output_path,
-                service_account_json_path = service_account_json_path,
                 custom_annotations_template = MakeSubpopulationFiles.custom_annotations_template_file,
                 ref = reference
         }
@@ -60,7 +57,6 @@ workflow GvsCreateVAT {
             output_path = output_path,
             filter_set_name = filter_set_name,
             vat_version = vat_version,
-            service_account_json_path = service_account_json_path,
             prep_jsons_done = GvsCreateVATAnnotations.done
     }
 
@@ -71,7 +67,6 @@ workflow GvsCreateVAT {
             counts_variants = GvsCreateVATAnnotations.count_variants,
             track_dropped_variants = GvsCreateVATAnnotations.track_dropped,
             vat_table = BigQueryLoadJson.vat_table_name,
-            service_account_json_path = service_account_json_path,
             load_jsons_done = BigQueryLoadJson.done
     }
 
@@ -83,7 +78,6 @@ workflow GvsCreateVAT {
                 dataset_name = dataset_name,
                 output_path = output_path,
                 vat_table = BigQueryLoadJson.vat_table_name,
-                service_account_json_path = service_account_json_path,
                 validate_jsons_done = BigQuerySmokeTest.done
         }
     }
@@ -94,8 +88,7 @@ workflow GvsCreateVAT {
             contig_array = contig_array,
             output_path = output_path,
             project_id = project_id,
-            merge_vcfs_disk_size_override = merge_vcfs_disk_size_override,
-            service_account_json_path = service_account_json_path
+            merge_vcfs_disk_size_override = merge_vcfs_disk_size_override
     }
 
     output {
@@ -108,7 +101,6 @@ workflow GvsCreateVAT {
 task MakeSubpopulationFiles {
     input {
         File input_ancestry_file
-        String? service_account_json_path
         File inputFileofFileNames
         File inputFileofIndexFileNames
     }
@@ -128,19 +120,12 @@ task MakeSubpopulationFiles {
     }
     String output_ancestry_filename =  "ancestry_mapping.tsv"
     String custom_annotations_template_filename =  "custom_annotations_template.tsv"
-    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
     String updated_input_ancestry_file = basename(input_ancestry_file)
     String updated_input_vcfs_file = basename(inputFileofFileNames)
     String updated_input_indices_file = basename(inputFileofIndexFileNames)
 
     command <<<
         set -e
-
-        if [ ~{has_service_account_file} = 'true' ]; then
-            gsutil cp ~{service_account_json_path} local.service_account.json
-            export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-            gcloud auth activate-service-account --key-file=local.service_account.json
-        fi
 
         gsutil cp ~{input_ancestry_file} .
         gsutil cp ~{inputFileofFileNames} .
@@ -187,7 +172,6 @@ task BigQueryLoadJson {
         String project_id
         String dataset_name
         String output_path
-        String? service_account_json_path
         Array[String] prep_jsons_done
     }
 
@@ -202,19 +186,10 @@ task BigQueryLoadJson {
     String vt_path = output_path + 'vt/*'
     String genes_path = output_path + 'genes/*'
 
-    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
-
     command <<<
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
         DATE=86400 ## 24 hours in seconds
-
-        if [ ~{has_service_account_file} = 'true' ]; then
-             gsutil cp ~{service_account_json_path} local.service_account.json
-             export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-             gcloud auth activate-service-account --key-file=local.service_account.json
-             gcloud config set project ~{project_id}
-        fi
 
         set +e
         bq show --project_id ~{project_id} ~{dataset_name}.~{variant_transcript_table} > /dev/null
@@ -401,7 +376,6 @@ task BigQuerySmokeTest {
         String vat_table
         Array[Int] counts_variants
         Array[File] track_dropped_variants
-        String? service_account_json_path
         Boolean load_jsons_done
     }
     # Now query the final table for expected results
@@ -409,15 +383,9 @@ task BigQuerySmokeTest {
     # The number of passing variants in GVS matches the number of variants in the VAT.
     # Please note that we are counting the number of variants in GVS, not the number of sites, which may add a difficulty to this task.
 
-    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
     command <<<
         set -e
-        if [ ~{has_service_account_file} = 'true' ]; then
-            gsutil cp ~{service_account_json_path} local.service_account.json
-            gcloud auth activate-service-account --key-file=local.service_account.json
-            gcloud config set project ~{project_id}
-        fi
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
         # ------------------------------------------------
@@ -470,23 +438,13 @@ task BigQueryExportVat {
         String dataset_name
         String vat_table
         String output_path
-        String? service_account_json_path
         Boolean validate_jsons_done
     }
 
     String export_path = output_path + "export/" + contig + "/*.tsv.gz"
 
-    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
-
     command <<<
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
-
-        if [ ~{has_service_account_file} = 'true' ]; then
-            gsutil cp ~{service_account_json_path} local.service_account.json
-            export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-            gcloud auth activate-service-account --key-file=local.service_account.json
-            gcloud config set project ~{project_id}
-        fi
 
         # note: tab delimiter and compression creates tsv.gz files
         bq query --nouse_legacy_sql --project_id=~{project_id} \
@@ -629,12 +587,10 @@ task MergeVatTSVs {
         String output_path
 
         Int? merge_vcfs_disk_size_override
-        String? service_account_json_path
     }
 
     # going large with the default to make gsutil -m cp really zippy
     Int disk_size = if (defined(merge_vcfs_disk_size_override)) then merge_vcfs_disk_size_override else 250
-    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
     command <<<
         apt-get update
@@ -642,12 +598,6 @@ task MergeVatTSVs {
 
         # custom function to prepend the current datetime to an echo statement "borrowed" from ExtractAnAcAfFromVCF
         echo_date () { echo "`date "+%Y/%m/%d %H:%M:%S"` $1"; }
-
-        if [ ~{has_service_account_file} = 'true' ]; then
-            gsutil cp ~{service_account_json_path} local.service_account.json
-            gcloud auth activate-service-account --key-file=local.service_account.json
-            gcloud config set project ~{project_id}
-        fi
 
         mkdir TSVs
         contigs=( ~{sep=' ' contig_array} )
