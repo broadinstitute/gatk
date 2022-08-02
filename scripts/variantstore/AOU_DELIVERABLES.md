@@ -63,7 +63,7 @@
     - the name of the BigQuery dataset you used for all the GVS WDLs
     - the `extract_table_prefix` input from `GvsExtractCallset` step
     - the `filter_set_name` input from `GvsCreateFilterSet` step
-10. [GvsCalculatePrecisionAndSensitivity](tieout/AoU_PRECISION_SENSITIVITY.md) workflow
+10. [GvsCalculatePrecisionAndSensitivity](tieout/AoU_PRECISION_SENSITIVITY.md#generating-callset-precision-and-sensitivity-values) workflow
 
 ## Deliverables (via email once the above steps are complete)
 1. location of the VCFs and interval_list files (`output_gcs_dir` input from GvsExtractCallset)
