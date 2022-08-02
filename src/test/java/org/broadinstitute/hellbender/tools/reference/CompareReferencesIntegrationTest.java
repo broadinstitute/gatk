@@ -153,4 +153,13 @@ public class CompareReferencesIntegrationTest extends CommandLineProgramTest {
         runCommandLine(args);
     }
 
+    @Test
+    public void testCompareReferencesDRAGENFastas() throws IOException{
+        final File ref1 = new File("/Users/ocohen/workingcode/gatk/tempreferences/hg38_better_alt_masked.fa");
+        final File ref2 = new File("/Users/ocohen/workingcode/gatk/tempreferences/Homo_sapiens_assembly38_masked.fasta");
+
+        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath()};
+        runCommandLine(args);
+    }
+
 }

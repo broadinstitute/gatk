@@ -38,7 +38,7 @@ public class CompareReferencesUnitTest extends CommandLineProgramTest {
 
     @Test
     public void testPythonCommand(){
-        String script = "/Users/ocohen/workingcode/all2vcf/src/mummer";
+        String script = "/Users/ocohen/all2vcf/src/mummer";
         List<String> command = Arrays.asList("-h");
         CompareReferences.runPythonCommand(script, command, null, null, true);
     }

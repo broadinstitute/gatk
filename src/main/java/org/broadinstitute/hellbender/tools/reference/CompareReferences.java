@@ -13,8 +13,6 @@ import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
 import org.broadinstitute.hellbender.utils.runtime.ProcessController;
 import org.broadinstitute.hellbender.utils.runtime.ProcessOutput;
 import org.broadinstitute.hellbender.utils.runtime.ProcessSettings;
@@ -103,8 +101,8 @@ public class CompareReferences extends GATKTool {
     @Argument(fullName = "display-only-differing-sequences", doc = "If provided, only display sequence names that differ in their actual sequence.", optional = true)
     private boolean onlyDisplayDifferingSequences = false;
 
-    @Argument(fullName = "mismatching-sequence-output-directory", doc = "If provided, will generate fasta files for sequences with mismatching MD5s.", optional = true)
-    private File sequenceOutputDirectory;
+    @Argument(fullName = "base-comparison-output", doc = "If provided, will generate fasta files for sequences with mismatching MD5s.", optional = true)
+    private File baseComparisonOutputDirectory;
 
     @Argument(fullName = "base-comparison", doc = "If provided, any mismatching sequences will be aligned for a base-comparison.", optional = true)
     private boolean baseComparison = false;
@@ -160,8 +158,12 @@ public class CompareReferences extends GATKTool {
         }
 
         if(baseComparison){
-            // if exactly 2 inputs (ie. 1 refpair)
-            doBaseComparison(referencePairs, table);
+            // only do alignment if exactly 2 inputs (1 ReferencePair)
+            if(referencePairs.size() != 1){
+                throw new UserException.BadInput("");
+            }
+            ReferencePair refPair = referencePairs.get(0);
+            doBaseComparison(refPair, table);
         }
     }
 
@@ -241,31 +243,28 @@ public class CompareReferences extends GATKTool {
         }
     }
 
-    public void doBaseComparison(List<ReferencePair> referencePairs, ReferenceSequenceTable table){
-        if(referencePairs.size() == 1){
-            ReferencePair refPair = referencePairs.get(0);
-            // if mismatching MD5s found between the two inputs
-            if(refPair.getAnalysis().contains(ReferencePair.Status.DIFFER_IN_SEQUENCE)){
-                // find the mismatch sequence
-                for(String sequenceName : table.getAllSequenceNames()) {
-                    Set<ReferenceSequenceTable.TableRow> rows = table.queryBySequenceName(sequenceName);
-                    if (rows.size() == 2) {
-                        // generate fasta files for mismatching sequences
-                        GATKPath ref1Path = refPair.getRef1();
-                        GATKPath ref2Path = refPair.getRef2();
+    public void doBaseComparison(ReferencePair refPair, ReferenceSequenceTable table){
+        // if mismatching MD5s found between the two inputs
+        if(refPair.getAnalysis().contains(ReferencePair.Status.DIFFER_IN_SEQUENCE)){
+            // find the mismatch sequence
+            for(String sequenceName : table.getAllSequenceNames()) {
+                Set<ReferenceSequenceTable.TableRow> rows = table.queryBySequenceName(sequenceName);
+                if (rows.size() == 2) {
+                    // generate fasta files for mismatching sequences
+                    GATKPath ref1Path = refPair.getRef1();
+                    GATKPath ref2Path = refPair.getRef2();
 
-                        String sequenceInRef1Name = ref1Path.toPath().getFileName() + "." + sequenceName;
-                        String sequenceInRef2Name = ref2Path.toPath().getFileName() + "." + sequenceName;
+                    String sequenceInRef1Name = ref1Path.toPath().getFileName() + "." + sequenceName;
+                    String sequenceInRef2Name = ref2Path.toPath().getFileName() + "." + sequenceName;
 
-                            /*File ref1SequenceOutput = IOUtils.createTempFileInDirectory(sequenceInRef1Name, ".fasta", sequenceOutputDirectory);
-                            File ref2SequenceOutput = IOUtils.createTempFileInDirectory(sequenceInRef2Name, ".fasta", sequenceOutputDirectory);*/
+                        /*File ref1SequenceOutput = IOUtils.createTempFileInDirectory(sequenceInRef1Name, ".fasta", sequenceOutputDirectory);
+                        File ref2SequenceOutput = IOUtils.createTempFileInDirectory(sequenceInRef2Name, ".fasta", sequenceOutputDirectory);*/
 
-                        File ref1SequenceOutput = new File(sequenceOutputDirectory,   sequenceInRef1Name + ".fasta");
-                        File ref2SequenceOutput = new File(sequenceOutputDirectory, sequenceInRef2Name + ".fasta");
+                    File ref1SequenceOutput = new File(baseComparisonOutputDirectory,   sequenceInRef1Name + ".fasta");
+                    File ref2SequenceOutput = new File(baseComparisonOutputDirectory, sequenceInRef2Name + ".fasta");
 
-                        generateFastaForSequence(ReferenceDataSource.of(ref1Path.toPath(), true), sequenceName, new GATKPath(ref1SequenceOutput.toString()));
-                        generateFastaForSequence(ReferenceDataSource.of(ref2Path.toPath(), true), sequenceName, new GATKPath(ref2SequenceOutput.toString()));
-                    }
+                    generateFastaForSequence(ReferenceDataSource.of(ref1Path.toPath(), true), sequenceName, new GATKPath(ref1SequenceOutput.toString()));
+                    generateFastaForSequence(ReferenceDataSource.of(ref2Path.toPath(), true), sequenceName, new GATKPath(ref2SequenceOutput.toString()));
                 }
             }
         }
