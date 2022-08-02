@@ -26,7 +26,7 @@
     2. CPUs: 64,000
     3. In-use IP addresses: 5,000 (this is the most challenging one and will probably require contacting the GCP account team to facilitate)
     4. VM instances: 64,000
-- Make a note of the Google project ID (`aou-genomics-curation-prod`), dataset name (`aou_wgs`) and callset identifier (e.g. "Bravo") as these will be inputs to all or most of the GVS workflows. The [naming conventions for other aspects of GVS datasets are outlined here](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow).
+- Make a note of the Google project ID (`aou-genomics-curation-prod`), dataset name (`aou_wgs`) and callset identifier (e.g. "Bravo") as these will be inputs (`project_id` and `dataset_name`) to all or most of the GVS workflows. The [naming conventions for other aspects of GVS datasets are outlined here](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow).
 
 ## The Pipeline
 1. `GvsAssignIds` workflow
@@ -65,11 +65,12 @@
     - the `filter_set_name` input from `GvsCreateFilterSet` step
 10. [GvsCalculatePrecisionAndSensitivity](tieout/AoU_PRECISION_SENSITIVITY.md#generating-callset-precision-and-sensitivity-values) workflow
 
-## Deliverables (via email once the above steps are complete)
-1. location of the VCFs and interval_list files (`output_gcs_dir` input from GvsExtractCallset)
-2. fully qualified name of the BigQuery dataset (input `dataset_name` in the workflows)
-3. callset statistics CSV file (see step #9)
-4. TSV output from `GvsCalculatePrecisionAndSensitivity` workflow
+
+## Deliverables (via email to stakeholders once the above steps are complete)
+1. GCS locations of the VCFs, indexes and interval_list files (subpaths of the `output_gcs_dir` input from GvsExtractCallset)
+2. fully qualified name of the BigQuery dataset (using the `project_id` and `dataset_name` inputs from the workflows)
+3. callset statistics CSV file (see step #9 above)
+4. TSV output from `GvsCalculatePrecisionAndSensitivity` workflow (see step #10 above)
 
 ## Running the VAT pipeline
 To create a BigQuery table of variant annotations, you may follow the instructions here:
