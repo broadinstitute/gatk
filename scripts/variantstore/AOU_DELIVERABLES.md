@@ -1,7 +1,11 @@
 # Running the Genome Variant Store (GVS) Pipeline for AoU
 
 ## Setup
-- Create a Terra workspace with your @pmi-ops.org account with the `allofus-drc-wgs-dev` Terra Billing account in the `AOU_DRC_WGS_OPERATORS` Authorization domain. Share it with `dsp-variant-team@firecloud.org` so the rest of the team can see it (Reader) and with the individual users who will be running the workflows (Owner).
+- Create a Terra workspace
+  - using your @pmi-ops.org account 
+  - with the `allofus-drc-wgs-dev` Terra Billing account 
+  - in the `AOU_DRC_WGS_OPERATORS` Authorization Domain
+  - Share it with `dsp-variant-team@firecloud.org` so the rest of the team can see it (Reader) and with the individual users who will be running the workflows (Owner).
 - Populate the workspace with the following:
   - [Fetch WGS metadata for samples from list](http://app.terra.bio/#workspaces/allofus-drc-wgs-dev/GVS%20AoU%20WGS%20Charlie/notebooks/launch/Fetch%20WGS%20metadata%20for%20samples%20from%20list.ipynb) notebook
   - [GvsAssignIds](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsAssignIds) workflow
@@ -9,18 +13,20 @@
   - [GvsWithdrawSamples](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsWithdrawSamples) workflow
   - [GvsCreateAltAllele](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsCreateAltAllele) workflow
   - [GvsCreateFilterSet](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsCreateFilterSet) workflow
-  - [GvsPrepareRangesCallset](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsPrepareRangesCallset) workflow (VCF output) or **TBD VDS Prepare** 
-  - [GvsExtractCallset](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsExtractCallset) workflow (VCF output) or **TBD VDS Extract**
+  - [GvsPrepareRangesCallset](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsPrepareRangesCallset) workflow (VCF output)
+  - [GvsExtractCallset](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsExtractCallset) workflow (VCF output)
   - [GvsCalculatePrecisionAndSensitivity](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCalculatePrecisionAndSensitivity) workflow
-- Run the "Fetch WGS metadata for samples from list" notebook after you have placed the file with the list of the **new** samples to ingest in a place the notebook will have access to.  This will grab the samples from the workspace where they were reblocked and bring them into this callset workspace.
+  - **TBD VDS Prepare WDL/notebook/??**
+  - **TBD VDS Extract WDL/notebook/??**
+- Run the "Fetch WGS metadata for samples from list" notebook after you have placed the file with the list of the new samples to ingest in a GCS location the notebook (running with your @pmi-ops account) will have access to.  This will grab the samples from the workspace where they were reblocked and bring them into this callset workspace.
   - Set the `sample_list_file_path` variable in that notebook to the path of the file
-  - Run the "now that the data have been copied, you can make sample sets if you wish" step if you want to automatically break up the new samples into smaller sample sets.  Just be sure to set the `SUBSET_SIZE` and `set_name` variables beforehand.
-- **This is based on VCF output; VDS output might need different increases.** You will want to increase the Google quotas for the workspace project (you can find this in the workspace dashboard under Cloud Information > Google Project ID) to these levels (all in region `us-central1`):
+  - Run the "now that the data have been copied, you can make sample sets if you wish" step if you want to automatically break up the new samples into smaller sample sets.  Set the `SUBSET_SIZE` and `set_name` variables to customize.
+- **This is based on VCF output; VDS output might need different increases.** For extracting VCFs as the final output for the callset, you will want to increase the Google quotas for the workspace project (you can find this in the workspace dashboard under Cloud Information > Google Project ID) to these levels (all in the workspace region):
     1. Persistent Disk Standard (GB): 1,000,000 GB (1 PB)
     2. CPUs: 64,000
     3. In-use IP addresses: 5,000 (this is the most challenging one and will probably require contacting the GCP account team to facilitate)
     4. VM instances: 64,000
-- Make a note of the Google project ID (`aou-genomics-curation-prod`), dataset name (`aou_wgs`) and callset indentifier (e.g. "Bravo") as these will be inputs to all or most of the GVS workflows. The [naming conventions for other aspects of GVS datasets are outlined here](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow).
+- Make a note of the Google project ID (`aou-genomics-curation-prod`), dataset name (`aou_wgs`) and callset identifier (e.g. "Bravo") as these will be inputs to all or most of the GVS workflows. The [naming conventions for other aspects of GVS datasets are outlined here](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow).
 
 ## The Pipeline
 1. `GvsAssignIds` workflow
