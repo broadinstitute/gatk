@@ -4,12 +4,18 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 
 /**
- * Logic for determining variant types was retained from VQSR.
+ * This code and logic for determining variant types was mostly retained from VQSR.
+ * Note that there may be some inconsistencies and room for improvement in these definitions;
+ * see comments in https://github.com/broadinstitute/gatk/pull/7954.
  */
 public enum VariantType {
     SNP,
     INDEL;
 
+    /**
+     * Returns true if both {@code vc} and {@code resourceVC} are the same variant type,
+     * following our definitions.
+     */
     public static boolean checkVariantType(final VariantContext vc,
                                            final VariantContext resourceVC) {
         switch (resourceVC.getType()) {
@@ -35,15 +41,18 @@ public enum VariantType {
         }
     }
 
-    public static VariantType getVariantType(final VariantContext vc,
-                                             final Allele allele) {
+    /**
+     * Note that spanning deletions are expected to be filtered out upstream of this method
+     * to preserve VQSR behavior; we do not explicitly check this.
+     * See VariantDataManager#checkVariationClass(VariantContext, Allele, VariantRecalibratorArgumentCollection.Mode),
+     * from which this method originated.
+     */
+    public static VariantType getAlleleSpecificVariantType(final VariantContext vc,
+                                                           final Allele allele) {
         if (vc.getReference().length() == allele.length()) {
-            //note that spanning deletions are considered SNPs by this logic
+            // note that spanning deletions would be considered SNPs by this logic
             return SNP;
-        } else if ((vc.getReference().length() != allele.length()) || allele.isSymbolic()) {
-            return INDEL;
-        } else {
-            throw new IllegalStateException("Encountered unknown variant type: " + vc.getType());
         }
+        return INDEL;
     }
 }

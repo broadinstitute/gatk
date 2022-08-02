@@ -242,7 +242,7 @@ public final class ScoreVariantAnnotationsIntegrationTest extends CommandLinePro
         runCommandLine(argsBuilder);
     }
 
-    @Test(expectedExceptions = UserException.class, groups = {"python"}) // python environment is required to run tool
+    @Test(expectedExceptions = UserException.class)
     public void testReservedSNPResourceLabel() {
         final File outputDir = createTempDir("extract");
         final String outputPrefix = String.format("%s/test", outputDir);

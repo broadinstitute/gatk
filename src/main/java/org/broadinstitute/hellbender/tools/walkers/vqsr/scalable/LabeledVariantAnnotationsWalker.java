@@ -13,8 +13,6 @@ import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.tuple.Triple;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
@@ -28,7 +26,6 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.VcfUtils;
-import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -83,15 +80,8 @@ import java.util.stream.Collectors;
  * This results in the following output:
  *
  *   - an HDF5 file, as above
- *   - a VCF file, containing the input variants, with labels and scores appended for those passing variant-type checks TODO + calibration-sensitivity scores + filters applied?
+ *   - a VCF file, containing the input variants, with labels, scores, and filters appended/applied for those passing variant-type checks
  */
-@CommandLineProgramProperties(
-        // TODO
-        summary = "",
-        oneLineSummary = "",
-        programGroup = VariantFilteringProgramGroup.class
-)
-@DocumentedFeature
 public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
 
     public static final String MODE_LONG_NAME = "mode";
@@ -204,7 +194,7 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
             resourceLabels.addAll(trackResourceLabels);
             logger.info( String.format("Found %s track: labels = %s", resource.getName(), trackResourceLabels));
         }
-        resourceLabels.forEach(String::intern);
+        resourceLabels.forEach(String::intern); // TODO evaluate if this affects memory usage and remove if not needed
 
         if (resourceLabels.contains(LabeledVariantAnnotationsData.SNP_LABEL)) {
             throw new UserException.BadInput(String.format("The resource label \"%s\" is reserved for labeling variant types.",
@@ -233,7 +223,6 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
         return null;
     }
 
-    // TODO maybe clean up all this Triple and metadata business with a class?
     static void addExtractedVariantToData(final LabeledVariantAnnotationsData data,
                                           final VariantContext variant,
                                           final List<Triple<List<Allele>, VariantType, TreeSet<String>>> metadata) {
@@ -289,13 +278,13 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
     // modified from VQSR code
     // TODO we're just writing a standard sites-only VCF here, maybe there's a nicer way to do this?
     VCFHeader constructVCFHeader(final List<String> sortedLabels) {
-        Set<VCFHeaderLine> hInfo = getDefaultToolVCFHeaderLines();
-        hInfo.addAll(sortedLabels.stream()
+        Set<VCFHeaderLine> hInfo = sortedLabels.stream()
                 .map(l -> new VCFInfoHeaderLine(l, 1, VCFHeaderLineType.Flag, String.format(RESOURCE_LABEL_INFO_HEADER_LINE_FORMAT_STRING, l)))
-                .collect(Collectors.toList()));
+                .collect(Collectors.toCollection(TreeSet::new));
         hInfo.add(GATKVCFHeaderLines.getFilterLine(VCFConstants.PASSES_FILTERS_v4));
         final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
         hInfo = VcfUtils.updateHeaderContigLines(hInfo, null, sequenceDictionary, true);
+        hInfo.addAll(getDefaultToolVCFHeaderLines());
         return new VCFHeader(hInfo);
     }
 
@@ -328,8 +317,8 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
             // corresponding to alt alleles that pass variant-type and overlapping-resource checks
             return vc.getAlternateAlleles().stream()
                     .filter(a -> !GATKVCFConstants.isSpanningDeletion(a))
-                    .filter(a -> variantTypesToExtract.contains(VariantType.getVariantType(vc, a)))
-                    .map(a -> Triple.of(Collections.singletonList(a), VariantType.getVariantType(vc, a),
+                    .filter(a -> variantTypesToExtract.contains(VariantType.getAlleleSpecificVariantType(vc, a)))
+                    .map(a -> Triple.of(Collections.singletonList(a), VariantType.getAlleleSpecificVariantType(vc, a),
                             findOverlappingResourceLabels(vc, vc.getReference(), a, featureContext)))
                     .filter(t -> isExtractUnlabeled || !t.getRight().isEmpty())
                     .collect(Collectors.toList());

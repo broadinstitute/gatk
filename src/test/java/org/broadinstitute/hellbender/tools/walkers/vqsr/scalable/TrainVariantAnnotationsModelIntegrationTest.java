@@ -98,7 +98,7 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
      * Exact-match tests for (non-exhaustive) configurations given by the Cartesian product of the following options:
      *  1) non-allele-specific ("nonAS") vs. allele-specific ("AS")
      *  2) SNP-only ("snp") vs. SNP+INDEL ("snpIndel") (for both of these options, we use extracted annotations that contain both SNP and INDEL variants as input)
-     *  3) positive training with {extract-tag}.annot.hdf5 ("posOnly") vs. positive-unlabeled training with {extract-tag}.annot.hdf5 and {extract-tag}.unlabeled.annot.hdf5 ("posNeg")
+     *  3) positive training with {extract-tag}.annot.hdf5 ("posOnly") vs. positive-negative training with {extract-tag}.annot.hdf5 and {extract-tag}.unlabeled.annot.hdf5 ("posNeg")
      *  4) model backend
      *      4a) Java Bayesian Gaussian Mixture Model (BGMM) backend TODO the BGMM has been reduced to a stub for this initial PR; subsequent PRs will cover the backend code and reconnect the stub
      *      4b) default PYTHON_IFOREST with default hyperparameters ("IF")
@@ -162,9 +162,8 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
                     extractTag + ExtractVariantAnnotations.UNLABELED_TAG + LabeledVariantAnnotationsWalker.ANNOTATIONS_HDF5_SUFFIX);
             final Function<ArgumentsBuilder, ArgumentsBuilder> addUnlabeledAnnotations = ab ->
                     ADD_UNLABELED_ANNOTATIONS_HDF5.apply(ab, unlabeledAnnotationsHDF5);
-            final double calibrationSensitivityThreshold = CALIBRATION_SENSITIVITY_THRESHOLD;
             final Function<ArgumentsBuilder, ArgumentsBuilder> addCalibrationSensitivityThreshold = ab ->
-                    ADD_CALIBRATION_SENSITIVITY_THRESHOLD.apply(ab, calibrationSensitivityThreshold);
+                    ADD_CALIBRATION_SENSITIVITY_THRESHOLD.apply(ab, CALIBRATION_SENSITIVITY_THRESHOLD);
             addPositiveAnnotations.andThen(addUnlabeledAnnotations).andThen(addCalibrationSensitivityThreshold).apply(argsBuilder);
         } else {
             addPositiveAnnotations.apply(argsBuilder);
@@ -289,7 +288,7 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
                 outputPrefixSNPPlusIndel + ".snp" + TrainVariantAnnotationsModel.CALIBRATION_SCORES_HDF5_SUFFIX));
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class, groups = {"python"}) // python environment is required to run tool
+    @Test(expectedExceptions = IllegalArgumentException.class)
     public void testUnlabeledAnnotationsSpecifiedWithoutCalibrationSensitivityThreshold() {
         final File outputDir = createTempDir("train");
         final String outputPrefix = String.format("%s/test", outputDir);
@@ -310,7 +309,7 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
         runCommandLine(argsBuilder);
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class, groups = {"python"}) // python environment is required to run tool
+    @Test(expectedExceptions = IllegalArgumentException.class)
     public void testCalibrationSensitivityThresholdSpecifiedWithoutUnlabeledAnnotations() {
         final File outputDir = createTempDir("train");
         final String outputPrefix = String.format("%s/test", outputDir);
@@ -321,16 +320,15 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
                 extractTag + LabeledVariantAnnotationsWalker.ANNOTATIONS_HDF5_SUFFIX);
         final Function<ArgumentsBuilder, ArgumentsBuilder> addPositiveAnnotations = ab ->
                 ADD_ANNOTATIONS_HDF5.apply(ab, positiveAnnotationsHDF5);
-        final double calibrationSensitivityThreshold = CALIBRATION_SENSITIVITY_THRESHOLD;
         final Function<ArgumentsBuilder, ArgumentsBuilder> addCalibrationSensitivityThreshold = ab ->
-                ADD_CALIBRATION_SENSITIVITY_THRESHOLD.apply(ab, calibrationSensitivityThreshold);
+                ADD_CALIBRATION_SENSITIVITY_THRESHOLD.apply(ab, CALIBRATION_SENSITIVITY_THRESHOLD);
         addPositiveAnnotations
                 .andThen(addCalibrationSensitivityThreshold)
                 .apply(argsBuilder);
         runCommandLine(argsBuilder);
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class, groups = {"python"}) // python environment is required to run tool
+    @Test(expectedExceptions = IllegalArgumentException.class) // python environment is required to run tool
     public void testPositiveAndUnlabeledAnnotationNamesAreNotIdentical() {
         final File outputDir = createTempDir("train");
         final String outputPrefix = String.format("%s/test", outputDir);
@@ -344,9 +342,8 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
                 "extract.AS.snpIndel.posUn" + ExtractVariantAnnotations.UNLABELED_TAG + LabeledVariantAnnotationsWalker.ANNOTATIONS_HDF5_SUFFIX);  // allele-specific
         final Function<ArgumentsBuilder, ArgumentsBuilder> addUnlabeledAnnotations = ab ->
                 ADD_UNLABELED_ANNOTATIONS_HDF5.apply(ab, unlabeledAnnotationsHDF5);
-        final double calibrationSensitivityThreshold = CALIBRATION_SENSITIVITY_THRESHOLD;
         final Function<ArgumentsBuilder, ArgumentsBuilder> addCalibrationSensitivityThreshold = ab ->
-                ADD_CALIBRATION_SENSITIVITY_THRESHOLD.apply(ab, calibrationSensitivityThreshold);
+                ADD_CALIBRATION_SENSITIVITY_THRESHOLD.apply(ab, CALIBRATION_SENSITIVITY_THRESHOLD);
         addPositiveAnnotations
                 .andThen(addUnlabeledAnnotations)
                 .andThen(addCalibrationSensitivityThreshold)
@@ -385,9 +382,8 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
                 "extract.nonAS.snp.posUn" + ExtractVariantAnnotations.UNLABELED_TAG + LabeledVariantAnnotationsWalker.ANNOTATIONS_HDF5_SUFFIX);    // contains only SNPs, but SNP+INDEL is specified
         final Function<ArgumentsBuilder, ArgumentsBuilder> addUnlabeledAnnotations = ab ->
                 ADD_UNLABELED_ANNOTATIONS_HDF5.apply(ab, unlabeledAnnotationsHDF5);
-        final double calibrationSensitivityThreshold = CALIBRATION_SENSITIVITY_THRESHOLD;
         final Function<ArgumentsBuilder, ArgumentsBuilder> addCalibrationSensitivityThreshold = ab ->
-                ADD_CALIBRATION_SENSITIVITY_THRESHOLD.apply(ab, calibrationSensitivityThreshold);
+                ADD_CALIBRATION_SENSITIVITY_THRESHOLD.apply(ab, CALIBRATION_SENSITIVITY_THRESHOLD);
         ADD_SNP_MODE.andThen(ADD_INDEL_MODE)
                 .andThen(addPositiveAnnotations)
                 .andThen(addUnlabeledAnnotations)

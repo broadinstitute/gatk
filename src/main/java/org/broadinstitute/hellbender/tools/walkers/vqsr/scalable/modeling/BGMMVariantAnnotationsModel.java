@@ -9,13 +9,13 @@ import java.io.Serializable;
 public final class BGMMVariantAnnotationsModel implements VariantAnnotationsModel {
 
     public BGMMVariantAnnotationsModel(final File hyperparametersJSONFile) {
-        throw new NotImplementedException("BGMM module implemented in separate PR.");
+        throw new NotImplementedException("BGMM module will be implemented in separate PR.");
     }
 
     @Override
     public void trainAndSerialize(final File trainingAnnotationsFile,
                                   final String outputPrefix) {
-        throw new NotImplementedException("BGMM module implemented in separate PR.");
+        throw new NotImplementedException("BGMM module will be implemented in separate PR.");
     }
 
     static final class Preprocesser implements Serializable {
@@ -25,7 +25,7 @@ public final class BGMMVariantAnnotationsModel implements VariantAnnotationsMode
         }
 
         double[][] transform(final double[][] data) {
-            throw new NotImplementedException("BGMM module implemented in separate PR.");
+            throw new NotImplementedException("BGMM module will be implemented in separate PR.");
         }
     }
 }

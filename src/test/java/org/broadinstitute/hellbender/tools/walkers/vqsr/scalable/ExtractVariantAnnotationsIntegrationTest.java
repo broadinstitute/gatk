@@ -48,7 +48,7 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
             "DP", "FS", "MQ", "MQRankSum", "QD", "ReadPosRankSum", "SOR");
 
     private static final List<String> ALLELE_SPECIFIC_ANNOTATIONS = Arrays.asList(
-            "DP", "AS_FS", "AS_MQ", "AS_MQRankSum", "AS_QD", "AS_ReadPosRankSum", "AS_SOR");
+            "AS_FS", "AS_MQ", "AS_MQRankSum", "AS_QD", "AS_ReadPosRankSum", "AS_SOR");
 
     private static final File PACKAGE_TEST_FILES_DIR = new File(largeFileTestDir,
             "org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/");

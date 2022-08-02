@@ -49,12 +49,12 @@ public interface VariantAnnotationsScorer {
 
     /**
      * Given scores for a calibration set, returns a function for converting a subsequent score to a
-     * sensitivity to that calibration set. This function is simply given by 1 - ECDF,
+     * sensitivity with respect to that calibration set. This function is simply given by 1 - ECDF,
      * where ECDF is the empirical cumulative distribution function of the calibration scores;
      * see <a href='https://en.wikipedia.org/wiki/Empirical_distribution_function'>here</a>.
      * For example, a score that is very low relative to the calibration scores would yield a
      * high calibration sensitivity; that is, using this score as the minimum allowable threshold for filtering
-     * would result in a high sensitivity to the calibration set.
+     * would result in a high sensitivity with respect to the calibration set.
      *
      * @param calibrationScores must all be finite
      */

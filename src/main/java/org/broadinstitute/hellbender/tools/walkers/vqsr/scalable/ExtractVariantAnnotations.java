@@ -34,11 +34,11 @@ import java.util.stream.Collectors;
  *     This tool is intended to be used as the first step in a variant-filtering workflow that supersedes the
  *     {@link VariantRecalibrator} workflow. This tool extracts site-level annotations, labels, and other relevant metadata
  *     from variant sites (or alleles, in allele-specific mode) that are or are not present in specified labeled
- *     resource VCFs (e.g., training or calibration VCFs). The former, present sites are considered labeled; each site
- *     can have multiple labels. The latter sites are considered unlabeled and can be randomly downsampled using
- *     reservoir sampling; extraction of these is optional. The outputs of the tool are HDF5 files containing the
- *     extracted data for labeled and (optional) unlabeled variant sets, as well as a sites-only indexed VCF containing
- *     the labeled variants.
+ *     resource VCFs (e.g., training or calibration VCFs). Input sites that are present in the resources are considered
+ *     labeled; each site can have multiple labels if it is present in multiple resources. Other input sites that are
+ *     not present in any resources are considered unlabeled and can be randomly sampled using reservoir sampling;
+ *     extraction of these is optional. The outputs of the tool are HDF5 files containing the extracted data for
+ *     labeled and (optional) unlabeled variant sets, as well as a sites-only indexed VCF containing the labeled variants.
  * </p>
  * 
  * <p>
@@ -46,7 +46,7 @@ import java.util.stream.Collectors;
  *     to produce an annotation-based model for scoring variant calls. This model can in turn be provided
  *     along with a VCF file to the {@link ScoreVariantAnnotations} tool, which assigns a score to each call
  *     (with a lower score indicating that a call is more likely to be an artifact and should perhaps be filtered).
- *     Each score can also be converted to a corresponding sensitivity to a calibration set, if the latter is available.
+ *     Each score can also be converted to a corresponding sensitivity with respect to a calibration set, if the latter is available.
  * </p>
  *
  * <p>
@@ -87,7 +87,7 @@ import java.util.stream.Collectors;
  *         provided resources.
  *     </li>
  *     <li>
- *         (Optional) Maximum number of unlabeled variants (or alleles) to randomly sample with reservoir downsampling.
+ *         (Optional) Maximum number of unlabeled variants (or alleles) to randomly sample with reservoir sampling.
  *         If nonzero, annotations will also be extracted from unlabeled sites (i.e., those that are not present
  *         in the labeled resources).
  *     </li>
@@ -160,7 +160,8 @@ import java.util.stream.Collectors;
  *     Extract annotations from training/calibration SNP/INDEL sites, producing the outputs
  *     1) {@code extract.annot.hdf5}, 2) {@code extract.vcf.gz}, and 3) {@code extract.vcf.gz.tbi}.
  *     The HDF5 file can then be provided to {@link TrainVariantAnnotationsModel}
- *     to train a model using a positive-only approach.
+ *     to train a model using a positive-only approach. Note that the {@value MODE_LONG_NAME} arguments are made
+ *     explicit here, although both SNP and INDEL modes are selected by default.
  *
  * <pre>
  *     gatk ExtractVariantAnnotations \
@@ -184,6 +185,8 @@ import java.util.stream.Collectors;
  *     1) {@code extract.annot.hdf5}, 2) {@code extract.unlabeled.annot.hdf5}, 3) {@code extract.vcf.gz},
  *     and 4) {@code extract.vcf.gz.tbi}. The HDF5 files can then be provided to {@link TrainVariantAnnotationsModel}
  *     to train a model using a positive-negative approach (similar to that used in {@link VariantRecalibrator}).
+ *     Note that the {@value MODE_LONG_NAME} arguments are made explicit here, although both SNP and INDEL modes are
+ *     selected by default.
  *
  * <pre>
  *     gatk ExtractVariantAnnotations \
@@ -207,7 +210,8 @@ import java.util.stream.Collectors;
  *     unlabeled sites, producing the outputs 1) {@code extract.unlabeled.annot.hdf5},
  *     2) {@code extract.vcf.gz} (which will contain no records), and 3) {@code extract.vcf.gz.tbi}.
  *     This random sample cannot be used by {@link TrainVariantAnnotationsModel}, but may still be useful for
- *     exploratory analyses.
+ *     exploratory analyses. Note that the {@value MODE_LONG_NAME} arguments are made explicit here, although both
+ *     SNP and INDEL modes are selected by default.
  *
  * <pre>
  *     gatk ExtractVariantAnnotations \
@@ -244,7 +248,10 @@ public final class ExtractVariantAnnotations extends LabeledVariantAnnotationsWa
             fullName = MAXIMUM_NUMBER_OF_UNLABELED_VARIANTS_LONG_NAME,
             doc = "Maximum number of unlabeled variants to extract. " +
                     "If greater than zero, reservoir sampling will be used to randomly sample this number " +
-                    "of sites from input sites that are not present in the specified resources.",
+                    "of sites from input sites that are not present in the specified resources. " +
+                    "Choice of this number should be guided by considerations for training the negative model in " +
+                    "TrainVariantAnnotationsModel; users may wish to choose a number that is comparable to the " +
+                    "expected size of the labeled training set or that is compatible with available memory resources.",
             minValue = 0)
     private int maximumNumberOfUnlabeledVariants = 0;
 
@@ -266,7 +273,7 @@ public final class ExtractVariantAnnotations extends LabeledVariantAnnotationsWa
         }
         if (!resourceLabels.contains(LabeledVariantAnnotationsData.CALIBRATION_LABEL)) {
             logger.warn("No calibration set found! If you are using the downstream TrainVariantAnnotationsModel and ScoreVariantAnnotations tools " +
-                    "and wish to convert scores to sensitivity to a calibration set of variants, " +
+                    "and wish to convert scores to sensitivity with respect to a calibration set of variants, " +
                     "provide sets of known polymorphic loci marked with the calibration=true feature input tag. " +
                     "For example, --resource:hapmap,calibration=true hapmap.vcf");
         }
@@ -274,8 +281,8 @@ public final class ExtractVariantAnnotations extends LabeledVariantAnnotationsWa
         rng = RandomGeneratorFactory.createRandomGenerator(new Random(reservoirSamplingRandomSeed));
         unlabeledDataReservoir = maximumNumberOfUnlabeledVariants == 0
                 ? null
-                : new LabeledVariantAnnotationsData(annotationNames, resourceLabels, useASAnnotations, maximumNumberOfUnlabeledVariants);
-    }
+                : new LabeledVariantAnnotationsData(annotationNames, resourceLabels, useASAnnotations, maximumNumberOfUnlabeledVariants);   // we pass resourceLabels here so that both labeled and unlabeled
+    }                                                                                                                                       // HDF5 files will have the same directory structure
 
     @Override
     protected void nthPassApply(final VariantContext variant,
@@ -345,7 +352,8 @@ public final class ExtractVariantAnnotations extends LabeledVariantAnnotationsWa
     private void writeUnlabeledAnnotationsToHDF5() {
         final File outputUnlabeledAnnotationsFile = new File(outputPrefix + UNLABELED_TAG + ANNOTATIONS_HDF5_SUFFIX);
         if (unlabeledDataReservoir.size() == 0) {
-            throw new GATKException("No unlabeled variants were present in the input VCF.");
+            throw new GATKException(String.format("No unlabeled variants were present in the input VCF. " +
+                    "Consider setting the %s argument to 0.", MAXIMUM_NUMBER_OF_UNLABELED_VARIANTS_LONG_NAME));
         }
         for (final VariantType variantType : variantTypesToExtract) {
             logger.info(String.format("Extracted unlabeled annotations for %d variants of type %s.",

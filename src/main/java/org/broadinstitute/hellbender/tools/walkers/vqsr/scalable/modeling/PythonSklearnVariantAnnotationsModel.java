@@ -15,8 +15,9 @@ import java.util.List;
  * {@link VariantAnnotationsModel#trainAndSerialize}), a Python script containing modeling code,
  * and a JSON file containing hyperparameters, the {@link #trainAndSerialize} method can be used to train a model.
  *
- * The modeling script is expected to generate the file {outputPrefix}.scorer.pkl. This file should contain
- * a pickled Python lambda function to be used for generating scores from annotations in a subsequent test set.
+ * The modeling script should take the arguments: {@code annotations_file}, {@code hyperparameters_json_file},
+ * and {@code output_prefix}. The script is expected to generate the file {outputPrefix}.scorer.pkl. This file should
+ * contain a pickled Python lambda function to be used for generating scores from annotations in a subsequent test set.
  * The lambda should have the signature:
  *
  *      lambda test_annotation_names_i, test_X_ni
@@ -26,7 +27,7 @@ import java.util.List;
  * The lambda should check the test annotation names against the training annotation names and
  * then return a numpy array of float-valued scores with length given by the number of data points.
  *
- * See org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/isolation-forest.py for an example implementation.
+ * See src/main/resources/org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/isolation-forest.py for an example implementation.
  */
 public final class PythonSklearnVariantAnnotationsModel implements VariantAnnotationsModel {
 

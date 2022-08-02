@@ -24,25 +24,25 @@ public final class BGMMVariantAnnotationsScorer implements VariantAnnotationsSco
     public BGMMVariantAnnotationsScorer(final List<String> annotationNames,
                                         final BGMMVariantAnnotationsModel.Preprocesser preprocesser,
                                         final BayesianGaussianMixtureModeller bgmm) {
-        throw new NotImplementedException("BGMM module implemented in separate PR.");
+        throw new NotImplementedException("BGMM module will be implemented in separate PR.");
     }
 
     @Override
     public void score(final File inputAnnotationsFile,
                       final File outputScoresFile) {
-        throw new NotImplementedException("BGMM module implemented in separate PR.");
+        throw new NotImplementedException("BGMM module will be implemented in separate PR.");
     }
 
     public double[][] preprocess(final double[][] annotations) {
-        throw new NotImplementedException("BGMM module implemented in separate PR.");
+        throw new NotImplementedException("BGMM module will be implemented in separate PR.");
     }
 
     public void serialize(final File scorerFile) {
-        throw new NotImplementedException("BGMM module implemented in separate PR.");
+        throw new NotImplementedException("BGMM module will be implemented in separate PR.");
     }
 
     public static BGMMVariantAnnotationsScorer deserialize(final File scorerFile) {
-        throw new NotImplementedException("BGMM module implemented in separate PR.");
+        throw new NotImplementedException("BGMM module will be implemented in separate PR.");
     }
 
     // TODO clean this up, copy more fields

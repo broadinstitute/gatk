@@ -43,35 +43,121 @@ import java.util.stream.IntStream;
  *     This tool is intended to be used as the second step in a variant-filtering workflow that supersedes the
  *     {@link VariantRecalibrator} workflow. Given training (and optionally, calibration) sets of site-level annotations
  *     produced by {@link ExtractVariantAnnotations}, this tool can be used to train a model for scoring variant
- *     calls. The outputs of the tool are TODO
+ *     calls. For each variant type (i.e., SNP or INDEL) specified using the {@value MODE_LONG_NAME} argument, the tool
+ *     outputs files that are either: 1) serialized scorers, each of which persists to disk a function for computing
+ *     scores given subsequent annotations, or 2) HDF5 files containing a set of scores, each corresponding to training,
+ *     calibration, and unlabeled sets, as appropriate.
  * </p>
  *
  * <p>
- *     The model trained by this tool can in turn be provided along with a VCF file to the {@link ScoreVariantAnnotations}
+ *     The model files produced by this tool can in turn be provided along with a VCF file to the {@link ScoreVariantAnnotations}
  *     tool, which assigns a score to each call (with a lower score indicating that a call is more likely to be an artifact
- *     and should perhaps be filtered). Each score can also be converted to a corresponding sensitivity to a
+ *     and should perhaps be filtered). Each score can also be converted to a corresponding sensitivity with respect to a
  *     calibration set, if the latter is available.
  * </p>
  *
+ * <h3>Modeling approaches</h3>
+ *
  * <p>
- *     TODO model definition
+ *     This tool can perform modeling using either a positive-only approach or a positive-negative approach.
+ *     In a positive-only approach, the annotation-space distribution of training sites is used to learn a
+ *     function for converting annotations for subsequent sites into a score; typically, higher scores correspond to
+ *     regions of annotation space that are more densely populated by training sites. In contrast, a positive-negative
+ *     approach attempts to additionally use unlabeled sites to better identify regions of annotation space that correspond
+ *     to low scores against the original, positive-only model (with the assumption being that unlabeled sites are
+ *     more likely to populate such regions than are training sites). A second, negative model can then be trained,
+ *     and the resulting scores (which are presumably higher in regions of annotation space that are less densely
+ *     populated by the original training sites) can be subtracted from the original scores to produce a final score.
+ *     (Note that this positive-negative approach could be considered as a single iteration of a more general
+ *     approach typically referred to as positive-unlabeled learning.)
  * </p>
  *
  * <p>
- *     TODO calibration-sensitivity conversion, considerations, and comparison to tranche files
+ *     A positive-only approach is likely to perform well in cases where a sufficient number of reliable training sites
+ *     is available. In contrast, if 1) only a small number of reliable training sites is available, and/or
+ *     2) the reliability of the training sites is questionable (e.g., the sites may be contaminated by
+ *     a non-negigible number of sequencing artifacts), then a positive-negative approach may be beneficial.
+ *     However, note that the positive-negative approach introduces an additional hyperparameter---the threshold
+ *     that determines the selection of sites for training the negative model, controlled by the
+ *     {@value CALIBRATION_SENSITIVITY_THRESHOLD_LONG_NAME} argument---which may require tuning.
+ *     Further note that although {@link VariantRecalibrator} (which this tool supplants) has typically been used to
+ *     implement a positive-negative approach, a positive-only approach likely suffices in many use cases.
  * </p>
  *
  * <p>
- *     TODO positive vs. positive-negative
+ *     If a positive-only approach has been specified, then if training sites of the variant type are available:
+ *
+ *     <ul>
+ *         <li> 1) A positive model is trained using these training sites and is serialized to file,</li>
+ *         <li> 2) Scores for these training sites are generated using the positive model and output to a file,</li>
+ *         <li> 3) If calibration sites of the variant type are available, scores for these calibration sites are
+ *                 generated using the positive model and output to a file.</li>
+ *     </ul>
+ *
+ *     Additionally, if a positive-negative approach has been specified (i.e., the {@value UNLABELED_ANNOTATIONS_HDF5_LONG_NAME}
+ *     and {@value CALIBRATION_SENSITIVITY_THRESHOLD_LONG_NAME} arguments have been provided),
+ *     and if both unlabeled and calibration sites of the variant type are available, then:
+ *
+ *     <ul>
+ *         <li> 4) The calibration scores generated from the positive model are used to convert the
+ *                 calibration-sensitivity threshold into a score threshold,</li>
+ *         <li> 5) Training sites with scores below the score threshold are selected for training a negative model,</li>
+ *         <li> 6) Scores for unlabeled sites are generated using the positive model and output to a file,</li>
+ *         <li> 7) Unlabeled sites with scores below the score threshold are selected for training a negative model,</li>
+ *         <li> 8) A negative model is trained using these selected training and unlabeled sites and is serialized to file,</li>
+ *         <li> 9) Scores for calibration sites are generated using the positive-negative model and overwritten in the existing file.</li>
+ *     </ul>
+ *
+ *     Note that the positive-negative approach thus yields 1) scores for training and unlabeled sites generated from
+ *     the positive model and 2) scores for calibration sites generated from the positive-negative model. This is opposed
+ *     to generating scores from all sites from the positive-negative model, since these can simply be obtained from
+ *     a downstream run of {@link ScoreVariantAnnotations}.
  * </p>
- *  *
+ *
+ * <h3>Modeling backends</h3>
+ *
  * <p>
- *     TODO IsolationForest section with description of method and hyperparameters
+ *     This tool allows the use of different backends for modeling and scoring. See also below
+ *     for instructions for using a custom, user-provided implementation.
+ * </p>
+ *
+ * <h4>Python isolation-forest backend</h4>
+ *
+ * <p>
+ *
+ *     This backend uses scikit-learn modules to train models and scoring functions using the
+ *     <a href="https://en.wikipedia.org/wiki/Isolation_forest">isolation-forest method for anomaly detection</a>.
+ *     Median imputation of missing annotation values is performed before applying the method.
+ * </p>
+ *
+ * <p>
+ *     This backend can be selected by specifying {@code PYTHON_IFOREST} to the {@value MODEL_BACKEND_LONG_NAME} argument
+ *     and is also currently the the default backend. It is implemented by the script at
+ *     src/main/resources/org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/isolation-forest.py, which
+ *     requires that the argparse, h5py, numpy, sklearn, and dill packages be present in the Python environment; users
+ *     may wish to simply use the provided GATK conda environment to ensure that the correct versions of all packages are available.
+ *     See the IsolationForest documentation <a href="https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.IsolationForest.html">here</a>
+ *     as appropriate for the version of scikit-learn used in your Python environment. The hyperparameters documented
+ *     there can be specified using the {@value HYPERPARAMETERS_JSON_LONG_NAME} argument; see
+ *     src/main/resources/org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/isolation-forest-hyperparameters.json
+ *     for an example and the default values.
  * </p>
  *
  * <p>
  *     Note that HDF5 files may be viewed using <a href="https://support.hdfgroup.org/products/java/hdfview/">hdfview</a>
  *     or loaded in Python using <a href="http://www.pytables.org/">PyTables</a> or <a href="http://www.h5py.org/">h5py</a>.
+ * </p>
+ *
+ * <h3>Calibration sets</h3>
+ *
+ * <p>
+ *     The choice of calibration set will determine the conversion between model scores and calibration-set sensitivities.
+ *     Ideally, the calibration set should be comprised of a unbiased sample from the full distribution of true sites
+ *     in annotation space; the score-sensitivity conversion can roughly be thought of as a mapping from sensitivities in
+ *     [0, 1] to a contour of this annotation-space distribution. In practice, any biases in the calibration set (e.g.,
+ *     if it consists of high quality, previously filtered calls, which may be biased towards the high density regions
+ *     of the full distribution) will be reflected in the conversion and should be taken into consideration when
+ *     interpreting calibration-set sensitivities.
  * </p>
  *
  * <h3>Inputs</h3>
@@ -94,18 +180,21 @@ import java.util.stream.IntStream;
  *         Variant types (i.e., SNP and/or INDEL) for which to train models. Logic for determining variant type was retained from
  *         {@link VariantRecalibrator}; see {@link VariantType}. A separate model will be trained for each variant type
  *         and separate sets of outputs with corresponding tags in the filenames (i.e., "snp" or "indel") will be produced.
- *         TODO can run tool twice
+ *         Alternatively, the tool can be run twice, once for each variant type; this may be useful if one wishes to use
+ *         different argument values or modeling approaches.
  *     </li>
  *     <li>
- *         (Optional) Model backend. The default Python IsolationForest implementation requires either the GATK Python environment
- *         or that certain Python packages (argparse, h5py, numpy, sklearn, and dill) are otherwise available.
+ *         (Optional) Model backend. The Python isolation-forest backend is currently the default backend.
  *         A custom backend can also be specified in conjunction with the {@value PYTHON_SCRIPT_LONG_NAME} argument.
  *     </li>
  *     <li>
- *         (Optional) Model hyperparameters JSON file. TODO
+ *         (Optional) Model hyperparameters JSON file. This file can be used to specify backend-specific
+ *         hyperparameters in JSON format, which is to be consumed by the modeling script. This is required if a
+ *         custom backend is used.
  *     </li>
  *     <li>
- *         (Optional) Calibration-set sensitivity threshold. TODO if separate SNP/INDEL thresholds, run tool twice
+ *         (Optional) Calibration-set sensitivity threshold. The same threshold will be used for both SNP and INDEL
+ *         variant types. If different thresholds are desired, the tool can be twice, once for each variant type.
  *     </li>
  *     <li>
  *         Output prefix.
@@ -115,32 +204,72 @@ import java.util.stream.IntStream;
  *
  * <h3>Outputs</h3>
  *
+ * <p>
+ *     The following outputs are produced for each variant type specified by the {@value MODE_LONG_NAME} argument
+ *     and are delineated by type-specific tags in the filename of each output, which take the form of
+ *     {@code {output-prefix}.{variant-type}.{file-suffix}}. For example, scores for the SNP calibration set
+ *     will be output to the {@code {output-prefix}.snp.calibrationScores.hdf5} file.
+ * </p>
+ *
  * <ul>
  *     <li>
- *         TODO
+ *         Training-set positive-model scores HDF5 file (.trainingScores.hdf5).
  *     </li>
  *     <li>
- *         (Optional) TODO
+ *         Positive-model serialized scorer file. (.scorer.pkl for the default {@code PYTHON_IFOREST} model backend).
+ *     </li>
+ *     <li>
+ *         (Optional) Unlabeled-set positive-model scores HDF5 file (.unlabeledScores.hdf5). This is only output
+ *         if a positive-negative modeling approach is used.
+ *     </li>
+ *     <li>
+ *         (Optional) Calibration-set scores HDF5 file (.calibrationScores.hdf5). This is only output if a calibration
+ *         set is provided. If a positive-only modeling approach is used, scores will be generated from the positive model;
+ *         if a positive-negative modeling approach is used, scores will be generated from the positive-negative model.
+ *     </li>
+ *     <li>
+ *         (Optional) Negative-model serialized scorer file. (.negative.scorer.pkl for the default {@code PYTHON_IFOREST} model backend).
+ *         This is only output if a positive-negative modeling approach is used.
  *     </li>
  * </ul>
  *
  * <h3>Usage examples</h3>
  *
  * <p>
- *     TODO, positive-only, producing the outputs 1)
+ *     Train SNP and INDEL models using the default Python IsolationForest model backend with a positive-only approach,
+ *     given an input labeled-annotations HDF5 file generated by {@link ExtractVariantAnnotations} that contains
+ *     labels for both training and calibration sets, producing the outputs 1) train.snp.scorer.pkl,
+ *     2) train.snp.trainingScores.hdf5, and 3) train.snp.calibrationScores.hdf5, as well as analogous files
+ *     for the INDEL model. Note that the {@value MODE_LONG_NAME} arguments are made explicit here, although both
+ *     SNP and INDEL modes are selected by default.
  *
  * <pre>
  *     gatk TrainVariantAnnotationsModel \
- *          TODO
+ *          --annotations-hdf5 extract.annot.hdf5 \
+ *          --mode SNP \
+ *          --mode INDEL \
+ *          -O train
  * </pre>
  * </p>
  *
  * <p>
- *     TODO, positive-negative, producing the outputs 1)
+ *     Train SNP and INDEL models using the default Python IsolationForest model backend with a positive-negative approach
+ *     (using a calibration-sensitivity threshold of 0.95 to select sites for training the negative model),
+ *     given an input labeled-annotations HDF5 file that contains labels for both training and calibration sets
+ *     and an input unlabeled-annotations HDF5 file (with both HDF5 files generated by {@link ExtractVariantAnnotations}),
+ *     producing the outputs 1) train.snp.scorer.pkl, 2) train.snp.negative.scorer.pkl, 3) train.snp.trainingScores.hdf5,
+ *     4) train.snp.calibrationScores.hdf5, and 5) train.snp.unlabeledScores.hdf5, as well as analogous files
+ *     for the INDEL model. Note that the {@value MODE_LONG_NAME} arguments are made explicit here, although both
+ *     SNP and INDEL modes are selected by default.
  *
  * <pre>
  *     gatk TrainVariantAnnotationsModel \
- *          TODO
+ *          --annotations-hdf5 extract.annot.hdf5 \
+ *          --unlabeled-annotations-hdf5 extract.unlabeled.annot.hdf5 \
+ *          --mode SNP \
+ *          --mode INDEL \
+ *          --calibration-sensitivity-threshold 0.95 \
+ *          -O train
  * </pre>
  * </p>
  *
@@ -154,7 +283,7 @@ import java.util.stream.IntStream;
  *     via the {@value PYTHON_SCRIPT_LONG_NAME} argument. See documentation in the modeling and scoring interfaces
  *     ({@link VariantAnnotationsModel} and {@link VariantAnnotationsScorer}, respectively), as well as the default
  *     Python IsolationForest implementation at {@link PythonSklearnVariantAnnotationsModel} and
- *     org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/isolation-forest.py.
+ *     src/main/resources/org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/isolation-forest.py.
  * </p>
  *
  * <p>
@@ -284,7 +413,7 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
 
         Utils.validateArg((inputUnlabeledAnnotationsFile == null) == (calibrationSensitivityThreshold == null),
                 "Unlabeled annotations and calibration-sensitivity threshold must both be unspecified (for positive-only model training) " +
-                        "or specified (for positive-unlabeled model training).");
+                        "or specified (for positive-negative model training).");
 
         availableLabelsMode = inputUnlabeledAnnotationsFile != null && calibrationSensitivityThreshold != null
                 ? AvailableLabelsMode.POSITIVE_UNLABELED
@@ -331,7 +460,8 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
     }
 
     /**
-     * TODO
+     * This method does all modeling and scoring work for a given {@code variantType}. See the tool-level documentation
+     * for the steps expected to be performed.
      */
     private void doModelingWorkForVariantType(final VariantType variantType) {
         // positive model
@@ -378,6 +508,10 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
 
             // negative model
             if (availableLabelsMode == AvailableLabelsMode.POSITIVE_UNLABELED) {
+                if (numLabeledCalibrationAndVariantType == 0) {
+                    throw new UserException.BadInput(String.format("Attempted to train %s negative model, " +
+                            "but no suitable calibration sites were found in the provided annotations.", variantTypeString));
+                }
                 final double[][] unlabeledAnnotations = LabeledVariantAnnotationsData.readAnnotations(inputUnlabeledAnnotationsFile);
                 final List<Boolean> unlabeledIsSNP = LabeledVariantAnnotationsData.readLabel(inputUnlabeledAnnotationsFile, "snp");
                 final List<Boolean> isUnlabeledVariantType = variantType == VariantType.SNP ? unlabeledIsSNP : unlabeledIsSNP.stream().map(x -> !x).collect(Collectors.toList());
@@ -420,15 +554,13 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
                     trainAndSerializeModel(negativeTrainingAnnotationsFile, outputPrefixTag + NEGATIVE_TAG);
                     logger.info(String.format("%s negative model trained and serialized with output prefix \"%s\".", variantTypeString, outputPrefix + outputPrefixTag + NEGATIVE_TAG));
 
-                    if (numLabeledCalibrationAndVariantType > 0) {
-                        logger.info(String.format("Re-scoring %d %s calibration sites...", numLabeledCalibrationAndVariantType, variantTypeString));
-                        final File labeledCalibrationAnnotationsFile = LabeledVariantAnnotationsData.subsetAnnotationsToTemporaryFile(annotationNames, annotations, isLabeledCalibrationAndVariantType);
-                        final File labeledCalibrationScoresFile = positiveNegativeScore(labeledCalibrationAnnotationsFile, outputPrefixTag, CALIBRATION_SCORES_HDF5_SUFFIX);
-                        logger.info(String.format("Calibration scores written to %s.", labeledCalibrationScoresFile.getAbsolutePath()));
-                    }
+                    logger.info(String.format("Re-scoring %d %s calibration sites...", numLabeledCalibrationAndVariantType, variantTypeString));
+                    final File labeledCalibrationAnnotationsFile = LabeledVariantAnnotationsData.subsetAnnotationsToTemporaryFile(annotationNames, annotations, isLabeledCalibrationAndVariantType);
+                    final File labeledCalibrationScoresFile = positiveNegativeScore(labeledCalibrationAnnotationsFile, outputPrefixTag, CALIBRATION_SCORES_HDF5_SUFFIX);
+                    logger.info(String.format("Calibration scores written to %s.", labeledCalibrationScoresFile.getAbsolutePath()));
                 } else {
                     throw new UserException.BadInput(String.format("Attempted to train %s negative model, " +
-                            "but no suitable sites were found in the provided annotations.", variantTypeString));
+                            "but no suitable unlabeled sites were found in the provided annotations.", variantTypeString));
                 }
             }
         } else {
@@ -437,8 +569,8 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
         }
     }
 
-    private static int numPassingFilter(List<Boolean> isPassing) {
-        return isPassing.stream().mapToInt(x -> x ? 1 : 0).sum();
+    private static int numPassingFilter(final List<Boolean> isPassing) {
+        return (int) isPassing.stream().filter(x -> x).count();
     }
 
     private void trainAndSerializeModel(final File trainingAnnotationsFile,

@@ -17,12 +17,13 @@ import java.util.List;
  * and a file containing a pickled Python lambda function for scoring,
  * the {@link #score} method can be used to generate scores.
  *
- * The scoring script is expected to load both the annotations and the pickled scoring function,
+ * The scoring script should take the arguments: {@code annotations_file}, {@code scorer_pkl_file},
+ * and {@code output_scores_file}. The script is expected to load both the annotations and the pickled scoring function,
  * which are then used to generate the file {outputPrefix}.scores.hdf5. This HDF5 file should contain
  * a double array of the scores in {@value SCORES_PATH}, in the same order as the corresponding data points
  * in the provided annotations.
  *
- * See org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/isolation-forest.py for an example implementation.
+ * See src/main/resources/org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/isolation-forest.py for an example implementation.
  */
 public final class PythonSklearnVariantAnnotationsScorer implements VariantAnnotationsScorer, Serializable {
 

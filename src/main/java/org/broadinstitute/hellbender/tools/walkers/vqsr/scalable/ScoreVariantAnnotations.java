@@ -21,7 +21,6 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
-import org.broadinstitute.hellbender.tools.copynumber.utils.HDF5Utils;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.VariantRecalibrator;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.LabeledVariantAnnotationsData;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.VariantType;
@@ -56,15 +55,15 @@ import java.util.stream.IntStream;
  *     This tool is intended to be used as the last step in a variant-filtering workflow that supersedes the
  *     {@link VariantRecalibrator} workflow. Using a previously trained model produced by {@link TrainVariantAnnotationsModel},
  *     this tool assigns a score to each call (with a lower score indicating that a call is more likely to be an artifact).
- *     Each score can also be converted to a corresponding sensitivity to a calibration set, if the latter is available.
+ *     Each score can also be converted to a corresponding sensitivity with respect to a calibration set, if the latter is available.
  *     Each VCF record can also be annotated with additional resource labels and/or hard filtered based on its
  *     calibration-set sensitivity, if desired.
  * </p>
  *
  * <p>
  *     Note that annotations and metadata are collected in memory during traversal until they are written to HDF5 files
- *     upon completion of the traversal. Memory requirements thus roughly scale linearly with both the number of sites
- *     scored and the number of annotations. For large callsets, this tool may be run in parallel over separate
+ *     upon completion of the traversal. Memory and disk requirements thus roughly scale linearly with both the number
+ *     of sites scored and the number of annotations. For large callsets, this tool may be run in parallel over separate
  *     genomic shards using the {@value StandardArgumentDefinitions#INTERVALS_LONG_NAME} argument as usual.
  * </p>
  *
@@ -180,6 +179,8 @@ import java.util.stream.IntStream;
  *     produced by {@link ExtractVariantAnnotations}. Records will be filtered according to the values provided to the
  *     {@value SNP_CALIBRATION_SENSITIVITY_THRESHOLD_LONG_NAME} and {@value INDEL_CALIBRATION_SENSITIVITY_THRESHOLD_LONG_NAME}
  *     arguments; the values below are only meant to be illustrative and should be set as appropriate for a given analysis.
+ *     Note that the {@value MODE_LONG_NAME} arguments are made explicit here, although both SNP and INDEL modes are
+ *     selected by default.
  *
  * <pre>
  *     gatk ScoreVariantAnnotations \
@@ -245,7 +246,7 @@ import java.util.stream.IntStream;
  *     See documentation in the modeling and scoring interfaces ({@link VariantAnnotationsModel} and
  *     {@link VariantAnnotationsScorer}, respectively), as well as the default Python IsolationForest implementation at
  *     {@link PythonSklearnVariantAnnotationsScorer} and
- *     org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/isolation-forest.py.
+ *     src/main/resources/org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/isolation-forest.py.
  * </p>
  *
  * DEVELOPER NOTE: See documentation in {@link LabeledVariantAnnotationsWalker}.
@@ -282,7 +283,8 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
     public static final String SCORES_HDF5_SUFFIX = ".scores.hdf5";
 
     @Argument(
-            fullName = MODEL_PREFIX_LONG_NAME)
+            fullName = MODEL_PREFIX_LONG_NAME,
+            doc = "Prefix for model files. This should be identical to the output prefix specified in TrainVariantAnnotationsModel." )
     private String modelPrefix;
 
     @Argument(
@@ -595,22 +597,22 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
     @Override
     VCFHeader constructVCFHeader(final List<String> sortedLabels) {
         final VCFHeader inputHeader = getHeaderForVariants();
-        final Set<VCFHeaderLine> inputHeaders = inputHeader.getMetaDataInSortedOrder();
+        final Set<VCFHeaderLine> sortedInputHeaderMetaData = inputHeader.getMetaDataInSortedOrder();
 
-        final Set<VCFHeaderLine> hInfo = new HashSet<>(inputHeaders);
+        final Set<VCFHeaderLine> hInfo = new HashSet<>(sortedInputHeaderMetaData);
         hInfo.add(new VCFInfoHeaderLine(scoreKey, 1, VCFHeaderLineType.Float,
                 "Score according to the model applied by ScoreVariantAnnotations"));
         hInfo.add(new VCFInfoHeaderLine(calibrationSensitivityKey, 1, VCFHeaderLineType.Float,
                 String.format("Calibration sensitivity corresponding to the value of %s", scoreKey)));
         hInfo.add(new VCFFilterHeaderLine(lowScoreFilterName, "Low score (corresponding to high calibration sensitivity)"));
 
-        hInfo.addAll(getDefaultToolVCFHeaderLines());
         if (snpKey != null) {
             hInfo.add(new VCFInfoHeaderLine(snpKey, 1, VCFHeaderLineType.Flag, "This site was considered a SNP during filtering"));
         }
         hInfo.addAll(sortedLabels.stream()
                 .map(l -> new VCFInfoHeaderLine(l, 1, VCFHeaderLineType.Flag, String.format(RESOURCE_LABEL_INFO_HEADER_LINE_FORMAT_STRING, l)))
                 .collect(Collectors.toList()));
+        hInfo.addAll(getDefaultToolVCFHeaderLines());
 
         return new VCFHeader(hInfo, inputHeader.getGenotypeSamples());
     }
