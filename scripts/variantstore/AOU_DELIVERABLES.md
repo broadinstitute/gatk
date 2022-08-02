@@ -57,13 +57,13 @@
    - This workflow extracts the data in BigQuery and transforms it into a sharded joint called VCF incorporating the VQSR filter set data.
    - It also needs to be run twice, once with `control_samples` set to "true", and with the `filter_set_name` and `extract_table_prefix` from step 5 & 6.  Include a valid (and secure) "output_gcs_dir" parameter, which is where the VCF, interval list, manifest, and sample name list files will go.
    - This workflow does not use the Terra Entity model to run, so be sure to select `Run workflow with inputs defined by file paths`.
-9. Run the notebook to create callset stats (TBD, see [VS-388](https://broadworkbench.atlassian.net/browse/VS-388)), for which you need
+9. Run the notebook to create callset stats (**TODO**, see [VS-388](https://broadworkbench.atlassian.net/browse/VS-388)), for which you need
     - permission to query table `spec-ops-aou:gvs_public_reference_data.gnomad_v3_sites`
-    - the data_project you used for all the GVS WDLs
-    - the default_dataset you used for all the GVS WDLs
+    - the Google project ID you used for all the GVS WDLs
+    - the name of the BigQuery dataset you used for all the GVS WDLs
     - the `extract_table_prefix` input from `GvsExtractCallset` step
     - the `filter_set_name` input from `GvsCreateFilterSet` step
-10.  `GvsCalculatePrecisionAndSensitivity` 
+10. [GvsCalculatePrecisionAndSensitivity](tieout/AoU_PRECISION_SENSITIVITY.md) workflow
 
 ## Deliverables (via email once the above steps are complete)
 1. location of the VCFs and interval_list files (`output_gcs_dir` input from GvsExtractCallset)
