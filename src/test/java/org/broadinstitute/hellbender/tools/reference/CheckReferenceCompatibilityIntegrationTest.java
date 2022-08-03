@@ -231,7 +231,7 @@ public class CheckReferenceCompatibilityIntegrationTest extends CommandLineProgr
         };
     }
 
-    @Test(dataProvider = "cloudInputData"/*, groups = "bucket"*/)
+    @Test(dataProvider = "cloudInputData", groups = "bucket")
     public void testReferenceCompatibilityCloudInputs(String dict, List<String> fastas, File expected, boolean isBAM, boolean isVCF) throws IOException{
         final File output = createTempFile("testCompareReferencesCloudInputs", ".table");
 

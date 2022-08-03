@@ -118,7 +118,7 @@ public class CompareReferencesIntegrationTest extends CommandLineProgramTest {
         };
     }
 
-    @Test(dataProvider = "cloudInputData"/*, groups = "bucket"*/)
+    @Test(dataProvider = "cloudInputData", groups = "bucket")
     public void testCompareReferencesCloudInputs(List<String> fastas, File expected) throws IOException{
         final File output = createTempFile("testCompareReferencesCloudInputs", ".table");
         List<String> arguments = new ArrayList<>();
