@@ -41,7 +41,7 @@
    - You will want to set the `external_sample_names`, `input_vcfs` and `input_vcf_indexes` inputs based on the columns in the workspace Data table, e.g. "this.samples.research_id", "this.samples.reblocked_gvcf_v2" and "this.samples.reblocked_gvcf_index_v2".
 3. `GvsWithdrawSamples` workflow
    - Run if there are any samples to withdraw from the last callset.
-4. **TBD Workflow to eradicate samples**
+4. **TBD Workflow to soft delete samples**
 5. `GvsCreateAltAllele` workflow
    - **TODO:** needs to be made cumulative so that it can add data to the existing table instead of creating it from scratch on each run (see [VS-52](https://broadworkbench.atlassian.net/browse/VS-52))
    - This step loads data into the `alt_allele` table from the `vet_*` tables in preparation for running the filtering step.
