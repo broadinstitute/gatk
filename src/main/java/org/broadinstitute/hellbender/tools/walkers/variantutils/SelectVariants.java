@@ -618,6 +618,24 @@ public final class SelectVariants extends VariantWalker {
                 return;
         }
 
+        // Write the subsetted variant if it matches all of the expressions
+        boolean failedJexlMatch = false;
+
+        try {
+            for (VariantContextUtils.JexlVCMatchExp jexl : jexls) {
+                if (invertLogic(!VariantContextUtils.match(vc, jexl), invertSelect)){
+                    failedJexlMatch = true;
+                    return;
+                }
+            }
+        } catch (IllegalArgumentException e) {
+            // The IAE thrown by htsjdk already includes an informative error message ("Invalid JEXL
+            //  expression detected...")
+            throw new UserException(e.getMessage() +
+                    "\nSee https://gatk.broadinstitute.org/hc/en-us/articles/360035891011-JEXL-filtering-expressions for documentation on using JEXL in GATK", e);
+        }
+
+
         final VariantContext sub = subsetRecord(vc, preserveAlleles, removeUnusedAlternates);
         final VariantContext filteredGenotypeToNocall;
 
@@ -639,22 +657,7 @@ public final class SelectVariants extends VariantWalker {
                 && (!XLfiltered || !filteredGenotypeToNocall.isFiltered()))
         {
 
-            // Write the subsetted variant if it matches all of the expressions
-            boolean failedJexlMatch = false;
 
-            try {
-                for (VariantContextUtils.JexlVCMatchExp jexl : jexls) {
-                    if (invertLogic(!VariantContextUtils.match(filteredGenotypeToNocall, jexl), invertSelect)){
-                        failedJexlMatch = true;
-                        break;
-                    }
-                }
-            } catch (IllegalArgumentException e) {
-                // The IAE thrown by htsjdk already includes an informative error message ("Invalid JEXL
-                //  expression detected...")
-                throw new UserException(e.getMessage() +
-                        "\nSee https://gatk.broadinstitute.org/hc/en-us/articles/360035891011-JEXL-filtering-expressions for documentation on using JEXL in GATK", e);
-            }
 
             if (!failedJexlMatch &&
                     (!selectRandomFraction || Utils.getRandomGenerator().nextDouble() < fractionRandom)) {

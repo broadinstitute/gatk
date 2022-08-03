@@ -43,3 +43,4 @@ funcotator_tmp
 
 #Test generated dot files
 test*.dot
+/gatkStreamingProcessJournal-1333194697.txt
