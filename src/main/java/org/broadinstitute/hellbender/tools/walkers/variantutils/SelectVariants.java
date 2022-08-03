@@ -567,6 +567,17 @@ public final class SelectVariants extends VariantWalker {
     @Override
     public void apply(VariantContext vc, ReadsContext readsContext, ReferenceContext ref, FeatureContext featureContext) {
 
+        // REMOVE THIS CODE
+        // If we do not have AF, drop this variant.
+        if (!vc.hasAttribute(VCFConstants.ALLELE_FREQUENCY_KEY)) {
+            return;
+        }
+        // If AF < 0.001, drop this variant.
+        if (vc.getAttributeAsDouble(VCFConstants.ALLELE_FREQUENCY_KEY, -1.0) < 0.001) {
+            return;
+        }
+        // END REMOVE THIS CODE
+
         /*check for pending variants to write out
         since variant starts will only be moved further right, we can write out a pending variant if the current variant start is after the pending variant start
         variant record locations can move to the right due to allele trimming if preserveAlleles is false
@@ -618,24 +629,6 @@ public final class SelectVariants extends VariantWalker {
                 return;
         }
 
-        // Write the subsetted variant if it matches all of the expressions
-        boolean failedJexlMatch = false;
-
-        try {
-            for (VariantContextUtils.JexlVCMatchExp jexl : jexls) {
-                if (invertLogic(!VariantContextUtils.match(vc, jexl), invertSelect)){
-                    failedJexlMatch = true;
-                    return;
-                }
-            }
-        } catch (IllegalArgumentException e) {
-            // The IAE thrown by htsjdk already includes an informative error message ("Invalid JEXL
-            //  expression detected...")
-            throw new UserException(e.getMessage() +
-                    "\nSee https://gatk.broadinstitute.org/hc/en-us/articles/360035891011-JEXL-filtering-expressions for documentation on using JEXL in GATK", e);
-        }
-
-
         final VariantContext sub = subsetRecord(vc, preserveAlleles, removeUnusedAlternates);
         final VariantContext filteredGenotypeToNocall;
 
@@ -657,7 +650,22 @@ public final class SelectVariants extends VariantWalker {
                 && (!XLfiltered || !filteredGenotypeToNocall.isFiltered()))
         {
 
+            // Write the subsetted variant if it matches all of the expressions
+            boolean failedJexlMatch = false;
 
+            try {
+                for (VariantContextUtils.JexlVCMatchExp jexl : jexls) {
+                    if (invertLogic(!VariantContextUtils.match(sub, jexl), invertSelect)){
+                        failedJexlMatch = true;
+                        break;
+                    }
+                }
+            } catch (IllegalArgumentException e) {
+                // The IAE thrown by htsjdk already includes an informative error message ("Invalid JEXL
+                //  expression detected...")
+                throw new UserException(e.getMessage() +
+                        "\nSee https://gatk.broadinstitute.org/hc/en-us/articles/360035891011-JEXL-filtering-expressions for documentation on using JEXL in GATK", e);
+            }
 
             if (!failedJexlMatch &&
                     (!selectRandomFraction || Utils.getRandomGenerator().nextDouble() < fractionRandom)) {
