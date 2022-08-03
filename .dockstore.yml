@@ -222,7 +222,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - mc_debug_temurin_issues
+         - mc_restore_temurin
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
