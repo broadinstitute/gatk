@@ -94,7 +94,7 @@ workflow GvsQuickstartIntegration {
             go = GvsUnified.done,
             dataset_name = BuildGATKJarAndCreateDataset.dataset_name,
             project_id = project_id,
-            expected_output_csv = "gs://gvs-internal-quickstart/integration/2022-07-05/table_sizes_expected.csv"
+            expected_output_csv = expected_output_prefix + "table_sizes_expected.csv"
     }
 
     output {
