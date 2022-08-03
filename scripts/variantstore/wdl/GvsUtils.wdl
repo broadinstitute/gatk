@@ -254,25 +254,18 @@ task BuildGATKJarAndCreateDataset {
 
   command <<<
     # Much of this could/should be put into a Docker image.
-    set -o errexit -o nounset -o pipefail -o xtrace
+    set -o errexit -o nounset -o pipefail
 
     # git and git-lfs
     apt-get -qq update
     apt-get -qq install git git-lfs
 
-    # Temurin Java 11
-    # apt-get -qq install wget apt-transport-https gnupg
-    # wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | apt-key add -
-    # echo "deb https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | tee /etc/apt/sources.list.d/adoptium.list
-    # apt-get -qq --fix-missing update
-    # apt -qq install -y temurin-11-jdk
-
-    # Corretto Java 11
-    apt-get -qq install wget apt-transport-https gnupg software-properties-common
-    wget -O- https://apt.corretto.aws/corretto.key | apt-key add -
-    add-apt-repository 'deb https://apt.corretto.aws stable main'
+    # Java
+    apt-get -qq install wget apt-transport-https gnupg
+    wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | apt-key add -
+    echo "deb https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | tee /etc/apt/sources.list.d/adoptium.list
     apt-get -qq update
-    apt-get install -y java-11-amazon-corretto-jdk
+    apt -qq install -y temurin-11-jdk
 
     # GATK
     git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{branch_name} --single-branch
