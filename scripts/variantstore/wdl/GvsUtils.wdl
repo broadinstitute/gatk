@@ -254,13 +254,23 @@ task BuildGATKJarAndCreateDataset {
 
   command <<<
     # Much of this could/should be put into a Docker image.
-    set -o errexit -o nounset -o pipefail
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     # git and git-lfs
     apt-get -qq update
     apt-get -qq install git git-lfs
 
-    # Java
+    # The Terra microservices are currently aligned on Temurin as their JDK distribution which is why we use it here.
+    # However at least once Temurin unexpectedly became unavailable for download for several hours which broke this
+    # task and its dependents. The following block switched the JDK distribution to Amazon Corretto 11 which appeared to
+    # work just fine for our purposes during Temurin's brief absence.
+    #
+    # Corretto Java 11
+    # apt-get -qq install wget apt-transport-https gnupg software-properties-common
+    # wget -O- https://apt.corretto.aws/corretto.key | apt-key add -
+    # add-apt-repository 'deb https://apt.corretto.aws stable main'
+
+    # Temurin Java 11
     apt-get -qq install wget apt-transport-https gnupg
     wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | apt-key add -
     echo "deb https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | tee /etc/apt/sources.list.d/adoptium.list
