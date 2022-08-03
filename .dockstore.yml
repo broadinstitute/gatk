@@ -140,6 +140,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - gg_VS-548_HandleSubsetsOfSubpopulations
    - name: GvsCreateVATAnnotations
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVATAnnotations.wdl
@@ -167,6 +168,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - gg_VS-548_HandleSubsetsOfSubpopulations
    - name: GvsExtractCohortFromSampleNames
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCohortFromSampleNames.wdl
@@ -220,7 +222,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - mc_debug_temurin_issues
+         - mc_restore_temurin
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
