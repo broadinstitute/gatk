@@ -16,6 +16,7 @@
   - [GvsPrepareRangesCallset](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsPrepareRangesCallset) workflow (VCF output)
   - [GvsExtractCallset](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsExtractCallset) workflow (VCF output)
   - [GvsCalculatePrecisionAndSensitivity](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCalculatePrecisionAndSensitivity) workflow
+  - [GvsCallsetCost](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCallsetCost) workflow
   - **TBD VDS Prepare WDL/notebook/??**
   - **TBD VDS Extract WDL/notebook/??**
 - Run the "Fetch WGS metadata for samples from list" notebook after you have placed the file with the list of the new samples to ingest in a GCS location the notebook (running with your @pmi-ops account) will have access to.  This will grab the samples from the workspace where they were reblocked and bring them into this callset workspace.
@@ -42,7 +43,7 @@
    - Run if there are any samples to withdraw from the last callset.
 4. **TBD Workflow to eradicate samples**
 5. `GvsCreateAltAllele` workflow
-   - **TODO:** needs to be made cumulative so that it can add date to the existing table instead of creating it from scratch on each run (see [VS-52](https://broadworkbench.atlassian.net/browse/VS-52))
+   - **TODO:** needs to be made cumulative so that it can add data to the existing table instead of creating it from scratch on each run (see [VS-52](https://broadworkbench.atlassian.net/browse/VS-52))
    - This step loads data into the `alt_allele` table from the `vet_*` tables in preparation for running the filtering step.
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
 6. `GvsCreateFilterSet` workflow
@@ -66,6 +67,8 @@
      - the `extract_table_prefix` input from `GvsExtractCallset` step
      - the `filter_set_name` input from `GvsCreateFilterSet` step
 12. [GvsCalculatePrecisionAndSensitivity](tieout/AoU_PRECISION_SENSITIVITY.md#generating-callset-precision-and-sensitivity-values) workflow
+13. `GvsCallsetCost`
+    - The cost from this callset, which represents the total BigQuery cost (which is not represented in the Terra UI total workflow cost) from the GVS pipeline workflows, is used to calculate the cost of the callset as a whole and by sample.
 
 
 ## Deliverables (via email to stakeholders once the above steps are complete)
