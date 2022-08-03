@@ -1990,8 +1990,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
 
         final String[] args = {
                         "-R","gs://gcp-public-data--broad-references/hg38/v0/dragen_reference/Homo_sapiens_assembly38_masked.fasta",
-                        "-I","gs://fc-971fd540-210c-4e5a-87ce-d3f8c91c7557/cd116232-e71c-42c4-94ac-58270049a825/WholeGenomeGermlineSingleSample/109ec11c-fe19-44ce-930d-46d70e279729/call-UnmappedBamToAlignedBam/UnmappedBamToAlignedBam/04128a24-d032-4f42-afc7-71be3addd01b/call-GatherBamFiles/HG002_challenge.bam",
-                        "-L","chr1:11,577,280-11,577,519","--ip","200",
+                        "-I","gs://fc-971fd540-210c-4e5a-87ce-d3f8c91c7557/4a7a7960-9271-4e78-bf18-971c4394e752/WholeGenomeGermlineSingleSample/c7084036-2d6b-415d-8d7c-58008ef9e7d4/call-UnmappedBamToAlignedBam/UnmappedBamToAlignedBam/53564b5f-c104-4c3b-a568-4732574e9124/call-SortSampleBam/HG002_rep1.aligned.duplicate_marked.sorted.bam",
+                        "-L","chr1:39979346-39979785",
                         "-O",outputPath,
                         "--pileup-detection","--pileup-detection-bad-read-tolerance","0.40","--pileup-detection-enable-indel-pileup-calling",
                         "-contamination","0.0 ",

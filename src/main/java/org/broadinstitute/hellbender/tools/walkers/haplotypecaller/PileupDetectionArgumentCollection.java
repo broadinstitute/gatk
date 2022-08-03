@@ -68,7 +68,7 @@ public final class PileupDetectionArgumentCollection {
     public double snpThreshold = 0.1;
     @Hidden
     @Argument(fullName= PILEUP_DETECTION_INDEL_THRESHOLD, doc = "Pileup Detection: Percentage of alt supporting reads in order to consider alt indel. (Requires '--"+PILEUP_DETECTION_LONG_NAME+"' argument)", optional = true)
-    public double indelThreshold = 0.5;
+    public double indelThreshold = 0.1;
 
     @Hidden
     @Argument(fullName= PILEUP_DETECTION_ABSOLUTE_ALT_DEPTH, doc = "Pileup Detection: Absolute number of alt reads necessary to be included in pileup events. (Requires '--"+PILEUP_DETECTION_LONG_NAME+"' argument)", optional = true)

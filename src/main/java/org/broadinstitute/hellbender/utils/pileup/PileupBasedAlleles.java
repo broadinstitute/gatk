@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.PileupDetectionArgumentCollection;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.*;
@@ -22,6 +23,8 @@ import java.util.*;
  * equivalent to the DRAGEN ColumnwiseDetection approach.
  */
 public final class PileupBasedAlleles {
+
+    final static String MISMATCH_BASES_PERCENTAGE_TAG = "MZ";
 
     /**
      * Accepts the raw per-base pileups stored from the active region detection code and parses them for potential variants
@@ -82,23 +85,31 @@ public final class PileupBasedAlleles {
                     if (element.isBeforeInsertion()) {
                         incrementInsertionCount(element.getBasesOfImmediatelyFollowingInsertion(), insertionCounts);
                         totalAltReads++;
+
+                        //TODO this is possibly double dipping if there are snps adjacent to indels?
+                        // Handle the "badness"
+                        if (evaluateBadRead(element.getRead(), referenceContext, args, headerForReads)) {
+                            totalAltBadReads++;
+                        }
+                        if (evaluateBadReadForAssembly(element.getRead(), referenceContext, args, headerForReads)) {
+                            totalAltBadAssemblyReads++;
+                        }
                     }
 
                     if (element.isBeforeDeletionStart()) {
                         incrementDeletionCount(element.getLengthOfImmediatelyFollowingIndel(), deletionCounts);
                         totalAltReads++;
-                    }
 
-                    //TODO this is possibly double dipping if there are snps adjacent to indels?
-                    // Handle the "badness"
-                    if (evaluateBadRead(element.getRead(), referenceContext, args, headerForReads)) {
-                        totalAltBadReads++;
-                    }
-                    if (evaluateBadReadForAssembly(element.getRead(), referenceContext, args, headerForReads)) {
-                        totalAltBadAssemblyReads++;
+                        //TODO this is possibly double dipping if there are snps adjacent to indels?
+                        // Handle the "badness"
+                        if (evaluateBadRead(element.getRead(), referenceContext, args, headerForReads)) {
+                            totalAltBadReads++;
+                        }
+                        if (evaluateBadReadForAssembly(element.getRead(), referenceContext, args, headerForReads)) {
+                            totalAltBadAssemblyReads++;
+                        }
                     }
                 }
-
             }
 
             // Evaluate the detected SNP alleles for this site
@@ -238,19 +249,24 @@ public final class PileupBasedAlleles {
         SAMRecord samRecordForRead = read.convertToSAMRecord(headerForRead);
 
         // Assert that the edit distance for the read is in line
-        if (args.badReadEditDistance > 0.0) {
-            final int nmScore;
-            if (! read.hasAttribute("NM")) {
-                nmScore = SequenceUtil.calculateSamNmTag(samRecordForRead, referenceContext.getBases(new SimpleInterval(read)), read.getStart() - 1);
-            } else {
-                nmScore = read.getAttributeAsInteger("NM");
-            }
-            // We adjust the NM score by any indels in the read
-            int adjustedNMScore = nmScore - read.getCigarElements().stream().filter(element -> element.getOperator().isIndel()).mapToInt(CigarElement::getLength).sum();
-            if (adjustedNMScore > (read.getCigarElements().stream().filter(element -> element.getOperator().isAlignment()).mapToInt(CigarElement::getLength).sum() * args.badReadEditDistance)) {
-                return true;
-            }
+        final Integer mismatchPercentage = read.getAttributeAsInteger(MISMATCH_BASES_PERCENTAGE_TAG);
+        Utils.nonNull(mismatchPercentage);
+        if ((mismatchPercentage / 1000.0) > args.badReadEditDistance) {
+            return true;
         }
+//        if (args.badReadEditDistance > 0.0) {
+//            final int nmScore;
+//            if (! read.hasAttribute("NM")) {
+//                nmScore = SequenceUtil.calculateSamNmTag(samRecordForRead, referenceContext.getBases(new SimpleInterval(read)), read.getStart() - 1);
+//            } else {
+//                nmScore = read.getAttributeAsInteger("NM");
+//            }
+//            // We adjust the NM score by any indels in the read
+//            int adjustedNMScore = nmScore - read.getCigarElements().stream().filter(element -> element.getOperator().isIndel()).mapToInt(CigarElement::getLength).sum();
+//            if (adjustedNMScore > (read.getCigarElements().stream().filter(element -> element.getOperator().isAlignment()).mapToInt(CigarElement::getLength).sum() * args.badReadEditDistance)) {
+//                return true;
+//            }
+//        }
 
         //TODO add threshold descibed by illumina about insert size compared to the average
         if (args.templateLengthStd > 0 && args.templateLengthMean > 0) {
@@ -269,26 +285,26 @@ public final class PileupBasedAlleles {
         if (args.assemblyBadReadThreshold <= 0.0) {
             return false;
         }
+        Utils.nonNull(read.getAttributeAsInteger(MISMATCH_BASES_PERCENTAGE_TAG));
+        return (read.getAttributeAsInteger(MISMATCH_BASES_PERCENTAGE_TAG) / 1000.0) > args.assemblyBadReadEditDistance;
 
-        //TODO this conversion is really unnecessary. Perhaps we should expose a new SequenceUtil like NM tag calculation?...
-        SAMRecord samRecordForRead = read.convertToSAMRecord(headerForRead);
-
-        // Assert that the edit distance for the read is in line
-        if (args.assemblyBadReadEditDistance > 0.0) {
-            final int nmScore;
-            if (! read.hasAttribute("NM")) {
-                nmScore = SequenceUtil.calculateSamNmTag(samRecordForRead, referenceContext.getBases(new SimpleInterval(read)), read.getStart() - 1);
-            } else {
-                nmScore = read.getAttributeAsInteger("NM");
-            }
-            // We adjust the NM score by any indels in the read
-            int adjustedNMScore = nmScore - read.getCigarElements().stream().filter(element -> element.getOperator().isIndel()).mapToInt(CigarElement::getLength).sum();
-            if (adjustedNMScore > (read.getCigarElements().stream().filter(element -> element.getOperator().isAlignment()).mapToInt(CigarElement::getLength).sum() * args.assemblyBadReadEditDistance)) {
-                return true;
-            }
-        }
-
-        return false;
+//        //TODO this conversion is really unnecessary. Perhaps we should expose a new SequenceUtil like NM tag calculation?...
+//        SAMRecord samRecordForRead = read.convertToSAMRecord(headerForRead);
+//
+//        // Assert that the edit distance for the read is in line
+//        if (args.assemblyBadReadEditDistance > 0.0) {
+//            final int nmScore;
+//            if (! read.hasAttribute("NM")) {
+//                nmScore = SequenceUtil.calculateSamNmTag(samRecordForRead, referenceContext.getBases(new SimpleInterval(read)), read.getStart() - 1);
+//            } else {
+//                nmScore = read.getAttributeAsInteger("NM");
+//            }
+//            // We adjust the NM score by any indels in the read
+//            int adjustedNMScore = nmScore - read.getCigarElements().stream().filter(element -> element.getOperator().isIndel()).mapToInt(CigarElement::getLength).sum();
+//            if (adjustedNMScore > (read.getCigarElements().stream().filter(element -> element.getOperator().isAlignment()).mapToInt(CigarElement::getLength).sum() * args.assemblyBadReadEditDistance)) {
+//                return true;
+//            }
+//        }
     }
 
     private static void incrementInsertionCount(String insertion, Map<String, Integer> insertionCounts){
@@ -304,6 +320,27 @@ public final class PileupBasedAlleles {
     private static void incrementAltCount(byte base, Map<Byte, Integer> altCounts){
         altCounts.put(base,
                 altCounts.getOrDefault(base,0) + 1);
+    }
+
+
+    public static void addMismatchPercentageToRead(final GATKRead read, final SAMFileHeader headerForRead, final ReferenceContext referenceContext) {
+        //TODO this conversion is really unnecessary. Perhaps we should expose a new SequenceUtil like NM tag calculation?...
+        if (read.hasAttribute(MISMATCH_BASES_PERCENTAGE_TAG)){
+            return;
+        }
+
+        SAMRecord samRecordForRead = read.convertToSAMRecord(headerForRead);
+        final int nmScore;
+        if (! read.hasAttribute("NM")) {
+            nmScore = SequenceUtil.calculateSamNmTag(samRecordForRead, referenceContext.getBases(new SimpleInterval(read)), read.getStart() - 1);
+        } else {
+            nmScore = read.getAttributeAsInteger("NM");
+        }
+        // We adjust the NM score by any indels in the read
+        int adjustedNMScore = nmScore - read.getCigarElements().stream().filter(element -> element.getOperator().isIndel()).mapToInt(CigarElement::getLength).sum();
+
+        // We store the percentage as an integer
+        read.setAttribute(MISMATCH_BASES_PERCENTAGE_TAG, 1000 * adjustedNMScore / (read.getCigarElements().stream().filter(element -> element.getOperator().isAlignment()).mapToInt(CigarElement::getLength).sum() ));
     }
 
 

@@ -550,6 +550,10 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         final GenotypesContext genotypes = GenotypesContext.create(splitContexts.keySet().size());
         final MathUtils.RunningAverage averageHQSoftClips = new MathUtils.RunningAverage();
         for (final Map.Entry<String, AlignmentContext> sample : splitContexts.entrySet()) {
+            // We summarize the reads mismatches vs the ref at this stage to avoid issues due to reads being hardclipped down the road.
+            if (hcArgs.pileupDetectionArgs.usePileupDetection) {
+                sample.getValue().getBasePileup().forEach(p -> PileupBasedAlleles.addMismatchPercentageToRead(p.getRead(), readsHeader, ref));
+            }
             // The ploidy here is not dictated by the sample but by the simple genotyping-engine used to determine whether regions are active or not.
             final int activeRegionDetectionHackishSamplePloidy = activeRegionEvaluationGenotyperEngine.getConfiguration().genotypeArgs.samplePloidy;
             final double[] genotypeLikelihoods = ((RefVsAnyResult) referenceConfidenceModel.calcGenotypeLikelihoodsOfRefVsAny(
