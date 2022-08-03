@@ -104,36 +104,36 @@ task MakeSubpopulationFiles {
         File inputFileofFileNames
         File inputFileofIndexFileNames
     }
-    parameter_meta {
-        input_ancestry_file:
-        {
-            localization_optional: true
-        }
-        inputFileofFileNames:
-        {
-            localization_optional: true
-        }
-        inputFileofIndexFileNames:
-        {
-            localization_optional: true
-        }
-    }
+#    parameter_meta {
+#        input_ancestry_file:
+#        {
+#            localization_optional: true
+#        }
+#        inputFileofFileNames:
+#        {
+#            localization_optional: true
+#        }
+#        inputFileofIndexFileNames:
+#        {
+#            localization_optional: true
+#        }
+#    }
     String output_ancestry_filename =  "ancestry_mapping.tsv"
     String custom_annotations_template_filename =  "custom_annotations_template.tsv"
-    String updated_input_ancestry_file = basename(input_ancestry_file)
-    String updated_input_vcfs_file = basename(inputFileofFileNames)
-    String updated_input_indices_file = basename(inputFileofIndexFileNames)
+#    String updated_input_ancestry_file = basename(input_ancestry_file)
+#    String updated_input_vcfs_file = basename(inputFileofFileNames)
+#    String updated_input_indices_file = basename(inputFileofIndexFileNames)
 
     command <<<
         set -e
 
-        gsutil cp ~{input_ancestry_file} .
-        gsutil cp ~{inputFileofFileNames} .
-        gsutil cp ~{inputFileofIndexFileNames} .
-
+#        gsutil cp ~{input_ancestry_file} .
+#        gsutil cp ~{inputFileofFileNames} .
+#        gsutil cp ~{inputFileofIndexFileNames} .
+#
         ## the ancestry file is processed down to a simple mapping from sample to subpopulation
         python3 /app/extract_subpop.py \
-            --input_path ~{updated_input_ancestry_file} \
+            --input_path ~{input_ancestry_file} \
             --output_path ~{output_ancestry_filename} \
             --custom_annotations_template_path ~{custom_annotations_template_filename}
     >>>
@@ -152,8 +152,8 @@ task MakeSubpopulationFiles {
     output {
         File ancestry_mapping_list = output_ancestry_filename
         File custom_annotations_template_file = custom_annotations_template_filename
-        Array[File] input_vcfs = read_lines(updated_input_vcfs_file)
-        Array[File] input_vcf_indices = read_lines(updated_input_indices_file)
+        Array[File] input_vcfs = read_lines(inputFileofFileNames)
+        Array[File] input_vcf_indices = read_lines(inputFileofIndexFileNames)
     }
 }
 

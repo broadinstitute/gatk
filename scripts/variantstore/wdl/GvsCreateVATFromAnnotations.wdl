@@ -80,7 +80,7 @@ task GetAnnotations {
     # ------------------------------------------------
     # Outputs:
     output {
-        Array[File] input_jsons = read_lines(inputFileOfFileNames)
+        Array[File] input_jsons = read_lines(inputFileofFileNames)
     }
 }
 
