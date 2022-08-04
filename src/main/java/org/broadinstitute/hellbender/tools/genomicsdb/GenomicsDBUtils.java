@@ -85,7 +85,7 @@ public class GenomicsDBUtils {
         vidMapPB = updateFieldSetDisableRemapMissingAlleleToNonRef(vidMapPB, fieldNameToIndexInVidFieldsList,
                 GATKVCFConstants.AS_SB_TABLE_KEY, true);
         vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
-                GATKVCFConstants.TREE_SCORE, SUM);
+                GATKVCFConstants.TREE_SCORE, ELEMENT_WISE_SUM);
         vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
                 GATKVCFConstants.HAPLOTYPE_COMPLEXITY_KEY, ELEMENT_WISE_SUM);
         vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
