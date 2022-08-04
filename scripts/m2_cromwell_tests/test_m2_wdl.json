@@ -8,8 +8,6 @@
   "Mutect2.tumor_reads_index": "/home/runner/work/gatk/gatk/src/test/resources/large/mutect/dream_synthetic_bams/tumor_1.bam.bai",
   "Mutect2.normal_reads": "/home/runner/work/gatk/gatk/src/test/resources/large/mutect/dream_synthetic_bams/normal_1.bam",
   "Mutect2.normal_reads_index": "/home/runner/work/gatk/gatk/src/test/resources/large/mutect/dream_synthetic_bams/normal_1.bam.bai",
-  "Mutect2.funco_data_sources_tar_gz": "/home/runner/work/gatk/gatk/small_ds_pik3ca.tar.gz",
-  "Mutect2.funco_reference_version": "hg19",
   "Mutect2.scatter_count": 2,
   "Mutect2.run_orientation_bias_mixture_model_filter": true,
   "Mutect2.run_funcotator": true,
