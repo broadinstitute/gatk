@@ -264,7 +264,7 @@ task Add_AS_MAX_VQSLOD_ToVcf {
     File input_vcf
     String output_basename
 
-    String docker = "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_08_01"
+    String docker = "us.gcr.io/broad-dsde-methods/variantstore:gg_vs_444_remove_sa"
     Int cpu = 1
     Int memory_mb = 3500
     Int disk_size_gb = ceil(2*size(input_vcf, "GiB")) + 50

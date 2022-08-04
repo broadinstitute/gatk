@@ -62,7 +62,7 @@ task WorkflowComputeCosts {
     >>>
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_08_01"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_vs_444_remove_sa"
     }
 
     output {

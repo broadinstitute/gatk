@@ -19,7 +19,6 @@ workflow GvsCreateFilterSet {
 
     Int? INDEL_VQSR_max_gaussians_override = 4
     Int? INDEL_VQSR_mem_gb_override
-    String? service_account_json_path
     Int? SNP_VQSR_max_gaussians_override = 6
     Int? SNP_VQSR_mem_gb_override
     # This is the minimum number of samples where the SNP model will be created and applied in separate tasks
@@ -58,15 +57,13 @@ workflow GvsCreateFilterSet {
   call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
     input:
       query_project = project_id,
-      fq_table = fq_sample_table,
-      service_account_json_path = service_account_json_path
+      fq_table = fq_sample_table
   }
 
   call Utils.GetNumSamplesLoaded {
     input:
       fq_sample_table = fq_sample_table,
       fq_sample_table_lastmodified_timestamp = SamplesTableDatetimeCheck.last_modified_timestamp,
-      service_account_json_path = service_account_json_path,
       project_id = project_id
   }
 
@@ -88,8 +85,7 @@ workflow GvsCreateFilterSet {
   call Utils.GetBQTableLastModifiedDatetime as AltAlleleTableDatetimeCheck {
     input:
       query_project = project_id,
-      fq_table = fq_alt_allele_table,
-      service_account_json_path = service_account_json_path
+      fq_table = fq_alt_allele_table
   }
 
   scatter(i in range(length(SplitIntervals.interval_files))) {
@@ -106,7 +102,6 @@ workflow GvsCreateFilterSet {
         alt_allele_table_timestamp = AltAlleleTableDatetimeCheck.last_modified_timestamp,
         excess_alleles_threshold   = 1000000,
         output_file                = "${filter_set_name}_${i}.vcf.gz",
-        service_account_json_path  = service_account_json_path,
         query_project              = project_id,
         dataset_id                 = dataset_name,
         call_set_identifier        = call_set_identifier
@@ -240,7 +235,6 @@ workflow GvsCreateFilterSet {
       indel_recal_file = IndelsVariantRecalibrator.recalibration,
       indel_recal_file_index = IndelsVariantRecalibrator.recalibration_index,
       fq_info_destination_table = fq_info_destination_table,
-      service_account_json_path = service_account_json_path,
       query_project = project_id
   }
 
@@ -251,7 +245,6 @@ workflow GvsCreateFilterSet {
       sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
       sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
       fq_filter_sites_destination_table = fq_filter_sites_destination_table,
-      service_account_json_path = service_account_json_path,
       query_project = project_id
   }
 
@@ -262,7 +255,6 @@ workflow GvsCreateFilterSet {
       snp_recal_tranches = select_first([SNPGatherTranches.tranches_file, SNPsVariantRecalibratorClassic.tranches]),
       indel_recal_tranches = IndelsVariantRecalibrator.tranches,
       fq_tranches_destination_table = fq_tranches_destination_table,
-      service_account_json_path = service_account_json_path,
       query_project = project_id
   }
 
@@ -300,26 +292,17 @@ task ExtractFilterTask {
 
     # Runtime Options:
     File? gatk_override
-    String? service_account_json_path
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
-  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
   String intervals_name = basename(intervals)
 
 
   command <<<
     set -e
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
-
-    if [ ~{has_service_account_file} = 'true' ]; then
-      gsutil cp ~{service_account_json_path} local.service_account.json
-      export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-      gcloud auth activate-service-account --key-file=local.service_account.json
-      gcloud config set project ~{query_project}
-    fi
 
     df -h
 
@@ -366,7 +349,6 @@ task PopulateFilterSetInfo {
     File indel_recal_file
     File indel_recal_file_index
 
-    String? service_account_json_path
     String query_project
 
     File? gatk_override
@@ -375,17 +357,8 @@ task PopulateFilterSetInfo {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
-  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
-
   command <<<
     set -eo pipefail
-
-    if [ ~{has_service_account_file} = 'true' ]; then
-      gsutil cp ~{service_account_json_path} local.service_account.json
-      export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-      gcloud auth activate-service-account --key-file=local.service_account.json
-      gcloud config set project ~{query_project}
-    fi
 
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
@@ -445,7 +418,6 @@ task PopulateFilterSetSites {
     File sites_only_variant_filtered_vcf
     File sites_only_variant_filtered_vcf_index
 
-    String? service_account_json_path
     String query_project
 
     File? gatk_override
@@ -454,17 +426,8 @@ task PopulateFilterSetSites {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
-  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
-
   command <<<
     set -eo pipefail
-
-    if [ ~{has_service_account_file} = 'true' ]; then
-    gsutil cp ~{service_account_json_path} local.service_account.json
-    export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-    gcloud auth activate-service-account --key-file=local.service_account.json
-    gcloud config set project ~{query_project}
-    fi
 
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
@@ -513,24 +476,14 @@ task PopulateFilterSetTranches {
     File snp_recal_tranches
     File indel_recal_tranches
 
-    String? service_account_json_path
     String query_project
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
-  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
-
   command <<<
     set -eo pipefail
-
-    if [ ~{has_service_account_file} = 'true' ]; then
-    gsutil cp ~{service_account_json_path} local.service_account.json
-    export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-    gcloud auth activate-service-account --key-file=local.service_account.json
-    gcloud config set project ~{query_project}
-    fi
 
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 

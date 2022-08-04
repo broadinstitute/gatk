@@ -13,7 +13,6 @@ workflow GvsAssignIds {
     Boolean samples_are_controls = false
 
     File? assign_ids_gatk_override
-    String? service_account_json_path
   }
 
   String sample_info_table = "sample_info"
@@ -28,8 +27,7 @@ workflow GvsAssignIds {
       schema_json = sample_info_schema_json,
       max_table_id = 1,
       superpartitioned = "false",
-      partitioned = "false",
-      service_account_json_path = service_account_json_path,
+      partitioned = "false"
   }
 
   call GvsCreateTables.CreateTables as CreateSampleLoadStatusTable {
@@ -40,8 +38,7 @@ workflow GvsAssignIds {
       schema_json = sample_load_status_json,
       max_table_id = 1,
       superpartitioned = "false",
-      partitioned = "false",
-      service_account_json_path = service_account_json_path,
+      partitioned = "false"
   }
 
   call CreateCostObservabilityTable {
@@ -58,16 +55,14 @@ workflow GvsAssignIds {
       sample_info_table = sample_info_table,
       samples_are_controls = samples_are_controls,
       table_creation_done = CreateSampleInfoTable.done,
-      gatk_override = assign_ids_gatk_override,
-      service_account_json_path = service_account_json_path
+      gatk_override = assign_ids_gatk_override
   }
 
   call GvsCreateTables.CreateBQTables as CreateTablesForMaxId {
     input:
       project_id = project_id,
       dataset_name = dataset_name,
-      max_table_id = AssignIds.max_table_id,
-      service_account_json_path = service_account_json_path,
+      max_table_id = AssignIds.max_table_id
   }
 
   output {
@@ -88,7 +83,6 @@ task AssignIds {
 
     # runtime
     File? gatk_override
-    String? service_account_json_path
   }
   meta {
     description: "Assigns Ids to samples"
@@ -96,7 +90,6 @@ task AssignIds {
   }
 
   Int samples_per_table = 4000
-  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
   # add labels for DSP Cloud Cost Control Labeling and Reporting
   String bq_labels = "--label service:gvs --label team:variants --label managedby:assign_ids"
 
@@ -112,11 +105,6 @@ task AssignIds {
     fi
 
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
-
-    if [ ~{has_service_account_file} = 'true' ]; then
-      gsutil cp ~{service_account_json_path} local.service_account.json
-      gcloud auth activate-service-account --key-file=local.service_account.json
-    fi
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
@@ -214,7 +202,7 @@ task CreateCostObservabilityTable {
     fi
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_08_01"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_vs_444_remove_sa"
   }
   output {
     Boolean done = true

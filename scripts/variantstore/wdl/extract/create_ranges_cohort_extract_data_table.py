@@ -6,7 +6,6 @@ import re
 
 from google.cloud import bigquery
 from google.cloud.bigquery.job import QueryJobConfig
-from google.oauth2 import service_account
 
 import utils
 
@@ -210,7 +209,6 @@ def make_extract_table(call_set_identifier,
                        fq_destination_dataset,
                        destination_table_prefix,
                        fq_sample_mapping_table,
-                       sa_key_path,
                        temp_table_ttl_hours
                        ):
   try:
@@ -244,17 +242,8 @@ def make_extract_table(call_set_identifier,
     #to the client._default_query_job_config that already exists
     default_config = QueryJobConfig(labels=query_labels_map, priority="INTERACTIVE", use_query_cache=True)
 
-    if sa_key_path:
-      credentials = service_account.Credentials.from_service_account_file(
-        sa_key_path, scopes=["https://www.googleapis.com/auth/cloud-platform"],
-      )
-
-      client = bigquery.Client(credentials=credentials,
-                               project=query_project,
-                               default_query_job_config=default_config)
-    else:
-      client = bigquery.Client(project=query_project,
-                               default_query_job_config=default_config)
+    client = bigquery.Client(project=query_project,
+                             default_query_job_config=default_config)
 
     ## TODO -- provide a cmdline arg to override this (so we can simulate smaller datasets)
 
@@ -304,7 +293,6 @@ if __name__ == '__main__':
   parser.add_argument('--query_project',type=str, help='Google project where query should be executed', required=True)
   parser.add_argument('--query_labels',type=str, action='append', help='Labels to put on the BQ query that will show up in the billing. Ex: --query_labels key1=value1 --query_labels key2=value2', required=False)
   parser.add_argument('--fq_sample_mapping_table',type=str, help='Mapping table from sample_id to sample_name', required=True)
-  parser.add_argument('--sa_key_path',type=str, help='Path to json key file for SA', required=False)
   parser.add_argument('--max_tables',type=int, help='Maximum number of PET/VET tables to consider', required=False, default=250)
   parser.add_argument('--ttl',type=int, help='Temp table TTL in hours', required=False, default=72)
 
@@ -328,5 +316,4 @@ if __name__ == '__main__':
                      args.fq_destination_dataset,
                      args.destination_cohort_table_prefix,
                      args.fq_sample_mapping_table,
-                     args.sa_key_path,
                      args.ttl)
