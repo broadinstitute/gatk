@@ -135,11 +135,24 @@ public class CompareReferencesIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
-    public void testFindSNPS() throws IOException{
+    public void testFindSNPs() throws IOException{
         final File ref1 = new File(getToolTestDataDir() + "hg19mini.fasta");
         final File ref2 = new File(getToolTestDataDir() + "hg19mini_chr2multiplesnps.fasta");
+        final GATKPath output = new GATKPath(createTempDir("testFindSNPS").toURI().toString());
+        final File expectedOutput = new File(getToolTestDataDir() + "expected.hg19mini.fasta_hg19mini_chr2multiplesnps.fasta_snps.tsv");
+
+        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-base-comparison", "FIND_SNPS_ONLY", "-base-comparison-output", output.toPath().toString()};
+        runCommandLine(args);
+
+        IntegrationTestSpec.assertEqualTextFiles(output.toPath(), expectedOutput.toPath(), "");
+    }
+
+    @Test
+    public void testFindIUPACSNPs() throws IOException{
+        final File ref1 = new File(getToolTestDataDir() + "hg19mini.fasta");
+        final File ref2 = new File(getToolTestDataDir() + "hg19mini_chr2iupacsnps.fasta");
         final GATKPath output = new GATKPath(createTempFile("testFindSNPS", ".tsv").toURI().toString());
-        final GATKPath expectedOutput = new GATKPath("/Users/ocohen/workingcode/gatk/tempreferences/testing_multiple_snps_output.tsv");
+        final File expectedOutput = new File(getToolTestDataDir() + "expected.hg19mini.fasta_hg19mini_chr2iupacsnps.fasta_snps.tsv");
 
         final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-base-comparison", "FIND_SNPS_ONLY", "-base-comparison-output", output.toPath().toString()};
         runCommandLine(args);

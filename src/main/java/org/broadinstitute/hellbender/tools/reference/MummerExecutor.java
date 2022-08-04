@@ -1,30 +1,66 @@
 package org.broadinstitute.hellbender.tools.reference;
 
+import htsjdk.variant.variantcontext.writer.VariantContextWriter;
+import htsjdk.variant.vcf.VCFHeader;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.engine.GATKPath;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.runtime.ProcessController;
 import org.broadinstitute.hellbender.utils.runtime.ProcessOutput;
 import org.broadinstitute.hellbender.utils.runtime.ProcessSettings;
 
 import java.io.File;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
-public class MummerExecutor {
 
+public final class MummerExecutor {
+
+    private static final Logger logger = LogManager.getLogger(MummerExecutor.class);
     private File mummerExecutableDirectory;
 
     public MummerExecutor(File mummerExecutableDirectory){
         this.mummerExecutableDirectory = mummerExecutableDirectory;
     }
 
-    public Path executeMummer(File fasta1, File fasta2){
-        // runShellCommand(dnadiff) -- might need to add perl if doesn't work
-        return null;
+    public File getMummerExecutableDirectory() {
+        return mummerExecutableDirectory;
     }
 
-    public static void runShellCommand(String[] command, Map<String, String> environment, File stdoutCaptureFile, boolean printStdout){
+    public File executeMummer(File fasta1, File fasta2, File outputDirectory){
+        // NUCMER
+        logger.debug("Running nucmer.");
+        File nucmerTempDirectory = IOUtils.createTempDir("nucmerTempDir");
+        File deltaFile = new File(nucmerTempDirectory, "deltaFile"); // delta file for nucmer output --> input to delta-filter
+        String[] nucmerArgs = {mummerExecutableDirectory.getAbsolutePath() + "/nucmer", "--mum", "-p", deltaFile.getAbsolutePath(), fasta1.getAbsolutePath(), fasta2.getAbsolutePath()};
+        ProcessOutput nucmer = runShellCommand(nucmerArgs, null, null,false);
+
+        // DELTA_FILTER
+        logger.debug("Running delta-filter.");
+        File deltaFilterOutput = IOUtils.createTempFile("deltaFilterOutput", ".delta"); // file for delta filter output --> input to show-snps
+        String[] deltaFilterArgs = {mummerExecutableDirectory.getAbsolutePath() + "/delta-filter", "-1", deltaFile.getAbsolutePath() + ".delta"};
+        ProcessOutput deltaFilter = runShellCommand(deltaFilterArgs, null, deltaFilterOutput, false);
+
+        // SHOW-SNPS
+        logger.debug("Running show-snps.");
+        File showSNPSOutput = IOUtils.createTempFile("showSNPSOutput", ".snps");
+        String[] showSNPsArgs = {mummerExecutableDirectory.getAbsolutePath() + "/show-snps", "-rlTH", deltaFilterOutput.getAbsolutePath()};
+        ProcessOutput showSNPs = runShellCommand(showSNPsArgs, null, showSNPSOutput, false);
+
+        // ALL2VCF
+        logger.debug("Running all2vcf.");
+        //File tempVCF = IOUtils.createTempFileInDirectory("tempVCF", ".vcf", outputDirectory);
+        File tempVCF = new File(outputDirectory, "/testVCF.vcf");
+        String script = "/Users/ocohen/all2vcf/src/mummer";
+        List<String> all2vcfArgs = Arrays.asList("--snps", showSNPSOutput.getAbsolutePath(), "--reference", fasta1.getAbsolutePath(), "--output-header");
+        ProcessOutput all2vcf = runPythonCommand(script, all2vcfArgs, null, tempVCF, true);
+
+        return tempVCF;
+    }
+
+    public static ProcessOutput runShellCommand(String[] command, Map<String, String> environment, File stdoutCaptureFile, boolean printStdout){
         ProcessController processController = ProcessController.getThreadLocal();
         final ProcessSettings prs = new ProcessSettings(command);
         if(printStdout){
@@ -36,9 +72,15 @@ public class MummerExecutor {
         }
         prs.setEnvironment(environment);
         final ProcessOutput output = processController.exec(prs);
+
+        if(output.getExitValue() != 0){
+            throw new UserException("Error running " + command[0] + ". Exit with code " + output.getExitValue());
+        }
+
+        return output;
     }
 
-    public static void runPythonCommand(String script, List<String> scriptArguments, Map<String, String> additionalEnvironmentVars, File stdoutCaptureFile, boolean printStdout){
+    public static ProcessOutput runPythonCommand(String script, List<String> scriptArguments, Map<String, String> additionalEnvironmentVars, File stdoutCaptureFile, boolean printStdout){
         Map<String, String> environment = new HashMap<>();
         environment.putAll(System.getenv());
         if(additionalEnvironmentVars != null){
@@ -48,9 +90,12 @@ public class MummerExecutor {
         args.add("python");
         args.add(script);
         args.addAll(scriptArguments);
-        runShellCommand(args.toArray(new String[]{}), environment, stdoutCaptureFile, printStdout);
-        /*PythonScriptExecutor executor = new PythonScriptExecutor(true);
-        boolean status = executor.executeScript(script, null, Arrays.asList(scriptArguments));*/
+        ProcessOutput output = runShellCommand(args.toArray(new String[]{}), environment, stdoutCaptureFile, printStdout);
+        if(output.getExitValue() != 0){
+            throw new UserException("Error running " + script + ". Exit with code " + output.getExitValue());
+        }
+
+        return output;
     }
 
 }

@@ -3,17 +3,22 @@ package org.broadinstitute.hellbender.tools.reference;
 import htsjdk.samtools.reference.FastaReferenceWriter;
 import htsjdk.samtools.reference.FastaReferenceWriterBuilder;
 import htsjdk.samtools.reference.ReferenceSequence;
+import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.writer.VariantContextWriter;
+import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.FilterFuncotations;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.runtime.ProcessController;
 import org.broadinstitute.hellbender.utils.runtime.ProcessOutput;
 import org.broadinstitute.hellbender.utils.runtime.ProcessSettings;
@@ -248,73 +253,105 @@ public class CompareReferences extends GATKTool {
     }
 
     public void runFullAlignment(ReferencePair refPair, ReferenceSequenceTable table){
-
-        // create the fastas (see below)
-        // mummer executor -- sep class, pass in directory containing mummer executables
-        // execute mummer on each pair of fastas --> list of VCFs
-        // merge into 1 VCF, output to final location
-
-        // create FeatureDataSource<VariantContext>
-        // VariantContextWriter (writes final VCF) -- call createVCFWriter(mummeroutput.vcf)
-        // create blank vcf header --> setSequenceDictionary(-R sequence dictionary) --> writer.writeHeader(header)
-        // for each VCF
-            // create FDS
-            // loop over for each in FDS to get each variant record
-            // writer.add(variant context)
-        // close OR try w/r
-
-    }
-
-
-    public void runFindSNPS(ReferencePair refPair, ReferenceSequenceTable table) {
-        List<SNPRecord> records = new ArrayList<>();
+        List<File> vcfs = new ArrayList<>();
         if(refPair.getAnalysis().contains(ReferencePair.Status.DIFFER_IN_SEQUENCE)) {
-            // reference data sources for both references -- initialized to not drop bases
-            final ReferenceDataSource source1 = ReferenceDataSource.of(refPair.getRef1().toPath(), true);
-            final ReferenceDataSource source2 = ReferenceDataSource.of(refPair.getRef2().toPath(), true);
-
             // find the mismatch sequence
             for (String sequenceName : table.getAllSequenceNames()) {
                 Set<ReferenceSequenceTable.TableRow> rows = table.queryBySequenceName(sequenceName);
                 if (rows.size() == 2) {
-                    // if the lengths of the 2 sequences aren't equal, error - can't compare different sequence lengths, probably indel need alignment
-                    ReferenceSequenceTable.TableRow[] rowArray = rows.toArray(new ReferenceSequenceTable.TableRow[0]);
-                    if(rowArray[0].getLength() != rowArray[1].getLength()) {
-                        throw new UserException("Sequence lengths are not equal and can't be compared. Consider running in FULL_ALIGNMENT mode.");
-                    }
-                    int sequenceLength = rowArray[0].getLength();
-                    Iterator<Byte> ref1BaseIterator = source1.query(new SimpleInterval(sequenceName, 1, sequenceLength));
-                    Iterator<Byte> ref2BaseIterator = source2.query(new SimpleInterval(sequenceName, 1, sequenceLength));
-                    int position = 0;
-                    // find SNPS and generate SNPRecords 
-                    while (ref1BaseIterator.hasNext()) {
-                        position++;
-                        Byte ref1Allele = ref1BaseIterator.next();
-                        Byte ref2Allele = ref2BaseIterator.next();
-                        if(!ref1Allele.equals(ref2Allele)) {
-                            SNPRecord record = new SNPRecord(sequenceName, position, new String(new byte[]{ref1Allele}), new String(new byte[]{ref2Allele}), refPair.getRef1AsString(), refPair.getRef2AsString());
-                            records.add(record);
-                        }
-                    }
-                }
-                // write SNP tsv file
-                TableColumnCollection columns = new TableColumnCollection(Arrays.asList("Sequence Name", "Position", refPair.getRef1AsString(), refPair.getRef2AsString()));
-                try(FindSNPsOnlyTableWriter writer = new FindSNPsOnlyTableWriter(baseComparisonOutputDirectory.toPath(), columns)){
-                    writer.writeHeaderIfApplies();
-                    for(SNPRecord record : records){
-                        writer.writeRecord(record);
-                    }
-                }
-                catch(IOException exception){
-                    throw new UserException.CouldNotCreateOutputFile(baseComparisonOutputDirectory, "Failed to write output table.", exception);
+                    // generate fasta files for mismatching sequences
+                    GATKPath ref1Path = refPair.getRef1();
+                    GATKPath ref2Path = refPair.getRef2();
+
+                    String sequenceInRef1Name = ref1Path.toPath().getFileName() + "." + sequenceName;
+                    String sequenceInRef2Name = ref2Path.toPath().getFileName() + "." + sequenceName;
+
+                    File ref1TempFastaOutput = IOUtils.createTempFileInDirectory(sequenceInRef1Name, ".fasta", baseComparisonOutputDirectory.toPath().toFile());
+                    File ref2TempFastaOutput = IOUtils.createTempFileInDirectory(sequenceInRef2Name, ".fasta", baseComparisonOutputDirectory.toPath().toFile());
+
+                    GATKPath ref1Fasta = generateFastaForSequence(ReferenceDataSource.of(ref1Path.toPath(), true), sequenceName, new GATKPath(ref1TempFastaOutput.toString()));
+                    GATKPath ref2Fasta = generateFastaForSequence(ReferenceDataSource.of(ref2Path.toPath(), true), sequenceName, new GATKPath(ref2TempFastaOutput.toString()));
+
+                    // pass fastas into mummer, get back a vcf and add to list
+                    MummerExecutor executor = new MummerExecutor(new File("/Users/ocohen/workingcode/MUMmer3.23"));
+                    logger.info("Running mummer alignment on sequence " + sequenceName);
+                    File tempVCFDirectory = IOUtils.createTempDir("compareReferencesTempVCFs");
+                    //File tempVCF = new File(tempVCFDirectory, );
+                    File mum = executor.executeMummer(ref1Fasta.toPath().toFile(), ref2Fasta.toPath().toFile(), tempVCFDirectory);
+                    logger.info("Finished running mummer alignment on sequence " + sequenceName);
+                    vcfs.add(mum);
                 }
             }
-            source1.close();
-            source2.close();
+            // merge individual vcfs
+            File vcf = new File(baseComparisonOutputDirectory.toString(), "mummer_output.vcf");
+            VariantContextWriter writer = createVCFWriter(vcf);
+            VCFHeader header = new VCFHeader();
+            header.setSequenceDictionary(directlyAccessEngineReferenceDataSource().getSequenceDictionary());
+            writer.writeHeader(header);
+
+            for(File file : vcfs){
+                try(FeatureDataSource<VariantContext> source = new FeatureDataSource<>(file)) {
+                    for (VariantContext vc : source) {
+                        writer.add(vc);
+                    }
+                }
+            }
+            writer.close();
+        }
+        else{
+            logger.info("No mismatching sequences found.");
         }
     }
 
-    public static void generateFastaForSequence(ReferenceDataSource source, String sequenceName, GATKPath output){
+    public void runFindSNPS(ReferencePair refPair, ReferenceSequenceTable table) {
+        //List<SNPRecord> records = new ArrayList<>();
+        if(refPair.getAnalysis().contains(ReferencePair.Status.DIFFER_IN_SEQUENCE)) {
+            TableColumnCollection columns = new TableColumnCollection(Arrays.asList("Sequence Name", "Position", refPair.getRef1AsString(), refPair.getRef2AsString()));
+            File snpsOutput = new File(baseComparisonOutputDirectory.toPath().toString(), String.format("%s_%s_snps.tsv", refPair.getRef1AsString(), refPair.getRef2AsString()));
+
+            try(FindSNPsOnlyTableWriter writer = new FindSNPsOnlyTableWriter(snpsOutput.toPath(), columns); final ReferenceDataSource source1 = ReferenceDataSource.of(refPair.getRef1().toPath(), true);
+                final ReferenceDataSource source2 = ReferenceDataSource.of(refPair.getRef2().toPath(), true)){
+                writer.writeHeaderIfApplies();
+
+                // find the mismatch sequence
+                for (String sequenceName : table.getAllSequenceNames()) {
+                    Set<ReferenceSequenceTable.TableRow> rows = table.queryBySequenceName(sequenceName);
+                    if (rows.size() == 2) {
+                        // if the lengths of the 2 sequences aren't equal, error - can't compare different sequence lengths, probably indel need alignment
+                        ReferenceSequenceTable.TableRow[] rowArray = rows.toArray(new ReferenceSequenceTable.TableRow[0]);
+                        if (rowArray[0].getLength() != rowArray[1].getLength()) {
+                            logger.warn("Sequence lengths are not equal and can't be compared. Consider running in FULL_ALIGNMENT mode.");
+                            continue;
+                        }
+
+                        int sequenceLength = rowArray[0].getLength();
+                        Iterator<Byte> ref1BaseIterator = source1.query(new SimpleInterval(sequenceName, 1, sequenceLength));
+                        Iterator<Byte> ref2BaseIterator = source2.query(new SimpleInterval(sequenceName, 1, sequenceLength));
+                        int position = 0;
+
+                        // find SNPS and generate SNPRecords
+                        while (ref1BaseIterator.hasNext()) {
+                            position++;
+                            Byte ref1Allele = ref1BaseIterator.next();
+                            Byte ref2Allele = ref2BaseIterator.next();
+                            if (!ref1Allele.equals(ref2Allele)) {
+                                SNPRecord record = new SNPRecord(sequenceName, position, new String(new byte[]{ref1Allele}), new String(new byte[]{ref2Allele}), refPair.getRef1AsString(), refPair.getRef2AsString());
+                                writer.writeRecord(record);
+                            }
+                        }
+                    }
+                }
+            }
+            catch(IOException exception){
+                throw new UserException.CouldNotCreateOutputFile(baseComparisonOutputDirectory + "/" + snpsOutput, "Failed to write output table.", exception);
+            }
+        }
+        else{
+            logger.info("No mismatching sequences found.");
+        }
+    }
+
+    public static GATKPath generateFastaForSequence(ReferenceDataSource source, String sequenceName, GATKPath output){
         try {
             int sequenceLength = source.getSequenceDictionary().getSequence(sequenceName).getSequenceLength();
             FastaReferenceWriter writer = new FastaReferenceWriterBuilder()
@@ -324,12 +361,13 @@ public class CompareReferences extends GATKTool {
             ReferenceSequence seq = source.queryAndPrefetch(new SimpleInterval(sequenceName, 1, sequenceLength));
             writer.addSequence(seq);
             writer.close();
+            return output;
         } catch (IOException e) {
             throw new UserException.CouldNotCreateOutputFile("Couldn't create " + output + ", encountered exception: " + e.getMessage(), e);
         }
     }
 
-    public void doBaseComparison(ReferencePair refPair, ReferenceSequenceTable table){
+   /* public void doBaseComparison(ReferencePair refPair, ReferenceSequenceTable table){
         // if mismatching MD5s found between the two inputs
         if(refPair.getAnalysis().contains(ReferencePair.Status.DIFFER_IN_SEQUENCE)){
             // find the mismatch sequence
@@ -343,8 +381,8 @@ public class CompareReferences extends GATKTool {
                     String sequenceInRef1Name = ref1Path.toPath().getFileName() + "." + sequenceName;
                     String sequenceInRef2Name = ref2Path.toPath().getFileName() + "." + sequenceName;
 
-                        /*File ref1SequenceOutput = IOUtils.createTempFileInDirectory(sequenceInRef1Name, ".fasta", sequenceOutputDirectory);
-                        File ref2SequenceOutput = IOUtils.createTempFileInDirectory(sequenceInRef2Name, ".fasta", sequenceOutputDirectory);*/
+                        *//*File ref1SequenceOutput = IOUtils.createTempFileInDirectory(sequenceInRef1Name, ".fasta", sequenceOutputDirectory);
+                        File ref2SequenceOutput = IOUtils.createTempFileInDirectory(sequenceInRef2Name, ".fasta", sequenceOutputDirectory);*//*
 
                     //File ref1SequenceOutput = new File(baseComparisonOutputDirectory,   sequenceInRef1Name + ".fasta");
                     //File ref2SequenceOutput = new File(baseComparisonOutputDirectory, sequenceInRef2Name + ".fasta");
@@ -354,7 +392,7 @@ public class CompareReferences extends GATKTool {
                 }
             }
         }
-    }
+    }*/
 
     @Override
     public void closeTool() {
