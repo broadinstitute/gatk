@@ -33,14 +33,19 @@ public class CompareReferencesUnitTest extends CommandLineProgramTest {
     public void testRunShellCommand(){
         String[] command = {"echo", "hello"};
 
-        CompareReferences.runShellCommand(command, null, new File("/Users/ocohen/workingcode/hello.output"), true);
+        MummerExecutor.runShellCommand(command, null, new File("/Users/ocohen/workingcode/hello.output"), true);
     }
 
     @Test
     public void testPythonCommand(){
         String script = "/Users/ocohen/all2vcf/src/mummer";
         List<String> command = Arrays.asList("-h");
-        CompareReferences.runPythonCommand(script, command, null, null, true);
+        MummerExecutor.runPythonCommand(script, command, null, null, true);
+    }
+
+    @Test
+    public void testFindSNPS(){
+
     }
 
 

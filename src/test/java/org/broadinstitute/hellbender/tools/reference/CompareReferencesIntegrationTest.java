@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.reference;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.testng.annotations.DataProvider;
@@ -126,11 +127,24 @@ public class CompareReferencesIntegrationTest extends CommandLineProgramTest {
     @Test(enabled = false)
     public void testCompareReferencesMissingSequencesStdOut() throws IOException{
         final File ref1 = new File(getToolTestDataDir() + "hg19mini.fasta");
-        final File ref2 = new File(getToolTestDataDir() + "hg19mini_missingchr3.fasta");
-        final File ref3 = new File(getToolTestDataDir() + "hg19mini_missingchr1.fasta");
+        final File ref2 = new File(getToolTestDataDir() + "hg19mini_chr2multiplesnps.fasta");
+        final GATKPath path = new GATKPath("/Users/ocohen/workingcode/gatk/tempreferences/testing_multiple_snps_output.tsv");
 
-        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-refcomp", ref3.getAbsolutePath()};
+        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-base-comparison", "FIND_SNPS_ONLY", "-base-comparison-output", path.toPath().toString()};
         runCommandLine(args);
+    }
+
+    @Test
+    public void testFindSNPS() throws IOException{
+        final File ref1 = new File(getToolTestDataDir() + "hg19mini.fasta");
+        final File ref2 = new File(getToolTestDataDir() + "hg19mini_chr2multiplesnps.fasta");
+        final GATKPath output = new GATKPath(createTempFile("testFindSNPS", ".tsv").toURI().toString());
+        final GATKPath expectedOutput = new GATKPath("/Users/ocohen/workingcode/gatk/tempreferences/testing_multiple_snps_output.tsv");
+
+        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-base-comparison", "FIND_SNPS_ONLY", "-base-comparison-output", output.toPath().toString()};
+        runCommandLine(args);
+
+        IntegrationTestSpec.assertEqualTextFiles(output.toPath(), expectedOutput.toPath(), "");
     }
 
     @Test
@@ -161,5 +175,7 @@ public class CompareReferencesIntegrationTest extends CommandLineProgramTest {
         final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath()};
         runCommandLine(args);
     }
+
+
 
 }
