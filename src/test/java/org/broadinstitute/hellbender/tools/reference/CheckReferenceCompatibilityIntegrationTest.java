@@ -8,6 +8,9 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 public class CheckReferenceCompatibilityIntegrationTest extends CommandLineProgramTest {
 
@@ -208,5 +211,49 @@ public class CheckReferenceCompatibilityIntegrationTest extends CommandLineProgr
 
         final String[] args = new String[]{"-refcomp", ref1.getAbsolutePath()};
         runCommandLine(args);
+    }
+
+    @DataProvider(name = "cloudInputData")
+    public Object[][] cloudInputData() {
+        String testBucket = getGCPTestInputPath() + "org/broadinstitute/hellbender/tools/reference/";
+        return new Object[][]{
+                // dict, list of refs, expected output, isBAM, isVCF
+                new Object[]{testBucket + "reads_data_source_test1_withmd5s.bam",
+                        Arrays.asList(testBucket + "hg19mini.fasta"),
+                        new File(getToolTestDataDir(), "expected.testReferenceCompatibilityBAMWithMD5s_exactmatch.table"),
+                        true, false
+                },
+                new Object[]{ testBucket + "example_variants_withSequenceDict_withmd5.vcf",
+                        Arrays.asList(testBucket + "hg19mini.fasta"),
+                        new File(getToolTestDataDir(), "expected.testReferenceCompatibilityVCFWithMD5s.table"),
+                        false, true
+                },
+        };
+    }
+
+    @Test(dataProvider = "cloudInputData", groups = "bucket")
+    public void testReferenceCompatibilityCloudInputs(String dict, List<String> fastas, File expected, boolean isBAM, boolean isVCF) throws IOException{
+        final File output = createTempFile("testCompareReferencesCloudInputs", ".table");
+
+        List<String> arguments = new ArrayList<>();
+        for(int i = 0; i < fastas.size(); i++){
+            arguments.add("-refcomp");
+            arguments.add(fastas.get(i));
+        }
+
+        if(isBAM){
+            arguments.add("-I");
+        } else if(isVCF){
+            arguments.add("-V");
+        }
+
+        arguments.add(dict);
+        arguments.add("-O");
+        arguments.add(output.getAbsolutePath());
+
+        final String[] args = arguments.toArray(new String[0]);
+        runCommandLine(args);
+
+        IntegrationTestSpec.assertEqualTextFiles(output, expected);
     }
 }

@@ -56,7 +56,7 @@ import java.util.*;
  * <pre>
  * gatk CompareReferences \
  *   -R reference1.fasta \
- *   -refcomp reference2.fasta
+ *   -refcomp reference2.fasta \
  *   -O output.fasta \
  *   -md5-calculation-mode USE_DICT
  * </pre>

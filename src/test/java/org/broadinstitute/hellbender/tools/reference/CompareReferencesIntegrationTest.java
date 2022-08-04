@@ -8,6 +8,9 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 public class CompareReferencesIntegrationTest extends CommandLineProgramTest {
 
@@ -96,6 +99,46 @@ public class CompareReferencesIntegrationTest extends CommandLineProgramTest {
         final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(),
                 "-O", output.getAbsolutePath(), "--md5-calculation-mode", "USE_DICT"};
         runCommandLine(args);
+    }
+
+    @DataProvider(name = "cloudInputData")
+    public Object[][] cloudInputData() {
+        String testBucket = getGCPTestInputPath() + "org/broadinstitute/hellbender/tools/reference/";
+        return new Object[][]{
+                // list of refs, expected output
+                new Object[]{ Arrays.asList(testBucket + "hg19mini.fasta",
+                        testBucket + "hg19mini_chr2snp.fasta"),
+                        new File(getToolTestDataDir(), "expected.testCompareReferencesMissingValue.table")
+                },
+                new Object[]{ Arrays.asList(testBucket + "hg19mini.fasta",
+                        testBucket + "hg19mini_1renamed.fasta",
+                        testBucket + "hg19mini_chr2snp.fasta"),
+                        new File(getToolTestDataDir(), "expected.testCompareReferencesMultipleReferences.table")
+                },
+        };
+    }
+
+    @Test(dataProvider = "cloudInputData", groups = "bucket")
+    public void testCompareReferencesCloudInputs(List<String> fastas, File expected) throws IOException{
+        final File output = createTempFile("testCompareReferencesCloudInputs", ".table");
+        List<String> arguments = new ArrayList<>();
+        for(int i = 0; i < fastas.size(); i++){
+            if(i == 0){
+                arguments.add("-R");
+
+            }
+            else{
+                arguments.add("-refcomp");
+            }
+            arguments.add(fastas.get(i));
+        }
+        arguments.add("-O");
+        arguments.add(output.getAbsolutePath());
+
+        final String[] args = arguments.toArray(new String[0]);
+        runCommandLine(args);
+
+        IntegrationTestSpec.assertEqualTextFiles(output, expected);
     }
 
     // no assertions made, testing tool runs successfully without -O argument
