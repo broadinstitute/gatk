@@ -12,7 +12,7 @@ echo "Creating tar.gz for Funcotator datasources =========="
 pushd .
 FUNCOTATOR_TEST_DS_DIR=${WORKING_DIR}/gatk/src/test/resources/large/funcotator/
 cd ${FUNCOTATOR_TEST_DS_DIR}
-# First parameter must match Mutect2_Multi.funco_data_sources_tar_gz test_m2_wdl_multi.json
+# First parameter must match Mutect2_Multi.funco_data_sources_tar_gz test_m2_wdl.json
 tar zcvf ${WORKING_DIR}/gatk/small_ds_pik3ca.tar.gz small_ds_pik3ca/*
 popd
 
@@ -35,7 +35,7 @@ fi
 echo "Docker build done =========="
 echo "Putting the newly built docker image into the json parameters"
 cd $WORKING_DIR/gatk/scripts/
-sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" m2_cromwell_tests/test_m2_wdl_multi.json >$WORKING_DIR/test_m2_wdl_multi_mod.json
+sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" m2_cromwell_tests/test_m2_wdl.json >$WORKING_DIR/test_m2_wdl_mod.json
 echo "JSON FILE (modified) ======="
 cat $WORKING_DIR/test_m2_wdl_multi_mod.json
 sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" m2_cromwell_tests/test_mitochondria_m2_wdl.json >$WORKING_DIR/test_mitochondria_m2_wdl_mod.json
@@ -43,16 +43,16 @@ echo "JSON FILE (modified) ======="
 cat $WORKING_DIR/test_mitochondria_m2_wdl_mod.json
 echo "=================="
 
-# Create the tumor-only json by using the pair_list_tumor_only file
-sed -r "s/\"pair_list/\"pair_list_tumor_only/g" $WORKING_DIR/test_m2_wdl_multi_mod.json >$WORKING_DIR/test_m2_wdl_multi_mod_to.json
+# Create the tumor-only json by removing normal_reads and normal_reads_index from the input json
+grep -v 'Mutect2.normal_reads' $WORKING_DIR/test_m2_wdl_mod.json >$WORKING_DIR/test_m2_wdl_mod_to.json
 cd $WORKING_DIR/
 
 echo "Running M2 WDL through cromwell (T/N)"
 ln -fs $WORKING_DIR/gatk/scripts/mutect2_wdl/mutect2.wdl
-sudo java -jar $CROMWELL_JAR run $WORKING_DIR/gatk/scripts/mutect2_wdl/mutect2_multi_sample.wdl -i $WORKING_DIR/test_m2_wdl_multi_mod.json -m $WORKING_DIR/test_m2_wdl.metadata
+sudo java -jar $CROMWELL_JAR run $WORKING_DIR/gatk/scripts/mutect2_wdl/mutect2.wdl -i $WORKING_DIR/test_m2_wdl_mod.json -m $WORKING_DIR/test_m2_wdl.metadata
 
 echo "Running M2 WDL through cromwell (Tumor-only)"
-sudo java -jar $CROMWELL_JAR run $WORKING_DIR/gatk/scripts/mutect2_wdl/mutect2_multi_sample.wdl -i $WORKING_DIR/test_m2_wdl_multi_mod_to.json -m $WORKING_DIR/test_m2_wdl_to.metadata
+sudo java -jar $CROMWELL_JAR run $WORKING_DIR/gatk/scripts/mutect2_wdl/mutect2.wdl -i $WORKING_DIR/test_m2_wdl_mod_to.json -m $WORKING_DIR/test_m2_wdl_to.metadata
 
 echo "Running Mitochondria M2 WDL through cromwell"
 ln -fs $WORKING_DIR/gatk/scripts/mitochondria_m2_wdl/AlignAndCall.wdl
