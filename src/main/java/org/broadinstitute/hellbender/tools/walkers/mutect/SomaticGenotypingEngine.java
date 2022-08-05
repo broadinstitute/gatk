@@ -205,7 +205,10 @@ public class SomaticGenotypingEngine implements AutoCloseable {
                 AssemblyBasedCallerUtils.annotateReadLikelihoodsWithSupportedAlleles(trimmedCall, trimmedLikelihoods, Fragment::getReads);
             }
 
-            mutect3DatasetEngine.ifPresent(engine -> engine.addData(referenceContext, annotatedCall, trimmedLikelihoodsForAnnotation, logFragmentLikelihoods));
+            final Optional<List<VariantContext>> truthVCs = MTAC.mutect3TrainingTruth == null ? Optional.empty() :
+                    Optional.of(featureContext.getValues(MTAC.mutect3TrainingTruth, mergedVC.getStart()));
+            mutect3DatasetEngine.ifPresent(engine -> engine.addData(referenceContext, annotatedCall, truthVCs,
+                    trimmedLikelihoodsForAnnotation, logFragmentLikelihoods, logLikelihoods));
 
             call.getAlleles().stream().map(alleleMapper::get).filter(Objects::nonNull).forEach(calledHaplotypes::addAll);
             returnCalls.add( annotatedCall );

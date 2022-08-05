@@ -4,7 +4,9 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.tuple.Triple;
+import org.apache.commons.math3.util.CombinatoricsUtils;
 import org.apache.commons.math3.util.FastMath;
+import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AssemblyComplexity;
@@ -13,8 +15,10 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.ReferenceBases;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.Mutect2FilteringEngine;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.NaturalLogUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
+import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.Fragment;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -101,8 +105,10 @@ public class Mutect3DatasetEngine implements AutoCloseable {
     }
 
     // add one datum per alt allele
-    public void addData(final ReferenceContext ref, final VariantContext vc, final AlleleLikelihoods<GATKRead, Allele> likelihoods,
-                         final AlleleLikelihoods<Fragment, Haplotype> logFragmentLikelihoods) {
+    public void addData(final ReferenceContext ref, final VariantContext vc, Optional<List<VariantContext>> truthVCs,
+                        final AlleleLikelihoods<GATKRead, Allele> likelihoods,
+                        final AlleleLikelihoods<Fragment, Haplotype> logFragmentLikelihoods,
+                        final AlleleLikelihoods<Fragment, Allele> logFragmentAlleleLikelihoods) {
         final String refBases = ReferenceBases.annotate(ref, vc);
         final String refAllele = vc.getReference().getBaseString();
         final String contig = vc.getContig();
@@ -115,6 +121,11 @@ public class Mutect3DatasetEngine implements AutoCloseable {
         final double[] popafs = VariantContextGetters.getAttributeAsDoubleArray(vc, GATKVCFConstants.POPULATION_AF_KEY);
         //final double[] altPopulationAFs = MathUtils.applyToArray(popafs, x -> Math.pow(10, -x ));
         final double[] tumorLods = Mutect2FilteringEngine.getTumorLogOdds(vc);
+
+        // These ADs, which later make up the pre-downsampling depths, come from the genotype AD field applied by Mutect2.
+        // This means that uninformative reads are not discarded; rather the expected non-integral ADs are rounded to
+        // the nearest integer.  Also, these ADs are *fragment* ADs from the log fragment-allele likelihoods in the
+        // SomaticGenotypingEngine.
         final int[] tumorADs = sumADsOverSamples(vc, tumorSamples);
         final int[] normalADs = sumADsOverSamples(vc, normalSamples);
         final int tumorDepth = (int) MathUtils.sum(tumorADs);
@@ -127,32 +138,41 @@ public class Mutect3DatasetEngine implements AutoCloseable {
         for (int n = 0; n < numAlt; n++) {
             final double tumorAF = tumorADs[n+1] / ((double) tumorDepth);
             final double normalAF = hasNormal ? normalADs[n+1] / ((double) normalDepth) : 0.0;
-            final String altAllele = vc.getAlternateAllele(n).getBaseString();
-            final int diff = altAllele.length() - refAllele.length();
+            Allele altAllele = vc.getAlternateAllele(n);
+            final String altAlleleString = altAllele.getBaseString();
+            final int diff = altAlleleString.length() - refAllele.length();
             final VariantType type = diff == 0 ? VariantType.SNV : ( diff > 0 ? VariantType.INSERTION : VariantType.DELETION);
+
+            // TODO: what about alternative representations?
+            final Set<Allele> truthAlleles = !truthVCs.isPresent() ? Collections.emptySet() : truthVCs.get().stream()
+                    .filter(var -> ! var.isFiltered())
+                    .flatMap(var -> var.getAlternateAlleles().stream())
+                    .collect(Collectors.toSet());
 
             if (trainingMode) {
                 final ArrayBlockingQueue<Integer> unmatchedQueue = unmatchedArtifactAltCounts.get(type);
                 final boolean likelySeqError = tumorLods[n] < TLOD_THRESHOLD;
-                final boolean likelyGermline = hasNormal && normalAF > 0.2;
 
                 // extremely strict criteria because there are so many germline variants we can afford to waste a lot
                 final boolean definiteGermline = !likelySeqError && popafs[n] < COMMON_POPAF_THRESHOLD &&
                         tumorAF > 0.35 && (!hasNormal || normalAF > 0.35);
+                final boolean trueVariant = truthVCs.isPresent() ? truthAlleles.contains(altAllele) : definiteGermline;
 
                 // low AF in tumor and normal, rare in population implies artifact
-                if  (!(likelySeqError || likelyGermline) && tumorAF < 0.2 && popafs[n] > RARE_POPAF_THRESHOLD) {
+                boolean probableArtifact = !likelySeqError && (truthVCs.isPresent() ? !truthAlleles.contains(altAllele) :
+                        (tumorAF < 0.2 && popafs[n] > RARE_POPAF_THRESHOLD));
 
-                    if (unmatchedQueue.size() > 0.9*CAPACITY) { // this should rarely come up
+                if  (probableArtifact) {
+                    if (unmatchedQueue.size() > 0.9 * CAPACITY) { // this should rarely come up
                         labels.add(Label.IGNORE);
                     } else {
                         labels.add(Label.ARTIFACT);
                         unmatchedQueue.addAll(Collections.nCopies(nonArtifactPerArtifact, tumorADs[n + 1]));
                     }
-                } else if (definiteGermline && !unmatchedQueue.isEmpty()) {
+                } else if (trueVariant && !unmatchedQueue.isEmpty()) {
                     // high AF in tumor and normal, common in population implies germline, which we downsample
                     labels.add(Label.VARIANT);
-                    altDownsampleMap.put(vc.getAlternateAllele(n), unmatchedQueue.poll());
+                    altDownsampleMap.put(altAllele, unmatchedQueue.poll());
                 } else if (tumorLods[n] > 4.0 && tumorAF < 0.3) {
                     labels.add(Label.UNLABELED);
                 } else {
@@ -173,12 +193,17 @@ public class Mutect3DatasetEngine implements AutoCloseable {
         final Triple<int[], int[], double[]> assemblyComplexity = AssemblyComplexity.annotate(vc, logFragmentLikelihoods, false);
 
         // TODO: for now we don't really need normal reads
+        // note that the following use the VC's allele order, not necessarily the likelihoods' allele order
         final List<List<List<Integer>>> normalReadVectorsByAllele =  FeaturizedReadSets.getReadVectors(vc, normalSamples, likelihoods, logFragmentLikelihoods, maxRefCount, maxAltCount);
         final List<List<List<Integer>>> tumorReadVectorsByAllele =  FeaturizedReadSets.getReadVectors(vc, tumorSamples, likelihoods, logFragmentLikelihoods, maxRefCount, maxAltCount, altDownsampleMap);
 
         // ref and alt reads have already been downsampled by the read featurizer
         final List<List<Integer>> tumorRefReads = tumorReadVectorsByAllele.get(0);
         final List<List<Integer>> normalRefReads = normalReadVectorsByAllele.get(0);
+
+        final List<LikelihoodMatrix<Fragment,Allele>> tumorMatrices = tumorSamples.stream()
+                .map(s -> logFragmentAlleleLikelihoods.sampleMatrix(logFragmentAlleleLikelihoods.indexOfSample(s)))
+                .collect(Collectors.toList());
 
         for (int n = 0; n < numAlt; n++) {
             if (labels.get(n) ==  Label.IGNORE) {
@@ -203,7 +228,13 @@ public class Mutect3DatasetEngine implements AutoCloseable {
             //normalRefReads.forEach(r -> printWriter.print(numberString(r)));
             //normalAltReads.forEach(r -> printWriter.print(numberString(r)));
             printWriter.printf("%d %d %d %d%n", tumorDepth, tumorADs[n+1], normalDepth, normalADs[n+1]);  // pre-downsampling counts for normal artifact model
-            }
+            // this is approximately the likelihood that these particular reads are alt given sequencing error, excluding
+            // the depth C N_alt combinatorial factor that is common to all likelihoods in M3
+            // basicaly, it's the TLOD with a correction for the marginalized flat prior from M2
+            final double tlod = vc.getAttributeAsDoubleList("TLOD", 0).get(n);
+            final double seqErrorLogLikelihood = -MathUtils.log10ToLog(tlod) - Math.log(tumorDepth + 1);
+            printWriter.printf("%.3f%n", seqErrorLogLikelihood);  // pre-downsampling counts for normal artifact model
+        }
     }
 
     private String integerString(final List<Integer> numbers) {
