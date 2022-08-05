@@ -68,67 +68,58 @@ struct Runtime {
 
 workflow Mutect2 {
     input {
-      # Mutect2 inputs
-      File? intervals
-      File ref_fasta
-      File ref_fai
-      File ref_dict
-      File tumor_reads
-      File tumor_reads_index
-      File? normal_reads
-      File? normal_reads_index
-      File? pon
-      File? pon_idx
-      Int scatter_count
-      File? gnomad
-      File? gnomad_idx
-      File? variants_for_contamination
-      File? variants_for_contamination_idx
-      File? realignment_index_bundle
-      String? realignment_extra_args
-      Boolean? run_orientation_bias_mixture_model_filter
-      String? m2_extra_args
-      String? m2_extra_filtering_args
-      String? getpileupsummaries_extra_args
-      String? split_intervals_extra_args
-      Boolean? make_bamout
-      Boolean? compress_vcfs
-      File? gga_vcf
-      File? gga_vcf_idx
-      String? gcs_project_for_requester_pays
+        # basic inputs
+        File? intervals
+        File ref_fasta
+        File ref_fai
+        File ref_dict
+        File tumor_reads
+        File tumor_reads_index
+        File? normal_reads
+        File? normal_reads_index
 
-      # runtime
-      String gatk_docker
-      File? gatk_override
-      String basic_bash_docker = "ubuntu:16.04"
+        # optional but usually recommended resources
+        File? pon
+        File? pon_idx
+        File? gnomad
+        File? gnomad_idx
+        File? variants_for_contamination
+        File? variants_for_contamination_idx
 
-      Int? preemptible
-      Int? max_retries
-      Int small_task_cpu = 2
-      Int small_task_mem = 4
-      Int small_task_disk = 100
-      Int boot_disk_size = 12
-      Int learn_read_orientation_mem = 8000
-      Int filter_alignment_artifacts_mem = 9000
+        # extra arguments
+        String? m2_extra_args
+        String? m2_extra_filtering_args
+        String? getpileupsummaries_extra_args
+        String? split_intervals_extra_args
 
-      # Use as a last resort to increase the disk given to every task in case of ill behaving data
-      Int? emergency_extra_disk
+        # additional modes and outputs
+        File? realignment_index_bundle
+        String? realignment_extra_args
+        Boolean run_orientation_bias_mixture_model_filter = false
+        Boolean make_bamout = false
+        Boolean compress_vcfs = false
+        File? gga_vcf
+        File? gga_vcf_idx
 
-      # These are multipliers to multipler inputs by to make sure we have enough disk to accommodate for possible output sizes
-      # Large is for Bams/WGS vcfs
-      # Small is for metrics/other vcfs
-      Float large_input_to_output_multiplier = 2.25
-      Float small_input_to_output_multiplier = 2.0
-      Float cram_to_bam_multiplier = 6.0
+
+        # runtime
+        String gatk_docker
+        File? gatk_override
+        String basic_bash_docker = "ubuntu:16.04"
+        Int scatter_count
+        Int preemptible = 2
+        Int max_retries = 1
+        Int small_task_cpu = 2
+        Int small_task_mem = 4
+        Int small_task_disk = 100
+        Int boot_disk_size = 12
+        Int learn_read_orientation_mem = 8000
+        Int filter_alignment_artifacts_mem = 9000
+        String? gcs_project_for_requester_pays
+
+        # Use as a last resort to increase the disk given to every task in case of ill behaving data
+        Int emergency_extra_disk = 0
     }
-
-    Int preemptible_or_default = select_first([preemptible, 2])
-    Int max_retries_or_default = select_first([max_retries, 2])
-
-    Boolean compress = select_first([compress_vcfs, false])
-    Boolean run_ob_filter = select_first([run_orientation_bias_mixture_model_filter, false])
-    Boolean make_bamout_or_default = select_first([make_bamout, false])
-
 
     # Disk sizes used for dynamic sizing
     Int ref_size = ceil(size(ref_fasta, "GB") + size(ref_dict, "GB") + size(ref_fai, "GB"))
@@ -136,11 +127,8 @@ workflow Mutect2 {
     Int gnomad_vcf_size = if defined(gnomad) then ceil(size(gnomad, "GB")) else 0
     Int normal_reads_size = if defined(normal_reads) then ceil(size(normal_reads, "GB") + size(normal_reads_index, "GB")) else 0
 
-    # If no tar is provided, the task downloads one from broads ftp server
-    Int gatk_override_size = if defined(gatk_override) then ceil(size(gatk_override, "GB")) else 0
-
     # This is added to every task as padding, should increase if systematically you need more disk for every call
-    Int disk_pad = 10 + gatk_override_size + select_first([emergency_extra_disk,0])
+    Int disk_pad = 10 + select_first([emergency_extra_disk,0])
 
     # logic about output file names -- these are the names *without* .vcf extensions
     String output_basename = basename(basename(tumor_reads, ".bam"),".cram")  #hacky way to strip either .bam or .cram
@@ -149,14 +137,10 @@ workflow Mutect2 {
 
     String output_vcf_name = output_basename + ".vcf"
 
-    Int tumor_cram_to_bam_disk = ceil(tumor_reads_size * cram_to_bam_multiplier)
-    Int normal_cram_to_bam_disk = ceil(normal_reads_size * cram_to_bam_multiplier)
-
     Runtime standard_runtime = {"gatk_docker": gatk_docker, "gatk_override": gatk_override,
-            "max_retries": max_retries_or_default, "preemptible": preemptible_or_default, "cpu": small_task_cpu,
+            "max_retries": max_retries, "preemptible": preemptible, "cpu": small_task_cpu,
             "machine_mem": small_task_mem * 1000, "command_mem": small_task_mem * 1000 - 500,
             "disk": small_task_disk + disk_pad, "boot_disk_size": boot_disk_size}
-
 
     Int tumor_reads_size = ceil(size(tumor_reads, "GB") + size(tumor_reads_index, "GB"))
     Int normal_reads_size = if defined(normal_reads) then ceil(size(normal_reads, "GB") + size(normal_reads_index, "GB")) else 0
@@ -197,9 +181,9 @@ workflow Mutect2 {
                 getpileupsummaries_extra_args = getpileupsummaries_extra_args,
                 variants_for_contamination = variants_for_contamination,
                 variants_for_contamination_idx = variants_for_contamination_idx,
-                make_bamout = make_bamout_or_default,
-                run_ob_filter = run_ob_filter,
-                compress = compress,
+                make_bamout = make_bamout,
+                run_ob_filter = run_orientation_bias_mixture_model_filter,
+                compress_vcfs = compress_vcfs,
                 gga_vcf = gga_vcf,
                 gga_vcf_idx = gga_vcf_idx,
                 gatk_override = gatk_override,
@@ -212,7 +196,7 @@ workflow Mutect2 {
     Int merged_vcf_size = ceil(size(M2.unfiltered_vcf, "GB"))
     Int merged_bamout_size = ceil(size(M2.output_bamOut, "GB"))
 
-    if (run_ob_filter) {
+    if (run_orientation_bias_mixture_model_filter) {
         call LearnReadOrientationModel {
             input:
                 f1r2_tar_gz = M2.f1r2_counts,
@@ -226,11 +210,11 @@ workflow Mutect2 {
             input_vcfs = M2.unfiltered_vcf,
             input_vcf_indices = M2.unfiltered_vcf_idx,
             output_name = unfiltered_name,
-            compress = compress,
+            compress_vcfs = compress_vcfs,
             runtime_params = standard_runtime
     }
 
-    if (make_bamout_or_default) {
+    if (make_bamout) {
         call MergeBamOuts {
             input:
                 ref_fasta = ref_fasta,
@@ -239,7 +223,7 @@ workflow Mutect2 {
                 bam_outs = M2.output_bamOut,
                 output_vcf_name = basename(MergeVCFs.merged_vcf, ".vcf"),
                 runtime_params = standard_runtime,
-                disk_space = ceil(merged_bamout_size * large_input_to_output_multiplier) + disk_pad,
+                disk_space = ceil(merged_bamout_size * 4) + disk_pad,
         }
     }
 
@@ -281,14 +265,14 @@ workflow Mutect2 {
             unfiltered_vcf = MergeVCFs.merged_vcf,
             unfiltered_vcf_idx = MergeVCFs.merged_vcf_idx,
             output_name = filtered_name,
-            compress = compress,
+            compress_vcfs = compress_vcfs,
             mutect_stats = MergeStats.merged_stats,
             contamination_table = CalculateContamination.contamination_table,
             maf_segments = CalculateContamination.maf_segments,
             artifact_priors_tar_gz = LearnReadOrientationModel.artifact_prior_table,
             m2_extra_filtering_args = m2_extra_filtering_args,
             runtime_params = standard_runtime,
-            disk_space = ceil(size(MergeVCFs.merged_vcf, "GB") * small_input_to_output_multiplier) + disk_pad
+            disk_space = ceil(size(MergeVCFs.merged_vcf, "GB") * 4) + disk_pad
     }
 
     if (defined(realignment_index_bundle)) {
@@ -301,7 +285,7 @@ workflow Mutect2 {
                 reads_index = tumor_reads_index,
                 realignment_index_bundle = select_first([realignment_index_bundle]),
                 realignment_extra_args = realignment_extra_args,
-                compress = compress,
+                compress_vcfs = compress_vcfs,
                 output_name = filtered_name,
                 input_vcf = Filter.filtered_vcf,
                 input_vcf_idx = Filter.filtered_vcf_idx,
@@ -310,8 +294,6 @@ workflow Mutect2 {
                 gcs_project_for_requester_pays = gcs_project_for_requester_pays
         }
     }
-
-
 
     output {
         File filtered_vcf = select_first([FilterAlignmentArtifacts.filtered_vcf, Filter.filtered_vcf])
@@ -387,7 +369,7 @@ task M2 {
       String? getpileupsummaries_extra_args
       Boolean? make_bamout
       Boolean? run_ob_filter
-      Boolean compress
+      Boolean compress_vcfs
       File? gga_vcf
       File? gga_vcf_idx
       File? variants_for_contamination
@@ -407,8 +389,8 @@ task M2 {
       Boolean use_ssd = false
     }
 
-    String output_vcf = "output" + if compress then ".vcf.gz" else ".vcf"
-    String output_vcf_idx = output_vcf + if compress then ".tbi" else ".idx"
+    String output_vcf = "output" + if compress_vcfs then ".vcf.gz" else ".vcf"
+    String output_vcf_idx = output_vcf + if compress_vcfs then ".tbi" else ".idx"
 
     String output_stats = output_vcf + ".stats"
 
@@ -524,12 +506,12 @@ task MergeVCFs {
       Array[File] input_vcfs
       Array[File] input_vcf_indices
       String output_name
-      Boolean compress
+      Boolean compress_vcfs
       Runtime runtime_params
     }
 
-    String output_vcf = output_name + if compress then ".vcf.gz" else ".vcf"
-    String output_vcf_idx = output_vcf + if compress then ".tbi" else ".idx"
+    String output_vcf = output_name + if compress_vcfs then ".vcf.gz" else ".vcf"
+    String output_vcf_idx = output_vcf + if compress_vcfs then ".tbi" else ".idx"
 
     # using MergeVcfs instead of GatherVcfs so we can create indices
     # WARNING 2015-10-28 15:01:48 GatherVcfs  Index creation not currently supported when gathering block compressed VCFs.
@@ -741,7 +723,7 @@ task Filter {
       File unfiltered_vcf
       File unfiltered_vcf_idx
       String output_name
-      Boolean compress
+      Boolean compress_vcfs
       File? mutect_stats
       File? artifact_priors_tar_gz
       File? contamination_table
@@ -752,8 +734,8 @@ task Filter {
       Int? disk_space
     }
 
-    String output_vcf = output_name + if compress then ".vcf.gz" else ".vcf"
-    String output_vcf_idx = output_vcf + if compress then ".tbi" else ".idx"
+    String output_vcf = output_name + if compress_vcfs then ".vcf.gz" else ".vcf"
+    String output_vcf_idx = output_vcf + if compress_vcfs then ".tbi" else ".idx"
 
     parameter_meta{
       ref_fasta: {localization_optional: true}
@@ -804,7 +786,7 @@ task FilterAlignmentArtifacts {
       File reads
       File reads_index
       String output_name
-      Boolean compress
+      Boolean compress_vcfs
       File realignment_index_bundle
       String? realignment_extra_args
       String? gcs_project_for_requester_pays
@@ -812,8 +794,8 @@ task FilterAlignmentArtifacts {
       Int mem
     }
 
-    String output_vcf = output_name + if compress then ".vcf.gz" else ".vcf"
-    String output_vcf_idx = output_vcf +  if compress then ".tbi" else ".idx"
+    String output_vcf = output_name + if compress_vcfs then ".vcf.gz" else ".vcf"
+    String output_vcf_idx = output_vcf +  if compress_vcfs then ".tbi" else ".idx"
 
     Int machine_mem = mem
     Int command_mem = machine_mem - 500
