@@ -4,6 +4,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -53,6 +54,19 @@ public class CompareReferencesIntegrationTest extends CommandLineProgramTest {
                 "-O", output.getAbsolutePath()};
         runCommandLine(args);
 
+        IntegrationTestSpec.assertEqualTextFiles(output, expectedOutput);
+    }
+
+    // test run on hg38 DRAGEN fastas -- displays EXACT_MATCH
+    @Test
+    public void testCompareReferencesDRAGENFastas() throws IOException{
+        final File ref1 = new File("/Users/ocohen/workingcode/gatk/tempreferences/hg38_better_alt_masked.fa");
+        final File ref2 = new File("/Users/ocohen/workingcode/gatk/tempreferences/Homo_sapiens_assembly38_masked.fasta");
+        final File output = createTempFile("testCompareReferencesDRAGENMaskedMatch", ".table");
+        final File expectedOutput = new File(getToolTestDataDir(), "expected.testCompareReferencesMaskedDRAGENMatch.table");
+
+        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-O", expectedOutput.getAbsolutePath()};
+        runCommandLine(args);
         IntegrationTestSpec.assertEqualTextFiles(output, expectedOutput);
     }
 
@@ -124,71 +138,64 @@ public class CompareReferencesIntegrationTest extends CommandLineProgramTest {
         runCommandLine(args);
     }
 
-    @Test(enabled = false)
-    public void testCompareReferencesMissingSequencesStdOut() throws IOException{
-        final File ref1 = new File(getToolTestDataDir() + "hg19mini.fasta");
-        final File ref2 = new File(getToolTestDataDir() + "hg19mini_chr2multiplesnps.fasta");
-        final GATKPath path = new GATKPath("/Users/ocohen/workingcode/gatk/tempreferences/testing_multiple_snps_output.tsv");
-
-        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-base-comparison", "FIND_SNPS_ONLY", "-base-comparison-output", path.toPath().toString()};
-        runCommandLine(args);
-    }
-
     @Test
-    public void testFindSNPs() throws IOException{
+    public void testFindMultipleSNPs() throws IOException{
         final File ref1 = new File(getToolTestDataDir() + "hg19mini.fasta");
         final File ref2 = new File(getToolTestDataDir() + "hg19mini_chr2multiplesnps.fasta");
-        final GATKPath output = new GATKPath(createTempDir("testFindSNPS").toURI().toString());
-        final File expectedOutput = new File(getToolTestDataDir() + "expected.hg19mini.fasta_hg19mini_chr2multiplesnps.fasta_snps.tsv");
+        final File output = IOUtils.createTempDir("tempFindSNPs");
+        final File expected = new File(getToolTestDataDir());
 
         final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-base-comparison", "FIND_SNPS_ONLY", "-base-comparison-output", output.toPath().toString()};
         runCommandLine(args);
 
-        IntegrationTestSpec.assertEqualTextFiles(output.toPath(), expectedOutput.toPath(), "");
+        final File actualOutput = new File(output, "hg19mini.fasta_hg19mini_chr2multiplesnps.fasta_snps.tsv");
+        final File expectedOutput = new File(expected, "expected.hg19mini.fasta_hg19mini_chr2multiplesnps.fasta_snps.tsv");
+        IntegrationTestSpec.assertEqualTextFiles(actualOutput, expectedOutput);
     }
 
     @Test
     public void testFindIUPACSNPs() throws IOException{
         final File ref1 = new File(getToolTestDataDir() + "hg19mini.fasta");
         final File ref2 = new File(getToolTestDataDir() + "hg19mini_chr2iupacsnps.fasta");
-        final GATKPath output = new GATKPath(createTempFile("testFindSNPS", ".tsv").toURI().toString());
-        final File expectedOutput = new File(getToolTestDataDir() + "expected.hg19mini.fasta_hg19mini_chr2iupacsnps.fasta_snps.tsv");
+        final File output = IOUtils.createTempDir("tempFindSNPs");
+        final File expected = new File(getToolTestDataDir());
 
         final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-base-comparison", "FIND_SNPS_ONLY", "-base-comparison-output", output.toPath().toString()};
         runCommandLine(args);
 
-        IntegrationTestSpec.assertEqualTextFiles(output.toPath(), expectedOutput.toPath(), "");
+        final File expectedOutput = new File(expected, "expected.hg19mini.fasta_hg19mini_chr2iupacsnps.fasta_snps.tsv");
+        final File actualOutput = new File(output, "hg19mini.fasta_hg19mini_chr2iupacsnps.fasta_snps.tsv");
+
+        IntegrationTestSpec.assertEqualTextFiles(actualOutput, expectedOutput);
     }
 
     @Test
-    public void testCompareReferencesGenerateMismatchingSequenceFastas() throws IOException{
+    public void testFullAlignmentMultipleSNPs() throws IOException{
         final File ref1 = new File(getToolTestDataDir() + "hg19mini.fasta");
-        final File ref2 = new File(getToolTestDataDir() + "hg19mini_chr2snp.fasta");
-        final File sequenceFastaOutputDir = new File("/Users/ocohen/workingcode/gatk/tempreferences/tempsequencefastas");
+        final File ref2 = new File(getToolTestDataDir() + "hg19mini_chr2multiplesnps.fasta");
+        final File output = IOUtils.createTempDir("tempFullAlignmentSNPs");
+        final File expected = new File(getToolTestDataDir());
 
-        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-mismatching-sequence-output-directory", sequenceFastaOutputDir.getAbsolutePath()};
+        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-base-comparison", "FULL_ALIGNMENT", "-base-comparison-output", output.toPath().toString()};
         runCommandLine(args);
+
+        final File expectedOutput = new File(expected, "expected.hg19mini.fasta_hg19mini_chr2multiplesnps.fasta.snps");
+        final File actualOutput = new File(output, "hg19mini.fasta_hg19mini_chr2multiplesnps.fasta.snps");
+        IntegrationTestSpec.assertEqualTextFiles(actualOutput, expectedOutput);
     }
 
     @Test
-    public void testCompareReferencesGenerateHg38SequenceFastas() throws IOException{
+    public void testFullAlignmentIndel() throws IOException{
         final File ref1 = new File(getToolTestDataDir() + "hg19mini.fasta");
-        final File ref2 = new File(getToolTestDataDir() + "hg19mini_chr2snp.fasta");
-        final File sequenceFastaOutputDir = new File("/Users/ocohen/workingcode/gatk/tempreferences/tempsequencefastas");
+        final File ref2 = new File(getToolTestDataDir() + "hg19mini_chr1indel.fasta");
+        final File output = IOUtils.createTempDir("tempFullAlignmentIndel");
+        final File expected = new File(getToolTestDataDir());
 
-        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-mismatching-sequence-output-directory", sequenceFastaOutputDir.getAbsolutePath()};
+        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-base-comparison", "FULL_ALIGNMENT", "-base-comparison-output", output.toPath().toString()};
         runCommandLine(args);
+
+        final File expectedOutput = new File(expected, "expected.hg19mini.fasta_hg19mini_chr1indel.fasta.snps");
+        final File actualOutput = new File(output, "hg19mini.fasta_hg19mini_chr1indel.fasta.snps");
+        IntegrationTestSpec.assertEqualTextFiles(actualOutput, expectedOutput);
     }
-
-    @Test
-    public void testCompareReferencesDRAGENFastas() throws IOException{
-        final File ref1 = new File("/Users/ocohen/workingcode/gatk/tempreferences/hg38_better_alt_masked.fa");
-        final File ref2 = new File("/Users/ocohen/workingcode/gatk/tempreferences/Homo_sapiens_assembly38_masked.fasta");
-
-        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath()};
-        runCommandLine(args);
-    }
-
-
-
 }

@@ -16,23 +16,18 @@ import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.funcotator.FilterFuncotations;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.runtime.ProcessController;
-import org.broadinstitute.hellbender.utils.runtime.ProcessOutput;
-import org.broadinstitute.hellbender.utils.runtime.ProcessSettings;
+import org.broadinstitute.hellbender.utils.text.XReadLines;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 import picard.cmdline.programgroups.ReferenceProgramGroup;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 
 /**
@@ -88,6 +83,8 @@ import java.util.*;
 @ExperimentalFeature
 public class CompareReferences extends GATKTool {
 
+
+
     @Argument(fullName = "references-to-compare", shortName = "refcomp", doc = "Reference sequence file(s) to compare.")
     private List<GATKPath> references;
 
@@ -108,11 +105,13 @@ public class CompareReferences extends GATKTool {
     @Argument(fullName = "display-only-differing-sequences", doc = "If provided, only display sequence names that differ in their actual sequence.", optional = true)
     private boolean onlyDisplayDifferingSequences = false;
 
-    @Argument(fullName = "base-comparison-output", doc = "", optional = true)
+    @Argument(fullName = "base-comparison", doc = "If provided, any mismatching, same-length sequences will be aligned for a base-comparison.", optional = true)
+    private BaseComparisonMode baseComparisonMode = BaseComparisonMode.NO_BASE_COMPARISON;
+
+    @Argument(fullName = "base-comparison-output", doc = "Output directory for base comparison outputs. Required for running base-comparison in FULL_ALIGNMENT or FIND_SNPS_ONLY mode.", optional = true)
     private GATKPath baseComparisonOutputDirectory;
 
-    @Argument(fullName = "base-comparison", doc = "If provided, any mismatching sequences will be aligned for a base-comparison.", optional = true)
-    private BaseComparisonMode baseComparisonMode = BaseComparisonMode.NO_BASE_COMPARISON;
+
 
 
     public enum MD5CalculationMode {
@@ -125,8 +124,11 @@ public class CompareReferences extends GATKTool {
     }
 
     public enum BaseComparisonMode{
+        // no base comparison
         NO_BASE_COMPARISON,
+        // run the mummer pipeline to generate a snps file containing SNPs and INDELs for any mismatching sequences of same name
         FULL_ALIGNMENT,
+        // do a base-by-base comparison of any mistmatching sequences of same name to output a table containing each base mismatch
         FIND_SNPS_ONLY
     }
 
@@ -191,10 +193,6 @@ public class CompareReferences extends GATKTool {
                 runFindSNPS(refPair, table);
                 break;
         }
-            // only do alignment if exactly 2 inputs (1 ReferencePair)
-
-
-
     }
 
 
@@ -258,8 +256,8 @@ public class CompareReferences extends GATKTool {
         System.out.println();
     }
 
-    public void runFullAlignment(ReferencePair refPair, ReferenceSequenceTable table){
-        List<File> vcfs = new ArrayList<>();
+    private void runFullAlignment(ReferencePair refPair, ReferenceSequenceTable table){
+        List<File> snpsFiles = new ArrayList<>();
         if(refPair.getAnalysis().contains(ReferencePair.Status.DIFFER_IN_SEQUENCE)) {
             // find the mismatch sequence
             for (String sequenceName : table.getAllSequenceNames()) {
@@ -279,38 +277,35 @@ public class CompareReferences extends GATKTool {
                     GATKPath ref2Fasta = generateFastaForSequence(ReferenceDataSource.of(ref2Path.toPath(), true), sequenceName, new GATKPath(ref2TempFastaOutput.toString()));
 
                     // pass fastas into mummer, get back a vcf and add to list
-                    MummerExecutor executor = new MummerExecutor(new File("/Users/ocohen/workingcode/MUMmer3.23"));
+                    MummerExecutor executor = new MummerExecutor();
                     logger.info("Running mummer alignment on sequence " + sequenceName);
-                    File tempVCFDirectory = IOUtils.createTempDir("compareReferencesTempVCFs");
-                    //File tempVCF = new File(tempVCFDirectory, );
-                    File mum = executor.executeMummer(ref1Fasta.toPath().toFile(), ref2Fasta.toPath().toFile(), tempVCFDirectory);
+                    File tempSnpsDirectory = IOUtils.createTempDir("tempsnps");
+                    File mummerOutput = executor.executeMummer(ref1Fasta.toPath().toFile(), ref2Fasta.toPath().toFile(), tempSnpsDirectory);
                     logger.info("Finished running mummer alignment on sequence " + sequenceName);
-                    vcfs.add(mum);
+                    snpsFiles.add(mummerOutput);
                 }
             }
-            // merge individual vcfs
-            File vcf = new File(baseComparisonOutputDirectory.toString(), "mummer_output.vcf");
-            VariantContextWriter writer = createVCFWriter(vcf);
-            VCFHeader header = new VCFHeader();
-            header.setSequenceDictionary(directlyAccessEngineReferenceDataSource().getSequenceDictionary());
-            writer.writeHeader(header);
-
-            for(File file : vcfs){
-                try(FeatureDataSource<VariantContext> source = new FeatureDataSource<>(file)) {
-                    for (VariantContext vc : source) {
-                        writer.add(vc);
+            // merge individual snps files
+            File snps = new File(baseComparisonOutputDirectory.toPath().toString(), String.format("%s_%s.snps", refPair.getRef1AsString(), refPair.getRef2AsString()));
+            for(File file : snpsFiles){
+                try(XReadLines reader = new XReadLines(file); PrintWriter writer = new PrintWriter(snps)) {
+                    while(reader.hasNext()){
+                        for(String line : reader.readLines()){
+                            writer.write(line + "\n");
+                        }
                     }
                 }
+                catch(IOException e){
+                    throw new UserException("Error merging show-snps outputs.", e);
+                }
             }
-            writer.close();
         }
         else{
             logger.info("No mismatching sequences found.");
         }
     }
 
-    public void runFindSNPS(ReferencePair refPair, ReferenceSequenceTable table) {
-        //List<SNPRecord> records = new ArrayList<>();
+    private void runFindSNPS(ReferencePair refPair, ReferenceSequenceTable table) {
         if(refPair.getAnalysis().contains(ReferencePair.Status.DIFFER_IN_SEQUENCE)) {
             TableColumnCollection columns = new TableColumnCollection(Arrays.asList("Sequence Name", "Position", refPair.getRef1AsString(), refPair.getRef2AsString()));
             File snpsOutput = new File(baseComparisonOutputDirectory.toPath().toString(), String.format("%s_%s_snps.tsv", refPair.getRef1AsString(), refPair.getRef2AsString()));
@@ -357,6 +352,14 @@ public class CompareReferences extends GATKTool {
         }
     }
 
+    /**
+     * Method to generate a fasta file for an individual sequence in a reference
+     *
+     * @param source ReferenceDataSource for the reference
+     * @param sequenceName target sequence name as a String
+     * @param output GATKPath for file output
+     * @return output location as a GATKPath
+     */
     public static GATKPath generateFastaForSequence(ReferenceDataSource source, String sequenceName, GATKPath output){
         try {
             int sequenceLength = source.getSequenceDictionary().getSequence(sequenceName).getSequenceLength();
@@ -372,33 +375,6 @@ public class CompareReferences extends GATKTool {
             throw new UserException.CouldNotCreateOutputFile("Couldn't create " + output + ", encountered exception: " + e.getMessage(), e);
         }
     }
-
-   /* public void doBaseComparison(ReferencePair refPair, ReferenceSequenceTable table){
-        // if mismatching MD5s found between the two inputs
-        if(refPair.getAnalysis().contains(ReferencePair.Status.DIFFER_IN_SEQUENCE)){
-            // find the mismatch sequence
-            for(String sequenceName : table.getAllSequenceNames()) {
-                Set<ReferenceSequenceTable.TableRow> rows = table.queryBySequenceName(sequenceName);
-                if (rows.size() == 2) {
-                    // generate fasta files for mismatching sequences
-                    GATKPath ref1Path = refPair.getRef1();
-                    GATKPath ref2Path = refPair.getRef2();
-
-                    String sequenceInRef1Name = ref1Path.toPath().getFileName() + "." + sequenceName;
-                    String sequenceInRef2Name = ref2Path.toPath().getFileName() + "." + sequenceName;
-
-                        *//*File ref1SequenceOutput = IOUtils.createTempFileInDirectory(sequenceInRef1Name, ".fasta", sequenceOutputDirectory);
-                        File ref2SequenceOutput = IOUtils.createTempFileInDirectory(sequenceInRef2Name, ".fasta", sequenceOutputDirectory);*//*
-
-                    //File ref1SequenceOutput = new File(baseComparisonOutputDirectory,   sequenceInRef1Name + ".fasta");
-                    //File ref2SequenceOutput = new File(baseComparisonOutputDirectory, sequenceInRef2Name + ".fasta");
-
-                    //generateFastaForSequence(ReferenceDataSource.of(ref1Path.toPath(), true), sequenceName, new GATKPath(ref1SequenceOutput.toString()));
-                    //generateFastaForSequence(ReferenceDataSource.of(ref2Path.toPath(), true), sequenceName, new GATKPath(ref2SequenceOutput.toString()));
-                }
-            }
-        }
-    }*/
 
     @Override
     public void closeTool() {
@@ -432,6 +408,10 @@ public class CompareReferences extends GATKTool {
         }
     }
 
+    /**
+     * Minimal class representing a single SNP in a pair of references.
+     * Stores the sequence, position of the SNP, and the allele in each reference.
+     */
     private static class SNPRecord{
         String sequence;
         int position;
@@ -450,14 +430,13 @@ public class CompareReferences extends GATKTool {
         }
     }
 
+    /**
+     * TableWriter to format and write SNP table output.
+     */
     public static class FindSNPsOnlyTableWriter extends TableWriter<SNPRecord> {
 
         public FindSNPsOnlyTableWriter(final Path table, TableColumnCollection columns) throws IOException {
             super(table, columns);
-        }
-
-        public FindSNPsOnlyTableWriter(final Writer writer, TableColumnCollection columns) throws IOException {
-            super(writer, columns);
         }
 
         @Override

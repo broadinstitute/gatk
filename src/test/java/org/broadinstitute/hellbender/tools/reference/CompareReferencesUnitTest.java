@@ -6,12 +6,15 @@ import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.tools.funcotator.FilterFuncotations;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.runtime.ProcessController;
 import org.broadinstitute.hellbender.utils.runtime.ProcessOutput;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 
@@ -40,57 +43,27 @@ public class CompareReferencesUnitTest extends CommandLineProgramTest {
     }
 
     @Test
-    public void testPythonCommand() throws InterruptedException{
-        //MummerExecutor exec = new MummerExecutor(new File("/Users/ocohen/all2vcf/src/mummer"));
-        String script = "/Users/ocohen/all2vcf/src/mummer";
-        List<String> command = Arrays.asList("-h");
-        MummerExecutor.runPythonCommand(script, command, null, null, true);
+    public void testExecuteMummer() {
+        File fasta1 = new File(getToolTestDataDir() + "hg19mini.fasta");
+        File fasta2 = new File(getToolTestDataDir() + "hg19mini_chr2multiplesnps.fasta");
+        File outputDirectory = new File("/Users/ocohen/workingcode/gatk/tempreferences/");
+        MummerExecutor exec = new MummerExecutor();
+
+        exec.executeMummer(fasta1, fasta2, outputDirectory);
+        //File expectedOutput = new File(outputDirectory, "snps_output.snps");
     }
 
     @Test
-    public void testExecuteMummer() {
-        /*
-        File fasta1 = new File(getToolTestDataDir() + "hg19mini.fasta");
-        File fasta2 = new File(getToolTestDataDir() + "hg19mini_chr2snp.fasta");
-        MummerExecutor exec = new MummerExecutor(new File("/Users/ocohen/workingcode/MUMmer3.23/"));
+    public void testPrepareMUMmerExecutionDirectory(){
+        MummerExecutor exec = new MummerExecutor();
+        File executableDirectory = exec.getMummerExecutableDirectory();
+        Assert.assertEquals(executableDirectory.listFiles().length, 4);
 
-        File deltaFile = new File(getToolTestDataDir() + "nucmerOutput");
-        String[] nucmerArgs = { exec.getMummerExecutableDirectory() +"/nucmer", "--mum", "-p", deltaFile.getAbsolutePath(), fasta1.getAbsolutePath(), fasta2.getAbsolutePath()};
-        ProcessOutput nucmer = MummerExecutor.runShellCommand(nucmerArgs, null, null, false);
-
-        File deltaFilterFile = new File(getToolTestDataDir() + "deltaFilterOutput.delta"); // file for delta filter output --> input to show-snps
-        String[] deltaFilterArgs = {exec.getMummerExecutableDirectory() + "/delta-filter", "-1", deltaFile.getAbsolutePath() + ".delta"};
-        ProcessOutput deltaFilter = MummerExecutor.runShellCommand(deltaFilterArgs, null, deltaFilterFile, false);
-
-        // show snps
-        File showSNPSOutput = new File(getToolTestDataDir() + "showSNPsOutput.snps");
-        String[] showSNPsArgs = {exec.getMummerExecutableDirectory() + "/show-snps", "-rlTH", deltaFilterFile.getAbsolutePath()};
-        ProcessOutput showSNPs = MummerExecutor.runShellCommand(showSNPsArgs, null, showSNPSOutput, false);
-
-        File vcf = new File(getToolTestDataDir() + "all2vcfOutput2.vcf");
-        String script = exec.getMummerExecutableDirectory() + "/all2vcf";
-        List<String> command = Arrays.asList("--snps", showSNPSOutput.getAbsolutePath(), "--reference", fasta1.getAbsolutePath(), "--output-header");
-        ProcessOutput all2vcf = MummerExecutor.runPythonCommand(script, command, null, vcf, false);
-
-        /*
-        // ALL2VCF
-        logger.debug("Running all2vcf.");
-        //File tempVCF = IOUtils.createTempFileInDirectory("tempVCF", ".vcf", outputDirectory);
-        File tempVCF = new File(outputDirectory, "testVCF.vcf");
-        String script = "/Users/ocohen/workingcode/MUMmer3.23/all2vcf";
-        List<String> all2vcfArgs = Arrays.asList("--snps", showSNPSOutput.getAbsolutePath(), "--reference", fasta1.getAbsolutePath(), "--output-header");
-        ProcessOutput all2vcf = runPythonCommand(script, all2vcfArgs, null, tempVCF, false);
-         */
-
-
-
-        File fasta1 = new File(getToolTestDataDir() + "hg19mini.fasta");
-        File fasta2 = new File(getToolTestDataDir() + "hg19mini_chr2snp.fasta");
-        File outputDirectory = new File("/Users/ocohen/workingcode/gatk/tempreferences/");
-        MummerExecutor exec = new MummerExecutor(new File("/Users/ocohen/workingcode/MUMmer3.23/MUMmer3.23Binaries/"));
-
-        exec.executeMummer(fasta1, fasta2, outputDirectory);
-
+        for(File file : executableDirectory.listFiles()){
+            Assert.assertTrue(file.getTotalSpace() > 0);
+            Assert.assertTrue(file.canExecute());
+        }
     }
+
 
 }

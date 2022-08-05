@@ -244,7 +244,7 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
     }
 
     /**
-     * Generate ReferencePairs for comaprison of all references present in the table against a provided dictionary.
+     * Generate ReferencePairs for comparison of all references present in the table against a provided dictionary.
      *
      * @return the list of ReferencePairs
      */
@@ -259,7 +259,7 @@ public class ReferenceSequenceTable implements Iterable<ReferenceSequenceTable.T
         return referencePairs;
     }
 
-    /** Create list ReferencePair for pairwise comparison of references in the table and analyze each pair.
+    /** Create list of ReferencePair for pairwise comparison of references in the table and analyze each pair.
      *
      * @return list of ReferencePairs in the table with updated status sets
      */
