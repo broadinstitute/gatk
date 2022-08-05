@@ -129,14 +129,7 @@ workflow Mutect2 {
 
     # This is added to every task as padding, should increase if systematically you need more disk for every call
     Int disk_pad = 10 + select_first([emergency_extra_disk,0])
-
-    # logic about output file names -- these are the names *without* .vcf extensions
-    String output_basename = basename(basename(tumor_reads, ".bam"),".cram")  #hacky way to strip either .bam or .cram
-    String unfiltered_name = output_basename + "-unfiltered"
-    String filtered_name = output_basename + "-filtered"
-
-    String output_vcf_name = output_basename + ".vcf"
-
+    
     Runtime standard_runtime = {"gatk_docker": gatk_docker, "gatk_override": gatk_override,
             "max_retries": max_retries, "preemptible": preemptible, "cpu": small_task_cpu,
             "machine_mem": small_task_mem * 1000, "command_mem": small_task_mem * 1000 - 500,
@@ -209,7 +202,6 @@ workflow Mutect2 {
         input:
             input_vcfs = M2.unfiltered_vcf,
             input_vcf_indices = M2.unfiltered_vcf_idx,
-            output_name = unfiltered_name,
             compress_vcfs = compress_vcfs,
             runtime_params = standard_runtime
     }
@@ -221,7 +213,6 @@ workflow Mutect2 {
                 ref_fai = ref_fai,
                 ref_dict = ref_dict,
                 bam_outs = M2.output_bamOut,
-                output_vcf_name = basename(MergeVCFs.merged_vcf, ".vcf"),
                 runtime_params = standard_runtime,
                 disk_space = ceil(merged_bamout_size * 4) + disk_pad,
         }
@@ -233,7 +224,7 @@ workflow Mutect2 {
         call MergePileupSummaries as MergeTumorPileups {
             input:
                 input_tables = flatten(M2.tumor_pileups),
-                output_name = output_basename,
+                output_name = "tumor-pileups",
                 ref_dict = ref_dict,
                 runtime_params = standard_runtime
         }
@@ -242,7 +233,7 @@ workflow Mutect2 {
             call MergePileupSummaries as MergeNormalPileups {
                 input:
                     input_tables = flatten(M2.normal_pileups),
-                    output_name = output_basename,
+                    output_name = "normal-pileups",
                     ref_dict = ref_dict,
                     runtime_params = standard_runtime
             }
@@ -264,7 +255,6 @@ workflow Mutect2 {
             intervals = intervals,
             unfiltered_vcf = MergeVCFs.merged_vcf,
             unfiltered_vcf_idx = MergeVCFs.merged_vcf_idx,
-            output_name = filtered_name,
             compress_vcfs = compress_vcfs,
             mutect_stats = MergeStats.merged_stats,
             contamination_table = CalculateContamination.contamination_table,
@@ -286,7 +276,6 @@ workflow Mutect2 {
                 realignment_index_bundle = select_first([realignment_index_bundle]),
                 realignment_extra_args = realignment_extra_args,
                 compress_vcfs = compress_vcfs,
-                output_name = filtered_name,
                 input_vcf = Filter.filtered_vcf,
                 input_vcf_idx = Filter.filtered_vcf_idx,
                 runtime_params = standard_runtime,
@@ -505,12 +494,11 @@ task MergeVCFs {
     input {
       Array[File] input_vcfs
       Array[File] input_vcf_indices
-      String output_name
       Boolean compress_vcfs
       Runtime runtime_params
     }
 
-    String output_vcf = output_name + if compress_vcfs then ".vcf.gz" else ".vcf"
+    String output_vcf = if compress_vcfs then "merged.vcf.gz" else "merged.vcf"
     String output_vcf_idx = output_vcf + if compress_vcfs then ".tbi" else ".idx"
 
     # using MergeVcfs instead of GatherVcfs so we can create indices
@@ -543,7 +531,6 @@ task MergeBamOuts {
       File ref_fai
       File ref_dict
       Array[File]+ bam_outs
-      String output_vcf_name
       Runtime runtime_params
       Int? disk_space   #override to request more disk than default small task params
     }
@@ -560,9 +547,8 @@ task MergeBamOuts {
         # overlapping bamouts
 
         gatk --java-options "-Xmx~{runtime_params.command_mem}m" SortSam -I unsorted.out.bam \
-            -O ~{output_vcf_name}.out.bam \
-            --SORT_ORDER coordinate -VALIDATION_STRINGENCY LENIENT
-        gatk --java-options "-Xmx~{runtime_params.command_mem}m" BuildBamIndex -I ~{output_vcf_name}.out.bam -VALIDATION_STRINGENCY LENIENT
+            -O bamout.bam --SORT_ORDER coordinate -VALIDATION_STRINGENCY LENIENT
+        gatk --java-options "-Xmx~{runtime_params.command_mem}m" BuildBamIndex -I bamout.bam -VALIDATION_STRINGENCY LENIENT
     >>>
 
     runtime {
@@ -576,8 +562,8 @@ task MergeBamOuts {
     }
 
     output {
-        File merged_bam_out = "~{output_vcf_name}.out.bam"
-        File merged_bam_out_index = "~{output_vcf_name}.out.bai"
+        File merged_bam_out = "bamout.bam"
+        File merged_bam_out_index = "bamout.bai"
     }
 }
 
@@ -716,25 +702,24 @@ task CalculateContamination {
 
 task Filter {
     input {
-      File? intervals
-      File ref_fasta
-      File ref_fai
-      File ref_dict
-      File unfiltered_vcf
-      File unfiltered_vcf_idx
-      String output_name
-      Boolean compress_vcfs
-      File? mutect_stats
-      File? artifact_priors_tar_gz
-      File? contamination_table
-      File? maf_segments
-      String? m2_extra_filtering_args
+        File? intervals
+        File ref_fasta
+        File ref_fai
+        File ref_dict
+        File unfiltered_vcf
+        File unfiltered_vcf_idx
+        Boolean compress_vcfs
+        File? mutect_stats
+        File? artifact_priors_tar_gz
+        File? contamination_table
+        File? maf_segments
+        String? m2_extra_filtering_args
 
-      Runtime runtime_params
-      Int? disk_space
+        Runtime runtime_params
+        Int? disk_space
     }
 
-    String output_vcf = output_name + if compress_vcfs then ".vcf.gz" else ".vcf"
+    String output_vcf = if compress_vcfs then "filtered.vcf.gz" else "filtered.vcf"
     String output_vcf_idx = output_vcf + if compress_vcfs then ".tbi" else ".idx"
 
     parameter_meta{
@@ -785,7 +770,6 @@ task FilterAlignmentArtifacts {
       File input_vcf_idx
       File reads
       File reads_index
-      String output_name
       Boolean compress_vcfs
       File realignment_index_bundle
       String? realignment_extra_args
@@ -794,7 +778,7 @@ task FilterAlignmentArtifacts {
       Int mem
     }
 
-    String output_vcf = output_name + if compress_vcfs then ".vcf.gz" else ".vcf"
+    String output_vcf = if compress_vcfs then "filtered.vcf.gz" else "filtered.vcf"
     String output_vcf_idx = output_vcf +  if compress_vcfs then ".tbi" else ".idx"
 
     Int machine_mem = mem
