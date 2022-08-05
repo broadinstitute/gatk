@@ -30,6 +30,7 @@ public final class MummerExecutor {
     }
 
     public File executeMummer(File fasta1, File fasta2, File outputDirectory){
+
         // NUCMER
         logger.debug("Running nucmer.");
         File nucmerTempDirectory = IOUtils.createTempDir("nucmerTempDir");
@@ -37,7 +38,7 @@ public final class MummerExecutor {
         String[] nucmerArgs = {mummerExecutableDirectory.getAbsolutePath() + "/nucmer", "--mum", "-p", deltaFile.getAbsolutePath(), fasta1.getAbsolutePath(), fasta2.getAbsolutePath()};
         ProcessOutput nucmer = runShellCommand(nucmerArgs, null, null,false);
 
-        // DELTA_FILTER
+        // DELTA-FILTER
         logger.debug("Running delta-filter.");
         File deltaFilterOutput = IOUtils.createTempFile("deltaFilterOutput", ".delta"); // file for delta filter output --> input to show-snps
         String[] deltaFilterArgs = {mummerExecutableDirectory.getAbsolutePath() + "/delta-filter", "-1", deltaFile.getAbsolutePath() + ".delta"};
@@ -52,10 +53,10 @@ public final class MummerExecutor {
         // ALL2VCF
         logger.debug("Running all2vcf.");
         //File tempVCF = IOUtils.createTempFileInDirectory("tempVCF", ".vcf", outputDirectory);
-        File tempVCF = new File(outputDirectory, "/testVCF.vcf");
-        String script = "/Users/ocohen/all2vcf/src/mummer";
+        File tempVCF = new File(outputDirectory, "testVCF.vcf");
+        String script = "/Users/ocohen/workingcode/MUMmer3.23/all2vcf";
         List<String> all2vcfArgs = Arrays.asList("--snps", showSNPSOutput.getAbsolutePath(), "--reference", fasta1.getAbsolutePath(), "--output-header");
-        ProcessOutput all2vcf = runPythonCommand(script, all2vcfArgs, null, tempVCF, true);
+        ProcessOutput all2vcf = runPythonCommand(script, all2vcfArgs, null, tempVCF, false);
 
         return tempVCF;
     }

@@ -31,6 +31,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 
@@ -172,8 +173,13 @@ public class CompareReferences extends GATKTool {
         if(referencePairs.size() != 1 && baseComparisonMode != BaseComparisonMode.NO_BASE_COMPARISON){
             throw new UserException.BadInput("");
         }
-        if(baseComparisonMode != BaseComparisonMode.NO_BASE_COMPARISON && baseComparisonOutputDirectory == null){
-            throw new UserException.CouldNotCreateOutputFile(baseComparisonOutputDirectory, "Output directory non existent.");
+        if(baseComparisonMode != BaseComparisonMode.NO_BASE_COMPARISON){
+            if(baseComparisonOutputDirectory == null) {
+                throw new UserException.CouldNotCreateOutputFile(baseComparisonOutputDirectory, "Output directory not provided but required in base comparison mode.");
+            }
+            if(!Files.exists(baseComparisonOutputDirectory.toPath())){
+                throw new UserException.CouldNotCreateOutputFile(baseComparisonOutputDirectory, "Output directory non-existent.");
+            }
         }
         ReferencePair refPair = referencePairs.get(0);
 
