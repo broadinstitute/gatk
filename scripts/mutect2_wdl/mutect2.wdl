@@ -100,6 +100,10 @@ workflow Mutect2 {
         Boolean compress_vcfs = false
         File? gga_vcf
         File? gga_vcf_idx
+        Boolean make_m3_training_dataset = false
+        Boolean make_m3_test_dataset = false
+        File? m3_training_dataset_truth_vcf
+        File? m3_training_dataset_truth_vcf_idx
 
 
         # runtime
@@ -129,7 +133,7 @@ workflow Mutect2 {
 
     # This is added to every task as padding, should increase if systematically you need more disk for every call
     Int disk_pad = 10 + select_first([emergency_extra_disk,0])
-    
+
     Runtime standard_runtime = {"gatk_docker": gatk_docker, "gatk_override": gatk_override,
             "max_retries": max_retries, "preemptible": preemptible, "cpu": small_task_cpu,
             "machine_mem": small_task_mem * 1000, "command_mem": small_task_mem * 1000 - 500,
@@ -179,6 +183,10 @@ workflow Mutect2 {
                 compress_vcfs = compress_vcfs,
                 gga_vcf = gga_vcf,
                 gga_vcf_idx = gga_vcf_idx,
+                make_m3_training_dataset = make_m3_training_dataset,
+                make_m3_test_dataset = make_m3_test_dataset,
+                m3_training_dataset_truth_vcf = m3_training_dataset_truth_vcf,
+                m3_training_dataset_truth_vcf_idx = m3_training_dataset_truth_vcf_idx,
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
                 disk_space = m2_per_scatter_size,
@@ -247,6 +255,14 @@ workflow Mutect2 {
         }
     }
 
+    if (make_m3_training_dataset || make_m3_test_dataset) {
+        call Concatenate {
+            input:
+                input_files = M2.m3_dataset,
+                gatk_docker = gatk_docker
+        }
+    }
+
     call Filter {
         input:
             ref_fasta = ref_fasta,
@@ -295,6 +311,7 @@ workflow Mutect2 {
         File? bamout_index = MergeBamOuts.merged_bam_out_index
         File? maf_segments = CalculateContamination.maf_segments
         File? read_orientation_model_params = LearnReadOrientationModel.artifact_prior_table
+        File? m3_dataset = Concatenate.concatenated
     }
 }
 
@@ -342,40 +359,45 @@ task SplitIntervals {
 
 task M2 {
     input {
-      File? intervals
-      File ref_fasta
-      File ref_fai
-      File ref_dict
-      File tumor_reads
-      File tumor_reads_index
-      File? normal_reads
-      File? normal_reads_index
-      File? pon
-      File? pon_idx
-      File? gnomad
-      File? gnomad_idx
-      String? m2_extra_args
-      String? getpileupsummaries_extra_args
-      Boolean? make_bamout
-      Boolean? run_ob_filter
-      Boolean compress_vcfs
-      File? gga_vcf
-      File? gga_vcf_idx
-      File? variants_for_contamination
-      File? variants_for_contamination_idx
+        File? intervals
+        File ref_fasta
+        File ref_fai
+        File ref_dict
+        File tumor_reads
+        File tumor_reads_index
+        File? normal_reads
+        File? normal_reads_index
+        File? pon
+        File? pon_idx
+        File? gnomad
+        File? gnomad_idx
+        String? m2_extra_args
+        String? getpileupsummaries_extra_args
+        Boolean? make_bamout
+        Boolean? run_ob_filter
+        Boolean compress_vcfs
+        File? gga_vcf
+        File? gga_vcf_idx
+        File? variants_for_contamination
+        File? variants_for_contamination_idx
 
-      File? gatk_override
+        File? gatk_override
 
-      String? gcs_project_for_requester_pays
+        String? gcs_project_for_requester_pays
 
-      # runtime
-      String gatk_docker
-      Int? mem
-      Int? preemptible
-      Int? max_retries
-      Int? disk_space
-      Int? cpu
-      Boolean use_ssd = false
+        Boolean make_m3_training_dataset = false
+        Boolean make_m3_test_dataset = false
+        File? m3_training_dataset_truth_vcf
+        File? m3_training_dataset_truth_vcf_idx
+
+        # runtime
+        String gatk_docker
+        Int? mem
+        Int? preemptible
+        Int? max_retries
+        Int? disk_space
+        Int? cpu
+        Boolean use_ssd = false
     }
 
     String output_vcf = "output" + if compress_vcfs then ".vcf.gz" else ".vcf"
@@ -388,22 +410,24 @@ task M2 {
     Int command_mem = machine_mem - 500
 
     parameter_meta{
-      intervals: {localization_optional: true}
-      ref_fasta: {localization_optional: true}
-      ref_fai: {localization_optional: true}
-      ref_dict: {localization_optional: true}
-      tumor_reads: {localization_optional: true}
-      tumor_reads_index: {localization_optional: true}
-      normal_reads: {localization_optional: true}
-      normal_reads_index: {localization_optional: true}
-      pon: {localization_optional: true}
-      pon_idx: {localization_optional: true}
-      gnomad: {localization_optional: true}
-      gnomad_idx: {localization_optional: true}
-      gga_vcf: {localization_optional: true}
-      gga_vcf_idx: {localization_optional: true}
-      variants_for_contamination: {localization_optional: true}
-      variants_for_contamination_idx: {localization_optional: true}
+        intervals: {localization_optional: true}
+        ref_fasta: {localization_optional: true}
+        ref_fai: {localization_optional: true}
+        ref_dict: {localization_optional: true}
+        tumor_reads: {localization_optional: true}
+        tumor_reads_index: {localization_optional: true}
+        normal_reads: {localization_optional: true}
+        normal_reads_index: {localization_optional: true}
+        pon: {localization_optional: true}
+        pon_idx: {localization_optional: true}
+        gnomad: {localization_optional: true}
+        gnomad_idx: {localization_optional: true}
+        gga_vcf: {localization_optional: true}
+        gga_vcf_idx: {localization_optional: true}
+        variants_for_contamination: {localization_optional: true}
+        variants_for_contamination_idx: {localization_optional: true}
+        m3_training_dataset_truth_vcf: {localization_optional: true}
+        m3_training_dataset_truth_vcf_idx: {localization_optional: true}
     }
 
     command <<<
@@ -414,6 +438,7 @@ task M2 {
         # We need to create these files regardless, even if they stay empty
         touch bamout.bam
         touch f1r2.tar.gz
+        touch dataset.txt
         echo "" > normal_name.txt
 
         gatk --java-options "-Xmx~{command_mem}m" GetSampleName -R ~{ref_fasta} -I ~{tumor_reads} -O tumor_name.txt -encode \
@@ -437,6 +462,9 @@ task M2 {
             -O "~{output_vcf}" \
             ~{true='--bam-output bamout.bam' false='' make_bamout} \
             ~{true='--f1r2-tar-gz f1r2.tar.gz' false='' run_ob_filter} \
+            ~{true='--mutect3-dataset dataset.txt' false='' make_m3_test_dataset} \
+            ~{true='--mutect3-dataset dataset.txt --mutect3-training-mode' false='' make_m3_training_dataset} \
+            ~{"--mutect3-training-truth " + m3_training_dataset_truth_vcf} \
             ~{m2_extra_args} \
             ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
 
@@ -487,6 +515,7 @@ task M2 {
         File f1r2_counts = "f1r2.tar.gz"
         Array[File] tumor_pileups = glob("*tumor-pileups.table")
         Array[File] normal_pileups = glob("*normal-pileups.table")
+        File m3_dataset = "dataset.txt"
     }
 }
 
@@ -822,6 +851,34 @@ task FilterAlignmentArtifacts {
     output {
         File filtered_vcf = "~{output_vcf}"
         File filtered_vcf_idx = "~{output_vcf_idx}"
+    }
+}
+
+task Concatenate {
+    input {
+        Array[File] input_files
+        Int? mem
+        String gatk_docker
+    }
+
+    Int machine_mem = if defined(mem) then mem * 1000 else 7000
+
+    command {
+        cat ~{sep=' ' input_files} > output.txt
+    }
+
+    runtime {
+        docker: gatk_docker
+        bootDiskSizeGb: 12
+        memory: machine_mem + " MB"
+        disks: "local-disk 100 HDD"
+        preemptible: 1
+        maxRetries: 1
+        cpu: 2
+    }
+
+    output {
+        File concatenated = "output.txt"
     }
 }
 
