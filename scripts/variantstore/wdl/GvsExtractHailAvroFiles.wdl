@@ -47,9 +47,9 @@ task ExtractAvroFiles {
 
         write_prefix=$(dirname ~{write_peer})
 
-        bq query --replace --nouse_legacy_sql --project_id=~{project_id} "
+        bq query --nouse_legacy_sql --project_id=~{project_id} "
             -- TODO handle superpartitioning, i.e. > 1 vet / ref_ranges table
-            EXPORT DATA OPTIONS(uri='${write_prefix}/vet_001_*.avro', format='AVRO', compression='SNAPPY') AS
+            EXPORT DATA OPTIONS(uri='${write_prefix}/avro/vet/vet_001_*.avro', format='AVRO', compression='SNAPPY') AS
             SELECT location, sample_id, ref, REPLACE(alt,',<NON_REF>','') alt, call_GT as GT, call_AD as AD, call_GQ as GQ, cast(SPLIT(call_pl,',')[OFFSET(0)] as int64) as RGQ
             FROM \`~{project_id}.~{dataset}.vet_001\`
             ORDER BY location
