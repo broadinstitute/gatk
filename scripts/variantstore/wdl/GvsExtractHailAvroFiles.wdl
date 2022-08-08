@@ -75,6 +75,7 @@ task ExtractAvroFiles {
             FROM \`~{project_id}.~{dataset}.filter_set_sites\`
             WHERE filter_set_name = '~{filter_set_name}'
             ORDER BY location
+        "
 
         bq query --nouse_legacy_sql --project_id=~{project_id} "
             -- TODO handle superpartitioning, i.e. > 1 vet / ref_ranges table
