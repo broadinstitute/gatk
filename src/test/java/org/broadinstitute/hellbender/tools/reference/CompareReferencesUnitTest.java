@@ -4,21 +4,12 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
-import org.broadinstitute.hellbender.tools.funcotator.FilterFuncotations;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.io.Resource;
-import org.broadinstitute.hellbender.utils.runtime.ProcessController;
-import org.broadinstitute.hellbender.utils.runtime.ProcessOutput;
+import org.broadinstitute.hellbender.utils.alignment.MummerExecutor;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.List;
-
-import static org.testng.Assert.*;
 
 public class CompareReferencesUnitTest extends CommandLineProgramTest {
 
@@ -42,7 +33,7 @@ public class CompareReferencesUnitTest extends CommandLineProgramTest {
         MummerExecutor.runShellCommand(command, null, new File("/Users/ocohen/workingcode/hello.output"), true);
     }
 
-    @Test
+  /*  @Test
     public void testExecuteMummer() {
         File fasta1 = new File(getToolTestDataDir() + "hg19mini.fasta");
         File fasta2 = new File(getToolTestDataDir() + "hg19mini_chr2multiplesnps.fasta");
@@ -51,7 +42,7 @@ public class CompareReferencesUnitTest extends CommandLineProgramTest {
 
         exec.executeMummer(fasta1, fasta2, outputDirectory);
         //File expectedOutput = new File(outputDirectory, "snps_output.snps");
-    }
+    }*/
 
     @Test
     public void testPrepareMUMmerExecutionDirectory(){
@@ -64,6 +55,4 @@ public class CompareReferencesUnitTest extends CommandLineProgramTest {
             Assert.assertTrue(file.canExecute());
         }
     }
-
-
 }

@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.reference;
+package org.broadinstitute.hellbender.utils.alignment;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -63,7 +63,7 @@ public final class MummerExecutor {
      * @param outputDirectory directory to output final snps file
      * @return the final snps File
      */
-    public File executeMummer(File fasta1, File fasta2, File outputDirectory){
+    public File executeMummer(File fasta1, File fasta2, File outputDirectory, String sequenceName){
 
         // NUCMER
         logger.debug("Running nucmer.");
@@ -80,7 +80,7 @@ public final class MummerExecutor {
 
         // SHOW-SNPS
         logger.debug("Running show-snps.");
-        File showSNPSOutput = new File(outputDirectory, "snps_output.snps");
+        File showSNPSOutput = new File(outputDirectory, String.format("chr%s_snps_output.snps", sequenceName));
         String[] showSNPsArgs = {mummerExecutableDirectory.getAbsolutePath() + "/show-snps", "-rlTH", deltaFilterOutput.getAbsolutePath()};
         ProcessOutput showSNPs = runShellCommand(showSNPsArgs, null, showSNPSOutput, false);
 

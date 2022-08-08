@@ -4,6 +4,7 @@ import htsjdk.samtools.reference.FastaReferenceWriter;
 import htsjdk.samtools.reference.FastaReferenceWriterBuilder;
 import htsjdk.samtools.reference.ReferenceSequence;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -11,12 +12,12 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.alignment.MummerExecutor;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.text.XReadLines;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
@@ -27,7 +28,6 @@ import picard.cmdline.programgroups.ReferenceProgramGroup;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 
 /**
@@ -270,8 +270,8 @@ public class CompareReferences extends GATKTool {
                     String sequenceInRef1Name = ref1Path.toPath().getFileName() + "." + sequenceName;
                     String sequenceInRef2Name = ref2Path.toPath().getFileName() + "." + sequenceName;
 
-                    File ref1TempFastaOutput = IOUtils.createTempFileInDirectory(sequenceInRef1Name, ".fasta", baseComparisonOutputDirectory.toPath().toFile());
-                    File ref2TempFastaOutput = IOUtils.createTempFileInDirectory(sequenceInRef2Name, ".fasta", baseComparisonOutputDirectory.toPath().toFile());
+                    File ref1TempFastaOutput = IOUtils.createTempFile(sequenceInRef1Name, ".fasta");
+                    File ref2TempFastaOutput = IOUtils.createTempFile(sequenceInRef2Name, ".fasta");
 
                     GATKPath ref1Fasta = generateFastaForSequence(ReferenceDataSource.of(ref1Path.toPath(), true), sequenceName, new GATKPath(ref1TempFastaOutput.toString()));
                     GATKPath ref2Fasta = generateFastaForSequence(ReferenceDataSource.of(ref2Path.toPath(), true), sequenceName, new GATKPath(ref2TempFastaOutput.toString()));
@@ -280,24 +280,90 @@ public class CompareReferences extends GATKTool {
                     MummerExecutor executor = new MummerExecutor();
                     logger.info("Running mummer alignment on sequence " + sequenceName);
                     File tempSnpsDirectory = IOUtils.createTempDir("tempsnps");
-                    File mummerOutput = executor.executeMummer(ref1Fasta.toPath().toFile(), ref2Fasta.toPath().toFile(), tempSnpsDirectory);
+                    File mummerOutput = executor.executeMummer(ref1Fasta.toPath().toFile(), ref2Fasta.toPath().toFile(), tempSnpsDirectory, sequenceName);
                     logger.info("Finished running mummer alignment on sequence " + sequenceName);
                     snpsFiles.add(mummerOutput);
                 }
             }
             // merge individual snps files
             File snps = new File(baseComparisonOutputDirectory.toPath().toString(), String.format("%s_%s.snps", refPair.getRef1AsString(), refPair.getRef2AsString()));
-            for(File file : snpsFiles){
-                try(XReadLines reader = new XReadLines(file); PrintWriter writer = new PrintWriter(snps)) {
-                    while(reader.hasNext()){
-                        for(String line : reader.readLines()){
-                            writer.write(line + "\n");
-                        }
+            try (PrintWriter writer = new PrintWriter(snps)) {
+                for (File file : snpsFiles) {
+                    try (XReadLines reader = new XReadLines(file)) {
+                            for (String line : reader) {
+                                writer.write(line + "\n");
+                            }
+                    } catch (IOException e) {
+                        throw new UserException("Error merging show-snps outputs.", e);
                     }
                 }
-                catch(IOException e){
-                    throw new UserException("Error merging show-snps outputs.", e);
-                }
+            }
+            catch(IOException e){
+                throw new UserException("Error writing show-snps output file.");
+            }
+            File vcf = new File(baseComparisonOutputDirectory.toPath().toString(), String.format("%s_%s.vcf", refPair.getRef1AsString(), refPair.getRef2AsString()));
+            try(XReadLines reader = new XReadLines(snps);
+                VariantContextWriter writer = createVCFWriter(vcf);
+                ReferenceDataSource source = ReferenceDataSource.of(refPair.getRef1().toPath())){
+                VCFHeader header = new VCFHeader();
+                header.setSequenceDictionary(getReferenceDictionary());
+                writer.writeHeader(header);
+                MummerIndel currentIndel = null;
+                int previousPos = -1;
+                    for (String line : reader) {
+                        String[] fields = line.split("\\t", -1);
+                        String contig = fields[10];
+                        int pos = Integer.valueOf(fields[0]);
+                        String ref = fields[1];
+                        String alt = fields[2];
+
+                        // insertion
+                        if (ref.equals(".") && !alt.equals(".")) {
+                            if (pos == previousPos && currentIndel.isInsertion) {
+                                currentIndel.alt += alt;
+                            } else {
+                                if (currentIndel != null) {
+                                    writer.add(currentIndel.getAsVCFRecord());
+                                }
+                                String refPadding = new String(source.queryAndPrefetch(new SimpleInterval(contig, pos-1, pos-1)).getBases());
+                                currentIndel = new MummerIndel(contig, refPadding, refPadding + alt, pos-1, true, false);
+                            }
+                        }
+
+                        // deletion
+                        else if(!ref.equals(".") && alt.equals(".")){
+                            if(pos == previousPos+1 && currentIndel.isDeletion){
+                               currentIndel.ref += ref;
+                            }
+                            else {
+                                if(currentIndel != null) {
+                                    writer.add(currentIndel.getAsVCFRecord());
+                                }
+                                String refPadding = new String(source.queryAndPrefetch(new SimpleInterval(contig, pos-1, pos-1)).getBases());
+                                currentIndel = new MummerIndel(contig, refPadding + ref, refPadding, pos-1, false, true);
+                            }
+                        }
+                        // snp
+                        else {
+                            if(currentIndel != null){
+                                writer.add(currentIndel.getAsVCFRecord());
+                                currentIndel = null;
+                            }
+                            VariantContextBuilder vcfBuilder = new VariantContextBuilder();
+                            VariantContext record = vcfBuilder.chr(contig).start(pos).stop(pos).alleles(ref, alt).make();
+                            writer.add(record);
+                        }
+                        previousPos = pos;
+                    }
+                    if(currentIndel != null){
+                        writer.add(currentIndel.getAsVCFRecord());
+                    }
+            }
+            catch(IOException e){
+                throw new UserException("");
+            }
+            catch(NumberFormatException e){
+                throw new UserException("");
             }
         }
         else{
@@ -446,5 +512,33 @@ public class CompareReferences extends GATKTool {
                     .set(record.ref1, record.ref1Allele)
                     .set(record.ref2, record.ref2Allele);
         }
+    }
+
+    private static class MummerIndel{
+        String ref;
+        String alt;
+        String chr;
+        int pos;
+        boolean isInsertion;
+        boolean isDeletion;
+
+        MummerIndel(String chr, String ref, String alt, int pos, boolean isInsertion, boolean isDeletion){
+            this.ref = ref;
+            this.alt = alt;
+            this.chr = chr;
+            this.pos = pos;
+            this.isInsertion = isInsertion;
+            this.isDeletion = isDeletion;
+        }
+
+        public VariantContext getAsVCFRecord(){
+            // builder, add fields
+            VariantContextBuilder vcfBuilder = new VariantContextBuilder();
+            int stopPos = isInsertion ? pos : pos + ref.length()-1;
+            VariantContext record = vcfBuilder.chr(chr).start(pos).stop(stopPos).alleles(ref, alt).make();
+            return record;
+        }
+
+
     }
 }
