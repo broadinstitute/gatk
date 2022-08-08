@@ -36,7 +36,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class SomaticGenotypingEngine implements AutoCloseable {
-    protected final Logger logger = LogManager.getLogger(this.getClass());
+    protected static final Logger logger = LogManager.getLogger(SomaticGenotypingEngine.class);
 
     private final M2ArgumentCollection MTAC;
     private final Set<String> normalSamples;
