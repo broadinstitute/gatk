@@ -371,7 +371,7 @@ public class SomaticGenotypingEngine implements AutoCloseable {
     @VisibleForTesting
     static double[] getGermlineAltAlleleFrequencies(final List<Allele> allAlleles, final Optional<VariantContext> germlineVC, final double afOfAllelesNotInGermlineResource) {
         Utils.validateArg(!allAlleles.isEmpty(), "allAlleles are empty -- there is not even a reference allele.");
-        if (germlineVC.isPresent())  {
+        if (germlineVC.isPresent() && germlineVC.get().hasAttribute(VCFConstants.ALLELE_FREQUENCY_KEY))  {
             List<OptionalInt> germlineIndices = GATKVariantContextUtils.alleleIndices(allAlleles, germlineVC.get().getAlleles());
             final List<Double> germlineAltAFs = Mutect2Engine.getAttributeAsDoubleList(germlineVC.get(), VCFConstants.ALLELE_FREQUENCY_KEY, afOfAllelesNotInGermlineResource);
 

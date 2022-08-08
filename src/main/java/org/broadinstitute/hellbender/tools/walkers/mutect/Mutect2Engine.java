@@ -490,10 +490,9 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
 
             for (final VariantContext germlineVC : germline) {
                 final List<Double> germlineAlleleFrequencies = getAttributeAsDoubleList(germlineVC, VCFConstants.ALLELE_FREQUENCY_KEY, 0.0);
-                final List<Allele> germlineAlts = germlineVC.getAlternateAlleles();
                 final Allele germlineRef = germlineVC.getReference();
 
-                for (int germlineAltIdx = 0; germlineAltIdx < germlineAlts.size(); germlineAltIdx++) {
+                for (int germlineAltIdx = 0; germlineAltIdx < germlineAlleleFrequencies.size(); germlineAltIdx++) {
                     if (germlineAlleleFrequencies.get(germlineAltIdx) < MTAC.maxPopulationAlleleFrequency) {
                         continue;
                     }
