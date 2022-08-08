@@ -53,8 +53,8 @@ task ExtractAvroFiles {
         bq query --nouse_legacy_sql --project_id=~{project_id} "
             EXPORT DATA OPTIONS(
             uri='${write_prefix}/avro/sample_mapping/sample_mapping_*.avro', format='AVRO', compression='SNAPPY') AS
-            SELECT sample_id, sample_name, "40",
-            "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list" as intervals_file
+            SELECT sample_id, sample_name, '40',
+            'gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list' as intervals_file
             FROM \`~{project_id}.~{dataset}.sample_info\`
             ORDER BY sample_id
         "
