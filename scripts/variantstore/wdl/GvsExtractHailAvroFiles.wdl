@@ -61,7 +61,7 @@ task ExtractAvroFiles {
 
         bq query --nouse_legacy_sql --project_id=~{project_id} "
             EXPORT DATA OPTIONS(
-            uri='${write_prefix}/avro/vqsr_filtering_data_*.avro', format='AVRO', compression='SNAPPY') AS
+            uri='${write_prefix}/avro/vqsr_filtering/vqsr_filtering_*.avro', format='AVRO', compression='SNAPPY') AS
             SELECT location, type as model, ref, alt, vqslod, yng_status
             FROM \`~{project_id}.~{dataset}.filter_set_info\`
             WHERE filter_set_name = '~{filter_set_name}'
@@ -70,7 +70,7 @@ task ExtractAvroFiles {
 
         bq query --nouse_legacy_sql --project_id=~{project_id} "
             EXPORT DATA OPTIONS(
-            uri='${write_prefix}/avro/site_filtering_data/site_filtering_data_*.avro', format='AVRO', compression='SNAPPY') AS
+            uri='${write_prefix}/avro/site_filtering/site_filtering_*.avro', format='AVRO', compression='SNAPPY') AS
             SELECT location, filters
             FROM \`~{project_id}.~{dataset}.filter_set_sites\`
             WHERE filter_set_name = '~{filter_set_name}'
