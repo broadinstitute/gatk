@@ -7,14 +7,28 @@ workflow GvsExtractHailAvroFiles {
         String write_prefix
     }
 
-    Array[String] array = ["first", "second", "third"]
-    File f = write_lines(array)
+    call OutputPaths { input: go = true }
 
     call ExtractAvroFiles {
         input:
             project_id = project_id,
             dataset = dataset,
-            write_peer = f
+            write_peer = OutputPaths.out
+    }
+}
+
+
+task OutputPaths {
+    input {
+        Boolean go = true
+    }
+    command <<<
+    >>>
+    output {
+        File out = stdout()
+    }
+    runtime {
+        docker: "ubuntu:latest"
     }
 }
 
