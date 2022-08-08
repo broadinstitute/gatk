@@ -42,8 +42,7 @@ public class SomaticGenotypingEngineUnitTest {
 
                 //biallelic, same alt allele in different representations
                 { Arrays.asList(Allele.REF_A, Allele.ALT_G), Arrays.asList(ATref, GT), new double[] {0.1}, new double[] {0.1}},
-                { Arrays.asList(ATref, GT), Arrays.asList(Allele.REF_A, Allele.ALT_G), new double[] {0.1}, new double[] {0.1}},
-
+                { Arrays.asList(ATref, GT), Arrays.asList(Allele.REF_A, Allele.ALT_G), new double[] {0.1}, new double[] {0.1}}
         };
     }
 
