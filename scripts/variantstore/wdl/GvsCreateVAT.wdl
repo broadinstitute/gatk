@@ -10,9 +10,6 @@ workflow GvsCreateVAT {
         String dataset_name
         String filter_set_name
         String? vat_version
-        File? vat_schema_json_file = "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/schemas/vat_schema.json"
-        File? variant_transcript_schema_json_file = "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/schemas/vt_schema.json"
-        File? genes_schema_json_file = "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/schemas/genes_schema.json"
         String output_path
 
         Int? merge_vcfs_disk_size_override
@@ -21,9 +18,9 @@ workflow GvsCreateVAT {
 
     Array[String] contig_array = ["chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrX", "chrY", "chrM"]
     File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
-    File nirvana_data_directory = "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/NirvanaData.tar.gz"
+    File nirvana_data_directory = "gs://broad-public-datasets/gvs/vat-annotations/Nirvana/NirvanaData.tar.gz"
 
-    call MakeSubpopulationFiles {
+    call MakeSubpopulationFilesAndReadSchemaFiles {
         input:
             input_ancestry_file = ancestry_file,
             inputFileofFileNames = inputFileofFileNames,
@@ -31,27 +28,27 @@ workflow GvsCreateVAT {
     }
 
     ## Scatter across the shards from the GVS jointVCF
-    scatter(i in range(length(MakeSubpopulationFiles.input_vcfs)) ) {
+    scatter(i in range(length(MakeSubpopulationFilesAndReadSchemaFiles.input_vcfs)) ) {
         ## Create a sites-only VCF from the original GVS jointVCF
         ## Calculate AC/AN/AF for subpopulations and extract them for custom annotations
         call Annotations.GvsCreateVATAnnotations {
             input:
-                input_vcf = MakeSubpopulationFiles.input_vcfs[i],
-                input_vcf_index = MakeSubpopulationFiles.input_vcf_indices[i],
-                input_vcf_name = basename(MakeSubpopulationFiles.input_vcfs[i], ".vcf.gz"),
-                ancestry_mapping_list = MakeSubpopulationFiles.ancestry_mapping_list,
+                input_vcf = MakeSubpopulationFilesAndReadSchemaFiles.input_vcfs[i],
+                input_vcf_index = MakeSubpopulationFilesAndReadSchemaFiles.input_vcf_indices[i],
+                input_vcf_name = basename(MakeSubpopulationFilesAndReadSchemaFiles.input_vcfs[i], ".vcf.gz"),
+                ancestry_mapping_list = MakeSubpopulationFilesAndReadSchemaFiles.ancestry_mapping_list,
                 nirvana_data_directory = nirvana_data_directory,
                 output_path = output_path,
-                custom_annotations_template = MakeSubpopulationFiles.custom_annotations_template_file,
+                custom_annotations_template = MakeSubpopulationFilesAndReadSchemaFiles.custom_annotations_template_file,
                 ref = reference
         }
     }
 
     call BigQueryLoadJson {
         input:
-            nirvana_schema = vat_schema_json_file,
-            vt_schema = variant_transcript_schema_json_file,
-            genes_schema = genes_schema_json_file,
+            nirvana_schema = MakeSubpopulationFilesAndReadSchemaFiles.vat_schema_json_file,
+            vt_schema = MakeSubpopulationFilesAndReadSchemaFiles.variant_transcript_schema_json_file,
+            genes_schema = MakeSubpopulationFilesAndReadSchemaFiles.genes_schema_json_file,
             project_id = project_id,
             dataset_name = dataset_name,
             output_path = output_path,
@@ -98,39 +95,30 @@ workflow GvsCreateVAT {
 
 ################################################################################
 
-task MakeSubpopulationFiles {
+task MakeSubpopulationFilesAndReadSchemaFiles {
     input {
         File input_ancestry_file
         File inputFileofFileNames
         File inputFileofIndexFileNames
+
+        String vat_schema_json_filepath = "/data/variant_annotation_table/schema/vat_schema.json"
+        String variant_transcript_schema_json_filepath = "/data/variant_annotation_table/schema/vt_schema.json"
+        String genes_schema_json_filepath = "/data/variant_annotation_table/schema/genes_schema.json"
     }
-#    parameter_meta {
-#        input_ancestry_file:
-#        {
-#            localization_optional: true
-#        }
-#        inputFileofFileNames:
-#        {
-#            localization_optional: true
-#        }
-#        inputFileofIndexFileNames:
-#        {
-#            localization_optional: true
-#        }
-#    }
     String output_ancestry_filename =  "ancestry_mapping.tsv"
     String custom_annotations_template_filename =  "custom_annotations_template.tsv"
-#    String updated_input_ancestry_file = basename(input_ancestry_file)
-#    String updated_input_vcfs_file = basename(inputFileofFileNames)
-#    String updated_input_indices_file = basename(inputFileofIndexFileNames)
+
+    String vat_schema_json_filename = basename(vat_schema_json_filepath)
+    String variant_transcript_schema_json_filename = basename(variant_transcript_schema_json_filepath)
+    String genes_schema_json_filename = basename(genes_schema_json_filepath)
 
     command <<<
         set -e
 
-#        gsutil cp ~{input_ancestry_file} .
-#        gsutil cp ~{inputFileofFileNames} .
-#        gsutil cp ~{inputFileofIndexFileNames} .
-#
+        cp ~{vat_schema_json_filepath} ~{vat_schema_json_filename}
+        cp ~{variant_transcript_schema_json_filepath} ~{variant_transcript_schema_json_filename}
+        cp ~{genes_schema_json_filepath} ~{genes_schema_json_filename}
+
         ## the ancestry file is processed down to a simple mapping from sample to subpopulation
         python3 /app/extract_subpop.py \
             --input_path ~{input_ancestry_file} \
@@ -141,7 +129,7 @@ task MakeSubpopulationFiles {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_08_01"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS_567_RemoveSAFromGvsCreateVAT"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -150,6 +138,10 @@ task MakeSubpopulationFiles {
     # ------------------------------------------------
     # Outputs:
     output {
+        File vat_schema_json_file = vat_schema_json_filename
+        File variant_transcript_schema_json_file = variant_transcript_schema_json_filename
+        File genes_schema_json_file = genes_schema_json_filename
+
         File ancestry_mapping_list = output_ancestry_filename
         File custom_annotations_template_file = custom_annotations_template_filename
         Array[File] input_vcfs = read_lines(inputFileofFileNames)

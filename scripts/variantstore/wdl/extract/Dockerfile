@@ -19,4 +19,9 @@ COPY curate_input_array_files.py /app
 COPY scale_xy_bed_values.py /app
 COPY workflow_compute_costs.py /app
 
+# Copy the schema files needed vor VAT creation.
+COPY variant_annotation_table/schema/vat_schema.json /data/variant_annotation_table/schema/
+COPY variant_annotation_table/schema/vt_schema.json /data/variant_annotation_table/schema/
+COPY variant_annotation_table/schema/genes_schema.json /data/variant_annotation_table/schema/
+
 WORKDIR /app
