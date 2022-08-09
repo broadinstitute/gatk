@@ -112,7 +112,7 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
     command <<<
         set -e
 
-        ln -s ~{schema_filepath}* .
+        cp ~{schema_filepath}* .
 
         ## the ancestry file is processed down to a simple mapping from sample to subpopulation
         python3 /app/extract_subpop.py \
