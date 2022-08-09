@@ -23,7 +23,8 @@ workflow GvsExtractAvroFilesForHail {
             dataset = dataset
     }
 
-    # Superpartitions have max size 4000.
+    # Superpartitions have max size 4000. The inner '- 1' is so the 4000th (and multiples of 4000) sample lands in the
+    # appropriate partition, the outer '+ 1' is to iterate over the correct number of partitions.
     scatter (i in range(((CountSamples.num_samples - 1) / 4000) + 1)) {
         call ExtractFromSuperpartitionedTables {
             input:
@@ -31,7 +32,7 @@ workflow GvsExtractAvroFilesForHail {
                 dataset = dataset,
                 filter_set_name = filter_set_name,
                 avro_sibling = OutputPath.out,
-                table_index = i + 1
+                table_index = i + 1 #  'i' is 0-based so add 1.
         }
     }
     output {
