@@ -135,7 +135,7 @@ public final class HDF5Utils {
      * Given a large matrix, chunks the matrix into equally sized subsets of rows
      * (plus a subset containing the remainder, if necessary) and writes these submatrices to indexed sub-paths
      * to avoid a hard limit in Java HDF5 on the number of elements in a matrix given by
-     * {@code MAX_NUM_VALUES_PER_HDF5_MATRIX}. The number of chunks is determined by {@code maxChunkSize},
+     * {@code MAX_NUMBER_OF_VALUES_PER_HDF5_MATRIX}. The number of chunks is determined by {@code maxChunkSize},
      * which should be set appropriately for the desired number of columns.
      *
      * @param maxChunkSize  The maximum number of values in each chunk. Decreasing this number will reduce

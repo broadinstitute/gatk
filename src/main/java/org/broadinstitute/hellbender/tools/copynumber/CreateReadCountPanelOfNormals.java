@@ -85,7 +85,7 @@ import java.util.stream.Collectors;
  *         Panel-of-normals file.
  *         This is an HDF5 file containing the panel data in the paths defined in {@link HDF5SVDReadCountPanelOfNormals}.
  *         HDF5 files may be viewed using <a href="https://support.hdfgroup.org/products/java/hdfview/">hdfview</a>
- *         or loaded in python using <a href="http://www.pytables.org/">PyTables</a> or <a href="http://www.h5py.org/">h5py</a>.
+ *         or loaded in Python using <a href="http://www.pytables.org/">PyTables</a> or <a href="http://www.h5py.org/">h5py</a>.
  *     </li>
  * </ul>
  *
