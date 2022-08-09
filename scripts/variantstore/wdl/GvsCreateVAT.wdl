@@ -4,8 +4,8 @@ import "GvsCreateVATAnnotations.wdl" as Annotations
 
 workflow GvsCreateVAT {
     input {
-        File inputFileofFileNames
-        File inputFileofIndexFileNames
+        File input_file_of_file_names
+        File input_file_of_index_file_names
         String project_id
         String dataset_name
         String filter_set_name
@@ -23,8 +23,8 @@ workflow GvsCreateVAT {
     call MakeSubpopulationFilesAndReadSchemaFiles {
         input:
             input_ancestry_file = ancestry_file,
-            inputFileofFileNames = inputFileofFileNames,
-            inputFileofIndexFileNames = inputFileofIndexFileNames
+            input_file_of_file_names = input_file_of_file_names,
+            input_file_of_index_file_names = input_file_of_index_file_names
     }
 
     ## Scatter across the shards from the GVS jointVCF
@@ -98,26 +98,21 @@ workflow GvsCreateVAT {
 task MakeSubpopulationFilesAndReadSchemaFiles {
     input {
         File input_ancestry_file
-        File inputFileofFileNames
-        File inputFileofIndexFileNames
+        File input_file_of_file_names
+        File input_file_of_index_file_names
 
-        String vat_schema_json_filepath = "/data/variant_annotation_table/schema/vat_schema.json"
-        String variant_transcript_schema_json_filepath = "/data/variant_annotation_table/schema/vt_schema.json"
-        String genes_schema_json_filepath = "/data/variant_annotation_table/schema/genes_schema.json"
+        String schema_filepath = "/data/variant_annotation_table/schema/"
+        String vat_schema_json_filename = "vat_schema.json"
+        String variant_transcript_schema_json_filename = "vt_schema.json"
+        String genes_schema_json_filename = "genes_schema.json"
     }
     String output_ancestry_filename =  "ancestry_mapping.tsv"
     String custom_annotations_template_filename =  "custom_annotations_template.tsv"
 
-    String vat_schema_json_filename = basename(vat_schema_json_filepath)
-    String variant_transcript_schema_json_filename = basename(variant_transcript_schema_json_filepath)
-    String genes_schema_json_filename = basename(genes_schema_json_filepath)
-
     command <<<
         set -e
 
-        cp ~{vat_schema_json_filepath} ~{vat_schema_json_filename}
-        cp ~{variant_transcript_schema_json_filepath} ~{variant_transcript_schema_json_filename}
-        cp ~{genes_schema_json_filepath} ~{genes_schema_json_filename}
+        ln "~{schema_filepath}*" .
 
         ## the ancestry file is processed down to a simple mapping from sample to subpopulation
         python3 /app/extract_subpop.py \
@@ -144,8 +139,8 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
 
         File ancestry_mapping_list = output_ancestry_filename
         File custom_annotations_template_file = custom_annotations_template_filename
-        Array[File] input_vcfs = read_lines(inputFileofFileNames)
-        Array[File] input_vcf_indices = read_lines(inputFileofIndexFileNames)
+        Array[File] input_vcfs = read_lines(input_file_of_file_names)
+        Array[File] input_vcf_indices = read_lines(input_file_of_index_file_names)
     }
 }
 
