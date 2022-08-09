@@ -24,14 +24,14 @@ workflow GvsExtractAvroFilesForHail {
     }
 
     # Superpartitions have max size 4000.
-    scatter (i in range((CountSamples.num_samples / 4000) + 1)) {
+    scatter (i in range(CountSamples.num_samples / 4000)) {
         call ExtractFromSuperpartitionedTables {
             input:
                 project_id = project_id,
                 dataset = dataset,
                 filter_set_name = filter_set_name,
                 avro_sibling = OutputPath.out,
-                table_index = i
+                table_index = i + 1
         }
     }
     output {
