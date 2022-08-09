@@ -68,7 +68,7 @@ task CountSamples {
     command <<<
         pip install --upgrade pip
         pip install google-cloud-bigquery
-        python <<FIN
+        python3 <<FIN
 
         from google.cloud import bigquery
 
