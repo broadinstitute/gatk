@@ -12,6 +12,8 @@ import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.DefaultRealMatrixChangingVisitor;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.util.FastMath;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
@@ -34,6 +36,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class SomaticGenotypingEngine implements AutoCloseable {
+    protected static final Logger logger = LogManager.getLogger(SomaticGenotypingEngine.class);
 
     private final M2ArgumentCollection MTAC;
     private final Set<String> normalSamples;
@@ -375,6 +378,10 @@ public class SomaticGenotypingEngine implements AutoCloseable {
     static double[] getGermlineAltAlleleFrequencies(final List<Allele> allAlleles, final Optional<VariantContext> germlineVC, final double afOfAllelesNotInGermlineResource) {
         Utils.validateArg(!allAlleles.isEmpty(), "allAlleles are empty -- there is not even a reference allele.");
         if (germlineVC.isPresent())  {
+            if (! germlineVC.get().hasAttribute(VCFConstants.ALLELE_FREQUENCY_KEY)) {
+                logger.warn("Germline resource variant at " + germlineVC.get().getContig() + ":" + germlineVC.get().getStart() +" missing AF attribute");
+                return Doubles.toArray(Collections.nCopies(allAlleles.size() - 1, afOfAllelesNotInGermlineResource));
+            }
             List<OptionalInt> germlineIndices = GATKVariantContextUtils.alleleIndices(allAlleles, germlineVC.get().getAlleles());
             final List<Double> germlineAltAFs = Mutect2Engine.getAttributeAsDoubleList(germlineVC.get(), VCFConstants.ALLELE_FREQUENCY_KEY, afOfAllelesNotInGermlineResource);
 

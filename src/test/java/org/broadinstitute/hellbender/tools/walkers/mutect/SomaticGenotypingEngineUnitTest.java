@@ -42,7 +42,7 @@ public class SomaticGenotypingEngineUnitTest {
 
                 //biallelic, same alt allele in different representations
                 { Arrays.asList(Allele.REF_A, Allele.ALT_G), Arrays.asList(ATref, GT), new double[] {0.1}, new double[] {0.1}},
-                { Arrays.asList(ATref, GT), Arrays.asList(Allele.REF_A, Allele.ALT_G), new double[] {0.1}, new double[] {0.1}},
+                { Arrays.asList(ATref, GT), Arrays.asList(Allele.REF_A, Allele.ALT_G), new double[] {0.1}, new double[] {0.1}}
         };
     }
 
@@ -55,5 +55,21 @@ public class SomaticGenotypingEngineUnitTest {
                 .attribute(VCFConstants.ALLELE_FREQUENCY_KEY, germlineAltAFs).make();
         final double[] result = SomaticGenotypingEngine.getGermlineAltAlleleFrequencies(calledAlleles, Optional.of(vc1), DEFAULT_AF);
         Assert.assertEquals(result, expected, 1.0e-10);
+    }
+
+    @DataProvider(name = "missingAFData")
+    Object[][] missingAFData() {
+        return new Object[][]{
+                {new VariantContextBuilder("SOURCE", "1", 1, 1, Arrays.asList(Allele.REF_A, Allele.ALT_C))
+                        .attribute(VCFConstants.ALLELE_FREQUENCY_KEY, VCFConstants.MISSING_VALUE_v4).make()},
+                {new VariantContextBuilder("SOURCE", "1", 1, 1, Arrays.asList(Allele.REF_A, Allele.ALT_C))
+                        .make()}
+        };
+    }
+
+    @Test(dataProvider = "missingAFData")
+    public void testGetGermlineAltAlleleFrequenciesWithMissingAF(final VariantContext vc) {
+        final double[] result = SomaticGenotypingEngine.getGermlineAltAlleleFrequencies(vc.getAlleles(), Optional.of(vc), DEFAULT_AF);
+        Assert.assertEquals(result, new double[] {DEFAULT_AF}, 1.0e-10);
     }
 }
