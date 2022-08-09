@@ -1,6 +1,6 @@
 version 1.0
 
-workflow GvsExtractHailAvroFiles {
+workflow GvsExtractAvroFilesForHail {
     input {
         String project_id
         String dataset

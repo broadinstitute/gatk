@@ -233,9 +233,9 @@ workflows:
          - master
          - ah_var_store
          - cost_robustitude
-   - name: GvsExtractHailAvroFiles
+   - name: GvsExtractAvroFilesForHail
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractHailAvroFiles.wdl
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractAvroFilesForHail.wdl
      filters:
        branches:
          - master
