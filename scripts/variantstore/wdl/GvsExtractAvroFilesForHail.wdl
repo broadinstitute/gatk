@@ -168,7 +168,7 @@ task ExtractFromSuperpartitionedTables {
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
         avro_prefix="$(dirname ~{avro_sibling})/avro"
-        str_table_index=$(printf "%03d" ~{table_index}"
+        str_table_index=$(printf "%03d" ~{table_index})
 
         # These bq exports error out if there are any objects at the sibling level to where output files would be written
         # so an extra layer of `vet_${str_table_index}` is inserted here.
