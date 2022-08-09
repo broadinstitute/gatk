@@ -1,7 +1,9 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling;
 
 public enum VariantAnnotationsModelBackend {
-    // TODO will be added in a separate PR
+    /**
+     * Use {@link org.broadinstitute.hellbender.utils.clustering.BayesianGaussianMixtureModeller}.
+     */
     JAVA_BGMM,
 
     /**

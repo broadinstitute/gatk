@@ -95,7 +95,7 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
      *  1) non-allele-specific ("nonAS") vs. allele-specific ("AS")
      *  2) SNP-only ("snp") vs. SNP+INDEL ("snpIndel") (for both of these options, we use extracted annotations that contain both SNP and INDEL variants as input)
      *  3) model backend
-     *      3a) Java Bayesian Gaussian Mixture Model (BGMM) backend TODO the BGMM has been reduced to a stub for this initial PR; subsequent PRs will cover the backend code and reconnect the stub
+     *      3a) Java Bayesian Gaussian Mixture Model (BGMM) backend
      *      3b) default PYTHON_IFOREST with default hyperparameters ("IF")
      *      3c) default PYTHON_IFOREST with non-default seed hyperparameter ("IFDifferentSeed")
      *      3d) specified PYTHON_SCRIPT with non-default seed hyperparameter ("IFDifferentSeed"); we will simply use the same script as the default PYTHON_IFOREST backend, so this is just a test of the command-line interface
@@ -113,6 +113,7 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
                 Collections.singletonList(
                         Pair.of("posOnly", Function.identity())),
                 Arrays.asList(
+                        Pair.of("BGMM", ab -> ADD_MODEL_BACKEND.apply(ab, VariantAnnotationsModelBackend.JAVA_BGMM)),
                         Pair.of("IF", ab -> ADD_MODEL_BACKEND.apply(ab, VariantAnnotationsModelBackend.PYTHON_IFOREST)),
                         Pair.of("IFDifferentSeed", ADD_ISOLATION_FOREST_HYPERPARAMETERS_JSON
                                 .andThen(ab -> ADD_MODEL_BACKEND.apply(ab, VariantAnnotationsModelBackend.PYTHON_IFOREST))), // this and the following case give the same results, so they are given the same IFDifferentSeed tag

@@ -1,67 +1,79 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling;
 
-import org.apache.commons.lang.NotImplementedException;
-import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hdf5.HDF5File;
-import org.broadinstitute.hdf5.HDF5LibException;
+import com.google.common.collect.ImmutableList;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.copynumber.utils.HDF5Utils;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.LabeledVariantAnnotationsData;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.clustering.BayesianGaussianMixtureModeller;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.List;
 
-// TODO this is just a stub, will be fleshed out in a separate PR
 public final class BGMMVariantAnnotationsScorer implements VariantAnnotationsScorer, Serializable {
-
     private static final long serialVersionUID = 1L;
 
     public static final String BGMM_SCORER_SER_SUFFIX = ".bgmmScorer.ser";
 
+    private final List<String> annotationNames;     // for validation
+    private final BGMMVariantAnnotationsModel.Preprocesser preprocesser;
+    private final BayesianGaussianMixtureModeller bgmm;
+
     public BGMMVariantAnnotationsScorer(final List<String> annotationNames,
                                         final BGMMVariantAnnotationsModel.Preprocesser preprocesser,
                                         final BayesianGaussianMixtureModeller bgmm) {
-        throw new NotImplementedException("BGMM module will be implemented in separate PR.");
+        this.annotationNames = ImmutableList.copyOf(annotationNames);
+        this.preprocesser = preprocesser;
+        this.bgmm = bgmm;
     }
 
     @Override
     public void score(final File inputAnnotationsFile,
                       final File outputScoresFile) {
-        throw new NotImplementedException("BGMM module will be implemented in separate PR.");
+        final List<String> inputAnnotationNames = LabeledVariantAnnotationsData.readAnnotationNames(inputAnnotationsFile);
+        Utils.validateArg(inputAnnotationNames.equals(annotationNames), "Annotation names must be identical.");
+        final double[][] annotations = LabeledVariantAnnotationsData.readAnnotations(inputAnnotationsFile);
+        final double[][] preprocessedAnnotations = preprocesser.transform(annotations);
+        final double[] scores = bgmm.scoreSamples(preprocessedAnnotations);
+        VariantAnnotationsScorer.writeScores(outputScoresFile, scores);
     }
 
     public double[][] preprocess(final double[][] annotations) {
-        throw new NotImplementedException("BGMM module will be implemented in separate PR.");
+        return preprocesser.transform(annotations);
     }
 
     public void serialize(final File scorerFile) {
-        throw new NotImplementedException("BGMM module will be implemented in separate PR.");
+        serialize(scorerFile, this);
     }
 
     public static BGMMVariantAnnotationsScorer deserialize(final File scorerFile) {
-        throw new NotImplementedException("BGMM module will be implemented in separate PR.");
+        return deserialize(scorerFile, BGMMVariantAnnotationsScorer.class);
     }
 
-    // TODO clean this up, copy more fields
-    public static void preprocessAnnotationsWithBGMMAndWriteHDF5(final List<String> annotationNames,
-                                                                 final String outputPrefix,
-                                                                 final File labeledTrainingAndVariantTypeAnnotationsFile,
-                                                                 final Logger logger) {
-        final double[][] rawAnnotations = LabeledVariantAnnotationsData.readAnnotations(labeledTrainingAndVariantTypeAnnotationsFile);
-        final BGMMVariantAnnotationsScorer scorer = BGMMVariantAnnotationsScorer.deserialize(new File(outputPrefix + BGMM_SCORER_SER_SUFFIX));
-        final double[][] preprocessedAnnotations = scorer.preprocess(rawAnnotations);
-        final File outputPreprocessedAnnotationsFile = new File(outputPrefix + ".annot.pre.hdf5");
-        try (final HDF5File hdf5File = new HDF5File(outputPreprocessedAnnotationsFile, HDF5File.OpenMode.CREATE)) {
-            IOUtils.canReadFile(hdf5File.getFile());
-            hdf5File.makeStringArray("/data/annotation_names", annotationNames.toArray(new String[0]));
-            HDF5Utils.writeChunkedDoubleMatrix(hdf5File, "/data/annotations", preprocessedAnnotations, HDF5Utils.MAX_NUMBER_OF_VALUES_PER_HDF5_MATRIX / 16);
-        } catch (final HDF5LibException exception) {
-            throw new GATKException(String.format("Exception encountered during writing of preprocessed annotations (%s). Output file at %s may be in a bad state.",
-                    exception, outputPreprocessedAnnotationsFile.getAbsolutePath()));
+    private static <T> void serialize(final File outputFile,
+                                      final T object) {
+        try (final FileOutputStream fileOutputStream = new FileOutputStream(outputFile);
+             final ObjectOutputStream objectOutputStream = new ObjectOutputStream(fileOutputStream)) {
+            objectOutputStream.writeObject(object);
+        } catch (final IOException e) {
+            throw new GATKException(String.format("Exception encountered during serialization of %s to %s: %s",
+                    object.getClass(), outputFile.getAbsolutePath(), e));
         }
-        logger.info(String.format("Preprocessed annotations written to %s.", outputPreprocessedAnnotationsFile.getAbsolutePath()));
+    }
+
+    private static <T> T deserialize(final File inputFile,
+                                     final Class<T> clazz) {
+        try (final FileInputStream fileInputStream = new FileInputStream(inputFile);
+             final ObjectInputStream objectInputStream = new ObjectInputStream(fileInputStream)) {
+            return clazz.cast(objectInputStream.readObject());
+        } catch (final IOException | ClassNotFoundException e) {
+            throw new GATKException(String.format("Exception encountered during deserialization from %s: %s",
+                    inputFile.getAbsolutePath(), e));
+        }
     }
 }

@@ -274,6 +274,7 @@ public final class LabeledVariantAnnotationsData {
         Utils.validateArg(allAnnotations.length > 0, "Number of annotation data points must be positive.");
         Utils.validateArg(annotationNames.size() == allAnnotations[0].length,
                 "Number of annotation names must match number of features in annotation data.");
+        Utils.validateArg(isSubset.stream().anyMatch(x -> x),"Number of annotation data points in subset must be positive.");
         final double[][] subsetData = IntStream.range(0, isSubset.size()).boxed().filter(isSubset::get).map(i -> allAnnotations[i]).toArray(double[][]::new);
         final File subsetAnnotationsFile = IOUtils.createTempFile("subset.annot", ".hdf5");
         try (final HDF5File subsetAnnotationsHDF5File = new HDF5File(subsetAnnotationsFile, HDF5File.OpenMode.CREATE)) {

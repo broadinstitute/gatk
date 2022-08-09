@@ -259,6 +259,8 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
     public static final String ISOLATION_FOREST_PYTHON_SCRIPT = "isolation-forest.py";
     public static final String ISOLATION_FOREST_HYPERPARAMETERS_JSON = "isolation-forest-hyperparameters.json";
 
+    public static final String BGMM_HYPERPARAMETERS_JSON = "bgmm-hyperparameters.json";
+
     enum AvailableLabelsMode {
         POSITIVE_ONLY, POSITIVE_UNLABELED
     }
@@ -283,10 +285,10 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
     @Argument(
             fullName = MODEL_BACKEND_LONG_NAME,
             doc = "Backend to use for training models. " +
-                    "JAVA_BGMM will use a pure Java implementation (ported from Python scikit-learn) of the Bayesian Gaussian Mixture Model. " +
                     "PYTHON_IFOREST will use the Python scikit-learn implementation of the IsolationForest method and " +
                     "will require that the corresponding Python dependencies are present in the environment. " +
                     "PYTHON_SCRIPT will use the script specified by the " + PYTHON_SCRIPT_LONG_NAME + " argument. " +
+                    "JAVA_BGMM will use a pure Java implementation (ported from Python scikit-learn) of the Bayesian Gaussian Mixture Model. " +
                     "See the tool documentation for more details.")
     private VariantAnnotationsModelBackend modelBackend = VariantAnnotationsModelBackend.PYTHON_IFOREST;
 
@@ -353,8 +355,10 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
             case JAVA_BGMM:
                 Utils.validateArg(pythonScriptFile == null,
                         "Python script should not be provided when using JAVA_BGMM backend.");
+                if (hyperparametersJSONFile == null) {
+                    hyperparametersJSONFile = IOUtils.writeTempResource(new Resource(BGMM_HYPERPARAMETERS_JSON, TrainVariantAnnotationsModel.class));
+                }
                 IOUtils.canReadFile(hyperparametersJSONFile);
-                logger.info("Running in JAVA_BGMM mode...");
                 break;
             case PYTHON_IFOREST:
                 Utils.validateArg(pythonScriptFile == null,
@@ -370,18 +374,17 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
                 PythonScriptExecutor.checkPythonEnvironmentForPackage("numpy");
                 PythonScriptExecutor.checkPythonEnvironmentForPackage("sklearn");
                 PythonScriptExecutor.checkPythonEnvironmentForPackage("dill");
-                logger.info("Running in PYTHON_IFOREST mode...");
                 break;
             case PYTHON_SCRIPT:
                 Utils.validateArg(hyperparametersJSONFile != null,
                         "Hyperparameters JSON must be provided when using PYTHON_SCRIPT backend.");
                 IOUtils.canReadFile(pythonScriptFile);
                 IOUtils.canReadFile(hyperparametersJSONFile);
-                logger.info("Running in PYTHON_SCRIPT mode...");
                 break;
             default:
                 throw new GATKException.ShouldNeverReachHereException("Unknown model-backend mode.");
         }
+        logger.info(String.format("Running in %s mode...", modelBackend));
     }
 
     /**
@@ -432,11 +435,6 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
             trainAndSerializeModel(labeledTrainingAndVariantTypeAnnotationsFile, unlabeledAndVariantTypeAnnotationsFile, outputPrefixTag);
 
             logger.info(String.format("%s model trained and serialized with output prefix \"%s\".", variantTypeString, outputPrefix + outputPrefixTag));
-
-            if (modelBackend == VariantAnnotationsModelBackend.JAVA_BGMM) {
-                BGMMVariantAnnotationsScorer.preprocessAnnotationsWithBGMMAndWriteHDF5(
-                        annotationNames, outputPrefix + outputPrefixTag, labeledTrainingAndVariantTypeAnnotationsFile, logger);
-            }
 
             logger.info(String.format("Scoring %d %s training sites...", numTrainingAndVariantType, variantTypeString));
             final File labeledTrainingAndVariantTypeScoresFile = score(labeledTrainingAndVariantTypeAnnotationsFile, outputPrefixTag, TRAINING_SCORES_HDF5_SUFFIX);
