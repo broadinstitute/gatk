@@ -67,8 +67,6 @@ task CountSamples {
         String dataset
     }
     command <<<
-        pip install --upgrade pip
-        pip install google-cloud-bigquery
         python3 <<FIN
 
         from google.cloud import bigquery
@@ -86,7 +84,7 @@ task CountSamples {
         Int num_samples = read_int(stdout())
     }
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:latest"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_08_01"
     }
 }
 
