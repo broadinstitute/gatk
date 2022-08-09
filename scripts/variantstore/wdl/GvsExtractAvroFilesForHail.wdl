@@ -136,6 +136,14 @@ task ExtractFromNonSuperpartitionedTables {
             WHERE filter_set_name = '~{filter_set_name}'
             ORDER BY location
         "
+
+        bq query --nouse_legacy_sql --project_id=~{project_id} "
+            EXPORT DATA OPTIONS(
+            uri='${avro_prefix}/vqsr_tranche/vqsr_tranche_*.avro', format='AVRO', compression='SNAPPY') AS
+            SELECT model, truth_sensitivity, min_vqslod, filter_name
+            FROM \`~{project_id}.~{dataset}.filter_set_tranches\`
+            WHERE filter_set_name = '~{filter_set_name}'
+        "
     >>>
 
     output {
