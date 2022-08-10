@@ -121,7 +121,7 @@ workflow Mutect2 {
       Boolean? funco_use_gnomad_AF
       File? funco_data_sources_tar_gz
       String? funco_transcript_selection_mode
-      File? funco_transcript_selection_list
+      Array[File]? funco_transcript_selection_list
       Array[String]? funco_annotation_defaults
       Array[String]? funco_annotation_overrides
       Array[String]? funcotator_excluded_fields
@@ -948,7 +948,7 @@ task Funcotate {
        String? sequencing_center
        String? sequence_source
        String? transcript_selection_mode
-       File? transcript_selection_list
+       Array[File]? transcript_selection_list
        Array[String]? annotation_defaults
        Array[String]? annotation_overrides
        Array[String]? funcotator_excluded_fields
