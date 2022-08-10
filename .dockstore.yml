@@ -185,6 +185,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - gg_VS-444_NoSa
    - name: GvsJointVariantCalling
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCalling.wdl
@@ -192,6 +193,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - gg_VS-444_NoSa
    - name: GvsJointVariantCallsetCost
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCallsetCost.wdl
@@ -200,6 +202,7 @@ workflows:
          - master
          - ah_var_store
          - rc-wrap-the-cost
+         - gg_VS-444_NoSa
    - name: GvsCalculatePrecisionAndSensitivity
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCalculatePrecisionAndSensitivity.wdl
