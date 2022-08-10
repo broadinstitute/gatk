@@ -222,6 +222,14 @@ workflows:
          - master
          - ah_var_store
          - cost_robustitude
+   - name: GvsExtractAvroFilesForHail
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractAvroFilesForHail.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_579_vds_avro_wdl
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
