@@ -4,63 +4,56 @@ import "GvsCreateVATAnnotations.wdl" as Annotations
 
 workflow GvsCreateVAT {
     input {
-        File inputFileofFileNames
-        File inputFileofIndexFileNames
+        File input_file_of_file_names
+        File input_file_of_index_file_names
         String project_id
         String dataset_name
         String filter_set_name
         String? vat_version
-        File? vat_schema_json_file = "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/schemas/vat_schema.json"
-        File? variant_transcript_schema_json_file = "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/schemas/vt_schema.json"
-        File? genes_schema_json_file = "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/schemas/genes_schema.json"
         String output_path
 
         Int? merge_vcfs_disk_size_override
-        String? service_account_json_path
         File ancestry_file
     }
 
     Array[String] contig_array = ["chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrX", "chrY", "chrM"]
     File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
-    File nirvana_data_directory = "gs://broad-dsp-spec-ops/scratch/rcremer/Nirvana/NirvanaData.tar.gz"
+    File nirvana_data_directory = "gs://broad-public-datasets/gvs/vat-annotations/Nirvana/NirvanaData.tar.gz"
 
-    call MakeSubpopulationFiles {
+    call MakeSubpopulationFilesAndReadSchemaFiles {
         input:
             input_ancestry_file = ancestry_file,
-            service_account_json_path = service_account_json_path,
-            inputFileofFileNames = inputFileofFileNames,
-            inputFileofIndexFileNames = inputFileofIndexFileNames
+            input_file_of_file_names = input_file_of_file_names,
+            input_file_of_index_file_names = input_file_of_index_file_names
     }
 
     ## Scatter across the shards from the GVS jointVCF
-    scatter(i in range(length(MakeSubpopulationFiles.input_vcfs)) ) {
+    scatter(i in range(length(MakeSubpopulationFilesAndReadSchemaFiles.input_vcfs)) ) {
         ## Create a sites-only VCF from the original GVS jointVCF
         ## Calculate AC/AN/AF for subpopulations and extract them for custom annotations
         call Annotations.GvsCreateVATAnnotations {
             input:
-                input_vcf = MakeSubpopulationFiles.input_vcfs[i],
-                input_vcf_index = MakeSubpopulationFiles.input_vcf_indices[i],
-                input_vcf_name = basename(MakeSubpopulationFiles.input_vcfs[i], ".vcf.gz"),
-                ancestry_mapping_list = MakeSubpopulationFiles.ancestry_mapping_list,
+                input_vcf = MakeSubpopulationFilesAndReadSchemaFiles.input_vcfs[i],
+                input_vcf_index = MakeSubpopulationFilesAndReadSchemaFiles.input_vcf_indices[i],
+                input_vcf_name = basename(MakeSubpopulationFilesAndReadSchemaFiles.input_vcfs[i], ".vcf.gz"),
+                ancestry_mapping_list = MakeSubpopulationFilesAndReadSchemaFiles.ancestry_mapping_list,
                 nirvana_data_directory = nirvana_data_directory,
                 output_path = output_path,
-                service_account_json_path = service_account_json_path,
-                custom_annotations_template = MakeSubpopulationFiles.custom_annotations_template_file,
+                custom_annotations_template = MakeSubpopulationFilesAndReadSchemaFiles.custom_annotations_template_file,
                 ref = reference
         }
     }
 
     call BigQueryLoadJson {
         input:
-            nirvana_schema = vat_schema_json_file,
-            vt_schema = variant_transcript_schema_json_file,
-            genes_schema = genes_schema_json_file,
+            nirvana_schema = MakeSubpopulationFilesAndReadSchemaFiles.vat_schema_json_file,
+            vt_schema = MakeSubpopulationFilesAndReadSchemaFiles.variant_transcript_schema_json_file,
+            genes_schema = MakeSubpopulationFilesAndReadSchemaFiles.genes_schema_json_file,
             project_id = project_id,
             dataset_name = dataset_name,
             output_path = output_path,
             filter_set_name = filter_set_name,
             vat_version = vat_version,
-            service_account_json_path = service_account_json_path,
             prep_jsons_done = GvsCreateVATAnnotations.done
     }
 
@@ -71,7 +64,6 @@ workflow GvsCreateVAT {
             counts_variants = GvsCreateVATAnnotations.count_variants,
             track_dropped_variants = GvsCreateVATAnnotations.track_dropped,
             vat_table = BigQueryLoadJson.vat_table_name,
-            service_account_json_path = service_account_json_path,
             load_jsons_done = BigQueryLoadJson.done
     }
 
@@ -83,7 +75,6 @@ workflow GvsCreateVAT {
                 dataset_name = dataset_name,
                 output_path = output_path,
                 vat_table = BigQueryLoadJson.vat_table_name,
-                service_account_json_path = service_account_json_path,
                 validate_jsons_done = BigQuerySmokeTest.done
         }
     }
@@ -94,8 +85,7 @@ workflow GvsCreateVAT {
             contig_array = contig_array,
             output_path = output_path,
             project_id = project_id,
-            merge_vcfs_disk_size_override = merge_vcfs_disk_size_override,
-            service_account_json_path = service_account_json_path
+            merge_vcfs_disk_size_override = merge_vcfs_disk_size_override
     }
 
     output {
@@ -105,50 +95,28 @@ workflow GvsCreateVAT {
 
 ################################################################################
 
-task MakeSubpopulationFiles {
+task MakeSubpopulationFilesAndReadSchemaFiles {
     input {
         File input_ancestry_file
-        String? service_account_json_path
-        File inputFileofFileNames
-        File inputFileofIndexFileNames
-    }
-    parameter_meta {
-        input_ancestry_file:
-        {
-            localization_optional: true
-        }
-        inputFileofFileNames:
-        {
-            localization_optional: true
-        }
-        inputFileofIndexFileNames:
-        {
-            localization_optional: true
-        }
+        File input_file_of_file_names
+        File input_file_of_index_file_names
+
+        String schema_filepath = "/data/variant_annotation_table/schema/"
+        String vat_schema_json_filename = "vat_schema.json"
+        String variant_transcript_schema_json_filename = "vt_schema.json"
+        String genes_schema_json_filename = "genes_schema.json"
     }
     String output_ancestry_filename =  "ancestry_mapping.tsv"
     String custom_annotations_template_filename =  "custom_annotations_template.tsv"
-    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
-    String updated_input_ancestry_file = basename(input_ancestry_file)
-    String updated_input_vcfs_file = basename(inputFileofFileNames)
-    String updated_input_indices_file = basename(inputFileofIndexFileNames)
 
     command <<<
         set -e
 
-        if [ ~{has_service_account_file} = 'true' ]; then
-            gsutil cp ~{service_account_json_path} local.service_account.json
-            export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-            gcloud auth activate-service-account --key-file=local.service_account.json
-        fi
-
-        gsutil cp ~{input_ancestry_file} .
-        gsutil cp ~{inputFileofFileNames} .
-        gsutil cp ~{inputFileofIndexFileNames} .
+        cp ~{schema_filepath}* .
 
         ## the ancestry file is processed down to a simple mapping from sample to subpopulation
         python3 /app/extract_subpop.py \
-            --input_path ~{updated_input_ancestry_file} \
+            --input_path ~{input_ancestry_file} \
             --output_path ~{output_ancestry_filename} \
             --custom_annotations_template_path ~{custom_annotations_template_filename}
     >>>
@@ -156,7 +124,7 @@ task MakeSubpopulationFiles {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_08_01"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:vs_580_PutVATSchemaFilesInDocker_2022_08_09"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -165,10 +133,14 @@ task MakeSubpopulationFiles {
     # ------------------------------------------------
     # Outputs:
     output {
+        File vat_schema_json_file = vat_schema_json_filename
+        File variant_transcript_schema_json_file = variant_transcript_schema_json_filename
+        File genes_schema_json_file = genes_schema_json_filename
+
         File ancestry_mapping_list = output_ancestry_filename
         File custom_annotations_template_file = custom_annotations_template_filename
-        Array[File] input_vcfs = read_lines(updated_input_vcfs_file)
-        Array[File] input_vcf_indices = read_lines(updated_input_indices_file)
+        Array[File] input_vcfs = read_lines(input_file_of_file_names)
+        Array[File] input_vcf_indices = read_lines(input_file_of_index_file_names)
     }
 }
 
@@ -187,7 +159,6 @@ task BigQueryLoadJson {
         String project_id
         String dataset_name
         String output_path
-        String? service_account_json_path
         Array[String] prep_jsons_done
     }
 
@@ -202,19 +173,10 @@ task BigQueryLoadJson {
     String vt_path = output_path + 'vt/*'
     String genes_path = output_path + 'genes/*'
 
-    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
-
     command <<<
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
         DATE=86400 ## 24 hours in seconds
-
-        if [ ~{has_service_account_file} = 'true' ]; then
-             gsutil cp ~{service_account_json_path} local.service_account.json
-             export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-             gcloud auth activate-service-account --key-file=local.service_account.json
-             gcloud config set project ~{project_id}
-        fi
 
         set +e
         bq show --project_id ~{project_id} ~{dataset_name}.~{variant_transcript_table} > /dev/null
@@ -401,7 +363,6 @@ task BigQuerySmokeTest {
         String vat_table
         Array[Int] counts_variants
         Array[File] track_dropped_variants
-        String? service_account_json_path
         Boolean load_jsons_done
     }
     # Now query the final table for expected results
@@ -409,15 +370,9 @@ task BigQuerySmokeTest {
     # The number of passing variants in GVS matches the number of variants in the VAT.
     # Please note that we are counting the number of variants in GVS, not the number of sites, which may add a difficulty to this task.
 
-    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
     command <<<
         set -e
-        if [ ~{has_service_account_file} = 'true' ]; then
-            gsutil cp ~{service_account_json_path} local.service_account.json
-            gcloud auth activate-service-account --key-file=local.service_account.json
-            gcloud config set project ~{project_id}
-        fi
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
         # ------------------------------------------------
@@ -470,23 +425,13 @@ task BigQueryExportVat {
         String dataset_name
         String vat_table
         String output_path
-        String? service_account_json_path
         Boolean validate_jsons_done
     }
 
     String export_path = output_path + "export/" + contig + "/*.tsv.gz"
 
-    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
-
     command <<<
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
-
-        if [ ~{has_service_account_file} = 'true' ]; then
-            gsutil cp ~{service_account_json_path} local.service_account.json
-            export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-            gcloud auth activate-service-account --key-file=local.service_account.json
-            gcloud config set project ~{project_id}
-        fi
 
         # note: tab delimiter and compression creates tsv.gz files
         bq query --nouse_legacy_sql --project_id=~{project_id} \
@@ -629,12 +574,10 @@ task MergeVatTSVs {
         String output_path
 
         Int? merge_vcfs_disk_size_override
-        String? service_account_json_path
     }
 
     # going large with the default to make gsutil -m cp really zippy
     Int disk_size = if (defined(merge_vcfs_disk_size_override)) then merge_vcfs_disk_size_override else 250
-    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
     command <<<
         apt-get update
@@ -642,12 +585,6 @@ task MergeVatTSVs {
 
         # custom function to prepend the current datetime to an echo statement "borrowed" from ExtractAnAcAfFromVCF
         echo_date () { echo "`date "+%Y/%m/%d %H:%M:%S"` $1"; }
-
-        if [ ~{has_service_account_file} = 'true' ]; then
-            gsutil cp ~{service_account_json_path} local.service_account.json
-            gcloud auth activate-service-account --key-file=local.service_account.json
-            gcloud config set project ~{project_id}
-        fi
 
         mkdir TSVs
         contigs=( ~{sep=' ' contig_array} )
