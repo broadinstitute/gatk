@@ -74,8 +74,6 @@ public final class BGMMVariantAnnotationsModel implements VariantAnnotationsMode
         final Preprocesser preprocesser = new Preprocesser();
         final double[][] preprocessedTrainingAnnotations = preprocesser.fitTransform(trainingAnnotations);
 
-        // TODO write preprocessed annotations?
-
         if (!hyperparameters.warmStart || hyperparameters.warmStartSubsample == 0. || hyperparameters.warmStartSubsample == 1.) {
             bgmm.fit(preprocessedTrainingAnnotations);
         } else {
@@ -102,6 +100,7 @@ public final class BGMMVariantAnnotationsModel implements VariantAnnotationsMode
         // TODO fix up output paths and validation, logging
         final BayesianGaussianMixtureModelPosterior fit = bgmm.getBestFit();
         fit.write(new File(outputPrefix + BGMM_FIT_HDF5_SUFFIX), "/bgmm");
+        // TODO append standardization fields to this HDF5 file?
     }
 
     // TODO document differences from the sklearn API
@@ -257,24 +256,4 @@ public final class BGMMVariantAnnotationsModel implements VariantAnnotationsMode
             return preprocessedData;
         }
     }
-
-//    // TODO clean this up, copy more fields
-//    public static void preprocessAnnotationsWithBGMMAndWriteHDF5(final List<String> annotationNames,
-//                                                                 final String outputPrefix,
-//                                                                 final File labeledTrainingAndVariantTypeAnnotationsFile,
-//                                                                 final Logger logger) {
-//        final double[][] rawAnnotations = LabeledVariantAnnotationsData.readAnnotations(labeledTrainingAndVariantTypeAnnotationsFile);
-//        final BGMMVariantAnnotationsScorer scorer = BGMMVariantAnnotationsScorer.deserialize(new File(outputPrefix + BGMM_SCORER_SER_SUFFIX));
-//        final double[][] preprocessedAnnotations = scorer.preprocess(rawAnnotations);
-//        final File outputPreprocessedAnnotationsFile = new File(outputPrefix + ".pre.annot.hdf5");
-//        try (final HDF5File hdf5File = new HDF5File(outputPreprocessedAnnotationsFile, HDF5File.OpenMode.CREATE)) {
-//            IOUtils.canReadFile(hdf5File.getFile());
-//            hdf5File.makeStringArray("/data/annotation_names", annotationNames.toArray(new String[0]));
-//            HDF5Utils.writeChunkedDoubleMatrix(hdf5File, "/data/annotations", preprocessedAnnotations, HDF5Utils.MAX_NUMBER_OF_VALUES_PER_HDF5_MATRIX / 16);
-//        } catch (final HDF5LibException exception) {
-//            throw new GATKException(String.format("Exception encountered during writing of preprocessed annotations (%s). Output file at %s may be in a bad state.",
-//                    exception, outputPreprocessedAnnotationsFile.getAbsolutePath()));
-//        }
-//        logger.info(String.format("Preprocessed annotations written to %s.", outputPreprocessedAnnotationsFile.getAbsolutePath()));
-//    }
 }

@@ -368,11 +368,11 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
         Utils.nonNull(lowScoreFilterName);
         Utils.nonNull(doubleFormat);
 
+        logger.info(String.format("Running in %s mode...", modelBackend));
         switch (modelBackend) {
             case JAVA_BGMM:
                 Utils.validateArg(pythonScriptFile == null,
                         "Python script should not be provided when using JAVA_BGMM backend.");
-                logger.info("Running in JAVA_BGMM mode...");
                 snpScorer = deserializeScorerFromSerFiles(VariantType.SNP);
                 indelScorer = deserializeScorerFromSerFiles(VariantType.INDEL);
                 break;
@@ -386,19 +386,18 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
                 PythonScriptExecutor.checkPythonEnvironmentForPackage("numpy");
                 PythonScriptExecutor.checkPythonEnvironmentForPackage("sklearn");
                 PythonScriptExecutor.checkPythonEnvironmentForPackage("dill");
-                logger.info("Running in PYTHON_IFOREST mode...");
                 snpScorer = deserializeScorerFromPklFiles(VariantType.SNP);
                 indelScorer = deserializeScorerFromPklFiles(VariantType.INDEL);
                 break;
             case PYTHON_SCRIPT:
                 IOUtils.canReadFile(pythonScriptFile);
-                logger.info("Running in PYTHON_SCRIPT mode...");
                 snpScorer = deserializeScorerFromPklFiles(VariantType.SNP);
                 indelScorer = deserializeScorerFromPklFiles(VariantType.INDEL);
                 break;
             default:
                 throw new GATKException.ShouldNeverReachHereException("Unknown model-backend mode.");
         }
+        logger.info(String.format("Running in %s mode...", modelBackend));
 
         if (snpScorer == null && indelScorer == null) {
             throw new UserException.BadInput(String.format("At least one serialized scorer must be present " +
@@ -456,7 +455,6 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
     @Override
     protected void afterNthPass(final int n) {
         if (n == 0) {
-            // TODO if BGMM, preprocess annotations and write to HDF5 with BGMMVariantAnnotationsScorer.preprocessAnnotationsWithBGMMAndWriteHDF5
             writeAnnotationsToHDF5();
             if (data.size() > 0) {
                 data.clear();

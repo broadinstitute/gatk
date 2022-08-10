@@ -18,7 +18,7 @@ import java.util.List;
 public final class BGMMVariantAnnotationsScorer implements VariantAnnotationsScorer, Serializable {
     private static final long serialVersionUID = 1L;
 
-    public static final String BGMM_SCORER_SER_SUFFIX = ".bgmmScorer.ser";
+    public static final String BGMM_SCORER_SER_SUFFIX = ".scorer.ser";
 
     private final List<String> annotationNames;     // for validation
     private final BGMMVariantAnnotationsModel.Preprocesser preprocesser;

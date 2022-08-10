@@ -351,6 +351,7 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
             Utils.validateArg(annotationNames.equals(unlabeledAnnotationNames), "Annotation names must be identical for positive and unlabeled annotations.");
         }
 
+        logger.info(String.format("Running in %s mode...", modelBackend));
         switch (modelBackend) {
             case JAVA_BGMM:
                 Utils.validateArg(pythonScriptFile == null,
@@ -384,7 +385,6 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
             default:
                 throw new GATKException.ShouldNeverReachHereException("Unknown model-backend mode.");
         }
-        logger.info(String.format("Running in %s mode...", modelBackend));
     }
 
     /**
