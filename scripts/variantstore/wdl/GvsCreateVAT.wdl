@@ -45,13 +45,13 @@ workflow GvsCreateVAT {
         }
     }
 
-    call Utils.MergeVcfs as MergeUnannotatedVcfs {
+    call Utils.MergeVCFs as MergeUnannotatedVCFs {
         input:
             input_vcfs = GvsCreateVATAnnotations.unannotated_sites_only_vcf,
             output_vcf_name = "quickstart-final-unnannotated-sites-only.vcf"
     }
 
-    call Utils.MergeVcfs as MergeVcfs {
+    call Utils.MergeVCFs as MergeVCFs {
         input:
             input_vcfs = GvsCreateVATAnnotations.output_vcf,
             output_vcf_name = "quickstart-final-annotated-sites-only.vcf"
@@ -103,8 +103,8 @@ workflow GvsCreateVAT {
 
     output {
         File final_tsv_file = MergeVatTSVs.tsv_file
-        File annotated_sites_only_vcf = MergeVcfs.output_vcf
-        File unannotated_sites_only_vcf = MergeUnannotatedVcfs.output_vcf
+        File annotated_sites_only_vcf = MergeVCFs.output_vcf
+        File unannotated_sites_only_vcf = MergeUnannotatedVCFs.output_vcf
     }
 }
 
