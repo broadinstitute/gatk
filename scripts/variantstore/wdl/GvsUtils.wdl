@@ -21,11 +21,6 @@ task MergeVCFs {
   }
 
   command {
-    if [ ~{has_service_account_file} = 'true' ]; then
-      gsutil cp ~{service_account_json_path} local.service_account.json
-      gcloud auth activate-service-account --key-file=local.service_account.json
-      export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-    fi
 
     gatk --java-options -Xmx3g GatherVcfsCloud \
     --ignore-safety-checks --gather-type ~{gather_type} \
@@ -33,27 +28,17 @@ task MergeVCFs {
     -I ~{sep=' -I ' input_vcfs} \
     --output ~{output_vcf_name}
 
-    tabix ~{output_vcf_name}
-
-    # Drop trailing slash if one exists
-    OUTPUT_GCS_DIR=$(echo ~{output_directory} | sed 's/\/$//')
-
-    if [ -n "$OUTPUT_GCS_DIR" ]; then
-      gsutil cp ~{output_vcf_name} $OUTPUT_GCS_DIR/
-      gsutil cp ~{output_vcf_name}.tbi $OUTPUT_GCS_DIR/
-    fi
   }
 
   runtime {
     docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe"
-    preemptible: select_first([preemptible_tries, 3])
+    preemptible: 0
     memory: "3 GiB"
     disks: "local-disk ~{disk_size} HDD"
   }
 
   output {
     File output_vcf = "~{output_vcf_name}"
-    File output_vcf_index = "~{output_vcf_name}.tbi"
   }
 }
 
