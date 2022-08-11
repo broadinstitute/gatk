@@ -138,6 +138,7 @@ workflows:
          - master
          - ah_var_store
          - gg_VS-567_RemoveSAFromGvsCreateVAT
+         - gg_CreateFullSitesOnlyFromVAT
    - name: GvsCreateVATAnnotations
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVATAnnotations.wdl

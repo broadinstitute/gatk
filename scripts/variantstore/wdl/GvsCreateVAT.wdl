@@ -1,6 +1,7 @@
 version 1.0
 
 import "GvsCreateVATAnnotations.wdl" as Annotations
+import "GvsUtils.wdl" as Utils
 
 workflow GvsCreateVAT {
     input {
@@ -42,6 +43,18 @@ workflow GvsCreateVAT {
                 custom_annotations_template = MakeSubpopulationFilesAndReadSchemaFiles.custom_annotations_template_file,
                 ref = reference
         }
+    }
+
+    call Utils.MergeVcfs as MergeUnannotatedVcfs {
+        input:
+            input_vcfs = GvsCreateVATAnnotations.unannotated_sites_only_vcf,
+            output_vcf_name = "quickstart-final-unnannotated-sites-only.vcf"
+    }
+
+    call Utils.MergeVcfs as MergeVcfs {
+        input:
+            input_vcfs = GvsCreateVATAnnotations.output_vcf,
+            output_vcf_name = "quickstart-final-annotated-sites-only.vcf"
     }
 
     call BigQueryLoadJson {
@@ -90,6 +103,8 @@ workflow GvsCreateVAT {
 
     output {
         File final_tsv_file = MergeVatTSVs.tsv_file
+        File annotated_sites_only_vcf = MergeVcfs.output_vcf
+        File unannotated_sites_only_vcf = MergeUnannotatedVcfs.output_vcf
     }
 }
 
