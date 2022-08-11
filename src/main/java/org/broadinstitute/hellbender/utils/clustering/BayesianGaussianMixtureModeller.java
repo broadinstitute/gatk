@@ -32,7 +32,7 @@ import java.util.stream.IntStream;
  *     the scikit-learn implementation of a Bayesian Gaussian Mixture Model provided
  *     <a href="https://github.com/scikit-learn/scikit-learn/blob/1.0/sklearn/mixture/_bayesian_mixture.py">here</a>.
  *     The API mirrors that of sklearn.mixture.BayesianGaussianMixture (see the corresponding documentation
- *     <a href="https://github.com/scikit-learn/scikit-learn/blob/9b033758ec681e8fd7433a8bb35d9777acd4f8ba/sklearn/mixture/_bayesian_mixture.py#L69">here</a>),
+ *     <a href="https://github.com/scikit-learn/scikit-learn/blob/1.0/sklearn/mixture/_bayesian_mixture.py#L69">here</a>),
  *     with the following limitations and changes:
  *
  *     <ul>
@@ -41,13 +41,13 @@ import java.util.stream.IntStream;
  *                 in contrast, the sklearn {@code init_params} parameter allows initialization at random or using standard k-means clustering,</li>
  *         <li> 3) Only Dirichlet weight concentration priors are allowed; i.e., the sklearn parameter {@code weight_concentration_prior_type} is fixed to {@code 'dirichlet_distribution},</li>
  *         <li> 4) Parameters controlling tolerances for numerical checks of covariances matrices have been added ({@code relativeSymmetryThreshold} and {@code absolutePositivityThreshold}),</li>
- *         <li> 5) An {@code epsilon} regularization parameter has been exposed (see <a href="https://github.com/scikit-learn/scikit-learn/blob/9b033758ec681e8fd7433a8bb35d9777acd4f8ba/sklearn/mixture/_gaussian_mixture.py#L289">here</a>),</li>
+ *         <li> 5) An {@code epsilon} regularization parameter has been exposed (see <a href="https://github.com/scikit-learn/scikit-learn/blob/1.0/sklearn/mixture/_gaussian_mixture.py#L289">here</a>),</li>
  *         <li> 6) Only the {@code fit} and {@code score_samples} methods have been implemented.</li>
  *     </ul>
  * </p>
  *
  * <p>
- *     Otherwise, the port is completely faithful and numerical results are reproduced to high accuracy.
+ *     Otherwise, the port is extremely faithful and numerical results are reproduced to high accuracy.
  *     Internal developers should consult <a href="https://github.com/broadinstitute/dsp-methods-model-prototyping/discussions/9">this thread</a>
  *     before making any changes to this class.
  * </p>
