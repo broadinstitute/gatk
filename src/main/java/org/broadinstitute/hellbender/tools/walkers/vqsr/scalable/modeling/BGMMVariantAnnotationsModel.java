@@ -107,36 +107,39 @@ public final class BGMMVariantAnnotationsModel implements VariantAnnotationsMode
     // mean and covariance priors are each specified by a single number here;
     // init_params and warm_start_subsample also require specific documentation
     static final class Hyperparameters {
+        // TODO we could put default values here, which would relax the requirement that JSONs completely specify all values
+        @JsonProperty("comment")
+        String comment;
         @JsonProperty("n_components")
-        int nComponents = 5;
+        int nComponents;
         @JsonProperty("tol")
-        double tol = 1.;
+        double tol;
         @JsonProperty("reg_covar")
-        double regCovar = 1E-6;
+        double regCovar;
         @JsonProperty("max_iter")
-        int maxIter = 150;
+        int maxIter;
         @JsonProperty("n_init")
-        int nInit = 1;
+        int nInit;
         @JsonProperty("init_params")
         String initMethod = "kmeans++";
         @JsonProperty("weight_concentration_prior")
-        Double weightConcentrationPrior = null;
+        Double weightConcentrationPrior;
         @JsonProperty("mean_precision_prior")
-        double meanPrecisionPrior = 1.;
+        double meanPrecisionPrior;
         @JsonProperty("mean_prior")
-        Double meanPrior = null;
+        Double meanPrior;
         @JsonProperty("degrees_of_freedom_prior")
-        Double degreesOfFreedomPrior = null;
+        Double degreesOfFreedomPrior;
         @JsonProperty("covariance_prior")
-        Double covariancePrior = null;
+        Double covariancePrior;
         @JsonProperty("random_state")
-        int seed = 0;
+        int seed;
         @JsonProperty("warm_start")
-        boolean warmStart = false;
+        boolean warmStart;
         @JsonProperty("verbose_interval")
-        int verboseInterval = 5;
+        int verboseInterval;
         @JsonProperty("warm_start_subsample")
-        double warmStartSubsample = 1.;
+        double warmStartSubsample;
 
         Hyperparameters() {
         }
@@ -150,7 +153,7 @@ public final class BGMMVariantAnnotationsModel implements VariantAnnotationsMode
                         "The hyperparameter warm_start_subsample must be in [0, 1].");
                 return hyperparameters;
             } catch (final Exception e) {
-                throw new UserException.BadInput("Could not read hyperparameters JSON.", e);
+                throw new UserException.BadInput(String.format("Could not read hyperparameters JSON: %s.", e));
             }
         }
 

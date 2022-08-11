@@ -4,6 +4,7 @@ import com.google.common.collect.Lists;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hdf5.HDF5File;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.LabeledVariantAnnotationsData;
@@ -54,6 +55,8 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
             "org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/extract/expected");
     private static final File EXPECTED_TEST_FILES_DIR = new File(TEST_FILES_DIR, "expected");
 
+    private static final File BGMM_HYPERPARAMETERS_JSON = new File(TEST_FILES_DIR,
+            "bgmm-hyperparameters-different-number-of-components.json");
     private static final File ISOLATION_FOREST_PYTHON_SCRIPT = IOUtils.writeTempResource(
             new Resource("isolation-forest.py", TrainVariantAnnotationsModel.class));
     private static final File ISOLATION_FOREST_HYPERPARAMETERS_JSON = new File(TEST_FILES_DIR,
@@ -63,6 +66,7 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
     private static final Supplier<ArgumentsBuilder> BASE_ARGUMENTS_BUILDER_SUPPLIER = ArgumentsBuilder::new;
     private static final BiFunction<ArgumentsBuilder, File, ArgumentsBuilder> ADD_ANNOTATIONS_HDF5 = (argsBuilder, annotationsHDF5) -> {
         argsBuilder.add(TrainVariantAnnotationsModel.ANNOTATIONS_HDF5_LONG_NAME, annotationsHDF5);
+        argsBuilder.add(StandardArgumentDefinitions.VERBOSITY_NAME, "INFO");
         return argsBuilder;
     };
     private static final BiFunction<ArgumentsBuilder, File, ArgumentsBuilder> ADD_UNLABELED_ANNOTATIONS_HDF5 = (argsBuilder, unlabeledAnnotationsHDF5) -> {
@@ -79,6 +83,10 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
     };
     private static final BiFunction<ArgumentsBuilder, VariantAnnotationsModelBackend, ArgumentsBuilder> ADD_MODEL_BACKEND = (argsBuilder, modelBackendMode) -> {
         argsBuilder.add(TrainVariantAnnotationsModel.MODEL_BACKEND_LONG_NAME, modelBackendMode);
+        return argsBuilder;
+    };
+    private static final Function<ArgumentsBuilder, ArgumentsBuilder> ADD_BGMM_HYPERPARAMETERS_JSON = argsBuilder -> {
+        argsBuilder.add(TrainVariantAnnotationsModel.HYPERPARAMETERS_JSON_LONG_NAME, BGMM_HYPERPARAMETERS_JSON);
         return argsBuilder;
     };
     private static final Function<ArgumentsBuilder, ArgumentsBuilder> ADD_ISOLATION_FOREST_PYTHON_SCRIPT = argsBuilder -> {
@@ -114,12 +122,14 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
                         Pair.of("posOnly", Function.identity())),
                 Arrays.asList(
                         Pair.of("BGMM", ab -> ADD_MODEL_BACKEND.apply(ab, VariantAnnotationsModelBackend.JAVA_BGMM)),
-                        Pair.of("IF", ab -> ADD_MODEL_BACKEND.apply(ab, VariantAnnotationsModelBackend.PYTHON_IFOREST)),
-                        Pair.of("IFDifferentSeed", ADD_ISOLATION_FOREST_HYPERPARAMETERS_JSON
-                                .andThen(ab -> ADD_MODEL_BACKEND.apply(ab, VariantAnnotationsModelBackend.PYTHON_IFOREST))), // this and the following case give the same results, so they are given the same IFDifferentSeed tag
-                        Pair.of("IFDifferentSeed", ADD_ISOLATION_FOREST_PYTHON_SCRIPT
-                                .andThen(ADD_ISOLATION_FOREST_HYPERPARAMETERS_JSON)
-                                .andThen(ab -> ADD_MODEL_BACKEND.apply(ab, VariantAnnotationsModelBackend.PYTHON_SCRIPT)))));
+                        Pair.of("BGMMDifferentNumComponents", ADD_BGMM_HYPERPARAMETERS_JSON
+                                .andThen(ab -> ADD_MODEL_BACKEND.apply(ab, VariantAnnotationsModelBackend.JAVA_BGMM)))));
+                        //Pair.of("IF", ab -> ADD_MODEL_BACKEND.apply(ab, VariantAnnotationsModelBackend.PYTHON_IFOREST)),
+                        //Pair.of("IFDifferentSeed", ADD_ISOLATION_FOREST_HYPERPARAMETERS_JSON
+                        //        .andThen(ab -> ADD_MODEL_BACKEND.apply(ab, VariantAnnotationsModelBackend.PYTHON_IFOREST))), // this and the following case give the same results, so they are given the same IFDifferentSeed tag
+                        //Pair.of("IFDifferentSeed", ADD_ISOLATION_FOREST_PYTHON_SCRIPT
+                                //.andThen(ADD_ISOLATION_FOREST_HYPERPARAMETERS_JSON)
+                                //.andThen(ab -> ADD_MODEL_BACKEND.apply(ab, VariantAnnotationsModelBackend.PYTHON_SCRIPT)))));
 
         return testConfigurations.stream()
                 .map(tagAndAddFunctionPairs -> new Object[]{

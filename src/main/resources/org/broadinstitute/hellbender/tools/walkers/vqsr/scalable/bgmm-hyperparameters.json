@@ -1,2 +1,18 @@
 {
+  "comment": "See comments in the BGMMVariantAnnotationsModel.Hyperparameters class.",
+  "n_components": 5,
+  "tol": 1.0,
+  "reg_covar": 1E-6,
+  "max_iter": 150,
+  "n_init": 1,
+  "init_params": "kmeans++",
+  "weight_concentration_prior": null,
+  "mean_precision_prior": 1.0,
+  "mean_prior": null,
+  "degrees_of_freedom_prior": null,
+  "covariance_prior": null,
+  "random_state": 0,
+  "warm_start": false,
+  "verbose_interval": 5,
+  "warm_start_subsample": 1.0
 }
