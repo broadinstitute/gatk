@@ -104,7 +104,7 @@ task ExtractAnAcAfFromVCF {
         rm ~{local_input_vcf}
 
         # Create an unannotated, sites-only VCF for tie-out
-        bcftools view --threads 4 --no-update --drop-genotypes original.bcf-o ~{unannotated_vcf}
+        bcftools view --threads 4 --no-update --drop-genotypes original.bcf -o ~{unannotated_vcf}
 
         echo_date "VAT: Calculating number of +50 alt alleles on N sites"
 
