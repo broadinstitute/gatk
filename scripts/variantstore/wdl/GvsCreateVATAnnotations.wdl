@@ -46,6 +46,8 @@ workflow GvsCreateVATAnnotations {
     # ------------------------------------------------
     # Outputs:
     output {
+        File output_vcf = ExtractAnAcAfFromVCF.output_vcf
+        File unannotated_sites_only_vcf = ExtractAnAcAfFromVCF.unannotated_sites_only_vcf
         Int count_variants = ExtractAnAcAfFromVCF.count_variants
         File track_dropped = ExtractAnAcAfFromVCF.track_dropped
         Boolean done = true
