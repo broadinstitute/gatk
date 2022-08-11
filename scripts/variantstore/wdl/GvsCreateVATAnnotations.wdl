@@ -81,7 +81,7 @@ task ExtractAnAcAfFromVCF {
     String local_input_vcf_index = basename(input_vcf_index)
     String normalized_vcf_compressed = "normalized.vcf.gz"
     String normalized_vcf_indexed = "normalized.vcf.gz.tbi"
-    String unannotated_vcf = "unannotated.vcf"
+    String unannotated_vcf_compressed = "unannotated.vcf.gz"
 
     # separate multi-allelic sites into their own lines, remove deletions and filtered sites and make a sites only vcf
     # while extracting and calculating the an/ac/af & sc by subpopulation into a tsv
@@ -104,7 +104,7 @@ task ExtractAnAcAfFromVCF {
         rm ~{local_input_vcf}
 
         # Create an unannotated, sites-only VCF for tie-out
-        bcftools view --threads 4 --no-update --drop-genotypes original.bcf -o ~{unannotated_vcf}
+        bcftools view --threads 4 --no-update --drop-genotypes original.bcf  -O z -o ~{unannotated_vcf_compressed}
 
         echo_date "VAT: Calculating number of +50 alt alleles on N sites"
 
@@ -188,7 +188,7 @@ task ExtractAnAcAfFromVCF {
         File annotations_file = "~{custom_annotations_file_name}"
         Int count_variants = read_int("count.txt")
         File track_dropped = "track_dropped.tsv"
-        File unannotated_sites_only_vcf = "~{unannotated_vcf}"
+        File unannotated_sites_only_vcf = "~{unannotated_vcf_compressed}"
         File output_vcf = "~{normalized_vcf_compressed}"
         File output_vcf_index = "~{normalized_vcf_indexed}"
     }

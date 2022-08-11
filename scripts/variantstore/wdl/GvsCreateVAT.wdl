@@ -48,12 +48,14 @@ workflow GvsCreateVAT {
     call Utils.MergeVCFs as MergeUnannotatedVCFs {
         input:
             input_vcfs = GvsCreateVATAnnotations.unannotated_sites_only_vcf,
+            gather_type = "CONVENTIONAL",
             output_vcf_name = "quickstart-final-unnannotated-sites-only.vcf"
     }
 
     call Utils.MergeVCFs as MergeVCFs {
         input:
             input_vcfs = GvsCreateVATAnnotations.output_vcf,
+            gather_type = "CONVENTIONAL",
             output_vcf_name = "quickstart-final-annotated-sites-only.vcf"
     }
 
