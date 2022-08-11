@@ -136,7 +136,7 @@ public final class BayesianGaussianMixtureModelPosterior implements Serializable
 
     public void write(final File file,
                       final String path) {
-        try (final HDF5File hdf5File = new HDF5File(file, HDF5File.OpenMode.CREATE)) { // TODO allow appending
+        try (final HDF5File hdf5File = new HDF5File(file, HDF5File.OpenMode.CREATE)) {
             IOUtils.canReadFile(hdf5File.getFile());
             Utils.validateArg(path.startsWith("/"), "The path should start with / and specify the path within the HDF5 file for the model.");
 

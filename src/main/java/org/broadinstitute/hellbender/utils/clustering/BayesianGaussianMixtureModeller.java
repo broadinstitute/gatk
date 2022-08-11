@@ -26,6 +26,32 @@ import java.util.List;
 import java.util.Random;
 import java.util.stream.IntStream;
 
+/**
+ * <p>
+ *     This class, together with {@link BayesianGaussianMixtureUtils}, constitutes a partial port of
+ *     the scikit-learn implementation of a Bayesian Gaussian Mixture Model provided
+ *     <a href="https://github.com/scikit-learn/scikit-learn/blob/1.0/sklearn/mixture/_bayesian_mixture.py">here</a>.
+ *     The API mirrors that of sklearn.mixture.BayesianGaussianMixture (see the corresponding documentation
+ *     <a href="https://github.com/scikit-learn/scikit-learn/blob/9b033758ec681e8fd7433a8bb35d9777acd4f8ba/sklearn/mixture/_bayesian_mixture.py#L69">here</a>),
+ *     with the following limitations and changes:
+ *
+ *     <ul>
+ *         <li> 1) Only full covariance matrices are allowed; i.e., the sklearn parameter {@code covariance_type} is fixed to {@code 'full'},</li>
+ *         <li> 2) Responsibilities can be initialized at random or using {@link org.apache.commons.math3.ml.clustering.KMeansPlusPlusClusterer};
+ *                 in contrast, the sklearn {@code init_params} parameter allows initialization at random or using standard k-means clustering,</li>
+ *         <li> 3) Only Dirichlet weight concentration priors are allowed; i.e., the sklearn parameter {@code weight_concentration_prior_type} is fixed to {@code 'dirichlet_distribution},</li>
+ *         <li> 4) Parameters controlling tolerances for numerical checks of covariances matrices have been added ({@code relativeSymmetryThreshold} and {@code absolutePositivityThreshold}),</li>
+ *         <li> 5) An {@code epsilon} regularization parameter has been exposed (see <a href="https://github.com/scikit-learn/scikit-learn/blob/9b033758ec681e8fd7433a8bb35d9777acd4f8ba/sklearn/mixture/_gaussian_mixture.py#L289">here</a>),</li>
+ *         <li> 6) Only the {@code fit} and {@code score_samples} methods have been implemented.</li>
+ *     </ul>
+ * </p>
+ *
+ * <p>
+ *     Otherwise, the port is completely faithful and numerical results are reproduced to high accuracy.
+ *     Internal developers should consult <a href="https://github.com/broadinstitute/dsp-methods-model-prototyping/discussions/9">this thread</a>
+ *     before making any changes to this class.
+ * </p>
+ */
 public final class BayesianGaussianMixtureModeller implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -115,7 +141,8 @@ public final class BayesianGaussianMixtureModeller implements Serializable {
     }
 
     /**
-     * TODO
+     * See <a href="https://github.com/scikit-learn/scikit-learn/blob/1.0/sklearn/mixture/_base.py#L201">here</a>.
+     * In contrast to the sklearn implementation, our fit method does not call a fitPredict method to avoid an unused E step.
      * @param data      double[][] of data with dimensions (nSamples, nFeatures); to minimize memory requirements, a defensive copy will not be made
      */
     public void fit(final double[][] data) {
@@ -216,31 +243,9 @@ public final class BayesianGaussianMixtureModeller implements Serializable {
     }
 
     /**
-     * TODO
-     * In contrast to the sklearn implementation, our fitPredict calls fit (and not vice versa) to avoid an unused E step.
+     * See <a href="https://github.com/scikit-learn/scikit-learn/blob/1.0/sklearn/mixture/_base.py#L337">here</a>.
      * @param data      double[][] of data with dimensions (nSamples, nFeatures); to minimize memory requirements, a defensive copy will not be made
-     * @return          int[] with dimension (nSamples, ) giving component assignments for each data sample
-     */
-    public int[] fitPredict(final double[][] data) {
-        fit(data);
-
-        final RealMatrix X = new Array2DRowRealMatrix(data, false); // we do not make a defensive copy
-        final int nSamples = X.getRowDimension();
-
-        // (original sklearn comment) Always do a final E step to guarantee that the labels returned by
-        // fit_predict(X) are always consistent with fit(X).predict(X)
-        // for any value of maxIter and tol (and any random seed).
-        final RealMatrix logResp = EStep(X);
-
-        return IntStream.range(0, nSamples).map(    // logResp.argmax(axis=1)
-                i -> logResp.getRowVector(i).getMaxIndex())
-                .toArray();
-    }
-
-    /**
-     * TODO decide which log-likelihood score to report, Gaussian mixture or exact (i.e., Bishop 10.81-82)?
-     * @param data      double[][] of data with dimensions (nSamples, nFeatures); to minimize memory requirements, a defensive copy will not be made
-     * @return
+     * @return          double[] of scores with dimensions (nSamples, )
      */
     public double[] scoreSamples(final double[][] data) {
         if (!isFitAvailable) {
@@ -254,6 +259,7 @@ public final class BayesianGaussianMixtureModeller implements Serializable {
     }
 
     /**
+     * See <a href="https://github.com/scikit-learn/scikit-learn/blob/1.0/sklearn/mixture/_base.py#127">here</a>.
      * @param X         data. (nSamples, nFeatures)
      * @param rng       random number generator, which should be reset to this.seed at start of fit
      */
@@ -298,6 +304,7 @@ public final class BayesianGaussianMixtureModeller implements Serializable {
     }
 
     /**
+     * See <a href="https://github.com/scikit-learn/scikit-learn/blob/1.0/sklearn/mixture/_bayesian_mixture.py#L520">here</a>.
      * This could be replaced with MStep(X, map(resp, FastMath::log)), but we retain it to match the sklearn implementation.
      * @param resp      responsibilities. (nSamples, nComponents)
      */
@@ -315,6 +322,7 @@ public final class BayesianGaussianMixtureModeller implements Serializable {
     }
 
     /**
+     * See <a href="https://github.com/scikit-learn/scikit-learn/blob/1.0/sklearn/mixture/_base.py#L296">here</a>.
      * We trivially collapse out the sklearn _estimate_log_prob_resp method and remove some unused variables.
      * @param X         data. (nSamples, nFeatures)
      * @return          log responsibilities. (nSamples, nComponents)
@@ -331,6 +339,7 @@ public final class BayesianGaussianMixtureModeller implements Serializable {
     }
 
     /**
+     * See <a href="https://github.com/scikit-learn/scikit-learn/blob/1.0/sklearn/mixture/_gaussian_mixture.py#L732">here</a>.
      * @param logResp   log responsibilities. (nSamples, nComponents)
      */
     private void MStep(final RealMatrix X,
@@ -347,6 +356,7 @@ public final class BayesianGaussianMixtureModeller implements Serializable {
     }
 
     /**
+     * See <a href="https://github.com/scikit-learn/scikit-learn/blob/1.0/sklearn/mixture/_bayesian_mixture.py#L537">here</a>.
      * @param nk        (nComponents, )
      */
     private void estimateWeights(final RealVector nk) {
@@ -354,6 +364,7 @@ public final class BayesianGaussianMixtureModeller implements Serializable {
     }
 
     /**
+     * See <a href="https://github.com/scikit-learn/scikit-learn/blob/1.0/sklearn/mixture/_bayesian_mixture.py#558">here</a>.
      * @param nk        (nComponents, )
      * @param xk        List with length nComponents of (nFeature, ) vectors
      */
@@ -370,6 +381,7 @@ public final class BayesianGaussianMixtureModeller implements Serializable {
     }
 
     /**
+     * See <a href="https://github.com/scikit-learn/scikit-learn/blob/1.0/sklearn/mixture/_bayesian_mixture.py#572">here</a>.
      * @param nk        (nComponents, )
      * @param xk        List with length nComponents of (nFeature, ) vectors
      * @param sk        List with length nComponents of (nFeature, nFeature) matrices
@@ -383,6 +395,7 @@ public final class BayesianGaussianMixtureModeller implements Serializable {
     }
 
     /**
+     * See <a href="https://github.com/scikit-learn/scikit-learn/blob/1.0/sklearn/mixture/_bayesian_mixture.py#L599">here</a>.
      * @param nk        (nComponents, )
      * @param xk        List with length nComponents of (nFeature, ) vectors
      * @param sk        List with length nComponents of (nFeature, nFeature) matrices
@@ -405,6 +418,7 @@ public final class BayesianGaussianMixtureModeller implements Serializable {
     }
 
     /**
+     * See <a href="https://github.com/scikit-learn/scikit-learn/blob/1.0/sklearn/mixture/_base.py#L472">here</a>.
      * @param X         data. (nSamples, nFeatures)
      * @return          (nSamples, nComponents)
      */
@@ -417,11 +431,16 @@ public final class BayesianGaussianMixtureModeller implements Serializable {
         return result;
     }
 
+    /**
+     * See <a href="https://github.com/scikit-learn/scikit-learn/blob/1.0/sklearn/mixture/_bayesian_mixture.py#L750">here</a>.
+     * @return          (nComponents, )
+     */
     private RealVector estimateLogWeights() {
         return weightConcentration.map(Gamma::digamma).mapSubtract(Gamma.digamma(BayesianGaussianMixtureUtils.sum(weightConcentration)));
     }
 
     /**
+     * See <a href="https://github.com/scikit-learn/scikit-learn/blob/1.0/sklearn/mixture/_bayesian_mixture.py#768">here</a>.
      * @param X         data. (nSamples, nFeatures)
      * @return          (nSamples, nComponents)
      */
@@ -452,6 +471,7 @@ public final class BayesianGaussianMixtureModeller implements Serializable {
     }
 
     /**
+     * See <a href="https://github.com/scikit-learn/scikit-learn/blob/1.0/sklearn/mixture/_bayesian_mixture.py#L786">here</a>.
      * We remove an unused log_prob_norm parameter from the sklearn implementation.
      * @param logResp       log responsibilities. (nSamples, nComponents)
      * @return              evidence lower bound
@@ -547,9 +567,9 @@ public final class BayesianGaussianMixtureModeller implements Serializable {
     }
 
     /**
-     * Should only be used to set fits in preparation for calling {@link #scoreSamples}.
-     * To be consistent with sklearn, setting fits will not affect the result of calling {@link #fit} or {@link #fitPredict},
-     * even if {@link #warmStart} is true; the fits will essentially be overwritten by the new ones.
+     * Should only be used to set the fit in preparation for calling {@link #scoreSamples}.
+     * To be consistent with sklearn, setting the fit will not affect the result of calling {@link #fit},
+     * even if {@link #warmStart} is true; the fit will essentially be overwritten by the new ones.
      */
     public void setCurrentAndBestFits(final BayesianGaussianMixtureModelPosterior fit) {
         weightConcentration = fit.getWeightConcentration();
