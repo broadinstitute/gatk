@@ -11,6 +11,7 @@ workflow GvsCreateVAT {
         String dataset_name
         String filter_set_name
         String? vat_version
+        String? cheese
         String output_path
 
         Int? merge_vcfs_disk_size_override
