@@ -280,13 +280,14 @@ public class CompareReferences extends GATKTool {
                     MummerExecutor executor = new MummerExecutor();
                     logger.info("Running mummer alignment on sequence " + sequenceName);
                     File tempSnpsDirectory = IOUtils.createTempDir("tempsnps");
-                    File mummerOutput = executor.executeMummer(ref1Fasta.toPath().toFile(), ref2Fasta.toPath().toFile(), tempSnpsDirectory, sequenceName);
+                    File mummerOutput = executor.executeMummer(ref1Fasta.toPath().toFile(), ref2Fasta.toPath().toFile(), tempSnpsDirectory);
                     logger.info("Finished running mummer alignment on sequence " + sequenceName);
                     snpsFiles.add(mummerOutput);
                 }
             }
             // merge individual snps files
-            File snps = new File(baseComparisonOutputDirectory.toPath().toString(), String.format("%s_%s.snps", refPair.getRef1AsString(), refPair.getRef2AsString()));
+            File snps = IOUtils.createTempFile(String.format("%s_%s", refPair.getRef1AsString(), refPair.getRef2AsString()), ".snps");
+            /*new File(baseComparisonOutputDirectory.toPath().toString(), String.format("%s_%s.snps", refPair.getRef1AsString(), refPair.getRef2AsString()));*/
             try (PrintWriter writer = new PrintWriter(snps)) {
                 for (File file : snpsFiles) {
                     try (XReadLines reader = new XReadLines(file)) {
@@ -312,7 +313,7 @@ public class CompareReferences extends GATKTool {
                 int previousPos = -1;
                     for (String line : reader) {
                         String[] fields = line.split("\\t", -1);
-                        String contig = fields[10];
+                        String contig = fields[12];
                         int pos = Integer.valueOf(fields[0]);
                         String ref = fields[1];
                         String alt = fields[2];
@@ -532,7 +533,6 @@ public class CompareReferences extends GATKTool {
         }
 
         public VariantContext getAsVCFRecord(){
-            // builder, add fields
             VariantContextBuilder vcfBuilder = new VariantContextBuilder();
             int stopPos = isInsertion ? pos : pos + ref.length()-1;
             VariantContext record = vcfBuilder.chr(chr).start(pos).stop(stopPos).alleles(ref, alt).make();

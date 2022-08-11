@@ -36,7 +36,6 @@ public final class MummerExecutor {
         this.mummerExecutableDirectory = mummerExecutableDirectory;
     }
 
-
     /**
      * Returns a MummerExecutor pointing to the unzipped MUMmer executables packaged in GATK
      */
@@ -63,7 +62,7 @@ public final class MummerExecutor {
      * @param outputDirectory directory to output final snps file
      * @return the final snps File
      */
-    public File executeMummer(File fasta1, File fasta2, File outputDirectory, String sequenceName){
+    public File executeMummer(File fasta1, File fasta2, File outputDirectory){
 
         // NUCMER
         logger.debug("Running nucmer.");
@@ -80,9 +79,10 @@ public final class MummerExecutor {
 
         // SHOW-SNPS
         logger.debug("Running show-snps.");
-        File showSNPSOutput = new File(outputDirectory, String.format("chr%s_snps_output.snps", sequenceName));
+        File showSNPSOutput = new File(outputDirectory, "snps_output.snps");
         String[] showSNPsArgs = {mummerExecutableDirectory.getAbsolutePath() + "/show-snps", "-rlTH", deltaFilterOutput.getAbsolutePath()};
         ProcessOutput showSNPs = runShellCommand(showSNPsArgs, null, showSNPSOutput, false);
+
 
         return showSNPSOutput;
     }
@@ -143,7 +143,7 @@ public final class MummerExecutor {
         return output;
     }
 
-    // method to locate the MUMmer binaries packaged within GATK
+    // method to unzip and locate the MUMmer binaries packaged within GATK
     private File prepareMUMmerExecutionDirectory(){
         try{
             Resource mummerZipFile = new Resource(MUMMER_BINARIES_ZIPFILE, getClass());
@@ -160,5 +160,4 @@ public final class MummerExecutor {
             throw new UserException("Unable to unzip MUMmer binaries.", e);
         }
     }
-
 }

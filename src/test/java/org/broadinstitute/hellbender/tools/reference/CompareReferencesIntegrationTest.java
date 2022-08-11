@@ -56,19 +56,6 @@ public class CompareReferencesIntegrationTest extends CommandLineProgramTest {
         IntegrationTestSpec.assertEqualTextFiles(output, expectedOutput);
     }
 
-    // test run on hg38 DRAGEN fastas -- displays EXACT_MATCH
-    @Test
-    public void testCompareReferencesDRAGENFastas() throws IOException{
-        final File ref1 = new File("/Users/ocohen/workingcode/gatk/tempreferences/hg38_better_alt_masked.fa");
-        final File ref2 = new File("/Users/ocohen/workingcode/gatk/tempreferences/Homo_sapiens_assembly38_masked.fasta");
-        final File output = createTempFile("testCompareReferencesDRAGENMaskedMatch", ".table");
-        final File expectedOutput = new File(getToolTestDataDir(), "expected.testCompareReferencesMaskedDRAGENMatch.table");
-
-        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-O", output.getAbsolutePath()};
-        runCommandLine(args);
-        IntegrationTestSpec.assertEqualTextFiles(output, expectedOutput);
-    }
-
     @DataProvider(name = "md5ArgumentData")
     public Object[][] md5ArgumentData() {
         return new Object[][]{
@@ -122,7 +109,7 @@ public class CompareReferencesIntegrationTest extends CommandLineProgramTest {
         runCommandLine(args);
     }
 
-    // The following tests run the tool on different combinations of reference files
+    // The following test runs the tool on different combinations of reference files
     // and produce output to stdout for the sake of manually inspecting outputs.
     // Disabled, as no actual assertions made.
     @Test(enabled = false)
@@ -132,18 +119,19 @@ public class CompareReferencesIntegrationTest extends CommandLineProgramTest {
         final File ref3 = new File(getToolTestDataDir() + "hg19mini_chr2snp.fasta");
         final File ref4 = new File(getToolTestDataDir() + "hg19mini_missingchr1.fasta");
 
-        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-refcomp", ref3.getAbsolutePath(),
-                "-refcomp", ref4.getAbsolutePath()};
+        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref3.getAbsolutePath(), "-refcomp", ref3.getAbsolutePath(),
+                "-refcomp", ref4.getAbsolutePath(), "-display-sequences-by-name", "-display-only-differing-sequences"};
         runCommandLine(args);
     }
 
+    // FIND_SNPS_ONLY tests:
     @Test
-    public void testFindMultipleSNPs() throws IOException{
+    public void testFindSNPsMultipleSNPs() throws IOException{
         final File ref1 = new File(getToolTestDataDir() + "hg19mini.fasta");
         final File ref2 = new File(getToolTestDataDir() + "hg19mini_chr2multiplesnps.fasta");
         final File output = IOUtils.createTempDir("tempFindSNPs");
 
-        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-base-comparison", "FIND_SNPS_ONLY", "-base-comparison-output", output.toPath().toString()};
+        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-base-comparison", "FIND_SNPS_ONLY", "-base-comparison-output", output.getAbsolutePath()};
         runCommandLine(args);
 
         final File actualOutput = new File(output, "hg19mini.fasta_hg19mini_chr2multiplesnps.fasta_snps.tsv");
@@ -152,7 +140,7 @@ public class CompareReferencesIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
-    public void testFindIUPACSNPs() throws IOException{
+    public void testFindSNPsIUPACBases() throws IOException{
         final File ref1 = new File(getToolTestDataDir() + "hg19mini.fasta");
         final File ref2 = new File(getToolTestDataDir() + "hg19mini_chr2iupacsnps.fasta");
         final File output = IOUtils.createTempDir("tempFindSNPs");
@@ -166,6 +154,7 @@ public class CompareReferencesIntegrationTest extends CommandLineProgramTest {
         IntegrationTestSpec.assertEqualTextFiles(actualOutput, expectedOutput);
     }
 
+    // FULL_ALIGNMENT tests:
     @Test
     public void testFullAlignmentModeMultipleSNPs() throws IOException{
         final File ref1 = new File(getToolTestDataDir() + "hg19mini.fasta");
@@ -184,14 +173,14 @@ public class CompareReferencesIntegrationTest extends CommandLineProgramTest {
     public void testFullAlignmentModeDeletion() throws IOException{
         final File ref1 = new File(getToolTestDataDir() + "hg19mini.fasta");
         final File ref2 = new File(getToolTestDataDir() + "hg19mini_chr1indel.fasta");
-        //final File output = IOUtils.createTempDir("tempFullAlignmentIndel");
+        final File output = IOUtils.createTempDir("tempFullAlignmentIndel");
 
-        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-base-comparison", "FULL_ALIGNMENT", "-base-comparison-output", getToolTestDataDir()};
+        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-base-comparison", "FULL_ALIGNMENT", "-base-comparison-output", output.getAbsolutePath()};
         runCommandLine(args);
 
-        /*final File expectedOutput = new File(getToolTestDataDir(), "expected.testDeletion.hg19mini.fasta_hg19mini_chr1indel.fasta.snps");
-        final File actualOutput = new File(output, "hg19mini.fasta_hg19mini_chr1indel.fasta.snps");
-        IntegrationTestSpec.assertEqualTextFiles(actualOutput, expectedOutput);*/
+        final File expectedOutput = new File(getToolTestDataDir(), "expected.testDeletion.hg19mini.fasta_hg19mini_chr1indel.fasta.vcf");
+        final File actualOutput = new File(output, "hg19mini.fasta_hg19mini_chr1indel.fasta.vcf");
+        IntegrationTestSpec.assertEqualTextFiles(actualOutput, expectedOutput);
     }
 
     @Test
@@ -203,8 +192,8 @@ public class CompareReferencesIntegrationTest extends CommandLineProgramTest {
         final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-base-comparison", "FULL_ALIGNMENT", "-base-comparison-output", output.getAbsolutePath()};
         runCommandLine(args);
 
-        final File expectedOutput = new File(getToolTestDataDir(), "expected.testInsertion.hg19mini_chr1indel.fasta_hg19mini.fasta.snps");
-        final File actualOutput = new File(output, "hg19mini_chr1indel.fasta_hg19mini.fasta.snps");
+        final File expectedOutput = new File(getToolTestDataDir(), "expected.testInsertion.hg19mini_chr1indel.fasta_hg19mini.fasta.vcf");
+        final File actualOutput = new File(output, "hg19mini_chr1indel.fasta_hg19mini.fasta.vcf");
         IntegrationTestSpec.assertEqualTextFiles(actualOutput, expectedOutput);
     }
 
@@ -214,11 +203,25 @@ public class CompareReferencesIntegrationTest extends CommandLineProgramTest {
         final File ref2 = new File(getToolTestDataDir() + "hg19mini_snpsmultiplecontigs.fasta");
         final File output = IOUtils.createTempDir("tempFullAlignmentSNPsMultipleContigs");
 
-        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-base-comparison", "FULL_ALIGNMENT", "-base-comparison-output", output.toPath().toString()};
+        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-base-comparison", "FULL_ALIGNMENT", "-base-comparison-output", output.getAbsolutePath()};
         runCommandLine(args);
 
-        final File expectedOutput = new File(getToolTestDataDir(), "expected.hg19mini.fasta_hg19mini_snpsmultiplecontigs.fasta.snps");
-        final File actualOutput = new File(output, "hg19mini.fasta_hg19mini_snpsmultiplecontigs.fasta.snps");
+        final File expectedOutput = new File(getToolTestDataDir(), "expected.hg19mini.fasta_hg19mini_snpsmultiplecontigs.fasta.vcf");
+        final File actualOutput = new File(output, "hg19mini.fasta_hg19mini_snpsmultiplecontigs.fasta.vcf");
+        IntegrationTestSpec.assertEqualTextFiles(actualOutput, expectedOutput);
+    }
+
+    @Test
+    public void testFullAlignmentModeSNPAndINDEL() throws IOException{
+        final File ref1 = new File(getToolTestDataDir() + "hg19mini.fasta");
+        final File ref2 = new File(getToolTestDataDir() + "hg19mini_snpandindel.fasta");
+        final File output = IOUtils.createTempDir("tempFullAlignmentIndel");
+
+        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-base-comparison", "FULL_ALIGNMENT", "-base-comparison-output", output.getAbsolutePath()};
+        runCommandLine(args);
+
+        final File expectedOutput = new File(getToolTestDataDir(), "expected.SNPandINDEL.hg19mini.fasta_hg19mini_snpandindel.fasta.vcf");
+        final File actualOutput = new File(output, "hg19mini.fasta_hg19mini_snpandindel.fasta.vcf");
         IntegrationTestSpec.assertEqualTextFiles(actualOutput, expectedOutput);
     }
 }
