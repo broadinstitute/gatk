@@ -1,8 +1,11 @@
 package org.broadinstitute.hellbender.utils.alignment;
 
+import com.google.common.annotations.VisibleForTesting;
+import org.apache.commons.lang3.SystemUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.NativeUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.runtime.ProcessController;
@@ -24,9 +27,11 @@ import java.util.*;
  */
 public final class MummerExecutor {
 
-    // this is an M1 specific build of MUMmer
-    // TODO: add intel build
-    public static final String MUMMER_BINARIES_ZIPFILE = "MUMmer3.23Binaries.zip";
+    public static final String MUMMER_X86_64_MAC_BINARIES_ZIPFILE = "MUMmer-4.0.0rc1_mac_x64_64.zip";
+    public static final String MUMMER_X86_64_LINUX_BINARIES_ZIPFILE = "MUMmer-4.0.0rc1_linux_x64_64.zip";
+    // TODO: Need to recompile MUMmer 4.0.0rc1 for native M1 architecture as well
+    // TODO: (however the Mac Intel build should be runnable on M1 platforms with x86 emulation)
+
     private static final Logger logger = LogManager.getLogger(MummerExecutor.class);
     private File mummerExecutableDirectory;
 
@@ -42,7 +47,23 @@ public final class MummerExecutor {
      * Returns a MummerExecutor pointing to the unzipped MUMmer executables packaged in GATK
      */
     public MummerExecutor(){
-        mummerExecutableDirectory = prepareMUMmerExecutionDirectory();
+        final Resource mummerDistribution = new Resource(selectCorrectMummerDistributionForPlatform(), getClass());
+        mummerExecutableDirectory = prepareMUMmerExecutionDirectory(mummerDistribution);
+    }
+
+    private String selectCorrectMummerDistributionForPlatform() {
+        if ( NativeUtils.runningOnMac() && NativeUtils.runningOn64BitX86Architecture() ) {
+            logger.info("Using the x86_64 Mac OS build of MUMmer");
+            return MUMMER_X86_64_MAC_BINARIES_ZIPFILE;
+        }
+        else if ( NativeUtils.runningOnLinux() && NativeUtils.runningOn64BitX86Architecture() ) {
+            logger.info("Using the x86_64 Linux build of MUMmer");
+            return MUMMER_X86_64_LINUX_BINARIES_ZIPFILE;
+        }
+        else {
+            throw new UserException("Unable to run MUMmer aligner: GATK does not contain a MUMmer distribution for system architecture " +
+                    SystemUtils.OS_ARCH + " on operating system " + SystemUtils.OS_NAME);
+        }
     }
 
     /**
@@ -118,9 +139,9 @@ public final class MummerExecutor {
     }
 
     // method to unzip and locate the MUMmer binaries packaged within GATK
-    private File prepareMUMmerExecutionDirectory(){
+    @VisibleForTesting
+    static File prepareMUMmerExecutionDirectory(final Resource mummerZipFile){
         try{
-            Resource mummerZipFile = new Resource(MUMMER_BINARIES_ZIPFILE, getClass());
             File tempMUMmerZipFile = IOUtils.writeTempResource(mummerZipFile);
             File mummerExecutionDirectory = IOUtils.createTempDir("MUMmerExecutionDirectory");
             IOUtils.unzipToFolder(Paths.get(tempMUMmerZipFile.getAbsolutePath()), Paths.get(mummerExecutionDirectory.getAbsolutePath()));
