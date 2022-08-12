@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.utils.clustering;
 
+import org.apache.commons.math3.linear.ArrayRealVector;
 import org.apache.commons.math3.linear.MatrixUtils;
+import org.apache.commons.math3.linear.RealVector;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.annotations.Test;
 
@@ -12,9 +14,12 @@ import java.util.Arrays;
 import java.util.List;
 
 public final class BayesianGaussianMixtureModellerUnitTest extends GATKBaseTest {
+
     private static final File TEST_SUB_DIR = new File(packageRootTestDir, "utils/clustering");
 
     /**
+     * Simulated data was generated using the following Python code:
+     *
      * import numpy as np  # np.__version__    = 1.19.5
      * import torch        # torch.__version__ = 1.8.0
      * import pyro         # pyro.__version__  = 1.6.0
@@ -60,6 +65,47 @@ public final class BayesianGaussianMixtureModellerUnitTest extends GATKBaseTest 
         return data;
     }
 
+    /**
+     * Checks against results generated using the following Python code:
+     *
+     * import numpy as np # 1.23.1
+     * from sklearn.mixture import BayesianGaussianMixture # 1.0.2
+     *
+     * class BayesianGaussianMixtureTestInit(BayesianGaussianMixture):
+     *     def _initialize_parameters(self, X, random_state):
+     *         n_samples, _ = X.shape
+     *         resp = np.repeat(np.arange(self.n_components, dtype=np.float)[np.newaxis, :], n_samples, axis=0)
+     *         resp /= resp.sum(axis=1)[:, np.newaxis]
+     *         self._initialize(X, resp)
+     *
+     * n_components = 4
+     * n_features = 3
+     * X_ni = np.loadtxt('bayesian-gaussian-mixture-simulated-data-10k-samples-4-components-3-features.tsv')
+     * bgmm = BayesianGaussianMixtureTestInit(n_components=n_components,
+     *                                        tol=1E-3,
+     *                                        reg_covar=1E-6,
+     *                                        max_iter=100,
+     *                                        n_init=1,
+     *                                        weight_concentration_prior_type='dirichlet_distribution',
+     *                                        weight_concentration_prior=1E-2,
+     *                                        mean_precision_prior=10.,
+     *                                        mean_prior=np.zeros(n_features),
+     *                                        degrees_of_freedom_prior=n_features,
+     *                                        covariance_type='full',
+     *                                        covariance_prior=np.eye(n_features),
+     *                                        random_state=1)
+     * bgmm.fit(X_ni)
+     *
+     * np.set_printoptions(suppress=True)
+     * print('lower_bound_:\n', bgmm.lower_bound_)
+     * print('weight_concentration_:\n', bgmm.weight_concentration_)
+     * print('weights_:\n', bgmm.weights_)
+     * print('mean_precision_:\n', bgmm.mean_precision_)
+     * print('means_:\n', bgmm.means_)
+     * print('precisions_cholesky_:\n', bgmm.precisions_cholesky_)
+     * print('covariances_:\n', bgmm.covariances_)
+     * print('degrees_of_freedom_:\n', bgmm.degrees_of_freedom_)
+     */
     @Test
     public void testSimulatedData() throws IOException {
         final int nComponents = 4;
@@ -102,50 +148,53 @@ public final class BayesianGaussianMixtureModellerUnitTest extends GATKBaseTest 
         System.out.println("covariances: " + fit.getCovariances());
         System.out.println("degreesOfFreedom: " + fit.getDegreesOfFreedom());
 
-        //ll -55411.48811
-        //weights__:
-        // [0.000001   0.44899574 0.11948422 0.43151904]
-        //mean_precision_:
-        // [  10.         4499.96539243 1204.83693171 4325.19767586]
-        //means_:
-        // [[  0.           0.          -0.        ]
-        // [ -2.27902144  -7.08096566  -6.51902374]
-        // [  4.16603771   2.44551832  -4.2517331 ]
-        // [-10.27032453  -5.13606169  -8.91811286]]
+        final double expectedLowerBound = -55411.488111726714;
+        final RealVector expectedWeightConcentration = new ArrayRealVector(new double[]
+                {0.01, 4489.975392, 1194.846932, 4315.207676});
+        final RealVector expectedWeights = new ArrayRealVector(new double[]
+                {0.000001, 0.448996, 0.119484, 0.431519});
+        final RealVector expectedMeanPrecision = new ArrayRealVector(new double[]
+                {10., 4499.965392, 1204.836932, 4325.197676});
+        final List<RealVector> expectedMeans = Arrays.asList(
+                new ArrayRealVector(new double[]{0., 0., -0.}),
+                new ArrayRealVector(new double[]{-2.279021, -7.080966, -6.519024}),
+                new ArrayRealVector(new double[]{4.166038, 2.445518, -4.251733}),
+                new ArrayRealVector(new double[]{-10.270325, -5.136062, -8.918113}));
+
         //precisions_cholesky_:
-        // [[[ 1.73205081 -0.          0.        ]
-        //  [ 0.          1.73205081  0.        ]
-        //  [ 0.          0.          1.73205081]]
+        // [[[ 1.732051 -0.        0.      ]
+        //  [ 0.        1.732051  0.      ]
+        //  [ 0.        0.        1.732051]]
         //
-        // [[ 0.3965281  -0.69780817 -0.85661924]
-        //  [ 0.          0.30015465  0.9696907 ]
-        //  [ 0.          0.          1.15590395]]
+        // [[ 0.396528 -0.697808 -0.856619]
+        //  [ 0.        0.300155  0.969691]
+        //  [ 0.        0.        1.155904]]
         //
-        // [[ 0.73698552 -0.20260387  0.30560695]
-        //  [ 0.          0.22767109 -0.21636638]
-        //  [ 0.          0.          1.01475474]]
+        // [[ 0.736986 -0.202604  0.305607]
+        //  [ 0.        0.227671 -0.216366]
+        //  [ 0.        0.        1.014755]]
         //
-        // [[ 0.48487715 -0.19711704 -0.03379824]
-        //  [ 0.          0.03300309  0.01876718]
-        //  [ 0.          0.          0.6684803 ]]]
+        // [[ 0.484877 -0.197117 -0.033798]
+        //  [ 0.        0.033003  0.018767]
+        //  [ 0.        0.        0.66848 ]]]
         //covariances_:
-        // [[[   0.33333333    0.           -0.        ]
-        //  [   0.            0.33333333   -0.        ]
-        //  [  -0.           -0.            0.33333333]]
+        // [[[   0.333333    0.         -0.      ]
+        //  [   0.          0.333333   -0.      ]
+        //  [  -0.         -0.          0.333333]]
         //
-        // [[   6.35992584   14.78573847   -7.69056826]
-        //  [  14.78573847   45.47397408  -27.19079008]
-        //  [  -7.69056826  -27.19079008   17.85952135]]
+        // [[   6.359926   14.785738   -7.690568]
+        //  [  14.785738   45.473974  -27.19079 ]
+        //  [  -7.690568  -27.19079    17.859521]]
         //
-        // [[   1.84111996    1.63840757   -0.20513603]
-        //  [   1.63840757   20.75032424    3.93096334]
-        //  [  -0.20513603    3.93096334    1.87107189]]
+        // [[   1.84112     1.638408   -0.205136]
+        //  [   1.638408   20.750324    3.930963]
+        //  [  -0.205136    3.930963    1.871072]]
         //
-        // [[   4.25340328   25.4042382    -0.49815715]
-        //  [  25.4042382  1069.83341318  -28.75048534]
-        //  [  -0.49815715  -28.75048534    3.0197733 ]]]
+        // [[   4.253403   25.404238   -0.498157]
+        //  [  25.404238 1069.833413  -28.750485]
+        //  [  -0.498157  -28.750485    3.019773]]]
         //degrees_of_freedom_:
-        // [   3.         4492.96539243 1197.83693171 4318.19767586]
+        // [   3.       4492.965392 1197.836932 4318.197676]
     }
 
 //    @Test
