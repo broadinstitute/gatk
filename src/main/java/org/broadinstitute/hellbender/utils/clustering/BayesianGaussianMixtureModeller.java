@@ -38,7 +38,10 @@ import java.util.stream.IntStream;
  *     <ul>
  *         <li> 1) Only full covariance matrices are allowed; i.e., the sklearn parameter {@code covariance_type} is fixed to {@code 'full'},</li>
  *         <li> 2) Responsibilities can be initialized at random or using {@link org.apache.commons.math3.ml.clustering.KMeansPlusPlusClusterer};
- *                 in contrast, the sklearn {@code init_params} parameter allows initialization at random or using standard k-means clustering,</li>
+ *                 in contrast, the sklearn {@code init_params} parameter allows initialization at random or using standard k-means clustering;
+ *                 we also allow a {@code TEST} initialization mode that initializes responsibilities to be proportional to the component index
+ *                 (i.e., {@code resp = np.repeat(np.arange(self.n_components, dtype=np.float)[np.newaxis, :], n_samples, axis=0); resp /= resp.sum(axis=1)[:, np.newaxis]}),
+ *                 which is only to be used for unit testing of numerical reproducibility (see BayesianGaussianMixtureModellerUnitTest#testSimulatedData),</li>
  *         <li> 3) Only Dirichlet weight concentration priors are allowed; i.e., the sklearn parameter {@code weight_concentration_prior_type} is fixed to {@code 'dirichlet_distribution},</li>
  *         <li> 4) Parameters controlling tolerances for numerical checks of covariances matrices have been added ({@code relativeSymmetryThreshold} and {@code absolutePositivityThreshold}),</li>
  *         <li> 5) An {@code epsilon} regularization parameter has been exposed (see <a href="https://github.com/scikit-learn/scikit-learn/blob/1.0/sklearn/mixture/_gaussian_mixture.py#L289">here</a>),</li>

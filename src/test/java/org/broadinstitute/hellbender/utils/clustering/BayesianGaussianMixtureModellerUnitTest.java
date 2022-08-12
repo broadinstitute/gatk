@@ -1,9 +1,12 @@
 package org.broadinstitute.hellbender.utils.clustering;
 
+import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.ArrayRealVector;
 import org.apache.commons.math3.linear.MatrixUtils;
+import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.linear.RealVector;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -12,10 +15,13 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.IntStream;
 
 public final class BayesianGaussianMixtureModellerUnitTest extends GATKBaseTest {
 
     private static final File TEST_SUB_DIR = new File(packageRootTestDir, "utils/clustering");
+
+    private static final double ALLOWED_DELTA = 1E-6;
 
     /**
      * Simulated data was generated using the following Python code:
@@ -66,7 +72,7 @@ public final class BayesianGaussianMixtureModellerUnitTest extends GATKBaseTest 
     }
 
     /**
-     * Checks against results generated using the following Python code:
+     * Checks against expected results generated using the following Python code:
      *
      * import numpy as np # 1.23.1
      * from sklearn.mixture import BayesianGaussianMixture # 1.0.2
@@ -138,15 +144,7 @@ public final class BayesianGaussianMixtureModellerUnitTest extends GATKBaseTest 
                 .build();
 
         bgmm.fit(data);
-        System.out.println(bgmm);
-        System.out.println(bgmm.getLowerBound());
         final BayesianGaussianMixtureModelPosterior fit = bgmm.getBestFit();
-        System.out.println("weights: " + fit.getWeights());
-        System.out.println("meanPrecision: " + fit.getMeanPrecision());
-        System.out.println("means: " + fit.getMeans());
-        System.out.println("precisionsCholesky: " + fit.getPrecisionsCholesky());
-        System.out.println("covariances: " + fit.getCovariances());
-        System.out.println("degreesOfFreedom: " + fit.getDegreesOfFreedom());
 
         final double expectedLowerBound = -55411.488111726714;
         final RealVector expectedWeightConcentration = new ArrayRealVector(new double[]
@@ -160,87 +158,82 @@ public final class BayesianGaussianMixtureModellerUnitTest extends GATKBaseTest 
                 new ArrayRealVector(new double[]{-2.279021, -7.080966, -6.519024}),
                 new ArrayRealVector(new double[]{4.166038, 2.445518, -4.251733}),
                 new ArrayRealVector(new double[]{-10.270325, -5.136062, -8.918113}));
+        final List<RealMatrix> expectedPrecisionsCholesky = Arrays.asList(
+                new Array2DRowRealMatrix(new double[][]{
+                        {1.732051, -0., 0.},
+                        {0., 1.732051, 0.},
+                        {0., 0., 1.732051}}),
+                new Array2DRowRealMatrix(new double[][]{
+                        {0.396528, -0.697808, -0.856619},
+                        {0., 0.300155, 0.969691},
+                        {0., 0., 1.155904}}),
+                new Array2DRowRealMatrix(new double[][]{
+                        {0.736986, -0.202604, 0.305607},
+                        {0., 0.227671, -0.216366},
+                        {0., 0., 1.014755}}),
+                new Array2DRowRealMatrix(new double[][]{
+                        {0.484877, -0.197117, -0.033798},
+                        {0., 0.033003, 0.018767},
+                        {0., 0., 0.66848}}));
+        final List<RealMatrix> expectedCovariances = Arrays.asList(
+                new Array2DRowRealMatrix(new double[][]{
+                        {0.333333, 0., -0.},
+                        {0., 0.333333, -0.},
+                        {-0., -0., 0.333333}}),
+                new Array2DRowRealMatrix(new double[][]{
+                        {6.359926, 14.785738, -7.690568},
+                        {14.785738, 45.473974, -27.19079 },
+                        {-7.690568, -27.19079, 17.859521}}),
+                new Array2DRowRealMatrix(new double[][]{
+                        {1.84112, 1.638408, -0.205136},
+                        {1.638408, 20.750324, 3.930963},
+                        {-0.205136, 3.930963, 1.871072}}),
+                new Array2DRowRealMatrix(new double[][]{
+                        {4.253403, 25.404238, -0.498157},
+                        {25.404238, 1069.833413, -28.750485},
+                        {-0.498157, -28.750485, 3.019773}}));
+        final RealVector expectedDegreesOfFreedom = new ArrayRealVector(new double[]
+                {3., 4492.965392, 1197.836932, 4318.197676});
 
-        //precisions_cholesky_:
-        // [[[ 1.732051 -0.        0.      ]
-        //  [ 0.        1.732051  0.      ]
-        //  [ 0.        0.        1.732051]]
-        //
-        // [[ 0.396528 -0.697808 -0.856619]
-        //  [ 0.        0.300155  0.969691]
-        //  [ 0.        0.        1.155904]]
-        //
-        // [[ 0.736986 -0.202604  0.305607]
-        //  [ 0.        0.227671 -0.216366]
-        //  [ 0.        0.        1.014755]]
-        //
-        // [[ 0.484877 -0.197117 -0.033798]
-        //  [ 0.        0.033003  0.018767]
-        //  [ 0.        0.        0.66848 ]]]
-        //covariances_:
-        // [[[   0.333333    0.         -0.      ]
-        //  [   0.          0.333333   -0.      ]
-        //  [  -0.         -0.          0.333333]]
-        //
-        // [[   6.359926   14.785738   -7.690568]
-        //  [  14.785738   45.473974  -27.19079 ]
-        //  [  -7.690568  -27.19079    17.859521]]
-        //
-        // [[   1.84112     1.638408   -0.205136]
-        //  [   1.638408   20.750324    3.930963]
-        //  [  -0.205136    3.930963    1.871072]]
-        //
-        // [[   4.253403   25.404238   -0.498157]
-        //  [  25.404238 1069.833413  -28.750485]
-        //  [  -0.498157  -28.750485    3.019773]]]
-        //degrees_of_freedom_:
-        // [   3.       4492.965392 1197.836932 4318.197676]
+        Assert.assertEquals(bgmm.getLowerBound(), expectedLowerBound, ALLOWED_DELTA);
+        assertEqualUpToAllowedDelta(fit.getWeightConcentration(), expectedWeightConcentration, ALLOWED_DELTA);
+        assertEqualUpToAllowedDelta(fit.getWeights(), expectedWeights, ALLOWED_DELTA);
+        assertEqualUpToAllowedDelta(fit.getMeanPrecision(), expectedMeanPrecision, ALLOWED_DELTA);
+        assertListRealVectorsEqualUpToAllowedDelta(fit.getMeans(), expectedMeans, ALLOWED_DELTA);
+        assertListRealMatricesEqualUpToAllowedDelta(fit.getPrecisionsCholesky(), expectedPrecisionsCholesky, ALLOWED_DELTA);
+        assertListRealMatricesEqualUpToAllowedDelta(fit.getCovariances(), expectedCovariances, ALLOWED_DELTA);
+        assertEqualUpToAllowedDelta(fit.getDegreesOfFreedom(), expectedDegreesOfFreedom, ALLOWED_DELTA);
     }
 
-//    @Test
-//    public void testSimulatedData1Mx3x10() throws IOException {
-//        final int nComponents = 10;
-//        final int nFeatures = 10;
-//
-//        final double[][] data = readData(new File("/home/slee/working/malariagen/issues/hyperhet/simulated-data.tsv"));
-//
-//        final double[] meanPrior = new double[nFeatures];
-//        Arrays.fill(meanPrior, 0.);
-//        final double[][] covariancePrior = MatrixUtils.createRealIdentityMatrix(nFeatures).getData();
-//
-//        final BayesianGaussianMixture bgmm = new BayesianGaussianMixture.Builder()
-//                .nComponents(nComponents)
-//                .tol(1E-3)
-//                .regCovar(1E-6)
-//                .maxIter(100)
-//                .nInit(1)
-//                .initMethod(BayesianGaussianMixture.InitMethod.TEST)
-//                .weightConcentrationPrior(1E-2)
-//                .meanPrecisionPrior(10.)
-//                .meanPrior(meanPrior)
-//                .degreesOfFreedomPrior(nFeatures)
-//                .covariancePrior(covariancePrior)
-//                .seed(1)
-//                .warmStart(true)
-//                .verboseInterval(1)
-//                .build();
-//
-//        bgmm.fit(Arrays.copyOfRange(data, 0, 100000));
-//        System.out.println("weights: " + bgmm.getWeights());
-//        System.out.println("meanPrecision: " + bgmm.getMeanPrecision());
-//        System.out.println("means: " + bgmm.getMeans());
-//        System.out.println("precisionsCholesky: " + bgmm.getPrecisionsCholesky());
-//        System.out.println("covariances: " + bgmm.getCovariances());
-//        System.out.println("degreesOfFreedom: " + bgmm.getDegreesOfFreedom());
-//
-//        bgmm.fit(data);
-//        System.out.println("weights: " + bgmm.getWeights());
-//        System.out.println("meanPrecision: " + bgmm.getMeanPrecision());
-//        System.out.println("means: " + bgmm.getMeans());
-//        System.out.println("precisionsCholesky: " + bgmm.getPrecisionsCholesky());
-//        System.out.println("covariances: " + bgmm.getCovariances());
-//        System.out.println("degreesOfFreedom: " + bgmm.getDegreesOfFreedom());
-//    }
+    private static void assertEqualUpToAllowedDelta(final RealVector a,
+                                                    final RealVector b,
+                                                    final double delta) {
+        Assert.assertEquals(a.getDimension(), b.getDimension());
+        IntStream.range(0, a.getDimension()).forEach(i -> Assert.assertEquals(a.getEntry(i), b.getEntry(i), delta));
+    }
+
+    private static void assertListRealVectorsEqualUpToAllowedDelta(final List<RealVector> a,
+                                                                   final List<RealVector> b,
+                                                                   final double delta) {
+        Assert.assertEquals(a.size(), b.size());
+        IntStream.range(0, a.size()).forEach(i -> assertEqualUpToAllowedDelta(a.get(i), b.get(i), delta));
+    }
+
+    private static void assertEqualUpToAllowedDelta(final RealMatrix a,
+                                                    final RealMatrix b,
+                                                    final double delta) {
+        Assert.assertEquals(a.getRowDimension(), b.getRowDimension());
+        Assert.assertEquals(a.getColumnDimension(), b.getColumnDimension());
+        IntStream.range(0, a.getRowDimension()).forEach(
+                i -> assertEqualUpToAllowedDelta(a.getRowVector(i), b.getRowVector(i), delta));
+    }
+
+    private static void assertListRealMatricesEqualUpToAllowedDelta(final List<RealMatrix> a,
+                                                                    final List<RealMatrix> b,
+                                                                    final double delta) {
+        Assert.assertEquals(a.size(), b.size());
+        IntStream.range(0, a.size()).forEach(i -> assertEqualUpToAllowedDelta(a.get(i), b.get(i), delta));
+    }
 
     @Test
     public void testSimulatedDataWithWarmStart() throws IOException {
