@@ -18,7 +18,9 @@ import java.nio.file.attribute.PosixFilePermissions;
 import java.util.*;
 
 /**
- * Class for executing MUMmer pipeline.
+ * Class for executing MUMmer alignment pipeline to detect SNPs and INDELs in mismatching sequences.
+ * The MUMmer pipeline runs nucmer, delta-filter, and show-snps programs, sequentially.
+ * Used in CompareReferences tool when running in FULL_ALIGNMENT mode.
  */
 public final class MummerExecutor {
 
@@ -83,7 +85,6 @@ public final class MummerExecutor {
         String[] showSNPsArgs = {mummerExecutableDirectory.getAbsolutePath() + "/show-snps", "-rlTH", deltaFilterOutput.getAbsolutePath()};
         ProcessOutput showSNPs = runShellCommand(showSNPsArgs, null, showSNPSOutput, false);
 
-
         return showSNPSOutput;
     }
 
@@ -113,33 +114,6 @@ public final class MummerExecutor {
             throw new UserException("Error running " + command[0] + ". Exit with code " + output.getExitValue());
         }
 
-        return output;
-    }
-
-    /**
-     * Method to run python commands from GATK.
-     *
-     * @param script the name of the executable as a String
-     * @param scriptArguments a List of Strings containing the remainder of the commandline for execution
-     * @param additionalEnvironmentVars a Map of environment variables to their values; may be left null if no environment variables needed
-     * @param stdoutCaptureFile File for output
-     * @param printStdout boolean to trigger displaying to stdout
-     * @return the ProcessOutput of the run
-     */
-    public static ProcessOutput runPythonCommand(String script, List<String> scriptArguments, Map<String, String> additionalEnvironmentVars, File stdoutCaptureFile, boolean printStdout){
-        Map<String, String> environment = new HashMap<>();
-        environment.putAll(System.getenv());
-        if(additionalEnvironmentVars != null){
-            environment.putAll(additionalEnvironmentVars);
-        }
-        List<String> args = new ArrayList<>();
-        args.add("python");
-        args.add(script);
-        args.addAll(scriptArguments);
-        ProcessOutput output = runShellCommand(args.toArray(new String[]{}), environment, stdoutCaptureFile, printStdout);
-        if(output.getExitValue() != 0){
-            throw new UserException("Error running " + script + ". Exit with code " + output.getExitValue());
-        }
         return output;
     }
 

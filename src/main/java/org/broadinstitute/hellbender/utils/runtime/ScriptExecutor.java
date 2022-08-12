@@ -16,8 +16,7 @@ import java.io.File;
  *   {@link #getApproximateCommandLine}
  *   {@link #getScriptException}
  */
-public abstract class
-ScriptExecutor {
+public abstract class ScriptExecutor {
     private static final Logger logger = LogManager.getLogger(org.broadinstitute.hellbender.utils.runtime.ScriptExecutor.class);
 
     protected final String externalScriptExecutableName;    // external program to run; e.g. "RScript" or "python"
