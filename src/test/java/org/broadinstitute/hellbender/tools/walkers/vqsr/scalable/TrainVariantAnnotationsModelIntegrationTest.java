@@ -120,7 +120,7 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
                         Pair.of("posOnly", Function.identity())),
                 Arrays.asList(
                         Pair.of("BGMM", ab -> ADD_MODEL_BACKEND.apply(ab, VariantAnnotationsModelBackend.JAVA_BGMM)),
-                        Pair.of("BGMMDifferentNumComponents", ADD_BGMM_HYPERPARAMETERS_JSON
+                        Pair.of("BGMMDifferentNumComponentsAndWarmStart", ADD_BGMM_HYPERPARAMETERS_JSON
                                 .andThen(ab -> ADD_MODEL_BACKEND.apply(ab, VariantAnnotationsModelBackend.JAVA_BGMM))),
                         Pair.of("IF", ab -> ADD_MODEL_BACKEND.apply(ab, VariantAnnotationsModelBackend.PYTHON_IFOREST)),
                         Pair.of("IFDifferentSeed", ADD_ISOLATION_FOREST_HYPERPARAMETERS_JSON
