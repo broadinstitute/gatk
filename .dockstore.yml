@@ -73,6 +73,14 @@ workflows:
        branches:
          - master
          - ah_var_store
+   - name: GvsBenchmarkExtractTask
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsBenchmarkExtractTask.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - gg_VS-444_NoSa
    - name: GvsRescatterCallsetInterval
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsRescatterCallsetInterval.wdl
@@ -80,6 +88,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - gg_VS-444_NoSa
    - name: GvsCreateFilterSet
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateFilterSet.wdl
