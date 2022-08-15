@@ -73,6 +73,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - gg_VS-444_NoSa
    - name: GvsBenchmarkExtractTask
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsBenchmarkExtractTask.wdl
