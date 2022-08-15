@@ -8,24 +8,34 @@ workflow GvsCreateAltAllele {
     String dataset_name
     String project_id
     String call_set_identifier
+    Boolean? skip_create_alt_allele_table = false
 
     String? service_account_json_path
   }
 
   String fq_alt_allele_table = "~{project_id}.~{dataset_name}.alt_allele"
 
+  call GetMaxSampleId {
+    input:
+      dataset_name = dataset_name,
+      project_id = project_id
+  }
+
   call GetVetTableNames {
     input:
       dataset_name = dataset_name,
       project_id = project_id,
-      service_account_json_path = service_account_json_path
+      service_account_json_path = service_account_json_path,
+      max_sample_id = GetMaxSampleId.max_sample_id
   }
 
-  call CreateAltAlleleTable {
-    input:
-      dataset_name = dataset_name,
-      project_id = project_id,
-      service_account_json_path = service_account_json_path
+  if (!defined(skip_create_alt_allele_table)) {
+    call CreateAltAlleleTable {
+      input:
+        dataset_name = dataset_name,
+        project_id = project_id,
+        service_account_json_path = service_account_json_path
+    }
   }
 
   call Utils.GetBQTableLastModifiedDatetime {
@@ -42,10 +52,11 @@ workflow GvsCreateAltAllele {
         call_set_identifier = call_set_identifier,
         dataset_name = dataset_name,
         project_id = project_id,
-        create_table_done = CreateAltAlleleTable.done,
+        create_table_done = select_first(skip_create_alt_allele_table, CreateAltAlleleTable.done),
         vet_table_name = GetVetTableNames.vet_tables[idx],
         service_account_json_path = service_account_json_path,
-        last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
+        last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+        max_sample_id = GetMaxSampleId.max_sample_id
     }
   }
 
@@ -55,10 +66,46 @@ workflow GvsCreateAltAllele {
   }
 }
 
+task GetMaxSampleId {
+  input {
+    String dataset_name
+    String project_id
+  }
+  meta {
+    # because this is being used to determine the current state of the GVS database, never use call cache
+    volatile: true
+  }
+
+  command <<<
+    set -e
+
+    echo "project_id = ~{project_id}" > ~/.bigqueryrc
+    bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false \
+    'SELECT MAX(sample_id) as max_sample_id FROM `~{dataset_name}.sample_info`' > num_rows.csv
+
+    NUMROWS=$(python3 -c "csvObj=open('num_rows.csv','r');csvContents=csvObj.read();print(csvContents.split('\n')[1]);")
+
+    [[ $NUMROWS =~ ^[0-9]+$ ]] && echo $NUMROWS || exit 1
+  >>>
+
+  output {
+    Int max_sample_id = read_int(stdout())
+  }
+
+  runtime {
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+    memory: "3 GB"
+    disks: "local-disk 10 HDD"
+    preemptible: 3
+    cpu: 1
+  }
+}
+
 task GetVetTableNames {
   input {
     String dataset_name
     String project_id
+    Int max_sample_id
 
     String? service_account_json_path
   }
@@ -80,9 +127,15 @@ task GetVetTableNames {
       gcloud config set project ~{project_id}
     fi
 
+    if [ $(i % 4000 == 0) -eq 0 ]; then
+      echo $(~{max_sample_id} / 4000) > min_vat_table_num.txt
+    else
+      echo $((~{max_sample_id} / 4000) + 1) > min_vat_table_num.txt
+    fi
+
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
     bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false ~{bq_labels} \
-    'SELECT table_name FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES` WHERE table_name LIKE "vet_%" ORDER BY table_name' > vet_tables.csv
+    'SELECT table_name FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES` WHERE table_name LIKE "vet_%" AND CAST(SUBSTRING(table_name, 5) AS INT64) >= $(cat min_vat_table_num.txt)' > vet_tables.csv
 
     # remove the header row from the CSV file
     sed -i 1d vet_tables.csv
@@ -176,6 +229,7 @@ task PopulateAltAlleleTable {
     String create_table_done
     String vet_table_name
     String call_set_identifier
+    Int max_sample_id
 
     String? service_account_json_path
 
@@ -201,6 +255,7 @@ task PopulateAltAlleleTable {
       --query_project ~{project_id} \
       --vet_table_name ~{vet_table_name} \
       --fq_dataset ~{project_id}.~{dataset_name} \
+      --max_sample_id ~{max_sample_id} \
       $SERVICE_ACCOUNT_STANZA
   >>>
   runtime {
