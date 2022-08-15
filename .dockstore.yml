@@ -180,6 +180,7 @@ workflows:
          - master
          - ah_var_store
          - kc_variant_search_extract_wdl
+         - gg_VS-444_NoSa
    - name: GvsWithdrawSamples
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsWithdrawSamples.wdl
