@@ -65,7 +65,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_VS-444_NoSa
    - name: GvsAoUReblockGvcf
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsAoUReblockGvcf.wdl
@@ -73,7 +72,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_VS-444_NoSa
    - name: GvsBenchmarkExtractTask
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsBenchmarkExtractTask.wdl
@@ -81,7 +79,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_VS-444_NoSa
    - name: GvsRescatterCallsetInterval
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsRescatterCallsetInterval.wdl
@@ -89,7 +86,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_VS-444_NoSa
    - name: GvsCreateFilterSet
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateFilterSet.wdl
@@ -99,7 +95,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_VS-444_NoSa
    - name: GvsCreateAltAllele
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateAltAllele.wdl
@@ -109,7 +104,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_VS-444_NoSa
    - name: GvsCreateTables
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateTables.wdl
@@ -127,7 +121,6 @@ workflows:
          - master
          - ah_var_store
          - vs_447_fixup_non_fq_invocations
-         - gg_VS-444_NoSa
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
@@ -135,7 +128,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_VS-444_NoSa
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
@@ -145,7 +137,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_VS-444_NoSa
    - name: GvsCreateVAT
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVAT.wdl
@@ -153,7 +144,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_VS-444_NoSa
    - name: GvsCreateVATAnnotations
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVATAnnotations.wdl
@@ -180,7 +170,6 @@ workflows:
          - master
          - ah_var_store
          - kc_variant_search_extract_wdl
-         - gg_VS-444_NoSa
    - name: GvsWithdrawSamples
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsWithdrawSamples.wdl
@@ -188,7 +177,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_VS-444_NoSa
    - name: GvsUnified
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsUnified.wdl
@@ -196,7 +184,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_VS-444_NoSa
    - name: GvsJointVariantCalling
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCalling.wdl
@@ -204,7 +191,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_VS-444_NoSa
    - name: GvsJointVariantCallsetCost
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCallsetCost.wdl
@@ -213,7 +199,6 @@ workflows:
          - master
          - ah_var_store
          - rc-wrap-the-cost
-         - gg_VS-444_NoSa
    - name: GvsCalculatePrecisionAndSensitivity
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCalculatePrecisionAndSensitivity.wdl
@@ -221,7 +206,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_VS-444_NoSa
    - name: GvsQuickstartIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartIntegration.wdl
