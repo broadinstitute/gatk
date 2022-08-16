@@ -21,6 +21,7 @@ import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.Varian
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.VariantAnnotationsModelBackend;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.VariantAnnotationsScorer;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.clustering.BayesianGaussianMixtureModeller;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
@@ -51,6 +52,11 @@ import java.util.stream.IntStream;
  *     tool, which assigns a score to each call (with a lower score indicating that a call is more likely to be an artifact
  *     and should perhaps be filtered). Each score can also be converted to a corresponding sensitivity with respect to a
  *     calibration set, if the latter is available.
+ * </p>
+ *
+ * <p>
+ *     Note that HDF5 files may be viewed using <a href="https://support.hdfgroup.org/products/java/hdfview/">hdfview</a>
+ *     or loaded in Python using <a href="http://www.pytables.org/">PyTables</a> or <a href="http://www.h5py.org/">h5py</a>.
  * </p>
  *
  * <h3>Modeling approaches</h3>
@@ -98,7 +104,6 @@ import java.util.stream.IntStream;
  * <h4>Python isolation-forest backend</h4>
  *
  * <p>
- *
  *     This backend uses scikit-learn modules to train models and scoring functions using the
  *     <a href="https://en.wikipedia.org/wiki/Isolation_forest">isolation-forest method for anomaly detection</a>.
  *     Median imputation of missing annotation values is performed before applying the method.
@@ -117,9 +122,21 @@ import java.util.stream.IntStream;
  *     for an example and the default values.
  * </p>
  *
+ * <h4>Java Bayesian Gaussian Mixture Model (BGMM) backend</h4>
+ *
  * <p>
- *     Note that HDF5 files may be viewed using <a href="https://support.hdfgroup.org/products/java/hdfview/">hdfview</a>
- *     or loaded in Python using <a href="http://www.pytables.org/">PyTables</a> or <a href="http://www.h5py.org/">h5py</a>.
+ *     This backend uses a pure Java implementation of a Bayesian Gaussian Mixture Model (BGMM) and hence does not require
+ *     a Python environment. The implementation is a faithful port of the scikit-learn BayesianGaussianMixture module
+ *     <a href="https://scikit-learn.org/stable/modules/generated/sklearn.mixture.BayesianGaussianMixture.html">BayesianGaussianMixture</a>.
+ *     Median imputation of missing annotation values is performed before applying the method.
+ * </p>
+ *
+ * <p>
+ *     This backend can be selected by specifying {@code JAVA_BGMM} to the {@value MODEL_BACKEND_LONG_NAME} argument.
+ *     It is implemented by the Java classes {@link BGMMVariantAnnotationsModel} and {@link BayesianGaussianMixtureModeller}.
+ *     Hyperparameters can be specified using the {@value HYPERPARAMETERS_JSON_LONG_NAME} argument; see
+ *     src/main/resources/org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/bgmm-hyperparameters.json
+ *     for an example and the default values.
  * </p>
  *
  * <h3>Calibration sets</h3>
