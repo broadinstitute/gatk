@@ -128,7 +128,7 @@ import java.util.stream.IntStream;
  *     This backend uses a pure Java implementation of a Bayesian Gaussian Mixture Model (BGMM) and hence does not require
  *     a Python environment. The implementation is a faithful port of the scikit-learn BayesianGaussianMixture module
  *     <a href="https://scikit-learn.org/stable/modules/generated/sklearn.mixture.BayesianGaussianMixture.html">BayesianGaussianMixture</a>.
- *     Median imputation of missing annotation values is performed before applying the method.
+ *     Median imputation of missing annotation values and standardization are both performed before applying the method.
  * </p>
  *
  * <p>
