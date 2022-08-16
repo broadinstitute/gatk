@@ -42,12 +42,10 @@ workflow GvsBenchmarkExtractTask {
         Int? split_intervals_disk_size_override
 
         String mode = "RANGES"
-       
-        String? service_account_json_path
 
         String output_file_base_name
         String? output_gcs_dir
-        File? gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-552-g0f9780a-SNAPSHOT-local.jar"
+        File? gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/kc_vqsr_magic_20220324/gatk-package-4.2.0.0-478-gd0e381c-SNAPSHOT-local.jar"
         Int local_disk_for_extract = 150
 
         String fq_samples_to_extract_table = "~{data_project}.~{default_dataset}.~{extract_table_prefix}__SAMPLES"
@@ -76,7 +74,6 @@ workflow GvsBenchmarkExtractTask {
                 indels_truth_sensitivity_filter_level = indels_truth_sensitivity_filter_level_override,
                 excluded_intervals              = excluded_intervals,
                 emit_pls                        = emit_pls,
-                service_account_json_path       = service_account_json_path,
                 drop_state                      = drop_state,
                 output_file                     = "${output_file_base_name}.vcf.gz",
                 local_disk                      = local_disk_for_extract,
@@ -124,7 +121,6 @@ task ExtractTask {
         Boolean? emit_pls
 
         # Runtime Options:
-        String? service_account_json_path
         File? gatk_override
         Int? extract_preemptible_override
         Int? extract_maxretries_override
@@ -136,20 +132,11 @@ task ExtractTask {
 
     }
 
-    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
-
     # ------------------------------------------------
     # Run our command:
     command <<<
         set -e
         export GATK_LOCAL_JAR="~{default="/root/gatk.jar" gatk_override}"
-
-        if [ ~{has_service_account_file} = 'true' ]; then
-            gsutil cp ~{service_account_json_path} local.service_account.json
-            export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-            gcloud auth activate-service-account --key-file=local.service_account.json
-            gcloud config set project ~{read_project_id}
-        fi
 
         df -h
 
@@ -232,10 +219,7 @@ task CreateManifest {
     input {
         Array[String] manifest_lines
         String? output_gcs_dir
-        String? service_account_json_path
     }
-
-    String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
     command <<<
         set -e
@@ -247,10 +231,6 @@ task CreateManifest {
         OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
 
         if [ -n "$OUTPUT_GCS_DIR" ]; then
-          if [ ~{has_service_account_file} = 'true' ]; then
-            gsutil cp ~{service_account_json_path} local.service_account.json
-            gcloud auth activate-service-account --key-file=local.service_account.json
-          fi
           gsutil cp manifest.txt ${OUTPUT_GCS_DIR}/
         fi
     >>>

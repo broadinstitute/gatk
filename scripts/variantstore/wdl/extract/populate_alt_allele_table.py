@@ -3,7 +3,6 @@ import argparse
 
 from google.cloud import bigquery
 from google.cloud.bigquery.job import QueryJobConfig
-from google.oauth2 import service_account
 from pathlib import Path
 
 import utils
@@ -11,22 +10,13 @@ import utils
 client = None
 
 
-def populate_alt_allele_table(call_set_identifier, query_project, vet_table_name, fq_dataset, max_sample_id, sa_key_path):
+def populate_alt_allele_table(call_set_identifier, query_project, vet_table_name, fq_dataset, max_sample_id):
     global client
     # add labels for DSP Cloud Cost Control Labeling and Reporting to default_config
     default_config = QueryJobConfig(priority="INTERACTIVE", use_query_cache=True, labels={'service':'gvs','team':'variants','managedby':'create_alt_allele'})
 
-    if sa_key_path:
-        credentials = service_account.Credentials.from_service_account_file(
-            sa_key_path, scopes=["https://www.googleapis.com/auth/cloud-platform"],
-        )
-
-        client = bigquery.Client(credentials=credentials,
-                                 project=query_project,
-                                 default_query_job_config=default_config)
-    else:
-        client = bigquery.Client(project=query_project,
-                                 default_query_job_config=default_config)
+    client = bigquery.Client(project=query_project,
+                             default_query_job_config=default_config)
 
     os.chdir(os.path.dirname(__file__))
     alt_allele_temp_function = Path('alt_allele_temp_function.sql').read_text()
@@ -50,7 +40,6 @@ if __name__ == '__main__':
     parser.add_argument('--vet_table_name',type=str, help='vet table name to ingest', required=True)
     parser.add_argument('--fq_dataset',type=str, help='project and dataset for data', required=True)
     parser.add_argument('--max_sample_id',type=str, help='Maximum value of sample_id already loaded', required=True)
-    parser.add_argument('--sa_key_path',type=str, help='Path to json key file for SA', required=False)
 
 
     # Execute the parse_args() method
@@ -60,5 +49,4 @@ if __name__ == '__main__':
                               args.query_project,
                               args.vet_table_name,
                               args.fq_dataset,
-                              args.max_sample_id,
-                              args.sa_key_path)
+                              args.max_sample_id)

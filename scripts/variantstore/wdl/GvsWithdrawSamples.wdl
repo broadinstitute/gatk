@@ -7,16 +7,13 @@ workflow GvsWithdrawSamples {
     String project_id
 
     Array[String] sample_names
-
-    String? service_account_json_path
   }
 
   call WithdrawSamples {
     input:
       project_id = project_id,
       dataset_name = dataset_name,
-      sample_names = sample_names,
-      service_account_json_path = service_account_json_path
+      sample_names = sample_names
   }
 
   output {
@@ -30,8 +27,6 @@ task WithdrawSamples {
     String dataset_name
 
     Array[String] sample_names
-
-    String? service_account_json_path
   }
 
   meta {
@@ -39,8 +34,6 @@ task WithdrawSamples {
     # Might not be strictly necessary to make this volatile, but just in case:
     volatile: true
   }
-
-  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
   command <<<
     set -e
@@ -51,11 +44,6 @@ task WithdrawSamples {
     if [ $num_samples -eq 0 ]; then
       echo "No sample names passed. Exiting"
       exit 0
-    fi
-
-    if [ ~{has_service_account_file} = 'true' ]; then
-      gsutil cp ~{service_account_json_path} local.service_account.json
-      gcloud auth activate-service-account --key-file=local.service_account.json
     fi
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc

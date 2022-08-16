@@ -18,7 +18,6 @@ workflow GvsRescatterCallsetInterval {
     String? final_output_gcs_dir
     File? gatk_override
     Int? merge_disk_override
-    String? service_account_json_path
   }
 
   scatter(i in range(length(intervals_to_scatter))) {
@@ -35,8 +34,7 @@ workflow GvsRescatterCallsetInterval {
         scatter_count = re_scatter_count,
         interval_list = sub(interval_file_dir, "/$", "") + '/' + intervals_to_scatter[i] + "-scattered.interval_list",
         extract_preemptible_override = extract_preemptible_override,
-        filter_set_name = filter_set_name,
-        service_account_json_path = service_account_json_path
+        filter_set_name = filter_set_name
     }
 
     call Utils.MergeVCFs as MergeVCFs {
@@ -44,8 +42,7 @@ workflow GvsRescatterCallsetInterval {
         input_vcfs = ExtractInterval.output_vcfs,
         output_vcf_name = "${vcf_basename}.vcf.gz",
         output_directory = final_output_gcs_dir,
-        merge_disk_override = merge_disk_override,
-        service_account_json_path = service_account_json_path
+        merge_disk_override = merge_disk_override
     }
   }
 

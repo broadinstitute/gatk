@@ -20,7 +20,6 @@ workflow GvsImportGenomes {
     Int? load_data_preemptible_override
     Int? load_data_maxretries_override
     File? load_data_gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-552-g0f9780a-SNAPSHOT-local.jar"
-    String? service_account_json_path
   }
 
   Int num_samples = length(external_sample_names)
@@ -68,8 +67,7 @@ workflow GvsImportGenomes {
       dataset_name = dataset_name,
       project_id = project_id,
       external_sample_names = external_sample_names,
-      table_name = "sample_info",
-      service_account_json_path = service_account_json_path
+      table_name = "sample_info"
   }
 
   call CurateInputLists {
@@ -79,8 +77,7 @@ workflow GvsImportGenomes {
       input_vcf_index_list = write_lines(input_vcf_indexes),
       input_vcf_list = write_lines(input_vcfs),
       input_sample_name_list = write_lines(external_sample_names),
-      input_samples_to_be_loaded_map = GetUningestedSampleIds.sample_map,
-      service_account_json_path = service_account_json_path
+      input_samples_to_be_loaded_map = GetUningestedSampleIds.sample_map
   }
 
   call CreateFOFNs {
@@ -106,8 +103,7 @@ workflow GvsImportGenomes {
         load_data_preemptible = effective_load_data_preemptible,
         load_data_maxretries = effective_load_data_maxretries,
         sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
-        sample_map = GetUningestedSampleIds.sample_map,
-        service_account_json_path = service_account_json_path,
+        sample_map = GetUningestedSampleIds.sample_map
     }
   }
 
@@ -115,8 +111,7 @@ workflow GvsImportGenomes {
     input:
       load_done = LoadData.done,
       project_id = project_id,
-      dataset_name = dataset_name,
-      service_account_json_path = service_account_json_path,
+      dataset_name = dataset_name
   }
 
   output {
@@ -178,12 +173,10 @@ task LoadData {
     File? gatk_override
     Int load_data_preemptible
     Int load_data_maxretries
-    String? service_account_json_path
   }
 
   Boolean load_ref_ranges = true
   Boolean load_vet = true
-  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
   meta {
     description: "Load data into BigQuery using the Write Api"
@@ -207,12 +200,6 @@ task LoadData {
     export TMPDIR=/tmp
 
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
-
-    if [ ~{has_service_account_file} = 'true' ]; then
-      gsutil cp ~{service_account_json_path} local.service_account.json
-      export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-      gcloud auth activate-service-account --key-file=local.service_account.json
-    fi
 
     # translate WDL arrays into BASH arrays
     VCFS_ARRAY=(~{sep=" " input_vcfs})
@@ -269,25 +256,17 @@ task SetIsLoadedColumn {
     String project_id
 
     Array[String] load_done
-    String? service_account_json_path
   }
   meta {
     # This is doing some tricky stuff with `INFORMATION_SCHEMA` so just punt and let it be `volatile`.
     volatile: true
   }
 
-  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
   # add labels for DSP Cloud Cost Control Labeling and Reporting
   String bq_labels = "--label service:gvs --label team:variants --label managedby:import_genomes"
 
   command <<<
     set -ex
-
-    if [ ~{has_service_account_file} = 'true' ]; then
-      gsutil cp ~{service_account_json_path} local.service_account.json
-      gcloud auth activate-service-account --key-file=local.service_account.json
-      gcloud config set project ~{project_id}
-    fi
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
@@ -314,8 +293,6 @@ task GetUningestedSampleIds {
 
     Array[String] external_sample_names
     String table_name
-
-    String? service_account_json_path
   }
   meta {
     # Do not call cache this, we want to read the database state every time.
@@ -323,17 +300,12 @@ task GetUningestedSampleIds {
   }
 
   Int samples_per_table = 4000
-  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
   Int num_samples = length(external_sample_names)
   # add labels for DSP Cloud Cost Control Labeling and Reporting
   String bq_labels = "--label service:gvs --label team:variants --label managedby:import_genomes"
 
   command <<<
     set -ex
-    if [ ~{has_service_account_file} = 'true' ]; then
-      gsutil cp ~{service_account_json_path} local.service_account.json
-      gcloud auth activate-service-account --key-file=local.service_account.json
-    fi
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
@@ -404,20 +376,13 @@ task CurateInputLists {
     File input_vcf_list
     File input_samples_to_be_loaded_map
     File input_sample_name_list
-
-    String? service_account_json_path
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
-  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
   command <<<
     set -ex
-    if [ ~{has_service_account_file} = 'true' ]; then
-      gsutil cp ~{service_account_json_path} local.service_account.json
-      gcloud auth activate-service-account --key-file=local.service_account.json
-    fi
 
     python3 /app/curate_input_array_files.py --sample_map_to_be_loaded_file_name ~{input_samples_to_be_loaded_map} \
                                              --sample_name_list_file_name ~{input_sample_name_list} \
@@ -426,7 +391,7 @@ task CurateInputLists {
                                              --output_files True
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_08_01"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_08_16"
     memory: "3 GB"
     disks: "local-disk 100 HDD"
     bootDiskSizeGb: 15

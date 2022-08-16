@@ -12,8 +12,6 @@ workflow GvsAoUReblockGvcf {
     File ref_fasta
     File ref_fasta_index
 
-    # pass the service account as a string so a change in the file won't interfere with call caching
-    String? service_account_json
     String? requester_pays_project
     String? site_id
     String docker_image = "us.gcr.io/broad-gatk/gatk:4.2.2.0"
@@ -28,7 +26,6 @@ workflow GvsAoUReblockGvcf {
      ref_fasta_index = ref_fasta_index,
      ref_dict = ref_dict,
      output_gvcf_filename = basename(gvcf, ".g.vcf.gz") + ".reblocked.g.vcf.gz",
-     service_account_json = service_account_json,
      site_id = site_id,
      requester_pays_project = requester_pays_project,
      docker_image = docker_image,
@@ -53,16 +50,12 @@ task ReblockAndCopy {
     String output_gvcf_filename
     String docker_image
 
-    String? service_account_json
     String? site_id
     String? requester_pays_project
     String path
   }
 
   Int disk_size = (ceil(60 + size(ref_fasta, "GiB") + size(ref_dict, "GiB")) * 2) + 20
-
-  String has_service_account_file = if (defined(service_account_json)) then 'true' else 'false'
-  String gvcf_path = if (defined(service_account_json)) then basename(gvcf) else gvcf
 
   # this is WDL for .toLowerCase() for the three possible site codes
   String site_id_lower = if defined(site_id) then (
@@ -85,15 +78,9 @@ task ReblockAndCopy {
       exit 1
     fi
 
-    if [ ~{has_service_account_file} = 'true' ]; then
-      gsutil cp ~{service_account_json} local.service_account.json
-      gcloud auth activate-service-account --key-file=local.service_account.json
-      gsutil -m cp '~{gvcf}' '~{gvcf_index}' .
-    fi
-
     gatk --java-options "-Xms3g -Xmx3g" \
       ReblockGVCF \
-      -V ~{gvcf_path} \
+      -V ~{gvcf} \
       -do-qual-approx \
       --floor-blocks -GQB 20 -GQB 30 -GQB 40 \
       -O ~{output_gvcf_filename} \

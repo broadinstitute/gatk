@@ -29,7 +29,6 @@ workflow GvsExtractCallset {
     Int? extract_maxretries_override
     Int? extract_preemptible_override
     String? output_gcs_dir
-    String? service_account_json_path
     Int? split_intervals_disk_size_override
     Int? split_intervals_mem_override
     Float x_bed_weight_scaling = 4
@@ -70,15 +69,13 @@ workflow GvsExtractCallset {
   call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
     input:
       query_project = project_id,
-      fq_table = fq_sample_table,
-      service_account_json_path = service_account_json_path
+      fq_table = fq_sample_table
   }
 
   call Utils.GetNumSamplesLoaded {
     input:
       fq_sample_table = fq_sample_table,
       fq_sample_table_lastmodified_timestamp = SamplesTableDatetimeCheck.last_modified_timestamp,
-      service_account_json_path = service_account_json_path,
       project_id = project_id,
       control_samples = control_samples
   }
@@ -104,15 +101,13 @@ workflow GvsExtractCallset {
       output_gcs_dir = output_gcs_dir,
       split_intervals_disk_size_override = split_intervals_disk_size_override,
       split_intervals_mem_override = split_intervals_mem_override,
-      gatk_override = gatk_override,
-      service_account_json_path = service_account_json_path,
+      gatk_override = gatk_override
   }
 
   call Utils.GetBQTableLastModifiedDatetime as FilterSetInfoTimestamp {
        input:
        query_project = project_id,
-       fq_table = "~{fq_gvs_dataset}.filter_set_info",
-       service_account_json_path = service_account_json_path,
+       fq_table = "~{fq_gvs_dataset}.filter_set_info"
   }
 
   if ( !do_not_filter_override ) {
@@ -122,8 +117,7 @@ workflow GvsExtractCallset {
       filter_set_name = filter_set_name,
       filter_set_info_timestamp = FilterSetInfoTimestamp.last_modified_timestamp,
       data_project = project_id,
-      data_dataset = dataset_name,
-      service_account_json_path = service_account_json_path
+      data_dataset = dataset_name
     }
   }
 
@@ -132,8 +126,7 @@ workflow GvsExtractCallset {
       query_project = query_project,
       data_project = project_id,
       data_dataset = dataset_name,
-      table_patterns = tables_patterns_for_datetime_check,
-      service_account_json_path = service_account_json_path
+      table_patterns = tables_patterns_for_datetime_check
   }
 
   scatter(i in range(length(SplitIntervals.interval_files))) {
@@ -161,7 +154,6 @@ workflow GvsExtractCallset {
         fq_filter_set_tranches_table       = fq_filter_set_tranches_table,
         filter_set_name                    = filter_set_name,
         filter_set_name_verified           = select_first([ValidateFilterSetName.done, "done"]),
-        service_account_json_path          = service_account_json_path,
         drop_state                         = "FORTY",
         output_file                        = vcf_filename,
         output_gcs_dir                     = output_gcs_dir,
@@ -181,8 +173,7 @@ workflow GvsExtractCallset {
   call CreateManifest {
     input:
       manifest_lines = ExtractTask.manifest,
-      output_gcs_dir = output_gcs_dir,
-      service_account_json_path = service_account_json_path
+      output_gcs_dir = output_gcs_dir
   }
 
   if (control_samples == false) {
@@ -190,8 +181,7 @@ workflow GvsExtractCallset {
     call Utils.GetBQTableLastModifiedDatetime {
       input:
         query_project = query_project,
-        fq_table = fq_samples_to_extract_table,
-        service_account_json_path = service_account_json_path
+        fq_table = fq_samples_to_extract_table
     }
 
     call GenerateSampleListFile {
@@ -199,8 +189,7 @@ workflow GvsExtractCallset {
         fq_samples_to_extract_table = fq_samples_to_extract_table,
         samples_to_extract_table_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
         output_gcs_dir = output_gcs_dir,
-        query_project = query_project,
-        service_account_json_path = service_account_json_path
+        query_project = query_project
     }
   }
 
@@ -219,25 +208,17 @@ task ValidateFilterSetName {
     String data_project
     String data_dataset
     String query_project
-    String? service_account_json_path
     String filter_set_info_timestamp
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
-  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
   # add labels for DSP Cloud Cost Control Labeling and Reporting
   String bq_labels = "--label service:gvs --label team:variants --label managedby:extract_callset"
 
   command <<<
     set -ex
-
-    if [ ~{has_service_account_file} = 'true' ]; then
-      gsutil cp ~{service_account_json_path} local.service_account.json
-      gcloud auth activate-service-account --key-file=local.service_account.json
-      gcloud config set project ~{query_project}
-    fi
 
     echo "project_id = ~{query_project}" > ~/.bigqueryrc
 
@@ -300,7 +281,6 @@ task ExtractTask {
     String filter_set_name_verified
 
     # Runtime Options:
-    String? service_account_json_path
     File? gatk_override
     Int? extract_preemptible_override
     Int? extract_maxretries_override
@@ -314,19 +294,11 @@ task ExtractTask {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
-  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
   String intervals_name = basename(intervals)
 
   command <<<
     set -e
     export GATK_LOCAL_JAR="~{default="/root/gatk.jar" gatk_override}"
-
-    if [ ~{has_service_account_file} = 'true' ]; then
-      gsutil cp ~{service_account_json_path} local.service_account.json
-      export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-      gcloud auth activate-service-account --key-file=local.service_account.json
-      gcloud config set project ~{read_project_id}
-    fi
 
     df -h
 
@@ -437,13 +409,10 @@ task CreateManifest {
   input {
       Array[String] manifest_lines
       String? output_gcs_dir
-      String? service_account_json_path
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
-
-  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
   command <<<
     set -e
@@ -455,10 +424,6 @@ task CreateManifest {
     OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
 
     if [ -n "$OUTPUT_GCS_DIR" ]; then
-      if [ ~{has_service_account_file} = 'true' ]; then
-        gsutil cp ~{service_account_json_path} local.service_account.json
-        gcloud auth activate-service-account --key-file=local.service_account.json
-      fi
       gsutil cp manifest.txt ${OUTPUT_GCS_DIR}/
     fi
   >>>
@@ -482,24 +447,16 @@ task GenerateSampleListFile {
     String query_project
 
     String? output_gcs_dir
-    String? service_account_json_path
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
-  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
   # add labels for DSP Cloud Cost Control Labeling and Reporting
   String bq_labels = "--label service:gvs --label team:variants --label managedby:extract_callset"
 
   command <<<
     set -e
-
-    if [ ~{has_service_account_file} = 'true' ]; then
-      gsutil cp ~{service_account_json_path} local.service_account.json
-      gcloud auth activate-service-account --key-file=local.service_account.json
-      gcloud config set project ~{query_project}
-    fi
 
     # Drop trailing slash if one exists
     OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')

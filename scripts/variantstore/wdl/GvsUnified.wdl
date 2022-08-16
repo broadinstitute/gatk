@@ -18,7 +18,6 @@ workflow GvsUnified {
         String call_set_identifier
 
         File? gatk_override
-        String? service_account_json_path
         # End GvsAssignIds
 
         # Begin GvsImportGenomes
@@ -79,8 +78,7 @@ workflow GvsUnified {
             dataset_name = dataset_name,
             project_id = project_id,
             external_sample_names = external_sample_names,
-            assign_ids_gatk_override = gatk_override,
-            service_account_json_path = service_account_json_path
+            assign_ids_gatk_override = gatk_override
     }
 
     call ImportGenomes.GvsImportGenomes {
@@ -95,7 +93,6 @@ workflow GvsUnified {
             load_data_preemptible_override = load_data_preemptible_override,
             load_data_maxretries_override = load_data_maxretries_override,
             load_data_gatk_override = gatk_override,
-            service_account_json_path = service_account_json_path,
             load_data_batch_size = load_data_batch_size
     }
 
@@ -104,8 +101,7 @@ workflow GvsUnified {
             call_set_identifier = call_set_identifier,
             go = GvsImportGenomes.done,
             dataset_name = dataset_name,
-            project_id = project_id,
-            service_account_json_path = service_account_json_path
+            project_id = project_id
     }
 
     call CreateFilterSet.GvsCreateFilterSet {
@@ -121,7 +117,6 @@ workflow GvsUnified {
             gatk_override = gatk_override,
             INDEL_VQSR_max_gaussians_override = INDEL_VQSR_max_gaussians_override,
             INDEL_VQSR_mem_gb_override = INDEL_VQSR_mem_gb_override,
-            service_account_json_path = service_account_json_path,
             SNP_VQSR_max_gaussians_override = SNP_VQSR_max_gaussians_override,
             SNP_VQSR_mem_gb_override = SNP_VQSR_mem_gb_override
     }
@@ -138,8 +133,7 @@ workflow GvsUnified {
             destination_dataset = destination_dataset,
             fq_temp_table_dataset = fq_temp_table_dataset,
             query_labels = query_labels,
-            sample_names_to_extract = sample_names_to_extract,
-            service_account_json_path = service_account_json_path
+            sample_names_to_extract = sample_names_to_extract
     }
 
     call ExtractCallset.GvsExtractCallset {
@@ -159,7 +153,6 @@ workflow GvsUnified {
             extract_maxretries_override = extract_maxretries_override,
             extract_preemptible_override = extract_preemptible_override,
             output_gcs_dir = extract_output_gcs_dir,
-            service_account_json_path = service_account_json_path,
             split_intervals_disk_size_override = split_intervals_disk_size_override,
             split_intervals_mem_override = split_intervals_mem_override,
             do_not_filter_override = extract_do_not_filter_override

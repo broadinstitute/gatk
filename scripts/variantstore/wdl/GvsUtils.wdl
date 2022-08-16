@@ -8,10 +8,8 @@ task MergeVCFs {
     String? output_directory
     Int? merge_disk_override
     Int? preemptible_tries
-    String? service_account_json_path
   }
 
-  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
   Int disk_size = if (defined(merge_disk_override)) then merge_disk_override else 100
 
   parameter_meta {
@@ -21,12 +19,6 @@ task MergeVCFs {
   }
 
   command {
-    if [ ~{has_service_account_file} = 'true' ]; then
-      gsutil cp ~{service_account_json_path} local.service_account.json
-      gcloud auth activate-service-account --key-file=local.service_account.json
-      export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-    fi
-
     gatk --java-options -Xmx3g GatherVcfsCloud \
     --ignore-safety-checks --gather-type ~{gather_type} \
     --create-output-variant-index false \
@@ -71,13 +63,10 @@ task SplitIntervals {
     Int? split_intervals_mem_override
     String? output_gcs_dir
     File? gatk_override
-    String? service_account_json_path
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
-
-  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
   Int disk_size = if (defined(split_intervals_disk_size_override)) then split_intervals_disk_size_override else 10
   Int disk_memory = if (defined(split_intervals_mem_override)) then split_intervals_mem_override else 16
@@ -120,11 +109,6 @@ task SplitIntervals {
     # Drop trailing slash if one exists
     OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
 
-    if [ ~{has_service_account_file} = 'true' ]; then
-      gsutil cp ~{service_account_json_path} local.service_account.json
-      gcloud auth activate-service-account --key-file=local.service_account.json
-    fi
-
     if [ -n "$OUTPUT_GCS_DIR" ]; then
       gsutil -m cp *.interval_list $OUTPUT_GCS_DIR/
     fi
@@ -149,14 +133,11 @@ task GetBQTableLastModifiedDatetime {
     Boolean go = true
     String query_project
     String fq_table
-    String? service_account_json_path
   }
   meta {
     # because this is being used to determine if the data has changed, never use call cache
     volatile: true
   }
-
-  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
 
   # ------------------------------------------------
   # try to get the last modified date for the table in question; fail if something comes back from BigQuery
@@ -164,12 +145,6 @@ task GetBQTableLastModifiedDatetime {
   command <<<
     set -o xtrace
     set -o errexit
-
-    if [ ~{has_service_account_file} = 'true' ]; then
-      gsutil cp ~{service_account_json_path} local.service_account.json
-      gcloud auth activate-service-account --key-file=local.service_account.json
-      gcloud config set project ~{query_project}
-    fi
 
     echo "project_id = ~{query_project}" > ~/.bigqueryrc
 
@@ -203,23 +178,16 @@ task GetBQTablesMaxLastModifiedTimestamp {
     String data_project
     String data_dataset
     Array[String] table_patterns
-    String? service_account_json_path
   }
   meta {
     # because this is being used to determine if the data has changed, never use call cache
     volatile: true
   }
 
-  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
-
   # ------------------------------------------------
   # try to get the latest last modified timestamp, in epoch microseconds, for all of the tables that match the provided prefixes
   command <<<
     set -e
-    if [ ~{has_service_account_file} = 'true' ]; then
-    gsutil cp ~{service_account_json_path} local.service_account.json
-    gcloud auth activate-service-account --key-file=local.service_account.json
-    fi
 
     echo "project_id = ~{query_project}" > ~/.bigqueryrc
 
@@ -377,7 +345,7 @@ task ScaleXYBedValues {
     }
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_08_01"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_08_16"
         maxRetries: 3
         memory: "7 GB"
         preemptible: 3
@@ -390,7 +358,6 @@ task GetNumSamplesLoaded {
   input {
     String fq_sample_table
     String fq_sample_table_lastmodified_timestamp
-    String? service_account_json_path
     String project_id
     Boolean control_samples = false
   }
@@ -398,16 +365,8 @@ task GetNumSamplesLoaded {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
-  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
-
   command <<<
     set -e
-
-    if [ ~{has_service_account_file} = 'true' ]; then
-      gsutil cp ~{service_account_json_path} local.service_account.json
-      gcloud auth activate-service-account --key-file=local.service_account.json
-      gcloud config set project ~{project_id}
-    fi
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
     bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false \

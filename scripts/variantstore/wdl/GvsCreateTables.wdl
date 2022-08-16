@@ -8,7 +8,6 @@ workflow CreateBQTables {
     Int max_table_id
 
     Int? preemptible_tries
-    String? service_account_json_path
   }
 
   String pet_schema_json = '[{"name": "location","type": "INTEGER","mode": "REQUIRED"},{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name": "state","type": "STRING","mode": "REQUIRED"}]'
@@ -23,8 +22,7 @@ workflow CreateBQTables {
       max_table_id = max_table_id,
       schema_json = vet_schema_json,
       superpartitioned = "true",
-      partitioned = "true",
-      service_account_json_path = service_account_json_path,
+      partitioned = "true"
   }
 
   call CreateTables as CreateRefRangesTables {
@@ -35,8 +33,7 @@ workflow CreateBQTables {
       max_table_id = max_table_id,
       schema_json = ref_ranges_schema_json,
       superpartitioned = "true",
-      partitioned = "true",
-      service_account_json_path = service_account_json_path,
+      partitioned = "true"
   }
 
   output {
@@ -56,24 +53,14 @@ task CreateTables {
     String schema_json
     String superpartitioned
     String partitioned
-    String? service_account_json_path
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
-  String has_service_account_file = if (defined(service_account_json_path)) then 'true' else 'false'
-
   command <<<
     set -x
     set -e
-
-    if [ ~{has_service_account_file} = 'true' ]; then
-      gsutil cp ~{service_account_json_path} local.service_account.json
-      export GOOGLE_APPLICATION_CREDENTIALS=local.service_account.json
-      gcloud auth activate-service-account --key-file=local.service_account.json
-      gcloud config set project ~{project_id}
-    fi
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 

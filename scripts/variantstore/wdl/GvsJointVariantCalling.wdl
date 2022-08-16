@@ -18,7 +18,7 @@ workflow GvsJointVariantCalling {
     String extract_output_file_base_name = sub(call_set_identifier, "\\s+|\_+", "-")
     String extract_table_prefix = sub(call_set_identifier, "\\s+|\_+", "-")
     String filter_set_name = sub(call_set_identifier, "\\s+|\_+", "-")
-    if(false) {
+    if (false) {
       Int extract_maxretries_override = ""
       Int extract_preemptible_override = ""
       Int extract_scatter_count = ""
@@ -26,7 +26,6 @@ workflow GvsJointVariantCalling {
       Int load_data_preemptible_override = ""
       Int load_data_maxretries_override = ""
       Array[String] query_labels = []
-      String service_account_json_path = ""
       File sample_names_to_extract = ""
       Int split_intervals_disk_size_override = ""
       Int split_intervals_mem_override = ""
@@ -71,7 +70,6 @@ workflow GvsJointVariantCalling {
             query_labels = query_labels,
             query_project = project_id,
             sample_names_to_extract = sample_names_to_extract,
-            service_account_json_path = service_account_json_path,
             snp_recalibration_annotation_values = snp_recalibration_annotation_values,
             split_intervals_disk_size_override = split_intervals_disk_size_override,
             split_intervals_mem_override = split_intervals_mem_override,
