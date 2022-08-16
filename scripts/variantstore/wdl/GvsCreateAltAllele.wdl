@@ -110,9 +110,9 @@ task GetVetTableNames {
     set -e
 
     if [ $(i % 4000 == 0) -eq 0 ]; then
-      echo $(~{max_sample_id} / 4000) > min_vat_table_num.txt
+      echo $((~{max_sample_id} / 4000)) > min_vat_table_num.txt
     else
-      echo $((~{max_sample_id} / 4000) + 1) > min_vat_table_num.txt
+      echo $(((~{max_sample_id} / 4000) + 1)) > min_vat_table_num.txt
     fi
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
