@@ -97,6 +97,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_vs_52_incremental_alt_allele
    - name: GvsCreateTables
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateTables.wdl
