@@ -109,7 +109,9 @@ task GetVetTableNames {
   command <<<
     set -e
 
-    if [ $(i % 4000 == 0) -eq 0 ]; then
+    # if the maximum sample_id value is evenly divisible by 4000, then max_sample_id / 4000 will
+    # give us the right vet_* table to start with; otherwise, we need to start with the next table
+    if [ $((~{max_sample_id} % 4000)) -eq 0 ]; then
       echo $((~{max_sample_id} / 4000)) > min_vat_table_num.txt
     else
       echo $(((~{max_sample_id} / 4000) + 1)) > min_vat_table_num.txt
