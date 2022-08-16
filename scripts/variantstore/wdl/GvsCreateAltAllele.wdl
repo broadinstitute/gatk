@@ -8,7 +8,6 @@ workflow GvsCreateAltAllele {
     String dataset_name
     String project_id
     String call_set_identifier
-    Boolean? skip_create_alt_allele_table = false
   }
 
   String fq_alt_allele_table = "~{project_id}.~{dataset_name}.alt_allele"
@@ -26,17 +25,15 @@ workflow GvsCreateAltAllele {
       max_sample_id = GetMaxSampleId.max_sample_id
   }
 
-  if (!defined(skip_create_alt_allele_table)) {
-    call CreateAltAlleleTable {
-      input:
-        dataset_name = dataset_name,
-        project_id = project_id
-    }
+  call CreateAltAlleleTable {
+    input:
+      dataset_name = dataset_name,
+      project_id = project_id
   }
 
   call Utils.GetBQTableLastModifiedDatetime {
     input:
-      go = select_first([skip_create_alt_allele_table, CreateAltAlleleTable.done]),
+      go = CreateAltAlleleTable.done,
       query_project = project_id,
       fq_table = fq_alt_allele_table
   }
@@ -47,7 +44,7 @@ workflow GvsCreateAltAllele {
         call_set_identifier = call_set_identifier,
         dataset_name = dataset_name,
         project_id = project_id,
-        create_table_done = select_first([skip_create_alt_allele_table, CreateAltAlleleTable.done]),
+        create_table_done = CreateAltAlleleTable.done,
         vet_table_name = GetVetTableNames.vet_tables[idx],
         last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
         max_sample_id = GetMaxSampleId.max_sample_id
@@ -156,7 +153,7 @@ task CreateAltAlleleTable {
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
     bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false ~{bq_labels} \
-    'CREATE OR REPLACE TABLE `~{project_id}.~{dataset_name}.alt_allele` (
+    'CREATE TABLE IF NOT EXISTS `~{project_id}.~{dataset_name}.alt_allele` (
       location INT64,
       sample_id INT64,
       ref STRING,
