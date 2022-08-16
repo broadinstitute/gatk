@@ -124,7 +124,7 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:vs_580_PutVATSchemaFilesInDocker_2022_08_09"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_08_16"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"

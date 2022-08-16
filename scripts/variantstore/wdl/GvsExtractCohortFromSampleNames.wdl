@@ -28,7 +28,6 @@ workflow GvsExtractCohortFromSampleNames {
     Int scatter_count
 
     String? output_gcs_dir
-    String? service_account_json_path
 
     Int? extract_preemptible_override
     Int? extract_maxretries_override
@@ -61,8 +60,7 @@ workflow GvsExtractCohortFromSampleNames {
       dataset_name                    = gvs_dataset, # unused if fq_* args are given
       destination_project             = destination_project_id,
       destination_dataset             = destination_dataset_name,
-      fq_temp_table_dataset           = fq_gvs_extraction_temp_tables_dataset,
-      service_account_json_path       = service_account_json_path,
+      fq_temp_table_dataset           = fq_gvs_extraction_temp_tables_dataset
   }
 
   call GvsExtractCallset.GvsExtractCallset {
@@ -80,7 +78,6 @@ workflow GvsExtractCohortFromSampleNames {
       filter_set_name = filter_set_name,
       output_file_base_name = output_file_base_name,
       output_gcs_dir = output_gcs_dir,
-      service_account_json_path = service_account_json_path,
 
       extract_preemptible_override = extract_preemptible_override,
       extract_maxretries_override = extract_maxretries_override,
