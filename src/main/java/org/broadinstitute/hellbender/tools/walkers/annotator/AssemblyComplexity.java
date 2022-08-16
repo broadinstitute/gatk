@@ -117,7 +117,10 @@ public class AssemblyComplexity implements JumboInfoAnnotation {
                     .filter(hap -> containsAltAllele(hap.getEventMap(), vc, altAlleleIndex))
                     .mapToInt(hap -> haplotypeSupportCounts.get(hap).intValue())
                     .toArray();
-            return MathUtils.arrayMax(counts) / (double) MathUtils.sum(counts);
+            // a very rare edge case occurs when no haplotypes containing the allele exist with non-zero read support.
+            // If this occurs, we set the dominance to 1 / the number of haplotypes.
+            final int maxCount = MathUtils.arrayMax(counts);
+            return maxCount == 0 ? (1 / (double) haplotypesByDescendingSupport.size()) : maxCount / (double) MathUtils.sum(counts);
         }).toArray();
 
         return Triple.of(equivalenceCounts, editDistances, haplotypeDominance);
