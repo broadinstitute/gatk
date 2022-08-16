@@ -259,7 +259,7 @@ task PopulateAltAlleleTable {
       $SERVICE_ACCOUNT_STANZA
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_08_01"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:rsa_vs_52_incremental_alt_allele_2022_08_16"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     cpu: 1
