@@ -119,7 +119,7 @@ task GetVetTableNames {
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
     bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false ~{bq_labels} \
-    'SELECT table_name FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES` WHERE table_name LIKE "vet_%" AND CAST(SUBSTRING(table_name, 5) AS INT64) >= $(cat min_vat_table_num.txt)' > vet_tables.csv
+    "SELECT table_name FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES` WHERE table_name LIKE 'vet_%' AND CAST(SUBSTRING(table_name, 5) AS INT64) >= $(cat min_vat_table_num.txt)" > vet_tables.csv
 
     # remove the header row from the CSV file
     sed -i 1d vet_tables.csv
