@@ -36,7 +36,7 @@ workflow GvsCreateAltAllele {
 
   call Utils.GetBQTableLastModifiedDatetime {
     input:
-      go = CreateAltAlleleTable.done,
+      go = select_first([skip_create_alt_allele_table, CreateAltAlleleTable.done]),
       query_project = project_id,
       fq_table = fq_alt_allele_table
   }
