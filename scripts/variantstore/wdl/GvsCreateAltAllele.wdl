@@ -47,7 +47,7 @@ workflow GvsCreateAltAllele {
         call_set_identifier = call_set_identifier,
         dataset_name = dataset_name,
         project_id = project_id,
-        create_table_done = select_first(skip_create_alt_allele_table, CreateAltAlleleTable.done),
+        create_table_done = select_first([skip_create_alt_allele_table, CreateAltAlleleTable.done]),
         vet_table_name = GetVetTableNames.vet_tables[idx],
         last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
         max_sample_id = GetMaxSampleId.max_sample_id
