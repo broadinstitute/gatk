@@ -10,8 +10,7 @@
   "Mutect2.normal_reads_index": "/home/runner/work/gatk/gatk/src/test/resources/large/mutect/dream_synthetic_bams/normal_1.bam.bai",
   "Mutect2.scatter_count": 2,
   "Mutect2.run_orientation_bias_mixture_model_filter": true,
-  "Mutect2.run_funcotator": true,
-  "Mutect2.preemptible_attempts": 2,
+  "Mutect2.preemptible": 2,
   "Mutect2.compress_vcfs": false,
   "Mutect2.make_bamout": true
 }
