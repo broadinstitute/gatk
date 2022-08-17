@@ -22,6 +22,7 @@
 - Run the "Fetch WGS metadata for samples from list" notebook after you have placed the file with the list of the new samples to ingest in a GCS location the notebook (running with your @pmi-ops account) will have access to.  This will grab the samples from the workspace where they were reblocked and bring them into this callset workspace.
   - Set the `sample_list_file_path` variable in that notebook to the path of the file
   - Run the "now that the data have been copied, you can make sample sets if you wish" step if you want to automatically break up the new samples into smaller sample sets.  Set the `SUBSET_SIZE` and `set_name` variables to customize.
+- **NOTE** If you want to create a large sample set after you have run the notebook, Terra provides (and recommends you use) this python [script](https://github.com/broadinstitute/firecloud-tools/tree/master/scripts/import_large_tsv) which allows you to upload a sample set to the workspace..
 - **TBD This is based on VCF output; VDS output might need different increases.** For extracting VCFs as the final output for the callset, you will want to increase the Google quotas for the workspace project (you can find this in the workspace dashboard under Cloud Information > Google Project ID) to these levels (all in the workspace region):
   - Persistent Disk Standard (GB): 1,000,000 GB (1 PB)
   - CPUs: 64,000
