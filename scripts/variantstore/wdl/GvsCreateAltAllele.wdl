@@ -110,6 +110,7 @@ task GetVetTableNames {
 
   command <<<
     set -e
+    echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
     # if the maximum sample_id value is evenly divisible by 4000, then max_sample_id / 4000 will
     # give us the right vet_* table to start with; otherwise, we need to start with the next table
@@ -119,7 +120,7 @@ task GetVetTableNames {
       echo $(((~{max_sample_id} / 4000) + 1)) > min_vat_table_num.txt
     fi
 
-    echo "project_id = ~{project_id}" > ~/.bigqueryrc
+    # use the number calculated from the above math to get the vet_* table names grab data from
     bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false ~{bq_labels} \
     "SELECT table_name FROM \`~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES\` WHERE table_name LIKE 'vet_%' AND CAST(SUBSTRING(table_name, 5) AS INT64) >= $(cat min_vat_table_num.txt)" > vet_tables.csv
 
