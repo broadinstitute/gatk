@@ -176,7 +176,8 @@ public final class BayesianGaussianMixtureModeller implements Serializable {
     /**
      * See <a href="https://github.com/scikit-learn/scikit-learn/blob/1.0/sklearn/mixture/_base.py#L201">here</a>.
      * In contrast to the sklearn implementation, our fit method does not call a fitPredict method to avoid an unused E step.
-     * @param data      double[][] of data with dimensions (nSamples, nFeatures); to minimize memory requirements, a defensive copy will not be made
+     * @param data      double[][] of data with dimensions (nSamples, nFeatures); to minimize memory requirements, a defensive copy will not be made;
+     *                  assumed to have no missing (NaN) or infinite values (these will ultimately yield an IllegalArgumentException from {@link NaturalLogUtils#logSumExp})
      */
     public void fit(final double[][] data) {
         Utils.validateArg(data.length >= 2, "Data must contain at least 2 samples.");
@@ -277,7 +278,9 @@ public final class BayesianGaussianMixtureModeller implements Serializable {
 
     /**
      * See <a href="https://github.com/scikit-learn/scikit-learn/blob/1.0/sklearn/mixture/_base.py#L337">here</a>.
-     * @param data      double[][] of data with dimensions (nSamples, nFeatures); to minimize memory requirements, a defensive copy will not be made
+     * @param data      double[][] of data with dimensions (nSamples, nFeatures); to minimize memory requirements, a defensive copy will not be made;
+     *                  assumed to have no missing (NaN) values (these will ultimately yield an IllegalArgumentException from {@link NaturalLogUtils#logSumExp}),
+     *                  although infinite values will return Double.NEGATIVE_INFINITY scores due to the implementation of {@link NaturalLogUtils#logSumExp}
      * @return          double[] of scores with dimensions (nSamples, )
      */
     public double[] scoreSamples(final double[][] data) {

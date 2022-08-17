@@ -531,4 +531,47 @@ public final class BayesianGaussianMixtureModellerUnitTest extends GATKBaseTest 
         Assert.assertEquals(a.size(), b.size());
         IntStream.range(0, a.size()).forEach(i -> assertEqualUpToAllowedDelta(a.get(i), b.get(i), delta));
     }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testDataWithMissingValues() {
+        final double[][] data = new double[][]{{Double.NaN, 0.}, {1., 2.}, {3., 4.}};
+        final BayesianGaussianMixtureModeller bgmm = new BayesianGaussianMixtureModeller.Builder()
+                .nComponents(2)
+                .build();
+        bgmm.fit(data);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testDataWithInfiniteValues() {
+        final double[][] data = new double[][]{{Double.POSITIVE_INFINITY, 0.}, {1., 2.}, {3., 4.}};
+        final BayesianGaussianMixtureModeller bgmm = new BayesianGaussianMixtureModeller.Builder()
+                .nComponents(2)
+                .build();
+        bgmm.fit(data);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testScoreSamplesWithMissingValues() {
+        final double[][] data = new double[][]{{0., 0.}, {1., 2.}, {3., 4.}};
+        final BayesianGaussianMixtureModeller bgmm = new BayesianGaussianMixtureModeller.Builder()
+                .nComponents(2)
+                .build();
+        bgmm.fit(data);
+        final double[][] scoreData = new double[][]{{Double.NaN, 0.}, {1., 2.}, {3., 4.}};
+        bgmm.scoreSamples(scoreData);
+    }
+
+    /**
+     * Just test that this doesn't throw an IllegalArgumentException, see documentation in {@link BayesianGaussianMixtureModeller#scoreSamples}.
+     */
+    @Test
+    public void testScoreSamplesWithInfiniteValues() {
+        final double[][] data = new double[][]{{0., 0.}, {1., 2.}, {3., 4.}};
+        final BayesianGaussianMixtureModeller bgmm = new BayesianGaussianMixtureModeller.Builder()
+                .nComponents(2)
+                .build();
+        bgmm.fit(data);
+        final double[][] scoreData = new double[][]{{Double.POSITIVE_INFINITY, 0.}, {1., 2.}, {3., 4.}};
+        bgmm.scoreSamples(scoreData);
+    }
 }
