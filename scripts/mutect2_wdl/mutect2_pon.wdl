@@ -103,8 +103,7 @@ workflow Mutect2_Panel {
         input:
             input_vcfs = CreatePanel.output_vcf,
             input_vcf_indices = CreatePanel.output_vcf_index,
-            output_name = pon_name,
-            compress = compress,
+            compress_vcfs = compress,
             runtime_params = standard_runtime
     }
 
