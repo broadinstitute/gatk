@@ -12,7 +12,6 @@ workflow GvsIngestTieout {
         Array[String] sample_names
         Array[File] input_vcfs
         Array[File] input_vcf_indexes
-        String? service_account_json_path
     }
 
     call Utils.BuildGATKJarAndCreateDataset {
@@ -26,8 +25,7 @@ workflow GvsIngestTieout {
             project_id = project,
             dataset_name = BuildGATKJarAndCreateDataset.dataset_name,
             external_sample_names = sample_names,
-            assign_ids_gatk_override = BuildGATKJarAndCreateDataset.jar,
-            service_account_json_path = service_account_json_path
+            assign_ids_gatk_override = BuildGATKJarAndCreateDataset.jar
     }
 
     call GvsImportGenomes.GvsImportGenomes {
@@ -38,8 +36,7 @@ workflow GvsIngestTieout {
             external_sample_names = sample_names,
             input_vcfs = input_vcfs,
             input_vcf_indexes = input_vcf_indexes,
-            load_data_gatk_override = BuildGATKJarAndCreateDataset.jar,
-            service_account_json_path = service_account_json_path
+            load_data_gatk_override = BuildGATKJarAndCreateDataset.jar
     }
 
     call IngestTieout {
