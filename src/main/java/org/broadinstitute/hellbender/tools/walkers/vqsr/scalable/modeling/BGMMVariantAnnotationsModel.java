@@ -10,6 +10,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.TrainVariantAnnotationsModel;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.LabeledVariantAnnotationsData;
 import org.broadinstitute.hellbender.utils.clustering.BayesianGaussianMixtureModelPosterior;
 import org.broadinstitute.hellbender.utils.clustering.BayesianGaussianMixtureModeller;
@@ -24,6 +25,14 @@ import java.util.Random;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+/**
+ * This class wraps the {@link BayesianGaussianMixtureModeller} and adds warm-start functionality, while adding
+ * further restrictions to the API. See documentation in {@link BGMMVariantAnnotationsModel.Hyperparameters}.
+ * Note also that hyperparameters for regularization are not exposed and the default values are used.
+ *
+ * All methods assume valid input (all annotation names and dimensions correct, missing values imputed, etc.)
+ * has been provided by calling code in {@link TrainVariantAnnotationsModel}.
+ */
 public final class BGMMVariantAnnotationsModel implements VariantAnnotationsModel {
 
     private static final Logger logger = LogManager.getLogger(BGMMVariantAnnotationsModel.class);
@@ -42,7 +51,6 @@ public final class BGMMVariantAnnotationsModel implements VariantAnnotationsMode
                                   final File unlabeledAnnotationsFile,
                                   final String outputPrefix) {
         // load annotation training data
-        // TODO validate annotation names and trainingData size
         final List<String> annotationNames = LabeledVariantAnnotationsData.readAnnotationNames(trainingAnnotationsFile);
         final double[][] trainingAnnotations = LabeledVariantAnnotationsData.readAnnotations(trainingAnnotationsFile);
 
@@ -74,7 +82,9 @@ public final class BGMMVariantAnnotationsModel implements VariantAnnotationsMode
         final Preprocesser preprocesser = new Preprocesser();
         final double[][] preprocessedTrainingAnnotations = preprocesser.fitTransform(trainingAnnotations);
 
-        if (!hyperparameters.warmStart || hyperparameters.warmStartSubsample == 0. || hyperparameters.warmStartSubsample == 1.) {
+        if (!hyperparameters.warmStart && hyperparameters.warmStartSubsample != 0. && hyperparameters.warmStartSubsample != 1.) {
+            throw new UserException.BadInput("Warm start was not specified, but a nontrivial value for the warm-start subsample fraction was specified.");
+        } else if (!hyperparameters.warmStart || hyperparameters.warmStartSubsample == 0. || hyperparameters.warmStartSubsample == 1.) {
             bgmm.fit(preprocessedTrainingAnnotations);
         } else {
             final int nSubsamples = (int) (hyperparameters.warmStartSubsample * nSamples);
@@ -89,25 +99,39 @@ public final class BGMMVariantAnnotationsModel implements VariantAnnotationsMode
             bgmm.fit(preprocessedTrainingAnnotationsSubsample); // perform hyperparameters.nInit initializations and fits with subsample
             bgmm.fit(preprocessedTrainingAnnotations);          // perform final fit with full sample
         }
-        // TODO early fail if warmStart == false and warmStartSubsample nontrivial
 
         // serialize scorer = preprocesser + BGMM
-        // TODO fix up output paths and validation, logging
         final BGMMVariantAnnotationsScorer scorer = new BGMMVariantAnnotationsScorer(annotationNames, preprocesser, bgmm);
         scorer.serialize(new File(outputPrefix + BGMMVariantAnnotationsScorer.BGMM_SCORER_SER_SUFFIX));
 
         // write model fit to HDF5
-        // TODO fix up output paths and validation, logging
         final BayesianGaussianMixtureModelPosterior fit = bgmm.getBestFit();
-        fit.write(new File(outputPrefix + BGMM_FIT_HDF5_SUFFIX), "/bgmm");
+        fit.write(new File(outputPrefix + BGMM_FIT_HDF5_SUFFIX));
         // TODO append standardization fields to this HDF5 file?
     }
 
-    // TODO document differences from the sklearn API
-    // mean and covariance priors are each specified by a single number here;
-    // init_params and warm_start_subsample also require specific documentation
+    /**
+     * Hyperparameters closely mirror those for the scikit-learn BayesianGaussianMixture module
+     * (see https://scikit-learn.org/1.0/modules/generated/sklearn.mixture.BayesianGaussianMixture.html),
+     * with the following differences:
+     *
+     *  1) Only full covariance matrices are allowed (covariance_type = 'full' is fixed),
+     *  2) Responsibilities can be initialized using k-means++ clustering or at random using the parameter
+     *     init_params: {'kmeans++', 'random'}; in contrast, the scikit-learn module allows initialization using
+     *     standard k-means clustering or at random,
+     *  3) Only Dirichlet weight concentration priors are allowed (weight_concentration_prior_type = 'dirichlet_distribution' is fixed),
+     *  4) The mean_prior parameter is specified by a single float value, which is multiplied by the unit array to give the array-like prior,
+     *  5) The covariance_prior parameter is specified by a single float value, which is multiplied by the identity matrix to give the array-like prior,
+     *  6) The null value should be used in place of None where appropriate,
+     *  7) Boolean values should not be capitalized,
+     *  8) An additional parameter warm_start_subsample (float in [0, 1]) is used to specify the fraction of data that
+     *  will be used for warm-start fitting; a random subsample will be used to generate n_init initial fits, of which
+     *  the best will be selected and used to initialize a final fit on the full data.
+     *
+     *  This documentation is replicated in the default JSON at
+     *  src/main/resources/org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/bgmm-hyperparameters.json.
+     */
     static final class Hyperparameters {
-        // TODO we could put default values here, which would relax the requirement that JSONs completely specify all values
         @JsonProperty("comment")
         String comment;
         @JsonProperty("n_components")

@@ -1,9 +1,9 @@
 {
-  "comment": "See comments in the BGMMVariantAnnotationsModel.Hyperparameters class.",
+  "comment": "Hyperparameters closely mirror those for the scikit-learn BayesianGaussianMixture module (see https://scikit-learn.org/1.0/modules/generated/sklearn.mixture.BayesianGaussianMixture.html), with the following differences: 1) Only full covariance matrices are allowed (covariance_type = 'full' is fixed), 2) Responsibilities can be initialized using k-means++ clustering or at random using the parameter init_params: {'kmeans++', 'random'}; in contrast, the scikit-learn module allows initialization using standard k-means clustering or at random, 3) Only Dirichlet weight concentration priors are allowed (weight_concentration_prior_type = 'dirichlet_distribution' is fixed), 4) The mean_prior parameter is specified by a single float value, which is multiplied by the unit array to give the array-like prior, 5) The covariance_prior parameter is specified by a single float value, which is multiplied by the identity matrix to give the array-like prior, 6) The null value should be used in place of None where appropriate, 7) Boolean values should not be capitalized, and 8) An additional parameter warm_start_subsample (float in [0, 1]) is used to specify the fraction of data that will be used for warm-start fitting; a random subsample will be used to generate n_init initial fits, of which the best will be selected and used to initialize a final fit on the full data. This documentation is replicated in the BayesianGaussianMixtureModeller.Hyperparameters class.",
   "n_components": 5,
   "tol": 1.0,
   "reg_covar": 1E-6,
-  "max_iter": 150,
+  "max_iter": 100,
   "n_init": 1,
   "init_params": "kmeans++",
   "weight_concentration_prior": null,

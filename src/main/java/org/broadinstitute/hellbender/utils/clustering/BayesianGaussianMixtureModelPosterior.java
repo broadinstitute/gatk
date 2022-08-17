@@ -27,6 +27,7 @@ public final class BayesianGaussianMixtureModelPosterior implements Serializable
 
     private static final Logger logger = LogManager.getLogger(BayesianGaussianMixtureModelPosterior.class);
 
+    private static final String BASE_PATH = "/bgmm";
     private static final String WEIGHTS_SUBPATH = "/weights";                                // double array
     private static final String WEIGHT_CONCENTRATION_SUBPATH = "/weight_concentration";      // double array
     private static final String MEAN_PRECISION_SUBPATH = "/mean_precision";                  // double array
@@ -134,24 +135,25 @@ public final class BayesianGaussianMixtureModelPosterior implements Serializable
         }
     }
 
-    public void write(final File file,
-                      final String path) {
+    /**
+     * TODO
+     */
+    public void write(final File file) {
         try (final HDF5File hdf5File = new HDF5File(file, HDF5File.OpenMode.CREATE)) {
             IOUtils.canReadFile(hdf5File.getFile());
-            Utils.validateArg(path.startsWith("/"), "The path should start with / and specify the path within the HDF5 file for the model.");
 
-            hdf5File.makeDoubleArray(path + WEIGHTS_SUBPATH, getWeights().toArray());
-            hdf5File.makeDoubleArray(path + WEIGHT_CONCENTRATION_SUBPATH, weightConcentration.toArray());
-            hdf5File.makeDoubleArray(path + MEAN_PRECISION_SUBPATH, meanPrecision.toArray());
+            hdf5File.makeDoubleArray(BASE_PATH + WEIGHTS_SUBPATH, getWeights().toArray());
+            hdf5File.makeDoubleArray(BASE_PATH + WEIGHT_CONCENTRATION_SUBPATH, weightConcentration.toArray());
+            hdf5File.makeDoubleArray(BASE_PATH + MEAN_PRECISION_SUBPATH, meanPrecision.toArray());
             IntStream.range(0, nComponents).forEach(
-                    k -> hdf5File.makeDoubleArray(path + MEANS_SUBPATH + '/' + k, means.get(k).toArray()));
+                    k -> hdf5File.makeDoubleArray(BASE_PATH + MEANS_SUBPATH + '/' + k, means.get(k).toArray()));
             IntStream.range(0, nComponents).forEach(
-                    k -> hdf5File.makeDoubleMatrix(path + PRECISIONS_CHOLESKY_SUBPATH + '/' + k, precisionsCholesky.get(k).getData()));
+                    k -> hdf5File.makeDoubleMatrix(BASE_PATH + PRECISIONS_CHOLESKY_SUBPATH + '/' + k, precisionsCholesky.get(k).getData()));
             IntStream.range(0, nComponents).forEach(
-                    k -> hdf5File.makeDoubleMatrix(path + COVARIANCES_SUBPATH + '/' + k, covariances.get(k).getData()));
-            hdf5File.makeDoubleArray(path + DEGREES_OF_FREEDOM_SUBPATH, degreesOfFreedom.toArray());
-            hdf5File.makeDouble(path + NUMBER_OF_COMPONENTS_SUBPATH, nComponents);
-            hdf5File.makeDouble(path + NUMBER_OF_FEATURES_SUBPATH, nFeatures);
+                    k -> hdf5File.makeDoubleMatrix(BASE_PATH + COVARIANCES_SUBPATH + '/' + k, covariances.get(k).getData()));
+            hdf5File.makeDoubleArray(BASE_PATH + DEGREES_OF_FREEDOM_SUBPATH, degreesOfFreedom.toArray());
+            hdf5File.makeDouble(BASE_PATH + NUMBER_OF_COMPONENTS_SUBPATH, nComponents);
+            hdf5File.makeDouble(BASE_PATH + NUMBER_OF_FEATURES_SUBPATH, nFeatures);
 
             logger.info(String.format("BayesianGaussianMixtureModelPosterior written to %s.", file.getAbsolutePath()));
         } catch (final RuntimeException exception) {
