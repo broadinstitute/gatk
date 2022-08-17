@@ -25,7 +25,7 @@ def populate_alt_allele_table(call_set_identifier, query_project, vet_table_name
     query_with = f"""INSERT INTO `{fq_dataset}.alt_allele`
                 WITH
                   position1 as (select * from `{fq_vet_table}` WHERE call_GT IN ('0/1', '1/0', '1/1', '0|1', '1|0', '1|1', '0/2', '0|2','2/0', '2|0') AND sample_id > {max_sample_id}),
-                  position2 as (select * from `{fq_vet_table}` WHERE call_GT IN ('1/2', '1|2', '2/1', '2|1') sample_id > {max_sample_id})"""
+                  position2 as (select * from `{fq_vet_table}` WHERE call_GT IN ('1/2', '1|2', '2/1', '2|1') AND sample_id > {max_sample_id})"""
 
     sql = alt_allele_temp_function + query_with + alt_allele_positions
     query_return = utils.execute_with_retry(client, f"into alt allele from {vet_table_name}", sql)
