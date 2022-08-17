@@ -12,8 +12,15 @@ workflow GvsCreateAltAllele {
 
   String fq_alt_allele_table = "~{project_id}.~{dataset_name}.alt_allele"
 
+  call CreateAltAlleleTable {
+    input:
+      dataset_name = dataset_name,
+      project_id = project_id
+  }
+
   call GetMaxSampleId {
     input:
+      go = CreateAltAlleleTable.done,
       dataset_name = dataset_name,
       project_id = project_id
   }
@@ -23,12 +30,6 @@ workflow GvsCreateAltAllele {
       dataset_name = dataset_name,
       project_id = project_id,
       max_sample_id = GetMaxSampleId.max_sample_id
-  }
-
-  call CreateAltAlleleTable {
-    input:
-      dataset_name = dataset_name,
-      project_id = project_id
   }
 
   call Utils.GetBQTableLastModifiedDatetime {
@@ -59,6 +60,7 @@ workflow GvsCreateAltAllele {
 
 task GetMaxSampleId {
   input {
+    Boolean go = true
     String dataset_name
     String project_id
   }
@@ -72,7 +74,7 @@ task GetMaxSampleId {
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
     bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false \
-    'SELECT MAX(sample_id) as max_sample_id FROM `~{dataset_name}.sample_info`' > num_rows.csv
+    'SELECT MAX(sample_id) as max_sample_id FROM `~{dataset_name}.alt_allele`' > num_rows.csv
 
     NUMROWS=$(python3 -c "csvObj=open('num_rows.csv','r');csvContents=csvObj.read();print(csvContents.split('\n')[1]);")
 
