@@ -37,7 +37,7 @@ echo "Putting the newly built docker image into the json parameters"
 cd $WORKING_DIR/gatk/scripts/
 sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" m2_cromwell_tests/test_m2_wdl.json >$WORKING_DIR/test_m2_wdl_mod.json
 echo "JSON FILE (modified) ======="
-cat $WORKING_DIR/test_m2_wdl_multi_mod.json
+cat $WORKING_DIR/test_m2_wdl_mod.json
 sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" m2_cromwell_tests/test_mitochondria_m2_wdl.json >$WORKING_DIR/test_mitochondria_m2_wdl_mod.json
 echo "JSON FILE (modified) ======="
 cat $WORKING_DIR/test_mitochondria_m2_wdl_mod.json

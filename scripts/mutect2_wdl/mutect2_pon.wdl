@@ -25,11 +25,11 @@ workflow Mutect2_Panel {
     File gnomad_idx
     String? m2_extra_args
     String? create_pon_extra_args
-    Boolean? compress
+    Boolean compress = false
     String pon_name
 
-    Int? min_contig_size
-    Int? create_panel_scatter_count
+    Int min_contig_size = 1000000
+    Int create_panel_scatter_count = 24
 
     String? gcs_project_for_requester_pays
 
@@ -38,8 +38,8 @@ workflow Mutect2_Panel {
     File? gatk_override
     String basic_bash_docker = "ubuntu:16.04"
 
-    Int? preemptible
-    Int? max_retries
+    Int preemptible = 2
+    Int max_retries = 2
     Int small_task_cpu = 2
     Int small_task_mem = 4
     Int small_task_disk = 100
@@ -49,12 +49,8 @@ workflow Mutect2_Panel {
     Int? emergency_extra_disk
   }
 
-  Int contig_size = select_first([min_contig_size, 1000000])
-  Int preemptible_or_default = select_first([preemptible, 2])
-  Int max_retries_or_default = select_first([max_retries, 2])
-
   Runtime standard_runtime = {"gatk_docker": gatk_docker, "gatk_override": gatk_override,
-            "max_retries": max_retries_or_default, "preemptible": preemptible_or_default, "cpu": small_task_cpu,
+            "max_retries": max_retries, "preemptible": preemptible, "cpu": small_task_cpu,
             "machine_mem": small_task_mem * 1000, "command_mem": small_task_mem * 1000 - 500,
             "disk": small_task_disk, "boot_disk_size": boot_disk_size}
 
@@ -82,8 +78,8 @@ workflow Mutect2_Panel {
             ref_fasta = ref_fasta,
             ref_fai = ref_fai,
             ref_dict = ref_dict,
-            scatter_count = select_first([create_panel_scatter_count, 24]),
-            split_intervals_extra_args = "--dont-mix-contigs --min-contig-size " + contig_size,
+            scatter_count = create_panel_scatter_count,
+            split_intervals_extra_args = "--dont-mix-contigs --min-contig-size " + min_contig_size,
             runtime_params = standard_runtime
     }
 
@@ -108,7 +104,7 @@ workflow Mutect2_Panel {
             input_vcfs = CreatePanel.output_vcf,
             input_vcf_indices = CreatePanel.output_vcf_index,
             output_name = pon_name,
-            compress = select_first([compress, false]),
+            compress = compress,
             runtime_params = standard_runtime
     }
 
