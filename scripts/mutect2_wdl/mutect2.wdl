@@ -132,7 +132,7 @@ workflow Mutect2 {
     Int normal_reads_size = if defined(normal_reads) then ceil(size(normal_reads, "GB") + size(normal_reads_index, "GB")) else 0
 
     # This is added to every task as padding, should increase if systematically you need more disk for every call
-    Int disk_pad = 10 + select_first([emergency_extra_disk,0])
+    Int disk_pad = 10 + emergency_extra_disk
 
     Runtime standard_runtime = {"gatk_docker": gatk_docker, "gatk_override": gatk_override,
             "max_retries": max_retries, "preemptible": preemptible, "cpu": small_task_cpu,

@@ -44,9 +44,6 @@ workflow Mutect2_Panel {
     Int small_task_mem = 4
     Int small_task_disk = 100
     Int boot_disk_size = 12
-
-    # Use as a last resort to increase the disk given to every task in case of ill behaving data
-    Int? emergency_extra_disk
   }
 
   Runtime standard_runtime = {"gatk_docker": gatk_docker, "gatk_override": gatk_override,
