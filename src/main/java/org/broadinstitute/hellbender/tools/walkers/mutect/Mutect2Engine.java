@@ -260,7 +260,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
 //                Collections.emptyList():
 ////                PileupBasedAlleles.getPileupVariantContexts(originalAssemblyRegion.getAlignmentData(), MTAC.pileupDetectionArgs, header) :
 //                Collections.emptyList();
-        final Tuple<List<VariantContext>, List<VariantContext>> forcedPileupAlleles = new Tuple<>(Collections.emptyList(), Collections.emptyList());
+        final List<VariantContext>forcedPileupAlleles = Collections.emptyList();
 
         final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(originalAssemblyRegion, forcedPileupAlleles, MTAC, header, samplesList, logger, referenceReader, assemblyEngine, aligner, false, MTAC.fbargs, false);
         ReadThreadingAssembler.addAssembledVariantsToEventMapOutput(untrimmedAssemblyResult, assembledEventMapVariants, MTAC.maxMnpDistance, assembledEventMapVcfOutputWriter);

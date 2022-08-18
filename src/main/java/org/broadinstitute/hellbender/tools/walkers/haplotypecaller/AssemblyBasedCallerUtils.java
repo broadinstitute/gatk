@@ -33,6 +33,7 @@ import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState;
+import org.broadinstitute.hellbender.utils.pileup.PileupBasedAlleles;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.*;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
@@ -319,7 +320,7 @@ public final class AssemblyBasedCallerUtils {
      * for further HC steps
      */
     public static AssemblyResultSet assembleReads(final AssemblyRegion region,
-                                                  final Tuple<List<VariantContext>, List<VariantContext>> forcedPileupAlleles,
+                                                  final List<VariantContext> forcedPileupAlleles,
                                                   final AssemblyBasedCallerArgumentCollection argumentCollection,
                                                   final SAMFileHeader header,
                                                   final SampleList sampleList,
@@ -393,10 +394,13 @@ public final class AssemblyBasedCallerUtils {
 
             assemblyResultSet.setHaplotypeCollapsingEngine(haplotypeCollapsing);
 
-            //TODO workonthis
             List<Haplotype> haplotypesWithFilterAlleles = new ArrayList<>();
-            if (!forcedPileupAlleles.b.isEmpty()) {
-                for(VariantContext delVariant : forcedPileupAlleles.b) {
+            List<VariantContext> pileupAllelesFoundShouldFilter = forcedPileupAlleles.stream()
+                    .filter(v -> PileupBasedAlleles.shouldFilterAssemblyVariant(argumentCollection.pileupDetectionArgs, v))
+                    .collect(Collectors.toList());
+            if (!pileupAllelesFoundShouldFilter.isEmpty()) {
+                // TODO this is a bad algorithm for bad people
+                for(VariantContext delVariant : pileupAllelesFoundShouldFilter) {
                     for (Haplotype hap : assemblyResultSet.getHaplotypeList()) {
                         if (hap.getEventMap()==null) {
                             if (!hap.isReference()) {
@@ -421,8 +425,11 @@ public final class AssemblyBasedCallerUtils {
                 }
             }
 
-            if (!forcedPileupAlleles.a.isEmpty()) {
-                processPileupAlleles(region, forcedPileupAlleles.a, argumentCollection.pileupDetectionArgs.snpAdajacentToAssemblyIndel, argumentCollection.maxMnpDistance, aligner, refHaplotype, assemblyResultSet, argumentCollection.pileupDetectionArgs.numHaplotypesToIterate, argumentCollection.pileupDetectionArgs.filteringKmerSize, argumentCollection.getHaplotypeToReferenceSWParameters());
+            List<VariantContext> pileupAllelesPassingFilters = forcedPileupAlleles.stream()
+                    .filter(v -> PileupBasedAlleles.passesFilters(argumentCollection.pileupDetectionArgs, v))
+                    .collect(Collectors.toList());
+            if (!pileupAllelesPassingFilters.isEmpty()) {
+                processPileupAlleles(region, pileupAllelesPassingFilters, argumentCollection.pileupDetectionArgs.snpAdajacentToAssemblyIndel, argumentCollection.maxMnpDistance, aligner, refHaplotype, assemblyResultSet, argumentCollection.pileupDetectionArgs.numHaplotypesToIterate, argumentCollection.pileupDetectionArgs.filteringKmerSize, argumentCollection.getHaplotypeToReferenceSWParameters());
             }
             assemblyResultSet.setDebug(argumentCollection.assemblerArgs.debugAssembly);
             assemblyResultSet.debugDump(logger);

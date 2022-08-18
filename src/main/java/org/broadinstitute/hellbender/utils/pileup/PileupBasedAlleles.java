@@ -3,17 +3,18 @@ package org.broadinstitute.hellbender.utils.pileup;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.SequenceUtil;
-import htsjdk.samtools.util.Tuple;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.broadinstitute.hellbender.engine.AlignmentAndReferenceContext;
 import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.PileupDetectionArgumentCollection;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.checkerframework.checker.units.qual.C;
 
 import java.util.*;
 
@@ -25,6 +26,16 @@ import java.util.*;
 public final class PileupBasedAlleles {
 
     final static String MISMATCH_BASES_PERCENTAGE_TAG = "MZ";
+
+    // internal values to be used for tagging the VCF info fields appropriately
+    public static String PILEUP_ALLELE_SUPPORTING_READS = "PileupSupportingReads";
+    public static String PILEUP_ALLELE_BAD_READS_TAG = "PileupSupportingBadReads";
+    public static String PILEUP_ALLELE_ASSEMBLY_BAD_READS_TAG = "PileupAssemblyBadReads";
+    public static String PILEUP_ALLELE_TOTAL_READS = "PileupAssemblyTotalReads";
+
+    private final static int COUNT = 0;
+    private final static int BAD_COUNT = 1;
+    private final static int ASSEMBLY_BAD_COUNT = 2;
 
     /**
      * Accepts the raw per-base pileups stored from the active region detection code and parses them for potential variants
@@ -41,73 +52,50 @@ public final class PileupBasedAlleles {
      * @param headerForReads                    Header for the reads (only necessary for SAM file conversion)
      * @return A list of variant context objects corresponding to potential variants that pass our heuristics.
      */
-    public static Tuple<List<VariantContext>,List<VariantContext>> getPileupVariantContexts(final List<AlignmentAndReferenceContext> alignmentAndReferenceContextList, final PileupDetectionArgumentCollection args, final SAMFileHeader headerForReads) {
+    public static List<VariantContext> getPileupVariantContexts(final List<AlignmentAndReferenceContext> alignmentAndReferenceContextList, final PileupDetectionArgumentCollection args, final SAMFileHeader headerForReads) {
 
         final List<VariantContext> pileupVariantList = new ArrayList<>();
-        final List<VariantContext> pileupFilteringVariantsListForAssembly = new ArrayList<>();
 
         // Iterate over every base
         for(AlignmentAndReferenceContext alignmentAndReferenceContext : alignmentAndReferenceContextList) {
+            //Skip all work on sites that aren't active according to our heuristic
+            if (args.activeRegionPhredThreshold > 0.0 && alignmentAndReferenceContext.getActivityScore() < args.activeRegionPhredThreshold ) {
+                continue;
+            }
+
             final AlignmentContext alignmentContext = alignmentAndReferenceContext.getAlignmentContext();
             final ReferenceContext referenceContext = alignmentAndReferenceContext.getReferenceContext();
             final int numOfBases = alignmentContext.size();
             final ReadPileup pileup = alignmentContext.getBasePileup();
             final byte refBase = referenceContext.getBase();
 
-            Map<String, Integer> insertionCounts = new HashMap<>();
-            Map<Integer, Integer> deletionCounts = new HashMap<>();
-
-            Map<Byte, Integer> altCounts = new HashMap<>();
-
-            int totalAltReads = 0;
-            int totalAltBadReads = 0;
-            int totalAltBadAssemblyReads = 0;
+            //Key for counts arrays [support, bad reads, assembly bad reads]
+            Map<String, int[]> insertionCounts = new HashMap<>();
+            Map<Integer, int[]> deletionCounts = new HashMap<>();
+            Map<Byte, int[]> altCounts = new HashMap<>();
 
             for (PileupElement element : pileup) {
                 final byte eachBase = element.getBase();
 
                 // check to see that the base is not ref (and non-deletion) and increment the alt counts (and evaluate if the read is "bad")
                 if (refBase != eachBase && eachBase != 'D') {
-                    incrementAltCount(eachBase, altCounts);
-                    totalAltReads++;
-                    // Handle the "badness"
-                    if (evaluateBadRead(element.getRead(), referenceContext, args, headerForReads)) {
-                        totalAltBadReads++;
-                    }
-                    if (evaluateBadReadForAssembly(element.getRead(), referenceContext, args, headerForReads)) {
-                        totalAltBadAssemblyReads++;
-                    }
+                    incrementAltCount(eachBase, altCounts,
+                            evaluateBadRead(element.getRead(), referenceContext, args, headerForReads),
+                            evaluateBadReadForAssembly(element.getRead(), referenceContext, args, headerForReads));
                 }
 
-                // TODO currently this only handles Insertions.
                 if (args.detectIndels) {
                     // now look for indels
                     if (element.isBeforeInsertion()) {
-                        incrementInsertionCount(element.getBasesOfImmediatelyFollowingInsertion(), insertionCounts);
-                        totalAltReads++;
-
-                        //TODO this is possibly double dipping if there are snps adjacent to indels?
-                        // Handle the "badness"
-                        if (evaluateBadRead(element.getRead(), referenceContext, args, headerForReads)) {
-                            totalAltBadReads++;
-                        }
-                        if (evaluateBadReadForAssembly(element.getRead(), referenceContext, args, headerForReads)) {
-                            totalAltBadAssemblyReads++;
-                        }
+                        incrementInsertionCount(element.getBasesOfImmediatelyFollowingInsertion(), insertionCounts,
+                                evaluateBadRead(element.getRead(), referenceContext, args, headerForReads),
+                                evaluateBadReadForAssembly(element.getRead(), referenceContext, args, headerForReads));
                     }
-
                     if (element.isBeforeDeletionStart()) {
-                        incrementDeletionCount(element.getLengthOfImmediatelyFollowingIndel(), deletionCounts);
-                        totalAltReads++;
+                        incrementDeletionCount(element.getLengthOfImmediatelyFollowingIndel(), deletionCounts,
+                                evaluateBadRead(element.getRead(), referenceContext, args, headerForReads),
+                                evaluateBadReadForAssembly(element.getRead(), referenceContext, args, headerForReads));
 
-                        //TODO this is possibly double dipping if there are snps adjacent to indels?
-                        // Handle the "badness"
-                        if (evaluateBadRead(element.getRead(), referenceContext, args, headerForReads)) {
-                            totalAltBadReads++;
-                        }
-                        if (evaluateBadReadForAssembly(element.getRead(), referenceContext, args, headerForReads)) {
-                            totalAltBadAssemblyReads++;
-                        }
                     }
                 }
             }
@@ -115,83 +103,50 @@ public final class PileupBasedAlleles {
             // Evaluate the detected SNP alleles for this site
             List<Allele> alleles = new ArrayList<>();
             alleles.add(Allele.create(referenceContext.getBase(), true));
-            final Optional<Map.Entry<Byte, Integer>> maxAlt = altCounts.entrySet().stream().max(Comparator.comparingInt(Map.Entry::getValue));
-            if (maxAlt.isPresent()
-                    && passesFilters(args, false, numOfBases, totalAltBadReads, totalAltReads, maxAlt.get())) {
-
-                alleles.add(Allele.create(maxAlt.get().getKey()));
+            for (Map.Entry<Byte, int[]> allele : altCounts.entrySet()) {
+                alleles.add(Allele.create(allele.getKey()));
                 final VariantContextBuilder pileupSNP = new VariantContextBuilder("pileup", alignmentContext.getContig(), alignmentContext.getStart(), alignmentContext.getEnd(), alleles);
-                pileupVariantList.add(pileupSNP.make());
-            }
-            alleles = new ArrayList<>();
-            alleles.add(Allele.create(referenceContext.getBase(), true));
-            if (maxAlt.isPresent()
-                    && failsAssemblyFilters(args, false, numOfBases, totalAltBadAssemblyReads, totalAltReads, maxAlt.get())) {
-
-                alleles.add(Allele.create(maxAlt.get().getKey()));
-                final VariantContextBuilder pileupSNP = new VariantContextBuilder("pileup", alignmentContext.getContig(), alignmentContext.getStart(), alignmentContext.getEnd(), alleles);
-                pileupFilteringVariantsListForAssembly.add(pileupSNP.make());
+                pileupVariantList.add(pileupSNP
+                        .attribute(PILEUP_ALLELE_SUPPORTING_READS, allele.getValue()[COUNT])
+                        .attribute(PILEUP_ALLELE_BAD_READS_TAG, allele.getValue()[BAD_COUNT])
+                        .attribute(PILEUP_ALLELE_ASSEMBLY_BAD_READS_TAG, allele.getValue()[ASSEMBLY_BAD_COUNT])
+                        .attribute(PILEUP_ALLELE_TOTAL_READS, numOfBases).make());
             }
 
-            // Evaluate the detected Insertions alleles for this site
             if (args.detectIndels) {
-                List<Allele> indelAlleles = new ArrayList<>();
-                indelAlleles.add(Allele.create(referenceContext.getBase(), true));
-                final Optional<Map.Entry<String, Integer>> maxIns = insertionCounts.entrySet().stream().max(Comparator.comparingInt(Map.Entry::getValue));
-                if (maxIns.isPresent()
-                        && passesFilters(args, true, numOfBases, totalAltBadReads, totalAltReads, maxIns.get())) {
-
-                    indelAlleles.add(Allele.create((char)referenceContext.getBase() + maxIns.get().getKey()));
-                    final VariantContextBuilder pileupInsertion = new VariantContextBuilder("pileup", alignmentContext.getContig(), alignmentContext.getStart(), alignmentContext.getEnd(), indelAlleles);
-                    pileupVariantList.add(pileupInsertion.make());
+                // Evaluate the detected Insertions alleles for this site
+                for (Map.Entry<String, int[]> allele : insertionCounts.entrySet()) {
+                    List<Allele> delAlleles = new ArrayList<>();
+                    delAlleles.add(Allele.create(referenceContext.getBase(), true));
+                    delAlleles.add(Allele.create((char)referenceContext.getBase() + allele.getKey()));
+                    final VariantContextBuilder pileupInsertion = new VariantContextBuilder("pileup", alignmentContext.getContig(), alignmentContext.getStart(), alignmentContext.getEnd(), delAlleles);
+                    pileupVariantList.add(pileupInsertion
+                            .attribute(PILEUP_ALLELE_SUPPORTING_READS, allele.getValue()[COUNT])
+                            .attribute(PILEUP_ALLELE_BAD_READS_TAG, allele.getValue()[BAD_COUNT])
+                            .attribute(PILEUP_ALLELE_ASSEMBLY_BAD_READS_TAG, allele.getValue()[ASSEMBLY_BAD_COUNT])
+                            .attribute(PILEUP_ALLELE_TOTAL_READS, numOfBases).make());
                 }
 
-                indelAlleles = new ArrayList<>();
-                indelAlleles.add(Allele.create(referenceContext.getBase(), true));
-                if (maxIns.isPresent()
-                        && failsAssemblyFilters(args, true, numOfBases, totalAltBadAssemblyReads, totalAltReads, maxIns.get())) {
-
-                    indelAlleles.add(Allele.create((char)referenceContext.getBase() + maxIns.get().getKey()));
-                    final VariantContextBuilder pileupInsertion = new VariantContextBuilder("pileup", alignmentContext.getContig(), alignmentContext.getStart(), alignmentContext.getEnd(), indelAlleles);
-                    pileupFilteringVariantsListForAssembly.add(pileupInsertion.make());
-                }
-            }
-
-            // Evaluate the detected Deletions alleles for this site
-            if (args.detectIndels) {
-                List<Allele> indelAlleles = new ArrayList<>();
-                indelAlleles.add(Allele.create(referenceContext.getBase(), false));
-
-                final Optional<Map.Entry<Integer, Integer>> maxDel = deletionCounts.entrySet().stream().max(Comparator.comparingInt(Map.Entry::getValue));
-                if (maxDel.isPresent()
-                        && passesFilters(args, true, numOfBases, totalAltBadReads, totalAltReads, maxDel.get())) {
-
-                    indelAlleles.add(Allele.create(referenceContext.getBases(
+                // Evaluate the detected Deletions alleles for this site
+                for (Map.Entry<Integer, int[]> allele : deletionCounts.entrySet()) {
+                    List<Allele> insAlleles = new ArrayList<>();
+                    insAlleles.add(Allele.create(referenceContext.getBase(), false));
+                    insAlleles.add(Allele.create(referenceContext.getBases(
                             new SimpleInterval(referenceContext.getContig(),
                                     alignmentContext.getStart(),
-                                    alignmentContext.getEnd() + maxDel.get().getKey())),
+                                    alignmentContext.getEnd() + allele.getKey())),
                             true));
-                    final VariantContextBuilder pileupInsertion = new VariantContextBuilder("pileup", alignmentContext.getContig(), alignmentContext.getStart(), alignmentContext.getEnd() + maxDel.get().getKey(), indelAlleles);
-                    pileupVariantList.add(pileupInsertion.make());
-                }
-
-                indelAlleles = new ArrayList<>();
-                indelAlleles.add(Allele.create(referenceContext.getBase(), false));
-                if (maxDel.isPresent()
-                        && failsAssemblyFilters(args, true, numOfBases, totalAltBadAssemblyReads, totalAltReads, maxDel.get())) {
-
-                    indelAlleles.add(Allele.create(referenceContext.getBases(
-                                    new SimpleInterval(referenceContext.getContig(),
-                                            alignmentContext.getStart(),
-                                            alignmentContext.getEnd() + maxDel.get().getKey())),
-                            true));
-                    final VariantContextBuilder pileupInsertion = new VariantContextBuilder("pileup", alignmentContext.getContig(), alignmentContext.getStart(), alignmentContext.getEnd() + maxDel.get().getKey(), indelAlleles);
-                    pileupFilteringVariantsListForAssembly.add(pileupInsertion.make());
+                    final VariantContextBuilder pileupInsertion = new VariantContextBuilder("pileup", alignmentContext.getContig(), alignmentContext.getStart(), alignmentContext.getEnd() + allele.getKey(), insAlleles);
+                    pileupVariantList.add(pileupInsertion
+                            .attribute(PILEUP_ALLELE_SUPPORTING_READS, allele.getValue()[COUNT])
+                            .attribute(PILEUP_ALLELE_BAD_READS_TAG, allele.getValue()[BAD_COUNT])
+                            .attribute(PILEUP_ALLELE_ASSEMBLY_BAD_READS_TAG, allele.getValue()[ASSEMBLY_BAD_COUNT])
+                            .attribute(PILEUP_ALLELE_TOTAL_READS, numOfBases).make());
                 }
             }
         }
 
-        return new Tuple<>(pileupVariantList, pileupFilteringVariantsListForAssembly);
+        return pileupVariantList;
     }
 
     /**
@@ -200,22 +155,51 @@ public final class PileupBasedAlleles {
      * - Does it have greater than pileupAbsoluteDepth number of reads supporting it?
      * - Are the reads supporting alts at the site greater than badReadThreshold percent "good"? //TODO evaluate if this is worth doing on a per-allele basis or otherwise
      */
-    private static boolean passesFilters(final PileupDetectionArgumentCollection args, boolean indel,  final int numOfBases, final int totalAltBadReads, final int totalAltReads, final Map.Entry<?, Integer> maxAlt) {
-        return ((float) maxAlt.getValue() / (float) numOfBases) > (indel ? args.indelThreshold : args.snpThreshold)
-                && numOfBases >= args.pileupAbsoluteDepth
-                && ((args.badReadThreshold <= 0.0) || (float) totalAltBadReads / (float)totalAltReads <= args.badReadThreshold);
+    public static boolean passesFilters(final PileupDetectionArgumentCollection args, final VariantContext pileupVariant) {
+        //Validation that this VC is the correct object type
+        validatePileupVariant(pileupVariant);
+
+        final int pileupSupport = pileupVariant.getAttributeAsInt(PILEUP_ALLELE_SUPPORTING_READS, 0);
+        final int totalDepth = pileupVariant.getAttributeAsInt(PILEUP_ALLELE_TOTAL_READS, 0);
+        return ((double) pileupSupport / (double) totalDepth) > (pileupVariant.isIndel() ? args.indelThreshold : args.snpThreshold)
+                && totalDepth >= args.pileupAbsoluteDepth
+                && ((args.badReadThreshold <= 0.0) || (double) pileupVariant.getAttributeAsInt(PILEUP_ALLELE_BAD_READS_TAG,0) / (double)pileupSupport <= args.badReadThreshold);
     }
 
-    /**
-     * Apply the filters to discovered alleles
-     * - Does it have greater than snpThreshold fraction of bases support in the pileups?
-     * - Does it have greater than pileupAbsoluteDepth number of reads supporting it?
-     * - Are the reads supporting alts at the site greater than badReadThreshold percent "good"? //TODO evaluate if this is worth doing on a per-allele basis or otherwise
-     */
-    private static boolean failsAssemblyFilters(final PileupDetectionArgumentCollection args, boolean indel, final int numOfBases, final int totalAltBadReads, final int totalAltReads, final Map.Entry<?, Integer> maxAlt) {
-        return ((float) maxAlt.getValue() / (float) numOfBases) > (indel ? args.indelThreshold : args.snpThreshold)
-                && numOfBases >= args.pileupAbsoluteDepth
-                && ((args.assemblyBadReadThreshold <= 0.0) || (float) totalAltBadReads / (float)totalAltReads <= args.assemblyBadReadThreshold);
+//    /**
+//     * Apply the filters to discovered alleles
+//     * - Does it have greater than snpThreshold fraction of bases support in the pileups?
+//     * - Does it have greater than pileupAbsoluteDepth number of reads supporting it?
+//     * - Are the reads supporting alts at the site greater than badReadThreshold percent "good"? //TODO evaluate if this is worth doing on a per-allele basis or otherwise
+//     */
+//    private static boolean failsAssemblyFilters(final PileupDetectionArgumentCollection args, boolean indel, final int numOfBases, final int totalAltBadReads, final int totalAltReads, final Map.Entry<?, Integer> maxAlt) {
+//        return ((float) maxAlt.getValue() / (float) numOfBases) > (indel ? args.indelThreshold : args.snpThreshold)
+//                && numOfBases >= args.pileupAbsoluteDepth
+//                && ((args.assemblyBadReadThreshold <= 0.0) || (float) totalAltBadReads / (float)totalAltReads <= args.assemblyBadReadThreshold);
+//    }
+
+    // TODO this is the most sketchy one... does a variant that fails pileup calling with only one bad read as support count as garbage by this tool...
+    public static boolean shouldFilterAssemblyVariant(final PileupDetectionArgumentCollection args, final VariantContext pileupVariant) {
+        //Validation that this VC is the correct object type
+        validatePileupVariant(pileupVariant);
+        final int pileupSupport = pileupVariant.getAttributeAsInt(PILEUP_ALLELE_SUPPORTING_READS, 0);
+        final int assemblyBadReads = pileupVariant.getAttributeAsInt(PILEUP_ALLELE_ASSEMBLY_BAD_READS_TAG, 0);
+        return ((args.assemblyBadReadThreshold <= 0.0) && (double) assemblyBadReads / (double) pileupSupport >= args.assemblyBadReadThreshold);
+//        return ((float) pileupSupport / (float) pileupVariant.getAttributeAsInt(PILEUP_ALLELE_TOTAL_READS, 0)) > (pileupVariant.isIndel() ? args.indelThreshold : args.snpThreshold)
+//                && pileupVariant.getAttributeAsInt(PILEUP_ALLELE_TOTAL_READS, 0) >= args.pileupAbsoluteDepth
+//                && ((args.assemblyBadReadThreshold <= 0.0) || (float) assemblyBadReads / (float)pileupSupport <= args.assemblyBadReadThreshold);
+
+    }
+
+    private static void validatePileupVariant(final VariantContext pileupVariant) {
+        Utils.nonNull(pileupVariant);
+        if (pileupVariant.getAlleles().size() != 2 ||
+                !pileupVariant.hasAttribute(PILEUP_ALLELE_ASSEMBLY_BAD_READS_TAG) ||
+                !pileupVariant.hasAttribute(PILEUP_ALLELE_SUPPORTING_READS) ||
+                !pileupVariant.hasAttribute(PILEUP_ALLELE_TOTAL_READS) ||
+                !pileupVariant.hasAttribute(PILEUP_ALLELE_BAD_READS_TAG)) {
+            throw new GATKException.ShouldNeverReachHereException("The supplied Variant Context is not a PileupVariantContext");
+        }
     }
 
     /**
@@ -285,6 +269,7 @@ public final class PileupBasedAlleles {
         if (args.assemblyBadReadThreshold <= 0.0) {
             return false;
         }
+        // TODO other checks?
         Utils.nonNull(read.getAttributeAsInteger(MISMATCH_BASES_PERCENTAGE_TAG));
         return (read.getAttributeAsInteger(MISMATCH_BASES_PERCENTAGE_TAG) / 1000.0) > args.assemblyBadReadEditDistance;
 
@@ -307,19 +292,18 @@ public final class PileupBasedAlleles {
 //        }
     }
 
-    private static void incrementInsertionCount(String insertion, Map<String, Integer> insertionCounts){
-        insertionCounts.put(insertion,
-                insertionCounts.getOrDefault(insertion,0) + 1);
+    // Helper methods to manage the badness counting arrays
+    private static void incrementInsertionCount(String insertion, Map<String, int[]> insertionCounts, boolean bad, boolean assemblybad){
+        int[] values = insertionCounts.computeIfAbsent(insertion, (i) -> new int[3] );
+        values[COUNT]+=1; values[BAD_COUNT]+=bad?1:0; values[ASSEMBLY_BAD_COUNT]+=assemblybad?1:0;
     }
-
-    private static void incrementDeletionCount(Integer deletion, Map<Integer, Integer> insertionCounts){
-        insertionCounts.put(deletion,
-                insertionCounts.getOrDefault(deletion,0) + 1);
+    private static void incrementDeletionCount(Integer deletion, Map<Integer, int[]> deletionCounts, boolean bad, boolean assemblybad){
+        int[] values =  deletionCounts.computeIfAbsent(deletion, (i) -> new int[3] );
+        values[COUNT]+=1; values[BAD_COUNT]+=bad?1:0; values[ASSEMBLY_BAD_COUNT]+=assemblybad?1:0;
     }
-
-    private static void incrementAltCount(byte base, Map<Byte, Integer> altCounts){
-        altCounts.put(base,
-                altCounts.getOrDefault(base,0) + 1);
+    private static void incrementAltCount(byte base, Map<Byte, int[]> altCounts, boolean bad, boolean assemblybad){
+        int[] values = altCounts.computeIfAbsent(base, (i) -> new int[3] );
+        values[COUNT]+=1; values[BAD_COUNT]+=bad?1:0; values[ASSEMBLY_BAD_COUNT]+=assemblybad?1:0;
     }
 
 

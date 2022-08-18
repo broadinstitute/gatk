@@ -1978,6 +1978,71 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         }
     }
 
+    @Test()
+    public void preRefactorResultTestThingDefaultData() throws Exception {
+        Utils.resetRandomGenerator();
+
+        final File output = createTempFile("testVCFModeIsConsistentWithPastResults", ".vcf");
+        final File expected = new File(TEST_FILES_DIR, "expected.pileupCaller.PreRefactor.DefaultData.gatk4.vcf");
+
+        final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
+
+        final String[] args = {
+                "-R",b37_reference_20_21,
+                "-I",NA12878_20_21_WGS_bam,
+                "-L","20:10000000-10100000",
+                "-O",outputPath,
+                "--pileup-detection","--pileup-detection-bad-read-tolerance","0.40","--pileup-detection-enable-indel-pileup-calling",
+                "-contamination","0.0 ",
+                "-G","StandardAnnotation","-G","StandardHCAnnotation",
+                "--dragen-mode",
+                "--disable-spanning-event-genotyping",
+                "--debug-genotyper-output", "/Users/emeryj/hellbender/gatk/testDebugOutputStream.txt",
+                "--dragstr-params-path","/Users/emeryj/hellbender/DRAGENMatlab/PILEUPPDHMMWORK/challengeBamRuns/gatkPlayground/HG002_challenge.bam.dragstr",
+                "-GQB","10","-GQB","20","-GQB","30","-GQB","40","-GQB","50","-GQB","60","-GQB","70","-GQB","80","-GQB","90",
+        };
+
+        runCommandLine(args);
+
+        // Test for an exact match against past results
+        if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
+            IntegrationTestSpec.assertEqualTextFiles(output, expected);
+        }
+    }
+
+    @Test()
+    public void preRefactorResultTestThing() throws Exception {
+        Utils.resetRandomGenerator();
+
+        final File output = createTempFile("testVCFModeIsConsistentWithPastResults", ".vcf");
+        final File expected = new File(TEST_FILES_DIR, "expected.pileupCaller.PreRefactor.remoteData.gatk4.vcf");
+
+        final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
+
+        final String[] args = {
+                "-R","gs://gcp-public-data--broad-references/hg38/v0/dragen_reference/Homo_sapiens_assembly38_masked.fasta",
+                "-I","gs://fc-971fd540-210c-4e5a-87ce-d3f8c91c7557/4a7a7960-9271-4e78-bf18-971c4394e752/WholeGenomeGermlineSingleSample/c7084036-2d6b-415d-8d7c-58008ef9e7d4/call-UnmappedBamToAlignedBam/UnmappedBamToAlignedBam/53564b5f-c104-4c3b-a568-4732574e9124/call-SortSampleBam/HG002_rep1.aligned.duplicate_marked.sorted.bam",
+                "-L","chr20:10000000-10300000",
+                "-O",outputPath,
+                "--pileup-detection","--pileup-detection-bad-read-tolerance","0.40","--pileup-detection-enable-indel-pileup-calling",
+                "-contamination","0.0 ",
+                "-G","StandardAnnotation","-G","StandardHCAnnotation",
+                "--dragen-mode",
+                "--disable-spanning-event-genotyping",
+                "--debug-genotyper-output", "/Users/emeryj/hellbender/gatk/testDebugOutputStream.txt",
+                "--dragstr-params-path","/Users/emeryj/hellbender/DRAGENMatlab/PILEUPPDHMMWORK/challengeBamRuns/gatkPlayground/HG002_challenge.bam.dragstr",
+                "-GQB","10","-GQB","20","-GQB","30","-GQB","40","-GQB","50","-GQB","60","-GQB","70","-GQB","80","-GQB","90",
+        };
+
+        runCommandLine(args);
+
+        // Test for an exact match against past results
+        if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
+            IntegrationTestSpec.assertEqualTextFiles(output, expected);
+        }
+    }
+
+
 
     @Test()
     public void testThing() throws Exception {
@@ -1991,15 +2056,48 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         final String[] args = {
                         "-R","gs://gcp-public-data--broad-references/hg38/v0/dragen_reference/Homo_sapiens_assembly38_masked.fasta",
                         "-I","gs://fc-971fd540-210c-4e5a-87ce-d3f8c91c7557/4a7a7960-9271-4e78-bf18-971c4394e752/WholeGenomeGermlineSingleSample/c7084036-2d6b-415d-8d7c-58008ef9e7d4/call-UnmappedBamToAlignedBam/UnmappedBamToAlignedBam/53564b5f-c104-4c3b-a568-4732574e9124/call-SortSampleBam/HG002_rep1.aligned.duplicate_marked.sorted.bam",
-                        "-L","chr1:39979346-39979785",
+                        "-L","chr1:40,298,405-40,298,645",
                         "-O",outputPath,
                         "--pileup-detection","--pileup-detection-bad-read-tolerance","0.40","--pileup-detection-enable-indel-pileup-calling",
                         "-contamination","0.0 ",
                         "-G","StandardAnnotation","-G","StandardHCAnnotation",
                         "--dragen-mode",
                         "--disable-spanning-event-genotyping",
+                        "--debug-genotyper-output", "/Users/emeryj/hellbender/gatk/testDebugOutputStream.txt",
                         "--dragstr-params-path","/Users/emeryj/hellbender/DRAGENMatlab/PILEUPPDHMMWORK/challengeBamRuns/gatkPlayground/HG002_challenge.bam.dragstr",
                         "-GQB","10","-GQB","20","-GQB","30","-GQB","40","-GQB","50","-GQB","60","-GQB","70","-GQB","80","-GQB","90",
+        };
+
+        runCommandLine(args);
+
+        // Test for an exact match against past results
+        if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
+            IntegrationTestSpec.assertEqualTextFiles(output, expected);
+        }
+    }
+
+    @Test()
+    public void testThing2() throws Exception {
+        Utils.resetRandomGenerator();
+
+        final File output = createTempFile("testVCFModeIsConsistentWithPastResults", ".vcf");
+        final File expected = new File(TEST_FILES_DIR, "expected.pileupCallerDRAGEN.gatk4.vcf");
+
+        final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
+
+        final String[] args = {
+                "-R","gs://gcp-public-data--broad-references/hg38/v0/dragen_reference/Homo_sapiens_assembly38_masked.fasta",
+                "-I","gs://fc-971fd540-210c-4e5a-87ce-d3f8c91c7557/4a7a7960-9271-4e78-bf18-971c4394e752/WholeGenomeGermlineSingleSample/c7084036-2d6b-415d-8d7c-58008ef9e7d4/call-UnmappedBamToAlignedBam/UnmappedBamToAlignedBam/53564b5f-c104-4c3b-a568-4732574e9124/call-SortSampleBam/HG002_rep1.aligned.duplicate_marked.sorted.bam",
+                "-L","chr1:67,479,743-67,479,983",
+                "-O",outputPath,
+                "--pileup-detection","--pileup-detection-bad-read-tolerance","0.40","--pileup-detection-enable-indel-pileup-calling",
+                "-contamination","0.0 ",
+                "-G","StandardAnnotation","-G","StandardHCAnnotation",
+                "--dragen-mode",
+                "--disable-spanning-event-genotyping",
+                "--debug-genotyper-output", "/Users/emeryj/hellbender/gatk/testDebugOutputStream.txt",
+                "--dragstr-params-path","/Users/emeryj/hellbender/DRAGENMatlab/PILEUPPDHMMWORK/challengeBamRuns/gatkPlayground/HG002_challenge.bam.dragstr",
+                "-GQB","10","-GQB","20","-GQB","30","-GQB","40","-GQB","50","-GQB","60","-GQB","70","-GQB","80","-GQB","90",
         };
 
         runCommandLine(args);

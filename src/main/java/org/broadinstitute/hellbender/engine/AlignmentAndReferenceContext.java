@@ -7,6 +7,7 @@ public class AlignmentAndReferenceContext {
 
     private final AlignmentContext alignmentContext;
     private final ReferenceContext referenceContext;
+    private double activityScore = 0.0;
 
     public AlignmentAndReferenceContext(final AlignmentContext alignmentContext,
                                         final ReferenceContext referenceContext) {
@@ -28,5 +29,13 @@ public class AlignmentAndReferenceContext {
      */
     public ReferenceContext getReferenceContext() {
         return referenceContext;
+    }
+
+    public double getActivityScore() {
+        return activityScore;
+    }
+
+    public void setActivityScore(double activityScore) {
+        this.activityScore = activityScore;
     }
 }

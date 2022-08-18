@@ -137,13 +137,19 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
             final SimpleInterval pileupInterval = new SimpleInterval(pileup);
             final ReferenceContext pileupRefContext = new ReferenceContext(reference, pileupInterval);
             final FeatureContext pileupFeatureContext = new FeatureContext(features, pileupInterval);
-            if (pendingAlignmentData!=null) {
-                pendingAlignmentData.add(new AlignmentAndReferenceContext(pileup, pileupRefContext));
-            }
+
 
             final ActivityProfileState profile = evaluator.isActive(pileup, pileupRefContext, pileupFeatureContext);
+            //TODO pull out the qual score for later
             logger.debug(() -> profile.toString());
+//            if (profile.isActiveProb() > 0.001) System.out.println(profile.toString());
             activityProfile.add(profile);
+
+            if (pendingAlignmentData!=null) {
+                AlignmentAndReferenceContext alignmentAndRefContext = new AlignmentAndReferenceContext(pileup, pileupRefContext);
+                alignmentAndRefContext.setActivityScore(profile.getOriginalActiveProb());
+                pendingAlignmentData.add(alignmentAndRefContext);
+            }
 
             // A pending region only becomes ready once our locus iterator has advanced beyond the end of its extended span
             // (this ensures that we've loaded all reads that belong in the new region)
@@ -180,6 +186,8 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
             fillNextAssemblyRegionWithReads(nextRegion);
             // fillnextessemblyregion; check you are on correct chr; if alignment data is not in the assembly region then pop it
             fillNextAssemblyRegionWithPileupData(nextRegion);
+            //TODO this is a hack
+//            fillNextAssemblyRegionWith(activityProfile.)
         }
 
         return nextRegion;

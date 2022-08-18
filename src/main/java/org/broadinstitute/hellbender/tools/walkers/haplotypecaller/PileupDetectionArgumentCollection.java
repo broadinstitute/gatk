@@ -17,7 +17,7 @@ public final class PileupDetectionArgumentCollection {
     public static final String PILEUP_DETECTION_FILTER_COVERAGE_LONG_NAME = "pileup-detection-filter-coverage-threshold";
 
     //TODO we currently don't see the same threshold from active region determination...
-    public static final String PILEUP_DETECTION_ACETIVE_REGION_LOD_THRESHOLD_LONG_NAME = "pileup-detection-active-region-lod-threshold";
+    public static final String PILEUP_DETECTION_ACTIVE_REGION_LOD_THRESHOLD_LONG_NAME = "pileup-detection-active-region-phred-threshold";
 
     // Arguments related to DRAGEN heuristics related to "read badness" intended to filter out false positives from the pileup detection code
     public static final String PILEUP_DETECTION_BAD_READ_RATIO_LONG_NAME = "pileup-detection-bad-read-tolerance";
@@ -50,6 +50,11 @@ public final class PileupDetectionArgumentCollection {
     @Hidden
     @Argument(fullName= PILEUP_DETECTION_ENABLE_INDELS, doc = "Pileup Detection: If enabled, pileup detection code will attempt to detect indels missing from assembly. (Requires '--"+PILEUP_DETECTION_LONG_NAME+"' argument)", optional = true)
     public boolean detectIndels = false;
+
+    @Advanced
+    @Hidden
+    @Argument(fullName= PILEUP_DETECTION_ACTIVE_REGION_LOD_THRESHOLD_LONG_NAME, doc = "Pileup Detection: This argument sets the minimum fast genotyper phred score necessary in active region determination to find a pileup variant. (Requires '--"+PILEUP_DETECTION_LONG_NAME+"'` argument)", optional = true)
+    public double activeRegionPhredThreshold = 4.0;
 
     @Advanced
     @Hidden
@@ -107,7 +112,7 @@ public final class PileupDetectionArgumentCollection {
     @Advanced
     @Hidden
     @Argument(fullName= PILEUP_DETECTION_FILTER_ASSEMBLY_HAPS_THRESHOLD, doc = "If enabled (set to non-zero), will apply the \"badness\" filter to compatable assembled haplotypes.", optional = true)
-    public double assemblyBadReadThreshold = 0.0;
+    public double assemblyBadReadThreshold = 0.4;
     @Hidden
     @Argument(fullName= PILEUP_DETECTION_EDIT_DISTANCE_BADNESS_FOR_ASSEMBLY_LONG_NAME, doc = "Pileup Detection: Reject alt reads with greater than this fraction of mismatching bases from the reference (proxied using the NM tag). (Requires '--"+PILEUP_DETECTION_LONG_NAME+"' argument)", optional = true)
     public double assemblyBadReadEditDistance = 0.12;

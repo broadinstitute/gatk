@@ -575,7 +575,12 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             isActiveProb = vcOut == null ? 0.0 : QualityUtils.qualToProb(vcOut.getPhredScaledQual());
         }
 
-        return new ActivityProfileState(ref.getInterval(), isActiveProb, averageHQSoftClips.mean() > AVERAGE_HQ_SOFTCLIPS_HQ_BASES_THRESHOLD ? ActivityProfileState.Type.HIGH_QUALITY_SOFT_CLIPS : ActivityProfileState.Type.NONE, averageHQSoftClips.mean() );
+        //TODO this is some garbage...
+        ActivityProfileState output = new ActivityProfileState(ref.getInterval(), isActiveProb, averageHQSoftClips.mean() > AVERAGE_HQ_SOFTCLIPS_HQ_BASES_THRESHOLD ? ActivityProfileState.Type.HIGH_QUALITY_SOFT_CLIPS : ActivityProfileState.Type.NONE, averageHQSoftClips.mean());
+        double[] gts = genotypes.get(0).getLikelihoods().getAsVector();
+        int maxElementIndex = MathUtils.maxElementIndex(gts);
+        output.setOriginalActiveProb(gts[maxElementIndex] - gts[0]);
+        return output;
 
     }
 
@@ -628,7 +633,7 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             }
         }
 
-        Tuple<List<VariantContext>, List<VariantContext>> forcedPileupAlleles = new Tuple<>(Collections.emptyList(),Collections.emptyList());
+        List<VariantContext> forcedPileupAlleles = Collections.emptyList();
         if(hcArgs.pileupDetectionArgs.usePileupDetection){
             forcedPileupAlleles = PileupBasedAlleles.getPileupVariantContexts(region.getAlignmentData(), hcArgs.pileupDetectionArgs, readsHeader);
         }
