@@ -28,7 +28,7 @@ workflow GvsImportGenomes {
   if ((num_samples > max_auto_batch_size) && !(defined(load_data_batch_size))) {
     call Utils.TerminateWorkflow as DieDueToTooManySamplesWithoutExplicitLoadDataBatchSize {
       input:
-        message = "Importing " + num_samples + " samples but `load_data_batch_size` not explicitly specified; limit for auto batch-sizing is " + max_auto_batch_size + " samples."
+        message = "Importing " + num_samples + " samples but 'load_data_batch_size' not explicitly specified; limit for auto batch-sizing is " + max_auto_batch_size + " samples."
     }
   }
 
@@ -56,8 +56,8 @@ workflow GvsImportGenomes {
   if ((input_length != length(external_sample_names)) || (input_indexes_length != length(external_sample_names))) {
     call Utils.TerminateWorkflow as DieDueToMismatchedVcfAndIndexLengths {
       input:
-        message = "The lengths of workflow inputs `external_sample_names` (" + length(external_sample_names) +
-                  "), `input_vcfs` (" + input_length + ") and `input_vcf_indexes` (" + input_indexes_length + ") should be the same.\n\n" +
+        message = "The lengths of workflow inputs 'external_sample_names' (" + length(external_sample_names) +
+                  "), 'input_vcfs' (" + input_length + ") and 'input_vcf_indexes' (" + input_indexes_length + ") should be the same.\n\n" +
                   "If any of these counts are zero an incorrect or non-existent attribute may have been referenced."
     }
   }
