@@ -70,15 +70,11 @@ task GetMaxSampleId {
   }
 
   command <<<
-    set -e
+    set -o errexit -o nounset -o xtrace -o pipefail
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
-    bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false \
-    'SELECT IF(MAX(sample_id) IS NOT NULL, MAX(sample_id), 0) AS max_sample_id FROM `~{dataset_name}.alt_allele`' > num_rows.csv
-
-    NUMROWS=$(python3 -c "csvObj=open('num_rows.csv','r');csvContents=csvObj.read();print(csvContents.split('\n')[1]);")
-
-    [[ $NUMROWS =~ ^[0-9]+$ ]] && echo $NUMROWS || exit 1
+    bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false --print_header=false \
+    'SELECT IFNULL(MAX(sample_id), 0) AS max_sample_id FROM `~{dataset_name}.alt_allele`'
   >>>
 
   output {
@@ -86,7 +82,7 @@ task GetMaxSampleId {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -115,20 +111,17 @@ task GetVetTableNames {
     # if the maximum sample_id value is evenly divisible by 4000, then max_sample_id / 4000 will
     # give us the right vet_* table to start with; otherwise, we need to start with the next table
     if [ $((~{max_sample_id} % 4000)) -eq 0 ]; then
-      echo $((~{max_sample_id} / 4000)) > min_vat_table_num.txt
+      min_vat_table_num=$((~{max_sample_id} / 4000))
     else
-      echo $(((~{max_sample_id} / 4000) + 1)) > min_vat_table_num.txt
+      min_vat_table_num=$(((~{max_sample_id} / 4000) + 1))
     fi
 
-    # use the number calculated from the above math to get the vet_* table names grab data from
-    bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false ~{bq_labels} \
-    "SELECT table_name FROM \`~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES\` WHERE table_name LIKE 'vet_%' AND CAST(SUBSTRING(table_name, 5) AS INT64) >= $(cat min_vat_table_num.txt)" > vet_tables.csv
-
-    # remove the header row from the CSV file
-    sed -i 1d vet_tables.csv
+    # use the number calculated from the above math to get the vet_* table names to grab data from
+    bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false ~{bq_labels} --print_header=false \
+    "SELECT table_name FROM \`~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES\` WHERE table_name LIKE 'vet_%' AND CAST(SUBSTRING(table_name, length('vet_') + 1) AS INT64) >= ${min_vat_table_num}" > vet_tables.csv
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -188,7 +181,7 @@ task CreateAltAlleleTable {
 
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     cpu: 1
