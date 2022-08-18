@@ -24,11 +24,25 @@ apply from: "testsettings.gradle"
 
 // This method unpacks the classes from a jar. This is necessary because the version of testNG we use cannot discover test
 // classes from fram a .jar file, so we must unpackage them in order to run the tests.
-task unpackTestJar(type: Copy){
+task unpackTestJars(type: Copy){
     String testClassesJar = "$System.env.TEST_JAR"
+    String testDependencyJar = "$System.env.TEST_DEPENDENCY_JAR"
+    String gatkJar = "$System.env.GATK_JAR"
     String testClassesDir = "$System.env.CP_DIR"
 
     description = "Unpackage classes from 'System.env.TEST_JAR' into 'System.env.CP_DIR'"
+
+    // put all of the classes required into a single dir, and use the individual files as the
+    // classpath to prevent nter-module access exceptions on Java 17
+    if (gatkJar != "null") {
+        from zipTree(gatkJar)
+        into testClassesDir
+    }
+
+    if (testDependencyJar != "null") {
+        from zipTree(testDependencyJar)
+        into testClassesDir
+    }
 
     if (testClassesJar != "null"){
         from zipTree(testClassesJar)
@@ -65,7 +79,7 @@ task testOnPackagedReleaseJar(type: Test){
 
     description = "A test task intended to be run on the release jar inside the docker image of gatk with dependencies provided as volumes"
 
-    dependsOn unpackTestJar
+    dependsOn unpackTestJars
 
     doFirst {
         if (testDependencyJar == "null") {
@@ -81,9 +95,19 @@ task testOnPackagedReleaseJar(type: Test){
         classpath.each {println it}
     }
 
-    classpath = files( gatkJar, testDependencyJar, testClassesJar)
+    classpath = files(testClassesUnpacked)
     testClassesDirs = files(testClassesUnpacked)
 }
+
+//task fatTestJar(type: Jar) {
+//    manifest {
+//        attributes 'Main-Class': 'org.broadinstitue.hellbender.Main'
+//    }
+//    setArchivesBaseName('test-uber-jar')
+//    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+//    from { configurations.testClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+//    with jar
+//}
 
 // Task intended to collect coverage data from testOnPackagedReleaseJar executed inside the docker image
 // the classpath for these tests is set at execution time for testOnPackagedReleaseJar
