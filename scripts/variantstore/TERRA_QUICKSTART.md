@@ -52,7 +52,7 @@ This step loads data into the ALT_ALLELE table from the `vet_*` tables.
 
 This workflow does not use the Terra data model to run, so be sure to select `Run workflow with inputs defined by file paths`.
 
-This is done by running the `GvsCreateAltAllele` workflow with the following parameters:
+This is done by running the `GvsPopulateAltAllele` workflow with the following parameters:
 
 | Parameter         | Description |
 | ----------------- | ----------- |

@@ -2,7 +2,7 @@ version 1.0
 
 import "GvsUtils.wdl" as Utils
 
-workflow GvsCreateAltAllele {
+workflow GvsPopulateAltAllele {
   input {
     Boolean go = true
     String dataset_name
