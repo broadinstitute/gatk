@@ -98,6 +98,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     public static final String ALL_SITES_SHORT_NAME = "all-sites";
     public static final String KEEP_COMBINED_LONG_NAME = "keep-combined-raw-annotations";
     public static final String KEEP_COMBINED_SHORT_NAME = "keep-combined";
+    public static final String KEEP_RAW_GT_COUNT_LONG_NAME = "keep-raw-gt-count-annotation";
     public static final String FORCE_OUTPUT_INTERVALS_NAME = "force-output-intervals";
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -144,6 +145,12 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
      */
     @Argument(fullName=KEEP_COMBINED_LONG_NAME, shortName = KEEP_COMBINED_SHORT_NAME, doc = "If specified, keep the combined raw annotations")
     protected boolean keepCombined = false;
+
+    /**
+     * If specified, keep the RAW_GT_COUNT annotation, even if raw annotations in general are not kept.
+     */
+    @Argument(fullName=KEEP_RAW_GT_COUNT_LONG_NAME, doc="If specified, keep the RAW_GT_COUNT annotation, even if raw annotations in general are not kept.")
+    protected boolean keepRawGtCount = false;
 
     @ArgumentCollection
     private GenotypeCalculationArgumentCollection genotypeArgs = new GenotypeCalculationArgumentCollection();
@@ -262,7 +269,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
                 Collections.emptyList();
 
         Collection<Annotation>  variantAnnotations = makeVariantAnnotations();
-        annotationEngine = new VariantAnnotatorEngine(variantAnnotations, dbsnp.dbsnp, Collections.emptyList(), false, keepCombined);
+        annotationEngine = new VariantAnnotatorEngine(variantAnnotations, dbsnp.dbsnp, Collections.emptyList(), false, keepCombined, keepRawGtCount);
 
         merger = new ReferenceConfidenceVariantContextMerger(annotationEngine, getHeaderForVariants(), somaticInput, false, true);
 

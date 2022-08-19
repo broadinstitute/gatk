@@ -930,7 +930,8 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         args.addReference(b37_reference_20_21)
                 .addVCF(reblockedGVCF)
                 .addOutput(output)
-                .add("keep-combined-raw-annotations", true)
+                .add(GenotypeGVCFs.KEEP_COMBINED_LONG_NAME, false)
+                .add(GenotypeGVCFs.KEEP_RAW_GT_COUNT_LONG_NAME, true)
                 .add("A", "RawGtCount");
         runCommandLine(args);
 
@@ -942,6 +943,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
                 Assert.assertEquals(rawGtCount.get(0), ".");
                 Assert.assertEquals(rawGtCount.get(1), "2");
                 Assert.assertEquals(rawGtCount.get(2), "0");
+                Assert.assertFalse(vc.getAttributes().containsKey(GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY));
             }
 
         }
