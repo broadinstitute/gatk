@@ -101,9 +101,9 @@ public final class PileupBasedAlleles {
             }
 
             // Evaluate the detected SNP alleles for this site
-            List<Allele> alleles = new ArrayList<>();
-            alleles.add(Allele.create(referenceContext.getBase(), true));
             for (Map.Entry<Byte, int[]> allele : altCounts.entrySet()) {
+                List<Allele> alleles = new ArrayList<>();
+                alleles.add(Allele.create(referenceContext.getBase(), true));
                 alleles.add(Allele.create(allele.getKey()));
                 final VariantContextBuilder pileupSNP = new VariantContextBuilder("pileup", alignmentContext.getContig(), alignmentContext.getStart(), alignmentContext.getEnd(), alleles);
                 pileupVariantList.add(pileupSNP
@@ -198,7 +198,7 @@ public final class PileupBasedAlleles {
                 !pileupVariant.hasAttribute(PILEUP_ALLELE_SUPPORTING_READS) ||
                 !pileupVariant.hasAttribute(PILEUP_ALLELE_TOTAL_READS) ||
                 !pileupVariant.hasAttribute(PILEUP_ALLELE_BAD_READS_TAG)) {
-            throw new GATKException.ShouldNeverReachHereException("The supplied Variant Context is not a PileupVariantContext");
+            throw new GATKException.ShouldNeverReachHereException("The supplied Variant Context "+pileupVariant.toString()+" is not a PileupVariantContext");
         }
     }
 
