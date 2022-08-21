@@ -214,76 +214,20 @@ task ExtractFromSuperpartitionedTables {
 task GenerateHailScript {
     input {
         String avro_prefix
-        String slashed_avro_prefix = avro_prefix + "/"
     }
+
+    String slashed_avro_prefix = avro_prefix + "/"
+
     command <<<
         gsutil ls -r "${avro_prefix}" | grep '\.avro$' | sed 's!~{slashed_avro_prefix}!!' > avro_files.out
 
-        python <<FIN
-            print """
-            import hail as hl
-
-            rg38 = hl.get_reference('GRCh38')
-            rg38.add_sequence(
-                'gs://hail-common/references/Homo_sapiens_assembly38.fasta.gz',
-                'gs://hail-common/references/Homo_sapiens_assembly38.fasta.fai'
-            )
-
-            hl.import_gvs(
-            """
-
-            def superpartition(name, files):
-                for sp in
-
-            f = open('avro_files.out', 'r')
-            files=defaultdict(list)
-            for avro in f.readlines():
-                parts=avro.split('/')
-                if len(parts) == 1:
-                    parts[part[0]].append(avro)
-                else:
-                    m=re.search(r"^(?P<kind>[^/]+)/(?P=kind)_(?P<super>[^/]+)/.*", avro)
-                    if not m:
-                        raise ValueError(f"'{avro}' does not look like a path to a superpartitioned Avro file!")
-                    kind=m.group('kind')
-                    superpartition=m.group('super')
-                    zero_based_index=int(superpartition) - 1
-                    if len(files[kind]) == zero_based_index:
-                        files[kind].append([])
-                    files[kind][zero_based_index].append(avro)
-
-
-        FIN
-
-
-            refs=[
-                $ref_ranges
-            ],
-            vets=[
-                $vets
-            ],
-            sample_mapping=[$sample_mapping],
-            site_filtering=[$site_filtering],
-            vqsr_filtering=[$vqsr_filtering],
-            vqsr_tranches=[$vqsr_tranches],
-            final_path=$final_vds_path,
-            tmp_dir=$temp_vds_path,
-            reference_genome=rg38,
-        )
-
-        vds = hl.vds.read_vds($final_vds_path)
-
-        mt = hl.vds.to_dense_mt(vds)
-        fail_case = 'FAIL'
-        mt = mt.annotate_entries(FT=hl.if_else(mt.FT, 'PASS', fail_case))
-        hl.export_vcf(mt, $final_vcf_path)
-        FIN
+        python /app/generate_hail_script.py avro_files.out
     >>>
+
     output {
         Boolean done = true
     }
-
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:latest"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:latest"
     }
 }
