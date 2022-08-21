@@ -4,18 +4,14 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.tuple.Triple;
-import org.apache.commons.math3.util.CombinatoricsUtils;
 import org.apache.commons.math3.util.FastMath;
-import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AssemblyComplexity;
-import org.broadinstitute.hellbender.tools.walkers.annotator.FeaturizedReadSets;
 import org.broadinstitute.hellbender.tools.walkers.annotator.ReferenceBases;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.Mutect2FilteringEngine;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.MathUtils;
-import org.broadinstitute.hellbender.utils.NaturalLogUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
@@ -45,9 +41,6 @@ public class Mutect3DatasetEngine implements AutoCloseable {
     private enum Label {
         ARTIFACT, VARIANT, UNLABELED, IGNORE
     }
-
-    // number of features for each vectorized read
-    private static final int FEATURES_PER_READ = FeaturizedReadSets.FEATURES_PER_READ;
 
     // number of additional variant features for assembly complexity, reference context
     private static final int NUM_EXTRA_FEATURES = 9;
@@ -108,7 +101,8 @@ public class Mutect3DatasetEngine implements AutoCloseable {
     public void addData(final ReferenceContext ref, final VariantContext vc, Optional<List<VariantContext>> truthVCs,
                         final AlleleLikelihoods<GATKRead, Allele> likelihoods,
                         final AlleleLikelihoods<Fragment, Haplotype> logFragmentLikelihoods,
-                        final AlleleLikelihoods<Fragment, Allele> logFragmentAlleleLikelihoods) {
+                        final AlleleLikelihoods<Fragment, Allele> logFragmentAlleleLikelihoods,
+                        final M2ArgumentCollection.Mutect3DatasetMode mutect3DatasetMode) {
         final String refBases = ReferenceBases.annotate(ref, vc);
         final String refAllele = vc.getReference().getBaseString();
         final String contig = vc.getContig();
@@ -194,8 +188,10 @@ public class Mutect3DatasetEngine implements AutoCloseable {
 
         // TODO: for now we don't really need normal reads
         // note that the following use the VC's allele order, not necessarily the likelihoods' allele order
-        final List<List<List<Integer>>> normalReadVectorsByAllele =  FeaturizedReadSets.getReadVectors(vc, normalSamples, likelihoods, logFragmentLikelihoods, maxRefCount, maxAltCount);
-        final List<List<List<Integer>>> tumorReadVectorsByAllele =  FeaturizedReadSets.getReadVectors(vc, tumorSamples, likelihoods, logFragmentLikelihoods, maxRefCount, maxAltCount, altDownsampleMap);
+        final List<List<List<Integer>>> normalReadVectorsByAllele =  FeaturizedReadSets.getReadVectors(vc, normalSamples,
+                likelihoods, logFragmentLikelihoods, maxRefCount, maxAltCount, mutect3DatasetMode);
+        final List<List<List<Integer>>> tumorReadVectorsByAllele =  FeaturizedReadSets.getReadVectors(vc, tumorSamples,
+                likelihoods, logFragmentLikelihoods, maxRefCount, maxAltCount, altDownsampleMap, mutect3DatasetMode);
 
         // ref and alt reads have already been downsampled by the read featurizer
         final List<List<Integer>> tumorRefReads = tumorReadVectorsByAllele.get(0);
@@ -227,13 +223,18 @@ public class Mutect3DatasetEngine implements AutoCloseable {
             tumorAltReads.forEach(r -> printWriter.println(integerString(r)));
             //normalRefReads.forEach(r -> printWriter.print(numberString(r)));
             //normalAltReads.forEach(r -> printWriter.print(numberString(r)));
-            printWriter.printf("%d %d %d %d%n", tumorDepth, tumorADs[n+1], normalDepth, normalADs[n+1]);  // pre-downsampling counts for normal artifact model
+            printWriter.printf("%d %d %d %d%n", tumorDepth, tumorADs[n+1], normalDepth, normalADs[n+1]);  // pre-downsampling counts
             // this is approximately the likelihood that these particular reads are alt given sequencing error, excluding
             // the depth C N_alt combinatorial factor that is common to all likelihoods in M3
-            // basicaly, it's the TLOD with a correction for the marginalized flat prior from M2
+            // basically, it's the TLOD with a correction for the marginalized flat prior from M2
             final double tlod = vc.getAttributeAsDoubleList("TLOD", 0).get(n);
             final double seqErrorLogLikelihood = -MathUtils.log10ToLog(tlod) - Math.log(tumorDepth + 1);
-            printWriter.printf("%.3f%n", seqErrorLogLikelihood);  // pre-downsampling counts for normal artifact model
+            printWriter.printf("%.3f%n", seqErrorLogLikelihood);
+
+            // and do the same for the normal
+            final double nalod = normalSamples.isEmpty() ? 0 : vc.getAttributeAsDoubleList("NALOD", 0).get(n);
+            final double normalSeqErrorLogLikelihood = -MathUtils.log10ToLog(nalod) - Math.log(normalDepth + 1);
+            printWriter.printf("%.3f%n", normalSeqErrorLogLikelihood);
         }
     }
 
