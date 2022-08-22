@@ -33,7 +33,7 @@ task unpackTestJars(type: Copy){
     description = "Unpackage classes from 'System.env.TEST_JAR' into 'System.env.CP_DIR'"
 
     // put all of the classes required into a single dir, and use the individual files as the
-    // classpath to prevent nter-module access exceptions on Java 17
+    // classpath to prevent inter-module access exceptions on Java 17
     if (gatkJar != "null") {
         from zipTree(gatkJar)
         into testClassesDir
