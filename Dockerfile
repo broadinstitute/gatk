@@ -89,13 +89,6 @@ RUN mkdir /jars
 RUN mkdir .gradle
 
 WORKDIR /gatk
-# pre-create (and report permissions on testclasses)
-RUN ls -la /
-RUN ls -la /gatk
-RUN mkdir testClasses
-RUN ls -la .
-RUN chmod -R 777 /gatk
-RUN ls -la .
 
 # Create a simple unit test runner
 ENV CI true
@@ -106,12 +99,12 @@ RUN echo "source activate gatk" > /root/run_unit_tests.sh && \
     echo "export GATK_JAR=$( find /gatk -name "gatk*local.jar" )" >> /root/run_unit_tests.sh && \
     echo "export GATK_LAUNCH_SCRIPT=/gatk/gatk" >> /root/run_unit_tests.sh && \
     echo "mkdir /gatk/srcdir" >> /root/run_unit_tests.sh && \
-    echo "mkdir /gatk/testClasses" >> /root/run_unit_tests.sh && \
-    echo "chmod 766 /gatk/testClasses" >> /root/run_unit_tests.sh && \
+    echo "mkdir /root/testClasses" >> /root/run_unit_tests.sh && \
+    echo "chmod 777 /gatk/testClasses" >> /root/run_unit_tests.sh && \
     echo "cp -rp /gatkCloneMountPoint/src/main/java/* /gatk/srcdir" >> /root/run_unit_tests.sh && \
     echo "export SOURCE_DIR=/gatk/srcdir" >> /root/run_unit_tests.sh && \
     echo "export GRADLE_OPTS=\"-Xmx1024m -Dorg.gradle.daemon=false\"" >> /root/run_unit_tests.sh && \
-    echo "export CP_DIR=/gatk/testClasses" >> /root/run_unit_tests.sh && \
+    echo "export CP_DIR=/root/testClasses" >> /root/run_unit_tests.sh && \
     echo "ln -s /gatkCloneMountPoint/src/ /gatkCloneMountPoint/scripts/docker/src" >> /root/run_unit_tests.sh && \
     echo "ln -s /gatkCloneMountPoint/build/ /gatkCloneMountPoint/scripts/docker/build" >> /root/run_unit_tests.sh && \
     echo "cd /gatk/ && /gatkCloneMountPoint/gradlew -b /gatkCloneMountPoint/dockertest.gradle testOnPackagedReleaseJar jacocoTestReportOnPackagedReleaseJar -a -p /gatkCloneMountPoint" >> /root/run_unit_tests.sh
