@@ -94,7 +94,7 @@ RUN ls -la /
 RUN ls -la /gatk
 RUN mkdir testClasses
 RUN ls -la .
-RUN chmod 777 testclasses
+RUN chmod -R 777 /gatk
 RUN ls -la .
 
 # Create a simple unit test runner
