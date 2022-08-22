@@ -85,7 +85,7 @@ task CountSamples {
         Int num_samples = read_int(stdout())
     }
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_08_01"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_08_22"
     }
 }
 
@@ -152,7 +152,7 @@ task ExtractFromNonSuperpartitionedTables {
     }
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:latest"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
     }
 }
 
@@ -203,6 +203,6 @@ task ExtractFromSuperpartitionedTables {
     }
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:latest"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
     }
 }
