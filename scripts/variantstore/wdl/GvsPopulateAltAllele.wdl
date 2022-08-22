@@ -55,8 +55,7 @@ workflow GvsPopulateAltAllele {
   }
 
   output {
-    Array[String] vet_tables_loaded = PopulateAltAlleleTable.done
-    Boolean done = true
+    Boolean done = PopulateAltAlleleTable.done[0]
   }
 }
 
@@ -221,20 +220,21 @@ task PopulateAltAlleleTable {
     String call_set_identifier
     Int max_sample_id
 
+    String? withdrawn_cutoff_date
     String last_modified_timestamp
   }
-  Array[String] vet_table_names = read_lines(vet_table_names_file)
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
+
+  Array[String] vet_table_names = read_lines(vet_table_names_file)
 
   command <<<
     set -o errexit -o nounset -o xtrace -o pipefail
 
     VET_TABLES_ARRAY=(~{sep=" " vet_table_names})
 
-    for i in "${!VET_TABLES_ARRAY[@]}"; do
-      vet_table="${VET_TABLES_ARRAY[$i]}"
+    for vet_table in "${VET_TABLES_ARRAY[@]}"; do
       python3 /app/populate_alt_allele_table.py \
         --call_set_identifier ~{call_set_identifier} \
         --query_project ~{project_id} \
@@ -251,6 +251,6 @@ task PopulateAltAlleleTable {
   }
 
   output {
-    String done = "~{sep=' ' vet_table_names}"
+    String done = true
   }
 }

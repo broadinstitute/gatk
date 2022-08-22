@@ -10,7 +10,8 @@ import utils
 client = None
 
 
-def populate_alt_allele_table(call_set_identifier, query_project, vet_table_name, fq_dataset, max_sample_id):
+def populate_alt_allele_table(call_set_identifier, query_project, vet_table_name, fq_dataset, max_sample_id,
+                              withdrawn_cutoff_date):
     global client
     # add labels for DSP Cloud Cost Control Labeling and Reporting to default_config
     default_config = QueryJobConfig(priority="INTERACTIVE", use_query_cache=True,
@@ -19,14 +20,31 @@ def populate_alt_allele_table(call_set_identifier, query_project, vet_table_name
     client = bigquery.Client(project=query_project,
                              default_query_job_config=default_config)
 
+    withdrawn_clause = "withdrawn IS NOT NULL"
+    if withdrawn_cutoff_date:
+        withdrawn_clause += f" AND withdrawn > '{withdrawn_cutoff_date}'"
+
     os.chdir(os.path.dirname(__file__))
     alt_allele_temp_function = Path('alt_allele_temp_function.sql').read_text()
     alt_allele_positions = Path('alt_allele_positions.sql').read_text()
     fq_vet_table = f"{fq_dataset}.{vet_table_name}"
-    query_with = f"""INSERT INTO `{fq_dataset}.alt_allele`
-                WITH
-                  position1 as (select * from `{fq_vet_table}` WHERE call_GT IN ('0/1', '1/0', '1/1', '0|1', '1|0', '1|1', '0/2', '0|2','2/0', '2|0') AND sample_id > {max_sample_id}),
-                  position2 as (select * from `{fq_vet_table}` WHERE call_GT IN ('1/2', '1|2', '2/1', '2|1') AND sample_id > {max_sample_id})"""
+    fq_sample_info = f"{fq_dataset}.sample_info"
+
+    query_with = f"""
+
+    INSERT INTO `{fq_dataset}.alt_allele`
+    WITH
+        position1 AS (
+            SELECT * FROM `{fq_vet_table}` WHERE call_GT IN (
+                '0/1', '1/0', '1/1', '0|1', '1|0', '1|1', '0/2', '0|2','2/0', '2|0') AND
+                sample_id NOT IN (
+                    SELECT sample_id from {fq_sample_info} WHERE {withdrawn_clause} AND sample_id > {max_sample_id}),
+        position2 AS (
+            SELECT * FROM `{fq_vet_table}` WHERE call_GT IN ('1/2', '1|2', '2/1', '2|1') AND
+                sample_id NOT IN (
+                    SELECT sample_id from {fq_sample_info} WHERE {withdrawn_clause} AND sample_id > {max_sample_id}),
+            )
+    """
 
     sql = alt_allele_temp_function + query_with + alt_allele_positions
     query_return = utils.execute_with_retry(client, f"into alt allele from {vet_table_name}", sql)
@@ -46,6 +64,9 @@ if __name__ == '__main__':
     parser.add_argument('--vet_table_name', type=str, help='vet table name to ingest', required=True)
     parser.add_argument('--fq_dataset', type=str, help='project and dataset for data', required=True)
     parser.add_argument('--max_sample_id',type=str, help='Maximum value of sample_id already loaded', required=True)
+    parser.add_argument('--withdrawn_cutoff_date', type=str,
+                        help='Cutoff date for withdrawn samples, if unspecified ignores all withdrawn samples',
+                        required=False)
 
     args = parser.parse_args()
 
@@ -53,4 +74,5 @@ if __name__ == '__main__':
                               args.query_project,
                               args.vet_table_name,
                               args.fq_dataset,
-                              args.max_sample_id)
+                              args.max_sample_id,
+                              args.withdrawn_cutoff_date,)
