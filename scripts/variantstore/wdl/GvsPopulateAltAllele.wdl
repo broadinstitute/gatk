@@ -226,7 +226,7 @@ task PopulateAltAlleleTable {
     VET_TABLES_ARRAY=(~{sep=" " vet_table_names})
 
     for i in "${!VET_TABLES_ARRAY[@]}"; do
-      vet_table="${VCFS_ARRAY[$i]}"
+      vet_table="${VET_TABLES_ARRAY[$i]}"
       python3 /app/populate_alt_allele_table.py \
         --call_set_identifier ~{call_set_identifier} \
         --query_project ~{project_id} \
