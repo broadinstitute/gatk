@@ -88,6 +88,10 @@ RUN mkdir /gatkCloneMountPoint
 RUN mkdir /jars
 RUN mkdir .gradle
 
+# pre-create (and report permissions on testclasses)
+RUN mkdir /gatk/testClasses
+RUN ls -la /gatk/testClasses
+
 WORKDIR /gatk
 
 # Create a simple unit test runner
