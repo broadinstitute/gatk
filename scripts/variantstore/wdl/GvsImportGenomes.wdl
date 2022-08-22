@@ -139,7 +139,7 @@ task CreateFOFNs {
     split -d -a 5 -l ~{batch_size} ~{sample_name_list} batched_sample_names.
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
     bootDiskSizeGb: 15
     memory: "3 GB"
     disks: "local-disk 10 HDD"
@@ -275,7 +275,7 @@ task SetIsLoadedColumn {
     'UPDATE `~{dataset_name}.sample_info` SET is_loaded = true WHERE sample_id IN (SELECT CAST(partition_id AS INT64) from `~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS` WHERE partition_id NOT LIKE "__%" AND total_logical_bytes > 0 AND table_name LIKE "vet_%") OR sample_id IN (SELECT sample_id FROM `~{dataset_name}.sample_load_status` GROUP BY 1 HAVING COUNT(1) = 2)'
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
     memory: "1 GB"
     disks: "local-disk 10 HDD"
     cpu: 1
@@ -354,7 +354,7 @@ task GetUningestedSampleIds {
     bq --project_id=~{project_id} rm -f=true ${TEMP_TABLE}
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
     memory: "1 GB"
     disks: "local-disk 10 HDD"
     preemptible: 5
@@ -391,7 +391,7 @@ task CurateInputLists {
                                              --output_files True
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_08_16"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_08_22"
     memory: "3 GB"
     disks: "local-disk 100 HDD"
     bootDiskSizeGb: 15

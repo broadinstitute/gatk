@@ -8,7 +8,7 @@ import "GvsExtractCallset.wdl" as GvsExtractCallset
 workflow GvsExtractCohortFromSampleNames {
 
   input {
-    # cohort_sample_names_array will take precedence over cohort_sample_names if both are set 
+    # cohort_sample_names_array will take precedence over cohort_sample_names if both are set
     Array[String]? cohort_sample_names_array
     File? cohort_sample_names
 
@@ -43,7 +43,7 @@ workflow GvsExtractCohortFromSampleNames {
     call write_array_task {
       input:
         input_array = select_first([cohort_sample_names_array]),
-        docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+        docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
     }
   }
 
