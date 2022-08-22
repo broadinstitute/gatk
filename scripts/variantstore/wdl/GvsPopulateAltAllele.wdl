@@ -46,7 +46,7 @@ workflow GvsPopulateAltAllele {
         dataset_name = dataset_name,
         project_id = project_id,
         create_table_done = CreateAltAlleleTable.done,
-        vet_table_name = GetVetTableNames.vet_tables[idx],
+        vet_table_names_file = GetVetTableNames.vet_tables[idx],
         last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
         max_sample_id = GetMaxSampleId.max_sample_id
     }
@@ -123,8 +123,12 @@ task GetVetTableNames {
     bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false ~{bq_labels} \
     "SELECT table_name FROM \`~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES\` WHERE table_name LIKE 'vet_%' AND CAST(SUBSTRING(table_name, length('vet_') + 1) AS INT64) >= ${min_vat_table_num}" > vet_tables.csv
 
-    # remove the header row from the CSV file
+    # remove the header row from the CSV file, count the number of tables and divide them up into
+    # no more than 10 files (which is the estimated number of BQ queries we can run at once)
     sed -i 1d vet_tables.csv
+    num_tables=$(cat vet_tables.csv | wc -l)
+    num_tables_per_file=$(((num_tables / 10) +1))
+    split -l $num_tables_per_file vet_tables.csv vet_tables_
   >>>
   runtime {
     docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
@@ -135,7 +139,7 @@ task GetVetTableNames {
   }
 
   output {
-    Array[String] vet_tables = read_lines("vet_tables.csv")
+    Array[File] vet_tables = glob("vet_tables_*")
   }
 }
 
@@ -204,25 +208,31 @@ task PopulateAltAlleleTable {
     String project_id
 
     String create_table_done
-    String vet_table_name
+    File vet_table_names_file
     String call_set_identifier
     Int max_sample_id
 
     String last_modified_timestamp
   }
+  Array[String] vet_table_names = read_lines(vet_table_names_file)
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
   command <<<
-    set -e
+    set -o errexit -o nounset -o xtrace -o pipefail
 
-    python3 /app/populate_alt_allele_table.py \
-      --call_set_identifier ~{call_set_identifier} \
-      --query_project ~{project_id} \
-      --vet_table_name ~{vet_table_name} \
-      --fq_dataset ~{project_id}.~{dataset_name} \
-      --max_sample_id ~{max_sample_id} \
+    VET_TABLES_ARRAY=(~{sep=" " vet_table_names})
+
+    for i in "${!VET_TABLES_ARRAY[@]}"; do
+      vet_table="${VCFS_ARRAY[$i]}"
+      python3 /app/populate_alt_allele_table.py \
+        --call_set_identifier ~{call_set_identifier} \
+        --query_project ~{project_id} \
+        --vet_table_name ${vet_table} \
+        --fq_dataset ~{project_id}.~{dataset_name} \
+        --max_sample_id ~{max_sample_id}
+    done
   >>>
   runtime {
     docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_08_22"
@@ -232,6 +242,6 @@ task PopulateAltAlleleTable {
   }
 
   output {
-    String done = "~{vet_table_name}"
+    String done = "~{sep=' ' vet_table_names}"
   }
 }
