@@ -9,6 +9,7 @@ workflow GvsPopulateAltAllele {
     String project_id
     String call_set_identifier
     Int max_alt_allele_shards = 10
+    String? withdrawn_cutoff_date
   }
 
   String fq_alt_allele_table = "~{project_id}.~{dataset_name}.alt_allele"
@@ -41,16 +42,17 @@ workflow GvsPopulateAltAllele {
       fq_table = fq_alt_allele_table
   }
 
-  scatter (idx in range(length(GetVetTableNames.vet_tables))) {
+  scatter (vet_table_names_file in GetVetTableNames.vet_table_names_files) {
     call PopulateAltAlleleTable {
       input:
         call_set_identifier = call_set_identifier,
         dataset_name = dataset_name,
         project_id = project_id,
         create_table_done = CreateAltAlleleTable.done,
-        vet_table_names_file = GetVetTableNames.vet_tables[idx],
+        vet_table_names_file = vet_table_names_file,
         last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
-        max_sample_id = GetMaxSampleId.max_sample_id
+        max_sample_id = GetMaxSampleId.max_sample_id,
+        withdrawn_cutoff_date = withdrawn_cutoff_date,
     }
   }
 
@@ -146,7 +148,7 @@ task GetVetTableNames {
   }
 
   output {
-    Array[File] vet_tables = glob("vet_tables_*")
+    Array[File] vet_table_names_files = glob("vet_tables_*")
   }
 }
 
