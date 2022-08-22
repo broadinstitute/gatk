@@ -90,7 +90,9 @@ RUN mkdir .gradle
 
 # pre-create (and report permissions on testclasses)
 RUN mkdir /gatk/testClasses
-RUN ls -la /gatk/testClasses
+RUN ls -la /gatk
+RUN chmod 766 /gatk/testclasses
+RUN ls -la /gatk
 
 WORKDIR /gatk
 
