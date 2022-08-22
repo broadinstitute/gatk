@@ -240,11 +240,12 @@ task PopulateAltAlleleTable {
         --query_project ~{project_id} \
         --vet_table_name ${vet_table} \
         --fq_dataset ~{project_id}.~{dataset_name} \
-        --max_sample_id ~{max_sample_id}
+        --max_sample_id ~{max_sample_id} \
+        ~{"--withdrawn_cutoff_date " + withdrawn_cutoff_date}
     done
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_08_22"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:vs_581_fix_withdrawn"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     cpu: 1
