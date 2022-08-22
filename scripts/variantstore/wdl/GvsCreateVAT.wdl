@@ -124,7 +124,7 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_08_16"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_08_22"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -405,7 +405,7 @@ task BigQuerySmokeTest {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"

@@ -33,10 +33,10 @@ workflow GvsBenchmarkExtractTask {
 
         File? excluded_intervals
         Boolean? emit_pls = false
-        
+
         Int? extract_cpu_override = 2
         String? extract_memory_override = "12 GB"
-        
+
         Int? extract_preemptible_override
         Int? extract_maxretries_override
         Int? split_intervals_disk_size_override
@@ -206,7 +206,7 @@ task SumBytes {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -240,7 +240,7 @@ task CreateManifest {
     }
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
         memory: "3 GB"
         disks: "local-disk 10 HDD"
         preemptible: 3

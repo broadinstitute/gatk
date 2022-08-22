@@ -164,7 +164,7 @@ task GetBQTableLastModifiedDatetime {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -202,7 +202,7 @@ task GetBQTablesMaxLastModifiedTimestamp {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -281,7 +281,7 @@ task BuildGATKJarAndCreateDataset {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:latest"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
     disks: "local-disk 500 HDD"
   }
 }
@@ -345,7 +345,7 @@ task ScaleXYBedValues {
     }
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_08_16"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_08_22"
         maxRetries: 3
         memory: "7 GB"
         preemptible: 3
@@ -382,7 +382,7 @@ task GetNumSamplesLoaded {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
