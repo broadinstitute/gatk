@@ -20,9 +20,9 @@ def populate_alt_allele_table(call_set_identifier, query_project, vet_table_name
     client = bigquery.Client(project=query_project,
                              default_query_job_config=default_config)
 
-    withdrawn_clause = "withdrawn IS NOT NULL"
+    withdrawn_clause = "withdrawn IS NULL"
     if withdrawn_cutoff_date:
-        withdrawn_clause += f" AND withdrawn > '{withdrawn_cutoff_date}'"
+        withdrawn_clause += f" OR withdrawn > '{withdrawn_cutoff_date}'"
 
     os.chdir(os.path.dirname(__file__))
     alt_allele_temp_function = Path('alt_allele_temp_function.sql').read_text()
@@ -37,12 +37,12 @@ def populate_alt_allele_table(call_set_identifier, query_project, vet_table_name
         position1 AS (
             SELECT * FROM `{fq_vet_table}` WHERE call_GT IN (
                 '0/1', '1/0', '1/1', '0|1', '1|0', '1|1', '0/2', '0|2','2/0', '2|0') AND
-                sample_id NOT IN (
-                    SELECT sample_id from {fq_sample_info} WHERE {withdrawn_clause} AND sample_id > {max_sample_id}),
+                sample_id IN (
+                    SELECT sample_id from {fq_sample_info} WHERE {withdrawn_clause} AND sample_id > {max_sample_id})
         position2 AS (
             SELECT * FROM `{fq_vet_table}` WHERE call_GT IN ('1/2', '1|2', '2/1', '2|1') AND
-                sample_id NOT IN (
-                    SELECT sample_id from {fq_sample_info} WHERE {withdrawn_clause} AND sample_id > {max_sample_id}),
+                sample_id IN (
+                    SELECT sample_id from {fq_sample_info} WHERE {withdrawn_clause} AND sample_id > {max_sample_id})
             )
     """
 

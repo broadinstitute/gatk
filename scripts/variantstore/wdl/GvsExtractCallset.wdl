@@ -36,6 +36,7 @@ workflow GvsExtractCallset {
     Int? split_intervals_mem_override
     Float x_bed_weight_scaling = 4
     Float y_bed_weight_scaling = 4
+    String? withdrawn_cutoff_date
   }
 
   File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
@@ -80,7 +81,8 @@ workflow GvsExtractCallset {
       fq_sample_table = fq_sample_table,
       fq_sample_table_lastmodified_timestamp = SamplesTableDatetimeCheck.last_modified_timestamp,
       project_id = project_id,
-      control_samples = control_samples
+      control_samples = control_samples,
+      withdrawn_cutoff_date = withdrawn_cutoff_date,
   }
 
   Int effective_scatter_count = if defined(scatter_count) then select_first([scatter_count])

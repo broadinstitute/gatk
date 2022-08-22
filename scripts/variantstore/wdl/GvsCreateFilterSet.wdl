@@ -26,6 +26,7 @@ workflow GvsCreateFilterSet {
     # For WARP classic this is done with 20k but the 10K Stroke Anderson dataset would not work unscattered (at least
     # with the default VM memory settings) so this was adjusted down to 5K.
     Int snps_variant_recalibration_threshold = 5000
+    String? withdrawn_cutoff_date
   }
 
   Array[String] snp_recalibration_tranche_values = ["100.0", "99.95", "99.9", "99.8", "99.6", "99.5", "99.4", "99.3", "99.0", "98.0", "97.0", "90.0" ]
@@ -64,7 +65,8 @@ workflow GvsCreateFilterSet {
     input:
       fq_sample_table = fq_sample_table,
       fq_sample_table_lastmodified_timestamp = SamplesTableDatetimeCheck.last_modified_timestamp,
-      project_id = project_id
+      project_id = project_id,
+      withdrawn_cutoff_date = withdrawn_cutoff_date,
   }
 
   Int scatter_count = if GetNumSamplesLoaded.num_samples < 100 then 20
