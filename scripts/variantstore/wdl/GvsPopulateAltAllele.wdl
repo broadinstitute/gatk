@@ -108,7 +108,7 @@ task GetVetTableNames {
   String bq_labels = "--label service:gvs --label team:variants --label managedby:create_alt_allele"
 
   command <<<
-    set -e
+    set -o errexit -o nounset -o xtrace -o pipefail
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
     # if the maximum sample_id value is evenly divisible by 4000, then max_sample_id / 4000 will
@@ -124,10 +124,11 @@ task GetVetTableNames {
     "SELECT table_name FROM \`~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES\` WHERE table_name LIKE 'vet_%' AND CAST(SUBSTRING(table_name, length('vet_') + 1) AS INT64) >= ${min_vat_table_num}" > vet_tables.csv
 
     # remove the header row from the CSV file, count the number of tables and divide them up into
-    # no more than 10 files (which is the estimated number of BQ queries we can run at once)
+    # no more than 10 files (which is the estimated number of BQ queries we can run at once without
+    # reserving flex slots)
     sed -i 1d vet_tables.csv
     num_tables=$(cat vet_tables.csv | wc -l)
-    num_tables_per_file=$(((num_tables / 10) +1))
+    num_tables_per_file=$(((num_tables / 10) + 1))
     split -l $num_tables_per_file vet_tables.csv vet_tables_
   >>>
   runtime {
