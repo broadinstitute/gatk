@@ -95,6 +95,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_581_fix_withdrawn
    - name: GvsPopulateAltAllele
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPopulateAltAllele.wdl
@@ -119,6 +120,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_581_fix_withdrawn
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
