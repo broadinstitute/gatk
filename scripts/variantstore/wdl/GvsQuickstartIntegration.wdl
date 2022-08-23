@@ -49,6 +49,7 @@ workflow GvsQuickstartIntegration {
                                         ]
 
         Int? extract_scatter_count
+        String? drop_state
     }
     String project_id = "gvs-internal"
 
@@ -73,6 +74,7 @@ workflow GvsQuickstartIntegration {
             # Force filtering off as it is not deterministic and the initial version of this integration test does not
             # allow for inexact matching of actual and expected results.
             extract_do_not_filter_override = true,
+            drop_state = drop_state
     }
 
     call AssertIdenticalOutputs {

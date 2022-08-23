@@ -25,6 +25,8 @@ workflow GvsUnified {
         Array[File] input_vcf_indexes
         File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
 
+        # set to "NONE" to ingest all the reference data into GVS for VDS (instead of VCF) output
+        String drop_state = "FORTY"
 
         # The larger the `load_data_batch_size` the greater the probability of preemptions and non-retryable
         # BigQuery errors so if specifying this adjust preemptible and maxretries accordingly. Or just take the defaults,
@@ -93,7 +95,8 @@ workflow GvsUnified {
             load_data_preemptible_override = load_data_preemptible_override,
             load_data_maxretries_override = load_data_maxretries_override,
             load_data_gatk_override = gatk_override,
-            load_data_batch_size = load_data_batch_size
+            load_data_batch_size = load_data_batch_size,
+            drop_state = drop_state
     }
 
     call CreateAltAllele.GvsPopulateAltAllele {
@@ -155,7 +158,8 @@ workflow GvsUnified {
             output_gcs_dir = extract_output_gcs_dir,
             split_intervals_disk_size_override = split_intervals_disk_size_override,
             split_intervals_mem_override = split_intervals_mem_override,
-            do_not_filter_override = extract_do_not_filter_override
+            do_not_filter_override = extract_do_not_filter_override,
+            drop_state = drop_state
     }
 
     output {

@@ -184,6 +184,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_vs_607_drop_state
    - name: GvsJointVariantCalling
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCalling.wdl
@@ -213,6 +214,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_vs_607_drop_state
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
