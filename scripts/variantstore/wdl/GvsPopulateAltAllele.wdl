@@ -105,7 +105,7 @@ task GetVetTableNames {
   }
 
   # add labels for DSP Cloud Cost Control Labeling and Reporting
-  String bq_labels = "--label service:gvs --label team:variants --label managedby:create_alt_allele"
+  String bq_labels = "--label service:gvs --label team:variants --label managedby:populate_alt_allele"
 
   command <<<
     set -o errexit -o nounset -o xtrace -o pipefail
@@ -128,7 +128,11 @@ task GetVetTableNames {
     # reserving flex slots)
     sed -i 1d vet_tables.csv
     num_tables=$(cat vet_tables.csv | wc -l)
-    num_tables_per_file=$(((num_tables / 10) + 1))
+    if [ $((num_tables % 10)) -eq 0 ]; then
+      num_tables_per_file=$((num_tables / 10))
+    else
+      num_tables_per_file=$(((num_tables / 10) + 1))
+    fi
     split -l $num_tables_per_file vet_tables.csv vet_tables_
   >>>
   runtime {
