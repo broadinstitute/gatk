@@ -335,7 +335,7 @@ jobs:
           echo "Running CNV somatic workflows";
           bash scripts/cnv_cromwell_tests/somatic/run_cnv_somatic_workflows.sh;
           echo "Gather CNV somatic cromwell workflows logs";
-          bash -c "find /home/runner/work/gatk/gatk/scripts/cnv_cromwell_tests/somatic/cromwell-executions -exec cat {} \;"
+          bash -c "find /home/runner/work/gatk/gatk/scripts/cnv_cromwell_tests/somatic/cromwell-executions -exec cat {} \;";
 
       - name: "M2_WDL_TEST"
         if: ${{ matrix.wdlTest == 'RUN_M2_WDL' }}
