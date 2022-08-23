@@ -238,6 +238,9 @@ jobs:
            && cp -rp build/reports/tests/testOnPackagedReleaseJar/* build/reports/tests/test \
            && rm -r build/reports/tests/testOnPackagedReleaseJar;
 
+      - name: spill cromwell logs
+        run: find /home/runner/work/gatk/gatk/scripts/cnv_cromwell_tests/somatic/cromwell-executions -exec cat {} \;
+
       - uses: ./.github/actions/upload-gatk-test-results
         if: always()
         with:
