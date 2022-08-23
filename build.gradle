@@ -508,9 +508,9 @@ task shadowTestClassJar(type: ShadowJar){
 // A minimal jar that only contains the extra dependencies needed for running the tests
 task shadowTestJar(type: ShadowJar){
     group = "Shadow"
-    description = " A jar that contains ALL runtime AND test dependencies needed for running the tests"
+    description = " A minimal jar that only contains the extra dependencies needed for running the tests that arent packaged in the main shadow jar"
     from {
-        project.configurations.testRuntimeClasspath.collect {
+        (project.configurations.testRuntimeClasspath - project.configurations.runtimeClasspath ).collect {
             it.isDirectory() ? it : it.getName().endsWith(".jar") ? zipTree(it) : it
         }
     }
