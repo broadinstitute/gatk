@@ -38,19 +38,19 @@ task unpackTestJars(type: Copy){
     // classpath to prevent inter-module access exceptions on Java 17
     if (gatkJar != "null") {
         System.out.println("starting gatkJar");
-        from zipTree(gatkJar)
+        from zipTree(gatkJar).filter(f -> !f.getName().contains("shapeless/\$tilde\$qmark\$greater\$"))
         into testClassesDir
     }
 
     if (testDependencyJar != "null") {
         System.out.println("starting testDependencyJar");
-        from zipTree(testDependencyJar)
+        from zipTree(testDependencyJar).filter(f -> !f.getName().contains("shapeless/\$tilde\$qmark\$greater\$"))
         into testClassesDir
     }
 
     if (testClassesJar != "null"){
         System.out.println("starting testClassesJar");
-        from zipTree(testClassesJar)
+        from zipTree(testClassesJar).filter(f -> !f.getName().contains("shapeless/\$tilde\$qmark\$greater\$"))
         into testClassesDir
     }
 }
