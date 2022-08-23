@@ -98,6 +98,7 @@ task GetVetTableNames {
     String dataset_name
     String project_id
     Int max_sample_id
+    Int max_alt_allele_shards = 10
   }
 
   meta {
@@ -124,14 +125,14 @@ task GetVetTableNames {
     "SELECT table_name FROM \`~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES\` WHERE table_name LIKE 'vet_%' AND CAST(SUBSTRING(table_name, length('vet_') + 1) AS INT64) >= ${min_vat_table_num}" > vet_tables.csv
 
     # remove the header row from the CSV file, count the number of tables and divide them up into
-    # no more than 10 files (which is the estimated number of BQ queries we can run at once without
+    # no more than max_alt_allele_shards files (which is the estimated number of BQ queries we can run at once without
     # reserving flex slots)
     sed -i 1d vet_tables.csv
     num_tables=$(cat vet_tables.csv | wc -l)
-    if [ $((num_tables % 10)) -eq 0 ]; then
-      num_tables_per_file=$((num_tables / 10))
+    if [ $((num_tables % ~{max_alt_allele_shards})) -eq 0 ]; then
+      num_tables_per_file=$((num_tables / ~{max_alt_allele_shards}))
     else
-      num_tables_per_file=$(((num_tables / 10) + 1))
+      num_tables_per_file=$(((num_tables / ~{max_alt_allele_shards}) + 1))
     fi
     split -l $num_tables_per_file vet_tables.csv vet_tables_
   >>>
