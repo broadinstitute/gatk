@@ -107,7 +107,8 @@ RUN echo "source activate gatk" > /root/run_unit_tests.sh && \
     echo "export CP_DIR=/root/testClasses" >> /root/run_unit_tests.sh && \
     echo "ln -s /gatkCloneMountPoint/src/ /gatkCloneMountPoint/scripts/docker/src" >> /root/run_unit_tests.sh && \
     echo "ln -s /gatkCloneMountPoint/build/ /gatkCloneMountPoint/scripts/docker/build" >> /root/run_unit_tests.sh && \
-    echo "cd /gatk/ && /gatkCloneMountPoint/gradlew -b /gatkCloneMountPoint/dockertest.gradle testOnPackagedReleaseJar jacocoTestReportOnPackagedReleaseJar -a -p /gatkCloneMountPoint" >> /root/run_unit_tests.sh
+    echo "cd /gatk/ && /gatkCloneMountPoint/gradlew -b /gatkCloneMountPoint/dockertest.gradle testOnPackagedReleaseJar jacocoTestReportOnPackagedReleaseJar -a -p /gatkCloneMountPoint" >> /root/run_unit_tests.sh && \
+    echo "ls -lR /gatk" >> /root/run_unit_tests.sh
 
 WORKDIR /root
 RUN cp -r /root/run_unit_tests.sh /gatk
