@@ -238,9 +238,6 @@ jobs:
            && cp -rp build/reports/tests/testOnPackagedReleaseJar/* build/reports/tests/test \
            && rm -r build/reports/tests/testOnPackagedReleaseJar;
 
-      - name: spill cromwell logs
-        run: find /home/runner/work/gatk/gatk/scripts/cnv_cromwell_tests/somatic/cromwell-executions -exec cat {} \;
-
       - uses: ./.github/actions/upload-gatk-test-results
         if: always()
         with:
@@ -337,6 +334,7 @@ jobs:
         run: |
           echo "Running CNV somatic workflows";
           bash scripts/cnv_cromwell_tests/somatic/run_cnv_somatic_workflows.sh;
+          find /home/runner/work/gatk/gatk/scripts/cnv_cromwell_tests/somatic/cromwell-executions -exec cat {} \;
 
       - name: "M2_WDL_TEST"
         if: ${{ matrix.wdlTest == 'RUN_M2_WDL' }}
