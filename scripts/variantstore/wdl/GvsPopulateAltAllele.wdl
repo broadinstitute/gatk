@@ -8,6 +8,7 @@ workflow GvsPopulateAltAllele {
     String dataset_name
     String project_id
     String call_set_identifier
+    Int max_alt_allele_shards = 10
   }
 
   String fq_alt_allele_table = "~{project_id}.~{dataset_name}.alt_allele"
@@ -29,7 +30,8 @@ workflow GvsPopulateAltAllele {
     input:
       dataset_name = dataset_name,
       project_id = project_id,
-      max_sample_id = GetMaxSampleId.max_sample_id
+      max_sample_id = GetMaxSampleId.max_sample_id,
+      max_alt_allele_shards = max_alt_allele_shards
   }
 
   call Utils.GetBQTableLastModifiedDatetime {
@@ -98,7 +100,7 @@ task GetVetTableNames {
     String dataset_name
     String project_id
     Int max_sample_id
-    Int max_alt_allele_shards = 10
+    Int max_alt_allele_shards
   }
 
   meta {
