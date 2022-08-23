@@ -26,7 +26,8 @@ output_table_prefix = str(uuid.uuid4()).split("-")[0]
 print(f"running with prefix {output_table_prefix}")
 
 REF_VET_TABLE_COUNT = -1
-client = None
+# noinspection PyTypeChecker
+client: bigquery.Client = None
 default_config = None
 
 EXTRACT_SAMPLE_TABLE = f"{output_table_prefix}_sample_names"
@@ -40,7 +41,7 @@ def get_partition_range(i):
 
 
 def get_samples_for_partition(sample_ids, i):
-    return [s for s in sample_ids if s >= get_partition_range(i)['start'] and s <= get_partition_range(i)['end']]
+    return [s for s in sample_ids if get_partition_range(i)['start'] <= s <= get_partition_range(i)['end']]
 
 
 def split_lists(samples, n):
@@ -82,25 +83,25 @@ def get_all_sample_ids(fq_destination_table_samples):
 
 
 def create_extract_samples_table(control_samples, fq_destination_table_samples, fq_sample_name_table,
-                                 fq_sample_mapping_table):
-    sql = f"CREATE OR REPLACE TABLE `{fq_destination_table_samples}` AS (" \
-          f"SELECT m.sample_id, m.sample_name, m.is_loaded, m.withdrawn, m.is_control FROM `{fq_sample_name_table}` s JOIN `{fq_sample_mapping_table}` m ON (s.sample_name = m.sample_name) " \
-          f"WHERE m.is_loaded is TRUE AND m.is_control = {control_samples})"
+                                 fq_sample_mapping_table, withdrawn_cutoff_date):
 
+    withdrawn_cutoff_condition = f"m.withdrawn > '{withdrawn_cutoff_date}'" if withdrawn_cutoff_date else "false"
+
+    sql = f"""
+
+    CREATE OR REPLACE TABLE `{fq_destination_table_samples}` AS (
+        SELECT m.sample_id, m.sample_name, m.is_loaded, m.withdrawn, m.is_control FROM `{fq_sample_name_table}` s JOIN
+        `{fq_sample_mapping_table}` m ON (s.sample_name = m.sample_name) WHERE
+             m.is_loaded IS TRUE AND m.is_control = {control_samples} AND 
+             (m.withdrawn IS NULL OR {withdrawn_cutoff_condition}) 
+    )
+
+    """
     print(sql)
 
     query_return = utils.execute_with_retry(client, "create extract sample table", sql)
     JOBS.append({'job': query_return['job'], 'label': query_return['label']})
     return query_return['results']
-
-
-def get_table_count(fq_pet_vet_dataset):
-    sql = f"SELECT MAX(CAST(SPLIT(table_name, '_')[OFFSET(1)] AS INT64)) max_table_number " \
-          f"FROM `{fq_pet_vet_dataset}.INFORMATION_SCHEMA.TABLES` " \
-          f"WHERE REGEXP_CONTAINS(lower(table_name), r'^(pet_[0-9]+)$') "
-    query_return = utils.execute_with_retry(client, "get max table", sql)
-    JOBS.append({'job': query_return['job'], 'label': query_return['label']})
-    return int([row.max_table_number for row in list(query_return['results'])][0])
 
 
 def create_final_extract_vet_table(fq_destination_table_vet_data):
@@ -213,7 +214,6 @@ def populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_tabl
 def make_extract_table(call_set_identifier,
                        control_samples,
                        fq_ranges_dataset,
-                       max_tables,
                        sample_names_to_extract,
                        fq_cohort_sample_names,
                        query_project,
@@ -222,7 +222,8 @@ def make_extract_table(call_set_identifier,
                        fq_destination_dataset,
                        destination_table_prefix,
                        fq_sample_mapping_table,
-                       temp_table_ttl_hours
+                       temp_table_ttl_hours,
+                       withdrawn_cutoff_date,
                        ):
     try:
         fq_destination_table_ref_data = f"{fq_destination_dataset}.{destination_table_prefix}__REF_DATA"
@@ -232,9 +233,10 @@ def make_extract_table(call_set_identifier,
         global client
         global default_config
         # this is where a set of labels are being created for the cohort extract
-        query_labels_map = {}
-        query_labels_map["id"] = output_table_prefix
-        query_labels_map["gvs_tool_name"] = "gvs_prepare_ranges_callset"
+        query_labels_map = {
+            "id": output_table_prefix,
+            "gvs_tool_name": "gvs_prepare_ranges_callset"
+        }
 
         # query_labels is string that looks like 'key1=val1, key2=val2'
         if query_labels is not None and len(query_labels) != 0:
@@ -259,10 +261,7 @@ def make_extract_table(call_set_identifier,
         client = bigquery.Client(project=query_project,
                                  default_query_job_config=default_config)
 
-        ## TODO -- provide a cmdline arg to override this (so we can simulate smaller datasets)
-
-        global REF_VET_TABLE_COUNT
-        REF_VET_TABLE_COUNT = max_tables
+        # TODO -- provide a cmdline arg to override this (so we can simulate smaller datasets)
 
         global TEMP_TABLE_TTL_HOURS
         TEMP_TABLE_TTL_HOURS = temp_table_ttl_hours
@@ -273,7 +272,7 @@ def make_extract_table(call_set_identifier,
         print(f"Using {REF_VET_TABLE_COUNT} tables in {fq_ranges_dataset}...")
 
         # if we have a file of sample names, load it into a temporary table
-        if (sample_names_to_extract):
+        if sample_names_to_extract:
             fq_sample_name_table = load_sample_names(sample_names_to_extract, fq_temp_table_dataset)
         else:
             fq_sample_name_table = fq_cohort_sample_names
@@ -281,7 +280,7 @@ def make_extract_table(call_set_identifier,
         # At this point one way or the other we have a table of sample names in BQ,
         # join it to the sample_info table to drive the extract
         create_extract_samples_table(control_samples, fq_destination_table_samples, fq_sample_name_table,
-                                     fq_sample_mapping_table)
+                                     fq_sample_mapping_table, withdrawn_cutoff_date)
 
         # pull the sample ids back down
         sample_ids = get_all_sample_ids(fq_destination_table_samples)
@@ -321,8 +320,6 @@ if __name__ == '__main__':
                         required=False)
     parser.add_argument('--fq_sample_mapping_table', type=str, help='Mapping table from sample_id to sample_name',
                         required=True)
-    parser.add_argument('--max_tables', type=int, help='Maximum number of PET/VET tables to consider', required=False,
-                        default=250)
     parser.add_argument('--ttl', type=int, help='Temp table TTL in hours', required=False, default=72)
 
     sample_args = parser.add_mutually_exclusive_group(required=True)
@@ -330,14 +327,15 @@ if __name__ == '__main__':
                              help='File containing list of samples to extract, 1 per line')
     sample_args.add_argument('--fq_cohort_sample_names', type=str,
                              help='FQN of cohort table to extract, contains "sample_name" column')
+    sample_args.add_argument('--withdrawn_cutoff_date', type=str,
+                             help='Cutoff date for withdrawn samples, if unspecified ignores all withdrawn samples',
+                             required=False)
 
-    # Execute the parse_args() method
     args = parser.parse_args()
 
     make_extract_table(args.call_set_identifier,
                        args.control_samples,
                        args.fq_ranges_dataset,
-                       args.max_tables,
                        args.sample_names_to_extract,
                        args.fq_cohort_sample_names,
                        args.query_project,
@@ -346,4 +344,5 @@ if __name__ == '__main__':
                        args.fq_destination_dataset,
                        args.destination_cohort_table_prefix,
                        args.fq_sample_mapping_table,
-                       args.ttl)
+                       args.ttl,
+                       args.withdrawn_cutoff_date,)
