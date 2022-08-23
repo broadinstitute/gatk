@@ -54,7 +54,7 @@ public final class PileupDetectionArgumentCollection {
     @Advanced
     @Hidden
     @Argument(fullName= PILEUP_DETECTION_ACTIVE_REGION_LOD_THRESHOLD_LONG_NAME, doc = "Pileup Detection: This argument sets the minimum fast genotyper phred score necessary in active region determination to find a pileup variant. (Requires '--"+PILEUP_DETECTION_LONG_NAME+"'` argument)", optional = true)
-    public double activeRegionPhredThreshold = 4.0;
+    public double activeRegionPhredThreshold = 2.0;
 
     @Advanced
     @Hidden

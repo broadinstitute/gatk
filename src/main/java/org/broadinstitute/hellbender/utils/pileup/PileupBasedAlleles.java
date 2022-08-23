@@ -52,7 +52,7 @@ public final class PileupBasedAlleles {
      * @param headerForReads                    Header for the reads (only necessary for SAM file conversion)
      * @return A list of variant context objects corresponding to potential variants that pass our heuristics.
      */
-    public static List<VariantContext> getPileupVariantContexts(final List<AlignmentAndReferenceContext> alignmentAndReferenceContextList, final PileupDetectionArgumentCollection args, final SAMFileHeader headerForReads) {
+    public static List<VariantContext> getPileupVariantContexts(final List<AlignmentAndReferenceContext> alignmentAndReferenceContextList, final PileupDetectionArgumentCollection args, final SAMFileHeader headerForReads, final int minBaseQualityScore) {
 
         final List<VariantContext> pileupVariantList = new ArrayList<>();
 
@@ -65,7 +65,7 @@ public final class PileupBasedAlleles {
 
             final AlignmentContext alignmentContext = alignmentAndReferenceContext.getAlignmentContext();
             final ReferenceContext referenceContext = alignmentAndReferenceContext.getReferenceContext();
-            final int numOfBases = alignmentContext.size();
+            int numOfBases = alignmentContext.size();
             final ReadPileup pileup = alignmentContext.getBasePileup();
             final byte refBase = referenceContext.getBase();
 
@@ -76,6 +76,12 @@ public final class PileupBasedAlleles {
 
             for (PileupElement element : pileup) {
                 final byte eachBase = element.getBase();
+
+                // Subtract out low quality bases to mimic the reading active region determination
+                if (element.getQual() < minBaseQualityScore) {
+                    numOfBases--;
+                    continue;
+                }
 
                 // check to see that the base is not ref (and non-deletion) and increment the alt counts (and evaluate if the read is "bad")
                 if (refBase != eachBase && eachBase != 'D') {
