@@ -23,6 +23,7 @@ workflow GvsImportGenomes {
     Int? load_data_preemptible_override
     Int? load_data_maxretries_override
     File? load_data_gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-552-g0f9780a-SNAPSHOT-local.jar"
+    String? withdrawn_cutoff_date
   }
 
   Int num_samples = length(external_sample_names)
@@ -70,7 +71,8 @@ workflow GvsImportGenomes {
       dataset_name = dataset_name,
       project_id = project_id,
       external_sample_names = external_sample_names,
-      table_name = "sample_info"
+      table_name = "sample_info",
+      withdrawn_cutoff_date = withdrawn_cutoff_date,
   }
 
   call CurateInputLists {
@@ -296,6 +298,7 @@ task GetUningestedSampleIds {
 
     Array[String] external_sample_names
     String table_name
+    String? withdrawn_cutoff_date
   }
   meta {
     # Do not call cache this, we want to read the database state every time.
@@ -306,18 +309,19 @@ task GetUningestedSampleIds {
   Int num_samples = length(external_sample_names)
   # add labels for DSP Cloud Cost Control Labeling and Reporting
   String bq_labels = "--label service:gvs --label team:variants --label managedby:import_genomes"
+  String withdrawn_cutoff_condition = if (defined(withdrawn_cutoff_date)) then "samples.withdrawn > '~{withdrawn_cutoff_date}'" else "false"
 
   command <<<
-    set -ex
+    set -o errexit -o nounset -o xtrace -o pipefail
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
     # create temp table with the sample_names and load external sample names into temp table -- make sure it doesn't exist already
-    set +e
+    set +o errexit
     TEMP_TABLE="~{dataset_name}.sample_names_to_load"
     bq show --project_id ~{project_id} ${TEMP_TABLE} > /dev/null
     BQ_SHOW_RC=$?
-    set -e
+    set -o errexit
 
     # if there is already a table of sample names or something else is wrong, bail
     if [ $BQ_SHOW_RC -eq 0 ]; then
@@ -331,8 +335,11 @@ task GetUningestedSampleIds {
     bq load --project_id=~{project_id} ${TEMP_TABLE} $NAMES_FILE "sample_name:STRING"
 
     # get the current maximum id, or 0 if there are none
-    bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
-      "SELECT IFNULL(MIN(sample_id),0) as min, IFNULL(MAX(sample_id),0) as max FROM \`~{dataset_name}.~{table_name}\` AS samples JOIN \`${TEMP_TABLE}\` AS temp ON samples.sample_name=temp.sample_name" > results
+    bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} "
+      SELECT IFNULL(MIN(sample_id),0) as min, IFNULL(MAX(sample_id),0) as max FROM \`~{dataset_name}.~{table_name}\`
+        AS samples JOIN \`${TEMP_TABLE}\` AS temp ON samples.sample_name = temp.sample_name WHERE
+        (samples.withdrawn IS NULL OR ~{withdrawn_cutoff_condition})
+    " > results
 
     # prep for being able to return min table id
     min_sample_id=$(tail -1 results | cut -d, -f1)
@@ -348,8 +355,12 @@ task GetUningestedSampleIds {
     python3 -c "from math import ceil; print(ceil($min_sample_id/~{samples_per_table}))" > min_sample_id
 
     # get sample map of samples that haven't been loaded yet
-    bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} \
-      "SELECT sample_id, samples.sample_name FROM \`~{dataset_name}.~{table_name}\` AS samples JOIN \`${TEMP_TABLE}\` AS temp ON samples.sample_name=temp.sample_name WHERE samples.sample_id NOT IN (SELECT sample_id FROM \`~{dataset_name}.sample_load_status\` WHERE status='FINISHED')" > sample_map
+    bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} "
+      SELECT sample_id, samples.sample_name FROM \`~{dataset_name}.~{table_name}\` AS samples JOIN \`${TEMP_TABLE}\` AS temp ON
+        samples.sample_name = temp.sample_name WHERE
+          samples.sample_id NOT IN (SELECT sample_id FROM \`~{dataset_name}.sample_load_status\` WHERE status='FINISHED') AND
+          (samples.withdrawn is NULL OR ~{withdrawn_cutoff_condition})
+    " > sample_map
 
     cut -d, -f1 sample_map > gvs_ids
 
