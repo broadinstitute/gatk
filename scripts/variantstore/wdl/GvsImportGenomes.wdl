@@ -15,6 +15,9 @@ workflow GvsImportGenomes {
 
     Boolean skip_loading_vqsr_fields = false
 
+    # set to "NONE" to ingest all the reference data into GVS for VDS (instead of VCF) output
+    String drop_state = "FORTY"
+
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
     Int? load_data_batch_size
     Int? load_data_preemptible_override
@@ -94,7 +97,7 @@ workflow GvsImportGenomes {
         dataset_name = dataset_name,
         project_id = project_id,
         skip_loading_vqsr_fields = skip_loading_vqsr_fields,
-        drop_state = "FORTY",
+        drop_state = drop_state,
         drop_state_includes_greater_than = false,
         input_vcf_indexes = read_lines(CreateFOFNs.vcf_batch_vcf_index_fofns[i]),
         input_vcfs = read_lines(CreateFOFNs.vcf_batch_vcf_fofns[i]),
