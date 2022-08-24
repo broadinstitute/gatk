@@ -31,6 +31,6 @@ def generate_avro_dict(avro_prefix, listing):
 def generate_avro_args(avro_dict):
     args = []
     for k, v in avro_dict.items():
-        s = f'{k}: {json.dumps(v, indent=4)}'
+        s = f'{k}={json.dumps(v, indent=4)}'
         args.append(s)
     return ',\n'.join(args)
