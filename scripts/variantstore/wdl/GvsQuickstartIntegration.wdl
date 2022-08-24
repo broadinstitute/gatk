@@ -49,7 +49,7 @@ workflow GvsQuickstartIntegration {
                                         ]
 
         Int? extract_scatter_count
-        String? drop_state = "NONE"
+        String drop_state = "NONE"
     }
     String project_id = "gvs-internal"
 
