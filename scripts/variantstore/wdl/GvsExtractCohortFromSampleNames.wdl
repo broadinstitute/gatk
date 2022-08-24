@@ -28,6 +28,8 @@ workflow GvsExtractCohortFromSampleNames {
     Int scatter_count
 
     String? output_gcs_dir
+    # set to "NONE" if all the reference data was loaded into GVS in GvsImportGenomes
+    String drop_state = "NONE"
 
     Int? extract_preemptible_override
     Int? extract_maxretries_override
@@ -79,6 +81,7 @@ workflow GvsExtractCohortFromSampleNames {
       output_file_base_name = output_file_base_name,
       output_gcs_dir = output_gcs_dir,
 
+      drop_state = drop_state,
       extract_preemptible_override = extract_preemptible_override,
       extract_maxretries_override = extract_maxretries_override,
       split_intervals_disk_size_override = split_intervals_disk_size_override,

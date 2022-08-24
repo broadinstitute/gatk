@@ -119,7 +119,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_447_fixup_non_fq_invocations
+         - rsa_vs_607_drop_state
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
@@ -127,6 +127,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_vs_607_drop_state
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
@@ -168,7 +169,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - kc_variant_search_extract_wdl
+         - rsa_vs_607_drop_state
    - name: GvsWithdrawSamples
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsWithdrawSamples.wdl
@@ -183,6 +184,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_vs_607_drop_state
    - name: GvsJointVariantCalling
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCalling.wdl
@@ -212,6 +214,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_vs_607_drop_state
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl

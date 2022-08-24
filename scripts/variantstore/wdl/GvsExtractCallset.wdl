@@ -20,6 +20,9 @@ workflow GvsExtractCallset {
     Int? scatter_count
     Boolean zero_pad_output_vcf_filenames = true
 
+    # set to "NONE" if all the reference data was loaded into GVS in GvsImportGenomes
+    String drop_state = "NONE"
+
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
     File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
     File gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-552-g0f9780a-SNAPSHOT-local.jar"
@@ -154,7 +157,7 @@ workflow GvsExtractCallset {
         fq_filter_set_tranches_table       = fq_filter_set_tranches_table,
         filter_set_name                    = filter_set_name,
         filter_set_name_verified           = select_first([ValidateFilterSetName.done, "done"]),
-        drop_state                         = "FORTY",
+        drop_state                         = drop_state,
         output_file                        = vcf_filename,
         output_gcs_dir                     = output_gcs_dir,
         max_last_modified_timestamp        = GetBQTablesMaxLastModifiedTimestamp.max_last_modified_timestamp,
@@ -386,7 +389,7 @@ task SumBytes {
 
   command <<<
     set -e
-    echo "~{sep=" " file_sizes_bytes}" | tr " " "\n" | python -c "
+    echo "~{sep=" " file_sizes_bytes}" | tr " " "\n" | python3 -c "
     import sys;
     total_bytes = sum(float(i.strip()) for i in sys.stdin);
     total_mb = total_bytes/10**6;
