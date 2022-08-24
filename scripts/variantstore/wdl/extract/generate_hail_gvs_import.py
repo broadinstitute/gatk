@@ -9,23 +9,22 @@ def generate_avro_dict(avro_prefix, gcs_listing):
     super_partitioned_keys = {'vets', 'refs'}
     slashed_avro_prefix = avro_prefix + "/" if not avro_prefix[-1] == '/' else avro_prefix
 
-    with open(gcs_listing, 'r') as f:
-        for full_path in f.readlines():
-            full_path = full_path.strip()
-            if not full_path.endswith(".avro"):
-                continue
-            relative_path = full_path[len(slashed_avro_prefix):]
-            parts = relative_path.split('/')
-            key = parts[0]
+    for full_path in gcs_listing.readlines():
+        full_path = full_path.strip()
+        if not full_path.endswith(".avro"):
+            continue
+        relative_path = full_path[len(slashed_avro_prefix):]
+        parts = relative_path.split('/')
+        key = parts[0]
 
-            if key in super_partitioned_keys:
-                # Get the zero based index from the `vet_001` component
-                index = int(parts[1].split('_')[-1]) - 1
-                if len(avro_file_arguments[key]) == index:
-                    avro_file_arguments[key].append([])
-                avro_file_arguments[key][index].append(full_path)
-            else:
-                avro_file_arguments[key].append(full_path)
+        if key in super_partitioned_keys:
+            # Get the zero based index from the `vet_001` component
+            index = int(parts[1].split('_')[-1]) - 1
+            if len(avro_file_arguments[key]) == index:
+                avro_file_arguments[key].append([])
+            avro_file_arguments[key][index].append(full_path)
+        else:
+            avro_file_arguments[key].append(full_path)
 
     return dict(avro_file_arguments)
 
