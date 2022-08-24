@@ -216,18 +216,14 @@ task GenerateHailScript {
         String avro_prefix
     }
 
-    String slashed_avro_prefix = avro_prefix + "/"
-
     command <<<
-        gsutil ls -r "${avro_prefix}" | grep '\.avro$' | sed 's!~{slashed_avro_prefix}!!' > avro_files.out
-
-        python /app/generate_hail_script.py avro_files.out
+        python /app/generate_hail_script.py <(gsutil ls -r '~{avro_prefix}')
     >>>
 
     output {
         Boolean done = true
     }
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:latest"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:vs_605_hail_codegen"
     }
 }

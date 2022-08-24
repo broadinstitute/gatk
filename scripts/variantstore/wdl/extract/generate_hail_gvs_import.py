@@ -5,13 +5,14 @@ from collections import defaultdict
 def generate_avro_dict(avro_prefix, listing):
     avro_file_arguments = defaultdict(list)
     super_partitioned_keys = {'vets', 'refs'}
+    slashed_avro_prefix = avro_prefix + "/" if not avro_prefix[-1] == '/' else avro_prefix
 
     with open(listing, 'r') as f:
         for full_path in f.readlines():
             full_path = full_path.strip()
             if not full_path.endswith(".avro"):
                 continue
-            relative_path = full_path[len(avro_prefix + "/"):]
+            relative_path = full_path[len(slashed_avro_prefix):]
             parts = relative_path.split('/')
             key = parts[0]
 
@@ -24,7 +25,7 @@ def generate_avro_dict(avro_prefix, listing):
             else:
                 avro_file_arguments[key].append(full_path)
 
-    return avro_file_arguments
+    return dict(avro_file_arguments)
 
 
 def generate_avro_args(avro_dict):
