@@ -98,7 +98,8 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     public static final String ALL_SITES_SHORT_NAME = "all-sites";
     public static final String KEEP_COMBINED_LONG_NAME = "keep-combined-raw-annotations";
     public static final String KEEP_COMBINED_SHORT_NAME = "keep-combined";
-    public static final String KEEP_RAW_GT_COUNT_LONG_NAME = "keep-raw-gt-count-annotation";
+    public static final String KEEP_SPECIFIED_RAW_ANNOTATION_LONG_NAME = "keep-specific-raw-annotation";
+    public static final String KEEP_SPECIFIED_RAW_ANNOTATION_SHORT_NAME = "keep-raw";
     public static final String FORCE_OUTPUT_INTERVALS_NAME = "force-output-intervals";
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -133,7 +134,6 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     doc = "LOD threshold to emit variant to VCF.")
     protected double tlodThreshold = 3.5;  //allow for some lower quality variants
 
-
     /**
      * Margin of error in allele fraction to consider a somatic variant homoplasmic, i.e. if there is less than a 0.1% reference allele fraction, those reads are likely errors
      */
@@ -141,16 +141,16 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     protected double afTolerance = 1e-3;  //based on Q30 as a "good" base quality score
 
     /**
-     * If specified, keep the combined raw annotations (e.g. AS_SB_TABLE) after genotyping.  This is applicable to Allele-Specific annotations
+     * If specified, keep all the combined raw annotations (e.g. AS_SB_TABLE) after genotyping.  This is applicable to Allele-Specific annotations
      */
     @Argument(fullName=KEEP_COMBINED_LONG_NAME, shortName = KEEP_COMBINED_SHORT_NAME, doc = "If specified, keep the combined raw annotations")
     protected boolean keepCombined = false;
 
     /**
-     * If specified, keep the RAW_GT_COUNT annotation, even if raw annotations in general are not kept.
+     * Keep only the specific combined raw annotations specified (removing the other raw annotations if keep-combined-raw-annotations is not set).
      */
-    @Argument(fullName=KEEP_RAW_GT_COUNT_LONG_NAME, doc="If specified, keep the RAW_GT_COUNT annotation, even if raw annotations in general are not kept.")
-    protected boolean keepRawGtCount = false;
+    @Argument(fullName= KEEP_SPECIFIED_RAW_ANNOTATION_LONG_NAME, shortName = KEEP_SPECIFIED_RAW_ANNOTATION_SHORT_NAME, doc="Keep only the specific combined raw annotations specified (removing the other raw annotations).")
+    protected List<String> keepSpecifiedRawAnnotations = new ArrayList<>();
 
     @ArgumentCollection
     private GenotypeCalculationArgumentCollection genotypeArgs = new GenotypeCalculationArgumentCollection();
@@ -269,7 +269,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
                 Collections.emptyList();
 
         Collection<Annotation>  variantAnnotations = makeVariantAnnotations();
-        annotationEngine = new VariantAnnotatorEngine(variantAnnotations, dbsnp.dbsnp, Collections.emptyList(), false, keepCombined, keepRawGtCount);
+        annotationEngine = new VariantAnnotatorEngine(variantAnnotations, dbsnp.dbsnp, Collections.emptyList(), false, keepCombined, keepSpecifiedRawAnnotations);
 
         merger = new ReferenceConfidenceVariantContextMerger(annotationEngine, getHeaderForVariants(), somaticInput, false, true);
 

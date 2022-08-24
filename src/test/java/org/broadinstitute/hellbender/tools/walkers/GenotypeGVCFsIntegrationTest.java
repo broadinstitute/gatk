@@ -43,8 +43,6 @@ import java.nio.file.StandardCopyOption;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
-import java.util.function.IntUnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -931,7 +929,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
                 .addVCF(reblockedGVCF)
                 .addOutput(output)
                 .add(GenotypeGVCFs.KEEP_COMBINED_LONG_NAME, false)
-                .add(GenotypeGVCFs.KEEP_RAW_GT_COUNT_LONG_NAME, true)
+                .add(GenotypeGVCFs.KEEP_SPECIFIED_RAW_ANNOTATION_LONG_NAME, GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY)
                 .add("A", "RawGtCount");
         runCommandLine(args);
 

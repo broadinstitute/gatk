@@ -4,12 +4,14 @@ import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.GenotypeGVCFs;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotationData;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -43,7 +45,7 @@ public final class VariantAnnotatorEngine {
     private boolean expressionAlleleConcordance;
     private final boolean useRawAnnotations;
     private final boolean keepRawCombinedAnnotations;
-    private final boolean keepRawGtCountAnnotation;
+    private final List<String> rawAnnotationsToKeep;
 
     private final static Logger logger = LogManager.getLogger(VariantAnnotatorEngine.class);
     private final static OneShotLogger jumboAnnotationsLogger = new OneShotLogger(VariantAnnotatorEngine.class);
@@ -60,19 +62,20 @@ public final class VariantAnnotatorEngine {
      * @param useRaw When this is set to true, the annotation engine will call {@link ReducibleAnnotation#annotateRawData(ReferenceContext, VariantContext, AlleleLikelihoods)}
 *               on annotations that extend {@link ReducibleAnnotation}, instead of {@link InfoFieldAnnotation#annotate(ReferenceContext, VariantContext, AlleleLikelihoods)},
      * @param keepCombined If true, retain the combined raw annotation values instead of removing them after finalizing
-     * @param keepRawGtCount If true, retain the RAW_GT_COUNT annotation even if other raw annotations are removed
+     * @param rawAnnotationsToKeep List of raw annotations to keep even when others are removed
      */
     public VariantAnnotatorEngine(final Collection<Annotation> annotationList,
                                   final FeatureInput<VariantContext> dbSNPInput,
                                   final List<FeatureInput<VariantContext>> featureInputs,
                                   final boolean useRaw,
                                   boolean keepCombined,
-                                  boolean keepRawGtCount){
+                                  final List<String> rawAnnotationsToKeep){
         Utils.nonNull(featureInputs, "comparisonFeatureInputs is null");
         infoAnnotations = new ArrayList<>();
         genotypeAnnotations = new ArrayList<>();
         jumboInfoAnnotations = new ArrayList<>();
         jumboGenotypeAnnotations = new ArrayList<>();
+        final List<String> variantAnnotationKeys = new ArrayList<>();
         for (Annotation annot : annotationList) {
             if (annot instanceof InfoFieldAnnotation) {
                 infoAnnotations.add((InfoFieldAnnotation) annot);
@@ -85,12 +88,18 @@ public final class VariantAnnotatorEngine {
             } else {
                 throw new GATKException.ShouldNeverReachHereException("Unexpected annotation type: " + annot.getClass().getName());
             }
+            variantAnnotationKeys.addAll(((VariantAnnotation) annot).getKeyNames());
         }
         variantOverlapAnnotator = initializeOverlapAnnotator(dbSNPInput, featureInputs);
         reducibleKeys = new LinkedHashSet<>();
         useRawAnnotations = useRaw;
         keepRawCombinedAnnotations = keepCombined;
-        keepRawGtCountAnnotation = keepRawGtCount;
+        for (String rawAnnot : rawAnnotationsToKeep) {
+            if (!variantAnnotationKeys.contains(rawAnnot)) {
+                throw new UserException("Requested --" + GenotypeGVCFs.KEEP_SPECIFIED_RAW_ANNOTATION_LONG_NAME + ": " + rawAnnot + " is not available. Add requested annotation with --" + StandardArgumentDefinitions.ANNOTATION_LONG_NAME + ".");
+            }
+        }
+        this.rawAnnotationsToKeep = rawAnnotationsToKeep;
         for (InfoFieldAnnotation annot : infoAnnotations) {
             if (annot instanceof ReducibleAnnotation) {
                 for (final String rawKey : ((ReducibleAnnotation) annot).getRawKeyNames()) {
@@ -105,7 +114,7 @@ public final class VariantAnnotatorEngine {
                                   final List<FeatureInput<VariantContext>> featureInputs,
                                   final boolean useRaw,
                                   boolean keepCombined){
-        this(annotationList, dbSNPInput, featureInputs, useRaw, keepCombined, false);
+        this(annotationList, dbSNPInput, featureInputs, useRaw, keepCombined, Collections.emptyList());
     }
 
     private VariantOverlapAnnotator initializeOverlapAnnotator(final FeatureInput<VariantContext> dbSNPInput, final List<FeatureInput<VariantContext>> featureInputs) {
@@ -265,10 +274,13 @@ public final class VariantAnnotatorEngine {
     public VariantContext finalizeAnnotations(VariantContext vc, VariantContext originalVC) {
         final Map<String, Object> variantAnnotations = new LinkedHashMap<>(vc.getAttributes());
 
-        // save RAW_GT_COUNT if it's requested to be kept
-        final Object rawGtCount = keepRawGtCountAnnotation &&
-                variantAnnotations.containsKey(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY) ?
-                variantAnnotations.get(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY) : null;
+        //save annotations that have been requested to be kept
+        final Map<String, Object> savedRawAnnotations = new LinkedHashMap<>();
+        for(String rawAnnot : rawAnnotationsToKeep) {
+            if (variantAnnotations.containsKey(rawAnnot)) {
+                savedRawAnnotations.put(rawAnnot, variantAnnotations.get(rawAnnot));
+            }
+        }
 
         // go through all the requested info annotationTypes
         for (final InfoFieldAnnotation annotationType : infoAnnotations) {
@@ -297,10 +309,8 @@ public final class VariantAnnotatorEngine {
             variantAnnotations.remove(GATKVCFConstants.VARIANT_DEPTH_KEY);
             variantAnnotations.remove(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY);
         }
-        //add back RAW_GT_COUNT if it is specifically requested
-        if (keepRawGtCountAnnotation && rawGtCount != null ) {
-            variantAnnotations.put(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY, rawGtCount);
-        }
+        //add back raw annotations that have specifically been requested to keep
+        variantAnnotations.putAll(savedRawAnnotations);
 
         // generate a new annotated VC
         final VariantContextBuilder builder = new VariantContextBuilder(vc).attributes(variantAnnotations);
