@@ -149,7 +149,8 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     /**
      * Keep only the specific combined raw annotations specified (removing the other raw annotations if keep-combined-raw-annotations is not set).
      */
-    @Argument(fullName= KEEP_SPECIFIED_RAW_ANNOTATION_LONG_NAME, shortName = KEEP_SPECIFIED_RAW_ANNOTATION_SHORT_NAME, doc="Keep only the specific combined raw annotations specified (removing the other raw annotations).")
+    @Argument(fullName= KEEP_SPECIFIED_RAW_ANNOTATION_LONG_NAME, shortName = KEEP_SPECIFIED_RAW_ANNOTATION_SHORT_NAME, optional = true,
+            doc="Keep only the specific combined raw annotations specified (removing the other raw annotations).")
     protected List<String> keepSpecifiedRawAnnotations = new ArrayList<>();
 
     @ArgumentCollection
