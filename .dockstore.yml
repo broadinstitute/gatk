@@ -79,6 +79,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_sum_python
    - name: GvsRescatterCallsetInterval
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsRescatterCallsetInterval.wdl

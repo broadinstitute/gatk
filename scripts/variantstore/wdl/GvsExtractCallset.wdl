@@ -386,7 +386,7 @@ task SumBytes {
 
   command <<<
     set -e
-    echo "~{sep=" " file_sizes_bytes}" | tr " " "\n" | python -c "
+    echo "~{sep=" " file_sizes_bytes}" | tr " " "\n" | python3 -c "
     import sys;
     total_bytes = sum(float(i.strip()) for i in sys.stdin);
     total_mb = total_bytes/10**6;
