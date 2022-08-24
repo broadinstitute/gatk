@@ -16,7 +16,7 @@ workflow GvsImportGenomes {
     Boolean skip_loading_vqsr_fields = false
 
     # set to "NONE" to ingest all the reference data into GVS for VDS (instead of VCF) output
-    String drop_state = "FORTY"
+    String drop_state = "NONE"
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
     Int? load_data_batch_size

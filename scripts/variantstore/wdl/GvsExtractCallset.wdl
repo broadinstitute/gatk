@@ -21,7 +21,7 @@ workflow GvsExtractCallset {
     Boolean zero_pad_output_vcf_filenames = true
 
     # set to "NONE" if all the reference data was loaded into GVS in GvsImportGenomes
-    String drop_state = "FORTY"
+    String drop_state = "NONE"
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
     File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
@@ -389,7 +389,7 @@ task SumBytes {
 
   command <<<
     set -e
-    echo "~{sep=" " file_sizes_bytes}" | tr " " "\n" | python -c "
+    echo "~{sep=" " file_sizes_bytes}" | tr " " "\n" | python3 -c "
     import sys;
     total_bytes = sum(float(i.strip()) for i in sys.stdin);
     total_mb = total_bytes/10**6;

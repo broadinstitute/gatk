@@ -29,7 +29,7 @@ workflow GvsExtractCohortFromSampleNames {
 
     String? output_gcs_dir
     # set to "NONE" if all the reference data was loaded into GVS in GvsImportGenomes
-    String drop_state = "FORTY"
+    String drop_state = "NONE"
 
     Int? extract_preemptible_override
     Int? extract_maxretries_override
