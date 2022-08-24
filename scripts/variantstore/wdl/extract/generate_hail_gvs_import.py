@@ -40,7 +40,7 @@ def generate_avro_args(avro_dict):
 def generate_gvs_import_script(avro_prefix, listing, vds_output_path, vcf_output_path, temp_dir):
     avro_dict = generate_avro_dict(avro_prefix, listing)
     avro_args = generate_avro_args(avro_dict)
-    indented_avro_args = avro_args # re.sub('\n', '\n    ', avro_args)
+    indented_avro_args = re.sub('\n', '\n    ', avro_args)
     script = f"""
 # The following instructions can be used from the terminal of a Terra notebook to import GVS QuickStart Avro files
 # and generate a VDS.
