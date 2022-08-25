@@ -250,8 +250,6 @@ task GenerateHailScript {
         vcf_output_path="$(dirname ~{avro_prefix})/gvs_export.vcf"
         echo $vcf_output_path > vcf_output_path.txt
 
-        echo $avro_prefix > "avro_prefix.out"
-
         gsutil ls -r '~{avro_prefix}' > avro_listing.txt
 
         python3 /app/generate_hail_gvs_import.py \
