@@ -5,8 +5,20 @@ from collections import defaultdict
 
 
 def generate_avro_dict(avro_prefix, gcs_listing):
+    """
+    Generate a dictionary of the Avro arguments for the `hl.import_gvs` invocation. The keys will match the formal
+    parameters of the `hl.import_gvs` function and should include:
+
+    * vets (list of lists, one outer list per GVS superpartition of 4000 samples max)
+    * refs (list of lists, one outer list per GVS superpartition of 4000 samples max)
+    * sample_mapping_data (list)
+    * site_filtering_data (list)
+    * vqsr_filtering_data (list)
+    * vqsr_tranche_data (list)
+    """
+
     avro_file_arguments = defaultdict(list)
-    super_partitioned_keys = {'vets', 'refs'}
+    superpartitioned_keys = {'vets', 'refs'}
     slashed_avro_prefix = avro_prefix + "/" if not avro_prefix[-1] == '/' else avro_prefix
 
     for full_path in gcs_listing.readlines():
@@ -17,7 +29,7 @@ def generate_avro_dict(avro_prefix, gcs_listing):
         parts = relative_path.split('/')
         key = parts[0]
 
-        if key in super_partitioned_keys:
+        if key in superpartitioned_keys:
             # Get the zero based index from the `vet_001` component
             index = int(parts[1].split('_')[-1]) - 1
             if len(avro_file_arguments[key]) == index:
@@ -30,18 +42,29 @@ def generate_avro_dict(avro_prefix, gcs_listing):
 
 
 def generate_avro_args(avro_dict):
-    args = []
+    """
+    Stringifies an Avro arguments dictionary such that it can be interpolated into a `hl.gvs_import` invocation to
+    encompass all required Avro parameters.
+    """
+    avro_args = []
     for k, v in avro_dict.items():
         s = f'{k}={json.dumps(v, indent=4)}'
-        args.append(s)
-    return ',\n'.join(args)
+        avro_args.append(s)
+    return ',\n'.join(avro_args)
 
 
-def generate_gvs_import_script(avro_prefix, listing, vds_output_path, vcf_output_path, temp_dir):
-    avro_dict = generate_avro_dict(avro_prefix, listing)
+def generate_gvs_import_script(avro_prefix, gcs_listing, vds_output_path, vcf_output_path, temp_dir):
+    """
+    Generate a Python script that when executed will:
+
+    * import GVS Avro files into a Hail VDS
+    * export from the Hail VDS to VCF
+
+    """
+    avro_dict = generate_avro_dict(avro_prefix, gcs_listing)
     avro_args = generate_avro_args(avro_dict)
     indented_avro_args = re.sub('\n', '\n    ', avro_args)
-    script = f"""
+    hail_script = f"""
 # The following instructions can be used from the terminal of a Terra notebook to import GVS QuickStart Avro files
 # and generate a VDS.
 #
@@ -79,7 +102,7 @@ fail_case = 'FAIL'
 mt = mt.annotate_entries(FT=hl.if_else(mt.FT, 'PASS', fail_case))
 hl.export_vcf(mt, '{vcf_output_path}')
 """
-    return script
+    return hail_script
 
 
 if __name__ == '__main__':
