@@ -36,21 +36,27 @@ task unpackTestJars(type: Copy){
     
     // put all of the classes required into a single dir, and use the individual files as the
     // classpath to prevent inter-module access exceptions on Java 17
+
+    // set fileMode to null to prevent the Copy task's ridiculous attempt to change the file permissions
+    fileMode(null)
+    String skipClass = "shapeless/\$tilde\$qmark\$greater\$"
+    //zipTree(gatkJar)
+
     if (gatkJar != "null") {
         System.out.println("starting gatkJar");
-        from zipTree(gatkJar).filter(f -> !f.getName().contains("shapeless/\$tilde\$qmark\$greater\$"))
+        from zipTree(gatkJar).filter(f -> !f.getName().contains(skipClass))
         into testClassesDir
     }
 
     if (testDependencyJar != "null") {
         System.out.println("starting testDependencyJar");
-        from zipTree(testDependencyJar).filter(f -> !f.getName().contains("shapeless/\$tilde\$qmark\$greater\$"))
+        from zipTree(testDependencyJar).filter(f -> !f.getName().contains(skipClass))
         into testClassesDir
     }
 
     if (testClassesJar != "null"){
         System.out.println("starting testClassesJar");
-        from zipTree(testClassesJar).filter(f -> !f.getName().contains("shapeless/\$tilde\$qmark\$greater\$"))
+        from zipTree(testClassesJar).filter(f -> !f.getName().contains(skipClass))
         into testClassesDir
     }
 }
