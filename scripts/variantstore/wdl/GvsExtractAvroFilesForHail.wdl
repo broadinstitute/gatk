@@ -37,7 +37,8 @@ workflow GvsExtractAvroFilesForHail {
     }
 
     call GenerateHailScript {
-        avro_prefix = ExtractFromNonSuperpartitionedTables.output_prefix
+        input:
+            avro_prefix = ExtractFromNonSuperpartitionedTables.output_prefix
     }
     output {
         String output_prefix = ExtractFromNonSuperpartitionedTables.output_prefix
