@@ -5,6 +5,7 @@ workflow GvsExtractAvroFilesForHail {
         String project_id
         String dataset
         String filter_set_name
+        String gcs_temporary_path
     }
 
     call OutputPath { input: go = true }
@@ -40,7 +41,8 @@ workflow GvsExtractAvroFilesForHail {
         input:
             go_non_superpartitioned = ExtractFromNonSuperpartitionedTables.done,
             go_superpartitioned = ExtractFromSuperpartitionedTables.done,
-            avro_prefix = ExtractFromNonSuperpartitionedTables.output_prefix
+            avro_prefix = ExtractFromNonSuperpartitionedTables.output_prefix,
+            gcs_temporary_path = gcs_temporary_path
     }
     output {
         String output_prefix = ExtractFromNonSuperpartitionedTables.output_prefix
@@ -225,6 +227,7 @@ task ExtractFromSuperpartitionedTables {
 task GenerateHailScript {
     input {
         String avro_prefix
+        String gcs_temporary_path
         Boolean go_non_superpartitioned
         Array[Boolean] go_superpartitioned
     }
@@ -233,16 +236,36 @@ task GenerateHailScript {
         volatile: true
     }
     parameter_meta {
+        gcs_temporary_path: "Path to network-visible temporary directory/bucket for intermediate file storage"
         go_non_superpartitioned: "Sync on completion of non-superpartitioned extract"
         go_superpartitioned: "Sync on completion of all superpartitioned extract shards"
     }
 
     command <<<
-        python3 /app/generate_hail_gvs_import.py <(gsutil ls -r '~{avro_prefix}')
+        set -o errexit -o nounset -o xtrace -o pipefail
+
+        vds_output_path="$(dirname ~{avro_prefix})/gvs_export.vds"
+        echo $vds_output_path > vds_output_path.txt
+
+        vcf_output_path="$(dirname ~{avro_prefix})/gvs_export.vcf"
+        echo $vcf_output_path > vcf_output_path.txt
+
+        echo $avro_prefix > "avro_prefix.out"
+
+        gsutil ls -r '~{avro_prefix}' > avro_listing.txt
+
+        python3 /app/generate_hail_gvs_import.py \
+            --avro_prefix '~{avro_prefix}' \
+            --avro_listing_file avro_listing.txt \
+            --vds_output_path "${vds_output_path}" \
+            --vcf_output_path "${vcf_output_path}" \
+            --gcs_temporary_path ~{gcs_temporary_path}
     >>>
 
     output {
         Boolean done = true
+        String vds_output_path = read_string('vds_output_path.txt')
+        String vcf_output_path = read_string('vcf_output_path.txt')
     }
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:vs_605_hail_codegen"
