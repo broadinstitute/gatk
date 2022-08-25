@@ -45,7 +45,7 @@ workflow GvsExtractAvroFilesForHail {
             gcs_temporary_path = gcs_temporary_path
     }
     output {
-        String output_prefix = ExtractFromNonSuperpartitionedTables.output_prefix
+        File hail_script = GenerateHailScript.hail_script
     }
 }
 
