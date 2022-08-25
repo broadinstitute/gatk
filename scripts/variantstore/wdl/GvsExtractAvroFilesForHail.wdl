@@ -49,6 +49,8 @@ workflow GvsExtractAvroFilesForHail {
 task OutputPath {
     meta {
         description: "Does nothing but produce the cloud path to its stdout."
+        # Always make a new output path, otherwise every invocation would clobber the original.
+        volatile: true
     }
     input {
         Boolean go = true
@@ -67,6 +69,8 @@ task OutputPath {
 task CountSamples {
     meta {
         description: "Counts the number of samples in the sample_info table efficiently."
+        # There's no last modified check so always count the samples.
+        volatile: true
     }
     input {
         String project_id
@@ -98,6 +102,8 @@ task CountSamples {
 task ExtractFromNonSuperpartitionedTables {
     meta {
         description: "Extracts from the non-superpartitioned tables: sample_info, filter_set_info, filter_set_sites"
+        # Always run, no last modified check.
+        volatile: true
     }
     input {
         String project_id
@@ -165,6 +171,8 @@ task ExtractFromNonSuperpartitionedTables {
 task ExtractFromSuperpartitionedTables {
     meta {
         description: "Extracts from the superpartitioned tables: vet_<table index>, ref_ranges_<table index>"
+        # Always run, no last modified check.
+        volatile: true
     }
     input {
         String project_id
@@ -216,9 +224,13 @@ task GenerateHailScript {
     input {
         String avro_prefix
     }
+    meta {
+        # Do not cache, this doesn't know if the "tree" under `avro_prefix` has changed.
+        volatile: true
+    }
 
     command <<<
-        python /app/generate_hail_script.py <(gsutil ls -r '~{avro_prefix}')
+        python /app/generate_hail_gvs_import.py <(gsutil ls -r '~{avro_prefix}')
     >>>
 
     output {
