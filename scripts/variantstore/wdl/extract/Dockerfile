@@ -1,4 +1,4 @@
-FROM gcr.io/google.com/cloudsdktool/cloud-sdk:349.0.0
+FROM gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0
 
 # Copy the application's requirements.txt and run pip to install
 COPY requirements.txt /app/requirements.txt

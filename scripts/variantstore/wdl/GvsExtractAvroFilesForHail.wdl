@@ -38,6 +38,8 @@ workflow GvsExtractAvroFilesForHail {
 
     call GenerateHailScript {
         input:
+            go_non_superpartitioned = ExtractFromNonSuperpartitionedTables.done,
+            go_superpartitioned = ExtractFromSuperpartitionedTables.done,
             avro_prefix = ExtractFromNonSuperpartitionedTables.output_prefix
     }
     output {
@@ -223,14 +225,20 @@ task ExtractFromSuperpartitionedTables {
 task GenerateHailScript {
     input {
         String avro_prefix
+        Boolean go_non_superpartitioned
+        Array[Boolean] go_superpartitioned
     }
     meta {
         # Do not cache, this doesn't know if the "tree" under `avro_prefix` has changed.
         volatile: true
     }
+    parameter_meta {
+        go_non_superpartitioned: "Sync on completion of non-superpartitioned extract"
+        go_superpartitioned: "Sync on completion of all superpartitioned extract shards"
+    }
 
     command <<<
-        python /app/generate_hail_gvs_import.py <(gsutil ls -r '~{avro_prefix}')
+        python3 /app/generate_hail_gvs_import.py <(gsutil ls -r '~{avro_prefix}')
     >>>
 
     output {
