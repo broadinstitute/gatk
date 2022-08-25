@@ -257,13 +257,14 @@ task GenerateHailScript {
             --avro_listing_file avro_listing.txt \
             --vds_output_path "${vds_output_path}" \
             --vcf_output_path "${vcf_output_path}" \
-            --gcs_temporary_path ~{gcs_temporary_path}
+            --gcs_temporary_path ~{gcs_temporary_path} > hail_script.py
     >>>
 
     output {
         Boolean done = true
         String vds_output_path = read_string('vds_output_path.txt')
         String vcf_output_path = read_string('vcf_output_path.txt')
+        String hail_script = read_string('hail_script.py')
     }
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:vs_605_hail_codegen"
