@@ -162,6 +162,7 @@ workflow GvsUnified {
         Array[File] output_vcfs = GvsExtractCallset.output_vcfs
         Array[File] output_vcf_indexes = GvsExtractCallset.output_vcf_indexes
         Float total_vcfs_size_mb = GvsExtractCallset.total_vcfs_size_mb
+        Array[File] output_vcf_interval_files = GvsExtractCallset.output_vcf_interval_files
         File manifest = GvsExtractCallset.manifest
         Boolean done = true
     }

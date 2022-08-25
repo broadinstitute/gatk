@@ -82,6 +82,7 @@ workflow GvsJointVariantCalling {
     output {
         Array[File] output_vcfs = GvsUnified.output_vcfs
         Array[File] output_vcf_indexes = GvsUnified.output_vcf_indexes
+        Array[File] output_vcf_interval_files = GvsUnified.output_vcf_interval_files
         Float total_vcfs_size_mb = GvsUnified.total_vcfs_size_mb
         File manifest = GvsUnified.manifest
     }
