@@ -264,7 +264,7 @@ task GenerateHailScript {
         Boolean done = true
         String vds_output_path = read_string('vds_output_path.txt')
         String vcf_output_path = read_string('vcf_output_path.txt')
-        String hail_script = read_string('hail_script.py')
+        File hail_script = 'hail_script.py'
     }
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:vs_605_hail_codegen"
