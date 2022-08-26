@@ -4,7 +4,7 @@ if [ $# -lt 1 ]; then
     exit 1
 fi
 
-set -o xtrace
+set -o errexit -o nounset -o pipefail -o xtrace
 
 BASE_REPO="broad-dsde-methods/variantstore"
 REPO_WITH_TAG="${BASE_REPO}:${1}"
@@ -13,6 +13,7 @@ GCR_TAG="us.gcr.io/${REPO_WITH_TAG}"
 docker build . -t "${REPO_WITH_TAG}"
 
 # Run unit tests before pushing to GCR.
+set +o errexit
 fail=0
 for test in test_*.py
 do
@@ -27,6 +28,8 @@ if [ $fail -ne 0 ]; then
     echo "One or more unit test has failed, exiting."
     exit $fail
 fi
+
+set -o errexit
 
 docker tag "${REPO_WITH_TAG}" "${GCR_TAG}"
 docker push "${GCR_TAG}"

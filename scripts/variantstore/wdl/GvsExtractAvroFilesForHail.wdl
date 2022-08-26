@@ -5,6 +5,7 @@ workflow GvsExtractAvroFilesForHail {
         String project_id
         String dataset
         String filter_set_name
+        String gcs_temporary_path
     }
 
     call OutputPath { input: go = true }
@@ -35,8 +36,16 @@ workflow GvsExtractAvroFilesForHail {
                 table_index = i + 1 #  'i' is 0-based so add 1.
         }
     }
+
+    call GenerateHailScript {
+        input:
+            go_non_superpartitioned = ExtractFromNonSuperpartitionedTables.done,
+            go_superpartitioned = ExtractFromSuperpartitionedTables.done,
+            avro_prefix = ExtractFromNonSuperpartitionedTables.output_prefix,
+            gcs_temporary_path = gcs_temporary_path
+    }
     output {
-        String output_prefix = ExtractFromNonSuperpartitionedTables.output_prefix
+        File hail_script = GenerateHailScript.hail_script
     }
 }
 
@@ -44,6 +53,8 @@ workflow GvsExtractAvroFilesForHail {
 task OutputPath {
     meta {
         description: "Does nothing but produce the cloud path to its stdout."
+        # Always make a new output path, otherwise every invocation would clobber the original.
+        volatile: true
     }
     input {
         Boolean go = true
@@ -62,6 +73,8 @@ task OutputPath {
 task CountSamples {
     meta {
         description: "Counts the number of samples in the sample_info table efficiently."
+        # Not dealing with caching for now as that would introduce a lot of complexity.
+        volatile: true
     }
     input {
         String project_id
@@ -93,6 +106,8 @@ task CountSamples {
 task ExtractFromNonSuperpartitionedTables {
     meta {
         description: "Extracts from the non-superpartitioned tables: sample_info, filter_set_info, filter_set_sites"
+        # Not dealing with caching for now as that would introduce a lot of complexity.
+        volatile: true
     }
     input {
         String project_id
@@ -121,7 +136,7 @@ task ExtractFromNonSuperpartitionedTables {
 
         bq query --nouse_legacy_sql --project_id=~{project_id} "
             EXPORT DATA OPTIONS(
-            uri='${avro_prefix}/vqsr_filtering/vqsr_filtering_*.avro', format='AVRO', compression='SNAPPY') AS
+            uri='${avro_prefix}/vqsr_filtering_data/vqsr_filtering_data_*.avro', format='AVRO', compression='SNAPPY') AS
             SELECT location, type as model, ref, alt, vqslod, yng_status
             FROM \`~{project_id}.~{dataset}.filter_set_info\`
             WHERE filter_set_name = '~{filter_set_name}'
@@ -130,7 +145,7 @@ task ExtractFromNonSuperpartitionedTables {
 
         bq query --nouse_legacy_sql --project_id=~{project_id} "
             EXPORT DATA OPTIONS(
-            uri='${avro_prefix}/site_filtering/site_filtering_*.avro', format='AVRO', compression='SNAPPY') AS
+            uri='${avro_prefix}/site_filtering_data/site_filtering_data_*.avro', format='AVRO', compression='SNAPPY') AS
             SELECT location, filters
             FROM \`~{project_id}.~{dataset}.filter_set_sites\`
             WHERE filter_set_name = '~{filter_set_name}'
@@ -139,7 +154,7 @@ task ExtractFromNonSuperpartitionedTables {
 
         bq query --nouse_legacy_sql --project_id=~{project_id} "
             EXPORT DATA OPTIONS(
-            uri='${avro_prefix}/vqsr_tranche/vqsr_tranche_*.avro', format='AVRO', compression='SNAPPY') AS
+            uri='${avro_prefix}/vqsr_tranche_data/vqsr_tranche_data_*.avro', format='AVRO', compression='SNAPPY') AS
             SELECT model, truth_sensitivity, min_vqslod, filter_name
             FROM \`~{project_id}.~{dataset}.filter_set_tranches\`
             WHERE filter_set_name = '~{filter_set_name}'
@@ -160,6 +175,8 @@ task ExtractFromNonSuperpartitionedTables {
 task ExtractFromSuperpartitionedTables {
     meta {
         description: "Extracts from the superpartitioned tables: vet_<table index>, ref_ranges_<table index>"
+        # Not dealing with caching for now as that would introduce a lot of complexity.
+        volatile: true
     }
     input {
         String project_id
@@ -183,7 +200,7 @@ task ExtractFromSuperpartitionedTables {
         # so an extra layer of `vet_${str_table_index}` is inserted here.
         bq query --nouse_legacy_sql --project_id=~{project_id} "
             EXPORT DATA OPTIONS(
-            uri='${avro_prefix}/vet/vet_${str_table_index}/vet_${str_table_index}_*.avro', format='AVRO', compression='SNAPPY') AS
+            uri='${avro_prefix}/vets/vet_${str_table_index}/vet_${str_table_index}_*.avro', format='AVRO', compression='SNAPPY') AS
             SELECT location, sample_id, ref, REPLACE(alt,',<NON_REF>','') alt, call_GT as GT, call_AD as AD, call_GQ as GQ, cast(SPLIT(call_pl,',')[OFFSET(0)] as int64) as RGQ
             FROM \`~{project_id}.~{dataset}.vet_${str_table_index}\`
             ORDER BY location
@@ -191,7 +208,7 @@ task ExtractFromSuperpartitionedTables {
 
         bq query --nouse_legacy_sql --project_id=~{project_id} "
             EXPORT DATA OPTIONS(
-            uri='${avro_prefix}/ref_ranges/ref_ranges_${str_table_index}/ref_ranges_${str_table_index}_*.avro', format='AVRO', compression='SNAPPY') AS
+            uri='${avro_prefix}/refs/ref_ranges_${str_table_index}/ref_ranges_${str_table_index}_*.avro', format='AVRO', compression='SNAPPY') AS
             SELECT location, sample_id, length, state
             FROM \`~{project_id}.~{dataset}.ref_ranges_${str_table_index}\`
             ORDER BY location
@@ -204,5 +221,52 @@ task ExtractFromSuperpartitionedTables {
 
     runtime {
         docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
+    }
+}
+
+task GenerateHailScript {
+    input {
+        String avro_prefix
+        String gcs_temporary_path
+        Boolean go_non_superpartitioned
+        Array[Boolean] go_superpartitioned
+    }
+    meta {
+        # Do not cache, this doesn't know if the "tree" under `avro_prefix` has changed.
+        volatile: true
+    }
+    parameter_meta {
+        gcs_temporary_path: "Path to network-visible temporary directory/bucket for intermediate file storage"
+        go_non_superpartitioned: "Sync on completion of non-superpartitioned extract"
+        go_superpartitioned: "Sync on completion of all superpartitioned extract shards"
+    }
+
+    command <<<
+        set -o errexit -o nounset -o xtrace -o pipefail
+
+        vds_output_path="$(dirname ~{avro_prefix})/gvs_export.vds"
+        echo $vds_output_path > vds_output_path.txt
+
+        vcf_output_path="$(dirname ~{avro_prefix})/gvs_export.vcf"
+        echo $vcf_output_path > vcf_output_path.txt
+
+        gsutil ls -r '~{avro_prefix}' > avro_listing.txt
+
+        python3 /app/generate_hail_gvs_import.py \
+            --avro_prefix '~{avro_prefix}' \
+            --avro_listing_file avro_listing.txt \
+            --vds_output_path "${vds_output_path}" \
+            --vcf_output_path "${vcf_output_path}" \
+            --gcs_temporary_path ~{gcs_temporary_path} > hail_script.py
+    >>>
+
+    output {
+        Boolean done = true
+        String vds_output_path = read_string('vds_output_path.txt')
+        String vcf_output_path = read_string('vcf_output_path.txt')
+        File hail_script = 'hail_script.py'
+    }
+    runtime {
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:vs_605_hail_codegen"
     }
 }
