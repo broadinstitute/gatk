@@ -120,6 +120,7 @@ workflows:
          - master
          - ah_var_store
          - vs_447_fixup_non_fq_invocations
+         - ah_vs_565_output_intervals_and_sample_list
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
@@ -183,6 +184,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - ah_vs_565_output_intervals_and_sample_list
    - name: GvsJointVariantCalling
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCalling.wdl
@@ -190,6 +192,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - ah_vs_565_output_intervals_and_sample_list
    - name: GvsJointVariantCallsetCost
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCallsetCost.wdl
