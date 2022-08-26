@@ -110,7 +110,7 @@ task ExtractAnAcAfFromVCF {
         ## filter out the non-passing sites
         bcftools view --threads 4 -f 'PASS,.' --no-update -O u | \
         ## remove extraneous INFO and FORMAT fields
-        bcftools annotate -x ^INFO/AC,INFO/AF,INFO/AN,^FORMAT/FT,FORMAT/GT -O b -o filtered.bcf
+        bcftools annotate -x ^FORMAT/FT,FORMAT/GT -O b -o filtered.bcf
 
         echo_date "VAT: normalize, left align and split multi allelic sites to new lines, remove duplicate lines"
         ## note that normalization may create sites with more than 50 alt alleles
