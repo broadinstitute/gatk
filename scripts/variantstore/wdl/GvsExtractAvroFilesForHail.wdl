@@ -73,7 +73,7 @@ task OutputPath {
 task CountSamples {
     meta {
         description: "Counts the number of samples in the sample_info table efficiently."
-        # There's no last modified check so always count the samples.
+        # Not dealing with caching for now as that would introduce a lot of complexity.
         volatile: true
     }
     input {
@@ -106,7 +106,7 @@ task CountSamples {
 task ExtractFromNonSuperpartitionedTables {
     meta {
         description: "Extracts from the non-superpartitioned tables: sample_info, filter_set_info, filter_set_sites"
-        # Always run, no last modified check.
+        # Not dealing with caching for now as that would introduce a lot of complexity.
         volatile: true
     }
     input {
@@ -175,7 +175,7 @@ task ExtractFromNonSuperpartitionedTables {
 task ExtractFromSuperpartitionedTables {
     meta {
         description: "Extracts from the superpartitioned tables: vet_<table index>, ref_ranges_<table index>"
-        # Always run, no last modified check.
+        # Not dealing with caching for now as that would introduce a lot of complexity.
         volatile: true
     }
     input {
