@@ -1,0 +1,10 @@
+This is an unmodified distribution of MUMmer 4.0.0rc1, compiled from source using the commands:
+
+./configure --disable-shared --enable-static --prefix=<directory>
+make
+make install
+
+Only selected MUMmer binaries are included in this distribution.
+
+Full source code is available here:
+https://github.com/mummer4/mummer/releases/download/v4.0.0rc1/mummer-4.0.0rc1.tar.gz

@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.reference;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -151,7 +152,7 @@ public class CompareReferencesIntegrationTest extends CommandLineProgramTest {
         runCommandLine(args);
     }
 
-    // The following tests run the tool on different combinations of reference files
+    // The following test runs the tool on different combinations of reference files
     // and produce output to stdout for the sake of manually inspecting outputs.
     // Disabled, as no actual assertions made.
     @Test(enabled = false)
@@ -161,19 +162,134 @@ public class CompareReferencesIntegrationTest extends CommandLineProgramTest {
         final File ref3 = new File(getToolTestDataDir() + "hg19mini_chr2snp.fasta");
         final File ref4 = new File(getToolTestDataDir() + "hg19mini_missingchr1.fasta");
 
-        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-refcomp", ref3.getAbsolutePath(),
-                "-refcomp", ref4.getAbsolutePath()};
+        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref3.getAbsolutePath(), "-refcomp", ref3.getAbsolutePath(),
+                "-refcomp", ref4.getAbsolutePath(), "-display-sequences-by-name", "-display-only-differing-sequences"};
         runCommandLine(args);
     }
 
-    @Test(enabled = false)
-    public void testCompareReferencesMissingSequencesStdOut() throws IOException{
+    // FIND_SNPS_ONLY tests:
+
+    @DataProvider(name = "findSNPsData")
+    public Object[][] findSNPsData() {
+        return new Object[][]{
+                // ref1, ref2, output name, expected output
+                new Object[]{ new File(getToolTestDataDir() + "hg19mini.fasta"),
+                        new File(getToolTestDataDir() + "hg19mini_chr2multiplesnps.fasta"),
+                        "hg19mini.fasta_hg19mini_chr2multiplesnps.fasta_snps.tsv",
+                        new File(getToolTestDataDir(), "expected.hg19mini.fasta_hg19mini_chr2multiplesnps.fasta_snps.tsv"),
+                },
+                new Object[]{ new File(getToolTestDataDir() + "hg19mini.fasta"),
+                        new File(getToolTestDataDir() + "hg19mini_chr2iupacsnps.fasta"),
+                        "hg19mini.fasta_hg19mini_chr2iupacsnps.fasta_snps.tsv",
+                        new File(getToolTestDataDir(), "expected.hg19mini.fasta_hg19mini_chr2iupacsnps.fasta_snps.tsv"),
+                },
+                // produces empty output file bc FIND_SNPS_ONLY doesn't work on indels
+                new Object[]{ new File(getToolTestDataDir() + "hg19mini.fasta"),
+                        new File(getToolTestDataDir() + "hg19mini_chr1indel.fasta"),
+                        "hg19mini.fasta_hg19mini_chr1indel.fasta_snps.tsv",
+                        new File(getToolTestDataDir(), "expected.hg19mini.fasta_hg19mini_chr1indel.fasta_snps.tsv"),
+                },
+        };
+    }
+    @Test(dataProvider = "findSNPsData")
+    public void testFindSNPs(File ref1, File ref2, String actualOutputFileName, File expectedOutput) throws IOException{
+        final File output = IOUtils.createTempDir("tempFindSNPs");
+
+        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-base-comparison", "FIND_SNPS_ONLY", "-base-comparison-output", output.getAbsolutePath()};
+        runCommandLine(args);
+
+        final File actualOutput = new File(output, actualOutputFileName);
+        IntegrationTestSpec.assertEqualTextFiles(actualOutput, expectedOutput);
+    }
+
+    @DataProvider(name = "baseComparisonIllegalArgumentsData")
+    public Object[][] baseComparisonIllegalArgumentsData() {
+        return new Object[][]{
+                // base comparison mode
+                new Object[]{"FULL_ALIGNMENT"},
+                new Object[]{"FIND_SNPS_ONLY"},
+        };
+    }
+
+    // tool throws a UserException.CouldNotCreateOutputFile but gets wrapped in a NullPointerException
+    @Test(dataProvider = "baseComparisonIllegalArgumentsData", expectedExceptions = NullPointerException.class)
+    public void testFindSNPsNoOutputDir(String baseComparisonMode) throws IOException{
         final File ref1 = new File(getToolTestDataDir() + "hg19mini.fasta");
-        final File ref2 = new File(getToolTestDataDir() + "hg19mini_missingchr3.fasta");
-        final File ref3 = new File(getToolTestDataDir() + "hg19mini_missingchr1.fasta");
+        final File ref2 = new File(getToolTestDataDir() + "hg19mini_chr2iupacsnps.fasta");
 
-        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-refcomp", ref3.getAbsolutePath()};
+        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-base-comparison", baseComparisonMode};
         runCommandLine(args);
     }
 
+    @Test(dataProvider = "baseComparisonIllegalArgumentsData", expectedExceptions = UserException.CouldNotCreateOutputFile.class)
+    public void testFindSNPsNonexistentOutputDir(String baseComparisonMode) throws IOException{
+        final File ref1 = new File(getToolTestDataDir() + "hg19mini.fasta");
+        final File ref2 = new File(getToolTestDataDir() + "hg19mini_chr2iupacsnps.fasta");
+        final File nonexistentOutputDir = new File("/tempreferences");
+
+        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-base-comparison", baseComparisonMode, "-base-comparison-output", nonexistentOutputDir.getAbsolutePath()};
+        runCommandLine(args);
+    }
+
+    @Test(dataProvider = "baseComparisonIllegalArgumentsData", expectedExceptions = UserException.BadInput.class)
+    public void testFindSNPsMoreThanTwoReferences(String baseComparisonMode) throws IOException{
+        final File ref1 = new File(getToolTestDataDir() + "hg19mini.fasta");
+        final File ref2 = new File(getToolTestDataDir() + "hg19mini_chr2iupacsnps.fasta");
+        final File ref3 = new File(getToolTestDataDir() + "hg19mini_chr2multiplesnps.fasta");
+        final File output = IOUtils.createTempDir("tempFindSNPs");
+
+        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-refcomp", ref3.getAbsolutePath(), "-base-comparison", baseComparisonMode, "-base-comparison-output", output.getAbsolutePath()};
+        runCommandLine(args);
+    }
+
+    // FULL_ALIGNMENT tests:
+    @DataProvider(name = "fullAlignmentData")
+    public Object[][] fullAlignmentData() {
+        return new Object[][]{
+                // ref1, ref2, output name, expected output
+                new Object[]{ new File(getToolTestDataDir() + "hg19mini.fasta"),
+                        new File(getToolTestDataDir() + "hg19mini_chr2multiplesnps.fasta"),
+                        "hg19mini.fasta_hg19mini_chr2multiplesnps.fasta.vcf",
+                        new File(getToolTestDataDir(), "expected.hg19mini.fasta_hg19mini_chr2multiplesnps.fasta.vcf"),
+                },
+                // order that these 2 references are specified determines whether it is an insertion or deletion
+                new Object[]{ new File(getToolTestDataDir() + "hg19mini.fasta"),
+                        new File(getToolTestDataDir() + "hg19mini_chr1indel.fasta"),
+                        "hg19mini.fasta_hg19mini_chr1indel.fasta.vcf",
+                        new File(getToolTestDataDir(), "expected.testDeletion.hg19mini.fasta_hg19mini_chr1indel.fasta.vcf"),
+                },
+                // order that these 2 references are specified determines whether it is an insertion or deletion
+                new Object[]{ new File(getToolTestDataDir() + "hg19mini_chr1indel.fasta"),
+                        new File(getToolTestDataDir() + "hg19mini.fasta"),
+                        "hg19mini_chr1indel.fasta_hg19mini.fasta.vcf",
+                        new File(getToolTestDataDir(), "expected.testInsertion.hg19mini_chr1indel.fasta_hg19mini.fasta.vcf"),
+                },
+                new Object[]{ new File(getToolTestDataDir() + "hg19mini.fasta"),
+                        new File(getToolTestDataDir() + "hg19mini_snpsmultiplecontigs.fasta"),
+                        "hg19mini.fasta_hg19mini_snpsmultiplecontigs.fasta.vcf",
+                        new File(getToolTestDataDir(), "expected.hg19mini.fasta_hg19mini_snpsmultiplecontigs.fasta.vcf"),
+                },
+                new Object[]{ new File(getToolTestDataDir() + "hg19mini.fasta"),
+                        new File(getToolTestDataDir() + "hg19mini_snpandindel.fasta"),
+                        "hg19mini.fasta_hg19mini_snpandindel.fasta.vcf",
+                        new File(getToolTestDataDir(), "expected.SNPandINDEL.hg19mini.fasta_hg19mini_snpandindel.fasta.vcf"),
+                },
+                new Object[]{ new File(getToolTestDataDir() + "hg19mini.fasta"),
+                        new File(getToolTestDataDir() + "hg19mini_manySNPsINDELs.fasta"),
+                        "hg19mini.fasta_hg19mini_manySNPsINDELs.fasta.vcf",
+                        new File(getToolTestDataDir(), "expected.hg19mini.fasta_hg19mini_manySNPsINDELs.fasta.vcf"),
+                },
+        };
+    }
+
+    @Test(dataProvider = "fullAlignmentData")
+    public void testFullAlignmentMode(File ref1, File ref2, String actualOutputFileName, File expectedOutput) throws IOException{
+        final File output = IOUtils.createTempDir("tempDirFullAlignment");
+
+        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-base-comparison", "FULL_ALIGNMENT", "-base-comparison-output", output.getAbsolutePath()};
+        runCommandLine(args);
+
+        final File actualOutput = new File(output, actualOutputFileName);
+        IntegrationTestSpec.assertEqualTextFiles(actualOutput, expectedOutput);
+    }
 }

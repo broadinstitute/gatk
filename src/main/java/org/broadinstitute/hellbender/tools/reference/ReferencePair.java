@@ -44,6 +44,14 @@ public class ReferencePair {
         analysis = EnumSet.of(Status.EXACT_MATCH);
     }
 
+    public GATKPath getRef1() {
+        return ref1;
+    }
+
+    public GATKPath getRef2() {
+        return ref2;
+    }
+
     /**
      * Given a Status, add it to the ReferencePair's analysis
      *
@@ -75,12 +83,6 @@ public class ReferencePair {
     }
     public String getRef2AsString(){
         return ReferenceSequenceTable.getReferenceColumnName(ref2);
-    }
-    public GATKPath getRef1(){
-        return ref1;
-    }
-    public GATKPath getRef2() {
-        return ref2;
     }
 
     /**

@@ -1,6 +1,14 @@
 package org.broadinstitute.hellbender.tools.reference;
 
+import htsjdk.samtools.reference.FastaReferenceWriter;
+import htsjdk.samtools.reference.FastaReferenceWriterBuilder;
+import htsjdk.samtools.reference.ReferenceSequence;
+import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.variantcontext.writer.VariantContextWriter;
+import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -8,15 +16,20 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.funcotator.FilterFuncotations;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.alignment.MummerExecutor;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.text.XReadLines;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 import picard.cmdline.programgroups.ReferenceProgramGroup;
 
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
+import java.io.*;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 
@@ -73,6 +86,8 @@ import java.util.*;
 @ExperimentalFeature
 public class CompareReferences extends GATKTool {
 
+
+
     @Argument(fullName = "references-to-compare", shortName = "refcomp", doc = "Reference sequence file(s) to compare.")
     private List<GATKPath> references;
 
@@ -93,6 +108,13 @@ public class CompareReferences extends GATKTool {
     @Argument(fullName = "display-only-differing-sequences", doc = "If provided, only display sequence names that differ in their actual sequence.", optional = true)
     private boolean onlyDisplayDifferingSequences = false;
 
+    @Argument(fullName = "base-comparison", doc = "Mode for base-level comparisons. Default is off, but can do full alignment of mismatching sequences to find SNPs and INDELs (FULL_ALIGNMENT), or detect SNPs only in mismatching sequences of the same length (FIND_SNPS_ONLY).", optional = true)
+    private BaseComparisonMode baseComparisonMode = BaseComparisonMode.NO_BASE_COMPARISON;
+
+    @Argument(fullName = "base-comparison-output", doc = "Output directory for base comparison outputs. Required for running base-comparison in FULL_ALIGNMENT or FIND_SNPS_ONLY mode.", optional = true)
+    private GATKPath baseComparisonOutputDirectory;
+
+
     public enum MD5CalculationMode {
         // use only MD5s found in dictionary; if MD5 missing, crashes
         USE_DICT,
@@ -100,6 +122,15 @@ public class CompareReferences extends GATKTool {
         RECALCULATE_IF_MISSING,
         // recalculate all MD5s, regardless of presence in dictionary
         ALWAYS_RECALCULATE;
+    }
+
+    public enum BaseComparisonMode{
+        // no base comparison
+        NO_BASE_COMPARISON,
+        // run the mummer pipeline to generate a VCF file containing SNPs and INDELs for any mismatching sequences of same name
+        FULL_ALIGNMENT,
+        // do a base-by-base comparison of any same-name, same-length mismatching sequences to output a table containing each base mismatch
+        FIND_SNPS_ONLY
     }
 
     private Map<GATKPath, ReferenceDataSource> referenceSources;
@@ -118,6 +149,19 @@ public class CompareReferences extends GATKTool {
         // add data sources for remaining references
         for(GATKPath path : references){
             referenceSources.put(path, ReferenceDataSource.of(path.toPath()));
+        }
+
+        // must have exactly 2 references to run either base comparison mode
+        if(baseComparisonMode != BaseComparisonMode.NO_BASE_COMPARISON){
+            if(baseComparisonOutputDirectory == null) {
+                throw new UserException.CouldNotCreateOutputFile(baseComparisonOutputDirectory, "Output directory not provided but required in -base-comparison "  +  baseComparisonMode + " mode.");
+            }
+            if(!Files.exists(baseComparisonOutputDirectory.toPath())){
+                throw new UserException.CouldNotCreateOutputFile(baseComparisonOutputDirectory, "Output directory non-existent.");
+            }
+            if(referenceSources.size() != 2) {
+                throw new UserException.BadInput("Base comparison modes can only be run on 2 references.");
+            }
         }
     }
 
@@ -140,6 +184,16 @@ public class CompareReferences extends GATKTool {
         System.out.println("*********************************************************");
         for(ReferencePair pair : referencePairs){
             System.out.println(pair);
+        }
+
+        ReferencePair refPair = referencePairs.get(0);
+        switch (baseComparisonMode) {
+            case FULL_ALIGNMENT:
+                runFullAlignment(refPair, table);
+                break;
+            case FIND_SNPS_ONLY:
+                runFindSNPS(refPair, table);
+                break;
         }
     }
 
@@ -204,6 +258,225 @@ public class CompareReferences extends GATKTool {
         System.out.println();
     }
 
+    /**
+     * Method to execute a full alignment of 2 references. Detects same-named mismatching sequences and extracts
+     * the sequence in each reference into temp fasta files. Creates a MummerExecutor to run the MUMmer alignment
+     * pipeline on mismatching sequences, which produces a .snps file with SNPs and INDELs for each sequence.
+     * Merges individual sequence .snps files, and then converts to a VCF containing all alignment
+     * information for all mismatching sequences in the references.
+     *
+     * @param refPair pair of references to be aligned
+     * @param table
+     */
+    private void runFullAlignment(ReferencePair refPair, ReferenceSequenceTable table){
+        List<File> snpsFiles = new ArrayList<>();
+        if(refPair.getAnalysis().contains(ReferencePair.Status.DIFFER_IN_SEQUENCE)) {
+            // find the mismatch sequence
+            for (String sequenceName : table.getAllSequenceNames()) {
+                Set<ReferenceSequenceTable.TableRow> rows = table.queryBySequenceName(sequenceName);
+                // rows.size()==2 indicates that 2 MD5s found with the same name
+                if (rows.size() == 2) {
+                    // generate fasta files for mismatching sequences
+                    GATKPath ref1Path = refPair.getRef1();
+                    GATKPath ref2Path = refPair.getRef2();
+
+                    String sequenceInRef1Name = ref1Path.toPath().getFileName() + "." + sequenceName;
+                    String sequenceInRef2Name = ref2Path.toPath().getFileName() + "." + sequenceName;
+
+                    File ref1TempFastaOutput = IOUtils.createTempFile(sequenceInRef1Name, ".fasta");
+                    File ref2TempFastaOutput = IOUtils.createTempFile(sequenceInRef2Name, ".fasta");
+
+                    GATKPath ref1Fasta = generateFastaForSequence(ref1Path, sequenceName, new GATKPath(ref1TempFastaOutput.toString()));
+                    GATKPath ref2Fasta = generateFastaForSequence(ref2Path, sequenceName, new GATKPath(ref2TempFastaOutput.toString()));
+
+                    // pass fastas into mummer, get back a vcf and add to list
+                    MummerExecutor executor = new MummerExecutor();
+                    logger.info("Running mummer alignment on sequence " + sequenceName);
+                    File tempSnpsDirectory = IOUtils.createTempDir("tempsnps");
+                    File mummerOutput = executor.executeMummer(ref1Fasta.toPath().toFile(), ref2Fasta.toPath().toFile(), tempSnpsDirectory);
+                    logger.info("Finished running mummer alignment on sequence " + sequenceName);
+                    snpsFiles.add(mummerOutput);
+                }
+            }
+            // merge individual snps files
+            File mergedSnpsFile = mergeSnpsFiles(refPair, snpsFiles);
+
+            // convert merged snps file to VCF
+            File vcf = convertSnpsFileToVCF(refPair, mergedSnpsFile);
+        }
+        else{
+            logger.info("No mismatching sequences found.");
+        }
+    }
+
+    private File mergeSnpsFiles(ReferencePair refPair, List<File> snpsFiles){
+        File mergedSnpsFile = IOUtils.createTempFile(String.format("%s_%s", refPair.getRef1AsString(), refPair.getRef2AsString()), ".snps");
+        try (PrintWriter writer = new PrintWriter(mergedSnpsFile)) {
+            for (File file : snpsFiles) {
+                try (XReadLines reader = new XReadLines(file)) {
+                    for (String line : reader) {
+                        writer.write(line + "\n");
+                    }
+                } catch (IOException e) {
+                    throw new UserException("Error merging show-snps outputs.", e);
+                }
+            }
+            return mergedSnpsFile;
+        }
+        catch(IOException e){
+            throw new UserException("Error writing show-snps output file.", e);
+        }
+    }
+
+    private File convertSnpsFileToVCF(ReferencePair refPair, File mergedSnpsFile){
+        File vcf = new File(baseComparisonOutputDirectory.toPath().toString(), String.format("%s_%s.vcf", refPair.getRef1AsString(), refPair.getRef2AsString()));
+        try(XReadLines reader = new XReadLines(mergedSnpsFile);
+            VariantContextWriter writer = createVCFWriter(vcf);
+            ReferenceDataSource source = ReferenceDataSource.of(refPair.getRef1().toPath())) {
+
+            VCFHeader header = new VCFHeader();
+            header.setSequenceDictionary(getReferenceDictionary());
+            writer.writeHeader(header);
+            MummerIndel currentIndel = null;
+            int previousPos = -1;
+            for (String line : reader) {
+                String[] fields = line.split("\\t", -1);
+                String contig = fields[12];
+                int pos = Integer.valueOf(fields[0]);
+                String ref = fields[1];
+                String alt = fields[2];
+
+                // insertion
+                if (ref.equals(".") && !alt.equals(".")) {
+                    if (pos == previousPos && currentIndel != null && currentIndel.isInsertion) {
+                        currentIndel.alt += alt;
+                    } else {
+                        if (currentIndel != null) {
+                            writer.add(currentIndel.getAsVCFRecord());
+                        }
+                        String refPadding = new String(source.queryAndPrefetch(new SimpleInterval(contig, pos-1, pos-1)).getBases());
+                        currentIndel = new MummerIndel(contig, refPadding, refPadding + alt, pos-1, true, false);
+                    }
+                }
+                // deletion
+                else if(!ref.equals(".") && alt.equals(".")){
+                    if(pos == previousPos+1 && currentIndel != null && currentIndel.isDeletion){
+                        currentIndel.ref += ref;
+                    }
+                    else {
+                        if(currentIndel != null) {
+                            writer.add(currentIndel.getAsVCFRecord());
+                        }
+                        String refPadding = new String(source.queryAndPrefetch(new SimpleInterval(contig, pos-1, pos-1)).getBases());
+                        currentIndel = new MummerIndel(contig, refPadding + ref, refPadding, pos-1, false, true);
+                    }
+                }
+                // snp
+                else {
+                    if(currentIndel != null){
+                        writer.add(currentIndel.getAsVCFRecord());
+                        currentIndel = null;
+                    }
+                    VariantContextBuilder vcfBuilder = new VariantContextBuilder();
+                    VariantContext record = vcfBuilder.chr(contig).start(pos).stop(pos).alleles(ref, alt).make();
+                    writer.add(record);
+                }
+                previousPos = pos;
+            }
+            if(currentIndel != null){
+                writer.add(currentIndel.getAsVCFRecord());
+            }
+            return vcf;
+        }
+        catch(IOException e){
+            throw new UserException("Error converting snps file to VCF.", e);
+        }
+        catch(NumberFormatException e){
+            throw new UserException("Expected integer position, but found non-integer value.", e);
+        }
+    }
+
+    /**
+     * Method to do base-by-base comparison of a pair of references. Detects mismatching sequence
+     *
+     * @param refPair pair of references to be aligned
+     * @param table
+     */
+    private void runFindSNPS(ReferencePair refPair, ReferenceSequenceTable table) {
+        if(refPair.getAnalysis().contains(ReferencePair.Status.DIFFER_IN_SEQUENCE)) {
+            TableColumnCollection columns = new TableColumnCollection(Arrays.asList("Sequence Name", "Position", refPair.getRef1AsString(), refPair.getRef2AsString()));
+            File snpsOutput = new File(baseComparisonOutputDirectory.toPath().toString(), String.format("%s_%s_snps.tsv", refPair.getRef1AsString(), refPair.getRef2AsString()));
+
+            try(FindSNPsOnlyTableWriter writer = new FindSNPsOnlyTableWriter(snpsOutput.toPath(), columns); final ReferenceDataSource source1 = ReferenceDataSource.of(refPair.getRef1().toPath(), true);
+                final ReferenceDataSource source2 = ReferenceDataSource.of(refPair.getRef2().toPath(), true)){
+                writer.writeHeaderIfApplies();
+
+                // find the mismatch sequence
+                for (String sequenceName : table.getAllSequenceNames()) {
+                    Set<ReferenceSequenceTable.TableRow> rows = table.queryBySequenceName(sequenceName);
+                    // rows.size()==2 indicates that 2 MD5s found with the same name
+                    if (rows.size() == 2) {
+                        // if the lengths of the 2 sequences aren't equal, error - can't compare different sequence lengths, probably indel need alignment
+                        ReferenceSequenceTable.TableRow[] rowArray = rows.toArray(new ReferenceSequenceTable.TableRow[0]);
+                        if (rowArray[0].getLength() != rowArray[1].getLength()) {
+                            logger.warn("Lengths for sequence " + sequenceName  + " are not equal and can't be compared. Consider running in FULL_ALIGNMENT mode.");
+                            continue;
+                        }
+
+                        int sequenceLength = rowArray[0].getLength();
+                        Iterator<Byte> ref1BaseIterator = source1.query(new SimpleInterval(sequenceName, 1, sequenceLength));
+                        Iterator<Byte> ref2BaseIterator = source2.query(new SimpleInterval(sequenceName, 1, sequenceLength));
+                        int position = 0;
+
+                        // find SNPS and generate SNPRecords
+                        while (ref1BaseIterator.hasNext() && ref2BaseIterator.hasNext()) {
+                            position++;
+                            Byte ref1Allele = ref1BaseIterator.next();
+                            Byte ref2Allele = ref2BaseIterator.next();
+                            if (!ref1Allele.equals(ref2Allele)) {
+                                SNPRecord record = new SNPRecord(sequenceName, position, new String(new byte[]{ref1Allele}), new String(new byte[]{ref2Allele}), refPair.getRef1AsString(), refPair.getRef2AsString());
+                                writer.writeRecord(record);
+                            }
+                        }
+                        if(ref1BaseIterator.hasNext() || ref2BaseIterator.hasNext()){
+                            throw new GATKException.ShouldNeverReachHereException("");
+                        }
+                    }
+                }
+            }
+            catch(IOException exception){
+                throw new UserException.CouldNotCreateOutputFile(baseComparisonOutputDirectory + "/" + snpsOutput, "Failed to write output table.", exception);
+            }
+        }
+        else{
+            logger.info("No mismatching sequences found.");
+        }
+    }
+
+    /**
+     * Method to generate a fasta file for an individual sequence in a reference
+     *
+     * @param
+     * @param sequenceName target sequence name as a String
+     * @param output GATKPath for file output
+     * @return output location as a GATKPath
+     */
+    public static GATKPath generateFastaForSequence(GATKPath refPath, String sequenceName, GATKPath output){
+        try(ReferenceDataSource source = ReferenceDataSource.of(refPath.toPath(), true)){
+            int sequenceLength = source.getSequenceDictionary().getSequence(sequenceName).getSequenceLength();
+            FastaReferenceWriter writer = new FastaReferenceWriterBuilder()
+                    .setFastaFile(output.toPath())
+                    .setBasesPerLine(80)
+                    .build();
+            ReferenceSequence seq = source.queryAndPrefetch(new SimpleInterval(sequenceName, 1, sequenceLength));
+            writer.addSequence(seq);
+            writer.close();
+            return output;
+        } catch (IOException e) {
+            throw new UserException.CouldNotCreateOutputFile("Couldn't create " + output + ", encountered exception: " + e.getMessage(), e);
+        }
+    }
+
     @Override
     public void closeTool() {
         for(Map.Entry<GATKPath, ReferenceDataSource> entry : referenceSources.entrySet()){
@@ -234,5 +507,75 @@ public class CompareReferences extends GATKTool {
                 dataLine.set(entries[i].getColumnName(), entries[i].getColumnValue());
             }
         }
+    }
+
+    /**
+     * Minimal class representing a single SNP in a pair of references.
+     * Stores the sequence, position of the SNP, and the allele in each reference.
+     */
+    private static class SNPRecord{
+        String sequence;
+        int position;
+        String ref1Allele;
+        String ref2Allele;
+        String ref1;
+        String ref2;
+
+        public SNPRecord(String sequence, int position, String ref1Allele, String ref2Allele, String ref1, String ref2){
+            this.sequence = sequence;
+            this.position = position;
+            this.ref1Allele = ref1Allele;
+            this.ref2Allele = ref2Allele;
+            this.ref1 = ref1;
+            this.ref2 = ref2;
+        }
+    }
+
+    /**
+     * TableWriter to format and write SNP table output.
+     */
+    public static class FindSNPsOnlyTableWriter extends TableWriter<SNPRecord> {
+
+        public FindSNPsOnlyTableWriter(final Path table, TableColumnCollection columns) throws IOException {
+            super(table, columns);
+        }
+
+        @Override
+        protected void composeLine(final SNPRecord record, final DataLine dataLine) {
+            dataLine.set("Sequence Name", record.sequence)
+                    .set("Position", record.position)
+                    .set(record.ref1, record.ref1Allele)
+                    .set(record.ref2, record.ref2Allele);
+        }
+    }
+
+    /**
+     * Minimal class to identify INDELs detected by MUMmer and merge into one VariantContext
+     */
+    private static class MummerIndel{
+        String ref;
+        String alt;
+        String chr;
+        int pos;
+        boolean isInsertion;
+        boolean isDeletion;
+
+        MummerIndel(String chr, String ref, String alt, int pos, boolean isInsertion, boolean isDeletion){
+            this.ref = ref;
+            this.alt = alt;
+            this.chr = chr;
+            this.pos = pos;
+            this.isInsertion = isInsertion;
+            this.isDeletion = isDeletion;
+        }
+
+        public VariantContext getAsVCFRecord(){
+            VariantContextBuilder vcfBuilder = new VariantContextBuilder();
+            int stopPos = isInsertion ? pos : pos + ref.length()-1;
+            VariantContext record = vcfBuilder.chr(chr).start(pos).stop(stopPos).alleles(ref, alt).make();
+            return record;
+        }
+
+
     }
 }
