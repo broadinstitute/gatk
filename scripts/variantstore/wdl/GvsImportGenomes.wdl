@@ -313,13 +313,13 @@ task GetUningestedSampleIds {
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-    # create temp table with the sample_names and load external sample names into temp table -- make sure it doesn't exist already
+    # Create temp table with the sample_names and load external sample names into temp table -- make sure it doesn't exist already
     set +o errexit
     bq show --project_id ~{project_id} ~{temp_table} > /dev/null
     BQ_SHOW_RC=$?
     set -o errexit
 
-    # if there is already a table of sample names or something else is wrong, bail
+    # If there is already a table of sample names or something else is wrong, bail.
     if [ $BQ_SHOW_RC -eq 0 ]; then
       echo "There is already a list of sample names. This may need manual cleanup. Exiting"
       exit 1
@@ -330,10 +330,12 @@ task GetUningestedSampleIds {
     NAMES_FILE=~{write_lines(external_sample_names)}
     bq load --project_id=~{project_id} ~{temp_table} $NAMES_FILE "sample_name:STRING"
 
-    # get the current maximum id, or 0 if there are none
+    # Get the current min/max id, or 0 if there are none. Withdrawn samples still have IDs so don't filter them out.
     bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} '
+
       SELECT IFNULL(MIN(sample_id),0) as min, IFNULL(MAX(sample_id),0) as max FROM `~{dataset_name}.~{table_name}`
-        AS samples JOIN `~{temp_table}` AS temp ON samples.sample_name = temp.sample_name WHERE samples.withdrawn IS NULL
+        AS samples JOIN `~{temp_table}` AS temp ON samples.sample_name = temp.sample_name
+
     ' > results
 
     # prep for being able to return min table id
@@ -351,10 +353,12 @@ task GetUningestedSampleIds {
 
     # get sample map of samples that haven't been loaded yet
     bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} '
+
       SELECT sample_id, samples.sample_name FROM `~{dataset_name}.~{table_name}` AS samples JOIN `~{temp_table}` AS temp ON
         samples.sample_name = temp.sample_name WHERE
           samples.sample_id NOT IN (SELECT sample_id FROM `~{dataset_name}.sample_load_status` WHERE status="FINISHED") AND
           samples.withdrawn is NULL
+
     ' > sample_map
 
     cut -d, -f1 sample_map > gvs_ids
