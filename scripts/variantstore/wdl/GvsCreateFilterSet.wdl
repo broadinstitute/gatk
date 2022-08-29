@@ -202,7 +202,7 @@ workflow GvsCreateFilterSet {
       input:
         input_vcfs = SNPsVariantRecalibratorScattered.recalibration,
         gather_type = "CONVENTIONAL",
-        output_vcf_name = "${filter_set_name}.vrecalibration.gz",
+        output_vcf_name = "~{filter_set_name}.vrecalibration.gz",
         preemptible_tries = 3,
     }
   }

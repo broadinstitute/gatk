@@ -167,6 +167,7 @@ workflow GvsExtractCallset {
         extract_maxretries_override        = extract_maxretries_override,
         emit_pls                           = emit_pls,
         emit_ads                           = emit_ads,
+        withdrawn_cutoff_date              = withdrawn_cutoff_date,
     }
   }
 
@@ -296,6 +297,8 @@ task ExtractTask {
 
     # for call-caching -- check if DB tables haven't been updated since the last run
     String max_last_modified_timestamp
+
+    String? withdrawn_cutoff_date
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
@@ -338,7 +341,8 @@ task ExtractTask {
         --call-set-identifier ~{call_set_identifier} \
         --wdl-step GvsCreateCallset \
         --wdl-call ExtractTask \
-        --shard-identifier ~{intervals_name}
+        --shard-identifier ~{intervals_name} \
+        ~{"--withdrawn-cutoff-date " + withdrawn_cutoff_date}
 
     # Drop trailing slash if one exists
     OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')

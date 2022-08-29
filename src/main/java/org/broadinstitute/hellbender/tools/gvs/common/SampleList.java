@@ -21,9 +21,9 @@ public class SampleList {
     private final Map<String, Long> sampleNameMap = new HashMap<>();
     private long bigQueryQueryByteScanned = 0L;
 
-    public SampleList(String sampleTableName, File sampleFile, String executionProjectId, boolean printDebugInformation, String originTool) {
+    public SampleList(String sampleTableName, File sampleFile, String withdrawnCutoffDate, String executionProjectId, boolean printDebugInformation, String originTool) {
         if (sampleTableName != null) {
-            initializeMaps(new TableReference(sampleTableName, SchemaUtils.SAMPLE_FIELDS), executionProjectId, printDebugInformation, Optional.ofNullable(originTool));
+            initializeMaps(new TableReference(sampleTableName, SchemaUtils.SAMPLE_FIELDS), withdrawnCutoffDate, executionProjectId, printDebugInformation, Optional.ofNullable(originTool));
         } else if (sampleFile != null) {
             initializeMaps(sampleFile);
         } else {
@@ -55,8 +55,11 @@ public class SampleList {
         return bigQueryQueryByteScanned;
     }
 
-    protected void initializeMaps(TableReference sampleTable, String executionProjectId, boolean printDebugInformation, Optional<String> originTool) {
-        TableResult queryResults = querySampleTable(sampleTable.getFQTableName(), "is_loaded is TRUE", executionProjectId, printDebugInformation, originTool);
+    protected void initializeMaps(TableReference sampleTable, String withdrawnCutoffDate, String executionProjectId, boolean printDebugInformation, Optional<String> originTool) {
+        String whereClause = String.format("is_loaded IS TRUE AND (withdrawn IS NULL OR %s)",
+                withdrawnCutoffDate == null ? "FALSE" : String.format("withdrawn > '%s'", withdrawnCutoffDate));
+
+        TableResult queryResults = querySampleTable(sampleTable.getFQTableName(), whereClause, executionProjectId, printDebugInformation, originTool);
 
         // Add our samples to our map:
         for (final FieldValueList row : queryResults.iterateAll()) {

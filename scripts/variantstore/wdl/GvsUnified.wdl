@@ -129,7 +129,8 @@ workflow GvsUnified {
             INDEL_VQSR_max_gaussians_override = INDEL_VQSR_max_gaussians_override,
             INDEL_VQSR_mem_gb_override = INDEL_VQSR_mem_gb_override,
             SNP_VQSR_max_gaussians_override = SNP_VQSR_max_gaussians_override,
-            SNP_VQSR_mem_gb_override = SNP_VQSR_mem_gb_override
+            SNP_VQSR_mem_gb_override = SNP_VQSR_mem_gb_override,
+            withdrawn_cutoff_date = withdrawn_cutoff_date,
     }
 
     call PrepareRangesCallset.GvsPrepareCallset {
@@ -167,7 +168,8 @@ workflow GvsUnified {
             split_intervals_disk_size_override = split_intervals_disk_size_override,
             split_intervals_mem_override = split_intervals_mem_override,
             do_not_filter_override = extract_do_not_filter_override,
-            drop_state = drop_state
+            drop_state = drop_state,
+            withdrawn_cutoff_date = withdrawn_cutoff_date,
     }
 
     output {
