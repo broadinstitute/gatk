@@ -309,7 +309,7 @@ task GetUningestedSampleIds {
   Int num_samples = length(external_sample_names)
   # add labels for DSP Cloud Cost Control Labeling and Reporting
   String bq_labels = "--label service:gvs --label team:variants --label managedby:import_genomes"
-  String withdrawn_cutoff_condition = if (defined(withdrawn_cutoff_date)) then 'samples.withdrawn > "~{withdrawn_cutoff_date}"' else 'false'
+  String withdrawn_cutoff_condition = if (defined(withdrawn_cutoff_date)) then 'samples.withdrawn > "~{withdrawn_cutoff_date}"' else 'FALSE'
   String temp_table="~{dataset_name}.sample_names_to_load"
 
   command <<<

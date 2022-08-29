@@ -85,7 +85,7 @@ def get_all_sample_ids(fq_destination_table_samples):
 def create_extract_samples_table(control_samples, fq_destination_table_samples, fq_sample_name_table,
                                  fq_sample_mapping_table, withdrawn_cutoff_date):
 
-    withdrawn_cutoff_condition = f"m.withdrawn > '{withdrawn_cutoff_date}'" if withdrawn_cutoff_date else "false"
+    withdrawn_cutoff_condition = f"m.withdrawn > '{withdrawn_cutoff_date}'" if withdrawn_cutoff_date else "FALSE"
 
     sql = f"""
 

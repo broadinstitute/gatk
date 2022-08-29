@@ -20,7 +20,7 @@ def populate_alt_allele_table(call_set_identifier, query_project, vet_table_name
     client = bigquery.Client(project=query_project,
                              default_query_job_config=default_config)
 
-    withdrawn_cutoff_condition = "withdrawn > '{withdrawn_cutoff_date}'" if withdrawn_cutoff_date else "false"
+    withdrawn_cutoff_condition = "withdrawn > '{withdrawn_cutoff_date}'" if withdrawn_cutoff_date else "FALSE"
 
     os.chdir(os.path.dirname(__file__))
     alt_allele_temp_function = Path('alt_allele_temp_function.sql').read_text()
