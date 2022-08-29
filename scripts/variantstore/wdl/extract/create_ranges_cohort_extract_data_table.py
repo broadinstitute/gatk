@@ -345,4 +345,5 @@ if __name__ == '__main__':
                        args.destination_cohort_table_prefix,
                        args.fq_sample_mapping_table,
                        args.ttl,
-                       args.withdrawn_cutoff_date,)
+                       args.withdrawn_cutoff_date,
+                       )

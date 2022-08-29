@@ -75,4 +75,5 @@ if __name__ == '__main__':
                               args.vet_table_name,
                               args.fq_dataset,
                               args.max_sample_id,
-                              args.withdrawn_cutoff_date,)
+                              args.withdrawn_cutoff_date,
+                              )

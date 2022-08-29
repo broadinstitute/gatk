@@ -366,7 +366,7 @@ task GetNumSamplesLoaded {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
-  String withdrawn_cutoff_condition = if (defined(withdrawn_cutoff_date)) then 'withdrawn > "~{withdrawn_cutoff_date}"' else 'false'
+  String withdrawn_cutoff_condition = if (defined(withdrawn_cutoff_date)) then 'withdrawn > "~{withdrawn_cutoff_date}"' else 'FALSE'
 
   command <<<
     set -o errexit -o nounset -o xtrace -o pipefail
