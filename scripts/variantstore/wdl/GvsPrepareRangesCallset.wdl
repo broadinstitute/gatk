@@ -19,6 +19,7 @@ workflow GvsPrepareCallset {
 
     Array[String]? query_labels
     File? sample_names_to_extract
+    String? withdrawn_cutoff_date
   }
 
   String full_extract_prefix = if (control_samples) then "~{extract_table_prefix}_controls" else extract_table_prefix
@@ -38,7 +39,8 @@ workflow GvsPrepareCallset {
       fq_temp_table_dataset           = fq_temp_table_dataset,
       fq_destination_dataset          = fq_destination_dataset,
       temp_table_ttl_in_hours         = 72,
-      control_samples                 = control_samples
+      control_samples                 = control_samples,
+      withdrawn_cutoff_date           = withdrawn_cutoff_date,
   }
 
   output {
@@ -61,6 +63,7 @@ task PrepareRangesCallsetTask {
     String fq_destination_dataset
     Array[String]? query_labels
     Int temp_table_ttl_in_hours = 24
+    String? withdrawn_cutoff_date
   }
   meta {
     # All kinds of BQ reading happening in the referenced Python script.
@@ -98,7 +101,8 @@ task PrepareRangesCallsetTask {
           --query_project ~{query_project} \
           ~{sep=" " query_label_args} \
           --fq_sample_mapping_table ~{fq_sample_mapping_table} \
-          --ttl ~{temp_table_ttl_in_hours}
+          --ttl ~{temp_table_ttl_in_hours} \
+          ~{"--withdrawn-cutoff-date " + withdrawn_cutoff_date}
   >>>
   output {
     String fq_cohort_extract_table_prefix = "~{fq_destination_dataset}.~{destination_cohort_table_prefix}" # implementation detail of create_ranges_cohort_extract_data_table.py

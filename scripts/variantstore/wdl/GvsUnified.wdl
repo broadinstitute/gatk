@@ -145,7 +145,8 @@ workflow GvsUnified {
             destination_dataset = destination_dataset,
             fq_temp_table_dataset = fq_temp_table_dataset,
             query_labels = query_labels,
-            sample_names_to_extract = sample_names_to_extract
+            sample_names_to_extract = sample_names_to_extract,
+            withdrawn_cutoff_date = withdrawn_cutoff_date
     }
 
     call ExtractCallset.GvsExtractCallset {
