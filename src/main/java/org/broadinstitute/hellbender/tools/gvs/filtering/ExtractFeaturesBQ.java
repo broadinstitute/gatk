@@ -14,20 +14,14 @@ public class ExtractFeaturesBQ {
     private final static String FEATURE_EXTRACT_USER_DEFINED_FUNCTIONS =
         "org/broadinstitute/hellbender/tools/gvs/filtering/udf_freq_table.sql";
 
-    public static String getVQSRFeatureExtractQueryString(final TableReference altAllele,
-                                                          final TableReference sampleList,
-                                                          final Long minLocation,
-                                                          final Long maxLocation,
-                                                          final int hqGenotypeGQThreshold,
-                                                          final int hqGenotypeDepthThreshold,
-                                                          final double hqGenotypeABThreshold,
-                                                          final String withdrawnCutoffDate) {
+    private final static String VQSR_TRAINING_SITES_TABLE =
+        "broad-dsp-spec-ops.joint_genotyping_ref.vqsr_training_sites_*";
+
+    public static String getVQSRFeatureExtractQueryString(final TableReference altAllele, final TableReference sampleList,
+                                                          final Long minLocation, final Long maxLocation, final int hqGenotypeGQThreshold, final int hqGenotypeDepthThreshold, final double hqGenotypeABThreshold) {
         String locationStanza =
             ((minLocation != null)?"AND location >= " + minLocation + " \n":"") +
             ((maxLocation != null)?"AND location < " + maxLocation + " \n":"");
-
-        String withdrawnCutoffCondition =
-                withdrawnCutoffDate == null ? "FALSE" : String.format("withdrawn > '%s'", withdrawnCutoffDate);
 
         try {
             File file =  Resource.getResourceContentsAsFile(FEATURE_EXTRACT_QUERY_RESOURCE);
@@ -35,7 +29,6 @@ public class ExtractFeaturesBQ {
 
             return query
                 .replaceAll("@locationStanza", locationStanza)
-                .replaceAll("@withdrawnCutoffCondition", withdrawnCutoffCondition)
                 .replaceAll("@sample", sampleList.getFQTableName())
                 .replaceAll("@altAllele", altAllele.getFQTableName())
                 .replaceAll("@hqGenotypeGQThreshold", Double.toString(hqGenotypeGQThreshold))

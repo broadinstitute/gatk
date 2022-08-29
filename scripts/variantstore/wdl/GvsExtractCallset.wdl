@@ -36,7 +36,6 @@ workflow GvsExtractCallset {
     Int? split_intervals_mem_override
     Float x_bed_weight_scaling = 4
     Float y_bed_weight_scaling = 4
-    String? withdrawn_cutoff_date
   }
 
   File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
@@ -81,8 +80,7 @@ workflow GvsExtractCallset {
       fq_sample_table = fq_sample_table,
       fq_sample_table_lastmodified_timestamp = SamplesTableDatetimeCheck.last_modified_timestamp,
       project_id = project_id,
-      control_samples = control_samples,
-      withdrawn_cutoff_date = withdrawn_cutoff_date,
+      control_samples = control_samples
   }
 
   Int effective_scatter_count = if defined(scatter_count) then select_first([scatter_count])
@@ -167,7 +165,6 @@ workflow GvsExtractCallset {
         extract_maxretries_override        = extract_maxretries_override,
         emit_pls                           = emit_pls,
         emit_ads                           = emit_ads,
-        withdrawn_cutoff_date              = withdrawn_cutoff_date,
     }
   }
 
@@ -297,8 +294,6 @@ task ExtractTask {
 
     # for call-caching -- check if DB tables haven't been updated since the last run
     String max_last_modified_timestamp
-
-    String? withdrawn_cutoff_date
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
@@ -341,8 +336,7 @@ task ExtractTask {
         --call-set-identifier ~{call_set_identifier} \
         --wdl-step GvsCreateCallset \
         --wdl-call ExtractTask \
-        --shard-identifier ~{intervals_name} \
-        ~{"--withdrawn-cutoff-date " + withdrawn_cutoff_date}
+        --shard-identifier ~{intervals_name}
 
     # Drop trailing slash if one exists
     OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')

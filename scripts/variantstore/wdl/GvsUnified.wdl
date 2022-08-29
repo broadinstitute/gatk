@@ -34,11 +34,6 @@ workflow GvsUnified {
         Int? load_data_batch_size
         Int? load_data_preemptible_override
         Int? load_data_maxretries_override
-
-        # If a sample has a withdrawn date earlier than the specified cutoff date then it should not be used to train
-        # the filter or appear in the final extract. In practice GVS will also skip loading vet, ref_ranges or alt
-        # allele data for such a sample.
-        String? withdrawn_cutoff_date
         # End GvsImportGenomes
 
         # Begin GvsCreateFilterSet
@@ -101,9 +96,7 @@ workflow GvsUnified {
             load_data_maxretries_override = load_data_maxretries_override,
             load_data_gatk_override = gatk_override,
             load_data_batch_size = load_data_batch_size,
-            drop_state = drop_state,
-            withdrawn_cutoff_date = withdrawn_cutoff_date,
-
+            drop_state = drop_state
     }
 
     call PopulateAltAllele.GvsPopulateAltAllele {
@@ -111,8 +104,7 @@ workflow GvsUnified {
             call_set_identifier = call_set_identifier,
             go = GvsImportGenomes.done,
             dataset_name = dataset_name,
-            project_id = project_id,
-            withdrawn_cutoff_date = withdrawn_cutoff_date,
+            project_id = project_id
     }
 
     call CreateFilterSet.GvsCreateFilterSet {
@@ -129,8 +121,7 @@ workflow GvsUnified {
             INDEL_VQSR_max_gaussians_override = INDEL_VQSR_max_gaussians_override,
             INDEL_VQSR_mem_gb_override = INDEL_VQSR_mem_gb_override,
             SNP_VQSR_max_gaussians_override = SNP_VQSR_max_gaussians_override,
-            SNP_VQSR_mem_gb_override = SNP_VQSR_mem_gb_override,
-            withdrawn_cutoff_date = withdrawn_cutoff_date,
+            SNP_VQSR_mem_gb_override = SNP_VQSR_mem_gb_override
     }
 
     call PrepareRangesCallset.GvsPrepareCallset {
@@ -145,8 +136,7 @@ workflow GvsUnified {
             destination_dataset = destination_dataset,
             fq_temp_table_dataset = fq_temp_table_dataset,
             query_labels = query_labels,
-            sample_names_to_extract = sample_names_to_extract,
-            withdrawn_cutoff_date = withdrawn_cutoff_date
+            sample_names_to_extract = sample_names_to_extract
     }
 
     call ExtractCallset.GvsExtractCallset {
@@ -169,8 +159,7 @@ workflow GvsUnified {
             split_intervals_disk_size_override = split_intervals_disk_size_override,
             split_intervals_mem_override = split_intervals_mem_override,
             do_not_filter_override = extract_do_not_filter_override,
-            drop_state = drop_state,
-            withdrawn_cutoff_date = withdrawn_cutoff_date,
+            drop_state = drop_state
     }
 
     output {

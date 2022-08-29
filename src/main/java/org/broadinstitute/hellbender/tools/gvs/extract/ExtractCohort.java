@@ -231,12 +231,6 @@ public class ExtractCohort extends ExtractTool {
             optional = true)
     protected String shardIdentifier = null;
 
-    @Argument(
-            fullName = "withdrawn-cutoff-date",
-            doc = "Cutoff date for withdrawn samples, if unspecified ignores all withdrawn samples",
-            optional = true)
-    protected String withdrawnCutoffDate = null;
-
     protected static VCFHeader generateVcfHeader(Set<String> sampleNames,
                                                  final SAMSequenceDictionary sequenceDictionary,
                                                  final Set<VCFHeaderLine> extraHeaders) {
@@ -343,7 +337,7 @@ public class ExtractCohort extends ExtractTool {
             );
         }
 
-        sampleList = new SampleList(sampleTableName, sampleFileName, withdrawnCutoffDate, projectID, printDebugInformation, "extract-cohort");
+        sampleList = new SampleList(sampleTableName, sampleFileName, projectID, printDebugInformation, "extract-cohort");
         Map<Long, String> sampleIdToName = sampleList.getMap();
 
         VCFHeader header = generateVcfHeader(new HashSet<>(sampleIdToName.values()), reference.getSequenceDictionary(), extraHeaderLines);

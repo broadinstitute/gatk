@@ -101,19 +101,13 @@ public class ExtractFeatures extends ExtractTool {
             optional = true)
     protected String shardIdentifier = null;
 
-    @Argument(
-            fullName = "withdrawn-cutoff-date",
-            doc = "Cutoff date for withdrawn samples, if unspecified ignores all withdrawn samples",
-            optional = true)
-    protected String withdrawnCutoffDate = null;
-
     @Override
     public boolean requiresIntervals() {
         return false;
     }
 
     /**
-     * Enforce that if cost information is being recorded to the cost-observability table then *all* recorded
+     * Enforce that if cost information is being recorded to the cost-observability-tablename then *all* recorded
      * parameters are set
      */
     @Override
@@ -135,7 +129,7 @@ public class ExtractFeatures extends ExtractTool {
         super.onStartup();
 
         TableReference sampleTableRef = new TableReference(sampleTableName, SchemaUtils.SAMPLE_FIELDS);
-        sampleList = new SampleList(sampleTableName, sampleFileName, withdrawnCutoffDate, projectID, printDebugInformation, "extract-features");
+        sampleList = new SampleList(sampleTableName, sampleFileName, projectID, printDebugInformation, "extract-features");
 
         Set<VCFHeaderLine> extraHeaderLines = new HashSet<>();
         extraHeaderLines.add(
@@ -159,28 +153,27 @@ public class ExtractFeatures extends ExtractTool {
         }
 
         engine = new ExtractFeaturesEngine(
-                projectID,
-                datasetID,
-                vcfWriter,
-                header,
-                annotationEngine,
-                reference,
-                fqAltAlleleTable,
-                sampleTableRef,
-                traversalIntervals,
-                minLocation,
-                maxLocation,
-                localSortMaxRecordsInRam,
-                printDebugInformation,
-                useBatchQueries,
-                progressMeter,
-                sampleList.size(),
-                hqGenotypeGQThreshold,
-                hqGenotypeDepthThreshold,
-                hqGenotypeABThreshold,
-                excessAllelesThreshold,
-                queryLabels,
-                withdrawnCutoffDate);
+            projectID,
+            datasetID,
+            vcfWriter,
+            header,
+            annotationEngine,
+            reference,
+            fqAltAlleleTable,
+            sampleTableRef,
+            traversalIntervals,
+            minLocation,
+            maxLocation,
+            localSortMaxRecordsInRam,
+            printDebugInformation,
+            useBatchQueries,
+            progressMeter,
+            sampleList.size(),
+            hqGenotypeGQThreshold,
+            hqGenotypeDepthThreshold,
+            hqGenotypeABThreshold,
+            excessAllelesThreshold,
+            queryLabels);
 
         vcfWriter.writeHeader(header);
 }

@@ -83,17 +83,16 @@ def get_all_sample_ids(fq_destination_table_samples):
 
 
 def create_extract_samples_table(control_samples, fq_destination_table_samples, fq_sample_name_table,
-                                 fq_sample_mapping_table, withdrawn_cutoff_date):
-
-    withdrawn_cutoff_condition = f"m.withdrawn > '{withdrawn_cutoff_date}'" if withdrawn_cutoff_date else "FALSE"
+                                 fq_sample_mapping_table):
 
     sql = f"""
 
     CREATE OR REPLACE TABLE `{fq_destination_table_samples}` AS (
         SELECT m.sample_id, m.sample_name, m.is_loaded, m.withdrawn, m.is_control FROM `{fq_sample_name_table}` s JOIN
         `{fq_sample_mapping_table}` m ON (s.sample_name = m.sample_name) WHERE
-             m.is_loaded IS TRUE AND m.is_control = {control_samples} AND 
-             (m.withdrawn IS NULL OR {withdrawn_cutoff_condition}) 
+             m.is_loaded IS TRUE AND
+             m.is_control = {control_samples} AND 
+             m.withdrawn IS NULL 
     )
 
     """
@@ -222,8 +221,7 @@ def make_extract_table(call_set_identifier,
                        fq_destination_dataset,
                        destination_table_prefix,
                        fq_sample_mapping_table,
-                       temp_table_ttl_hours,
-                       withdrawn_cutoff_date,
+                       temp_table_ttl_hours
                        ):
     try:
         fq_destination_table_ref_data = f"{fq_destination_dataset}.{destination_table_prefix}__REF_DATA"
@@ -280,7 +278,7 @@ def make_extract_table(call_set_identifier,
         # At this point one way or the other we have a table of sample names in BQ,
         # join it to the sample_info table to drive the extract
         create_extract_samples_table(control_samples, fq_destination_table_samples, fq_sample_name_table,
-                                     fq_sample_mapping_table, withdrawn_cutoff_date)
+                                     fq_sample_mapping_table)
 
         # pull the sample ids back down
         sample_ids = get_all_sample_ids(fq_destination_table_samples)
@@ -327,9 +325,6 @@ if __name__ == '__main__':
                              help='File containing list of samples to extract, 1 per line')
     sample_args.add_argument('--fq_cohort_sample_names', type=str,
                              help='FQN of cohort table to extract, contains "sample_name" column')
-    sample_args.add_argument('--withdrawn_cutoff_date', type=str,
-                             help='Cutoff date for withdrawn samples, if unspecified ignores all withdrawn samples',
-                             required=False)
 
     args = parser.parse_args()
 
@@ -344,6 +339,4 @@ if __name__ == '__main__':
                        args.fq_destination_dataset,
                        args.destination_cohort_table_prefix,
                        args.fq_sample_mapping_table,
-                       args.ttl,
-                       args.withdrawn_cutoff_date,
-                       )
+                       args.ttl)

@@ -360,21 +360,23 @@ task GetNumSamplesLoaded {
     String fq_sample_table_lastmodified_timestamp
     String project_id
     Boolean control_samples = false
-    String? withdrawn_cutoff_date
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
-
-  String withdrawn_cutoff_condition = if (defined(withdrawn_cutoff_date)) then 'withdrawn > "~{withdrawn_cutoff_date}"' else 'FALSE'
 
   command <<<
     set -o errexit -o nounset -o xtrace -o pipefail
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
     bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false '
-      SELECT COUNT(*) FROM `~{fq_sample_table}` WHERE is_loaded = true AND (withdrawn IS NULL OR ~{withdrawn_cutoff_condition})
-        AND is_control = ~{control_samples}' | sed 1d
+
+      SELECT COUNT(*) FROM `~{fq_sample_table}` WHERE
+        is_loaded = true AND
+        withdrawn IS NULL AND
+        is_control = ~{control_samples}
+
+    ' | sed 1d
   >>>
 
   output {

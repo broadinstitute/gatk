@@ -23,10 +23,6 @@ workflow GvsImportGenomes {
     Int? load_data_preemptible_override
     Int? load_data_maxretries_override
     File? load_data_gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-552-g0f9780a-SNAPSHOT-local.jar"
-
-    # If a sample has a withdrawn date earlier than the specified cutoff then it does not need to be ingested. i.e. do
-    # not load any data for that sample into the vet or ref_ranges tables.
-    String? withdrawn_cutoff_date
   }
 
   Int num_samples = length(external_sample_names)
@@ -74,8 +70,7 @@ workflow GvsImportGenomes {
       dataset_name = dataset_name,
       project_id = project_id,
       external_sample_names = external_sample_names,
-      table_name = "sample_info",
-      withdrawn_cutoff_date = withdrawn_cutoff_date,
+      table_name = "sample_info"
   }
 
   call CurateInputLists {
@@ -301,9 +296,6 @@ task GetUningestedSampleIds {
 
     Array[String] external_sample_names
     String table_name
-    # If a sample has a withdrawn date earlier than the specified cutoff then it does not need to be ingested so do not
-    # include it among the uningested sample ids.
-    String? withdrawn_cutoff_date
   }
   meta {
     # Do not call cache this, we want to read the database state every time.
@@ -314,7 +306,6 @@ task GetUningestedSampleIds {
   Int num_samples = length(external_sample_names)
   # add labels for DSP Cloud Cost Control Labeling and Reporting
   String bq_labels = "--label service:gvs --label team:variants --label managedby:import_genomes"
-  String withdrawn_cutoff_condition = if (defined(withdrawn_cutoff_date)) then 'samples.withdrawn > "~{withdrawn_cutoff_date}"' else 'FALSE'
   String temp_table="~{dataset_name}.sample_names_to_load"
 
   command <<<
@@ -342,8 +333,7 @@ task GetUningestedSampleIds {
     # get the current maximum id, or 0 if there are none
     bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} '
       SELECT IFNULL(MIN(sample_id),0) as min, IFNULL(MAX(sample_id),0) as max FROM `~{dataset_name}.~{table_name}`
-        AS samples JOIN `~{temp_table}` AS temp ON samples.sample_name = temp.sample_name WHERE
-        (samples.withdrawn IS NULL OR ~{withdrawn_cutoff_condition})
+        AS samples JOIN `~{temp_table}` AS temp ON samples.sample_name = temp.sample_name WHERE samples.withdrawn IS NULL
     ' > results
 
     # prep for being able to return min table id
@@ -364,7 +354,7 @@ task GetUningestedSampleIds {
       SELECT sample_id, samples.sample_name FROM `~{dataset_name}.~{table_name}` AS samples JOIN `~{temp_table}` AS temp ON
         samples.sample_name = temp.sample_name WHERE
           samples.sample_id NOT IN (SELECT sample_id FROM `~{dataset_name}.sample_load_status` WHERE status="FINISHED") AND
-          (samples.withdrawn is NULL OR ~{withdrawn_cutoff_condition})
+          samples.withdrawn is NULL
     ' > sample_map
 
     cut -d, -f1 sample_map > gvs_ids

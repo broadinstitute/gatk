@@ -9,9 +9,6 @@ workflow GvsPopulateAltAllele {
     String project_id
     String call_set_identifier
     Int max_alt_allele_shards = 10
-    # If a sample has a withdrawn date earlier than the specified cutoff date then do not copy its data into the alt
-    # allele table.
-    String? withdrawn_cutoff_date
   }
 
   String fq_alt_allele_table = "~{project_id}.~{dataset_name}.alt_allele"
@@ -53,8 +50,7 @@ workflow GvsPopulateAltAllele {
         create_table_done = CreateAltAlleleTable.done,
         vet_table_names_file = vet_table_names_file,
         last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
-        max_sample_id = GetMaxSampleId.max_sample_id,
-        withdrawn_cutoff_date = withdrawn_cutoff_date,
+        max_sample_id = GetMaxSampleId.max_sample_id
     }
   }
 
@@ -224,7 +220,6 @@ task PopulateAltAlleleTable {
     String call_set_identifier
     Int max_sample_id
 
-    String? withdrawn_cutoff_date
     String last_modified_timestamp
   }
   meta {
@@ -244,8 +239,7 @@ task PopulateAltAlleleTable {
         --query_project ~{project_id} \
         --vet_table_name ${vet_table} \
         --fq_dataset ~{project_id}.~{dataset_name} \
-        --max_sample_id ~{max_sample_id} \
-        ~{"--withdrawn_cutoff_date " + withdrawn_cutoff_date}
+        --max_sample_id ~{max_sample_id}
     done
   >>>
   runtime {

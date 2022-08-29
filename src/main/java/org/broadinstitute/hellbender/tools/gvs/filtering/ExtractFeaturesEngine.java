@@ -63,35 +63,33 @@ public class ExtractFeaturesEngine {
     private final double hqGenotypeABThreshold;
     private final int excessAllelesThreshold;
     private final List<String> queryLabels;
-    private final String withdrawnCutoffDate;
 
     private long bigQueryQueryBytesScanned;
     private long storageAPIBytesScanned;
 
 //    /** Set of sample names seen in the variant data from BigQuery. */
 //    private final Set<String> sampleNames = new HashSet<>();
-public ExtractFeaturesEngine(final String projectID,
-                             final String datasetID,
-                             final VariantContextWriter vcfWriter,
-                             final VCFHeader vcfHeader,
-                             final VariantAnnotatorEngine annotationEngine,
-                             final ReferenceDataSource refSource,
-                             final String fqAltAlleleTable,
-                             final TableReference sampleListTable,
-                             final List<SimpleInterval> traversalIntervals,
-                             final Long minLocation,
-                             final Long maxLocation,
-                             final int localSortMaxRecordsInRam,
-                             final boolean printDebugInformation,
-                             final boolean useBatchQueries,
-                             final ProgressMeter progressMeter,
-                             final int numSamples,
-                             final int hqGenotypeGQThreshold,
-                             final int hqGenotypeDepthThreshold,
-                             final double hqGenotypeABThreshold,
-                             final int excessAllelesThreshold,
-                             final List<String> queryLabels,
-                             final String withdrawnCutoffDate
+    public ExtractFeaturesEngine(final String projectID,
+                               final String datasetID,
+                               final VariantContextWriter vcfWriter,
+                               final VCFHeader vcfHeader,
+                               final VariantAnnotatorEngine annotationEngine,
+                               final ReferenceDataSource refSource,
+                               final String fqAltAlleleTable,
+                               final TableReference sampleListTable,
+                               final List<SimpleInterval> traversalIntervals,
+                               final Long minLocation,
+                               final Long maxLocation,
+                               final int localSortMaxRecordsInRam,
+                               final boolean printDebugInformation,
+                               final boolean useBatchQueries,
+                               final ProgressMeter progressMeter,
+                               final int numSamples,
+                               final int hqGenotypeGQThreshold,
+                               final int hqGenotypeDepthThreshold,
+                               final double hqGenotypeABThreshold,
+                               final int excessAllelesThreshold,
+                               final List<String> queryLabels
     ) {
 
         this.localSortMaxRecordsInRam = localSortMaxRecordsInRam;
@@ -114,7 +112,6 @@ public ExtractFeaturesEngine(final String projectID,
         this.hqGenotypeABThreshold = hqGenotypeABThreshold;
         this.excessAllelesThreshold = excessAllelesThreshold;
         this.queryLabels = queryLabels;
-        this.withdrawnCutoffDate = withdrawnCutoffDate;
 
         this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
     }
@@ -125,15 +122,13 @@ public ExtractFeaturesEngine(final String projectID,
 
     public void traverse() {
 
-        final String featureQueryString = ExtractFeaturesBQ.getVQSRFeatureExtractQueryString(
-                altAlleleTable,
-                sampleListTable,
-                minLocation,
-                maxLocation,
-                hqGenotypeGQThreshold,
-                hqGenotypeDepthThreshold,
-                hqGenotypeABThreshold,
-                withdrawnCutoffDate);
+        final String featureQueryString = ExtractFeaturesBQ.getVQSRFeatureExtractQueryString(altAlleleTable,
+                                                                                             sampleListTable,
+                                                                                             minLocation,
+                                                                                             maxLocation,
+                                                                                             hqGenotypeGQThreshold,
+                                                                                             hqGenotypeDepthThreshold,
+                                                                                             hqGenotypeABThreshold);
 
         final String userDefinedFunctions = ExtractFeaturesBQ.getVQSRFeatureExtractUserDefinedFunctionsString();
         Map<String, String> cleanQueryLabels = createQueryLabels(queryLabels);

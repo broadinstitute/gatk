@@ -26,9 +26,6 @@ workflow GvsCreateFilterSet {
     # For WARP classic this is done with 20k but the 10K Stroke Anderson dataset would not work unscattered (at least
     # with the default VM memory settings) so this was adjusted down to 5K.
     Int snps_variant_recalibration_threshold = 5000
-    # If a sample has a withdrawn date earlier than the specified cutoff date then it should not be used to create the
-    # filter.
-    String? withdrawn_cutoff_date
   }
 
   Array[String] snp_recalibration_tranche_values = ["100.0", "99.95", "99.9", "99.8", "99.6", "99.5", "99.4", "99.3", "99.0", "98.0", "97.0", "90.0" ]
@@ -67,8 +64,7 @@ workflow GvsCreateFilterSet {
     input:
       fq_sample_table = fq_sample_table,
       fq_sample_table_lastmodified_timestamp = SamplesTableDatetimeCheck.last_modified_timestamp,
-      project_id = project_id,
-      withdrawn_cutoff_date = withdrawn_cutoff_date,
+      project_id = project_id
   }
 
   Int scatter_count = if GetNumSamplesLoaded.num_samples < 100 then 20
@@ -108,8 +104,7 @@ workflow GvsCreateFilterSet {
         output_file                = "${filter_set_name}_${i}.vcf.gz",
         query_project              = project_id,
         dataset_id                 = dataset_name,
-        call_set_identifier        = call_set_identifier,
-        withdrawn_cutoff_date      = withdrawn_cutoff_date,
+        call_set_identifier        = call_set_identifier
     }
   }
 
@@ -202,7 +197,7 @@ workflow GvsCreateFilterSet {
       input:
         input_vcfs = SNPsVariantRecalibratorScattered.recalibration,
         gather_type = "CONVENTIONAL",
-        output_vcf_name = "~{filter_set_name}.vrecalibration.gz",
+        output_vcf_name = "${filter_set_name}.vrecalibration.gz",
         preemptible_tries = 3,
     }
   }
@@ -294,7 +289,6 @@ task ExtractFilterTask {
 
     String output_file
     Int? excess_alleles_threshold
-    String? withdrawn_cutoff_date
 
     # Runtime Options:
     File? gatk_override
@@ -327,8 +321,7 @@ task ExtractFilterTask {
       --call-set-identifier ~{call_set_identifier} \
       --wdl-step GvsCreateFilterSet \
       --wdl-call ExtractFilterTask \
-      --shard-identifier ~{intervals_name} \
-      ~{"--withdrawn-cutoff-date " + withdrawn_cutoff_date}
+      --shard-identifier ~{intervals_name}
   >>>
 
   runtime {
