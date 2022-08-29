@@ -32,6 +32,7 @@ task unpackTestJars(type: Copy){
 
     description = "Unpackage classes from 'System.env.TEST_JAR' into 'System.env.CP_DIR'"
 
+    setDuplicatesStrategy(DuplicatesStrategy.EXCLUDE)
     System.out.println("testClassesJar::: " + testClassesJar + " :::testClassesDir::: " + testClassesDir + " :::testDependencyJar::: " + testDependencyJar + " :::gatkJar::: " + gatkJar )
     
     // put all of the classes required into a single dir, and use the individual files as the
@@ -124,7 +125,7 @@ task testOnPackagedReleaseJar(type: Test){
     }
 
     classpath = files(testClassesUnpacked)
-    testClassesDirs = files(testClassesUnpacked)
+    testClassesDirs = files(testDependencyJar)
 }
 
 //task fatTestJar(type: Jar) {
