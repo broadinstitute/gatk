@@ -535,10 +535,18 @@ task shadowTestClassJar(type: ShadowJar){
 task shadowTestJar(type: ShadowJar){
     group = "Shadow"
     description = " A minimal jar that only contains the extra dependencies needed for running the tests that arent packaged in the main shadow jar"
+
+    // shapeless (scala) developers chose to use a class name with the character 'λ' in it ($tilde$qmark$greater$λ),
+    // on which the copy task fails, so exclude it
+    String skipClass = "shapeless/\$tilde\$qmark\$greater\$"
+
     from {
         (project.configurations.testRuntimeClasspath).collect {
             it.isDirectory() ? it : it.getName().endsWith(".jar") ? zipTree(it) : it
         }
+    }
+    exclude {
+        fte -> fte.getPath().contains(skipClass)
     }
     archiveClassifier = "testDependencies"
 }

@@ -40,6 +40,9 @@ task unpackTestJars(type: Copy){
 
     // set fileMode to null to prevent the Copy task's ridiculous attempt to change the file permissions
     fileMode(null)
+
+    // shapeless (scala) developers chose to use a class name with the character 'λ' in it ($tilde$qmark$greater$λ),
+    // on which the copy task fails, so exclude it
     String skipClass = "shapeless/\$tilde\$qmark\$greater\$"
 
     if (gatkJar != "null") {
