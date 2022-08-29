@@ -9,6 +9,8 @@ workflow GvsPopulateAltAllele {
     String project_id
     String call_set_identifier
     Int max_alt_allele_shards = 10
+    # If a sample has a withdrawn date earlier than the specified cutoff date then do not copy its data into the alt
+    # allele table.
     String? withdrawn_cutoff_date
   }
 

@@ -2,7 +2,7 @@ version 1.0
 
 import "GvsAssignIds.wdl" as AssignIds
 import "GvsImportGenomes.wdl" as ImportGenomes
-import "GvsPopulateAltAllele.wdl" as CreateAltAllele
+import "GvsPopulateAltAllele.wdl" as PopulateAltAllele
 import "GvsCreateFilterSet.wdl" as CreateFilterSet
 import "GvsPrepareRangesCallset.wdl" as PrepareRangesCallset
 import "GvsExtractCallset.wdl" as ExtractCallset
@@ -34,6 +34,11 @@ workflow GvsUnified {
         Int? load_data_batch_size
         Int? load_data_preemptible_override
         Int? load_data_maxretries_override
+
+        # If a sample has a withdrawn date earlier than the specified cutoff date then it should not be used to train
+        # the filter or appear in the final extract. In practice GVS will also skip loading vet, ref_ranges or alt
+        # allele data for such a sample.
+        String? withdrawn_cutoff_date
         # End GvsImportGenomes
 
         # Begin GvsCreateFilterSet
@@ -96,15 +101,18 @@ workflow GvsUnified {
             load_data_maxretries_override = load_data_maxretries_override,
             load_data_gatk_override = gatk_override,
             load_data_batch_size = load_data_batch_size,
-            drop_state = drop_state
+            drop_state = drop_state,
+            withdrawn_cutoff_date = withdrawn_cutoff_date,
+
     }
 
-    call CreateAltAllele.GvsPopulateAltAllele {
+    call PopulateAltAllele.GvsPopulateAltAllele {
         input:
             call_set_identifier = call_set_identifier,
             go = GvsImportGenomes.done,
             dataset_name = dataset_name,
-            project_id = project_id
+            project_id = project_id,
+            withdrawn_cutoff_date = withdrawn_cutoff_date,
     }
 
     call CreateFilterSet.GvsCreateFilterSet {

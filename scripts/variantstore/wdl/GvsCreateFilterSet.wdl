@@ -26,6 +26,8 @@ workflow GvsCreateFilterSet {
     # For WARP classic this is done with 20k but the 10K Stroke Anderson dataset would not work unscattered (at least
     # with the default VM memory settings) so this was adjusted down to 5K.
     Int snps_variant_recalibration_threshold = 5000
+    # If a sample has a withdrawn date earlier than the specified cutoff date then it should not be used to create the
+    # filter.
     String? withdrawn_cutoff_date
   }
 

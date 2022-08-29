@@ -23,6 +23,9 @@ workflow GvsImportGenomes {
     Int? load_data_preemptible_override
     Int? load_data_maxretries_override
     File? load_data_gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-552-g0f9780a-SNAPSHOT-local.jar"
+
+    # If a sample has a withdrawn date earlier than the specified cutoff then it does not need to be ingested. i.e. do
+    # not load any data for that sample into the vet or ref_ranges tables.
     String? withdrawn_cutoff_date
   }
 
@@ -298,6 +301,8 @@ task GetUningestedSampleIds {
 
     Array[String] external_sample_names
     String table_name
+    # If a sample has a withdrawn date earlier than the specified cutoff then it does not need to be ingested so do not
+    # include it among the uningested sample ids.
     String? withdrawn_cutoff_date
   }
   meta {
