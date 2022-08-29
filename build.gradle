@@ -65,7 +65,7 @@ final picardVersion = System.getProperty('picard.version','2.27.1')
 final barclayVersion = System.getProperty('barclay.version','4.0.2')
 final sparkVersion = System.getProperty('spark.version', '3.3.0')
 final scalaVersion = System.getProperty('scala.version', '2.12')
-final hadoopVersion = System.getProperty('hadoop.version', '3.2.1')
+final hadoopVersion = System.getProperty('hadoop.version', '3.3.1')
 final disqVersion = System.getProperty('disq.version','0.3.6')
 final genomicsdbVersion = System.getProperty('genomicsdb.version','1.4.3')
 final bigQueryVersion = System.getProperty('bigQuery.version', '2.9.0')
@@ -188,6 +188,9 @@ configurations.all {
         // make sure we don't pick up an incorrect version of the GATK variant of the google-nio library
         // via Picard, etc.
         force googleCloudNioDependency
+
+//        // hadoop uses an old jetty that doesn't like the new java version numbering scheme
+//        force 'org.eclipse.jetty:jetty-servlet:10.0.2'
     }
     all*.exclude group: 'org.slf4j', module: 'slf4j-jdk14' //exclude this to prevent slf4j complaining about to many slf4j bindings
     all*.exclude group: 'com.google.guava', module: 'guava-jdk5'
@@ -484,6 +487,27 @@ shadowJar {
     }
 }
 
+//task tryIt {
+//    String doit = "shapeless/\$tilde\$qmark\$greater\$"
+//    System.out.println(doit)
+//    System.out.println(doit.contains("shapeless/\$tilde\$qmark\$greater\$"))
+//}
+
+// This method unpacks the classes from a jar. This is necessary because the version of testNG we use cannot discover test
+// classes from fram a .jar file, so we must unpackage them in order to run the tests.
+//task unpackTestJars(type: Copy){
+//    dependsOn shadowJar
+//    description = "Unpackage classes from shadowJar"
+//
+//    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+//    System.out.println("starting gatkJar");
+//    from (zipTree("build/libs/gatk.jar"))
+//    into layout.buildDirectory.dir("expandedJar")
+//    exclude {
+//        fte -> fte.getPath().contains("META-INF")
+//    }
+//}
+
 task localJar{ dependsOn shadowJar }
 
 task sparkJar(type: ShadowJar) {
@@ -507,12 +531,12 @@ task shadowTestClassJar(type: ShadowJar){
     archiveClassifier = "test"
 }
 
-// A minimal jar that only contains the extra dependencies needed for running the tests
+// A jar that contains everything needed to run tests
 task shadowTestJar(type: ShadowJar){
     group = "Shadow"
     description = " A minimal jar that only contains the extra dependencies needed for running the tests that arent packaged in the main shadow jar"
     from {
-        (project.configurations.testRuntimeClasspath - project.configurations.runtimeClasspath ).collect {
+        (project.configurations.testRuntimeClasspath).collect {
             it.isDirectory() ? it : it.getName().endsWith(".jar") ? zipTree(it) : it
         }
     }
