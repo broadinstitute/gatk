@@ -324,10 +324,10 @@ if __name__ == '__main__':
     sample_args = parser.add_mutually_exclusive_group(required=True)
     sample_args.add_argument('--sample_names_to_extract', type=str,
                              help='File containing list of samples to extract, 1 per line. ' +
-                                  'All samples in this file will be included in the cohort regardless of `withdrawn` status in `sample_info` table.')
+                                  'All samples in this file will be included in the cohort regardless of `withdrawn` status in the `sample_info` table.')
     sample_args.add_argument('--fq_cohort_sample_names', type=str,
                              help='FQN of cohort table to extract, contains "sample_name" column. ' +
-                                  'Samples with non-null `withdrawn` fields in this table will not be included in the cohort.')
+                                  'Only samples with null `withdrawn` fields in the `sample_info` table will be included in the cohort.')
 
     args = parser.parse_args()
 
