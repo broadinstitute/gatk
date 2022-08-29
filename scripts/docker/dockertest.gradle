@@ -48,6 +48,9 @@ task unpackTestJars(type: Copy){
         exclude {
             fte -> fte.getPath().contains(skipClass)
         }
+        exclude {
+            fte -> fte.getPath().contains("META-INF")
+        }
     }
 
     if (testDependencyJar != "null") {
@@ -57,6 +60,9 @@ task unpackTestJars(type: Copy){
         exclude {
             fte -> fte.getPath().contains(skipClass)
         }
+        exclude {
+            fte -> fte.getPath().contains("META-INF")
+        }
     }
 
     if (testClassesJar != "null"){
@@ -65,6 +71,9 @@ task unpackTestJars(type: Copy){
         into testClassesDir
         exclude {
             fte -> fte.getPath().contains(skipClass)
+        }
+        exclude {
+            fte -> fte.getPath().contains("META-INF")
         }
     }
 }
