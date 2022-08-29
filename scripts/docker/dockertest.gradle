@@ -40,24 +40,32 @@ task unpackTestJars(type: Copy){
     // set fileMode to null to prevent the Copy task's ridiculous attempt to change the file permissions
     fileMode(null)
     String skipClass = "shapeless/\$tilde\$qmark\$greater\$"
-    //zipTree(gatkJar)
 
     if (gatkJar != "null") {
         System.out.println("starting gatkJar");
-        from zipTree(gatkJar).filter(f -> !f.getName().contains(skipClass))
+        from zipTree(gatkJar)
         into testClassesDir
+        exclude {
+            fte -> fte.getPath().contains(skipClass)
+        }
     }
 
     if (testDependencyJar != "null") {
         System.out.println("starting testDependencyJar");
-        from zipTree(testDependencyJar).filter(f -> !f.getName().contains(skipClass))
+        from zipTree(testDependencyJar)
         into testClassesDir
+        exclude {
+            fte -> fte.getPath().contains(skipClass)
+        }
     }
 
     if (testClassesJar != "null"){
         System.out.println("starting testClassesJar");
-        from zipTree(testClassesJar).filter(f -> !f.getName().contains(skipClass))
+        from zipTree(testClassesJar)
         into testClassesDir
+        exclude {
+            fte -> fte.getPath().contains(skipClass)
+        }
     }
 }
 
