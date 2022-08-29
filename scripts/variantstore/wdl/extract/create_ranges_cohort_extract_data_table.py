@@ -67,7 +67,7 @@ def load_sample_names(sample_names_to_extract, fq_temp_table_dataset):
     table = bigquery.Table(fq_sample_table, schema=schema)
     expiration = datetime.datetime.utcnow() + datetime.timedelta(hours=TEMP_TABLE_TTL_HOURS)
     table.expires = expiration
-    table = client.update_table(table, ["expires"])
+    client.update_table(table, ["expires"])
 
     return fq_sample_table
 
@@ -83,16 +83,15 @@ def get_all_sample_ids(fq_destination_table_samples):
 
 
 def create_extract_samples_table(control_samples, fq_destination_table_samples, fq_sample_name_table,
-                                 fq_sample_mapping_table):
+                                 fq_sample_mapping_table, honor_withdrawn: bool):
 
     sql = f"""
 
     CREATE OR REPLACE TABLE `{fq_destination_table_samples}` AS (
         SELECT m.sample_id, m.sample_name, m.is_loaded, m.withdrawn, m.is_control FROM `{fq_sample_name_table}` s JOIN
         `{fq_sample_mapping_table}` m ON (s.sample_name = m.sample_name) WHERE
-             m.is_loaded IS TRUE AND
-             m.is_control = {control_samples} AND 
-             m.withdrawn IS NULL 
+             m.is_loaded IS TRUE AND m.is_control = {control_samples}
+             {"AND m.withdrawn IS NULL" if honor_withdrawn else ""}
     )
 
     """
@@ -275,10 +274,12 @@ def make_extract_table(call_set_identifier,
         else:
             fq_sample_name_table = fq_cohort_sample_names
 
-        # At this point one way or the other we have a table of sample names in BQ,
-        # join it to the sample_info table to drive the extract
+        # At this point one way or the other we have a table of sample names in BQ, join it to the sample_info table to
+        # drive the extract. If this script was explicitly given a list of sample names then it should create the
+        # cohort from those samples without regard to `withdrawn` on the `sample_info` table, otherwise only include
+        # samples with a null `withdrawn` date in the cohort.
         create_extract_samples_table(control_samples, fq_destination_table_samples, fq_sample_name_table,
-                                     fq_sample_mapping_table)
+                                     fq_sample_mapping_table, honor_withdrawn=not sample_names_to_extract)
 
         # pull the sample ids back down
         sample_ids = get_all_sample_ids(fq_destination_table_samples)
@@ -322,9 +323,11 @@ if __name__ == '__main__':
 
     sample_args = parser.add_mutually_exclusive_group(required=True)
     sample_args.add_argument('--sample_names_to_extract', type=str,
-                             help='File containing list of samples to extract, 1 per line')
+                             help='File containing list of samples to extract, 1 per line. ' +
+                                  'All samples in this file will be included in the cohort regardless of `withdrawn` status in `sample_info` table.')
     sample_args.add_argument('--fq_cohort_sample_names', type=str,
-                             help='FQN of cohort table to extract, contains "sample_name" column')
+                             help='FQN of cohort table to extract, contains "sample_name" column. ' +
+                                  'Samples with non-null `withdrawn` fields in this table will not be included in the cohort.')
 
     args = parser.parse_args()
 

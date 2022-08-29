@@ -79,7 +79,7 @@ task PrepareRangesCallsetTask {
   }
 
   command <<<
-      set -e
+      set -o errexit -o nounset -o xtrace -o pipefail
 
       echo ~{sample_list_param}
 
