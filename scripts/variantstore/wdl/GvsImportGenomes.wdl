@@ -356,7 +356,7 @@ task GetUningestedSampleIds {
 
     # get sample map of samples that haven't been loaded yet
     bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} '
-      SELECT sample_id, samples.sample_name FROM `~{dataset_name}.~{table_name}` AS samples JOIN ~{temp_table}` AS temp ON
+      SELECT sample_id, samples.sample_name FROM `~{dataset_name}.~{table_name}` AS samples JOIN `~{temp_table}` AS temp ON
         samples.sample_name = temp.sample_name WHERE
           samples.sample_id NOT IN (SELECT sample_id FROM `~{dataset_name}.sample_load_status` WHERE status="FINISHED") AND
           (samples.withdrawn is NULL OR ~{withdrawn_cutoff_condition})
