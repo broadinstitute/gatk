@@ -108,7 +108,8 @@ workflow GvsCreateFilterSet {
         output_file                = "${filter_set_name}_${i}.vcf.gz",
         query_project              = project_id,
         dataset_id                 = dataset_name,
-        call_set_identifier        = call_set_identifier
+        call_set_identifier        = call_set_identifier,
+        withdrawn_cutoff_date      = withdrawn_cutoff_date,
     }
   }
 
@@ -293,6 +294,7 @@ task ExtractFilterTask {
 
     String output_file
     Int? excess_alleles_threshold
+    String? withdrawn_cutoff_date
 
     # Runtime Options:
     File? gatk_override
@@ -325,7 +327,8 @@ task ExtractFilterTask {
       --call-set-identifier ~{call_set_identifier} \
       --wdl-step GvsCreateFilterSet \
       --wdl-call ExtractFilterTask \
-      --shard-identifier ~{intervals_name}
+      --shard-identifier ~{intervals_name} \
+      ~{"--withdrawn-cutoff-date " + withdrawn_cutoff_date}
   >>>
 
   runtime {
