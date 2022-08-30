@@ -26,59 +26,13 @@ apply from: "testsettings.gradle"
 // classes from fram a .jar file, so we must unpackage them in order to run the tests.
 task unpackTestJars(type: Copy){
     String testClassesJar = "$System.env.TEST_JAR"
-    String testDependencyJar = "$System.env.TEST_DEPENDENCY_JAR"
-    String gatkJar = "$System.env.GATK_JAR"
     String testClassesDir = "$System.env.CP_DIR"
 
     description = "Unpackage classes from 'System.env.TEST_JAR' into 'System.env.CP_DIR'"
 
-    setDuplicatesStrategy(DuplicatesStrategy.EXCLUDE)
-    System.out.println("testClassesJar::: " + testClassesJar + " :::testClassesDir::: " + testClassesDir + " :::testDependencyJar::: " + testDependencyJar + " :::gatkJar::: " + gatkJar )
-    
-    // put all of the classes required into a single dir, and use the individual files as the
-    // classpath to prevent inter-module access exceptions on Java 17
-
-    // set fileMode to null to prevent the Copy task's ridiculous attempt to change the file permissions
-    fileMode(null)
-
-    // shapeless (scala) developers chose to use a class name with the character 'λ' in it ($tilde$qmark$greater$λ),
-    // on which the copy task fails, so exclude it
-    String skipClass = "shapeless/\$tilde\$qmark\$greater\$"
-
-    if (gatkJar != "null") {
-        System.out.println("starting gatkJar");
-        from zipTree(gatkJar)
-        into testClassesDir
-        exclude {
-            fte -> fte.getPath().contains(skipClass)
-        }
-        exclude {
-            fte -> fte.getPath().contains("META-INF")
-        }
-    }
-
-    if (testDependencyJar != "null") {
-        System.out.println("starting testDependencyJar");
-        from zipTree(testDependencyJar)
-        into testClassesDir
-        exclude {
-            fte -> fte.getPath().contains(skipClass)
-        }
-        exclude {
-            fte -> fte.getPath().contains("META-INF")
-        }
-    }
-
     if (testClassesJar != "null"){
-        System.out.println("starting testClassesJar");
         from zipTree(testClassesJar)
         into testClassesDir
-        exclude {
-            fte -> fte.getPath().contains(skipClass)
-        }
-        exclude {
-            fte -> fte.getPath().contains("META-INF")
-        }
     }
 }
 
