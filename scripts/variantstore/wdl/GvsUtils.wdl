@@ -357,7 +357,6 @@ task ScaleXYBedValues {
 task GetNumSamplesLoaded {
   input {
     String fq_sample_table
-    String fq_sample_table_lastmodified_timestamp
     String project_id
     Boolean control_samples = false
   }

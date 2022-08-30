@@ -336,11 +336,11 @@ task GetUningestedSampleIds {
       SELECT IFNULL(MIN(sample_id),0) as min, IFNULL(MAX(sample_id),0) as max FROM `~{dataset_name}.~{table_name}`
         AS samples JOIN `~{temp_table}` AS temp ON samples.sample_name = temp.sample_name
 
-    ' > results
+    ' > results.csv
 
     # prep for being able to return min table id
-    min_sample_id=$(tail -1 results | cut -d, -f1)
-    max_sample_id=$(tail -1 results | cut -d, -f2)
+    min_sample_id=$(tail -1 results.csv | cut -d, -f1)
+    max_sample_id=$(tail -1 results.csv | cut -d, -f2)
 
     # no samples have been loaded or we don't have the right external_sample_names or something else is wrong, bail
     if [ $max_sample_id -eq 0 ]; then
@@ -359,9 +359,9 @@ task GetUningestedSampleIds {
           samples.sample_id NOT IN (SELECT sample_id FROM `~{dataset_name}.sample_load_status` WHERE status="FINISHED") AND
           samples.withdrawn is NULL
 
-    ' > sample_map
+    ' > sample_map.csv
 
-    cut -d, -f1 sample_map > gvs_ids
+    cut -d, -f1 sample_map > gvs_ids.csv
 
     ## delete the table that was only needed for this ingest
     bq --project_id=~{project_id} rm -f=true ~{temp_table}
@@ -376,8 +376,8 @@ task GetUningestedSampleIds {
   output {
     Int max_table_id = ceil(read_float("max_sample_id"))
     Int min_table_id = ceil(read_float("min_sample_id"))
-    File sample_map = "sample_map"
-    File gvs_ids = "gvs_ids"
+    File sample_map = "sample_map.csv"
+    File gvs_ids = "gvs_ids.csv"
   }
 }
 

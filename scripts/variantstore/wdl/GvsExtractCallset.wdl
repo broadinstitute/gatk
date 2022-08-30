@@ -78,7 +78,6 @@ workflow GvsExtractCallset {
   call Utils.GetNumSamplesLoaded {
     input:
       fq_sample_table = fq_sample_table,
-      fq_sample_table_lastmodified_timestamp = SamplesTableDatetimeCheck.last_modified_timestamp,
       project_id = project_id,
       control_samples = control_samples
   }
