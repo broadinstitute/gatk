@@ -223,8 +223,8 @@ jobs:
         id: docker-jacocco-tests
         run: |
           docker run \
-            -v $(pwd):/gatkCloneMountPoint:cached \
-            -v $(pwd)/testJars:/jars:cached \
+            -v $(pwd):/gatkCloneMountPoint \
+            -v $(pwd)/testJars:/jars \
             --rm \
             -e "scala.version=${SCALA_VERSION}" \
             -e "TEST_VERBOSITY=minimal" \
