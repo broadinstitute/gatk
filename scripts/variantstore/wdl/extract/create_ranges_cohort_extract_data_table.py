@@ -212,6 +212,7 @@ def populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_tabl
 def make_extract_table(call_set_identifier,
                        control_samples,
                        fq_ranges_dataset,
+                       max_tables,
                        sample_names_to_extract,
                        fq_cohort_sample_names,
                        query_project,
@@ -259,6 +260,8 @@ def make_extract_table(call_set_identifier,
                                  default_query_job_config=default_config)
 
         # TODO -- provide a cmdline arg to override this (so we can simulate smaller datasets)
+        global REF_VET_TABLE_COUNT
+        REF_VET_TABLE_COUNT = max_tables
 
         global TEMP_TABLE_TTL_HOURS
         TEMP_TABLE_TTL_HOURS = temp_table_ttl_hours
@@ -319,6 +322,8 @@ if __name__ == '__main__':
                         required=False)
     parser.add_argument('--fq_sample_mapping_table', type=str, help='Mapping table from sample_id to sample_name',
                         required=True)
+    parser.add_argument('--max_tables',type=int, help='Maximum number of vet/ref ranges tables to consider', required=False,
+                        default=250)
     parser.add_argument('--ttl', type=int, help='Temp table TTL in hours', required=False, default=72)
 
     sample_args = parser.add_mutually_exclusive_group(required=True)
@@ -326,7 +331,7 @@ if __name__ == '__main__':
                              help='File containing list of samples to extract, 1 per line. ' +
                                   'All samples in this file will be included in the cohort regardless of `withdrawn` status in the `sample_info` table.')
     sample_args.add_argument('--fq_cohort_sample_names', type=str,
-                             help='FQN of cohort table to extract, contains "sample_name" column. ' +
+                             help='Fully qualified name of cohort table to extract, contains "sample_name" column. ' +
                                   'Only samples with null `withdrawn` fields in the `sample_info` table will be included in the cohort.')
 
     args = parser.parse_args()
@@ -334,6 +339,7 @@ if __name__ == '__main__':
     make_extract_table(args.call_set_identifier,
                        args.control_samples,
                        args.fq_ranges_dataset,
+                       args.max_tables,
                        args.sample_names_to_extract,
                        args.fq_cohort_sample_names,
                        args.query_project,
