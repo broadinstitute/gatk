@@ -127,8 +127,8 @@ task testOnPackagedReleaseJar(type: Test){
         classpath.each {println it}
     }
 
-    classpath = files(testClassesUnpacked)
-    testClassesDirs = files(testDependencyJar)
+    classpath = files(testDependencyJar)
+    testClassesDirs = files(testClassesUnpacked)
 }
 
 //task fatTestJar(type: Jar) {
