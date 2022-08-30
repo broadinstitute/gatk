@@ -140,17 +140,18 @@ def looksLikeWereInAGitRepository(){
 def ensureBuildPrerequisites(largeResourcesFolder, buildPrerequisitesMessage, skipGitCheck) {
     if (!JavaVersion.current().isJava8Compatible()) {
         throw new GradleException(
-                "Java 8 or later is required to build GATK, but ${JavaVersion.current()} was found. "
+                "Java 17 or later is required to build GATK, but ${JavaVersion.current()} was found. "
                         + "$buildPrerequisitesMessage")
     }
+    //TODO: fix this comment
     // Make sure we can get a ToolProvider class loader (for Java 8). If not we may have just a JRE.
     if (JavaVersion.current().isJava8() && ToolProvider.getSystemToolClassLoader() == null) {
         throw new GradleException(
                 "The ClassLoader obtained from the Java ToolProvider is null. "
-                + "A full Java 8 or 11 JDK must be installed, check that you are not using a JRE. $buildPrerequisitesMessage")
+                + "A full Java 17 JDK must be installed, check that you are not using a JRE. $buildPrerequisitesMessage")
     }
-    if (!JavaVersion.current().isJava8() && !JavaVersion.current().isJava11()) {
-        println("Warning: using Java ${JavaVersion.current()} but only Java 8 and Java 11 have been tested.")
+    if (!JavaVersion.current().isJava17()) {
+        println("Warning: using Java ${JavaVersion.current()} but only Java 17 has been tested.")
     }
     if (!skipGitCheck && !looksLikeWereInAGitRepository() ) {
         throw new GradleException("This doesn't appear to be a git folder. " +

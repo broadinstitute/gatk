@@ -51,7 +51,7 @@ releases of the toolkit.
 
 ## <a name="requirements">Requirements</a>
 * To run GATK:
-    * Java 8 is needed to run or build GATK. 
+    * Java 17 is needed to run or build GATK. 
     We recommend either of the following:
         * OpenJDK 8 with Hotspot from [AdoptOpenJdk](https://adoptopenjdk.net/)
         * [OracleJDK 8](https://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html)
@@ -61,7 +61,7 @@ releases of the toolkit.
       See [Python Dependencies](#python) for more information.
     * R 3.2.5 (needed for producing plots in certain tools)
 * To build GATK:
-    * A Java 8 JDK
+    * A Java 17 JDK
     * Git 2.5 or greater
     * [git-lfs](https://git-lfs.github.com/) 1.1.0 or greater. Required to download the large files used to build GATK, and
       test files required to run the test suite. Run `git lfs install` after downloading, followed by `git lfs pull` from
@@ -454,7 +454,7 @@ We use [git-lfs](https://git-lfs.github.com/) to version and distribute test dat
 
 #### <a name="intellij">Creating a GATK project in the IntelliJ IDE (last tested with version 2016.2.4):</a>
 
-* Ensure that you have `gradle` and the Java 8 JDK installed
+* Ensure that you have `gradle` and the Java 17 JDK installed
 
 * You may need to install the TestNG and Gradle plugins (in preferences)
 
@@ -476,7 +476,7 @@ We use [git-lfs](https://git-lfs.github.com/) to version and distribute test dat
 
 * After downloading project dependencies, IntelliJ should open a new window with your GATK project
 
-* Make sure that the Java version is set correctly by going to File -> "Project Structure" -> "Project". Check that the "Project SDK" is set to your Java 1.8 JDK, and "Project language level" to 8 (you may need to add your Java 8 JDK under "Platform Settings" -> SDKs if it isn't there already). Then click "Apply"/"Ok".
+* Make sure that the Java version is set correctly by going to File -> "Project Structure" -> "Project". Check that the "Project SDK" is set to your Java 1.17 JDK, and "Project language level" to 17 (you may need to add your Java 17 JDK under "Platform Settings" -> SDKs if it isn't there already). Then click "Apply"/"Ok".
 
 #### <a name="debugging">Setting up debugging in IntelliJ</a>
 
