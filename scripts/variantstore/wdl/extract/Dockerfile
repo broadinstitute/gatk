@@ -1,4 +1,4 @@
-FROM gcr.io/google.com/cloudsdktool/cloud-sdk:349.0.0
+FROM gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0
 
 # Copy the application's requirements.txt and run pip to install
 COPY requirements.txt /app/requirements.txt
@@ -18,6 +18,7 @@ COPY add_max_as_vqslod.py /app
 COPY curate_input_array_files.py /app
 COPY scale_xy_bed_values.py /app
 COPY workflow_compute_costs.py /app
+COPY generate_hail_gvs_import.py /app
 
 # Copy the schema files needed vor VAT creation.
 COPY variant_annotation_table/schema/vat_schema.json /data/variant_annotation_table/schema/

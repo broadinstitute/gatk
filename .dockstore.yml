@@ -102,7 +102,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_vs_52_incremental_alt_allele
    - name: GvsCreateTables
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateTables.wdl
@@ -119,7 +118,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_447_fixup_non_fq_invocations
          - ah_vs_565_output_intervals_and_sample_list
    - name: GvsImportGenomes
      subclass: WDL
@@ -169,7 +167,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - kc_variant_search_extract_wdl
    - name: GvsWithdrawSamples
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsWithdrawSamples.wdl
@@ -237,7 +234,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_579_vds_avro_wdl
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl

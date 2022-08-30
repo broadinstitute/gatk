@@ -40,6 +40,7 @@
    - This will import the re-blocked gVCF files into GVS. The workflow will check whether data for that sample has already been loaded into GVS. It is designed to be re-run (with the same inputs) if there is a failure during one of the workflow tasks (e.g. BigQuery write API interrupts).
    - Run at the `sample set` level ("Step 1" in workflow submission).  You can either run this on a sample_set of all the samples and rely on the workflow logic to break it up into batches (or manually set the `load_data_batch_size` input) or run it on smaller sample_sets created by the "Fetch WGS metadata for samples from list" notebook mentioned above.  
    - You will want to set the `external_sample_names`, `input_vcfs` and `input_vcf_indexes` inputs based on the columns in the workspace Data table, e.g. "this.samples.research_id", "this.samples.reblocked_gvcf_v2" and "this.samples.reblocked_gvcf_index_v2".
+   - **NOTE** It appears that there is a rawls limit on the size of the input (list of gvcf files and indexes) per workflow run. 25K samples in a list worked for the Intermediate call set, 50K did not.
 3. `GvsWithdrawSamples` workflow
    - Run if there are any samples to withdraw from the last callset.
 4. **TBD Workflow to soft delete samples**
@@ -56,7 +57,7 @@
    - It will need to be run twice, once with `control_samples` set to "true" (see [naming conventions doc](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow) for guidance on what to use for `extract_table_prefix` or cohort prefix, which you will need to keep track of for the `GvsExtractCallset` WDL); the default value is `false`.
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
 8. `GvsExtractCallset` workflow
-   - This workflow extracts the data in BigQuery and transforms it into a sharded joint called VCF incorporating the VQSR filter set data.
+   - This workflow extracts the data in BigQuery and transforms it into a sharded joint called VCF incorporating the VQSR filter set data.  We will probably not run this on callsets of more than 100K samples.
    - It also needs to be run twice, once with `control_samples` set to "true", and with the `filter_set_name` and `extract_table_prefix` from step 5 & 6.  Include a valid (and secure) "output_gcs_dir" parameter, which is where the VCF, interval list, manifest, and sample name list files will go.
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
 9. **TBD VDS Prepare WDL/notebook/??**
