@@ -401,7 +401,6 @@ test {
                    '--add-opens', 'java.base/java.io=ALL-UNNAMED',
                    '--add-opens', 'java.base/java.lang.invoke=ALL-UNNAMED',
                    '--add-opens', 'java.base/java.lang=ALL-UNNAMED' // required for jacoco
-
         ]
 }
 
