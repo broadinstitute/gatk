@@ -150,7 +150,8 @@ def ensureBuildPrerequisites(largeResourcesFolder, buildPrerequisitesMessage, sk
                 "The ClassLoader obtained from the Java ToolProvider is null. "
                 + "A full Java 17 JDK must be installed, check that you are not using a JRE. $buildPrerequisitesMessage")
     }
-    if (!JavaVersion.current().isJava17()) {
+    //TODO: fix this - the gradle version we're using has no isJava17
+    if (!JavaVersion.current().isJava8() && !JavaVersion.current().isJava11()) {
         println("Warning: using Java ${JavaVersion.current()} but only Java 17 has been tested.")
     }
     if (!skipGitCheck && !looksLikeWereInAGitRepository() ) {
