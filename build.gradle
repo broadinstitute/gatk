@@ -546,6 +546,9 @@ task shadowTestJar(type: ShadowJar){
     exclude {
         fte -> fte.getPath().contains(skipClass)
     }
+    exclude {
+        fte -> fte.getPath().contains("spire")
+    }
     archiveClassifier = "testDependencies"
 }
 
