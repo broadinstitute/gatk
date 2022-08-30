@@ -250,6 +250,6 @@ task PopulateAltAlleleTable {
   }
 
   output {
-    String done = true
+    Boolean done = true
   }
 }
