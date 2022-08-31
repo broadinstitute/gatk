@@ -38,25 +38,43 @@ EXTRA_JAVA_OPTIONS_SPARK= "-DGATK_STACKTRACE_ON_USER_EXCEPTION=true " \
                    "-Dsamjdk.use_async_io_write_samtools=false " \
                    "-Dsamjdk.use_async_io_write_tribble=false " \
                    "-Dsamjdk.compression_level=2 " \
-                    "--add-exports" "java.base/sun.nio.ch=ALL-UNNAMED " \
-                    "--add-opens" "java.base/sun.nio.fs=ALL-UNNAMED " \
-                    "--add-opens" "java.base/java.nio=ALL-UNNAMED " \
-                    "--add-opens" "java.base/java.io=ALL-UNNAMED " \
-                    "--add-opens" "java.base/java.lang.invoke=ALL-UNNAMED " \
-                    "--add-opens" "java.base/java.util=ALL-UNNAMED " \
-                    "-Dio.netty.tryReflectionSetAccessible=true"
+                    "--add-opens ", "java.base/java.lang=ALL-UNNAMED " \
+                    "--add-opens ", "java.base/java.lang.invoke=ALL-UNNAMED " \
+                    "--add-opens ", "java.base/java.lang.reflect=ALL-UNNAMED " \
+                    "--add-opens ", "java.base/java.io=ALL-UNNAMED " \
+                    "--add-opens ", "java.base/java.net=ALL-UNNAMED " \
+                    "--add-opens ", "java.base/java.nio=ALL-UNNAMED " \
+                    "--add-opens ", "java.base/java.util=ALL-UNNAMED " \
+                    "--add-opens ", "java.base/java.util.concurrent=ALL-UNNAMED " \
+                    "--add-opens ", "java.base/java.util.concurrent.atomic=ALL-UNNAMED " \
+                    "--add-opens ", "java.base/sun.nio.ch=ALL-UNNAMED " \
+                    "--add-opens", "java.base/sun.nio.cs=ALL-UNNAMED " \
+                    "--add-opens", "java.base/sun.security.action=ALL-UNNAMED " \
+                    "--add-opens", "java.base/sun.util.calendar=ALL-UNNAMED " \
+                    "--add-opens", "java.base/sun.nio.fs=ALL-UNNAMED " \
+                    "-Dio.netty.tryReflectionSetAccessible=true "
 
-PACKAGED_LOCAL_JAR_OPTIONS= ["-Dsamjdk.use_async_io_read_samtools=false",
+PACKAGED_LOCAL_JAR_OPTIONS= [
+                  "-Dsamjdk.use_async_io_read_samtools=false",
                   "-Dsamjdk.use_async_io_write_samtools=true",
                   "-Dsamjdk.use_async_io_write_tribble=false",
                   "-Dsamjdk.compression_level=2",
-                  "--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED",
-                  "--add-opens", "java.base/sun.nio.fs=ALL-UNNAMED",
-                  "--add-opens", "java.base/java.nio=ALL-UNNAMED",
-                  "--add-opens", "java.base/java.io=ALL-UNNAMED",
+                  "--add-opens", "java.base/java.lang=ALL-UNNAMED",
                   "--add-opens", "java.base/java.lang.invoke=ALL-UNNAMED",
+                  "--add-opens", "java.base/java.lang.reflect=ALL-UNNAMED",
+                  "--add-opens", "java.base/java.io=ALL-UNNAMED",
+                  "--add-opens", "java.base/java.net=ALL-UNNAMED",
+                  "--add-opens", "java.base/java.nio=ALL-UNNAMED",
                   "--add-opens", "java.base/java.util=ALL-UNNAMED",
-                  "-Dio.netty.tryReflectionSetAccessible=true"]
+                  "--add-opens", "java.base/java.util.concurrent=ALL-UNNAMED",
+                  "--add-opens", "java.base/java.util.concurrent.atomic=ALL-UNNAMED",
+                "--add-opens", "java.base/sun.nio.ch=ALL-UNNAMED",
+                "--add-opens", "java.base/sun.nio.cs=ALL-UNNAMED",
+                "--add-opens", "java.base/sun.security.action=ALL-UNNAMED",
+                "--add-opens", "java.base/sun.util.calendar=ALL-UNNAMED",
+                "--add-opens", "java.base/sun.nio.fs=ALL-UNNAMED",
+                "-Dio.netty.tryReflectionSetAccessible=true"
+            ]
 
 DEFAULT_SPARK_ARGS_PREFIX = '--conf'
 DEFAULT_SPARK_ARGS = {
