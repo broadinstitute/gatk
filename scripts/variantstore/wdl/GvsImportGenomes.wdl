@@ -361,7 +361,7 @@ task GetUningestedSampleIds {
 
     ' > sample_map.csv
 
-    cut -d, -f1 sample_map > gvs_ids.csv
+    cut -d, -f1 sample_map.csv > gvs_ids.csv
 
     ## delete the table that was only needed for this ingest
     bq --project_id=~{project_id} rm -f=true ~{temp_table}
