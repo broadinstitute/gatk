@@ -51,7 +51,8 @@ test {
                 '--add-opens', 'java.base/java.io=ALL-UNNAMED',
                 '--add-opens', 'java.base/java.lang.invoke=ALL-UNNAMED',
                 '--add-opens', 'java.base/java.util=ALL-UNNAMED',
-                '--add-opens', 'java.base/java.lang=ALL-UNNAMED' // required for jacoco
+                '--add-opens', 'java.base/java.lang=ALL-UNNAMED', // required for jacoco
+                '-Dio.netty.tryReflectionSetAccessible=true'
     ]
     jacoco {
         jvmArgs += ['--add-opens', 'java.base/sun.nio.ch=ALL-UNNAMED',
@@ -60,7 +61,8 @@ test {
                    '--add-opens', 'java.base/java.io=ALL-UNNAMED',
                    '--add-opens', 'java.base/java.lang.invoke=ALL-UNNAMED',
                     '--add-opens', 'java.base/java.util=ALL-UNNAMED',
-                   '--add-opens', 'java.base/java.lang=ALL-UNNAMED' // required for jacoco
+                   '--add-opens', 'java.base/java.lang=ALL-UNNAMED', // required for jacoco
+                    '-Dio.netty.tryReflectionSetAccessible=true'
         ]
     }
 }
