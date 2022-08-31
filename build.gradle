@@ -191,6 +191,8 @@ configurations.all {
         // via Picard, etc.
         force googleCloudNioDependency
 
+        force 'com.esotericsoftware:kryo:5.3.0'
+
 //        // hadoop uses an old jetty that doesn't like the new java version numbering scheme
 //        force 'org.eclipse.jetty:jetty-servlet:10.0.2'
     }
@@ -348,15 +350,15 @@ dependencies {
     implementation('com.github.fommil.netlib:netlib-native_system-osx-x86_64:1.1:natives')
 
     // Dependency change for including MLLib
-    implementation('com.esotericsoftware:kryo:3.0.3'){
-        exclude group: 'com.esotericsoftware', module: 'reflectasm'
+    implementation('com.esotericsoftware:kryo:5.3.0'){
+        //exclude group: 'com.esotericsoftware', module: 'reflectasm'
         exclude group: 'org.ow2.asm', module: 'asm'
     }
 
-    // Dependency change for including MLLib
-    implementation('com.esotericsoftware:reflectasm:1.10.0:shaded') {
-        transitive = false
-    }
+//    // Dependency change for including MLLib
+//    implementation('com.esotericsoftware:reflectasm:1.10.0:shaded') {
+//        transitive = false
+//    }
 
     implementation('com.intel.gkl:gkl:0.8.8') {
         exclude module: 'htsjdk'
