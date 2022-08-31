@@ -50,6 +50,7 @@ test {
                 '--add-opens', 'java.base/java.nio=ALL-UNNAMED',
                 '--add-opens', 'java.base/java.io=ALL-UNNAMED',
                 '--add-opens', 'java.base/java.lang.invoke=ALL-UNNAMED',
+                '--add-opens', 'java.base/java.util=ALL-UNNAMED',
                 '--add-opens', 'java.base/java.lang=ALL-UNNAMED' // required for jacoco
     ]
     jacoco {
@@ -58,6 +59,7 @@ test {
                    '--add-opens', 'java.base/java.nio=ALL-UNNAMED',
                    '--add-opens', 'java.base/java.io=ALL-UNNAMED',
                    '--add-opens', 'java.base/java.lang.invoke=ALL-UNNAMED',
+                    '--add-opens', 'java.base/java.util=ALL-UNNAMED',
                    '--add-opens', 'java.base/java.lang=ALL-UNNAMED' // required for jacoco
         ]
     }
