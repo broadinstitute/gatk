@@ -45,7 +45,7 @@ task unpackTestJars(type: Copy){
 //    ]
 //}
 test {
-    jvmArgs += ['--add-exports', 'java.base/sun.nio.ch=ALL-UNNAMED',
+    jvmArgs += ['--add-opens', 'java.base/sun.nio.ch=ALL-UNNAMED',
                 '--add-opens', 'java.base/sun.nio.fs=ALL-UNNAMED',
                 '--add-opens', 'java.base/java.nio=ALL-UNNAMED',
                 '--add-opens', 'java.base/java.io=ALL-UNNAMED',
@@ -53,7 +53,7 @@ test {
                 '--add-opens', 'java.base/java.lang=ALL-UNNAMED' // required for jacoco
     ]
     jacoco {
-        jvmArgs += ['--add-exports', 'java.base/sun.nio.ch=ALL-UNNAMED',
+        jvmArgs += ['--add-opens', 'java.base/sun.nio.ch=ALL-UNNAMED',
                    '--add-opens', 'java.base/sun.nio.fs=ALL-UNNAMED',
                    '--add-opens', 'java.base/java.nio=ALL-UNNAMED',
                    '--add-opens', 'java.base/java.io=ALL-UNNAMED',
