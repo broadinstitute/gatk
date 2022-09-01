@@ -179,7 +179,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - 
+         - rsa_vs_436_withdrawn_wdl
    - name: GvsUnified
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsUnified.wdl
