@@ -402,6 +402,7 @@ run {
                 '--add-opens', 'java.base/sun.security.action=ALL-UNNAMED',
                 '--add-opens', 'java.base/sun.util.calendar=ALL-UNNAMED',
                 '--add-opens', 'java.base/sun.nio.fs=ALL-UNNAMED',
+                '--add-opens', 'java.base/java.nio.channels.spi=ALL-UNNAMED',
                 '-Dio.netty.tryReflectionSetAccessible=true'
         ]
     }
@@ -421,6 +422,17 @@ test {
                 '--add-opens', 'java.base/sun.security.action=ALL-UNNAMED',
                 '--add-opens', 'java.base/sun.util.calendar=ALL-UNNAMED',
                 '--add-opens', 'java.base/sun.nio.fs=ALL-UNNAMED',
+                '--add-opens', 'java.base/java.nio.channels.spi=ALL-UNNAMED',
+
+                // required for tests
+                '--add-opens', 'java.base/jdk.internal.ref=ALL-UNNAMED', // ??
+                '--add-opens', 'java.base/java.lang.ref=ALL-UNNAMED',
+                '--add-opens', 'java.base/java.util.zip=ALL-UNNAMED',
+                '--add-opens', 'java.base/java.util.jar=ALL-UNNAMED',
+                '--add-opens', 'java.base/java.nio.file.attribute=ALL-UNNAMED',
+                '--add-opens', 'java.base/jdk.internal.loader=ALL-UNNAMED',
+                '--add-opens', 'java.base/sun.net.www.protocol.jar=ALL-UNNAMED',
+
                 '-Dio.netty.tryReflectionSetAccessible=true'
         ]
 }

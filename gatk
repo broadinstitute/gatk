@@ -52,6 +52,7 @@ EXTRA_JAVA_OPTIONS_SPARK= "-DGATK_STACKTRACE_ON_USER_EXCEPTION=true " \
                     "--add-opens", "java.base/sun.security.action=ALL-UNNAMED " \
                     "--add-opens", "java.base/sun.util.calendar=ALL-UNNAMED " \
                     "--add-opens", "java.base/sun.nio.fs=ALL-UNNAMED " \
+                    "--add-opens", "java.base/java.nio.channels.spi=ALL-UNNAMED " \
                     "-Dio.netty.tryReflectionSetAccessible=true "
 
 PACKAGED_LOCAL_JAR_OPTIONS= [
@@ -73,6 +74,7 @@ PACKAGED_LOCAL_JAR_OPTIONS= [
                 "--add-opens", "java.base/sun.security.action=ALL-UNNAMED",
                 "--add-opens", "java.base/sun.util.calendar=ALL-UNNAMED",
                 "--add-opens", "java.base/sun.nio.fs=ALL-UNNAMED",
+                "--add-opens", "java.base/java.nio.channels.spi=ALL-UNNAMED",
                 "-Dio.netty.tryReflectionSetAccessible=true"
             ]
 
