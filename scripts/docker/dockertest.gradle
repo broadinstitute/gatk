@@ -184,6 +184,9 @@ task testOnPackagedReleaseJar(type: Test){
         classpath.each {println it}
     }
 
+    System.out.println("All JVM args: ");
+    allJvmArgs.forEach(a -> System.out.println(a))
+
     //classpath = files(testDependencyJar)
     classpath = files( gatkJar, testDependencyJar, testClassesJar)
     testClassesDirs = files(testClassesUnpacked)
