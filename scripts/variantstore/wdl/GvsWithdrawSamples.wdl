@@ -49,7 +49,7 @@ task WithdrawSamples {
     # get just the sample_name values from sample_names_to_include_file based on the
     # sample_name_column_name_in_file into sample_names.tsv
     col_num=$(head -n1 ~{sample_names_to_include_file} | tr '\t' '\n' | grep -Fxn ~{sample_name_column_name_in_file} | cut -f1 -d:)
-    awk "{print \$$col_num}" delta_v1_updated_wgs_available_flt_array_Aug152022_1600_35_tz0000.tsv | sed 1d > sample_names.tsv
+    awk "{print \$$col_num}" ~{sample_names_to_include_file} | sed 1d > sample_names.tsv
 
     # make sure that we end up with some samples to make the temp table, warn and exit if empty
     num_samples=$(cat sample_names.tsv | wc -l)
