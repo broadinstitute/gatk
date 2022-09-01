@@ -184,14 +184,14 @@ configurations.all {
         // force testng dependency so we don't pick up a different version via GenomicsDB
         force 'org.testng:testng:' + testNGVersion
         force 'org.broadinstitute:barclay:' + barclayVersion
-        force 'com.twitter:chill_2.11:0.8.1'
+        force 'com.twitter:chill_2.12:0.10.0'
         force 'org.apache.commons:commons-math3:3.5'
 
         // make sure we don't pick up an incorrect version of the GATK variant of the google-nio library
         // via Picard, etc.
         force googleCloudNioDependency
 
-        force 'com.esotericsoftware:kryo:5.3.0'
+        force 'com.esotericsoftware:kryo:4.0.0'
 
 //        // hadoop uses an old jetty that doesn't like the new java version numbering scheme
 //        force 'org.eclipse.jetty:jetty-servlet:10.0.2'
@@ -334,7 +334,7 @@ dependencies {
     implementation('org.apache.hadoop:hadoop-client:' + hadoopVersion) // should be a 'provided' dependency
     implementation('com.github.jsr203hadoop:jsr203hadoop:1.0.3')
 
-    implementation('de.javakaffee:kryo-serializers:0.41') {
+    implementation('de.javakaffee:kryo-serializers:0.45') {
         exclude module: 'kryo' // use Spark's version
     }
 
