@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.gvs.common;
 
-import com.google.common.collect.ImmutableSet;
 import org.apache.avro.generic.GenericRecord;
 
 import java.util.Arrays;
@@ -9,15 +8,10 @@ import java.util.List;
 
 public class SchemaUtils {
 
-//    public static final String POSITION_FIELD_NAME = "position";
-//    public static final String CHROM_FIELD_NAME = "chrom";
     public static final String LOCATION_FIELD_NAME = "location";
 
     public static final String SAMPLE_NAME_FIELD_NAME = "sample_name";
     public static final String SAMPLE_ID_FIELD_NAME = "sample_id";
-
-    public static final String BASIC_ARRAY_DATA_FIELD_NAME = "basic_array_data";
-    public static final String RAW_ARRAY_DATA_FIELD_NAME = "raw_array_data";
 
     public static final String STATE_FIELD_NAME = "state";
     public static final String LENGTH_FIELD_NAME = "length";
@@ -32,14 +26,6 @@ public class SchemaUtils {
     public static final String CALL_GT = GENOTYPE_FIELD_PREFIX + "GT";
     public static final String CALL_GQ = GENOTYPE_FIELD_PREFIX + "GQ";
     public static final String CALL_RGQ = GENOTYPE_FIELD_PREFIX + "RGQ";
-
-    public static final ImmutableSet<String> REQUIRED_FIELDS = ImmutableSet.of(
-            SAMPLE_NAME_FIELD_NAME,
-//            SAMPLE_FIELD_NAME,
-            STATE_FIELD_NAME,
-            REF_ALLELE_FIELD_NAME,
-            ALT_ALLELE_FIELD_NAME
-    );
 
     // exomes & genomes
     public static final String RAW_QUAL = "RAW_QUAL";
@@ -56,16 +42,11 @@ public class SchemaUtils {
     public static final String CALL_AD = GENOTYPE_FIELD_PREFIX + "AD";
     public static final String SUM_AD = "SUM_AD";
     public static final String RAW_AD = "RAW_AD";
-    public static final String CALL_PGT = GENOTYPE_FIELD_PREFIX + "PGT";
-    public static final String CALL_PID = GENOTYPE_FIELD_PREFIX + "PID";
     public static final String CALL_PL = GENOTYPE_FIELD_PREFIX + "PL";
 
     //Filtering table
     public static final String FILTER_SET_NAME = "filter_set_name";
-    public static final String TYPE = "type";
     public static final String VQSLOD = "vqslod";
-    public static final String CULPRIT = "culprit";
-    public static final String TRAINING_LABEL = "training_label";
     public static final String YNG_STATUS = "yng_status";
 
     //Tranches table
@@ -81,10 +62,6 @@ public class SchemaUtils {
     public static final List<String> EXTRACT_VET_FIELDS = Arrays.asList(LOCATION_FIELD_NAME, SAMPLE_ID_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME, CALL_GT, CALL_GQ, AS_QUALapprox, QUALapprox, CALL_PL, CALL_AD);
     public static final List<String> EXTRACT_REF_FIELDS = Arrays.asList(LOCATION_FIELD_NAME, SAMPLE_ID_FIELD_NAME, LENGTH_FIELD_NAME, STATE_FIELD_NAME);
 
-    public static final List<String> COHORT_FIELDS_PL = Arrays.asList(CALL_PL);
-    public static final List<String> COHORT_FIELDS_AD = Arrays.asList(CALL_AD);
-    public static final List<String> COHORT_FIELDS_REQ = Arrays.asList(LOCATION_FIELD_NAME, SAMPLE_ID_FIELD_NAME, STATE_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME, CALL_GT, CALL_GQ, CALL_RGQ, QUALapprox, AS_QUALapprox);
-
     public static final List<String> SAMPLE_FIELDS = Arrays.asList(SchemaUtils.SAMPLE_NAME_FIELD_NAME, SchemaUtils.SAMPLE_ID_FIELD_NAME);
     public static final List<String> YNG_FIELDS = Arrays.asList(FILTER_SET_NAME, LOCATION_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME, VQSLOD, YNG_STATUS);
     public static final List<String> TRANCHE_FIELDS = Arrays.asList(TARGET_TRUTH_SENSITIVITY, MIN_VQSLOD, TRANCHE_FILTER_NAME, TRANCHE_MODEL);
@@ -99,8 +76,7 @@ public class SchemaUtils {
 
     public static long encodeLocation(String chrom, int position) {
         int chromosomeIndex = ChromosomeEnum.valueOfContig(chrom).index;
-        long adjustedLocation = Long.valueOf(chromosomeIndex) * chromAdjustment + Long.valueOf(position);
-        return adjustedLocation;
+        return (long) chromosomeIndex * chromAdjustment + (long) position;
     }
 
     public static String decodeContig(long location) {
@@ -111,13 +87,10 @@ public class SchemaUtils {
         return (int)(location % chromAdjustment);
     }
 
-    public final static Comparator<GenericRecord> LOCATION_COMPARATOR = new Comparator<GenericRecord>() {
-        @Override
-        public int compare( GenericRecord o1, GenericRecord o2 ) {
-            final long firstLocation = (Long) o1.get(SchemaUtils.LOCATION_FIELD_NAME);
-            final long secondLocation = (Long) o2.get(SchemaUtils.LOCATION_FIELD_NAME);
-            return Long.compare(firstLocation, secondLocation);
-        }
+    public final static Comparator<GenericRecord> LOCATION_COMPARATOR = (o1, o2) -> {
+        final long firstLocation = (Long) o1.get(SchemaUtils.LOCATION_FIELD_NAME);
+        final long secondLocation = (Long) o2.get(SchemaUtils.LOCATION_FIELD_NAME);
+        return Long.compare(firstLocation, secondLocation);
     };
 
 }
