@@ -243,7 +243,7 @@ task ExtractFromSuperpartitionedTables {
     }
 }
 
-task GenerateHailScript {
+task GenerateHailScripts {
     input {
         String avro_prefix
         String gcs_temporary_path
@@ -269,21 +269,38 @@ task GenerateHailScript {
         vcf_output_path="$(dirname ~{avro_prefix})/gvs_export.vcf"
         echo $vcf_output_path > vcf_output_path.txt
 
+        sites_only_vcf_output_path="$(diranme ~{avro_prefix})/gvs_sites_only.vcf"
+        echo $sites_only_vcf_output_path > sites_only_vcf_output_path.txt
+
         gsutil ls -r '~{avro_prefix}' > avro_listing.txt
 
         python3 /app/generate_hail_gvs_import.py \
             --avro_prefix '~{avro_prefix}' \
             --avro_listing_file avro_listing.txt \
-            --vds_output_path "${vds_output_path}" \
+            --gcs_temporary_path ~{gcs_temporary_path} \
+            --vds_output_path "${vds_output_path}"> hail_gvs_import.py
+
+        # The VDS output from the script above becomes an input to the script below.
+        python3 /app/generate_hail_export_tieout_vcf.py \
+            --vds_input_path "${vds_output_path}" \
+            --vcf_output_path "${vcf_output_path}" > hail_export_tieout_vcf.py
+
+        # The VDS output from the script above becomes an input to the script below.
+        python3 /app/generate_hail_vat_inputs.py \
+            --vds_input_path "${vds_output_path}" \
+            --ancestry_file_path "" \
             --vcf_output_path "${vcf_output_path}" \
-            --gcs_temporary_path ~{gcs_temporary_path} > hail_script.py
+            --sites_only_vcf_output_path "${sites_only_vcf_output_path}" \
+            --vcf_output_path "${vcf_output_path}" > hail_tie_out_vcf.py
     >>>
 
     output {
         Boolean done = true
         String vds_output_path = read_string('vds_output_path.txt')
         String vcf_output_path = read_string('vcf_output_path.txt')
-        File hail_script = 'hail_script.py'
+        String sites_only_vcf_output_path = read_string('sites_only_vcf_output_path.txt')
+        File hail_gvs_import_script = 'hail_gvs_import.py'
+        File hail_export_tieout_vcf_script = 'hail_export_tieout_vcf.py'
     }
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:rc_616_var_store_2022_09_06"

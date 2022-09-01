@@ -53,7 +53,7 @@ def generate_avro_args(avro_dict):
     return ',\n'.join(avro_args)
 
 
-def generate_gvs_import_script(avro_prefix, gcs_listing, vds_output_path, vcf_output_path, temp_dir):
+def generate_gvs_import_script(avro_prefix, gcs_listing, vds_output_path, temp_dir):
     """
     Generate a Python script that when executed will:
 
@@ -65,81 +65,46 @@ def generate_gvs_import_script(avro_prefix, gcs_listing, vds_output_path, vcf_ou
     avro_args = generate_avro_args(avro_dict)
     indented_avro_args = re.sub('\n', '\n    ', avro_args)
     hail_script = f"""
+# * Introduction
+#
 # The following instructions can be used from the terminal of a Terra notebook to import GVS QuickStart Avro files
 # and generate a VDS.
 #
-# Copy the appropriate Hail wheel locally first:
+# * Hail installation
 #
-# gsutil -m cp 'gs://gvs-internal-scratch/hail-wheels/2022-08-18-01f7b77ebbcc/hail-0.2.97-py3-none-any.whl' .
+# Copy the appropriate Hail wheel locally and install:
 #
-# If running locally (non-Spark cluster) set this in the environment before launching Python:
+# gsutil -m cp 'gs://gvs-internal-scratch/hail-wheels/<date>-<short git hash>/hail-<Hail version>-py3-none-any.whl' .
+# pip install --force-reinstall hail-<Hail version>-py3-none-any.whl
+#
+# * Additional non-cluster configuration:
+#
+# If running with a Spark cluster, setup should be complete. If running with a non-cluster environment,
+# the following lines are required in the terminal:
+# 
 # export PYSPARK_SUBMIT_ARGS='--driver-memory 16g --executor-memory 16g pyspark-shell'
-#
-# Hail wants Java 8, Java 11+ will not do. Make sure you have a Java 8 in your path with `java -version`.
-#
-# pip install hail-0.2.97-py3-none-any.whl
 # gcloud auth application-default login
 # curl -sSL https://broad.io/install-gcs-connector | python3
+#
+# * Running the GVS to Hail VDS conversion script:
+# 
+# `python hail_gvs_import.py`
 
 import hail as hl
 
 rg38 = hl.get_reference('GRCh38')
 rg38.add_sequence('gs://hail-common/references/Homo_sapiens_assembly38.fasta.gz',
                   'gs://hail-common/references/Homo_sapiens_assembly38.fasta.fai')
+                  
+vds_output_path="{vds_output_path}"
 
 hl.import_gvs(
     {indented_avro_args},
-    final_path="{vds_output_path}",
+    final_path=vds_output_path,
     tmp_dir="{temp_dir}",
     reference_genome=rg38,
 )
 
-vds = hl.vds.read_vds('{vds_output_path}')
-
-from datetime import datetime
-start = datetime.now()
-current_time = start.strftime("%H:%M:%S")
-print("Start Time =", current_time)
-
-## * Hard filter out non-passing sites !!!!!TODO ok wait, DO WE want to do this? I guess it depends on what we are handing off and when.
-# note: no AC/AN and AF for filtered out positions
-vd = vds.variant_data
-filtered_vd = vd.filter_rows(hl.len(vd.filters)==0)
-filtered_vds = hl.vds.VariantDataset(vds.reference_data, filtered_vd) # now we apply it back to the vds 
-
-## * Replace LGT with GT ( for easier calculations later )
-filtered_vd = filtered_vds.variant_data
-filtered_vd = filtered_vd.annotate_entries(GT=hl.vds.lgt_to_gt(filtered_vd.LGT, filtered_vd.LA) )
-filtered_vds = hl.vds.VariantDataset(filtered_vds.reference_data, filtered_vd)
-
-## * Respect the FT flag by setting all failing GTs to a no call
-# TODO We dont seem to be using the dense matrix table here (TODO do we need to?)
-
-# Logic for assigning non passing GTs as no-calls to ensure that AC,AN and AF respect the FT flag
-# filtered_vd.FT is True ⇒ GT keeps its current value
-# filtered_vd.FT is False ⇒ GT assigned no-call
-# filtered_vd.FT is missing ⇒ GT keeps its current value
-
-filtered_vd = filtered_vd.annotate_entries(GT=hl.or_missing(hl.coalesce(filtered_vd.FT, True), filtered_vd.GT))
-# TODO drop LGT now that it will be different than the GT
-
-
-## * Turn the GQ0s into no calls so that ANs are correct
-rd = filtered_vds.reference_data
-rd = rd.filter_entries(rd.GQ > 0) ## would be better to drop these once its a dense mt? 
-filtered_vds = hl.vds.VariantDataset(rd, filtered_vd)
-
-## * Create a DENSE MATRIX TABLE to calculate AC, AN, AF and TODO: Sample Count
-mt = hl.vds.to_dense_mt(filtered_vds)
-mt = hl.variant_qc(mt)
-mt = mt.annotate_rows(AC=mt.variant_qc.AC, AN=mt.variant_qc.AN, AF=mt.variant_qc.AF)
-mt = mt.drop('variant_qc')
-
-
-# mt = hl.vds.to_dense_mt(vds)
-# fail_case = 'FAIL'
-# mt = mt.annotate_entries(FT=hl.if_else(mt.FT, 'PASS', fail_case))
-# hl.export_vcf(mt, '{vcf_output_path}')
 """
     return hail_script
 
@@ -151,8 +116,6 @@ if __name__ == '__main__':
     parser.add_argument('--avro_listing_file', type=str, help='File containing a recursive listing under `avro_prefix',
                         required=True)
     parser.add_argument('--vds_output_path', type=str, help='GCS location for VDS output', required=True)
-    parser.add_argument('--vcf_output_path', type=str, help='GCS location for VCF output generated from VDS',
-                        required=True)
     parser.add_argument('--gcs_temporary_path', type=str, help='GCS location under which to create temporary files',
                         required=True)
 
@@ -162,6 +125,5 @@ if __name__ == '__main__':
         script = generate_gvs_import_script(args.avro_prefix,
                                             listing,
                                             args.vds_output_path,
-                                            args.vcf_output_path,
                                             args.gcs_temporary_path)
         print(script)
