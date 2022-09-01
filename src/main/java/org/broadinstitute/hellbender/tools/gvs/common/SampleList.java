@@ -17,8 +17,7 @@ import org.broadinstitute.hellbender.utils.bigquery.TableReference;
 public class SampleList {
     static final Logger logger = LogManager.getLogger(SampleList.class);
 
-    private final Map<Long, String> sampleIdMap = new HashMap<>();
-    private final Map<String, Long> sampleNameMap = new HashMap<>();
+    private final Map<Long, String> sampleIdToNameMap = new HashMap<>();
     private long bigQueryQueryByteScanned = 0L;
 
     public SampleList(String sampleTableName, File sampleFile, String executionProjectId, boolean printDebugInformation, String originTool) {
@@ -32,41 +31,35 @@ public class SampleList {
     }
 
     public int size() {
-        return sampleIdMap.size();
+        return sampleIdToNameMap.size();
     }
 
-    public Collection<String> getSampleNames() {
-        return sampleIdMap.values();
-    }
 
-    public String getSampleName(long id) {
-        return sampleIdMap.get(id);
-    }
-
-    public long getSampleId(String name) {
-        return sampleNameMap.get(name);
-    }
-
-    public Map<Long, String> getMap() {
-        return sampleIdMap;
+    public Map<Long, String> getSampleIdToNameMap() {
+        return sampleIdToNameMap;
     }
 
     public long getBigQueryQueryByteScanned() {
         return bigQueryQueryByteScanned;
     }
 
+    /**
+     * This overload is called only from the filter creation step and should honor the `sample_info.withdrawn` column.
+     */
     protected void initializeMaps(TableReference sampleTable, String executionProjectId, boolean printDebugInformation, Optional<String> originTool) {
-        TableResult queryResults = querySampleTable(sampleTable.getFQTableName(), "is_loaded IS TRUE and withdrawn IS NULL", executionProjectId, printDebugInformation, originTool);
+        TableResult queryResults = querySampleTable(sampleTable.getFQTableName(), executionProjectId, printDebugInformation, originTool);
 
         // Add our samples to our map:
         for (final FieldValueList row : queryResults.iterateAll()) {
             long id = row.get(0).getLongValue();
             String name = row.get(1).getStringValue();
-            sampleIdMap.put(id, name);
-            sampleNameMap.put(name, id);
+            sampleIdToNameMap.put(id, name);
         }
     }
 
+    /**
+     * This overload is called only from cohort extract and does *not* honor the `sample_info.withdrawn` column.
+     */
     protected void initializeMaps(File cohortSampleFile) {
         try {
             Files.readAllLines(cohortSampleFile.toPath(), StandardCharsets.US_ASCII).stream()
@@ -74,8 +67,7 @@ public class SampleList {
                 .forEach(tokens -> {
                     long id = Long.parseLong(tokens[0]);
                     String name = tokens[1];
-                    sampleIdMap.put(id, name);
-                    sampleNameMap.put(name, id);
+                    sampleIdToNameMap.put(id, name);
                 });
         } catch (IOException e) {
             throw new IllegalArgumentException("Could not parse --cohort-sample-file", e);
@@ -83,13 +75,15 @@ public class SampleList {
     }
 
     private TableResult querySampleTable(
-        String fqSampleTableName, String whereClause, String executionProjectId, boolean printDebugInformation, Optional<String> originTool) {
+            String fqSampleTableName, String executionProjectId, boolean printDebugInformation, Optional<String> originTool) {
         // Get the query string:
-        final String sampleListQueryString =
-                "SELECT " + SchemaUtils.SAMPLE_ID_FIELD_NAME + ", " + SchemaUtils.SAMPLE_NAME_FIELD_NAME +
-                " FROM `" + fqSampleTableName + "` " + ((whereClause!=null)?" WHERE ":"") + whereClause;
+        final String sampleListQueryString = String.format(
+                "SELECT %s, %s FROM `%s` WHERE is_loaded IS TRUE and withdrawn IS NULL",
+                SchemaUtils.SAMPLE_ID_FIELD_NAME,
+                SchemaUtils.SAMPLE_NAME_FIELD_NAME,
+                fqSampleTableName);
 
-        Map<String, String> labelForQuery = new HashMap<String, String>();
+        Map<String, String> labelForQuery = new HashMap<>();
         if (originTool.isPresent()) {
             String originToolName = originTool.get().replaceAll("\\s","-").toLowerCase();
             labelForQuery.put("gvs_tool_name", originToolName);
@@ -97,7 +91,9 @@ public class SampleList {
         }
 
         // Execute the query:
-        final BigQueryResultAndStatistics results = BigQueryUtils.executeQuery(BigQueryUtils.getBigQueryEndPoint(executionProjectId) , sampleListQueryString, false, labelForQuery);
+        final BigQueryResultAndStatistics results = BigQueryUtils.executeQuery(
+                BigQueryUtils.getBigQueryEndPoint(executionProjectId), sampleListQueryString,
+                false, labelForQuery);
         bigQueryQueryByteScanned += results.queryStatistics.getTotalBytesProcessed();
 
         // Show our pretty results:
@@ -116,8 +112,6 @@ public class SampleList {
         Long maxSampleId = sampleIds.stream().max(Long::compare).orElseThrow(
                 () -> new GATKException("Unable to calculate max sample id, sample list may be empty")
         );
-
-        IngestUtils.getTableNumber(maxSampleId, IngestConstants.partitionPerTable);
 
         for (Long sampleId : sampleIds) {
             int sampleTableNumber = IngestUtils.getTableNumber(sampleId, IngestConstants.partitionPerTable);
