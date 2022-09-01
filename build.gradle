@@ -463,6 +463,8 @@ test {
 
                 '-Dio.netty.tryReflectionSetAccessible=true'
         ]
+    System.out.println("All JVM args: ");
+    allJvmArgs.forEach(a -> System.out.println(a))
 }
 
 //add gatk launcher script to the jar as a resource
