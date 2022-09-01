@@ -45,6 +45,7 @@ task WithdrawSamples {
 
   command <<<
     set -o errexit -o nounset -o xtrace -o pipefail
+    echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
     # get just the sample_name values from sample_names_to_include_file based on the
     # sample_name_column_name_in_file into sample_names.tsv
@@ -58,12 +59,12 @@ task WithdrawSamples {
       exit 0
     fi
 
-    echo "project_id = ~{project_id}" > ~/.bigqueryrc
     # create the temp table (expires in 1 day)
     bq --project_id=~{project_id} mk --expiration=86400 ~{dataset_name}.current_callset_samples "sample_name:STRING"
     # populate the temp table
     bq load --project_id=~{project_id} -F "tab" ~{dataset_name}.current_callset_samples sample_names.tsv
 
+    # join on the temp table to figure out which samples should be marked as withdrawn
     bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
       "UPDATE \`~{dataset_name}.sample_info\` AS samples SET withdrawn = '~{withdrawn_timestamp}' \
         WHERE NOT EXISTS \
