@@ -38,7 +38,7 @@ task WithdrawSamples {
   }
 
   meta {
-    description: "Given a list of samples for a callset, withdraw samples from GVS that are not includedby marking them as 'withdrawn' in the sample_info table with a passed in timestamp."
+    description: "Given a list of samples for a callset, withdraw samples from GVS that are not included by marking them as 'withdrawn' in the sample_info table with a passed in timestamp."
     # Might not be strictly necessary to make this volatile, but just in case:
     volatile: true
   }
