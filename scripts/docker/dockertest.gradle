@@ -97,6 +97,7 @@ test {
             '--add-opens', 'jdk.management.jfr/jdk.management.jfr=ALL-UNNAMED',
             '--add-opens', 'jdk.jfr/jdk.jfr.internal.management=ALL-UNNAMED',
             '--add-opens', 'java.base/jdk.internal.module=ALL-UNNAMED',
+            '--add-opens', 'java.base/java.lang.module=ALL-UNNAMED',
 
             '-Dio.netty.tryReflectionSetAccessible=true'
     ]
@@ -153,6 +154,7 @@ test {
                 '--add-opens', 'jdk.management.jfr/jdk.management.jfr=ALL-UNNAMED',
                 '--add-opens', 'jdk.jfr/jdk.jfr.internal.management=ALL-UNNAMED',
                 '--add-opens', 'java.base/jdk.internal.module=ALL-UNNAMED',
+                '--add-opens', 'java.base/java.lang.module=ALL-UNNAMED',
 
                 '-Dio.netty.tryReflectionSetAccessible=true'
         ]
@@ -238,6 +240,7 @@ task testOnPackagedReleaseJar(type: Test){
             '--add-opens', 'jdk.management.jfr/jdk.management.jfr=ALL-UNNAMED',
             '--add-opens', 'jdk.jfr/jdk.jfr.internal.management=ALL-UNNAMED',
             '--add-opens', 'java.base/jdk.internal.module=ALL-UNNAMED',
+            '--add-opens', 'java.base/java.lang.module=ALL-UNNAMED',
 
             '-Dio.netty.tryReflectionSetAccessible=true'
     ]
