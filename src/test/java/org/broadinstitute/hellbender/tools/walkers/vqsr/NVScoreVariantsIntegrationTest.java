@@ -25,7 +25,9 @@ public class NVScoreVariantsIntegrationTest extends CommandLineProgramTest {
     // This test for the 1D model PASSES when run locally in the scripts/nvscorevariants_environment.yml
     // conda environment, but cannot be enabled until that conda environment is incorporated into
     // the main GATK conda environment.
-    @Test(groups = {"python"}, enabled = false)
+
+    //TODO: make sure this is disabled before merging if we haven't updated the python environment
+    @Test(groups = {"python"})
     public void test1DModel() {
         final File tempVcf = createTempFile("test1DModel", ".vcf");
         final File expectedVcf = new File(largeFileTestDir + "VQSR/expected/cnn_1d_chr20_subset_expected.vcf");
@@ -40,17 +42,18 @@ public class NVScoreVariantsIntegrationTest extends CommandLineProgramTest {
     }
 
     // This test for the 2D model FAILS when run locally in the scripts/nvscorevariants_environment.yml
-    // conda environment, despite the much higher epsilon of 0.5. There are scores that mismatch by as
-    // much as 5+:
+    // conda environment, despite the much higher epsilon of 0.5.
     //
-    // java.lang.AssertionError: scores at 20:61098 differed by 5.085, which is greater than the allowed tolerance of 0.5
+    // ex:
+    // scores at 20:299585 differed by 0.6680000000000001 ( expected: -2.056, actual:-1.388), which is greater than the allowed tolerance of 0.5
     //
     // This test also cannot be enabled until the nvscorevariants conda environment is incorporated into
     // the main GATK conda environment.
-    @Test(groups = {"python"}, enabled = false)
+    //TODO: make sure this is disabled before merging if we haven't updated the python environment
+    @Test(groups = {"python"})
     public void test2DModel() {
         final File tempVcf = createTempFile("test2DModel", ".vcf");
-        final File expectedVcf = new File(largeFileTestDir + "VQSR/expected/cnn_1d_chr20_subset_expected.vcf");
+        final File expectedVcf = new File(largeFileTestDir + "VQSR/expected/cnn_2d_chr20_subset_expected.vcf");
 
         final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
         argsBuilder.add(StandardArgumentDefinitions.VARIANT_LONG_NAME, inputVCF)
@@ -66,19 +69,38 @@ public class NVScoreVariantsIntegrationTest extends CommandLineProgramTest {
     private void assertInfoFieldsAreClose(final File actualVcf, final File expectedVcf, final String infoKey, final double epsilon) {
         Iterator<VariantContext> expectedVi = VariantContextTestUtils.streamVcf(expectedVcf).collect(Collectors.toList()).iterator();
         Iterator<VariantContext> actualVi = VariantContextTestUtils.streamVcf(actualVcf).collect(Collectors.toList()).iterator();
-
+        boolean failed = false;
+        int totalCount = 0;
+        int mismatchCount = 0;
+        int annotationMismatchCount = 0;
         while (expectedVi.hasNext() && actualVi.hasNext()) {
+            totalCount++;
             VariantContext expectedVc = expectedVi.next();
             VariantContext actualVc = actualVi.next();
             Assert.assertEquals(actualVc.getContig(), expectedVc.getContig(), "Variants from actual and expected VCFs do not match in their location");
             Assert.assertEquals(actualVc.getStart(), expectedVc.getStart(), "Variants from actual and expected VCFs do not match in their location");
+
+            if( expectedVc.hasAttribute(infoKey) != actualVc.hasAttribute(infoKey)) {
+                annotationMismatchCount++;
+                failed = true;
+            }
+
             double expectedScore = expectedVc.getAttributeAsDouble(infoKey, 0.0); // Different defaults trigger failures on missing scores
             double actualScore = actualVc.getAttributeAsDouble(infoKey, epsilon+1.0);
             double diff = Math.abs(expectedScore-actualScore);
-            Assert.assertTrue(diff < epsilon, "scores at " + expectedVc.getContig() + ":" + expectedVc.getStart() +
-                    " differed by " + diff + ", which is greater than the allowed tolerance of " + epsilon);
-            VariantContextTestUtils.assertVariantContextsAreEqual(actualVc, expectedVc, Collections.singletonList(infoKey), Collections.emptyList());
+            if ( diff > epsilon) {
+                mismatchCount++;
+                System.err.println( "scores at " + expectedVc.getContig() + ":" + expectedVc.getStart() + " differed by " + diff
+                        + " (expected: " + expectedScore +", actual:" + actualScore + ")," +
+                        " which is greater than the allowed tolerance of " + epsilon);
+                failed = true;
+            }
         }
+        if( totalCount == 0 ) {
+            failed = true;
+        }
+        Assert.assertFalse(failed, "Test failed with " + mismatchCount + " significant differences out of " + totalCount +".\n" +
+                "There were " + annotationMismatchCount + " sites where the annotations didn't match.");
 
         Assert.assertTrue(!expectedVi.hasNext() && !actualVi.hasNext());
     }
