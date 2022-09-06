@@ -80,12 +80,6 @@ def generate_gvs_import_script(avro_prefix, gcs_listing, vds_output_path, vcf_ou
 # pip install hail-0.2.97-py3-none-any.whl
 # gcloud auth application-default login
 # curl -sSL https://broad.io/install-gcs-connector | python3
-#
-# copy the reference data to set in hail
-# gsutil -m cp 'gs://hail-common/references/Homo_sapiens_assembly38.fasta.gz' .
-# gsutil -m cp 'gs://hail-common/references/Homo_sapiens_assembly38.fasta.fai' .
-
-## Now RESTART the Kernal
 
 import hail as hl
 
@@ -120,15 +114,20 @@ filtered_vds = hl.vds.VariantDataset(filtered_vds.reference_data, filtered_vd)
 
 ## * Respect the FT flag by setting all failing GTs to a no call
 # TODO We dont seem to be using the dense matrix table here (TODO do we need to?)
+
+# Logic for assigning non passing GTs as no-calls to ensure that AC,AN and AF respect the FT flag
+# filtered_vd.FT is True ⇒ GT keeps its current value
+# filtered_vd.FT is False ⇒ GT assigned no-call
+# filtered_vd.FT is missing ⇒ GT keeps its current value
+
 filtered_vd = filtered_vd.annotate_entries(GT=hl.or_missing(hl.coalesce(filtered_vd.FT, True), filtered_vd.GT))
 # TODO drop LGT now that it will be different than the GT
-filtered_vds = hl.vds.VariantDataset(filtered_vds.reference_data, filtered_vd) # now we apply it back to the vds 
 
 
 ## * Turn the GQ0s into no calls so that ANs are correct
 rd = filtered_vds.reference_data
 rd = rd.filter_entries(rd.GQ > 0) ## would be better to drop these once its a dense mt? 
-filtered_vds = hl.vds.VariantDataset(rd, filtered_vds.variant_data)
+filtered_vds = hl.vds.VariantDataset(rd, filtered_vd)
 
 ## * Create a DENSE MATRIX TABLE to calculate AC, AN, AF and TODO: Sample Count
 mt = hl.vds.to_dense_mt(filtered_vds)
@@ -137,11 +136,7 @@ mt = mt.annotate_rows(AC=mt.variant_qc.AC, AN=mt.variant_qc.AN, AF=mt.variant_qc
 mt = mt.drop('variant_qc')
 
 
-
-
-
-
-mt = hl.vds.to_dense_mt(vds)
+# mt = hl.vds.to_dense_mt(vds)
 # fail_case = 'FAIL'
 # mt = mt.annotate_entries(FT=hl.if_else(mt.FT, 'PASS', fail_case))
 # hl.export_vcf(mt, '{vcf_output_path}')
