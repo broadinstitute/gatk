@@ -158,7 +158,8 @@ task CreateAltAlleleTable {
     String project_id
   }
   meta {
-    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
+    # should always be run; if the table already exists, no harm no foul
+    volatile: true
   }
 
   # add labels for DSP Cloud Cost Control Labeling and Reporting
