@@ -428,6 +428,7 @@ public class GATKAnnotationPluginDescriptor extends CommandLinePluginDescriptor<
                             allDiscoveredAnnotations.values().stream().filter(PedigreeAnnotation.class::isInstance).map(a -> a.getClass().getSimpleName()).collect(Collectors.joining(", "))));
         }
 
+        //TODO: fix these lambdas to have serializable types
         // Populating any discovered flow annotations with the flowOrder arguments from the command line.
         if (flowOrder!=null && !flowOrder.isEmpty() && getResolvedInstances().stream()
                 .filter(FlowAnnotatorBase.class::isInstance)
