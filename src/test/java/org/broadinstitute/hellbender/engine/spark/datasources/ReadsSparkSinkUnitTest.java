@@ -19,6 +19,7 @@ import org.broadinstitute.hellbender.utils.read.ReadsWriteFormat;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
 import org.testng.Assert;
+import org.testng.SkipException;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -38,6 +39,11 @@ public class ReadsSparkSinkUnitTest extends GATKBaseTest {
 
     @BeforeClass(alwaysRun = true)
     private void setupMiniCluster() throws IOException {
+//        // see https://github.com/eclipse/jetty.project/issues/8549
+//        if (isGATKDockerContainer()) {
+//            // for the docker tests, the test dependencies are in a separate jar
+//            throw new SkipException("skipping due to jetty jar parsing issues (https://github.com/eclipse/jetty.project/issues/8549)");
+//        }
         cluster = MiniClusterUtils.getMiniCluster();
     }
 

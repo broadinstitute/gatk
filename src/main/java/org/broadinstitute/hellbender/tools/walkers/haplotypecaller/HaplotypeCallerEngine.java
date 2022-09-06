@@ -22,6 +22,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
+import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.pileup.PileupBasedAlleles;
 import org.broadinstitute.hellbender.transformers.IUPACReadTransformer;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
@@ -162,7 +163,7 @@ public final class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
      */
     public HaplotypeCallerEngine(final HaplotypeCallerArgumentCollection hcArgs, AssemblyRegionArgumentCollection assemblyRegionArgs, boolean createBamOutIndex,
                                  boolean createBamOutMD5, final SAMFileHeader readsHeader,
-                                 ReferenceSequenceFile referenceReader, VariantAnnotatorEngine annotationEngine) {
+                                 CachingIndexedFastaSequenceFile referenceReader, VariantAnnotatorEngine annotationEngine) {
         this.dragstrParams = DragstrParamUtils.parse(hcArgs.likelihoodArgs.dragstrParams);
         this.hcArgs = Utils.nonNull(hcArgs);
         this.readsHeader = Utils.nonNull(readsHeader);

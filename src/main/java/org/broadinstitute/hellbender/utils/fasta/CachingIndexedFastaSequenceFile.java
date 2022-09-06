@@ -19,6 +19,7 @@ import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -31,10 +32,13 @@ import java.util.Arrays;
  *
  * Instances of this class should be closed when they are no longer needed.
  */
-public final class CachingIndexedFastaSequenceFile implements ReferenceSequenceFile {
+public final class CachingIndexedFastaSequenceFile implements ReferenceSequenceFile, Serializable {
+    private static final long serialVersionUID = 1L;
+
     protected static final Logger logger = LogManager.getLogger(CachingIndexedFastaSequenceFile.class);
 
-    private final ReferenceSequenceFile sequenceFile;
+    // TODO: this gets around numerous serialization issues with non-serialzable lambdas
+    private transient final ReferenceSequenceFile sequenceFile;
 
     /** do we want to print debugging information about cache efficiency? */
     private static final boolean PRINT_EFFICIENCY = false;
