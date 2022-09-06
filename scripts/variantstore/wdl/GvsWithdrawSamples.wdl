@@ -69,7 +69,7 @@ task WithdrawSamples {
       "UPDATE \`~{dataset_name}.sample_info\` AS samples SET withdrawn = '~{withdrawn_timestamp}' \
         WHERE NOT EXISTS \
         (SELECT * \
-        FROM \`gvs-internal.rsa_gvs_quickstart_dev.current_callset_samples\` AS callset \
+        FROM \`~{project_id}.~{dataset_name}.current_callset_samples\` AS callset \
         WHERE \
         samples.sample_name = callset.sample_name \
         AND NOT samples.is_control)" > log_message.txt
