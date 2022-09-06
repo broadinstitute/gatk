@@ -115,11 +115,11 @@ public final class PileupSparkIntegrationTest extends CommandLineProgramTest {
 
     @Test(dataProvider = "shuffle")
     public void testFeaturesPileupHdfs(boolean useShuffle) throws Exception {
-        // Skip this test when running on Java 11 since it fails with a Spark error that is not fixed until Spark 3
-        // see https://issues.apache.org/jira/browse/SPARK-26963
-        if (System.getProperty("java.specification.version").equals("11")) {
-            return;
-        }
+//        // see https://github.com/eclipse/jetty.project/issues/8549
+//        if (isGATKDockerContainer()) {
+//            // for the docker tests, the test dependencies are in a separate jar
+//            throw new SkipException("skipping due to jetty jar parsing issues (https://github.com/eclipse/jetty.project/issues/8549)");
+//        }
         MiniClusterUtils.runOnIsolatedMiniCluster( cluster -> {
             final Path workingDirectory = MiniClusterUtils.getWorkingDir(cluster);
             final Path vcfPath = new Path(workingDirectory, "dbsnp_138.b37.20.21.vcf");
