@@ -238,7 +238,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_605_hail_codegen
+         - rc-vs-616-notebook-for-hail
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
