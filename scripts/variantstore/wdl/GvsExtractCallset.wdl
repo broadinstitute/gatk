@@ -199,8 +199,10 @@ workflow GvsExtractCallset {
   output {
     Array[File] output_vcfs = ExtractTask.output_vcf
     Array[File] output_vcf_indexes = ExtractTask.output_vcf_index
+    Array[File] output_vcf_interval_files = SplitIntervals.interval_files
     Float total_vcfs_size_mb = SumBytes.total_mb
     File manifest = CreateManifest.manifest
+    File? sample_name_list = GenerateSampleListFile.sample_name_list
     Boolean done = true
   }
 }
