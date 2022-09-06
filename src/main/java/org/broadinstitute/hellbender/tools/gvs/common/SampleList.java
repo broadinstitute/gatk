@@ -44,10 +44,16 @@ public class SampleList {
     }
 
     /**
-     * This overload is called only from the filter creation step and should honor the `sample_info.withdrawn` column.
+     * This overload *does* honor the `sample_info.withdrawn` field and is currently used by:
+     *
+     * <ul>
+     *     <li>Filter creation</li>
+     *     <li>Cohort extract invoked with a sample table name (regular GVS extract flow)</li>
+     * </ul>
+     *
      */
     protected void initializeMaps(TableReference sampleTable, String executionProjectId, boolean printDebugInformation, Optional<String> originTool) {
-        TableResult queryResults = querySampleTable(sampleTable.getFQTableName(), executionProjectId, printDebugInformation, originTool);
+        TableResult queryResults = querySampleTableExcludingWithdrawn(sampleTable.getFQTableName(), executionProjectId, printDebugInformation, originTool);
 
         // Add our samples to our map:
         for (final FieldValueList row : queryResults.iterateAll()) {
@@ -58,7 +64,12 @@ public class SampleList {
     }
 
     /**
-     * This overload is called only from cohort extract and does *not* honor the `sample_info.withdrawn` column.
+     * This overload *does not* honor the `sample_info.withdrawn` field and is currently used by:
+     *
+     * <ul>
+     *     <li>Cohort extract invoked with a list of sample names, i.e. `GvsExtractCohortFromSampleNames.wdl`</li>
+     * </ul>
+     *
      */
     protected void initializeMaps(File cohortSampleFile) {
         try {
@@ -74,7 +85,7 @@ public class SampleList {
         }
     }
 
-    private TableResult querySampleTable(
+    private TableResult querySampleTableExcludingWithdrawn(
             String fqSampleTableName, String executionProjectId, boolean printDebugInformation, Optional<String> originTool) {
         // Get the query string:
         final String sampleListQueryString = String.format(
