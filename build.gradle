@@ -194,7 +194,7 @@ configurations.all {
         force 'com.esotericsoftware:kryo:4.0.0'
 
         // hadoop uses an old jetty that doesn't like the new java version numbering scheme
-        force 'org.eclipse.jetty:jetty-servlet:10.0.2'
+        force 'org.eclipse.jetty:jetty-servlet:11.0.1'
     }
     all*.exclude group: 'org.slf4j', module: 'slf4j-jdk14' //exclude this to prevent slf4j complaining about to many slf4j bindings
     all*.exclude group: 'com.google.guava', module: 'guava-jdk5'
