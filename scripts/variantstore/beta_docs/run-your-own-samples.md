@@ -45,7 +45,7 @@ Input GVCF files for the GVS workflow must include the annotations described in 
 
 The following files are stored in the workspace Google bucket and links to the files are written to the sample_set data table:
 
-- Sharded joint VCF files, index files, the interval lists produced for this run, and the sample name list
+- Sharded joint VCF files, index files, the interval lists for each sharded VCF, and a list of the sample names included in the callset.
 - Size of output VCF files in MB
 - Manifest file containing the output destination of additional files and other metadata
 
