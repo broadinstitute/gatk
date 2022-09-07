@@ -2,7 +2,7 @@ version 1.0
 
 import "GvsAssignIds.wdl" as AssignIds
 import "GvsImportGenomes.wdl" as ImportGenomes
-import "GvsPopulateAltAllele.wdl" as CreateAltAllele
+import "GvsPopulateAltAllele.wdl" as PopulateAltAllele
 import "GvsCreateFilterSet.wdl" as CreateFilterSet
 import "GvsPrepareRangesCallset.wdl" as PrepareRangesCallset
 import "GvsExtractCallset.wdl" as ExtractCallset
@@ -99,7 +99,7 @@ workflow GvsUnified {
             drop_state = drop_state
     }
 
-    call CreateAltAllele.GvsPopulateAltAllele {
+    call PopulateAltAllele.GvsPopulateAltAllele {
         input:
             call_set_identifier = call_set_identifier,
             go = GvsImportGenomes.done,

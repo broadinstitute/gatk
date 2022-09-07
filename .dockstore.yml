@@ -95,6 +95,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_581_fix_withdrawn
    - name: GvsPopulateAltAllele
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPopulateAltAllele.wdl
@@ -102,6 +103,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_581_fix_withdrawn
    - name: GvsCreateTables
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateTables.wdl
@@ -118,6 +120,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_581_fix_withdrawn
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
@@ -125,6 +128,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_581_fix_withdrawn
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
@@ -134,6 +138,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_581_fix_withdrawn
    - name: GvsCreateVAT
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVAT.wdl
@@ -166,6 +171,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_581_fix_withdrawn
    - name: GvsWithdrawSamples
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsWithdrawSamples.wdl
@@ -180,6 +186,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_581_fix_withdrawn
    - name: GvsJointVariantCalling
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCalling.wdl
@@ -187,6 +194,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_581_fix_withdrawn
    - name: GvsJointVariantCallsetCost
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCallsetCost.wdl
@@ -208,6 +216,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_581_fix_withdrawn
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl

@@ -22,7 +22,7 @@ workflow GvsImportGenomes {
     Int? load_data_batch_size
     Int? load_data_preemptible_override
     Int? load_data_maxretries_override
-    File? load_data_gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-552-g0f9780a-SNAPSHOT-local.jar"
+    File? load_data_gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-613-g1219576-SNAPSHOT-local.jar"
   }
 
   Int num_samples = length(external_sample_names)
@@ -306,37 +306,41 @@ task GetUningestedSampleIds {
   Int num_samples = length(external_sample_names)
   # add labels for DSP Cloud Cost Control Labeling and Reporting
   String bq_labels = "--label service:gvs --label team:variants --label managedby:import_genomes"
+  String temp_table="~{dataset_name}.sample_names_to_load"
 
   command <<<
-    set -ex
+    set -o errexit -o nounset -o xtrace -o pipefail
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-    # create temp table with the sample_names and load external sample names into temp table -- make sure it doesn't exist already
-    set +e
-    TEMP_TABLE="~{dataset_name}.sample_names_to_load"
-    bq show --project_id ~{project_id} ${TEMP_TABLE} > /dev/null
+    # Create temp table with the sample_names and load external sample names into temp table -- make sure it doesn't exist already
+    set +o errexit
+    bq show --project_id ~{project_id} ~{temp_table} > /dev/null
     BQ_SHOW_RC=$?
-    set -e
+    set -o errexit
 
-    # if there is already a table of sample names or something else is wrong, bail
+    # If there is already a table of sample names or something else is wrong, bail.
     if [ $BQ_SHOW_RC -eq 0 ]; then
       echo "There is already a list of sample names. This may need manual cleanup. Exiting"
       exit 1
     fi
 
-    echo "Creating the external sample name list table ${TEMP_TABLE}"
-    bq --project_id=~{project_id} mk ${TEMP_TABLE} "sample_name:STRING"
+    echo "Creating the external sample name list table ~{temp_table}"
+    bq --project_id=~{project_id} mk ~{temp_table} "sample_name:STRING"
     NAMES_FILE=~{write_lines(external_sample_names)}
-    bq load --project_id=~{project_id} ${TEMP_TABLE} $NAMES_FILE "sample_name:STRING"
+    bq load --project_id=~{project_id} ~{temp_table} $NAMES_FILE "sample_name:STRING"
 
-    # get the current maximum id, or 0 if there are none
-    bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
-      "SELECT IFNULL(MIN(sample_id),0) as min, IFNULL(MAX(sample_id),0) as max FROM \`~{dataset_name}.~{table_name}\` AS samples JOIN \`${TEMP_TABLE}\` AS temp ON samples.sample_name=temp.sample_name" > results
+    # Get the current min/max id, or 0 if there are none. Withdrawn samples still have IDs so don't filter them out.
+    bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} '
+
+      SELECT IFNULL(MIN(sample_id),0) as min, IFNULL(MAX(sample_id),0) as max FROM `~{dataset_name}.~{table_name}`
+        AS samples JOIN `~{temp_table}` AS temp ON samples.sample_name = temp.sample_name
+
+    ' > results.csv
 
     # prep for being able to return min table id
-    min_sample_id=$(tail -1 results | cut -d, -f1)
-    max_sample_id=$(tail -1 results | cut -d, -f2)
+    min_sample_id=$(tail -1 results.csv | cut -d, -f1)
+    max_sample_id=$(tail -1 results.csv | cut -d, -f2)
 
     # no samples have been loaded or we don't have the right external_sample_names or something else is wrong, bail
     if [ $max_sample_id -eq 0 ]; then
@@ -348,13 +352,19 @@ task GetUningestedSampleIds {
     python3 -c "from math import ceil; print(ceil($min_sample_id/~{samples_per_table}))" > min_sample_id
 
     # get sample map of samples that haven't been loaded yet
-    bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} \
-      "SELECT sample_id, samples.sample_name FROM \`~{dataset_name}.~{table_name}\` AS samples JOIN \`${TEMP_TABLE}\` AS temp ON samples.sample_name=temp.sample_name WHERE samples.sample_id NOT IN (SELECT sample_id FROM \`~{dataset_name}.sample_load_status\` WHERE status='FINISHED')" > sample_map
+    bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} '
 
-    cut -d, -f1 sample_map > gvs_ids
+      SELECT sample_id, samples.sample_name FROM `~{dataset_name}.~{table_name}` AS samples JOIN `~{temp_table}` AS temp ON
+        samples.sample_name = temp.sample_name WHERE
+          samples.sample_id NOT IN (SELECT sample_id FROM `~{dataset_name}.sample_load_status` WHERE status="FINISHED") AND
+          samples.withdrawn is NULL
+
+    ' > sample_map.csv
+
+    cut -d, -f1 sample_map.csv > gvs_ids.csv
 
     ## delete the table that was only needed for this ingest
-    bq --project_id=~{project_id} rm -f=true ${TEMP_TABLE}
+    bq --project_id=~{project_id} rm -f=true ~{temp_table}
   >>>
   runtime {
     docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
@@ -366,8 +376,8 @@ task GetUningestedSampleIds {
   output {
     Int max_table_id = ceil(read_float("max_sample_id"))
     Int min_table_id = ceil(read_float("min_sample_id"))
-    File sample_map = "sample_map"
-    File gvs_ids = "gvs_ids"
+    File sample_map = "sample_map.csv"
+    File gvs_ids = "gvs_ids.csv"
   }
 }
 

@@ -67,8 +67,6 @@ public class ExtractFeaturesEngine {
     private long bigQueryQueryBytesScanned;
     private long storageAPIBytesScanned;
 
-//    /** Set of sample names seen in the variant data from BigQuery. */
-//    private final Set<String> sampleNames = new HashSet<>();
     public ExtractFeaturesEngine(final String projectID,
                                final String datasetID,
                                final VariantContextWriter vcfWriter,
