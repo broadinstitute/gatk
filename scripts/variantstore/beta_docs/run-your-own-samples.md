@@ -12,7 +12,7 @@ To learn more about the GVS workflow, see the [Genomic Variant Store workflow ov
 
 ### What does it require as input?
 
-- reblocked single sample GVCF files (`input_vcfs`) with specific annotations described below
+- Reblocked single sample GVCF files (`input_vcfs`) with specific annotations described below
 - GVCF index files (`input_vcf_indexes`)
 
 While the GVS workflow has been tested with 100,000 single sample GVCF files as input, only datasets of up to 10,000 files are being used for beta testing.
@@ -45,9 +45,9 @@ Input GVCF files for the GVS workflow must include the annotations described in 
 
 The following files are stored in the workspace Google bucket and links to the files are written to the sample_set data table:
 
-- sharded joint VCF files, index files, the interval lists produced for this run, and the sample name list
-- size of output VCF files in MB
-- manifest file containing the output destination of additional files and other metadata
+- Sharded joint VCF files and index files
+- Size of output VCF files in MB
+- Manifest file containing the output destination of additional files and other metadata
 
 Note:
 The interval lists are named consistently with the vcfs: 00000000.vcf.gz.interval-list will go with 00000000.vcf.gz and 00000000.vcf.gz.tbi
@@ -158,6 +158,14 @@ Below are several examples of the time and cost of running the workflow.
 
 For more information about controlling Cloud costs, see [this article](https://support.terra.bio/hc/en-us/articles/360029748111).
 
+#### Storage cost
+
+The GVS workflow produces several intermediate files in your BigQuery dataset, and storing these files in the cloud will increase the storage cost associated with your callset. To reduce cloud storage costs, you can delete some of the intermediate files after your callset has been created successfully.
+
+If you plan to create subcohorts of your data, you can delete the tables with `_REF_DATA`, `_SAMPLES`, and `_VET_DATA` at the end of the table name in your BigQuery dataset by following the instructions in the Google Cloud article, [Managing tables](https://cloud.google.com/bigquery/docs/managing-tables#deleting_a_table).
+
+If you don’t plan to create subcohorts of your data, you can delete your BigQuery dataset by following the instructions in the Google Cloud article, [Managing datasets](https://cloud.google.com/bigquery/docs/managing-datasets#deleting_a_dataset). Note that the data will be deleted permanently from this location, but output files can still be found in the workspace bucket.
+
 ---
 
 ### Additional Resources
@@ -182,5 +190,5 @@ Details on citing Terra workspaces can be found here: [How to cite Terra](https:
 Data Sciences Platform, Broad Institute (*Year, Month Day that the workspace was last modified*) gvs-prod/Genomic_Variant_Store_Beta [workspace] Retrieved *Month Day, Year that workspace was retrieved*, https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta
 
 ### License
-**Copyright Broad Institute, 2020 | BSD-3**  
-All code provided in this workspace is released under the WDL open source code license (BSD-3) (full license text at https://github.com/broadinstitute/warp/blob/develop/LICENSE). Note however that the programs called by the scripts may be subject to different licenses. Users are responsible for checking that they are authorized to run all programs before running these tools.
+**Copyright Broad Institute, 2022 | Apache**
+The workflow script is released under the Apache License, Version 2.0 (full license text at https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT). Note however that the programs called by the scripts may be subject to different licenses. Users are responsible for checking that they are authorized to run all programs before running these tools.
