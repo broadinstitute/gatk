@@ -75,8 +75,6 @@ task WithdrawSamples {
         AND NOT samples.is_control \
         AND withdrawn IS NULL)" > log_message.txt
 
-    cat log_message.txt
-
     cat log_message.txt | sed -e 's/Number of affected rows: //' > rows_updated.txt
   >>>
   runtime {
