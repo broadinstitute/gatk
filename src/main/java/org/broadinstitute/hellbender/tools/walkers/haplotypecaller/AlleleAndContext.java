@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.SimpleAllele;
 
 /**
  * This class is similar to {@link org.broadinstitute.hellbender.tools.walkers.haplotypecaller.LocationAndAlleles} but
@@ -7,13 +8,14 @@ import htsjdk.variant.variantcontext.Allele;
  * not in the way it is done on LocationAndAlleles
  */
 
-public class AlleleAndContext extends Allele {
+public class AlleleAndContext extends SimpleAllele {
     final static public long serialVersionUID = 1L;
     private final int loc;
     private final String contig;
     private final Allele refAllele;
+
     public AlleleAndContext(final String contig, final int loc, final Allele allele, final Allele refAllele) {
-        super(allele, false);
+        super(allele.getBases(), false);
         this.loc = loc;
         this.contig = contig;
         this.refAllele = refAllele;

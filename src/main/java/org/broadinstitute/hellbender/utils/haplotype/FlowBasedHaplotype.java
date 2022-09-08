@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.utils.haplotype;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.SimpleAllele;
 import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.hellbender.utils.read.FlowBasedKeyCodec;
 import org.broadinstitute.hellbender.utils.read.FlowBasedReadUtils;
@@ -11,7 +12,7 @@ import org.broadinstitute.hellbender.utils.read.FlowBasedReadUtils;
  * Haplotype that also keeps information on the flow space @see FlowBasedRead
  * Haplotype can't be extended, so this extends Allele
  */
-public class FlowBasedHaplotype  extends Allele {
+public class FlowBasedHaplotype  extends SimpleAllele {
     private static final long serialVersionUID = 42L;
     private int [] key;
     private int [] rKey;
