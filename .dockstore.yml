@@ -79,7 +79,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_sum_python
    - name: GvsRescatterCallsetInterval
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsRescatterCallsetInterval.wdl
@@ -96,6 +95,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_581_fix_withdrawn
    - name: GvsPopulateAltAllele
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPopulateAltAllele.wdl
@@ -103,7 +103,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_vs_265_batch_alt_allele
+         - vs_581_fix_withdrawn
    - name: GvsCreateTables
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateTables.wdl
@@ -120,7 +120,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_vs_607_drop_state
+         - vs_581_fix_withdrawn
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
@@ -128,7 +128,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_vs_607_drop_state
+         - vs_581_fix_withdrawn
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
@@ -138,6 +138,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_581_fix_withdrawn
    - name: GvsCreateVAT
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVAT.wdl
@@ -163,7 +164,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rc-update-clinvar-validate-vat
    - name: GvsExtractCohortFromSampleNames
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCohortFromSampleNames.wdl
@@ -171,7 +171,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_vs_607_drop_state
+         - vs_581_fix_withdrawn
    - name: GvsWithdrawSamples
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsWithdrawSamples.wdl
@@ -187,7 +187,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_vs_607_drop_state
+         - vs_581_fix_withdrawn
    - name: GvsJointVariantCalling
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCalling.wdl
@@ -195,6 +195,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_581_fix_withdrawn
    - name: GvsJointVariantCallsetCost
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCallsetCost.wdl
@@ -202,7 +203,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rc-wrap-the-cost
    - name: GvsCalculatePrecisionAndSensitivity
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCalculatePrecisionAndSensitivity.wdl
@@ -217,7 +217,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_vs_607_drop_state
+         - vs_581_fix_withdrawn
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
@@ -232,7 +232,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - cost_robustitude
    - name: GvsExtractAvroFilesForHail
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractAvroFilesForHail.wdl
@@ -240,7 +239,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_605_hail_codegen
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl

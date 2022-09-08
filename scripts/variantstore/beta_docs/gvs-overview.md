@@ -4,7 +4,7 @@
 | :----: | :---: | :----: | :--------------: |
 | [GvsJointVariantCalling](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/wdl/GvsJointVariantCalling.wdl) | June, 2022 | [Kaylee Mathews](mailto:kmathews@broadinstitute.org) and [Aurora Cremer](mailto:aurora@broadinstitute.org) | If you have questions or feedback, contact the [Broad Variants team](mailto:variants@broadinstitute.org) |
  
-![Diagram depicting the Genomic Variant Store workflow. Sample GVCF files are imported into the core data model. A filtering model is trained using Variant Quality Score Recalibration, or VQSR, and then used to extract cohorts and produce sharded joint VCF files. Each step integrates BigQuery and GATK tools.](/scripts/variantstore/beta_docs/genomic-variant-store_diagram.png)
+![Diagram depicting the Genomic Variant Store workflow. Sample GVCF files are imported into the core data model. A filtering model is trained using Variant Quality Score Recalibration, or VQSR, and then used to extract cohorts and produce sharded joint VCF files. Each step integrates BigQuery and GATK tools.](./genomic-variant-store_diagram.png)
 
 ## Introduction to the Genomic Variant Store workflow
 
@@ -123,6 +123,10 @@ If you use plan to publish data analyzed using the GVS workflow, please cite the
 Details on citing Terra workspaces can be found here: [How to cite Terra](https://support.terra.bio/hc/en-us/articles/360035343652)
 
 Data Sciences Platform, Broad Institute (*Year, Month Day that the workspace was last modified*) gvs-prod/Genomic_Variant_Store_Beta [workspace] Retrieved *Month Day, Year that workspace was retrieved*, https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta
+
+### License
+**Copyright Broad Institute, 2022 | Apache**
+The workflow script is released under the Apache License, Version 2.0 (full license text at https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT). Note however that the programs called by the scripts may be subject to different licenses. Users are responsible for checking that they are authorized to run all programs before running these tools.  
 
 ## Feedback
 

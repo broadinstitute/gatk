@@ -12,7 +12,7 @@ To learn more about the GVS workflow, see the [Genomic Variant Store workflow ov
 
 ### What does it require as input?
 
-- reblocked single sample GVCF files (`input_vcfs`) with specific annotations described below
+- Reblocked single sample GVCF files (`input_vcfs`) with specific annotations described below
 - GVCF index files (`input_vcf_indexes`)
 
 While the GVS workflow has been tested with 100,000 single sample GVCF files as input, only datasets of up to 10,000 files are being used for beta testing.
@@ -45,9 +45,12 @@ Input GVCF files for the GVS workflow must include the annotations described in 
 
 The following files are stored in the workspace Google bucket and links to the files are written to the sample_set data table:
 
-- sharded joint VCF files and index files
-- size of output VCF files in MB
-- manifest file containing the output destination of additional files and other metadata
+- Sharded joint VCF files, index files, the interval lists for each sharded VCF, and a list of the sample names included in the callset.
+- Size of output VCF files in MB
+- Manifest file containing the output destination of additional files and other metadata
+
+Note:
+The interval lists are named consistently with the vcfs: 00000000.vcf.gz.interval-list will go with 00000000.vcf.gz and 00000000.vcf.gz.tbi
 
 ## Setup
 
@@ -138,35 +141,6 @@ If you run the workflow with the example data pre-loaded into the workspace, and
 
 By default, the workflow is set up to write outputs to the workspace Google bucket. If you want to write the outputs to a different cloud storage location, you can specify the cloud path in the `extract_output_gcs_dir` optional input in the workflow configuration. 
 
-Accessing the interval lists for all of the output VCF shards:
-Start by clicking into your job from the job history tab. This page for your job will have a table with metadata from your job in it (such as workflow ID and the Run Cost) and the table will have a Links column.
-The icons/links in that column have additional job information.
-* Job Manager
-* Workflow Dashboard
-* Execution directory
-
-
-There are two ways to get the interval lists from here. You can either use the UI in the Job Manager, or navigate for the correct path from the Execution directory.
-
-#### Using the Job Manager:
-If you prefer to use the job manager, click on the job manager link from the links column. From the List View tab, click into the GvsUnified page. This page's List View tab will show a list of all the sub-workflows in your job. From there, click into the GvsExtractCallset sub-workflow page. This page's List View tab will show a list of all tasks in the extract sub-workflow. You are interested in the SplitIntervals task which should be the 8th task. In the SplitIntervals row, find the icon in the outputs column and click on it. A popover will load, which will contain an array of the interval_files. These are the paths for the interval lists.
-If the popover does not load, you can click into the SplitIntervals Execution directory (which is in the Links column of this table).
-
-#### Using the Execution directory:
-Your jobs Execution directory contains artifacts from your job, including logs and the interval lists.
-You can access the interval lists by navigating to the directory for the SplitIntervals task inside the GvsExtractCallset sub-workflow.
-Once you have clicked on the link to the Execution directory, it will drop you into your workflow bucket.
-From there, click into the call-GvsUnified --> GvsUnified --> <unified job id (this will be the only option, so no lookup is needed)>
-Then select the extract sub-workflow: call-GvsExtractCallset --> GvsExtractCallset --> <extract job id (only option--no lookup needed)>
-Finally, select the SplitIntervals task: call-SplitIntervals and find the glob-<> directory. Inside that directory are the interval lists for the call set.
-
-The interval list paths will look something like this:
-`gs://<workspace bucket id>/<submission id>/GvsJointVariantCalling/<workflow id>/call-GvsUnified/GvsUnified/<unified job id (only option--no lookup needed)>/call-GvsExtractCallset/GvsExtractCallset/<extract job id (only option--no lookup needed)>/call-SplitIntervals/glob-<task id>/0000000000-<callset id>.vcf.gz.interval_list`
-
-There will also be a `glob-<task id>` file with a list of interval lists, but not their paths.
-
-Note:
-The interval lists are named consistently with the vcfs: 00000000.vcf.gz.interval-list will go with 00000000.vcf.gz and 00000000.vcf.gz.tbi 
 
 ### Time and cost
 Below are several examples of the time and cost of running the workflow.
@@ -183,6 +157,14 @@ Below are several examples of the time and cost of running the workflow.
 **Note:** The time and cost listed above each represent a single run of the GVS workflow. Actual time and cost may vary depending on BigQuery and Terra load at the time of the callset creation.
 
 For more information about controlling Cloud costs, see [this article](https://support.terra.bio/hc/en-us/articles/360029748111).
+
+#### Storage cost
+
+The GVS workflow produces several intermediate files in your BigQuery dataset, and storing these files in the cloud will increase the storage cost associated with your callset. To reduce cloud storage costs, you can delete some of the intermediate files after your callset has been created successfully.
+
+If you plan to create subcohorts of your data, you can delete the tables with `_REF_DATA`, `_SAMPLES`, and `_VET_DATA` at the end of the table name in your BigQuery dataset by following the instructions in the Google Cloud article, [Managing tables](https://cloud.google.com/bigquery/docs/managing-tables#deleting_a_table).
+
+If you don’t plan to create subcohorts of your data, you can delete your BigQuery dataset by following the instructions in the Google Cloud article, [Managing datasets](https://cloud.google.com/bigquery/docs/managing-datasets#deleting_a_dataset). Note that the data will be deleted permanently from this location, but output files can still be found in the workspace bucket.
 
 ---
 
@@ -208,5 +190,5 @@ Details on citing Terra workspaces can be found here: [How to cite Terra](https:
 Data Sciences Platform, Broad Institute (*Year, Month Day that the workspace was last modified*) gvs-prod/Genomic_Variant_Store_Beta [workspace] Retrieved *Month Day, Year that workspace was retrieved*, https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta
 
 ### License
-**Copyright Broad Institute, 2020 | BSD-3**  
-All code provided in this workspace is released under the WDL open source code license (BSD-3) (full license text at https://github.com/broadinstitute/warp/blob/develop/LICENSE). Note however that the programs called by the scripts may be subject to different licenses. Users are responsible for checking that they are authorized to run all programs before running these tools.
+**Copyright Broad Institute, 2022 | Apache**
+The workflow script is released under the Apache License, Version 2.0 (full license text at https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT). Note however that the programs called by the scripts may be subject to different licenses. Users are responsible for checking that they are authorized to run all programs before running these tools.
