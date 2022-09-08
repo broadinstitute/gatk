@@ -21,6 +21,7 @@ workflow GvsCreateFilterSet {
     Int? INDEL_VQSR_mem_gb_override
     Int? SNP_VQSR_max_gaussians_override = 6
     Int? SNP_VQSR_mem_gb_override
+    Int? SNP_VQSR_sample_every_nth_variant
     # This is the minimum number of samples where the SNP model will be created and applied in separate tasks
     # (SNPsVariantRecalibratorClassic vs. SNPsVariantRecalibratorCreateModel and SNPsVariantRecalibratorScattered)
     # For WARP classic this is done with 20k but the 10K Stroke Anderson dataset would not work unscattered (at least
@@ -156,6 +157,7 @@ workflow GvsCreateFilterSet {
         disk_size = "1000",
         machine_mem_gb = SNP_VQSR_mem_gb_override,
         max_gaussians = SNP_VQSR_max_gaussians_override,
+        sample_every_nth_variant = SNP_VQSR_sample_every_nth_variant,
     }
 
     scatter (idx in range(length(ExtractFilterTask.output_vcf))) {

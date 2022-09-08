@@ -95,7 +95,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_581_fix_withdrawn
+         - rsa_nth_variant_10
    - name: GvsPopulateAltAllele
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPopulateAltAllele.wdl
