@@ -27,7 +27,7 @@ While the GVS workflow has been tested with 100,000 single sample GVCF files as 
 
 The following files are stored in the workspace Google bucket and links to the files are written to the `sample_set` data table:
 
-- Sharded joint VCF files and index files
+- Sharded joint VCF files, index files, the interval lists for each sharded VCF, and a list of the sample names included in the callset.
 - Size of output VCF files in MB
 - Manifest file containing the destinations and sizes in B of the output sharded joint VCF and index files
 
