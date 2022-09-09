@@ -6,16 +6,18 @@ workflow GvsCallsetStatistics {
         String dataset_name
         String filter_set_name
         String extract_prefix
-        String output_statistics_table = "~{extract_prefix}_sample_metrics"
-        String output_aggregate_statistics_table = "~{extract_prefix}_sample_metrics_agg"
+        String metrics_table = "~{extract_prefix}_sample_metrics"
+        String aggregate_metrics_table = "~{extract_prefix}_sample_metrics_agg"
+        String statistics_table="~{extract_prefix}_stats"
     }
 
     call CreateTables {
         input:
             project_id = project_id,
             dataset_name = dataset_name,
-            output_statistics_table = output_statistics_table,
-            output_aggregate_statistics_table = output_aggregate_statistics_table
+            metrics_table = metrics_table,
+            aggregate_metrics_table = aggregate_metrics_table,
+            statistics_table = statistics_table
     }
 
     # Only collect statistics for the autosomal chromosomes, the first 22 in our location scheme.
@@ -27,7 +29,7 @@ workflow GvsCallsetStatistics {
                 dataset_name = dataset_name,
                 filter_set_name = filter_set_name,
                 extract_prefix = extract_prefix,
-                output_statistics_table = output_statistics_table,
+                metrics_table = metrics_table,
                 chromosome = chrom + 1 # 0-based ==> 1-based
         }
     }
@@ -39,8 +41,8 @@ workflow GvsCallsetStatistics {
             dataset_name = dataset_name,
             filter_set_name = filter_set_name,
             extract_prefix = extract_prefix,
-            output_statistics_table = output_statistics_table,
-            output_aggregate_statistics_table = output_aggregate_statistics_table
+            metrics_table = metrics_table,
+            aggregate_metrics_table = aggregate_metrics_table
     }
 }
 
@@ -48,14 +50,35 @@ task CreateTables {
     input {
         String project_id
         String dataset_name
-        String output_statistics_table
-        String output_aggregate_statistics_table
+        String metrics_table
+        String aggregate_metrics_table
+        String statistics_table
     }
     command <<<
         set -o errexit -o nounset -o xtrace -o pipefail
 
         set +o errexit
-        bq --project_id=~{project_id} show ~{dataset_name}.~{output_statistics_table}
+        bq --project_id=~{project_id} show ~{dataset_name}.~{metrics_table}
+        BQ_SHOW_RC=$?
+        set -o errexit
+
+        if [ $BQ_SHOW_RC -eq 0 ]; then
+            echo "Output metrics table already exists, exiting."
+            exit 1
+        fi
+
+        set +o errexit
+        bq --project_id=~{project_id} show ~{dataset_name}.~{aggregate_metrics_table}
+        BQ_SHOW_RC=$?
+        set -o errexit
+
+        if [ $BQ_SHOW_RC -eq 0 ]; then
+            echo "Output aggregate metrics table already exists, exiting."
+            exit 1
+        fi
+
+        set +o errexit
+        bq --project_id=~{project_id} show ~{dataset_name}.~{statistics_table}
         BQ_SHOW_RC=$?
         set -o errexit
 
@@ -64,94 +87,265 @@ task CreateTables {
             exit 1
         fi
 
-        set +o errexit
-        bq --project_id=~{project_id} show ~{dataset_name}.~{output_aggregate_statistics_table}
-        BQ_SHOW_RC=$?
-        set -o errexit
+        # Schemas extracted programatically: https://stackoverflow.com/a/66987934
+        #
+        # After cleaning up header and quotes:
+        #
+        # cat raw.json | jq -M '[.[]|{name,type,mode}' > clean.json
 
-        if [ $BQ_SHOW_RC -eq 0 ]; then
-            echo "Output aggregate statistics table already exists, exiting."
-            exit 1
-        fi
-
-        cat > schema.json <<FIN
+        cat > metrics_schema.json <<FIN
         [
-            {
-                "name": "filter_set_name",
-                "type": "STRING",
-                "mode": "REQUIRED"
-            },
-            {
-                "name": "sample_id",
-                "type": "INTEGER",
-                "mode": "REQUIRED"
-            },
-            {
-                "name": "variant_entries",
-                "type": "INTEGER",
-                "mode": "REQUIRED"
-            },
-            {
-                "name": "del_count",
-                "type": "INTEGER",
-                "mode": "REQUIRED"
-            },
-            {
-                "name": "ins_count",
-                "type": "INTEGER",
-                "mode": "REQUIRED"
-            },
-            {
-                "name": "snp_count",
-                "type": "INTEGER",
-                "mode": "REQUIRED"
-            },
-            {
-                "name": "ti_count",
-                "type": "INTEGER",
-                "mode": "REQUIRED"
-            },
-            {
-                "name": "tv_count",
-                "type": "INTEGER",
-                "mode": "REQUIRED"
-            },
-            {
-                "name": "snp_het_count",
-                "type": "INTEGER",
-                "mode": "REQUIRED"
-            },
-            {
-                "name": "snp_homvar_count",
-                "type": "INTEGER",
-                "mode": "REQUIRED"
-            },
-            {
-                "name": "indel_het_count",
-                "type": "INTEGER",
-                "mode": "REQUIRED"
-            },
-            {
-                "name": "indel_homvar_count",
-                "type": "INTEGER",
-                "mode": "REQUIRED"
-            },
-            {
-                "name": "singleton",
-                "type": "INTEGER",
-                "mode": "REQUIRED"
-            },
-            {
-                "name": "pass_qc",
-                "type": "STRING",
-                "mode": "OPTIONAL"
-            },
-
+          {
+            "name": "filter_set_name",
+            "type": "STRING",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "sample_id",
+            "type": "INT64",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "variant_entries",
+            "type": "INT64",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "del_count",
+            "type": "INT64",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "ins_count",
+            "type": "INT64",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "snp_count",
+            "type": "INT64",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "ti_count",
+            "type": "INT64",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "tv_count",
+            "type": "INT64",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "snp_het_count",
+            "type": "INT64",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "snp_homvar_count",
+            "type": "INT64",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "indel_het_count",
+            "type": "INT64",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "indel_homvar_count",
+            "type": "INT64",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "singleton",
+            "type": "INT64",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "pass_qc",
+            "type": "INT64",
+            "mode": "NULLABLE"
+          }
         ]
         FIN
 
-        bq mk --table ~{project_id}:~{dataset_name}.~{output_statistics_table} schema.json
-        bq mk --table ~{project_id}:~{dataset_name}.~{output_aggregate_statistics_table} schema.json
+        cat > statistics_schema.json <<FIN
+        [
+          {
+            "name": "sample_id",
+            "type": "INT64",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "sample_name",
+            "type": "STRING",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "del_count",
+            "type": "INT64",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "m_del_count",
+            "type": "FLOAT64",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "mad_del_count",
+            "type": "FLOAT64",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "pass_del_count",
+            "type": "BOOL",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "ins_count",
+            "type": "INT64",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "m_ins_count",
+            "type": "FLOAT64",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "mad_ins_count",
+            "type": "FLOAT64",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "pass_ins_count",
+            "type": "BOOL",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "snp_count",
+            "type": "INT64",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "m_snp_count",
+            "type": "FLOAT64",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "mad_snp_count",
+            "type": "FLOAT64",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "pass_snp_count",
+            "type": "BOOL",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "singleton",
+            "type": "INT64",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "m_singleton",
+            "type": "FLOAT64",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "mad_singleton",
+            "type": "FLOAT64",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "pass_singleton",
+            "type": "BOOL",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "ins_del_ratio",
+            "type": "FLOAT64",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "m_ins_del_ratio",
+            "type": "FLOAT64",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "mad_ins_del_ratio",
+            "type": "FLOAT64",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "pass_ins_del_ratio",
+            "type": "BOOL",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "ti_tv_ratio",
+            "type": "FLOAT64",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "m_ti_tv_ratio",
+            "type": "FLOAT64",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "mad_ti_tv_ratio",
+            "type": "FLOAT64",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "pass_ti_tv_ratio",
+            "type": "BOOL",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "snp_het_homvar_ratio",
+            "type": "FLOAT64",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "m_snp_het_homvar_ratio",
+            "type": "FLOAT64",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "mad_snp_het_homvar_ratio",
+            "type": "FLOAT64",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "pass_snp_het_homvar_ratio",
+            "type": "BOOL",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "indel_het_homvar_ratio",
+            "type": "FLOAT64",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "m_indel_het_homvar_ratio",
+            "type": "FLOAT64",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "mad_indel_het_homvar_ratio",
+            "type": "FLOAT64",
+            "mode": "NULLABLE"
+          },
+          {
+            "name": "pass_indel_het_homvar_ratio",
+            "type": "BOOL",
+            "mode": "NULLABLE"
+          }
+        ]
+        FIN
+
+        bq mk --table ~{project_id}:~{dataset_name}.~{metrics_table} metrics_schema.json
+        bq mk --table ~{project_id}:~{dataset_name}.~{aggregate_metrics_table} metrics_schema.json
+        bq mk --table ~{project_id}:~{dataset_name}.~{statistics_table} statistics_schema.json
     >>>
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_08_22"
@@ -168,7 +362,7 @@ task CollectStatisticsForChromosome {
         String dataset_name
         String filter_set_name
         String extract_prefix
-        String output_statistics_table
+        String metrics_table
         Int chromosome
     }
     command <<<
@@ -222,7 +416,7 @@ task CollectStatisticsForChromosome {
         }
         """;
 
-        INSERT `~{project_id}.~{dataset_name}.~{output_statistics_table}` (
+        INSERT `~{project_id}.~{dataset_name}.~{metrics_table}` (
             filter_set_name,
             sample_id,
             variant_entries,
@@ -282,13 +476,13 @@ task AggregateStatisticsAcrossChromosomes {
         String dataset_name
         String filter_set_name
         String extract_prefix
-        String output_statistics_table
-        String output_aggregate_statistics_table
+        String metrics_table
+        String aggregate_metrics_table
     }
     command <<<
         bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false '
 
-        INSERT `~{project_id}.~{dataset_name}.~{output_aggregate_statistics_table}` (
+        INSERT `~{project_id}.~{dataset_name}.~{aggregate_metrics_table}` (
             filter_set_name,
             sample_id,
             variant_entries,
@@ -319,7 +513,7 @@ task AggregateStatisticsAcrossChromosomes {
                 SUM(CASE WHEN type IN ("ins","del") AND gt_type = "homvar" THEN 1 ELSE 0 END) indel_homvar_count,
                 SUM(singleton) singleton,
                 null AS pass_qc
-        FROM `~{project_id}.~{dataset_name}.~{output_statistics_table}` GROUP BY 1,2
+        FROM `~{project_id}.~{dataset_name}.~{metrics_table}` GROUP BY 1,2
 
         '
     >>>
