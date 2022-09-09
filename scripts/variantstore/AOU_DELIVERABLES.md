@@ -25,7 +25,7 @@
 - **NOTE** If you want to create a large sample set after you have run the notebook, Terra provides (and recommends you use) this python [script](https://github.com/broadinstitute/firecloud-tools/tree/master/scripts/import_large_tsv) which allows you to upload a sample set to the workspace.
 - **TBD This is based on VCF output; VDS output might need different increases.** For extracting VCFs as the final output for the callset, you will want to increase the Google quotas for the workspace project (you can find this in the workspace dashboard under Cloud Information > Google Project ID) to these levels (all in the workspace region):
   - Persistent Disk Standard (GB): 1,000,000 GB (1 PB)
-  - CPUs: 64,000
+  - CPUs: 6,400
   - In-use IP addresses: 5,000 (this is the most challenging one and will probably require contacting the GCP account team to facilitate)
   - VM instances: 64,000
 - Make a note of the Google project ID ("aou-genomics-curation-prod"), dataset name ("aou_wgs") and callset identifier (e.g. "Bravo") as these will be inputs (`project_id`, `dataset_name` and `call_set_identifier`) to all or most of the GVS workflows. The [naming conventions for other aspects of GVS datasets are outlined here](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow).
