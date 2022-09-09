@@ -230,7 +230,14 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_630_batched_avro_export
+   - name: GvsCallsetStatistics
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsCallsetStatistics.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_560_callset_stats
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
