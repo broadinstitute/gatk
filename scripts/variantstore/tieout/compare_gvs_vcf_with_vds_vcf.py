@@ -63,29 +63,7 @@ def compare_gvs_vcf_with_vds_vcf(gvs_vcf, vds_vcf, skip_gvs_filtered_lines):
                         sys.exit(1)
 
                 # Alt Alleles!
-                gvs_alleles = gvs_tokens[4].split(",")
-                gvs_old_alt_allele_index_to_new = {}
-                gvs_old_alt_allele_index_to_new[0] = 0
-                if (len(gvs_alleles) == 0):
-                    print(f"No ALT ALLELES???")
-                    sys.exit(1)
-                if (len(gvs_alleles) > 1):
-                    old_alleles = gvs_alleles[:]
-                    gvs_alleles.sort()
-                    gvs_tokens[4] = ",".join(gvs_alleles)
-
-                    for i in range(0, len(old_alleles)):
-                        for j in range(0, len(gvs_alleles)):
-                            if old_alleles[i] == gvs_alleles[j]:
-                                gvs_old_alt_allele_index_to_new[i+1] = j+1
-                                break
-
-                    # Make a dictionary of the OLD alt allele index to the new (SORTED)
-
-                else:
-                    gvs_old_alt_allele_index_to_new[1] = 1
-                # print(f"{gvs_old_alt_allele_index_to_new}")
-
+                gvs_tokens[4], gvs_old_alt_allele_index_to_new = reorder_gvs_alt_alleles(gvs_tokens[4])
                 if (gvs_tokens[4] != vds_tokens[4]):
                     print(f"DIFF: ALT differs between VCF line:\n{gvs_tokens[4]} vs {vds_tokens[4]}")
                     if not args.report_all_diffs:
@@ -151,24 +129,7 @@ def compare_gvs_vcf_with_vds_vcf(gvs_vcf, vds_vcf, skip_gvs_filtered_lines):
                             sys.exit(1)
 
                     # NOTE: More complex rules for GT
-                    # simple_diff(gvs_sample_genotypes, vds_sample_genotypes, "GT", locus, sample)
-                    gvs_gt = gvs_sample_genotypes["GT"]
-
-                    # Remap genotypes for difference in ALT allele ordering between gvs VCF and vds VCF
-                    # TODO - need to handle "|"
-                    if gvs_gt != "./.":
-                        # print(f"OLD: {gvs_gt}")
-                        gvs_gts = gvs_gt.split("/")
-                        new_gvs_gts = []
-                        for i in range(0, len(gvs_gts)):
-                            gvs_gt = int(gvs_gts[i])
-                            if gvs_gt not in gvs_old_alt_allele_index_to_new:
-                                print(f"Didn't find it!!")
-                                sys.exit(1)
-                            new_gvs_gts.append(str(gvs_old_alt_allele_index_to_new[gvs_gt]))
-                        gvs_gt = "/".join(new_gvs_gts)
-                        # print(f"NEW: {gvs_gt}")
-
+                    gvs_gt = reorder_gvs_gts(gvs_sample_genotypes["GT"], gvs_old_alt_allele_index_to_new)
                     vds_gt = vds_sample_genotypes["GT"]
                     vds_lgt = vds_sample_genotypes["LGT"]
                     if (vds_gt == "./." and vds_ft == "FAIL"):
@@ -196,16 +157,53 @@ def compare_gvs_vcf_with_vds_vcf(gvs_vcf, vds_vcf, skip_gvs_filtered_lines):
                         if not args.report_all_diffs:
                             sys.exit(1)
 
-                    # if (gvs_sample != vds_sample):
-                    #     print(f"DIFF: SAMPLE differs between VCF line:\n{gvs_sample} vs {vds_sample}")
-                        # sys.exit(1)
-
                 gvs_line = gvs.readline().rstrip()
                 vds_line = vds.readline().rstrip()
                 # if count > 10000:
                 #     sys.exit(1)
 
             exit(0)
+
+def reorder_gvs_gts(gvs_gt, gvs_old_alt_allele_index_to_new):
+    # Remap genotypes for difference in ALT allele ordering between gvs VCF and vds VCF
+    # TODO - need to handle "|"
+    if gvs_gt != "./.":
+        gvs_gts = gvs_gt.split("/")
+        new_gvs_gts = []
+        for i in range(0, len(gvs_gts)):
+            gvs_gt = gvs_gts[i]
+            if gvs_gt not in gvs_old_alt_allele_index_to_new:
+                print(f"Didn't find it!!")
+                sys.exit(1)
+            new_gvs_gts.append(gvs_old_alt_allele_index_to_new[gvs_gt])
+        gvs_gt = "/".join(new_gvs_gts)
+    return gvs_gt
+
+def reorder_gvs_alt_alleles(alt_allele_string):
+    # So, the alt alleles in gvs are ordered differently than those in vds. gvs seems to be by first usage,
+    # vds are ordered alphabetically. Here we reorder (by simple sort) the alt alleles in the gvs record
+    # and generate a directory of old GT (1, 2, 3) to new (reordered) GT (2, 3, 1) for instance.
+    gvs_alleles = alt_allele_string.split(",")
+    if (len(gvs_alleles) == 0):
+        print(f"No ALT ALLELES???")
+        sys.exit(1)
+
+    gvs_old_alt_allele_index_to_new = {}
+    gvs_old_alt_allele_index_to_new["0"] = "0"
+    if (len(gvs_alleles) > 1):
+        old_alleles = gvs_alleles[:]
+        gvs_alleles.sort()
+        alt_allele_string = ",".join(gvs_alleles)
+
+        # Make a dictionary of the OLD alt allele index to the new (SORTED)
+        for i in range(0, len(old_alleles)):
+            for j in range(0, len(gvs_alleles)):
+                if old_alleles[i] == gvs_alleles[j]:
+                    gvs_old_alt_allele_index_to_new[str(i+1)] = str(j+1)
+                    break
+    else:
+        gvs_old_alt_allele_index_to_new["1"] = "1"
+    return(alt_allele_string, gvs_old_alt_allele_index_to_new)
 
 def simple_diff(gvs_dict, vds_dict, key, locus, sample):
     gvs_value = gvs_dict[key]
