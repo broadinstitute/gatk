@@ -352,6 +352,7 @@ task PopulateFilterSetInfo {
 
     String query_project
 
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     File? gatk_override
   }
   meta {
@@ -360,6 +361,8 @@ task PopulateFilterSetInfo {
 
   command <<<
     set -eo pipefail
+
+    bash ~{monitoring_script} > monitoring.log &
 
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
@@ -400,7 +403,7 @@ task PopulateFilterSetInfo {
   runtime {
     docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe"
     memory: "3500 MB"
-    disks: "local-disk 200 HDD"
+    disks: "local-disk 500 HDD"
     bootDiskSizeGb: 15
     preemptible: 0
     cpu: 1
