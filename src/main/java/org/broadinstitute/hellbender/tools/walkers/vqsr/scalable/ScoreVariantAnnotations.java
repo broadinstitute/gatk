@@ -190,12 +190,12 @@ import java.util.stream.IntStream;
  *          -A annotation_N \
  *          --model-prefix model_dir \
  *          --mode SNP \
- *          --resource snp-training,training=true snp-training.vcf \
- *          --resource snp-calibration,calibration=true snp-calibration.vcf \
+ *          --resource:snp-training,training=true snp-training.vcf \
+ *          --resource:snp-calibration,calibration=true snp-calibration.vcf \
  *          --mode INDEL \
- *          --resource indel-training,training=true indel-training.vcf \
- *          --resource indel-calibration,calibration=true indel-calibration.vcf \
- *          --resource extracted,extracted=true extract.vcf.gz \
+ *          --resource:indel-training,training=true indel-training.vcf \
+ *          --resource:indel-calibration,calibration=true indel-calibration.vcf \
+ *          --resource:extracted,extracted=true extract.vcf.gz \
  *          --snp-calibration-sensitivity-threshold 0.99 \
  *          --indel-calibration-sensitivity-threshold 0.99 \
  *          -O output
@@ -216,9 +216,9 @@ import java.util.stream.IntStream;
  *          -A snp_annotation_N \
  *          --model-prefix model_dir \
  *          --mode SNP \
- *          --resource snp-training,training=true snp-training.vcf \
- *          --resource snp-calibration,calibration=true snp-calibration.vcf \
- *          --resource extracted,extracted=true snp-extract.vcf.gz \
+ *          --resource:snp-training,training=true snp-training.vcf \
+ *          --resource:snp-calibration,calibration=true snp-calibration.vcf \
+ *          --resource:extracted,extracted=true snp-extract.vcf.gz \
  *          --snp-calibration-sensitivity-threshold 0.99 \
  *          -O intermediate-output
  *
@@ -229,9 +229,9 @@ import java.util.stream.IntStream;
  *          -A indel_annotation_M \
  *          --model-prefix model_dir \
  *          --mode INDEL \
- *          --resource indel-training,training=true indel-training.vcf \
- *          --resource indel-calibration,calibration=true indel-calibration.vcf \
- *          --resource extracted,extracted=true indel-extract.vcf.gz \
+ *          --resource:indel-training,training=true indel-training.vcf \
+ *          --resource:indel-calibration,calibration=true indel-calibration.vcf \
+ *          --resource:extracted,extracted=true indel-extract.vcf.gz \
  *          --indel-calibration-sensitivity-threshold 0.99 \
  *          -O output
  * </pre>

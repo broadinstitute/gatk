@@ -170,11 +170,11 @@ import java.util.stream.Collectors;
  *          ...
  *          -A annotation_N \
  *          --mode SNP \
- *          --resource snp-training,training=true snp-training.vcf \
- *          --resource snp-calibration,calibration=true snp-calibration.vcf \
+ *          --resource:snp-training,training=true snp-training.vcf \
+ *          --resource:snp-calibration,calibration=true snp-calibration.vcf \
  *          --mode INDEL \
- *          --resource indel-training,training=true indel-training.vcf \
- *          --resource indel-calibration,calibration=true indel-calibration.vcf \
+ *          --resource:indel-training,training=true indel-training.vcf \
+ *          --resource:indel-calibration,calibration=true indel-calibration.vcf \
  *          -O extract
  * </pre>
  * </p>
@@ -195,11 +195,11 @@ import java.util.stream.Collectors;
  *          ...
  *          -A annotation_N \
  *          --mode SNP \
- *          --resource snp-training,training=true snp-training.vcf \
- *          --resource snp-calibration,calibration=true snp-calibration.vcf \
+ *          --resource:snp-training,training=true snp-training.vcf \
+ *          --resource:snp-calibration,calibration=true snp-calibration.vcf \
  *          --mode INDEL \
- *          --resource indel-training,training=true indel-training.vcf \
- *          --resource indel-calibration,calibration=true indel-calibration.vcf \
+ *          --resource:indel-training,training=true indel-training.vcf \
+ *          --resource:indel-calibration,calibration=true indel-calibration.vcf \
  *          --maximum-number-of-unlableled-variants 1000000
  *          -O extract
  * </pre>
