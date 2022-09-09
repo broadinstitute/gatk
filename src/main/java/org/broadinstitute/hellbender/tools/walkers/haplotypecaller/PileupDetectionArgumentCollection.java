@@ -35,6 +35,9 @@ public final class PileupDetectionArgumentCollection {
     public static final String PILEUP_DETECTION_FILTER_ASSEMBLY_HAPS_THRESHOLD = "pileup-detection-filter-assembly-alt-bad-read-tolerance";
     public static final String PILEUP_DETECTION_EDIT_DISTANCE_BADNESS_FOR_ASSEMBLY_LONG_NAME = "pileup-detection-edit-distance-read-badness-for-assembly-filtering-threshold";
 
+
+    public static final String GENERATE_PARTIALLY_DETERMINED_HAPLOTYPES_LONG_NAME = "use-pdhmm";
+
     /**
      * Enables pileup-based haplotype creation and variant detection
      *
@@ -43,6 +46,14 @@ public final class PileupDetectionArgumentCollection {
     @Advanced
     @Argument(fullName= PILEUP_DETECTION_LONG_NAME, doc = "If enabled, the variant caller will create pileup-based haplotypes in addition to the assembly-based haplotype generation.", optional = true)
     public boolean usePileupDetection = false;
+
+    /**
+     * TODO
+     */
+    @Advanced
+    @Argument(fullName= GENERATE_PARTIALLY_DETERMINED_HAPLOTYPES_LONG_NAME, doc = "", optional = true)
+    public boolean generatePDHaplotypes = true;
+
 
     /**
      * Enables detection of indels from the pileups in. (EXPERIMENTAL FEATURE)

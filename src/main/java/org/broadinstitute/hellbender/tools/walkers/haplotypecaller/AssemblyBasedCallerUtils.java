@@ -6,7 +6,6 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.Locatable;
-import htsjdk.samtools.util.Tuple;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -398,6 +397,27 @@ public final class AssemblyBasedCallerUtils {
             List<VariantContext> pileupAllelesFoundShouldFilter = forcedPileupAlleles.stream()
                     .filter(v -> PileupBasedAlleles.shouldFilterAssemblyVariant(argumentCollection.pileupDetectionArgs, v))
                     .collect(Collectors.toList());
+            List<VariantContext> pileupAllelesPassingFilters = forcedPileupAlleles.stream()
+                    .filter(v -> PileupBasedAlleles.passesFilters(argumentCollection.pileupDetectionArgs, v))
+                    .collect(Collectors.toList());
+
+            // Prepwork for the PDHMM, this calls into the code responsible for re-computing the PD haplotypes based on reference
+            if (argumentCollection.pileupDetectionArgs.generatePDHaplotypes) {
+                SortedSet<VariantContext> assemblyVariants = assemblyResultSet.getVariationEvents(0);
+
+                //todo make this debug output linked in with everything else
+                System.out.println("Generating PDHaplotypes for PDHMM");
+                System.out.println("Assembled Variants to use:");
+                assemblyVariants.forEach(System.out::println);
+                System.out.println("Pileup Variants to use:");
+                forcedPileupAlleles.forEach(System.out::println);
+                System.out.println("Adding Variants To Reference Haplotype:");
+                System.out.println(assemblyResultSet.getReferenceHaplotype());
+                //TODO this is where the trimming should happen...
+
+                return PartiallyDeterminedHaplotypeComputationEngine.generatePDHaplotypes(assemblyResultSet, assemblyResultSet.getReferenceHaplotype(), assemblyVariants, pileupAllelesFoundShouldFilter, pileupAllelesPassingFilters, argumentCollection.pileupDetectionArgs.snpAdajacentToAssemblyIndel);
+            }
+
             if (!pileupAllelesFoundShouldFilter.isEmpty()) {
                 // TODO this is a bad algorithm for bad people
                 for(VariantContext delVariant : pileupAllelesFoundShouldFilter) {
@@ -425,9 +445,6 @@ public final class AssemblyBasedCallerUtils {
                 }
             }
 
-            List<VariantContext> pileupAllelesPassingFilters = forcedPileupAlleles.stream()
-                    .filter(v -> PileupBasedAlleles.passesFilters(argumentCollection.pileupDetectionArgs, v))
-                    .collect(Collectors.toList());
             if (!pileupAllelesPassingFilters.isEmpty()) {
                 processPileupAlleles(region, pileupAllelesPassingFilters, argumentCollection.pileupDetectionArgs.snpAdajacentToAssemblyIndel, argumentCollection.maxMnpDistance, aligner, refHaplotype, assemblyResultSet, argumentCollection.pileupDetectionArgs.numHaplotypesToIterate, argumentCollection.pileupDetectionArgs.filteringKmerSize, argumentCollection.getHaplotypeToReferenceSWParameters());
             }

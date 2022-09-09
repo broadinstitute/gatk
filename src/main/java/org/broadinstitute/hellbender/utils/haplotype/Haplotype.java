@@ -17,7 +17,8 @@ import spire.math.All;
 import java.util.Arrays;
 import java.util.Comparator;
 
-public final class Haplotype extends Allele {
+//TODO re-add final here and refacotor
+public class Haplotype extends Allele {
     private static final long serialVersionUID = 1L;
 
     /**
@@ -30,7 +31,7 @@ public final class Haplotype extends Allele {
     private Locatable genomeLocation = null;
     private EventMap eventMap = null;
     private Cigar cigar;
-    private int alignmentStartHapwrtRef;
+    private int alignmentStartHapwrtRef; //NOTE: this is the offset to a supposed array of reference bases held in memory and has nothing to do with start positions
     private double score = Double.NaN;
 
     /**
@@ -68,7 +69,7 @@ public final class Haplotype extends Allele {
      *
      * @param bases a non-null array of bases
      * @param isRef is this the reference haplotype?
-     * @param alignmentStartHapwrtRef offset of this haplotype w.r.t. the reference
+     * @param alignmentStartHapwrtRef offset of this haplotype w.r.t. the reference (NOTE: this is NOT the aligned start, but an offset to a hypothetical reference array)
      * @param cigar the cigar that maps this haplotype to the reference sequence
      */
     public Haplotype( final byte[] bases, final boolean isRef, final int alignmentStartHapwrtRef, final Cigar cigar) {
@@ -76,6 +77,13 @@ public final class Haplotype extends Allele {
         this.alignmentStartHapwrtRef = alignmentStartHapwrtRef;
         setCigar(cigar);
     }
+
+    public Haplotype( final byte[] bases, final boolean isRef, final Locatable loc, final Cigar cigar ) {
+        this(bases, isRef);
+        this.cigar = cigar;
+        this.genomeLocation = loc;
+    }
+
 
     public Haplotype( final byte[] bases, final Locatable loc ) {
         this(bases, false);

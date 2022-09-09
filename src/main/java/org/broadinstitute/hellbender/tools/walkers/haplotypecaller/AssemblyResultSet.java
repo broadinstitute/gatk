@@ -33,6 +33,10 @@ import java.util.*;
  */
 public final class AssemblyResultSet {
 
+    public static final Comparator<VariantContext> HAPLOTYPE_VARIANT_CONTEXT_COMPARATOR = Comparator.comparingInt(VariantContext::getStart)
+            // Decide arbitrarily so as not to accidentally throw away overlapping variants
+            .thenComparingInt(vc -> vc.getReference().length())
+            .thenComparing(vc -> vc.getAlternateAllele(0));
     private final Map<Integer,AssemblyResult> assemblyResultByKmerSize;
     private final Set<Haplotype> haplotypes;
     private final Map<Haplotype,AssemblyResult> assemblyResultByHaplotype;
@@ -552,10 +556,7 @@ public final class AssemblyResultSet {
     private static SortedSet<VariantContext> getAllVariantContexts( final List<Haplotype> haplotypes ) {
         // Using the cigar from each called haplotype figure out what events need to be written out in a VCF file
         final TreeSet<VariantContext> vcs = new TreeSet<>(
-                Comparator.comparingInt(VariantContext::getStart)
-                        // Decide arbitrarily so as not to accidentally throw away overlapping variants
-                .thenComparingInt(vc -> vc.getReference().length())
-                .thenComparing(vc -> vc.getAlternateAllele(0)));
+                HAPLOTYPE_VARIANT_CONTEXT_COMPARATOR);
 
         for( final Haplotype h : haplotypes ) {
             vcs.addAll(h.getEventMap().getVariantContexts());
