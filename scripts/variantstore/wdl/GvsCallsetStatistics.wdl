@@ -261,7 +261,7 @@ task CollectStatisticsForChromosome {
             FROM `~{project_id}.~{dataset_name}.~{extract_prefix}__VET_DATA` v
             LEFT JOIN `spec-ops-aou.gvs_public_reference_data.gnomad_v3_sites` gnomad ON (v.location = gnomad.location)
             WHERE call_GT != "./."
-            AND v.location >= ~{chromosome}0000000000000
+            AND v.location >= ~{chromosome}000000000000
             AND v.location < ~{chromosome + 1}000000000000) GROUP BY 1,2
 
         '
