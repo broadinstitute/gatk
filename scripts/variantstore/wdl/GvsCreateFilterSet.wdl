@@ -411,6 +411,7 @@ task PopulateFilterSetInfo {
 
   output {
     String status_load_filter_set_info = read_string("status_load_filter_set_info")
+    File monitoring_log = "monitoring.log"
   }
 }
 
