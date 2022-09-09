@@ -8,7 +8,7 @@ workflow GvsCallsetStatistics {
         String extract_prefix
         String metrics_table = "~{extract_prefix}_sample_metrics"
         String aggregate_metrics_table = "~{extract_prefix}_sample_metrics_agg"
-        String statistics_table="~{extract_prefix}_stats"
+        String statistics_table = "~{extract_prefix}_stats"
     }
 
     call CreateTables {
@@ -43,6 +43,18 @@ workflow GvsCallsetStatistics {
             extract_prefix = extract_prefix,
             metrics_table = metrics_table,
             aggregate_metrics_table = aggregate_metrics_table
+    }
+
+    call CollectStatistics {
+        input:
+            go = AggregateStatisticsAcrossChromosomes.done,
+            project_id = project_id,
+            dataset_name = dataset_name,
+            filter_set_name = filter_set_name,
+            extract_prefix = extract_prefix,
+            metrics_table = metrics_table,
+            aggregate_metrics_table = aggregate_metrics_table,
+            statistics_table = statistics_table
     }
 }
 
@@ -516,6 +528,27 @@ task AggregateStatisticsAcrossChromosomes {
         FROM `~{project_id}.~{dataset_name}.~{metrics_table}` GROUP BY 1,2
 
         '
+    >>>
+    output {
+        Boolean done = true
+    }
+    runtime {
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_08_22"
+    }
+}
+
+task CollectStatistics {
+    input {
+        Boolean go
+        String project_id
+        String dataset_name
+        String filter_set_name
+        String extract_prefix
+        String metrics_table
+        String aggregate_metrics_table
+        String statistics_table
+    }
+    command <<<
     >>>
     output {
         Boolean done = true
