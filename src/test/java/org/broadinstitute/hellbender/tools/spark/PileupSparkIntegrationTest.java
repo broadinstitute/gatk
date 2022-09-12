@@ -5,6 +5,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
+import org.testng.SkipException;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -115,11 +116,11 @@ public final class PileupSparkIntegrationTest extends CommandLineProgramTest {
 
     @Test(dataProvider = "shuffle")
     public void testFeaturesPileupHdfs(boolean useShuffle) throws Exception {
-//        // see https://github.com/eclipse/jetty.project/issues/8549
-//        if (isGATKDockerContainer()) {
-//            // for the docker tests, the test dependencies are in a separate jar
-//            throw new SkipException("skipping due to jetty jar parsing issues (https://github.com/eclipse/jetty.project/issues/8549)");
-//        }
+        if (isGATKDockerContainer()) {
+            // see https://github.com/eclipse/jetty.project/issues/8549
+            // for the docker tests, the test dependencies are in a separate jar
+            throw new SkipException("skipping due to jetty jar parsing issues (https://github.com/eclipse/jetty.project/issues/8549)");
+        }
         MiniClusterUtils.runOnIsolatedMiniCluster( cluster -> {
             final Path workingDirectory = MiniClusterUtils.getWorkingDir(cluster);
             final Path vcfPath = new Path(workingDirectory, "dbsnp_138.b37.20.21.vcf");

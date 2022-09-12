@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
+import org.testng.SkipException;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -70,6 +71,11 @@ public class CpxVariantReInterpreterSparkIntegrationTest extends CommandLineProg
 
     @Test(groups = "sv", dataProvider = "forCpxVariantReInterpreterSparkIntegrationTest")
     public void testRunHDFS(final CpxVariantReInterpreterSparkIntegrationTestArgs params) throws Exception {
+        if (isGATKDockerContainer()) {
+            // see https://github.com/eclipse/jetty.project/issues/8549
+            // for the docker tests, the test dependencies are in a separate jar
+            throw new SkipException("skipping due to jetty jar parsing issues (https://github.com/eclipse/jetty.project/issues/8549)");
+        }
         MiniClusterUtils.runOnIsolatedMiniCluster(cluster -> {
 
             final List<String> argsToBeModified = Arrays.asList( new ArgumentsBuilder().addRaw(params.getCommandLine()).getArgsArray() );

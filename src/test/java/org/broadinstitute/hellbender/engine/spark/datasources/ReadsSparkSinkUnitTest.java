@@ -39,11 +39,11 @@ public class ReadsSparkSinkUnitTest extends GATKBaseTest {
 
     @BeforeClass(alwaysRun = true)
     private void setupMiniCluster() throws IOException {
-//        // see https://github.com/eclipse/jetty.project/issues/8549
-//        if (isGATKDockerContainer()) {
-//            // for the docker tests, the test dependencies are in a separate jar
-//            throw new SkipException("skipping due to jetty jar parsing issues (https://github.com/eclipse/jetty.project/issues/8549)");
-//        }
+        // see https://github.com/eclipse/jetty.project/issues/8549
+        if (isGATKDockerContainer()) {
+            // for the docker tests, the test dependencies are in a separate jar
+            throw new SkipException("skipping due to jetty jar parsing issues (https://github.com/eclipse/jetty.project/issues/8549)");
+        }
         cluster = MiniClusterUtils.getMiniCluster();
     }
 
