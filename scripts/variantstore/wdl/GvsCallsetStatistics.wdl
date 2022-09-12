@@ -494,6 +494,52 @@ task AggregateStatisticsAcrossChromosomes {
     command <<<
         bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false '
 
+        CREATE TEMPORARY FUNCTION titv(ref STRING, allele STRING)
+        RETURNS STRING
+            LANGUAGE js AS """
+                if ( ref.length > 1 || allele.length > 1) {
+                    return "other";
+                } else if ( (ref == "A" && allele == "G") ||
+                            (ref == "G" && allele == "A") ||
+                            (ref == "C" && allele == "T") ||
+                            (ref == "T" && allele == "C") ) {
+                    return "ti";
+                } else {
+                    return "tv";
+                }
+        """;
+
+        CREATE TEMPORARY FUNCTION type(ref STRING, allele STRING, gt_str STRING)
+
+        RETURNS STRING
+            LANGUAGE js AS """
+
+        alts = allele.split(",")
+
+        // get the the non-reference allele indexes
+        ai = gt_str.replace("|","/").split("/").filter(i => i != "0");
+
+        // the the distinct set of lengths of the alternates
+        alt_lengths = new Set(ai.map(i => alts[parseInt(i)-1].length))
+
+        if (alt_lengths.size > 1) {
+            return "complex"
+        } else {
+            // get first (only) element
+            al = alt_lengths.keys().next().value
+
+            if ( ref.length == al && al == 1) {
+                return "snp"
+            } else if (ref.length > al) {
+                return "del"
+            } else if (ref.length < al) {
+                return "ins"
+            } else {
+                return "other"
+            }
+        }
+        """;
+
         INSERT `~{project_id}.~{dataset_name}.~{aggregate_metrics_table}` (
             filter_set_name,
             sample_id,
