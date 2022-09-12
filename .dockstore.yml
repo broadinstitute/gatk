@@ -159,6 +159,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - ah_vs617
    - name: GvsExtractCohortFromSampleNames
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCohortFromSampleNames.wdl

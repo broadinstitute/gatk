@@ -1,5 +1,7 @@
 version 1.0
 
+import "../wdl/GvsUtils.wdl" as Utils
+
 workflow GvsValidateVat {
     input {
         String query_project_id
@@ -9,7 +11,7 @@ workflow GvsValidateVat {
 
     String fq_vat_table = "~{query_project_id}.~{default_dataset}.~{vat_table_name}"
 
-    call GetBQTableLastModifiedDatetime {
+    call Utils.GetBQTableLastModifiedDatetime {
         input:
             query_project = query_project_id,
             fq_table = fq_vat_table
@@ -168,51 +170,6 @@ workflow GvsValidateVat {
     output {
         String validation_results = GenerateFinalReport.results
     }
-}
-
-task GetBQTableLastModifiedDatetime {
-    # because this is being used to determine if the data has changed, never use call cache
-    meta {
-        volatile: true
-    }
-
-    input {
-        String query_project
-        String fq_table
-    }
-
-
-    # ------------------------------------------------
-    # try to get the last modified date for the table in question; fail if something comes back from BigQuery
-    # that isn't in the right format (e.g. an error)
-    command <<<
-        set -e
-
-        echo "project_id = ~{query_project}" > ~/.bigqueryrc
-
-        # bq needs the project name to be separate by a colon
-        DATASET_TABLE_COLON=$(echo ~{fq_table} | sed 's/\./:/')
-
-        LASTMODIFIED=$(bq --location=US --project_id=~{query_project} --format=json show ${DATASET_TABLE_COLON} | python3 -c "import sys, json; print(json.load(sys.stdin)['lastModifiedTime']);")
-        if [[ $LASTMODIFIED =~ ^[0-9]+$ ]]; then
-            echo $LASTMODIFIED
-        else
-            exit 1
-        fi
-    >>>
-
-    output {
-        String last_modified_timestamp = read_string(stdout())
-    }
-
-    runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
-        memory: "3 GB"
-        disks: "local-disk 10 HDD"
-        preemptible: 3
-        cpu: 1
-    }
-
 }
 
 task EnsureVatTableHasVariants {
