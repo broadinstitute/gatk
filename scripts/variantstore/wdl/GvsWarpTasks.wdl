@@ -27,6 +27,7 @@ task SNPsVariantRecalibratorCreateModel {
         Int? machine_mem_gb
 
         Int disk_size
+        File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     }
 
     Int machine_mem = select_first([machine_mem_gb, 100])
@@ -34,6 +35,8 @@ task SNPsVariantRecalibratorCreateModel {
 
     command <<<
         set -euo pipefail
+
+        bash ~{monitoring_script} > monitoring.log &
 
         gatk --java-options -Xms~{java_mem}g \
         VariantRecalibrator \
@@ -65,6 +68,7 @@ task SNPsVariantRecalibratorCreateModel {
 
     output {
         File model_report = "~{model_report_filename}"
+        File monitoring_log = "monitoring.log"
     }
 }
 
