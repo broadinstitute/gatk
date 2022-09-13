@@ -493,51 +493,6 @@ task AggregateStatisticsAcrossChromosomes {
     }
     command <<<
         bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false '
-        CREATE TEMPORARY FUNCTION titv(ref STRING, allele STRING)
-        RETURNS STRING
-            LANGUAGE js AS """
-                if ( ref.length > 1 || allele.length > 1) {
-                    return "other";
-                } else if ( (ref == "A" && allele == "G") ||
-                            (ref == "G" && allele == "A") ||
-                            (ref == "C" && allele == "T") ||
-                            (ref == "T" && allele == "C") ) {
-                    return "ti";
-                } else {
-                    return "tv";
-                }
-        """;
-
-        CREATE TEMPORARY FUNCTION type(ref STRING, allele STRING, gt_str STRING)
-        RETURNS STRING
-            LANGUAGE js AS """
-
-        alts = allele.split(",")
-
-        // get the the non-reference allele indexes
-        ai = gt_str.replace("|","/").split("/").filter(i => i != "0");
-
-        // the the distinct set of lengths of the alternates
-        alt_lengths = new Set(ai.map(i => alts[parseInt(i)-1].length))
-
-        if (alt_lengths.size > 1) {
-            return "complex"
-        } else {
-            // get first (only) element
-            al = alt_lengths.keys().next().value
-
-            if ( ref.length == al && al == 1) {
-                return "snp"
-            } else if (ref.length > al) {
-                return "del"
-            } else if (ref.length < al) {
-                return "ins"
-            } else {
-                return "other"
-            }
-        }
-        """;
-
         INSERT `~{project_id}.~{dataset_name}.~{aggregate_metrics_table}` (
             filter_set_name,
             sample_id,
@@ -555,19 +510,19 @@ task AggregateStatisticsAcrossChromosomes {
             pass_qc
         )
         SELECT "~{filter_set_name}" filter_set_name,
-                sample_id,
-                SUM(variant_entries) variant_entries,
-                SUM(CASE WHEN type = "del" THEN 1 ELSE 0 END) del_count,
-                SUM(CASE WHEN type = "ins" THEN 1 ELSE 0 END) ins_count,
-                SUM(CASE WHEN type = "snp" THEN 1 ELSE 0 END) snp_count,
-                SUM(CASE WHEN type = "snp" AND titv = "ti" THEN 1 ELSE 0 END) ti_count, # TODO: minimize alleles
-                SUM(CASE WHEN type = "snp" AND titv = "tv" THEN 1 ELSE 0 END) tv_count, # TODO: minimize alleles
-                SUM(CASE WHEN type = "snp" AND gt_type = "het" THEN 1 ELSE 0 END) snp_het_count,
-                SUM(CASE WHEN type = "snp" AND gt_type = "homvar" THEN 1 ELSE 0 END) snp_homvar_count,
-                SUM(CASE WHEN type IN ("ins","del") AND gt_type = "het" THEN 1 ELSE 0 END) indel_het_count,
-                SUM(CASE WHEN type IN ("ins","del") AND gt_type = "homvar" THEN 1 ELSE 0 END) indel_homvar_count,
-                SUM(singleton) singleton,
-                null AS pass_qc
+            sample_id,
+            SUM(variant_entries) variant_entries,
+            SUM(del_count) del_count,
+            SUM(ins_count) ins_count,
+            SUM(snp_count) snp_count,
+            SUM(ti_count) ti_count,
+            SUM(tv_count) tv_count,
+            SUM(snp_het_count) snp_het_count,
+            SUM(snp_homvar_count) snp_homvar_count,
+            SUM(indel_het_count) indel_het_count,
+            SUM(indel_homvar_count) indel_homvar_count,
+            SUM(singleton) singleton,
+            null AS pass_qc
         FROM `~{project_id}.~{dataset_name}.~{metrics_table}` GROUP BY 1,2
 
         '
