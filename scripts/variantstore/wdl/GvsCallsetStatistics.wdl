@@ -118,6 +118,11 @@ task CreateTables {
             "mode": "NULLABLE"
           },
           {
+            "name": "chromosome",
+            "type": "INT64",
+            "mode": "NULLABLE"
+          },
+          {
             "name": "variant_entries",
             "type": "INT64",
             "mode": "NULLABLE"
@@ -179,6 +184,9 @@ task CreateTables {
           }
         ]
         FIN
+
+        # The aggregate metrics schema is the same as the non-aggregate metrics schema delta the `chromosome` field.
+        jq '[ .[] | select(.name != "chromosome") ]' metrics_schema.json > metrics_agg_schema.json
 
         cat > statistics_schema.json <<FIN
         [
@@ -356,11 +364,11 @@ task CreateTables {
         FIN
 
         bq mk --table ~{project_id}:~{dataset_name}.~{metrics_table} metrics_schema.json
-        bq mk --table ~{project_id}:~{dataset_name}.~{aggregate_metrics_table} metrics_schema.json
+        bq mk --table ~{project_id}:~{dataset_name}.~{aggregate_metrics_table} metrics_agg_schema.json
         bq mk --table ~{project_id}:~{dataset_name}.~{statistics_table} statistics_schema.json
     >>>
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_08_22"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:vs_560_callset_statistics"
     }
     output {
         Boolean done = true
@@ -431,6 +439,7 @@ task CollectStatisticsForChromosome {
         INSERT `~{project_id}.~{dataset_name}.~{metrics_table}` (
             filter_set_name,
             sample_id,
+            chromosome,
             variant_entries,
             del_count,
             ins_count,
@@ -446,6 +455,7 @@ task CollectStatisticsForChromosome {
         )
         SELECT "~{filter_set_name}" filter_set_name,
                sample_id,
+               ~{chromosome},
                count(1) variant_entries,
                SUM(CASE WHEN type = "del" THEN 1 ELSE 0 END) del_count,
                SUM(CASE WHEN type = "ins" THEN 1 ELSE 0 END) ins_count,

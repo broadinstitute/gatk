@@ -1,9 +1,9 @@
-FROM gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0
+FROM gcr.io/google.com/cloudsdktool/cloud-sdk:402.0.0
 
 # Copy the application's requirements.txt and run pip to install
 COPY requirements.txt /app/requirements.txt
 RUN pip install -r /app/requirements.txt
-RUN apt-get update && apt-get -y upgrade && apt-get -y install bcftools
+RUN apt-get update && apt-get -y upgrade && apt-get -y install bcftools jq
 RUN pip install firecloud
 
 # Copy the application source code.
@@ -20,7 +20,7 @@ COPY scale_xy_bed_values.py /app
 COPY workflow_compute_costs.py /app
 COPY generate_hail_gvs_import.py /app
 
-# Copy the schema files needed vor VAT creation.
+# Copy the schema files needed for VAT creation.
 COPY variant_annotation_table/schema/vat_schema.json /data/variant_annotation_table/schema/
 COPY variant_annotation_table/schema/vt_schema.json /data/variant_annotation_table/schema/
 COPY variant_annotation_table/schema/genes_schema.json /data/variant_annotation_table/schema/
