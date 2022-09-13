@@ -247,7 +247,7 @@ task testOnPackagedReleaseJar(type: Test){
     allJvmArgs.forEach(a -> System.out.println(a))
 
     //classpath = files(testDependencyJar)
-    classpath = files( gatkJar, testDependencyJar, testClassesJar)
+    classpath = files( gatkJar, testClassesJar, testDependencyJar)
     testClassesDirs = files(testClassesUnpacked)
 }
 

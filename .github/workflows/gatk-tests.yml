@@ -170,7 +170,7 @@ jobs:
         with:
           java-version: ${{ matrix.Java }}
           distribution: 'temurin'
-          cache: gradle
+          #cache: gradle
 
       #Google Cloud stuff
       - id: 'gcloud-auth'
