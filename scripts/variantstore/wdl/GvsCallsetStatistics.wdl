@@ -557,7 +557,7 @@ task CollectStatistics {
                  (snp_het_count / snp_homvar_count) snp_het_homvar_ratio,
                  (indel_het_count / indel_homvar_count) as indel_het_homvar_ratio
           FROM `~{project_id}.~{dataset_name}.~{aggregate_metrics_table}`
-          WHERE filter_set_name = '~{filter_set_name}'),
+          WHERE filter_set_name = "~{filter_set_name}"),
         medians AS (
             SELECT
                 `bqutil`.fn.median(ARRAY_AGG(del_count IGNORE NULLS)) as m_del_count,
@@ -581,7 +581,7 @@ task CollectStatistics {
                 `bqutil`.fn.median(ARRAY_AGG(ABS(indel_het_homvar_ratio - m_indel_het_homvar_ratio) IGNORE NULLS)) as mad_indel_het_homvar_ratio
             FROM fss
             CROSS JOIN medians
-            WHERE filter_set_name = '~{filter_set_name}')
+            WHERE filter_set_name = "~{filter_set_name}")
 
         SELECT
             fss.sample_id,
