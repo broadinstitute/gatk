@@ -493,7 +493,6 @@ task AggregateStatisticsAcrossChromosomes {
     }
     command <<<
         bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false '
-
         CREATE TEMPORARY FUNCTION titv(ref STRING, allele STRING)
         RETURNS STRING
             LANGUAGE js AS """
@@ -510,7 +509,6 @@ task AggregateStatisticsAcrossChromosomes {
         """;
 
         CREATE TEMPORARY FUNCTION type(ref STRING, allele STRING, gt_str STRING)
-
         RETURNS STRING
             LANGUAGE js AS """
 
@@ -556,7 +554,6 @@ task AggregateStatisticsAcrossChromosomes {
             singleton,
             pass_qc
         )
-
         SELECT "~{filter_set_name}" filter_set_name,
                 sample_id,
                 SUM(variant_entries) variant_entries,
