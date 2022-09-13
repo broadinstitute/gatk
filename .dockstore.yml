@@ -181,6 +181,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_560_callset_stats
    - name: GvsJointVariantCalling
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCalling.wdl
