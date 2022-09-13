@@ -7,8 +7,8 @@ workflow GvsCallsetStatistics {
         String filter_set_name
         String extract_prefix
         String metrics_table = "~{extract_prefix}_sample_metrics"
-        String aggregate_metrics_table = "~{extract_prefix}_sample_metrics_agg"
-        String statistics_table = "~{extract_prefix}_stats"
+        String aggregate_metrics_table = "~{extract_prefix}_sample_metrics_aggregate"
+        String statistics_table = "~{extract_prefix}_statistics"
     }
 
     call CreateTables {
@@ -186,7 +186,7 @@ task CreateTables {
         FIN
 
         # The aggregate metrics schema is the same as the non-aggregate metrics schema delta the `chromosome` field.
-        jq '[ .[] | select(.name != "chromosome") ]' metrics_schema.json > metrics_agg_schema.json
+        jq '[ .[] | select(.name != "chromosome") ]' metrics_schema.json > metrics_aggregate_schema.json
 
         cat > statistics_schema.json <<FIN
         [
@@ -364,7 +364,7 @@ task CreateTables {
         FIN
 
         bq mk --table ~{project_id}:~{dataset_name}.~{metrics_table} metrics_schema.json
-        bq mk --table ~{project_id}:~{dataset_name}.~{aggregate_metrics_table} metrics_agg_schema.json
+        bq mk --table ~{project_id}:~{dataset_name}.~{aggregate_metrics_table} metrics_aggregate_schema.json
         bq mk --table ~{project_id}:~{dataset_name}.~{statistics_table} statistics_schema.json
     >>>
     runtime {
