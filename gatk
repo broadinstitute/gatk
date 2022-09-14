@@ -89,6 +89,7 @@ EXTRA_JAVA_OPTIONS_SPARK= "-DGATK_STACKTRACE_ON_USER_EXCEPTION=true " \
                     "--add-opens", "java.base/jdk.internal.module=ALL-UNNAMED " \
                     "--add-opens", "java.base/java.lang.module=ALL-UNNAMED " \
                     "--add-opens", "java.security.jgss/sun.security.krb5=ALL-UNNAMED " \
+                    "--add-opens", "java.prefs/java.util.prefs=ALL-UNNAMED " \
                     "-Dio.netty.tryReflectionSetAccessible=true"
 
 PACKAGED_LOCAL_JAR_OPTIONS= [
@@ -147,7 +148,8 @@ PACKAGED_LOCAL_JAR_OPTIONS= [
                     "--add-opens", "java.base/jdk.internal.module=ALL-UNNAMED",
                     "--add-opens", "java.base/java.lang.module=ALL-UNNAMED",
                     "--add-opens", "java.security.jgss/sun.security.krb5=ALL-UNNAMED"                                                                                                                                                                                                                                                                             "-Dio.netty.tryReflectionSetAccessible=true"
-]
+                    "--add-opens", "java.prefs/java.util.prefs=ALL-UNNAMED"
+    ]
 
 DEFAULT_SPARK_ARGS_PREFIX = '--conf'
 DEFAULT_SPARK_ARGS = {

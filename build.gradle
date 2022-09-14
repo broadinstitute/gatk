@@ -442,6 +442,7 @@ run {
                 '--add-opens', 'java.base/jdk.internal.module=ALL-UNNAMED',
                 '--add-opens', 'java.base/java.lang.module=ALL-UNNAMED',
                 '--add-opens', 'java.security.jgss/sun.security.krb5=ALL-UNNAMED',
+                '--add-opens', 'java.prefs/java.util.prefs=ALL-UNNAMED', // jacoco
 
                 '-Dio.netty.tryReflectionSetAccessible=true'
         ]
@@ -499,6 +500,7 @@ test {
                 '--add-opens', 'java.base/jdk.internal.module=ALL-UNNAMED',
                 '--add-opens', 'java.base/java.lang.module=ALL-UNNAMED',
                 '--add-opens', 'java.security.jgss/sun.security.krb5=ALL-UNNAMED',
+                '--add-opens', 'java.prefs/java.util.prefs=ALL-UNNAMED', // jacoco
 
                 '-Dio.netty.tryReflectionSetAccessible=true'
         ]
