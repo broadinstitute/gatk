@@ -22,7 +22,7 @@ workflow GvsCallsetStatistics {
 
     # Only collect statistics for the autosomal chromosomes, the first 22 in our location scheme.
     scatter(chrom in range(22)) {
-        call CollectStatisticsForChromosome {
+        call CollectMetricsForChromosome {
             input:
                 go = CreateTables.done,
                 project_id = project_id,
@@ -34,9 +34,9 @@ workflow GvsCallsetStatistics {
         }
     }
 
-    call AggregateStatisticsAcrossChromosomes {
+    call AggregateMetricsAcrossChromosomes {
         input:
-            go = CollectStatisticsForChromosome.done[0],
+            go = CollectMetricsForChromosome.done[0],
             project_id = project_id,
             dataset_name = dataset_name,
             filter_set_name = filter_set_name,
@@ -47,7 +47,7 @@ workflow GvsCallsetStatistics {
 
     call CollectStatistics {
         input:
-            go = AggregateStatisticsAcrossChromosomes.done,
+            go = AggregateMetricsAcrossChromosomes.done,
             project_id = project_id,
             dataset_name = dataset_name,
             filter_set_name = filter_set_name,
@@ -375,7 +375,7 @@ task CreateTables {
     }
 }
 
-task CollectStatisticsForChromosome {
+task CollectMetricsForChromosome {
     input {
         Boolean go = true
         String project_id
@@ -491,7 +491,7 @@ task CollectStatisticsForChromosome {
     }
 }
 
-task AggregateStatisticsAcrossChromosomes {
+task AggregateMetricsAcrossChromosomes {
     input {
         Boolean go
         String project_id
@@ -502,6 +502,8 @@ task AggregateStatisticsAcrossChromosomes {
         String aggregate_metrics_table
     }
     command <<<
+        set -o errexit -o nounset -o xtrace -o pipefail
+
         bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false '
         INSERT `~{project_id}.~{dataset_name}.~{aggregate_metrics_table}` (
             filter_set_name,
@@ -593,6 +595,42 @@ task CollectStatistics {
             CROSS JOIN medians
             WHERE filter_set_name = "~{filter_set_name}")
 
+        INSERT `~{project_id}.~{dataset_name}.~{statistics_table}` (
+            sample_id,
+            sample_name,
+            del_count,
+            m_del_count,
+            mad_del_count,
+            pass_del_count,
+            ins_count,
+            m_ins_count,
+            mad_ins_count,
+            pass_ins_count,
+            snp_count,
+            m_snp_count,
+            mad_snp_count,
+            pass_snp_count,
+            singleton,
+            m_singleton,
+            mad_singleton,
+            pass_singleton,
+            ins_del_ratio,
+            m_ins_del_ratio,
+            mad_ins_del_ratio,
+            pass_ins_del_ratio,
+            ti_tv_ratio,
+            m_ti_tv_ratio,
+            mad_ti_tv_ratio,
+            pass_ti_tv_ratio,
+            snp_het_homvar_ratio,
+            m_snp_het_homvar_ratio,
+            mad_snp_het_homvar_ratio,
+            pass_snp_het_homvar_ratio,
+            indel_het_homvar_ratio,
+            m_indel_het_homvar_ratio,
+            mad_indel_het_homvar_ratio,
+            pass_indel_het_homvar_ratio
+        )
         SELECT
             fss.sample_id,
             si.sample_name,
