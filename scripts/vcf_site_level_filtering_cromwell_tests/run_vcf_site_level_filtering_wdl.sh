@@ -35,8 +35,4 @@ echo "=================="
 echo "Running Filtering WDL through cromwell"
 ln -fs $WORKING_DIR/gatk/scripts/vcf_site_level_filtering_wdl/JointVcfFiltering.wdl
 cd $WORKING_DIR/gatk/scripts/vcf_site_level_filtering_wdl/
-grep MemTotal /proc/meminfo
-df -h
-java -jar $CROMWELL_JAR run JointVcfFiltering.wdl -i $WORKING_DIR/vcf_site_level_filtering_travis.json
-grep MemTotal /proc/meminfo
-df -h
+java -DLOG_LEVEL=DEBUG -jar $CROMWELL_JAR run JointVcfFiltering.wdl -i $WORKING_DIR/vcf_site_level_filtering_travis.json
