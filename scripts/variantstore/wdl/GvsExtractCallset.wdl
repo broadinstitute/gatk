@@ -25,7 +25,7 @@ workflow GvsExtractCallset {
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
     File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
-    File gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-552-g0f9780a-SNAPSHOT-local.jar"
+    File gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-613-g1219576-SNAPSHOT-local.jar"
 
     String output_file_base_name = filter_set_name
 
@@ -78,7 +78,6 @@ workflow GvsExtractCallset {
   call Utils.GetNumSamplesLoaded {
     input:
       fq_sample_table = fq_sample_table,
-      fq_sample_table_lastmodified_timestamp = SamplesTableDatetimeCheck.last_modified_timestamp,
       project_id = project_id,
       control_samples = control_samples
   }
@@ -199,8 +198,10 @@ workflow GvsExtractCallset {
   output {
     Array[File] output_vcfs = ExtractTask.output_vcf
     Array[File] output_vcf_indexes = ExtractTask.output_vcf_index
+    Array[File] output_vcf_interval_files = SplitIntervals.interval_files
     Float total_vcfs_size_mb = SumBytes.total_mb
     File manifest = CreateManifest.manifest
+    File? sample_name_list = GenerateSampleListFile.sample_name_list
     Boolean done = true
   }
 }

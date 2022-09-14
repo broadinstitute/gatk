@@ -357,7 +357,6 @@ task ScaleXYBedValues {
 task GetNumSamplesLoaded {
   input {
     String fq_sample_table
-    String fq_sample_table_lastmodified_timestamp
     String project_id
     Boolean control_samples = false
   }
@@ -366,15 +365,17 @@ task GetNumSamplesLoaded {
   }
 
   command <<<
-    set -e
+    set -o errexit -o nounset -o xtrace -o pipefail
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
-    bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false \
-      'SELECT COUNT(*) as num_rows FROM `~{fq_sample_table}` WHERE is_loaded = true and is_control = ~{control_samples}' > num_rows.csv
+    bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false '
 
-    NUMROWS=$(python3 -c "csvObj=open('num_rows.csv','r');csvContents=csvObj.read();print(csvContents.split('\n')[1]);")
+      SELECT COUNT(*) FROM `~{fq_sample_table}` WHERE
+        is_loaded = true AND
+        withdrawn IS NULL AND
+        is_control = ~{control_samples}
 
-    [[ $NUMROWS =~ ^[0-9]+$ ]] && echo $NUMROWS || exit 1
+    ' | sed 1d
   >>>
 
   output {

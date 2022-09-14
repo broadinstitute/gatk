@@ -41,22 +41,21 @@ workflow GvsPopulateAltAllele {
       fq_table = fq_alt_allele_table
   }
 
-  scatter (idx in range(length(GetVetTableNames.vet_tables))) {
+  scatter (vet_table_names_file in GetVetTableNames.vet_table_names_files) {
     call PopulateAltAlleleTable {
       input:
         call_set_identifier = call_set_identifier,
         dataset_name = dataset_name,
         project_id = project_id,
         create_table_done = CreateAltAlleleTable.done,
-        vet_table_names_file = GetVetTableNames.vet_tables[idx],
+        vet_table_names_file = vet_table_names_file,
         last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
         max_sample_id = GetMaxSampleId.max_sample_id
     }
   }
 
   output {
-    Array[String] vet_tables_loaded = PopulateAltAlleleTable.done
-    Boolean done = true
+    Boolean done = PopulateAltAlleleTable.done[0]
   }
 }
 
@@ -147,7 +146,7 @@ task GetVetTableNames {
   }
 
   output {
-    Array[File] vet_tables = glob("vet_tables_*")
+    Array[File] vet_table_names_files = glob("vet_tables_*")
   }
 }
 
@@ -158,7 +157,8 @@ task CreateAltAlleleTable {
     String project_id
   }
   meta {
-    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
+    # should always be run; if the table already exists, no harm no foul
+    volatile: true
   }
 
   # add labels for DSP Cloud Cost Control Labeling and Reporting
@@ -222,18 +222,18 @@ task PopulateAltAlleleTable {
 
     String last_modified_timestamp
   }
-  Array[String] vet_table_names = read_lines(vet_table_names_file)
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
+
+  Array[String] vet_table_names = read_lines(vet_table_names_file)
 
   command <<<
     set -o errexit -o nounset -o xtrace -o pipefail
 
     VET_TABLES_ARRAY=(~{sep=" " vet_table_names})
 
-    for i in "${!VET_TABLES_ARRAY[@]}"; do
-      vet_table="${VET_TABLES_ARRAY[$i]}"
+    for vet_table in "${VET_TABLES_ARRAY[@]}"; do
       python3 /app/populate_alt_allele_table.py \
         --call_set_identifier ~{call_set_identifier} \
         --query_project ~{project_id} \
@@ -243,13 +243,13 @@ task PopulateAltAlleleTable {
     done
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_08_22"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:vs_581_fix_withdrawn"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     cpu: 1
   }
 
   output {
-    String done = "~{sep=' ' vet_table_names}"
+    Boolean done = true
   }
 }

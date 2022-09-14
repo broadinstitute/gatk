@@ -15,7 +15,7 @@ workflow GvsCreateFilterSet {
     Array[String] snp_recalibration_annotation_values = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"]
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
-    File gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-552-g0f9780a-SNAPSHOT-local.jar"
+    File gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-613-g1219576-SNAPSHOT-local.jar"
 
     Int? INDEL_VQSR_max_gaussians_override = 4
     Int? INDEL_VQSR_mem_gb_override
@@ -63,7 +63,6 @@ workflow GvsCreateFilterSet {
   call Utils.GetNumSamplesLoaded {
     input:
       fq_sample_table = fq_sample_table,
-      fq_sample_table_lastmodified_timestamp = SamplesTableDatetimeCheck.last_modified_timestamp,
       project_id = project_id
   }
 

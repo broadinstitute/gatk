@@ -338,7 +338,7 @@ public class ExtractCohort extends ExtractTool {
         }
 
         sampleList = new SampleList(sampleTableName, sampleFileName, projectID, printDebugInformation, "extract-cohort");
-        Map<Long, String> sampleIdToName = sampleList.getMap();
+        Map<Long, String> sampleIdToName = sampleList.getSampleIdToNameMap();
 
         VCFHeader header = generateVcfHeader(new HashSet<>(sampleIdToName.values()), reference.getSequenceDictionary(), extraHeaderLines);
 
