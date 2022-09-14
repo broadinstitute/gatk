@@ -243,11 +243,9 @@ task testOnPackagedReleaseJar(type: Test){
 
             '-Dio.netty.tryReflectionSetAccessible=true'
     ]
-    System.out.println("All JVM args: ");
-    allJvmArgs.forEach(a -> System.out.println(a))
 
     //classpath = files(testDependencyJar)
-    classpath = files( gatkJar, testClassesJar, testDependencyJar)
+    classpath = files( testClassesJar, testDependencyJar, gatkJar )
     testClassesDirs = files(testClassesUnpacked)
 }
 
