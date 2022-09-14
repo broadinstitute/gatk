@@ -248,8 +248,8 @@ task testOnPackagedReleaseJar(type: Test){
     ]
 
     //classpath = files(testDependencyJar)
-    classpath = files( testClassesJar, testDependencyJar, gatkJar )
-    testClassesDirs = files(testClassesUnpacked)
+    classpath = files( gatkJar, testClassesJar, testDependencyJar )
+    //testClassesDirs = files(testClassesUnpacked)
 }
 
 //task fatTestJar(type: Jar) {
