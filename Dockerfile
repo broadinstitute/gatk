@@ -104,7 +104,7 @@ RUN echo "source activate gatk" > /root/run_unit_tests.sh && \
     echo "mkdir /gatk/srcdir" >> /root/run_unit_tests.sh && \
     echo "cp -rp /gatkCloneMountPoint/src/main/java/* /gatk/srcdir" >> /root/run_unit_tests.sh && \
     echo "export SOURCE_DIR=/gatk/srcdir" >> /root/run_unit_tests.sh && \
-    echo "export GRADLE_OPTS=\"-Xmx1024m -Dorg.gradle.daemon=false\"" >> /root/run_unit_tests.sh && \
+    echo "export GRADLE_OPTS=\"-Xmx1024m -Dorg.gradle.daemon=false --add-opens java.prefs/java.util.prefs=ALL-UNNAMED\"" >> /root/run_unit_tests.sh && \
     echo "export CP_DIR=/gatk/testClasses" >> /root/run_unit_tests.sh && \
     echo "ln -s /gatkCloneMountPoint/src/ /gatkCloneMountPoint/scripts/docker/src" >> /root/run_unit_tests.sh && \
     echo "ln -s /gatkCloneMountPoint/build/ /gatkCloneMountPoint/scripts/docker/build" >> /root/run_unit_tests.sh && \
