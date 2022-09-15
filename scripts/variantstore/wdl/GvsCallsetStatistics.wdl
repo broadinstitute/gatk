@@ -391,6 +391,17 @@ task CollectMetricsForChromosome {
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
         bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false '
+            SELECT COUNT(*) from `~{project_id}.~{dataset_name}.~{metrics_table}` WHERE chromosome = ~{chromosome}
+        ' | sed 1d > existing_row_count.txt
+
+        existing_row_count=$(cat existing_row_count.txt)
+
+        if [ $existing_row_count -gt 0 ]; then
+            echo "Found $existing_row_count rows in '~{project_id}.~{dataset_name}.~{metrics_table}' for chromosome '~{chromosome}', exiting."
+            exit 1
+        fi
+
+        bq query --location=US --project_id=~{project_id} --use_legacy_sql=false '
         CREATE TEMPORARY FUNCTION titv(ref STRING, allele STRING)
         RETURNS STRING
             LANGUAGE js AS """
@@ -505,6 +516,17 @@ task AggregateMetricsAcrossChromosomes {
         set -o errexit -o nounset -o xtrace -o pipefail
 
         bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false '
+            SELECT COUNT(*) from `~{project_id}.~{dataset_name}.~{aggregate_metrics_table}`
+        ' | sed 1d > existing_row_count.txt
+
+        existing_row_count=$(cat existing_row_count.txt)
+
+        if [ $existing_row_count -gt 0 ]; then
+            echo "Found $existing_row_count rows in '~{project_id}.~{dataset_name}.~{aggregate_metrics_table}', exiting."
+            exit 1
+        fi
+
+        bq query --location=US --project_id=~{project_id} --use_legacy_sql=false '
         INSERT `~{project_id}.~{dataset_name}.~{aggregate_metrics_table}` (
             filter_set_name,
             sample_id,
@@ -562,40 +584,17 @@ task CollectStatistics {
         set -o errexit -o nounset -o xtrace -o pipefail
 
         bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false '
+            SELECT COUNT(*) from `~{project_id}.~{dataset_name}.~{statistics_table}`
+        ' | sed 1d > existing_row_count.txt
 
-        WITH fss AS (
-          SELECT *,
-                 (ins_count / del_count) as ins_del_ratio,
-                 (ti_count / tv_count) as ti_tv_ratio,
-                 (snp_het_count / snp_homvar_count) snp_het_homvar_ratio,
-                 (indel_het_count / indel_homvar_count) as indel_het_homvar_ratio
-          FROM `~{project_id}.~{dataset_name}.~{aggregate_metrics_table}`
-          WHERE filter_set_name = "~{filter_set_name}"),
-        medians AS (
-            SELECT
-                `bqutil`.fn.median(ARRAY_AGG(del_count IGNORE NULLS)) as m_del_count,
-                `bqutil`.fn.median(ARRAY_AGG(ins_count IGNORE NULLS)) as m_ins_count,
-                `bqutil`.fn.median(ARRAY_AGG(snp_count IGNORE NULLS)) as m_snp_count,
-                `bqutil`.fn.median(ARRAY_AGG(singleton IGNORE NULLS)) as m_singleton,
-                `bqutil`.fn.median(ARRAY_AGG(ins_del_ratio IGNORE NULLS)) as m_ins_del_ratio,
-                `bqutil`.fn.median(ARRAY_AGG(ti_tv_ratio IGNORE NULLS)) as m_ti_tv_ratio,
-                `bqutil`.fn.median(ARRAY_AGG(snp_het_homvar_ratio IGNORE NULLS)) as m_snp_het_homvar_ratio,
-                `bqutil`.fn.median(ARRAY_AGG(indel_het_homvar_ratio IGNORE NULLS)) as m_indel_het_homvar_ratio
-            FROM fss),
-        mads AS (
-            SELECT
-                `bqutil`.fn.median(ARRAY_AGG(ABS(del_count - m_del_count) IGNORE NULLS)) as mad_del_count,
-                `bqutil`.fn.median(ARRAY_AGG(ABS(ins_count - m_ins_count) IGNORE NULLS)) as mad_ins_count,
-                `bqutil`.fn.median(ARRAY_AGG(ABS(snp_count - m_snp_count) IGNORE NULLS)) as mad_snp_count,
-                `bqutil`.fn.median(ARRAY_AGG(ABS(singleton - m_singleton) IGNORE NULLS)) as mad_singleton,
-                `bqutil`.fn.median(ARRAY_AGG(ABS(ins_del_ratio - m_ins_del_ratio) IGNORE NULLS)) as mad_ins_del_ratio,
-                `bqutil`.fn.median(ARRAY_AGG(ABS(ti_tv_ratio - m_ti_tv_ratio) IGNORE NULLS)) as mad_ti_tv_ratio,
-                `bqutil`.fn.median(ARRAY_AGG(ABS(snp_het_homvar_ratio - m_snp_het_homvar_ratio) IGNORE NULLS)) as mad_snp_het_homvar_ratio,
-                `bqutil`.fn.median(ARRAY_AGG(ABS(indel_het_homvar_ratio - m_indel_het_homvar_ratio) IGNORE NULLS)) as mad_indel_het_homvar_ratio
-            FROM fss
-            CROSS JOIN medians
-            WHERE filter_set_name = "~{filter_set_name}")
+        existing_row_count=$(cat existing_row_count.txt)
 
+        if [ $existing_row_count -gt 0 ]; then
+            echo "Found $existing_row_count rows in '~{project_id}.~{dataset_name}.~{statistics_table}', exiting."
+            exit 1
+        fi
+
+        bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false '
         INSERT `~{project_id}.~{dataset_name}.~{statistics_table}` (
             sample_id,
             sample_name,
@@ -632,6 +631,39 @@ task CollectStatistics {
             mad_indel_het_homvar_ratio,
             pass_indel_het_homvar_ratio
         )
+
+        WITH fss AS (
+          SELECT *,
+                 (ins_count / del_count) as ins_del_ratio,
+                 (ti_count / tv_count) as ti_tv_ratio,
+                 (snp_het_count / snp_homvar_count) snp_het_homvar_ratio,
+                 (indel_het_count / indel_homvar_count) as indel_het_homvar_ratio
+          FROM `~{project_id}.~{dataset_name}.~{aggregate_metrics_table}`
+          WHERE filter_set_name = "~{filter_set_name}"),
+        medians AS (
+            SELECT
+                `bqutil`.fn.median(ARRAY_AGG(del_count IGNORE NULLS)) as m_del_count,
+                `bqutil`.fn.median(ARRAY_AGG(ins_count IGNORE NULLS)) as m_ins_count,
+                `bqutil`.fn.median(ARRAY_AGG(snp_count IGNORE NULLS)) as m_snp_count,
+                `bqutil`.fn.median(ARRAY_AGG(singleton IGNORE NULLS)) as m_singleton,
+                `bqutil`.fn.median(ARRAY_AGG(ins_del_ratio IGNORE NULLS)) as m_ins_del_ratio,
+                `bqutil`.fn.median(ARRAY_AGG(ti_tv_ratio IGNORE NULLS)) as m_ti_tv_ratio,
+                `bqutil`.fn.median(ARRAY_AGG(snp_het_homvar_ratio IGNORE NULLS)) as m_snp_het_homvar_ratio,
+                `bqutil`.fn.median(ARRAY_AGG(indel_het_homvar_ratio IGNORE NULLS)) as m_indel_het_homvar_ratio
+            FROM fss),
+        mads AS (
+            SELECT
+                `bqutil`.fn.median(ARRAY_AGG(ABS(del_count - m_del_count) IGNORE NULLS)) as mad_del_count,
+                `bqutil`.fn.median(ARRAY_AGG(ABS(ins_count - m_ins_count) IGNORE NULLS)) as mad_ins_count,
+                `bqutil`.fn.median(ARRAY_AGG(ABS(snp_count - m_snp_count) IGNORE NULLS)) as mad_snp_count,
+                `bqutil`.fn.median(ARRAY_AGG(ABS(singleton - m_singleton) IGNORE NULLS)) as mad_singleton,
+                `bqutil`.fn.median(ARRAY_AGG(ABS(ins_del_ratio - m_ins_del_ratio) IGNORE NULLS)) as mad_ins_del_ratio,
+                `bqutil`.fn.median(ARRAY_AGG(ABS(ti_tv_ratio - m_ti_tv_ratio) IGNORE NULLS)) as mad_ti_tv_ratio,
+                `bqutil`.fn.median(ARRAY_AGG(ABS(snp_het_homvar_ratio - m_snp_het_homvar_ratio) IGNORE NULLS)) as mad_snp_het_homvar_ratio,
+                `bqutil`.fn.median(ARRAY_AGG(ABS(indel_het_homvar_ratio - m_indel_het_homvar_ratio) IGNORE NULLS)) as mad_indel_het_homvar_ratio
+            FROM fss
+            CROSS JOIN medians
+            WHERE filter_set_name = "~{filter_set_name}")
         SELECT
             fss.sample_id,
             si.sample_name,
