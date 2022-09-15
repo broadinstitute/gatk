@@ -636,6 +636,7 @@ task shadowTestClassJar(type: ShadowJar){
 
 // A minimal jar that only contains the extra dependencies needed for running the tests
 task shadowTestJar(type: ShadowJar){
+    dependsOn 'compileTestUtilsJava', 'processTestUtilsResources'
     group = "Shadow"
     description = " A minimal jar that only contains the extra dependencies needed for running the tests that arent packaged in the main shadow jar"
     from {
