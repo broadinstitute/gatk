@@ -35,4 +35,4 @@ echo "=================="
 echo "Running Filtering WDL through cromwell"
 ln -fs $WORKING_DIR/gatk/scripts/vcf_site_level_filtering_wdl/JointVcfFiltering.wdl
 cd $WORKING_DIR/gatk/scripts/vcf_site_level_filtering_wdl/
-java -DLOG_LEVEL=TRACE -jar $CROMWELL_JAR run JointVcfFiltering.wdl -i $WORKING_DIR/vcf_site_level_filtering_travis.json
+java -jar $CROMWELL_JAR run JointVcfFiltering.wdl -i $WORKING_DIR/vcf_site_level_filtering_travis.json
