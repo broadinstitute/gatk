@@ -37,6 +37,7 @@ public final class PileupDetectionArgumentCollection {
 
 
     public static final String GENERATE_PARTIALLY_DETERMINED_HAPLOTYPES_LONG_NAME = "use-pdhmm";
+    public static final String DETERMINE_PD_HAPS = "determine-pd-haps";
 
     /**
      * Enables pileup-based haplotype creation and variant detection
@@ -53,6 +54,14 @@ public final class PileupDetectionArgumentCollection {
     @Advanced
     @Argument(fullName= GENERATE_PARTIALLY_DETERMINED_HAPLOTYPES_LONG_NAME, doc = "", optional = true)
     public boolean generatePDHaplotypes = true;
+    /**
+     * TODO
+     */
+    @Advanced
+    @Hidden
+    @Argument(fullName= DETERMINE_PD_HAPS, doc = "", optional = true)
+    public boolean determinePDHaps = false;
+
 
 
     /**

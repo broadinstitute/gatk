@@ -2088,10 +2088,10 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         final String[] args = {
                 "-R","gs://gcp-public-data--broad-references/hg38/v0/dragen_reference/Homo_sapiens_assembly38_masked.fasta",
                 "-I","gs://fc-971fd540-210c-4e5a-87ce-d3f8c91c7557/4a7a7960-9271-4e78-bf18-971c4394e752/WholeGenomeGermlineSingleSample/c7084036-2d6b-415d-8d7c-58008ef9e7d4/call-UnmappedBamToAlignedBam/UnmappedBamToAlignedBam/53564b5f-c104-4c3b-a568-4732574e9124/call-SortSampleBam/HG002_rep1.aligned.duplicate_marked.sorted.bam",
-                "-L","chr1:67,479,743-67,479,983",
+                "-L","chr1:90571765-90572037",
                 "-O",outputPath,
                 "--pileup-detection","--pileup-detection-bad-read-tolerance","0.40","--pileup-detection-enable-indel-pileup-calling",
-                "-contamination","0.0 ",
+                "-contamination","0.0 ", "--enable-legacy-assembly-region-trimming",
                 "-G","StandardAnnotation","-G","StandardHCAnnotation",
                 "--dragen-mode",
                 "--disable-spanning-event-genotyping",

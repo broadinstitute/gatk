@@ -401,24 +401,7 @@ public final class AssemblyBasedCallerUtils {
                     .filter(v -> PileupBasedAlleles.passesFilters(argumentCollection.pileupDetectionArgs, v))
                     .collect(Collectors.toList());
 
-            // Prepwork for the PDHMM, this calls into the code responsible for re-computing the PD haplotypes based on reference
-            if (argumentCollection.pileupDetectionArgs.generatePDHaplotypes) {
-                SortedSet<VariantContext> assemblyVariants = assemblyResultSet.getVariationEvents(0);
-
-                //todo make this debug output linked in with everything else
-                System.out.println("Generating PDHaplotypes for PDHMM");
-                System.out.println("Assembled Variants to use:");
-                assemblyVariants.forEach(System.out::println);
-                System.out.println("Pileup Variants to use:");
-                forcedPileupAlleles.forEach(System.out::println);
-                System.out.println("Adding Variants To Reference Haplotype:");
-                System.out.println(assemblyResultSet.getReferenceHaplotype());
-                //TODO this is where the trimming should happen...
-
-                return PartiallyDeterminedHaplotypeComputationEngine.generatePDHaplotypes(assemblyResultSet, assemblyResultSet.getReferenceHaplotype(), assemblyVariants, pileupAllelesFoundShouldFilter, pileupAllelesPassingFilters, argumentCollection.pileupDetectionArgs.snpAdajacentToAssemblyIndel);
-            }
-
-            if (!pileupAllelesFoundShouldFilter.isEmpty()) {
+            if (!pileupAllelesFoundShouldFilter.isEmpty() && !argumentCollection.pileupDetectionArgs.generatePDHaplotypes) {
                 // TODO this is a bad algorithm for bad people
                 for(VariantContext delVariant : pileupAllelesFoundShouldFilter) {
                     for (Haplotype hap : assemblyResultSet.getHaplotypeList()) {
@@ -439,13 +422,13 @@ public final class AssemblyBasedCallerUtils {
             }
 
             // TODO removing haplotypes whole cloth is dangerous and might have to be fixed
-            if (!haplotypesWithFilterAlleles.isEmpty()) {
+            if (!argumentCollection.pileupDetectionArgs.generatePDHaplotypes && !haplotypesWithFilterAlleles.isEmpty()) {
                 for (Haplotype hap : haplotypesWithFilterAlleles) {
                     assemblyResultSet.removeHapltotype(hap);
                 }
             }
 
-            if (!pileupAllelesPassingFilters.isEmpty()) {
+            if (!argumentCollection.pileupDetectionArgs.generatePDHaplotypes && !pileupAllelesPassingFilters.isEmpty()) {
                 processPileupAlleles(region, pileupAllelesPassingFilters, argumentCollection.pileupDetectionArgs.snpAdajacentToAssemblyIndel, argumentCollection.maxMnpDistance, aligner, refHaplotype, assemblyResultSet, argumentCollection.pileupDetectionArgs.numHaplotypesToIterate, argumentCollection.pileupDetectionArgs.filteringKmerSize, argumentCollection.getHaplotypeToReferenceSWParameters());
             }
             assemblyResultSet.setDebug(argumentCollection.assemblerArgs.debugAssembly);

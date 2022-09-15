@@ -654,7 +654,22 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             }
         }
 
-        final SortedSet<VariantContext> allVariationEvents = untrimmedAssemblyResult.getVariationEvents(hcArgs.maxMnpDistance);
+        // PILEUP CALLER EVENTS IF SHOULD
+        List<VariantContext> pileupAllelesFoundShouldFilter = forcedPileupAlleles.stream()
+                .filter(v -> PileupBasedAlleles.shouldFilterAssemblyVariant(hcArgs.pileupDetectionArgs, v))
+                .collect(Collectors.toList());
+        List<VariantContext> pileupAllelesPassingFilters = forcedPileupAlleles.stream()
+                .filter(v -> PileupBasedAlleles.passesFilters(hcArgs.pileupDetectionArgs, v))
+                .collect(Collectors.toList());
+
+        final SortedSet<VariantContext> allVariationEvents = new TreeSet<>(
+                AssemblyResultSet.HAPLOTYPE_VARIANT_CONTEXT_COMPARATOR);
+        allVariationEvents.addAll(untrimmedAssemblyResult.getVariationEvents(hcArgs.maxMnpDistance).stream()
+                .filter(v -> { return pileupAllelesFoundShouldFilter.stream().anyMatch(filterAllle -> filterAllle.getStart() == v.getStart()
+                        && filterAllle.getReference().equals(v.getReference())
+                        && filterAllle.getAlternateAllele(0).equals(v.getAlternateAllele(0)));
+                }).collect(Collectors.toList()));
+        allVariationEvents.addAll(pileupAllelesPassingFilters);
         for (final VariantContext given : givenAlleles) {
             //these are events from single haplotypes, so we can do a simple comparison without trimming
             if (allVariationEvents.stream().noneMatch(vc -> vc.getStart() == given.getStart() && vc.getAlternateAllele(0).basesMatch(given.getAlternateAllele(0)))) {
@@ -668,8 +683,36 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             return referenceModelForNoVariation(region, false, VCpriors);
         }
 
-        final AssemblyResultSet assemblyResult = untrimmedAssemblyResult.trimTo(trimmingResult.getVariantRegion());
+        //TODO refinal
+        AssemblyResultSet assemblyResult = untrimmedAssemblyResult.trimTo(trimmingResult.getVariantRegion());
         AssemblyBasedCallerUtils.addGivenAlleles(givenAlleles, hcArgs.maxMnpDistance, aligner, hcArgs.getHaplotypeToReferenceSWParameters(), assemblyResult);
+
+        // Prepwork for the PDHMM, this calls into the code responsible for re-computing the PD haplotypes based on reference
+        if (hcArgs.pileupDetectionArgs.generatePDHaplotypes) {
+            SortedSet<VariantContext> assemblyVariants = assemblyResult.getVariationEvents(0);
+
+            //todo make this debug output linked in with everything else
+            System.out.println("Generating PDHaplotypes for PDHMM");
+            System.out.println("Assembled Variants to use:");
+            assemblyVariants.forEach(System.out::println);
+            System.out.println("Pileup Variants to use:");
+            forcedPileupAlleles.forEach(System.out::println);
+            System.out.println("Adding Variants To Reference Haplotype:");
+            System.out.println(assemblyResult.getReferenceHaplotype());
+            System.out.println("FinalSpan: "+assemblyResult.getReferenceHaplotype().getGenomeLocation());
+            //TODO this is where the trimming should happen...
+
+            assemblyResult = PartiallyDeterminedHaplotypeComputationEngine.generatePDHaplotypes(assemblyResult,
+                    assemblyResult.getReferenceHaplotype(),
+                    assemblyVariants,
+                    pileupAllelesFoundShouldFilter,
+                    pileupAllelesPassingFilters,
+                    hcArgs.pileupDetectionArgs.snpAdajacentToAssemblyIndel,
+                    aligner,
+                    hcArgs.getHaplotypeToReferenceSWParameters(),
+                    hcArgs.pileupDetectionArgs.determinePDHaps);
+        }
+
 
         final AssemblyRegion regionForGenotyping = assemblyResult.getRegionForGenotyping();
         final List<GATKRead> readStubs = regionForGenotyping.getReads().stream()
