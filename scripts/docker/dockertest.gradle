@@ -248,7 +248,7 @@ task testOnPackagedReleaseJar(type: Test){
     ]
 
     //classpath = files(testDependencyJar)
-    classpath = files( gatkJar, testDependencyJar, testClassesJar)
+    classpath = files( gatkJar, testClassesJar, testDependencyJar)
     testClassesDirs = files(testClassesUnpacked)
 }
 
