@@ -189,11 +189,16 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
                                                final File denoisedCopyRatiosFile,
                                                final File allelicCountsFile,
                                                final File normalAllelicCountsFile) {
-        System.err.println("CopyNumberTestUtils Version Test: " + CopyNumberTestUtils.COPY_TEST_UTILS_VERSION);
-        System.err.println("Implementation Version: " + this.getClass().getPackage().getImplementationVersion());
-        System.err.println("Packages:");
-        this.getClass().getClassLoader().getUnnamedModule().getPackages().stream().forEach(p -> System.err.println(p));
-        System.err.println("End Packages:");
+        if (true) {
+            final String s =
+                    this.getClass().getClassLoader().getUnnamedModule().getPackages().stream().collect(Collectors.joining("\n"));
+            throw new IllegalArgumentException(
+                    "CopyNumberTestUtils Version Test: "
+                            + CopyNumberTestUtils.COPY_TEST_UTILS_VERSION
+                            + "Implementation Version: "
+                            + this.getClass().getPackage().getImplementationVersion() +
+                            "\n" + s);
+        }
 
         final File outputDir = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? EXACT_MATCH_EXPECTED_SUB_DIR : createTempDir("testDir");
         final ArgumentsBuilder argsBuilder = buildArgsBuilderSingleSample(
