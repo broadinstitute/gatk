@@ -6,7 +6,7 @@ workflow GvsExtractAvroFilesForHail {
         String dataset
         String filter_set_name
         String gcs_temporary_path
-        String scatter_width = 5
+        String scatter_width = 10
     }
 
     call OutputPath { input: go = true }
