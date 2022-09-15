@@ -47,7 +47,7 @@ def compare_gvs_vcf_with_vds_vcf(gvs_vcf, vds_vcf, skip_gvs_filtered_lines):
 
                 locus = gvs_tokens[0] + ":" + gvs_tokens[1]
                 # print(f"{locus}")
-                # if (int(gvs_tokens[1]) < 30011616):
+                # if (int(gvs_tokens[1]) < 280726):
                 #     gvs_line = gvs.readline().rstrip()
                 #     vds_line = vds.readline().rstrip()
                 #     continue
@@ -63,7 +63,17 @@ def compare_gvs_vcf_with_vds_vcf(gvs_vcf, vds_vcf, skip_gvs_filtered_lines):
                         sys.exit(1)
 
                 # Alt Alleles!
+                # g = gvs_tokens[4].split(",")
+                # v = vds_tokens[4].split(",")
+                # print(f"-> {gvs_tokens[4]}, {g}")
+                # print(f"-> {vds_tokens[4]}, {v}")
+                # g.sort()
+                # v.sort()
+                # print(f"-> {gvs_tokens[4]}, {g}")
+                # print(f"-> {vds_tokens[4]}, {v}")
+
                 gvs_tokens[4], gvs_old_alt_allele_index_to_new = reorder_gvs_alt_alleles(gvs_tokens[4])
+                # print(f"-> {gvs_old_alt_allele_index_to_new}")
                 if (gvs_tokens[4] != vds_tokens[4]):
                     print(f"DIFF: ALT differs between VCF line:\n{gvs_tokens[4]} vs {vds_tokens[4]}")
                     if not args.report_all_diffs:
@@ -128,14 +138,28 @@ def compare_gvs_vcf_with_vds_vcf(gvs_vcf, vds_vcf, skip_gvs_filtered_lines):
                         if not args.report_all_diffs:
                             sys.exit(1)
 
+                    # Note on comparison here.
+                    # Reorder GT string from GVS based on difference ordering of ALT alleles between GVS and VDS
+                    # if VDS.LA and VDS.GT are both not "." (empty/missing)
+                    # then generate NEW.VDS.GT using VDS.LGT and VDS.LA
+                    # If the GT in the VDS generated VCF is "./."" AND VDS.FT == "FAIL" then VDS.GT = NEW.VDS.GT
+                    # if VDS.GT != GVS.GT that's a difference (unless they are phased
+
+
                     # NOTE: More complex rules for GT
                     gvs_gt = reorder_gvs_gts(gvs_sample_genotypes["GT"], gvs_old_alt_allele_index_to_new)
-                    vds_gt = vds_sample_genotypes["GT"]
+                    vds_la = vds_sample_genotypes["LA"]
                     vds_lgt = vds_sample_genotypes["LGT"]
+                    vds_gt = vds_sample_genotypes["GT"]
+                    new_vds_gt = vds_gt
+                    if (vds_la != "." and vds_lgt != "."):
+                        new_vds_gt = calculate_vds_gt_lgt(vds_lgt, vds_la)
+
                     if (vds_gt == "./." and vds_ft == "FAIL"):
                         # NOTE/HMM. In the VDS we no call a genotype if the FT is a FAIL, the original genotype is in LGT.
-                        vds_gt = vds_lgt
-                    if (gvs_gt != vds_gt):
+                        vds_gt = new_vds_gt
+                    if not compare_gts(gvs_gt, vds_gt):
+                    # if (gvs_gt != vds_gt):
                         print(f"\nDIFF: Locus {locus}, Sample {sample} Value for GT differs between gvs and vds: {gvs_gt} vs {vds_gt}")
                         print(f"Locus {locus}.  gvs FORMAT: {gvs_tokens[8]} vds FORMAT: {vds_tokens[8]}")
                         print(f"Sample {sample}.    gvs sample: {gvs_tokens[gvs_sample_to_column[sample]]}  vds_sample: {vds_tokens[vds_sample_to_column[sample]]}")
@@ -146,8 +170,6 @@ def compare_gvs_vcf_with_vds_vcf(gvs_vcf, vds_vcf, skip_gvs_filtered_lines):
                     simple_diff(gvs_sample_genotypes, vds_sample_genotypes, "RGQ", locus, sample)
 
                     ## AD
-                    # gvs_ad = gvs_sample_tokens[gvs_format_fields_to_column["AD"]]
-                    # vds_ad = vds_sample_tokens[vds_format_fields_to_column["LAD"]]
                     gvs_ad = gvs_sample_genotypes["AD"]
                     vds_ad = vds_sample_genotypes["LAD"]
                     if (gvs_ad != vds_ad):
@@ -160,15 +182,44 @@ def compare_gvs_vcf_with_vds_vcf(gvs_vcf, vds_vcf, skip_gvs_filtered_lines):
                 gvs_line = gvs.readline().rstrip()
                 vds_line = vds.readline().rstrip()
                 # if count > 10000:
-                #     sys.exit(1)
+                # sys.exit(1)
 
             exit(0)
 
+def compare_gts(gvs_gt, vds_gt):
+    if (gvs_gt == vds_gt):
+        return True
+
+    tmp = gvs_gt.split("/")
+    if len(tmp) != 2:
+        print(f"GVS GT {gt} does not two elements - are these phased genotypes?? ('|' separator)")
+        sys.exit(1)
+    flipped_gvs_gt = tmp[1] + "/" + tmp[0]
+    return flipped_gvs_gt == vds_gt
+
+def calculate_vds_gt_lgt(lgt, la):
+    # VDS stores the LGT field (which is the 'local genotypes') this represents the GT field as for ONLY the alleles available for the sample in question.
+    # We convert this to GT using LGT and the LA ('local alleles') field
+    local_alleles = la.split(",")       # looks like "0,2" or "0,1,2"
+    if len(local_alleles) != 2 and len(local_alleles) != 3:
+        print(f"LA {la} does not have exactly two OR three elements!")
+        sys.exit(1)
+    local_gts = lgt.split("/")          # looks like "0/1"
+    if len(local_gts) != 2:
+        print(f"LGT {lgt} does not have exactly two elements!  - are these phased genotypes?? ('|' separator)")
+        sys.exit(1)
+
+    gt = local_alleles[int(local_gts[0])] + "/" + local_alleles[int(local_gts[1])]
+    return gt
+
+
 def reorder_gvs_gts(gvs_gt, gvs_old_alt_allele_index_to_new):
     # Remap genotypes for difference in ALT allele ordering between gvs VCF and vds VCF
-    # TODO - need to handle "|"
     if gvs_gt != "./.":
         gvs_gts = gvs_gt.split("/")
+        if len(gvs_gts) != 2:
+            print(f"GVS GT {gvs_gt} does not two elements - are these phased genotypes?? ('|' separator)")
+            sys.exit(1)
         new_gvs_gts = []
         for i in range(0, len(gvs_gts)):
             gvs_gt = gvs_gts[i]
@@ -212,7 +263,6 @@ def simple_diff(gvs_dict, vds_dict, key, locus, sample):
         print(f"DIFF: Locus {locus}, Sample {sample} Value for {key} differs between gvs and vds:\n{gvs_value} vs {vds_value}")
         if not args.report_all_diffs:
             sys.exit(1)
-
 
 def get_sample_genotype_fields(format_fields_to_column, sample_genotype_string):
     tokens = sample_genotype_string.split(":")
@@ -265,7 +315,6 @@ if __name__ == '__main__':
     parser.add_argument("--report_all_diffs", action="store_true", help="Do NOT exit on the first difference found")
     args = parser.parse_args()
 
-    print(f"NOTE/TODO: If a VDS sample genotype record does not contain a FT field (it is missing or explicitly set to '.') then we are considering that a PASS")
-    print(f"NOTE/TODO: Not doing ANYTHING with the gds VCF's sample genotype record 'LA' field\n")
+    print(f"NOTE: If a VDS sample genotype record does not contain a FT field (it is missing or explicitly set to '.') then we are considering that a PASS")
 
     compare_gvs_vcf_with_vds_vcf(args.gvs_vcf, args.vds_vcf, args.skip_gvs_filtered_lines)
