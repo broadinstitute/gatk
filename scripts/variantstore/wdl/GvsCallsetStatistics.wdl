@@ -559,6 +559,7 @@ task CollectStatistics {
         String statistics_table
     }
     command <<<
+        set -o errexit -o nounset -o xtrace -o pipefail
 
         bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false '
 
