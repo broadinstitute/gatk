@@ -14,6 +14,8 @@ import java.util.stream.Collectors;
 
 public final class CopyNumberTestUtils {
 
+    public static String COPY_TEST_UTILS_VERSION = "CopyNumberTestUtils";
+
     /**
      * This test utility method asserts if two TSV files (each containing a header followed by a matrix of doubles)
      * are approximately equivalent, by checking if corresponding double values are equal up to some number of decimal

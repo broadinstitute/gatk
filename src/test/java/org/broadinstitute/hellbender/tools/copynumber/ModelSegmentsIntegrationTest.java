@@ -189,6 +189,12 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
                                                final File denoisedCopyRatiosFile,
                                                final File allelicCountsFile,
                                                final File normalAllelicCountsFile) {
+        System.out.println("CopyNumberTestUtils Version Test: " + CopyNumberTestUtils.COPY_TEST_UTILS_VERSION);
+        System.out.println("Implementation Version: " + this.getClass().getPackage().getImplementationVersion());
+        System.out.println("Packages:");
+        this.getClass().getClassLoader().getUnnamedModule().getPackages().stream().forEach(p -> System.out.println(p));
+        System.out.println("End Packages:");
+
         final File outputDir = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? EXACT_MATCH_EXPECTED_SUB_DIR : createTempDir("testDir");
         final ArgumentsBuilder argsBuilder = buildArgsBuilderSingleSample(
                 outputDir, outputPrefix, denoisedCopyRatiosFile, allelicCountsFile, normalAllelicCountsFile);
