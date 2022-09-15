@@ -24,6 +24,7 @@ task SNPsVariantRecalibratorCreateModel {
         Boolean use_allele_specific_annotations
         Int max_gaussians = 6
         Int sample_every_nth_variant = 1
+        Int maximum_training_variants = 2500000
         Int? machine_mem_gb
 
         Int disk_size
@@ -49,6 +50,7 @@ task SNPsVariantRecalibratorCreateModel {
         ~{true='--use-allele-specific-annotations' false='' use_allele_specific_annotations} \
         -mode SNP \
         --sample-every-Nth-variant ~{sample_every_nth_variant} \
+        --maximum-training-variants ~{maximum_training_variants} \
         --output-model ~{model_report_filename} \
         --max-gaussians ~{max_gaussians} \
         -resource:hapmap,known=false,training=true,truth=true,prior=15 ~{hapmap_resource_vcf} \
