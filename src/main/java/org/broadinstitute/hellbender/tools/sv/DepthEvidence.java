@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.sv;
 
+import htsjdk.samtools.util.Locatable;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -22,6 +23,10 @@ public final class DepthEvidence implements SVFeature {
         this.start = start;
         this.end = end;
         this.counts = counts;
+    }
+
+    public DepthEvidence( final Locatable loc, final int[] counts ) {
+        this(loc.getContig(), loc.getStart(), loc.getEnd(), counts);
     }
 
     @Override

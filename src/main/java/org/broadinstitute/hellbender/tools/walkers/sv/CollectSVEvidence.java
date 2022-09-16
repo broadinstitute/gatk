@@ -5,6 +5,7 @@ import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
+import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
@@ -14,6 +15,7 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.sv.DepthEvidence;
 import org.broadinstitute.hellbender.tools.sv.DiscordantPairEvidence;
 import org.broadinstitute.hellbender.tools.sv.SiteDepth;
 import org.broadinstitute.hellbender.tools.sv.SplitReadEvidence;
@@ -22,13 +24,16 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.codecs.*;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.util.*;
 import java.util.function.Predicate;
 
 import static org.broadinstitute.hellbender.utils.read.ReadUtils.isBaseInsideAdaptor;
 
 /**
- * Creates discordant read pair and split read evidence files for use in the GATK-SV pipeline.
+ * Creates discordant read pair, split read evidence, site depth, and read depth files for use in the GATK-SV pipeline.
  * This tool emulates the functionality of the "svtk collect-pesr" used in v1 of the GATK-SV pipeline.
  *
  * The first output file, which should be named "*.pe.txt" or "*.pe.txt.gz" is a tab-delimited file
@@ -58,20 +63,35 @@ import static org.broadinstitute.hellbender.utils.read.ReadUtils.isBaseInsideAda
  *     <li>sample name</li>
  * </ul>
  *
- * The third output file, which should be named "*.ac.txt" or "*.ac.txt.gz" specifies allele counts:
- * For each locus specified in an input VCF as a simple SNP, it gives a count, for each base, of the
- * number of reads that cover that locus.
+ * The third output file, which should be named "*.sd.txt" or "*.sd.txt.gz" specifies site depth counts:
+ * For each locus specified in an input VCF as a simple, biallelic SNP, it gives a count, for each
+ * base call, of the number of reads that cover that locus.
  * It has the following columns:
  *
  * <ul>
  *     <li>contig</li>
  *     <li>position</li>
- *     <li>ref allele</li>
+ *     <li>sampleName</li>
  *     <li>A observations</li>
  *     <li>C observations</li>
  *     <li>G observations</li>
  *     <li>T observations</li>
  * </ul>
+ *
+ * The fourth output file, which should be named "*.rd.txt" or "*.rd.txt.gz" specifies read depths:
+ * For each interval specified by a 3-column, tab delimited input file, the number of reads that
+ * start in that interval are reported.
+ * It has the following columns:
+ *
+ * <ul>
+ *     <li>contig</li>
+ *     <li>starting position</li>
+ *     <li>ending position</li>
+ *     <li>read count</li>
+ * </ul>
+ *
+ * Note: when only collecting RD evidence, users should consider providing the same interval list
+ * with -L as --depth-evidence-intervals in order to avoid processing unused reads outside the intervals.
  *
  * Each of these output files may also be written as a block-compressed interval file, rather than
  * as a tab-delimited text file by specifying an output file name that ends with ".bci" rather than
@@ -92,10 +112,19 @@ public class CollectSVEvidence extends ReadWalker {
     public static final String PAIRED_END_FILE_ARGUMENT_LONG_NAME = "pe-file";
     public static final String SPLIT_READ_FILE_ARGUMENT_SHORT_NAME = "SR";
     public static final String SPLIT_READ_FILE_ARGUMENT_LONG_NAME = "sr-file";
-    public static final String ALLELE_COUNT_OUTPUT_ARGUMENT_SHORT_NAME = "AC";
-    public static final String ALLELE_COUNT_OUTPUT_ARGUMENT_LONG_NAME = "allele-count-file";
-    public static final String ALLELE_COUNT_INPUT_ARGUMENT_SHORT_NAME = "F";
-    public static final String ALLELE_COUNT_INPUT_ARGUMENT_LONG_NAME = "allele-count-vcf";
+    public static final String SITE_DEPTH_OUTPUT_ARGUMENT_SHORT_NAME = "SD";
+    public static final String SITE_DEPTH_OUTPUT_ARGUMENT_LONG_NAME = "sd-file";
+    public static final String SITE_DEPTH_INPUT_ARGUMENT_SHORT_NAME = "F";
+    public static final String SITE_DEPTH_INPUT_ARGUMENT_LONG_NAME = "site-depth-locs-vcf";
+    public static final String DEPTH_EVIDENCE_OUTPUT_FILE_ARGUMENT_SHORT_NAME = "RD";
+    public static final String DEPTH_EVIDENCE_OUTPUT_FILE_ARGUMENT_LONG_NAME = "depth-evidence-file";
+    public static final String DEPTH_EVIDENCE_SUMMARY_FILE_ARGUMENT_SHORT_NAME = "DS";
+    public static final String DEPTH_EVIDENCE_SUMMARY_FILE_ARGUMENT_LONG_NAME = "depth-summary-file";
+    public static final String DEPTH_EVIDENCE_INTERVALS_INPUT_FILE_ARGUMENT_SHORT_NAME = "DI";
+    public static final String DEPTH_EVIDENCE_INTERVALS_INPUT_FILE_ARGUMENT_LONG_NAME = "depth-evidence-intervals";
+    public static final String MIN_DEPTH_EVIDENCE_MAPQ_ARGUMENT_NAME = "depth-evidence-min-mapq";
+    public static final String MIN_SITE_DEPTH_MAPQ_ARGUMENT_NAME = "site-depth-min-mapq";
+    public static final String MIN_SITE_DEPTH_BASEQ_ARGUMENT_NAME = "site-depth-min-baseq";
     public static final String SAMPLE_NAME_ARGUMENT_LONG_NAME = "sample-name";
     public static final String COMPRESSION_LEVEL_ARGUMENT_LONG_NAME = "compression-level";
 
@@ -109,26 +138,48 @@ public class CollectSVEvidence extends ReadWalker {
             optional=true)
     public GATKPath srFile;
 
-    @Argument(shortName = ALLELE_COUNT_OUTPUT_ARGUMENT_SHORT_NAME,
-            fullName = ALLELE_COUNT_OUTPUT_ARGUMENT_LONG_NAME,
-            doc = "Output file for allele counts",
+    @Argument(shortName = SITE_DEPTH_OUTPUT_ARGUMENT_SHORT_NAME,
+            fullName = SITE_DEPTH_OUTPUT_ARGUMENT_LONG_NAME,
+            doc = "Output file for site depth counts",
             optional = true)
-    public GATKPath alleleCountOutputFilename;
+    public GATKPath siteDepthOutputFilename;
 
-    @Argument(shortName = ALLELE_COUNT_INPUT_ARGUMENT_SHORT_NAME,
-            fullName = ALLELE_COUNT_INPUT_ARGUMENT_LONG_NAME,
-            doc = "Input VCF of SNPs marking loci for allele counts",
+    @Argument(shortName = SITE_DEPTH_INPUT_ARGUMENT_SHORT_NAME,
+            fullName = SITE_DEPTH_INPUT_ARGUMENT_LONG_NAME,
+            doc = "Input VCF of SNPs marking loci for site depth counts",
             optional = true)
-    public GATKPath alleleCountInputFilename;
+    public GATKPath siteDepthInputFilename;
 
+    @Argument(shortName = DEPTH_EVIDENCE_OUTPUT_FILE_ARGUMENT_SHORT_NAME,
+            fullName = DEPTH_EVIDENCE_OUTPUT_FILE_ARGUMENT_LONG_NAME,
+            doc = "Output file for depth evidence",
+            optional = true)
+    public GATKPath depthEvidenceOutputFilename;
 
-    @Argument(fullName = "allele-count-min-mapq",
-            doc = "minimum mapping quality for read to be allele-counted",
+    @Argument(shortName = DEPTH_EVIDENCE_SUMMARY_FILE_ARGUMENT_SHORT_NAME,
+            fullName = DEPTH_EVIDENCE_SUMMARY_FILE_ARGUMENT_LONG_NAME,
+            doc = "Output file for depth evidence summary statistics",
+            optional = true)
+    public GATKPath depthEvidenceSummaryFilename;
+
+    @Argument(shortName = DEPTH_EVIDENCE_INTERVALS_INPUT_FILE_ARGUMENT_SHORT_NAME,
+            fullName = DEPTH_EVIDENCE_INTERVALS_INPUT_FILE_ARGUMENT_LONG_NAME,
+            doc = "Input feature file specifying intervals where depth evidence will be gathered",
+            optional = true)
+    public GATKPath depthEvidenceInputFilename;
+
+    @Argument(fullName = MIN_DEPTH_EVIDENCE_MAPQ_ARGUMENT_NAME,
+            doc = "minimum mapping quality for read to be counted as depth evidence",
+            optional = true)
+    public int minDepthEvidenceMapQ = 0;
+
+    @Argument(fullName = MIN_SITE_DEPTH_MAPQ_ARGUMENT_NAME,
+            doc = "minimum mapping quality for read to be counted toward site depth",
             optional = true)
     public int minMapQ = 30;
 
-    @Argument(fullName = "allele-count-min-baseq",
-            doc = "minimum base call quality for SNP to be allele-counted",
+    @Argument(fullName = MIN_SITE_DEPTH_BASEQ_ARGUMENT_NAME,
+            doc = "minimum base call quality for SNP to be counted toward site depth",
             optional = true)
     public int minQ = 20;
 
@@ -147,7 +198,8 @@ public class CollectSVEvidence extends ReadWalker {
 
     private FeatureSink<DiscordantPairEvidence> peWriter;
     private FeatureSink<SplitReadEvidence> srWriter;
-    private AlleleCounter alleleCounter;
+    private SiteDepthCounter siteDepthCounter;
+    private DepthEvidenceCollector depthEvidenceCollector;
 
     private SAMSequenceDictionary sequenceDictionary;
 
@@ -163,19 +215,11 @@ public class CollectSVEvidence extends ReadWalker {
         sequenceDictionary = getBestAvailableSequenceDictionary();
         peWriter = createPEWriter();
         srWriter = createSRWriter();
-        if ( alleleCountInputFilename != null && alleleCountOutputFilename != null ) {
-            alleleCounter = new AlleleCounter(sequenceDictionary, sampleName, compressionLevel,
-                                                alleleCountInputFilename, alleleCountOutputFilename,
-                                                minMapQ, minQ);
-        } else if ( alleleCountInputFilename != null ) {
-            throw new UserException("Having specified an allele-count-vcf input, " +
-                    "you must also supply an allele-count-file for output.");
-        } else if ( alleleCountOutputFilename != null ) {
-            throw new UserException("Having specified an allele-count-file for output, " +
-                    "you must also supply an allele-count-vcf as input.");
-        }
-        if ( peWriter == null && srWriter == null && alleleCounter == null ) {
-            throw new UserException("You must supply at least one output file: PE, SR, or AC");
+        siteDepthCounter = createSiteDepthCounter();
+        depthEvidenceCollector = createDepthEvidenceCollector();
+        if ( peWriter == null && srWriter == null &&
+                siteDepthCounter == null && depthEvidenceCollector == null ) {
+            throw new UserException("You must supply at least one output file: PE, SR, SD, or RD");
         }
     }
 
@@ -201,8 +245,11 @@ public class CollectSVEvidence extends ReadWalker {
             }
         }
 
-        if ( alleleCounter != null ) {
-            alleleCounter.apply(read);
+        if ( siteDepthCounter != null ) {
+            siteDepthCounter.apply(read);
+        }
+        if ( depthEvidenceCollector != null ) {
+            depthEvidenceCollector.apply(read);
         }
     }
 
@@ -242,6 +289,42 @@ public class CollectSVEvidence extends ReadWalker {
                     "name should end with \".sr.txt\", \".sr.txt.gz\", or \".sr.bci\".");
         }
         return srCodec.makeSink(srFile, sequenceDictionary, sampleNames, compressionLevel);
+    }
+
+    private SiteDepthCounter createSiteDepthCounter() {
+        if ( siteDepthInputFilename != null && siteDepthOutputFilename != null ) {
+            return new SiteDepthCounter(sequenceDictionary, sampleName, compressionLevel,
+                    siteDepthInputFilename, siteDepthOutputFilename,
+                                        minMapQ, minQ);
+        }
+        if ( siteDepthInputFilename != null ) {
+            throw new UserException("Having specified a " + SITE_DEPTH_INPUT_ARGUMENT_LONG_NAME +
+                    " input, you must also supply an " + SITE_DEPTH_OUTPUT_ARGUMENT_LONG_NAME +
+                    " for output.");
+        }
+        if ( siteDepthOutputFilename != null ) {
+            throw new UserException("Having specified an " + SITE_DEPTH_OUTPUT_ARGUMENT_LONG_NAME +
+                    " for output, you must also supply a " + SITE_DEPTH_INPUT_ARGUMENT_LONG_NAME +
+                    " as input.");
+        }
+        return null;
+    }
+
+    private DepthEvidenceCollector createDepthEvidenceCollector() {
+        if ( depthEvidenceInputFilename != null && depthEvidenceOutputFilename != null ) {
+            return new DepthEvidenceCollector(sequenceDictionary, sampleName, compressionLevel,
+                                            depthEvidenceInputFilename, depthEvidenceOutputFilename,
+                                            minDepthEvidenceMapQ);
+        }
+        if ( depthEvidenceInputFilename != null ) {
+            throw new UserException("Having specified an depth-evidence-intervals input, " +
+                    "you must also supply a depth-evidence-file for output.");
+        }
+        if ( depthEvidenceOutputFilename != null ) {
+            throw new UserException("Having specified a depth-evidence-file for output, " +
+                    "you must also supply depth-evidence-intervals as input.");
+        }
+        return null;
     }
 
     private void reportDiscordantReadPair(final GATKRead read) {
@@ -357,8 +440,14 @@ public class CollectSVEvidence extends ReadWalker {
     public Object onTraversalSuccess() {
         flushSplitCounts(splitPos -> true, splitPosBuffer, srWriter);
         flushDiscordantReadPairs();
-        if ( alleleCounter != null ) {
-            alleleCounter.close();
+        if ( siteDepthCounter != null ) {
+            siteDepthCounter.close();
+        }
+        if ( depthEvidenceCollector != null ) {
+            depthEvidenceCollector.close();
+            if ( depthEvidenceSummaryFilename != null ) {
+                depthEvidenceCollector.reportSummaryStats(depthEvidenceSummaryFilename, sampleName);
+            }
         }
         return null;
     }
@@ -554,18 +643,14 @@ public class CollectSVEvidence extends ReadWalker {
     }
 
     /**
-     * object that compares a locus to an interval and indicates whether the locus is
+     * Compare a locus to an interval and indicates whether the locus is
      * upstream (returns -1), within (returns 0), or downstream (returns 1) of an interval
      */
-    interface LocusComparator {
-        int compareLocus( final String contig, final int position, final Locatable interval );
-    }
-
     @VisibleForTesting
-    final static class LocusComparatorImpl implements LocusComparator {
+    final static class LocusComparator {
         private final SAMSequenceDictionary dict;
 
-        public LocusComparatorImpl( final SAMSequenceDictionary dict ) {
+        public LocusComparator( final SAMSequenceDictionary dict ) {
             this.dict = dict;
         }
 
@@ -586,8 +671,8 @@ public class CollectSVEvidence extends ReadWalker {
     }
 
     @VisibleForTesting
-    final static class AlleleCounter {
-        private final LocusComparatorImpl lComp;
+    final static class SiteDepthCounter {
+        private final LocusComparator lComp;
         private final String sampleName;
         private final FeatureSink<SiteDepth> writer;
         private final int minMapQ;
@@ -595,14 +680,14 @@ public class CollectSVEvidence extends ReadWalker {
         private final Iterator<VariantContext> snpSourceItr;
         private final Deque<SiteDepth> siteDepthQueue;
 
-        public AlleleCounter( final SAMSequenceDictionary dict,
-                              final String sampleName,
-                              final int compressionLevel,
-                              final GATKPath inputPath,
-                              final GATKPath outputPath,
-                              final int minMapQ,
-                              final int minQ ) {
-            this.lComp = new LocusComparatorImpl(dict);
+        public SiteDepthCounter( final SAMSequenceDictionary dict,
+                                 final String sampleName,
+                                 final int compressionLevel,
+                                 final GATKPath inputPath,
+                                 final GATKPath outputPath,
+                                 final int minMapQ,
+                                 final int minQ ) {
+            this.lComp = new LocusComparator(dict);
             this.sampleName = sampleName;
             final String outputFilename = outputPath.toPath().toString();
             final SiteDepthBCICodec bciCodec = new SiteDepthBCICodec();
@@ -621,7 +706,10 @@ public class CollectSVEvidence extends ReadWalker {
             this.minMapQ = minMapQ;
             this.minQ = minQ;
             final FeatureDataSource<VariantContext> snpSource =
-                    new FeatureDataSource<>(inputPath.toPath().toString());
+                    new FeatureDataSource<>(inputPath.toPath().toString(),
+                                        null,
+                                            FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES,
+                                            VariantContext.class);
             dict.assertSameDictionary(snpSource.getSequenceDictionary());
             this.snpSourceItr = new BAFSiteIterator(snpSource.iterator());
             this.siteDepthQueue = new ArrayDeque<>(100);
@@ -735,22 +823,14 @@ public class CollectSVEvidence extends ReadWalker {
 
         public BAFSiteIterator( final Iterator<VariantContext> vcIterator ) {
             this.vcIterator = vcIterator;
-            hasNext();
+            advance();
         }
+
         public boolean hasNext() {
             if ( next != null ) {
                 return true;
             }
-            while ( vcIterator.hasNext() ) {
-                final VariantContext vc = vcIterator.next();
-                // if it's a SNP, it's biallelic, and it occurs at a new locus
-                if ( vc.isSNP() && vc.isBiallelic() &&
-                        (last == null || !last.getContig().equals(vc.getContig()) ||
-                                last.getStart() < vc.getStart()) ) {
-                    next = vc;
-                    break;
-                }
-            }
+            advance();
             return next != null;
         }
 
@@ -762,6 +842,176 @@ public class CollectSVEvidence extends ReadWalker {
             last = next;
             next = null;
             return result;
+        }
+
+        private void advance() {
+            while ( vcIterator.hasNext() ) {
+                final VariantContext vc = vcIterator.next();
+                // if it's a SNP, it's biallelic, and it occurs at a new locus
+                if ( vc.isSNP() && vc.isBiallelic() &&
+                        (last == null || !last.getContig().equals(vc.getContig()) ||
+                                last.getStart() < vc.getStart()) ) {
+                    next = vc;
+                    break;
+                }
+            }
+        }
+    }
+
+    @VisibleForTesting
+    final static class CountCounter {
+        private final int[] lowCounts;
+        private final SortedMap<Integer, Integer> highCounts;
+        private long nCounts;
+        private long totalCounts;
+
+        public CountCounter() {
+            lowCounts = new int[3000];
+            highCounts = new TreeMap<>();
+        }
+
+        public void addCount( final int count ) {
+            nCounts += 1;
+            totalCounts += count;
+            if ( count < lowCounts.length ) {
+                lowCounts[count] += 1;
+            } else {
+                highCounts.compute(count, (k,v) -> v==null ? 1 : v+1);
+            }
+        }
+
+        public int getNZeroCounts() {
+            return lowCounts[0];
+        }
+
+        public double getMeanCount() {
+            return (double)totalCounts/nCounts;
+        }
+
+        public int[] getQuartiles() {
+            final int[] quartiles = new int[4];
+            int counts = 0;
+            int quartile = 0;
+            long targetCounts = (nCounts + 3) / 4;
+            for ( int idx = 0; idx != lowCounts.length; ++idx ) {
+                counts += lowCounts[idx];
+                while ( counts >= targetCounts ) {
+                    quartiles[quartile++] = idx;
+                    targetCounts = ((quartile + 1) * nCounts + 3) / 4;
+                }
+            }
+            for ( final Map.Entry<Integer,Integer> entry : highCounts.entrySet() ) {
+                counts += entry.getValue();
+                while ( counts >= targetCounts ) {
+                    quartiles[quartile++] = entry.getKey();
+                    targetCounts = ((quartile + 1) * nCounts + 3) / 4;
+                }
+            }
+            return quartiles;
+        }
+    }
+
+    @VisibleForTesting
+    final static class DepthEvidenceCollector {
+        private final LocusComparator lComp;
+        private final CountCounter countCounter;
+        private final FeatureSink<DepthEvidence> writer;
+        private final Iterator<Feature> intervalIterator;
+        private final int minMapQ;
+        private DepthEvidence depthEvidence;
+        private long summmedIntervalLengths;
+        private long nIntervals;
+
+        public DepthEvidenceCollector( final SAMSequenceDictionary dict,
+                                       final String sampleName,
+                                       final int cmprLevel,
+                                       final GATKPath inputIntervalsPath,
+                                       final GATKPath outputDepthEvidencePath,
+                                       final int minMapQ ) {
+            lComp = new LocusComparator(dict);
+            countCounter = new CountCounter();
+            final String outputFilename = outputDepthEvidencePath.toPath().toString();
+            final DepthEvidenceBCICodec bciCodec = new DepthEvidenceBCICodec();
+            final List<String> sampleNames = Collections.singletonList(sampleName);
+            if ( bciCodec.canDecode(outputFilename) ) {
+                writer = bciCodec.makeSink(outputDepthEvidencePath, dict, sampleNames, cmprLevel);
+            } else {
+                final DepthEvidenceCodec codec = new DepthEvidenceCodec();
+                if ( !codec.canDecode(outputFilename) ) {
+                    throw new UserException("Attempting to write depth evidence to a file that " +
+                            "can't be read as depth evidence: " + outputFilename + ".  The file " +
+                            "name should end with \".rd.txt\", \".rd.txt.gz\", or \".rd.bci\".");
+                }
+                writer = codec.makeSink(outputDepthEvidencePath, dict, sampleNames, cmprLevel);
+            }
+
+            final FeatureDataSource<Feature> intervalSource =
+                    new FeatureDataSource<>(inputIntervalsPath.toPath().toString());
+            this.intervalIterator = intervalSource.iterator();
+            if ( !intervalIterator.hasNext() ) {
+                throw new UserException(inputIntervalsPath + " contains no intervals.");
+            }
+            this.minMapQ = minMapQ;
+            depthEvidence = new DepthEvidence(intervalIterator.next(), new int[1]);
+            summmedIntervalLengths += depthEvidence.getLengthOnReference();
+            nIntervals += 1;
+        }
+
+        void apply( final GATKRead read ) {
+            if ( read.getMappingQuality() < minMapQ ) {
+                return;
+            }
+            while ( depthEvidence != null ) {
+                final int cmp = lComp.compareLocus(read.getContig(), read.getStart(), depthEvidence);
+                if ( cmp < 0 ) { // if read is upstream of interval of interest, nothing to do
+                    return;
+                }
+                if ( cmp == 0 ) { // if read is in the interval of interest, count it
+                    depthEvidence.getCounts()[0] += 1;
+                    return;
+                }
+
+                // read is downstream of interval
+                writer.write(depthEvidence);
+                countCounter.addCount(depthEvidence.getCounts()[0]);
+                if ( !intervalIterator.hasNext() ) {
+                    depthEvidence = null;
+                    return;
+                }
+                depthEvidence = new DepthEvidence(intervalIterator.next(), new int[1]);
+                summmedIntervalLengths += depthEvidence.getLengthOnReference();
+                nIntervals += 1;
+            }
+        }
+
+        void close() {
+            if ( depthEvidence != null ) {
+                writer.write(depthEvidence);
+                countCounter.addCount(depthEvidence.getCounts()[0]);
+            }
+            writer.close();
+        }
+
+        void reportSummaryStats( final GATKPath summaryPath, final String sampleName ) {
+            try ( final BufferedWriter writer
+                     = new BufferedWriter(new OutputStreamWriter(summaryPath.getOutputStream())) ) {
+                final int[] quartiles = countCounter.getQuartiles();
+                writer.write("rd_q25\t" + sampleName + "\t" + quartiles[0]);
+                writer.newLine();
+                writer.write("rd_q50\t" + sampleName + "\t" + quartiles[1]);
+                writer.newLine();
+                writer.write("rd_q75\t" + sampleName + "\t" + quartiles[2]);
+                writer.newLine();
+                final String val = String.format("%.2f",countCounter.getMeanCount());
+                writer.write("rd_mean\t" + sampleName + "\t" + val);
+                writer.newLine();
+                writer.write("rd_num_intervals\t" + sampleName + "\t" + nIntervals);
+                writer.newLine();
+                writer.write("rd_intervals_size\t" + sampleName + "\t" + summmedIntervalLengths);
+                writer.newLine();
+            } catch ( final IOException ioe ) {
+                throw new UserException("Can't write depth evidence summary statistics to " + summaryPath);
+            }
         }
     }
 }

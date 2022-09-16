@@ -98,5 +98,11 @@ public final class SimpleCountCodec extends AsciiFeatureCodec<SimpleCount> {
                 TABIX_FORMAT_META_CHARACTER,
                 0);
     }
-}
 
+    public static String encode( final SimpleCount simpleCount ) {
+        return simpleCount.getContig() + "\t" +
+                simpleCount.getStart() + "\t" +
+                simpleCount.getEnd() + "\t" +
+                simpleCount.getCount();
+    }
+}
