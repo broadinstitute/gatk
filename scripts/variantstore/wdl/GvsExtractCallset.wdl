@@ -79,7 +79,8 @@ workflow GvsExtractCallset {
     input:
       fq_sample_table = fq_sample_table,
       project_id = project_id,
-      control_samples = control_samples
+      control_samples = control_samples,
+      sample_table_timestamp = SamplesTableDatetimeCheck.last_modified_timestamp
   }
 
   Int effective_scatter_count = if defined(scatter_count) then select_first([scatter_count])
