@@ -692,15 +692,17 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             SortedSet<VariantContext> assemblyVariants = assemblyResult.getVariationEvents(0);
 
             //todo make this debug output linked in with everything else
-            System.out.println("Generating PDHaplotypes for PDHMM");
-            System.out.println("Assembled Variants to use:");
-            assemblyVariants.forEach(System.out::println);
-            System.out.println("Pileup Variants to use:");
-            forcedPileupAlleles.forEach(System.out::println);
-            System.out.println("Adding Variants To Reference Haplotype:");
-            System.out.println(assemblyResult.getReferenceHaplotype());
-            System.out.println("FinalSpan: "+assemblyResult.getReferenceHaplotype().getGenomeLocation());
-            //TODO this is where the trimming should happen...
+            if (hcArgs.pileupDetectionArgs.debugPileupStdout) {
+                System.out.println("Generating PDHaplotypes for PDHMM");
+                System.out.println("Assembled Variants to use:");
+                assemblyVariants.forEach(System.out::println);
+                System.out.println("Pileup Variants to use:");
+                forcedPileupAlleles.forEach(System.out::println);
+                System.out.println("Adding Variants To Reference Haplotype:");
+                System.out.println(assemblyResult.getReferenceHaplotype());
+                System.out.println("FinalSpan: " + assemblyResult.getReferenceHaplotype().getGenomeLocation());
+                //TODO this is where the trimming should happen...
+            }
 
             assemblyResult = PartiallyDeterminedHaplotypeComputationEngine.generatePDHaplotypes(assemblyResult,
                     assemblyResult.getReferenceHaplotype(),
@@ -710,7 +712,8 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                     hcArgs.pileupDetectionArgs.snpAdajacentToAssemblyIndel,
                     aligner,
                     hcArgs.getHaplotypeToReferenceSWParameters(),
-                    hcArgs.pileupDetectionArgs.determinePDHaps);
+                    hcArgs.pileupDetectionArgs.determinePDHaps,
+                    hcArgs.pileupDetectionArgs.debugPileupStdout);
         }
 
 

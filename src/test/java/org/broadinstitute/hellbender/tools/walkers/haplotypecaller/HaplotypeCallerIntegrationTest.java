@@ -2091,7 +2091,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "-L","chr1:90571765-90572037",
                 "-O",outputPath,
                 "--pileup-detection","--pileup-detection-bad-read-tolerance","0.40","--pileup-detection-enable-indel-pileup-calling",
-                "-contamination","0.0 ", "--enable-legacy-assembly-region-trimming",
+                "-contamination","0.0 ", "--enable-legacy-assembly-region-trimming", "--make-determined-haps-from-pd-code",
                 "-G","StandardAnnotation","-G","StandardHCAnnotation",
                 "--dragen-mode",
                 "--disable-spanning-event-genotyping",

@@ -77,7 +77,7 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
         Haplotype ref = new Haplotype("AAAAAAAAAA".getBytes(), true, 500, TextCigarCodec.decode("10M"));
         ref.setGenomeLocation(new SimpleInterval("20", 100, 110));
 
-        Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromVariants(ref, variants);
+        Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromVariants(ref, variants, false);
         Assert.assertEquals(result.getBases(), expectedBases.getBytes());
         Assert.assertEquals(result.getCigar(), TextCigarCodec.decode(expectedCigar));
     }

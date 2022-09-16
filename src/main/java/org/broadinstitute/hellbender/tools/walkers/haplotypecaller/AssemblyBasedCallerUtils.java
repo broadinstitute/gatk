@@ -413,7 +413,7 @@ public final class AssemblyBasedCallerUtils {
                             if (hap.getEventMap().getVariantContexts().stream().anyMatch(v -> v.getStart() == delVariant.getStart()
                                     && delVariant.getReference().equals(v.getReference())
                                     && delVariant.getAlternateAllele(0).equals(v.getAlternateAllele(0)))) {
-                                System.err.println("Flagging hap " + hap + " for containing variant " + delVariant);
+                                if (argumentCollection.pileupDetectionArgs.debugPileupStdout) System.err.println("Flagging hap " + hap + " for containing variant " + delVariant);
                                 haplotypesWithFilterAlleles.add(hap);
                             }
                         }
