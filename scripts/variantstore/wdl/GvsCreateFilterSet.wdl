@@ -161,7 +161,10 @@ workflow GvsCreateFilterSet {
         machine_mem_gb = SNP_VQSR_mem_gb_override,
         max_gaussians = SNP_VQSR_max_gaussians_override,
         sample_every_nth_variant = SNP_VQSR_sample_every_nth_variant,
+<<<<<<< HEAD
         maximum_training_variants = SNP_VQSR_maximum_training_variants
+=======
+>>>>>>> ah_var_store
     }
 
     scatter (idx in range(length(ExtractFilterTask.output_vcf))) {

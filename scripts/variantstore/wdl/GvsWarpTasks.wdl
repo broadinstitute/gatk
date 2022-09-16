@@ -50,7 +50,10 @@ task SNPsVariantRecalibratorCreateModel {
         ~{true='--use-allele-specific-annotations' false='' use_allele_specific_annotations} \
         -mode SNP \
         --sample-every-Nth-variant ~{sample_every_nth_variant} \
+<<<<<<< HEAD
         --maximum-training-variants ~{maximum_training_variants} \
+=======
+>>>>>>> ah_var_store
         --output-model ~{model_report_filename} \
         --max-gaussians ~{max_gaussians} \
         -resource:hapmap,known=false,training=true,truth=true,prior=15 ~{hapmap_resource_vcf} \
