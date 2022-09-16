@@ -335,6 +335,7 @@ task ExtractFilterTask {
     disks: "local-disk 10 HDD"
     bootDiskSizeGb: 15
     preemptible: 3
+    maxRetries: 3
     cpu: 2
   }
 
