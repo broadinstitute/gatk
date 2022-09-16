@@ -162,6 +162,7 @@ task IndelsVariantRecalibrator {
         File dbsnp_resource_vcf_index
         Boolean use_allele_specific_annotations
         Int max_gaussians = 4
+        Int maximum_training_variants = 2500000
 
         Int disk_size
         Int? machine_mem_gb
@@ -187,6 +188,7 @@ task IndelsVariantRecalibrator {
         -mode INDEL \
         ~{"--input-model " + model_report} \
         --max-gaussians ~{max_gaussians} \
+        --maximum-training-variants ~{maximum_training_variants} \
         -resource:mills,known=false,training=true,truth=true,prior=12 ~{mills_resource_vcf} \
         -resource:axiomPoly,known=false,training=true,truth=false,prior=10 ~{axiomPoly_resource_vcf} \
         -resource:dbsnp,known=true,training=false,truth=false,prior=2 ~{dbsnp_resource_vcf}

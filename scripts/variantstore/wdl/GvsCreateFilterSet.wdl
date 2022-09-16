@@ -18,6 +18,7 @@ workflow GvsCreateFilterSet {
     File gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-613-g1219576-SNAPSHOT-local.jar"
 
     Int? INDEL_VQSR_max_gaussians_override = 4
+    Int? INDEL_VQSR_maximum_training_variants
     Int? INDEL_VQSR_mem_gb_override
     Int? SNP_VQSR_max_gaussians_override = 6
     Int? SNP_VQSR_mem_gb_override
@@ -134,6 +135,7 @@ workflow GvsCreateFilterSet {
       disk_size = "1000",
       machine_mem_gb = INDEL_VQSR_mem_gb_override,
       max_gaussians = INDEL_VQSR_max_gaussians_override,
+      maximum_training_variants = INDEL_VQSR_maximum_training_variants,
   }
 
   if (GetNumSamplesLoaded.num_samples > snps_variant_recalibration_threshold) {
