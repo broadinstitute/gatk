@@ -22,8 +22,9 @@ import java.util.stream.Collectors;
  * TODO
  */
 public class PartiallyDeterminedHaplotypeComputationEngine {
-    final static int MAX_PD_HAPS_TO_GENERATE = 2048; //TODO probably not...
-    final static int MAX_BRANCH_PD_HAPS = 128;
+    final static int MAX_PD_HAPS_TO_GENERATE = 256; //2048 TODO probably not...
+    final static int MAX_BRANCH_PD_HAPS = 256; //128
+    final static int MAX_VAR_IN_BRANCH = 8; //128
 
     /**
      * TODO
@@ -187,6 +188,10 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                 if (debugSite) System.out.println("Handling Branch \n" + branch.stream().map(PartiallyDeterminedHaplotype.getDRAGENDebugVariantContextString((int) referenceHaplotype.getStartPosition())).collect(Collectors.joining("->")));
                 List<List<VariantContext>> combinatorialExpansionHaps = new ArrayList<>();
                 combinatorialExpansionHaps.add(new ArrayList<>());
+                if (branch.size() >= MAX_VAR_IN_BRANCH) {
+                    if (debugSite) System.out.println("Too many variants ["+branch.size()+"] generated from branch: "+branch.stream().map(PartiallyDeterminedHaplotype.getDRAGENDebugVariantContextString((int) referenceHaplotype.getStartPosition())).collect(Collectors.joining("->")));
+                    return sourceSet;
+                }
                 for (VariantContext vc : branch) {
                     List<List<VariantContext>> hapsPerVC = new ArrayList<>();
                     for (List<VariantContext> hclist : combinatorialExpansionHaps) {
@@ -196,16 +201,17 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                     }
                     combinatorialExpansionHaps.addAll(hapsPerVC);
                 }
+                if (combinatorialExpansionHaps.size() >= MAX_BRANCH_PD_HAPS) {
+                    if (debugSite) System.out.println("Too many branch haplotypes ["+combinatorialExpansionHaps.size()+"] generated from branch: "+branch.stream().map(PartiallyDeterminedHaplotype.getDRAGENDebugVariantContextString((int) referenceHaplotype.getStartPosition())).collect(Collectors.joining("->")));
+                    return sourceSet;
+                }
                 List<Haplotype> branchHaps = new ArrayList<>();
                 for (List<VariantContext> subset : combinatorialExpansionHaps) {
                     branchHaps.add(constructHaplotypeFromVariants(referenceHaplotype, subset, true));
                 }
                 if (debugSite) System.out.println("Constructed PD Haps:" + branchHaps.stream().map(Haplotype::toString).collect(Collectors.joining("\n")));
                 //CHECK for overwhelming branch haps
-                if (branchHaps.size()>= MAX_BRANCH_PD_HAPS) {
-                    if (debugSite) System.out.println("Too many branch haplotypes ["+branchHaps.size()+"] generated from branch: "+branch.stream().map(PartiallyDeterminedHaplotype.getDRAGENDebugVariantContextString((int) referenceHaplotype.getStartPosition())).collect(Collectors.joining("->")));
-                    return sourceSet;
-                }
+
                 outputHaplotypes.addAll(branchHaps);
             }
         }
