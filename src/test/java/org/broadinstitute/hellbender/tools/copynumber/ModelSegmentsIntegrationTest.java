@@ -43,6 +43,12 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
     // diffs in the new expected outputs in git to confirm that they are consistent with expectations.
     public static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = false;
 
+    @Override
+    public List<String> injectDefaultVerbosity(final List<String> args) {
+        // override/suppress GATK-specific argument injection
+        return args;
+    }
+
     /*
      * Make sure that someone didn't leave the UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS toggle turned on
      */
