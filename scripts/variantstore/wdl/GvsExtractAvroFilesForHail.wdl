@@ -267,6 +267,6 @@ task GenerateHailScript {
         File hail_script = 'hail_script.py'
     }
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:vs_605_hail_codegen"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:rc_616_var_store_2022_09_06"
     }
 }
