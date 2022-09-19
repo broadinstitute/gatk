@@ -23,9 +23,11 @@ task SNPsVariantRecalibratorCreateModel {
         File dbsnp_resource_vcf_index
         Boolean use_allele_specific_annotations
         Int max_gaussians = 6
+        Int sample_every_nth_variant = 1
         Int? machine_mem_gb
 
         Int disk_size
+        File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     }
 
     Int machine_mem = select_first([machine_mem_gb, 100])
@@ -33,6 +35,8 @@ task SNPsVariantRecalibratorCreateModel {
 
     command <<<
         set -euo pipefail
+
+        bash ~{monitoring_script} > monitoring.log &
 
         gatk --java-options -Xms~{java_mem}g \
         VariantRecalibrator \
@@ -44,7 +48,7 @@ task SNPsVariantRecalibratorCreateModel {
         -an ~{sep=' -an ' recalibration_annotation_values} \
         ~{true='--use-allele-specific-annotations' false='' use_allele_specific_annotations} \
         -mode SNP \
-        --sample-every-Nth-variant 1 \
+        --sample-every-Nth-variant ~{sample_every_nth_variant} \
         --output-model ~{model_report_filename} \
         --max-gaussians ~{max_gaussians} \
         -resource:hapmap,known=false,training=true,truth=true,prior=15 ~{hapmap_resource_vcf} \
@@ -64,6 +68,7 @@ task SNPsVariantRecalibratorCreateModel {
 
     output {
         File model_report = "~{model_report_filename}"
+        File monitoring_log = "monitoring.log"
     }
 }
 

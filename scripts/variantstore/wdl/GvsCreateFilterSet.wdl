@@ -21,6 +21,7 @@ workflow GvsCreateFilterSet {
     Int? INDEL_VQSR_mem_gb_override
     Int? SNP_VQSR_max_gaussians_override = 6
     Int? SNP_VQSR_mem_gb_override
+    Int? SNP_VQSR_sample_every_nth_variant
     # This is the minimum number of samples where the SNP model will be created and applied in separate tasks
     # (SNPsVariantRecalibratorClassic vs. SNPsVariantRecalibratorCreateModel and SNPsVariantRecalibratorScattered)
     # For WARP classic this is done with 20k but the 10K Stroke Anderson dataset would not work unscattered (at least
@@ -63,7 +64,8 @@ workflow GvsCreateFilterSet {
   call Utils.GetNumSamplesLoaded {
     input:
       fq_sample_table = fq_sample_table,
-      project_id = project_id
+      project_id = project_id,
+      sample_table_timestamp = SamplesTableDatetimeCheck.last_modified_timestamp,
   }
 
   Int scatter_count = if GetNumSamplesLoaded.num_samples < 100 then 20
@@ -156,6 +158,7 @@ workflow GvsCreateFilterSet {
         disk_size = "1000",
         machine_mem_gb = SNP_VQSR_mem_gb_override,
         max_gaussians = SNP_VQSR_max_gaussians_override,
+        sample_every_nth_variant = SNP_VQSR_sample_every_nth_variant,
     }
 
     scatter (idx in range(length(ExtractFilterTask.output_vcf))) {
@@ -350,6 +353,7 @@ task PopulateFilterSetInfo {
 
     String query_project
 
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     File? gatk_override
   }
   meta {
@@ -358,6 +362,8 @@ task PopulateFilterSetInfo {
 
   command <<<
     set -eo pipefail
+
+    bash ~{monitoring_script} > monitoring.log &
 
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
@@ -398,7 +404,7 @@ task PopulateFilterSetInfo {
   runtime {
     docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe"
     memory: "3500 MB"
-    disks: "local-disk 200 HDD"
+    disks: "local-disk 250 HDD"
     bootDiskSizeGb: 15
     preemptible: 0
     cpu: 1
@@ -406,6 +412,7 @@ task PopulateFilterSetInfo {
 
   output {
     String status_load_filter_set_info = read_string("status_load_filter_set_info")
+    File monitoring_log = "monitoring.log"
   }
 }
 
