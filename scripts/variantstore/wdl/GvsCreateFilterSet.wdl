@@ -64,7 +64,8 @@ workflow GvsCreateFilterSet {
   call Utils.GetNumSamplesLoaded {
     input:
       fq_sample_table = fq_sample_table,
-      project_id = project_id
+      project_id = project_id,
+      sample_table_timestamp = SamplesTableDatetimeCheck.last_modified_timestamp,
   }
 
   Int scatter_count = if GetNumSamplesLoaded.num_samples < 100 then 20
