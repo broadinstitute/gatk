@@ -358,6 +358,7 @@ task GetNumSamplesLoaded {
   input {
     String fq_sample_table
     String project_id
+    String sample_table_timestamp
     Boolean control_samples = false
   }
   meta {
