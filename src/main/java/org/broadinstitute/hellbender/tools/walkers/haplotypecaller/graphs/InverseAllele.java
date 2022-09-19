@@ -15,11 +15,10 @@ public class InverseAllele extends SimpleAllele {
     final static public long serialVersionUID = 1L;
 
     private final Allele internalAllele;
-    private final boolean referenceStatus;
+
     private InverseAllele(final Allele allele, boolean isReference) {
-        super(allele.getBases(), false);
+        super(allele.getBases(), isReference);
         this.internalAllele = allele;
-        referenceStatus = isReference;
     }
 
     // InverseAllele of inverseAllele. By definition it is the allele. In Allele filtering code we normally genotype
@@ -35,10 +34,6 @@ public class InverseAllele extends SimpleAllele {
 
     public byte [] getBases(){
         return getDisplayString().getBytes();
-    }
-    @Override
-    public boolean isReference() {
-        return referenceStatus;
     }
 
     @Override
