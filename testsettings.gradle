@@ -9,7 +9,7 @@ tasks.withType(Test) {
      * anything else             : run the non-cloud tests
      */
     String TEST_TYPE = "$System.env.TEST_TYPE"
-    forkEvery 100
+    forkEvery 1
     useTestNG {
         if (TEST_TYPE == "cloud") {
             // run only the cloud tests
