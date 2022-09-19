@@ -231,7 +231,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
      * The method is as follows, construct and artificial haplotype of the provided events, then realign it vs the reference and test
      * if any of the resulting variants are present in the inputs (but doesn't match)
      */
-    @VisibleForTesting
+    @VisibleForTesting 
     private static boolean constructArtificialHaplotypeAndTestEquivalentEvents(Haplotype referenceHaplotype, SmithWatermanAligner aligner, SWParameters swParameters, TreeSet<VariantContext> vcs, List<VariantContext> eventsToTest, boolean debugSite) {
         final Haplotype realignHap = constructHaplotypeFromVariants(referenceHaplotype, eventsToTest, false);
         //ALIGN!
