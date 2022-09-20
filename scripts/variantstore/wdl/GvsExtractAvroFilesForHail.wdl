@@ -26,6 +26,7 @@ workflow GvsExtractAvroFilesForHail {
     }
 
     Int num_samples = CountSamples.num_samples
+    # First superpartition contains samples 1 to 4000, second 4001 to 8000 etc; add one to quotient unless exactly 4000.
     Int num_superpartitions = if (num_samples % 4000 == 0) then num_samples / 4000 else (num_samples / 4000 + 1)
 
     scatter (i in range(scatter_width)) {
