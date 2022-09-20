@@ -174,7 +174,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_BugInWithdrawSamples
    - name: GvsUnified
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsUnified.wdl
