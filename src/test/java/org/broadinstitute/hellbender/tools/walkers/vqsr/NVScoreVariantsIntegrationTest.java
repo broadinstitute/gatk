@@ -20,7 +20,7 @@ public class NVScoreVariantsIntegrationTest extends CommandLineProgramTest {
     private static final String reference = b37_reference_20_21;
 
     private static final double EPSILON_FOR_1D = 0.01;
-    private static final double EPSILON_FOR_2D = 0.5;
+    private static final double EPSILON_FOR_2D = 0.01;
 
     // This test for the 1D model PASSES when run locally in the scripts/nvscorevariants_environment.yml
     // conda environment, but cannot be enabled until that conda environment is incorporated into
