@@ -24,7 +24,7 @@ curl -sSL https://broad.io/install-gcs-connector | python3
 
 * Running the GVS to Hail VDS conversion script:
 
-`python hail_gvs_import.tmpl.py`
+`python hail_gvs_import.py`
 """
 from datetime import datetime
 from google.cloud import storage

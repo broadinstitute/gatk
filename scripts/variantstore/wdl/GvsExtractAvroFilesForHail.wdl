@@ -265,20 +265,21 @@ task GenerateHailScripts {
         # The write prefix will be a sibling to the Avro "directory" that embeds the current date and some randomness.
         write_prefix="$(dirname ~{avro_prefix})/$(date -Idate)-${rand}"
 
-        vds_output_path="${dir}/gvs_export.vds"
+        vds_output_path="${write_prefix}/gvs_export.vds"
         echo $vds_output_path > vds_output_path.txt
 
-        # vcf_output_path="${dir}/gvs_export.vcf"
+        # vcf_output_path="${write_prefix}/gvs_export.vcf"
         # echo $vcf_output_path > vcf_output_path.txt
 
-        # sites_only_vcf_output_path="${dir}/gvs_sites_only.vcf"
+        # sites_only_vcf_output_path="${write_prefix}/gvs_sites_only.vcf"
         # echo $sites_only_vcf_output_path > sites_only_vcf_output_path.txt
 
-        cat /app/hail_gvs_import.tmpl.py |
-            sed "s/@AVRO_PREFIX@/~{avro_prefix}" |
-            sed "s/@WRITE_PREFIX@/$write_prefix/" >
-            hail_gvs_import.py
+        cat /app/hail_gvs_import.py |
+            sed "s/@AVRO_PREFIX@/~{avro_prefix}/" |
+            sed "s/@WRITE_PREFIX@/${write_prefix}/" >
+            hail_gvs_import.py.tmp
 
+        mv hail_gvs_import.py.tmp hail_gvs_import.py
     >>>
 
     output {
