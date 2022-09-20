@@ -229,6 +229,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_616_split_hail
    - name: GvsCallsetStatistics
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCallsetStatistics.wdl
