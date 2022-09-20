@@ -5,8 +5,7 @@ workflow GvsExtractAvroFilesForHail {
         String project_id
         String dataset
         String filter_set_name
-        String gcs_temporary_path
-        String scatter_width = 10
+        Int scatter_width = 10
     }
 
     call OutputPath { input: go = true }
@@ -42,15 +41,14 @@ workflow GvsExtractAvroFilesForHail {
         }
     }
 
-    call GenerateHailScript {
+    call GenerateHailScripts {
         input:
             go_non_superpartitioned = ExtractFromNonSuperpartitionedTables.done,
             go_superpartitioned = ExtractFromSuperpartitionedTables.done,
             avro_prefix = ExtractFromNonSuperpartitionedTables.output_prefix,
-            gcs_temporary_path = gcs_temporary_path
     }
     output {
-        File hail_script = GenerateHailScript.hail_script
+        File hail_gvs_import_script = GenerateHailScripts.hail_gvs_import_script
     }
 }
 
@@ -246,7 +244,6 @@ task ExtractFromSuperpartitionedTables {
 task GenerateHailScripts {
     input {
         String avro_prefix
-        String gcs_temporary_path
         Boolean go_non_superpartitioned
         Array[Boolean] go_superpartitioned
     }
@@ -255,7 +252,6 @@ task GenerateHailScripts {
         volatile: true
     }
     parameter_meta {
-        gcs_temporary_path: "Path to network-visible temporary directory/bucket for intermediate file storage"
         go_non_superpartitioned: "Sync on completion of non-superpartitioned extract"
         go_superpartitioned: "Sync on completion of all superpartitioned extract shards"
     }
@@ -263,44 +259,35 @@ task GenerateHailScripts {
     command <<<
         set -o errexit -o nounset -o xtrace -o pipefail
 
-        vds_output_path="$(dirname ~{avro_prefix})/gvs_export.vds"
+        # A bit of randomness to not clobber outputs if run multiple times.
+        rand=$(openssl rand -hex 4)
+
+        # The write prefix will be a sibling to the Avro "directory" that embeds the current date and some randomness.
+        write_prefix="$(dirname ~{avro_prefix})/$(date -Idate)-${rand}"
+
+        vds_output_path="${dir}/gvs_export.vds"
         echo $vds_output_path > vds_output_path.txt
 
-        vcf_output_path="$(dirname ~{avro_prefix})/gvs_export.vcf"
-        echo $vcf_output_path > vcf_output_path.txt
+        # vcf_output_path="${dir}/gvs_export.vcf"
+        # echo $vcf_output_path > vcf_output_path.txt
 
-        sites_only_vcf_output_path="$(diranme ~{avro_prefix})/gvs_sites_only.vcf"
-        echo $sites_only_vcf_output_path > sites_only_vcf_output_path.txt
+        # sites_only_vcf_output_path="${dir}/gvs_sites_only.vcf"
+        # echo $sites_only_vcf_output_path > sites_only_vcf_output_path.txt
 
-        gsutil ls -r '~{avro_prefix}' > avro_listing.txt
+        cat /app/hail_gvs_import.tmpl.py |
+            sed "s/@AVRO_PREFIX@/~{avro_prefix}" |
+            sed "s/@WRITE_PREFIX@/$write_prefix/" >
+            hail_gvs_import.py
 
-        python3 /app/generate_hail_gvs_import.py \
-            --avro_prefix '~{avro_prefix}' \
-            --avro_listing_file avro_listing.txt \
-            --gcs_temporary_path ~{gcs_temporary_path} \
-            --vds_output_path "${vds_output_path}"> hail_gvs_import.py
-
-        # The VDS output from the script above becomes an input to the script below.
-        python3 /app/generate_hail_export_tieout_vcf.py \
-            --vds_input_path "${vds_output_path}" \
-            --vcf_output_path "${vcf_output_path}" > hail_export_tieout_vcf.py
-
-        # The VDS output from the script above becomes an input to the script below.
-        python3 /app/generate_hail_vat_inputs.py \
-            --vds_input_path "${vds_output_path}" \
-            --ancestry_file_path "" \
-            --vcf_output_path "${vcf_output_path}" \
-            --sites_only_vcf_output_path "${sites_only_vcf_output_path}" \
-            --vcf_output_path "${vcf_output_path}" > hail_tie_out_vcf.py
     >>>
 
     output {
         Boolean done = true
         String vds_output_path = read_string('vds_output_path.txt')
-        String vcf_output_path = read_string('vcf_output_path.txt')
-        String sites_only_vcf_output_path = read_string('sites_only_vcf_output_path.txt')
+        # String vcf_output_path = read_string('vcf_output_path.txt')
+        # String sites_only_vcf_output_path = read_string('sites_only_vcf_output_path.txt')
         File hail_gvs_import_script = 'hail_gvs_import.py'
-        File hail_export_tieout_vcf_script = 'hail_export_tieout_vcf.py'
+        # File hail_export_tieout_vcf_script = 'hail_export_tieout_vcf.py'
     }
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:rc_616_var_store_2022_09_06"

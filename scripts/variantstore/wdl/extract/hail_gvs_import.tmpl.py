@@ -26,8 +26,7 @@ curl -sSL https://broad.io/install-gcs-connector | python3
 
 `python hail_gvs_import.tmpl.py`
 """
-import os
-
+from datetime import datetime
 from google.cloud import storage
 
 import hail as hl
@@ -109,24 +108,27 @@ def import_gvs(bucket, object_prefix, vds_output_path, tmp_dir):
 
 if __name__ == '__main__':
 
-    avro_prefix = "$AVRO_PREFIX$"
-    output_prefix = "$OUTPUT_PREFIX$"
+    avro_prefix = "@AVRO_PREFIX@"
+    write_prefix= "@WRITE_PREFIX@"
     # Remove a trailing slash if present.
-    output_prefix = output_prefix if not output_prefix.endswith("/") else output_prefix[:-1]
+    avro_prefix = avro_prefix if not avro_prefix.endswith('/') else avro_prefix[:-1]
+    write_prefix = write_prefix if not write_prefix.endswith('/') else write_prefix[:-1]
 
     gcs_re = re.compile("^gs://(?P<bucket_name>[^/]+)/(?P<object_prefix>.*)$")
     match = gcs_re.match(avro_prefix)
     if not match:
         raise ValueError(f"Avro prefix '{avro_prefix}' does not look like a GCS path")
-    bucket_name, object_prefix = match.groups()
+    avro_bucket_name, avro_object_prefix = match.groups()
+
+    match = gcs_re.match(write_prefix)
+    if not match:
+        raise ValueError(f"Write prefix '{write_prefix}' does not look like a GCS path")
 
     client = storage.Client()
-    bucket = client.get_bucket(bucket_name)
+    avro_bucket = client.get_bucket(avro_bucket_name)
 
-    # A little pseudorandomness to write without clobbering.
-    rand = uuid.uuid4().hex[:8]
-    temp_dir = f"{output_prefix}/temp_hail_gvs_import_{rand}"
-    vds_output_path = f"{output_prefix}/final-{rand}.vds"
+    temp_dir = f"{write_prefix}/temp_hail_gvs_import"
+    vds_output_path = f"{write_prefix}/gvs_export.vds"
     print(f"Using temporary dir '{temp_dir}', final VDS to be written to '{vds_output_path}'.")
 
-    import_gvs(bucket, object_prefix, vds_output_path, temp_dir)
+    import_gvs(avro_bucket, avro_object_prefix, vds_output_path, temp_dir)
