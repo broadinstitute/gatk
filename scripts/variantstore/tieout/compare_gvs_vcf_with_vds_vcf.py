@@ -94,10 +94,43 @@ def compare_gvs_vcf_with_vds_vcf(gvs_vcf, vds_vcf, skip_gvs_filtered_lines):
                     if not args.report_all_diffs:
                         sys.exit(1)
 
-                # TODO - Skipping INFO for now
-                # if (gvs_tokens[7] != vds_tokens[7]):
-                #     print(f"DIFF: INFO differs between VCF line:\n{gvs_tokens[7]} vs {vds_tokens[7]}")
-                #     sys.exit(1)
+                # Deal with differences in the INFO field
+                if (gvs_tokens[7] != vds_tokens[7]):
+                    print(f"\nDIFF: Locus {locus}, INFO differs between gvs and vds:\n{gvs_tokens[7]}\n vs \n{vds_tokens[7]}")
+                    # if not args.report_all_diffs:
+                    #     sys.exit(1)
+
+                gvs_info_fields = get_info_fields(gvs_tokens[7])
+                vds_info_fields = get_info_fields(vds_tokens[7])
+                # TODO - handle new fields?
+
+                if "AN" in gvs_info_fields:
+                    info_diff(gvs_info_fields, vds_info_fields, "AN", locus, gvs_tokens[7], vds_tokens[7])
+                    # Calculate the (expected) AC from the gvs VCF
+                    gvs_an = int(gvs_info_fields["AN"])
+                    gvs_ac = int(gvs_info_fields["AC"])
+
+
+                    new_gvs_af = gvs_ac / gvs_an
+                    new_gvs_ac = str(gvs_an - gvs_ac) + "," + str(gvs_ac)
+                    ref_allele_af = '{:0.6f}'.format((float) (gvs_an - gvs_ac) / gvs_an)
+                    # new_vcs_ac = str(((int) vcs_an) - ((int) vcs_ac)) + "," + vcs_ac
+                    print(f"{new_gvs_ac}")
+                    print(f"{ref_allele_af}")
+
+                    vds_ac = vds_info_fields["AC"]
+                    if (new_gvs_ac != vds_ac):
+                        print(f"DIFF: Locus {locus}, INFO Field Value for AC differs between gvs and vds: {new_gvs_ac} vs {vds_ac}\nGVS INFO: {gvs_tokens[7]}\nVDS INFO: {vds_tokens[7]}")
+                        if not args.report_all_diffs:
+                            sys.exit(1)
+
+                    vds_af = vds_info_fields["AF"]
+                    if (new_gvs_af != vds_af):
+                        print(f"DIFF: Locus {locus}, INFO Field Value for AF differs between gvs and vds: {new_gvs_af} vs {vds_af}\nGVS INFO: {gvs_tokens[7]}\nVDS INFO: {vds_tokens[7]}")
+                        if not args.report_all_diffs:
+                            sys.exit(1)
+
+                    # info_diff(gvs_info_fields, vds_info_fields, "AF", locus, gvs_tokens[7], vds_tokens[7])
 
                 # FORMAT is just going to be different
                 gvs_format_fields_to_column = get_format_fields_to_column(gvs_tokens[8])
@@ -186,6 +219,17 @@ def compare_gvs_vcf_with_vds_vcf(gvs_vcf, vds_vcf, skip_gvs_filtered_lines):
 
             exit(0)
 
+def get_info_fields(info_string):
+    info_dict = {}
+    tokens = info_string.split(";")
+    for token in tokens:
+        key_value = token.split("=")
+        if len(key_value) != 2:
+            print(f"INFO token {key_value} does not look right")
+            sys.exit(1)
+        info_dict[key_value[0]] = key_value[1]
+    return info_dict
+
 def compare_gts(gvs_gt, vds_gt):
     if (gvs_gt == vds_gt):
         return True
@@ -255,6 +299,14 @@ def reorder_gvs_alt_alleles(alt_allele_string):
     else:
         gvs_old_alt_allele_index_to_new["1"] = "1"
     return(alt_allele_string, gvs_old_alt_allele_index_to_new)
+
+def info_diff(gvs_dict, vds_dict, key, locus, gvs_info, vds_info):
+    gvs_value = gvs_dict[key]
+    vds_value = vds_dict[key]
+    if (gvs_value != vds_value):
+        print(f"DIFF: Locus {locus}, INFO Field Value for {key} differs between gvs and vds: {gvs_value} vs {vds_value}\nGVS INFO: {gvs_info}\nVDS INFO: {vds_info}")
+        if not args.report_all_diffs:
+            sys.exit(1)
 
 def simple_diff(gvs_dict, vds_dict, key, locus, sample):
     gvs_value = gvs_dict[key]
