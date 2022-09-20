@@ -383,6 +383,11 @@ task CollectMetricsForChromosome {
         String metrics_table
         Int chromosome
     }
+    meta {
+        # This table is expected to exist and be empty. Always run to confirm it wasn't externally deleted, and don't
+        # trust the leftover contents of any previous executions.
+        volatile: true
+    }
     command <<<
         set -o errexit -o nounset -o xtrace -o pipefail
 
@@ -510,6 +515,11 @@ task AggregateMetricsAcrossChromosomes {
         String metrics_table
         String aggregate_metrics_table
     }
+    meta {
+        # This table is expected to exist and be empty. Always run to confirm it wasn't externally deleted, and don't
+        # trust the leftover contents of any previous executions.
+        volatile: true
+    }
     command <<<
         set -o errexit -o nounset -o xtrace -o pipefail
 
@@ -577,6 +587,11 @@ task CollectStatistics {
         String metrics_table
         String aggregate_metrics_table
         String statistics_table
+    }
+    meta {
+        # This table is expected to exist and be empty. Always run to confirm it wasn't externally deleted, and don't
+        # trust the leftover contents of any previous executions.
+        volatile: true
     }
     command <<<
         set -o errexit -o nounset -o xtrace -o pipefail
