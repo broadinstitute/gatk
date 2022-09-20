@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
-import htsjdk.samtools.SAMException;
-import htsjdk.samtools.util.IOUtil;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.CopyNumberTestUtils;
@@ -22,12 +20,9 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Integration tests for {@link ModelSegments}.  We test for input validation across various run modes of the tool
@@ -330,43 +325,56 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
         Assert.assertFalse(new File(outputDir, outputPrefix + ModelSegments.PICARD_INTERVAL_LIST_FILE_SUFFIX).exists());
     }
 
+    record TestCaseWrapper(
+         Integer testNum,
+         String outputPrefix,
+         List<File> denoisedCopyRatiosFiles,
+         List<File> allelicCountsFiles,
+         File normalAllelicCountsFile) {
+        
+        @Override
+        public String toString() { return String.format("Test data: %d", testNum);}
+
+    }
+
     @DataProvider(name = "dataValidDataModesMultipleSamples")
     public Object[][] dataValidDataModesMultipleSamples() {
         return new Object[][]{
                 {
+                    new TestCaseWrapper(
                     1,
                     "multiple-sample-cr-ac-nac", // cr-ac-nac = copy ratios + allelic counts + normal allelic counts
                     Arrays.asList(TUMOR_1_DENOISED_COPY_RATIOS_FILE, TUMOR_2_DENOISED_COPY_RATIOS_FILE),
                     Arrays.asList(TUMOR_1_ALLELIC_COUNTS_FILE, TUMOR_2_ALLELIC_COUNTS_FILE),
-                    NORMAL_ALLELIC_COUNTS_FILE
+                    NORMAL_ALLELIC_COUNTS_FILE)
                 },
                 {
-                    2,
+                        new TestCaseWrapper(                    2,
                     "multiple-sample-cr-ac",
                     Arrays.asList(TUMOR_1_DENOISED_COPY_RATIOS_FILE, TUMOR_2_DENOISED_COPY_RATIOS_FILE),
                     Arrays.asList(TUMOR_1_ALLELIC_COUNTS_FILE, TUMOR_2_ALLELIC_COUNTS_FILE),
-                    null
+                    null)
                 },
                 {
-                    3,
+                        new TestCaseWrapper(3,
                     "multiple-sample-ac-nac",
                     null,
                     Arrays.asList(TUMOR_1_ALLELIC_COUNTS_FILE, TUMOR_2_ALLELIC_COUNTS_FILE),
-                    NORMAL_ALLELIC_COUNTS_FILE
+                    NORMAL_ALLELIC_COUNTS_FILE)
                 },
                 {
-                    4,
+                        new TestCaseWrapper(4,
                     "multiple-sample-cr",
                     Arrays.asList(TUMOR_1_DENOISED_COPY_RATIOS_FILE, TUMOR_2_DENOISED_COPY_RATIOS_FILE),
                     null,
-                    null
+                    null)
                 },
                 {
-                    5,
+                        new TestCaseWrapper(5,
                     "multiple-sample-ac",
                     null,
                     Arrays.asList(TUMOR_1_ALLELIC_COUNTS_FILE, TUMOR_2_ALLELIC_COUNTS_FILE),
-                    null
+                    null)
                 }
         };
     }
@@ -464,11 +472,13 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test(dataProvider = "dataValidDataModesMultipleSamples")
-    public void testValidDataModesMultipleSamples(final Integer testNum,
-                                                  final String outputPrefix,
-                                                  final List<File> denoisedCopyRatiosFiles,
-                                                  final List<File> allelicCountsFiles,
-                                                  final File normalAllelicCountsFile) {
+    public void testValidDataModesMultipleSamples(final TestCaseWrapper wrapper) {
+        final Integer testNum = wrapper.testNum;
+        final String outputPrefix= wrapper.outputPrefix;
+        final List<File> denoisedCopyRatiosFiles= wrapper.denoisedCopyRatiosFiles;
+        final List<File> allelicCountsFiles = wrapper.allelicCountsFiles;
+        final File normalAllelicCountsFile = wrapper.normalAllelicCountsFile;
+
         final File outputDir = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? EXACT_MATCH_EXPECTED_SUB_DIR : createTempDir("testDir");
 
         // test joint segmentation
