@@ -471,17 +471,32 @@ class ReadTensorEncoder(Encoder):
         ] = mq
 
     def filter_read(self, read, window):
+        if not read:
+            True
 
-        # filters alignment entries that do not have a cigarstring
-        if (
-            not read
-            or not hasattr(read, "cigarstring")
-            or read.cigarstring is None
-        ):
-            return True
+        if (not read.is_unmapped) and (read.query_alignment_start < 0):
+            True
+
+        if (not read.is_unmapped) and (read.query_alignment_length + 1 < 0):
+            True
+
+        if len(read.query_qualities) != len(read.query_sequence):
+            True
+
+        if (not read.is_unmapped) and (len(read.cigarstring) != len(read.query_sequence)):
+            True
+
+        if len(read.query_sequence) <= 0:
+            True
+
+        if read.cigarstring and "N" in read.cigarstring:
+            True
 
         # filters HaplotypeCaller artificial haplotypes
-        read_group = read.get_tag("RG")
+        try:
+            read_group = read.get_tag("RG")
+        except KeyError:
+            True
         if "artificial" in read_group.lower():
             return True
 
@@ -524,16 +539,20 @@ class ReadTensorEncoder(Encoder):
 
         start = variant.start
         stop = variant.stop
-        for alignment_number, read in enumerate(self.alignment_file.fetch(
+        alignment_number = 0
+        for read in self.alignment_file.fetch(
             variant.contig,
             start,
             stop,
             multiple_iterators=False,
-        )):
-            if alignment_number < self.read_limit:
+        ):
+            if self.filter_read(read, interval):
+                continue
+            alignment_number += 1
+            if alignment_number <= self.read_limit:
                 reads.append(read)
             else:
-                randomSlot = mRandomGenerator.nextInt(alignment_number+1)
+                randomSlot = mRandomGenerator.nextInt(alignment_number)
                 if randomSlot < self.read_limit:
                     reads[randomSlot] = read
         insertions = self.get_insertions(reads, interval, self.window_size)
