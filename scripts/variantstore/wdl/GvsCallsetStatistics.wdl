@@ -66,38 +66,27 @@ task CreateTables {
         String aggregate_metrics_table
         String statistics_table
     }
+    meta {
+        # Always check that these tables exist
+        volatile: true
+    }
     command <<<
         set -o errexit -o nounset -o xtrace -o pipefail
 
         set +o errexit
         bq --project_id=~{project_id} show ~{dataset_name}.~{metrics_table}
-        BQ_SHOW_RC=$?
+        BQ_SHOW_METRICS=$?
         set -o errexit
-
-        if [ $BQ_SHOW_RC -eq 0 ]; then
-            echo "Output metrics table already exists, exiting."
-            exit 1
-        fi
 
         set +o errexit
         bq --project_id=~{project_id} show ~{dataset_name}.~{aggregate_metrics_table}
-        BQ_SHOW_RC=$?
+        BQ_SHOW_METRICS_AGG=$?
         set -o errexit
-
-        if [ $BQ_SHOW_RC -eq 0 ]; then
-            echo "Output aggregate metrics table already exists, exiting."
-            exit 1
-        fi
 
         set +o errexit
         bq --project_id=~{project_id} show ~{dataset_name}.~{statistics_table}
-        BQ_SHOW_RC=$?
+        BQ_SHOW_STATISTICS=$?
         set -o errexit
-
-        if [ $BQ_SHOW_RC -eq 0 ]; then
-            echo "Output statistics table already exists, exiting."
-            exit 1
-        fi
 
         # Schemas extracted programatically: https://stackoverflow.com/a/66987934
         #
@@ -363,9 +352,18 @@ task CreateTables {
         ]
         FIN
 
-        bq mk --table ~{project_id}:~{dataset_name}.~{metrics_table} metrics_schema.json
-        bq mk --table ~{project_id}:~{dataset_name}.~{aggregate_metrics_table} metrics_aggregate_schema.json
-        bq mk --table ~{project_id}:~{dataset_name}.~{statistics_table} statistics_schema.json
+        # Make any tables that need making
+        if [ $BQ_SHOW_METRICS -ne 0 ]; then
+            bq mk --table ~{project_id}:~{dataset_name}.~{metrics_table} metrics_schema.json
+        fi
+
+        if [ $BQ_SHOW_METRICS_AGG -ne 0 ]; then
+            bq mk --table ~{project_id}:~{dataset_name}.~{aggregate_metrics_table} metrics_aggregate_schema.json
+        fi
+
+        if [ $BQ_SHOW_STATISTICS -ne 0 ]; then
+            bq mk --table ~{project_id}:~{dataset_name}.~{statistics_table} statistics_schema.json
+        fi
     >>>
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:vs_560_callset_statistics"
