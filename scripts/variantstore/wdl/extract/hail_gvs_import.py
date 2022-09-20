@@ -26,12 +26,10 @@ curl -sSL https://broad.io/install-gcs-connector | python3
 
 `python hail_gvs_import.py`
 """
-from datetime import datetime
 from google.cloud import storage
 
 import hail as hl
 import re
-import uuid
 
 
 def generate_avro_args(bucket, object_prefix, key):
@@ -47,11 +45,10 @@ def generate_avro_args(bucket, object_prefix, key):
     * vqsr_tranche_data (list)
     """
 
-    object_keyed_prefix=f"{object_prefix}/{key}/"
-    full_keyed_prefix = f"gs://{bucket.name}/{object_keyed_prefix}"
+    keyed_prefix = f"{object_prefix}/{key}/"
 
     def superpartitioned_handler(full_path):
-        relative_path = full_path[len(full_keyed_prefix):]
+        relative_path = full_path[len(keyed_prefix):]
         parts = relative_path.split('/')
 
         index = int(parts[0].split('_')[-1]) - 1
@@ -64,22 +61,20 @@ def generate_avro_args(bucket, object_prefix, key):
 
     superpartitioned_keys = {'vets', 'refs'}
     entry_handler = superpartitioned_handler if key in superpartitioned_keys else regular_handler
-    bucket_str = bucket.name
 
     ret = []
 
     # `list_blobs` paginates under the covers: https://stackoverflow.com/a/43646557
     count = 0
     log_interval = 1000
-    for blob in bucket.list_blobs(prefix=object_keyed_prefix):
+    for blob in bucket.list_blobs(prefix=keyed_prefix):
         count = count + 1
         if count % log_interval == 0:
             print(f"Processed {count} {key} blobs...")
 
         if not blob.name.endswith(".avro"):
             continue
-        full_path = f'gs://{bucket_str}/{blob.name}'
-        entry_handler(full_path)
+        entry_handler(blob.name)
 
     return ret
 

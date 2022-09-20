@@ -1,27 +1,70 @@
 import unittest
 
 from hail_gvs_import import generate_avro_args
+from unittest.mock import MagicMock
+
+
+class ShamBlob:
+    def __init__(self, name):
+        self.name = name
+
+
+class ShamBucket:
+    def __init__(self, name):
+        self.name = name
+
+    def list_blobs(self):
+        pass
 
 
 class TestGenerateAvroDict(unittest.TestCase):
-    class MockBucket:
-        def __init__(self, name, blobs):
-            self.name = name
-            self.blobs = blobs
-
-        def list_blobs(self):
-            return self.blobs
 
     def test_generate_avro_args(self):
 
-        # test non superpartitioned
-        bucket = MockBucket("")
+        bucket_name = 'fc-workspace'
+        object_prefix = f'gs://{bucket_name}/submission/workflow/workflow-id/call-Foo/avro'
 
-        # test superpartitioned
-        avro_prefix = "gs://fc-eada2674-7c2b-42a6-8db3-0246872596dc/submissions/748efa9e-f176-47ac-8a93-eff632fc6b8a/GvsExtractAvroFilesForHail/c9fbac0f-9c49-46f5-92a4-fc468e8fa94f/call-OutputPath/avro"
-        avro_dict = generate_avro_args(
-            avro_prefix=avro_prefix,
-            gcs_listing=listing
+        # non superpartitioned
+        blobs = [
+            ShamBlob(f'{object_prefix}/sample_mapping/sample_mapping_000000000000.avro')
+        ]
+        bucket = ShamBucket(bucket_name)
+        bucket.list_blobs = MagicMock(return_value=blobs)
+
+        actual = generate_avro_args(
+            bucket=bucket,
+            object_prefix=object_prefix,
+            key='sample_mapping'
         )
-        actual = generate_avro_args(avro_dict)
-        self.assertEqual(actual.strip(), expected.strip())
+        bucket.list_blobs.assert_called_with(prefix=f'{object_prefix}/sample_mapping/')
+        expected = [b.name for b in blobs]
+        self.assertEqual(actual, expected)
+
+        # superpartitioned
+        blobs = [
+            ShamBlob(f'{object_prefix}/vets/vet_001/vet_001_000000000000.avro'),
+            ShamBlob(f'{object_prefix}/vets/vet_001/vet_001_000000000001.avro'),
+            ShamBlob(f'{object_prefix}/vets/vet_001/vet_001_000000000002.avro'),
+            ShamBlob(f'{object_prefix}/vets/vet_002/vet_002_000000000000.avro'),
+            ShamBlob(f'{object_prefix}/vets/vet_002/vet_002_000000000001.avro'),
+            ShamBlob(f'{object_prefix}/vets/vet_002/vet_002_000000000002.avro'),
+            ShamBlob(f'{object_prefix}/vets/vet_003/vet_003_000000000000.avro'),
+            ShamBlob(f'{object_prefix}/vets/vet_003/vet_003_000000000001.avro'),
+            ShamBlob(f'{object_prefix}/vets/vet_003/vet_003_000000000002.avro'),
+        ]
+
+        bucket.list_blobs = MagicMock(return_value=blobs)
+        actual = generate_avro_args(
+            bucket=bucket,
+            object_prefix=object_prefix,
+            key='vets'
+        )
+        bucket.list_blobs.assert_called_with(prefix=f'{object_prefix}/vets/')
+
+        def vet_avros_for_prefix(prefix):
+            return [f'{object_prefix}/vets/{prefix}/{prefix}_00000000000{i}.avro' for i in range(3)]
+
+        expected = [
+            vet_avros_for_prefix(f'vet_00{i+1}') for i in range(3)
+        ]
+        self.assertEqual(actual, expected)

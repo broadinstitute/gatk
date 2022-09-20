@@ -274,12 +274,13 @@ task GenerateHailScripts {
         # sites_only_vcf_output_path="${write_prefix}/gvs_sites_only.vcf"
         # echo $sites_only_vcf_output_path > sites_only_vcf_output_path.txt
 
+        tmpfile=$(mktemp /tmp/hail_gvs_import.XXXXX)
         cat /app/hail_gvs_import.py |
             sed "s/@AVRO_PREFIX@/~{avro_prefix}/" |
             sed "s/@WRITE_PREFIX@/${write_prefix}/" >
-            hail_gvs_import.py.tmp
+            ${tmpfile}
 
-        mv hail_gvs_import.py.tmp hail_gvs_import.py
+        mv ${tmpfile} hail_gvs_import.py
     >>>
 
     output {
