@@ -472,7 +472,7 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test(dataProvider = "dataValidDataModesMultipleSamples")
-    public void testAAAValidDataModesMultipleSamples(final TestCaseWrapper wrapper) {
+    public void testValidDataModesMultipleSamples(final TestCaseWrapper wrapper) {
         final Integer testNum = wrapper.testNum;
         final String outputPrefix= wrapper.outputPrefix;
         final List<File> denoisedCopyRatiosFiles= wrapper.denoisedCopyRatiosFiles;
