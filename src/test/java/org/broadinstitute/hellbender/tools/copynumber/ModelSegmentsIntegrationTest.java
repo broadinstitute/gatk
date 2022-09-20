@@ -334,30 +334,35 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
     public Object[][] dataValidDataModesMultipleSamples() {
         return new Object[][]{
                 {
+                    1,
                     "multiple-sample-cr-ac-nac", // cr-ac-nac = copy ratios + allelic counts + normal allelic counts
                     Arrays.asList(TUMOR_1_DENOISED_COPY_RATIOS_FILE, TUMOR_2_DENOISED_COPY_RATIOS_FILE),
                     Arrays.asList(TUMOR_1_ALLELIC_COUNTS_FILE, TUMOR_2_ALLELIC_COUNTS_FILE),
                     NORMAL_ALLELIC_COUNTS_FILE
                 },
                 {
+                    2,
                     "multiple-sample-cr-ac",
                     Arrays.asList(TUMOR_1_DENOISED_COPY_RATIOS_FILE, TUMOR_2_DENOISED_COPY_RATIOS_FILE),
                     Arrays.asList(TUMOR_1_ALLELIC_COUNTS_FILE, TUMOR_2_ALLELIC_COUNTS_FILE),
                     null
                 },
                 {
+                    3,
                     "multiple-sample-ac-nac",
                     null,
                     Arrays.asList(TUMOR_1_ALLELIC_COUNTS_FILE, TUMOR_2_ALLELIC_COUNTS_FILE),
                     NORMAL_ALLELIC_COUNTS_FILE
                 },
                 {
+                    4,
                     "multiple-sample-cr",
                     Arrays.asList(TUMOR_1_DENOISED_COPY_RATIOS_FILE, TUMOR_2_DENOISED_COPY_RATIOS_FILE),
                     null,
                     null
                 },
                 {
+                    5,
                     "multiple-sample-ac",
                     null,
                     Arrays.asList(TUMOR_1_ALLELIC_COUNTS_FILE, TUMOR_2_ALLELIC_COUNTS_FILE),
@@ -459,7 +464,8 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test(dataProvider = "dataValidDataModesMultipleSamples")
-    public void testValidDataModesMultipleSamples(final String outputPrefix,
+    public void testValidDataModesMultipleSamples(final Integer testNum,
+                                                  final String outputPrefix,
                                                   final List<File> denoisedCopyRatiosFiles,
                                                   final List<File> allelicCountsFiles,
                                                   final File normalAllelicCountsFile) {
@@ -468,6 +474,8 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
         // test joint segmentation
         final ArgumentsBuilder argsBuilder = buildArgsBuilderMultipleSamples(
                 outputDir, outputPrefix, denoisedCopyRatiosFiles, allelicCountsFiles, normalAllelicCountsFile);
+        logger.info("Test Number: " + testNum);
+        argsBuilder.getArgsList().forEach(a -> logger.info(a.toString()));
         runCommandLine(argsBuilder);
         final boolean isAllelicCountsPresent = allelicCountsFiles != null;
         final boolean isNormalAllelicCountsPresent = normalAllelicCountsFile != null;
@@ -482,6 +490,7 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
         argsBuilderSingleSample.add(    // add the joint segmentation as input
                 CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME,
                 new File(outputDir, outputPrefix + ModelSegments.PICARD_INTERVAL_LIST_FILE_SUFFIX));
+        argsBuilderSingleSample.getArgsList().forEach(a -> logger.info(a.toString()));
         runCommandLine(argsBuilderSingleSample);
         assertOutputFilesSingleSample(outputDir, outputPrefix + "-tumor-1", isAllelicCountsPresent, isNormalAllelicCountsPresent);
     }
