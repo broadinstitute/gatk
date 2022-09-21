@@ -19,6 +19,7 @@ COPY curate_input_array_files.py /app
 COPY scale_xy_bed_values.py /app
 COPY workflow_compute_costs.py /app
 COPY hail_gvs_import.py /app
+COPY hail_create_vat_inputs.py /app
 
 # Copy the schema files needed for VAT creation.
 COPY variant_annotation_table/schema/vat_schema.json /data/variant_annotation_table/schema/

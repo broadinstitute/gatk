@@ -17,9 +17,9 @@ class ShamBucket:
         pass
 
 
-class TestGenerateAvroDict(unittest.TestCase):
+class TestGenerateAvroArguments(unittest.TestCase):
 
-    def test_generate_avro_args(self):
+    def test_generate_avro_arguments(self):
 
         bucket_name = 'fc-workspace'
         object_prefix = f'gs://{bucket_name}/submission/workflow/workflow-id/call-Foo/avro'
