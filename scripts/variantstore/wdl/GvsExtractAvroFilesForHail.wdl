@@ -51,6 +51,10 @@ workflow GvsExtractAvroFilesForHail {
     }
     output {
         File hail_gvs_import_script = GenerateHailScripts.hail_gvs_import_script
+        File hail_create_vat_inputs_script = GenerateHailScripts.hail_create_vat_inputs_script
+        String vds_output_path = GenerateHailScripts.vds_output_path
+        String sites_only_vcf_output_path = GenerateHailScripts.sites_only_vcf_output_path
+        String vat_inputs_output_path = GenerateHailScripts.vat_inputs_output_path
     }
 }
 
@@ -290,7 +294,7 @@ task GenerateHailScripts {
             sed "s/@VDS_INPUT_PATH@/${vds_output_path}/" |
             sed "s/@ANCESTRY_INPUT_PATH@/~{ancestry_file}/" |
             sed "s/@SITES_ONLY_VCF_OUTPUT_PATH@/${sites_only_vcf_output_path}/" |
-            sed "s/VAT_CUSTOM_ANNOTATIONS_OUTPUT_PATH >
+            sed "s/@VAT_CUSTOM_ANNOTATIONS_OUTPUT_PATH@/${vat_tsv_output_path}/" >
             ${tmpfile}
         mv ${tmpfile} hail_create_vat_inputs.py
 
