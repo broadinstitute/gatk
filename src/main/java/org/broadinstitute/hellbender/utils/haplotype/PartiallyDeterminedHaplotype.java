@@ -27,7 +27,7 @@ public final class PartiallyDeterminedHaplotype extends Haplotype {
     // 10 - Delete region stops
     // 11 - Delete has length 1, start and stop position is the same
     // All 8 bits 0 indicate either a resolved position or if w
-    final static byte SNP = 1;
+    final public static byte SNP = 1;
     final static byte DEL_START = 2;
     final static byte DEL_END = 4;
     final static byte A = 8;
@@ -121,7 +121,7 @@ public final class PartiallyDeterminedHaplotype extends Haplotype {
     }
 
     public static Function<VariantContext, String> getDRAGENDebugVariantContextString(final int offset) {
-        return v -> "(" + Integer.toString(v.getStart() - offset)+ (v.isIndel()?".5":"") + ",Rlen=" + v.getLengthOnReference()+"," + v.getAlternateAlleles() + ")";
+        return v -> "(" + Integer.toString(v.getStart() - offset + (v.isSimpleDeletion()? 1 : 0))+ (v.isSimpleInsertion()?".5":"") + ",Rlen=" + v.getLengthOnReference()+"," + v.getAlternateAlleles() + ")";
     }
 
     // NOTE, we don't have to trim this because we form these after trimming

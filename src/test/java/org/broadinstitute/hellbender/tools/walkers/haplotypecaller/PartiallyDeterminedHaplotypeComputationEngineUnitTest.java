@@ -26,6 +26,7 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
     VariantContext SNP_G_102 = new VariantContextBuilder("a","20",102, 102, Arrays.asList(Allele.REF_A,Allele.ALT_G)).make();
     VariantContext SNP_C_105 = new VariantContextBuilder("a","20",105, 105, Arrays.asList(Allele.REF_A,Allele.ALT_C)).make();
     VariantContext SNP_C_106 = new VariantContextBuilder("a","20",106, 106, Arrays.asList(Allele.REF_A,Allele.ALT_C)).make();
+    VariantContext SNP_T_106 = new VariantContextBuilder("a","20",106, 106, Arrays.asList(Allele.REF_A,Allele.ALT_T)).make();
     VariantContext SNP_C_109 = new VariantContextBuilder("a","20",109, 109, Arrays.asList(Allele.REF_A,Allele.ALT_C)).make();
     VariantContext SNP_C_107 = new VariantContextBuilder("a","20",107, 107, Arrays.asList(Allele.REF_A,Allele.ALT_C)).make();
 
@@ -107,6 +108,8 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
 
                 // making sure we support "complex allels" from DRAGEN
                 {Arrays.asList(DEL_AAA_102, SNP_C_105, SNP_C_106, INS_GGG_106), SNP_C_105,  false ,  "AAAAACAGGAAA", new byte[]{0,0,0,2,4,0,17,2,4,0,0,0}, "7M2I3M"},
+                {Arrays.asList(DEL_AAA_102, SNP_C_105, SNP_C_106, SNP_T_106, INS_GGG_106), SNP_C_105,  false ,  "AAAAACAGGAAA", new byte[]{0,0,0,2,4,0,81,2,4,0,0,0}, "7M2I3M"},
+
         };
     }
     @Test(dataProvider = "testGeneratePDHaplotypeDataProvider")
