@@ -327,7 +327,7 @@ task ExtractFilterTask {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2022_09_08_08c1ad7f7abcd72f0cac4445db81203dea699db0"
     memory: "7 GB"
     disks: "local-disk 10 HDD"
     bootDiskSizeGb: 15
@@ -402,7 +402,7 @@ task PopulateFilterSetInfo {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2022_09_08_08c1ad7f7abcd72f0cac4445db81203dea699db0"
     memory: "3500 MB"
     disks: "local-disk 250 HDD"
     bootDiskSizeGb: 15
@@ -458,7 +458,7 @@ task PopulateFilterSetSites {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2022_09_08_08c1ad7f7abcd72f0cac4445db81203dea699db0"
     memory: "3500 MB"
     disks: "local-disk 200 HDD"
     bootDiskSizeGb: 15
@@ -506,7 +506,7 @@ task PopulateFilterSetTranches {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2022_09_08_08c1ad7f7abcd72f0cac4445db81203dea699db0"
     memory: "3500 MB"
     disks: "local-disk 200 HDD"
     bootDiskSizeGb: 15
