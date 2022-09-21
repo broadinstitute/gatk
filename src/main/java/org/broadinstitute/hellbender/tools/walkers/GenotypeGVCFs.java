@@ -141,7 +141,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     protected double afTolerance = 1e-3;  //based on Q30 as a "good" base quality score
 
     /**
-     * If specified, keep all the combined raw annotations (e.g. AS_SB_TABLE) after genotyping.  This is applicable to Allele-Specific annotations
+     * If specified, keep all the combined raw annotations (e.g. AS_SB_TABLE) after genotyping.  This is applicable to Allele-Specific annotations. See 
      */
     @Argument(fullName=KEEP_COMBINED_LONG_NAME, shortName = KEEP_COMBINED_SHORT_NAME, doc = "If specified, keep the combined raw annotations")
     protected boolean keepCombined = false;

@@ -18,6 +18,9 @@ import java.util.Map;
 
 /**
  * An interface for annotations that are calculated using raw data across samples, rather than the median (or median of median) of samples values
+ * The Raw annotation keeps some summary (one example might be a histogram of the raw values for each sample) of the individual sample (or allele)
+ * level annotation. As the annotations are combined across multiple samples the raw annotation continues to contain individual values while
+ * the final reduced annotation will typically be a summary statistic from these raw values.
  *
  */
 public interface ReducibleAnnotation extends Annotation {
