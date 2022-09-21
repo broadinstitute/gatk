@@ -1,5 +1,6 @@
 import argparse
 import sys
+import numpy
 
 def compare_gvs_vcf_with_vds_vcf(gvs_vcf, vds_vcf, skip_gvs_filtered_lines):
     with open(gvs_vcf) as gvs:
@@ -62,18 +63,8 @@ def compare_gvs_vcf_with_vds_vcf(gvs_vcf, vds_vcf, skip_gvs_filtered_lines):
                     if not args.report_all_diffs:
                         sys.exit(1)
 
-                # Alt Alleles!
-                # g = gvs_tokens[4].split(",")
-                # v = vds_tokens[4].split(",")
-                # print(f"-> {gvs_tokens[4]}, {g}")
-                # print(f"-> {vds_tokens[4]}, {v}")
-                # g.sort()
-                # v.sort()
-                # print(f"-> {gvs_tokens[4]}, {g}")
-                # print(f"-> {vds_tokens[4]}, {v}")
-
-                gvs_tokens[4], gvs_old_alt_allele_index_to_new = reorder_gvs_alt_alleles(gvs_tokens[4])
-                # print(f"-> {gvs_old_alt_allele_index_to_new}")
+                gvs_tokens[4], gvs_old_allele_index_to_new = reorder_gvs_alt_alleles(gvs_tokens[4])
+                # print(f"-> {gvs_old_allele_index_to_new}")
                 if (gvs_tokens[4] != vds_tokens[4]):
                     print(f"DIFF: ALT differs between VCF line:\n{gvs_tokens[4]} vs {vds_tokens[4]}")
                     if not args.report_all_diffs:
@@ -108,15 +99,20 @@ def compare_gvs_vcf_with_vds_vcf(gvs_vcf, vds_vcf, skip_gvs_filtered_lines):
                     info_diff(gvs_info_fields, vds_info_fields, "AN", locus, gvs_tokens[7], vds_tokens[7])
                     # Calculate the (expected) AC from the gvs VCF
                     gvs_an = int(gvs_info_fields["AN"])
-                    gvs_ac = int(gvs_info_fields["AC"])
+                    reordered_gvs_ac = reorder_gvs_ac(gvs_info_fields["AC"], gvs_old_allele_index_to_new)
+                    reordered_gvs_acs = reordered_gvs_ac.split(",")
+                    alt_allele_ac = 0
+                    for gvs_ac in reordered_gvs_acs:
+                        alt_allele_ac += int(gvs_ac)
+                    new_gvs_ac = str(gvs_an - alt_allele_ac)        # AC for the ref
+                    for gvs_ac in reordered_gvs_acs:
+                        new_gvs_ac += "," + gvs_ac
 
-
-                    new_gvs_af = gvs_ac / gvs_an
-                    new_gvs_ac = str(gvs_an - gvs_ac) + "," + str(gvs_ac)
-                    ref_allele_af = '{:0.6f}'.format((float) (gvs_an - gvs_ac) / gvs_an)
+                    # new_gvs_af = gvs_ac / gvs_an
+##                    new_gvs_ac = str(gvs_an - gvs_ac) + "," + str(gvs_ac)
+                    # ref_allele_af = '{:0.6f}'.format((float) (gvs_an - gvs_ac) / gvs_an)
                     # new_vcs_ac = str(((int) vcs_an) - ((int) vcs_ac)) + "," + vcs_ac
-                    print(f"{new_gvs_ac}")
-                    print(f"{ref_allele_af}")
+                    # print(f"{ref_allele_af}")
 
                     vds_ac = vds_info_fields["AC"]
                     if (new_gvs_ac != vds_ac):
@@ -124,11 +120,11 @@ def compare_gvs_vcf_with_vds_vcf(gvs_vcf, vds_vcf, skip_gvs_filtered_lines):
                         if not args.report_all_diffs:
                             sys.exit(1)
 
-                    vds_af = vds_info_fields["AF"]
-                    if (new_gvs_af != vds_af):
-                        print(f"DIFF: Locus {locus}, INFO Field Value for AF differs between gvs and vds: {new_gvs_af} vs {vds_af}\nGVS INFO: {gvs_tokens[7]}\nVDS INFO: {vds_tokens[7]}")
-                        if not args.report_all_diffs:
-                            sys.exit(1)
+                    # vds_af = vds_info_fields["AF"]
+                    # if (new_gvs_af != vds_af):
+                    #     print(f"DIFF: Locus {locus}, INFO Field Value for AF differs between gvs and vds: {new_gvs_af} vs {vds_af}\nGVS INFO: {gvs_tokens[7]}\nVDS INFO: {vds_tokens[7]}")
+                    #     if not args.report_all_diffs:
+                    #         sys.exit(1)
 
                     # info_diff(gvs_info_fields, vds_info_fields, "AF", locus, gvs_tokens[7], vds_tokens[7])
 
@@ -180,7 +176,7 @@ def compare_gvs_vcf_with_vds_vcf(gvs_vcf, vds_vcf, skip_gvs_filtered_lines):
 
 
                     # NOTE: More complex rules for GT
-                    gvs_gt = reorder_gvs_gts(gvs_sample_genotypes["GT"], gvs_old_alt_allele_index_to_new)
+                    gvs_gt = reorder_gvs_gts(gvs_sample_genotypes["GT"], gvs_old_allele_index_to_new)
                     vds_la = vds_sample_genotypes["LA"]
                     vds_lgt = vds_sample_genotypes["LGT"]
                     vds_gt = vds_sample_genotypes["GT"]
@@ -203,14 +199,15 @@ def compare_gvs_vcf_with_vds_vcf(gvs_vcf, vds_vcf, skip_gvs_filtered_lines):
                     simple_diff(gvs_sample_genotypes, vds_sample_genotypes, "RGQ", locus, sample)
 
                     ## AD
-                    gvs_ad = gvs_sample_genotypes["AD"]
-                    vds_ad = vds_sample_genotypes["LAD"]
-                    if (gvs_ad != vds_ad):
-                        print(f"\nDIFF: Locus {locus}, Sample {sample} Value for differs between gvs key AD and vds key LAD: {gvs_ad} vs {vds_ad}")
-                        print(f"Locus {locus}.  gvs FORMAT: {gvs_tokens[8]} vds FORMAT: {vds_tokens[8]}")
-                        print(f"Sample {sample}.    gvs sample: {gvs_tokens[gvs_sample_to_column[sample]]}  vds_sample: {vds_tokens[vds_sample_to_column[sample]]}")
-                        if not args.report_all_diffs:
-                            sys.exit(1)
+                    if "AD" in gvs_sample_genotypes:        # TODO - did this go away???
+                        gvs_ad = gvs_sample_genotypes["AD"]
+                        vds_ad = vds_sample_genotypes["LAD"]
+                        if (gvs_ad != vds_ad):
+                            print(f"\nDIFF: Locus {locus}, Sample {sample} Value for differs between gvs key AD and vds key LAD: {gvs_ad} vs {vds_ad}")
+                            print(f"Locus {locus}.  gvs FORMAT: {gvs_tokens[8]} vds FORMAT: {vds_tokens[8]}")
+                            print(f"Sample {sample}.    gvs sample: {gvs_tokens[gvs_sample_to_column[sample]]}  vds_sample: {vds_tokens[vds_sample_to_column[sample]]}")
+                            if not args.report_all_diffs:
+                                sys.exit(1)
 
                 gvs_line = gvs.readline().rstrip()
                 vds_line = vds.readline().rstrip()
@@ -256,8 +253,32 @@ def calculate_vds_gt_lgt(lgt, la):
     gt = local_alleles[int(local_gts[0])] + "/" + local_alleles[int(local_gts[1])]
     return gt
 
+def reorder_gvs_ac(gvs_ac, gvs_old_allele_index_to_new):
+    # Reorder the gvs's INFO AC field to be in the same order as the VDS's alleles
+    gvs_acs = gvs_ac.split(",")
+    # Note that gvs_old_allele_index_to_new contains a mapping for the REF allele too, so one more expected than for ALT alleles
+    if (len(gvs_acs) != len(gvs_old_allele_index_to_new.keys()) - 1):
+        print(f"GVS INFO AC {gvs_ac} has different number of elements than GVS's alleles")
+        sys.exit(1)
+    reordered_gvs_acs = {}
+    # Generate a new/better hash of old index to new (as ints)  TODO - probably should do it everywhere?
+    old_index_to_new = {}
+    for old in gvs_old_allele_index_to_new.keys():
+        new_val = gvs_old_allele_index_to_new[old]
+        old_val = int(old) - 1
+        old_index_to_new[old_val] = int(new_val) - 1
 
-def reorder_gvs_gts(gvs_gt, gvs_old_alt_allele_index_to_new):
+    for i in range(0, len(gvs_acs)):
+        reordered_gvs_acs[old_index_to_new[i]] = gvs_acs[i]
+
+    reordered_gvs_acs_string = reordered_gvs_acs[0]
+    for i in range(1, len(gvs_acs)):
+        reordered_gvs_acs_string += "," + reordered_gvs_acs[i]
+
+    return reordered_gvs_acs_string
+
+
+def reorder_gvs_gts(gvs_gt, gvs_old_allele_index_to_new):
     # Remap genotypes for difference in ALT allele ordering between gvs VCF and vds VCF
     if gvs_gt != "./.":
         gvs_gts = gvs_gt.split("/")
@@ -267,10 +288,10 @@ def reorder_gvs_gts(gvs_gt, gvs_old_alt_allele_index_to_new):
         new_gvs_gts = []
         for i in range(0, len(gvs_gts)):
             gvs_gt = gvs_gts[i]
-            if gvs_gt not in gvs_old_alt_allele_index_to_new:
+            if gvs_gt not in gvs_old_allele_index_to_new:
                 print(f"Didn't find it!!")
                 sys.exit(1)
-            new_gvs_gts.append(gvs_old_alt_allele_index_to_new[gvs_gt])
+            new_gvs_gts.append(gvs_old_allele_index_to_new[gvs_gt])
         gvs_gt = "/".join(new_gvs_gts)
     return gvs_gt
 
@@ -283,8 +304,8 @@ def reorder_gvs_alt_alleles(alt_allele_string):
         print(f"No ALT ALLELES???")
         sys.exit(1)
 
-    gvs_old_alt_allele_index_to_new = {}
-    gvs_old_alt_allele_index_to_new["0"] = "0"
+    gvs_old_allele_index_to_new = {}
+    gvs_old_allele_index_to_new["0"] = "0"
     if (len(gvs_alleles) > 1):
         old_alleles = gvs_alleles[:]
         gvs_alleles.sort()
@@ -294,11 +315,11 @@ def reorder_gvs_alt_alleles(alt_allele_string):
         for i in range(0, len(old_alleles)):
             for j in range(0, len(gvs_alleles)):
                 if old_alleles[i] == gvs_alleles[j]:
-                    gvs_old_alt_allele_index_to_new[str(i+1)] = str(j+1)
+                    gvs_old_allele_index_to_new[str(i+1)] = str(j+1)
                     break
     else:
-        gvs_old_alt_allele_index_to_new["1"] = "1"
-    return(alt_allele_string, gvs_old_alt_allele_index_to_new)
+        gvs_old_allele_index_to_new["1"] = "1"
+    return(alt_allele_string, gvs_old_allele_index_to_new)
 
 def info_diff(gvs_dict, vds_dict, key, locus, gvs_info, vds_info):
     gvs_value = gvs_dict[key]
