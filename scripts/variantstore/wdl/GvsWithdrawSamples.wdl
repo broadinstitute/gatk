@@ -71,9 +71,9 @@ task WithdrawSamples {
         (SELECT * \
         FROM \`~{project_id}.~{dataset_name}.current_callset_samples\` AS callset \
         WHERE \
-        samples.sample_name = callset.sample_name \
+        samples.sample_name = callset.sample_name) \
         AND NOT samples.is_control \
-        AND withdrawn IS NULL)" > log_message.txt
+        AND withdrawn IS NULL" > log_message.txt
 
     cat log_message.txt | sed -e 's/Number of affected rows: //' > rows_updated.txt
   >>>
