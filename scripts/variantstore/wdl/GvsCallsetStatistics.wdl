@@ -64,6 +64,10 @@ workflow GvsCallsetStatistics {
           statistics_table = statistics_table,
           go = CollectStatistics.done
     }
+
+    output {
+        File callset_statistics = ExportToCSV.callset_statistics
+    }
 }
 
 task CreateTables {
@@ -748,7 +752,7 @@ task ExportToCSV {
         ' > '~{statistics_table}.csv'
     >>>
     output {
-        File tsv = "~{statistics_table}.csv"
+        File callset_statistics = "~{statistics_table}.csv"
     }
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_08_22"
