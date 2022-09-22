@@ -1,7 +1,7 @@
 #!/bin/bash
 
-GCNV_SCRIPT="/home/asmirnov/gatk/src/main/resources/org/broadinstitute/hellbender/tools/copynumber/cohort_denoising_calling.py"
-READ_COUNTS_DIR="/home/asmirnov/gatk/src/test/resources/org/broadinstitute/hellbender/tools/copynumber/gcnv-sim-data/"
+GCNV_SCRIPT="./src/main/resources/org/broadinstitute/hellbender/tools/copynumber/cohort_denoising_calling.py"
+READ_COUNTS_DIR="./src/test/resources/org/broadinstitute/hellbender/tools/copynumber/gcnv-sim-data/"
 
 export MKL_NUM_THREADS=1
 export OMP_NUM_THREADS=1
