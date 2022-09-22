@@ -735,10 +735,12 @@ task ExportToCSV {
         Boolean go
     }
     meta {
-        # Many upstream dependencies and this is very inexpensive anyway
+        # Many upstream dependencies and this is inexpensive anyway
         volatile: true
     }
     command <<<
+        set -o errexit -o nounset -o xtrace -o pipefail
+
         bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv '
 
           SELECT * from `~{project_id}.~{dataset_name}.~{statistics_table}`
