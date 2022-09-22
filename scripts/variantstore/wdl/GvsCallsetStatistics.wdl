@@ -56,6 +56,14 @@ workflow GvsCallsetStatistics {
             aggregate_metrics_table = aggregate_metrics_table,
             statistics_table = statistics_table
     }
+
+    call ExportToTSV {
+        input:
+          project_id = project_id,
+          dataset_name = dataset_name,
+          statistics_table = statistics_table,
+          go = CollectStatistics.done
+    }
 }
 
 task CreateTables {
@@ -713,6 +721,28 @@ task CollectStatistics {
     >>>
     output {
         Boolean done = true
+    }
+    runtime {
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_08_22"
+    }
+}
+
+task ExportToTSV {
+    input {
+        String project_id
+        String dataset_name
+        String statistics_table
+        Boolean go
+    }
+    command <<<
+        bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv --field_delimiter=tab '
+
+          SELECT * from `~{project_id}.~{dataset_name}.~{statistics_table}`
+
+        ' > '~{statistics_table}.tsv'
+    >>>
+    output {
+        File tsv = "~{statistics_table}.tsv"
     }
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_08_22"
