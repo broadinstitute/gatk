@@ -1,0 +1,62 @@
+# Conda environment for GATK Python Tools
+#
+# Only update this environment if there is a *VERY* good reason to do so!
+# If the build is broken but could be fixed by doing something else, then do that thing instead.
+# Ensuring the correct environment for canonical (or otherwise reasonable) usage of our standard Docker takes precedence over edge cases.
+# If you break the environment, you are responsible for fixing it and also owe the last developer who left this in a reasonable state a beverage of their choice.
+# (This may be yourself, and you'll appreciate that beverage while you tinker with dependencies!)
+#
+# When changing dependencies or versions in this file, check to see if the "supportedPythonPackages" DataProvider
+# used by the testGATKPythonEnvironmentPackagePresent test in PythonEnvironmentIntegrationTest needs to be updated
+# to reflect the changes.
+#
+name: gatk
+channels:
+# if channels other than conda-forge are added and the channel order is changed (note that conda channel_priority is currently set to flexible),
+# verify that key dependencies are installed from the correct channel and compiled against MKL
+- conda-forge
+- defaults
+dependencies:
+
+# core python dependencies
+- conda-forge::python=3.7.8       # do not update
+- pip=20.0.2                        # specifying channel may cause a warning to be emitted by conda
+- conda-forge::mkl=2022.1.0           # MKL typically provides dramatic performance increases for theano, tensorflow, and other key dependencies
+- conda-forge::mkl-service=2.4.0
+- conda-forge::numpy=1.21.2         # do not update, this will break scipy=1.0.0
+                                    #   verify that numpy is compiled against MKL (e.g., by checking *_mkl_info using numpy.show_config())
+                                    #   and that it is used in tensorflow, theano, and other key dependencies
+- conda-forge::theano=1.0.5         # it is unlikely that new versions of theano will be released
+                                      #   verify that this is using numpy compiled against MKL (e.g., by the presence of -lmkl_rt in theano.config.blas.ldflags)
+
+- conda-forge::pymc3=3.5            # do not update, this will break gcnvkernel
+- conda-forge::scipy=1.5.3          # do not update, this will break a scipy.misc.logsumexp import (deprecated in scipy=1.0.0) in pymc3=3.1
+- conda-forge::h5py=3.1.0             # newer versions produces an import issue https://github.com/h5py/h5py/issues/1880
+
+- defaults::intel-openmp=2021.4.0
+- conda-forge::scikit-learn=0.23.1
+- conda-forge::matplotlib=3.2.1
+- conda-forge::pandas=1.0.3
+- conda-forge::typing_extensions=4.1.1   # see https://github.com/broadinstitute/gatk/issues/7800 and linked PRs
+
+- pytorch=1.10.1
+- setuptools=59.5.0
+
+
+#other python dependencies; these should be removed after functionality is moved into Java code
+- biopython=1.76
+- pyvcf=0.6.8
+- bioconda::pysam=0.15.3            # using older conda-installed versions may result in libcrypto / openssl bugs
+
+- r-base=3.6.2
+- r-data.table=1.12.8
+- r-dplyr=0.8.5
+- r-getopt=1.20.3
+- r-ggplot2=3.3.0
+- r-gplots=3.0.3
+- r-gsalib=2.1
+- r-optparse=1.6.4
+- r-backports=1.1.10
+
+- pip:
+  - -e /home/asmirnov/gatk/src/main/python/org/broadinstitute/hellbender/ 
