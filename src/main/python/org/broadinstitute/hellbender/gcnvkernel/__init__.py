@@ -26,6 +26,6 @@ from .tasks.task_cohort_ploidy_determination import CohortPloidyInferenceTask
 from .tasks.inference_task_base import ConvergenceError
 from .utils import cli_commons, math
 
-assert pymc3_version == "3.1", "gcnvkernel currently only supports PyMC3 3.1; version found: {0}; " \
+assert pymc3_version == "3.5", "gcnvkernel currently only supports PyMC3 3.5; version found: {0}; " \
                                "please upgrade or downgrade the PyMC3 module in your python environment " \
                                "accordingly.".format(pymc3_version)

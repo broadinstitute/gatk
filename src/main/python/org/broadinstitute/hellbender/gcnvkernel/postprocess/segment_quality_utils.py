@@ -5,7 +5,7 @@ import numpy as np
 import pymc3 as pm
 import theano as th
 import theano.tensor as tt
-from scipy.misc import logsumexp
+from scipy.special import logsumexp
 
 from ..utils.math import logsumexp_double_complement, logp_to_phred
 
@@ -153,7 +153,7 @@ class HMMSegmentationQualityCalculator:
         constrained_beta_last_c = self.beta_tc[end_index, allowed_states]
 
         if end_index == start_index:  # single-site segment
-            log_constrained_data_likelihood: float = logsumexp(constrained_alpha_first_c + constrained_beta_last_c)
+            log_constrained_data_likelihood: float = logsumexp(constrained_alpha_first_c + constrained_beta_last_c)[0]
             logp = log_constrained_data_likelihood - self.log_data_likelihood
         else:
             # calculate the required slices of the log emission and log transition representing
@@ -224,7 +224,7 @@ class HMMSegmentationQualityCalculator:
 
         if start_index == end_index:
             log_compl_prob = logsumexp(
-                self.log_posterior_prob_tc[start_index, self.leave_one_out_state_lists[call_state]])
+                self.log_posterior_prob_tc[start_index, self.leave_one_out_state_lists[call_state]])[0]
             return logp_to_phred(log_compl_prob, complement=False)
         else:
             # calculate the uncorrelated log complementary probability
@@ -275,7 +275,7 @@ class HMMSegmentationQualityCalculator:
                                                     self.log_trans_tcc[start_index - 1, call_state, call_state] +
                                                     self.log_emission_tc[start_index, call_state] +
                                                     self.beta_tc[start_index, call_state]))
-            logp = logsumexp(np.asarray(complementary_paths_unnorm_logp)) - self.log_data_likelihood
+            logp = logsumexp(np.asarray(complementary_paths_unnorm_logp))[0] - self.log_data_likelihood
 
         return logp_to_phred(logp)
 
@@ -311,6 +311,6 @@ class HMMSegmentationQualityCalculator:
                                                     self.log_trans_tcc[end_index, call_state, call_state] +
                                                     self.log_emission_tc[end_index + 1, call_state] +
                                                     self.beta_tc[end_index + 1, call_state]))
-            logp = logsumexp(np.asarray(complementary_paths_unnorm_logp)) - self.log_data_likelihood
+            logp = logsumexp(np.asarray(complementary_paths_unnorm_logp))[0] - self.log_data_likelihood
 
         return logp_to_phred(logp)
