@@ -63,7 +63,7 @@ task OutputPath {
     meta {
         description: "Does nothing but produce the cloud path to its stdout."
         # Always make a new output path, otherwise every invocation would clobber the original.
-        volatile: true
+        volatile: false
     }
     input {
         Boolean go = true
@@ -83,7 +83,7 @@ task CountSamples {
     meta {
         description: "Counts the number of samples in the sample_info table efficiently."
         # Not dealing with caching for now as that would introduce a lot of complexity.
-        volatile: true
+        volatile: false
     }
     input {
         String project_id
@@ -116,7 +116,7 @@ task ExtractFromNonSuperpartitionedTables {
     meta {
         description: "Extracts from the non-superpartitioned tables: sample_info, filter_set_info, filter_set_sites"
         # Not dealing with caching for now as that would introduce a lot of complexity.
-        volatile: true
+        volatile: false
     }
     input {
         String project_id
@@ -186,7 +186,7 @@ task ExtractFromSuperpartitionedTables {
     meta {
         description: "Extracts from the superpartitioned tables: vet_<table index>, ref_ranges_<table index>"
         # Not dealing with caching for now as that would introduce a lot of complexity.
-        volatile: true
+        volatile: false
     }
     input {
         String project_id
@@ -278,8 +278,7 @@ task GenerateHailScripts {
         tmpfile=$(mktemp /tmp/hail_gvs_import.XXXXX)
         cat /app/hail_gvs_import.py |
             sed "s/@AVRO_PREFIX@/~{avro_prefix}/" |
-            sed "s/@WRITE_PREFIX@/${write_prefix}/" >
-            ${tmpfile}
+            sed "s/@WRITE_PREFIX@/${write_prefix}/" > ${tmpfile}
         mv ${tmpfile} hail_gvs_import.py
 
         vcf_output_path="${write_prefix}/gvs_export.vcf"
@@ -294,8 +293,7 @@ task GenerateHailScripts {
             sed "s/@VDS_INPUT_PATH@/${vds_output_path}/" |
             sed "s/@ANCESTRY_INPUT_PATH@/~{ancestry_file}/" |
             sed "s/@SITES_ONLY_VCF_OUTPUT_PATH@/${sites_only_vcf_output_path}/" |
-            sed "s/@VAT_CUSTOM_ANNOTATIONS_OUTPUT_PATH@/${vat_tsv_output_path}/" >
-            ${tmpfile}
+            sed "s/@VAT_CUSTOM_ANNOTATIONS_OUTPUT_PATH@/${vat_tsv_output_path}/" > ${tmpfile}
         mv ${tmpfile} hail_create_vat_inputs.py
 
     >>>
