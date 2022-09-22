@@ -9,5 +9,10 @@
   "JointVcfFiltering.basename": "test_10_samples",
   "JointVcfFiltering.snp_annotations": "-A ReadPosRankSum -A FS -A SOR -A QD -A AVERAGE_TREE_SCORE -A AVERAGE_ASSEMBLED_HAPS -A AVERAGE_FILTERED_HAPS",
   "JointVcfFiltering.indel_annotations": "-A MQRankSum -A ReadPosRankSum -A FS -A SOR -A QD -A AVERAGE_TREE_SCORE",
+<<<<<<< HEAD
   "JointVcfFiltering.model_backend": "PYTHON_IFOREST"
+=======
+  "JointVcfFiltering.model_backend": "PYTHON_IFOREST",
+  "JointVcfFiltering.use_allele_specific_annotations": false
+>>>>>>> 99a985c7b (Adding use_allele_specific_annotation arg and fixing task with empty input in JointVcfFiltering WDL (#8027))
 }
