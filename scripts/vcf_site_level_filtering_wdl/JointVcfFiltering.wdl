@@ -27,7 +27,7 @@ workflow JointVcfFiltering {
 		String indel_annotations
 		File? gatk_override
 
-		Boolean use_allele_specific_annotations = false
+		Boolean use_allele_specific_annotations
 
 		String snp_resource_args = "--resource:hapmap,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/hapmap_3.3.hg38.vcf.gz --resource:omni,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/1000G_omni2.5.hg38.vcf.gz --resource:1000G,training=true,calibration=false gs://gcp-public-data--broad-references/hg38/v0/1000G_phase1.snps.high_confidence.hg38.vcf.gz"
 		String indel_resource_args = "--resource:mills,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz"
@@ -271,7 +271,8 @@ task ScoreVariantAnnotations {
 				--resource:extracted,extracted=true ~{extracted_training_vcf} \
 				~{resource_args}
 		else
-			echo "Input VCF was empty so we'll return the same VCF that was input"
+			echo "Input VCF was empty so we'll return the same VCF that was input."
+			echo "Scores and annot hdf5 files will not be produced since the input was empty."
 			ln -s ~{vcf} ~{basename}.~{mode}.vcf.gz
 			ln -s ~{vcf_index} ~{basename}.~{mode}.vcf.gz.tbi
 		fi
