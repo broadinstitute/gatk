@@ -27,6 +27,8 @@ workflow JointVcfFiltering {
 		String indel_annotations
 		File? gatk_override
 
+		Boolean use_allele_specific_annotations
+
 		String snp_resource_args = "--resource:hapmap,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/hapmap_3.3.hg38.vcf.gz --resource:omni,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/1000G_omni2.5.hg38.vcf.gz --resource:1000G,training=true,calibration=false gs://gcp-public-data--broad-references/hg38/v0/1000G_phase1.snps.high_confidence.hg38.vcf.gz"
 		String indel_resource_args = "--resource:mills,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz"
 	}
@@ -46,6 +48,7 @@ workflow JointVcfFiltering {
 			resource_args = snp_resource_args,
 			basename = basename,
 			interval_list = extract_interval_list,
+			use_allele_specific_annotations = use_allele_specific_annotations,
 			gatk_override = gatk_override,
 			gatk_docker = gatk_docker
 	}
@@ -59,6 +62,7 @@ workflow JointVcfFiltering {
 			resource_args = indel_resource_args,
 			basename = basename,
 			interval_list = extract_interval_list,
+			use_allele_specific_annotations = use_allele_specific_annotations,
 			gatk_override = gatk_override,
 			gatk_docker = gatk_docker
 	}
@@ -102,6 +106,7 @@ workflow JointVcfFiltering {
 				interval_list = score_interval_list,
 				model_files = TrainVariantAnnotationModelSNPs.outputs,
 				resource_args = snp_resource_args,
+				use_allele_specific_annotations = use_allele_specific_annotations,
 				gatk_override = gatk_override,
 				gatk_docker = gatk_docker
 		}
@@ -120,14 +125,16 @@ workflow JointVcfFiltering {
 				interval_list = score_interval_list,
 				model_files = TrainVariantAnnotationModelINDELs.outputs,
 				resource_args = indel_resource_args,
+				use_allele_specific_annotations = use_allele_specific_annotations,
 				gatk_override = gatk_override,
 				gatk_docker = gatk_docker
 		}
+
 	}
 
 	output {
-		Array[File] variant_filtered_vcf = ScoreVariantAnnotationsINDELs.output_vcf
-		Array[File] variant_filtered_vcf_index = ScoreVariantAnnotationsINDELs.output_vcf_index
+		Array[File] variant_scored_vcf = ScoreVariantAnnotationsINDELs.output_vcf
+		Array[File] variant_scored_vcf_index = ScoreVariantAnnotationsINDELs.output_vcf_index
 	}
 
 }
@@ -143,6 +150,7 @@ task ExtractVariantAnnotations {
 		String annotations
 		String resource_args
 		File? interval_list
+		Boolean use_allele_specific_annotations
 
 		Int memory_mb = 14000
 		Int command_mem = memory_mb - 1000
@@ -157,6 +165,7 @@ task ExtractVariantAnnotations {
 			-V ~{input_vcf} \
 			-O ~{basename}.~{mode} \
 			~{annotations} \
+			~{if use_allele_specific_annotations then "--use-allele-specific-annotations" else ""} \
 			~{"-L " + interval_list} \
 			--mode ~{mode} \
 			~{resource_args}
@@ -232,6 +241,7 @@ task ScoreVariantAnnotations {
 		File extracted_training_vcf_index
 		File? interval_list
 		Array[File] model_files
+		Boolean use_allele_specific_annotations
 
 		Int memory_mb = 16000
 		Int command_mem = memory_mb - 1000
@@ -239,28 +249,37 @@ task ScoreVariantAnnotations {
 	Int disk_size = ceil(size(vcf, "GB") *2 + 50)
 
 	command {
+		zgrep -v '#' ~{vcf} > empty.txt
 		set -e
 
-		ln -s ~{sep=" . && ln -s " model_files} .
+		if [ -s empty.txt ]; then
+			ln -s ~{sep=" . && ln -s " model_files} .
 
-		export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+			export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
-		gatk --java-options "-Xmx~{command_mem}m" \
-			ScoreVariantAnnotations \
-			~{"-L " + interval_list} \
-			-V ~{vcf} \
-			-O ~{basename}.~{mode} \
-			--model-backend ~{model_backend} \
-			~{"--python-script " + python_script} \
-			--model-prefix ~{basename} \
-			~{annotations} \
-			--mode ~{mode} \
-			--resource:extracted,extracted=true ~{extracted_training_vcf} \
-			~{resource_args}
+			gatk --java-options "-Xmx~{command_mem}m" \
+				ScoreVariantAnnotations \
+				~{"-L " + interval_list} \
+				-V ~{vcf} \
+				-O ~{basename}.~{mode} \
+				--model-backend ~{model_backend} \
+				~{"--python-script " + python_script} \
+				--model-prefix ~{basename} \
+				~{annotations} \
+				~{if use_allele_specific_annotations then "--use-allele-specific-annotations" else ""} \
+				-mode ~{mode} \
+				--resource:extracted,extracted=true ~{extracted_training_vcf} \
+				~{resource_args}
+		else
+			echo "Input VCF was empty so we'll return the same VCF that was input."
+			echo "Scores and annot hdf5 files will not be produced since the input was empty."
+			ln -s ~{vcf} ~{basename}.~{mode}.vcf.gz
+			ln -s ~{vcf_index} ~{basename}.~{mode}.vcf.gz.tbi
+		fi
 	}
 	output {
-		File scores = "~{basename}.~{mode}.scores.hdf5"
-		File annots = "~{basename}.~{mode}.annot.hdf5"
+		File? scores = "~{basename}.~{mode}.scores.hdf5"
+		File? annots = "~{basename}.~{mode}.annot.hdf5"
 		File output_vcf = "~{basename}.~{mode}.vcf.gz"
 		File output_vcf_index = "~{basename}.~{mode}.vcf.gz.tbi"
 	}
