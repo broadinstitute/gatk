@@ -110,10 +110,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False,
                                      description='Create base Hail VDS from exported GVS Avro files.')
     parser.add_argument('--avro_prefix', type=str, help='GCS prefix under which exported GVS Avro files are found',
-                        default="@AVRO_PREFIX")
+                        default="@AVRO_PREFIX@")
     parser.add_argument('--write_prefix', type=str,
                         help='GCS prefix to which VDS and temporary outputs should be written',
-                        default="@WRITE_PREFIX")
+                        default="@WRITE_PREFIX@")
 
     args = parser.parse_args()
 
