@@ -63,7 +63,7 @@ task OutputPath {
     meta {
         description: "Does nothing but produce the cloud path to its stdout."
         # Always make a new output path, otherwise every invocation would clobber the original.
-        volatile: false
+        volatile: true
     }
     input {
         Boolean go = true
@@ -83,7 +83,7 @@ task CountSamples {
     meta {
         description: "Counts the number of samples in the sample_info table efficiently."
         # Not dealing with caching for now as that would introduce a lot of complexity.
-        volatile: false
+        volatile: true
     }
     input {
         String project_id
@@ -116,7 +116,7 @@ task ExtractFromNonSuperpartitionedTables {
     meta {
         description: "Extracts from the non-superpartitioned tables: sample_info, filter_set_info, filter_set_sites"
         # Not dealing with caching for now as that would introduce a lot of complexity.
-        volatile: false
+        volatile: true
     }
     input {
         String project_id
@@ -186,7 +186,7 @@ task ExtractFromSuperpartitionedTables {
     meta {
         description: "Extracts from the superpartitioned tables: vet_<table index>, ref_ranges_<table index>"
         # Not dealing with caching for now as that would introduce a lot of complexity.
-        volatile: false
+        volatile: true
     }
     input {
         String project_id

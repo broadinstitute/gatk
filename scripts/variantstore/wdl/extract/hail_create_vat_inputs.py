@@ -8,28 +8,33 @@ import tempfile
 
 
 def parse_ancestry_file(ancestry_file):
+    """
+    Parse the specified TSV input file to create a sample to ancestry dictionary. The result should look
+    something like:
+
+    {"ERS4367795":"eur","ERS4367796":"eas","ERS4367797":"eur","ERS4367798":"afr","ERS4367799":"oth", ... }
+
+    """
     start = datetime.now()
     current_time = start.strftime("%H:%M:%S")
     print("Start Time =", current_time)
-    # Now parse the ancestry file to get it ready for the subpopulation work
     sample_id_to_sub_population = {}
 
     reader = csv.reader(ancestry_file, delimiter='\t')
-    next(reader) # skip header
+    # skip header
+    next(reader)
     for row in reader:
         key = row[0]
         value = row[4]
         sample_id_to_sub_population[key] = value
-    # print(sample_id_to_sub_population_map)
-    # need to make it looks like: sample_id_to_sub_population =
-    # {"ERS4367795":"eur","ERS4367796":"eas","ERS4367797":"eur","ERS4367798":"afr","ERS4367799":"oth","ERS4367800":"oth","ERS4367801":"oth","ERS4367802":"oth","ERS4367803":"oth","ERS4367804":"oth","ERS4367805":"oth"}
+
     return sample_id_to_sub_population
 
 
 def download_ancestry_file(gcs_ancestry_file):
     """
     Download the specified ancestry file from GCS to a local temporary file. This temporary file should be explicitly
-    deleted once we done with it.
+    deleted once we are done with it.
     """
     client = storage.Client()
     gcs_re = re.compile("^gs://(?P<bucket_name>[^/]+)/(?P<blob_name>.*)$")
@@ -97,7 +102,7 @@ def gq0_to_no_call(vds):
     return hl.vds.VariantDataset(rd, vds.variant_data)
 
 
-def mt_ac_an_af(mt, ancestry_file):
+def matrix_table_ac_an_af(mt, ancestry_file):
     """
     Create a DENSE MATRIX TABLE to calculate AC, AN, AF and TODO: Sample Count
     """
@@ -114,7 +119,7 @@ def mt_ac_an_af(mt, ancestry_file):
 def vds_ac_an_af(mt, vds):
     """
     This is what we will use to create the TSV for Nirvana custom annotations
-    Now we join this back to the VDS
+    Join the dense matrix table input back to the VDS.
     """
     qc_data = mt.rows()
     filtered_vd = vds.variant_data
@@ -129,9 +134,7 @@ def write_sites_only_vcf(vds, sites_only_vcf_path):
 
 def write_vat_custom_annotations(mt, vat_custom_annotations_tsv_path):
     """
-    Create the VAT inputs:
-    1. Create a Sites only VCF
-    2. Create a VAT TSV file with subpopulation data
+    Create a VAT TSV file with subpopulation data from the input dense matrix table.
     """
     # TODO create the desired TSV-- We're gonna pull in Tim for this
     # Do we need to track the dropped sites?
@@ -158,7 +161,7 @@ def main(vds, ancestry_file_location, vat_custom_annotations_tsv_path):
     mt = hl.vds.to_dense_mt(vds)
 
     with open(ancestry_file_location, 'r') as ancestry_file:
-        mt = mt_ac_an_af(mt, ancestry_file)
+        mt = matrix_table_ac_an_af(mt, ancestry_file)
 
     vds = vds_ac_an_af(mt, vds)
     write_sites_only_vcf(vds, sites_only_vcf_path)
@@ -188,7 +191,6 @@ def write_tie_out_vcf(vds):
 if __name__ == '__main__':
     vds_path = "@VDS_INPUT_PATH@"
     ancestry_file = "@ANCESTRY_INPUT_PATH@"
-    vcf_output_path = "@VCF_OUTPUT_PATH@"
     sites_only_vcf_path = "@SITES_ONLY_VCF_OUTPUT_PATH@"
     vat_custom_annotations_path = "@VAT_CUSTOM_ANNOTATIONS_OUTPUT_PATH@"
 
