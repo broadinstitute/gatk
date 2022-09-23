@@ -374,7 +374,7 @@ public final class BigQueryUtils {
 
         // Get the results.
         logger.info("Retrieving query results...");
-        final QueryResponse response = bigQuery.getQueryResults(jobId);
+        final QueryResponse response = bigQuery.getQueryResults(queryJob.getJobId());
         final TableResult result;
         final JobStatistics.QueryStatistics queryStatistics;
         try {

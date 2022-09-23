@@ -274,7 +274,7 @@ task SetIsLoadedColumn {
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
     # set is_loaded to true if there is a corresponding vet table partition with rows for that sample_id
-    bq --location=US --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
+    bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
     'UPDATE `~{dataset_name}.sample_info` SET is_loaded = true WHERE sample_id IN (SELECT CAST(partition_id AS INT64) from `~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS` WHERE partition_id NOT LIKE "__%" AND total_logical_bytes > 0 AND table_name LIKE "vet_%") OR sample_id IN (SELECT sample_id FROM `~{dataset_name}.sample_load_status` GROUP BY 1 HAVING COUNT(1) = 2)'
   >>>
   runtime {
