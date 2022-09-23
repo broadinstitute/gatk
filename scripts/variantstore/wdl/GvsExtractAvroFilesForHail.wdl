@@ -306,7 +306,7 @@ task GenerateHailScripts {
         String sites_only_vcf_output_path = read_string('sites_only_vcf_output_path.txt')
         String vat_inputs_output_path = read_string('vat_inputs_output_path.txt')
         File hail_gvs_import_script = 'hail_gvs_import.py'
-        File hail_create_vat_inputs_script = 'hail_export_tieout_vcf.py'
+        File hail_create_vat_inputs_script = 'hail_create_vat_inputs.py'
     }
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:vs_616_split_hail_2022_09_22"
