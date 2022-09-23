@@ -25,7 +25,10 @@ curl -sSL https://broad.io/install-gcs-connector | python3
 * Running the GVS to Hail VDS conversion script:
 
 `python hail_gvs_import.py`
+
 """
+
+
 from google.cloud import storage
 
 import hail as hl
@@ -64,7 +67,8 @@ def generate_avro_args(bucket, object_prefix, key):
 
     ret = []
 
-    # `list_blobs` paginates under the covers: https://stackoverflow.com/a/43646557
+    # `list_blobs` paginates under the covers, explicit pagination not required regardless of the number of Avro files.
+    # https://stackoverflow.com/a/43646557
     count = 0
     log_interval = 1000
     for blob in bucket.list_blobs(prefix=keyed_prefix):
@@ -105,6 +109,7 @@ if __name__ == '__main__':
 
     avro_prefix = "@AVRO_PREFIX@"
     write_prefix= "@WRITE_PREFIX@"
+
     # Remove a trailing slash if present.
     avro_prefix = avro_prefix if not avro_prefix.endswith('/') else avro_prefix[:-1]
     write_prefix = write_prefix if not write_prefix.endswith('/') else write_prefix[:-1]
