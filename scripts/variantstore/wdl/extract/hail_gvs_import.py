@@ -35,7 +35,7 @@ import hail as hl
 import re
 
 
-def generate_avro_args(bucket, object_prefix, key):
+def generate_avro_args(bucket, blob_prefix, key):
     """
     Generate a list of the Avro arguments for the `hl.import_gvs` invocation for the specified key. The datatype should
     match the parameters of the `hl.import_gvs` function:
@@ -48,19 +48,19 @@ def generate_avro_args(bucket, object_prefix, key):
     * vqsr_tranche_data (list)
     """
 
-    keyed_prefix = f"{object_prefix}/{key}/"
+    keyed_prefix = f"{blob_prefix}/{key}/"
 
-    def superpartitioned_handler(full_path):
-        relative_path = full_path[len(keyed_prefix):]
+    def superpartitioned_handler(blob_name):
+        relative_path = blob_name[len(keyed_prefix):]
         parts = relative_path.split('/')
 
         index = int(parts[0].split('_')[-1]) - 1
         if len(ret) == index:
             ret.append([])
-        ret[index].append(full_path)
+        ret[index].append(f'gs://{bucket.name}/{blob_name}')
 
-    def regular_handler(full_path):
-        ret.append(full_path)
+    def regular_handler(blob_name):
+        ret.append(f'gs://{bucket.name}/{blob_name}')
 
     superpartitioned_keys = {'vets', 'refs'}
     entry_handler = superpartitioned_handler if key in superpartitioned_keys else regular_handler
