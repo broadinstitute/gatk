@@ -5,7 +5,6 @@ workflow GvsExtractAvroFilesForHail {
         String project_id
         String dataset
         String filter_set_name
-        File ancestry_file
         Int scatter_width = 10
     }
 
@@ -47,7 +46,6 @@ workflow GvsExtractAvroFilesForHail {
             go_non_superpartitioned = ExtractFromNonSuperpartitionedTables.done,
             go_superpartitioned = ExtractFromSuperpartitionedTables.done,
             avro_prefix = ExtractFromNonSuperpartitionedTables.output_prefix,
-            ancestry_file = ancestry_file
     }
     output {
         File hail_gvs_import_script = GenerateHailScripts.hail_gvs_import_script
@@ -252,7 +250,6 @@ task GenerateHailScripts {
         String avro_prefix
         Boolean go_non_superpartitioned
         Array[Boolean] go_superpartitioned
-        String ancestry_file
     }
     meta {
         # Do not cache, this doesn't know if the "tree" under `avro_prefix` has changed.
@@ -293,7 +290,6 @@ task GenerateHailScripts {
         tmpfile=$(mktemp /tmp/hail_gvs_import.XXXXX)
         cat /app/hail_create_vat_inputs.py |
             sed "s;@VDS_INPUT_PATH@;${vds_output_path};" |
-            sed "s;@ANCESTRY_INPUT_PATH@;~{ancestry_file};" |
             sed "s;@SITES_ONLY_VCF_OUTPUT_PATH@;${sites_only_vcf_output_path};" |
             sed "s;@VAT_CUSTOM_ANNOTATIONS_OUTPUT_PATH@;${vat_tsv_output_path};" > ${tmpfile}
         mv ${tmpfile} hail_create_vat_inputs.py

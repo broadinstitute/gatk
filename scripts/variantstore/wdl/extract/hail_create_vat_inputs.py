@@ -1,6 +1,7 @@
 from datetime import datetime
 from google.cloud import storage
 
+import argparse
 import csv
 import hail as hl
 import re
@@ -189,12 +190,18 @@ def write_tie_out_vcf(vds, vcf_output_path):
 
 
 if __name__ == '__main__':
-    vds_path = "@VDS_INPUT_PATH@"
-    ancestry_file = "@ANCESTRY_INPUT_PATH@"
-    sites_only_vcf_path = "@SITES_ONLY_VCF_OUTPUT_PATH@"
-    vat_custom_annotations_path = "@VAT_CUSTOM_ANNOTATIONS_OUTPUT_PATH@"
+    parser = argparse.ArgumentParser(allow_abbrev=False, description='Create VAT inputs TSV')
+    parser.add_argument('--ancestry_file', type=str, help='Input ancestry file', required=True)
+    parser.add_argument('--vds_path', type=str, help='Input VDS Path', default="@VDS_INPUT_PATH@")
+    parser.add_argument('--sites_only_vcf', type=str, help='Output sites-only VCF file',
+                        default="@SITES_ONLY_VCF_OUTPUT_PATH@")
+    parser.add_argument('--vat_custom_annotations', type=str, help='Output VAT custom annotations file',
+                        default="@VAT_CUSTOM_ANNOTATIONS_OUTPUT_PATH@")
 
-    vds = hl.vds.read_vds(vds_path)
-    local_ancestry_file = download_ancestry_file(ancestry_file)
+    args = parser.parse_args()
 
-    main(vds, local_ancestry_file, vat_custom_annotations_path)
+    vds = hl.vds.read_vds(args.vds_path)
+    write_sites_only_vcf(args.sites_only_vcf)
+    local_ancestry_file = download_ancestry_file(args.ancestry_file)
+
+    main(vds, local_ancestry_file, args.vat_custom_annotations)
