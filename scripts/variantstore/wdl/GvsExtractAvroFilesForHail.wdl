@@ -276,9 +276,11 @@ task GenerateHailScripts {
         echo $vds_output_path > vds_output_path.txt
 
         tmpfile=$(mktemp /tmp/hail_gvs_import.XXXXX)
+        # `sed` can use delimiters other than `/`. This is required here since the replacement GCS paths will
+        # contain `/` characters.
         cat /app/hail_gvs_import.py |
-            sed "s/@AVRO_PREFIX@/~{avro_prefix}/" |
-            sed "s/@WRITE_PREFIX@/${write_prefix}/" > ${tmpfile}
+            sed "s;@AVRO_PREFIX@;~{avro_prefix};" |
+            sed "s;@WRITE_PREFIX@;${write_prefix};" > ${tmpfile}
         mv ${tmpfile} hail_gvs_import.py
 
         vcf_output_path="${write_prefix}/gvs_export.vcf"
@@ -290,10 +292,10 @@ task GenerateHailScripts {
 
         tmpfile=$(mktemp /tmp/hail_gvs_import.XXXXX)
         cat /app/hail_create_vat_inputs.py |
-            sed "s/@VDS_INPUT_PATH@/${vds_output_path}/" |
-            sed "s/@ANCESTRY_INPUT_PATH@/~{ancestry_file}/" |
-            sed "s/@SITES_ONLY_VCF_OUTPUT_PATH@/${sites_only_vcf_output_path}/" |
-            sed "s/@VAT_CUSTOM_ANNOTATIONS_OUTPUT_PATH@/${vat_tsv_output_path}/" > ${tmpfile}
+            sed "s;@VDS_INPUT_PATH@;${vds_output_path};" |
+            sed "s;@ANCESTRY_INPUT_PATH@;~{ancestry_file};" |
+            sed "s;@SITES_ONLY_VCF_OUTPUT_PATH@;${sites_only_vcf_output_path};" |
+            sed "s;@VAT_CUSTOM_ANNOTATIONS_OUTPUT_PATH@;${vat_tsv_output_path};" > ${tmpfile}
         mv ${tmpfile} hail_create_vat_inputs.py
 
     >>>
@@ -307,6 +309,6 @@ task GenerateHailScripts {
         File hail_create_vat_inputs_script = 'hail_export_tieout_vcf.py'
     }
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:rc_616_var_store_2022_09_06"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:vs_616_split_hail_2022_09_22"
     }
 }
