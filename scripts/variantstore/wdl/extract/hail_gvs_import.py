@@ -139,6 +139,7 @@ if __name__ == '__main__':
 
     temp_dir = f"{write_prefix}/temp_hail_gvs_import"
     vds_output_path = f"{write_prefix}/gvs_export.vds"
-    print(f"Using temporary dir '{temp_dir}', final VDS to be written to '{vds_output_path}'.")
+    print(f"Hail import temporary path: {temp_dir}")
+    print(f"Final VDS location: {vds_output_path}.")
 
     import_gvs(avro_bucket, avro_object_prefix, vds_output_path, temp_dir)
