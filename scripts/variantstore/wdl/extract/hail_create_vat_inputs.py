@@ -176,7 +176,7 @@ def annotate_entry_filter_flag(mt):
     return mt.annotate_entries(FT=hl.if_else(mt.FT, 'PASS', fail_case))
 
 
-def write_tie_out_vcf(vds):
+def write_tie_out_vcf(vds, vcf_output_path):
     """
     This is for writing tieout VCFs for toy-sized data only. Do not use for AoU-sized data as it would write a giant
     MatrixTable!
