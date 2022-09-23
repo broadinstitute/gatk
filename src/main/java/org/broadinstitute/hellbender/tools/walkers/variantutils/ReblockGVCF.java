@@ -355,7 +355,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
         //variants with PL[0] less than threshold get turned to homRef with PL=[0,0,0], shouldn't get INFO attributes
         //make sure we can call het variants with GQ >= rgqThreshold in joint calling downstream
         if(shouldBeReblocked(result)) {
-            if (vcfWriter.getVcfOutputEnd() != null && result.getEnd() <= vcfWriter.getVcfOutputEnd().getEnd()) {
+            if (vcfWriter.getVcfOutputEnd() != null && result.contigsMatch(vcfWriter.getVcfOutputEnd()) && result.getEnd() <= vcfWriter.getVcfOutputEnd().getEnd()) {
                 //variant is entirely overlapped by variants already output to the VCF, so drop it
                 return;
             }
@@ -488,7 +488,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
             return null;
         }
 
-        final Map<String, Object> attrMap = new HashMap<>();
+        final Map<String, Object> attrMap = new LinkedHashMap<>();
 
         //this method does a lot of things, including fixing alleles and adding the END key
         final GenotypeBuilder gb = changeCallToHomRefVersusNonRef(lowQualityVariant, attrMap);  //note that gb has all zero PLs
@@ -497,7 +497,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
 
         final Genotype newG = gb.make();
         builder.alleles(Arrays.asList(newG.getAlleles().get(0), Allele.NON_REF_ALLELE)).genotypes(newG);
-        if (vcfWriter.getVcfOutputEnd() != null && lowQualityVariant.getStart() <= vcfWriter.getVcfOutputEnd().getStart()) {
+        if (vcfWriter.getVcfOutputEnd() != null && lowQualityVariant.contigsMatch(vcfWriter.getVcfOutputEnd()) && lowQualityVariant.getStart() <= vcfWriter.getVcfOutputEnd().getStart()) {
             final int newStart = vcfWriter.getVcfOutputEnd().getEnd() + 1;
             if (newStart > lowQualityVariant.getEnd()) {
                 return null;
@@ -578,7 +578,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
      */
     @VisibleForTesting
     VariantContext cleanUpHighQualityVariant(final VariantContext variant) {
-        final Map<String, Object> attrMap = new HashMap<>();
+        final Map<String, Object> attrMap = new LinkedHashMap<>();
 
         final Genotype genotype = getCalledGenotype(variant);
         VariantContextBuilder builder = new VariantContextBuilder(variant);  //QUAL from result is carried through

@@ -479,4 +479,28 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
             }
         }
     }
+
+    /**
+     * Regression test for https://github.com/broadinstitute/gatk/issues/7884 using 2-record snippet of gVCF discussed there.
+     */
+    @Test
+    public void testFirstPositionOnContigNotDropped() {
+        final File input = getTestFile("testFirstPositionOnContigNotDropped.g.vcf");
+        final File output = createTempFile("reblockedgvcf", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(new File(hg38Reference))
+                .add("V", input)
+                .add("L", "chr12:18282464") // in the original gVCF, 18282464 is the first variant position on chr12 that is greater than the dropped position 18173860 on chr13
+                .add("L", "chr13:18173860")
+                .addOutput(output);
+        runCommandLine(args);
+
+        // we only check that records at both positions are retained
+        final List<VariantContext> outVCs = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath()).getRight();
+        Assert.assertEquals(outVCs.get(0).getContig(), "chr12");
+        Assert.assertEquals(outVCs.get(0).getStart(), 18282464);
+        Assert.assertEquals(outVCs.get(1).getContig(), "chr13");
+        Assert.assertEquals(outVCs.get(1).getStart(), 18173860);
+    }
 }
