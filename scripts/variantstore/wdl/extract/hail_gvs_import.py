@@ -31,6 +31,7 @@ curl -sSL https://broad.io/install-gcs-connector | python3
 
 from google.cloud import storage
 
+import argparse
 import hail as hl
 import re
 
@@ -106,9 +107,18 @@ def import_gvs(bucket, object_prefix, vds_output_path, tmp_dir):
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(allow_abbrev=False,
+                                     description='Create base Hail VDS from exported GVS Avro files.')
+    parser.add_argument('--avro_prefix', type=str, help='GCS prefix under which exported GVS Avro files are found',
+                        default="@AVRO_PREFIX")
+    parser.add_argument('--write_prefix', type=str,
+                        help='GCS prefix to which VDS and temporary outputs should be written',
+                        default="@WRITE_PREFIX")
 
-    avro_prefix = "@AVRO_PREFIX@"
-    write_prefix= "@WRITE_PREFIX@"
+    args = parser.parse_args()
+
+    avro_prefix = args.avro_prefix
+    write_prefix = args.write_prefix
 
     # Remove a trailing slash if present.
     avro_prefix = avro_prefix if not avro_prefix.endswith('/') else avro_prefix[:-1]
