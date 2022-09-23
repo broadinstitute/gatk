@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 public final class PartiallyDeterminedHaplotype extends Haplotype {
     private static final long serialVersionUID = 1L;
 
-    //COMMENTS DIRECTLY RIPPED OUT OF DRAGEN CODE:
+    //COMMENTS DIRECTLY FROM DRAGEN CODE:
     // This is the array which gives information if the base in the haplotype is
     // resolved or not.
     // 8-bit field
@@ -28,13 +28,13 @@ public final class PartiallyDeterminedHaplotype extends Haplotype {
     // 11 - Delete has length 1, start and stop position is the same
     // All 8 bits 0 indicate either a resolved position or if w
     final public static byte SNP = 1;
-    final static byte DEL_START = 2;
-    final static byte DEL_END = 4;
-    final static byte A = 8;
-    final static byte C = 16;
-    final static byte G = 32;
-    final static byte T = 64;
-    final static byte N = (byte) 128;
+    final public static byte DEL_START = 2;
+    final public static byte DEL_END = 4;
+    final public static byte A = 8;
+    final public static byte C = 16;
+    final public static byte G = 32;
+    final public static byte T = 64;
+    final public static byte N = (byte) 128;
 
     public byte[] getAlternateBases() {
         return alternateBases;
@@ -57,6 +57,7 @@ public final class PartiallyDeterminedHaplotype extends Haplotype {
      * @param isRef
      * @param pdBytes
      * @param constituentEvents
+     *
      */
     public PartiallyDeterminedHaplotype(final Haplotype base, boolean isRef, byte[] pdBytes, List<VariantContext> constituentEvents, VariantContext eventWithVariant, Cigar cigar) {
         super(base.getBases(), isRef, base.getAlignmentStartHapwrtRef(), cigar);

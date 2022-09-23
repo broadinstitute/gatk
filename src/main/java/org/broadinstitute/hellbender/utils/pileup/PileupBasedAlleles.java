@@ -14,7 +14,6 @@ import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.PileupDetecti
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.checkerframework.checker.units.qual.C;
 
 import java.util.*;
 
@@ -57,10 +56,18 @@ public final class PileupBasedAlleles {
         final List<VariantContext> pileupVariantList = new ArrayList<>();
 
         // Iterate over every base
-        for(AlignmentAndReferenceContext alignmentAndReferenceContext : alignmentAndReferenceContextList) {
+        for (int i = 0; i < alignmentAndReferenceContextList.size(); i++) {
+            AlignmentAndReferenceContext alignmentAndReferenceContext = alignmentAndReferenceContextList.get(i);
+            boolean onlyTrackDeletions = false;
             //Skip all work on sites that aren't active according to our heuristic
             if (args.activeRegionPhredThreshold > 0.0 && alignmentAndReferenceContext.getActivityScore() < args.activeRegionPhredThreshold ) {
-                continue;
+                //This solves a discordance with Illumina where they count deletions (and thus construct them and filter on the threshold) not at the anchor base but at the first
+                //deleted base on the reference. Consequently we must allow deletions to be detected one base upstream of adctive regions.
+                if (args.detectIndels && i+1 < alignmentAndReferenceContextList.size() && alignmentAndReferenceContextList.get(i+1).getActivityScore() > args.activeRegionPhredThreshold ) {
+                    onlyTrackDeletions = true;
+                } else {
+                    continue;
+                }
             }
 
             final AlignmentContext alignmentContext = alignmentAndReferenceContext.getAlignmentContext();
@@ -77,19 +84,19 @@ public final class PileupBasedAlleles {
             for (PileupElement element : pileup) {
                 final byte eachBase = element.getBase();
 
-                // Subtract out low quality bases to mimic the reading active region determination
+                // Subtract out low quality bases to mimic the reading active region determination //TODO this might need to also ignore the qual basees
                 if (element.getQual() < minBaseQualityScore) {
                     numOfBases--;
-                    continue;
                 }
 
                 // check to see that the base is not ref (and non-deletion) and increment the alt counts (and evaluate if the read is "bad")
-                if (refBase != eachBase && eachBase != 'D') {
+                if (refBase != eachBase && eachBase != 'D' && element.getQual() > args.qualityForSnpsInPileupDeteciton) {
                     incrementAltCount(eachBase, altCounts,
                             evaluateBadRead(element.getRead(), referenceContext, args, headerForReads),
                             evaluateBadReadForAssembly(element.getRead(), referenceContext, args, headerForReads));
                 }
 
+                //NOTE: we count indels
                 if (args.detectIndels) {
                     // now look for indels
                     if (element.isBeforeInsertion()) {
@@ -107,30 +114,34 @@ public final class PileupBasedAlleles {
             }
 
             // Evaluate the detected SNP alleles for this site
-            for (Map.Entry<Byte, int[]> allele : altCounts.entrySet()) {
-                List<Allele> alleles = new ArrayList<>();
-                alleles.add(Allele.create(referenceContext.getBase(), true));
-                alleles.add(Allele.create(allele.getKey()));
-                final VariantContextBuilder pileupSNP = new VariantContextBuilder("pileup", alignmentContext.getContig(), alignmentContext.getStart(), alignmentContext.getEnd(), alleles);
-                pileupVariantList.add(pileupSNP
-                        .attribute(PILEUP_ALLELE_SUPPORTING_READS, allele.getValue()[COUNT])
-                        .attribute(PILEUP_ALLELE_BAD_READS_TAG, allele.getValue()[BAD_COUNT])
-                        .attribute(PILEUP_ALLELE_ASSEMBLY_BAD_READS_TAG, allele.getValue()[ASSEMBLY_BAD_COUNT])
-                        .attribute(PILEUP_ALLELE_TOTAL_READS, numOfBases).make());
-            }
-
-            if (args.detectIndels) {
-                // Evaluate the detected Insertions alleles for this site
-                for (Map.Entry<String, int[]> allele : insertionCounts.entrySet()) {
-                    List<Allele> delAlleles = new ArrayList<>();
-                    delAlleles.add(Allele.create(referenceContext.getBase(), true));
-                    delAlleles.add(Allele.create((char)referenceContext.getBase() + allele.getKey()));
-                    final VariantContextBuilder pileupInsertion = new VariantContextBuilder("pileup", alignmentContext.getContig(), alignmentContext.getStart(), alignmentContext.getEnd(), delAlleles);
-                    pileupVariantList.add(pileupInsertion
+            if (!onlyTrackDeletions) {
+                for (Map.Entry<Byte, int[]> allele : altCounts.entrySet()) {
+                    List<Allele> alleles = new ArrayList<>();
+                    alleles.add(Allele.create(referenceContext.getBase(), true));
+                    alleles.add(Allele.create(allele.getKey()));
+                    final VariantContextBuilder pileupSNP = new VariantContextBuilder("pileup", alignmentContext.getContig(), alignmentContext.getStart(), alignmentContext.getEnd(), alleles);
+                    pileupVariantList.add(pileupSNP
                             .attribute(PILEUP_ALLELE_SUPPORTING_READS, allele.getValue()[COUNT])
                             .attribute(PILEUP_ALLELE_BAD_READS_TAG, allele.getValue()[BAD_COUNT])
                             .attribute(PILEUP_ALLELE_ASSEMBLY_BAD_READS_TAG, allele.getValue()[ASSEMBLY_BAD_COUNT])
                             .attribute(PILEUP_ALLELE_TOTAL_READS, numOfBases).make());
+                }
+            }
+
+            if (args.detectIndels) {
+                // Evaluate the detected Insertions alleles for this site
+                if (!onlyTrackDeletions) {
+                    for (Map.Entry<String, int[]> allele : insertionCounts.entrySet()) {
+                        List<Allele> delAlleles = new ArrayList<>();
+                        delAlleles.add(Allele.create(referenceContext.getBase(), true));
+                        delAlleles.add(Allele.create((char) referenceContext.getBase() + allele.getKey()));
+                        final VariantContextBuilder pileupInsertion = new VariantContextBuilder("pileup", alignmentContext.getContig(), alignmentContext.getStart(), alignmentContext.getEnd(), delAlleles);
+                        pileupVariantList.add(pileupInsertion
+                                .attribute(PILEUP_ALLELE_SUPPORTING_READS, allele.getValue()[COUNT])
+                                .attribute(PILEUP_ALLELE_BAD_READS_TAG, allele.getValue()[BAD_COUNT])
+                                .attribute(PILEUP_ALLELE_ASSEMBLY_BAD_READS_TAG, allele.getValue()[ASSEMBLY_BAD_COUNT])
+                                .attribute(PILEUP_ALLELE_TOTAL_READS, numOfBases).make());
+                    }
                 }
 
                 // Evaluate the detected Deletions alleles for this site
@@ -172,18 +183,6 @@ public final class PileupBasedAlleles {
                 && ((args.badReadThreshold <= 0.0) || (double) pileupVariant.getAttributeAsInt(PILEUP_ALLELE_BAD_READS_TAG,0) / (double)pileupSupport <= args.badReadThreshold);
     }
 
-//    /**
-//     * Apply the filters to discovered alleles
-//     * - Does it have greater than snpThreshold fraction of bases support in the pileups?
-//     * - Does it have greater than pileupAbsoluteDepth number of reads supporting it?
-//     * - Are the reads supporting alts at the site greater than badReadThreshold percent "good"? //TODO evaluate if this is worth doing on a per-allele basis or otherwise
-//     */
-//    private static boolean failsAssemblyFilters(final PileupDetectionArgumentCollection args, boolean indel, final int numOfBases, final int totalAltBadReads, final int totalAltReads, final Map.Entry<?, Integer> maxAlt) {
-//        return ((float) maxAlt.getValue() / (float) numOfBases) > (indel ? args.indelThreshold : args.snpThreshold)
-//                && numOfBases >= args.pileupAbsoluteDepth
-//                && ((args.assemblyBadReadThreshold <= 0.0) || (float) totalAltBadReads / (float)totalAltReads <= args.assemblyBadReadThreshold);
-//    }
-
     // TODO this is the most sketchy one... does a variant that fails pileup calling with only one bad read as support count as garbage by this tool...
     public static boolean shouldFilterAssemblyVariant(final PileupDetectionArgumentCollection args, final VariantContext pileupVariant) {
         //Validation that this VC is the correct object type
@@ -191,10 +190,6 @@ public final class PileupBasedAlleles {
         final int pileupSupport = pileupVariant.getAttributeAsInt(PILEUP_ALLELE_SUPPORTING_READS, 0);
         final int assemblyBadReads = pileupVariant.getAttributeAsInt(PILEUP_ALLELE_ASSEMBLY_BAD_READS_TAG, 0);
         return ((args.assemblyBadReadThreshold <= 0.0) && (double) assemblyBadReads / (double) pileupSupport >= args.assemblyBadReadThreshold);
-//        return ((float) pileupSupport / (float) pileupVariant.getAttributeAsInt(PILEUP_ALLELE_TOTAL_READS, 0)) > (pileupVariant.isIndel() ? args.indelThreshold : args.snpThreshold)
-//                && pileupVariant.getAttributeAsInt(PILEUP_ALLELE_TOTAL_READS, 0) >= args.pileupAbsoluteDepth
-//                && ((args.assemblyBadReadThreshold <= 0.0) || (float) assemblyBadReads / (float)pileupSupport <= args.assemblyBadReadThreshold);
-
     }
 
     private static void validatePileupVariant(final VariantContext pileupVariant) {
@@ -234,32 +229,17 @@ public final class PileupBasedAlleles {
             return true;
         }
 
-
         //TODO this conversion is really unnecessary. Perhaps we should expose a new SequenceUtil like NM tag calculation?...
-        SAMRecord samRecordForRead = read.convertToSAMRecord(headerForRead);
-
         // Assert that the edit distance for the read is in line
         final Integer mismatchPercentage = read.getAttributeAsInteger(MISMATCH_BASES_PERCENTAGE_TAG);
         Utils.nonNull(mismatchPercentage);
         if ((mismatchPercentage / 1000.0) > args.badReadEditDistance) {
             return true;
         }
-//        if (args.badReadEditDistance > 0.0) {
-//            final int nmScore;
-//            if (! read.hasAttribute("NM")) {
-//                nmScore = SequenceUtil.calculateSamNmTag(samRecordForRead, referenceContext.getBases(new SimpleInterval(read)), read.getStart() - 1);
-//            } else {
-//                nmScore = read.getAttributeAsInteger("NM");
-//            }
-//            // We adjust the NM score by any indels in the read
-//            int adjustedNMScore = nmScore - read.getCigarElements().stream().filter(element -> element.getOperator().isIndel()).mapToInt(CigarElement::getLength).sum();
-//            if (adjustedNMScore > (read.getCigarElements().stream().filter(element -> element.getOperator().isAlignment()).mapToInt(CigarElement::getLength).sum() * args.badReadEditDistance)) {
-//                return true;
-//            }
-//        }
 
         //TODO add threshold descibed by illumina about insert size compared to the average
         if (args.templateLengthStd > 0 && args.templateLengthMean > 0) {
+            SAMRecord samRecordForRead = read.convertToSAMRecord(headerForRead);
             int templateLength = samRecordForRead.getInferredInsertSize();
             // This is an illumina magic number... Its possible none of this is particularly important for Functional Equivalency.
             if (templateLength < args.templateLengthMean - 2.25 * args.templateLengthStd
@@ -278,24 +258,6 @@ public final class PileupBasedAlleles {
         // TODO other checks?
         Utils.nonNull(read.getAttributeAsInteger(MISMATCH_BASES_PERCENTAGE_TAG));
         return (read.getAttributeAsInteger(MISMATCH_BASES_PERCENTAGE_TAG) / 1000.0) > args.assemblyBadReadEditDistance;
-
-//        //TODO this conversion is really unnecessary. Perhaps we should expose a new SequenceUtil like NM tag calculation?...
-//        SAMRecord samRecordForRead = read.convertToSAMRecord(headerForRead);
-//
-//        // Assert that the edit distance for the read is in line
-//        if (args.assemblyBadReadEditDistance > 0.0) {
-//            final int nmScore;
-//            if (! read.hasAttribute("NM")) {
-//                nmScore = SequenceUtil.calculateSamNmTag(samRecordForRead, referenceContext.getBases(new SimpleInterval(read)), read.getStart() - 1);
-//            } else {
-//                nmScore = read.getAttributeAsInteger("NM");
-//            }
-//            // We adjust the NM score by any indels in the read
-//            int adjustedNMScore = nmScore - read.getCigarElements().stream().filter(element -> element.getOperator().isIndel()).mapToInt(CigarElement::getLength).sum();
-//            if (adjustedNMScore > (read.getCigarElements().stream().filter(element -> element.getOperator().isAlignment()).mapToInt(CigarElement::getLength).sum() * args.assemblyBadReadEditDistance)) {
-//                return true;
-//            }
-//        }
     }
 
     // Helper methods to manage the badness counting arrays

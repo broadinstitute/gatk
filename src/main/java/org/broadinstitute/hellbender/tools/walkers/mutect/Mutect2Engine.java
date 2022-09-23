@@ -262,7 +262,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
 //                Collections.emptyList();
         final List<VariantContext>forcedPileupAlleles = Collections.emptyList();
 
-        final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(originalAssemblyRegion, forcedPileupAlleles, MTAC, header, samplesList, logger, referenceReader, assemblyEngine, aligner, false, MTAC.fbargs, false);
+        final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(originalAssemblyRegion, MTAC, header, samplesList, logger, referenceReader, assemblyEngine, aligner, false, MTAC.fbargs, false);
         ReadThreadingAssembler.addAssembledVariantsToEventMapOutput(untrimmedAssemblyResult, assembledEventMapVariants, MTAC.maxMnpDistance, assembledEventMapVcfOutputWriter);
         final LongHomopolymerHaplotypeCollapsingEngine haplotypeCollapsing = untrimmedAssemblyResult.getHaplotypeCollapsingEngine();
 

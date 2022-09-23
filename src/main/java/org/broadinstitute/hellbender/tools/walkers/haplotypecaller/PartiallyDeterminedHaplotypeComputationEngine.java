@@ -24,10 +24,9 @@ import java.util.stream.Collectors;
  * TODO
  */
 public class PartiallyDeterminedHaplotypeComputationEngine {
-    final static int MAX_PD_HAPS_TO_GENERATE = 256; //2048 TODO probably not...
-    final static int MAX_BRANCH_PD_HAPS = 128; //128
-    final static int MAX_VAR_IN_BRANCH = 8; //128
-    final static int MAX_VAR_IN_EVENT_GROUP = 15; //22 (thats illuminas #)
+    final static int MAX_PD_HAPS_TO_GENERATE = 256*2; //(2048 is illuminas #) (without optimizing the hmm to some degree this is probably unattainable)
+    final static int MAX_BRANCH_PD_HAPS = 128; //(128 is illuminas #)
+    final static int MAX_VAR_IN_EVENT_GROUP = 15; // (22 is illuminas #)
 
     //To make this somewhat cleaner of a port from Illumina, we have two base spaces. R and U space. R space is vcf coordinate space,
     //U is a 0->N (N = region size) based space where Insertions are +0.5 and deletions are + 1 from their original position
@@ -186,18 +185,9 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         //Now we have finished with the work of merging event groups transitively by position and mutually exclusiveness. Now every group should be entirely independant of one antoher:
         if (eventGroups.stream().map(eg -> eg.populateBitset(dissalowedPairs)).anyMatch(b->!b)) {
             // if any of our event groups is too large, abort.
-            if (debugSite) System.out.println("Found event group with too many variants! Aborting haplotype building");
+            if (debugSite ) System.out.println("Found event group with too many variants! Aborting haplotype building");
             return sourceSet;
         };
-
-        //TODO clean this up to be more more corrects
-        // This mechanism
-//        final List<List<VariantContext>> branchedHaplotypeGroups = getBranchedHaplotypeGroups(eventsByDRAGENCoordinates);
-
-//        if (debugSite) System.out.println("Branches of PD Haps to construct:\n"+
-//                branchedHaplotypeGroups.stream().map(variantContexts ->
-//                variantContexts.stream().map(PartiallyDeterminedHaplotype.getDRAGENDebugVariantContextString((int) referenceHaplotype.getStartPosition())).collect(Collectors.joining("->")))
-//                .collect(Collectors.joining("\n")));
 
         Set<Haplotype> outputHaplotypes = new HashSet<>();
         outputHaplotypes.add(referenceHaplotype);
@@ -262,7 +252,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                         branchExcludeAlleles.addAll(newBranchesToAdd);
 
                         if (branchExcludeAlleles.size() > MAX_BRANCH_PD_HAPS) {
-                            if (debugSite) System.out.println("Found too many branches for variants at: "+determinedEventToTest.getStart()+" aborting and falling back to Assembly Varinats!");
+                            if (debugSite ) System.out.println("Found too many branches for variants at: "+determinedEventToTest.getStart()+" aborting and falling back to Assembly Varinats!");
                             return sourceSet;
                         }
                     }
@@ -307,7 +297,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                         variantGroupsCombinatorialExpansion.add(new ArrayList<>());
                         for (int secondRIndex = 0; secondRIndex < entriesRInOrder.size(); secondRIndex++) {
                             if (variantGroupsCombinatorialExpansion.size() > MAX_BRANCH_PD_HAPS) {
-                                if(debugSite) System.out.println("Too many branch haplotypes generated from site, falling back on assebmly variants!");
+                                if(debugSite ) System.out.println("Too many branch haplotypes ["+variantGroupsCombinatorialExpansion.size()+"] generated from site, falling back on assebmly variants!");
                                 return sourceSet;
                             }
                             // Iterate through the growing combinatorial expansion of haps, split it into either having or not having the variant.
@@ -346,7 +336,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
                         outputHaplotypes.addAll(branchHaps);
                         if (outputHaplotypes.size() > MAX_PD_HAPS_TO_GENERATE) {
-                            if (debugSite) System.out.println("Too many Haps ["+outputHaplotypes.size()+"] generated at this site! Aborting!");
+                            if (debugSite  ) System.out.println("Too many Haps ["+outputHaplotypes.size()+"] generated at this site! Aborting!");
                             return sourceSet;
                         }
                     }
@@ -355,69 +345,19 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         }
 
         if (outputHaplotypes.size() > MAX_PD_HAPS_TO_GENERATE) {
-            if (debugSite) System.out.println("Too many branch haplotypes found, aborting ["+outputHaplotypes.size()+"]");
+            if (debugSite ) System.out.println("Too many branch haplotypes found, aborting ["+outputHaplotypes.size()+"]");
             return sourceSet;
         }
+        // TODO be careful here: The old haps still exist... WE must be careful to use the PD haps correctly
+        sourceSet.storeAssemblyHaplotypes();
         sourceSet.replaceAllHaplotypes(outputHaplotypes);
-
+        if (!makeDeterminedHapsInstead) {
+            // Setting a boolean on the source-set to indicate to downstream code that we have PD haplotypes
+            sourceSet.setPartiallyDeterminedMode();
+        }
+        if (debugSite ) System.out.println("Returning "+outputHaplotypes.size()+" to the HMM");
         return sourceSet;
     }
-
-
-//        if (!makeDeterminedHapsInstead) {
-    //TODO this will be similar but not the same logic
-//            //Generate the PDHaplotypes based on each of the branches
-//            for (List<VariantContext> branch : branchedHaplotypeGroups) {
-//                if (debugSite) System.out.println("Handling Branch \n" + branch.stream().map(PartiallyDeterminedHaplotype.getDRAGENDebugVariantContextString((int) referenceHaplotype.getStartPosition())).collect(Collectors.joining("->")));
-//                List<PartiallyDeterminedHaplotype> branchHaps = new ArrayList<>();
-//                for (VariantContext variantContext : branch) {
-//                    // Add both the variant and the event
-//                    branchHaps.add(createNewPDHaplotypeFromEvents(referenceHaplotype, variantContext, true, branch));
-//                    branchHaps.add(createNewPDHaplotypeFromEvents(referenceHaplotype, variantContext, false, branch));
-//                }
-//                if (debugSite) System.out.println("Constructed PD Haps:" + branchHaps.stream().map(PartiallyDeterminedHaplotype::toString).collect(Collectors.joining("\n")));
-//                //CHECK for overwhelming branch haps
-//                if (branchHaps.size()>= MAX_BRANCH_PD_HAPS) {
-//                    if (debugSite) System.out.println("Too many branch haplotypes ["+branchHaps.size()+"] generated from branch: "+branch.stream().map(PartiallyDeterminedHaplotype.getDRAGENDebugVariantContextString((int) referenceHaplotype.getStartPosition())).collect(Collectors.joining("->")));
-//                    return sourceSet;
-//                }
-//                outputHaplotypes.addAll(branchHaps);
-//            }
-//        } else {
-//
-//            //BIG TODO unexpand the haps...
-//            //GENERATE THE FULL EXPANSION OF HAPS!
-//            for (List<VariantContext> branch : branchedHaplotypeGroups) {
-//                if (debugSite) System.out.println("Handling Branch \n" + branch.stream().map(PartiallyDeterminedHaplotype.getDRAGENDebugVariantContextString((int) referenceHaplotype.getStartPosition())).collect(Collectors.joining("->")));
-//                List<List<VariantContext>> combinatorialExpansionHaps = new ArrayList<>();
-//                combinatorialExpansionHaps.add(new ArrayList<>());
-//                if (branch.size() >= MAX_VAR_IN_BRANCH) {
-//                    if (debugSite) System.out.println("Too many variants ["+branch.size()+"] generated from branch: "+branch.stream().map(PartiallyDeterminedHaplotype.getDRAGENDebugVariantContextString((int) referenceHaplotype.getStartPosition())).collect(Collectors.joining("->")));
-//                    return sourceSet;
-//                }
-//                for (VariantContext vc : branch) {
-//                    List<List<VariantContext>> hapsPerVC = new ArrayList<>();
-//                    for (List<VariantContext> hclist : combinatorialExpansionHaps) {
-//                        List<VariantContext> newList = new ArrayList<>(hclist);
-//                        newList.add(vc);
-//                        hapsPerVC.add(newList);
-//                    }
-//                    combinatorialExpansionHaps.addAll(hapsPerVC);
-//                }
-//                if (combinatorialExpansionHaps.size() >= MAX_BRANCH_PD_HAPS) {
-//                    if (debugSite) System.out.println("Too many branch haplotypes ["+combinatorialExpansionHaps.size()+"] generated from branch: "+branch.stream().map(PartiallyDeterminedHaplotype.getDRAGENDebugVariantContextString((int) referenceHaplotype.getStartPosition())).collect(Collectors.joining("->")));
-//                    return sourceSet;
-//                }
-//                List<Haplotype> branchHaps = new ArrayList<>();
-//                for (List<VariantContext> subset : combinatorialExpansionHaps) {
-//                    branchHaps.add(constructHaplotypeFromVariants(referenceHaplotype, subset, true));
-//                }
-//                if (debugSite) System.out.println("Constructed PD Haps:" + branchHaps.stream().map(Haplotype::toString).collect(Collectors.joining("\n")));
-//                //CHECK for overwhelming branch haps
-//
-//                outputHaplotypes.addAll(branchHaps);
-//            }
-//        }
 
     /**
      * Overlaps method to handle indels and snps correctly
@@ -817,12 +757,13 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
             // Now iterate through the list and dissalow all events with every bitmask
             if (!bitmasks.isEmpty()) {
+                events:
                 for (int i = 1; i < allowedEvents.length(); i++) {
-
                     for (final int mask : bitmasks) {
                         if ((i & mask) == mask) { // are the bits form the mask true?
                             allowedEvents.set(i, false);
-                            continue;
+                            continue events;
+                            // Once i is set we don't need to keep checking bitmasks
                         }
                     }
                 }

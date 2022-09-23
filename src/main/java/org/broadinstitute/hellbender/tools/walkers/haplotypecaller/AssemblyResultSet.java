@@ -39,6 +39,7 @@ public final class AssemblyResultSet {
             .thenComparing(vc -> vc.getAlternateAllele(0));
     private final Map<Integer,AssemblyResult> assemblyResultByKmerSize;
     private final Set<Haplotype> haplotypes;
+    private Set<Haplotype> originalAssemblyHaps = new HashSet<>();
     private final Map<Haplotype,AssemblyResult> assemblyResultByHaplotype;
     private AssemblyRegion regionForGenotyping;
     private byte[] fullReferenceWithPadding;
@@ -51,6 +52,7 @@ public final class AssemblyResultSet {
     private boolean debug;
     private static final Logger logger = LogManager.getLogger(AssemblyResultSet.class);
     private LongHomopolymerHaplotypeCollapsingEngine haplotypeCollapsingEngine; // this is nullable - indicating no collapsing engine (flow-based specific)
+    private boolean isPartiallyDeterminedList = false;
 
     /**
      * Constructs a new empty assembly result set.
@@ -601,4 +603,19 @@ public final class AssemblyResultSet {
         assemblyResultByKmerSize.keySet().forEach(kmer -> assemblyResultByKmerSize.get(kmer).getDiscoveredHaplotypes());
     }
 
+    public void setPartiallyDeterminedMode() {
+        this.isPartiallyDeterminedList = true;
+    }
+
+    public boolean isPartiallyDeterminedList() {
+        return isPartiallyDeterminedList;
+    }
+
+    public void storeAssemblyHaplotypes() {
+        originalAssemblyHaps = new HashSet<>(haplotypes);
+    }
+
+    public boolean hasOverwrittenHaps() {
+        return !originalAssemblyHaps.isEmpty();
+    }
 }

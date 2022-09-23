@@ -639,7 +639,7 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         }
 
         // run the local assembler, getting back a collection of information on how we should proceed
-        final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(region, forcedPileupAlleles, hcArgs, readsHeader, samplesList, logger, referenceReader, assemblyEngine, aligner, !hcArgs.doNotCorrectOverlappingBaseQualities, hcArgs.fbargs, false);
+        final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(region, hcArgs, readsHeader, samplesList, logger, referenceReader, assemblyEngine, aligner, !hcArgs.doNotCorrectOverlappingBaseQualities, hcArgs.fbargs, false);
         ReadThreadingAssembler.addAssembledVariantsToEventMapOutput(untrimmedAssemblyResult, assembledEventMapVariants, hcArgs.maxMnpDistance, assembledEventMapVcfOutputWriter);
 
         if (assemblyDebugOutStream != null) {
@@ -716,7 +716,13 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                     hcArgs.pileupDetectionArgs.debugPileupStdout);
         }
 
-
+        //Fallback on the other method of event calling if the PD branching code failed for some reason:
+        if ((!pileupAllelesFoundShouldFilter.isEmpty() || !pileupAllelesPassingFilters.isEmpty()) &&  // Assert that we did find pileup events to process before calling this code
+                (!hcArgs.pileupDetectionArgs.generatePDHaplotypes ||
+                        (hcArgs.pileupDetectionArgs.useGGAFallback && !assemblyResult.hasOverwrittenHaps()))) { // If we are generating PDHaps assert that it failed before callign this
+            if (hcArgs.pileupDetectionArgs.debugPileupStdout) System.out.println("Falling back to GGA based Pileup Allele mode!");
+            assemblyResult = AssemblyBasedCallerUtils.applyPileupEventsAsForcedAlleles(region, hcArgs, aligner, assemblyResult.getReferenceHaplotype(), assemblyResult, pileupAllelesFoundShouldFilter, pileupAllelesPassingFilters);
+        }
         final AssemblyRegion regionForGenotyping = assemblyResult.getRegionForGenotyping();
         final List<GATKRead> readStubs = regionForGenotyping.getReads().stream()
                 .filter(r -> AlignmentUtils.unclippedReadLength(r)  < AssemblyBasedCallerUtils.MINIMUM_READ_LENGTH_AFTER_TRIMMING).collect(Collectors.toList());

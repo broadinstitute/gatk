@@ -292,7 +292,7 @@ public class RampedHaplotypeCallerEngine extends HaplotypeCallerEngine {
                 RampUtils.logReads(rpArgs.rampsDebugReads, "onramp: reads before trimming", context.assemblyResult.getRegionForGenotyping().getReads());
 
                 RampUtils.logReads(rpArgs.rampsDebugReads, "onramp: BEFORE untrimmedAssemblyResult reads", context.region.getReads());
-                final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(context.region, Collections.emptyList(), hcArgs, readsHeader, samplesList, logger, referenceReader, assemblyEngine, aligner,
+                final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(context.region, hcArgs, readsHeader, samplesList, logger, referenceReader, assemblyEngine, aligner,
                         !hcArgs.doNotCorrectOverlappingBaseQualities, hcArgs.fbargs, postFilterOnRamp != null);
                 RampUtils.logReads(rpArgs.rampsDebugReads, "onramp: AFTER untrimmedAssemblyResult reads", context.region.getReads());
                 context.assemblyResult.setRegionForGenotyping(untrimmedAssemblyResult.getRegionForGenotyping());
@@ -323,7 +323,7 @@ public class RampedHaplotypeCallerEngine extends HaplotypeCallerEngine {
             // run the local assembler, getting back a collection of information on how we should proceed
             RampUtils.logReads(rpArgs.rampsDebugReads, "BEFORE untrimmedAssemblyResult reads", context.region.getReads());
             List<VariantContext> forcedPileupAlleles = Collections.emptyList(); // TODO: we currently do not support pileup alleles in RampedHaplotypeCaller, this should be added
-            final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(context.region, forcedPileupAlleles, hcArgs, readsHeader, samplesList, logger, referenceReader, assemblyEngine, aligner,
+            final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(context.region, hcArgs, readsHeader, samplesList, logger, referenceReader, assemblyEngine, aligner,
                     !hcArgs.doNotCorrectOverlappingBaseQualities, hcArgs.fbargs, postFilterOnRamp != null);
             RampUtils.logReads(rpArgs.rampsDebugReads, "AFTER untrimmedAssemblyResult reads", context.region.getReads());
             if (postFilterOnRamp != null) {

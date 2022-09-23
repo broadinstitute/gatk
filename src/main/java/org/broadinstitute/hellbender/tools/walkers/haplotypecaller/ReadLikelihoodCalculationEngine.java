@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
+import org.broadinstitute.hellbender.utils.haplotype.PartiallyDeterminedHaplotype;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
@@ -29,6 +30,8 @@ public interface ReadLikelihoodCalculationEngine extends AutoCloseable {
          * Classic full pair-hmm all haplotypes vs all reads.
          */
         PairHMM,
+
+        PDPairHMM,
 
         FlowBased,
 

@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.Hidden;
+import org.checkerframework.checker.units.qual.A;
 
 /**
  * Set of arguments for configuring the pileup detection code
@@ -15,6 +16,7 @@ public final class PileupDetectionArgumentCollection {
     public static final String PILEUP_DETECTION_ABSOLUTE_ALT_DEPTH = "pileup-detection-absolute-alt-depth";
     public static final String PILEUP_DETECTION_INDEL_THRESHOLD = "pileup-detection-indel-alt-threshold";
     public static final String PILEUP_DETECTION_FILTER_COVERAGE_LONG_NAME = "pileup-detection-filter-coverage-threshold";
+    public static final String PILEUP_DETECTION_SNP_BASEQUALITY_THRESHOLD = "pileup-detection-snp-basequlaity-filter";
 
     //TODO we currently don't see the same threshold from active region determination...
     public static final String PILEUP_DETECTION_ACTIVE_REGION_LOD_THRESHOLD_LONG_NAME = "pileup-detection-active-region-phred-threshold";
@@ -39,6 +41,8 @@ public final class PileupDetectionArgumentCollection {
     public static final String GENERATE_PARTIALLY_DETERMINED_HAPLOTYPES_LONG_NAME = "use-pdhmm";
     public static final String DETERMINE_PD_HAPS = "make-determined-haps-from-pd-code";
     public static final String DEBUG_PILEUPCALLING_ARG = "print-pileupcalling-status";
+    public static final String FALLBACK_TO_ALT_HAP_CONSTRUCITON_IF_ABORTED = "fallback-gga-if-pdhmm-fails";
+
 
     /**
      * Enables pileup-based haplotype creation and variant detection
@@ -64,6 +68,9 @@ public final class PileupDetectionArgumentCollection {
     public boolean determinePDHaps = false;
     @Argument(fullName= DEBUG_PILEUPCALLING_ARG, doc = "", optional = true)
     public boolean debugPileupStdout = false;
+    @Argument(fullName= FALLBACK_TO_ALT_HAP_CONSTRUCITON_IF_ABORTED, doc = "", optional = true)
+    public boolean useGGAFallback = true;
+
 
 
     /**
@@ -72,12 +79,10 @@ public final class PileupDetectionArgumentCollection {
     @Hidden
     @Argument(fullName= PILEUP_DETECTION_ENABLE_INDELS, doc = "Pileup Detection: If enabled, pileup detection code will attempt to detect indels missing from assembly. (Requires '--"+PILEUP_DETECTION_LONG_NAME+"' argument)", optional = true)
     public boolean detectIndels = false;
-
     @Advanced
     @Hidden
     @Argument(fullName= PILEUP_DETECTION_ACTIVE_REGION_LOD_THRESHOLD_LONG_NAME, doc = "Pileup Detection: This argument sets the minimum fast genotyper phred score necessary in active region determination to find a pileup variant. (Requires '--"+PILEUP_DETECTION_LONG_NAME+"'` argument)", optional = true)
     public double activeRegionPhredThreshold = 2.0;
-
     @Advanced
     @Hidden
     @Argument(fullName= "num-artificial-haplotypes-to-add-per-allele", doc = "Pileup Detection: This argument limits the maximum number of novel haplotypes to be added to the assembly haplotypes per pileup allele added. (Requires '--"+PILEUP_DETECTION_LONG_NAME+"'` argument)", optional = true)
@@ -103,6 +108,9 @@ public final class PileupDetectionArgumentCollection {
     @Hidden
     @Argument(fullName= PILEUP_DETECTION_INDEL_SNP_BLOCKING_RANGE, doc = "Pileup Detection: Filters out pileup snps within this many bases of an assembled indel. (Requires '--"+PILEUP_DETECTION_LONG_NAME+"' argument)", optional = true)
     public int snpAdajacentToAssemblyIndel = 5;
+    @Hidden
+    @Argument(fullName= PILEUP_DETECTION_SNP_BASEQUALITY_THRESHOLD, doc = "Pileup Detection: Filters out reads from pileup SNPs with base quality lower than this threshold. (Requires '--"+PILEUP_DETECTION_LONG_NAME+"' argument)", optional = true)
+    public int qualityForSnpsInPileupDeteciton = 12; //WHY is this one different than the regular active region determination limit? Ask DRAGEN engineers.
 
     /**
      * Arguments related to the "bad read filtering" where alleles that are supported primarily by reads that fail at least one of a number of heuristics will be filtered out
