@@ -103,6 +103,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - VS-629-failure-to-retrieve-job-information-during-ingest
    - name: GvsCreateTables
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateTables.wdl
@@ -112,6 +113,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - VS-629-failure-to-retrieve-job-information-during-ingest
    - name: GvsExtractCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
@@ -119,6 +121,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - VS-629-failure-to-retrieve-job-information-during-ingest
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
@@ -126,6 +129,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - VS-629-failure-to-retrieve-job-information-during-ingest
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
@@ -209,6 +213,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - VS-629-failure-to-retrieve-job-information-during-ingest
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
@@ -216,6 +221,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - VS-629-failure-to-retrieve-job-information-during-ingest
    - name: GvsCallsetCost
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCallsetCost.wdl
@@ -223,6 +229,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - VS-629-failure-to-retrieve-job-information-during-ingest
    - name: GvsExtractAvroFilesForHail
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractAvroFilesForHail.wdl
