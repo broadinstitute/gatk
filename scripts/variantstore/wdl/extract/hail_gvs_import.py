@@ -32,7 +32,6 @@ curl -sSL https://broad.io/install-gcs-connector | python3
 from google.cloud import storage
 
 import argparse
-import hail as hl
 import re
 
 
@@ -85,6 +84,7 @@ def generate_avro_args(bucket, blob_prefix, key):
 
 
 def import_gvs(bucket, object_prefix, vds_output_path, tmp_dir):
+    import hail as hl
 
     rg38 = hl.get_reference('GRCh38')
     rg38.add_sequence('gs://hail-common/references/Homo_sapiens_assembly38.fasta.gz',

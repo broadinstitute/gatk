@@ -1,6 +1,6 @@
 import unittest
 
-from hail_create_vat_inputs import parse_ancestry_file
+from create_vat_inputs import parse_ancestry_file
 
 
 class TestHailCreateVatInputs(unittest.TestCase):
@@ -8,7 +8,7 @@ class TestHailCreateVatInputs(unittest.TestCase):
     def test_parse_ancestry_file(self):
         # TODO more interesting test data: this is 10 samples all with 'eas' ancestry.
 
-        with open('hail_create_vat_inputs_test_files/quickstart_ancestry.tsv') as ancestry:
+        with open('create_vat_inputs_test_files/quickstart_ancestry.tsv') as ancestry:
             expected = {
                 'ERS4367795': 'eas',
                 'ERS4367796': 'eas',

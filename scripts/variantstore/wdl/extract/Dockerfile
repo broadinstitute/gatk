@@ -1,9 +1,10 @@
-FROM gcr.io/google.com/cloudsdktool/cloud-sdk:402.0.0
+FROM gcr.io/google.com/cloudsdktool/cloud-sdk:402.0.0-slim
 
 # Copy the application's requirements.txt and run pip to install
 COPY requirements.txt /app/requirements.txt
+RUN pip3 install --upgrade pip
 RUN pip install -r /app/requirements.txt
-RUN apt-get update && apt-get -y upgrade && apt-get -y install bcftools jq
+RUN apt-get update && apt-get -y install bcftools jq
 RUN pip install firecloud
 
 # Copy the application source code.
@@ -19,6 +20,7 @@ COPY curate_input_array_files.py /app
 COPY scale_xy_bed_values.py /app
 COPY workflow_compute_costs.py /app
 COPY hail_gvs_import.py /app
+COPY create_vat_inputs.py /app
 COPY hail_create_vat_inputs.py /app
 
 # Copy the schema files needed for VAT creation.

@@ -1,58 +1,7 @@
-from datetime import datetime
-from google.cloud import storage
-
 import argparse
-import csv
 import hail as hl
-import re
-import tempfile
 
-
-def parse_ancestry_file(ancestry_file):
-    """
-    Parse the specified TSV input file to create a sample to ancestry dictionary. The result should look
-    something like:
-
-    {"ERS4367795":"eur","ERS4367796":"eas","ERS4367797":"eur","ERS4367798":"afr","ERS4367799":"oth", ... }
-
-    """
-    start = datetime.now()
-    current_time = start.strftime("%H:%M:%S")
-    print("Start Time =", current_time)
-    sample_id_to_sub_population = {}
-
-    reader = csv.reader(ancestry_file, delimiter='\t')
-    # skip header
-    next(reader)
-    for row in reader:
-        key = row[0]
-        value = row[4]
-        sample_id_to_sub_population[key] = value
-
-    return sample_id_to_sub_population
-
-
-def download_ancestry_file(gcs_ancestry_file):
-    """
-    Download the specified ancestry file from GCS to a local temporary file. This temporary file should be explicitly
-    deleted once we are done with it.
-    """
-    client = storage.Client()
-    gcs_re = re.compile("^gs://(?P<bucket_name>[^/]+)/(?P<blob_name>.*)$")
-    match = gcs_re.match(gcs_ancestry_file)
-
-    if not match:
-        raise ValueError(f"'{ancestry_file}' does not look like a GCS path")
-
-    bucket_name, blob_name = match.groups()
-    bucket = client.get_bucket(bucket_name)
-    blob = bucket.get_blob(blob_name)
-    fd, temp_file = tempfile.mkstemp()
-    # Close open descriptor, do not remove temporary file.
-    fd.close()
-
-    blob.download_to_filename(temp_file)
-    return temp_file
+import create_vat_inputs
 
 
 def hard_filter_non_passing_sites(vds):
@@ -108,7 +57,7 @@ def matrix_table_ac_an_af(mt, ancestry_file):
     Create a DENSE MATRIX TABLE to calculate AC, AN, AF and TODO: Sample Count
     """
 
-    sample_id_to_sub_population = parse_ancestry_file(ancestry_file)
+    sample_id_to_sub_population = create_vat_inputs.parse_ancestry_file(ancestry_file)
 
     mt = mt.annotate_cols(pop=hl.literal(sample_id_to_sub_population)[mt.s])
     return mt.select_rows(
@@ -148,7 +97,7 @@ def write_vat_custom_annotations(mt, vat_custom_annotations_tsv_path):
     hl.export_table(mt.rows(), vat_custom_annotations_tsv_path)
 
 
-def main(vds, ancestry_file_location, vat_custom_annotations_tsv_path):
+def main(vds, ancestry_file_location, sites_only_vcf_path, vat_custom_annotations_tsv_path):
     transforms = [
         hard_filter_non_passing_sites,
         replace_lgt_with_gt,
@@ -201,7 +150,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     vds = hl.vds.read_vds(args.vds_path)
-    write_sites_only_vcf(args.sites_only_vcf)
-    local_ancestry_file = download_ancestry_file(args.ancestry_file)
+    write_sites_only_vcf(vds, args.sites_only_vcf)
+    local_ancestry_file = create_vat_inputs.download_ancestry_file(args.ancestry_file)
 
-    main(vds, local_ancestry_file, args.vat_custom_annotations)
+    main(vds, local_ancestry_file, args.sites_only_vcf, args.vat_custom_annotations)
