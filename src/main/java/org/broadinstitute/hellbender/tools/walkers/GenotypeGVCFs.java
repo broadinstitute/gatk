@@ -10,6 +10,7 @@ import htsjdk.variant.vcf.VCFHeaderLine;
 import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationPluginDescriptor;
+import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
@@ -153,9 +154,6 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     @ArgumentCollection
     private GenomicsDBArgumentCollection genomicsdbArgs = new GenomicsDBArgumentCollection();
 
-    @ArgumentCollection
-    private GenotypeGVCFsAnnotationArgumentCollection annotationArgs = new GenotypeGVCFsAnnotationArgumentCollection();
-
     /**
      * This option can only be activated if intervals are specified.
      */
@@ -227,6 +225,16 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     public boolean useVariantAnnotations() { return true;}
 
     @Override
+    public List<? extends CommandLinePluginDescriptor<?>> getPluginDescriptors() {
+        GATKReadFilterPluginDescriptor readFilterDescriptor = new GATKReadFilterPluginDescriptor(getDefaultReadFilters());
+        return useVariantAnnotations()?
+                Arrays.asList(readFilterDescriptor, new GATKAnnotationPluginDescriptor(
+                        new GenotypeGVCFsAnnotationArgumentCollection(),
+                        getDefaultVariantAnnotations(), getDefaultVariantAnnotationGroups())):
+                Collections.singletonList(readFilterDescriptor);
+    }
+
+    @Override
     public List<Class<? extends Annotation>> getDefaultVariantAnnotationGroups() {
         return Arrays.asList(StandardAnnotation.class);
     }
@@ -266,12 +274,9 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
         intervals = hasUserSuppliedIntervals() ? intervalArgumentCollection.getIntervals(getBestAvailableSequenceDictionary()) :
                 Collections.emptyList();
 
-        Collection<Annotation>  variantAnnotations = makeVariantAnnotations();
-
-        //TODO: this isn't right. I need to intialize the annoationArgs somehow, but I don't think this does it.
-        final GATKAnnotationPluginDescriptor annotationPlugin =
-                new GATKAnnotationPluginDescriptor(annotationArgs, Collections.emptyList(), Collections.emptyList());
-        Collection<Annotation> rawCombinedAnnotationsToKeep =  annotationPlugin.getResolvedInstances();
+        final Collection<Annotation>  variantAnnotations = makeVariantAnnotations();
+        final Collection<Annotation> rawCombinedAnnotationsToKeep =
+                getCommandLineParser().getPluginDescriptor(GATKAnnotationPluginDescriptor.class).getResolvedInstances();
         annotationEngine = new VariantAnnotatorEngine(variantAnnotations, dbsnp.dbsnp, Collections.emptyList(), false, keepCombined, rawCombinedAnnotationsToKeep);
 
         merger = new ReferenceConfidenceVariantContextMerger(annotationEngine, getHeaderForVariants(), somaticInput, false, true);

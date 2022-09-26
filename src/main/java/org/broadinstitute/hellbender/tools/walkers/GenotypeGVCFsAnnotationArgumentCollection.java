@@ -1,14 +1,14 @@
 package org.broadinstitute.hellbender.tools.walkers;
 
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationArgumentCollection;
+import org.broadinstitute.hellbender.cmdline.GATKPlugin.DefaultGATKVariantAnnotationArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotation;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class GenotypeGVCFsAnnotationArgumentCollection extends GATKAnnotationArgumentCollection {
+public class GenotypeGVCFsAnnotationArgumentCollection extends DefaultGATKVariantAnnotationArgumentCollection {
     private static final long serialVersionUID = 1L;
 
     public static final String KEEP_SPECIFIED_RAW_COMBINED_ANNOTATION_LONG_NAME = "keep-specific-combined-raw-annotation";
