@@ -95,6 +95,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_nth_variant_10
    - name: GvsPopulateAltAllele
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPopulateAltAllele.wdl
@@ -229,6 +230,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_630_batched_avro_export
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl

@@ -6,6 +6,7 @@ workflow GvsExtractAvroFilesForHail {
         String dataset
         String filter_set_name
         String gcs_temporary_path
+        String scatter_width = 10
     }
 
     call OutputPath { input: go = true }
@@ -24,16 +25,20 @@ workflow GvsExtractAvroFilesForHail {
             dataset = dataset
     }
 
-    # Superpartitions have max size 4000. The inner '- 1' is so the 4000th (and multiples of 4000) sample lands in the
-    # appropriate partition, the outer '+ 1' is to iterate over the correct number of partitions.
-    scatter (i in range(((CountSamples.num_samples - 1) / 4000) + 1)) {
+    Int num_samples = CountSamples.num_samples
+    # First superpartition contains samples 1 to 4000, second 4001 to 8000 etc; add one to quotient unless exactly 4000.
+    Int num_superpartitions = if (num_samples % 4000 == 0) then num_samples / 4000 else (num_samples / 4000 + 1)
+
+    scatter (i in range(scatter_width)) {
         call ExtractFromSuperpartitionedTables {
             input:
                 project_id = project_id,
                 dataset = dataset,
                 filter_set_name = filter_set_name,
                 avro_sibling = OutputPath.out,
-                table_index = i + 1 #  'i' is 0-based so add 1.
+                num_superpartitions = num_superpartitions,
+                shard_index = i,
+                num_shards = scatter_width
         }
     }
 
@@ -183,36 +188,45 @@ task ExtractFromSuperpartitionedTables {
         String dataset
         String filter_set_name
         String avro_sibling
-        Int table_index
+        Int num_superpartitions
+        Int shard_index
+        Int num_shards
     }
     parameter_meta {
         avro_sibling: "Cloud path to a file that will be the sibling to the 'avro' 'directory' under which output Avro files will be written."
-        table_index: "1-based index for the superpartitioned ref_ranges and vet tables to be extracted by this call."
+        num_superpartitions: "Total number of superpartitions requiring extraact"
+        shard_index: "0-based index of this superpartition extract shard"
+        num_shards: "Count of all superpartition extract shards"
     }
+
     command <<<
         set -o errexit -o nounset -o xtrace -o pipefail
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
         avro_prefix="$(dirname ~{avro_sibling})/avro"
-        str_table_index=$(printf "%03d" ~{table_index})
 
-        # These bq exports error out if there are any objects at the sibling level to where output files would be written
-        # so an extra layer of `vet_${str_table_index}` is inserted here.
-        bq query --nouse_legacy_sql --project_id=~{project_id} "
-            EXPORT DATA OPTIONS(
-            uri='${avro_prefix}/vets/vet_${str_table_index}/vet_${str_table_index}_*.avro', format='AVRO', compression='SNAPPY') AS
-            SELECT location, sample_id, ref, REPLACE(alt,',<NON_REF>','') alt, call_GT as GT, call_AD as AD, call_GQ as GQ, cast(SPLIT(call_pl,',')[OFFSET(0)] as int64) as RGQ
-            FROM \`~{project_id}.~{dataset}.vet_${str_table_index}\`
-            ORDER BY location
-        "
+        for superpartition in $(seq ~{shard_index + 1} ~{num_shards} ~{num_superpartitions})
+        do
+            str_table_index=$(printf "%03d" $superpartition)
 
-        bq query --nouse_legacy_sql --project_id=~{project_id} "
-            EXPORT DATA OPTIONS(
-            uri='${avro_prefix}/refs/ref_ranges_${str_table_index}/ref_ranges_${str_table_index}_*.avro', format='AVRO', compression='SNAPPY') AS
-            SELECT location, sample_id, length, state
-            FROM \`~{project_id}.~{dataset}.ref_ranges_${str_table_index}\`
-            ORDER BY location
-        "
+            # These bq exports error out if there are any objects at the sibling level to where output files would be written
+            # so an extra layer of `vet_${str_table_index}` is inserted here.
+            bq query --nouse_legacy_sql --project_id=~{project_id} "
+                EXPORT DATA OPTIONS(
+                uri='${avro_prefix}/vets/vet_${str_table_index}/vet_${str_table_index}_*.avro', format='AVRO', compression='SNAPPY') AS
+                SELECT location, sample_id, ref, REPLACE(alt,',<NON_REF>','') alt, call_GT as GT, call_AD as AD, call_GQ as GQ, cast(SPLIT(call_pl,',')[OFFSET(0)] as int64) as RGQ
+                FROM \`~{project_id}.~{dataset}.vet_${str_table_index}\`
+                ORDER BY location
+            "
+
+            bq query --nouse_legacy_sql --project_id=~{project_id} "
+                EXPORT DATA OPTIONS(
+                uri='${avro_prefix}/refs/ref_ranges_${str_table_index}/ref_ranges_${str_table_index}_*.avro', format='AVRO', compression='SNAPPY') AS
+                SELECT location, sample_id, length, state
+                FROM \`~{project_id}.~{dataset}.ref_ranges_${str_table_index}\`
+                ORDER BY location
+            "
+        done
     >>>
 
     output {
@@ -267,6 +281,6 @@ task GenerateHailScript {
         File hail_script = 'hail_script.py'
     }
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:vs_605_hail_codegen"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:rc_616_var_store_2022_09_06"
     }
 }
