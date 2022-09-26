@@ -119,6 +119,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - gg_VS-551_TieOutGVSvsVDS
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
@@ -181,6 +182,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - gg_VS-551_TieOutGVSvsVDS
    - name: GvsJointVariantCalling
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCalling.wdl
@@ -188,6 +190,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - gg_VS-551_TieOutGVSvsVDS
    - name: GvsJointVariantCallsetCost
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCallsetCost.wdl

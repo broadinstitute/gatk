@@ -163,6 +163,8 @@ workflow GvsUnified {
     }
 
     output {
+        File output_vcf = GvsExtractCallset.output_vcf
+        File output_vcf_index = GvsExtractCallset.output_vcf_index
         Array[File] output_vcfs = GvsExtractCallset.output_vcfs
         Array[File] output_vcf_indexes = GvsExtractCallset.output_vcf_indexes
         Float total_vcfs_size_mb = GvsExtractCallset.total_vcfs_size_mb
