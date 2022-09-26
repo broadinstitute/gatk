@@ -105,7 +105,7 @@ task CountSamples {
         Int num_samples = read_int(stdout())
     }
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_08_22"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:vs_616_split_hail_2022_09_26"
     }
 }
 
