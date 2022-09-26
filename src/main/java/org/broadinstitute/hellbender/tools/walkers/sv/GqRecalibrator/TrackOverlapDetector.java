@@ -23,31 +23,35 @@ public class TrackOverlapDetector {
     final SVIntervalTree<TrackInterval> otherOverlapDetector;
 
 
-    public TrackOverlapDetector(final String trackPath) throws IOException {
+    public TrackOverlapDetector(final String trackPath) {
         this(Paths.get(trackPath));
     }
 
-    public TrackOverlapDetector(final Path trackPath) throws IOException {
+    public TrackOverlapDetector(final Path trackPath) {
         this.trackPath = trackPath;
         primaryOverlapDetector = new SVIntervalTree<>();
-        final Iterator<TrackIntervalAndOther> trackIntervalIterator = new TrackTableReader(trackPath).iterator();
-        final TrackIntervalAndOther firstTrackIntervalAndOther = trackIntervalIterator.next();
-        primaryOverlapDetector.put(firstTrackIntervalAndOther.primaryInterval.svInterval, firstTrackIntervalAndOther.primaryInterval);
-        System.out.format("Loading %s ...", trackPath);
-        if(firstTrackIntervalAndOther.otherInterval == null) {
-            otherOverlapDetector = null;
-            while(trackIntervalIterator.hasNext()) {
-                final TrackInterval primaryInterval = trackIntervalIterator.next().primaryInterval;
-                primaryOverlapDetector.put(primaryInterval.svInterval, primaryInterval);
+        try(final TrackTableReader trackTableReader = new TrackTableReader(trackPath)) {
+            final Iterator<TrackIntervalAndOther> trackIntervalIterator = trackTableReader.iterator();
+            final TrackIntervalAndOther firstTrackIntervalAndOther = trackIntervalIterator.next();
+            primaryOverlapDetector.put(firstTrackIntervalAndOther.primaryInterval.svInterval, firstTrackIntervalAndOther.primaryInterval);
+            System.out.format("Loading %s ...", trackPath);
+            if (firstTrackIntervalAndOther.otherInterval == null) {
+                otherOverlapDetector = null;
+                while (trackIntervalIterator.hasNext()) {
+                    final TrackInterval primaryInterval = trackIntervalIterator.next().primaryInterval;
+                    primaryOverlapDetector.put(primaryInterval.svInterval, primaryInterval);
+                }
+            } else {
+                otherOverlapDetector = new SVIntervalTree<>();
+                otherOverlapDetector.put(firstTrackIntervalAndOther.otherInterval.svInterval, firstTrackIntervalAndOther.otherInterval);
+                while (trackIntervalIterator.hasNext()) {
+                    final TrackIntervalAndOther trackIntervalAndOther = trackIntervalIterator.next();
+                    primaryOverlapDetector.put(trackIntervalAndOther.primaryInterval.svInterval, trackIntervalAndOther.primaryInterval);
+                    otherOverlapDetector.put(trackIntervalAndOther.otherInterval.svInterval, trackIntervalAndOther.otherInterval);
+                }
             }
-        } else {
-            otherOverlapDetector = new SVIntervalTree<>();
-            otherOverlapDetector.put(firstTrackIntervalAndOther.otherInterval.svInterval, firstTrackIntervalAndOther.otherInterval);
-            while(trackIntervalIterator.hasNext()) {
-                final TrackIntervalAndOther trackIntervalAndOther = trackIntervalIterator.next();
-                primaryOverlapDetector.put(trackIntervalAndOther.primaryInterval.svInterval, trackIntervalAndOther.primaryInterval);
-                otherOverlapDetector.put(trackIntervalAndOther.otherInterval.svInterval, trackIntervalAndOther.otherInterval);
-            }
+        } catch (IOException ioException) {
+            throw new RuntimeException("Error opening genome track file: " + trackPath, ioException);
         }
         System.out.println("ok.");
     }

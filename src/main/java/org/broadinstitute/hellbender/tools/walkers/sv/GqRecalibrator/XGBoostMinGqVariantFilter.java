@@ -9,6 +9,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications.Filter;
 
 import java.io.*;
 import java.util.*;
@@ -48,6 +49,9 @@ public class XGBoostMinGqVariantFilter extends MinGqVariantFilterBase {
     public int numThreadsXgBoost = -1;
     @Argument(fullName="temp-dir", doc="path to directory for temporary files", optional=true)
     File tempDir = null;
+    enum EarlyStoppingLoss {Training, Diagnostic}
+    @Argument(fullName="early-stopping-loss", doc="Stop early based on non-decreasing loss in either: \"Training\" or \"Diagnostic\"", optional=true)
+    public EarlyStoppingLoss earlyStoppingLoss = EarlyStoppingLoss.Diagnostic;
 
     private Booster booster = null;
 
@@ -407,6 +411,16 @@ public class XGBoostMinGqVariantFilter extends MinGqVariantFilterBase {
         };
     }
 
+    static class FilterLosses {
+        final FilterLoss trainingLoss;
+        final FilterLoss diagnosticLoss;
+
+        FilterLosses(final FilterLoss trainingLoss, final FilterLoss diagnosticLoss) {
+            this.trainingLoss = trainingLoss;
+            this.diagnosticLoss = diagnosticLoss;
+        }
+    }
+
     private class DataSubset {
         final String name;
         final int[] variantIndices;
@@ -476,14 +490,15 @@ public class XGBoostMinGqVariantFilter extends MinGqVariantFilterBase {
             displayPercentiles(description, builder.build());
         }
 
-        private FilterLoss getRoundLoss(final Booster booster, final boolean training) {
+        private FilterLosses getRoundLoss(final Booster booster, final boolean training) {
             final float[][] rawPredictions = getRawPredictions(booster, dMatrix);
             for(int idx = 0; idx < rawPredictions.length; ++idx) {
                 pSampleVariantGood[idx] = scaledLogitsToP(rawPredictions[idx][0]);
             }
 
+            final FilterLoss lossForTraining;
             if(isTrainingSet && training) {
-                final FilterLoss lossForTraining = getTrainingLoss(pSampleVariantGood, d1Loss, d2Loss, variantIndices);
+                lossForTraining = getTrainingLoss(pSampleVariantGood, d1Loss, d2Loss, variantIndices);
                 System.out.format("\t%s\n\t\t%s\n", "optimizer objective",
                                   lossForTraining.toString().replaceAll("\n", "\n\t\t"));
                 if(progressVerbosity > 0) {
@@ -499,6 +514,8 @@ public class XGBoostMinGqVariantFilter extends MinGqVariantFilterBase {
                 } catch(XGBoostError xgBoostError) {
                     throw new GATKException("In " + name + " DataSubset: Boost error", xgBoostError);
                 }
+            } else {
+                lossForTraining = getTrainingLoss(pSampleVariantGood, variantIndices);
             }
 
             final FilterLoss lossForDiagnostics = getLoss(pSampleVariantGood, variantIndices);
@@ -507,7 +524,7 @@ public class XGBoostMinGqVariantFilter extends MinGqVariantFilterBase {
             if(progressVerbosity > 0) {
                 System.out.format("\t%s\n\t\t%s\n", name, lossForDiagnostics.toString().replaceAll("\n", "\n\t\t"));
             }
-            return lossForDiagnostics;
+            return new FilterLosses(lossForTraining, lossForDiagnostics);
         }
 
         public DoubleStream streamPredictions(final Booster booster) {
@@ -517,6 +534,14 @@ public class XGBoostMinGqVariantFilter extends MinGqVariantFilterBase {
 
 
         public float getLastScore() { return scores.get(scores.size() - 1); }
+
+        public void appendEarlyStoppingScore(final FilterLosses filterLosses) {
+            if(earlyStoppingLoss == EarlyStoppingLoss.Diagnostic) {
+                appendScore(filterLosses.diagnosticLoss.toFloat());
+            } else {
+                appendScore(filterLosses.trainingLoss.toFloat());
+            }
+        }
 
         public void appendScore(final float score) {
             scores.add(score);
@@ -622,10 +647,10 @@ public class XGBoostMinGqVariantFilter extends MinGqVariantFilterBase {
         boolean needSaveCheckpoint = !dataSubsets.isEmpty();
         boolean needStop = !dataSubsets.isEmpty();
         for(final DataSubset dataSubset : dataSubsets) {
-            final FilterLoss roundLoss = dataSubset.getRoundLoss(booster, true);
-            dataSubset.appendScore(roundLoss.toFloat());
-            if(!dataSubset.isTrainingSet) {
-                // check if need to stop iterating or save model checkpoint
+            final FilterLosses roundLosses = dataSubset.getRoundLoss(booster, true);
+            dataSubset.appendEarlyStoppingScore(roundLosses);
+            if (!dataSubset.isTrainingSet) {
+                // check if it's time to stop iterating or save model checkpoint
                 needSaveCheckpoint = needSaveCheckpoint && dataSubset.isBestScore();
                 needStop = needStop && dataSubset.stop();
             }
