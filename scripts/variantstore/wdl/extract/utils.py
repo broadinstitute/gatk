@@ -29,7 +29,7 @@ def execute_with_retry(client, label, sql):
             job_labels["gvs_query_name"] = query_label
             job_config = bigquery.QueryJobConfig(labels=job_labels)
             query = client.query(sql, job_config=job_config)
-            print(f"STARTING - {label} (jobid: {query.job_id})")
+            print(f"STARTING - {label} (jobid: {query.job_id}) - MODIFIED")
             results = query.result()
             print(f"CHECKING ON - {query.job_id} at {query_job.location}")
             job = client.get_job(query.job_id, location=query_job.location)
