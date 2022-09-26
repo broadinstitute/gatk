@@ -928,8 +928,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         args.addReference(b37_reference_20_21)
                 .addVCF(reblockedGVCF)
                 .addOutput(output)
-                .add(GenotypeGVCFs.KEEP_COMBINED_LONG_NAME, false)
-                .add(GenotypeGVCFs.KEEP_SPECIFIED_RAW_ANNOTATION_LONG_NAME, GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY)
+                .add(GenotypeGVCFsAnnotationArgumentCollection.KEEP_SPECIFIED_RAW_COMBINED_ANNOTATION_LONG_NAME, "RawGtCount")
                 .add("A", "RawGtCount");
         runCommandLine(args);
 

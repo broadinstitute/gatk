@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.GenotypeGVCFs;
+import org.broadinstitute.hellbender.tools.walkers.GenotypeGVCFsAnnotationArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotationData;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -68,14 +69,15 @@ public final class VariantAnnotatorEngine {
                                   final FeatureInput<VariantContext> dbSNPInput,
                                   final List<FeatureInput<VariantContext>> featureInputs,
                                   final boolean useRaw,
-                                  boolean keepCombined,
-                                  final List<String> rawAnnotationsToKeep){
+                                  final boolean keepCombined,
+                                  final Collection<Annotation> rawAnnotationsToKeep){
         Utils.nonNull(featureInputs, "comparisonFeatureInputs is null");
         infoAnnotations = new ArrayList<>();
         genotypeAnnotations = new ArrayList<>();
         jumboInfoAnnotations = new ArrayList<>();
         jumboGenotypeAnnotations = new ArrayList<>();
         final List<String> variantAnnotationKeys = new ArrayList<>();
+        final List<String> rawVariantAnnotationKeysToKeep = new ArrayList<>();
         for (Annotation annot : annotationList) {
             if (annot instanceof InfoFieldAnnotation) {
                 infoAnnotations.add((InfoFieldAnnotation) annot);
@@ -94,12 +96,13 @@ public final class VariantAnnotatorEngine {
         reducibleKeys = new LinkedHashSet<>();
         useRawAnnotations = useRaw;
         keepRawCombinedAnnotations = keepCombined;
-        for (String rawAnnot : rawAnnotationsToKeep) {
+        for (final Annotation rawAnnot : rawAnnotationsToKeep) {
             if (!variantAnnotationKeys.contains(rawAnnot)) {
-                throw new UserException("Requested --" + GenotypeGVCFs.KEEP_SPECIFIED_RAW_ANNOTATION_LONG_NAME + ": " + rawAnnot + " is not available. Add requested annotation with --" + StandardArgumentDefinitions.ANNOTATION_LONG_NAME + ".");
+                throw new UserException("Requested --" + GenotypeGVCFsAnnotationArgumentCollection.KEEP_SPECIFIED_RAW_COMBINED_ANNOTATION_LONG_NAME + ": " + rawAnnot + " is not available. Add requested annotation with --" + StandardArgumentDefinitions.ANNOTATION_LONG_NAME + ".");
             }
+            rawVariantAnnotationKeysToKeep.addAll(((VariantAnnotation) rawAnnot).getKeyNames());
         }
-        this.rawAnnotationsToKeep = rawAnnotationsToKeep;
+        this.rawAnnotationsToKeep = rawVariantAnnotationKeysToKeep;
         for (InfoFieldAnnotation annot : infoAnnotations) {
             if (annot instanceof ReducibleAnnotation) {
                 for (final String rawKey : ((ReducibleAnnotation) annot).getRawKeyNames()) {

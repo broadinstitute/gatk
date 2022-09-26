@@ -9,6 +9,7 @@ import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
@@ -28,6 +29,7 @@ import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculation
 import org.broadinstitute.hellbender.tools.walkers.mutect.M2ArgumentCollection;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotation;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -98,8 +100,6 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     public static final String ALL_SITES_SHORT_NAME = "all-sites";
     public static final String KEEP_COMBINED_LONG_NAME = "keep-combined-raw-annotations";
     public static final String KEEP_COMBINED_SHORT_NAME = "keep-combined";
-    public static final String KEEP_SPECIFIED_RAW_ANNOTATION_LONG_NAME = "keep-specific-raw-annotation";
-    public static final String KEEP_SPECIFIED_RAW_ANNOTATION_SHORT_NAME = "keep-raw";
     public static final String FORCE_OUTPUT_INTERVALS_NAME = "force-output-intervals";
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -141,23 +141,20 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     protected double afTolerance = 1e-3;  //based on Q30 as a "good" base quality score
 
     /**
-     * If specified, keep all the combined raw annotations (e.g. AS_SB_TABLE) after genotyping.  This is applicable to Allele-Specific annotations. See 
+     * If specified, keep all the combined raw annotations (e.g. AS_SB_TABLE) after genotyping.  This is applicable to Allele-Specific annotations. See {@link ReducibleAnnotation}
      */
-    @Argument(fullName=KEEP_COMBINED_LONG_NAME, shortName = KEEP_COMBINED_SHORT_NAME, doc = "If specified, keep the combined raw annotations")
+    @Argument(fullName=KEEP_COMBINED_LONG_NAME, shortName = KEEP_COMBINED_SHORT_NAME, doc = "If specified, keep the combined raw annotations",
+            mutex = {GenotypeGVCFsAnnotationArgumentCollection.KEEP_SPECIFIED_RAW_COMBINED_ANNOTATION_LONG_NAME})
     protected boolean keepCombined = false;
-
-    /**
-     * Keep only the specific combined raw annotations specified (removing the other raw annotations if keep-combined-raw-annotations is not set).
-     */
-    @Argument(fullName= KEEP_SPECIFIED_RAW_ANNOTATION_LONG_NAME, shortName = KEEP_SPECIFIED_RAW_ANNOTATION_SHORT_NAME, optional = true,
-            doc="Keep only the specific combined raw annotations specified (removing the other raw annotations).")
-    protected List<String> keepSpecifiedRawAnnotations = new ArrayList<>();
 
     @ArgumentCollection
     private GenotypeCalculationArgumentCollection genotypeArgs = new GenotypeCalculationArgumentCollection();
 
     @ArgumentCollection
     private GenomicsDBArgumentCollection genomicsdbArgs = new GenomicsDBArgumentCollection();
+
+    @ArgumentCollection
+    private GenotypeGVCFsAnnotationArgumentCollection annotationArgs = new GenotypeGVCFsAnnotationArgumentCollection();
 
     /**
      * This option can only be activated if intervals are specified.
@@ -270,7 +267,12 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
                 Collections.emptyList();
 
         Collection<Annotation>  variantAnnotations = makeVariantAnnotations();
-        annotationEngine = new VariantAnnotatorEngine(variantAnnotations, dbsnp.dbsnp, Collections.emptyList(), false, keepCombined, keepSpecifiedRawAnnotations);
+
+        //TODO: this isn't right. I need to intialize the annoationArgs somehow, but I don't think this does it.
+        final GATKAnnotationPluginDescriptor annotationPlugin =
+                new GATKAnnotationPluginDescriptor(annotationArgs, Collections.emptyList(), Collections.emptyList());
+        Collection<Annotation> rawCombinedAnnotationsToKeep =  annotationPlugin.getResolvedInstances();
+        annotationEngine = new VariantAnnotatorEngine(variantAnnotations, dbsnp.dbsnp, Collections.emptyList(), false, keepCombined, rawCombinedAnnotationsToKeep);
 
         merger = new ReferenceConfidenceVariantContextMerger(annotationEngine, getHeaderForVariants(), somaticInput, false, true);
 
