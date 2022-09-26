@@ -2,6 +2,9 @@ import argparse
 import sys
 import numpy
 
+# A constant for comparing two floating point numbers
+EPSILON = 0.00001
+
 def compare_gvs_vcf_with_vds_vcf(gvs_vcf, vds_vcf, skip_gvs_filtered_lines):
     with open(gvs_vcf) as gvs:
         with open(vds_vcf) as vds:
@@ -53,15 +56,11 @@ def compare_gvs_vcf_with_vds_vcf(gvs_vcf, vds_vcf, skip_gvs_filtered_lines):
                 #     vds_line = vds.readline().rstrip()
                 #     continue
 
-                if (gvs_tokens[2] != vds_tokens[2]):
-                    print(f"DIFF: ID differs between VCF line:\n{gvs_tokens[2]} vs {vds_tokens[2]}")
-                    if not args.report_all_diffs:
-                        sys.exit(1)
+                if not args.verbose:
+                    print('.', end='', flush=True)
 
-                if (gvs_tokens[3] != vds_tokens[3]):
-                    print(f"DIFF: REF differs between VCF line:\n{gvs_tokens[3]} vs {vds_tokens[3]}")
-                    if not args.report_all_diffs:
-                        sys.exit(1)
+                col_diff(locus, "ID", gvs_tokens[2], vds_tokens[2])
+                col_diff(locus, "REF", gvs_tokens[3], vds_tokens[3])
 
                 gvs_tokens[4], gvs_old_allele_index_to_new = reorder_gvs_alt_alleles(gvs_tokens[4])
                 # print(f"-> {gvs_old_allele_index_to_new}")
@@ -70,33 +69,25 @@ def compare_gvs_vcf_with_vds_vcf(gvs_vcf, vds_vcf, skip_gvs_filtered_lines):
                     if not args.report_all_diffs:
                         sys.exit(1)
 
-                if (gvs_tokens[5] != vds_tokens[5]):
-                    print(f"DIFF: QUAL differs between VCF line:\n{gvs_tokens[5]} vs {vds_tokens[5]}")
-                    if not args.report_all_diffs:
-                        sys.exit(1)
+                col_diff(locus, "QUAL", gvs_tokens[5], vds_tokens[5])
 
-                if gvs_tokens[6] == "PASS":
-                    gvs_tokens[6] = "."
+                # FILTER Field
                 if vds_tokens[6] == "PASS":
                     vds_tokens[6] = "."
+                col_diff(locus, "FILTER", gvs_tokens[6], vds_tokens[6])
 
-                if (gvs_tokens[6] != vds_tokens[6]):
-                    print(f"DIFF: FILTER differs between VCF line:\n{gvs_tokens[6]} vs {vds_tokens[6]}")
-                    if not args.report_all_diffs:
-                        sys.exit(1)
-
-                # Deal with differences in the INFO field
-                if (gvs_tokens[7] != vds_tokens[7]):
-                    print(f"\nDIFF: Locus {locus}, INFO differs between gvs and vds:\n{gvs_tokens[7]}\n vs \n{vds_tokens[7]}")
-                    # if not args.report_all_diffs:
-                    #     sys.exit(1)
+                # INFO Field.
+                # The info field is tricky. We only compare AC, AN, and AF. But VDS stores these differently
+                # It includes the values for these metrics for the ref allele too.
+                # Plus we have to deal with the ordering of alleles being different between GVS and VDS.
+                if args.verbose:
+                    print(f"\nLocus {locus}.  gvs INFO: {gvs_tokens[7]} vds INFO: {vds_tokens[7]}")
 
                 gvs_info_fields = get_info_fields(gvs_tokens[7])
                 vds_info_fields = get_info_fields(vds_tokens[7])
-                # TODO - handle new fields?
 
                 if "AN" in gvs_info_fields:
-                    info_diff(gvs_info_fields, vds_info_fields, "AN", locus, gvs_tokens[7], vds_tokens[7])
+                    info_diff(locus, gvs_info_fields, vds_info_fields, "AN", gvs_tokens[7], vds_tokens[7])
                     # Calculate the (expected) AC from the gvs VCF
                     gvs_an = int(gvs_info_fields["AN"])
                     reordered_gvs_ac = reorder_gvs_ac(gvs_info_fields["AC"], gvs_old_allele_index_to_new)
@@ -104,15 +95,12 @@ def compare_gvs_vcf_with_vds_vcf(gvs_vcf, vds_vcf, skip_gvs_filtered_lines):
                     alt_allele_ac = 0
                     for gvs_ac in reordered_gvs_acs:
                         alt_allele_ac += int(gvs_ac)
+                    gvs_afs = []
+                    gvs_afs.append(float(gvs_an - alt_allele_ac) / gvs_an)
                     new_gvs_ac = str(gvs_an - alt_allele_ac)        # AC for the ref
                     for gvs_ac in reordered_gvs_acs:
                         new_gvs_ac += "," + gvs_ac
-
-                    # new_gvs_af = gvs_ac / gvs_an
-##                    new_gvs_ac = str(gvs_an - gvs_ac) + "," + str(gvs_ac)
-                    # ref_allele_af = '{:0.6f}'.format((float) (gvs_an - gvs_ac) / gvs_an)
-                    # new_vcs_ac = str(((int) vcs_an) - ((int) vcs_ac)) + "," + vcs_ac
-                    # print(f"{ref_allele_af}")
+                        gvs_afs.append(float(gvs_ac) / gvs_an)
 
                     vds_ac = vds_info_fields["AC"]
                     if (new_gvs_ac != vds_ac):
@@ -120,22 +108,28 @@ def compare_gvs_vcf_with_vds_vcf(gvs_vcf, vds_vcf, skip_gvs_filtered_lines):
                         if not args.report_all_diffs:
                             sys.exit(1)
 
-                    # vds_af = vds_info_fields["AF"]
-                    # if (new_gvs_af != vds_af):
-                    #     print(f"DIFF: Locus {locus}, INFO Field Value for AF differs between gvs and vds: {new_gvs_af} vs {vds_af}\nGVS INFO: {gvs_tokens[7]}\nVDS INFO: {vds_tokens[7]}")
-                    #     if not args.report_all_diffs:
-                    #         sys.exit(1)
+                    vds_afs_string = vds_info_fields["AF"]
+                    vds_afs = vds_afs_string.split(",")
+                    if (len(gvs_afs) != len(vds_afs)):
+                        print(f"GVS INFO AF {gvs_afs} has different number of elements than VDS INFO AF {vds_afs_string} alleles")
+                        sys.exit(1)
 
-                    # info_diff(gvs_info_fields, vds_info_fields, "AF", locus, gvs_tokens[7], vds_tokens[7])
+                    for i in range(0, len(gvs_afs)):
+                        vds_af = float(vds_afs[i])
+                        if vds_af != 0.0:
+                            diff = (gvs_afs[i] - vds_af) / vds_af
 
-                # FORMAT is just going to be different
+                        if abs(diff) > EPSILON:
+                            print(f"DIFF: Locus {locus}, INFO Field Value for AF, element {i} differs between gvs and vds: {gvs_afs[i]} vs {vds_af}\nGVS INFO: {gvs_tokens[7]}\nVDS INFO: {vds_tokens[7]}")
+                            if not args.report_all_diffs:
+                                sys.exit(1)
+
+                # FORMAT Field (it is just going to be different - we build a map of the fields to column for handling sample values)
                 gvs_format_fields_to_column = get_format_fields_to_column(gvs_tokens[8])
                 vds_format_fields_to_column = get_format_fields_to_column(vds_tokens[8])
 
                 if args.verbose:
                     print(f"\nLocus {locus}.  gvs FORMAT: {gvs_tokens[8]} vds FORMAT: {vds_tokens[8]}")
-                else:
-                    print('.', end='')
 
                 for sample in gvs_samples:
                     if args.verbose:
@@ -145,13 +139,13 @@ def compare_gvs_vcf_with_vds_vcf(gvs_vcf, vds_vcf, skip_gvs_filtered_lines):
                     vds_sample_genotypes = get_sample_genotype_fields(vds_format_fields_to_column, vds_tokens[vds_sample_to_column[sample]])
 
                     # NOTE: More complex rules for FT
-                    # simple_diff(gvs_sample_genotypes, vds_sample_genotypes, "FT", locus, sample)
+                    # sample_key_diff(locus, sample, gvs_sample_genotypes, vds_sample_genotypes, "FT")
                     gvs_ft = "PASS"
                     if "FT" in gvs_sample_genotypes:
                         # TODO - NOTE there are gvs records without a FT field
                         gvs_ft = gvs_sample_genotypes["FT"]
                     vds_ft = vds_sample_genotypes["FT"]
-                    # TODO - this should be undone once the VDS-generated VCF is updated to have an explicity 'PASS'
+                    # TODO - this should be undone once the VDS-generated VCF is updated to have an explicit 'PASS'
                     if vds_ft == ".":
                         vds_ft = "PASS"
                     if gvs_ft == ".":
@@ -195,8 +189,8 @@ def compare_gvs_vcf_with_vds_vcf(gvs_vcf, vds_vcf, skip_gvs_filtered_lines):
                         if not args.report_all_diffs:
                             sys.exit(1)
 
-                    simple_diff(gvs_sample_genotypes, vds_sample_genotypes, "GQ", locus, sample)
-                    simple_diff(gvs_sample_genotypes, vds_sample_genotypes, "RGQ", locus, sample)
+                    sample_key_diff(locus, sample, gvs_sample_genotypes, vds_sample_genotypes, "GQ")
+                    sample_key_diff(locus, sample, gvs_sample_genotypes, vds_sample_genotypes, "RGQ")
 
                     ## AD
                     if "AD" in gvs_sample_genotypes:        # TODO - did this go away???
@@ -239,8 +233,11 @@ def compare_gts(gvs_gt, vds_gt):
     return flipped_gvs_gt == vds_gt
 
 def calculate_vds_gt_lgt(lgt, la):
-    # VDS stores the LGT field (which is the 'local genotypes') this represents the GT field as for ONLY the alleles available for the sample in question.
-    # We convert this to GT using LGT and the LA ('local alleles') field
+    """
+    VDS stores the LGT field (which is the 'local genotypes')
+    this represents the GT field as for ONLY the alleles available for the sample in question.
+    We convert this to GT using LGT and the LA ('local alleles') field
+    """
     local_alleles = la.split(",")       # looks like "0,2" or "0,1,2"
     if len(local_alleles) != 2 and len(local_alleles) != 3:
         print(f"LA {la} does not have exactly two OR three elements!")
@@ -254,7 +251,9 @@ def calculate_vds_gt_lgt(lgt, la):
     return gt
 
 def reorder_gvs_ac(gvs_ac, gvs_old_allele_index_to_new):
-    # Reorder the gvs's INFO AC field to be in the same order as the VDS's alleles
+    """
+    Reorder the gvs's INFO AC field to be in the same order as the VDS's alleles
+    """
     gvs_acs = gvs_ac.split(",")
     # Note that gvs_old_allele_index_to_new contains a mapping for the REF allele too, so one more expected than for ALT alleles
     if (len(gvs_acs) != len(gvs_old_allele_index_to_new.keys()) - 1):
@@ -279,7 +278,9 @@ def reorder_gvs_ac(gvs_ac, gvs_old_allele_index_to_new):
 
 
 def reorder_gvs_gts(gvs_gt, gvs_old_allele_index_to_new):
-    # Remap genotypes for difference in ALT allele ordering between gvs VCF and vds VCF
+    """
+    Remap genotypes for difference in ALT allele ordering between gvs VCF and vds VCF
+    """
     if gvs_gt != "./.":
         gvs_gts = gvs_gt.split("/")
         if len(gvs_gts) != 2:
@@ -296,9 +297,11 @@ def reorder_gvs_gts(gvs_gt, gvs_old_allele_index_to_new):
     return gvs_gt
 
 def reorder_gvs_alt_alleles(alt_allele_string):
-    # So, the alt alleles in gvs are ordered differently than those in vds. gvs seems to be by first usage,
-    # vds are ordered alphabetically. Here we reorder (by simple sort) the alt alleles in the gvs record
-    # and generate a directory of old GT (1, 2, 3) to new (reordered) GT (2, 3, 1) for instance.
+    """
+    So, the alt alleles in gvs are ordered differently than those in vds. gvs seems to be by first usage,
+    vds are ordered alphabetically. Here we reorder (by simple sort) the alt alleles in the gvs record
+    and generate a directory of old GT (1, 2, 3) to new (reordered) GT (2, 3, 1) for instance.
+    """
     gvs_alleles = alt_allele_string.split(",")
     if (len(gvs_alleles) == 0):
         print(f"No ALT ALLELES???")
@@ -321,7 +324,31 @@ def reorder_gvs_alt_alleles(alt_allele_string):
         gvs_old_allele_index_to_new["1"] = "1"
     return(alt_allele_string, gvs_old_allele_index_to_new)
 
-def info_diff(gvs_dict, vds_dict, key, locus, gvs_info, vds_info):
+def col_diff(locus, key, gvs_value, vds_value):
+    """
+    Simple method to compare two values and give context sensitive information if they differ
+    :param locus: The locus (chr:pos) in the VCF
+    :param key: The key (column) in the VCF fom which the fields are pulled
+    :param gvs_value: The value from the gvs
+    :param vds_value: The value from the vds
+    :return: Nothing
+    """
+    if (gvs_value != vds_value):
+        print(f"DIFF: Locus {locus}, {key} Value differs between gvs and vds: {gvs_value} vs {vds_value}")
+        if not args.report_all_diffs:
+            sys.exit(1)
+
+def info_diff(locus, gvs_dict, vds_dict, key, gvs_info, vds_info):
+    """
+    Simple method to compare two values in the INFO field and give context sensitive information if they differ
+    :param locus: The locus (chr:pos) in the VCF
+    :param gvs_dict: A dictionary of the key:values in the gvs INFO field
+    :param vds_dict: A dictionary of the key:values in the vds INFO field
+    :param key: The key (column) in the INFO field dictionary from which the values will be pulled
+    :param gvs_info: The INFO string from the gvs, used for logging
+    :param vds_info: The INFO string from the vds, used for logging
+    :return: Nothing
+    """
     gvs_value = gvs_dict[key]
     vds_value = vds_dict[key]
     if (gvs_value != vds_value):
@@ -329,7 +356,16 @@ def info_diff(gvs_dict, vds_dict, key, locus, gvs_info, vds_info):
         if not args.report_all_diffs:
             sys.exit(1)
 
-def simple_diff(gvs_dict, vds_dict, key, locus, sample):
+def sample_key_diff(locus, sample, gvs_dict, vds_dict, key):
+    """
+    Simple method to compare two values in the SAMPLE field and give context sensitive information if they differ
+    :param locus: The locus (chr:pos) in the VCF
+    :param sample: The sample name, used for logging
+    :param gvs_dict: A dictionary of the key:values in the gvs SAMPLE field
+    :param vds_dict: A dictionary of the key:values in the vds SAMPLE field
+    :param key: The key (column) in the SAMPLE field dictionary from which the values will be pulled
+    :return: Nothing
+    """
     gvs_value = gvs_dict[key]
     vds_value = vds_dict[key]
     if (gvs_value != vds_value):
@@ -338,6 +374,12 @@ def simple_diff(gvs_dict, vds_dict, key, locus, sample):
             sys.exit(1)
 
 def get_sample_genotype_fields(format_fields_to_column, sample_genotype_string):
+    """
+    A method to parse the fields out of the sample_genotype_string and return a map of them.
+    :param format_fields_to_column: A map of the FORMAT field names to their column value.
+    :param sample_genotype_string: The sample genotype string
+    :return: a dictionary of format field to sample value (eg. GQ -> 0.2)
+    """
     tokens = sample_genotype_string.split(":")
     sample_genotype_fields = {}
     for key, index in format_fields_to_column.items():
@@ -348,6 +390,11 @@ def get_sample_genotype_fields(format_fields_to_column, sample_genotype_string):
     return sample_genotype_fields
 
 def get_format_fields_to_column(token):
+    """
+    A method to parse the FORMAT field and return it a map of format field name to column index
+    :param token: The FORMAT field from the VCF
+    :return: a dictionary of the format field names to their index in the string
+    """
     tokens = token.split(":")
     fields_to_column = {}
     for i in range(0, len(tokens)):
@@ -355,6 +402,11 @@ def get_format_fields_to_column(token):
     return fields_to_column
 
 def get_sample_to_column(fline):
+    """
+    A method to parse all of the sample columns from the VCF and return a map of sample to column index
+    :param fline: The VCF header string
+    :return: a dictionary of sample name to column index
+    """
     tokens = fline.split()
     sample_to_column = {}
     for i in range(9, len(tokens)):
@@ -362,6 +414,12 @@ def get_sample_to_column(fline):
     return sample_to_column
 
 def skip_filtered_lines(fline, fp):
+    """
+    A method to skip over any 'filtered' lines in the VCF. If the line has a filter applied, it will skip that line
+    :param fline: The latest line (as a string) from the VCF
+    :param fp: The file's file pointer.
+    :return: The nextmost line from the file that has not been filtered.
+    """
     ftokens = fline.split()
     filter = ftokens[6]
     while True:
@@ -371,8 +429,12 @@ def skip_filtered_lines(fline, fp):
         ftokens = fline.split()
         filter = ftokens[6]
 
-
 def skip_header(fp):
+    """
+    A method to skip over the header in the VCF
+    :param fp: The file's file pointer
+    :return: The nextmost line that is not a header line
+    """
     while (line := fp.readline().rstrip()):
         if not line.startswith("##"):
             return line
