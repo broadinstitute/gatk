@@ -378,7 +378,9 @@ task CreateTables {
         fi
     >>>
     runtime {
+        # Can't use plain Google cloud sdk as this requires jq.
         docker: "us.gcr.io/broad-dsde-methods/variantstore:vs_560_callset_statistics"
+        disks: "local-disk 500 HDD"
     }
     output {
         Boolean done = true
@@ -513,7 +515,8 @@ task CollectMetricsForChromosome {
         Boolean done = true
     }
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_08_22"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:402.0.0-alpine"
+        disks: "local-disk 500 HDD"
     }
 }
 
@@ -585,7 +588,8 @@ task AggregateMetricsAcrossChromosomes {
         Boolean done = true
     }
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_08_22"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:402.0.0-alpine"
+        disks: "local-disk 500 HDD"
     }
 }
 
@@ -727,7 +731,8 @@ task CollectStatistics {
         Boolean done = true
     }
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_08_22"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:402.0.0-alpine"
+        disks: "local-disk 500 HDD"
     }
 }
 
@@ -745,7 +750,7 @@ task ExportToCSV {
     command <<<
         set -o errexit -o nounset -o xtrace -o pipefail
 
-        bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv '
+        bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv --max_rows 1000000000 '
 
           SELECT * from `~{project_id}.~{dataset_name}.~{statistics_table}`
 
@@ -755,6 +760,7 @@ task ExportToCSV {
         File callset_statistics = "~{statistics_table}.csv"
     }
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_08_22"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:402.0.0-alpine"
+        disks: "local-disk 500 HDD"
     }
 }
