@@ -256,7 +256,7 @@ task GenerateHailScripts {
         vat_tsv_output_path="${write_prefix}/vat_inputs.tsv"
         echo $vat_tsv_output_path > vat_inputs_output_path.txt
 
-        tmpfile=$(mktemp /tmp/hail_gvs_import.XXXXX)
+        tmpfile=$(mktemp)
         cat /app/hail_create_vat_inputs.py |
             sed "s;@VDS_INPUT_PATH@;${vds_output_path};" |
             sed "s;@SITES_ONLY_VCF_OUTPUT_PATH@;${sites_only_vcf_output_path};" |
