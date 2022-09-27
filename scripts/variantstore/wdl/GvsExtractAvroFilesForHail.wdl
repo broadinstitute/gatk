@@ -72,7 +72,8 @@ task OutputPath {
         File out = stdout()
     }
     runtime {
-        docker: "ubuntu:latest"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:402.0.0-slim"
+        disks: "local-disk 500 HDD"
     }
 }
 
@@ -105,7 +106,8 @@ task CountSamples {
         Int num_samples = read_int(stdout())
     }
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:vs_616_split_hail_2022_09_26"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:402.0.0-slim"
+        disks: "local-disk 500 HDD"
     }
 }
 
@@ -175,7 +177,8 @@ task ExtractFromNonSuperpartitionedTables {
     }
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:402.0.0-slim"
+        disks: "local-disk 500 HDD"
     }
 }
 
@@ -241,7 +244,8 @@ task ExtractFromSuperpartitionedTables {
     }
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:402.0.0-slim"
+        disks: "local-disk 500 HDD"
     }
 }
 
@@ -305,6 +309,7 @@ task GenerateHailScripts {
         File hail_create_vat_inputs_script = 'hail_create_vat_inputs.py'
     }
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:vs_616_split_hail_2022_09_26"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:402.0.0-slim"
+        disks: "local-disk 500 HDD"
     }
 }
