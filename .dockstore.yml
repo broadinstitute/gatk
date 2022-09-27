@@ -96,6 +96,7 @@ workflows:
          - master
          - ah_var_store
          - rsa_nth_variant_10
+         - VS-629-failure-to-retrieve-job-information-during-ingest
    - name: GvsPopulateAltAllele
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPopulateAltAllele.wdl
