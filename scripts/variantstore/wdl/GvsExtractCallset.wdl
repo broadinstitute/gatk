@@ -168,14 +168,6 @@ workflow GvsExtractCallset {
     }
   }
 
-  call Utils.MergeVCFs as MergeVCFs {
-    input:
-      input_vcfs = ExtractTask.output_vcf,
-      gather_type = "CONVENTIONAL",
-      output_vcf_name = "quickstart-final-annotated.vcf.gz",
-      merge_disk_override = 500
-  }
-
   call SumBytes {
     input:
       file_sizes_bytes = flatten([ExtractTask.output_vcf_bytes, ExtractTask.output_vcf_index_bytes])
@@ -205,8 +197,6 @@ workflow GvsExtractCallset {
   }
 
   output {
-    File output_vcf = MergeVCFs.output_vcf
-    File output_vcf_index = MergeVCFs.output_vcf_index
     Array[File] output_vcfs = ExtractTask.output_vcf
     Array[File] output_vcf_indexes = ExtractTask.output_vcf_index
     Array[File] output_vcf_interval_files = SplitIntervals.interval_files
