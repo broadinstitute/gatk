@@ -404,12 +404,12 @@ task CountSuperpartitions {
         String dataset_name
     }
     command <<<
-        bq query --location=US --project_id='~{project_id}' --format=csv --use_legacy_sql=false "
+        bq query --location=US --project_id='~{project_id}' --format=csv --use_legacy_sql=false '
 
-            SELECT COUNT(*) FROM \`~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS\` \
-                WHERE table_name LIKE 'vet_%'
+            SELECT COUNT(*) FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
+                WHERE table_name LIKE "vet_%"
 
-        " | sed 1d > num_superpartitions.txt
+        ' | sed 1d > num_superpartitions.txt
     >>>
     runtime {
         docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:402.0.0-slim"
