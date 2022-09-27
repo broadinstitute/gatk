@@ -241,7 +241,7 @@ task GenerateHailScripts {
         vds_output_path="${write_prefix}/gvs_export.vds"
         echo $vds_output_path > vds_output_path.txt
 
-        tmpfile=$(mktemp /tmp/hail_gvs_import.XXXXX)
+        tmpfile=$(mktemp)
         # `sed` can use delimiters other than `/`. This is required here since the replacement GCS paths will
         # contain `/` characters.
         cat /app/hail_gvs_import.py |
