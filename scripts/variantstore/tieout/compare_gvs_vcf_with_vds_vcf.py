@@ -1,6 +1,5 @@
 import argparse
 import sys
-import numpy
 
 # A constant for comparing two floating point numbers
 EPSILON = 0.00001
@@ -63,7 +62,6 @@ def compare_gvs_vcf_with_vds_vcf(gvs_vcf, vds_vcf, skip_gvs_filtered_lines):
                 col_diff(locus, "REF", gvs_tokens[3], vds_tokens[3])
 
                 gvs_tokens[4], gvs_old_allele_index_to_new = reorder_gvs_alt_alleles(gvs_tokens[4])
-                # print(f"-> {gvs_old_allele_index_to_new}")
                 if (gvs_tokens[4] != vds_tokens[4]):
                     print(f"DIFF: ALT differs between VCF line:\n{gvs_tokens[4]} vs {vds_tokens[4]}")
                     if not args.report_all_diffs:
@@ -140,17 +138,15 @@ def compare_gvs_vcf_with_vds_vcf(gvs_vcf, vds_vcf, skip_gvs_filtered_lines):
 
                     # NOTE: More complex rules for FT
                     # sample_key_diff(locus, sample, gvs_sample_genotypes, vds_sample_genotypes, "FT")
+
                     gvs_ft = "PASS"
                     if "FT" in gvs_sample_genotypes:
-                        # TODO - NOTE there are gvs records without a FT field
                         gvs_ft = gvs_sample_genotypes["FT"]
+                        if gvs_ft == ".":
+                            gvs_ft = "PASS"
                     vds_ft = vds_sample_genotypes["FT"]
-                    # TODO - this should be undone once the VDS-generated VCF is updated to have an explicit 'PASS'
                     if vds_ft == ".":
                         vds_ft = "PASS"
-                    if gvs_ft == ".":
-                        gvs_ft = "PASS"
-                    # END TODO
                     # For purposes of comparison a 'low_VQSLOD_INDEL' or 'low_VQSLOD_SNP' is recoded as 'FAIL' which is what the vds VCF uses.
                     if (gvs_ft == "low_VQSLOD_INDEL" or gvs_ft == "low_VQSLOD_SNP"):
                         gvs_ft = "FAIL"
@@ -193,7 +189,7 @@ def compare_gvs_vcf_with_vds_vcf(gvs_vcf, vds_vcf, skip_gvs_filtered_lines):
                     sample_key_diff(locus, sample, gvs_sample_genotypes, vds_sample_genotypes, "RGQ")
 
                     ## AD
-                    if "AD" in gvs_sample_genotypes:        # TODO - did this go away???
+                    if "AD" in gvs_sample_genotypes:
                         gvs_ad = gvs_sample_genotypes["AD"]
                         vds_ad = vds_sample_genotypes["LAD"]
                         if (gvs_ad != vds_ad):
@@ -205,12 +201,15 @@ def compare_gvs_vcf_with_vds_vcf(gvs_vcf, vds_vcf, skip_gvs_filtered_lines):
 
                 gvs_line = gvs.readline().rstrip()
                 vds_line = vds.readline().rstrip()
-                # if count > 10000:
-                # sys.exit(1)
 
             exit(0)
 
 def get_info_fields(info_string):
+    """
+    Method to split the fields from the INFO field into a dictionary
+    :param info_string: string containing the INFO field
+    :return: dictionary containing a map of key to value from the INFO field.
+    """
     info_dict = {}
     tokens = info_string.split(";")
     for token in tokens:
@@ -222,6 +221,12 @@ def get_info_fields(info_string):
     return info_dict
 
 def compare_gts(gvs_gt, vds_gt):
+    """
+    Method to compare to GTs. Allows for equality between "0/1" and "1/0" for instance
+    :param gvs_gt: GT field from the gvs VCF
+    :param vds_gt: GT field from the vds VCF
+    :return: true if the GT fields are the same
+    """
     if (gvs_gt == vds_gt):
         return True
 
@@ -237,6 +242,9 @@ def calculate_vds_gt_lgt(lgt, la):
     VDS stores the LGT field (which is the 'local genotypes')
     this represents the GT field as for ONLY the alleles available for the sample in question.
     We convert this to GT using LGT and the LA ('local alleles') field
+    :param lgt: The LGT field from the vds VCF
+    :param la: The LA field from the vds VCF
+    :return: string containing the GT field
     """
     local_alleles = la.split(",")       # looks like "0,2" or "0,1,2"
     if len(local_alleles) != 2 and len(local_alleles) != 3:
@@ -253,6 +261,9 @@ def calculate_vds_gt_lgt(lgt, la):
 def reorder_gvs_ac(gvs_ac, gvs_old_allele_index_to_new):
     """
     Reorder the gvs's INFO AC field to be in the same order as the VDS's alleles
+    :param gvs_ac: The AC field from the gvs VCF
+    :param gvs_old_allele_index_to_new: A dictionary of old alt allele index to new
+    :return: string containing the reordered AC for the gvs VCF (note that this now contains a value for REF too)
     """
     gvs_acs = gvs_ac.split(",")
     # Note that gvs_old_allele_index_to_new contains a mapping for the REF allele too, so one more expected than for ALT alleles
@@ -279,7 +290,15 @@ def reorder_gvs_ac(gvs_ac, gvs_old_allele_index_to_new):
 
 def reorder_gvs_gts(gvs_gt, gvs_old_allele_index_to_new):
     """
+    Since the ordering of the alt alleles in the vds VCF is different from that in the gvs VCF
+    We need to reorder the genotype field correspondingly.
+    This method does that:
     Remap genotypes for difference in ALT allele ordering between gvs VCF and vds VCF
+
+    :param gvs_gt: The GT string from the gvs VCF (of the form "0/1")
+    :param gvs_old_allele_index_to_new: A dictionary of the old allele index to the new
+    (where old is that found in the gvs VCF and new is that in the vds VCF)
+    :return: gvs_gt string representing the newly encoded GT (of the form "0/2")
     """
     if gvs_gt != "./.":
         gvs_gts = gvs_gt.split("/")
@@ -298,9 +317,13 @@ def reorder_gvs_gts(gvs_gt, gvs_old_allele_index_to_new):
 
 def reorder_gvs_alt_alleles(alt_allele_string):
     """
-    So, the alt alleles in gvs are ordered differently than those in vds. gvs seems to be by first usage,
+    The alt alleles in gvs are ordered differently than those in vds. gvs seems to be by first usage,
     vds are ordered alphabetically. Here we reorder (by simple sort) the alt alleles in the gvs record
     and generate a directory of old GT (1, 2, 3) to new (reordered) GT (2, 3, 1) for instance.
+
+    :param alt_allele_string: The alt allele from the gvs VCF (of the form "A,ACTAA,ACT")
+    :return: the reordered alt_allele_string (in the new order).
+    :return: A map of the old alt allele position to the new position in the reordered alt_allele_string
     """
     gvs_alleles = alt_allele_string.split(",")
     if (len(gvs_alleles) == 0):
@@ -308,9 +331,9 @@ def reorder_gvs_alt_alleles(alt_allele_string):
         sys.exit(1)
 
     gvs_old_allele_index_to_new = {}
-    gvs_old_allele_index_to_new["0"] = "0"
+    gvs_old_allele_index_to_new["0"] = "0"      # Put in an entry for ref.
     if (len(gvs_alleles) > 1):
-        old_alleles = gvs_alleles[:]
+        old_alleles = gvs_alleles[:]        # copy the array
         gvs_alleles.sort()
         alt_allele_string = ",".join(gvs_alleles)
 
@@ -449,7 +472,5 @@ if __name__ == '__main__':
     parser.add_argument("--verbose", action="store_true", help="increase output verbosity")
     parser.add_argument("--report_all_diffs", action="store_true", help="Do NOT exit on the first difference found")
     args = parser.parse_args()
-
-    print(f"NOTE: If a VDS sample genotype record does not contain a FT field (it is missing or explicitly set to '.') then we are considering that a PASS")
 
     compare_gvs_vcf_with_vds_vcf(args.gvs_vcf, args.vds_vcf, args.skip_gvs_filtered_lines)
