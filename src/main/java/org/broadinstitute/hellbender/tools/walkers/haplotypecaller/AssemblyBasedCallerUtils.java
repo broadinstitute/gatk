@@ -439,7 +439,7 @@ public final class AssemblyBasedCallerUtils {
     public static AssemblyResultSet applyPileupEventsAsForcedAlleles(final AssemblyRegion region, final AssemblyBasedCallerArgumentCollection argumentCollection,
                                                                       final SmithWatermanAligner aligner, final Haplotype refHaplotype,
                                                                       final AssemblyResultSet assemblyResultSet, final List<VariantContext> pileupAllelesFoundShouldFilter,
-                                                                      final List<VariantContext> pileupAllelesPassingFilters) {
+                                                                      final List<VariantContext> pileupAllelesPassingFilters, final boolean debug) {
         List<Haplotype> haplotypesWithFilterAlleles = new ArrayList<>();
         if (!pileupAllelesFoundShouldFilter.isEmpty() && !argumentCollection.pileupDetectionArgs.generatePDHaplotypes) {
             // TODO this is a bad algorithm for bad people
@@ -462,12 +462,14 @@ public final class AssemblyBasedCallerUtils {
         }
         // TODO removing haplotypes whole cloth is dangerous and might have to be fixed
         if (!haplotypesWithFilterAlleles.isEmpty()) {
+            if (debug) System.out.println("Found Assembly Haps with filtered Variants:\n"+haplotypesWithFilterAlleles.stream().map(Haplotype::toString).collect(Collectors.joining("\n")));
+
             for (Haplotype hap : haplotypesWithFilterAlleles) {
                 assemblyResultSet.removeHapltotype(hap);
             }
         }
         if (!pileupAllelesPassingFilters.isEmpty()) {
-            processPileupAlleles(region, pileupAllelesPassingFilters, argumentCollection.pileupDetectionArgs.snpAdajacentToAssemblyIndel, argumentCollection.maxMnpDistance, aligner, refHaplotype, assemblyResultSet, argumentCollection.pileupDetectionArgs.numHaplotypesToIterate, argumentCollection.pileupDetectionArgs.filteringKmerSize, argumentCollection.getHaplotypeToReferenceSWParameters());
+            processPileupAlleles(region, pileupAllelesPassingFilters, argumentCollection.pileupDetectionArgs.snpAdajacentToAssemblyIndel, argumentCollection.maxMnpDistance, aligner, refHaplotype, assemblyResultSet, argumentCollection.pileupDetectionArgs.numHaplotypesToIterate, argumentCollection.pileupDetectionArgs.filteringKmerSize, argumentCollection.getHaplotypeToReferenceSWParameters(), debug);
         }
         return assemblyResultSet;
     }
@@ -479,7 +481,7 @@ public final class AssemblyBasedCallerUtils {
     static void processPileupAlleles(final AssemblyRegion region, final List<VariantContext> givenAlleles, final int maxMnpDistance,
                                      final int snpAdjacentToIndelLimit, final SmithWatermanAligner aligner, final Haplotype refHaplotype,
                                      final AssemblyResultSet assemblyResultSet, final int numHaplotypesPerIteration, final int hapFilteringKmerSize,
-                                     final SWParameters haplotypeToReferenceSWParameters) {
+                                     final SWParameters haplotypeToReferenceSWParameters, final boolean debug) {
         final int assemblyRegionStart = region.getPaddedSpan().getStart();
         final int activeRegionStart = refHaplotype.getAlignmentStartHapwrtRef();
         final Map<Integer, VariantContext> assembledVariants = assemblyResultSet.getVariationEvents(maxMnpDistance).stream()
@@ -501,6 +503,7 @@ public final class AssemblyBasedCallerUtils {
         final List<VariantContext> givenAllelesFiltered = givenAlleles.stream().filter(vc -> vc.isIndel() || assembledIndels.stream().noneMatch(indel -> vc.withinDistanceOf(indel, snpAdjacentToIndelLimit))).collect(Collectors.toList());
 
         for (final VariantContext givenVC : givenAllelesFiltered) {
+            if (debug) System.out.println("Processing new Haplotypes for Pileup Allele: "+givenVC);
             final VariantContext assembledVC = assembledVariants.get(givenVC.getStart());
             final int givenVCRefLength = givenVC.getReference().length();
             final Allele longerRef = (assembledVC == null || givenVCRefLength > assembledVC.getReference().length()) ? givenVC.getReference() : assembledVC.getReference();
@@ -533,7 +536,9 @@ public final class AssemblyBasedCallerUtils {
                 }
             }
 
-            baseHaplotypes.addAll(filterPileupHaplotypes(newPileupHaplotypes, kmerReadCounts, numHaplotypesPerIteration, hapFilteringKmerSize));
+            Set<Haplotype> refactoredHaps = filterPileupHaplotypes(newPileupHaplotypes, kmerReadCounts, numHaplotypesPerIteration, hapFilteringKmerSize);
+            baseHaplotypes.addAll(refactoredHaps);
+            if (debug) System.out.println("Constructed the following new Pileup Haplotypes after filtering:\n"+refactoredHaps.stream().map(Haplotype::toString).collect(Collectors.joining("\n")));
 
         }
         baseHaplotypes.forEach(assemblyResultSet::add);

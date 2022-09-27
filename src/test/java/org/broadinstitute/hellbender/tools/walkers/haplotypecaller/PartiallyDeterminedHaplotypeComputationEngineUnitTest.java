@@ -6,6 +6,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.haplotype.PartiallyDeterminedHaplotype;
 import org.testng.Assert;
@@ -24,6 +25,7 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
     VariantContext SNP_C_100 = new VariantContextBuilder("a","20",100, 100, Arrays.asList(Allele.REF_A,Allele.ALT_C)).make();
     VariantContext SNP_G_101 = new VariantContextBuilder("a","20",101, 101, Arrays.asList(Allele.REF_A,Allele.ALT_G)).make();
     VariantContext SNP_G_102 = new VariantContextBuilder("a","20",102, 102, Arrays.asList(Allele.REF_A,Allele.ALT_G)).make();
+    VariantContext SNP_C_104 = new VariantContextBuilder("a","20",104, 104, Arrays.asList(Allele.REF_A,Allele.ALT_C)).make();
     VariantContext SNP_C_105 = new VariantContextBuilder("a","20",105, 105, Arrays.asList(Allele.REF_A,Allele.ALT_C)).make();
     VariantContext SNP_C_106 = new VariantContextBuilder("a","20",106, 106, Arrays.asList(Allele.REF_A,Allele.ALT_C)).make();
     VariantContext SNP_T_106 = new VariantContextBuilder("a","20",106, 106, Arrays.asList(Allele.REF_A,Allele.ALT_T)).make();
@@ -71,6 +73,10 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
                 { Arrays.asList( SNP_C_100, INS_TT_100, SNP_G_101 ), "CTGAAAAAAAA", "1X1I1X8M" },
                 { Arrays.asList( SNP_C_100, INS_TT_100, SNP_G_101, SNP_C_105, DEL_AA_105 ), "CTGAAACAAA", "1X1I1X3M1X1D3M" },
 
+                //testing that the logic around anchor bases isn't resulting in variants being dropped accidntally
+                { Arrays.asList( SNP_C_104, DEL_AA_105 ), "AAAACAAAA", "4M1X1M1D3M" },
+                { Arrays.asList( SNP_C_104, INS_TT_105 ), "AAAACATAAAA", "4M1X1M1I4M" },
+
         };
     }
     @Test(dataProvider = "testConstructHaplotypeFromVariantsDataProvider")
@@ -78,15 +84,51 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
         Haplotype ref = new Haplotype("AAAAAAAAAA".getBytes(), true, 500, TextCigarCodec.decode("10M"));
         ref.setGenomeLocation(new SimpleInterval("20", 100, 110));
 
-        Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromVariants(ref, variants, false);
+        Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromVariants(ref, variants, true);
         Assert.assertEquals(result.getBases(), expectedBases.getBytes());
         Assert.assertEquals(result.getCigar(), TextCigarCodec.decode(expectedCigar));
+
+        // Assert that the resulting event map matches the input variants:
+        //TODO these need to be smarter about compounds
+        EventMap resultEMap = result.getEventMap();
+        Assert.assertEquals(resultEMap.getNumberOfEvents(), variants.size());
+        for (VariantContext v : variants) {
+            VariantContext actualVC = resultEMap.get(v.getStart());
+            Assert.assertNotNull(actualVC);
+            Assert.assertEquals(actualVC.getAlleles(), v.getAlleles());
+        }
     }
     //TODO TESTS TO MAKE:
     // ASSSERT IT FAILS IF STARTS BEFORE OR AFTER
     // ASSERT it gives a good exception if the order is incorrect
 
     //This test is here for the sake of them being related operations
+    //Test some real cases where we were seeing failures:
+//    (62,Rlen=1,[C])->(82,Rlen=1,[C])->(84,Rlen=13,[C])
+    @Test
+    public void testMessyAlignemntSite() {
+        Haplotype ref = new Haplotype("AAGAAAGATGGAGGCCCAGCCAGATCTGGACCCCACAGGCCGTCTCCCCACACAGCCATTCATGTGGTCTACTTCCAGCCATTCATGTGGTCTATTTCCAAGAAAATAGCCCATCCCCCCAAGATAACACCTTCTCAAAAACTTTACAGCTTTGTGTCTACACTGATATTTAGGTATTTTCTTTCTTTTTTTTTTATGATTAACACATCTAATTCAAGAATATCTTGGCAGGATATTCCCCGCTTAGGAAATG".getBytes(), true, 575, TextCigarCodec.decode("253M"));
+        ref.setGenomeLocation(new SimpleInterval("20", 24152646, 24152898));
+
+        VariantContext VC1 = new VariantContextBuilder("a", "20", 24152708, 24152708, Arrays.asList(Allele.REF_T, Allele.ALT_C)).make();
+        VariantContext VC2 = new VariantContextBuilder("a", "20", 24152728, 24152728, Arrays.asList(Allele.REF_T, Allele.ALT_C)).make();
+        VariantContext VC3 = new VariantContextBuilder("a", "20", 24152729, 24152741, Arrays.asList(Allele.create("CATGTGGTCTATT", true), Allele.ALT_C)).make();
+
+        List<VariantContext> variants = Arrays.asList(VC1, VC2, VC3);
+
+        Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromVariants(ref, variants, true);
+        Assert.assertEquals(result.getCigar(), TextCigarCodec.decode("62M1X19M1X1M12D157M"));
+
+        // Assert that the resulting event map matches the input variants:
+        EventMap resultEMap = result.getEventMap();
+        Assert.assertEquals(resultEMap.getNumberOfEvents(), variants.size());
+        for (VariantContext v : variants) {
+            VariantContext actualVC = resultEMap.get(v.getStart());
+            Assert.assertNotNull(actualVC);
+            Assert.assertEquals(actualVC.getAlleles(), v.getAlleles());
+        }
+    }
+
 
     @DataProvider
     public Object[][] testGeneratePDHaplotypeDataProvider() {

@@ -721,7 +721,7 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                 (!hcArgs.pileupDetectionArgs.generatePDHaplotypes ||
                         (hcArgs.pileupDetectionArgs.useGGAFallback && !assemblyResult.hasOverwrittenHaps()))) { // If we are generating PDHaps assert that it failed before callign this
             if (hcArgs.pileupDetectionArgs.debugPileupStdout) System.out.println("Falling back to GGA based Pileup Allele mode!");
-            assemblyResult = AssemblyBasedCallerUtils.applyPileupEventsAsForcedAlleles(region, hcArgs, aligner, assemblyResult.getReferenceHaplotype(), assemblyResult, pileupAllelesFoundShouldFilter, pileupAllelesPassingFilters);
+            assemblyResult = AssemblyBasedCallerUtils.applyPileupEventsAsForcedAlleles(region, hcArgs, aligner, assemblyResult.getReferenceHaplotype(), assemblyResult, pileupAllelesFoundShouldFilter, pileupAllelesPassingFilters, hcArgs.pileupDetectionArgs.debugPileupStdout);
         }
         final AssemblyRegion regionForGenotyping = assemblyResult.getRegionForGenotyping();
         final List<GATKRead> readStubs = regionForGenotyping.getReads().stream()
