@@ -1,5 +1,8 @@
 version 1.0
 
+import "GvsUtils.wdl" as Utils
+
+
 workflow GvsExtractAvroFilesForHail {
     input {
         String project_id
@@ -18,15 +21,11 @@ workflow GvsExtractAvroFilesForHail {
             avro_sibling = OutputPath.out
     }
 
-    call CountSamples {
+    call Utils.CountSuperpartitions {
         input:
             project_id = project_id,
-            dataset = dataset
+            dataset_name = dataset
     }
-
-    Int num_samples = CountSamples.num_samples
-    # First superpartition contains samples 1 to 4000, second 4001 to 8000 etc; add one to quotient unless exactly 4000.
-    Int num_superpartitions = if (num_samples % 4000 == 0) then num_samples / 4000 else (num_samples / 4000 + 1)
 
     scatter (i in range(scatter_width)) {
         call ExtractFromSuperpartitionedTables {
@@ -35,7 +34,7 @@ workflow GvsExtractAvroFilesForHail {
                 dataset = dataset,
                 filter_set_name = filter_set_name,
                 avro_sibling = OutputPath.out,
-                num_superpartitions = num_superpartitions,
+                num_superpartitions = CountSuperpartitions.num_superpartitions,
                 shard_index = i,
                 num_shards = scatter_width
         }
@@ -70,40 +69,6 @@ task OutputPath {
     >>>
     output {
         File out = stdout()
-    }
-    runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:402.0.0-slim"
-        disks: "local-disk 500 HDD"
-    }
-}
-
-
-task CountSamples {
-    meta {
-        description: "Counts the number of samples in the sample_info table efficiently."
-        # Not dealing with caching for now as that would introduce a lot of complexity.
-        volatile: true
-    }
-    input {
-        String project_id
-        String dataset
-    }
-    command <<<
-        python3 <<FIN
-
-        from google.cloud import bigquery
-
-        client = bigquery.Client(project="~{project_id}")
-        sample_info_table_id = f'~{project_id}.~{dataset}.sample_info'
-        sample_info_table = client.get_table(sample_info_table_id)
-
-        print(str(sample_info_table.num_rows))
-
-        FIN
-    >>>
-
-    output {
-        Int num_samples = read_int(stdout())
     }
     runtime {
         docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:402.0.0-slim"

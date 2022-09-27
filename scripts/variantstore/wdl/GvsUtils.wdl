@@ -391,3 +391,31 @@ task GetNumSamplesLoaded {
     cpu: 1
   }
 }
+
+
+task CountSuperpartitions {
+    meta {
+        description: "Return the number of superpartitions based on the number of vet_% tables in `INFORMATION_SCHEMA.PARTITIONS`."
+        # Definitely don't cache this, the values can change while the inputs to this task will not!
+        volatile: true
+    }
+    input {
+        String project_id
+        String dataset_name
+    }
+    command <<<
+        bq query --location=US --project_id='~{project_id}' --format=csv --use_legacy_sql=false "
+
+            SELECT COUNT(*) FROM \`~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS\` \
+                WHERE table_name LIKE 'vet_%'
+
+        " | sed 1d > num_superpartitions.txt
+    >>>
+    runtime {
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:402.0.0-slim"
+        disks: "local-disk 500 HDD"
+    }
+    output {
+        Int num_superpartitions = read_int('num_superpartitions.txt')
+    }
+}
