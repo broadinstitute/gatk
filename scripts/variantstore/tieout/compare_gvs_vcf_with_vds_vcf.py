@@ -68,135 +68,165 @@ def compare_gvs_vcf_with_vds_vcf(gvs_vcf, vds_vcf, skip_gvs_filtered_lines):
                     vds_tokens[6] = "."
                 col_diff(locus, "FILTER", gvs_tokens[6], vds_tokens[6])
 
-                # INFO Field.
-                # The info field is tricky. We only compare AC, AN, and AF. But VDS stores these differently
-                # It includes the values for these metrics for the ref allele too.
-                # Plus we have to deal with the ordering of alleles being different between GVS and VDS.
-                if args.verbose:
-                    print(f"\nLocus {locus}.  gvs INFO: {gvs_tokens[7]} vds INFO: {vds_tokens[7]}")
-
-                gvs_info_fields = get_info_fields(gvs_tokens[7])
-                vds_info_fields = get_info_fields(vds_tokens[7])
-
-                if "AN" in gvs_info_fields:
-                    info_diff(locus, gvs_info_fields, vds_info_fields, "AN", gvs_tokens[7], vds_tokens[7])
-                    # Calculate the (expected) AC from the gvs VCF
-                    gvs_an = int(gvs_info_fields["AN"])
-                    reordered_gvs_ac = reorder_gvs_ac(gvs_info_fields["AC"], gvs_old_allele_index_to_new)
-                    reordered_gvs_acs = reordered_gvs_ac.split(",")
-                    alt_allele_ac = 0
-                    for gvs_ac in reordered_gvs_acs:
-                        alt_allele_ac += int(gvs_ac)
-                    gvs_afs = []
-                    gvs_afs.append(float(gvs_an - alt_allele_ac) / gvs_an)
-                    new_gvs_ac = str(gvs_an - alt_allele_ac)        # AC for the ref
-                    for gvs_ac in reordered_gvs_acs:
-                        new_gvs_ac += "," + gvs_ac
-                        gvs_afs.append(float(gvs_ac) / gvs_an)
-
-                    vds_ac = vds_info_fields["AC"]
-                    if (new_gvs_ac != vds_ac):
-                        print(f"DIFF: Locus {locus}, INFO Field Value for AC differs between gvs and vds: {new_gvs_ac} vs {vds_ac}\nGVS INFO: {gvs_tokens[7]}\nVDS INFO: {vds_tokens[7]}")
-                        if not args.report_all_diffs:
-                            sys.exit(1)
-
-                    vds_afs_string = vds_info_fields["AF"]
-                    vds_afs = vds_afs_string.split(",")
-                    if (len(gvs_afs) != len(vds_afs)):
-                        print(f"GVS INFO AF {gvs_afs} has different number of elements than VDS INFO AF {vds_afs_string} alleles")
-                        sys.exit(1)
-
-                    for i in range(0, len(gvs_afs)):
-                        vds_af = float(vds_afs[i])
-                        if vds_af != 0.0:
-                            diff = (gvs_afs[i] - vds_af) / vds_af
-
-                        if abs(diff) > EPSILON:
-                            print(f"DIFF: Locus {locus}, INFO Field Value for AF, element {i} differs between gvs and vds: {gvs_afs[i]} vs {vds_af}\nGVS INFO: {gvs_tokens[7]}\nVDS INFO: {vds_tokens[7]}")
-                            if not args.report_all_diffs:
-                                sys.exit(1)
+                # INFO Field
+                compare_info(locus, gvs_tokens[7], vds_tokens[7], gvs_old_allele_index_to_new)
 
                 # FORMAT Field (it is just going to be different - we build a map of the fields to column for handling sample values)
                 gvs_format_fields_to_column = get_format_fields_to_column(gvs_tokens[8])
                 vds_format_fields_to_column = get_format_fields_to_column(vds_tokens[8])
 
                 if args.verbose:
-                    print(f"\nLocus {locus}.  gvs FORMAT: {gvs_tokens[8]} vds FORMAT: {vds_tokens[8]}")
+                    print(f"\nLocus {locus}. gvs FORMAT: {gvs_tokens[8]} vds FORMAT: {vds_tokens[8]}")
 
                 for sample in gvs_samples:
                     if args.verbose:
-                        print(f"Sample {sample}.    gvs sample: {gvs_tokens[gvs_sample_to_column[sample]]}  vds_sample: {vds_tokens[vds_sample_to_column[sample]]}")
+                        print(f"Sample {sample}. gvs sample: {gvs_tokens[gvs_sample_to_column[sample]]} vds_sample: {vds_tokens[vds_sample_to_column[sample]]}")
 
                     gvs_sample_genotypes = get_sample_genotype_fields(gvs_format_fields_to_column, gvs_tokens[gvs_sample_to_column[sample]])
                     vds_sample_genotypes = get_sample_genotype_fields(vds_format_fields_to_column, vds_tokens[vds_sample_to_column[sample]])
 
-                    # NOTE: More complex rules for FT
-                    # sample_key_diff(locus, sample, gvs_sample_genotypes, vds_sample_genotypes, "FT")
-
-                    gvs_ft = "PASS"
-                    if "FT" in gvs_sample_genotypes:
-                        gvs_ft = gvs_sample_genotypes["FT"]
-                        if gvs_ft == ".":
-                            gvs_ft = "PASS"
-                    vds_ft = vds_sample_genotypes["FT"]
-                    if vds_ft == ".":
-                        vds_ft = "PASS"
-                    # For purposes of comparison a 'low_VQSLOD_INDEL' or 'low_VQSLOD_SNP' is recoded as 'FAIL' which is what the vds VCF uses.
-                    if (gvs_ft == "low_VQSLOD_INDEL" or gvs_ft == "low_VQSLOD_SNP"):
-                        gvs_ft = "FAIL"
-                    if (gvs_ft != vds_ft):
-                        print(f"\nDIFF: Locus {locus}, Sample {sample} Value for FT differs between gvs and vds: {gvs_ft} vs {vds_ft}")
-                        print(f"Locus {locus}.  gvs FORMAT: {gvs_tokens[8]} vds FORMAT: {vds_tokens[8]}")
-                        print(f"Sample {sample}.    gvs sample: {gvs_tokens[gvs_sample_to_column[sample]]}  vds_sample: {vds_tokens[vds_sample_to_column[sample]]}")
-                        if not args.report_all_diffs:
-                            sys.exit(1)
-
-                    # Note on comparison here.
-                    # Reorder GT string from GVS based on difference ordering of ALT alleles between GVS and VDS
-                    # if VDS.LA and VDS.GT are both not "." (empty/missing)
-                    # then generate NEW.VDS.GT using VDS.LGT and VDS.LA
-                    # If the GT in the VDS generated VCF is "./."" AND VDS.FT == "FAIL" then VDS.GT = NEW.VDS.GT
-                    # if VDS.GT != GVS.GT that's a difference (unless they are phased
-
-
-                    # NOTE: More complex rules for GT
-                    gvs_gt = reorder_gvs_gts(gvs_sample_genotypes["GT"], gvs_old_allele_index_to_new)
-                    vds_la = vds_sample_genotypes["LA"]
-                    vds_lgt = vds_sample_genotypes["LGT"]
-                    vds_gt = vds_sample_genotypes["GT"]
-                    new_vds_gt = vds_gt
-                    if (vds_la != "." and vds_lgt != "."):
-                        new_vds_gt = calculate_vds_gt_lgt(vds_lgt, vds_la)
-
-                    if (vds_gt == "./." and vds_ft == "FAIL"):
-                        # NOTE/HMM. In the VDS we no call a genotype if the FT is a FAIL, the original genotype is in LGT.
-                        vds_gt = new_vds_gt
-                    if not compare_gts(gvs_gt, vds_gt):
-                    # if (gvs_gt != vds_gt):
-                        print(f"\nDIFF: Locus {locus}, Sample {sample} Value for GT differs between gvs and vds: {gvs_gt} vs {vds_gt}")
-                        print(f"Locus {locus}.  gvs FORMAT: {gvs_tokens[8]} vds FORMAT: {vds_tokens[8]}")
-                        print(f"Sample {sample}.    gvs sample: {gvs_tokens[gvs_sample_to_column[sample]]}  vds_sample: {vds_tokens[vds_sample_to_column[sample]]}")
-                        if not args.report_all_diffs:
-                            sys.exit(1)
-
-                    sample_key_diff(locus, sample, gvs_sample_genotypes, vds_sample_genotypes, "GQ")
-                    sample_key_diff(locus, sample, gvs_sample_genotypes, vds_sample_genotypes, "RGQ")
-
-                    ## AD
-                    if "AD" in gvs_sample_genotypes:
-                        gvs_ad = gvs_sample_genotypes["AD"]
-                        vds_ad = vds_sample_genotypes["LAD"]
-                        if (gvs_ad != vds_ad):
-                            print(f"\nDIFF: Locus {locus}, Sample {sample} Value for differs between gvs key AD and vds key LAD: {gvs_ad} vs {vds_ad}")
-                            print(f"Locus {locus}.  gvs FORMAT: {gvs_tokens[8]} vds FORMAT: {vds_tokens[8]}")
-                            print(f"Sample {sample}.    gvs sample: {gvs_tokens[gvs_sample_to_column[sample]]}  vds_sample: {vds_tokens[vds_sample_to_column[sample]]}")
-                            if not args.report_all_diffs:
-                                sys.exit(1)
+                    compare_sample(locus, sample, gvs_tokens[8], vds_tokens[8], gvs_tokens[gvs_sample_to_column[sample]], vds_tokens[vds_sample_to_column[sample]], gvs_sample_genotypes, vds_sample_genotypes, gvs_old_allele_index_to_new)
 
                 gvs_line = gvs.readline().rstrip()
                 vds_line = vds.readline().rstrip()
 
             exit(0)
+
+
+def compare_sample(locus, sample, gvs_format, vds_format, gvs_sample_string, vds_sample_string, gvs_sample_genotypes, vds_sample_genotypes, gvs_old_allele_index_to_new):
+    """
+    Compare the values in the (per-) SAMPLE field
+
+    :param locus: The locus (chr:pos) in the VCF (for logging)
+    :param sample: The sample name in the VCF (for logging)
+    :param gvs_format: The FORMAT string from the gvs VCF (for logging)
+    :param vds_format: The FORMAT string from the vds VCF (for logging)
+    :param gvs_sample_string: The Sample Genotype string from the gvs VCF (for logging)
+    :param vds_sample_string: The Sample Genotype string from the vds VCF (for logging)
+    :param gvs_sample_genotypes: A dictionary of the keys/values in the Sample Genotype value
+    :param vds_sample_genotypes: A dictionary of the keys/values in the Sample Genotype value
+    :param gvs_old_allele_index_to_new: A dictionary of old alt allele index to new
+    :return: Nothing.
+    """
+
+    gvs_ft = "PASS"
+    if "FT" in gvs_sample_genotypes:
+        gvs_ft = gvs_sample_genotypes["FT"]
+        if gvs_ft == ".":
+            gvs_ft = "PASS"
+    vds_ft = vds_sample_genotypes["FT"]
+    if vds_ft == ".":
+        vds_ft = "PASS"
+    # For purposes of comparison a 'low_VQSLOD_INDEL' or 'low_VQSLOD_SNP' is recoded as 'FAIL' which is what the vds VCF uses.
+    if (gvs_ft == "low_VQSLOD_INDEL" or gvs_ft == "low_VQSLOD_SNP"):
+        gvs_ft = "FAIL"
+    if (gvs_ft != vds_ft):
+        print(f"\nDIFF: Locus {locus}, Sample {sample} Value for FT differs between gvs and vds: {gvs_ft} vs {vds_ft}")
+        print(f"Locus {locus}.  gvs FORMAT: {gvs_format} vds FORMAT: {vds_format}")
+        print(f"Sample {sample}.    gvs sample: {gvs_sample_string}  vds_sample: {vds_sample_string}")
+        if not args.report_all_diffs:
+            sys.exit(1)
+
+    # Note on comparison here.
+    # Reorder GT string from GVS based on difference ordering of ALT alleles between GVS and VDS
+    # if VDS.LA and VDS.GT are both not "." (empty/missing)
+    # then generate NEW.VDS.GT using VDS.LGT and VDS.LA
+    # If the GT in the VDS generated VCF is "./."" AND VDS.FT == "FAIL" then VDS.GT = NEW.VDS.GT
+    # if VDS.GT != GVS.GT that's a difference (unless they are phased
+
+    gvs_gt = reorder_gvs_gts(gvs_sample_genotypes["GT"], gvs_old_allele_index_to_new)
+    vds_la = vds_sample_genotypes["LA"]
+    vds_lgt = vds_sample_genotypes["LGT"]
+    vds_gt = vds_sample_genotypes["GT"]
+    new_vds_gt = vds_gt
+    if (vds_la != "." and vds_lgt != "."):
+        new_vds_gt = calculate_vds_gt_lgt(vds_lgt, vds_la)
+
+    if (vds_gt == "./." and vds_ft == "FAIL"):
+        # In the VDS we no-call a genotype if the FT is a FAIL, the original genotype is in LGT.
+        vds_gt = new_vds_gt
+    if not compare_gts(gvs_gt, vds_gt):
+        # if (gvs_gt != vds_gt):
+        print(f"\nDIFF: Locus {locus}, Sample {sample} Value for GT differs between gvs and vds: {gvs_gt} vs {vds_gt}")
+        print(f"Locus {locus}.  gvs FORMAT: {gvs_format} vds FORMAT: {vds_format}")
+        print(f"Sample {sample}.    gvs sample: {gvs_sample_string}  vds_sample: {vds_sample_string}")
+        if not args.report_all_diffs:
+            sys.exit(1)
+
+    sample_key_diff(locus, sample, gvs_sample_genotypes, vds_sample_genotypes, "GQ")
+    sample_key_diff(locus, sample, gvs_sample_genotypes, vds_sample_genotypes, "RGQ")
+
+    ## AD
+    if "AD" in gvs_sample_genotypes:
+        gvs_ad = gvs_sample_genotypes["AD"]
+        vds_ad = vds_sample_genotypes["LAD"]
+        if (gvs_ad != vds_ad):
+            print(f"\nDIFF: Locus {locus}, Sample {sample} Value for differs between gvs key AD and vds key LAD: {gvs_ad} vs {vds_ad}")
+            print(f"Locus {locus}.  gvs FORMAT: {gvs_format} vds FORMAT: {vds_format}")
+            print(f"Sample {sample}.    gvs sample: {gvs_sample_string}  vds_sample: {vds_sample_string}")
+            if not args.report_all_diffs:
+                sys.exit(1)
+
+
+def compare_info(locus, gvs_info, vds_info, gvs_old_allele_index_to_new):
+    """
+    Compare the values in the INFO field
+
+    The INFO field is tricky. We only compare AC, AN, and AF. But VDS stores these differently
+    It includes the values for these metrics for the ref allele too.
+    Plus we have to deal with the ordering of alleles being different between GVS and VDS.
+
+    :param locus: The locus (chr:pos) in the VCF
+    :param gvs_info: The INFO field from the gvs VCF
+    :param vds_info: The INFO field from the vds VCF
+    :param gvs_old_allele_index_to_new: A dictionary of old alt allele index to new
+    :return: Nothing.
+    """
+    if args.verbose:
+        print(f"\nLocus {locus}.  gvs INFO: {gvs_info} vds INFO: {vds_info}")
+
+    gvs_info_fields = get_info_fields(gvs_info)
+    vds_info_fields = get_info_fields(vds_info)
+
+    if "AN" in gvs_info_fields:
+        info_diff(locus, gvs_info_fields, vds_info_fields, "AN", gvs_info, vds_info)
+        # Calculate the (expected) AC from the gvs VCF
+        gvs_an = int(gvs_info_fields["AN"])
+        reordered_gvs_ac = reorder_gvs_ac(gvs_info_fields["AC"], gvs_old_allele_index_to_new)
+        reordered_gvs_acs = reordered_gvs_ac.split(",")
+        alt_allele_ac = 0
+        for gvs_ac in reordered_gvs_acs:
+            alt_allele_ac += int(gvs_ac)
+        gvs_afs = []
+        gvs_afs.append(float(gvs_an - alt_allele_ac) / gvs_an)
+        new_gvs_ac = str(gvs_an - alt_allele_ac)        # AC for the ref
+        for gvs_ac in reordered_gvs_acs:
+            new_gvs_ac += "," + gvs_ac
+            gvs_afs.append(float(gvs_ac) / gvs_an)
+
+        vds_ac = vds_info_fields["AC"]
+        if (new_gvs_ac != vds_ac):
+            print(f"DIFF: Locus {locus}, INFO Field Value for AC differs between gvs and vds: {new_gvs_ac} vs {vds_ac}\nGVS INFO: {gvs_tokens[7]}\nVDS INFO: {vds_tokens[7]}")
+            if not args.report_all_diffs:
+                sys.exit(1)
+
+        vds_afs_string = vds_info_fields["AF"]
+        vds_afs = vds_afs_string.split(",")
+        if (len(gvs_afs) != len(vds_afs)):
+            print(f"GVS INFO AF {gvs_afs} has different number of elements than VDS INFO AF {vds_afs_string} alleles")
+            sys.exit(1)
+
+        for i in range(0, len(gvs_afs)):
+            vds_af = float(vds_afs[i])
+            diff = 0
+            if vds_af != 0.0:
+                diff = (gvs_afs[i] - vds_af) / vds_af
+
+            if abs(diff) > EPSILON:
+                print(f"DIFF: Locus {locus}, INFO Field Value for AF, element {i} differs between gvs and vds: {gvs_afs[i]} vs {vds_af}\nGVS INFO: {gvs_tokens[7]}\nVDS INFO: {vds_tokens[7]}")
+                if not args.report_all_diffs:
+                    sys.exit(1)
+
 
 def get_info_fields(info_string):
     """
@@ -265,15 +295,9 @@ def reorder_gvs_ac(gvs_ac, gvs_old_allele_index_to_new):
         print(f"GVS INFO AC {gvs_ac} has different number of elements than GVS's alleles")
         sys.exit(1)
     reordered_gvs_acs = {}
-    # Generate a new/better hash of old index to new (as ints)  TODO - probably should do it everywhere?
-    old_index_to_new = {}
-    for old in gvs_old_allele_index_to_new.keys():
-        new_val = gvs_old_allele_index_to_new[old]
-        old_val = int(old) - 1
-        old_index_to_new[old_val] = int(new_val) - 1
 
     for i in range(0, len(gvs_acs)):
-        reordered_gvs_acs[old_index_to_new[i]] = gvs_acs[i]
+        reordered_gvs_acs[gvs_old_allele_index_to_new[i+1]-1] = gvs_acs[i]
 
     reordered_gvs_acs_string = reordered_gvs_acs[0]
     for i in range(1, len(gvs_acs)):
@@ -301,11 +325,11 @@ def reorder_gvs_gts(gvs_gt, gvs_old_allele_index_to_new):
             sys.exit(1)
         new_gvs_gts = []
         for i in range(0, len(gvs_gts)):
-            gvs_gt = gvs_gts[i]
+            gvs_gt = int(gvs_gts[i])
             if gvs_gt not in gvs_old_allele_index_to_new:
-                print(f"Didn't find it!!")
+                print(f"ERROR: Unable to find {gvs_gt} in gvs_old_allele_index_to_new!!")
                 sys.exit(1)
-            new_gvs_gts.append(gvs_old_allele_index_to_new[gvs_gt])
+            new_gvs_gts.append(str(gvs_old_allele_index_to_new[int(gvs_gt)]))
         gvs_gt = "/".join(new_gvs_gts)
     return gvs_gt
 
@@ -325,7 +349,7 @@ def reorder_gvs_alt_alleles(alt_allele_string):
         sys.exit(1)
 
     gvs_old_allele_index_to_new = {}
-    gvs_old_allele_index_to_new["0"] = "0"      # Put in an entry for ref.
+    gvs_old_allele_index_to_new[0] = 0      # Put in an entry for ref.
     if (len(gvs_alleles) > 1):
         old_alleles = gvs_alleles[:]        # copy the array
         gvs_alleles.sort()
@@ -335,10 +359,10 @@ def reorder_gvs_alt_alleles(alt_allele_string):
         for i in range(0, len(old_alleles)):
             for j in range(0, len(gvs_alleles)):
                 if old_alleles[i] == gvs_alleles[j]:
-                    gvs_old_allele_index_to_new[str(i+1)] = str(j+1)
+                    gvs_old_allele_index_to_new[i+1] = j+1
                     break
     else:
-        gvs_old_allele_index_to_new["1"] = "1"
+        gvs_old_allele_index_to_new[1] = 1
     return(alt_allele_string, gvs_old_allele_index_to_new)
 
 def col_diff(locus, key, gvs_value, vds_value):
