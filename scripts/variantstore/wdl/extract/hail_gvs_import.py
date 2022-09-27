@@ -86,6 +86,9 @@ def generate_avro_args(bucket, blob_prefix, key):
 def import_gvs(bucket, object_prefix, vds_output_path, tmp_dir):
     import hail as hl
 
+    unslashed_tmp_dir = tmp_dir if not tmp_dir.endswith('/') else tmp_dir[:-1]
+    hl.init(tmp_dir=f'{unslashed_tmp_dir}/hail_tmp_general')
+
     rg38 = hl.get_reference('GRCh38')
     rg38.add_sequence('gs://hail-common/references/Homo_sapiens_assembly38.fasta.gz',
                       'gs://hail-common/references/Homo_sapiens_assembly38.fasta.fai')
@@ -102,7 +105,7 @@ def import_gvs(bucket, object_prefix, vds_output_path, tmp_dir):
         vqsr_tranche_data=args('vqsr_tranche_data'),
         reference_genome=rg38,
         final_path=vds_output_path,
-        tmp_dir=tmp_dir
+        tmp_dir=f'{unslashed_tmp_dir}/hail_tmp_import_gvs'
     )
 
 
