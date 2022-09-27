@@ -40,7 +40,6 @@ def compare_gvs_vcf_with_vds_vcf(gvs_vcf, vds_vcf, skip_gvs_filtered_lines):
                     sys.exit(1)
 
                 if (gvs_tokens[0] != vds_tokens[0]):
-                    # TODO - need to deal with rolling over chromosomes between files
                     print(f"DIFF: CHROM differs between VCF line:\n{gvs_tokens[0]} vs {vds_tokens[0]}")
                     sys.exit(1)
 
@@ -49,11 +48,6 @@ def compare_gvs_vcf_with_vds_vcf(gvs_vcf, vds_vcf, skip_gvs_filtered_lines):
                     sys.exit(1)
 
                 locus = gvs_tokens[0] + ":" + gvs_tokens[1]
-                # print(f"{locus}")
-                # if (int(gvs_tokens[1]) < 280726):
-                #     gvs_line = gvs.readline().rstrip()
-                #     vds_line = vds.readline().rstrip()
-                #     continue
 
                 if not args.verbose:
                     print('.', end='', flush=True)
