@@ -231,6 +231,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_vs_646
    - name: GvsCallsetStatistics
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCallsetStatistics.wdl

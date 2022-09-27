@@ -136,6 +136,7 @@ task ExtractFromNonSuperpartitionedTables {
             SELECT sample_id, sample_name, '40',
             'gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list' as intervals_file
             FROM \`~{project_id}.~{dataset}.sample_info\`
+            WHERE withdrawn IS NULL
             ORDER BY sample_id
         "
 
@@ -214,16 +215,20 @@ task ExtractFromSuperpartitionedTables {
             bq query --nouse_legacy_sql --project_id=~{project_id} "
                 EXPORT DATA OPTIONS(
                 uri='${avro_prefix}/vets/vet_${str_table_index}/vet_${str_table_index}_*.avro', format='AVRO', compression='SNAPPY') AS
-                SELECT location, sample_id, ref, REPLACE(alt,',<NON_REF>','') alt, call_GT as GT, call_AD as AD, call_GQ as GQ, cast(SPLIT(call_pl,',')[OFFSET(0)] as int64) as RGQ
-                FROM \`~{project_id}.~{dataset}.vet_${str_table_index}\`
+                SELECT location, v.sample_id, ref, REPLACE(alt,',<NON_REF>','') alt, call_GT as GT, call_AD as AD, call_GQ as GQ, cast(SPLIT(call_pl,',')[OFFSET(0)] as int64) as RGQ
+                FROM \`~{project_id}.~{dataset}.vet_${str_table_index}\` v
+                INNER JOIN \`~{project_id}.~{dataset}.sample_info\` s ON s.sample_id = v.sample_id
+                WHERE withdrawn IS NULL
                 ORDER BY location
             "
 
             bq query --nouse_legacy_sql --project_id=~{project_id} "
                 EXPORT DATA OPTIONS(
                 uri='${avro_prefix}/refs/ref_ranges_${str_table_index}/ref_ranges_${str_table_index}_*.avro', format='AVRO', compression='SNAPPY') AS
-                SELECT location, sample_id, length, state
-                FROM \`~{project_id}.~{dataset}.ref_ranges_${str_table_index}\`
+                SELECT location, r.sample_id, length, state
+                FROM \`~{project_id}.~{dataset}.ref_ranges_${str_table_index}\` r
+                INNER JOIN \`~{project_id}.~{dataset}.sample_info\` s ON s.sample_id = r.sample_id
+                WHERE withdrawn IS NULL
                 ORDER BY location
             "
         done
