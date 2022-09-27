@@ -209,6 +209,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_vs_618_integration
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
