@@ -232,8 +232,8 @@ task GenerateHailScripts {
     command <<<
         set -o errexit -o nounset -o xtrace -o pipefail
 
-        # A bit of randomness to not clobber outputs if run multiple times.
-        rand=$(hexdump -vn4 -e'4/4 "%08x" 1 "\n"' /dev/urandom)
+        # 4 random hex bytes to not clobber outputs if this is run multiple times for the same avro_prefix.
+        rand=$(hexdump -vn4 -e'4/4 "%08x" 1 "\n"' /dev/urandom | sed 's/ *//g')
 
         # The write prefix will be a sibling to the Avro "directory" that embeds the current date and some randomness.
         write_prefix="$(dirname ~{avro_prefix})/$(date -Idate)-${rand}"
