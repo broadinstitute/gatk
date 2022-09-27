@@ -24,6 +24,7 @@ task SNPsVariantRecalibratorCreateModel {
         Boolean use_allele_specific_annotations
         Int max_gaussians = 6
         Int sample_every_nth_variant = 1
+        Int maximum_training_variants = 2500000
         Int? machine_mem_gb
 
         Int disk_size
@@ -49,6 +50,7 @@ task SNPsVariantRecalibratorCreateModel {
         ~{true='--use-allele-specific-annotations' false='' use_allele_specific_annotations} \
         -mode SNP \
         --sample-every-Nth-variant ~{sample_every_nth_variant} \
+        --maximum-training-variants ~{maximum_training_variants} \
         --output-model ~{model_report_filename} \
         --max-gaussians ~{max_gaussians} \
         -resource:hapmap,known=false,training=true,truth=true,prior=15 ~{hapmap_resource_vcf} \
@@ -160,6 +162,7 @@ task IndelsVariantRecalibrator {
         File dbsnp_resource_vcf_index
         Boolean use_allele_specific_annotations
         Int max_gaussians = 4
+        Int maximum_training_variants = 2500000
 
         Int disk_size
         Int? machine_mem_gb
@@ -185,6 +188,7 @@ task IndelsVariantRecalibrator {
         -mode INDEL \
         ~{"--input-model " + model_report} \
         --max-gaussians ~{max_gaussians} \
+        --maximum-training-variants ~{maximum_training_variants} \
         -resource:mills,known=false,training=true,truth=true,prior=12 ~{mills_resource_vcf} \
         -resource:axiomPoly,known=false,training=true,truth=false,prior=10 ~{axiomPoly_resource_vcf} \
         -resource:dbsnp,known=true,training=false,truth=false,prior=2 ~{dbsnp_resource_vcf}
