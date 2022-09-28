@@ -95,7 +95,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - sl_expose_vqsr_snp_max_training_variants
    - name: GvsPopulateAltAllele
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPopulateAltAllele.wdl
@@ -181,7 +180,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_560_callset_stats
    - name: GvsJointVariantCalling
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCalling.wdl
@@ -239,7 +237,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_560_callset_stats
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
