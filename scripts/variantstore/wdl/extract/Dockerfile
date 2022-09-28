@@ -31,6 +31,9 @@ RUN apk update
 COPY --from=build /root/.local /root/.local
 # Upgrade to Python 3.10, required for compatibility with the build stage above.
 RUN apk upgrade python3
+# pip upgrade required for `pkg_resources` module.
+RUN curl -O https://bootstrap.pypa.io/get-pip.py
+RUN python3 get-pip.py
 RUN apk add --no-cache jq py3-numpy py3-apache-arrow xz zlib bzip2 curl
 
 # Copy the application source code.
