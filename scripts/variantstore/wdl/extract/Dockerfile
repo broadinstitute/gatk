@@ -1,31 +1,48 @@
-FROM gcr.io/google.com/cloudsdktool/cloud-sdk:402.0.0-slim
+FROM gcr.io/google.com/cloudsdktool/cloud-sdk:402.0.0-alpine as build
 
-# Copy the application's requirements.txt and run pip to install
+# Edit /etc/apk/repositories to point to edge (required for py3-apache-arrow):
+# https://wiki.alpinelinux.org/wiki/Repositories
+RUN sed -i 's;v3.15;edge;' /etc/apk/repositories
+RUN apk update
+# Use prebuilt py3-apache-arrow package for convenience
+# https://stackoverflow.com/a/73574662
+RUN apk add --no-cache jq gcc musl-dev libffi-dev python3-dev cmake py3-numpy py3-apache-arrow
+
+RUN curl -O https://bootstrap.pypa.io/get-pip.py
+RUN python3 get-pip.py
+
+# Copy the application's requirements.txt and run pip to install.
 COPY requirements.txt /app/requirements.txt
-RUN pip3 install --upgrade pip
-RUN pip install -r /app/requirements.txt
-RUN apt-get update && apt-get -y install bcftools jq
-RUN pip install firecloud
+RUN pip install --user -r /app/requirements.txt
+
+# Build bcftools as there's no Alpine package.
+RUN apk add --no-cache git make xz-dev zlib-dev bzip2-dev curl-dev
+RUN git clone --recurse-submodules https://github.com/samtools/htslib.git
+RUN git clone https://github.com/samtools/bcftools.git
+RUN cd bcftools && make && make install
+
+FROM gcr.io/google.com/cloudsdktool/cloud-sdk:402.0.0-alpine as main
+WORKDIR /app
+
+RUN sed -i 's;v3.15;edge;' /etc/apk/repositories
+RUN apk update
+
+# Copy Python modules from build stage to main stage.
+COPY --from=build /root/.local /root/.local
+# Upgrade to Python 3.10, required for compatibility with the build stage above.
+RUN apk upgrade python3
+RUN apk add --no-cache jq py3-numpy py3-apache-arrow xz zlib bzip2 curl
 
 # Copy the application source code.
-COPY create_variant_annotation_table.py /app
-COPY create_ranges_cohort_extract_data_table.py /app
-COPY extract_subpop.py /app
-COPY populate_alt_allele_table.py /app
-COPY alt_allele_positions.sql /app
-COPY alt_allele_temp_function.sql /app
-COPY utils.py /app
-COPY add_max_as_vqslod.py /app
-COPY curate_input_array_files.py /app
-COPY scale_xy_bed_values.py /app
-COPY workflow_compute_costs.py /app
-COPY hail_gvs_import.py /app
-COPY create_vat_inputs.py /app
-COPY hail_create_vat_inputs.py /app
+COPY *.py /app
 
 # Copy the schema files needed for VAT creation.
-COPY variant_annotation_table/schema/vat_schema.json /data/variant_annotation_table/schema/
-COPY variant_annotation_table/schema/vt_schema.json /data/variant_annotation_table/schema/
-COPY variant_annotation_table/schema/genes_schema.json /data/variant_annotation_table/schema/
+COPY variant_annotation_table/schema/*.json /data/variant_annotation_table/schema/
 
-WORKDIR /app
+ENV PATH=/root/.local/bin:$PATH
+ENV PYTHONPATH=/root/.local/lib/python3.10:$PYTHONPATH
+
+# Copy bcftools artifacts from build stage to main stage.
+COPY --from=build /usr/local/bin /usr/local/bin
+RUN mkdir -p /usr/local/libexec/bcftools
+COPY --from=build /usr/local/libexec/bcftools /usr/local/libexec/bcftools

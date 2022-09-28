@@ -243,7 +243,7 @@ task PopulateAltAlleleTable {
     done
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:vs_616_split_hail_2022_09_26"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:vs_616_split_hail_2022_09_28"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     cpu: 1
