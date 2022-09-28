@@ -9,6 +9,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
@@ -79,6 +80,7 @@ import static org.broadinstitute.hellbender.utils.read.ReadUtils.isBaseInsideAda
  * name(s) and a dictionary for the contigs.
  */
 @BetaFeature
+@DocumentedFeature
 @CommandLineProgramProperties(
         summary = "Gathers paired-end and split read evidence files for use in the GATK-SV pipeline. Output files " +
                 "are a file containing the location of and orientation of read pairs marked as discordant, and a " +
