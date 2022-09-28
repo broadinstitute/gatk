@@ -233,7 +233,7 @@ task GenerateHailScripts {
         set -o errexit -o nounset -o xtrace -o pipefail
 
         # 4 random hex bytes to not clobber outputs if this is run multiple times for the same avro_prefix.
-        rand=$(openssl rand -hex 4)
+        rand=$(hexdump -vn4 -e'4/4 "%08x" 1 "\n"' /dev/urandom)
 
         # The write prefix will be a sibling to the Avro "directory" that embeds the current date and some randomness.
         write_prefix="$(dirname ~{avro_prefix})/$(date -Idate)-${rand}"
