@@ -35,6 +35,7 @@ RUN apk add --no-cache jq py3-numpy py3-apache-arrow xz zlib bzip2 curl
 
 # Copy the application source code.
 COPY *.py /app
+COPY *.sql /app
 
 # Copy the schema files needed for VAT creation.
 COPY variant_annotation_table/schema/*.json /data/variant_annotation_table/schema/
