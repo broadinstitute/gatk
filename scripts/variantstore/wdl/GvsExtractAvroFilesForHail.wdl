@@ -233,7 +233,10 @@ task GenerateHailScripts {
         set -o errexit -o nounset -o xtrace -o pipefail
 
         # 4 random hex bytes to not clobber outputs if this is run multiple times for the same avro_prefix.
-        rand=$(hexdump -vn4 -e'4/4 "%08x" 1 "\n"' /dev/urandom)
+        # Unlike many implementations, at the time of this writing this works on both Debian and Alpine based images
+        # so it should continue to work even if switch the basis of the `variantstore` image:
+        # https://stackoverflow.com/a/34329799
+        rand=$(od -vN 4 -An -tx1 /dev/urandom | tr -d " ")
 
         # The write prefix will be a sibling to the Avro "directory" that embeds the current date and some randomness.
         write_prefix="$(dirname ~{avro_prefix})/$(date -Idate)-${rand}"
