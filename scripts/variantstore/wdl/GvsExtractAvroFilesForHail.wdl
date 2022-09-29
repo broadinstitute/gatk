@@ -234,7 +234,7 @@ task GenerateHailScripts {
 
         # 4 random hex bytes to not clobber outputs if this is run multiple times for the same avro_prefix.
         # Unlike many implementations, at the time of this writing this works on both Debian and Alpine based images
-        # so it should continue to work even if switch the basis of the `variantstore` image:
+        # so it should continue to work even if the `variantstore` image switches to Alpine:
         # https://stackoverflow.com/a/34329799
         rand=$(od -vN 4 -An -tx1 /dev/urandom | tr -d " ")
 
