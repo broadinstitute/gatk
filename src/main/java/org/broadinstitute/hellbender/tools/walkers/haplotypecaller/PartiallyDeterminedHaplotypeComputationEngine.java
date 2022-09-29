@@ -102,7 +102,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             variantsByStartPos.get(vc.getStart()).add(vc);
             if (debugSite) System.out.println("testing:"+vc);
             if (debugSite) System.out.println("EventKey:"+eventKey);
-            if (eventKey <= lastEventEnd) {
+            if (eventKey <= lastEventEnd + 0.5) {
                 eventGroups.get(eventGroups.size()-1).addEvent(vc);
             } else {
                 eventGroups.add(new EventGroup(vc));

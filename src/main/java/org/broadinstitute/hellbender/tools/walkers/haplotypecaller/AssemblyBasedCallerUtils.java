@@ -469,7 +469,7 @@ public final class AssemblyBasedCallerUtils {
             }
         }
         if (!pileupAllelesPassingFilters.isEmpty()) {
-            processPileupAlleles(region, pileupAllelesPassingFilters, argumentCollection.pileupDetectionArgs.snpAdajacentToAssemblyIndel, argumentCollection.maxMnpDistance, aligner, refHaplotype, assemblyResultSet, argumentCollection.pileupDetectionArgs.numHaplotypesToIterate, argumentCollection.pileupDetectionArgs.filteringKmerSize, argumentCollection.getHaplotypeToReferenceSWParameters(), debug);
+            processPileupAlleles(region, pileupAllelesPassingFilters, argumentCollection.maxMnpDistance, argumentCollection.pileupDetectionArgs.snpAdajacentToAssemblyIndel, aligner, refHaplotype, assemblyResultSet, argumentCollection.pileupDetectionArgs.numHaplotypesToIterate, argumentCollection.pileupDetectionArgs.filteringKmerSize, argumentCollection.getHaplotypeToReferenceSWParameters(), debug);
         }
         return assemblyResultSet;
     }
@@ -478,7 +478,7 @@ public final class AssemblyBasedCallerUtils {
      * Handle pileup detected alternate alleles.
      */
     @VisibleForTesting
-    static void processPileupAlleles(final AssemblyRegion region, final List<VariantContext> givenAlleles, final int maxMnpDistance,
+    static void processPileupAlleles(final AssemblyRegion region, final List<VariantContext> pileupVC, final int maxMnpDistance,
                                      final int snpAdjacentToIndelLimit, final SmithWatermanAligner aligner, final Haplotype refHaplotype,
                                      final AssemblyResultSet assemblyResultSet, final int numHaplotypesPerIteration, final int hapFilteringKmerSize,
                                      final SWParameters haplotypeToReferenceSWParameters, final boolean debug) {
@@ -500,10 +500,9 @@ public final class AssemblyBasedCallerUtils {
         Map<Kmer, Integer> kmerReadCounts = getKmerReadCounts(region.getHardClippedPileupReads(), hapFilteringKmerSize);
 
         // Remove SNPs that are too close to assembled indels.
-        final List<VariantContext> givenAllelesFiltered = givenAlleles.stream().filter(vc -> vc.isIndel() || assembledIndels.stream().noneMatch(indel -> vc.withinDistanceOf(indel, snpAdjacentToIndelLimit))).collect(Collectors.toList());
+        final List<VariantContext> givenAllelesFiltered = pileupVC.stream().filter(vc -> vc.isIndel() || assembledIndels.stream().noneMatch(indel -> vc.withinDistanceOf(indel, snpAdjacentToIndelLimit))).collect(Collectors.toList());
 
         for (final VariantContext givenVC : givenAllelesFiltered) {
-            if (debug) System.out.println("Processing new Haplotypes for Pileup Allele: "+givenVC);
             final VariantContext assembledVC = assembledVariants.get(givenVC.getStart());
             final int givenVCRefLength = givenVC.getReference().length();
             final Allele longerRef = (assembledVC == null || givenVCRefLength > assembledVC.getReference().length()) ? givenVC.getReference() : assembledVC.getReference();
@@ -516,6 +515,7 @@ public final class AssemblyBasedCallerUtils {
 
             final List<Haplotype> newPileupHaplotypes = new ArrayList<>();
             for (final Allele givenAllele : unassembledNonSymbolicAlleles) {
+                if (debug) System.out.println("Processing new Haplotypes for Pileup Allele that was not in the assembly: "+givenVC);
                 for (final Haplotype baseHaplotype : baseHaplotypes) {
                     // make sure this allele doesn't collide with a variant on the haplotype
                     if (baseHaplotype.getEventMap() == null || baseHaplotype.getEventMap().getVariantContexts().stream().noneMatch(vc -> vc.overlaps(givenVC))) {
@@ -604,7 +604,8 @@ public final class AssemblyBasedCallerUtils {
                     ReferenceConfidenceVariantContextMerger.remapAlleles(assembledVC, longerRef));
             final Set<Allele> givenAlleleSet = new HashSet<>(longerRef.length() == givenVCRefLength ? givenVC.getAlternateAlleles() :
                     ReferenceConfidenceVariantContextMerger.remapAlleles(givenVC, longerRef));
-            unassembledGivenAlleles = givenAlleleSet.stream().filter(a -> !assembledAlleleSet.contains(a)).collect(Collectors.toList());
+            //TODO ADD A TEST FOR THIS CHANGE! IT WAS A RARE BUG BEFORE
+            unassembledGivenAlleles = givenAlleleSet.stream().filter(a -> !assembledAlleleSet.contains(a)).filter(a -> !a.isReference()).collect(Collectors.toList());
         }
         return unassembledGivenAlleles;
     }

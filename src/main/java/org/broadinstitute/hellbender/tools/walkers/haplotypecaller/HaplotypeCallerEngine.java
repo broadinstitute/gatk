@@ -665,11 +665,17 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         final SortedSet<VariantContext> allVariationEvents = new TreeSet<>(
                 AssemblyResultSet.HAPLOTYPE_VARIANT_CONTEXT_COMPARATOR);
         allVariationEvents.addAll(untrimmedAssemblyResult.getVariationEvents(hcArgs.maxMnpDistance).stream()
-                .filter(v -> { return pileupAllelesFoundShouldFilter.stream().anyMatch(filterAllle -> filterAllle.getStart() == v.getStart()
-                        && filterAllle.getReference().equals(v.getReference())
-                        && filterAllle.getAlternateAllele(0).equals(v.getAlternateAllele(0)));
+                .filter(outerVC -> { return pileupAllelesFoundShouldFilter.stream().noneMatch(filterAllle -> filterAllle.getStart() == outerVC.getStart()
+                        && filterAllle.getReference().equals(outerVC.getReference())
+                        && filterAllle.getAlternateAllele(0).equals(outerVC.getAlternateAllele(0)));
                 }).collect(Collectors.toList()));
-        allVariationEvents.addAll(pileupAllelesPassingFilters);
+//        allVariationEvents.addAll(pileupAllelesPassingFilters);
+        for (final VariantContext pileupAllele : pileupAllelesPassingFilters) {
+            //these are events from single haplotypes, so we can do a simple comparison without trimming
+            if (allVariationEvents.stream().noneMatch(vc -> vc.getStart() == pileupAllele.getStart() && vc.getAlternateAllele(0).basesMatch(pileupAllele.getAlternateAllele(0)))) {
+                allVariationEvents.add(pileupAllele);
+            }
+        }
         for (final VariantContext given : givenAlleles) {
             //these are events from single haplotypes, so we can do a simple comparison without trimming
             if (allVariationEvents.stream().noneMatch(vc -> vc.getStart() == given.getStart() && vc.getAlternateAllele(0).basesMatch(given.getAlternateAllele(0)))) {
