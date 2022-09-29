@@ -345,7 +345,7 @@ task ScaleXYBedValues {
     }
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:vs_616_split_hail_2022_09_28"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-09-28-slim"
         maxRetries: 3
         memory: "7 GB"
         preemptible: 3
