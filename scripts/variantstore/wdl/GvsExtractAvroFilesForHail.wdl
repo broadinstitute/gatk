@@ -71,7 +71,7 @@ task OutputPath {
         File out = stdout()
     }
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:402.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
         disks: "local-disk 500 HDD"
     }
 }
@@ -142,7 +142,7 @@ task ExtractFromNonSuperpartitionedTables {
     }
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:402.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
         disks: "local-disk 500 HDD"
     }
 }
@@ -209,7 +209,7 @@ task ExtractFromSuperpartitionedTables {
     }
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:402.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
         disks: "local-disk 500 HDD"
     }
 }
