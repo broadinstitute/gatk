@@ -24,7 +24,7 @@ WITH
                @locationStanza
         )
         GROUP BY location),
-     -- sum of qualapprox, count of het,homvar at the site level
+     -- sfum of qualapprox, count of het,homvar at the site level
    aa_site_info AS (
         SELECT location,
                IFNULL(sum(SAFE_CAST(qualapprox as FLOAT64)),0) as sum_qualapprox,
@@ -84,9 +84,9 @@ WITH
            ref,
            allele,
            IFNULL(SUM(qual),0) as RAW_QUAL,
-           `bqutil`.fn.median(ARRAY_AGG( raw_mqranksum_x_10 IGNORE NULLS)) / 10.0 as AS_MQRankSum,
+           median(ARRAY_AGG( raw_mqranksum_x_10 IGNORE NULLS)) / 10.0 as AS_MQRankSum,
            freq_table(ARRAY_AGG(raw_mqranksum_x_10 IGNORE NULLS)) AS_MQRankSum_ft,
-           `bqutil`.fn.median(ARRAY_AGG(raw_readposranksum_x_10 IGNORE NULLS)) / 10.0 as AS_ReadPosRankSum,
+           median(ARRAY_AGG(raw_readposranksum_x_10 IGNORE NULLS)) / 10.0 as AS_ReadPosRankSum,
            freq_table(ARRAY_AGG(raw_readposranksum_x_10 IGNORE NULLS)) as AS_ReadPosRankSum_ft,
            IFNULL(SUM(RAW_MQ),0) as RAW_MQ,
            IFNULL(SUM((SELECT SUM(CAST(x AS INT64)) FROM UNNEST(SPLIT(call_ad, ",")) x)),0) SUM_AD,

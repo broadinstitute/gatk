@@ -14,6 +14,9 @@ public class ExtractFeaturesBQ {
     private final static String FEATURE_EXTRACT_USER_DEFINED_FUNCTIONS =
         "org/broadinstitute/hellbender/tools/gvs/filtering/udf_freq_table.sql";
 
+    private final static String FEATURE_EXTRACT_USER_DEFINED_FUNCTION_MEDIAN =
+            "org/broadinstitute/hellbender/tools/gvs/filtering/udf_median.sql";
+
     private final static String VQSR_TRAINING_SITES_TABLE =
         "broad-dsp-spec-ops.joint_genotyping_ref.vqsr_training_sites_*";
 
@@ -43,7 +46,9 @@ public class ExtractFeaturesBQ {
     public static String getVQSRFeatureExtractUserDefinedFunctionsString() {
         try {
             File file = Resource.getResourceContentsAsFile(FEATURE_EXTRACT_USER_DEFINED_FUNCTIONS);
-            return FileUtils.readFileToString(file, "UTF-8");
+            // also grab our definition of median
+            File fileMedian = Resource.getResourceContentsAsFile(FEATURE_EXTRACT_USER_DEFINED_FUNCTION_MEDIAN);
+            return FileUtils.readFileToString(file, "UTF-8") + FileUtils.readFileToString(fileMedian, "UTF-8");
         } catch (Exception ioe) {
             throw new GATKException("Unable to read udf file from resources", ioe);
         }
