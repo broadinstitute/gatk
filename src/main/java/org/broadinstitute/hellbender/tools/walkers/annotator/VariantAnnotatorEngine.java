@@ -11,7 +11,6 @@ import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.walkers.GenotypeGVCFs;
 import org.broadinstitute.hellbender.tools.walkers.GenotypeGVCFsAnnotationArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotationData;
@@ -97,7 +96,7 @@ public final class VariantAnnotatorEngine {
         useRawAnnotations = useRaw;
         keepRawCombinedAnnotations = keepCombined;
         for (final Annotation rawAnnot : rawAnnotationsToKeep) {
-            if (!variantAnnotationKeys.contains(rawAnnot)) {
+            if (!annotationList.contains(rawAnnot)) {
                 throw new UserException("Requested --" + GenotypeGVCFsAnnotationArgumentCollection.KEEP_SPECIFIED_RAW_COMBINED_ANNOTATION_LONG_NAME + ": " + rawAnnot + " is not available. Add requested annotation with --" + StandardArgumentDefinitions.ANNOTATION_LONG_NAME + ".");
             }
             rawVariantAnnotationKeysToKeep.addAll(((VariantAnnotation) rawAnnot).getKeyNames());

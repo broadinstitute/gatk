@@ -10,7 +10,7 @@ import java.util.List;
 
 public class GenotypeGVCFsAnnotationArgumentCollection extends DefaultGATKVariantAnnotationArgumentCollection {
     private static final long serialVersionUID = 1L;
-
+    
     public static final String KEEP_SPECIFIED_RAW_COMBINED_ANNOTATION_LONG_NAME = "keep-specific-combined-raw-annotation";
     public static final String KEEP_SPECIFIED_RAW_COMBINED_ANNOTATION_SHORT_NAME = "keep-specific-combined";
 
@@ -23,27 +23,5 @@ public class GenotypeGVCFsAnnotationArgumentCollection extends DefaultGATKVarian
     protected List<String> keepSpecifiedCombined = new ArrayList<>();
 
     @Override
-    public List<String> getUserEnabledAnnotationNames() {
-        return Collections.unmodifiableList(keepSpecifiedCombined);
-    }
-
-    @Override
-    public List<String> getUserEnabledAnnotationGroups() {
-        return Collections.emptyList();
-    }
-
-    @Override
-    public List<String> getUserDisabledAnnotationNames() {
-        return Collections.emptyList();
-    }
-
-    @Override
-    public boolean getDisableToolDefaultAnnotations() {
-        return false;
-    }
-
-    @Override
-    public boolean getEnableAllAnnotations() {
-        return false;
-    }
+    public List<String> getKeepSpecifiedCombinedAnnotationNames() {return Collections.unmodifiableList(keepSpecifiedCombined);}
 }

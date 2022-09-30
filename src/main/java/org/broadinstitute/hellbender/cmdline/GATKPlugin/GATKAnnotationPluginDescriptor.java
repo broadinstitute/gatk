@@ -16,7 +16,6 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.config.ConfigFactory;
 import org.broadinstitute.hellbender.utils.config.GATKConfig;
 
-import java.io.File;
 import java.lang.reflect.Modifier;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -495,6 +494,14 @@ public class GATKAnnotationPluginDescriptor extends CommandLinePluginDescriptor<
     @Override
     public Class<?> getClassForPluginHelp(final String pluginName) {
         return allDiscoveredAnnotations.containsKey(pluginName) ? allDiscoveredAnnotations.get(pluginName).getClass() : null;
+    }
+
+    public Map<String,Annotation> getAllDiscoveredAnnotations() {
+        return this.allDiscoveredAnnotations;
+    }
+
+    public GATKAnnotationArgumentCollection getUserArgs() {
+        return this.userArgs;
     }
 
 }

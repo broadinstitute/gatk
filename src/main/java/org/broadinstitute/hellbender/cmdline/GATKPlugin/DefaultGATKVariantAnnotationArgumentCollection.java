@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.cmdline.GATKPlugin;
 
-import com.google.common.collect.Lists;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -82,4 +81,7 @@ public class DefaultGATKVariantAnnotationArgumentCollection extends GATKAnnotati
     public boolean getEnableAllAnnotations() {
         return enableAllAnnotations;
     }
+
+    @Override
+    public List<String> getKeepSpecifiedCombinedAnnotationNames() { return Collections.emptyList(); }
 }

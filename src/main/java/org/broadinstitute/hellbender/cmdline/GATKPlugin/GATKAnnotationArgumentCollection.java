@@ -37,4 +37,7 @@ public abstract class GATKAnnotationArgumentCollection implements Serializable {
      * Returns {@code true} if all annotations are enabled; {@code false} otherwise.
      */
     public abstract boolean getEnableAllAnnotations();
+
+
+    public abstract List<String> getKeepSpecifiedCombinedAnnotationNames();
 }

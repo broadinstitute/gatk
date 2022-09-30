@@ -275,9 +275,11 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
                 Collections.emptyList();
 
         final Collection<Annotation>  variantAnnotations = makeVariantAnnotations();
-        final Collection<Annotation> rawCombinedAnnotationsToKeep =
-                getCommandLineParser().getPluginDescriptor(GATKAnnotationPluginDescriptor.class).getResolvedInstances();
-        annotationEngine = new VariantAnnotatorEngine(variantAnnotations, dbsnp.dbsnp, Collections.emptyList(), false, keepCombined, rawCombinedAnnotationsToKeep);
+        final GATKAnnotationPluginDescriptor pluginDescriptor = getCommandLineParser().getPluginDescriptor(GATKAnnotationPluginDescriptor.class);
+        final List<String> annotationStringsToKeep = pluginDescriptor.getUserArgs().getKeepSpecifiedCombinedAnnotationNames();
+        final Map<String, Annotation> allDiscoveredAnnotations = pluginDescriptor.getAllDiscoveredAnnotations();
+        final Collection<Annotation> annotationsToKeep = annotationStringsToKeep.stream().map(allDiscoveredAnnotations::get).collect(Collectors.toList());
+        annotationEngine = new VariantAnnotatorEngine(variantAnnotations, dbsnp.dbsnp, Collections.emptyList(), false, keepCombined, annotationsToKeep);
 
         merger = new ReferenceConfidenceVariantContextMerger(annotationEngine, getHeaderForVariants(), somaticInput, false, true);
 
