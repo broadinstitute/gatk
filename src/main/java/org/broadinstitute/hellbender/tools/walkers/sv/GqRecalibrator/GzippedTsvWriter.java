@@ -73,7 +73,10 @@ public class GzippedTsvWriter implements AutoCloseable {
 
     String getTypeName() { return typeName; }
 
-    boolean hasLabels() { return typeName.equals(stringType) || typeName.equals(stringSetType); }
+    boolean hasLabels() {
+        return (typeName.equals(stringType) && !stringEncoderMap.isEmpty()) ||
+            (typeName.equals(stringSetType) && !stringSetEncoderMap.isEmpty());
+    }
 
     static void savePropertiesSummaryJson(Collection<GzippedTsvWriter> tsvWriters, final Path jsonPath) {
         try(final OutputStream outputStream = Files.newOutputStream(jsonPath)) {
@@ -113,8 +116,8 @@ public class GzippedTsvWriter implements AutoCloseable {
                     .collect(Collectors.toList());
             case stringSetType:
                 return stringSetEncoderMap
-                    .entrySet().
-                    stream()
+                    .entrySet()
+                    .stream()
                     .sorted(Map.Entry.comparingByValue())
                     .map(Map.Entry::getKey)
                     .map(stringSet -> stringSet.stream().sorted().collect(Collectors.joining(",")))
@@ -207,7 +210,7 @@ public class GzippedTsvWriter implements AutoCloseable {
     private int encode(final Set<String> stringSet) {
         Integer encoded = stringSetEncoderMap.getOrDefault(stringSet, null);
         if(encoded == null) {
-            encoded = stringSet.size();
+            encoded = stringSetEncoderMap.size();
             stringSetEncoderMap.put(stringSet, encoded);
         }
         return encoded;

@@ -148,7 +148,10 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
     @Argument(fullName="scaled-logit-property", optional=true,
               doc="Name of genotype property where logit-scaled variant quality will be stored"
     )
-    public static String scaled_logit_property = "SL";
+    public static String scaledLogitProperty = "SL";
+
+    @Argument(fullName="error-on-no-trios", optional=true, doc="Throw exception if there are no trios in training mode")
+    public static Boolean errorOnNoTrios = true;
 
     List<TrackOverlapDetector> trackOverlapDetectors = null;
 
@@ -200,7 +203,7 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
     private static final String VAR_PPV_KEY = "VAR_PPV";
     private static final String VAR_SENSITIVITY_KEY = "VAR_SENSITIVITY";
     private static final String TRUTH_AF_KEY = "TRUTH_AF";
-    private static final String MIN_QUALITY_KEY = "MIN" + scaled_logit_property;
+    private static final String MIN_QUALITY_KEY = "MIN" + scaledLogitProperty;
     private static final String EXCESSIVE_MIN_QUALITY_FILTER_KEY = "LOW_QUALITY";
     private static final String MULTIALLELIC_FILTER = "MULTIALLELIC";
     private static final String GOOD_VARIANT_TRUTH_KEY = "good_variant_ids";
@@ -255,27 +258,44 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
      * Entry-point function to initialize the samples database from input data
      */
     private void getPedTrios() {
+        final Set<Trio> pedTrios;
         if(pedigreeFile == null) {
-            throw new UserException.BadInput(StandardArgumentDefinitions.PEDIGREE_FILE_LONG_NAME
-                                             + " must be specified in \"TRAIN\" mode");
-        }
-        final SampleDBBuilder sampleDBBuilder = new SampleDBBuilder(PedigreeValidationType.STRICT);
-        sampleDBBuilder.addSamplesFromPedigreeFiles(Collections.singletonList(pedigreeFile));
-        final Set<String> vcfSamples = new HashSet<>(getHeaderForVariants().getGenotypeSamples());
-        // get the trios from the pedigree file, keeping only those that are fully present in the input VCF
-        final Set<Trio> pedTrios = sampleDBBuilder.getFinalSampleDB()
-            .getTrios()
-            .stream()
-            .filter(trio -> vcfSamples.contains(trio.getPaternalID()) && vcfSamples.contains(trio.getMaternalID())
+            pedTrios = new HashSet<>();
+            if(errorOnNoTrios) {
+                throw new UserException.BadInput(StandardArgumentDefinitions.PEDIGREE_FILE_LONG_NAME
+                        + " must be specified in \"TRAIN\" mode");
+            } else {
+                System.err.println(StandardArgumentDefinitions.PEDIGREE_FILE_LONG_NAME + " was not specified in \"Train\" mode");
+            }
+        } else {
+            final SampleDBBuilder sampleDBBuilder = new SampleDBBuilder(PedigreeValidationType.STRICT);
+            sampleDBBuilder.addSamplesFromPedigreeFiles(Collections.singletonList(pedigreeFile));
+            final Set<String> vcfSamples = new HashSet<>(getHeaderForVariants().getGenotypeSamples());
+            // get the trios from the pedigree file, keeping only those that are fully present in the input VCF
+            pedTrios = sampleDBBuilder.getFinalSampleDB()
+                    .getTrios()
+                    .stream()
+                    .filter(trio -> vcfSamples.contains(trio.getPaternalID()) && vcfSamples.contains(trio.getMaternalID())
                             && vcfSamples.contains(trio.getChildID()))
-            .collect(Collectors.toSet());
-        if(pedTrios.isEmpty()) {
-            throw new UserException.BadInput(
-                "The pedigree file (" + pedigreeFile + ") does not contain any trios that are present in the input VCF "
-                + "(" + drivingVariantFile + ")"
-            );
+                    .collect(Collectors.toSet());
+            if (pedTrios.isEmpty()) {
+                if(errorOnNoTrios) {
+                    throw new UserException.BadInput(
+                            "The pedigree file (" + pedigreeFile + ") does not contain any trios that are present in the input VCF "
+                                    + "(" + drivingVariantFile + ")"
+                    );
+                } else {
+                    System.err.println(
+                    "The pedigree file (" + pedigreeFile + ") does not contain any trios that are present in the input VCF "
+                            + "(" + drivingVariantFile + ")"
+                    );
+                }
+            }
         }
         numTrios = pedTrios.size();
+        if(numTrios == 0) {
+            truthWeight = 1.0;
+        }
         // collect ped trios into training samples
         pedTrios.stream()
                 .flatMap(trio -> Stream.of(trio.getPaternalID(), trio.getMaternalID(), trio.getChildID()))
@@ -375,24 +395,26 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
             .map(Map.Entry::getKey)
             .collect(Collectors.toList());
         numSamples = sampleIndices.size();
+        if(numSamples == 0) {
+            throw new IllegalArgumentException(
+                "No " + (runMode == RunMode.Train ? "trainable" : "filterable") + " samples were found"
+            );
+        }
     }
 
     private void initializeVcfWriter() {
         List<Options> options = new ArrayList<>();
-        //if (createOutputVariantIndex) {
-            options.add(Options.INDEX_ON_THE_FLY);
-        //}
+        options.add(Options.INDEX_ON_THE_FLY);
         vcfWriter = GATKVariantContextUtils.createVCFWriter(
                 outputFile.toPath(),
                 getHeaderForVariants().getSequenceDictionary(),
                 createOutputVariantMD5,
                 options.toArray(new Options[0]));
-        //vcfWriter = createVCFWriter(outputFile);
         final Set<VCFHeaderLine> hInfo = new LinkedHashSet<>(getHeaderForVariants().getMetaDataInInputOrder());
         final String filterableVariant = (keepMultiallelic ? "biallelic " : "") +
                                          (keepHomvar ? "non-homvar" : "") +
                                          "variant";
-        hInfo.add(new VCFFormatHeaderLine(scaled_logit_property, 1, VCFHeaderLineType.Integer,
+        hInfo.add(new VCFFormatHeaderLine(scaledLogitProperty, 1, VCFHeaderLineType.Integer,
                                LOGIT_SCALE + " times the logits that a genotype is correct"));
         hInfo.add(new VCFInfoHeaderLine(MIN_QUALITY_KEY, 1, VCFHeaderLineType.Integer,
                             "Minimum passing GQ for each " + filterableVariant));
@@ -478,11 +500,15 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
         if(goodVariantSampleIndices != null &&
            !getFilterableTruthSampleIndices(variantContext, goodVariantSampleIndices, sampleAlleleCounts,
                                             sampleNoCallCounts).isEmpty()) {
-           return true;
+           //return true;
+           return badVariantSampleIndices != null &&
+                   !getFilterableTruthSampleIndices(variantContext, badVariantSampleIndices, sampleAlleleCounts,
+                           sampleNoCallCounts).isEmpty();
         }
-        return badVariantSampleIndices != null &&
-              !getFilterableTruthSampleIndices(variantContext, badVariantSampleIndices, sampleAlleleCounts,
-                                               sampleNoCallCounts).isEmpty();
+//        return badVariantSampleIndices != null &&
+//              !getFilterableTruthSampleIndices(variantContext, badVariantSampleIndices, sampleAlleleCounts,
+//                                               sampleNoCallCounts).isEmpty();
+        return false;
     }
 
     /**
@@ -1068,7 +1094,7 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
     private Genotype getFilteredGenotype(final Genotype inputGenotype, final short callQuality,
                                          final short scaledLogits, final boolean needsFilter) {
         final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(inputGenotype)
-                .attribute(scaled_logit_property, scaledLogits);
+                .attribute(scaledLogitProperty, scaledLogits);
         if(needsFilter) {
             // Set GT and copy-number calls to no-call
             genotypeBuilder.alleles(GATKVariantContextUtils.noCallAlleles(inputGenotype.getPloidy()));
