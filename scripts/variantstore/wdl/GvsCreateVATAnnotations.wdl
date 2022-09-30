@@ -169,7 +169,7 @@ task ExtractAnAcAfFromVCF {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-09-28-slim"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:vs_648_alpine"
         maxRetries: 3
         memory: "16 GB"
         preemptible: 3
@@ -291,7 +291,7 @@ task PrepAnnotationJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-09-28-slim"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:vs_648_alpine"
         memory: "8 GB"
         preemptible: 5
         cpu: "1"
