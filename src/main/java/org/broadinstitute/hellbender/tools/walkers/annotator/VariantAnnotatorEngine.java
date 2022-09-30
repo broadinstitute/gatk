@@ -278,7 +278,7 @@ public final class VariantAnnotatorEngine {
 
         //save annotations that have been requested to be kept
         final Map<String, Object> savedRawAnnotations = new LinkedHashMap<>();
-        for(String rawAnnot : rawAnnotationsToKeep) {
+        for(final String rawAnnot : rawAnnotationsToKeep) {
             if (variantAnnotations.containsKey(rawAnnot)) {
                 savedRawAnnotations.put(rawAnnot, variantAnnotations.get(rawAnnot));
             }
