@@ -125,6 +125,11 @@ public class ExtractSvProperties extends VariantWalker {
         numVarGenotypes = 0;
         numRefGenotypes = 0;
         numNoCallGenotypes = 0;
+        // initialize array variables
+        sampleAlleleCounts = new byte[numSamples];
+        sampleNoCallCounts = new byte[numSamples];
+        isCopyNumberCall = useCopyNumberCalls ? new boolean[numSamples] : null;
+        callQuality = useCopyNumberCalls ? new short[numSamples] : null;
     }
 
     void ensureOutputFolderExists() {
@@ -207,7 +212,7 @@ public class ExtractSvProperties extends VariantWalker {
     @SuppressWarnings("SameParameterValue")
     private short[] getGenotypeAttributeAsShort(final Iterable<Genotype> sampleGenotypes, final String attributeKey,
                                                 final Short missingAttributeValue) {
-        short[] values = new short[sampleIds.size()];
+        final short[] values = getShortPropertyArray(attributeKey);
         int index = 0;
         for(final Genotype genotype : sampleGenotypes) {
             values[index] = getGenotypeAttributeAsShort(genotype, attributeKey, missingAttributeValue);
@@ -268,8 +273,8 @@ public class ExtractSvProperties extends VariantWalker {
     @SuppressWarnings("SameParameterValue")
     private Set<String>[] getGenotypeAttributeAsStringSet(final Iterable<Genotype> sampleGenotypes,
                                                           final String key) {
-        @SuppressWarnings("unchecked")
-        final Set<String>[] values = (Set<String>[]) new Set<?>[numSamples];
+        final Set<String>[] values = getStringSetPropertyArray(key);
+
         int index = 0;
         for(final Genotype genotype : sampleGenotypes) {
             values[index] = getGenotypeAttributeAsStringSet(genotype, key);
@@ -349,6 +354,37 @@ public class ExtractSvProperties extends VariantWalker {
         }
     }
 
+    byte[] sampleAlleleCounts = null;
+    byte[] sampleNoCallCounts = null;
+    boolean[] isCopyNumberCall = null;
+    short[] callQuality = null;
+    final Map<String, short[]> shortPropertiesArrayMap = new HashMap<>();
+    final Map<String, Set<String>[]> stringSetPropertiesArrayMap = new HashMap<>();
+
+    short[] getShortPropertyArray(final String propertyName) {
+        final short[] allocatedArray = shortPropertiesArrayMap.getOrDefault(propertyName, null);
+        if(allocatedArray == null) {
+            final short[] newArray = new short[numSamples];
+            shortPropertiesArrayMap.put(propertyName, newArray);
+            return newArray;
+        } else {
+            return allocatedArray;
+        }
+    }
+
+    Set<String>[] getStringSetPropertyArray(final String propertyName) {
+        final Set<String>[] allocatedArray = stringSetPropertiesArrayMap.getOrDefault(propertyName, null);
+        if(allocatedArray == null) {
+            @SuppressWarnings("unchecked")
+            final Set<String>[] newArray = (Set<String>[]) new Set<?>[numSamples];
+            stringSetPropertiesArrayMap.put(propertyName, newArray);
+            return newArray;
+        } else {
+            return allocatedArray;
+        }
+    }
+
+
     /**
      * Accumulate properties for variant matrix, and allele counts, genotype quality for trio tensors
      */
@@ -359,19 +395,13 @@ public class ExtractSvProperties extends VariantWalker {
         int numVariantInputVar = 0;
         int numVariantInputNoCall = 0;
         int numVariantInputRef = 0;
-        final byte[] sampleAlleleCounts = new byte[numSamples];
-        final byte[] sampleNoCallCounts = new byte[numSamples];
-        final boolean[] isCopyNumberCall = useCopyNumberCalls ? new boolean[numSamples] : null;
-        final short[] callQuality = useCopyNumberCalls ? new short[numSamples] : null;
         int sampleIndex = 0;
         for(final Genotype genotype : variantContext.getGenotypesOrderedBy(sampleIds)) {
             final AlleleCountsGetter alleleCountsGetter = new AlleleCountsGetter(genotype);
             sampleAlleleCounts[sampleIndex] = alleleCountsGetter.nonRefCounts;
             sampleNoCallCounts[sampleIndex] = alleleCountsGetter.noCallCounts;
             if(useCopyNumberCalls) {
-                //noinspection ConstantConditions
                 isCopyNumberCall[sampleIndex] = alleleCountsGetter.isCopyNumberCall;
-                //noinspection ConstantConditions
                 callQuality[sampleIndex] = alleleCountsGetter.callQuality;
             }
             ++sampleIndex;
