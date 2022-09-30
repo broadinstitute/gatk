@@ -3,12 +3,14 @@ package org.broadinstitute.hellbender.engine.spark;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.Registration;
 import com.esotericsoftware.kryo.serializers.FieldSerializer;
+import com.esotericsoftware.kryo.serializers.JavaSerializer;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import de.javakaffee.kryoserializers.UnmodifiableCollectionsSerializer;
 import de.javakaffee.kryoserializers.guava.ImmutableMapSerializer;
 import htsjdk.samtools.*;
 import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.LazyGenotypesContext;
 import htsjdk.variant.vcf.VCFHeaderLineType;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.spark.serializer.KryoRegistrator;
@@ -142,5 +144,7 @@ public class GATKRegistrator implements KryoRegistrator {
         kryo.register(ReadsKey.class, new FieldSerializer(kryo, ReadsKey.class));
         kryo.register(ReadsKey.KeyForFragment.class, new FieldSerializer(kryo, ReadsKey.KeyForFragment.class));
         kryo.register(ReadsKey.KeyForPair.class, new FieldSerializer(kryo, ReadsKey.KeyForPair.class));
+        // Use JavaSerializer for LazyGenotypesContext to handle transient fields correctly
+        kryo.register(LazyGenotypesContext.class, new JavaSerializer());
     }
 }
