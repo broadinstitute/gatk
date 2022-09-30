@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.genomicsdb;
 
 import com.googlecode.protobuf.format.JsonFormat;
+import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -37,9 +38,39 @@ public class GenomicsDBUtils {
     private static final String HISTOGRAM_SUM = "histogram_sum";
     private static final String MOVE_TO_FORMAT = "move_to_FORMAT";
 
+    private static final String NO_COMBINE_OP = "none";
+    private static final String[] NO_COMBINE_FIELDS = {
+            GATKVCFConstants.ALLELE_FRACTION_KEY,           // AF
+            GATKVCFConstants.AS_BASE_QUAL_RANK_SUM_KEY,     // AS_BaseQRankSum
+            GATKVCFConstants.AS_INBREEDING_COEFFICIENT_KEY, // AS_InbreedingCoeff
+            GATKVCFConstants.AS_FISHER_STRAND_KEY,          // AS_FS
+            GATKVCFConstants.AS_RMS_MAPPING_QUALITY_KEY,    // AS_MQ
+            GATKVCFConstants.AS_MAP_QUAL_RANK_SUM_KEY,      // AS_MQRankSum
+            GATKVCFConstants.AS_QUAL_BY_DEPTH_KEY,          // AS_QD
+            GATKVCFConstants.AS_READ_POS_RANK_SUM_KEY,      // AS_ReadPosRankSum
+            GATKVCFConstants.AS_STRAND_ODDS_RATIO_KEY,      // AS_SOR
+            GATKVCFConstants.DOWNSAMPLED_KEY,               // DS
+            GATKVCFConstants.FISHER_STRAND_KEY,             // FS
+            GATKVCFConstants.STRAND_ODDS_RATIO_KEY,         // SOR
+            GATKVCFConstants.HAPLOTYPE_SCORE_KEY,           // HaplotypeScore
+            GATKVCFConstants.INBREEDING_COEFFICIENT_KEY,    // InbreedingCoeff
+            GATKVCFConstants.MLE_ALLELE_COUNT_KEY,          // MLEAC
+            GATKVCFConstants.MLE_ALLELE_FREQUENCY_KEY,      // MLEAF
+            GATKVCFConstants.QUAL_BY_DEPTH_KEY,             // QD
+            VCFConstants.ALLELE_COUNT_KEY,                  // AC
+            VCFConstants.ALLELE_NUMBER_KEY                  // AN
+    };
+
+    private static final String MEDIAN_OP = "median";
+    private static final String[] MEDIAN_FIELDS = {
+            GATKVCFConstants.BASE_QUAL_RANK_SUM_KEY,        // BaseQRankSum
+            GATKVCFConstants.MAP_QUAL_RANK_SUM_KEY,         // MQRankSum
+            GATKVCFConstants.READ_POS_RANK_SUM_KEY,         // ReadPosRankSum
+            GATKVCFConstants.EXCESS_HET_KEY                 // ExcessHet
+    };
+
     private static final String GDB_TYPE_FLOAT = "float";
     private static final String GDB_TYPE_INT = "int";
-
 
     /**
      * Info and Allele-specific fields that need to be treated differently
@@ -61,6 +92,17 @@ public class GenomicsDBUtils {
         // GenomicsDB store and this list is iterated to create a field name to list index map.
         final HashMap<String, Integer> fieldNameToIndexInVidFieldsList =
                 getFieldNameToListIndexInProtobufVidMappingObject(vidMapPB);
+
+        // Process predefined combinations for the fields first
+        for (String field : NO_COMBINE_FIELDS) {
+            vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList, field, NO_COMBINE_OP);
+            assert(vidMapPB != null);
+        }
+
+        for (String field : MEDIAN_FIELDS) {
+            vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList, field, MEDIAN_OP);
+            assert(vidMapPB != null);
+        }
 
         vidMapPB = updateINFOFieldCombineOperation(vidMapPB, fieldNameToIndexInVidFieldsList,
                 GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY, ELEMENT_WISE_SUM);
