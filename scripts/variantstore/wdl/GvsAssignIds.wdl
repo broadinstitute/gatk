@@ -183,7 +183,7 @@ task CreateCostObservabilityTable {
     # not volatile: true, always run this when asked
   }
   command <<<
-    set -o xtrace
+    set -o errexit -o nounset -o xtrace -o pipefail
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
     TABLE="~{dataset_name}.cost_observability"
@@ -202,7 +202,7 @@ task CreateCostObservabilityTable {
     fi
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_08_16"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
   }
   output {
     Boolean done = true

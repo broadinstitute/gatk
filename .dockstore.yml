@@ -208,6 +208,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_616_split_hail
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
@@ -229,6 +230,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_616_split_hail
    - name: GvsCallsetStatistics
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCallsetStatistics.wdl
@@ -236,6 +238,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_616_split_hail
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl

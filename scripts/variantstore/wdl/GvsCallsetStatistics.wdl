@@ -85,6 +85,8 @@ task CreateTables {
     command <<<
         set -o errexit -o nounset -o xtrace -o pipefail
 
+        apk add jq
+
         set +o errexit
         bq --project_id=~{project_id} show ~{dataset_name}.~{metrics_table}
         BQ_SHOW_METRICS=$?
@@ -378,8 +380,7 @@ task CreateTables {
         fi
     >>>
     runtime {
-        # Can't use plain Google cloud sdk as this requires jq.
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:vs_560_callset_statistics"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
         disks: "local-disk 500 HDD"
     }
     output {
@@ -515,7 +516,7 @@ task CollectMetricsForChromosome {
         Boolean done = true
     }
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:402.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
         disks: "local-disk 500 HDD"
     }
 }
@@ -588,7 +589,7 @@ task AggregateMetricsAcrossChromosomes {
         Boolean done = true
     }
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:402.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
         disks: "local-disk 500 HDD"
     }
 }
@@ -731,7 +732,7 @@ task CollectStatistics {
         Boolean done = true
     }
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:402.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
         disks: "local-disk 500 HDD"
     }
 }
@@ -760,7 +761,7 @@ task ExportToCSV {
         File callset_statistics = "~{statistics_table}.csv"
     }
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:402.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
         disks: "local-disk 500 HDD"
     }
 }
