@@ -65,6 +65,10 @@ RUN cd /apache-arrow-$ARROW_VERSION/python && \
               --bundle-arrow-cpp bdist_wheel && \
     pip3 install --user /apache-arrow-$ARROW_VERSION/python/dist/pyarrow-$ARROW_VERSION-*.whl
 
+# Install all of our variantstore Python requirements.
+COPY requirements.txt requirements.txt
+RUN pip3 install --user -r requirements.txt
+
 # The main layer does not install development tools, instead copies artifacts from the build layer above.
 FROM gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine as main
 
@@ -77,11 +81,8 @@ RUN apk add --no-cache jq
 # The build stage generated Python artifacts to /root/.local via `pip install --user`, so grab all of those.
 COPY --from=build /root/.local /root/.local
 
-# Install all of our script requirements.
-COPY requirements.txt /app/requirements.txt
-RUN pip3 install -r /app/requirements.txt
-
 # Copy the application source code.
+RUN mkdir /app
 COPY *.py /app
 COPY *.sql /app
 
