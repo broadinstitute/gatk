@@ -2,8 +2,8 @@
 # https://docs.docker.com/build/building/multi-stage/#use-multi-stage-builds
 #
 # Apache Arrow is a requirement for pyarrow which is a requirement for the google-cloud-bigquery Python module.
-# Unfortunately when installed as pip modules, neither pyarrow nor google-cloud-bigquery will fetch and build Apache
-# Arrow themselves (or at least not on Alpine), so here we do that ourselves within this Docker build stage.
+# Unfortunately neither pyarrow nor google-cloud-bigquery will fetch or build Apache Arrow when `pip install`ed, at
+# least not on Alpine. Therefore we do the Apache Arrow build ourselves.
 # This build stage installs the required development tools, downloads the Apache Arrow source bundle and builds all
 # required components including Apache Arrow C++ libraries, pyarrow Python module, and all pyarrow dependencies
 # including the numpy Python module.
@@ -71,10 +71,13 @@ FROM gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine as main
 RUN apk update && apk upgrade
 RUN python3 -m ensurepip --upgrade
 
+# Add any generally useful Alpine packages here.
 RUN apk add --no-cache jq
+
 # The build stage generated Python artifacts to /root/.local via `pip install --user`, so grab all of those.
 COPY --from=build /root/.local /root/.local
 
+# Install all of our script requirements.
 COPY requirements.txt /app/requirements.txt
 RUN pip3 install -r /app/requirements.txt
 
