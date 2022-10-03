@@ -1,12 +1,22 @@
-# Multi-stage Variant Store Docker image build
+# The image produced by this Dockerfile contains tools and libraries required to support the Genomic Variant Store
+# pipeline. The Alpine version of the Google Cloud SDK is used as the base image which is not only the most compact of
+# the Google Cloud SDK Docker images, but is also the image currently used by Cromwell for (de)localization of files in
+# Google Cloud Storage. Sharing the base image with Cromwell's GCS localization should result in reuse of a cached copy
+# of this base (and by far largest) image layer when running GVS pipelines in Terra / Cromwell.
+#
+# Because this is an Alpine-based image it is more bare-bones than its Debian-based peers. A key component missing here
+# is the Apache Arrow library which is a requirement for pyarrow which is a requirement for the google-cloud-bigquery
+# Python module.
+#
+# Unfortunately neither pyarrow nor google-cloud-bigquery will fetch or build Apache Arrow when `pip install`ed from
+# this base image. Therefore we do the Apache Arrow build ourselves. In order to keep the final image size small this
+# Dockerfile is set up to do a multi-stage build following the usual pattern of "build" stage / "main" stage.
 # https://docs.docker.com/build/building/multi-stage/#use-multi-stage-builds
 #
-# Apache Arrow is a requirement for pyarrow which is a requirement for the google-cloud-bigquery Python module.
-# Unfortunately neither pyarrow nor google-cloud-bigquery will fetch or build Apache Arrow when `pip install`ed, at
-# least not on Alpine. Therefore we do the Apache Arrow build ourselves.
-# This build stage installs the required development tools, downloads the Apache Arrow source bundle and builds all
+# The build stage installs the required development tools, downloads the Apache Arrow source bundle and builds all
 # required components including Apache Arrow C++ libraries, pyarrow Python module, and all pyarrow dependencies
-# including the numpy Python module.
+# including the numpy Python module. The main stage will then use the same base image and copy over the artifacts
+# produced by the build stage without having to install development tools or clean up after a build.
 FROM gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine as build
 
 RUN apk update && apk upgrade
