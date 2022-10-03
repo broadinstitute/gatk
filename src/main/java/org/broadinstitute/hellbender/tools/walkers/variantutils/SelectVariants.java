@@ -96,6 +96,15 @@ import java.util.stream.Collectors;
  *     -L 20 \
  *     -O output.chr20.vcf
  * </pre>
+ *
+ * <h4>Use JEXL Expressions to filter a subset of   </h4>
+ * <pre>
+ *     gatk SelectVariants \
+ *     -R Homo_sapiens_assembly38.fasta \
+ *     -V gendb://genomicsDB \
+ *     -L 20 \
+ *     -O output.chr20.vcf
+ * </pre>
  */
 @CommandLineProgramProperties(
         summary = "This tool makes it possible to select a subset of variants based on various criteria in order to facilitate certain " +
@@ -178,8 +187,19 @@ public final class SelectVariants extends VariantWalker {
      * See example commands above for detailed usage examples. Note that these expressions are evaluated *after* the
      * specified samples are extracted and the INFO field annotations are updated.
      */
-    @Argument(fullName="select", doc="One or more criteria to use when selecting the data", optional=true)
+    @Argument(fullName="select-expressions", shortName="select", doc="One or more criteria to use when selecting the data", optional=true)
     private ArrayList<String> selectExpressions = new ArrayList<>();
+
+    /**
+     * This option is provided in case the filtering is done on INFO fields
+     * in the input files (i.e. not the metrics recomputed after subsetting FORMAT fields), where
+     * it is computationally faster to first subset the variants and then subset the genotypes.
+     * This could be useful when workign with a large cohort vcf containing genotypes for
+     * thousands of samples (format fields).
+     *
+     */
+    @Argument(fullName="info-select", shortName="info-select", doc="", optional=true)
+    private ArrayList<String> infoSelectExpressions = new ArrayList<>();
 
     /**
      * Invert the selection criteria for -select.
@@ -335,7 +355,7 @@ public final class SelectVariants extends VariantWalker {
 
     @Hidden
     @Argument(fullName="fully-decode", doc="If true, the incoming VariantContext will be fully decoded", optional=true)
-    private boolean fullyDecode = false;
+    private boolean fullyDecode = false; // sato: what does that mean?
 
     /**
      * If this argument is provided, indels that are larger than the specified size will be excluded.
@@ -532,20 +552,20 @@ public final class SelectVariants extends VariantWalker {
         //TODO: this should be refactored/consolidated as part of
         // https://github.com/broadinstitute/gatk/issues/121 and
         // https://github.com/broadinstitute/gatk/issues/1116
-        Set<VCFHeaderLine> actualLines = null;
+        Set<VCFHeaderLine> actualHeaderLines = null;
         SAMSequenceDictionary sequenceDictionary = null;
         if (hasReference()) {
             Path refPath = referenceArguments.getReferencePath();
             sequenceDictionary= this.getReferenceDictionary();
-            actualLines = VcfUtils.updateHeaderContigLines(headerLines, refPath, sequenceDictionary, suppressReferencePath);
+            actualHeaderLines = VcfUtils.updateHeaderContigLines(headerLines, refPath, sequenceDictionary, suppressReferencePath);
         }
-        else {
+        else { // tsato: Shouldn't we use the header from the vcf by default?
             sequenceDictionary = getHeaderForVariants().getSequenceDictionary();
-            if (null != sequenceDictionary) {
-                actualLines = VcfUtils.updateHeaderContigLines(headerLines, null, sequenceDictionary, suppressReferencePath);
-            }
+            if (sequenceDictionary != null) {
+                actualHeaderLines = VcfUtils.updateHeaderContigLines(headerLines, null, sequenceDictionary, suppressReferencePath);
+            } // tsato: move else up
             else {
-                actualLines = headerLines;
+                actualHeaderLines = headerLines;
             }
         }
         if (!infoAnnotationsToDrop.isEmpty()) {
@@ -561,7 +581,7 @@ public final class SelectVariants extends VariantWalker {
 
         final Path outPath = vcfOutput.toPath();
         vcfWriter = createVCFWriter(outPath);
-        vcfWriter.writeHeader(new VCFHeader(actualLines, samples));
+        vcfWriter.writeHeader(new VCFHeader(actualHeaderLines, samples));
     }
 
     @Override
@@ -572,13 +592,13 @@ public final class SelectVariants extends VariantWalker {
         variant record locations can move to the right due to allele trimming if preserveAlleles is false
          */
         while (!pendingVariants.isEmpty() && (pendingVariants.peek().getStart()<=vc.getStart() || !(pendingVariants.peek().getContig().equals(vc.getContig())))) {
-            vcfWriter.add(pendingVariants.poll());
-        }
+            vcfWriter.add(pendingVariants.poll()); // tsato: what's this all about? Why want to write the pending variant first...
+        } // poll removes the head of the queue (vs peek, which does not remove)
 
-        if (fullyDecode) {
-            vc = vc.fullyDecode(getHeaderForVariants(), lenientVCFProcessing);
+        if (fullyDecode) { // tsato: fullyDecode means convert from strings to appropriate types (word choice?)
+            vc = vc.fullyDecode(getHeaderForVariants(), lenientVCFProcessing); // don't we want to always fully decode?
         }
-
+        // tsato: Start checking some filter criteria...Consider grouping them into categories and extracting methods.
         if (mendelianViolations && invertLogic((mv.countFamilyViolations(sampleDB, samples, vc) == 0), invertMendelianViolations)) {
             return;
         }
@@ -603,6 +623,9 @@ public final class SelectVariants extends VariantWalker {
             return;
         }
 
+        // tsato: Do the jexl filtering before decoding genotypes
+
+        // tsato: 'fitered genotypes' means ???
         if (considerFilteredGenotypes()) {
             final int numFilteredSamples = numFilteredGenotypes(vc);
             final double fractionFilteredGenotypes = samples.isEmpty() ? 0.0 : numFilteredSamples / samples.size();
@@ -617,7 +640,7 @@ public final class SelectVariants extends VariantWalker {
             if (numNoCallSamples > maxNOCALLnumber || fractionNoCallGenotypes > maxNOCALLfraction)
                 return;
         }
-
+        // tsato: what is this? Removing some genotypes? If this variant will eventually be filtered out, we want to avoid it
         final VariantContext sub = subsetRecord(vc, preserveAlleles, removeUnusedAlternates);
         final VariantContext filteredGenotypeToNocall;
 
@@ -634,16 +657,17 @@ public final class SelectVariants extends VariantWalker {
         // If exclude non-variants is called, and a spanning deletion exists, the spanning deletion will be filtered
         // If exclude non-variants is called, it is a polymorphic variant, but not a spanning deletion, filtering will not occur
         // True iff exclude-filtered is not called or the filteredGenotypeToNocall is not already filtered
-
+        // tsato: don't really understand what these are here for (see https://github.com/broadinstitute/gatk/pull/5129). Just leave them for now.
         if ((!XLnonVariants || (filteredGenotypeToNocall.isPolymorphicInSamples() && !GATKVariantContextUtils.isSpanningDeletionOnly(filteredGenotypeToNocall)))
                 && (!XLfiltered || !filteredGenotypeToNocall.isFiltered()))
-        {
+        { // tsato: does this have anything to do with jexl?
 
             // Write the subsetted variant if it matches all of the expressions
             boolean failedJexlMatch = false;
 
             try {
                 for (VariantContextUtils.JexlVCMatchExp jexl : jexls) {
+                    // tsato: 'filteredGenotypeToNocall': can jexl be applied to genotypes too?
                     if (invertLogic(!VariantContextUtils.match(filteredGenotypeToNocall, jexl), invertSelect)){
                         failedJexlMatch = true;
                         break;
@@ -732,7 +756,7 @@ public final class SelectVariants extends VariantWalker {
     @Override
     protected CountingVariantFilter makeVariantFilter() {
         CountingVariantFilter compositeFilter = new CountingVariantFilter(VariantFilterLibrary.ALLOW_ALL_VARIANTS);
-
+        // sato: is this relevant at all?
         if (!selectedTypes.isEmpty()) {
             compositeFilter = compositeFilter.and(new CountingVariantFilter(new VariantTypesVariantFilter(selectedTypes)));
         }
@@ -909,7 +933,7 @@ public final class SelectVariants extends VariantWalker {
      * @param vc the variant context
      * @return number of filtered samples
      */
-    private int numFilteredGenotypes(final VariantContext vc)  {
+    private int numFilteredGenotypes(final VariantContext vc)  { // tsato: what's a genotype filter?
         return numGenotypes(vc, g -> g.isFiltered() && !g.getFilters().isEmpty());
     }
 
@@ -921,7 +945,7 @@ public final class SelectVariants extends VariantWalker {
      * @return number of filtered samples
      */
     private int numGenotypes(final VariantContext vc, final Predicate<Genotype> f)  {
-        return vc == null ? 0 : (int)vc.getGenotypes(samples).stream().filter(f).count();
+        return vc == null ? 0 : (int)vc.getGenotypes(samples).stream().filter(f).count(); // tsato: samples is all the samples? two-step filter? Does the counting get messed up?
     }
 
     /**
@@ -1038,7 +1062,7 @@ public final class SelectVariants extends VariantWalker {
         if (noSamplesSpecified && !removeUnusedAlternates) {
             return vc;
         }
-
+        // tsato: this is the expensive operation. Where does the decoding happen implicitly?
         // strip out the alternate alleles that aren't being used
         final VariantContext sub = vc.subContextFromSamples(samples, removeUnusedAlternates);
 
@@ -1192,7 +1216,7 @@ public final class SelectVariants extends VariantWalker {
      *
      * @return true if any of the filtered genotype samples arguments is used (not the default value), false otherwise
      */
-    private boolean considerFilteredGenotypes(){
+    private boolean considerFilteredGenotypes(){ // tsato: return true if default has been overridden. Make that clear.
         return maxFilteredGenotypes != MAX_FILTERED_GENOTYPES_DEFAULT_VALUE ||
                 minFilteredGenotypes != MIN_FILTERED_GENOTYPES_DEFAULT_VALUE ||
                 maxFractionFilteredGenotypes != MAX_FRACTION_FILTERED_GENOTYPES_DEFAULT_VALUE ||
