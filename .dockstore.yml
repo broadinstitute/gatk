@@ -230,7 +230,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_616_split_hail
+         - vs_655_avro_extract_warn_on_bad_filter_name
    - name: GvsCallsetStatistics
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCallsetStatistics.wdl
