@@ -422,7 +422,7 @@ task CountSuperpartitions {
 
 task CheckFilterSetName {
     meta {
-        description: "Makes sure a filter set with the specified name actually exists in the specfied project and dataset, in the process validating the project id and dataset name."
+        description: "Makes sure a filter set with the specified name actually exists in the specfied project and dataset, in the process validating the project id and dataset name as well."
     }
     input {
         String project_id
