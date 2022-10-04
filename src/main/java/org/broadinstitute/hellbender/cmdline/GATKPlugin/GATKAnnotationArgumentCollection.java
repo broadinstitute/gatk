@@ -38,6 +38,4 @@ public abstract class GATKAnnotationArgumentCollection implements Serializable {
      */
     public abstract boolean getEnableAllAnnotations();
 
-
-    public abstract List<String> getKeepSpecifiedCombinedAnnotationNames();
 }
