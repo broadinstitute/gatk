@@ -419,3 +419,33 @@ task CountSuperpartitions {
         Int num_superpartitions = read_int('num_superpartitions.txt')
     }
 }
+
+task CheckFilterSetName {
+    meta {
+        description: "Makes sure a filter set with the specified name actually exists in the specfied project and dataset, in the process validating the project id and dataset name."
+    }
+    input {
+        String project_id
+        String dataset_name
+        String filter_set_name
+    }
+    command <<<
+        bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false '
+            SELECT COUNT(*) FROM `~{project_id}.~{dataset_name}.filter_set_info`
+                WHERE filter_set_name = "~{filter_set_name}"
+        ' | sed 1d > filter_set_count.txt
+
+        filter_set_count=$(cat filter_set_count.txt)
+
+        if [ $filter_set_count -eq 0 ]; then
+            echo "Did not find a filter set named '~{filter_set_name}' in '~{project_id}.~{dataset_name}.filter_set_info', exiting."
+            exit 1
+        fi
+    >>>
+    runtime {
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-09-28-slim"
+    }
+    output {
+        Boolean done = true
+    }
+}

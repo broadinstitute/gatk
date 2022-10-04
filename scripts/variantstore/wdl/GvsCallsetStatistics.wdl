@@ -1,5 +1,7 @@
 version 1.0
 
+import "GvsUtils.wdl" as Utils
+
 workflow GvsCallsetStatistics {
     input {
         String project_id
@@ -11,21 +13,28 @@ workflow GvsCallsetStatistics {
         String statistics_table = "~{extract_prefix}_statistics"
     }
 
-    call CheckFilterSetNameAndCreateTables {
+    call Utils.CheckFilterSetName {
         input:
+            project_id = project_id,
+            dataset_name = dataset_name,
+            filter_set_name = filter_set_name
+    }
+
+    call CreateTables {
+        input:
+            go = CheckFilterSetName.done,
             project_id = project_id,
             dataset_name = dataset_name,
             metrics_table = metrics_table,
             aggregate_metrics_table = aggregate_metrics_table,
-            statistics_table = statistics_table,
-            filter_set_name = filter_set_name,
+            statistics_table = statistics_table
     }
 
     # Only collect statistics for the autosomal chromosomes, the first 22 in our location scheme.
     scatter(chrom in range(22)) {
         call CollectMetricsForChromosome {
             input:
-                go = CheckFilterSetNameAndCreateTables.done,
+                go = CreateTables.done,
                 project_id = project_id,
                 dataset_name = dataset_name,
                 filter_set_name = filter_set_name,
@@ -71,14 +80,14 @@ workflow GvsCallsetStatistics {
     }
 }
 
-task CheckFilterSetNameAndCreateTables {
+task CreateTables {
     input {
+        Boolean go = true
         String project_id
         String dataset_name
         String metrics_table
         String aggregate_metrics_table
         String statistics_table
-        String filter_set_name
     }
     meta {
         # Always check that these tables exist
@@ -86,18 +95,6 @@ task CheckFilterSetNameAndCreateTables {
     }
     command <<<
         set -o errexit -o nounset -o xtrace -o pipefail
-
-        bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false '
-            SELECT COUNT(*) FROM `~{project_id}.~{dataset_name}.filter_set_info`
-                WHERE filter_set_name = "~{filter_set_name}"
-        ' | sed 1d > filter_set_count.txt
-
-        filter_set_count=$(cat filter_set_count.txt)
-
-        if [ $filter_set_count -eq 0 ]; then
-            echo "Did not find a filter set named '~{filter_set_name}' in '~{project_id}.~{dataset_name}.filter_set_info', exiting."
-            exit 1
-        fi
 
         apk add jq
 
