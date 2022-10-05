@@ -208,7 +208,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_648_alpine
+         - vs_655_avro_extract_warn_on_bad_filter_name
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
