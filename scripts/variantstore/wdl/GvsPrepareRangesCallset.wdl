@@ -105,7 +105,7 @@ task PrepareRangesCallsetTask {
   }
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:vs_581_fix_withdrawn"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:vs_629_location_failures_22_09_26"
     memory: "3 GB"
     disks: "local-disk 100 HDD"
     bootDiskSizeGb: 15
