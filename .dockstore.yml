@@ -140,6 +140,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - VS-629-failure-to-retrieve-job-information-during-ingest
    - name: GvsCreateVAT
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVAT.wdl
