@@ -114,7 +114,7 @@ workflow GvsExtractCallset {
   }
 
   if ( !do_not_filter_override ) {
-    call ValidateFilterSetName {
+    call Utils.ValidateFilterSetName {
       input:
       query_project = query_project,
       filter_set_name = filter_set_name,
@@ -138,6 +138,7 @@ workflow GvsExtractCallset {
 
     call ExtractTask {
       input:
+        go                                 = select_first([ValidateFilterSetName.done, true]),
         dataset_id                         = dataset_name,
         call_set_identifier                = call_set_identifier,
         gatk_override                      = gatk_override,
@@ -156,7 +157,6 @@ workflow GvsExtractCallset {
         fq_filter_set_site_table           = fq_filter_set_site_table,
         fq_filter_set_tranches_table       = fq_filter_set_tranches_table,
         filter_set_name                    = filter_set_name,
-        filter_set_name_verified           = select_first([ValidateFilterSetName.done, "done"]),
         drop_state                         = drop_state,
         output_file                        = vcf_filename,
         output_gcs_dir                     = output_gcs_dir,
@@ -207,52 +207,11 @@ workflow GvsExtractCallset {
   }
 }
 
-task ValidateFilterSetName {
-  input {
-    String filter_set_name
-    String data_project
-    String data_dataset
-    String query_project
-    String filter_set_info_timestamp
-  }
-  meta {
-    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
-  }
-
-  # add labels for DSP Cloud Cost Control Labeling and Reporting
-  String bq_labels = "--label service:gvs --label team:variants --label managedby:extract_callset"
-
-  command <<<
-    set -ex
-
-    echo "project_id = ~{query_project}" > ~/.bigqueryrc
-
-    OUTPUT=$(bq --location=US --project_id=~{query_project} --format=csv query --use_legacy_sql=false ~{bq_labels} "SELECT filter_set_name as available_filter_set_names FROM \`~{data_project}.~{data_dataset}.filter_set_info\` GROUP BY filter_set_name")
-    FILTERSETS=${OUTPUT#"available_filter_set_names"}
-
-    if [[ $FILTERSETS =~ "~{filter_set_name}" ]]; then
-      echo "Filter set name '~{filter_set_name}' found."
-    else
-      echo "ERROR: '~{filter_set_name}' is not an existing filter_set_name. Available in ~{data_project}.~{data_dataset} are"
-      echo $FILTERSETS
-      exit 1
-    fi
-  >>>
-  output {
-    String done = read_string(stdout())
-  }
-
-  runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
-    memory: "3 GB"
-    disks: "local-disk 10 HDD"
-    preemptible: 3
-    cpu: 1
-  }
-}
 
 task ExtractTask {
   input {
+    Boolean go
+
     String dataset_id
     String call_set_identifier
 
@@ -283,7 +242,6 @@ task ExtractTask {
     String fq_filter_set_site_table
     String fq_filter_set_tranches_table
     String? filter_set_name
-    String filter_set_name_verified
 
     # Runtime Options:
     File? gatk_override
@@ -398,9 +356,9 @@ task SumBytes {
     print(total_mb);"
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
     memory: "3 GB"
-    disks: "local-disk 10 HDD"
+    disks: "local-disk 100 HDD"
     preemptible: 3
     cpu: 1
   }
@@ -437,9 +395,9 @@ task CreateManifest {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
     memory: "3 GB"
-    disks: "local-disk 10 HDD"
+    disks: "local-disk 100 HDD"
     preemptible: 3
     cpu: 1
   }
@@ -479,9 +437,9 @@ task GenerateSampleListFile {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
     memory: "3 GB"
-    disks: "local-disk 10 HDD"
+    disks: "local-disk 100 HDD"
     preemptible: 3
     cpu: 1
   }

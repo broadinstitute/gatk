@@ -420,32 +420,47 @@ task CountSuperpartitions {
     }
 }
 
-task CheckFilterSetName {
-    meta {
-        description: "Makes sure a filter set with the specified name actually exists in the specfied project and dataset, in the process validating the project id and dataset name as well."
-    }
+task ValidateFilterSetName {
     input {
-        String project_id
-        String dataset_name
+        Boolean go = true
         String filter_set_name
+        String data_project
+        String data_dataset
+        String query_project = data_project
+        String filter_set_info_timestamp = ""
     }
+    meta {
+        # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
+    }
+
+    # add labels for DSP Cloud Cost Control Labeling and Reporting
+    String bq_labels = "--label service:gvs --label team:variants --label managedby:extract_callset"
+
     command <<<
-        bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false '
-            SELECT COUNT(*) FROM `~{project_id}.~{dataset_name}.filter_set_info`
-                WHERE filter_set_name = "~{filter_set_name}"
-        ' | sed 1d > filter_set_count.txt
+        set -o errexit -o nounset -o xtrace -o pipefail
 
-        filter_set_count=$(cat filter_set_count.txt)
+        echo "project_id = ~{query_project}" > ~/.bigqueryrc
 
-        if [ $filter_set_count -eq 0 ]; then
-            echo "Did not find a filter set named '~{filter_set_name}' in '~{project_id}.~{dataset_name}.filter_set_info', exiting."
+        OUTPUT=$(bq --location=US --project_id=~{query_project} --format=csv query --use_legacy_sql=false ~{bq_labels} "SELECT filter_set_name as available_filter_set_names FROM \`~{data_project}.~{data_dataset}.filter_set_info\` GROUP BY filter_set_name")
+        FILTERSETS=${OUTPUT#"available_filter_set_names"}
+
+        if [[ $FILTERSETS =~ "~{filter_set_name}" ]]; then
+            echo "Filter set name '~{filter_set_name}' found."
+        else
+            echo "ERROR: '~{filter_set_name}' is not an existing filter_set_name. Available in ~{data_project}.~{data_dataset} are"
+            echo $FILTERSETS
             exit 1
         fi
     >>>
-    runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-09-28-slim"
-    }
     output {
         Boolean done = true
+    }
+
+    runtime {
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
+        memory: "3 GB"
+        disks: "local-disk 10 HDD"
+        preemptible: 3
+        cpu: 1
     }
 }

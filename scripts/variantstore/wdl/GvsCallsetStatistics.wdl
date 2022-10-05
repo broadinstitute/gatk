@@ -13,16 +13,16 @@ workflow GvsCallsetStatistics {
         String statistics_table = "~{extract_prefix}_statistics"
     }
 
-    call Utils.CheckFilterSetName {
+    call Utils.ValidateFilterSetName {
         input:
-            project_id = project_id,
-            dataset_name = dataset_name,
+            data_project = project_id,
+            data_dataset = dataset_name,
             filter_set_name = filter_set_name
     }
 
     call CreateTables {
         input:
-            go = CheckFilterSetName.done,
+            go = ValidateFilterSetName.done,
             project_id = project_id,
             dataset_name = dataset_name,
             metrics_table = metrics_table,
