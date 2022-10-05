@@ -434,7 +434,7 @@ task ValidateFilterSetName {
     }
 
     # add labels for DSP Cloud Cost Control Labeling and Reporting
-    String bq_labels = "--label service:gvs --label team:variants --label managedby:extract_callset"
+    String bq_labels = "--label service:gvs --label team:variants --label managedby:gvs_utils"
 
     command <<<
         set -o errexit -o nounset -o xtrace -o pipefail
