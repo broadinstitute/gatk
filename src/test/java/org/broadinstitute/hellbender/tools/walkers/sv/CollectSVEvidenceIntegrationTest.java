@@ -14,7 +14,6 @@ import java.util.Collections;
 public class CollectSVEvidenceIntegrationTest extends CommandLineProgramTest {
 
     public static final String pesrTestDir = toolsTestDir + "walkers/sv/pesr";
-    public static final String tinyVCF = largeFileTestDir + "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.tiny.vcf";
 
     @Test
     public void testPECollection() throws Exception {
@@ -38,7 +37,7 @@ public class CollectSVEvidenceIntegrationTest extends CommandLineProgramTest {
     @Test
     public void testSDCollection() throws Exception {
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                "-I " + NA12878_20_21_WGS_bam + " --sample-name NA12878 -F " + tinyVCF + " -SD %s",
+                "-I " + NA12878_20_21_WGS_bam + " --sample-name NA12878 -F " + pesrTestDir + "/snpSites.vcf -SD %s",
                 Collections.singletonList(pesrTestDir + "/NA12878" + SiteDepthCodec.FORMAT_SUFFIX + ".gz"));
         spec.setOutputFileExtension(SiteDepthCodec.FORMAT_SUFFIX + ".gz");
         spec.executeTest("SD collection", this);

@@ -802,9 +802,11 @@ public class CollectSVEvidence extends ReadWalker {
         }
 
         public void close() {
-            while ( !siteDepthQueue.isEmpty() ) {
-                writer.write(siteDepthQueue.removeFirst());
-            }
+            do {
+                while ( !siteDepthQueue.isEmpty() ) {
+                    writer.write(siteDepthQueue.removeFirst());
+                }
+            } while ( readNextLocus() );
             writer.close();
         }
 
@@ -990,6 +992,11 @@ public class CollectSVEvidence extends ReadWalker {
             if ( depthEvidence != null ) {
                 writer.write(depthEvidence);
                 countCounter.addCount(depthEvidence.getCounts()[0]);
+                final int[] emptyCount = new int[1];
+                while ( intervalIterator.hasNext() ) {
+                    writer.write(new DepthEvidence(intervalIterator.next(), emptyCount));
+                    countCounter.addCount(0);
+                }
             }
             writer.close();
         }
