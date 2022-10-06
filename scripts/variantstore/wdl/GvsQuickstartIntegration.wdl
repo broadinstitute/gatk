@@ -49,7 +49,7 @@ workflow GvsQuickstartIntegration {
                                         ]
 
         Int? extract_scatter_count
-        String drop_state = "NONE"
+        String drop_state = "FORTY"
     }
     String project_id = "gvs-internal"
 
@@ -119,7 +119,6 @@ task AssertIdenticalOutputs {
         set -o errexit
         set -o nounset
         set -o pipefail
-        set -o xtrace
 
         failures=()
 
@@ -190,7 +189,7 @@ task AssertIdenticalOutputs {
     >>>
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:402.0.0-alpine"
         disks: "local-disk 500 HDD"
     }
 
@@ -217,7 +216,6 @@ task AssertCostIsTrackedAndExpected {
         set -o errexit
         set -o nounset
         set -o pipefail
-        set -o xtrace
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
         bq query --project_id=~{project_id} --format=csv --use_legacy_sql=false \
@@ -288,7 +286,7 @@ task AssertCostIsTrackedAndExpected {
     >>>
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:402.0.0-alpine"
         disks: "local-disk 10 HDD"
     }
 
@@ -314,7 +312,6 @@ task AssertTableSizesAreExpected {
         set -o errexit
         set -o nounset
         set -o pipefail
-        set -o xtrace
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
         bq query --project_id=~{project_id} --format=csv --use_legacy_sql=false \
@@ -323,7 +320,7 @@ task AssertTableSizesAreExpected {
             UNION ALL \
             SELECT 'ref_ranges_total' AS total_name, sum(total_billable_bytes) AS total_bytes \
             FROM \`~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS\` \
-            WHERE table_name LIKE 'ref_ranges_%'" > table_size_output.csv
+            WHERE table_name LIKE 'ref_ranges_%' ORDER BY total_name" > table_size_output.csv
 
         set +o errexit
         diff -w table_size_output.csv ~{expected_output_csv} > differences.txt
@@ -337,7 +334,7 @@ task AssertTableSizesAreExpected {
     >>>
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:402.0.0-alpine"
         disks: "local-disk 10 HDD"
     }
 

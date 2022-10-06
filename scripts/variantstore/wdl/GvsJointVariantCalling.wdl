@@ -11,6 +11,7 @@ workflow GvsJointVariantCalling {
         Array[File] input_vcf_indexes
         String call_set_identifier
         String? extract_output_gcs_dir
+        String drop_state = "FORTY"
     }
 
     # the call_set_identifier string is used to name many different things throughout this workflow (BQ tables, vcfs etc),
@@ -77,6 +78,7 @@ workflow GvsJointVariantCalling {
             INDEL_VQSR_mem_gb_override = INDEL_VQSR_mem_gb_override,
             SNP_VQSR_max_gaussians_override = SNP_VQSR_max_gaussians_override,
             SNP_VQSR_mem_gb_override = SNP_VQSR_mem_gb_override,
+            drop_state = drop_state,
     }
 
     output {

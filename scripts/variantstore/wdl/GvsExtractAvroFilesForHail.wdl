@@ -1,12 +1,14 @@
 version 1.0
 
+import "GvsUtils.wdl" as Utils
+
+
 workflow GvsExtractAvroFilesForHail {
     input {
         String project_id
         String dataset
         String filter_set_name
-        String gcs_temporary_path
-        String scatter_width = 10
+        Int scatter_width = 10
     }
 
     call OutputPath { input: go = true }
@@ -19,15 +21,11 @@ workflow GvsExtractAvroFilesForHail {
             avro_sibling = OutputPath.out
     }
 
-    call CountSamples {
+    call Utils.CountSuperpartitions {
         input:
             project_id = project_id,
-            dataset = dataset
+            dataset_name = dataset
     }
-
-    Int num_samples = CountSamples.num_samples
-    # First superpartition contains samples 1 to 4000, second 4001 to 8000 etc; add one to quotient unless exactly 4000.
-    Int num_superpartitions = if (num_samples % 4000 == 0) then num_samples / 4000 else (num_samples / 4000 + 1)
 
     scatter (i in range(scatter_width)) {
         call ExtractFromSuperpartitionedTables {
@@ -36,21 +34,24 @@ workflow GvsExtractAvroFilesForHail {
                 dataset = dataset,
                 filter_set_name = filter_set_name,
                 avro_sibling = OutputPath.out,
-                num_superpartitions = num_superpartitions,
+                num_superpartitions = CountSuperpartitions.num_superpartitions,
                 shard_index = i,
                 num_shards = scatter_width
         }
     }
 
-    call GenerateHailScript {
+    call GenerateHailScripts {
         input:
             go_non_superpartitioned = ExtractFromNonSuperpartitionedTables.done,
             go_superpartitioned = ExtractFromSuperpartitionedTables.done,
             avro_prefix = ExtractFromNonSuperpartitionedTables.output_prefix,
-            gcs_temporary_path = gcs_temporary_path
     }
     output {
-        File hail_script = GenerateHailScript.hail_script
+        File hail_gvs_import_script = GenerateHailScripts.hail_gvs_import_script
+        File hail_create_vat_inputs_script = GenerateHailScripts.hail_create_vat_inputs_script
+        String vds_output_path = GenerateHailScripts.vds_output_path
+        String sites_only_vcf_output_path = GenerateHailScripts.sites_only_vcf_output_path
+        String vat_inputs_output_path = GenerateHailScripts.vat_inputs_output_path
     }
 }
 
@@ -70,40 +71,8 @@ task OutputPath {
         File out = stdout()
     }
     runtime {
-        docker: "ubuntu:latest"
-    }
-}
-
-
-task CountSamples {
-    meta {
-        description: "Counts the number of samples in the sample_info table efficiently."
-        # Not dealing with caching for now as that would introduce a lot of complexity.
-        volatile: true
-    }
-    input {
-        String project_id
-        String dataset
-    }
-    command <<<
-        python3 <<FIN
-
-        from google.cloud import bigquery
-
-        client = bigquery.Client(project="~{project_id}")
-        sample_info_table_id = f'~{project_id}.~{dataset}.sample_info'
-        sample_info_table = client.get_table(sample_info_table_id)
-
-        print(str(sample_info_table.num_rows))
-
-        FIN
-    >>>
-
-    output {
-        Int num_samples = read_int(stdout())
-    }
-    runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_08_22"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
+        disks: "local-disk 500 HDD"
     }
 }
 
@@ -136,6 +105,7 @@ task ExtractFromNonSuperpartitionedTables {
             SELECT sample_id, sample_name, '40',
             'gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list' as intervals_file
             FROM \`~{project_id}.~{dataset}.sample_info\`
+            WHERE withdrawn IS NULL
             ORDER BY sample_id
         "
 
@@ -172,7 +142,8 @@ task ExtractFromNonSuperpartitionedTables {
     }
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
+        disks: "local-disk 500 HDD"
     }
 }
 
@@ -214,16 +185,20 @@ task ExtractFromSuperpartitionedTables {
             bq query --nouse_legacy_sql --project_id=~{project_id} "
                 EXPORT DATA OPTIONS(
                 uri='${avro_prefix}/vets/vet_${str_table_index}/vet_${str_table_index}_*.avro', format='AVRO', compression='SNAPPY') AS
-                SELECT location, sample_id, ref, REPLACE(alt,',<NON_REF>','') alt, call_GT as GT, call_AD as AD, call_GQ as GQ, cast(SPLIT(call_pl,',')[OFFSET(0)] as int64) as RGQ
-                FROM \`~{project_id}.~{dataset}.vet_${str_table_index}\`
+                SELECT location, v.sample_id, ref, REPLACE(alt,',<NON_REF>','') alt, call_GT as GT, call_AD as AD, call_GQ as GQ, cast(SPLIT(call_pl,',')[OFFSET(0)] as int64) as RGQ
+                FROM \`~{project_id}.~{dataset}.vet_${str_table_index}\` v
+                INNER JOIN \`~{project_id}.~{dataset}.sample_info\` s ON s.sample_id = v.sample_id
+                WHERE withdrawn IS NULL
                 ORDER BY location
             "
 
             bq query --nouse_legacy_sql --project_id=~{project_id} "
                 EXPORT DATA OPTIONS(
                 uri='${avro_prefix}/refs/ref_ranges_${str_table_index}/ref_ranges_${str_table_index}_*.avro', format='AVRO', compression='SNAPPY') AS
-                SELECT location, sample_id, length, state
-                FROM \`~{project_id}.~{dataset}.ref_ranges_${str_table_index}\`
+                SELECT location, r.sample_id, length, state
+                FROM \`~{project_id}.~{dataset}.ref_ranges_${str_table_index}\` r
+                INNER JOIN \`~{project_id}.~{dataset}.sample_info\` s ON s.sample_id = r.sample_id
+                WHERE withdrawn IS NULL
                 ORDER BY location
             "
         done
@@ -234,14 +209,14 @@ task ExtractFromSuperpartitionedTables {
     }
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
+        disks: "local-disk 500 HDD"
     }
 }
 
-task GenerateHailScript {
+task GenerateHailScripts {
     input {
         String avro_prefix
-        String gcs_temporary_path
         Boolean go_non_superpartitioned
         Array[Boolean] go_superpartitioned
     }
@@ -250,7 +225,6 @@ task GenerateHailScript {
         volatile: true
     }
     parameter_meta {
-        gcs_temporary_path: "Path to network-visible temporary directory/bucket for intermediate file storage"
         go_non_superpartitioned: "Sync on completion of non-superpartitioned extract"
         go_superpartitioned: "Sync on completion of all superpartitioned extract shards"
     }
@@ -258,29 +232,52 @@ task GenerateHailScript {
     command <<<
         set -o errexit -o nounset -o xtrace -o pipefail
 
-        vds_output_path="$(dirname ~{avro_prefix})/gvs_export.vds"
+        # 4 random hex bytes to not clobber outputs if this is run multiple times for the same avro_prefix.
+        # Unlike many implementations, at the time of this writing this works on both Debian and Alpine based images
+        # so it should continue to work even if the `variantstore` image switches to Alpine:
+        # https://stackoverflow.com/a/34329799
+        rand=$(od -vN 4 -An -tx1 /dev/urandom | tr -d " ")
+
+        # The write prefix will be a sibling to the Avro "directory" that embeds the current date and some randomness.
+        write_prefix="$(dirname ~{avro_prefix})/$(date -Idate)-${rand}"
+
+        vds_output_path="${write_prefix}/gvs_export.vds"
         echo $vds_output_path > vds_output_path.txt
 
-        vcf_output_path="$(dirname ~{avro_prefix})/gvs_export.vcf"
+        tmpfile=$(mktemp)
+        # `sed` can use delimiters other than `/`. This is required here since the replacement GCS paths will
+        # contain `/` characters.
+        cat /app/hail_gvs_import.py |
+            sed "s;@AVRO_PREFIX@;~{avro_prefix};" |
+            sed "s;@WRITE_PREFIX@;${write_prefix};" > ${tmpfile}
+        mv ${tmpfile} hail_gvs_import.py
+
+        vcf_output_path="${write_prefix}/gvs_export.vcf"
         echo $vcf_output_path > vcf_output_path.txt
+        sites_only_vcf_output_path="${write_prefix}/gvs_sites_only.vcf"
+        echo $sites_only_vcf_output_path > sites_only_vcf_output_path.txt
+        vat_tsv_output_path="${write_prefix}/vat_inputs.tsv"
+        echo $vat_tsv_output_path > vat_inputs_output_path.txt
 
-        gsutil ls -r '~{avro_prefix}' > avro_listing.txt
+        tmpfile=$(mktemp)
+        cat /app/hail_create_vat_inputs.py |
+            sed "s;@VDS_INPUT_PATH@;${vds_output_path};" |
+            sed "s;@SITES_ONLY_VCF_OUTPUT_PATH@;${sites_only_vcf_output_path};" |
+            sed "s;@VAT_CUSTOM_ANNOTATIONS_OUTPUT_PATH@;${vat_tsv_output_path};" > ${tmpfile}
+        mv ${tmpfile} hail_create_vat_inputs.py
 
-        python3 /app/generate_hail_gvs_import.py \
-            --avro_prefix '~{avro_prefix}' \
-            --avro_listing_file avro_listing.txt \
-            --vds_output_path "${vds_output_path}" \
-            --vcf_output_path "${vcf_output_path}" \
-            --gcs_temporary_path ~{gcs_temporary_path} > hail_script.py
     >>>
 
     output {
         Boolean done = true
         String vds_output_path = read_string('vds_output_path.txt')
-        String vcf_output_path = read_string('vcf_output_path.txt')
-        File hail_script = 'hail_script.py'
+        String sites_only_vcf_output_path = read_string('sites_only_vcf_output_path.txt')
+        String vat_inputs_output_path = read_string('vat_inputs_output_path.txt')
+        File hail_gvs_import_script = 'hail_gvs_import.py'
+        File hail_create_vat_inputs_script = 'hail_create_vat_inputs.py'
     }
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:rc_616_var_store_2022_09_06"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-09-28-slim"
+        disks: "local-disk 500 HDD"
     }
 }
