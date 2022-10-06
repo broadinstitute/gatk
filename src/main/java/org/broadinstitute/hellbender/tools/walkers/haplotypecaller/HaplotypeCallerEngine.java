@@ -89,6 +89,8 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
     protected ReadLikelihoodCalculationEngine likelihoodCalculationEngine = null;
     private ReadLikelihoodCalculationEngine filterStepLikelihoodCalculationEngine = null;
+    // If we are in PDHMM mode we need to hold onto two likelihoods engines for the fallback
+    private ReadLikelihoodCalculationEngine pdhmmLikelihoodCalculationEngine = null;
 
     protected HaplotypeCallerGenotypingEngine genotypingEngine = null;
 
@@ -284,6 +286,9 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         filterStepLikelihoodCalculationEngine = (hcArgs.stepwiseFiltering?
                 AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(hcArgs.likelihoodArgs, hcArgs.fbargs, !hcArgs.softClipLowQualityEnds, ReadLikelihoodCalculationEngine.Implementation.FlowBased)
+                : null);
+        pdhmmLikelihoodCalculationEngine = (hcArgs.pileupDetectionArgs.generatePDHaplotypes?
+                AssemblyBasedCallerUtils.createLikelihoodCalculationEngine(hcArgs.likelihoodArgs, hcArgs.fbargs, !hcArgs.softClipLowQualityEnds, ReadLikelihoodCalculationEngine.Implementation.PDPairHMM)
                 : null);
     }
 
@@ -792,7 +797,9 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         readLikelihoods = possiblyUncollapseHaplotypesInReadLikelihoods(untrimmedAssemblyResult,
                 hcArgs.stepwiseFiltering
                         ? filterStepLikelihoodCalculationEngine.computeReadLikelihoods(assemblyResult, samplesList, reads, true)
-                        : likelihoodCalculationEngine.computeReadLikelihoods(assemblyResult, samplesList, reads, true));
+                        : ( assemblyResult.isPartiallyDeterminedList() ?
+                        pdhmmLikelihoodCalculationEngine.computeReadLikelihoods(assemblyResult, samplesList, reads, true) :
+                        likelihoodCalculationEngine.computeReadLikelihoods(assemblyResult, samplesList, reads, true)));
 
         alleleLikelihoodWriter.ifPresent(
                 writer -> writer.writeAlleleLikelihoods(readLikelihoods));
@@ -835,8 +842,11 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         //Realign reads to their best haplotype.
         final SWParameters readToHaplotypeSWParameters = hcArgs.getReadToHaplotypeSWParameters();
-        final Map<GATKRead, GATKRead> readRealignments = AssemblyBasedCallerUtils.realignReadsToTheirBestHaplotype(subsettedReadLikelihoodsFinal, assemblyResult.getReferenceHaplotype(), assemblyResult.getPaddedReferenceLoc(), aligner, readToHaplotypeSWParameters);
-        subsettedReadLikelihoodsFinal.changeEvidence(readRealignments);
+        // TODO yes this is what DRAGEN does, there are real reasons to not do this and it becomes a nightmare in the PDHMM world
+        if (!hcArgs.pileupDetectionArgs.generatePDHaplotypes) {
+            final Map<GATKRead, GATKRead> readRealignments = AssemblyBasedCallerUtils.realignReadsToTheirBestHaplotype(subsettedReadLikelihoodsFinal, assemblyResult.getReferenceHaplotype(), assemblyResult.getPaddedReferenceLoc(), aligner, readToHaplotypeSWParameters);
+            subsettedReadLikelihoodsFinal.changeEvidence(readRealignments);
+        }
 
         if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
             for (int counter = 0; counter < readLikelihoods.sampleEvidence(0).size(); counter++) {

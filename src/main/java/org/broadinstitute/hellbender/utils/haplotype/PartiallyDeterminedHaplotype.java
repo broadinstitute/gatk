@@ -7,6 +7,7 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.function.Function;
@@ -42,7 +43,10 @@ public final class PartiallyDeterminedHaplotype extends Haplotype {
 
     private byte[] alternateBases;
     private List<VariantContext> constituentEvents;
+    //TODO soon these will both have to optionally be lists
     private VariantContext importantVariant;
+    private final long determinedPosition;
+    private boolean isDeterminedAlleleRef;
 
     /**
      * Compares two haplotypes first by their lengths and then by lexicographic order of their bases.
@@ -54,17 +58,20 @@ public final class PartiallyDeterminedHaplotype extends Haplotype {
     /**
      *
      * @param base
-     * @param isRef
+     * @param isRefAllele
      * @param pdBytes
      * @param constituentEvents
      *
      */
-    public PartiallyDeterminedHaplotype(final Haplotype base, boolean isRef, byte[] pdBytes, List<VariantContext> constituentEvents, VariantContext eventWithVariant, Cigar cigar) {
-        super(base.getBases(), isRef, base.getAlignmentStartHapwrtRef(), cigar);
+    public PartiallyDeterminedHaplotype(final Haplotype base, boolean isRefAllele, byte[] pdBytes, List<VariantContext> constituentEvents, VariantContext eventWithVariant, Cigar cigar, long determinedPosition, int getAlignmentStartHapwrtRef) {
+        super(base.getBases(), false, base.getAlignmentStartHapwrtRef(), cigar);
         this.setGenomeLocation(base.getGenomeLocation());
         this.alternateBases = pdBytes;
         this.constituentEvents = constituentEvents;
         this.importantVariant = eventWithVariant;
+        this.determinedPosition = determinedPosition;
+        this.isDeterminedAlleleRef = isRefAllele;
+        setAlignmentStartHapwrtRef(getAlignmentStartHapwrtRef);
     }
 
 
@@ -142,4 +149,11 @@ public final class PartiallyDeterminedHaplotype extends Haplotype {
         return Objects.hash(Arrays.hashCode(getBases()),Arrays.hashCode(alternateBases));
     }
 
+    public List<VariantContext> getDeterminedAlleles() {
+        return isDeterminedAlleleRef ? Collections.emptyList() : Collections.singletonList(importantVariant);
+    }
+
+    public long getDeterminedPosition() {
+        return determinedPosition;
+    }
 }

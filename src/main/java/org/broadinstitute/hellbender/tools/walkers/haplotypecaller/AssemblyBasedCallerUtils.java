@@ -30,6 +30,7 @@ import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
+import org.broadinstitute.hellbender.utils.haplotype.PartiallyDeterminedHaplotype;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState;
 import org.broadinstitute.hellbender.utils.pileup.PileupBasedAlleles;
@@ -905,6 +906,10 @@ public final class AssemblyBasedCallerUtils {
 
         for (final Haplotype h : haplotypes) {
 
+            // Partially determined haplotypes know at what position they are determined, only determined position haps should be considered for genotyping
+            if (h instanceof PartiallyDeterminedHaplotype && ((PartiallyDeterminedHaplotype) h).getDeterminedPosition() != loc) {
+                continue;
+            }
             final List<VariantContext> spanningEvents = h.getEventMap().getOverlappingEvents(loc);
 
             if (spanningEvents.isEmpty()) {    //no events --> this haplotype supports the reference at this locus

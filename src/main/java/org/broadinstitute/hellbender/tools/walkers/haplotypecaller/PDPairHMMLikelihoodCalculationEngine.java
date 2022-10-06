@@ -6,6 +6,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.gatk.nativebindings.pairhmm.PairHMMNativeArguments;
 import org.broadinstitute.hellbender.engine.GATKPath;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.dragstr.DragstrParams;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
@@ -14,6 +15,7 @@ import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.haplotype.PartiallyDeterminedHaplotype;
+import org.broadinstitute.hellbender.utils.pairhmm.LoglessPDPairHMM;
 import org.broadinstitute.hellbender.utils.pairhmm.PDPairHMM;
 import org.broadinstitute.hellbender.utils.pairhmm.PairHMM;
 import org.broadinstitute.hellbender.utils.pairhmm.PairHMMInputScoreImputator;
@@ -126,7 +128,8 @@ public final class PDPairHMMLikelihoodCalculationEngine implements ReadLikelihoo
         this.constantGCP = constantGCP;
         this.log10globalReadMismappingRate = log10globalReadMismappingRate;
         this.pcrErrorModel = this.dragstrParams == null ? pcrErrorModel : PairHMMLikelihoodCalculationEngine.PCRErrorModel.NONE;
-        this.pairHMM = null;
+        // TODO later we probably need a LOG and LOGLESS version for parsimony with DRAGEN
+        this.pairHMM = new LoglessPDPairHMM();
 //        this.pairHMM = PDPairHMM.Implementation(arguments);
 //        if (resultsFile != null) {
 //            pairHMM.setAndInitializeDebugOutputStream(new OutputStreamWriter(resultsFile.getOutputStream()));
@@ -146,15 +149,6 @@ public final class PDPairHMMLikelihoodCalculationEngine implements ReadLikelihoo
         this.baseQualityScoreThreshold = baseQualityScoreThreshold;
     }
 
-    @Override
-    public AlleleLikelihoods<GATKRead, Haplotype> computeReadLikelihoods(AssemblyResultSet assemblyResultSet, SampleList samples, Map<String, List<GATKRead>> perSampleReadList, boolean filterPoorly) {
-        return ReadLikelihoodCalculationEngine.super.computeReadLikelihoods(assemblyResultSet, samples, perSampleReadList, filterPoorly);
-    }
-
-    @Override
-    public AlleleLikelihoods<GATKRead, Haplotype> computeReadLikelihoods(List<Haplotype> haplotypeList, SAMFileHeader hdr, SampleList samples, Map<String, List<GATKRead>> perSampleReadList, boolean filterPoorly) {
-        return null;
-    }
 
     @Override
     public void close() {
@@ -162,7 +156,7 @@ public final class PDPairHMMLikelihoodCalculationEngine implements ReadLikelihoo
     }
 
     @Override
-    public void filterPoorlyModeledEvidence(AlleleLikelihoods<GATKRead, Haplotype> result, boolean dynamicDisqualification, double expectedErrorRatePerBase, double readDisqualificationScale) {
+    public void filterPoorlyModeledEvidence(AlleleLikelihoods<GATKRead, ?> result, boolean dynamicDisqualification, double expectedErrorRatePerBase, double readDisqualificationScale) {
         ReadLikelihoodCalculationEngine.super.filterPoorlyModeledEvidence(result, dynamicDisqualification, expectedErrorRatePerBase, readDisqualificationScale);
     }
 
@@ -171,44 +165,48 @@ public final class PDPairHMMLikelihoodCalculationEngine implements ReadLikelihoo
         return ReadLikelihoodCalculationEngine.super.log10MinTrueLikelihood(maximumErrorPerBase, capLikelihoods);
     }
 
-    //    @Override
+    @Override
+    public AlleleLikelihoods<GATKRead, Haplotype> computeReadLikelihoods(List<Haplotype> haplotypeList, SAMFileHeader hdr, SampleList samples, Map<String, List<GATKRead>> perSampleReadList, boolean filterPoorly) {
+        throw new GATKException.ShouldNeverReachHereException("We should never get here, this HMM engine exists only for PD haplotype computation");
+    }
+
+
+    @Override
+    @SuppressWarnings("unchecked")
     // NOTE that the PairHMM doesn't need to interrogate the header so we skip checking it for this version
-    public AlleleLikelihoods<GATKRead, PartiallyDeterminedHaplotype> computeReadLikelihoods2(AssemblyResultSet assemblyResultSet, SampleList samples,
+    public AlleleLikelihoods<GATKRead, Haplotype> computeReadLikelihoods(AssemblyResultSet assemblyResultSet, SampleList samples,
                                                                          Map<String, List<GATKRead>> perSampleReadList,
                                                                          boolean filterPoorly) {
         Utils.nonNull(assemblyResultSet, "assemblyResultSet is null");
         //TODO add a better exception if these are not the correct object for what we care about
         final List<PartiallyDeterminedHaplotype> haplotypeList = assemblyResultSet.getHaplotypeList().stream().map(h -> (PartiallyDeterminedHaplotype)h).collect(Collectors.toList());
 
-        return computeReadLikelihoods2(haplotypeList, null, samples, perSampleReadList, filterPoorly);
+        AlleleLikelihoods<GATKRead, Haplotype> resut = (AlleleLikelihoods<GATKRead, Haplotype>) computeReadLikelihoods2(haplotypeList, null, samples, perSampleReadList, filterPoorly);
+        return resut;
     }
 
-//    @Override
-    public AlleleLikelihoods<GATKRead, PartiallyDeterminedHaplotype> computeReadLikelihoods2( final List<PartiallyDeterminedHaplotype> haplotypeList,
+    public AlleleLikelihoods<GATKRead, ? extends Haplotype> computeReadLikelihoods2( final List<PartiallyDeterminedHaplotype> haplotypeList,
                                                                           final SAMFileHeader hdr,
                                                                           final SampleList samples,
                                                                           final Map<String, List<GATKRead>> perSampleReadList, final boolean filterPoorly) {
-//        Utils.nonNull(samples, "samples is null");
-//        Utils.nonNull(perSampleReadList, "perSampleReadList is null");
-//        Utils.nonNull(haplotypeList, "haplotypeList is null");
-//
-//        List<PartiallyDeterminedHaplotype> PDHaplotypes = haplotypeList.stream().map(h -> (PartiallyDeterminedHaplotype)h).collect(Collectors.toList());
-//
-//        final AlleleList<PartiallyDeterminedHaplotype> haplotypes = new IndexedAlleleList<>(PDHaplotypes);
-//
-//        initializePairHMM(haplotypeList, perSampleReadList);
-//
-//        // Add likelihoods for each sample's reads to our result
-//        final AlleleLikelihoods<GATKRead, PartiallyDeterminedHaplotype> result = new AlleleLikelihoods<>(samples, haplotypes, perSampleReadList);
-//        final int sampleCount = result.numberOfSamples();
-//        for (int i = 0; i < sampleCount; i++) {
-//            computeReadLikelihoods(result.sampleMatrix(i));
-//        }
-//
-//        result.normalizeLikelihoods(log10globalReadMismappingRate, symmetricallyNormalizeAllelesToReference);
-//        filterPoorlyModeledEvidence(result, dynamicDisqualification, expectedErrorRatePerBase, readDisqualificationScale);
-//        return result;
-        return null;
+        Utils.nonNull(samples, "samples is null");
+        Utils.nonNull(perSampleReadList, "perSampleReadList is null");
+        Utils.nonNull(haplotypeList, "haplotypeList is null");
+
+        final AlleleList<PartiallyDeterminedHaplotype> haplotypes = new IndexedAlleleList<>(haplotypeList);
+
+        initializePairHMM(haplotypeList, perSampleReadList);
+
+        // Add likelihoods for each sample's reads to our result
+        final AlleleLikelihoods<GATKRead, PartiallyDeterminedHaplotype> result = new AlleleLikelihoods<>(samples, haplotypes, perSampleReadList);
+        final int sampleCount = result.numberOfSamples();
+        for (int i = 0; i < sampleCount; i++) {
+            computeReadLikelihoods(result.sampleMatrix(i));
+        }
+
+        result.normalizeLikelihoods(log10globalReadMismappingRate, symmetricallyNormalizeAllelesToReference);
+        filterPoorlyModeledEvidence(result, dynamicDisqualification, expectedErrorRatePerBase, readDisqualificationScale);
+        return result;
     }
 
 

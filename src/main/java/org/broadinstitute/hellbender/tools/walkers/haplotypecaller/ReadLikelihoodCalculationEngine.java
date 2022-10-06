@@ -97,7 +97,7 @@ public interface ReadLikelihoodCalculationEngine extends AutoCloseable {
      * @param expectedErrorRatePerBase      amount of uncertainty to tolerate per read-base (in log scale)
      * @param readDisqualificationScale     constant used to scale the dynamic read disqualificaiton threshold
      */
-    default void filterPoorlyModeledEvidence(final AlleleLikelihoods<GATKRead, Haplotype> result, final boolean dynamicDisqualification, final double expectedErrorRatePerBase, final double readDisqualificationScale) {
+    default void filterPoorlyModeledEvidence(final AlleleLikelihoods<GATKRead, ?> result, final boolean dynamicDisqualification, final double expectedErrorRatePerBase, final double readDisqualificationScale) {
         if (dynamicDisqualification) {
             result.filterPoorlyModeledEvidence(daynamicLog10MinLiklihoodModel(readDisqualificationScale, log10MinTrueLikelihood(expectedErrorRatePerBase, false)));
         } else {

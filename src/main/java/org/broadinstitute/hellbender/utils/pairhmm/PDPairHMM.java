@@ -233,10 +233,10 @@ public abstract class PDPairHMM implements Closeable{
             // peek at the next haplotype in the list (necessary to get nextHaplotypeBases, which is required for caching in the array implementation)
             final boolean isFirstHaplotype = true;
             for (int a = 0; a < alleleCount; a++) {
-                final Allele allele = alleles.get(a);
+                final PartiallyDeterminedHaplotype allele = alleles.get(a);
                 final byte[] alleleBases = allele.getBases();
                 final byte[] nextAlleleBases = a == alleles.size() - 1 ? null : alleles.get(a + 1).getBases();
-                final double lk = computeReadLikelihoodGivenHaplotypeLog10(alleleBases,
+                final double lk = computeReadLikelihoodGivenHaplotypeLog10(alleleBases, allele.getAlternateBases(),
                         readBases, readQuals, readInsQuals, readDelQuals, overallGCP, isFirstHaplotype, nextAlleleBases);
                 logLikelihoods.set(a, readIndex, lk);
                 mLogLikelihoodArray[idx++] = lk;
@@ -278,14 +278,15 @@ public abstract class PDPairHMM implements Closeable{
      * @return the log10 probability of read coming from the haplotype under the provided error model
      */
     @VisibleForTesting
-    double computeReadLikelihoodGivenHaplotypeLog10( final byte[] haplotypeBases,
-                                                                  final byte[] readBases,
-                                                                  final byte[] readQuals,
-                                                                  final byte[] insertionGOP,
-                                                                  final byte[] deletionGOP,
-                                                                  final byte[] overallGCP,
-                                                                  final boolean recacheReadValues,
-                                                                  final byte[] nextHaplotypeBases) throws IllegalStateException, IllegalArgumentException {
+    double computeReadLikelihoodGivenHaplotypeLog10(  final byte[] haplotypeBases,
+                                                      final byte[] haplotypePDBases,
+                                                      final byte[] readBases,
+                                                      final byte[] readQuals,
+                                                      final byte[] insertionGOP,
+                                                      final byte[] deletionGOP,
+                                                      final byte[] overallGCP,
+                                                      final boolean recacheReadValues,
+                                                      final byte[] nextHaplotypeBases) throws IllegalStateException, IllegalArgumentException {
 
         Utils.validate(initialized, "Must call initialize before calling computeReadLikelihoodGivenHaplotypeLog10");
         Utils.nonNull(haplotypeBases, "haplotypeBases may not be null");
@@ -306,7 +307,7 @@ public abstract class PDPairHMM implements Closeable{
         // Looking ahead is necessary for the ArrayLoglessPairHMM implementation
         final int nextHapStartIndex =  (nextHaplotypeBases == null || haplotypeBases.length != nextHaplotypeBases.length) ? 0 : findFirstPositionWhereHaplotypesDiffer(haplotypeBases, nextHaplotypeBases);
 
-        final double result = subComputeReadLikelihoodGivenHaplotypeLog10(haplotypeBases, readBases, readQuals, insertionGOP, deletionGOP, overallGCP, hapStartIndex, recacheReadValues, nextHapStartIndex);
+        final double result = subComputeReadLikelihoodGivenHaplotypeLog10(haplotypeBases, haplotypePDBases, readBases, readQuals, insertionGOP, deletionGOP, overallGCP, hapStartIndex, recacheReadValues, nextHapStartIndex);
 
         Utils.validate(result <= 0.0, () -> "PairHMM Log Probability cannot be greater than 0: " + String.format("haplotype: %s, read: %s, result: %f, PairHMM: %s", new String(haplotypeBases), new String(readBases), result, this.getClass().getSimpleName()));
         Utils.validate(MathUtils.isValidLog10Probability(result), () -> "Invalid Log Probability: " + result);
@@ -325,6 +326,7 @@ public abstract class PDPairHMM implements Closeable{
      * To be implemented by subclasses to do calculation for #computeReadLikelihoodGivenHaplotypeLog10
      */
     protected abstract double subComputeReadLikelihoodGivenHaplotypeLog10( final byte[] haplotypeBases,
+                                                                           final byte[] haplotypePDBases,
                                                                            final byte[] readBases,
                                                                            final byte[] readQuals,
                                                                            final byte[] insertionGOP,

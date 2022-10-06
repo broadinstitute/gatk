@@ -2121,10 +2121,10 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         final String[] args = {
                 "-R","gs://gcp-public-data--broad-references/hg38/v0/dragen_reference/Homo_sapiens_assembly38_masked.fasta",
                 "-I","/Users/emeryj/hellbender/DRAGENMatlab/personalEvaluation/FINALSTRETCH/dragen3.7.8aligned.NA12878_PCRplus_1.chr20.bam",
-                "-L","chr20:24,157,927-24,158,065",
+                "-L","chr20:13,917,233-13,918,342",
                 "-O",outputPath,
                 "--pileup-detection","--pileup-detection-bad-read-tolerance","0.40","--pileup-detection-enable-indel-pileup-calling", "--pileup-detection-active-region-phred-threshold","4.0",
-                "-contamination","0.0 ", "--use-pdhmm", "--enable-legacy-assembly-region-trimming", "--print-pileupcalling-status", "--make-determined-haps-from-pd-code",
+                "-contamination","0.0 ", "--use-pdhmm", "--enable-legacy-assembly-region-trimming", "--print-pileupcalling-status", //"--make-determined-haps-from-pd-code",
                 "-G","StandardAnnotation","-G","StandardHCAnnotation",
                 "--dragen-mode",
                 "--disable-spanning-event-genotyping",
@@ -2142,7 +2142,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     }
 
 
-    @DataProvider(name="PairHMMResultsModes")
+    @DataProvider(name="PairHMMResultsModes")˜
     public Object[][] PairHMMResultsModes() {
         return new Object[][] {
                 {PairHMM.Implementation.AVX_LOGLESS_CACHING, new File(TEST_FILES_DIR, "expected.AVX.hmmresults.txt")},
