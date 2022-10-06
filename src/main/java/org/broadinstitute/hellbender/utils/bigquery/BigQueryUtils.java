@@ -408,7 +408,6 @@ public final class BigQueryUtils {
         DatasetId datasetIDObject = DatasetId.of(projectID, datasetID);
         Dataset dataset = bigQuery.getDataset(datasetIDObject);
         String location = dataset.getLocation();
-        logger.info("Query running in location "+location);
         // By explicitly creating a JobId, we can set the location in which the job to run
         final JobId jobId = JobId.newBuilder().setLocation(location).build();
 

@@ -24,7 +24,7 @@ WITH
                @locationStanza
         )
         GROUP BY location),
-     -- sfum of qualapprox, count of het,homvar at the site level
+     -- sum of qualapprox, count of het,homvar at the site level
    aa_site_info AS (
         SELECT location,
                IFNULL(sum(SAFE_CAST(qualapprox as FLOAT64)),0) as sum_qualapprox,
