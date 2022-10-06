@@ -2142,7 +2142,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     }
 
 
-    @DataProvider(name="PairHMMResultsModes")˜
+    @DataProvider(name="PairHMMResultsModes")
     public Object[][] PairHMMResultsModes() {
         return new Object[][] {
                 {PairHMM.Implementation.AVX_LOGLESS_CACHING, new File(TEST_FILES_DIR, "expected.AVX.hmmresults.txt")},
