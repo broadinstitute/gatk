@@ -484,6 +484,21 @@ public class GATKAnnotationPluginDescriptor extends CommandLinePluginDescriptor<
         return resolvedInstances;
     }
 
+    /**
+     * Returns a map of the String to Annotations only in the resolved instances. Should only be used if
+     * getResolvedInstances() is not sufficient.
+     *
+     * @return a Map of Strings to Annotations of resolved instances
+     */
+    public Map<String, Annotation> getResolvedInstancesMap() {
+        if (resolvedInstances == null) {
+            getResolvedInstances();
+        }
+        Map<String, Annotation> resolvedInstancesMap = new HashMap<>();
+        allDiscoveredAnnotations.keySet().stream().filter(s -> resolvedInstances.contains(allDiscoveredAnnotations.get(s))).
+                forEach(s -> resolvedInstancesMap.put(s, allDiscoveredAnnotations.get(s)));
+        return(resolvedInstancesMap);
+    }
 
     /**
      * Return the class representing the instance of the plugin specified by {@code pluginName}
@@ -495,13 +510,4 @@ public class GATKAnnotationPluginDescriptor extends CommandLinePluginDescriptor<
     public Class<?> getClassForPluginHelp(final String pluginName) {
         return allDiscoveredAnnotations.containsKey(pluginName) ? allDiscoveredAnnotations.get(pluginName).getClass() : null;
     }
-
-    public Map<String,Annotation> getAllDiscoveredAnnotations() {
-        return this.allDiscoveredAnnotations;
-    }
-
-    public GATKAnnotationArgumentCollection getUserArgs() {
-        return this.userArgs;
-    }
-
 }

@@ -23,6 +23,5 @@ public class GenotypeGVCFsAnnotationArgumentCollection extends DefaultGATKVarian
             doc="Keep only the specific combined raw annotations specified (removing the other raw annotations). Duplicate values will be ignored.")
     protected List<String> keepSpecifiedCombined = new ArrayList<>();
 
-    @Override
     public List<String> getKeepSpecifiedCombinedAnnotationNames() {return Collections.unmodifiableList(keepSpecifiedCombined);}
 }

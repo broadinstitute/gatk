@@ -175,6 +175,9 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     @ArgumentCollection
     private final DbsnpArgumentCollection dbsnp = new DbsnpArgumentCollection();
 
+    // @ArgumentCollection deliberately omitted since this is passed to the annotation plugin
+    final GenotypeGVCFsAnnotationArgumentCollection genotypeGVCFsAnnotationArgs = new GenotypeGVCFsAnnotationArgumentCollection();
+
     // the annotation engine
     private VariantAnnotatorEngine annotationEngine;
 
@@ -229,7 +232,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
         GATKReadFilterPluginDescriptor readFilterDescriptor = new GATKReadFilterPluginDescriptor(getDefaultReadFilters());
         return useVariantAnnotations()?
                 Arrays.asList(readFilterDescriptor, new GATKAnnotationPluginDescriptor(
-                        new GenotypeGVCFsAnnotationArgumentCollection(),
+                        genotypeGVCFsAnnotationArgs,
                         getDefaultVariantAnnotations(), getDefaultVariantAnnotationGroups())):
                 Collections.singletonList(readFilterDescriptor);
     }
@@ -275,10 +278,7 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
                 Collections.emptyList();
 
         final Collection<Annotation>  variantAnnotations = makeVariantAnnotations();
-        final GATKAnnotationPluginDescriptor pluginDescriptor = getCommandLineParser().getPluginDescriptor(GATKAnnotationPluginDescriptor.class);
-        final List<String> annotationStringsToKeep = pluginDescriptor.getUserArgs().getKeepSpecifiedCombinedAnnotationNames();
-        final Map<String, Annotation> allDiscoveredAnnotations = pluginDescriptor.getAllDiscoveredAnnotations();
-        final Set<Annotation> annotationsToKeep = annotationStringsToKeep.stream().map(allDiscoveredAnnotations::get).collect(Collectors.toSet());
+        final Set<Annotation> annotationsToKeep = getAnnotationsToKeep();
         annotationEngine = new VariantAnnotatorEngine(variantAnnotations, dbsnp.dbsnp, Collections.emptyList(), false, keepCombined, annotationsToKeep);
 
         merger = new ReferenceConfidenceVariantContextMerger(annotationEngine, getHeaderForVariants(), somaticInput, false, true);
@@ -294,6 +294,13 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
         //call initialize method in engine class that creates VCFWriter object and writes a header to it
         vcfWriter = gvcfEngine.setupVCFWriter(defaultToolVCFHeaderLines, keepCombined, dbsnp, vcfWriter);
 
+    }
+
+    private Set<Annotation> getAnnotationsToKeep() {
+        final GATKAnnotationPluginDescriptor pluginDescriptor = getCommandLineParser().getPluginDescriptor(GATKAnnotationPluginDescriptor.class);
+        final List<String> annotationStringsToKeep = genotypeGVCFsAnnotationArgs.getKeepSpecifiedCombinedAnnotationNames();
+        final Map<String, Annotation> resolvedInstancesMap = pluginDescriptor.getResolvedInstancesMap();
+        return annotationStringsToKeep.stream().map(resolvedInstancesMap::get).collect(Collectors.toSet());
     }
 
     @Override

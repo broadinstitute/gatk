@@ -81,7 +81,4 @@ public class DefaultGATKVariantAnnotationArgumentCollection extends GATKAnnotati
     public boolean getEnableAllAnnotations() {
         return enableAllAnnotations;
     }
-
-    @Override
-    public List<String> getKeepSpecifiedCombinedAnnotationNames() { return Collections.emptyList(); }
 }
