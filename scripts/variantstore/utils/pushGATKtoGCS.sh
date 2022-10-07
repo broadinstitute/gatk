@@ -4,7 +4,7 @@ DT=$(date '+%Y%m%d')
 branch=$(git symbolic-ref HEAD 2>/dev/null)
 branch=${branch#refs/heads/} 
 
-DEST="gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/${branch}_${DT}/"
+DEST="gs://gvs-internal/bigquery-jointcalling/jars/${branch}_${DT}/"
 
 gsutil cp $JAR $DEST
 
