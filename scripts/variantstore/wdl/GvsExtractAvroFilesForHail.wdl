@@ -11,7 +11,16 @@ workflow GvsExtractAvroFilesForHail {
         Int scatter_width = 10
     }
 
-    call OutputPath { input: go = true }
+    call Utils.ValidateFilterSetName {
+        input:
+            data_project = project_id,
+            data_dataset = dataset,
+            filter_set_name = filter_set_name,
+    }
+
+    call OutputPath {
+        input: go = ValidateFilterSetName.done
+    }
 
     call ExtractFromNonSuperpartitionedTables {
         input:
