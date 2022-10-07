@@ -395,6 +395,11 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
     @VisibleForTesting
     private static boolean constructArtificialHaplotypeAndTestEquivalentEvents(Haplotype referenceHaplotype, SmithWatermanAligner aligner, SWParameters swParameters, TreeSet<VariantContext> vcs, List<VariantContext> eventsToTest, boolean debugSite) {
         final Haplotype realignHap = constructHaplotypeFromVariants(referenceHaplotype, eventsToTest, false);
+        //Special case to capture events that equal the reference (and thus have empty event maps).
+        if (Arrays.equals(realignHap.getBases(), referenceHaplotype.getBases())) {
+            if (debugSite) System.out.println("Events add up to the reference! Dissalowing pair");
+            return true;
+        }
         //ALIGN!
         realignHap.setCigar(CigarUtils.calculateCigar(referenceHaplotype.getBases(), realignHap.getBases(), aligner, swParameters, SWOverhangStrategy.INDEL));
         EventMap.buildEventMapsForHaplotypes(Collections.singletonList(realignHap), referenceHaplotype.getBases(), referenceHaplotype.getGenomeLocation(), false,0);
