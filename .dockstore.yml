@@ -65,6 +65,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - VS-629-failure-to-retrieve-job-information-during-ingest
    - name: GvsAoUReblockGvcf
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsAoUReblockGvcf.wdl
@@ -95,6 +96,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - VS-629-failure-to-retrieve-job-information-during-ingest
    - name: GvsPopulateAltAllele
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPopulateAltAllele.wdl
@@ -102,6 +104,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - VS-629-failure-to-retrieve-job-information-during-ingest
    - name: GvsCreateTables
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateTables.wdl
@@ -118,6 +121,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - VS-629-failure-to-retrieve-job-information-during-ingest
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
@@ -125,6 +129,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - VS-629-failure-to-retrieve-job-information-during-ingest
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
@@ -134,6 +139,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - VS-629-failure-to-retrieve-job-information-during-ingest
    - name: GvsCreateVAT
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVAT.wdl
