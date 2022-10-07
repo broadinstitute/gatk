@@ -199,7 +199,7 @@ task CreateAltAlleleTable {
 
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     cpu: 1
@@ -243,7 +243,7 @@ task PopulateAltAlleleTable {
     done
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-10-01-alpine"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-10-06-alpine"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     cpu: 1
