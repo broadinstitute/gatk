@@ -240,7 +240,7 @@ task LoadData {
     done
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-10-06-alpine"
+    docker: "us.gcr.io/broad-gatk/gatk:4.1.7.0"
     maxRetries: load_data_maxretries
     memory: "3.75 GB"
     disks: "local-disk 50 HDD"
