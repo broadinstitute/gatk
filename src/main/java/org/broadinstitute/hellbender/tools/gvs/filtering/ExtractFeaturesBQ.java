@@ -48,7 +48,9 @@ public class ExtractFeaturesBQ {
             File file = Resource.getResourceContentsAsFile(FEATURE_EXTRACT_USER_DEFINED_FUNCTIONS);
             // also grab our definition of median
             File fileMedian = Resource.getResourceContentsAsFile(FEATURE_EXTRACT_USER_DEFINED_FUNCTION_MEDIAN);
-            return FileUtils.readFileToString(file, "UTF-8") + FileUtils.readFileToString(fileMedian, "UTF-8");
+            return FileUtils.readFileToString(file, "UTF-8")
+                    + System.lineSeparator()
+                    + FileUtils.readFileToString(fileMedian, "UTF-8");
         } catch (Exception ioe) {
             throw new GATKException("Unable to read udf file from resources", ioe);
         }
