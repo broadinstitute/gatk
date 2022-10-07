@@ -198,7 +198,7 @@ task CreateCostObservabilityTable {
       PARTITION_STRING="--time_partitioning_field call_start_timestamp --time_partitioning_type DAY"
       echo "making table $TABLE"
       echo '~{cost_observability_json}' > schema.json
-      bq ${PARTITION_STRING} --project_id=~{project_id} $TABLE schema.json
+      bq mk ${PARTITION_STRING} --project_id=~{project_id} $TABLE schema.json
     fi
   >>>
   runtime {
