@@ -191,15 +191,17 @@ public final class SelectVariants extends VariantWalker {
     private ArrayList<String> selectExpressions = new ArrayList<>();
 
     /**
-     * This option is provided in case the filtering is done on INFO fields
-     * in the input files (i.e. not the metrics recomputed after subsetting FORMAT fields), where
-     * it is computationally faster to first subset the variants and then subset the genotypes.
-     * This could be useful when workign with a large cohort vcf containing genotypes for
+     * This flag is provided in case the user wishes to do JEXL filtering
+     * before subsetting the format fields, in particular the case where the filtering is done
+     * on INFO fields only, and the subsetting of format fields (which is expensive) should be avoided
+     * on variants that fail the JEXL filters.
+     *
+     * This option may be  useful when working with a large cohort vcf that contains genotypes for
      * thousands of samples (format fields).
      *
      */
-    @Argument(fullName="info-select", shortName="info-select", doc="", optional=true)
-    private ArrayList<String> infoSelectExpressions = new ArrayList<>();
+    @Argument(fullName="jexl-first", shortName="jexl-first", doc="", optional=true)
+    private boolean applyJexlFiltersBeforeFilteringGenotypes = false;
 
     /**
      * Invert the selection criteria for -select.
@@ -212,14 +214,14 @@ public final class SelectVariants extends VariantWalker {
      * of the selected samples display evidence of variation) will be excluded from the output.
      */
     @Argument(fullName="exclude-non-variants", doc="Don't include non-variant sites", optional=true)
-    private boolean XLnonVariants = false;
+    private boolean excludeNonVariants = false;
 
     /**
      * If this flag is enabled, sites that have been marked as filtered (i.e. have anything other than `.` or `PASS`
      * in the FILTER field) will be excluded from the output.
      */
     @Argument(fullName="exclude-filtered", doc="Don't include filtered sites", optional=true)
-    private boolean XLfiltered = false;
+    private boolean excludeFiltered = false;
 
     /**
      * The default behavior of this tool is to remove bases common to all remaining alleles after subsetting
@@ -353,9 +355,9 @@ public final class SelectVariants extends VariantWalker {
     @Argument(fullName="exclude-ids", shortName="xl-ids", doc="List of variant rsIDs to exclude", optional=true)
     private Set<String> rsIDsToRemove = new HashSet<>();
 
-    @Hidden
+    @Hidden // sato: given this is a hidden option, should we make it clear this is for debugging purpose only?
     @Argument(fullName="fully-decode", doc="If true, the incoming VariantContext will be fully decoded", optional=true)
-    private boolean fullyDecode = false; // sato: what does that mean?
+    private boolean fullyDecode = false; // sato: what does this mean? why would one use this option?
 
     /**
      * If this argument is provided, indels that are larger than the specified size will be excluded.
@@ -487,9 +489,9 @@ public final class SelectVariants extends VariantWalker {
         }
         return genomicsDBOptions;
     }
-
+    // sato: We cannot simply output the vcf entries in the order they arrive, as sometimes alleles can be trimmed such that the start position is changed. (e.g. in an multiallelic site, add example from 6444).
     final private PriorityQueue<VariantContext> pendingVariants = new PriorityQueue<>(Comparator.comparingInt(VariantContext::getStart));
-
+    // sato: (cont) so instead of writing the variant immediately, first add to this priority queue, then if its start position is less than the start position of the current variant, add to vcf writer. But what if the current vcf start position moves to the left? Is that impossible?
     /**
      * Set up the VCF writer, the sample expressions and regexs, filters inputs, and the JEXL matcher
      *
@@ -521,7 +523,7 @@ public final class SelectVariants extends VariantWalker {
             // expressions will only be needed for omitting records.  Make up the select names here.
             selectNames.add(String.format("select-%d", i));
         }
-
+        // sato: this is just a map of (name, jexl expression class)
         jexls = VariantContextUtils.initializeMatchExps(selectNames, selectExpressions);
 
         // Prepare the sample names and types to be used by the corresponding filters
@@ -622,8 +624,10 @@ public final class SelectVariants extends VariantWalker {
         if (containsIndelLargerOrSmallerThan(vc, maxIndelSize, minIndelSize)) {
             return;
         }
-
-        // tsato: Do the jexl filtering before decoding genotypes
+        // tsato: is there a way to parse the jexl expressions into (fields, threshold) or something like that?
+        if (applyJexlFiltersBeforeFilteringGenotypes && failsJexlFilters(vc)) {
+            return;
+        }
 
         // tsato: 'fitered genotypes' means ???
         if (considerFilteredGenotypes()) {
@@ -652,41 +656,49 @@ public final class SelectVariants extends VariantWalker {
             filteredGenotypeToNocall = sub;
         }
 
-        // Not excluding non-variants OR (subsetted polymorphic variants AND not spanning deletion) AND (including filtered loci OR subsetted variant) is not filtered
-        // If exclude non-variants argument is not called, filtering will NOT occur.
-        // If exclude non-variants is called, and a spanning deletion exists, the spanning deletion will be filtered
-        // If exclude non-variants is called, it is a polymorphic variant, but not a spanning deletion, filtering will not occur
-        // True iff exclude-filtered is not called or the filteredGenotypeToNocall is not already filtered
-        // tsato: don't really understand what these are here for (see https://github.com/broadinstitute/gatk/pull/5129). Just leave them for now.
-        if ((!XLnonVariants || (filteredGenotypeToNocall.isPolymorphicInSamples() && !GATKVariantContextUtils.isSpanningDeletionOnly(filteredGenotypeToNocall)))
-                && (!XLfiltered || !filteredGenotypeToNocall.isFiltered()))
-        { // tsato: does this have anything to do with jexl?
+        // After subsetting samples (e.g. to a single sample), it's possible that:
+        // 1. none of the remaining samples has the variant in question (i.e. site is no longer polymorphic);
+        // 2. the only remaining alternate allele is spanning deletion (*)
 
-            // Write the subsetted variant if it matches all of the expressions
-            boolean failedJexlMatch = false;
-
-            try {
-                for (VariantContextUtils.JexlVCMatchExp jexl : jexls) {
-                    // tsato: 'filteredGenotypeToNocall': can jexl be applied to genotypes too?
-                    if (invertLogic(!VariantContextUtils.match(filteredGenotypeToNocall, jexl), invertSelect)){
-                        failedJexlMatch = true;
-                        break;
-                    }
-                }
-            } catch (IllegalArgumentException e) {
-                // The IAE thrown by htsjdk already includes an informative error message ("Invalid JEXL
-                //  expression detected...")
-                throw new UserException(e.getMessage() +
-                        "\nSee https://gatk.broadinstitute.org/hc/en-us/articles/360035891011-JEXL-filtering-expressions for documentation on using JEXL in GATK", e);
-            }
-
-            if (!failedJexlMatch &&
-                    (!selectRandomFraction || Utils.getRandomGenerator().nextDouble() < fractionRandom)) {
-                //remove annotations being dropped and write variantcontext
-                final VariantContext variantContextToWrite = buildVariantContextWithDroppedAnnotationsRemoved(filteredGenotypeToNocall);
-                pendingVariants.add(variantContextToWrite);
-            }
+        // In this instance we call it a non-variant. We remove it from the output based on {@code excludeNonVariants}
+        final boolean nonVariant = ! filteredGenotypeToNocall.isPolymorphicInSamples() || GATKVariantContextUtils.isSpanningDeletionOnly(filteredGenotypeToNocall);
+        if (excludeNonVariants && nonVariant){
+            return;
         }
+
+        if (excludeFiltered && filteredGenotypeToNocall.isFiltered()){
+            return;
+        }
+
+        if (! applyJexlFiltersBeforeFilteringGenotypes && failsJexlFilters(filteredGenotypeToNocall)){
+            return;
+        }
+
+        if (selectRandomFraction && Utils.getRandomGenerator().nextDouble() >= fractionRandom){
+            return;
+        }
+
+        pendingVariants.add(dropAnnotations(filteredGenotypeToNocall, infoAnnotationsToDrop, genotypeAnnotationsToDrop));
+    }
+
+    /**
+     *  Applies the JEXL filters
+     */
+    private boolean failsJexlFilters(final VariantContext vc){
+        try {
+            for (VariantContextUtils.JexlVCMatchExp jexl : jexls) { // tsato: what happens when && is in the jexl? then invert it?
+                if (invertLogic(!VariantContextUtils.match(vc, jexl), invertSelect)){
+                    return true;
+                }
+            }
+        } catch (IllegalArgumentException e) {
+            // The IAE thrown by htsjdk already includes an informative error message ("Invalid JEXL
+            //  expression detected...")
+            throw new UserException(e.getMessage() +
+                    "\nSee https://gatk.broadinstitute.org/hc/en-us/articles/360035891011-JEXL-filtering-expressions for documentation on using JEXL in GATK", e);
+        }
+
+        return false;
     }
 
     /**
@@ -700,7 +712,8 @@ public final class SelectVariants extends VariantWalker {
         return null;
     }
 
-    private VariantContext buildVariantContextWithDroppedAnnotationsRemoved(final VariantContext vc) {
+    private VariantContext dropAnnotations(final VariantContext vc, final List<String> infoAnnotationsToDrop,
+                                           List<String> genotypeAnnotationsToDrop) {
         if (infoAnnotationsToDrop.isEmpty() && genotypeAnnotationsToDrop.isEmpty()) {
             return vc;
         }
@@ -1030,7 +1043,7 @@ public final class SelectVariants extends VariantWalker {
     }
 
     private boolean sampleHasVariant(final Genotype g) {
-        return (g !=null && !g.isHomRef() && (g.isCalled() || (g.isFiltered() && !XLfiltered)));
+        return (g !=null && !g.isHomRef() && (g.isCalled() || (g.isFiltered() && !excludeFiltered)));
     }
 
     private boolean haveSameGenotypes(final Genotype g1, final Genotype g2) {
@@ -1040,7 +1053,7 @@ public final class SelectVariants extends VariantWalker {
 
         if ((g1.isCalled() && g2.isFiltered()) ||
                 (g2.isCalled() && g1.isFiltered()) ||
-                (g1.isFiltered() && g2.isFiltered() && XLfiltered)) {
+                (g1.isFiltered() && g2.isFiltered() && excludeFiltered)) {
             return false;
         }
 
