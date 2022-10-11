@@ -65,6 +65,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - VS-629-failure-to-retrieve-job-information-during-ingest
    - name: GvsAoUReblockGvcf
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsAoUReblockGvcf.wdl
