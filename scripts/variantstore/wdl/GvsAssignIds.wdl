@@ -202,7 +202,7 @@ task CreateCostObservabilityTable {
     fi
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-10-06-alpine"
   }
   output {
     Boolean done = true
