@@ -64,9 +64,9 @@ public class LoglessPDPairHMM extends N2MemoryPDPairHMM {
                 switch (currentState) {
                     case NORMAL:
                         // Pre-emptively copy over from the left
-                        branchInsertionMatrix[i][j] = matchMatrix[i - 1][j - 1];
+                        branchMatchMatrix[i][j] = matchMatrix[i][j - 1];
                         branchDeletionMatrix[i][j] = deletionMatrix[i][j - 1];
-                        branchInsertionMatrix[i][j] = insertionMatrix[i - 1][j];
+                        branchInsertionMatrix[i][j] = insertionMatrix[i][j - 1];
 
                         //Inlined the code from updateCell - helps JIT to detect hotspots and produce good native code
                         matchMatrix[i][j] = prior[i][j] * (matchMatrix[i - 1][j - 1] * transition[i][matchToMatch] +
@@ -84,7 +84,7 @@ public class LoglessPDPairHMM extends N2MemoryPDPairHMM {
 
                     case INSIDE_DEL:
                         // If we are in a deletion copy from the left
-                        branchInsertionMatrix[i][j] = branchInsertionMatrix[i][j - 1];
+                        branchMatchMatrix[i][j] = branchMatchMatrix[i][j - 1];
                         branchDeletionMatrix[i][j] = branchDeletionMatrix[i][j - 1];
                         branchInsertionMatrix[i][j] = branchInsertionMatrix[i][j - 1];
 
@@ -106,9 +106,9 @@ public class LoglessPDPairHMM extends N2MemoryPDPairHMM {
 
                     case AFTER_DEL:
                         // Pre-emptively copy over from the left
-                        branchInsertionMatrix[i][j] = Math.max(branchMatchMatrix[i - 1][j - 1], matchMatrix[i - 1][j - 1]);
+                        branchMatchMatrix[i][j] = Math.max(branchMatchMatrix[i][j - 1], matchMatrix[i][j - 1]);
                         branchDeletionMatrix[i][j] = Math.max(branchDeletionMatrix[i][j - 1], deletionMatrix[i][j - 1]);
-                        branchInsertionMatrix[i][j] = insertionMatrix[i - 1][j];
+                        branchInsertionMatrix[i][j] = insertionMatrix[i][j - 1];
 
                         //Inlined the code from updateCell - helps JIT to detect hotspots and produce good native code
                         matchMatrix[i][j] = prior[i][j] * (Math.max(branchMatchMatrix[i - 1][j - 1], matchMatrix[i - 1][j - 1]) * transition[i][matchToMatch] +

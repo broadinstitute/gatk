@@ -573,7 +573,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         long refOffsetOfNextBaseToAdd = genomicStartPosition;
 
         byte[] refBasesToAddTo = base.getBases();
-        CigarBuilder runningCigar = new CigarBuilder();
+        CigarBuilder runningCigar = new CigarBuilder(false); // NOTE: in some incredibly rare edge cases involving the legacy assembly region trimmer a deletion can hang past the edge of an active window.
         byte[] newHaplotypeBasees = {};
         byte[] pdBytes = {};
 
