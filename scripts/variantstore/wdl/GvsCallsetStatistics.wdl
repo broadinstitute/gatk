@@ -1,5 +1,7 @@
 version 1.0
 
+import "GvsUtils.wdl" as Utils
+
 workflow GvsCallsetStatistics {
     input {
         String project_id
@@ -11,8 +13,16 @@ workflow GvsCallsetStatistics {
         String statistics_table = "~{extract_prefix}_statistics"
     }
 
+    call Utils.ValidateFilterSetName {
+        input:
+            data_project = project_id,
+            data_dataset = dataset_name,
+            filter_set_name = filter_set_name
+    }
+
     call CreateTables {
         input:
+            go = ValidateFilterSetName.done,
             project_id = project_id,
             dataset_name = dataset_name,
             metrics_table = metrics_table,
@@ -72,6 +82,7 @@ workflow GvsCallsetStatistics {
 
 task CreateTables {
     input {
+        Boolean go = true
         String project_id
         String dataset_name
         String metrics_table
