@@ -36,7 +36,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 
-import static org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBUtils.createExportConfiguration;
+import static org.broadinstitute.hellbender.tools.genomicsdb.GATKGenomicsDBUtils.createExportConfiguration;
 import static org.broadinstitute.hellbender.utils.io.BlockCompressedIntervalStream.BCI_FILE_EXTENSION;
 
 /**
