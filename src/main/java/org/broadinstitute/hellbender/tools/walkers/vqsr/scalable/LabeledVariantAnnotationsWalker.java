@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 
+import com.google.common.collect.Sets;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -17,6 +18,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.MultiplePassVariantWalker;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.LabeledVariantAnnotationsData;
@@ -46,7 +48,7 @@ import java.util.stream.Collectors;
  * walker, performing the operations:
  *
  *   - nthPassApply(n = 0)
- *      - if variant/alleles pass filters and variant-type/overlapping-resource checks, then:
+ *      - if variant/alleles pass filters and variant-type/resource-match checks, then:
  *          - add variant/alleles to a {@link LabeledVariantAnnotationsData} collection
  *          - write variant/alleles with labels appended to a sites-only VCF file
  *   - afterNthPass(n = 0)
@@ -89,12 +91,17 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
     public static final String IGNORE_FILTER_LONG_NAME = "ignore-filter";
     public static final String IGNORE_ALL_FILTERS_LONG_NAME = "ignore-all-filters";
     public static final String DO_NOT_TRUST_ALL_POLYMORPHIC_LONG_NAME = "do-not-trust-all-polymorphic";
+    public static final String RESOURCE_MATCHING_STRATEGY_LONG_NAME = "resource-matching-strategy";
     public static final String OMIT_ALLELES_IN_HDF5_LONG_NAME = "omit-alleles-in-hdf5";
     public static final String DO_NOT_GZIP_VCF_OUTPUT_LONG_NAME = "do-not-gzip-vcf-output";
 
     public static final String ANNOTATIONS_HDF5_SUFFIX = ".annot.hdf5";
 
     public static final String RESOURCE_LABEL_INFO_HEADER_LINE_FORMAT_STRING = "This site was labeled as %s according to resources";
+
+    enum ResourceMatchingStrategy {
+        START_POSITION, START_POSITION_AND_GIVEN_REPRESENTATION, START_POSITION_AND_MINIMAL_REPRESENTATION
+    }
 
     @Argument(
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
@@ -144,10 +151,24 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
     @Argument(
             fullName = DO_NOT_TRUST_ALL_POLYMORPHIC_LONG_NAME,
             doc = "If true, do not trust that unfiltered records in the resources contain only polymorphic sites. " +
-                    "This may increase runtime.",
+                    "This may increase runtime if the resources are not sites-only VCFs.",
             optional = true)
     private boolean doNotTrustAllPolymorphic = false;
 
+
+    @Argument(
+            fullName = RESOURCE_MATCHING_STRATEGY_LONG_NAME,
+            doc = "The strategy to use for determining whether an input variant is present in a resource " +
+                    "in non-allele-specific mode (--" + USE_ALLELE_SPECIFIC_ANNOTATIONS_LONG_NAME + " false). " +
+                    "START_POSITION: Start positions of input and resource variants must match. " +
+                    "START_POSITION_AND_GIVEN_REPRESENTATION: The intersection of the sets of input and resource alleles " +
+                    "(in their given representations) must also be non-empty. " +
+                    "START_POSITION_AND_MINIMAL_REPRESENTATION: The intersection of the sets of input and resource alleles " +
+                    "(after converting alleles to their minimal representations) must also be non-empty. " +
+                    "This argument has no effect in allele-specific mode (--" + USE_ALLELE_SPECIFIC_ANNOTATIONS_LONG_NAME + " true), " +
+                    "in which the minimal representations of the input and resource alleles must match.",
+            optional = true)
+    private ResourceMatchingStrategy resourceMatchingStrategy = ResourceMatchingStrategy.START_POSITION;
     @Argument(
             fullName = OMIT_ALLELES_IN_HDF5_LONG_NAME,
             doc = "If true, omit alleles in output HDF5 files in order to decrease file sizes.",
@@ -283,7 +304,9 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
                 .collect(Collectors.toCollection(TreeSet::new));
         hInfo.add(GATKVCFHeaderLines.getFilterLine(VCFConstants.PASSES_FILTERS_v4));
         final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
-        hInfo = VcfUtils.updateHeaderContigLines(hInfo, null, sequenceDictionary, true);
+        if (sequenceDictionary != null) {
+            hInfo = VcfUtils.updateHeaderContigLines(hInfo, referenceArguments.getReferencePath(), sequenceDictionary, true);
+        }
         hInfo.addAll(getDefaultToolVCFHeaderLines());
         return new VCFHeader(hInfo);
     }
@@ -303,57 +326,72 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
         }
         if (!useASAnnotations) {
             // in non-allele-specific mode, get a singleton list of the triple
-            // (list of alt alleles passing variant-type and overlapping-resource checks, variant type, set of labels)
+            // (list of alt alleles passing variant-type and resource-match checks, variant type, set of labels)
             final VariantType variantType = VariantType.getVariantType(vc);
             if (variantTypesToExtract.contains(variantType)) {
-                final TreeSet<String> overlappingResourceLabels = findOverlappingResourceLabels(vc, null, null, featureContext);
-                if (isExtractUnlabeled || !overlappingResourceLabels.isEmpty()) {
-                    return Collections.singletonList(Triple.of(vc.getAlternateAlleles(), variantType, overlappingResourceLabels));
+                final TreeSet<String> matchingResourceLabels = findMatchingResourceLabels(vc, null, featureContext);
+                if (isExtractUnlabeled || !matchingResourceLabels.isEmpty()) {
+                    return Collections.singletonList(Triple.of(vc.getAlternateAlleles(), variantType, matchingResourceLabels));
                 }
             }
         } else {
             // in allele-specific mode, get a list containing the triples
             // (singleton list of alt allele, variant type, set of labels)
-            // corresponding to alt alleles that pass variant-type and overlapping-resource checks
+            // corresponding to alt alleles that pass variant-type and resource-match checks
             return vc.getAlternateAlleles().stream()
                     .filter(a -> !GATKVCFConstants.isSpanningDeletion(a))
                     .filter(a -> variantTypesToExtract.contains(VariantType.getAlleleSpecificVariantType(vc, a)))
                     .map(a -> Triple.of(Collections.singletonList(a), VariantType.getAlleleSpecificVariantType(vc, a),
-                            findOverlappingResourceLabels(vc, vc.getReference(), a, featureContext)))
+                            findMatchingResourceLabels(vc, a, featureContext)))
                     .filter(t -> isExtractUnlabeled || !t.getRight().isEmpty())
                     .collect(Collectors.toList());
         }
-        // if variant-type and overlapping-resource checks failed, return an empty list
+        // if variant-type and resource-match checks failed, return an empty list
         return Collections.emptyList();
     }
 
-    private TreeSet<String> findOverlappingResourceLabels(final VariantContext vc,
-                                                          final Allele refAllele,
-                                                          final Allele altAllele,
-                                                          final FeatureContext featureContext) {
-        final TreeSet<String> overlappingResourceLabels = new TreeSet<>();
+    private TreeSet<String> findMatchingResourceLabels(final VariantContext vc,
+                                                       final Allele altAllele,
+                                                       final FeatureContext featureContext) {
+        final TreeSet<String> matchingResourceLabels = new TreeSet<>();
         for (final FeatureInput<VariantContext> resource : resources) {
             final List<VariantContext> resourceVCs = featureContext.getValues(resource, featureContext.getInterval().getStart());
             for (final VariantContext resourceVC : resourceVCs) {
-                if (useASAnnotations && !doAllelesMatch(refAllele, altAllele, resourceVC)) {
+                if (useASAnnotations && !doAllelesMatch(vc.getReference(), altAllele, resourceVC)) {
                     continue;
                 }
-                if (isValidVariant(vc, resourceVC, !doNotTrustAllPolymorphic)) {
+                if (isMatchingVariant(vc, resourceVC, !doNotTrustAllPolymorphic, resourceMatchingStrategy)) {
                     resource.getTagAttributes().entrySet().stream()
                             .filter(e -> e.getValue().equals("true"))
                             .map(Map.Entry::getKey)
-                            .forEach(overlappingResourceLabels::add);
+                            .forEach(matchingResourceLabels::add);
                 }
             }
         }
-        return overlappingResourceLabels;
+        return matchingResourceLabels;
     }
 
-    private static boolean isValidVariant(final VariantContext vc,
-                                          final VariantContext resourceVC,
-                                          final boolean trustAllPolymorphic) {
-        return resourceVC != null && resourceVC.isNotFiltered() && resourceVC.isVariant() && VariantType.checkVariantType(vc, resourceVC) &&
-                (trustAllPolymorphic || !resourceVC.hasGenotypes() || resourceVC.isPolymorphicInSamples());
+    private static boolean isMatchingVariant(final VariantContext vc,
+                                             final VariantContext resourceVC,
+                                             final boolean trustAllPolymorphic,
+                                             final ResourceMatchingStrategy resourceMatchingStrategy) {
+        if (resourceVC != null && resourceVC.isNotFiltered() && resourceVC.isVariant() && VariantType.checkVariantType(vc, resourceVC) &&
+                (trustAllPolymorphic || !resourceVC.hasGenotypes() || resourceVC.isPolymorphicInSamples())) { // this is the check originally performed by VQSR
+            switch (resourceMatchingStrategy) {
+                case START_POSITION:
+                    return true;
+                case START_POSITION_AND_GIVEN_REPRESENTATION:
+                    // we further require that at least one alt allele is present in the resource alt alleles, but don't reconcile representations
+                    return !Sets.intersection(Sets.newHashSet(vc.getAlternateAlleles()), Sets.newHashSet(resourceVC.getAlternateAlleles())).isEmpty();
+                case START_POSITION_AND_MINIMAL_REPRESENTATION:
+                    // we further require that at least one alt allele is present in the resource alt alleles, and do reconcile representations
+                    return vc.getAlternateAlleles().stream()
+                            .anyMatch(altAllele -> GATKVariantContextUtils.isAlleleInList(vc.getReference(), altAllele, resourceVC.getReference(), resourceVC.getAlternateAlleles()));
+                default:
+                    throw new GATKException.ShouldNeverReachHereException("Unknown ResourceMatchingStrategy.");
+            }
+        }
+        return false;
     }
 
     private static boolean doAllelesMatch(final Allele refAllele,
