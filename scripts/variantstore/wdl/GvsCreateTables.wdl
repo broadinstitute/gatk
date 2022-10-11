@@ -93,7 +93,7 @@ task CreateTables {
       if [ $BQ_SHOW_RC -ne 0 ]; then
         echo "making table $TABLE"
         echo '~{schema_json}' > schema.json
-        bq --location=US mk ${PARTITION_STRING} ${CLUSTERING_STRING} --project_id=~{project_id} $TABLE schema.json
+        bq mk ${PARTITION_STRING} ${CLUSTERING_STRING} --project_id=~{project_id} $TABLE schema.json
       fi
     done
   >>>

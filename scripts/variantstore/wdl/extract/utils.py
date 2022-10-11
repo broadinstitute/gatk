@@ -31,7 +31,8 @@ def execute_with_retry(client, label, sql):
             query = client.query(sql, job_config=job_config)
             print(f"STARTING - {label} (jobid: {query.job_id})")
             results = query.result()
-            job = client.get_job(query.job_id)
+            print(f"CHECKING ON - {query.job_id} at {query.location}")
+            job = client.get_job(query.job_id, location=query.location)
             mb_billed = int(0 if job.total_bytes_billed is None else job.total_bytes_billed) / (
                         1024 * 1024)
             print(

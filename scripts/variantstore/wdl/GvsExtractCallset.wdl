@@ -207,7 +207,6 @@ workflow GvsExtractCallset {
   }
 }
 
-
 task ExtractTask {
   input {
     Boolean go
@@ -320,7 +319,7 @@ task ExtractTask {
     echo ~{interval_index},${OUTPUT_FILE_DEST},${OUTPUT_FILE_BYTES},${OUTPUT_FILE_INDEX_DEST},${OUTPUT_FILE_INDEX_BYTES} >> manifest.txt
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2022_09_08_08c1ad7f7abcd72f0cac4445db81203dea699db0"
     memory: "12 GB"
     disks: "local-disk 150 HDD"
     bootDiskSizeGb: 15
@@ -426,7 +425,7 @@ task GenerateSampleListFile {
 
     echo "project_id = ~{query_project}" > ~/.bigqueryrc
 
-    bq --location=US --project_id=~{query_project} --format=csv query --use_legacy_sql=false ~{bq_labels} "SELECT sample_name FROM ~{fq_samples_to_extract_table}" | sed 1d > sample-name-list.txt
+    bq --project_id=~{query_project} --format=csv query --use_legacy_sql=false ~{bq_labels} "SELECT sample_name FROM ~{fq_samples_to_extract_table}" | sed 1d > sample-name-list.txt
 
     if [ -n "$OUTPUT_GCS_DIR" ]; then
       gsutil cp sample-name-list.txt ${OUTPUT_GCS_DIR}/
