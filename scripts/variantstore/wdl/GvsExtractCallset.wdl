@@ -243,7 +243,7 @@ task ValidateFilterSetName {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -362,7 +362,7 @@ task ExtractTask {
     echo ~{interval_index},${OUTPUT_FILE_DEST},${OUTPUT_FILE_BYTES},${OUTPUT_FILE_INDEX_DEST},${OUTPUT_FILE_INDEX_BYTES} >> manifest.txt
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2022_09_08_08c1ad7f7abcd72f0cac4445db81203dea699db0"
     memory: "12 GB"
     disks: "local-disk 150 HDD"
     bootDiskSizeGb: 15
@@ -398,7 +398,7 @@ task SumBytes {
     print(total_mb);"
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -437,7 +437,7 @@ task CreateManifest {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -479,7 +479,7 @@ task GenerateSampleListFile {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
