@@ -15,7 +15,7 @@ public class AlleleAndContext extends SimpleAllele {
     private final Allele refAllele;
 
     public AlleleAndContext(final String contig, final int loc, final Allele allele, final Allele refAllele) {
-        super(allele.getBases(), false);
+        super(allele.getBases(), allele.isReference());
         this.loc = loc;
         this.contig = contig;
         this.refAllele = refAllele;
@@ -44,7 +44,7 @@ public class AlleleAndContext extends SimpleAllele {
 
     @Override
     public int hashCode() {
-        return 31 * loc + (this != null ? super.hashCode() : 0);
+        return 31 * loc + super.hashCode();
     }
 
     public String toString() {return String.format("(%d) %s/%s", loc, getBaseString(), getRefAllele().getBaseString());}
