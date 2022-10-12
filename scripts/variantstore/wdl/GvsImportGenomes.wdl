@@ -110,13 +110,6 @@ workflow GvsImportGenomes {
     }
   }
 
-  call SetIsLoadedColumn {
-    input:
-      load_done = LoadData.done,
-      project_id = project_id,
-      dataset_name = dataset_name
-  }
-
   output {
     Boolean done = true
     Array[File] load_data_stderrs = LoadData.stderr
@@ -250,42 +243,6 @@ task LoadData {
   output {
     Boolean done = true
     File stderr = stderr()
-  }
-}
-
-task SetIsLoadedColumn {
-  input {
-    String dataset_name
-    String project_id
-
-    Array[String] load_done
-  }
-  meta {
-    # This is doing some tricky stuff with `INFORMATION_SCHEMA` so just punt and let it be `volatile`.
-    volatile: true
-  }
-
-  # add labels for DSP Cloud Cost Control Labeling and Reporting
-  String bq_labels = "--label service:gvs --label team:variants --label managedby:import_genomes"
-
-  command <<<
-    set -ex
-
-    echo "project_id = ~{project_id}" > ~/.bigqueryrc
-
-    # set is_loaded to true if there is a corresponding vet table partition with rows for that sample_id
-    bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
-    'UPDATE `~{dataset_name}.sample_info` SET is_loaded = true WHERE sample_id IN (SELECT CAST(partition_id AS INT64) from `~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS` WHERE partition_id NOT LIKE "__%" AND total_logical_bytes > 0 AND table_name LIKE "vet_%") OR sample_id IN (SELECT sample_id FROM `~{dataset_name}.sample_load_status` GROUP BY 1 HAVING COUNT(1) = 2)'
-  >>>
-  runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
-    memory: "1 GB"
-    disks: "local-disk 10 HDD"
-    cpu: 1
-  }
-
-  output {
-    String done = "done"
   }
 }
 
