@@ -29,7 +29,7 @@ def curate_input_arrays(sample_map_to_be_loaded_file_name,
     with handle_file_error(vcf_index_list_file_name):
         vcf_indexes_array = np.loadtxt(vcf_index_list_file_name, dtype=str)
     with handle_file_error(sample_name_list_file_name):
-        sample_names_array = np.loadtxt(sample_name_list_file_name, dtype=str)
+        sample_names_array = np.loadtxt(sample_name_list_file_name, dtype=str, ndmin=2)
     rows_to_delete = []
 
     # use input_sample_names_array to figure out which index "rows" to delete
