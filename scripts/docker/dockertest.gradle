@@ -36,122 +36,85 @@ task unpackTestJar(type: Copy){
     }
 }
 
+// The --add-open directives required to run GATK. This list needs to be kept in sync with the corresponding
+// list in the main project build.gradle.
+//
+final runtimeAddOpens = [
+        // taken from the union of everything encountered by tests, plus everything defined here:
+        // https://github.com/apache/spark/blob/v3.3.0/launcher/src/main/java/org/apache/spark/launcher/JavaModuleOptions.java
+        'java.base/java.lang=ALL-UNNAMED',
+        'java.base/java.lang.invoke=ALL-UNNAMED',
+        'java.base/java.lang.reflect=ALL-UNNAMED',
+        'java.base/java.io=ALL-UNNAMED',
+        'java.base/java.net=ALL-UNNAMED',
+        'java.base/java.nio=ALL-UNNAMED',
+        'java.base/java.util=ALL-UNNAMED',
+        'java.base/java.util.concurrent=ALL-UNNAMED',
+        'java.base/java.util.concurrent.atomic=ALL-UNNAMED',
+        'java.base/sun.nio.ch=ALL-UNNAMED',
+        'java.base/sun.nio.cs=ALL-UNNAMED',
+        'java.base/sun.security.action=ALL-UNNAMED',
+        'java.base/sun.util.calendar=ALL-UNNAMED',
+        'java.base/sun.nio.fs=ALL-UNNAMED',
+        'java.base/java.nio.channels.spi=ALL-UNNAMED',
+        'java.base/jdk.internal.ref=ALL-UNNAMED',
+        'java.base/java.lang.ref=ALL-UNNAMED',
+        'java.base/java.util.zip=ALL-UNNAMED',
+        'java.base/java.util.jar=ALL-UNNAMED',
+        'java.base/java.nio.file.attribute=ALL-UNNAMED',
+        'java.base/jdk.internal.loader=ALL-UNNAMED',
+        'java.base/sun.net.www.protocol.jar=ALL-UNNAMED',
+        'java.base/sun.invoke.util=ALL-UNNAMED',
+        'java.base/java.util.concurrent.locks=ALL-UNNAMED',
+        'java.base/java.security=ALL-UNNAMED',
+        'java.base/sun.reflect.annotation=ALL-UNNAMED',
+        'java.base/java.text=ALL-UNNAMED',
+        'java.base/java.nio.charset=ALL-UNNAMED',
+        'java.base/sun.reflect.generics.reflectiveObjects=ALL-UNNAMED',
+        'java.management/com.sun.jmx.mbeanserver=ALL-UNNAMED',
+        'java.management/javax.management=ALL-UNNAMED',
+        'java.base/java.util.regex=ALL-UNNAMED',
+        'java.base/sun.util.locale=ALL-UNNAMED',
+        'java.base/jdk.internal.math=ALL-UNNAMED',
+        'java.xml/com.sun.xml.internal.stream.util=ALL-UNNAMED',
+        'java.base/java.time=ALL-UNNAMED',
+        'java.base/sun.reflect.generics.factory=ALL-UNNAMED',
+        'java.base/java.nio.channels=ALL-UNNAMED',
+        'java.base/sun.security.util=ALL-UNNAMED',
+        'java.base/java.time.zone=ALL-UNNAMED',
+        'java.base/sun.reflect.generics.scope=ALL-UNNAMED',
+        'java.base/sun.reflect.generics.tree=ALL-UNNAMED',
+        'java.management/com.sun.jmx.interceptor=ALL-UNNAMED',
+        'java.management/javax.management.openmbean=ALL-UNNAMED',
+        'java.management/sun.management=ALL-UNNAMED',
+        'jdk.management/com.sun.management.internal=ALL-UNNAMED',
+        'jdk.management.jfr/jdk.management.jfr=ALL-UNNAMED',
+        'jdk.jfr/jdk.jfr.internal.management=ALL-UNNAMED',
+        'java.base/jdk.internal.module=ALL-UNNAMED',
+        'java.base/java.lang.module=ALL-UNNAMED',
+        'java.security.jgss/sun.security.krb5=ALL-UNNAMED'
+]
+
+final testAddOpens = [
+        'java.prefs/java.util.prefs=ALL-UNNAMED' // required for jacoco tasks
+]
+
+def getJVMArgs(runtimeAddOpens, testAddOpens) {
+    final testJVMAddOpens = new ArrayList<>();
+    testJVMAddOpens.addAll(runtimeAddOpens);
+    testJVMAddOpens.addAll(testAddOpens);
+    final testConfigurationJVMArgs = testJVMAddOpens.stream()
+            .flatMap(openSpec -> ['--add-opens', openSpec].stream())
+            .toList()
+    // add in any other required args
+    testConfigurationJVMArgs.add('-Dio.netty.tryReflectionSetAccessible=true')
+    return testConfigurationJVMArgs
+}
+
 test {
-    jvmArgs = [
-            '--add-opens', 'java.base/java.lang=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.lang.invoke=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.lang.reflect=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.io=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.net=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.nio=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.util=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.util.concurrent=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.util.concurrent.atomic=ALL-UNNAMED',
-            '--add-opens', 'java.base/sun.nio.ch=ALL-UNNAMED',
-            '--add-opens', 'java.base/sun.nio.cs=ALL-UNNAMED',
-            '--add-opens', 'java.base/sun.security.action=ALL-UNNAMED',
-            '--add-opens', 'java.base/sun.util.calendar=ALL-UNNAMED',
-            '--add-opens', 'java.base/sun.nio.fs=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.nio.channels.spi=ALL-UNNAMED',
-
-            // required for tests
-            '--add-opens', 'java.base/jdk.internal.ref=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.lang.ref=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.util.zip=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.util.jar=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.nio.file.attribute=ALL-UNNAMED',
-            '--add-opens', 'java.base/jdk.internal.loader=ALL-UNNAMED',
-            '--add-opens', 'java.base/sun.net.www.protocol.jar=ALL-UNNAMED',
-            '--add-opens', 'java.base/sun.invoke.util=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.util.concurrent.locks=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.security=ALL-UNNAMED',
-            '--add-opens', 'java.base/sun.reflect.annotation=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.text=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.nio.charset=ALL-UNNAMED',
-            '--add-opens', 'java.base/sun.reflect.generics.reflectiveObjects=ALL-UNNAMED',
-            '--add-opens', 'java.management/com.sun.jmx.mbeanserver=ALL-UNNAMED',
-            '--add-opens', 'java.management/javax.management=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.util.regex=ALL-UNNAMED',
-            '--add-opens', 'java.base/sun.util.locale=ALL-UNNAMED',
-            '--add-opens', 'java.base/jdk.internal.math=ALL-UNNAMED',
-            '--add-opens', 'java.xml/com.sun.xml.internal.stream.util=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.time=ALL-UNNAMED',
-            '--add-opens', 'java.base/sun.reflect.generics.factory=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.nio.channels=ALL-UNNAMED',
-            '--add-opens', 'java.base/sun.security.util=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.time.zone=ALL-UNNAMED',
-            '--add-opens', 'java.base/sun.reflect.generics.scope=ALL-UNNAMED',
-            '--add-opens', 'java.base/sun.reflect.generics.tree=ALL-UNNAMED',
-            '--add-opens', 'java.management/com.sun.jmx.interceptor=ALL-UNNAMED',
-            '--add-opens', 'java.management/javax.management.openmbean=ALL-UNNAMED',
-            '--add-opens', 'java.management/sun.management=ALL-UNNAMED',
-            '--add-opens', 'jdk.management/com.sun.management.internal=ALL-UNNAMED',
-            '--add-opens', 'jdk.management.jfr/jdk.management.jfr=ALL-UNNAMED',
-            '--add-opens', 'jdk.jfr/jdk.jfr.internal.management=ALL-UNNAMED',
-            '--add-opens', 'java.base/jdk.internal.module=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.lang.module=ALL-UNNAMED',
-            '--add-opens', 'java.prefs/java.util.prefs=ALL-UNNAMED', // jacoco
-
-            '-Dio.netty.tryReflectionSetAccessible=true'
-    ]
+    jvmArgs = getJVMArgs(runtimeAddOpens, testAddOpens)
     jacoco {
-        jvmArgs = [
-                '--add-opens', 'java.base/java.lang=ALL-UNNAMED',
-                '--add-opens', 'java.base/java.lang.invoke=ALL-UNNAMED',
-                '--add-opens', 'java.base/java.lang.reflect=ALL-UNNAMED',
-                '--add-opens', 'java.base/java.io=ALL-UNNAMED',
-                '--add-opens', 'java.base/java.net=ALL-UNNAMED',
-                '--add-opens', 'java.base/java.nio=ALL-UNNAMED',
-                '--add-opens', 'java.base/java.util=ALL-UNNAMED',
-                '--add-opens', 'java.base/java.util.concurrent=ALL-UNNAMED',
-                '--add-opens', 'java.base/java.util.concurrent.atomic=ALL-UNNAMED',
-                '--add-opens', 'java.base/sun.nio.ch=ALL-UNNAMED',
-                '--add-opens', 'java.base/sun.nio.cs=ALL-UNNAMED',
-                '--add-opens', 'java.base/sun.security.action=ALL-UNNAMED',
-                '--add-opens', 'java.base/sun.util.calendar=ALL-UNNAMED',
-                '--add-opens', 'java.base/sun.nio.fs=ALL-UNNAMED',
-                '--add-opens', 'java.base/java.nio.channels.spi=ALL-UNNAMED',
-
-                // required for tests
-                '--add-opens', 'java.base/jdk.internal.ref=ALL-UNNAMED',
-                '--add-opens', 'java.base/java.lang.ref=ALL-UNNAMED',
-                '--add-opens', 'java.base/java.util.zip=ALL-UNNAMED',
-                '--add-opens', 'java.base/java.util.jar=ALL-UNNAMED',
-                '--add-opens', 'java.base/java.nio.file.attribute=ALL-UNNAMED',
-                '--add-opens', 'java.base/jdk.internal.loader=ALL-UNNAMED',
-                '--add-opens', 'java.base/sun.net.www.protocol.jar=ALL-UNNAMED',
-                '--add-opens', 'java.base/sun.invoke.util=ALL-UNNAMED',
-                '--add-opens', 'java.base/java.util.concurrent.locks=ALL-UNNAMED',
-                '--add-opens', 'java.base/java.security=ALL-UNNAMED',
-                '--add-opens', 'java.base/sun.reflect.annotation=ALL-UNNAMED',
-                '--add-opens', 'java.base/java.text=ALL-UNNAMED',
-                '--add-opens', 'java.base/java.nio.charset=ALL-UNNAMED',
-                '--add-opens', 'java.base/sun.reflect.generics.reflectiveObjects=ALL-UNNAMED',
-                '--add-opens', 'java.management/com.sun.jmx.mbeanserver=ALL-UNNAMED',
-                '--add-opens', 'java.base/javax.management=ALL-UNNAMED',
-                '--add-opens', 'java.base/java.util.regex=ALL-UNNAMED',
-                '--add-opens', 'java.base/sun.util.locale=ALL-UNNAMED',
-                '--add-opens', 'java.base/jdk.internal.math=ALL-UNNAMED',
-                '--add-opens', 'java.xml/com.sun.xml.internal.stream.util=ALL-UNNAMED',
-                '--add-opens', 'java.base/java.time=ALL-UNNAMED',
-                '--add-opens', 'java.base/sun.reflect.generics.factory=ALL-UNNAMED',
-                '--add-opens', 'java.base/java.nio.channels=ALL-UNNAMED',
-                '--add-opens', 'java.base/sun.security.util=ALL-UNNAMED',
-                '--add-opens', 'java.base/java.time.zone=ALL-UNNAMED',
-                '--add-opens', 'java.base/sun.reflect.generics.scope=ALL-UNNAMED',
-                '--add-opens', 'java.base/sun.reflect.generics.tree=ALL-UNNAMED',
-                '--add-opens', 'java.management/com.sun.jmx.interceptor=ALL-UNNAMED',
-                '--add-opens', 'java.management/javax.management.openmbean=ALL-UNNAMED',
-                '--add-opens', 'java.management/sun.management=ALL-UNNAMED',
-                '--add-opens', 'jdk.management/com.sun.management.internal=ALL-UNNAMED',
-                '--add-opens', 'jdk.management.jfr/jdk.management.jfr=ALL-UNNAMED',
-                '--add-opens', 'jdk.jfr/jdk.jfr.internal.management=ALL-UNNAMED',
-                '--add-opens', 'java.base/jdk.internal.module=ALL-UNNAMED',
-                '--add-opens', 'java.base/java.lang.module=ALL-UNNAMED',
-                '--add-opens', 'java.prefs/java.util.prefs=ALL-UNNAMED', // jacoco
-
-                '-Dio.netty.tryReflectionSetAccessible=true'
-        ]
+        jvmArgs = getJVMArgs(runtimeAddOpens, testAddOpens)
     }
 }
 
@@ -181,62 +144,7 @@ task testOnPackagedReleaseJar(type: Test){
         classpath.each {println it}
     }
 
-    jvmArgs = [
-            '--add-opens', 'java.base/java.lang=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.lang.invoke=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.lang.reflect=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.io=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.net=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.nio=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.util=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.util.concurrent=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.util.concurrent.atomic=ALL-UNNAMED',
-            '--add-opens', 'java.base/sun.nio.ch=ALL-UNNAMED',
-            '--add-opens', 'java.base/sun.nio.cs=ALL-UNNAMED',
-            '--add-opens', 'java.base/sun.security.action=ALL-UNNAMED',
-            '--add-opens', 'java.base/sun.util.calendar=ALL-UNNAMED',
-            '--add-opens', 'java.base/sun.nio.fs=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.nio.channels.spi=ALL-UNNAMED',
-            '--add-opens', 'java.base/jdk.internal.ref=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.lang.ref=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.util.zip=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.util.jar=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.nio.file.attribute=ALL-UNNAMED',
-            '--add-opens', 'java.base/jdk.internal.loader=ALL-UNNAMED',
-            '--add-opens', 'java.base/sun.net.www.protocol.jar=ALL-UNNAMED',
-            '--add-opens', 'java.base/sun.invoke.util=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.util.concurrent.locks=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.security=ALL-UNNAMED',
-            '--add-opens', 'java.base/sun.reflect.annotation=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.text=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.nio.charset=ALL-UNNAMED',
-            '--add-opens', 'java.base/sun.reflect.generics.reflectiveObjects=ALL-UNNAMED',
-            '--add-opens', 'java.management/com.sun.jmx.mbeanserver=ALL-UNNAMED',
-            '--add-opens', 'java.management/javax.management=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.util.regex=ALL-UNNAMED',
-            '--add-opens', 'java.base/sun.util.locale=ALL-UNNAMED',
-            '--add-opens', 'java.base/jdk.internal.math=ALL-UNNAMED',
-            '--add-opens', 'java.xml/com.sun.xml.internal.stream.util=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.time=ALL-UNNAMED',
-            '--add-opens', 'java.base/sun.reflect.generics.factory=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.nio.channels=ALL-UNNAMED',
-            '--add-opens', 'java.base/sun.security.util=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.time.zone=ALL-UNNAMED',
-            '--add-opens', 'java.base/sun.reflect.generics.scope=ALL-UNNAMED',
-            '--add-opens', 'java.base/sun.reflect.generics.tree=ALL-UNNAMED',
-            '--add-opens', 'java.management/com.sun.jmx.interceptor=ALL-UNNAMED',
-            '--add-opens', 'java.management/javax.management.openmbean=ALL-UNNAMED',
-            '--add-opens', 'java.management/sun.management=ALL-UNNAMED',
-            '--add-opens', 'jdk.management/com.sun.management.internal=ALL-UNNAMED',
-            '--add-opens', 'jdk.management.jfr/jdk.management.jfr=ALL-UNNAMED',
-            '--add-opens', 'jdk.jfr/jdk.jfr.internal.management=ALL-UNNAMED',
-            '--add-opens', 'java.base/jdk.internal.module=ALL-UNNAMED',
-            '--add-opens', 'java.base/java.lang.module=ALL-UNNAMED',
-            '--add-opens', 'java.security.jgss/sun.security.krb5=ALL-UNNAMED',
-            '--add-opens', 'java.prefs/java.util.prefs=ALL-UNNAMED', // jacoco
-
-            '-Dio.netty.tryReflectionSetAccessible=true'
-    ]
+    jvmArgs = getJVMArgs(runtimeAddOpens, testAddOpens)
 
     classpath = files( gatkJar, testClassesJar, testDependencyJar)
     testClassesDirs = files(testClassesUnpacked)
