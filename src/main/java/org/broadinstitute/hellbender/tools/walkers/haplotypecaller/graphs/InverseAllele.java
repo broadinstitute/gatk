@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
 import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.SimpleAllele;
 
 /**
  * Utility class for defining a "not" allele concept that is used to score haplotypes that are not supporting the allele.
@@ -10,15 +11,14 @@ import htsjdk.variant.variantcontext.Allele;
  * @author Ilya Soifer &lt;ilya.soifer@ultimagen.com
  */
 
-public class InverseAllele extends Allele {
+public class InverseAllele extends SimpleAllele {
     final static public long serialVersionUID = 1L;
 
     private final Allele internalAllele;
-    private final boolean referenceStatus;
+
     private InverseAllele(final Allele allele, boolean isReference) {
-        super(allele, false);
+        super(allele.getBases(), isReference);
         this.internalAllele = allele;
-        referenceStatus = isReference;
     }
 
     // InverseAllele of inverseAllele. By definition it is the allele. In Allele filtering code we normally genotype
@@ -34,10 +34,6 @@ public class InverseAllele extends Allele {
 
     public byte [] getBases(){
         return getDisplayString().getBytes();
-    }
-    @Override
-    public boolean isReference() {
-        return referenceStatus;
     }
 
     @Override
