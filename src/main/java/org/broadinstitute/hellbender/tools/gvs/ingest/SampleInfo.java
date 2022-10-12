@@ -21,8 +21,7 @@ public class SampleInfo {
     public void setSampleInfoIsLoaded(long sampleId) {
         String query = "UPDATE `" + projectID + "." + datasetName + "." + sampleInfoTableName + "` " +
                 " SET " + SchemaUtils.SAMPLE_INFO_IS_LOADED_NAME + " = TRUE " +
-                " WHERE " + SchemaUtils.SAMPLE_ID_FIELD_NAME + " = " + sampleId +
-                " AND " + SchemaUtils.SAMPLE_INFO_IS_LOADED_NAME + " IS FALSE ";
+                " WHERE " + SchemaUtils.SAMPLE_ID_FIELD_NAME + " = " + sampleId;
 
         logger.info("About to do the update");
         BigQueryUtils.executeQuery(projectID, query, false, null);
