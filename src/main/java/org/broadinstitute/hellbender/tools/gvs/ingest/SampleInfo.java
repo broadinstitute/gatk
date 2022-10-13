@@ -82,17 +82,7 @@ public class SampleInfo {
 
     public void writeSampleInfoUsingDML(long sampleId, String sampleName, Boolean is_loaded, boolean is_control, Long withdrawnDate) {
         withdrawnDate = withdrawnDate == null ? null : withdrawnDate * 1000L;
-        final String query = "INSERT INTO `" + projectID + "." + datasetName + "." + sampleInfoTableName + "` " +
-                " (" + SchemaUtils.SAMPLE_NAME_FIELD_NAME + ", " +
-                SchemaUtils.SAMPLE_ID_FIELD_NAME + ", " +
-                SchemaUtils.SAMPLE_INFO_IS_LOADED_FIELD_NAME + ", " +
-                SchemaUtils.SAMPLE_INFO_IS_CONTROL_FIELD_NAME + ", " +
-                SchemaUtils.SAMPLE_INFO_WITHDRAWN_FIELD_NAME + ") VALUES (" +
-                sampleName + ", " +
-                sampleId + ", " +
-                is_loaded + ", " +
-                is_control + ", " +
-                withdrawnDate + ") ";
+        final String query = String.format("INSERT INTO `%s.%s.%s` (%s, %s, %s, %s, %s) VALUES (\"%s\", %d, %s, %s, %d) ", projectID, datasetName, sampleInfoTableName, SchemaUtils.SAMPLE_NAME_FIELD_NAME, SchemaUtils.SAMPLE_ID_FIELD_NAME, SchemaUtils.SAMPLE_INFO_IS_LOADED_FIELD_NAME, SchemaUtils.SAMPLE_INFO_IS_CONTROL_FIELD_NAME, SchemaUtils.SAMPLE_INFO_WITHDRAWN_FIELD_NAME, sampleName, sampleId, is_loaded, is_control, withdrawnDate);
         BigQueryUtils.executeQuery(projectID, query, false, null);
     }
 
