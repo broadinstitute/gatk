@@ -491,13 +491,9 @@ public class GATKAnnotationPluginDescriptor extends CommandLinePluginDescriptor<
      * @return a Map of Strings to Annotations of resolved instances
      */
     public Map<String, Annotation> getResolvedInstancesMap() {
-        if (resolvedInstances == null) {
-            getResolvedInstances();
-        }
-        Map<String, Annotation> resolvedInstancesMap = new HashMap<>();
-        allDiscoveredAnnotations.keySet().stream().filter(s -> resolvedInstances.contains(allDiscoveredAnnotations.get(s))).
-                forEach(s -> resolvedInstancesMap.put(s, allDiscoveredAnnotations.get(s)));
-        return(resolvedInstancesMap);
+        return allDiscoveredAnnotations.entrySet().stream()
+                .filter(e -> getResolvedInstances().contains(e.getValue()))
+                .collect(Collectors.toMap(e -> e.getKey(), e -> e.getValue()));
     }
 
     /**
