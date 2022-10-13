@@ -34,6 +34,12 @@ workflow GvsTestNirvana {
             mini_sites_only_vcf_indexes = flatten(CreateMiniSitesOnlyVcfs.sites_only_vcf_indexes),
     }
 
+    call LookForProblems {
+        input:
+            sites_only_vcf = MergeMiniSitesOnlyVcfs.sites_only_vcf,
+            sites_only_vcf_index = MergeMiniSitesOnlyVcfs.sites_only_vcf_index,
+    }
+
     call RunNirvana {
         input:
             sites_only_vcf = MergeMiniSitesOnlyVcfs.sites_only_vcf,
@@ -164,6 +170,37 @@ task MergeMiniSitesOnlyVcfs {
     output {
         File sites_only_vcf = "sites.vcf.gz"
         File sites_only_vcf_index = "sites.vcf.gz.tbi"
+    }
+}
+
+task LookForProblems {
+    input {
+        File sites_only_vcf
+        File sites_only_vcf_index
+        Int memory_gib = 7
+    }
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o xtrace -o pipefail
+
+        # Put VCF and index in current directory
+        mv $(find . -name '*.vcf.gz*' -print) .
+
+        bcftools view --threads 4 -i 'N_ALT>50' ~{sites_only_vcf}  |
+            bcftools query -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > many_alts.tsv
+
+        bcftools view --threads 4 -i 'REF~"N"' ~{sites_only_vcf}  |
+            bcftools query -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > ref_n.tsv
+    >>>
+    runtime {
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-10-12-alpine"
+        memory: "~{memory_gib} GiB"
+        disks: "local-disk 500 HDD"
+    }
+    output {
+        File many_alts = "many_alts.tsv"
+        File ref_n = "ref_n.tsv"
     }
 }
 
