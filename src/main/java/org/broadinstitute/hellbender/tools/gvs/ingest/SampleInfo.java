@@ -88,8 +88,8 @@ public class SampleInfo {
                 SchemaUtils.SAMPLE_INFO_IS_LOADED_FIELD_NAME + ", " +
                 SchemaUtils.SAMPLE_INFO_IS_CONTROL_FIELD_NAME + ", " +
                 SchemaUtils.SAMPLE_INFO_WITHDRAWN_FIELD_NAME + ") VALUES (" +
-                sampleId + ", " +
                 sampleName + ", " +
+                sampleId + ", " +
                 is_loaded + ", " +
                 is_control + ", " +
                 withdrawnDate + ") ";
