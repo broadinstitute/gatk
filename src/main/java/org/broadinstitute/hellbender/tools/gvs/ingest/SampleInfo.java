@@ -80,6 +80,22 @@ public class SampleInfo {
         return isLoaded;
     }
 
+    public void writeSampleInfoUsingDML(long sampleId, String sampleName, Boolean is_loaded, boolean is_control, Long withdrawnDate) {
+        withdrawnDate = withdrawnDate == null ? null : withdrawnDate * 1000L;
+        final String query = "INSERT INTO `" + projectID + "." + datasetName + "." + sampleInfoTableName + "` " +
+                " (" + SchemaUtils.SAMPLE_NAME_FIELD_NAME + ", " +
+                SchemaUtils.SAMPLE_ID_FIELD_NAME + ", " +
+                SchemaUtils.SAMPLE_INFO_IS_LOADED_FIELD_NAME + ", " +
+                SchemaUtils.SAMPLE_INFO_IS_CONTROL_FIELD_NAME + ", " +
+                SchemaUtils.SAMPLE_INFO_WITHDRAWN_FIELD_NAME + ") VALUES (" +
+                sampleId + ", " +
+                sampleName + ", " +
+                is_loaded + ", " +
+                is_control + ", " +
+                withdrawnDate + ") ";
+        BigQueryUtils.executeQuery(projectID, query, false, null);
+    }
+
     public void writeSampleInfo(long sampleId, String sampleName, Boolean is_loaded, boolean is_control, Long withdrawnDate) {
         final ExponentialBackOff backoff = new ExponentialBackOff.Builder().
                 setInitialIntervalMillis(2000).
