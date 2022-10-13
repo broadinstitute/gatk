@@ -568,9 +568,6 @@ public final class ReferenceConfidenceVariantContextMerger {
                         final int[] AD = AlleleSubsettingUtils.generateAD(g.getAD(), perSampleIndexesOfRelevantAlleles);
                         genotypeBuilder.AD(AD);
                     }
-                    // clean up low confidence hom refs for better annotations later
-                } else if (GenotypeGVCFsEngine.excludeFromAnnotations(g)) {
-                    genotypeBuilder.alleles(Collections.nCopies(ploidy, Allele.NO_CALL));
                 }
 
                 if ( preserveGermlineGenotypes ) {
