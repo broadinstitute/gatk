@@ -181,7 +181,6 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
             int mergedAllelesListSizeBeforePossibleTrimming = mergedVC.getAlleles().size();
             final Map<Allele, List<Haplotype>> alleleMapper = AssemblyBasedCallerUtils.createAlleleMapper(mergedVC, loc, haplotypes, !hcArgs.disableSpanningEventGenotyping);
 
-
             if( hcArgs.assemblerArgs.debugAssembly && logger != null ) {
                 logger.info("Genotyping event at " + loc + " with alleles = " + mergedVC.getAlleles());
             }

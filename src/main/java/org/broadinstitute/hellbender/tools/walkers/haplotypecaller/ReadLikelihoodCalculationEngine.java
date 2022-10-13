@@ -31,7 +31,7 @@ public interface ReadLikelihoodCalculationEngine extends AutoCloseable {
          */
         PairHMM,
 
-        PDPairHMM,
+//        PDPairHMM,
 
         FlowBased,
 

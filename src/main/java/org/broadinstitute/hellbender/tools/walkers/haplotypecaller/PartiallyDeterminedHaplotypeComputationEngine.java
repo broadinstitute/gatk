@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
  * TODO
  */
 public class PartiallyDeterminedHaplotypeComputationEngine {
-    final static int MAX_PD_HAPS_TO_GENERATE = 256*4; //; //(2048 is illuminas #) (without optimizing the hmm to some degree this is probably unattainable)
+    final static int MAX_PD_HAPS_TO_GENERATE = 256*2; //; //(2048 is illuminas #) (without optimizing the hmm to some degree this is probably unattainable)
     final static int MAX_BRANCH_PD_HAPS = 128; //(128 is illuminas #)
     final static int MAX_VAR_IN_EVENT_GROUP = 17; // (20 is illuminas #)
 
@@ -292,6 +292,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                         }
                         newBranch.sort(HAPLOTYPE_SNP_FIRST_COMPARATOR);
                         PartiallyDeterminedHaplotype newPDHaplotypeFromEvents = createNewPDHaplotypeFromEvents(referenceHaplotype, determinedEventToTest, isRef, newBranch);
+                        newPDHaplotypeFromEvents.setAllDeterminedEventsAtThisSite(determinedVariants); // accounting for determined variants for later in case we are in optimization mode
                         branchHaps.add(newPDHaplotypeFromEvents);
 
                     } else {

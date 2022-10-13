@@ -2,13 +2,16 @@ package org.broadinstitute.hellbender.utils.pairhmm;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMUtils;
+import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.gatk.nativebindings.pairhmm.PairHMMNativeArguments;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.PDPairHMMLikelihoodCalculationEngine;
 import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
@@ -37,6 +40,9 @@ public abstract class PDPairHMM implements Closeable{
     protected int hapStartIndex;
 
     protected OutputStreamWriter debugOutputStream;
+
+    // EXPERIMENTAL FEATURE TO CUT DOWN ON COMPUTE.
+    protected int readOverlapRangeToPDBases;
 
     public enum Implementation {
 //        /* Very slow implementation which uses very accurate log10 sum functions. Only meant to be used as a reference test implementation */
@@ -201,7 +207,8 @@ public abstract class PDPairHMM implements Closeable{
      */
     public void computeLog10Likelihoods(final LikelihoodMatrix<GATKRead, PartiallyDeterminedHaplotype> logLikelihoods,
                                         final List<GATKRead> processedReads,
-                                        final PairHMMInputScoreImputator inputScoreImputator) {
+                                        final PairHMMInputScoreImputator inputScoreImputator,
+                                        final int rangeForReadOverlapToDeterminedBases) {
         if (processedReads.isEmpty()) {
             return;
         }
@@ -234,10 +241,18 @@ public abstract class PDPairHMM implements Closeable{
             final boolean isFirstHaplotype = true;
             for (int a = 0; a < alleleCount; a++) {
                 final PartiallyDeterminedHaplotype allele = alleles.get(a);
+                final double lk;
                 final byte[] alleleBases = allele.getBases();
                 final byte[] nextAlleleBases = a == alleles.size() - 1 ? null : alleles.get(a + 1).getBases();
-                final double lk = computeReadLikelihoodGivenHaplotypeLog10(alleleBases, allele.getAlternateBases(),
-                        readBases, readQuals, readInsQuals, readDelQuals, overallGCP, isFirstHaplotype, nextAlleleBases);
+                // if we aren't apply the optimization (range == -1) or if the read overlaps the determined region for calling:
+                if (rangeForReadOverlapToDeterminedBases < 0 || allele.getMaximumExtentOfSiteDeterminedAlleles()
+                        .overlapsWithMargin((Locatable) read.getTransientAttribute(PDPairHMMLikelihoodCalculationEngine.UNCLIPPED_ORIGINAL_SPAN_ATTR), rangeForReadOverlapToDeterminedBases + 1)) { // the +1 here is us erring on the side of caution
+                    lk = computeReadLikelihoodGivenHaplotypeLog10(alleleBases, allele.getAlternateBases(),
+                            readBases, readQuals, readInsQuals, readDelQuals, overallGCP, isFirstHaplotype, nextAlleleBases);
+                // Otherwise we record that the likelihood array is bogus here for later validation and set it to -infinity
+                } else {
+                    lk = Double.NEGATIVE_INFINITY;
+                }
                 logLikelihoods.set(a, readIndex, lk);
                 mLogLikelihoodArray[idx++] = lk;
                 writeToResultsFileIfApplicable(readBases, readQuals, readInsQuals, readDelQuals, overallGCP, alleleBases, lk);

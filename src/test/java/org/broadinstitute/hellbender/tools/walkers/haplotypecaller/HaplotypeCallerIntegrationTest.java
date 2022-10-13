@@ -2174,6 +2174,38 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test()
+    public void testThing4NA12878Optimize() throws Exception {
+        Utils.resetRandomGenerator();
+
+        final File output = createTempFile("testVCFModeIsConsistentWithPastResults", ".vcf");
+        final File expected = new File(TEST_FILES_DIR, "expected.pileupCallerDRAGEN.gatk4.vcf");
+
+        final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
+
+        final String[] args = {
+                "-R","gs://gcp-public-data--broad-references/hg38/v0/dragen_reference/Homo_sapiens_assembly38_masked.fasta",
+                "-I","/Users/emeryj/hellbender/DRAGENMatlab/personalEvaluation/FINALSTRETCH/dragen3.7.8aligned.NA12878_PCRplus_1.chr20.bam",
+                "-L","chr20:13,934,068-13,934,622",
+                "-O",outputPath,
+                "--pileup-detection","--pileup-detection-bad-read-tolerance","0.40","--pileup-detection-enable-indel-pileup-calling", "--pileup-detection-active-region-phred-threshold","3.0",
+                "-contamination","0.0 ", "--use-pdhmm", "--enable-legacy-assembly-region-trimming", "--print-pileupcalling-status", "--use-pdhmm-overlap-optimization", //"--make-determined-haps-from-pd-code",
+                "-G","StandardAnnotation","-G","StandardHCAnnotation",
+                "--dragen-mode",
+                "--disable-spanning-event-genotyping",
+                "--debug-genotyper-output", "/Users/emeryj/hellbender/gatk/testDebugOutputStream2.txt",
+                "--dragstr-params-path","/Users/emeryj/hellbender/DRAGENMatlab/personalEvaluation/FINALSTRETCH/NA12878_PCRplus_1.bam.dragstr",
+                "-GQB","10","-GQB","20","-GQB","30","-GQB","40","-GQB","50","-GQB","60","-GQB","70","-GQB","80","-GQB","90",
+        };
+
+        runCommandLine(args);
+
+        // Test for an exact match against past results
+        if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
+            IntegrationTestSpec.assertEqualTextFiles(output, expected);
+        }
+    }
+
+    @Test()
     public void testCrashingGATKCode() throws Exception {
         Utils.resetRandomGenerator();
 

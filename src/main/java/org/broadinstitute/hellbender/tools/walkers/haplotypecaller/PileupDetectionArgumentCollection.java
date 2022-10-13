@@ -18,7 +18,6 @@ public final class PileupDetectionArgumentCollection {
     public static final String PILEUP_DETECTION_FILTER_COVERAGE_LONG_NAME = "pileup-detection-filter-coverage-threshold";
     public static final String PILEUP_DETECTION_SNP_BASEQUALITY_THRESHOLD = "pileup-detection-snp-basequlaity-filter";
 
-    //TODO we currently don't see the same threshold from active region determination...
     public static final String PILEUP_DETECTION_ACTIVE_REGION_LOD_THRESHOLD_LONG_NAME = "pileup-detection-active-region-phred-threshold";
 
     // Arguments related to DRAGEN heuristics related to "read badness" intended to filter out false positives from the pileup detection code
@@ -42,7 +41,7 @@ public final class PileupDetectionArgumentCollection {
     public static final String DETERMINE_PD_HAPS = "make-determined-haps-from-pd-code";
     public static final String DEBUG_PILEUPCALLING_ARG = "print-pileupcalling-status";
     public static final String FALLBACK_TO_ALT_HAP_CONSTRUCITON_IF_ABORTED = "fallback-gga-if-pdhmm-fails";
-
+    public static final String PDHMM_READ_OVERLAP_OPTIMIZATION = "use-pdhmm-overlap-optimization";
 
     /**
      * Enables pileup-based haplotype creation and variant detection
@@ -52,7 +51,6 @@ public final class PileupDetectionArgumentCollection {
     @Advanced
     @Argument(fullName= PILEUP_DETECTION_LONG_NAME, doc = "If enabled, the variant caller will create pileup-based haplotypes in addition to the assembly-based haplotype generation.", optional = true)
     public boolean usePileupDetection = false;
-
     /**
      * TODO
      */
@@ -60,17 +58,21 @@ public final class PileupDetectionArgumentCollection {
     @Argument(fullName= GENERATE_PARTIALLY_DETERMINED_HAPLOTYPES_LONG_NAME, doc = "", optional = true)
     public boolean generatePDHaplotypes = false;
     /**
-     * TODO
+     * A set of debug/testing arguments related to PDHMM and various off-label configurations for running pdhmm.
      */
-    @Advanced
     @Hidden
     @Argument(fullName= DETERMINE_PD_HAPS, doc = "", optional = true)
     public boolean determinePDHaps = false;
+    @Hidden
     @Argument(fullName= DEBUG_PILEUPCALLING_ARG, doc = "", optional = true)
     public boolean debugPileupStdout = false;
+    @Hidden
     @Argument(fullName= FALLBACK_TO_ALT_HAP_CONSTRUCITON_IF_ABORTED, doc = "", optional = true)
     public boolean useGGAFallback = true;
-
+    @Hidden
+    // NOTE: this optimization ASSUMES that we are not realigning reads as part of PDHMM (which is how DRAGEN works)
+    @Argument(fullName= PDHMM_READ_OVERLAP_OPTIMIZATION, doc = "", optional = true)
+    public boolean pdhmmOptimization = false;
 
 
     /**

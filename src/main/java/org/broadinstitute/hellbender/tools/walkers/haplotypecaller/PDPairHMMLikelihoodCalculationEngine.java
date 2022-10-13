@@ -7,6 +7,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.gatk.nativebindings.pairhmm.PairHMMNativeArguments;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.dragstr.DragstrParams;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
@@ -22,7 +23,6 @@ import org.broadinstitute.hellbender.utils.pairhmm.PairHMMInputScoreImputator;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
-import java.io.OutputStreamWriter;
 import java.util.*;
 import java.util.function.ToDoubleFunction;
 import java.util.stream.Collectors;
@@ -45,7 +45,8 @@ public final class PDPairHMMLikelihoodCalculationEngine implements ReadLikelihoo
 
     private final double log10globalReadMismappingRate;
 
-    private final PDPairHMM pairHMM;
+    private final PDPairHMM pdPairHMM;
+    public static final String UNCLIPPED_ORIGINAL_SPAN_ATTR = "originalAlignment";
 
     // DRAGEN-GATK related parameters
     private final DragstrParams dragstrParams;
@@ -55,6 +56,7 @@ public final class PDPairHMMLikelihoodCalculationEngine implements ReadLikelihoo
     private final boolean disableCapReadQualitiesToMapQ;
     private final boolean symmetricallyNormalizeAllelesToReference;
     private final boolean modifySoftclippedBases;
+    private final int rangeForReadOverlapToDeterminedBases;
 
     private final PairHMMLikelihoodCalculationEngine.PCRErrorModel pcrErrorModel;
 
@@ -115,7 +117,8 @@ public final class PDPairHMMLikelihoodCalculationEngine implements ReadLikelihoo
                                                 final double expectedErrorRatePerBase,
                                                 final boolean symmetricallyNormalizeAllelesToReference,
                                                 final boolean disableCapReadQualitiesToMapQ,
-                                                final boolean modifySoftclippedBases) {
+                                                final boolean modifySoftclippedBases,
+                                                final int rangeForReadOverlapToDeterminedBases) {
         Utils.nonNull(hmmType, "hmmType is null");
         Utils.nonNull(pcrErrorModel, "pcrErrorModel is null");
         if (constantGCP < 0){
@@ -129,17 +132,14 @@ public final class PDPairHMMLikelihoodCalculationEngine implements ReadLikelihoo
         this.log10globalReadMismappingRate = log10globalReadMismappingRate;
         this.pcrErrorModel = this.dragstrParams == null ? pcrErrorModel : PairHMMLikelihoodCalculationEngine.PCRErrorModel.NONE;
         // TODO later we probably need a LOG and LOGLESS version for parsimony with DRAGEN
-        this.pairHMM = new LoglessPDPairHMM();
-//        this.pairHMM = PDPairHMM.Implementation(arguments);
-//        if (resultsFile != null) {
-//            pairHMM.setAndInitializeDebugOutputStream(new OutputStreamWriter(resultsFile.getOutputStream()));
-//        }
+        this.pdPairHMM = new LoglessPDPairHMM();
         this.dynamicDisqualification = dynamicReadDisqualificaiton;
         this.readDisqualificationScale = readDisqualificationScale;
         this.symmetricallyNormalizeAllelesToReference = symmetricallyNormalizeAllelesToReference;
         this.expectedErrorRatePerBase = expectedErrorRatePerBase;
         this.disableCapReadQualitiesToMapQ = disableCapReadQualitiesToMapQ;
         this.modifySoftclippedBases = modifySoftclippedBases;
+        this.rangeForReadOverlapToDeterminedBases = rangeForReadOverlapToDeterminedBases;
 
         initializePCRErrorModel();
 
@@ -152,7 +152,7 @@ public final class PDPairHMMLikelihoodCalculationEngine implements ReadLikelihoo
 
     @Override
     public void close() {
-        pairHMM.close();
+        pdPairHMM.close();
     }
 
     @Override
@@ -244,6 +244,9 @@ public final class PDPairHMMLikelihoodCalculationEngine implements ReadLikelihoo
         processedRead.setBaseQualities(baseQualities);
         ReadUtils.setInsertionBaseQualities(processedRead, baseInsertionQualities);
         ReadUtils.setDeletionBaseQualities(processedRead, baseDeletionQualities);
+//        //NOTE: we add these elements to the reads objects for PDHMM optimizations that restrict the work to only regions overlapping the determined haplotypes
+//        processedRead.setPosition(read);
+//        processedRead.setCigar(read.getCigar());
         return processedRead;
     }
 
@@ -261,7 +264,7 @@ public final class PDPairHMMLikelihoodCalculationEngine implements ReadLikelihoo
         final int haplotypeMaxLength = haplotypes.stream().mapToInt(h -> h.getBases().length).max().orElse(0);
 
         // initialize arrays to hold the probabilities of being in the match, insertion and deletion cases
-        pairHMM.initialize(haplotypes, perSampleReadList, readMaxLength, haplotypeMaxLength);
+        pdPairHMM.initialize(haplotypes, perSampleReadList, readMaxLength, haplotypeMaxLength);
     }
 
     private void computeReadLikelihoods(final LikelihoodMatrix<GATKRead, PartiallyDeterminedHaplotype> likelihoods) {
@@ -271,12 +274,13 @@ public final class PDPairHMMLikelihoodCalculationEngine implements ReadLikelihoo
         for(int counter = 0; counter < processedReads.size(); counter++) {
             GATKRead read = processedReads.get(counter);
             if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
+                HaplotypeCallerGenotypingDebugger.println("Range for Overlaps to Variants for consideration: "+rangeForReadOverlapToDeterminedBases);
                 HaplotypeCallerGenotypingDebugger.println("read "+counter +": "+read.getName()+" cigar: "+read.getCigar()+" mapQ: "+read.getMappingQuality()+" loc: ["+read.getStart() +"-"+ read.getEnd()+"] unclippedloc: ["+read.getUnclippedStart()+"-"+read.getUnclippedEnd()+"]");
                 HaplotypeCallerGenotypingDebugger.println(Arrays.toString(read.getBaseQualitiesNoCopy()));
             }
         }
         // Run the PairHMM to calculate the log10 likelihood of each (processed) reads' arising from each haplotype
-        pairHMM.computeLog10Likelihoods(likelihoods, processedReads, inputScoreImputator);
+        pdPairHMM.computeLog10Likelihoods(likelihoods, processedReads, inputScoreImputator, rangeForReadOverlapToDeterminedBases);
     }
 
     /**
@@ -293,6 +297,8 @@ public final class PDPairHMMLikelihoodCalculationEngine implements ReadLikelihoo
         for (final GATKRead read : reads) {
             final GATKRead maybeUnclipped = modifySoftclippedBases ? read : ReadClipper.hardClipSoftClippedBases(read);    //Clip the bases here to remove hap
             final byte[] readBases = maybeUnclipped.getBases();
+            //For FRD we want to have scores for reads that don't overlap
+            final SimpleInterval readSpan = new SimpleInterval(read.getContig(), read.getUnclippedStart(), read.getUnclippedEnd());
 
             // NOTE -- must clone anything that gets modified here so we don't screw up future uses of the read
             //Using close here is justified - it's an array of primitives.
@@ -306,7 +312,9 @@ public final class PDPairHMMLikelihoodCalculationEngine implements ReadLikelihoo
             // Store the actual qualities
             read.setTransientAttribute(HMM_BASE_QUALITIES_TAG, readQuals);
             // Create a new copy of the read and sets its base qualities to the modified versions.
-            result.add(createQualityModifiedRead(maybeUnclipped, readBases, readQuals, readInsQuals, readDelQuals));
+            GATKRead qualityModifiedRead = createQualityModifiedRead(maybeUnclipped, readBases, readQuals, readInsQuals, readDelQuals);
+            qualityModifiedRead.setTransientAttribute(UNCLIPPED_ORIGINAL_SPAN_ATTR, readSpan);
+            result.add(qualityModifiedRead);
         }
         return result;
     }

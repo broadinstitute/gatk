@@ -5,6 +5,7 @@ import com.netflix.servo.util.Objects;
 import htsjdk.samtools.Cigar;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -42,11 +43,13 @@ public final class PartiallyDeterminedHaplotype extends Haplotype {
     }
 
     private byte[] alternateBases;
-    private List<VariantContext> constituentEvents;
-    //TODO soon these will both have to optionally be lists
-    private VariantContext importantVariant;
+    private List<VariantContext> constituentBuiltEvents;
+    private List<VariantContext> allDeterminedEventsAtThisSite;
+    private VariantContext importantVariant; // NOTE this must be in both of the previous lists
     private final long determinedPosition;
-    private boolean isDeterminedAlleleRef;
+    private boolean isDeterminedAlleleRef; //TODO eventually these should be collapsed into a list of events (ref and not) that are determined for this allele.
+
+    private SimpleInterval cachedExtent;
 
     /**
      * Compares two haplotypes first by their lengths and then by lexicographic order of their bases.
@@ -63,12 +66,14 @@ public final class PartiallyDeterminedHaplotype extends Haplotype {
      * @param constituentEvents
      *
      */
-    public PartiallyDeterminedHaplotype(final Haplotype base, boolean isRefAllele, byte[] pdBytes, List<VariantContext> constituentEvents, VariantContext eventWithVariant, Cigar cigar, long determinedPosition, int getAlignmentStartHapwrtRef) {
+    public PartiallyDeterminedHaplotype(final Haplotype base, boolean isRefAllele, byte[] pdBytes, List<VariantContext> constituentEvents,
+                                        VariantContext eventWithVariant, Cigar cigar, long determinedPosition, int getAlignmentStartHapwrtRef) {
         super(base.getBases(), false, base.getAlignmentStartHapwrtRef(), cigar);
         this.setGenomeLocation(base.getGenomeLocation());
         this.alternateBases = pdBytes;
-        this.constituentEvents = constituentEvents;
+        this.constituentBuiltEvents = constituentEvents;
         this.importantVariant = eventWithVariant;
+        this.allDeterminedEventsAtThisSite = Collections.singletonList(eventWithVariant);
         this.determinedPosition = determinedPosition;
         this.isDeterminedAlleleRef = isRefAllele;
         setAlignmentStartHapwrtRef(getAlignmentStartHapwrtRef);
@@ -123,7 +128,7 @@ public final class PartiallyDeterminedHaplotype extends Haplotype {
     public String toString() {
         String output = "HapLen:"+length() +", "+new String(getDisplayBases());
         output = output + "\nUnresolved Bases["+alternateBases.length+"] "+Arrays.toString(alternateBases);
-        return output + "\n"+getCigar().toString()+" "+ constituentEvents.stream()
+        return output + "\n"+getCigar().toString()+" "+ allDeterminedEventsAtThisSite.stream()
                 .map(v ->(v==this.importantVariant?"*":"")+getDRAGENDebugVariantContextString((int)getStartPosition()).apply(v) )
                 .collect(Collectors.joining("->"));
     }
@@ -151,6 +156,21 @@ public final class PartiallyDeterminedHaplotype extends Haplotype {
 
     public List<VariantContext> getDeterminedAlleles() {
         return isDeterminedAlleleRef ? Collections.emptyList() : Collections.singletonList(importantVariant);
+    }
+
+    public void setAllDeterminedEventsAtThisSite(List<VariantContext> allDeterminedEventsAtThisSite) {
+        this.allDeterminedEventsAtThisSite = allDeterminedEventsAtThisSite;
+    }
+
+    //NOTE: we never want the genotyper to handle reads that were not HMM scored, caching this extent helps keep us safe from messy sites
+    public SimpleInterval getMaximumExtentOfSiteDeterminedAlleles() {
+        if (cachedExtent == null) {
+            cachedExtent = new SimpleInterval(importantVariant);
+            for( VariantContext variantContext : allDeterminedEventsAtThisSite) {
+                cachedExtent = cachedExtent.mergeWithContiguous(variantContext);
+            }
+        }
+        return cachedExtent;
     }
 
     public long getDeterminedPosition() {
