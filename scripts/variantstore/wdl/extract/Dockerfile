@@ -4,10 +4,18 @@
 # Google Cloud Storage. Sharing the base image with Cromwell's GCS localization should result in reuse of a cached copy
 # of this base (and by far largest) image layer when running GVS pipelines in Terra / Cromwell.
 #
-# Because this is an Alpine-based image it is more bare-bones than its Debian-based peers. A key component missing here
-# is the Apache Arrow library which is a requirement for pyarrow which is a requirement for the google-cloud-bigquery
-# Python module.
-#
+# Because this is an Alpine-based image it is more bare-bones than its Debian-based peers. Key components missing here
+# are the Apache Arrow library (a requirement for pyarrow which in turn is a requirement for the google-cloud-bigquery
+# Python module) and bcftools.
+FROM gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine as build
+
+RUN apk update && apk upgrade
+RUN python3 -m ensurepip --upgrade
+
+# Add all required build tools. These will not be added to the main stage as they are only required to build PyArrow
+# and bcftools but not to use them.
+RUN apk add autoconf bash cmake g++ gcc make ninja python3-dev git openssl-dev zlib-dev xz-dev bzip2-dev curl-dev
+
 # Unfortunately neither pyarrow nor google-cloud-bigquery will fetch or build Apache Arrow when `pip install`ed from
 # this base image. Therefore we do the Apache Arrow build ourselves. In order to keep the final image size small this
 # Dockerfile is set up to do a multi-stage build following the usual pattern of "build" stage / "main" stage.
@@ -17,14 +25,6 @@
 # required components including Apache Arrow C++ libraries, pyarrow Python module, and all pyarrow dependencies
 # including the numpy Python module. The main stage will then use the same base image and copy over the artifacts
 # produced by the build stage without having to install development tools or clean up after a build.
-FROM gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine as build
-
-RUN apk update && apk upgrade
-RUN python3 -m ensurepip --upgrade
-
-# Add all required build tools. These will not be added to the main stage as they are only required to build PyArrow
-# but not to use it.
-RUN apk add autoconf bash cmake g++ gcc make ninja python3-dev git openssl-dev
 
 # Build Apache Arrow version 8.0.0 as version 9.0.0 does not compile under Alpine:
 # https://issues.apache.org/jira/browse/ARROW-17329
@@ -79,6 +79,21 @@ RUN cd /apache-arrow-$ARROW_VERSION/python && \
 COPY requirements.txt requirements.txt
 RUN pip3 install --user -r requirements.txt
 
+# Straightforward bcftools build following these instructions:
+# https://github.com/samtools/bcftools/blob/develop/INSTALL
+ARG BCFTOOLS_VERSION=1.16
+RUN mkdir /bcftools bcftools-build && \
+    cd bcftools-build && \
+    git clone --recurse-submodules https://github.com/samtools/htslib.git && \
+    git clone https://github.com/samtools/bcftools.git && \
+    cd bcftools && \
+    git checkout tags/$BCFTOOLS_VERSION -b $BCFTOOLS_VERSION && \
+    autoheader && \
+    autoconf && \
+    ./configure --prefix /bcftools && \
+    make && \
+    make install
+
 # The main layer does not install development tools, instead copies artifacts from the build layer above.
 FROM gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine as main
 
@@ -90,6 +105,8 @@ RUN apk add --no-cache jq
 
 # The build stage generated Python artifacts to /root/.local via `pip install --user`, so grab all of those.
 COPY --from=build /root/.local /root/.local
+# Copy bcftools artifacts
+COPY --from=build /bcftools /bcftools
 
 # Copy the application source code.
 RUN mkdir /app
@@ -99,4 +116,5 @@ COPY *.sql /app
 # Copy the schema files needed for VAT creation.
 COPY *.json /data/variant_annotation_table/schema/
 
+ENV PATH=/bcftools/bin\:$PATH
 WORKDIR /app
