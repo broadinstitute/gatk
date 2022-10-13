@@ -187,10 +187,12 @@ task LookForProblems {
         # Put VCF and index in current directory
         mv $(find . -name '*.vcf.gz*' -print) .
 
-        bcftools view --threads 4 -i 'N_ALT>50' *.vcf.gz  |
+        vcf=$(ls -1 | grep -E '\.vcf.gz$')
+
+        bcftools view --threads 4 -i 'N_ALT>50' $vcf  |
             bcftools query -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > many_alts.tsv
 
-        bcftools view --threads 4 -i 'REF~"N"' *.vcf.gz  |
+        bcftools view --threads 4 -i 'REF~"N"' $vcf  |
             bcftools query -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > ref_n.tsv
     >>>
     runtime {
