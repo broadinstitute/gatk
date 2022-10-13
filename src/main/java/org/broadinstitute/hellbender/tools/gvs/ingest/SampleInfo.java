@@ -74,7 +74,7 @@ public class SampleInfo {
             throw new GATKException("Found more than 1 row in '" + projectID + "." + datasetName + "." + sampleInfoTableName + "' for sampleId: " + sampleId);
         }
         for ( final FieldValueList row : results.result.iterateAll() ) {
-            isLoaded = row.get(0).getBooleanValue();
+            isLoaded = !row.get(0).isNull() && row.get(0).getBooleanValue();
         }
 
         return isLoaded;
