@@ -151,7 +151,7 @@ task GetBQTableLastModifiedDatetime {
     # bq needs the project name to be separate by a colon
     DATASET_TABLE_COLON=$(echo ~{fq_table} | sed 's/\./:/')
 
-    LASTMODIFIED=$(bq --location=US --project_id=~{query_project} --format=json show ${DATASET_TABLE_COLON} | python3 -c "import sys, json; print(json.load(sys.stdin)['lastModifiedTime']);")
+    LASTMODIFIED=$(bq --project_id=~{query_project} --format=json show ${DATASET_TABLE_COLON} | python3 -c "import sys, json; print(json.load(sys.stdin)['lastModifiedTime']);")
     if [[ $LASTMODIFIED =~ ^[0-9]+$ ]]; then
       echo $LASTMODIFIED
     else
@@ -191,7 +191,7 @@ task GetBQTablesMaxLastModifiedTimestamp {
 
     echo "project_id = ~{query_project}" > ~/.bigqueryrc
 
-    bq --location=US --project_id=~{query_project} query --format=csv --use_legacy_sql=false \
+    bq --project_id=~{query_project} query --format=csv --use_legacy_sql=false \
     "SELECT UNIX_MICROS(MAX(last_modified_time)) last_modified_time FROM \`~{data_project}\`.~{data_dataset}.INFORMATION_SCHEMA.PARTITIONS WHERE table_name like '~{sep="' OR table_name like '" table_patterns}'" > results.txt
 
     tail -1 results.txt | cut -d, -f1 > max_last_modified_timestamp.txt
@@ -345,7 +345,7 @@ task ScaleXYBedValues {
     }
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-10-01-alpine"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-10-12-alpine"
         maxRetries: 3
         memory: "7 GB"
         preemptible: 3
@@ -369,7 +369,7 @@ task GetNumSamplesLoaded {
     set -o errexit -o nounset -o xtrace -o pipefail
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
-    bq query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false '
+    bq query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
 
       SELECT COUNT(*) FROM `~{fq_sample_table}` WHERE
         is_loaded = true AND

@@ -374,7 +374,7 @@ public final class BigQueryUtils {
 
         // Get the results.
         logger.info("Retrieving query results...");
-        final QueryResponse response = bigQuery.getQueryResults(jobId);
+        final QueryResponse response = bigQuery.getQueryResults(queryJob.getJobId());
         final TableResult result;
         final JobStatistics.QueryStatistics queryStatistics;
         try {
@@ -392,7 +392,7 @@ public final class BigQueryUtils {
         return new BigQueryResultAndStatistics(result, queryStatistics);
     }
 
-    private static long getQueryCostBytesProcessedEstimate(String queryString, String projectID) {
+    private static long getQueryCostBytesProcessedEstimate(String queryString, String projectID, String datasetID) {
         final QueryJobConfiguration dryRunQueryConfig =
                 QueryJobConfiguration.newBuilder( queryString )
                         .setUseLegacySql(false)
@@ -401,11 +401,20 @@ public final class BigQueryUtils {
                         .setPriority(QueryJobConfiguration.Priority.INTERACTIVE)
                         .build();
 
-        Job dryRunJob = getBigQueryEndPoint(projectID).create(JobInfo.newBuilder(dryRunQueryConfig).build());
+        final BigQuery bigQuery = getBigQueryEndPoint(projectID);
+
+        // Get the location for the BQ dataset, because it isn't always able to be discerned by parsing the sql and will
+        // fail if a location was specified at the time of dataset creation
+        DatasetId datasetIDObject = DatasetId.of(projectID, datasetID);
+        Dataset dataset = bigQuery.getDataset(datasetIDObject);
+        String location = dataset.getLocation();
+        // By explicitly creating a JobId, we can set the location in which the job to run
+        final JobId jobId = JobId.newBuilder().setLocation(location).build();
+
+        Job dryRunJob = getBigQueryEndPoint(projectID).create(JobInfo.newBuilder(dryRunQueryConfig).setJobId(jobId).build());
         long bytesProcessed = ((JobStatistics.QueryStatistics) dryRunJob.getStatistics()).getTotalBytesProcessed();
         return bytesProcessed;
     }
-
     public static StorageAPIAvroReaderAndBigQueryStatistics executeQueryWithStorageAPI(final String queryString,
                                                                   final List<String> fieldsToRetrieve,
                                                                   final String projectID,
@@ -420,7 +429,7 @@ public final class BigQueryUtils {
 
         logger.info(queryStringWithUDFs);
 
-        long bytesProcessed = getQueryCostBytesProcessedEstimate(queryStringWithUDFs, projectID);
+        long bytesProcessed = getQueryCostBytesProcessedEstimate(queryStringWithUDFs, projectID, datasetID);
         logger.info(String.format("Estimated %s MB scanned", bytesProcessed/1000000));
 
         // UDFs need to come before the CREATE TABLE clause

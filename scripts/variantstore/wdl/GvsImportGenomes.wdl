@@ -240,7 +240,7 @@ task LoadData {
     done
   >>>
   runtime {
-    docker: "us.gcr.io/broad-gatk/gatk:4.1.7.0"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2022_09_08_08c1ad7f7abcd72f0cac4445db81203dea699db0"
     maxRetries: load_data_maxretries
     memory: "3.75 GB"
     disks: "local-disk 50 HDD"
@@ -274,11 +274,11 @@ task SetIsLoadedColumn {
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
     # set is_loaded to true if there is a corresponding vet table partition with rows for that sample_id
-    bq --location=US --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
+    bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
     'UPDATE `~{dataset_name}.sample_info` SET is_loaded = true WHERE sample_id IN (SELECT CAST(partition_id AS INT64) from `~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS` WHERE partition_id NOT LIKE "__%" AND total_logical_bytes > 0 AND table_name LIKE "vet_%") OR sample_id IN (SELECT sample_id FROM `~{dataset_name}.sample_load_status` GROUP BY 1 HAVING COUNT(1) = 2)'
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
     memory: "1 GB"
     disks: "local-disk 10 HDD"
     cpu: 1
@@ -367,7 +367,7 @@ task GetUningestedSampleIds {
     bq --project_id=~{project_id} rm -f=true ~{temp_table}
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
     memory: "1 GB"
     disks: "local-disk 10 HDD"
     preemptible: 5
@@ -404,7 +404,7 @@ task CurateInputLists {
                                              --output_files True
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-10-12-alpine_numpy_fix"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-10-14"
     memory: "3 GB"
     disks: "local-disk 100 HDD"
     bootDiskSizeGb: 15
