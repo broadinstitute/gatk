@@ -22,7 +22,7 @@ workflow GvsImportGenomes {
     Int? load_data_batch_size
     Int? load_data_preemptible_override
     Int? load_data_maxretries_override
-    File? load_data_gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/gg_VS-637_RespectSampleLoadStatusFinishedFlag_20221012/gatk-package-4.2.0.0-605-gd68d97c-SNAPSHOT-local.jar"
+    File? load_data_gatk_override = "gs://gvs_quickstart_storage/jars/VS-637/gatk-package-4.2.0.0-605-gd68d97c-SNAPSHOT-local.jar"
   }
 
   Int num_samples = length(external_sample_names)
