@@ -96,9 +96,6 @@ public final class VariantAnnotatorEngine {
         useRawAnnotations = useRaw;
         keepRawCombinedAnnotations = keepCombined;
         for (final Annotation rawAnnot : rawAnnotationsToKeep) {
-            if (!annotationList.contains(rawAnnot)) {
-                throw new UserException("Requested --" + GenotypeGVCFsAnnotationArgumentCollection.KEEP_SPECIFIED_RAW_COMBINED_ANNOTATION_LONG_NAME + ": " + rawAnnot + " is not available. Add requested annotation with --" + StandardArgumentDefinitions.ANNOTATION_LONG_NAME + ".");
-            }
             rawVariantAnnotationKeysToKeep.addAll(((VariantAnnotation) rawAnnot).getKeyNames());
         }
         this.rawAnnotationsToKeep = rawVariantAnnotationKeysToKeep;

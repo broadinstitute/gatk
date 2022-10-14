@@ -485,8 +485,7 @@ public class GATKAnnotationPluginDescriptor extends CommandLinePluginDescriptor<
     }
 
     /**
-     * Returns a map of the String to Annotations only in the resolved instances. Should only be used if
-     * getResolvedInstances() is not sufficient.
+     * Returns a map of the String to Annotations only in the resolved instances.
      *
      * @return a Map of Strings to Annotations of resolved instances
      */

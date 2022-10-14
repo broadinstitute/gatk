@@ -946,5 +946,17 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         }
     }
 
+    @Test(expectedExceptions = UserException.class)
+    public void testBadKeepAnnotationArg() {
+        final File reblockedGVCF = new File("src/test/resources/org/broadinstitute/hellbender/tools/walkers/GenotypeGVCFs/twoReblocked.g.vcf");
+        final File output = createTempFile("reblockedAndGenotyped", ".vcf");
 
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(b37_reference_20_21)
+                .addVCF(reblockedGVCF)
+                .addOutput(output)
+                .add(GenotypeGVCFsAnnotationArgumentCollection.KEEP_SPECIFIED_RAW_COMBINED_ANNOTATION_LONG_NAME, "RawGtCount");
+        // This is expected to fail because RawGtCount was not provided as a tool level annotation (-A).
+        runCommandLine(args);
+    }
 }

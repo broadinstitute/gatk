@@ -19,6 +19,7 @@ import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantLocusWalker;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBArgumentCollection;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBImport;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBOptions;
@@ -300,7 +301,11 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
         final GATKAnnotationPluginDescriptor pluginDescriptor = getCommandLineParser().getPluginDescriptor(GATKAnnotationPluginDescriptor.class);
         final List<String> annotationStringsToKeep = genotypeGVCFsAnnotationArgs.getKeepSpecifiedCombinedAnnotationNames();
         final Map<String, Annotation> resolvedInstancesMap = pluginDescriptor.getResolvedInstancesMap();
-        return annotationStringsToKeep.stream().map(resolvedInstancesMap::get).collect(Collectors.toSet());
+        return annotationStringsToKeep.stream()
+                .peek(s -> {Annotation a = resolvedInstancesMap.get(s); if (a == null)
+                    throw new UserException("Requested --" + GenotypeGVCFsAnnotationArgumentCollection.KEEP_SPECIFIED_RAW_COMBINED_ANNOTATION_LONG_NAME + ": " + s + " was not found in annotation list. Was it excluded with --" + StandardArgumentDefinitions.ANNOTATIONS_TO_EXCLUDE_LONG_NAME + " or not provided with --" + StandardArgumentDefinitions.ANNOTATION_LONG_NAME + "?"); })
+                .map(resolvedInstancesMap::get)
+                .collect(Collectors.toSet());
     }
 
     @Override
