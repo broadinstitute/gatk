@@ -44,7 +44,7 @@ public class SampleInfoBQTest extends GATKBaseTest {
         SampleInfo sampleInfo = new SampleInfo(BIGQUERY_TEST_PROJECT, BIGQUERY_TEST_DATASET, TEMP_TABLE_NAME);
 
         long sampleId = 1;
-        sampleInfo.writeSampleInfoUsingDML(sampleId, "NA12878", null, true, null);
+        sampleInfo.writeSampleInfo(sampleId, "NA12878", true);
 
         Assert.assertFalse(sampleInfo.isLoaded(sampleId));
 

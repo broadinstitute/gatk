@@ -61,9 +61,7 @@ public class LoadStatus {
         boolean hasStarted = false;
         int inProcessCount = 0;
 
-        // Iterate over the records in the SAMPLE_LOAD_STATUS table (in insertion order) to determine if:
-        // 1 - the load has started
-        // 2 - the load has completed.
+        // Iterate over the records in the SAMPLE_LOAD_STATUS table (in insertion order) to find corresponding FINISHED for each STARTED record
         for ( final FieldValueList row : results.result.iterateAll() ) {
             final String status = row.get(0).getStringValue();
             if (LoadStatusValues.STARTED.toString().equals(status)) {
