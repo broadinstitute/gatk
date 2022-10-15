@@ -128,7 +128,7 @@ public final class PartiallyDeterminedHaplotype extends Haplotype {
     public String toString() {
         String output = "HapLen:"+length() +", "+new String(getDisplayBases());
         output = output + "\nUnresolved Bases["+alternateBases.length+"] "+Arrays.toString(alternateBases);
-        return output + "\n"+getCigar().toString()+" "+ allDeterminedEventsAtThisSite.stream()
+        return output + "\n"+getCigar().toString()+" "+ constituentBuiltEvents.stream()
                 .map(v ->(v==this.importantVariant?"*":"")+getDRAGENDebugVariantContextString((int)getStartPosition()).apply(v) )
                 .collect(Collectors.joining("->"));
     }
@@ -144,6 +144,7 @@ public final class PartiallyDeterminedHaplotype extends Haplotype {
         return h instanceof PartiallyDeterminedHaplotype
                 && getUniquenessValue() == ((Haplotype) h).getUniquenessValue()
                 && isReference() == ((Haplotype) h).isReference()
+                && determinedPosition == ((PartiallyDeterminedHaplotype) h).determinedPosition // (even if the basees exactly match we still want to be cautious)
                 && Arrays.equals(getBases(), ((Haplotype) h).getBases())
                 && Arrays.equals(alternateBases, ((PartiallyDeterminedHaplotype) h).alternateBases);
     }

@@ -2185,9 +2185,9 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         final String[] args = {
                 "-R","gs://gcp-public-data--broad-references/hg38/v0/dragen_reference/Homo_sapiens_assembly38_masked.fasta",
                 "-I","/Users/emeryj/hellbender/DRAGENMatlab/personalEvaluation/FINALSTRETCH/dragen3.7.8aligned.NA12878_PCRplus_1.chr20.bam",
-                "-L","chr20:13,934,068-13,934,622",
+                "-L","chr20:13,951,211-13,951,429",
                 "-O",outputPath,
-                "--pileup-detection","--pileup-detection-bad-read-tolerance","0.40","--pileup-detection-enable-indel-pileup-calling", "--pileup-detection-active-region-phred-threshold","3.0",
+                "--pileup-detection","--pileup-detection-bad-read-tolerance","0.40","--pileup-detection-enable-indel-pileup-calling", "--pileup-detection-active-region-phred-threshold","4.0",
                 "-contamination","0.0 ", "--use-pdhmm", "--enable-legacy-assembly-region-trimming", "--print-pileupcalling-status", "--use-pdhmm-overlap-optimization", //"--make-determined-haps-from-pd-code",
                 "-G","StandardAnnotation","-G","StandardHCAnnotation",
                 "--dragen-mode",

@@ -716,10 +716,12 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                 System.out.println("Adding Variants To Reference Haplotype:");
                 System.out.println(assemblyResult.getReferenceHaplotype());
                 System.out.println("FinalSpan: " + assemblyResult.getReferenceHaplotype().getGenomeLocation());
+                System.out.println("CallingSpan: " + region.getSpan());
                 //TODO this is where the trimming should happen...
             }
 
             assemblyResult = PartiallyDeterminedHaplotypeComputationEngine.generatePDHaplotypes(assemblyResult,
+                    region.getSpan(),
                     assemblyResult.getReferenceHaplotype(),
                     assemblyVariants,
                     pileupAllelesFoundShouldFilter,

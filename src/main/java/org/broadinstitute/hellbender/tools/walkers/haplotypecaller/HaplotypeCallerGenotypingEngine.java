@@ -220,7 +220,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                 HaplotypeCallerGenotypingDebugger.println(allele_string);
                 for (int sn = 0 ; sn < readAlleleLikelihoods.numberOfSamples(); sn++){
                     for (int evn = 0 ; evn < readAlleleLikelihoods.sampleEvidence(sn).size(); evn++) {
-                        String outputStr = readAlleleLikelihoods.sampleEvidence(sn).get(evn).getName();
+                        String outputStr = "read: " + readLikelihoods.sampleEvidence(sn).indexOf(readAlleleLikelihoods.sampleEvidence(sn).get(evn)) + " " + readAlleleLikelihoods.sampleEvidence(sn).get(evn).getName();
 
                         for (Allele curAllele : readAlleleLikelihoods.alleles()) {
                             int idx = readAlleleLikelihoods.indexOfAllele(curAllele);
