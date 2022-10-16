@@ -662,6 +662,9 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         spec.executeTest("testInvertSelection--" + testFile, this);
     }
 
+    // tsato: add multiple jexl test here, should be
+    // Also: deprecate the invertlogic argument?
+
     /**
      * Test inverting the variant selection criteria by inverting the JEXL expression logic following -select
      */

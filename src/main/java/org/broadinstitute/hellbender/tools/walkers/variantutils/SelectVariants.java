@@ -692,6 +692,10 @@ public final class SelectVariants extends VariantWalker {
      *
      */
     private boolean matchesJexlFilters(final VariantContext vc){
+        if (jexls.isEmpty()){
+            return true;
+        }
+
         try {
             for (VariantContextUtils.JexlVCMatchExp jexl : jexls) {
                 // If invert-select is set to true, we take the complement (i.e. "not") of each jexl expression,
