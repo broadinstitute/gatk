@@ -792,9 +792,9 @@ public final class SelectVariants extends VariantWalker {
         final SortedSet<String> vcfSamples = VcfUtils.getSortedSampleSet(vcfHeaders, GATKVariantContextUtils.GenotypeMergeType.REQUIRE_UNIQUE);
         final Collection<String> samplesFromExpressions = Utils.filterCollectionByExpressions(vcfSamples, sampleExpressions, false);
 
-        // first, find any samples that were listed on the command line but which don't exist in in the header
+        // first, find any samples that were listed on the command line but don't exist in the header
         final Set<String> samplesNotInHeader = new LinkedHashSet<>(samplesFromExpressions.size()+sampleNames.size());
-        samplesNotInHeader.addAll(samplesFromExpressions);
+        // samplesNotInHeader.addAll(samplesFromExpressions); // tsato: samplesFromExpressions is a subset of vcfsamples, so this should be unnecessary
         samplesNotInHeader.addAll(sampleNames);
         samplesNotInHeader.removeAll(vcfSamples);
 
