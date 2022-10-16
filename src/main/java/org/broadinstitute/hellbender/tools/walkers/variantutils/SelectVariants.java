@@ -625,7 +625,7 @@ public final class SelectVariants extends VariantWalker {
             return;
         }
         // tsato: is there a way to parse the jexl expressions into (fields, threshold) or something like that?
-        if (applyJexlFiltersBeforeFilteringGenotypes && failsJexlFilters(vc)) {
+        if (applyJexlFiltersBeforeFilteringGenotypes && ! matchesJexlFilters(vc)) {
             return;
         }
 
@@ -670,7 +670,7 @@ public final class SelectVariants extends VariantWalker {
             return;
         }
 
-        if (! applyJexlFiltersBeforeFilteringGenotypes && failsJexlFilters(filteredGenotypeToNocall)){
+        if (! applyJexlFiltersBeforeFilteringGenotypes && ! matchesJexlFilters(filteredGenotypeToNocall)){
             return;
         }
 
@@ -683,11 +683,23 @@ public final class SelectVariants extends VariantWalker {
 
     /**
      *  Applies the JEXL filters
+     *
+     *  Notes:
+     *  - Expressions that contain logical-and (&&) should appear in a single -select argument.
+     *  - When an annotation is absent, the logical-or returns false, even when the other argument evaluates to true.
+     *  - When multiple -select arguments are given, the logical expressions are combined with the logical-or operator. In particular,
+     *  we do not currently support complex logical expressions involving both logical-and's and logical-or's. e.g. (x || y) && z
+     *
      */
-    private boolean failsJexlFilters(final VariantContext vc){
+    private boolean matchesJexlFilters(final VariantContext vc){
         try {
-            for (VariantContextUtils.JexlVCMatchExp jexl : jexls) { // tsato: what happens when && is in the jexl? then invert it?
-                if (invertLogic(!VariantContextUtils.match(vc, jexl), invertSelect)){
+            for (VariantContextUtils.JexlVCMatchExp jexl : jexls) {
+                // If invert-select is set to true, we take the complement (i.e. "not") of each jexl expression,
+                // then take the logcal-or.
+                // e.g. -select AF > 0.01, -select ReadPosRankSum < -20.0
+                // If invert-select is false, we have "AF > 0.01 || ReadPosRankSum < -20.0"
+                // If invert-select is true, we have "not (AF > 0.01) || not (ReadPosRankSum < -20.0)"
+                if (invertLogic(VariantContextUtils.match(vc, jexl), invertSelect)){
                     return true;
                 }
             }
