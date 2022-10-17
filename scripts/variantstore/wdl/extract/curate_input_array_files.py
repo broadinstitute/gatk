@@ -23,13 +23,13 @@ def curate_input_arrays(sample_map_to_be_loaded_file_name,
                         output_files):
     sample_map_to_be_loaded_array = vcf_array = vcf_indexes_array = sample_names_array = []
     with handle_file_error(sample_map_to_be_loaded_file_name):
-        sample_map_to_be_loaded_array = np.loadtxt(sample_map_to_be_loaded_file_name, dtype=str, delimiter=",")
+        sample_map_to_be_loaded_array = np.loadtxt(sample_map_to_be_loaded_file_name, dtype=str, delimiter=",", ndmin=2)
     with handle_file_error(vcf_list_file_name):
-        vcf_array = np.loadtxt(vcf_list_file_name, dtype=str)
+        vcf_array = np.loadtxt(vcf_list_file_name, dtype=str, ndmin=2)
     with handle_file_error(vcf_index_list_file_name):
-        vcf_indexes_array = np.loadtxt(vcf_index_list_file_name, dtype=str)
+        vcf_indexes_array = np.loadtxt(vcf_index_list_file_name, dtype=str, ndmin=2)
     with handle_file_error(sample_name_list_file_name):
-        sample_names_array = np.loadtxt(sample_name_list_file_name, dtype=str)
+        sample_names_array = np.loadtxt(sample_name_list_file_name, dtype=str, ndmin=2)
     rows_to_delete = []
 
     # use input_sample_names_array to figure out which index "rows" to delete
