@@ -137,9 +137,9 @@ task CreateFOFNs {
   command <<<
     set -e
 
-    split -d -a 5 -l ~{batch_size} ~{input_vcf_list} batched_vcfs.
-    split -d -a 5 -l ~{batch_size} ~{input_vcf_index_list} batched_vcf_indexes.
-    split -d -a 5 -l ~{batch_size} ~{sample_name_list} batched_sample_names.
+    split -a 5 -l ~{batch_size} ~{input_vcf_list} batched_vcfs.
+    split -a 5 -l ~{batch_size} ~{input_vcf_index_list} batched_vcf_indexes.
+    split -a 5 -l ~{batch_size} ~{sample_name_list} batched_sample_names.
   >>>
   # Can't use alpine version here because their version of split does not recognize the -d option
   runtime {
