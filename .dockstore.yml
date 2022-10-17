@@ -125,7 +125,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - ah_deletion_experiment
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
