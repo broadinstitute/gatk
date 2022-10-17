@@ -285,8 +285,8 @@ task SetIsLoadedColumn {
     WHERE sample_id IN (SELECT CAST(partition_id AS INT64)
     from `~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
     WHERE partition_id NOT LIKE "__%" AND total_logical_bytes > 0 AND table_name LIKE "vet_%") OR sample_id IN
-    (SELECT sls1.sample_id FROM `aou-genomics-curation-prod.aou_wgs_fullref_v2.sample_load_status` AS sls1
-                     INNER JOIN `aou-genomics-curation-prod.aou_wgs_fullref_v2.sample_load_status` AS sls2
+    (SELECT sls1.sample_id FROM `~{dataset_name}.sample_load_status` AS sls1
+                     INNER JOIN `~{dataset_name}.sample_load_status` AS sls2
                      ON sls1.sample_id = sls2.sample_id
                      AND sls1.status = "STARTED"
                      AND sls2.status = "FINISHED")'
