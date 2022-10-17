@@ -27,11 +27,8 @@ workflow JointVcfFiltering {
 		String indel_annotations
 		File? gatk_override
 
-<<<<<<< HEAD
-=======
 		Boolean use_allele_specific_annotations
 
->>>>>>> 99a985c7b (Adding use_allele_specific_annotation arg and fixing task with empty input in JointVcfFiltering WDL (#8027))
 		String snp_resource_args = "--resource:hapmap,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/hapmap_3.3.hg38.vcf.gz --resource:omni,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/1000G_omni2.5.hg38.vcf.gz --resource:1000G,training=true,calibration=false gs://gcp-public-data--broad-references/hg38/v0/1000G_phase1.snps.high_confidence.hg38.vcf.gz"
 		String indel_resource_args = "--resource:mills,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz"
 	}
@@ -51,10 +48,7 @@ workflow JointVcfFiltering {
 			resource_args = snp_resource_args,
 			basename = basename,
 			interval_list = extract_interval_list,
-<<<<<<< HEAD
-=======
 			use_allele_specific_annotations = use_allele_specific_annotations,
->>>>>>> 99a985c7b (Adding use_allele_specific_annotation arg and fixing task with empty input in JointVcfFiltering WDL (#8027))
 			gatk_override = gatk_override,
 			gatk_docker = gatk_docker
 	}
@@ -68,10 +62,7 @@ workflow JointVcfFiltering {
 			resource_args = indel_resource_args,
 			basename = basename,
 			interval_list = extract_interval_list,
-<<<<<<< HEAD
-=======
 			use_allele_specific_annotations = use_allele_specific_annotations,
->>>>>>> 99a985c7b (Adding use_allele_specific_annotation arg and fixing task with empty input in JointVcfFiltering WDL (#8027))
 			gatk_override = gatk_override,
 			gatk_docker = gatk_docker
 	}
@@ -115,10 +106,7 @@ workflow JointVcfFiltering {
 				interval_list = score_interval_list,
 				model_files = TrainVariantAnnotationModelSNPs.outputs,
 				resource_args = snp_resource_args,
-<<<<<<< HEAD
-=======
 				use_allele_specific_annotations = use_allele_specific_annotations,
->>>>>>> 99a985c7b (Adding use_allele_specific_annotation arg and fixing task with empty input in JointVcfFiltering WDL (#8027))
 				gatk_override = gatk_override,
 				gatk_docker = gatk_docker
 		}
@@ -137,16 +125,6 @@ workflow JointVcfFiltering {
 				interval_list = score_interval_list,
 				model_files = TrainVariantAnnotationModelINDELs.outputs,
 				resource_args = indel_resource_args,
-<<<<<<< HEAD
-				gatk_override = gatk_override,
-				gatk_docker = gatk_docker
-		}
-	}
-
-	output {
-		Array[File] variant_filtered_vcf = ScoreVariantAnnotationsINDELs.output_vcf
-		Array[File] variant_filtered_vcf_index = ScoreVariantAnnotationsINDELs.output_vcf_index
-=======
 				use_allele_specific_annotations = use_allele_specific_annotations,
 				gatk_override = gatk_override,
 				gatk_docker = gatk_docker
@@ -157,7 +135,6 @@ workflow JointVcfFiltering {
 	output {
 		Array[File] variant_scored_vcf = ScoreVariantAnnotationsINDELs.output_vcf
 		Array[File] variant_scored_vcf_index = ScoreVariantAnnotationsINDELs.output_vcf_index
->>>>>>> 99a985c7b (Adding use_allele_specific_annotation arg and fixing task with empty input in JointVcfFiltering WDL (#8027))
 	}
 
 }
@@ -173,10 +150,7 @@ task ExtractVariantAnnotations {
 		String annotations
 		String resource_args
 		File? interval_list
-<<<<<<< HEAD
-=======
 		Boolean use_allele_specific_annotations
->>>>>>> 99a985c7b (Adding use_allele_specific_annotation arg and fixing task with empty input in JointVcfFiltering WDL (#8027))
 
 		Int memory_mb = 14000
 		Int command_mem = memory_mb - 1000
@@ -191,10 +165,7 @@ task ExtractVariantAnnotations {
 			-V ~{input_vcf} \
 			-O ~{basename}.~{mode} \
 			~{annotations} \
-<<<<<<< HEAD
-=======
 			~{if use_allele_specific_annotations then "--use-allele-specific-annotations" else ""} \
->>>>>>> 99a985c7b (Adding use_allele_specific_annotation arg and fixing task with empty input in JointVcfFiltering WDL (#8027))
 			~{"-L " + interval_list} \
 			--mode ~{mode} \
 			~{resource_args}
@@ -270,10 +241,7 @@ task ScoreVariantAnnotations {
 		File extracted_training_vcf_index
 		File? interval_list
 		Array[File] model_files
-<<<<<<< HEAD
-=======
 		Boolean use_allele_specific_annotations
->>>>>>> 99a985c7b (Adding use_allele_specific_annotation arg and fixing task with empty input in JointVcfFiltering WDL (#8027))
 
 		Int memory_mb = 16000
 		Int command_mem = memory_mb - 1000
@@ -281,30 +249,6 @@ task ScoreVariantAnnotations {
 	Int disk_size = ceil(size(vcf, "GB") *2 + 50)
 
 	command {
-<<<<<<< HEAD
-		set -e
-
-		ln -s ~{sep=" . && ln -s " model_files} .
-
-		export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
-
-		gatk --java-options "-Xmx~{command_mem}m" \
-			ScoreVariantAnnotations \
-			~{"-L " + interval_list} \
-			-V ~{vcf} \
-			-O ~{basename}.~{mode} \
-			--model-backend ~{model_backend} \
-			~{"--python-script " + python_script} \
-			--model-prefix ~{basename} \
-			~{annotations} \
-			--mode ~{mode} \
-			--resource:extracted,extracted=true ~{extracted_training_vcf} \
-			~{resource_args}
-	}
-	output {
-		File scores = "~{basename}.~{mode}.scores.hdf5"
-		File annots = "~{basename}.~{mode}.annot.hdf5"
-=======
 		zgrep -v '#' ~{vcf} > empty.txt
 		set -e
 
@@ -336,7 +280,6 @@ task ScoreVariantAnnotations {
 	output {
 		File? scores = "~{basename}.~{mode}.scores.hdf5"
 		File? annots = "~{basename}.~{mode}.annot.hdf5"
->>>>>>> 99a985c7b (Adding use_allele_specific_annotation arg and fixing task with empty input in JointVcfFiltering WDL (#8027))
 		File output_vcf = "~{basename}.~{mode}.vcf.gz"
 		File output_vcf_index = "~{basename}.~{mode}.vcf.gz.tbi"
 	}
