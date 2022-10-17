@@ -22,7 +22,7 @@ workflow GvsImportGenomes {
     Int? load_data_batch_size
     Int? load_data_preemptible_override
     Int? load_data_maxretries_override
-    File? load_data_gatk_override = "gs://gvs_quickstart_storage/jars/VS-637/gatk-package-4.2.0.0-605-gd68d97c-SNAPSHOT-local.jar"
+    File? load_data_gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/gg_VS-637_RespectSampleLoadStatusFinishedFlag_20221017/gatk-package-4.2.0.0-614-g8f8f1691-SNAPSHOT-local.jar"
   }
 
   Int num_samples = length(external_sample_names)
@@ -108,6 +108,13 @@ workflow GvsImportGenomes {
         sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
         sample_map = GetUningestedSampleIds.sample_map
     }
+  }
+
+  call SetIsLoadedColumn {
+    input:
+      load_done = LoadData.done,
+      project_id = project_id,
+      dataset_name = dataset_name
   }
 
   output {
@@ -243,6 +250,56 @@ task LoadData {
   output {
     Boolean done = true
     File stderr = stderr()
+  }
+}
+
+task SetIsLoadedColumn {
+  input {
+    String dataset_name
+    String project_id
+
+    Array[String] load_done
+  }
+  meta {
+    # This is doing some tricky stuff with `INFORMATION_SCHEMA` so just punt and let it be `volatile`.
+    volatile: true
+  }
+
+  # add labels for DSP Cloud Cost Control Labeling and Reporting
+  String bq_labels = "--label service:gvs --label team:variants --label managedby:import_genomes"
+
+  command <<<
+    set -ex
+
+    echo "project_id = ~{project_id}" > ~/.bigqueryrc
+
+    # set is_loaded to true if there is a corresponding vet table partition with rows for that sample_id
+
+    # Note that we tried modifying CreateVariantIngestFiles to UPDATE sample_info.is_loaded on a per-sample basis.
+    # The major issue that was found is that BigQuery allows only 20 such concurrent DML statements. Considered using
+    # an exponential backoff, but at the number of samples that are being loaded this would introduce significant delays
+    # in workflow processing. So this method is used to set *all* of the saple_info.is_loaded flags at one time.
+
+    bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
+    'UPDATE `~{dataset_name}.sample_info` SET is_loaded = true
+    WHERE sample_id IN (SELECT CAST(partition_id AS INT64)
+    from `~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
+    WHERE partition_id NOT LIKE "__%" AND total_logical_bytes > 0 AND table_name LIKE "vet_%") OR sample_id IN
+    (SELECT sls1.sample_id FROM `aou-genomics-curation-prod.aou_wgs_fullref_v2.sample_load_status` AS sls1
+                     INNER JOIN `aou-genomics-curation-prod.aou_wgs_fullref_v2.sample_load_status` AS sls2
+                     ON sls1.sample_id = sls2.sample_id
+                     AND sls1.status = "STARTED"
+                     AND sls2.status = "FINISHED")'
+  >>>
+  runtime {
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
+    memory: "1 GB"
+    disks: "local-disk 10 HDD"
+    cpu: 1
+  }
+
+  output {
+    String done = "done"
   }
 }
 

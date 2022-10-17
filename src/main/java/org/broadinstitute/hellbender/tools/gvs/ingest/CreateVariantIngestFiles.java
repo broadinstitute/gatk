@@ -42,7 +42,6 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     private RefCreator refCreator;
     private VetCreator vetCreator;
     private LoadStatus loadStatus;
-    private SampleInfo sampleInfo;
 
     private GenomeLocSortedSet intervalArgumentGenomeLocSortedSet;
 
@@ -98,11 +97,6 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             doc = "Table to insert the sample_id when a sample has been successfully loaded",
             optional = true)
     public String loadStatusTableName = "sample_load_status";
-
-    @Argument(fullName = "status-info-table-name",
-            doc = "Table in which to update the is_loaded flag when a sample has been successfully loaded",
-            optional = true)
-    public String sampleInfoTableName = "sample_info";
 
     @Argument(fullName = "output-type",
             shortName = "ot",
@@ -207,7 +201,6 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         // If BQ, check the load status table to see if this sample has already been loaded.
         if (outputType == CommonCode.OutputType.BQ) {
             loadStatus = new LoadStatus(projectID, datasetName, loadStatusTableName);
-            sampleInfo = new SampleInfo(projectID, datasetName, sampleInfoTableName);
 
             long streamingBufferRows = BigQueryUtils.getEstimatedRowsInStreamingBuffer(projectID, datasetName, loadStatusTableName);
             if (streamingBufferRows > 0 ) {
@@ -240,7 +233,6 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                     logger.warn("Found load status started row with vet and ref written as needed, writing load status finished row for sample name = {}, id = {}",
                             sampleName, sampleId);
                     loadStatus.writeLoadStatusFinished(Long.parseLong(sampleId));
-                    sampleInfo.setSampleInfoIsLoaded(Long.parseLong(sampleId));
                     System.exit(0);
                 }
 
@@ -332,7 +324,6 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         // upload the load status table
         if (outputType == CommonCode.OutputType.BQ) {
             loadStatus.writeLoadStatusFinished(Long.parseLong(sampleId));
-            sampleInfo.setSampleInfoIsLoaded(Long.parseLong(sampleId));
         }
 
         return 0;
