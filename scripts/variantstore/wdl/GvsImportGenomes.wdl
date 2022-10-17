@@ -142,7 +142,7 @@ task CreateFOFNs {
     split -d -a 5 -l ~{batch_size} ~{sample_name_list} batched_sample_names.
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0"
     bootDiskSizeGb: 15
     memory: "3 GB"
     disks: "local-disk 10 HDD"
