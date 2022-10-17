@@ -37,7 +37,7 @@ task MergeVCFs {
   }
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_d8a72b825eab2d979c8877448c0ca948fd9b34c7_change_to_hwe"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2022_10_17_2a8c210ac35094997603259fa1cd784486b92e42"
     preemptible: select_first([preemptible_tries, 3])
     memory: "3 GiB"
     disks: "local-disk ~{disk_size} HDD"
@@ -164,7 +164,7 @@ task GetBQTableLastModifiedDatetime {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -202,7 +202,7 @@ task GetBQTablesMaxLastModifiedTimestamp {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -281,7 +281,7 @@ task BuildGATKJarAndCreateDataset {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
     disks: "local-disk 500 HDD"
   }
 }
@@ -384,7 +384,7 @@ task GetNumSamplesLoaded {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
