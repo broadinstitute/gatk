@@ -126,6 +126,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - VS-620
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
