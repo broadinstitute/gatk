@@ -143,7 +143,7 @@ task CreateFOFNs {
   >>>
   # Can't use alpine version here because their version of split does not recognize the -d option
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
     bootDiskSizeGb: 15
     memory: "3 GB"
     disks: "local-disk 10 HDD"
