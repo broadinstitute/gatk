@@ -22,7 +22,7 @@ workflow GvsImportGenomes {
     Int? load_data_batch_size
     Int? load_data_preemptible_override
     Int? load_data_maxretries_override
-    File? load_data_gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-613-g1219576-SNAPSHOT-local.jar"
+    File? load_data_gatk_override
   }
 
   Int num_samples = length(external_sample_names)
@@ -141,6 +141,7 @@ task CreateFOFNs {
     split -d -a 5 -l ~{batch_size} ~{input_vcf_index_list} batched_vcf_indexes.
     split -d -a 5 -l ~{batch_size} ~{sample_name_list} batched_sample_names.
   >>>
+  # Can't use alpine version here because their version of split does not recognize the -d option
   runtime {
     docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0"
     bootDiskSizeGb: 15
