@@ -1,5 +1,5 @@
 # Multi-stage Nirvana Docker image build. Build in a full dotnet/sdk stage, copy artifacts to a compact
-# dotnet/runtime main stage.
+# gcloud-sdk Alpine image onto which we install a dotnet runtime.
 FROM mcr.microsoft.com/dotnet/sdk:6.0 as build
 
 ARG NIRVANA_VERSION="v3.18.1"
@@ -15,7 +15,15 @@ RUN mkdir /build && \
     dotnet publish --configuration $DOTNET_CONFIGURATION --output /publish
 
 
-FROM mcr.microsoft.com/dotnet/runtime:6.0 as main
+FROM gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine as main
+
+RUN apk update &&  apk upgrade
+RUN apk add bash icu-libs krb5-libs libgcc libintl libssl1.1 libstdc++ zlib
+RUN apk add libgdiplus --repository https://dl-3.alpinelinux.org/alpine/edge/testing/
+RUN curl --silent --location --remote-name https://dot.net/v1/dotnet-install.sh
+RUN chmod +x ./dotnet-install.sh && \
+    ./dotnet-install.sh --runtime dotnet --version 6.0.9
+ENV PATH /root/.dotnet:$PATH
 
 COPY --from=build /publish /Nirvana
 
