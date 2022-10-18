@@ -75,8 +75,7 @@ public final class VariantAnnotatorEngine {
         genotypeAnnotations = new ArrayList<>();
         jumboInfoAnnotations = new ArrayList<>();
         jumboGenotypeAnnotations = new ArrayList<>();
-        final List<String> variantAnnotationKeys = new ArrayList<>();
-        final List<String> rawVariantAnnotationKeysToKeep = new ArrayList<>();
+        this.rawAnnotationsToKeep = new ArrayList<>();
         for (Annotation annot : annotationList) {
             if (annot instanceof InfoFieldAnnotation) {
                 infoAnnotations.add((InfoFieldAnnotation) annot);
@@ -89,16 +88,14 @@ public final class VariantAnnotatorEngine {
             } else {
                 throw new GATKException.ShouldNeverReachHereException("Unexpected annotation type: " + annot.getClass().getName());
             }
-            variantAnnotationKeys.addAll(((VariantAnnotation) annot).getKeyNames());
         }
         variantOverlapAnnotator = initializeOverlapAnnotator(dbSNPInput, featureInputs);
         reducibleKeys = new LinkedHashSet<>();
         useRawAnnotations = useRaw;
         keepRawCombinedAnnotations = keepCombined;
         for (final Annotation rawAnnot : rawAnnotationsToKeep) {
-            rawVariantAnnotationKeysToKeep.addAll(((VariantAnnotation) rawAnnot).getKeyNames());
+            this.rawAnnotationsToKeep.addAll(((VariantAnnotation) rawAnnot).getKeyNames());
         }
-        this.rawAnnotationsToKeep = rawVariantAnnotationKeysToKeep;
         for (InfoFieldAnnotation annot : infoAnnotations) {
             if (annot instanceof ReducibleAnnotation) {
                 for (final String rawKey : ((ReducibleAnnotation) annot).getRawKeyNames()) {
