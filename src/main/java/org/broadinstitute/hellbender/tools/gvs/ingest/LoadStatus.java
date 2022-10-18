@@ -56,7 +56,7 @@ public class LoadStatus {
                 " WHERE " + SchemaUtils.SAMPLE_ID_FIELD_NAME + " = " + sampleId +
                 " ORDER BY " + SchemaUtils.LOAD_STATUS_EVENT_TIMESTAMP_NAME;
 
-        BigQueryResultAndStatistics results = BigQueryUtils.executeQuery(projectID, query, false, null);
+        BigQueryResultAndStatistics results = BigQueryUtils.executeQuery(projectID, query, true, null);
 
         boolean hasStarted = false;
         int inProcessCount = 0;
