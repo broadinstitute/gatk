@@ -129,7 +129,7 @@ workflow GvsCreateFilterSet {
       extract_interval_list = interval_list,
       score_interval_list = interval_list,
       snp_annotations = "-A AS_QD -A AS_MQRankSum -A AS_ReadPosRankSum -A AS_FS -A AS_MQ -A AS_SOR",
-      indel_annotations = "-A AS_FS -A AS_ReadPosRankSum -A AS_MQRankSum -A AS_QD -AAS_SOR",
+      indel_annotations = "-A AS_FS -A AS_ReadPosRankSum -A AS_MQRankSum -A AS_QD -A AS_SOR",
       use_allele_specific_annotations = true,
       gatk_override = "gs://gvs-internal-scratch/rsa/gatk-package-4.2.0.0-614-g971d82f-SNAPSHOT-local.jar"
   }
