@@ -142,7 +142,7 @@ workflow GvsCreateFilterSet {
 
   call Utils.MergeVCFs as MergeSNPScoredVCFs {
     input:
-      input_vcfs = JointVcfFiltering.snp_variant_scored_vcf,
+      input_vcfs = JointVcfFiltering.snps_variant_scored_vcf,
       gather_type = "CONVENTIONAL",
       output_vcf_name = "${filter_set_name}.snp.vrecalibration.gz",
       preemptible_tries = 3,
