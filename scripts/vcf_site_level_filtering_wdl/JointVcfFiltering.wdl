@@ -113,8 +113,8 @@ workflow JointVcfFiltering {
 
 		call ScoreVariantAnnotations as ScoreVariantAnnotationsINDELs {
 			input:
-				vcf = ScoreVariantAnnotationsSNPs.output_vcf,
-				vcf_index = ScoreVariantAnnotationsSNPs.output_vcf_index,
+				vcf = vcf[idx],
+				vcf_index = vcf_index[idx],
 				basename = basename,
 				mode = "INDEL",
 				model_backend = model_backend,
@@ -133,8 +133,10 @@ workflow JointVcfFiltering {
 	}
 
 	output {
-		Array[File] variant_scored_vcf = ScoreVariantAnnotationsINDELs.output_vcf
-		Array[File] variant_scored_vcf_index = ScoreVariantAnnotationsINDELs.output_vcf_index
+		Array[File] indels_variant_scored_vcf = ScoreVariantAnnotationsINDELs.output_vcf
+		Array[File] indels_variant_scored_vcf_index = ScoreVariantAnnotationsINDELs.output_vcf_index
+		Array[File] snps_variant_scored_vcf = ScoreVariantAnnotationsSNPs.output_vcf
+		Array[File] snps_variant_scored_vcf_index = ScoreVariantAnnotationsSNPs.output_vcf_index
 	}
 
 }

@@ -53,9 +53,8 @@ workflow GvsCreateFilterSet {
   # fully-qualified table names
   String fq_sample_table = "~{project_id}.~{dataset_name}.sample_info"
   String fq_alt_allele_table = "~{project_id}.~{dataset_name}.alt_allele"
-  String fq_info_destination_table = "~{project_id}.~{dataset_name}.filter_set_info"
-  String fq_tranches_destination_table = "~{project_id}.~{dataset_name}.filter_set_tranches"
-  String fq_filter_sites_destination_table = "~{project_id}.~{dataset_name}.filter_set_sites"
+  String fq_info_destination_table = "~{project_id}.~{dataset_name}.vqsr_lite_filter_set_info"
+  String fq_filter_sites_destination_table = "~{project_id}.~{dataset_name}.vqsr_lite_filter_set_sites"
 
   call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
     input:
@@ -118,7 +117,7 @@ workflow GvsCreateFilterSet {
       preemptible_tries = 3,
   }
 
-  call VQSRLite.JointVcfFiltering as  JointVcfFiltering {
+  call VQSRLite.JointVcfFiltering as JointVcfFiltering {
     input:
       vcf = ExtractFilterTask.output_vcf,
       vcf_index = ExtractFilterTask.output_vcf_index,
@@ -133,19 +132,19 @@ workflow GvsCreateFilterSet {
       use_allele_specific_annotations = true,
   }
 
-  call Utils.MergeVCFs as MergeINDELRecalibrationFiles {
+  call Utils.MergeVCFs as MergeINDELScoredVCFs {
     input:
-      input_vcfs = JointVcfFiltering.ScoreVariantAnnotationsINDELs.output_vcf,
+      input_vcfs = JointVcfFiltering.indels_variant_scored_vcf,
       gather_type = "CONVENTIONAL",
-      output_vcf_name = "${filter_set_name}.vrecalibration.gz",
+      output_vcf_name = "${filter_set_name}.indel.vrecalibration.gz",
       preemptible_tries = 3,
   }
 
-  call Utils.MergeVCFs as MergeSNPRecalibrationFiles {
+  call Utils.MergeVCFs as MergeSNPScoredVCFs {
     input:
-      input_vcfs = JointVcfFiltering.ScoreVariantAnnotationsSNPs.output_vcf,
+      input_vcfs = JointVcfFiltering.snp_variant_scored_vcf,
       gather_type = "CONVENTIONAL",
-      output_vcf_name = "${filter_set_name}.vrecalibration.gz",
+      output_vcf_name = "${filter_set_name}.snp.vrecalibration.gz",
       preemptible_tries = 3,
   }
 
@@ -153,10 +152,10 @@ workflow GvsCreateFilterSet {
     input:
       gatk_override = gatk_override,
       filter_set_name = filter_set_name,
-      snp_recal_file = MergeSNPRecalibrationFiles.output_vcf,
-      snp_recal_file_index = MergeSNPRecalibrationFiles.output_vcf_index,
-      indel_recal_file = MergeINDELRecalibrationFiles.output_vcf,
-      indel_recal_file_index = MergeINDELRecalibrationFiles.output_vcf_index,
+      snp_recal_file = MergeSNPScoredVCFs.output_vcf,
+      snp_recal_file_index = MergeSNPScoredVCFs.output_vcf_index,
+      indel_recal_file = MergeINDELScoredVCFs.output_vcf,
+      indel_recal_file_index = MergeINDELScoredVCFs.output_vcf_index,
       fq_info_destination_table = fq_info_destination_table,
       query_project = project_id
   }
@@ -380,53 +379,5 @@ task PopulateFilterSetSites {
 
   output {
     String status_load_filter_set_sites = read_string("status_load_filter_set_sites")
-
-  }
-}
-
-task PopulateFilterSetTranches {
-  input {
-    File? gatk_override
-
-    String filter_set_name
-    String fq_tranches_destination_table
-
-    File snp_recal_tranches
-    File indel_recal_tranches
-
-    String query_project
-  }
-  meta {
-    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
-  }
-
-  command <<<
-    set -eo pipefail
-
-    export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
-
-    cat ~{snp_recal_tranches} ~{indel_recal_tranches} | grep -v targetTruthSensitivity | grep -v "#" | awk -v CALLSET=~{filter_set_name} '{ print CALLSET "," $0 }' > ~{filter_set_name}.tranches_load.csv
-
-    # BQ load likes a : instead of a . after the project
-    bq_table=$(echo ~{fq_tranches_destination_table} | sed s/\\./:/)
-
-    echo "Loading combined tranches CSV into ~{fq_tranches_destination_table}"
-    bq load --project_id=~{query_project} --skip_leading_rows 0 -F "," \
-    --schema "filter_set_name:string,target_truth_sensitivity:float,num_known:integer,num_novel:integer,known_ti_tv:float,novel_ti_tv:float,min_vqslod:float,filter_name:string,model:string,accessible_truth_sites:integer,calls_at_truth_sites:integer,truth_sensitivity:float" \
-    ${bq_table} \
-    ~{filter_set_name}.tranches_load.csv > status_load_filter_set_tranches
-  >>>
-
-  runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2022_09_08_08c1ad7f7abcd72f0cac4445db81203dea699db0"
-    memory: "3500 MB"
-    disks: "local-disk 200 HDD"
-    bootDiskSizeGb: 15
-    preemptible: 0
-    cpu: 1
-  }
-
-  output {
-    String status_load_filter_set_tranches = read_string("status_load_filter_set_tranches")
   }
 }
