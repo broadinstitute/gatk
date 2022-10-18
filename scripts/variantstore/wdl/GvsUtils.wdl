@@ -115,7 +115,7 @@ task SplitIntervals {
   }
 
   runtime {
-    docker: "us.gcr.io/broad-gatk/gatk:4.2.3.0"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2022_10_17_2a8c210ac35094997603259fa1cd784486b92e42"
     bootDiskSizeGb: 15
     memory: "~{disk_memory} GB"
     disks: "local-disk ~{disk_size} HDD"
