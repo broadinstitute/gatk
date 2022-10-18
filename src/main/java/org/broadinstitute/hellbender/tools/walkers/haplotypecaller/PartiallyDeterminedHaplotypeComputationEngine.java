@@ -161,7 +161,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             return sourceSet;
         };
 
-        Set<Haplotype> outputHaplotypes = new HashSet<>();
+        Set<Haplotype> outputHaplotypes = new LinkedHashSet<>();
         if (makeDeterminedHapsInstead) {
             // only add the reference haplotype if we are producing regular haplotype objects (not PD haplotypes for the haplotype alleles)
             outputHaplotypes.add(referenceHaplotype);
@@ -332,7 +332,15 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         }
         // TODO be careful here: The old haps still exist... WE must be careful to use the PD haps correctly
         sourceSet.storeAssemblyHaplotypes();
-        sourceSet.replaceAllHaplotypes(outputHaplotypes);
+        //TODO this is gross deal with later
+        Set<Haplotype> result = new LinkedHashSet<>();
+        outputHaplotypes.stream().sorted(new Comparator<Haplotype>() {
+            @Override
+            public int compare(Haplotype o1, Haplotype o2) {
+                return new String(o1.getBases()).compareTo(new String(o2.getBases()));
+            }
+        }).forEach(h -> result.add(h));
+        sourceSet.replaceAllHaplotypes(result);
         if (debugSite) System.out.println("Constructed Haps for Branch"+sourceSet.getHaplotypeList().stream().map(Haplotype::toString).collect(Collectors.joining("\n")));
         if (!makeDeterminedHapsInstead) {
             // Setting a boolean on the source-set to indicate to downstream code that we have PD haplotypes

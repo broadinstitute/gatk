@@ -586,8 +586,12 @@ public final class AssemblyResultSet {
     public void replaceAllHaplotypes(Set<Haplotype> list) {
         haplotypes.clear();;
         refHaplotype = null;
-        for ( Haplotype h : list )
+        for ( Haplotype h : list ) {
             add(h);
+            if (h.isNonReference()) {
+                variationPresent = true;
+            }
+        }
     }
 
     //TODO this is REALLY BAD get rid of it for future code:

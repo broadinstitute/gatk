@@ -849,7 +849,8 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         //Realign reads to their best haplotype.
         final SWParameters readToHaplotypeSWParameters = hcArgs.getReadToHaplotypeSWParameters();
         // TODO yes this is what DRAGEN does, there are real reasons to not do this and it becomes a nightmare in the PDHMM world
-        if (!hcArgs.pileupDetectionArgs.generatePDHaplotypes) {
+        //TODO skipping realignment SHOULD be part of the dragen step...
+        if (!(hcArgs.pileupDetectionArgs.generatePDHaplotypes)) { //&& !hcArgs.pileupDetectionArgs.determinePDHaps)) {
             final Map<GATKRead, GATKRead> readRealignments = AssemblyBasedCallerUtils.realignReadsToTheirBestHaplotype(subsettedReadLikelihoodsFinal, assemblyResult.getReferenceHaplotype(), assemblyResult.getPaddedReferenceLoc(), aligner, readToHaplotypeSWParameters);
             subsettedReadLikelihoodsFinal.changeEvidence(readRealignments);
         }
