@@ -124,6 +124,7 @@ workflow GvsCreateFilterSet {
       sites_only_vcf = MergeVCFs.output_vcf,
       sites_only_vcf_index = MergeVCFs.output_vcf_index,
       basename = filter_set_name,
+      model_backend = "JAVA_BGMM",
       gatk_docker = "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:UG_feature_branch_v4",
       extract_interval_list = interval_list,
       score_interval_list = interval_list,
