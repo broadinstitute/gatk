@@ -553,15 +553,21 @@ public final class ReferenceConfidenceVariantContextMerger {
             final int ploidy = g.getPloidy();
             final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(g);
             if (!doSomaticMerge) {
-                if (g.hasPL()) {
+                if (g.hasPL() || g.hasAD()) {
                     // lazy initialization of the genotype index map by ploidy.
                     int[]  perSampleIndexesOfRelevantAlleles = AlleleSubsettingUtils.getIndexesOfRelevantAllelesForGVCF(remappedAlleles, targetAlleles, vc.getStart(), g, false);
-                    final int[] genotypeIndexMapByPloidy = genotypeIndexMapsByPloidy[ploidy] == null
-                            ? calculators.getInstance(ploidy, maximumAlleleCount).genotypeIndexMap(perSampleIndexesOfRelevantAlleles, calculators) //probably horribly slow
-                            : genotypeIndexMapsByPloidy[ploidy];
-                    final int[] PLs = generatePL(g, genotypeIndexMapByPloidy);
-                    final int[] AD = g.hasAD() ? AlleleSubsettingUtils.generateAD(g.getAD(), perSampleIndexesOfRelevantAlleles) : null;
-                    genotypeBuilder.PL(PLs).AD(AD);
+                    if (g.hasPL()) {
+                        // lazy initialization of the genotype index map by ploidy.
+                        final int[] genotypeIndexMapByPloidy = genotypeIndexMapsByPloidy[ploidy] == null
+                                ? calculators.getInstance(ploidy, maximumAlleleCount).genotypeIndexMap(perSampleIndexesOfRelevantAlleles, calculators) //probably horribly slow
+                                : genotypeIndexMapsByPloidy[ploidy];
+                        final int[] PLs = generatePL(g, genotypeIndexMapByPloidy);
+                        genotypeBuilder.PL(PLs);
+                    }
+                    if (g.hasAD()) {
+                        final int[] AD = AlleleSubsettingUtils.generateAD(g.getAD(), perSampleIndexesOfRelevantAlleles);
+                        genotypeBuilder.AD(AD);
+                    }
                 }
 
                 if ( preserveGermlineGenotypes ) {
