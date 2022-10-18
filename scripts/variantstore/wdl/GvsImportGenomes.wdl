@@ -22,7 +22,7 @@ workflow GvsImportGenomes {
     Int? load_data_batch_size
     Int? load_data_preemptible_override
     Int? load_data_maxretries_override
-    File? load_data_gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-624-g314f578-SNAPSHOT-local.jar"
+    File? load_data_gatk_override
   }
 
   Int num_samples = length(external_sample_names)
@@ -241,7 +241,7 @@ task LoadData {
     done
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2022_10_17_2a8c210ac35094997603259fa1cd784486b92e42"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2022_10_18_950122cadfbfec1ac3790f07edad4d6484a5a894"
     maxRetries: load_data_maxretries
     memory: "3.75 GB"
     disks: "local-disk 50 HDD"
