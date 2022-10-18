@@ -15,7 +15,7 @@ workflow GvsCreateFilterSet {
     Array[String] snp_recalibration_annotation_values = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"]
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
-    File gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-613-g1219576-SNAPSHOT-local.jar"
+    File? gatk_override
 
     Int? INDEL_VQSR_max_gaussians_override = 4
     Int? INDEL_VQSR_maximum_training_variants
@@ -331,7 +331,7 @@ task ExtractFilterTask {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2022_09_08_08c1ad7f7abcd72f0cac4445db81203dea699db0"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2022_10_17_2a8c210ac35094997603259fa1cd784486b92e42"
     memory: "7 GB"
     disks: "local-disk 10 HDD"
     bootDiskSizeGb: 15
@@ -407,7 +407,7 @@ task PopulateFilterSetInfo {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2022_09_08_08c1ad7f7abcd72f0cac4445db81203dea699db0"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2022_10_17_2a8c210ac35094997603259fa1cd784486b92e42"
     memory: "3500 MB"
     disks: "local-disk 250 HDD"
     bootDiskSizeGb: 15
@@ -463,7 +463,7 @@ task PopulateFilterSetSites {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2022_09_08_08c1ad7f7abcd72f0cac4445db81203dea699db0"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2022_10_17_2a8c210ac35094997603259fa1cd784486b92e42"
     memory: "3500 MB"
     disks: "local-disk 200 HDD"
     bootDiskSizeGb: 15
@@ -511,7 +511,7 @@ task PopulateFilterSetTranches {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2022_09_08_08c1ad7f7abcd72f0cac4445db81203dea699db0"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2022_10_17_2a8c210ac35094997603259fa1cd784486b92e42"
     memory: "3500 MB"
     disks: "local-disk 200 HDD"
     bootDiskSizeGb: 15
