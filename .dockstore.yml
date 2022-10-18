@@ -65,7 +65,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - VS-620
    - name: GvsAoUReblockGvcf
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsAoUReblockGvcf.wdl
@@ -96,7 +95,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - VS-620
    - name: GvsPopulateAltAllele
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPopulateAltAllele.wdl
@@ -120,7 +118,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - VS-620
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
@@ -128,7 +125,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - VS-620
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
