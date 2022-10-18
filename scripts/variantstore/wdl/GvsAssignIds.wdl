@@ -55,7 +55,6 @@ workflow GvsAssignIds {
       sample_info_table = sample_info_table,
       samples_are_controls = samples_are_controls,
       table_creation_done = CreateSampleInfoTable.done,
-      gatk_override = assign_ids_gatk_override
   }
 
   call GvsCreateTables.CreateBQTables as CreateTablesForMaxId {
@@ -80,9 +79,6 @@ task AssignIds {
     Array[String] sample_names
     Boolean samples_are_controls
     String table_creation_done
-
-    # runtime
-    File? gatk_override
   }
   meta {
     description: "Assigns Ids to samples"
@@ -103,8 +99,6 @@ task AssignIds {
       echo "No sample names passed. Exiting"
       exit 1
     fi
-
-    export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
@@ -152,7 +146,7 @@ task AssignIds {
     bq --project_id=~{project_id} rm -f -t ~{dataset_name}.sample_id_assignment_lock
   >>>
   runtime {
-    docker: "us.gcr.io/broad-gatk/gatk:4.1.7.0"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
     memory: "3.75 GB"
     disks: "local-disk " + 10 + " HDD"
     cpu: 1
