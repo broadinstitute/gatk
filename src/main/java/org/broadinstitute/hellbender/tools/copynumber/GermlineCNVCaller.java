@@ -97,6 +97,32 @@ import static org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumbe
  *     https://theano-pymc.readthedocs.io/en/latest/library/config.html</a>.
  * </p>
  *
+ * <h3>Resource usage</h3>
+ *
+ * <p>Runtime and memory usage for {@link GermlineCNVCaller} can be impacted by (1) the number of input samples, (2) the
+ * number of intervals, (3) the highest allowed copy-number state (set using the {@code max-copy-number} argument),
+ * (4) the number of bias factors (set using the {@code max-bias-factors} argument), and convergence criteria.</p>
+ *
+ * <p>We recommend running {@link GermlineCNVCaller} in COHORT mode for approximately 200 samples at a time, processing
+ * between 5k to 12.5k intervals, and {@code max-copy-number} set to 5 across all analyses. For 200 samples and
+ * 5k intervals, approximately 16GB of memory should be enough to optimize memory usage; for the same
+ * analysis at 12.5k intervals, we recommend 32GB of memory. Runtimes are on the order of a few hours.</p>
+ *
+ * <p>Note that {@link GermlineCNVCaller} can be run on larger interval sets by scattering them into smaller "shards."
+ * The shards can subsequently be merged together by {@link PostprocessGermlineCNVCalls} tool. In cloud
+ * and HPC environments, the tool can then process each shard in parallel within a single job.</p>
+ *
+ * <p>By default, {@link GermlineCNVCaller} will attempt to use all CPU cores accessible to it within the runtime
+ * environment. Two environment variables - <code>MKL_NUM_THREADS</code> and <code>OMP_NUM_THREADS</code> - control the
+ * parallelism of the underlying linear algebra libraries.</p>
+ *
+ * <p>Runtime is also affected by how fast the inference procedure converges. There are multiple tool arguments that can
+ * be used to set convergence criteria that could speed up this convergence, including but not limited to
+ * {@code caller-update-convergence-threshold}, {@code convergence-snr-averaging-window},
+ * {@code convergence-snr-countdown-window}, and {@code convergence-snr-trigger-threshold}. However, modifying these
+ * arguments from the default settings might affect the final results, so please exercise caution if
+ * including any of these arguments.</p>
+ *
  * <h3>Tool run modes</h3>
  * <dl>
  *     <dt>COHORT mode:</dt>
