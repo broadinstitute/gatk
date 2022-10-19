@@ -185,7 +185,7 @@ task RunNirvana {
         # The great untarring
         tar xfz ~{references}
 
-        ls -1 | grep -E '\.vcf.gz' | xargs -I {} -n 1 -P 4 bash -c "
+        ls -1 | grep -E '\.vcf.gz' | xargs -I {} -n 1 -P 4 bash -c '
 
             # strip the first dot and everything after
             vcf="{}"
@@ -197,7 +197,7 @@ task RunNirvana {
                 --sd references/SupplementaryAnnotation/GRCh38 \
                 -i $vcf -o $base
 
-        "
+        '
     >>>
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:vs_500_nirvana_3_18_1"
