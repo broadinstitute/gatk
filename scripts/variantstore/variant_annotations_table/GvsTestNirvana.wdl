@@ -186,6 +186,8 @@ task RunNirvana {
         tar xfz ~{references}
 
         ls -1 | grep -E '\.vcf.gz' | xargs -I {} -n 1 -P 4 bash -c '
+            PS4="\D{+%F %T} \w $ "
+            set -o errexit -o nounset -o xtrace -o pipefail
 
             # strip the first dot and everything after
             vcf="{}"
