@@ -125,6 +125,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - gg_VS-637_RespectSampleLoadStatusFinishedFlag
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl

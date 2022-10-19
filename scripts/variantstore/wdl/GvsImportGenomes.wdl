@@ -241,7 +241,7 @@ task LoadData {
     done
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2022_10_17_2a8c210ac35094997603259fa1cd784486b92e42"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2022_10_18_950122cadfbfec1ac3790f07edad4d6484a5a894"
     maxRetries: load_data_maxretries
     memory: "3.75 GB"
     disks: "local-disk 50 HDD"
@@ -275,8 +275,22 @@ task SetIsLoadedColumn {
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
     # set is_loaded to true if there is a corresponding vet table partition with rows for that sample_id
+
+    # Note that we tried modifying CreateVariantIngestFiles to UPDATE sample_info.is_loaded on a per-sample basis.
+    # The major issue that was found is that BigQuery allows only 20 such concurrent DML statements. Considered using
+    # an exponential backoff, but at the number of samples that are being loaded this would introduce significant delays
+    # in workflow processing. So this method is used to set *all* of the saple_info.is_loaded flags at one time.
+
     bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
-    'UPDATE `~{dataset_name}.sample_info` SET is_loaded = true WHERE sample_id IN (SELECT CAST(partition_id AS INT64) from `~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS` WHERE partition_id NOT LIKE "__%" AND total_logical_bytes > 0 AND table_name LIKE "vet_%") OR sample_id IN (SELECT sample_id FROM `~{dataset_name}.sample_load_status` GROUP BY 1 HAVING COUNT(1) = 2)'
+    'UPDATE `~{dataset_name}.sample_info` SET is_loaded = true
+    WHERE sample_id IN (SELECT CAST(partition_id AS INT64)
+    from `~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
+    WHERE partition_id NOT LIKE "__%" AND total_logical_bytes > 0 AND table_name LIKE "vet_%") OR sample_id IN
+    (SELECT sls1.sample_id FROM `~{dataset_name}.sample_load_status` AS sls1
+                     INNER JOIN `~{dataset_name}.sample_load_status` AS sls2
+                     ON sls1.sample_id = sls2.sample_id
+                     AND sls1.status = "STARTED"
+                     AND sls2.status = "FINISHED")'
   >>>
   runtime {
     docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
