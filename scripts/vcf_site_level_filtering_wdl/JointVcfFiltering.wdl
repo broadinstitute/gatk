@@ -235,7 +235,7 @@ task ScoreVariantAnnotations {
 		File vcf_index
 		String basename
 		String mode
-		String model_backend
+		String? model_backend
 		File? python_script
 		String annotations
 		String resource_args
@@ -264,7 +264,7 @@ task ScoreVariantAnnotations {
 				~{"-L " + interval_list} \
 				-V ~{vcf} \
 				-O ~{basename}.~{mode} \
-				--model-backend ~{model_backend} \
+				~{"--model-backend " + model_backend} \
 				~{"--python-script " + python_script} \
 				--model-prefix ~{basename} \
 				~{annotations} \
