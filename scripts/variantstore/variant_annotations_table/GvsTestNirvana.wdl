@@ -166,7 +166,8 @@ task RunNirvana {
         Array[File] sites_only_vcf_indexes
         File references
         File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
-        Int nirvana_memory_gib = 60
+        Int nirvana_memory_gib = 30
+        Int nirvana_parallelism = 8
     }
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
@@ -185,7 +186,7 @@ task RunNirvana {
         # The great untarring
         tar xfz ~{references}
 
-        ls -1 | grep -E '\.vcf.gz$' | xargs -I {} -n 1 -P 4 bash -c '
+        ls -1 | grep -E '\.vcf.gz$' | xargs -I {} -n 1 -P ~{nirvana_parallelism} bash -c '
             PS4="\D{+%F %T} \w $ "
             set -o errexit -o nounset -o xtrace -o pipefail
 
