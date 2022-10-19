@@ -14,7 +14,7 @@ workflow JointVcfFiltering {
 		File sites_only_vcf_index
 		String basename
 
-		String model_backend
+		String? model_backend
 		File? training_python_script
 		File? scoring_python_script
 		File? hyperparameters_json
@@ -192,7 +192,7 @@ task TrainVariantAnnotationModel {
 		File annots
 		String basename
 		String mode
-		String model_backend
+		String? model_backend
 		File? python_script
 		File? hyperparameters_json
 
@@ -211,7 +211,7 @@ task TrainVariantAnnotationModel {
 			TrainVariantAnnotationsModel \
 			--annotations-hdf5 ~{annots} \
 			-O ~{basename} \
-			--model-backend ~{model_backend} \
+      ~{"--model-backend " + model_backend} \
 			~{"--python-script " + python_script} \
 			~{"--hyperparameters-json " + hyperparameters_json} \
 			--mode $mode
