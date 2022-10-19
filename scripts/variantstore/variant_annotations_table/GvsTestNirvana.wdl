@@ -28,29 +28,24 @@ workflow GvsTestNirvana {
         }
     }
 
-    call MergeMiniSitesOnlyVcfs {
+    call ColocateMiniSitesOnlyVcfs {
         input:
             mini_sites_only_vcfs = flatten(CreateMiniSitesOnlyVcfs.sites_only_vcfs),
             mini_sites_only_vcf_indexes = flatten(CreateMiniSitesOnlyVcfs.sites_only_vcf_indexes),
     }
 
-    call LookForProblems {
-        input:
-            sites_only_vcf = MergeMiniSitesOnlyVcfs.sites_only_vcf,
-            sites_only_vcf_index = MergeMiniSitesOnlyVcfs.sites_only_vcf_index,
-    }
-
     call RunNirvana {
         input:
-            sites_only_vcf = MergeMiniSitesOnlyVcfs.sites_only_vcf,
-            sites_only_vcf_index = MergeMiniSitesOnlyVcfs.sites_only_vcf_index,
+            sites_only_vcfs = ColocateMiniSitesOnlyVcfs.sites_only_vcfs,
+            sites_only_vcf_indexes = ColocateMiniSitesOnlyVcfs.sites_only_vcf_indexes,
             references = nirvana_references,
     }
 
     output {
-        File sites_only_vcf = MergeMiniSitesOnlyVcfs.sites_only_vcf
-        File sites_only_vcf_index = MergeMiniSitesOnlyVcfs.sites_only_vcf_index
-        Array[File] nirvana_outputs = RunNirvana.outputs
+        Array[File] sites_only_vcfs = ColocateMiniSitesOnlyVcfs.sites_only_vcfs
+        Array[File] sites_only_vcf_indexes = ColocateMiniSitesOnlyVcfs.sites_only_vcf_indexes
+        Array[File] nirvana_jsons = RunNirvana.nirvana_jsons
+        Array[File] nirvana_json_indexes = RunNirvana.nirvana_json_indexes
     }
 }
 
@@ -117,11 +112,12 @@ task CreateMiniSitesOnlyVcfs {
 }
 
 
-task MergeMiniSitesOnlyVcfs {
+task ColocateMiniSitesOnlyVcfs {
     input {
         # These vcfs and indexes are coming from many different shards with 2 globs each, so Cromwell would localize
         # these inputs in 2 separate batches per shard. It's a LOT more efficient to just do the localization ourselves
-        # in one batch, plus we can use `gcloud storage` to do that.
+        # in one batch, plus we can use `gcloud storage` to do that. After this step all the mini vcfs end up in a
+        # single location that downstream steps can handle more efficently.
         Array[File] mini_sites_only_vcfs
         Array[File] mini_sites_only_vcf_indexes
         File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
@@ -152,15 +148,6 @@ task MergeMiniSitesOnlyVcfs {
 
         # https://cloud.google.com/sdk/gcloud/reference/storage/cp
         cat manifest.txt | gcloud storage cp -I .
-
-        # Quieten [W::hts_idx_load3] The index file is older than the data file
-        touch *.vcf.gz.tbi
-
-        # Create a manifest of just VCFs.
-        ls -1 | grep -E '\.vcf\.gz$' > vcf_manifest.txt
-
-        bcftools concat --allow-overlaps --file-list vcf_manifest.txt --output-type z --output sites.vcf.gz
-        bcftools index --tbi sites.vcf.gz
     >>>
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-10-12-alpine"
@@ -168,52 +155,18 @@ task MergeMiniSitesOnlyVcfs {
         disks: "local-disk 500 HDD"
     }
     output {
-        File sites_only_vcf = "sites.vcf.gz"
-        File sites_only_vcf_index = "sites.vcf.gz.tbi"
+        Array[File] sites_only_vcfs = glob("*.vcf.gz")
+        Array[File] sites_only_vcf_indexes = glob("*.vcf.gz.tbi")
     }
 }
-
-task LookForProblems {
-    input {
-        File sites_only_vcf
-        File sites_only_vcf_index
-        Int memory_gib = 7
-    }
-    command <<<
-        # Prepend date, time and pwd to xtrace log entries.
-        PS4='\D{+%F %T} \w $ '
-        set -o errexit -o nounset -o xtrace -o pipefail
-
-        # Put VCF and index in current directory
-        mv $(find . -name '*.vcf.gz*' -print) .
-
-        vcf=$(ls -1 | grep -E '\.vcf.gz$')
-
-        bcftools view --threads 4 -i 'N_ALT>50' $vcf  |
-            bcftools query -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > many_alts.tsv
-
-        bcftools view --threads 4 -i 'REF~"N"' $vcf  |
-            bcftools query -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > ref_n.tsv
-    >>>
-    runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-10-12-alpine"
-        memory: "~{memory_gib} GiB"
-        disks: "local-disk 500 HDD"
-    }
-    output {
-        File many_alts = "many_alts.tsv"
-        File ref_n = "ref_n.tsv"
-    }
-}
-
 
 task RunNirvana {
     input {
-        File sites_only_vcf
-        File sites_only_vcf_index
+        Array[File] sites_only_vcfs
+        Array[File] sites_only_vcf_indexes
         File references
         File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
-        Int nirvana_memory_gib = 15
+        Int nirvana_memory_gib = 60
     }
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
@@ -223,17 +176,27 @@ task RunNirvana {
         # bash ~{monitoring_script} > monitoring.log &
         bash ~{monitoring_script} &
 
-        # Get the vcf and index next to each other in the current directory
+        # Get all the data in the current directory.
         mv $(find . -name '*.vcf.gz*' -print) .
-        vcf=$(basename ~{sites_only_vcf})
 
+        # Freshen index timestamps
+        touch *.vcf.gz.tbi
+
+        # The great untarring
         tar xfz ~{references}
 
-        /usr/bin/dotnet /Nirvana/Nirvana.dll \
-            -c references/Cache/GRCh38/Both \
-            -r references/References/Homo_sapiens.GRCh38.Nirvana.dat \
-            --sd references/SupplementaryAnnotation/GRCh38 \
-            -i $vcf -o nirvana-sites-output
+        ls -1 | grep -E '\.vcf.gz' | xargs -n 1 -P 4 bash -c "
+
+            # strip the first dot and everything after
+            base=${vcf%%.*}
+
+            /usr/bin/dotnet /Nirvana/Nirvana.dll \
+                -c references/Cache/GRCh38/Both \
+                -r references/References/Homo_sapiens.GRCh38.Nirvana.dat \
+                --sd references/SupplementaryAnnotation/GRCh38 \
+                -i $vcf -o $base
+
+        "
     >>>
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:vs_500_nirvana_3_18_1"
@@ -241,7 +204,8 @@ task RunNirvana {
         memory: "~{nirvana_memory_gib} GiB"
     }
     output {
-        Array[File] outputs = glob("nirvana-sites-output*")
+        Array[File] nirvana_jsons = glob("*.json.gz")
+        Array[File] nirvana_json_indexes = glob("*.json.gz.jsi")
     }
 }
 
