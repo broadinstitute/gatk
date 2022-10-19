@@ -211,7 +211,7 @@ task TrainVariantAnnotationModel {
 			TrainVariantAnnotationsModel \
 			--annotations-hdf5 ~{annots} \
 			-O ~{basename} \
-      ~{"--model-backend " + model_backend} \
+			~{"--model-backend " + model_backend} \
 			~{"--python-script " + python_script} \
 			~{"--hyperparameters-json " + hyperparameters_json} \
 			--mode $mode
