@@ -185,9 +185,10 @@ task RunNirvana {
         # The great untarring
         tar xfz ~{references}
 
-        ls -1 | grep -E '\.vcf.gz' | xargs -n 1 -P 4 bash -c "
+        ls -1 | grep -E '\.vcf.gz' | xargs -I {} -n 1 -P 4 bash -c "
 
             # strip the first dot and everything after
+            vcf="{}"
             base=${vcf%%.*}
 
             /usr/bin/dotnet /Nirvana/Nirvana.dll \
