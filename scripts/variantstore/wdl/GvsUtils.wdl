@@ -222,6 +222,8 @@ task BuildGATKJarAndCreateDataset {
 
   command <<<
     # Much of this could/should be put into a Docker image.
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
 
     # git and git-lfs
@@ -281,7 +283,7 @@ task BuildGATKJarAndCreateDataset {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-slim"
     disks: "local-disk 500 HDD"
   }
 }
