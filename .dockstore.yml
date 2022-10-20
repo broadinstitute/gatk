@@ -209,7 +209,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_699_fix_missing_vat_schema_jsons
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
