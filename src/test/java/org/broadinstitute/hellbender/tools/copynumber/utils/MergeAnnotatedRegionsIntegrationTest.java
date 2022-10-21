@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.An
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedIntervalCollection;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.testutils.BaseTest;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -26,13 +27,10 @@ public class MergeAnnotatedRegionsIntegrationTest extends CommandLineProgramTest
     public void basicTest() throws IOException {
         // This test is a bit more like the real world
         final File outputFile = BaseTest.createTempFile("mergeannotatedregions", ".seg");
-        final List<String> arguments = new ArrayList<>();
-        arguments.add("--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME);
-        arguments.add(SIMPLE_TEST_FILE);
-        arguments.add("--" + StandardArgumentDefinitions.REFERENCE_LONG_NAME);
-        arguments.add(REF);
-        arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
-        arguments.add(outputFile.getAbsolutePath());
+        final ArgumentsBuilder arguments = new ArgumentsBuilder();
+        arguments.add(CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME, SIMPLE_TEST_FILE);
+        arguments.add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, REF);
+        arguments.add(StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getAbsolutePath());
         runCommandLine(arguments);
 
         final AnnotatedIntervalCollection collection =
@@ -57,11 +55,9 @@ public class MergeAnnotatedRegionsIntegrationTest extends CommandLineProgramTest
     public void requiresReferenceTest() throws IOException {
         // This test is a bit more like the real world
         final File outputFile = BaseTest.createTempFile("mergeannotatedregions", ".seg");
-        final List<String> arguments = new ArrayList<>();
-        arguments.add("--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME);
-        arguments.add(SIMPLE_TEST_FILE);
-        arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
-        arguments.add(outputFile.getAbsolutePath());
+        final ArgumentsBuilder arguments = new ArgumentsBuilder();
+        arguments.add(CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME, SIMPLE_TEST_FILE);
+        arguments.add(StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getAbsolutePath());
         runCommandLine(arguments);
     }
 
