@@ -190,11 +190,12 @@ public abstract class PDPairHMM implements Closeable{
                 final double lk;
                 final byte[] alleleBases = allele.getBases();
                 final byte[] nextAlleleBases = a == alleles.size() - 1 ? null : alleles.get(a + 1).getBases();
+                final byte[] nextAllelePDBases = a == alleles.size() - 1 ? null : alleles.get(a + 1).getBases();
                 // if we aren't apply the optimization (range == -1) or if the read overlaps the determined region for calling:
                 if (rangeForReadOverlapToDeterminedBases < 0 || allele.getMaximumExtentOfSiteDeterminedAlleles()
                         .overlapsWithMargin((Locatable) read.getTransientAttribute(PDPairHMMLikelihoodCalculationEngine.UNCLIPPED_ORIGINAL_SPAN_ATTR), rangeForReadOverlapToDeterminedBases + 1)) { // the +1 here is us erring on the side of caution
                     lk = computeReadLikelihoodGivenHaplotypeLog10(alleleBases, allele.getAlternateBases(),
-                            readBases, readQuals, readInsQuals, readDelQuals, overallGCP, isFirstHaplotype, nextAlleleBases);
+                            readBases, readQuals, readInsQuals, readDelQuals, overallGCP, isFirstHaplotype, nextAlleleBases, nextAllelePDBases);
                 // Otherwise we record that the likelihood array is bogus here for later validation and set it to -infinity
                 } else {
                     lk = Double.NEGATIVE_INFINITY;
@@ -247,7 +248,8 @@ public abstract class PDPairHMM implements Closeable{
                                                       final byte[] deletionGOP,
                                                       final byte[] overallGCP,
                                                       final boolean recacheReadValues,
-                                                      final byte[] nextHaplotypeBases) throws IllegalStateException, IllegalArgumentException {
+                                                      final byte[] nextHaplotypeBases,
+                                                      final byte[] nextHaplotypePDBases) throws IllegalStateException, IllegalArgumentException {
 
         Utils.validate(initialized, "Must call initialize before calling computeReadLikelihoodGivenHaplotypeLog10");
         Utils.nonNull(haplotypeBases, "haplotypeBases may not be null");
@@ -266,8 +268,8 @@ public abstract class PDPairHMM implements Closeable{
 
         // Pre-compute the difference between the current haplotype and the next one to be run
         // Looking ahead is necessary for the ArrayLoglessPairHMM implementation
-        final int nextHapStartIndex =  (nextHaplotypeBases == null || haplotypeBases.length != nextHaplotypeBases.length) ? 0 : findFirstPositionWhereHaplotypesDiffer(haplotypeBases, nextHaplotypeBases);
-
+        //final int nextHapStartIndex =  (nextHaplotypeBases == null || haplotypeBases.length != nextHaplotypeBases.length) ? 0 : findFirstPositionWhereHaplotypesDiffer(haplotypeBases, haplotypePDBases, nextHaplotypeBases, nextHaplotypePDBases);
+        int nextHapStartIndex = 0;
         final double result = subComputeReadLikelihoodGivenHaplotypeLog10(haplotypeBases, haplotypePDBases, readBases, readQuals, insertionGOP, deletionGOP, overallGCP, hapStartIndex, recacheReadValues, nextHapStartIndex);
 
         Utils.validate(result <= 0.0, () -> "PairHMM Log Probability cannot be greater than 0: " + String.format("haplotype: %s, read: %s, result: %f, PairHMM: %s", new String(haplotypeBases), new String(readBases), result, this.getClass().getSimpleName()));
@@ -307,12 +309,12 @@ public abstract class PDPairHMM implements Closeable{
      * @throws IllegalArgumentException if haplotype1 or haplotype2 are null or zero length
      * @return the index of the first position in haplotype1 and haplotype2 where the byte isn't the same
      */
-    public static int findFirstPositionWhereHaplotypesDiffer(final byte[] haplotype1, final byte[] haplotype2) throws IllegalArgumentException {
+    public static int findFirstPositionWhereHaplotypesDiffer(final byte[] haplotype1, final byte[] pd1, final byte[] haplotype2, final byte[] pd2) throws IllegalArgumentException {
         if ( haplotype1 == null || haplotype1.length == 0 ) throw new IllegalArgumentException("Haplotype1 is bad " + Arrays.toString(haplotype1));
         if ( haplotype2 == null || haplotype2.length == 0 ) throw new IllegalArgumentException("Haplotype2 is bad " + Arrays.toString(haplotype2));
 
         for( int i = 0; i < haplotype1.length && i < haplotype2.length; i++ ) {
-            if( haplotype1[i] != haplotype2[i] ) {
+            if( haplotype1[i] != haplotype2[i]  || pd1[i] != pd2[i]) {
                 return i;
             }
         }

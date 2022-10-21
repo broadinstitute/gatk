@@ -2185,15 +2185,16 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         final String[] args = {
                 "-R","gs://gcp-public-data--broad-references/hg38/v0/dragen_reference/Homo_sapiens_assembly38_masked.fasta",
                 "-I","/Users/emeryj/hellbender/DRAGENMatlab/personalEvaluation/FINALSTRETCH/dragen3.7.8aligned.NA12878_PCRplus_1.chr20.bam",
-                "-L","chr20:32,322,859-32,323,135",
+                "-L","chr20:17,499,266-17,499,542",
                 "-O",outputPath,
                 "--pileup-detection","--pileup-detection-bad-read-tolerance","0.40","--pileup-detection-enable-indel-pileup-calling", "--pileup-detection-active-region-phred-threshold","4.0",
                 "-contamination","0.0 ", "--use-pdhmm", "--enable-legacy-assembly-region-trimming", "--print-pileupcalling-status",// "--use-pdhmm-overlap-optimization", //"--make-determined-haps-from-pd-code",
 //                "--make-determined-haps-from-pd-code",
                 "-G","StandardAnnotation","-G","StandardHCAnnotation",
+                "--pair-hmm-implementation", "LOGLESS_CACHING",
                 "--dragen-mode",
                 "--disable-spanning-event-genotyping",
-                "--debug-genotyper-output", "/Users/emeryj/hellbender/gatk/testDebugOutputStream2.txt",
+                "--debug-genotyper-output", "/Users/emeryj/hellbender/gatk/testDebugOutputStream3.txt",
                 "--dragstr-params-path","/Users/emeryj/hellbender/DRAGENMatlab/personalEvaluation/FINALSTRETCH/NA12878_PCRplus_1.bam.dragstr",
                 "-GQB","10","-GQB","20","-GQB","30","-GQB","40","-GQB","50","-GQB","60","-GQB","70","-GQB","80","-GQB","90",
         };

@@ -334,7 +334,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         sourceSet.storeAssemblyHaplotypes();
         //TODO this is gross deal with later
         Set<Haplotype> result = new LinkedHashSet<>();
-        outputHaplotypes.stream().sorted(new Comparator<Haplotype>() {
+        outputHaplotypes.stream().sorted(new Comparator<Haplotype>() { //TODO this doesn't want to stand this is just convenient for debugging
             @Override
             public int compare(Haplotype o1, Haplotype o2) {
                 return new String(o1.getBases()).compareTo(new String(o2.getBases()));

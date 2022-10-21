@@ -240,7 +240,7 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
                 LikelihoodEngineArgumentCollection.EXPECTED_MISMATCH_RATE_FOR_READ_DISQUALIFICATION_LONG_NAME, "0.03",
                 GenotypeCalculationArgumentCollection.GENOTYPE_ASSIGNMENT_METHOD_LONG_NAME, String.valueOf(GenotypeAssignmentMethod.USE_POSTERIOR_PROBABILITIES),
                 AssemblyRegionArgumentCollection.INDEL_PADDING_LONG_NAME, "150",
-                GenotypeCalculationArgumentCollection.CALL_CONFIDENCE_LONG_NAME, "3.0",
+                GenotypeCalculationArgumentCollection.CALL_CONFIDENCE_LONG_NAME, "1.0",//TODO undo
                 GenotypeCalculationArgumentCollection.USE_POSTERIORS_TO_CALCULATE_QUAL_LONG_NAME, "true",
         };
     }
