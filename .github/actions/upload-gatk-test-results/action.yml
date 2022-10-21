@@ -49,7 +49,7 @@ runs:
       id: uploadreports
       run: |
         gsutil -m cp -z html -z js -z xml -z css -r build/reports/tests gs:/${{ env.HELLBENDER_TEST_LOGS }}${{ inputs.repo-path }}/;
-        VIEW_URL=https://storage.googleapis.com${{ env.HELLBENDER_TEST_LOGS }}${{ inputs.repo-path }}/tests/test/index.html
+        VIEW_URL=https://storage.googleapis.com${{ env.HELLBENDER_TEST_LOGS }}${{ inputs.repo-path }}/tests/testOnPackagedReleaseJar/index.html
         echo "See the test report at ${VIEW_URL}";
         echo ::set-output name=view_url::"${VIEW_URL}"
       shell: bash
