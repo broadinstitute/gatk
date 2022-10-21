@@ -519,7 +519,7 @@ task collectBundleIntoDir(type: Copy) {
     }
 
     from("$buildDir/$pythonPackageArchiveName")
-    from("$buildDir/$gatkCondaYML")
+    from("scripts/nvscorevariants_environment.yml")
     from("scripts/sv", { into("scripts/sv") })
     from("scripts/cnv_wdl/", { into("scripts/cnv_wdl") })
     from("scripts/mutect2_wdl/", { into("scripts/mutect2_wdl") })

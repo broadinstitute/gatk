@@ -13,3 +13,4 @@ dependencies:
       - pytorch-lightning
       - biopython
       - pysam
+      - gatkPythonPackageArchive.zip

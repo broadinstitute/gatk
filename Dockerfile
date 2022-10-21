@@ -70,9 +70,10 @@ ENV CLASSPATH /gatk/gatk.jar:$CLASSPATH
 WORKDIR /gatk
 RUN chmod -R a+rw /gatk
 ENV PATH $CONDA_PATH/envs/gatk/bin:$CONDA_PATH/bin:$PATH
-RUN conda env create -n gatk -f /gatk/gatkcondaenv.yml && \
-    echo "source activate gatk" >> /gatk/gatkenv.rc && \
+RUN conda env create -n nvscorevariants -f /gatk/nvscorevariants_environment.yml && \
+    echo "source activate nvscorevariants" >> /gatk/gatkenv.rc && \
     echo "source /gatk/gatk-completion.sh" >> /gatk/gatkenv.rc && \
+    echo "echo This docker image is specially built as a pre-release preview image for running the new GATK tool NVScoreVariants, and comes with a Python environment specific to that tool. Other Python-based GATK tools cannot be run using this image: use the official GATK release images instead." >> /gatk/gatkenv.rc && \
     conda clean -afy && \
     find /opt/miniconda/ -follow -type f -name '*.a' -delete && \
     find /opt/miniconda/ -follow -type f -name '*.pyc' -delete && \
