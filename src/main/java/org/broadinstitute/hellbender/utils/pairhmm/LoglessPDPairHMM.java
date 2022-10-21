@@ -42,7 +42,7 @@ public class LoglessPDPairHMM extends N2MemoryPDPairHMM {
         final int nextHapStartIndex) {
 
         if (previousHaplotypeBases == null || previousHaplotypeBases.length != haplotypeBases.length) {
-            final double initialValue = INITIAL_CONDITION /150;/// haplotypeBases.length;
+            final double initialValue = INITIAL_CONDITION / haplotypeBases.length;
             // set the initial value (free deletions in the beginning) for the first row in the deletion matrix
             for( int j = 0; j < paddedHaplotypeLength; j++ ) {
                 deletionMatrix[0][j] = initialValue;
