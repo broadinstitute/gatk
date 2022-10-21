@@ -1,4 +1,4 @@
-ARG GATKBASE=lbergelson/gatk:gatkbase-2.4.0_rc1
+ARG GATKBASE=lbergelson/gatk:gatkbase-2.4.0_rc2
 # stage 1 for constructing the GATK zip
 FROM $GATKBASE AS gradleBuild
 LABEL stage=gatkIntermediateBuildImage
