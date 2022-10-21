@@ -150,7 +150,7 @@ public class ShiftFasta extends GATKTool {
 
             addToShiftedReference(refWriter, seqName, basesPerLine, basesAtStart, basesAtEnd);
             addToChainFile(seqName, contigLength, shiftOffset, bases, shiftBackOffset);
-            if (intervalFilename != null && shiftOffsetsIt == null) {
+            if (intervalFilename != null) {
                 addToIntervalFiles(intervalRegularWriter, intervalShiftedWriter, seqName, shiftOffset, contigLength);
             }
         } else {
