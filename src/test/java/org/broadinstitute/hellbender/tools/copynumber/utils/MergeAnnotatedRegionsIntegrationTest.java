@@ -1,12 +1,15 @@
 package org.broadinstitute.hellbender.tools.copynumber.utils;
 
 import com.google.common.collect.ImmutableSortedMap;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedInterval;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedIntervalCollection;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.testutils.BaseTest;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -23,14 +26,11 @@ public class MergeAnnotatedRegionsIntegrationTest extends CommandLineProgramTest
     @Test
     public void basicTest() throws IOException {
         // This test is a bit more like the real world
-        final File outputFile = File.createTempFile("mergeannotatedregions", ".seg");
-        final List<String> arguments = new ArrayList<>();
-        arguments.add("--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME);
-        arguments.add(SIMPLE_TEST_FILE);
-        arguments.add("--" + StandardArgumentDefinitions.REFERENCE_LONG_NAME);
-        arguments.add(REF);
-        arguments.add("-" + StandardArgumentDefinitions.OUTPUT_SHORT_NAME);
-        arguments.add(outputFile.getAbsolutePath());
+        final File outputFile = BaseTest.createTempFile("mergeannotatedregions", ".seg");
+        final ArgumentsBuilder arguments = new ArgumentsBuilder();
+        arguments.add(CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME, SIMPLE_TEST_FILE);
+        arguments.add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, REF);
+        arguments.add(StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getAbsolutePath());
         runCommandLine(arguments);
 
         final AnnotatedIntervalCollection collection =
@@ -50,4 +50,15 @@ public class MergeAnnotatedRegionsIntegrationTest extends CommandLineProgramTest
         Assert.assertEquals(collection.getRecords().get(4), new AnnotatedInterval(new SimpleInterval("2", 1098, 2305),
                 ImmutableSortedMap.of("Num_Probes", "200", "Segment_Mean", "-0.10", "Segment_Call", "0")));
     }
+
+    @Test(expectedExceptions = CommandLineException.class)
+    public void requiresReferenceTest() throws IOException {
+        // This test is a bit more like the real world
+        final File outputFile = BaseTest.createTempFile("mergeannotatedregions", ".seg");
+        final ArgumentsBuilder arguments = new ArgumentsBuilder();
+        arguments.add(CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME, SIMPLE_TEST_FILE);
+        arguments.add(StandardArgumentDefinitions.OUTPUT_SHORT_NAME, outputFile.getAbsolutePath());
+        runCommandLine(arguments);
+    }
+
 }

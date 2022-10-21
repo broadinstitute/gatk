@@ -37,6 +37,11 @@ public class MergeAnnotatedRegions extends GATKTool {
     final static String DEFAULT_SEPARATOR = "__";
 
     @Override
+    public boolean requiresReference() {
+        return true;
+    }
+
+    @Override
     public void traverse() {
 
         // Load the seg file.  Not done with the collection class, in order to keep the sequence dictionary optional on the input.
