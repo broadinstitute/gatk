@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStanda
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedInterval;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedIntervalCollection;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -24,7 +25,7 @@ public class MergeAnnotatedRegionsIntegrationTest extends CommandLineProgramTest
     @Test
     public void basicTest() throws IOException {
         // This test is a bit more like the real world
-        final File outputFile = File.createTempFile("mergeannotatedregions", ".seg");
+        final File outputFile = BaseTest.createTempFile("mergeannotatedregions", ".seg");
         final List<String> arguments = new ArrayList<>();
         arguments.add("--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME);
         arguments.add(SIMPLE_TEST_FILE);
@@ -55,7 +56,7 @@ public class MergeAnnotatedRegionsIntegrationTest extends CommandLineProgramTest
     @Test(expectedExceptions = CommandLineException.class)
     public void requiresReferenceTest() throws IOException {
         // This test is a bit more like the real world
-        final File outputFile = File.createTempFile("mergeannotatedregions", ".seg");
+        final File outputFile = BaseTest.createTempFile("mergeannotatedregions", ".seg");
         final List<String> arguments = new ArrayList<>();
         arguments.add("--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME);
         arguments.add(SIMPLE_TEST_FILE);
