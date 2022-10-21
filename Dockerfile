@@ -1,5 +1,6 @@
+ARG GATKBASE=lbergelson/gatk:gatkbase-2.4.0_rc1
 # stage 1 for constructing the GATK zip
-FROM broadinstitute/gatk:gatkbase-2.3.0 AS gradleBuild
+FROM $GATKBASE AS gradleBuild
 LABEL stage=gatkIntermediateBuildImage
 ARG RELEASE=false
 
@@ -21,7 +22,7 @@ RUN cp -r $( find /gatk/build -name "*bundle-files-collected" )/ /gatk/unzippedJ
 RUN unzip -o -j $( find /gatk/unzippedJar -name "gatkPython*.zip" ) -d /gatk/unzippedJar/scripts
 
 # Using OpenJDK 8
-FROM broadinstitute/gatk:gatkbase-2.3.0
+FROM $GATKBASE
 
 WORKDIR /gatk
 
