@@ -95,6 +95,12 @@ gcnvkernel.HybridInferenceParameters.expose_args(
     parser)
 
 if __name__ == "__main__":
+    import numpy.random as nr
+    nr.seed(3240)
+    from theano.sandbox.rng_mrg import MRG_RandomStreams
+    from pymc3.theanof import set_tt_rng, tt_rng
+    
+    set_tt_rng(3240)
 
     # parse arguments
     args = parser.parse_args()

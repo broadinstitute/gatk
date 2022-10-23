@@ -5,7 +5,7 @@ import numpy as np
 import pymc3 as pm
 import theano as th
 import theano.tensor as tt
-from scipy.misc import logsumexp
+from scipy.special import logsumexp
 
 from ..utils.math import logsumexp_double_complement, logp_to_phred
 
@@ -224,7 +224,7 @@ class HMMSegmentationQualityCalculator:
 
         if start_index == end_index:
             log_compl_prob = logsumexp(
-                self.log_posterior_prob_tc[start_index, self.leave_one_out_state_lists[call_state]])
+                self.log_posterior_prob_tc[start_index, self.leave_one_out_state_lists[call_state]])[0]
             return logp_to_phred(log_compl_prob, complement=False)
         else:
             # calculate the uncorrelated log complementary probability
