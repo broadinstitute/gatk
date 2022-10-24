@@ -1,15 +1,21 @@
 package org.broadinstitute.hellbender.tools.walkers.variantutils;
 
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFHeader;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
@@ -488,20 +494,55 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         spec.executeTest(name, this);
     }
 
-    @Test
-    public void testInvalidJexl() throws IOException {
-        final String testFile = getToolTestDataDir() + "ac0.vcf";
-
+    private void beforeJexlTest(){
         // NOTE: JexlEngine singleton construction in VariantContextUtils sets silent to false.
         // However VariantFiltration.initialize() sets setSilent(true) on the shared instance.
         // Just in case this test runs after a VariantFiltration in the same VM, always set silent back to false.
         htsjdk.variant.variantcontext.VariantContextUtils.engine.get().setSilent(false);
+    }
+
+    @Test // tsato: this test fails for teh wrongs reason; ac0.vcf does not exist
+    public void testInvalidJexl() throws IOException {
+        final GATKPath testFile = new GATKPath(getToolTestDataDir() + "ac0.vcf");
+        beforeJexlTest();
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" -select 'vc.getGenotype(\"FAKE_SAMPLE\").isHomRef()' ", testFile),
+                baseTestString(" -select 'vc.getGenotype(\"FAKE_SAMPLE\").isHomRef()' ", testFile.toString()),
                 1,
                 UserException.class);
         spec.executeTest("InvalidJexl", this);
+    }
+
+    @Test
+    public void testTsatoJexlGenotypeFilter() throws IOException {
+        final GATKPath testVcf = new GATKPath(getToolTestDataDir() + "hgdb_sv_multi_sample_mini.vcf");
+        // Is File acceptable here? Path? GATKPath?
+        final File testOutput = createTempFile("jexl_genotype_test", "vcf");
+        beforeJexlTest();
+
+        // Parsing 'GQ > 0' is a struggle
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .add("V", testVcf.toString())
+                .add("O", testOutput.getAbsolutePath())
+                .addRaw("--select 'GQ > 0'"); // tsato: there cannot be spaces between GQ>0
+                // .add("select", "'GQ > 0'"); // tsato: this does not work for some reason...
+
+        String test = args.toString();
+        runCommandLine(Arrays.asList("-V", testVcf.toString(), "-O", testOutput.getAbsolutePath(), "--select","GQ > 0"),
+                SelectVariants.class.getSimpleName());
+        int d = 3;
+
+//        final IntegrationTestSpec spec = new IntegrationTestSpec(
+//                baseTestString("-select 'GQ > 0' ", testVcf.toString()),
+//                Collections.singletonList(testVcf.toString())
+//        );
+
+//        spec.executeTest("yo", this);
+
+        // see Mutect integration test
+        final Pair<VCFHeader, List<VariantContext>> result = VariantContextTestUtils.readEntireVCFIntoMemory(testOutput.getAbsolutePath());
+
+        Assert.assertEquals(result.getRight().size(), 6);
     }
 
     @Test

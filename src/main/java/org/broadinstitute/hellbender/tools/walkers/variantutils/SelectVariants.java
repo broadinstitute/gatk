@@ -178,7 +178,7 @@ public final class SelectVariants extends VariantWalker {
      * See example commands above for detailed usage examples. Note that these expressions are evaluated *after* the
      * specified samples are extracted and the INFO field annotations are updated.
      */
-    @Argument(shortName="select", doc="One or more criteria to use when selecting the data", optional=true)
+    @Argument(fullName="select", doc="One or more criteria to use when selecting the data", optional=true)
     private ArrayList<String> selectExpressions = new ArrayList<>();
 
     /**
