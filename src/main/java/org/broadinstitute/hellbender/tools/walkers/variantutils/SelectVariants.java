@@ -682,7 +682,7 @@ public final class SelectVariants extends VariantWalker {
     }
 
     /**
-     *  Applies the JEXL filters
+     *  Applies     JEXL filters
      *
      *  Notes:
      *  - Expressions that contain logical-and (&&) should appear in a single -select argument.
@@ -703,8 +703,8 @@ public final class SelectVariants extends VariantWalker {
                 // e.g. -select AF > 0.01, -select ReadPosRankSum < -20.0
                 // If invert-select is false, we have "AF > 0.01 || ReadPosRankSum < -20.0"
                 // If invert-select is true, we have "not (AF > 0.01) || not (ReadPosRankSum < -20.0)"
-                if (invertLogic(VariantContextUtils.match(vc, jexl), invertSelect)){
-                    return true;
+                if (invertLogic(VariantContextUtils.match(vc, jexl), invertSelect)){ // tsato: this match method sets the vc genotype to null
+                    return true; // we have to give it the genotype if we want to enable genotype filtering.
                 }
             }
         } catch (IllegalArgumentException e) {

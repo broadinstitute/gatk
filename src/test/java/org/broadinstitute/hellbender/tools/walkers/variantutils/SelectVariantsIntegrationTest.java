@@ -665,6 +665,13 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
     // tsato: add multiple jexl test here, should be
     // Also: deprecate the invertlogic argument?
 
+    // Tests needed:
+    // * Filter by genotypes; what does that even mean? VariantFiltration goes through the genotypes and adds a flag, rather than subsetting
+    // * Multiple select expression as logical-or
+    // * Jexl with logical-and
+    // * 
+
+
     /**
      * Test inverting the variant selection criteria by inverting the JEXL expression logic following -select
      */
