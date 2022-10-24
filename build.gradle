@@ -294,7 +294,7 @@ dependencies {
             version {
                 strictly '1.10.0'
             }
-            because 'previous versions have a nasty vulnerability'
+            because 'previous versions have a nasty vulnerability: https://nvd.nist.gov/vuln/detail/CVE-2022-42889'
         }
     }
 
