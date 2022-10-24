@@ -921,7 +921,7 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
                 );
         //////////////////////////////////////// Get or estimate allele frequency //////////////////////////////////////
         float alleleFrequency = (float)variantContext.getAttributeAsDouble(VCFConstants.ALLELE_FREQUENCY_KEY, -1.0);
-        if(alleleFrequency <= 0) {
+        if(alleleFrequency < 0 || alleleFrequency > 1 || Float.isNaN(alleleFrequency)) {
             if(variantContext.getNSamples() <= minSamplesToEstimateAlleleFrequency) {
                 throw new GATKException("VCF does not have " + VCFConstants.ALLELE_FREQUENCY_KEY + " annotated or enough samples to estimate it ("
                                         + minSamplesToEstimateAlleleFrequencyKey + "=" + minSamplesToEstimateAlleleFrequency + " but there are "
@@ -1138,17 +1138,8 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
             .anyMatch(i -> edgeStrings[i].equals(edgeStrings[i + 1]));
     }
 
-    private String[] getPropertyBinNames( final PropertiesTable.Property property, final double[] bins) {
-        double minVal = bins[0];
-        double maxVal = bins[bins.length - 1];
-        for(int variantIndex = 0; variantIndex < property.getNumRows(); ++variantIndex) {
-            final float val = property.getAsFloat(variantIndex, 0, false);
-            if(val < minVal) {
-                minVal = val;
-            } else if(val > maxVal) {
-                maxVal = val;
-            }
-        }
+    private String[] getPropertyBinNames(final PropertiesTable.Property property, final double[] bins,
+                                         final double minVal, final double maxVal) {
         final boolean addLeftEdge = minVal < bins[0];
         final boolean addRightEdge = maxVal > bins[bins.length - 1];
         final double[] fullBinEdges = new double[bins.length + (addLeftEdge ? 1 : 0) + (addRightEdge ? 1: 0)];
@@ -1213,34 +1204,66 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
             final String propertyName = propertyBinsEntry.getKey();
             final double[] bins = propertyBinsEntry.getValue();
 
-            // get the old bin names as an ordered list, so that existing propertyBins map correctly to oldBinNames
-            final List<String> oldBinNames = binNames.entrySet()
-                .stream()
-                .sorted(Map.Entry.comparingByValue())
-                .map(Map.Entry::getKey)
-                .collect(Collectors.toList());
-            binNames.clear();
-
-            // get the property values, and strings representing the bins we'll use
-            final PropertiesTable.Property property = propertiesTable.get(propertyName);
-            final String[] propertyBinNames = getPropertyBinNames(property, bins);
-            // add property name to the header with extra padding if needed
-            propertyBinLabelColumns.add(padWidth(propertyName, propertyBinNames[0].length()));
-
-            IntStream.range(0, numVariants).forEach(variantIndex -> {
-                // for each variant, find which of the new bins it should index into
-                int propertyBin = Arrays.binarySearch(bins, property.getAsFloat(variantIndex, 0, false));
-                if(propertyBin < 0) { propertyBin = ~propertyBin; }
-                // form the new bin name by adding a new column with the appropriate binned value
-                final String newBinName = oldBinNames.get(propertyBins[variantIndex]) + "\t" + propertyBinNames[propertyBin];
-                if(binNames.containsKey(newBinName)) {  // this bin exists, just get its index
-                    propertyBins[variantIndex] = binNames.get(newBinName);
-                } else {  // this is a new bin, create it and get its index
-                    final int newBin = binNames.size();
-                    binNames.put(newBinName, newBin);
-                    propertyBins[variantIndex] = newBin;
+            try {
+                final PropertiesTable.Property property = propertiesTable.get(propertyName);
+                double minVal = bins[0];
+                double maxVal = bins[bins.length - 1];
+                for(int variantIndex = 0; variantIndex < property.getNumRows(); ++variantIndex) {
+                    final float val = property.getAsFloat(variantIndex, 0, false);
+                    if(val < minVal) {
+                        minVal = val;
+                    } else if(val > maxVal) {
+                        maxVal = val;
+                    }
                 }
-            });
+
+                // get the old bin names as an ordered list, so that existing propertyBins map correctly to oldBinNames
+                final List<String> oldBinNames = binNames.entrySet()
+                        .stream()
+                        .sorted(Map.Entry.comparingByValue())
+                        .map(Map.Entry::getKey)
+                        .collect(Collectors.toList());
+                binNames.clear();
+
+                // Avoid fencepost error: if minVal == bins[0], drop bins[0]
+                final double[] searchBins = minVal == bins[0] ? Arrays.copyOfRange(bins, 1, bins.length) : bins;
+                // get the property values, and strings representing the bins we'll use
+                final String[] propertyBinNames = getPropertyBinNames(property, searchBins, minVal, maxVal);
+                // add property name to the header with extra padding if needed
+                propertyBinLabelColumns.add(padWidth(propertyName, propertyBinNames[0].length()));
+
+                for (int variantIndex = 0; variantIndex < numVariants; ++variantIndex) {
+                    final double propertyValue = property.getAsFloat(variantIndex, 0, false);
+                    int propertyBin = Arrays.binarySearch(searchBins, propertyValue);
+                    if (propertyBin < 0) {
+                        propertyBin = ~propertyBin;  // bitwise complement if propertyValue is not exactly in bins
+                    }
+                    try {
+                        // form the new bin name by adding a new column with the appropriate binned value
+                        final String newBinName = oldBinNames.get(propertyBins[variantIndex]) + "\t" +
+                            propertyBinNames[propertyBin];
+                        if (binNames.containsKey(newBinName)) {  // this bin exists, just get its index
+                            propertyBins[variantIndex] = binNames.get(newBinName);
+                        } else {  // this is a new bin, create it and get its index
+                            final int newBin = binNames.size();
+                            binNames.put(newBinName, newBin);
+                            propertyBins[variantIndex] = newBin;
+                        }
+                    } catch (RuntimeException runtimeException) {
+                        throw new RuntimeException(
+                                "Error creating bin name for variantIndex " + variantIndex + ": value=" + propertyValue +
+                                        " assigned to bin " + propertyBin + " from searchBins=" +
+                                        Arrays.toString(searchBins),
+                                runtimeException
+                        );
+                    }
+                }
+            } catch(RuntimeException runtimeException) {
+                throw new RuntimeException(
+                        "Error setting bins/names for " + propertyName + " with bins: " + Arrays.toString(bins),
+                        runtimeException
+                );
+            }
         }
 
         numPropertyBins = binNames.size();
