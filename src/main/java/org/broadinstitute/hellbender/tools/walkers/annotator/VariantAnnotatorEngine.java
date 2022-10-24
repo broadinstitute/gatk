@@ -4,12 +4,14 @@ import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.GenotypeGVCFsAnnotationArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotationData;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -43,6 +45,7 @@ public final class VariantAnnotatorEngine {
     private boolean expressionAlleleConcordance;
     private final boolean useRawAnnotations;
     private final boolean keepRawCombinedAnnotations;
+    private final List<String> rawAnnotationsToKeep;
 
     private final static Logger logger = LogManager.getLogger(VariantAnnotatorEngine.class);
     private final static OneShotLogger jumboAnnotationsLogger = new OneShotLogger(VariantAnnotatorEngine.class);
@@ -59,17 +62,20 @@ public final class VariantAnnotatorEngine {
      * @param useRaw When this is set to true, the annotation engine will call {@link ReducibleAnnotation#annotateRawData(ReferenceContext, VariantContext, AlleleLikelihoods)}
 *               on annotations that extend {@link ReducibleAnnotation}, instead of {@link InfoFieldAnnotation#annotate(ReferenceContext, VariantContext, AlleleLikelihoods)},
      * @param keepCombined If true, retain the combined raw annotation values instead of removing them after finalizing
+     * @param rawAnnotationsToKeep List of raw annotations to keep even when others are removed
      */
     public VariantAnnotatorEngine(final Collection<Annotation> annotationList,
                                   final FeatureInput<VariantContext> dbSNPInput,
                                   final List<FeatureInput<VariantContext>> featureInputs,
                                   final boolean useRaw,
-                                  boolean keepCombined){
+                                  final boolean keepCombined,
+                                  final Collection<Annotation> rawAnnotationsToKeep){
         Utils.nonNull(featureInputs, "comparisonFeatureInputs is null");
         infoAnnotations = new ArrayList<>();
         genotypeAnnotations = new ArrayList<>();
         jumboInfoAnnotations = new ArrayList<>();
         jumboGenotypeAnnotations = new ArrayList<>();
+        this.rawAnnotationsToKeep = new ArrayList<>();
         for (Annotation annot : annotationList) {
             if (annot instanceof InfoFieldAnnotation) {
                 infoAnnotations.add((InfoFieldAnnotation) annot);
@@ -87,6 +93,9 @@ public final class VariantAnnotatorEngine {
         reducibleKeys = new LinkedHashSet<>();
         useRawAnnotations = useRaw;
         keepRawCombinedAnnotations = keepCombined;
+        for (final Annotation rawAnnot : rawAnnotationsToKeep) {
+            this.rawAnnotationsToKeep.addAll(((VariantAnnotation) rawAnnot).getKeyNames());
+        }
         for (InfoFieldAnnotation annot : infoAnnotations) {
             if (annot instanceof ReducibleAnnotation) {
                 for (final String rawKey : ((ReducibleAnnotation) annot).getRawKeyNames()) {
@@ -94,6 +103,14 @@ public final class VariantAnnotatorEngine {
                 }
             }
         }
+    }
+
+    public VariantAnnotatorEngine(final Collection<Annotation> annotationList,
+                                  final FeatureInput<VariantContext> dbSNPInput,
+                                  final List<FeatureInput<VariantContext>> featureInputs,
+                                  final boolean useRaw,
+                                  boolean keepCombined){
+        this(annotationList, dbSNPInput, featureInputs, useRaw, keepCombined, Collections.emptyList());
     }
 
     private VariantOverlapAnnotator initializeOverlapAnnotator(final FeatureInput<VariantContext> dbSNPInput, final List<FeatureInput<VariantContext>> featureInputs) {
@@ -253,6 +270,14 @@ public final class VariantAnnotatorEngine {
     public VariantContext finalizeAnnotations(VariantContext vc, VariantContext originalVC) {
         final Map<String, Object> variantAnnotations = new LinkedHashMap<>(vc.getAttributes());
 
+        //save annotations that have been requested to be kept
+        final Map<String, Object> savedRawAnnotations = new LinkedHashMap<>();
+        for(final String rawAnnot : rawAnnotationsToKeep) {
+            if (variantAnnotations.containsKey(rawAnnot)) {
+                savedRawAnnotations.put(rawAnnot, variantAnnotations.get(rawAnnot));
+            }
+        }
+
         // go through all the requested info annotationTypes
         for (final InfoFieldAnnotation annotationType : infoAnnotations) {
             if (annotationType instanceof ReducibleAnnotation) {
@@ -280,6 +305,8 @@ public final class VariantAnnotatorEngine {
             variantAnnotations.remove(GATKVCFConstants.VARIANT_DEPTH_KEY);
             variantAnnotations.remove(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY);
         }
+        //add back raw annotations that have specifically been requested to keep
+        variantAnnotations.putAll(savedRawAnnotations);
 
         // generate a new annotated VC
         final VariantContextBuilder builder = new VariantContextBuilder(vc).attributes(variantAnnotations);

@@ -16,7 +16,6 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.config.ConfigFactory;
 import org.broadinstitute.hellbender.utils.config.GATKConfig;
 
-import java.io.File;
 import java.lang.reflect.Modifier;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -485,6 +484,16 @@ public class GATKAnnotationPluginDescriptor extends CommandLinePluginDescriptor<
         return resolvedInstances;
     }
 
+    /**
+     * Returns a map of the String to Annotations only in the resolved instances.
+     *
+     * @return a Map of Strings to Annotations of resolved instances
+     */
+    public Map<String, Annotation> getResolvedInstancesMap() {
+        return allDiscoveredAnnotations.entrySet().stream()
+                .filter(e -> getResolvedInstances().contains(e.getValue()))
+                .collect(Collectors.toMap(e -> e.getKey(), e -> e.getValue()));
+    }
 
     /**
      * Return the class representing the instance of the plugin specified by {@code pluginName}
@@ -496,5 +505,4 @@ public class GATKAnnotationPluginDescriptor extends CommandLinePluginDescriptor<
     public Class<?> getClassForPluginHelp(final String pluginName) {
         return allDiscoveredAnnotations.containsKey(pluginName) ? allDiscoveredAnnotations.get(pluginName).getClass() : null;
     }
-
 }

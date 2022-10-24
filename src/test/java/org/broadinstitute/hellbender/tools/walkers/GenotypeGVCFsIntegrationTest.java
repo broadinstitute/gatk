@@ -43,8 +43,6 @@ import java.nio.file.StandardCopyOption;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
-import java.util.function.IntUnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -930,7 +928,7 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         args.addReference(b37_reference_20_21)
                 .addVCF(reblockedGVCF)
                 .addOutput(output)
-                .add("keep-combined-raw-annotations", true)
+                .add(GenotypeGVCFsAnnotationArgumentCollection.KEEP_SPECIFIED_RAW_COMBINED_ANNOTATION_LONG_NAME, "RawGtCount")
                 .add("A", "RawGtCount");
         runCommandLine(args);
 
@@ -942,10 +940,23 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
                 Assert.assertEquals(rawGtCount.get(0), ".");
                 Assert.assertEquals(rawGtCount.get(1), "2");
                 Assert.assertEquals(rawGtCount.get(2), "0");
+                Assert.assertFalse(vc.getAttributes().containsKey(GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY));
             }
 
         }
     }
 
+    @Test(expectedExceptions = UserException.class)
+    public void testBadKeepAnnotationArg() {
+        final File reblockedGVCF = new File("src/test/resources/org/broadinstitute/hellbender/tools/walkers/GenotypeGVCFs/twoReblocked.g.vcf");
+        final File output = createTempFile("reblockedAndGenotyped", ".vcf");
 
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(b37_reference_20_21)
+                .addVCF(reblockedGVCF)
+                .addOutput(output)
+                .add(GenotypeGVCFsAnnotationArgumentCollection.KEEP_SPECIFIED_RAW_COMBINED_ANNOTATION_LONG_NAME, "RawGtCount");
+        // This is expected to fail because RawGtCount was not provided as a tool level annotation (-A).
+        runCommandLine(args);
+    }
 }
