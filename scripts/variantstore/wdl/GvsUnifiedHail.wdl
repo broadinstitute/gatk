@@ -117,6 +117,7 @@ workflow GvsUnifiedHail {
 
     output {
         Boolean done = true
+        String vds_output_path = GvsExtractAvroFilesForHail.vds_output_path
     }
 }
 
