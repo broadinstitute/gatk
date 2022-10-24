@@ -4,7 +4,8 @@ import "GvsCreateVATAnnotations.wdl" as Annotations
 
 workflow GvsCreateVATfromVDS {
     input {
-        File input_VDS_file
+        File input_sites_only_vcf
+        File custom_annotations_file
         String project_id
         String dataset_name
         String filter_set_name
@@ -18,30 +19,37 @@ workflow GvsCreateVATfromVDS {
     File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
     File nirvana_data_directory = "gs://broad-public-datasets/gvs/vat-annotations/Nirvana/NirvanaData.tar.gz"
 
+    ## TODO # do we need to shard the sites only VCF?
+    # String input_vds_name - basename(input_VDS_file)
+    String input_vcf_name - basename(input_sites_only_vcf)
+
 
     nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
 
     call MakeSubpopulationFilesAndReadSchemaFiles {
         input:
-            input_ancestry_file = ancestry_file,
-            input_file_of_file_names = input_file_of_file_names,
-            input_file_of_index_file_names = input_file_of_index_file_names
+            input_ancestry_file = ancestry_file
+    }
+
+    call CreateCustomAnnotationsFile {
+        input:
+            custom_annotations_header = MakeSubpopulationFilesAndReadSchemaFiles.custom_annotations_template_file,
+            custom_annotations_body = custom_annotations_file
     }
 
     ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
     call AnnotateVCF {
         input:
-            input_vcf = ExtractAnAcAfFromVCF.output_vcf,
-            input_vcf_index = ExtractAnAcAfFromVCF.output_vcf_index,
-            output_annotated_file_name = "${input_vcf_name}_annotated",
+            input_vcf = input_vcf_name,
+            output_annotated_file_name = "${input_vds_name}_annotated",
             nirvana_data_tar = nirvana_data_directory,
-            custom_annotations_file = MakeSubpopulationFilesAndReadSchemaFiles.custom_annotations_template_file,
+            custom_annotations_file = CreateCustomAnnotationsFile.custom_annotations,
     }
 
     call PrepAnnotationJson {
         input:
-            annotation_json = AnnotateVCF.annotation_json,
-            output_file_suffix = "${input_vcf_name}.json.gz",
+            annotation_json = AnnotateVDS.annotation_json,
+            output_file_suffix = "${input_vds_name}.json.gz",
             output_path = output_path
     }
 
@@ -101,8 +109,6 @@ workflow GvsCreateVATfromVDS {
 task MakeSubpopulationFilesAndReadSchemaFiles {
     input {
         File input_ancestry_file
-        File input_file_of_file_names
-        File input_file_of_index_file_names
 
         String schema_filepath = "/data/variant_annotation_table/schema/"
         String vat_schema_json_filename = "vat_schema.json"
@@ -142,16 +148,44 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
 
         File ancestry_mapping_list = output_ancestry_filename
         File custom_annotations_template_file = custom_annotations_template_filename
-        Array[File] input_vcfs = read_lines(input_file_of_file_names)
-        Array[File] input_vcf_indices = read_lines(input_file_of_index_file_names)
+    }
+}
+
+
+task CreateCustomAnnotationsFile {
+    input {
+        File custom_annotations_header
+        File custom_annotations_body
+    }
+
+    command <<<
+        set -e
+
+        #
+        cat custom_annotations_body >> custom_annotations_header
+
+
+    >>>
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-09-28-slim"
+        memory: "1 GB"
+        cpu: "1"
+        preemptible: 3
+        disks: "local-disk 100 HDD"
+    }
+    # ------------------------------------------------
+    # Outputs:
+    output {
+        File custom_annotations = "~{custom_annotations_header}"
     }
 }
 
 
 task AnnotateVCF {
     input {
-        File input_vcf
-        File input_vcf_index
+        File input_vcf ## TODO do we need a sites only index file?
         String output_annotated_file_name
         File nirvana_data_tar
         File custom_annotations_file
@@ -204,7 +238,7 @@ task AnnotateVCF {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "annotation/nirvana:3.14" # us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19
         memory: "32 GB"
         cpu: "2"
         preemptible: 5
