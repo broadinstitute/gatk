@@ -16,7 +16,7 @@ public class GzippedTsvWriter implements AutoCloseable {
     private final OutputStream outputStream;
     private String typeName = null;
     private int numRows;
-    private int numColumns;
+    private int numSamples;
     static final int defaultBufferSize = 1000000;
     private final Map<Set<String>, Integer> stringSetEncoderMap = new HashMap<>();
     private final Map<String, Integer> stringEncoderMap = new HashMap<>();
@@ -67,7 +67,7 @@ public class GzippedTsvWriter implements AutoCloseable {
 
     int getNumRows() { return numRows; }
 
-    int getNumColumns() { return numColumns; }
+    int getNumSamples() { return numSamples; }
 
     String getName() { return name; }
 
@@ -97,8 +97,8 @@ public class GzippedTsvWriter implements AutoCloseable {
     JSONObject getPropertySummaryJson() {
         final JSONObject summaryObject = new JSONObject();
         summaryObject.put("type", typeName);
-        summaryObject.put("rows", numRows);
-        summaryObject.put("columns", numColumns);
+        summaryObject.put("num_rows", numRows);
+        summaryObject.put("num_samples", numSamples);
         if(hasLabels()) {
             summaryObject.put("codes", getEncodings());
         }
@@ -139,16 +139,16 @@ public class GzippedTsvWriter implements AutoCloseable {
         }
     }
 
-    private void setOrCheckType(final String typeName, final int numColumns)  {
+    private void setOrCheckType(final String typeName, final int numSamples)  {
         if(this.typeName == null) {
             // this is the first line of data. Set typename and write header line
             this.typeName = typeName;
-            this.numColumns = numColumns;
+            this.numSamples = numSamples;
             numRows = 0;
         } else if(!Objects.equals(typeName, this.typeName)) {
             throw new IllegalArgumentException("Value type changed from " + this.typeName + " to " + typeName);
-        } else if(numColumns != this.numColumns) {
-            throw new IllegalArgumentException("Number of columns type changed from " + this.numColumns + " to " + numColumns);
+        } else if(numSamples != this.numSamples) {
+            throw new IllegalArgumentException("Number of samples changed from " + this.numSamples + " to " + numSamples);
         }
     }
 
@@ -187,7 +187,7 @@ public class GzippedTsvWriter implements AutoCloseable {
     }
 
     void append(final String value, final boolean ordinalEncode) {
-        setOrCheckType(stringType, 1);
+        setOrCheckType(stringType, 0);
         if(ordinalEncode) {
             write(encode(value));
         } else {
@@ -217,7 +217,7 @@ public class GzippedTsvWriter implements AutoCloseable {
     }
 
     void append(final Set<String> value) {
-        setOrCheckType(stringSetType, 1);
+        setOrCheckType(stringSetType, 0);
         write(encode(value));
         newline();
     }
@@ -234,7 +234,7 @@ public class GzippedTsvWriter implements AutoCloseable {
     }
 
     void append(final boolean value) {
-        setOrCheckType(booleanType, 1);
+        setOrCheckType(booleanType, 0);
         write(value ? "true" : "false");
         newline();
     }
@@ -251,7 +251,7 @@ public class GzippedTsvWriter implements AutoCloseable {
     }
 
     void append(final byte value) {
-        setOrCheckType(byteType, 1);
+        setOrCheckType(byteType, 0);
         write((int)value);
         newline();
     }
@@ -268,7 +268,7 @@ public class GzippedTsvWriter implements AutoCloseable {
     }
 
     void append(final short value) {
-        setOrCheckType(shortType, 1);
+        setOrCheckType(shortType, 0);
         write(value);
         newline();
     }
@@ -285,7 +285,7 @@ public class GzippedTsvWriter implements AutoCloseable {
     }
 
     void append(final int value) {
-        setOrCheckType(intType, 1);
+        setOrCheckType(intType, 0);
         write(value);
         newline();
     }
@@ -302,7 +302,7 @@ public class GzippedTsvWriter implements AutoCloseable {
     }
 
     void append(final float value) {
-        setOrCheckType(floatType, 1);
+        setOrCheckType(floatType, 0);
         write(String.format("%.7f", value));
         newline();
     }
@@ -319,7 +319,7 @@ public class GzippedTsvWriter implements AutoCloseable {
     }
 
     void append(final double value) {
-        setOrCheckType(doubleType, 1);
+        setOrCheckType(doubleType, 0);
         write(String.format("%.16f", value));
         newline();
     }

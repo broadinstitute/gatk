@@ -76,6 +76,8 @@ public class ExtractSvProperties extends VariantWalker {
     private int numSamples;
     private Set<String> vcfHeaderIds = null;
     private static final String ID_KEY = "ID";
+    private static final String POS_KEY = "POS";
+    private static final String END_KEY = "END";
     private static final String NO_CALL_COUNTS_KEY = "NO_CALL_COUNTS";
     private static final String SVLEN_KEY = "SVLEN";
     private static final String EV_KEY = "EV";
@@ -88,7 +90,6 @@ public class ExtractSvProperties extends VariantWalker {
     private static final String VAR_PPV_KEY = "VAR_PPV";
     private static final String VAR_SENSITIVITY_KEY = "VAR_SENSITIVITY";
     private static final String TRUTH_AF_KEY = "TRUTH_AF";
-    private static final String MULTIALLELIC_FILTER = "MULTIALLELIC";
     private static final String CALL_QUALITY_KEY = "CALL_QUALITY";
     private static final String IS_COPY_NUMBER_CALL_KEY = "IS_CN_CALL";
 
@@ -421,7 +422,7 @@ public class ExtractSvProperties extends VariantWalker {
         numRefGenotypes += numVariantInputRef;
 
         ++numVariants;
-        /////////////////////////////////////////// Get values from FORMAT /////////////////////////////////////////////
+        ///////////////////////////////////// Get per-genotype / FORMAT values /////////////////////////////////////////
         getTsvWriter(VCFConstants.ALLELE_COUNT_KEY).append(sampleAlleleCounts);
         getTsvWriter(NO_CALL_COUNTS_KEY).append(sampleNoCallCounts);
         if(useCopyNumberCalls) {
@@ -491,6 +492,10 @@ public class ExtractSvProperties extends VariantWalker {
             getTrackProperties(trackOverlapDetector, variantContext);
         }
 
+        //////////////////////////////////////////  Get basic variant data /////////////////////////////////////////////
+        getTsvWriter(VCFConstants.CONTIG_HEADER_KEY).append(variantContext.getContig());
+        getTsvWriter(POS_KEY).append(variantContext.getStart());
+        getTsvWriter(END_KEY).append(variantContext.getEnd());
         getTsvWriter(ID_KEY).append(variantContext.getID(), false);
     }
 
@@ -547,14 +552,14 @@ public class ExtractSvProperties extends VariantWalker {
         final String headerFormat = String.join(
                 "\t", "%5s", nameFormat, typeFormat, "%8s", "%8s"
         ) + "\n";
-        System.out.format(headerFormat, "index", "propertyName", "type", "nRows", "nColumns");
+        System.out.format(headerFormat, "index", "propertyName", "type", "nRows", "nSamples");
         final String dataFormat = String.join(
                 "\t", "%5d", nameFormat, typeFormat, "%8d", "%8d"
         ) + "\n";
         int idx = 0;
         for(final GzippedTsvWriter writer : tsvWritersMap.values()) {
             System.out.format(dataFormat,
-                    idx, writer.getName(), writer.getTypeName(), writer.getNumRows(), writer.getNumColumns());
+                    idx, writer.getName(), writer.getTypeName(), writer.getNumRows(), writer.getNumSamples());
             ++idx;
         }
     }
