@@ -114,7 +114,7 @@ COPY *.py /app
 COPY *.sql /app
 
 # Copy the schema files needed for VAT creation.
-COPY *.json /data/variant_annotation_table/schema/
+COPY ./variant_annotation_table/schema/*.json /data/variant_annotation_table/schema/
 
 ENV PATH=/bcftools/bin\:$PATH
 WORKDIR /app

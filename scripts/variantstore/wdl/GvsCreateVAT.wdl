@@ -124,7 +124,7 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-10-12-alpine"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-10-24-alpine"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
