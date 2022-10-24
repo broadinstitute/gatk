@@ -5,6 +5,7 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsExtractAvroFilesForHail {
     input {
+        Boolean go = true
         String project_id
         String dataset
         String filter_set_name
