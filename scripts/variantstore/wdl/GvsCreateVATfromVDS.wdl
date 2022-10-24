@@ -1,18 +1,20 @@
 version 1.0
 
-import "GvsCreateVATAnnotations.wdl" as Annotations
+# import "GvsCreateVATAnnotations.wdl" as Annotations
 
 workflow GvsCreateVATfromVDS {
     input {
         File input_sites_only_vcf
         File custom_annotations_file
+        File ancestry_file
+
         String project_id
         String dataset_name
         String filter_set_name
         String? vat_version
-        String output_path
 
-        File ancestry_file
+        String output_path
+        Int? merge_vcfs_disk_size_override
     }
 
     Array[String] contig_array = ["chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrX", "chrY", "chrM"]
@@ -20,11 +22,11 @@ workflow GvsCreateVATfromVDS {
     File nirvana_data_directory = "gs://broad-public-datasets/gvs/vat-annotations/Nirvana/NirvanaData.tar.gz"
 
     ## TODO # do we need to shard the sites only VCF?
-    # String input_vds_name - basename(input_VDS_file)
-    String input_vcf_name - basename(input_sites_only_vcf)
+    # String input_vds_name = basename(input_VDS_file)
+    String input_vcf_name = basename(input_sites_only_vcf)
 
 
-    nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
+    # nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
 
     call MakeSubpopulationFilesAndReadSchemaFiles {
         input:
@@ -41,15 +43,16 @@ workflow GvsCreateVATfromVDS {
     call AnnotateVCF {
         input:
             input_vcf = input_vcf_name,
-            output_annotated_file_name = "${input_vds_name}_annotated",
+            output_annotated_file_name = "${input_vcf_name}_annotated",
             nirvana_data_tar = nirvana_data_directory,
             custom_annotations_file = CreateCustomAnnotationsFile.custom_annotations,
     }
 
     call PrepAnnotationJson {
         input:
-            annotation_json = AnnotateVDS.annotation_json,
-            output_file_suffix = "${input_vds_name}.json.gz",
+            annotation_json = AnnotateVCF.annotation_json,
+            output_file_suffix = "${input_vcf_name
+            }.json.gz",
             output_path = output_path
     }
 
@@ -65,18 +68,8 @@ workflow GvsCreateVATfromVDS {
             output_path = output_path,
             filter_set_name = filter_set_name,
             vat_version = vat_version,
-            prep_jsons_done = GvsCreateVATAnnotations.done
     }
 
-    call BigQuerySmokeTest {
-        input:
-            project_id = project_id,
-            dataset_name = dataset_name,
-            counts_variants = GvsCreateVATAnnotations.count_variants,
-            track_dropped_variants = GvsCreateVATAnnotations.track_dropped,
-            vat_table = BigQueryLoadJson.vat_table_name,
-            load_jsons_done = BigQueryLoadJson.done
-    }
 
     scatter(i in range(length(contig_array)) ) {
         call BigQueryExportVat {
@@ -86,7 +79,7 @@ workflow GvsCreateVATfromVDS {
                 dataset_name = dataset_name,
                 output_path = output_path,
                 vat_table = BigQueryLoadJson.vat_table_name,
-                validate_jsons_done = BigQuerySmokeTest.done
+                validate_jsons_done = false # BigQuerySmokeTest.done
         }
     }
 
@@ -238,7 +231,7 @@ task AnnotateVCF {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
         memory: "32 GB"
         cpu: "2"
         preemptible: 5
@@ -512,68 +505,6 @@ task BigQueryLoadJson {
     # Outputs:
     output {
         String vat_table_name = vat_table
-        Boolean done = true
-    }
-}
-
-task BigQuerySmokeTest {
-    input {
-        String project_id
-        String dataset_name
-        String vat_table
-        Array[Int] counts_variants
-        Array[File] track_dropped_variants
-        Boolean load_jsons_done
-    }
-    # Now query the final table for expected results
-    # Compare the number of variants we expect from the input with the size of the output / VAT
-    # The number of passing variants in GVS matches the number of variants in the VAT.
-    # Please note that we are counting the number of variants in GVS, not the number of sites, which may add a difficulty to this task.
-
-
-    command <<<
-        set -e
-        echo "project_id = ~{project_id}" > ~/.bigqueryrc
-
-        # ------------------------------------------------
-        # VALIDATION CALCULATION
-        # sum all the initial input variants across the shards
-
-        INITIAL_VARIANT_COUNT=$(python -c "print(sum([~{sep=', ' counts_variants}]))")
-        ## here a list of files: ~{sep=', ' track_dropped_variants}
-        ## I need to get the lines from each file
-        awk 'FNR==1{print ""}1' ~{sep=' ' track_dropped_variants} > dropped_variants.txt
-
-        echo "Dropped variants:"
-        cat dropped_variants.txt
-
-        # Count number of variants in the VAT
-        bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT COUNT (DISTINCT vid) AS count FROM `~{dataset_name}.~{vat_table}`' > bq_variant_count.csv
-        VAT_COUNT=$(python3 -c "csvObj=open('bq_variant_count.csv','r');csvContents=csvObj.read();print(csvContents.split('\n')[1]);")
-        # if the result of the bq call and the csv parsing is a series of digits, then check that it matches the input
-        if [[ $VAT_COUNT =~ ^[0-9]+$ ]]; then
-            if [[ $INITIAL_VARIANT_COUNT -ne $VAT_COUNT ]]; then
-                echo "FAIL: The VAT table ~{vat_table} has $VAT_COUNT variants in it, and the input files had $INITIAL_VARIANT_COUNT."
-            else
-                echo "PASS: The VAT table ~{vat_table} has $VAT_COUNT variants in it, which is the expected number."
-            fi
-        # otherwise, something is off, so return the output from the bq query call
-        else
-            echo "Something went wrong. The attempt to count the variants returned: " $(cat bq_variant_count.csv)
-        fi
-    >>>
-    # ------------------------------------------------
-    # Runtime settings:
-    runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
-        memory: "1 GB"
-        preemptible: 3
-        cpu: "1"
-        disks: "local-disk 100 HDD"
-    }
-    # ------------------------------------------------
-    # Outputs:
-    output {
         Boolean done = true
     }
 }
