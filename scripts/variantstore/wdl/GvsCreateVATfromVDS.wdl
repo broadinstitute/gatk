@@ -312,7 +312,7 @@ task BigQueryLoadJson {
         String project_id
         String dataset_name
         String output_path
-        Array[String] prep_jsons_done
+       # Array[String] prep_jsons_done
     }
 
     # If the vat version is undefined or v1 then the vat tables would be named like filter_vat, otherwise filter_vat_v2.
