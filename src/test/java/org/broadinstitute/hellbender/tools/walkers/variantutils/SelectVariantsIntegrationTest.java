@@ -520,24 +520,17 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final File testOutput = createTempFile("jexl_genotype_test", "vcf");
         beforeJexlTest();
 
-        // Parsing 'GQ > 0' is a struggle
+        // Parsing 'GQ > 0' is a struggle. So I abandoned the ArgumentsBuilder approach and put the string directly, as below.
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .add("V", testVcf.toString())
                 .add("O", testOutput.getAbsolutePath())
-                .addRaw("--select 'GQ > 0'"); // tsato: there cannot be spaces between GQ>0
+                .addRaw("--select 'GQ > 0'");
                 // .add("select", "'GQ > 0'"); // tsato: this does not work for some reason...
 
-        String test = args.toString();
+        // tsato: if it were really a commandline I would do "'GQ > 0'" but the parser did not like that. Functionally, "GQ > 0" does the right thing.
         runCommandLine(Arrays.asList("-V", testVcf.toString(), "-O", testOutput.getAbsolutePath(), "--select","GQ > 0"),
                 SelectVariants.class.getSimpleName());
         int d = 3;
-
-//        final IntegrationTestSpec spec = new IntegrationTestSpec(
-//                baseTestString("-select 'GQ > 0' ", testVcf.toString()),
-//                Collections.singletonList(testVcf.toString())
-//        );
-
-//        spec.executeTest("yo", this);
 
         // see Mutect integration test
         final Pair<VCFHeader, List<VariantContext>> result = VariantContextTestUtils.readEntireVCFIntoMemory(testOutput.getAbsolutePath());
