@@ -53,32 +53,33 @@ public class LoadStatus {
     public LoadState getSampleLoadState(long sampleId) {
         String query = "SELECT " + SchemaUtils.LOAD_STATUS_FIELD_NAME +
                 " FROM `" + projectID + "." + datasetName + "." + loadStatusTableName + "` " +
-                " WHERE " + SchemaUtils.SAMPLE_ID_FIELD_NAME + " = " + sampleId;
+                " WHERE " + SchemaUtils.SAMPLE_ID_FIELD_NAME + " = " + sampleId +
+                " ORDER BY " + SchemaUtils.LOAD_STATUS_EVENT_TIMESTAMP_NAME;
 
         BigQueryResultAndStatistics results = BigQueryUtils.executeQuery(projectID, query, true, null);
 
-        int startedCount = 0;
-        int finishedCount = 0;
+        boolean hasStarted = false;
+        int inProcessCount = 0;
+
+        // Iterate over the records in the SAMPLE_LOAD_STATUS table (in insertion order) to find corresponding FINISHED for each STARTED record
         for ( final FieldValueList row : results.result.iterateAll() ) {
             final String status = row.get(0).getStringValue();
             if (LoadStatusValues.STARTED.toString().equals(status)) {
-                startedCount++;
+                hasStarted = true;
+                inProcessCount++;
             } else if (LoadStatusValues.FINISHED.toString().equals(status)) {
-                finishedCount++;
+                if (hasStarted) {
+                    inProcessCount--;
+                } else {
+                    // Should this be an error?
+                    logger.warn("Found Load Status 'FINISHED' where no previous Load Status: 'STARTED' for sample " + sampleId);
+                }
             }
         }
-
-        // if fully loaded, exit successfully!
-        if (startedCount == 1 && finishedCount == 1) {
-            return LoadState.COMPLETE;
-        }
-
-        if (startedCount == 0 && finishedCount == 0) {
+        if (!hasStarted) {
             return LoadState.NONE;
         }
-
-        // otherwise if there are any records, return partial
-        return LoadState.PARTIAL;
+        return inProcessCount == 0 ? LoadState.COMPLETE : LoadState.PARTIAL;
     }
 
     public void writeLoadStatusStarted(long sampleId) {

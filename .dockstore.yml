@@ -126,6 +126,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - gg_VS-637_RespectSampleLoadStatusFinishedFlag
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
@@ -209,7 +210,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_661_restore_bcftools
+         - vs_688_fix_integration_for_alpine
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
