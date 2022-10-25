@@ -94,7 +94,7 @@ workflow GvsQuickstartHailIntegration {
 #    }
 #
     output {
-        String vds_output_path = GvsUnifiedHail.vds_output_path
+        # String vds_output_path = GvsUnifiedHail.vds_output_path
         Boolean done = true
     }
 }

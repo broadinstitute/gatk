@@ -51,73 +51,74 @@ workflow GvsUnifiedHail {
         # End CreateVds
     }
 
-    call AssignIds.GvsAssignIds as AssignIds {
-        input:
-            dataset_name = dataset_name,
-            project_id = project_id,
-            external_sample_names = external_sample_names,
-            assign_ids_gatk_override = gatk_override
-    }
-
-    call ImportGenomes.GvsImportGenomes {
-        input:
-            go = AssignIds.done,
-            dataset_name = dataset_name,
-            project_id = project_id,
-            external_sample_names = external_sample_names,
-            input_vcfs = input_vcfs,
-            input_vcf_indexes = input_vcf_indexes,
-            interval_list = interval_list,
-            load_data_preemptible_override = load_data_preemptible_override,
-            load_data_maxretries_override = load_data_maxretries_override,
-            load_data_gatk_override = gatk_override,
-            load_data_batch_size = load_data_batch_size,
-            drop_state = drop_state
-    }
-
-    call PopulateAltAllele.GvsPopulateAltAllele {
-        input:
-            call_set_identifier = call_set_identifier,
-            go = GvsImportGenomes.done,
-            dataset_name = dataset_name,
-            project_id = project_id
-    }
-
-    call CreateFilterSet.GvsCreateFilterSet {
-        input:
-            go = GvsPopulateAltAllele.done,
-            dataset_name = dataset_name,
-            project_id = project_id,
-            call_set_identifier = call_set_identifier,
-            filter_set_name = filter_set_name,
-            indel_recalibration_annotation_values = indel_recalibration_annotation_values,
-            snp_recalibration_annotation_values = snp_recalibration_annotation_values,
-            interval_list = interval_list,
-            gatk_override = gatk_override,
-            INDEL_VQSR_max_gaussians_override = INDEL_VQSR_max_gaussians_override,
-            INDEL_VQSR_mem_gb_override = INDEL_VQSR_mem_gb_override,
-            SNP_VQSR_max_gaussians_override = SNP_VQSR_max_gaussians_override,
-            SNP_VQSR_mem_gb_override = SNP_VQSR_mem_gb_override
-    }
-
-    call ExtractAvroFilesForHail.GvsExtractAvroFilesForHail {
-        input:
-            go = GvsCreateFilterSet.done,
-            project_id = project_id,
-            dataset = dataset_name,
-            filter_set_name = filter_set_name,
-            scatter_width = 10,
-    }
+#    call AssignIds.GvsAssignIds as AssignIds {
+#        input:
+#            dataset_name = dataset_name,
+#            project_id = project_id,
+#            external_sample_names = external_sample_names,
+#            assign_ids_gatk_override = gatk_override
+#    }
+#
+#    call ImportGenomes.GvsImportGenomes {
+#        input:
+#            go = AssignIds.done,
+#            dataset_name = dataset_name,
+#            project_id = project_id,
+#            external_sample_names = external_sample_names,
+#            input_vcfs = input_vcfs,
+#            input_vcf_indexes = input_vcf_indexes,
+#            interval_list = interval_list,
+#            load_data_preemptible_override = load_data_preemptible_override,
+#            load_data_maxretries_override = load_data_maxretries_override,
+#            load_data_gatk_override = gatk_override,
+#            load_data_batch_size = load_data_batch_size,
+#            drop_state = drop_state
+#    }
+#
+#    call PopulateAltAllele.GvsPopulateAltAllele {
+#        input:
+#            call_set_identifier = call_set_identifier,
+#            go = GvsImportGenomes.done,
+#            dataset_name = dataset_name,
+#            project_id = project_id
+#    }
+#
+#    call CreateFilterSet.GvsCreateFilterSet {
+#        input:
+#            go = GvsPopulateAltAllele.done,
+#            dataset_name = dataset_name,
+#            project_id = project_id,
+#            call_set_identifier = call_set_identifier,
+#            filter_set_name = filter_set_name,
+#            indel_recalibration_annotation_values = indel_recalibration_annotation_values,
+#            snp_recalibration_annotation_values = snp_recalibration_annotation_values,
+#            interval_list = interval_list,
+#            gatk_override = gatk_override,
+#            INDEL_VQSR_max_gaussians_override = INDEL_VQSR_max_gaussians_override,
+#            INDEL_VQSR_mem_gb_override = INDEL_VQSR_mem_gb_override,
+#            SNP_VQSR_max_gaussians_override = SNP_VQSR_max_gaussians_override,
+#            SNP_VQSR_mem_gb_override = SNP_VQSR_mem_gb_override
+#    }
+#
+#    call ExtractAvroFilesForHail.GvsExtractAvroFilesForHail {
+#        input:
+#            go = GvsCreateFilterSet.done,
+#            project_id = project_id,
+#            dataset = dataset_name,
+#            filter_set_name = filter_set_name,
+#            scatter_width = 10,
+#    }
 
     call CreateVds {
         input:
-            hail_gvs_import_script = GvsExtractAvroFilesForHail.hail_gvs_import_script,
+            # hail_gvs_import_script = GvsExtractAvroFilesForHail.hail_gvs_import_script,
+            hail_gvs_import_script = "gs://fc-a1621719-20ea-471d-a0ef-a41383dc76bd/submissions/e7e3bf72-c849-4845-b0c2-f324569afb69/GvsQuickstartHailIntegration/e23f1bd3-29b5-43b2-bd53-f22f1e1509d5/call-GvsUnifiedHail/GvsUnifiedHail/a783025e-e639-42e7-981c-cc7ff4d923de/call-GvsExtractAvroFilesForHail/GvsExtractAvroFilesForHail/94a25fb5-5913-4432-9c2a-f1efdc0160f8/call-GenerateHailScripts/hail_gvs_import.py",
             hail_wheel = hail_wheel,
     }
 
     output {
         Boolean done = true
-        String vds_output_path = GvsExtractAvroFilesForHail.vds_output_path
+        # String vds_output_path = GvsExtractAvroFilesForHail.vds_output_path
     }
 }
 
@@ -138,10 +139,10 @@ task CreateVds {
         apt-get -qq update
         apt -qq install -y temurin-8-jdk
 
+        pip install ~{hail_wheel}
         export PYSPARK_SUBMIT_ARGS='--driver-memory 16g --executor-memory 16g pyspark-shell'
         curl --silent --show-error --location https://broad.io/install-gcs-connector | python3
 
-        pip install ~{hail_wheel}
         python3 ~{hail_gvs_import_script}
     >>>
     runtime {
