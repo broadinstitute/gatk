@@ -154,7 +154,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             System.out.println("Event groups after merging:\n"+eventGroups.stream().map(eg -> eg.toDisplayString((int)referenceHaplotype.getStartPosition())).collect(Collectors.joining("\n")));
         }
 
-        //Now we have finished with the work of merging event groups transitively by position and mutually exclusiveness. Now every group should be entirely independant of one antoher:
+        //Now we have finished with the work of merging event groups transitively by position and mutually exclusiveness. Now every group should be entirely independant of one another:
         if (eventGroups.stream().map(eg -> eg.populateBitset(dissalowedPairs)).anyMatch(b->!b)) {
             // if any of our event groups is too large, abort.
             if (debugSite ) System.out.println("Found event group with too many variants! Aborting haplotype building");
@@ -210,8 +210,15 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
                 // Loop over eventGroups, have each of them return a list of VariantContexts
                 List<Set<VariantContext>> branchExcludeAlleles = new ArrayList<>();
-                branchExcludeAlleles.add(new HashSet<>()); // Add the null branch.
+                branchExcludeAlleles.add(new HashSet<>()); // Add the null branch (assuming no exclusions)
 
+                /* Note for future posterity:
+                 * An assembly region could potentially have any number of (within some limitations) of event groups. When we are constructing
+                 * haplotypes out of the assembled variants we want to take the dot product of the branches for each set of event groups that
+                 * we find. I.E. if an event group with mutex variants (B,C) requires two branches for Variant A and Variant A also leads to two branches in
+                 * another event group with mutex variants (D,E). Then we would want to ultimately generate the branches A,B,D -> A,B,E -> A,C,D -> A,C,E.
+                 * This is why we iterate over branchExcludeAlleles internally here.
+                 */
                 for(EventGroup group : eventGroups ) {
                     if (group.causesBranching()) {
                         List<List<Tuple<VariantContext, Boolean>>> groupVCs = group.getVariantGroupsForEvent(determinedPairs, true);
@@ -219,7 +226,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                         List<Set<VariantContext>> newBranchesToAdd = new ArrayList<>();
                         for (Set<VariantContext> excludedVars : branchExcludeAlleles) {
                             //For every exclude group, fork it by each subset we have:
-                            for (int i = 1; i < groupVCs.size(); i++) {
+                            for (int i = 1; i < groupVCs.size(); i++) { //NOTE: iterate starting at 1 here because we special case that branch at the end
                                 Set<VariantContext> newSet = new HashSet<>(excludedVars);
                                 groupVCs.get(i).stream().filter(t -> !t.b).forEach(t -> newSet.add(t.a));
                                 newBranchesToAdd.add(newSet);
@@ -241,8 +248,11 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                 if (debugSite) {
                     System.out.println("Branches:");
                     for (int i = 0; i < branchExcludeAlleles.size(); i++) {
-                        System.out.println("Branch "+i+" excluded VCs:");
-                        System.out.println(branchExcludeAlleles.get(i).stream().map(PartiallyDeterminedHaplotype.getDRAGENDebugVariantContextString((int)referenceHaplotype.getStartPosition())).collect(Collectors.joining("->")));
+                        final int ifinal = i;
+                        System.out.println("Branch "+i+" VCs:");
+                        System.out.println("exclude:"+branchExcludeAlleles.get(i).stream().map(PartiallyDeterminedHaplotype.getDRAGENDebugVariantContextString((int)referenceHaplotype.getStartPosition())).collect(Collectors.joining("->")));
+                        //to match dragen debug output for personal sanity
+                        System.out.println("include:"+variantsInOrder.stream().filter(variantContext -> !branchExcludeAlleles.get(ifinal).contains(variantContext)).map(PartiallyDeterminedHaplotype.getDRAGENDebugVariantContextString((int)referenceHaplotype.getStartPosition())).collect(Collectors.joining("->")));
                     }
                 }
 
@@ -262,7 +272,10 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                             if (secondRIndex != indexOfDeterminedInR) {
                                 // We know here that nothing illegally overlaps because there are no groups.
                                 // Also exclude any events that overlap the determined allele since we cant construct them (also this stops compound alleles from being formed)
-                                entriesRInOrder.get(secondRIndex).getValue().stream().filter(vc -> !excludeEvents.contains(vc)).filter(vc -> !vc.overlaps(determinedEventToTest)).forEach(newBranch::add);
+                                entriesRInOrder.get(secondRIndex).getValue().stream()
+                                        .filter(vc -> !excludeEvents.contains(vc))
+//                                        .filter(vc -> !eventsOverlapForPDHapsCode(vc, determinedEventToTest, true))//TODO get rid of if necessary
+                                        .forEach(newBranch::add);
                             } else {
                                 newBranch.add(determinedEventToTest);
                             }
@@ -373,41 +386,42 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             }
         }
 
-        // Now iterate over all 3 element pairs and make sure none of the
-        for (int i = 0; i < vcsAsList.size(); i++) {
-            final VariantContext firstEvent = vcsAsList.get(i);
-            if (firstEvent.isIndel()) {
-                // For every indel, make every 2-3 element subset (without overlapping) of variants to test for equivalency
-                for (int j = 0; j < vcsAsList.size(); j++) {
-                    final VariantContext secondEvent = vcsAsList.get(j);
-                    // Don't compare myslef, any overlappers to myself, or indels i've already examined me (to prevent double counting)
-                    if (j != i && !eventsOverlapForPDHapsCode(firstEvent, secondEvent, true) && ((!secondEvent.isIndel()) || j > i)) {
-                        // if i and j area lready disalowed keep going
-                        if (dissalowedPairs.stream().anyMatch(p -> p.contains(firstEvent) && p.contains(secondEvent))) {
-                            continue;
-                        }
-                        final List<VariantContext> events = new ArrayList<>(Arrays.asList(firstEvent, secondEvent));
-                        // If our 2 element arrays weren't inequivalent, test subsets of 3 including this:
-                        for (int k = j+1; k < vcsAsList.size(); k++) {
-                            final VariantContext thirdEvent = vcsAsList.get(k);
-                            if (k != i && !eventsOverlapForPDHapsCode(thirdEvent, firstEvent, true) && !eventsOverlapForPDHapsCode(thirdEvent, secondEvent, true)) {
-                                // if k and j or k and i are dissalowed, keep looking
-                                if (dissalowedPairs.stream().anyMatch(p -> (p.contains(firstEvent) && p.contains(thirdEvent)) || (p.contains(secondEvent) && p.contains(thirdEvent)))) {
-                                    continue;
-                                }
-                                List<VariantContext> subList = new ArrayList<>(events);
-                                subList.add(thirdEvent);
-                                subList.sort(HAPLOTYPE_SNP_FIRST_COMPARATOR);
-                                if (debugSite) System.out.println("Testing events: " + subList.stream().map(PartiallyDeterminedHaplotype.getDRAGENDebugVariantContextString((int) referenceHaplotype.getStartPosition())).collect(Collectors.joining("->")));
-                                if (constructArtificialHaplotypeAndTestEquivalentEvents(referenceHaplotype, aligner, swParameters, variantsInOrder, subList, debugSite)) {
-                                    dissalowedPairs.add(subList);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        //TODO
+//        // Now iterate over all 3 element pairs and make sure none of the
+//        for (int i = 0; i < vcsAsList.size(); i++) {
+//            final VariantContext firstEvent = vcsAsList.get(i);
+//            if (firstEvent.isIndel()) {
+//                // For every indel, make every 2-3 element subset (without overlapping) of variants to test for equivalency
+//                for (int j = 0; j < vcsAsList.size(); j++) {
+//                    final VariantContext secondEvent = vcsAsList.get(j);
+//                    // Don't compare myslef, any overlappers to myself, or indels i've already examined me (to prevent double counting)
+//                    if (j != i && !eventsOverlapForPDHapsCode(firstEvent, secondEvent, true) && ((!secondEvent.isIndel()) || j > i)) {
+//                        // if i and j area lready disalowed keep going
+//                        if (dissalowedPairs.stream().anyMatch(p -> p.contains(firstEvent) && p.contains(secondEvent))) {
+//                            continue;
+//                        }
+//                        final List<VariantContext> events = new ArrayList<>(Arrays.asList(firstEvent, secondEvent));
+//                        // If our 2 element arrays weren't inequivalent, test subsets of 3 including this:
+//                        for (int k = j+1; k < vcsAsList.size(); k++) {
+//                            final VariantContext thirdEvent = vcsAsList.get(k);
+//                            if (k != i && !eventsOverlapForPDHapsCode(thirdEvent, firstEvent, true) && !eventsOverlapForPDHapsCode(thirdEvent, secondEvent, true)) {
+//                                // if k and j or k and i are dissalowed, keep looking
+//                                if (dissalowedPairs.stream().anyMatch(p -> (p.contains(firstEvent) && p.contains(thirdEvent)) || (p.contains(secondEvent) && p.contains(thirdEvent)))) {
+//                                    continue;
+//                                }
+//                                List<VariantContext> subList = new ArrayList<>(events);
+//                                subList.add(thirdEvent);
+//                                subList.sort(HAPLOTYPE_SNP_FIRST_COMPARATOR);
+//                                if (debugSite) System.out.println("Testing events: " + subList.stream().map(PartiallyDeterminedHaplotype.getDRAGENDebugVariantContextString((int) referenceHaplotype.getStartPosition())).collect(Collectors.joining("->")));
+//                                if (constructArtificialHaplotypeAndTestEquivalentEvents(referenceHaplotype, aligner, swParameters, variantsInOrder, subList, debugSite)) {
+//                                    dissalowedPairs.add(subList);
+//                                }
+//                            }
+//                        }
+//                    }
+//                }
+//            }
+//        }
 
         return dissalowedPairs;
     }
@@ -638,7 +652,12 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                 continue;
             }
 
-                //Check that we are allowed to add this event (and if not we are)
+            //TODO if this works i must throw away all of thereferences to the is later on...
+            if (vc.getStart()==eventWithVariant.getStart() && useRef) {
+                continue;
+            }
+
+            //Check that we are allowed to add this event (and if not we are)
             if ((vc.isIndel() && intermediateRefEndPosition - intermediateRefStartPosition < -1) || (!vc.isIndel() && intermediateRefEndPosition - intermediateRefStartPosition < 0)) {//todo clean this up
                 throw new RuntimeException("Variant "+vc+" is out of order in the PD event list: "+constituentEvents);
             }

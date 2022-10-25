@@ -269,7 +269,7 @@ public abstract class PDPairHMM implements Closeable{
         // Pre-compute the difference between the current haplotype and the next one to be run
         // Looking ahead is necessary for the ArrayLoglessPairHMM implementation
         //final int nextHapStartIndex =  (nextHaplotypeBases == null || haplotypeBases.length != nextHaplotypeBases.length) ? 0 : findFirstPositionWhereHaplotypesDiffer(haplotypeBases, haplotypePDBases, nextHaplotypeBases, nextHaplotypePDBases);
-        int nextHapStartIndex = 0;
+        int nextHapStartIndex = 0; //TODO this optimization is very dangerous if we have undetermined haps that could have the same bases but mean different things
         final double result = subComputeReadLikelihoodGivenHaplotypeLog10(haplotypeBases, haplotypePDBases, readBases, readQuals, insertionGOP, deletionGOP, overallGCP, hapStartIndex, recacheReadValues, nextHapStartIndex);
 
         Utils.validate(result <= 0.0, () -> "PairHMM Log Probability cannot be greater than 0: " + String.format("haplotype: %s, read: %s, result: %f, PairHMM: %s", new String(haplotypeBases), new String(readBases), result, this.getClass().getSimpleName()));

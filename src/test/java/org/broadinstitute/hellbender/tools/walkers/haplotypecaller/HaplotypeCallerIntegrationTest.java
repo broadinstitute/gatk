@@ -2087,16 +2087,17 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
 
         final String[] args = {
                 "-R","gs://gcp-public-data--broad-references/hg38/v0/dragen_reference/Homo_sapiens_assembly38_masked.fasta",
-                "-I","gs://fc-971fd540-210c-4e5a-87ce-d3f8c91c7557/4a7a7960-9271-4e78-bf18-971c4394e752/WholeGenomeGermlineSingleSample/c7084036-2d6b-415d-8d7c-58008ef9e7d4/call-UnmappedBamToAlignedBam/UnmappedBamToAlignedBam/53564b5f-c104-4c3b-a568-4732574e9124/call-SortSampleBam/HG002_rep1.aligned.duplicate_marked.sorted.bam",
-                "-L","chr1:90,692,921-90,693,193",
+                "-I","gs://broad-dsde-methods-dragen/reprocessed_data_v3.7.8_cY_pY_jN_masked/HG002_rep1/HG002_rep1.bam",
+                "-L","chr1:34,371,617-34,371,884",
                 "-O",outputPath,
-                "--pileup-detection","--pileup-detection-bad-read-tolerance","0.40","--pileup-detection-enable-indel-pileup-calling",
-                "-contamination","0.0 ", "--use-pdhmm", "--enable-legacy-assembly-region-trimming", "--make-determined-haps-from-pd-code", "--print-pileupcalling-status",
+                "--pileup-detection","--pileup-detection-bad-read-tolerance","0.40","--pileup-detection-enable-indel-pileup-calling", "--pileup-detection-active-region-phred-threshold","4.0",
+                "-contamination","0.0 ", "--use-pdhmm", "--enable-legacy-assembly-region-trimming", "--print-pileupcalling-status",// "--use-pdhmm-overlap-optimization", //"--make-determined-haps-from-pd-code",
+//                "--make-determined-haps-from-pd-code",
                 "-G","StandardAnnotation","-G","StandardHCAnnotation",
                 "--dragen-mode",
                 "--disable-spanning-event-genotyping",
-                "--debug-genotyper-output", "/Users/emeryj/hellbender/gatk/testDebugOutputStream.txt",
-                "--dragstr-params-path","/Users/emeryj/hellbender/DRAGENMatlab/PILEUPPDHMMWORK/challengeBamRuns/gatkPlayground/HG002_challenge.bam.dragstr",
+                "--debug-genotyper-output", "/Users/emeryj/hellbender/gatk/testDebugOutputStream5.txt",
+                "--dragstr-params-path","/Users/emeryj/hellbender/DRAGENMatlab/personalEvaluation/FINALSTRETCH/debuggingV11Versions/HG002_rep1.bam.dragstr",
                 "-GQB","10","-GQB","20","-GQB","30","-GQB","40","-GQB","50","-GQB","60","-GQB","70","-GQB","80","-GQB","90",
         };
 

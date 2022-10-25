@@ -10,6 +10,7 @@ import static org.broadinstitute.hellbender.utils.pairhmm.PairHMMModel.*;
 public class LoglessPDPairHMM extends N2MemoryPDPairHMM {
     static final double INITIAL_CONDITION = Math.pow(2, 1020);
     static final double INITIAL_CONDITION_LOG10 = Math.log10(INITIAL_CONDITION);
+    static final int OFF = 1;
 
     // we divide e by 3 because the observed base could have come from any of the non-observed alleles
     static final double TRISTATE_CORRECTION = 3.0;
@@ -75,7 +76,7 @@ public class LoglessPDPairHMM extends N2MemoryPDPairHMM {
                         deletionMatrix[i][j] = matchMatrix[i][j - 1] * transition[i][matchToDeletion] + deletionMatrix[i][j - 1] * transition[i][deletionToDeletion];
 
                         // Special case since we MIGHT be at the deletion end and have to be handling jump states from above
-                        if ((haplotypePDBases[j-1] & PartiallyDeterminedHaplotype.DEL_END) == PartiallyDeterminedHaplotype.DEL_END) {
+                        if ((haplotypePDBases[j-OFF] & PartiallyDeterminedHaplotype.DEL_END) == PartiallyDeterminedHaplotype.DEL_END) {
                             insertionMatrix[i][j] = Math.max(branchMatchMatrix[i - 1][j], matchMatrix[i - 1][j]) * transition[i][matchToInsertion]
                                     + Math.max(branchInsertionMatrix[i - 1][j], insertionMatrix[i - 1][j]) * transition[i][insertionToInsertion];
                         } else {
@@ -98,7 +99,7 @@ public class LoglessPDPairHMM extends N2MemoryPDPairHMM {
 
                         // Special case since we MIGHT be at the deletion end and have to be handling jump states from above
                         // TODO these indexes should probably be -1
-                        if ((haplotypePDBases[j-1] & PartiallyDeterminedHaplotype.DEL_END) == PartiallyDeterminedHaplotype.DEL_END) {
+                        if ((haplotypePDBases[j-OFF] & PartiallyDeterminedHaplotype.DEL_END) == PartiallyDeterminedHaplotype.DEL_END) {
                             insertionMatrix[i][j] = Math.max(branchMatchMatrix[i - 1][j], matchMatrix[i - 1][j]) * transition[i][matchToInsertion]
                                     + Math.max(branchInsertionMatrix[i - 1][j], insertionMatrix[i - 1][j]) * transition[i][insertionToInsertion];
                         } else {
@@ -120,7 +121,7 @@ public class LoglessPDPairHMM extends N2MemoryPDPairHMM {
                                 + Math.max(branchDeletionMatrix[i][j - 1], deletionMatrix[i][j - 1]) * transition[i][deletionToDeletion];
 
                         // Special case since we MIGHT be at the deletion end and have to be handling jump states from above
-                        if ((haplotypePDBases[j-1] & PartiallyDeterminedHaplotype.DEL_END) == PartiallyDeterminedHaplotype.DEL_END) {
+                        if ((haplotypePDBases[j-OFF] & PartiallyDeterminedHaplotype.DEL_END) == PartiallyDeterminedHaplotype.DEL_END) {
                             insertionMatrix[i][j] = Math.max(branchMatchMatrix[i - 1][j], matchMatrix[i - 1][j]) * transition[i][matchToInsertion]
                                     + Math.max(branchInsertionMatrix[i - 1][j], insertionMatrix[i - 1][j]) * transition[i][insertionToInsertion];
                         } else {
