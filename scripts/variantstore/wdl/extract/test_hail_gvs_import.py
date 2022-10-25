@@ -1,6 +1,6 @@
 import unittest
 
-from hail_gvs_import import generate_avro_args
+from hail_gvs_import import generate_gcs_avro_args
 from unittest.mock import MagicMock
 
 
@@ -31,7 +31,7 @@ class TestGenerateAvroArguments(unittest.TestCase):
         bucket = ShamBucket(bucket_name)
         bucket.list_blobs = MagicMock(return_value=blobs)
 
-        actual = generate_avro_args(
+        actual = generate_gcs_avro_args(
             bucket=bucket,
             blob_prefix=blob_prefix,
             key='sample_mapping'
@@ -54,7 +54,7 @@ class TestGenerateAvroArguments(unittest.TestCase):
         ]
 
         bucket.list_blobs = MagicMock(return_value=blobs)
-        actual = generate_avro_args(
+        actual = generate_gcs_avro_args(
             bucket=bucket,
             blob_prefix=blob_prefix,
             key='vets'

@@ -32,10 +32,11 @@ curl -sSL https://broad.io/install-gcs-connector | python3
 from google.cloud import storage
 
 import argparse
+import os
 import re
 
 
-def generate_avro_args(bucket, blob_prefix, key):
+def generate_gcs_avro_args(bucket, blob_prefix, key):
     """
     Generate a list of the Avro arguments for the `hl.import_gvs` invocation for the specified key. The datatype should
     match the parameters of the `hl.import_gvs` function:
@@ -83,7 +84,7 @@ def generate_avro_args(bucket, blob_prefix, key):
     return ret
 
 
-def import_gvs(bucket, object_prefix, vds_output_path, tmp_dir):
+def import_gvs_gcs(bucket, object_prefix, vds_output_path, tmp_dir):
     import hail as hl
 
     unslashed_tmp_dir = tmp_dir if not tmp_dir.endswith('/') else tmp_dir[:-1]
@@ -94,7 +95,58 @@ def import_gvs(bucket, object_prefix, vds_output_path, tmp_dir):
                       'gs://hail-common/references/Homo_sapiens_assembly38.fasta.fai')
 
     def args(key):
-        return generate_avro_args(bucket, object_prefix, key)
+        return generate_gcs_avro_args(bucket, object_prefix, key)
+
+    hl.import_gvs(
+        vets=args('vets'),
+        refs=args('refs'),
+        sample_mapping=args('sample_mapping'),
+        site_filtering_data=args('site_filtering_data'),
+        vqsr_filtering_data=args('vqsr_filtering_data'),
+        vqsr_tranche_data=args('vqsr_tranche_data'),
+        reference_genome=rg38,
+        final_path=vds_output_path,
+        tmp_dir=f'{unslashed_tmp_dir}/hail_tmp_import_gvs'
+    )
+
+
+def generate_local_avro_args(avro_prefix, key):
+    def superpartitioned_handler():
+        parts = root.split('/')
+
+        index = int(parts[-1].split('_')[-1]) - 1
+        if len(ret) == index:
+            ret.append([])
+        ret[index].append(f'{root}/{file}')
+
+    def regular_handler():
+        ret.append(f'{root}/{file}')
+
+    superpartitioned_keys = {'vets', 'refs'}
+    entry_handler = superpartitioned_handler if key in superpartitioned_keys else regular_handler
+
+    ret = []
+
+    for root, dir, files in os.walk(f'{avro_prefix}/{key}'):
+        for file in files:
+            if file.endswith('avro'):
+                entry_handler()
+    return ret
+
+
+def import_gvs_local(avro_prefix, tmp_dir, vds_output_path, references_dir):
+    import hail as hl
+
+    unslashed_tmp_dir = tmp_dir if not tmp_dir.endswith('/') else tmp_dir[:-1]
+    hl.init(tmp_dir=f'{unslashed_tmp_dir}/hail_tmp_general')
+
+    references_dir = references_dir[:-1] if references_dir.endswith('/') else references_dir
+    rg38 = hl.get_reference('GRCh38')
+    rg38.add_sequence(f'{references_dir}/Homo_sapiens_assembly38.fasta.gz',
+                      f'{references_dir}/Homo_sapiens_assembly38.fasta.fai')
+
+    def args(key):
+        return generate_local_avro_args(avro_prefix, key)
 
     hl.import_gvs(
         vets=args('vets'),
@@ -112,11 +164,13 @@ def import_gvs(bucket, object_prefix, vds_output_path, tmp_dir):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False,
                                      description='Create base Hail VDS from exported GVS Avro files.')
-    parser.add_argument('--avro_prefix', type=str, help='GCS prefix under which exported GVS Avro files are found',
+    parser.add_argument('--avro_prefix', type=str, help='Prefix under which exported GVS Avro files are found',
                         default="@AVRO_PREFIX@")
     parser.add_argument('--write_prefix', type=str,
-                        help='GCS prefix to which VDS and temporary outputs should be written',
+                        help='Prefix to which VDS and temporary outputs should be written',
                         default="@WRITE_PREFIX@")
+    parser.add_argument('--references-dir', type=str,
+                        help='Path to references, only required for local files')
 
     args = parser.parse_args()
 
@@ -127,22 +181,25 @@ if __name__ == '__main__':
     avro_prefix = avro_prefix if not avro_prefix.endswith('/') else avro_prefix[:-1]
     write_prefix = write_prefix if not write_prefix.endswith('/') else write_prefix[:-1]
 
-    gcs_re = re.compile("^gs://(?P<bucket_name>[^/]+)/(?P<object_prefix>.*)$")
-    match = gcs_re.match(avro_prefix)
-    if not match:
-        raise ValueError(f"Avro prefix '{avro_prefix}' does not look like a GCS path")
-    avro_bucket_name, avro_object_prefix = match.groups()
-
-    match = gcs_re.match(write_prefix)
-    if not match:
-        raise ValueError(f"Write prefix '{write_prefix}' does not look like a GCS path")
-
-    client = storage.Client()
-    avro_bucket = client.get_bucket(avro_bucket_name)
-
     temp_dir = f"{write_prefix}/temp_hail_gvs_import"
     vds_output_path = f"{write_prefix}/gvs_export.vds"
+
+    gcs_re = re.compile("^gs://(?P<bucket_name>[^/]+)/(?P<object_prefix>.*)$")
+    match = gcs_re.match(avro_prefix)
+    if match:
+        avro_bucket_name, avro_object_prefix = match.groups()
+        match = gcs_re.match(avro_prefix)
+        if not match:
+            raise ValueError(f"Avro prefix '{write_prefix}' does not look like a GCS path")
+        client = storage.Client()
+        avro_bucket = client.get_bucket(avro_bucket_name)
+        import_gvs_gcs(avro_bucket, avro_object_prefix, vds_output_path, temp_dir)
+    else:
+        # assume local filesystem
+        references_dir = args.references_dir
+        if not references_dir:
+            raise ValueError(f"--references-dir must be specified with local files")
+        import_gvs_local(avro_prefix, temp_dir, vds_output_path, references_dir)
+
     print(f"Hail import temporary path: {temp_dir}")
     print(f"Final VDS location: {vds_output_path}.")
-
-    import_gvs(avro_bucket, avro_object_prefix, vds_output_path, temp_dir)

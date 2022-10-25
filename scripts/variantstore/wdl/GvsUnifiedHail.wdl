@@ -132,6 +132,8 @@ task CreateVds {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
+        gcloud storage --recursive ~{avro_prefix}
+
         # Temurin Java 8
         apt-get -qq install wget apt-transport-https gnupg
         wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | apt-key add -
@@ -141,14 +143,13 @@ task CreateVds {
 
         pip install ~{hail_wheel}
         export PYSPARK_SUBMIT_ARGS='--driver-memory 16g --executor-memory 16g pyspark-shell'
-        gcloud auth application-default login
-        curl --silent --show-error --location https://broad.io/install-gcs-connector | python3
 
-        python3 ~{hail_gvs_import_script}
+        export
+        python3 ~{hail_gvs_import_script} --
     >>>
     runtime {
         docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:406.0.0-slim"
-        disks: "local-disk 500 HDD"
+        disks: "local-disk 2000 HDD"
         memory: "30 GiB"
     }
     output {
