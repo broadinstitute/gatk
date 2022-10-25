@@ -23,7 +23,7 @@ workflow GvsCreateVATfromVDS {
 
     ## TODO # do we need to shard the sites only VCF?
     # String input_vds_name = basename(input_VDS_file)
-    String input_vcf_name = basename(input_sites_only_vcf)
+    String input_vcf_name = "pumpkin"
 
 
     # nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
