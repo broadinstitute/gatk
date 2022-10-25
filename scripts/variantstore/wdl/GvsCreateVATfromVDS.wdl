@@ -36,7 +36,7 @@ workflow GvsCreateVATfromVDS {
     call CreateCustomAnnotationsFile {
         input:
             custom_annotations_header = MakeSubpopulationFilesAndReadSchemaFiles.custom_annotations_template_file,
-            custom_annotations_body = custom_annotations_file
+            custom_annotations_body = custom_annotations_file,
     }
 
     ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
@@ -155,7 +155,7 @@ task CreateCustomAnnotationsFile {
         set -e
 
         #
-        cat custom_annotations_body >> custom_annotations_header
+        cat ~{custom_annotations_body} >> ~{custom_annotations_header}
 
 
     >>>
