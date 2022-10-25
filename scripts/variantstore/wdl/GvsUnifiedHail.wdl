@@ -146,7 +146,7 @@ task CreateVds {
         python3 ~{hail_gvs_import_script}
     >>>
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-10-24-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:406.0.0-slim"
         disks: "local-disk 500 HDD"
         memory: "30 GiB"
     }
