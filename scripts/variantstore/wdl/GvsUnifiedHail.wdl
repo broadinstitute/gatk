@@ -141,6 +141,7 @@ task CreateVds {
 
         pip install ~{hail_wheel}
         export PYSPARK_SUBMIT_ARGS='--driver-memory 16g --executor-memory 16g pyspark-shell'
+        gcloud auth application-default login
         curl --silent --show-error --location https://broad.io/install-gcs-connector | python3
 
         python3 ~{hail_gvs_import_script}
