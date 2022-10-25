@@ -527,7 +527,7 @@ task CollectStatistics {
                  (snp_het_count / snp_homvar_count) snp_het_homvar_ratio,
                  (indel_het_count / indel_homvar_count) as indel_het_homvar_ratio
           FROM `~{project_id}.~{dataset_name}.~{aggregate_metrics_table}`
-          WHERE filter_set_name = "~{filter_set_name}"),
+          WHERE filter_set_name = "~{filter_set_name}")
         SELECT
             fss.sample_id,
             si.sample_name,
