@@ -52,19 +52,18 @@ workflow GvsQuickstartHailIntegration {
     }
     String project_id = "gvs-internal"
 
-    call Utils.BuildGATKJarAndCreateDataset {
-        input:
-            branch_name = branch_name,
-            dataset_prefix = "quickit"
-    }
+#    call Utils.BuildGATKJarAndCreateDataset {
+#        input:
+#            branch_name = branch_name,
+#            dataset_prefix = "quickit"
+#    }
 
     call Unified.GvsUnifiedHail {
         input:
             call_set_identifier = branch_name,
-            dataset_name = BuildGATKJarAndCreateDataset.dataset_name,
+            dataset_name = "quickit_vs_639_hail_testing_spike_80af46a",
             project_id = project_id,
             external_sample_names = external_sample_names,
-            gatk_override = BuildGATKJarAndCreateDataset.jar,
             input_vcfs = input_vcfs,
             input_vcf_indexes = input_vcf_indexes,
             filter_set_name = "quickit",
