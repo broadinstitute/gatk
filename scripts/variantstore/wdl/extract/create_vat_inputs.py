@@ -14,7 +14,7 @@ def parse_ancestry_file(ancestry_file):
     {"ERS4367795":"eur","ERS4367796":"eas","ERS4367797":"eur","ERS4367798":"afr","ERS4367799":"oth", ... }
 
     """
-    start = datetime.now()
+    start = datetime.now() # TODO I don think this is where we want this? The goal here was to see how long the whole VAT pipeline would take
     current_time = start.strftime("%H:%M:%S")
     print("Start Time =", current_time)
     sample_id_to_sub_population = {}
