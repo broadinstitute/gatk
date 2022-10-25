@@ -164,9 +164,9 @@ def import_gvs_local(avro_prefix, tmp_dir, vds_output_path, references_dir):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False,
                                      description='Create base Hail VDS from exported GVS Avro files.')
-    parser.add_argument('--avro_prefix', type=str, help='Prefix under which exported GVS Avro files are found',
+    parser.add_argument('--avro-prefix', type=str, help='Prefix under which exported GVS Avro files are found',
                         default="@AVRO_PREFIX@")
-    parser.add_argument('--write_prefix', type=str,
+    parser.add_argument('--write-prefix', type=str,
                         help='Prefix to which VDS and temporary outputs should be written',
                         default="@WRITE_PREFIX@")
     parser.add_argument('--references-dir', type=str,

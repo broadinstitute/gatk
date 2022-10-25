@@ -125,8 +125,8 @@ workflow GvsUnifiedHail {
 
 task CreateVds {
     input {
-        File hail_gvs_import_script
         File hail_wheel
+        String hail_gvs_import_script
         String avro_prefix
         String vds_destination_path
     }
@@ -157,7 +157,7 @@ task CreateVds {
 
         export WORK=$PWD/work
         mkdir ${WORK}
-        python3 ~{hail_gvs_import_script} --avro_prefix ${AVRO} --write_prefix ${WORK} --references-dir ${REFERENCES}
+        python3 ~{hail_gvs_import_script} --avro-prefix ${AVRO} --write-prefix ${WORK} --references-dir ${REFERENCES}
 
         gcloud storage cp --recursive ${WORK}/gvs_export.vds ~{vds_destination_path}
     >>>
