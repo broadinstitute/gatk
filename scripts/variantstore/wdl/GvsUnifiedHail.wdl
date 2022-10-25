@@ -131,13 +131,23 @@ task CreateVds {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
+        # Temurin Java 8
+        apt-get -qq install wget apt-transport-https gnupg
+        wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | apt-key add -
+        echo "deb https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | tee /etc/apt/sources.list.d/adoptium.list
+        apt-get -qq update
+        apt -qq install -y temurin-8-jdk
+
+        export PYSPARK_SUBMIT_ARGS='--driver-memory 16g --executor-memory 16g pyspark-shell'
+        curl --silent --show-error --location https://broad.io/install-gcs-connector | python3
+
         pip install ~{hail_wheel}
         python3 ~{hail_gvs_import_script}
     >>>
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-10-24-alpine"
         disks: "local-disk 500 HDD"
-        cpu: 8
+        memory: "30 GiB"
     }
     output {
         Boolean done = true
