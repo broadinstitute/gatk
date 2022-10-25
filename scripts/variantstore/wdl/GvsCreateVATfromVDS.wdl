@@ -51,8 +51,7 @@ workflow GvsCreateVATfromVDS {
     call PrepAnnotationJson {
         input:
             annotation_json = AnnotateVCF.annotation_json,
-            output_file_suffix = "${input_vcf_name
-            }.json.gz",
+            output_file_suffix = "${input_vcf_name}.json.gz",
             output_path = output_path,
     }
 
@@ -313,7 +312,7 @@ task BigQueryLoadJson {
         String project_id
         String dataset_name
         String output_path
-        String prep_jsons_done
+        Boolean prep_jsons_done
     }
 
     # If the vat version is undefined or v1 then the vat tables would be named like filter_vat, otherwise filter_vat_v2.
