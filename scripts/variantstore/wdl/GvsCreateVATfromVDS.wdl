@@ -42,7 +42,7 @@ workflow GvsCreateVATfromVDS {
     ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
     call AnnotateVCF {
         input:
-            input_vcf = input_vcf_name,
+            input_vcf = input_sites_only_vcf,
             output_annotated_file_name = "${input_vcf_name}_annotated",
             nirvana_data_tar = nirvana_data_directory,
             custom_annotations_file = CreateCustomAnnotationsFile.custom_annotations,
