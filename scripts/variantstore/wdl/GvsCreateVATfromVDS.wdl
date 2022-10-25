@@ -177,7 +177,7 @@ task CreateCustomAnnotationsFile {
     # ------------------------------------------------
     # Outputs:
     output {
-        File custom_annotations = "~{custom_annotations_header}"
+        File custom_annotations = "~{custom_annotations_file_name}"
     }
 }
 
