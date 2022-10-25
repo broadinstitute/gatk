@@ -289,6 +289,15 @@ dependencies {
     implementation 'org.apache.commons:commons-collections4:4.1'
     implementation 'org.apache.commons:commons-vfs2:2.0'
     implementation 'org.apache.commons:commons-configuration2:2.4'
+    constraints {
+        implementation('org.apache.commons:commons-text') {
+            version {
+                strictly '1.10.0'
+            }
+            because 'previous versions have a nasty vulnerability: https://nvd.nist.gov/vuln/detail/CVE-2022-42889'
+        }
+    }
+
     implementation 'org.apache.httpcomponents:httpclient:4.5.12'
     implementation 'commons-beanutils:commons-beanutils:1.9.3'
     implementation 'commons-io:commons-io:2.5'
