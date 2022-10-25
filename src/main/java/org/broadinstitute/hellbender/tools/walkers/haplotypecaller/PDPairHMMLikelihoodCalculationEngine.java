@@ -32,8 +32,6 @@ import java.util.stream.Collectors;
  */
 public final class PDPairHMMLikelihoodCalculationEngine implements ReadLikelihoodCalculationEngine {
 
-    public static final double DEFAULT_DYNAMIC_DISQUALIFICATION_SCALE_FACTOR = 1.0;
-    private static final Logger logger = LogManager.getLogger(PairHMMLikelihoodCalculationEngine.class);
 
     private static final int MIN_ADJUSTED_QSCORE = 10;
 
@@ -77,14 +75,6 @@ public final class PDPairHMMLikelihoodCalculationEngine implements ReadLikelihoo
      *                                      assigned a likelihood of -13.
      * @param pcrErrorModel model to correct for PCR indel artifacts
      */
-//    public PDPairHMMLikelihoodCalculationEngine(final byte constantGCP,
-//                                              final DragstrParams dragstrParams,
-//                                              final PairHMMNativeArguments arguments,
-//                                              final PairHMM.Implementation hmmType,
-//                                              final double log10globalReadMismappingRate,
-//                                              final PCRErrorModel pcrErrorModel) {
-//        this( constantGCP, dragstrParams, arguments, hmmType, null, log10globalReadMismappingRate, pcrErrorModel, PairHMM.BASE_QUALITY_SCORE_THRESHOLD, false, DEFAULT_DYNAMIC_DISQUALIFICATION_SCALE_FACTOR, ReadLikelihoodCalculationEngine.DEFAULT_EXPECTED_ERROR_RATE_PER_BASE, true, false, true);
-//    }
 
     /**
      * Create a new PairHMMLikelihoodCalculationEngine using provided parameters and hmm to do its calculations
@@ -244,9 +234,6 @@ public final class PDPairHMMLikelihoodCalculationEngine implements ReadLikelihoo
         processedRead.setBaseQualities(baseQualities);
         ReadUtils.setInsertionBaseQualities(processedRead, baseInsertionQualities);
         ReadUtils.setDeletionBaseQualities(processedRead, baseDeletionQualities);
-//        //NOTE: we add these elements to the reads objects for PDHMM optimizations that restrict the work to only regions overlapping the determined haplotypes
-//        processedRead.setPosition(read);
-//        processedRead.setCigar(read.getCigar());
         return processedRead;
     }
 

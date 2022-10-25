@@ -22,16 +22,23 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * TODO
+ * Class that manages the complicated steps involved in generating artifical haplotypes for the PDHMM:
+ *
+ * The primoary method ton this class is {@link #generatePDHaplotypes} that gets called with an existing assembly result set
+ * as well as the list of alleles that were found from the pileupcaller code and it attempts to replace the existing haplotypes
+ * from the provided result set object with new haplotyeps that were artificially generated from merging the assembled alleles
+ * with those found by the pileup caller. The method might hit one of a few heuristic barriers and chose to fallback on only
+ * the assembled haplotypes if the processing would become too complicated.
  */
 public class PartiallyDeterminedHaplotypeComputationEngine {
-    final static int MAX_PD_HAPS_TO_GENERATE = 256*2; //; //(2048 is illuminas #) (without optimizing the hmm to some degree this is probably unattainable)
+    final static int MAX_PD_HAPS_TO_GENERATE = 256*2;; //(2048 is illuminas #) (without optimizing the hmm to some degree this is probably unattainable)
     final static int MAX_BRANCH_PD_HAPS = 128; //(128 is illuminas #)
     final static int MAX_VAR_IN_EVENT_GROUP = 17; // (20 is illuminas #)
 
     //To make this somewhat cleaner of a port from Illumina, we have two base spaces. R and U space. R space is vcf coordinate space,
     //U is a 0->N (N = region size) based space where Insertions are +0.5 and deletions are + 1 from their original position
 
+    // We use this comparator for haplotype construcion to make it slightly easier to build compound haplotypes (i.e. snp+insertion/deletion at the same anchor base)
     public static final Comparator<VariantContext> HAPLOTYPE_SNP_FIRST_COMPARATOR = Comparator.comparingInt(VariantContext::getStart)
             // Decide arbitrarily so as not to accidentally throw away overlapping variants
             .thenComparingInt(vc -> vc.getReference().length())
@@ -93,7 +100,6 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         SortedMap<Integer, List<VariantContext>> variantsByStartPos = new TreeMap<>();
         List<EventGroup> eventGroups = new ArrayList<>();
         int lastEventEnd = -1;
-        //TODO figure out the end for indels correctly
         for (VariantContext vc : variantsInOrder) {
             // Break everything into independent groups (don't worry about transitivitiy right now)
             Double eventKey = vc.getStart() + (vc.isSimpleInsertion()? 0.5:0) + (vc.isSimpleDeletion()? 1 : 0) - referenceHaplotype.getStartPosition();
@@ -121,8 +127,6 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
         // Iterate over all events starting with all indels
 
-        //TODO assemblyRegion: chr20:13951234-13951347 DEMONSTRATES THAT THIS MUST BE BREDTH FIRST NOT DEPTH FIRST
-        //TODO this eventually needs to be a bespoke MAP<pair-pair, ALLOWED> array... not today...
         List<List<VariantContext>> dissalowedPairs = smithWatermanRealignPairsOfVariantsForEquivalentEvents(referenceHaplotype, aligner, swParameters, debugSite, variantsInOrder, vcsAsList);
         if (debugSite) {
             System.out.println("Dissalowed Variant pairs:");
@@ -363,6 +367,24 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         return sourceSet;
     }
 
+    /**
+     * Helper method that handles one of the Heuristics baked by DRAGEN into this artifical haplotype genration code.
+     *
+     * To help mitigate the risk of generating combinatorial haplotypes with SNPs/Indels that that might or might not add
+     * up to equivalent events, DRAGEN enforces that events are NOT allowed to be present in the same haplotype if they
+     * (when run through smith waterman) add up to other events that were found at this assembly region.
+     *
+     * To cut down on the complexity of the task; we (and DRAGEN) follow this procedure:
+     * 1. look at all sets of 2 variants where at least one is an indel and none overlap.
+     *    a) for each set construct an artifical haplotype with only those two variants on it
+     *    b) SmithWtarman align it against the reference to generate the cheapest cigar string representation
+     *    c) Construct the event map for the new artificial haplotype, if any events in the new event map are in our list of variants
+     *       but are NOT the constituent events that were used to construct the haplotype then dissalow the pair
+     * 2. Look at all sets of 3 variants that do not contain disallowed pairs found in step 1.
+     *    a-b-c) repeat steps 1a,1b,and 1c on the 3 evetn sets
+     *
+     * @return A list of lists of variant contexts that correspond to dissalowed groups. This list may be empty if none are found.
+     */
     private static List<List<VariantContext>> smithWatermanRealignPairsOfVariantsForEquivalentEvents(Haplotype referenceHaplotype, SmithWatermanAligner aligner, SWParameters swParameters, boolean debugSite, TreeSet<VariantContext> variantsInOrder, List<VariantContext> vcsAsList) {
         List<List<VariantContext>> dissalowedPairs = new ArrayList<>();
 
@@ -386,42 +408,42 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             }
         }
 
-        //TODO
-//        // Now iterate over all 3 element pairs and make sure none of the
-//        for (int i = 0; i < vcsAsList.size(); i++) {
-//            final VariantContext firstEvent = vcsAsList.get(i);
-//            if (firstEvent.isIndel()) {
-//                // For every indel, make every 2-3 element subset (without overlapping) of variants to test for equivalency
-//                for (int j = 0; j < vcsAsList.size(); j++) {
-//                    final VariantContext secondEvent = vcsAsList.get(j);
-//                    // Don't compare myslef, any overlappers to myself, or indels i've already examined me (to prevent double counting)
-//                    if (j != i && !eventsOverlapForPDHapsCode(firstEvent, secondEvent, true) && ((!secondEvent.isIndel()) || j > i)) {
-//                        // if i and j area lready disalowed keep going
-//                        if (dissalowedPairs.stream().anyMatch(p -> p.contains(firstEvent) && p.contains(secondEvent))) {
-//                            continue;
-//                        }
-//                        final List<VariantContext> events = new ArrayList<>(Arrays.asList(firstEvent, secondEvent));
-//                        // If our 2 element arrays weren't inequivalent, test subsets of 3 including this:
-//                        for (int k = j+1; k < vcsAsList.size(); k++) {
-//                            final VariantContext thirdEvent = vcsAsList.get(k);
-//                            if (k != i && !eventsOverlapForPDHapsCode(thirdEvent, firstEvent, true) && !eventsOverlapForPDHapsCode(thirdEvent, secondEvent, true)) {
-//                                // if k and j or k and i are dissalowed, keep looking
-//                                if (dissalowedPairs.stream().anyMatch(p -> (p.contains(firstEvent) && p.contains(thirdEvent)) || (p.contains(secondEvent) && p.contains(thirdEvent)))) {
-//                                    continue;
-//                                }
-//                                List<VariantContext> subList = new ArrayList<>(events);
-//                                subList.add(thirdEvent);
-//                                subList.sort(HAPLOTYPE_SNP_FIRST_COMPARATOR);
-//                                if (debugSite) System.out.println("Testing events: " + subList.stream().map(PartiallyDeterminedHaplotype.getDRAGENDebugVariantContextString((int) referenceHaplotype.getStartPosition())).collect(Collectors.joining("->")));
-//                                if (constructArtificialHaplotypeAndTestEquivalentEvents(referenceHaplotype, aligner, swParameters, variantsInOrder, subList, debugSite)) {
-//                                    dissalowedPairs.add(subList);
-//                                }
-//                            }
-//                        }
-//                    }
-//                }
-//            }
-//        }
+        //TODO NOTE I HAVE FOUND EVIDENCE THAT THIS ISN"T ALWAYS APPLIED IN SOME COMPLEX CASES IN DRAGEN...
+        //Now iterate over all 3 element pairs and make sure none of the
+        for (int i = 0; i < vcsAsList.size(); i++) {
+            final VariantContext firstEvent = vcsAsList.get(i);
+            if (firstEvent.isIndel()) {
+                // For every indel, make every 2-3 element subset (without overlapping) of variants to test for equivalency
+                for (int j = 0; j < vcsAsList.size(); j++) {
+                    final VariantContext secondEvent = vcsAsList.get(j);
+                    // Don't compare myslef, any overlappers to myself, or indels i've already examined me (to prevent double counting)
+                    if (j != i && !eventsOverlapForPDHapsCode(firstEvent, secondEvent, true) && ((!secondEvent.isIndel()) || j > i)) {
+                        // if i and j area lready disalowed keep going
+                        if (dissalowedPairs.stream().anyMatch(p -> p.contains(firstEvent) && p.contains(secondEvent))) {
+                            continue;
+                        }
+                        final List<VariantContext> events = new ArrayList<>(Arrays.asList(firstEvent, secondEvent));
+                        // If our 2 element arrays weren't inequivalent, test subsets of 3 including this:
+                        for (int k = j+1; k < vcsAsList.size(); k++) {
+                            final VariantContext thirdEvent = vcsAsList.get(k);
+                            if (k != i && !eventsOverlapForPDHapsCode(thirdEvent, firstEvent, true) && !eventsOverlapForPDHapsCode(thirdEvent, secondEvent, true)) {
+                                // if k and j or k and i are dissalowed, keep looking
+                                if (dissalowedPairs.stream().anyMatch(p -> (p.contains(firstEvent) && p.contains(thirdEvent)) || (p.contains(secondEvent) && p.contains(thirdEvent)))) {
+                                    continue;
+                                }
+                                List<VariantContext> subList = new ArrayList<>(events);
+                                subList.add(thirdEvent);
+                                subList.sort(HAPLOTYPE_SNP_FIRST_COMPARATOR);
+                                if (debugSite) System.out.println("Testing events: " + subList.stream().map(PartiallyDeterminedHaplotype.getDRAGENDebugVariantContextString((int) referenceHaplotype.getStartPosition())).collect(Collectors.joining("->")));
+                                if (constructArtificialHaplotypeAndTestEquivalentEvents(referenceHaplotype, aligner, swParameters, variantsInOrder, subList, debugSite)) {
+                                    dissalowedPairs.add(subList);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         return dissalowedPairs;
     }

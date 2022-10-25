@@ -698,15 +698,12 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             return referenceModelForNoVariation(region, false, VCpriors);
         }
 
-        //TODO refinal
         AssemblyResultSet assemblyResult = untrimmedAssemblyResult.trimTo(trimmingResult.getVariantRegion());
         AssemblyBasedCallerUtils.addGivenAlleles(givenAlleles, hcArgs.maxMnpDistance, aligner, hcArgs.getHaplotypeToReferenceSWParameters(), assemblyResult);
 
-        // Prepwork for the PDHMM, this calls into the code responsible for re-computing the PD haplotypes based on reference
+        // Pre-pwork for the PDHMM, if we are in PDHMM mode then here is where we re-compute the haplotypes as PD haplotypes.
         if (hcArgs.pileupDetectionArgs.generatePDHaplotypes) {
             SortedSet<VariantContext> assemblyVariants = assemblyResult.getVariationEvents(0);
-
-            //todo make this debug output linked in with everything else
             if (hcArgs.pileupDetectionArgs.debugPileupStdout) {
                 System.out.println("Generating PDHaplotypes for PDHMM");
                 System.out.println("Assembled Variants to use:");
@@ -717,9 +714,7 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                 System.out.println(assemblyResult.getReferenceHaplotype());
                 System.out.println("FinalSpan: " + assemblyResult.getReferenceHaplotype().getGenomeLocation());
                 System.out.println("CallingSpan: " + region.getSpan());
-                //TODO this is where the trimming should happen...
             }
-
             assemblyResult = PartiallyDeterminedHaplotypeComputationEngine.generatePDHaplotypes(assemblyResult,
                     region.getSpan(),
                     assemblyResult.getReferenceHaplotype(),
@@ -733,7 +728,8 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                     hcArgs.pileupDetectionArgs.debugPileupStdout);
         }
 
-        //Fallback on the other method of event calling if the PD branching code failed for some reason:
+        // Pileupcaller code. Supplement the assembly haps with artifical haps constructed from the discovered pileupcaller
+        // alleles based off of the GenotypeGivenAlleles code approach.
         if ((!pileupAllelesFoundShouldFilter.isEmpty() || !pileupAllelesPassingFilters.isEmpty()) &&  // Assert that we did find pileup events to process before calling this code
                 (!hcArgs.pileupDetectionArgs.generatePDHaplotypes ||
                         (hcArgs.pileupDetectionArgs.useGGAFallback && !assemblyResult.hasOverwrittenHaps()))) { // If we are generating PDHaps assert that it failed before callign this
@@ -848,9 +844,9 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
 
         //Realign reads to their best haplotype.
         final SWParameters readToHaplotypeSWParameters = hcArgs.getReadToHaplotypeSWParameters();
-        // TODO yes this is what DRAGEN does, there are real reasons to not do this and it becomes a nightmare in the PDHMM world
-        //TODO skipping realignment SHOULD be part of the dragen step...
-        if (!(hcArgs.pileupDetectionArgs.generatePDHaplotypes)) { //&& !hcArgs.pileupDetectionArgs.determinePDHaps)) {
+        // TODO Yes we skip realignment entirely when we are in DRAGEN-GATK mode. Realignment of the reads makes no sense when
+        // TODO the bases of the haplotypes used for calling no longer reflect specified variants present.
+        if (!(hcArgs.pileupDetectionArgs.generatePDHaplotypes && !hcArgs.pileupDetectionArgs.determinePDHaps)) {
             final Map<GATKRead, GATKRead> readRealignments = AssemblyBasedCallerUtils.realignReadsToTheirBestHaplotype(subsettedReadLikelihoodsFinal, assemblyResult.getReferenceHaplotype(), assemblyResult.getPaddedReferenceLoc(), aligner, readToHaplotypeSWParameters);
             subsettedReadLikelihoodsFinal.changeEvidence(readRealignments);
         }
