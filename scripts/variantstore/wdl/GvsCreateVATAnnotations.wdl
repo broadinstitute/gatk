@@ -222,6 +222,7 @@ task AnnotateVCF {
 
         # Add AC/AN/AF as custom annotations
         ## use --skip-ref once you are on a version of nirvana later than 3.14 (once they have created a docker image for it)
+        ## note that the latest version of the Nirvana docker that we created in house has a different file structure
         dotnet ~{custom_creation_location} customvar \
             -r $DATA_SOURCES_FOLDER~{path_reference} \
             -i ~{custom_annotations_file} \
@@ -243,7 +244,7 @@ task AnnotateVCF {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "annotation/nirvana:3.14"
+        docker: "annotation/nirvana:3.14" # us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19
         memory: "32 GB"
         cpu: "2"
         preemptible: 5
