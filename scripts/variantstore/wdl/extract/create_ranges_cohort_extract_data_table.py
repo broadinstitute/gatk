@@ -221,8 +221,8 @@ def make_extract_table(call_set_identifier,
                        fq_destination_dataset,
                        destination_table_prefix,
                        fq_sample_mapping_table,
-                       temp_table_ttl_hours
-                       ):
+                       temp_table_ttl_hours,
+                       skip_ref_ranges_tables):
     try:
         fq_destination_table_ref_data = f"{fq_destination_dataset}.{destination_table_prefix}__REF_DATA"
         fq_destination_table_vet_data = f"{fq_destination_dataset}.{destination_table_prefix}__VET_DATA"
@@ -289,10 +289,12 @@ def make_extract_table(call_set_identifier,
         print(f"Discovered {len(sample_ids)} samples in {fq_destination_table_samples}...")
 
         # create the tables for extract data
-        create_final_extract_ref_table(fq_destination_table_ref_data)
+        if not skip_ref_ranges_tables:
+            create_final_extract_ref_table(fq_destination_table_ref_data)
         create_final_extract_vet_table(fq_destination_table_vet_data)
 
-        populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_table_ref_data, sample_ids)
+        if not skip_ref_ranges_tables:
+            populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_table_ref_data, sample_ids)
         populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_table_vet_data, sample_ids)
 
     finally:
@@ -325,6 +327,8 @@ if __name__ == '__main__':
     parser.add_argument('--max_tables',type=int, help='Maximum number of vet/ref ranges tables to consider', required=False,
                         default=250)
     parser.add_argument('--ttl', type=int, help='Temp table TTL in hours', required=False, default=72)
+    parser.add_argument('--skip_ref_ranges_tables', type=bool,
+                      help='Create __VET_DATA and __SAMPLES tables but skip __REF_DATA creation and population', required=False, default=False)
 
     sample_args = parser.add_mutually_exclusive_group(required=True)
     sample_args.add_argument('--sample_names_to_extract', type=str,
@@ -348,4 +352,5 @@ if __name__ == '__main__':
                        args.fq_destination_dataset,
                        args.destination_cohort_table_prefix,
                        args.fq_sample_mapping_table,
-                       args.ttl)
+                       args.ttl,
+                       args.skip_ref_ranges_tables)
