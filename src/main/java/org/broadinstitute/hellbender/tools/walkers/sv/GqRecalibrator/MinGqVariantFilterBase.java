@@ -153,6 +153,12 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
     @Argument(fullName="error-on-no-trios", optional=true, doc="Throw exception if there are no trios in training mode")
     public static Boolean errorOnNoTrios = true;
 
+    @Argument(fullName="override-min-gq", optional=true,
+              doc="If true, always set variant truth to match info from input truth JSON, even if GQ < minGQ. If False,"
+                 +"use GQ < minGQ as the arbiter of truth."
+    )
+    public static boolean overrideMinGq = false;
+
     List<TrackOverlapDetector> trackOverlapDetectors = null;
 
     static final Map<String, double[]> propertyBinsMap = new LinkedHashMap<>();
@@ -2032,9 +2038,26 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
         final short[] sampleGqs = sampleVariantCallQualities.values[variantIndex];
         final byte[] sampleAlleleCounts = sampleVariantAlleleCounts.values[variantIndex];
         final MinGq minGq = perVariantOptimalMinGq[variantIndex];
+
+        final Set<Integer> goodSampleIndices;
+        final Set<Integer> badSampleIndices;
+        if (overrideMinGq) {
+            goodSampleIndices = getGoodSampleIndices(variantIndex);
+            badSampleIndices = getBadSampleIndices(variantIndex);
+        } else {
+            goodSampleIndices = null;
+            badSampleIndices = null;
+        }
+        goodVariantSampleIndices.getOrDefault(variantIds.get(variantIndex), Collections.emptySet());
         for(int sampleIndex = 0; sampleIndex < numSamples; ++sampleIndex) {
             if(getSampleVariantIsTrainable(variantIndex, sampleIndex)) {
-                samplePasses[flatIndex] = samplePasses(minGq, sampleGqs[sampleIndex], sampleAlleleCounts[sampleIndex]);
+                if(overrideMinGq) {
+                    //noinspection ConstantConditions
+                    samplePasses[flatIndex] =
+                            goodSampleIndices.contains(sampleIndex) || !badSampleIndices.contains(sampleIndex) && samplePasses(minGq, sampleGqs[sampleIndex], sampleAlleleCounts[sampleIndex]);
+                } else {
+                    samplePasses[flatIndex] = samplePasses(minGq, sampleGqs[sampleIndex], sampleAlleleCounts[sampleIndex]);
+                }
                 ++flatIndex;
             }
         }
