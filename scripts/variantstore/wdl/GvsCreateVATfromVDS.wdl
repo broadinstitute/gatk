@@ -53,7 +53,7 @@ workflow GvsCreateVATfromVDS {
             annotation_json = AnnotateVCF.annotation_json,
             output_file_suffix = "${input_vcf_name
             }.json.gz",
-            output_path = output_path
+            output_path = output_path,
     }
 
 
@@ -68,6 +68,7 @@ workflow GvsCreateVATfromVDS {
             output_path = output_path,
             filter_set_name = filter_set_name,
             vat_version = vat_version,
+            prep_jsons_done = PrepAnnotationJson.done,
     }
 
 
@@ -79,7 +80,7 @@ workflow GvsCreateVATfromVDS {
                 dataset_name = dataset_name,
                 output_path = output_path,
                 vat_table = BigQueryLoadJson.vat_table_name,
-                validate_jsons_done = false # BigQuerySmokeTest.done
+                load_jsons_done = BigQueryLoadJson.done
         }
     }
 
@@ -312,7 +313,7 @@ task BigQueryLoadJson {
         String project_id
         String dataset_name
         String output_path
-       # Array[String] prep_jsons_done
+        String prep_jsons_done
     }
 
     # If the vat version is undefined or v1 then the vat tables would be named like filter_vat, otherwise filter_vat_v2.
@@ -516,7 +517,7 @@ task BigQueryExportVat {
         String dataset_name
         String vat_table
         String output_path
-        Boolean validate_jsons_done
+        Boolean load_jsons_done
     }
 
     String export_path = output_path + "export/" + contig + "/*.tsv.gz"
