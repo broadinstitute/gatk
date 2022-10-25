@@ -23,6 +23,7 @@ workflow GvsCreateVATfromVDS {
 
     ## TODO # do we need to shard the sites only VCF?
     # String input_vds_name = basename(input_VDS_file)
+    ## TODO: where do we need to validate that there are no hemis?
     String input_vcf_name = "pumpkin"
 
 
