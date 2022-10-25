@@ -151,11 +151,17 @@ task CreateCustomAnnotationsFile {
         File custom_annotations_body
     }
 
+    String custom_annotations_file_name = "ac_an_af.tsv"
+
     command <<<
         set -e
 
-        #
-        cat ~{custom_annotations_body} >> ~{custom_annotations_header}
+        # I know this is gross, but I just want to get this working:
+        gsutil cp "gs://fc-d5e319d4-b044-4376-afde-22ef0afc4088/submissions/8a5b026d-950a-49dd-8122-26e20e255996/GvsCreateVATfromVDS/54d7f7be-06d7-4bb9-bc65-72631185c10e/call-CreateCustomAnnotationsFile/mod_custom_annotations_template.tsv" .
+
+        # cat ~{custom_annotations_body} | cut -f3- >> ~{custom_annotations_header}
+        cat mod_custom_annotations_template.tsv > ~{custom_annotations_file_name}
+        cat ~{custom_annotations_body} | cut -f3- | sed '1d'  >> ~{custom_annotations_file_name}
 
 
     >>>
