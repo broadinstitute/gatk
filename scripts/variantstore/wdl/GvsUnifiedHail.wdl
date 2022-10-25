@@ -140,7 +140,7 @@ task CreateVds {
         export AVRO=$PWD/avro
         mkdir -p ${AVRO}
 
-        gsutil ls -r ~{avro_prefix} | grep -E '\.avro$' | gcloud storage cp -I ${AVRO}
+        gcloud storage cp --recursive ~{avro_prefix} ${AVRO}
 
         export REFERENCES=$PWD/references
         mkdir -p ${REFERENCES}
