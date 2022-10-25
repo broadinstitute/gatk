@@ -520,28 +520,22 @@ task CollectStatistics {
             indel_het_homvar_ratio
         )
 
-        WITH fss AS (
-          SELECT *,
-                 (ins_count / del_count) as ins_del_ratio,
-                 (ti_count / tv_count) as ti_tv_ratio,
-                 (snp_het_count / snp_homvar_count) snp_het_homvar_ratio,
-                 (indel_het_count / indel_homvar_count) as indel_het_homvar_ratio
-          FROM `~{project_id}.~{dataset_name}.~{aggregate_metrics_table}`
-          WHERE filter_set_name = "~{filter_set_name}")
         SELECT
-            fss.sample_id,
-            si.sample_name,
-            del_count,
-            ins_count,
-            snp_count,
-            singleton,
-            ins_del_ratio,
-            ti_tv_ratio,
-            snp_het_homvar_ratio,
-            indel_het_homvar_ratio,
-        FROM fss
-        JOIN `~{project_id}.~{dataset_name}.~{extract_prefix}__SAMPLES` si ON (fss.sample_id = si.sample_id)
-        order by 1
+          amt.sample_id,
+          si.sample_name,
+          del_count,
+          ins_count,
+          snp_count,
+          singleton,
+          (ins_count / del_count) as ins_del_ratio,
+          (ti_count / tv_count) as ti_tv_ratio,
+          (snp_het_count / snp_homvar_count) snp_het_homvar_ratio,
+          (indel_het_count / indel_homvar_count) as indel_het_homvar_ratio
+        FROM `~{project_id}.~{dataset_name}.~{aggregate_metrics_table}` amt
+        JOIN `~{project_id}.~{dataset_name}.sample_info` si ON (amt.sample_id = si.sample_id)
+        WHERE amt.filter_set_name = "~{filter_set_name}"
+        AND si.withdrawn IS NULL
+        ORDER BY 1
 
         '
     >>>
@@ -570,7 +564,7 @@ task ExportToCSV {
 
         bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv --max_rows 1000000000 '
 
-          SELECT * from `~{project_id}.~{dataset_name}.~{statistics_table}`
+          SELECT * FROM `~{project_id}.~{dataset_name}.~{statistics_table}` ORDER BY SAMPLE_NAME
 
         ' > '~{statistics_table}.csv'
     >>>
