@@ -7,7 +7,7 @@
 # Because this is an Alpine-based image it is more bare-bones than its Debian-based peers. Key components missing here
 # are the Apache Arrow library (a requirement for pyarrow which in turn is a requirement for the google-cloud-bigquery
 # Python module) and bcftools.
-FROM gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine as build
+FROM gcr.io/google.com/cloudsdktool/cloud-sdk:406.0.0-alpine as build
 
 RUN apk update && apk upgrade
 RUN python3 -m ensurepip --upgrade
@@ -95,7 +95,7 @@ RUN mkdir /bcftools bcftools-build && \
     make install
 
 # The main layer does not install development tools, instead copies artifacts from the build layer above.
-FROM gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine as main
+FROM gcr.io/google.com/cloudsdktool/cloud-sdk:406.0.0-alpine as main
 
 RUN apk update && apk upgrade
 RUN python3 -m ensurepip --upgrade
