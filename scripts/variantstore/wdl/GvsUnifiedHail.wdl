@@ -137,10 +137,8 @@ task CreateVds {
 
         curl --silent --location --remote-name ~{hail_gvs_import_script}
 
-        export AVRO=$PWD/avro
-        mkdir -p ${AVRO}
-
-        gcloud storage cp --recursive ~{avro_prefix} ${AVRO}
+        # `avro_prefix` includes a trailing `avro`
+        gcloud storage cp --recursive ~{avro_prefix} $PWD
 
         export REFERENCES=$PWD/references
         mkdir -p ${REFERENCES}
@@ -159,6 +157,7 @@ task CreateVds {
 
         export WORK=$PWD/work
         mkdir ${WORK}
+        export AVRO=$PWD/avro
         python3 ./hail_gvs_import.py --avro-prefix ${AVRO} --write-prefix ${WORK} --references-dir ${REFERENCES}
 
         gcloud storage cp --recursive ${WORK}/gvs_export.vds ~{vds_destination_path}
