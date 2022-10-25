@@ -4,10 +4,27 @@ import hail as hl
 import create_vat_inputs
 
 
+###
+# VAT preparation:
+# filtering:
+# hard filter bad sites: hard_filter_non_passing_sites()
+# hard filter based on FT flag:
+# get GT, ~replace_lgt_with_gt()~, swap to no-calls: failing_gts_to_no_call(), TODO: do we still need this with Tim's change?
+# turn the GQ0s into no calls so that ANs are correct -- hmmm maybe we should check with Lee about this because we do have GQ0s in the VDS
+# track how many sites have more than 100 alt alleles
+# drop 100+ alternate alleles (TODO: or DONT!!!!)
+# calculate the AC, AN, AF, SC, for the full population and for the subpopulations
+### I think the rest of these things we're gonna do with bcftools?
+# make a tsv that's one variant per row (do we want to do this with bcftools or just like grep in a WDL?)
+# drop any * rows in that tsv (I dont think these exist!)
+# drop sites where AC=0??!?!?!??!! (We probably want to do this _after_ we join this back with the original VDS?)
+
+
+
+
 def hard_filter_non_passing_sites(vds):
     """
     Hard filter out non-passing sites
-    TODO ok wait, DO WE want to do this? I guess it depends on what we are handing off and when.
     note: no AC/AN and AF for filtered out positions
     """
     vd = vds.variant_data
@@ -20,6 +37,7 @@ def hard_filter_non_passing_sites(vds):
 def replace_lgt_with_gt(vds):
     """
     Replace LGT with GT for easier calculations later.
+    TODO note that this may no longer be needed depending on Tim's changes
     """
     filtered_vd = vds.variant_data
     filtered_vd = filtered_vd.annotate_entries(GT=hl.vds.lgt_to_gt(filtered_vd.LGT, filtered_vd.LA))
@@ -38,7 +56,7 @@ def failing_gts_to_no_call(vds):
     """
     vd = vds.variant_data
     filtered_vd = vd.annotate_entries(GT=hl.or_missing(hl.coalesce(vd.FT, True), vd.GT))
-    # TODO drop GT after it is used since it will not line up with the LGT
+    # GT will not line up with the LGT but this version of the VDS data will be sliced and not fully moved anywhere
     return hl.vds.VariantDataset(vds.reference_data, filtered_vd)
 
 
@@ -47,14 +65,15 @@ def gq0_to_no_call(vds):
     Turn the GQ0s into no calls so that ANs are correct
     """
     rd = vds.reference_data
-    # would be better to drop these once its a dense mt?
+    # TODO would be better to drop these once its a dense mt?
     rd = rd.filter_entries(rd.GQ > 0)
     return hl.vds.VariantDataset(rd, vds.variant_data)
 
 
 def matrix_table_ac_an_af(mt, ancestry_file):
     """
-    Create a DENSE MATRIX TABLE to calculate AC, AN, AF and TODO: Sample Count
+    Create a DENSE MATRIX TABLE to calculate AC, AN, AF and Sample Count
+    TODO: test sample_count
     """
 
     sample_id_to_sub_population = create_vat_inputs.parse_ancestry_file(ancestry_file)
@@ -62,19 +81,18 @@ def matrix_table_ac_an_af(mt, ancestry_file):
     mt = mt.annotate_cols(pop=hl.literal(sample_id_to_sub_population)[mt.s])
     return mt.select_rows(
         ac_an_af=hl.agg.call_stats(mt.GT, mt.alleles),
-        call_stats_by_pop=hl.agg.group_by(mt.pop, hl.agg.call_stats(mt.GT, mt.alleles))
+        call_stats_by_pop=hl.agg.group_by(mt.pop, hl.agg.call_stats(mt.GT, mt.alleles)),
     )
 
 
 def vds_ac_an_af(mt, vds):
     """
-    This is what we will use to create the TSV for Nirvana custom annotations
-    Join the dense matrix table input back to the VDS.
+    Join the dense matrix table input (just AC, AN and AF) back to the original VDS.
     """
-    qc_data = mt.rows()
-    filtered_vd = vds.variant_data
-    filtered_vd = filtered_vd.annotate_rows(ac_an_af=qc_data[filtered_vd.row_key])
-    return hl.vds.VariantDataset(vds.reference_data, filtered_vd)
+    qc_data = mt.rows() ### TODO: make sure this join does not hard filter!!!!)
+    vd = vds.variant_data
+    vd = vd.annotate_rows(ac_an_af=qc_data[vd.row_key])
+    return hl.vds.VariantDataset(vds.reference_data, vd) ## TODO: IT LOOKS LIKE IT DOES HARD FILTER!
 
 
 def write_sites_only_vcf(vds, sites_only_vcf_path):
@@ -86,15 +104,47 @@ def write_vat_custom_annotations(mt, vat_custom_annotations_tsv_path):
     """
     Create a VAT TSV file with subpopulation data from the input dense matrix table.
     """
-    # TODO create the desired TSV-- We're gonna pull in Tim for this
+    # TODO:
     # Do we need to track the dropped sites?
-    # filter out sites with too many alt alleles and trim extraneous INFO and FORMAT fields
-    # normalize, left align and split multi allelic sites to new lines, remove duplicate lines
-    # filter out spanning deletions and variants with an AC of 0
-    # drop GTs if we have not already since LGT doesn't match
-    # figure out how to calculate the Sample Count (is it just AC_ref + AC_var?)
-    #
-    hl.export_table(mt.rows(), vat_custom_annotations_tsv_path)
+    # filter out sites with too many alt alleles
+    # normalize, left align and remove duplicate lines
+    # filter out variants with an AC of 0
+
+
+    # split multi allelic sites to new lines
+    ac_an_af_split = hl.methods.split_multi(mt)
+
+    #CHROM	POS	REF	ALT	AC	AN	AF	AC_Hom	AC_Het	AC_Hemi	AC_afr	AN_afr	AF_afr	AC_Hom_afr	AC_Het_afr	AC_Hemi_afr	AC_amr	AN_amr	AF_amr	AC_Hom_amr	AC_Het_amr	AC_Hemi_amr	AC_eas	AN_eas	AF_eas	AC_Hom_eas	AC_Het_eas	AC_Hemi_eas	AC_eur	AN_eur	AF_eur	AC_Hom_eur	AC_Het_eur	AC_Hemi_eur	AC_mid	AN_mid	AF_mid	AC_Hom_mid	AC_Het_mid	AC_Hemi_mid	AC_oth	AN_oth	AF_oth	AC_Hom_oth	AC_Het_oth	AC_Hemi_oth	AC_sas	AN_sas	AF_sas	AC_Hom_sas	AC_Het_sas	AC_Hemi_sas
+    ac_an_af_rows = ac_an_af_split.select_rows(
+        CHROM=ac_an_af_split.row.locus.contig,
+        POS=ac_an_af_split.row.locus.position,
+        REF=ac_an_af_split.row.alleles[0],
+        ALT=ac_an_af_split.row.alleles[1],
+        AC=ac_an_af_split.row.ac_an_af.AC[1],
+        AN=ac_an_af_split.row.ac_an_af.AN,
+        AF=ac_an_af_split.row.ac_an_af.AF[1],
+        homozygote_count=ac_an_af_split.row.ac_an_af.homozygote_count[1],
+        eas_AC = ac_an_af_split.call_stats_by_pop.get('eas').AC[1],
+        eas_AN = ac_an_af_split.call_stats_by_pop.get('eas').AN,
+        eas_AF = ac_an_af_split.call_stats_by_pop.get('eas').AF[1],
+        eas_homozygote_count = ac_an_af_split.call_stats_by_pop.get('eas').homozygote_count[1],
+    )
+
+    # SC = AC - homozygote_count
+
+    ac_an_af_rows=ac_an_af_rows.drop('tranche_data')
+    ac_an_af_rows=ac_an_af_rows.drop('truth_sensitivity_snp_threshold')
+    ac_an_af_rows=ac_an_af_rows.drop('truth_sensitivity_indel_threshold')
+    ac_an_af_rows=ac_an_af_rows.drop('snp_vqslod_threshold')
+    ac_an_af_rows=ac_an_af_rows.drop('indel_vqslod_threshold')
+
+
+    hl.export_table(ac_an_af_rows.rows(), vat_custom_annotations_tsv_path)
+
+
+
+
+
 
 
 def main(vds, ancestry_file_location, sites_only_vcf_path, vat_custom_annotations_tsv_path):
@@ -106,15 +156,20 @@ def main(vds, ancestry_file_location, sites_only_vcf_path, vat_custom_annotation
     ]
 
     for transform in transforms:
-        vds = transform(vds)
+        transformed_vds = transform(vds)
 
-    mt = hl.vds.to_dense_mt(vds)
+    mt = hl.vds.to_dense_mt(transformed_vds)
 
     with open(ancestry_file_location, 'r') as ancestry_file:
         mt = matrix_table_ac_an_af(mt, ancestry_file)
 
+    # merge AC, AN, AF back to the original VDS (TODO: make sure this join does not hard filter!!!!)
     vds = vds_ac_an_af(mt, vds)
-    write_sites_only_vcf(vds, sites_only_vcf_path)
+    # TODO: write this vds somewhere now that is has AC, AN and AF?
+
+    # create a sites only VCF (that is hard filtered!)
+    write_sites_only_vcf(transformed_vds, sites_only_vcf_path)
+    # create a custom annotations TSV for Nirvana to use with AC, AN, AF, SC for all subpopulations and populations
     write_vat_custom_annotations(mt, vat_custom_annotations_tsv_path)
 
 
@@ -150,7 +205,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     vds = hl.vds.read_vds(args.vds_path)
-    write_sites_only_vcf(vds, args.sites_only_vcf)
+    # write_sites_only_vcf(vds, args.sites_only_vcf)
     local_ancestry_file = create_vat_inputs.download_ancestry_file(args.ancestry_file)
 
     main(vds, local_ancestry_file, args.sites_only_vcf, args.vat_custom_annotations)
