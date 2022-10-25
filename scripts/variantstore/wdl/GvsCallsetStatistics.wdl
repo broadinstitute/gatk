@@ -190,7 +190,7 @@ task CreateTables {
             "name": "singleton",
             "type": "INT64",
             "mode": "NULLABLE"
-          },
+          }
         ]
         FIN
 
