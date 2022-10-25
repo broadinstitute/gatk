@@ -185,8 +185,8 @@ task AnnotateVCF {
     }
     String annotation_json_name = output_annotated_file_name + ".json.gz"
     String annotation_json_name_jsi = annotation_json_name + ".jsi"
-    String nirvana_location = "/opt/nirvana/Nirvana.dll"
-    String custom_creation_location = "/opt/nirvana/SAUtils.dll"
+    String nirvana_location = "/Nirvana/Nirvana.dll"
+    String custom_creation_location = "/Nirvana/SAUtils.dll"
     String path = "/Cache/GRCh38/Both"
     String path_supplementary_annotations = "/SupplementaryAnnotation/GRCh38"
     String path_reference = "/References/Homo_sapiens.GRCh38.Nirvana.dat"
