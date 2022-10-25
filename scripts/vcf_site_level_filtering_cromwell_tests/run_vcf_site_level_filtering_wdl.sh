@@ -4,14 +4,16 @@ set -e
 script_path=$( cd "$(dirname "${BASH_SOURCE}")" ; pwd -P )
 cd "$script_path"
 
-WORKING_DIR=/home/runner/work/gatk
+WORKING_DIR=/home/runner/work/gatk/gatk
+WDL_DIR=$WORKING_DIR/scripts/vcf_site_level_filtering_wdl
+CROMWELL_TEST_DIR=$WORKING_DIR/scripts/vcf_site_level_filtering_cromwell_tests
 
 set -e
 echo "Building docker image for VCF Site Level Filtering WDL tests (skipping unit tests)..."
 
 #assume Dockerfile is in root
 echo "Building docker without running unit tests... ========="
-cd $WORKING_DIR/gatk
+cd $WORKING_DIR
 
 # IMPORTANT: This code is duplicated in the cnv and M2 WDL test.
 if [ ! -z "$CI_PULL_REQUEST" ]; then
@@ -21,18 +23,24 @@ if [ ! -z "$CI_PULL_REQUEST" ]; then
 else
   HASH_TO_USE=${CI_COMMIT}
   sudo bash build_docker.sh  -e ${HASH_TO_USE} -s -u -d $PWD/temp_staging/;
-  echo "using travis commit:"$HASH_TO_USE
+  echo "using commit:"$HASH_TO_USE
 fi
 echo "Docker build done =========="
 
-cd $WORKING_DIR/gatk/scripts/
-sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" vcf_site_level_filtering_cromwell_tests/vcf_site_level_filtering_travis.json >$WORKING_DIR/vcf_site_level_filtering_travis.json
-echo "JSON FILES (modified) ======="
-cat $WORKING_DIR/vcf_site_level_filtering_travis.json
-echo "=================="
-
+sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" $CROMWELL_TEST_DIR/vcf_site_level_filtering_original.json >$WORKING_DIR/vcf_site_level_filtering_original_mod.json
+sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" $CROMWELL_TEST_DIR/vcf_site_level_filtering_snp_then_indel.json >$WORKING_DIR/vcf_site_level_filtering_snp_then_indel_mod.json
+sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" $CROMWELL_TEST_DIR/vcf_site_level_filtering.json >$WORKING_DIR/vcf_site_level_filtering_mod.json
+sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" $CROMWELL_TEST_DIR/vcf_site_level_filtering_pos_neg.json >$WORKING_DIR/vcf_site_level_filtering_pos_neg_mod.json
 
 echo "Running Filtering WDL through cromwell"
-ln -fs $WORKING_DIR/gatk/scripts/vcf_site_level_filtering_wdl/JointVcfFiltering.wdl
-cd $WORKING_DIR/gatk/scripts/vcf_site_level_filtering_wdl/
-java -jar $CROMWELL_JAR run JointVcfFiltering.wdl -i $WORKING_DIR/vcf_site_level_filtering_travis.json
+cat $WORKING_DIR/vcf_site_level_filtering_original_mod.json
+java -jar $CROMWELL_JAR run $WDL_DIR/JointVcfFilteringOriginal.wdl -i $WORKING_DIR/vcf_site_level_filtering_original_mod.json
+
+cat $WORKING_DIR/vcf_site_level_filtering_snp_then_indel_mod.json
+java -jar $CROMWELL_JAR run $WDL_DIR/JointVcfFilteringSnpThenIndel.wdl -i $WORKING_DIR/vcf_site_level_filtering_snp_then_indel_mod.json
+
+cat $WORKING_DIR/vcf_site_level_filtering_mod.json
+java -jar $CROMWELL_JAR run $WDL_DIR/JointVcfFiltering.wdl -i $WORKING_DIR/vcf_site_level_filtering_mod.json
+
+cat $WORKING_DIR/vcf_site_level_filtering_pos_neg_mod.json
+java -jar $CROMWELL_JAR run $WDL_DIR/JointVcfFiltering.wdl -i $WORKING_DIR/vcf_site_level_filtering_pos_neg_mod.json

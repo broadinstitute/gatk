@@ -385,8 +385,12 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
                     return !Sets.intersection(Sets.newHashSet(vc.getAlternateAlleles()), Sets.newHashSet(resourceVC.getAlternateAlleles())).isEmpty();
                 case START_POSITION_AND_MINIMAL_REPRESENTATION:
                     // we further require that at least one alt allele is present in the resource alt alleles, and do reconcile representations
-                    return vc.getAlternateAlleles().stream()
-                            .anyMatch(altAllele -> GATKVariantContextUtils.isAlleleInList(vc.getReference(), altAllele, resourceVC.getReference(), resourceVC.getAlternateAlleles()));
+                    try {
+                        return vc.getAlternateAlleles().stream()
+                                .anyMatch(altAllele -> GATKVariantContextUtils.isAlleleInList(vc.getReference(), altAllele, resourceVC.getReference(), resourceVC.getAlternateAlleles()));
+                    } catch (final IllegalStateException e) {
+                        throw new IllegalStateException("Reference allele mismatch at position " + resourceVC.getContig() + ':' + resourceVC.getStart() + ": ", e);
+                    }
                 default:
                     throw new GATKException.ShouldNeverReachHereException("Unknown ResourceMatchingStrategy.");
             }
@@ -403,7 +407,7 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
         try {
             return GATKVariantContextUtils.isAlleleInList(refAllele, altAllele, resourceVC.getReference(), resourceVC.getAlternateAlleles());
         } catch (final IllegalStateException e) {
-            throw new IllegalStateException("Reference allele mismatch at position " + resourceVC.getContig() + ':' + resourceVC.getStart() + " : ", e);
+            throw new IllegalStateException("Reference allele mismatch at position " + resourceVC.getContig() + ':' + resourceVC.getStart() + ": ", e);
         }
     }
 }

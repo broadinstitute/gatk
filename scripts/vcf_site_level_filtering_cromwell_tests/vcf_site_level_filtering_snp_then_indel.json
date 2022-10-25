@@ -1,0 +1,20 @@
+{
+  "JointVcfFilteringSnpThenIndel.gatk_docker": "__GATK_DOCKER__",
+  "JointVcfFilteringSnpThenIndel.input_vcfs": ["/home/runner/work/gatk/gatk/src/test/resources/large/filteringJointVcf/test_10_samples.22.avg.vcf.gz",
+    "/home/runner/work/gatk/gatk/src/test/resources/large/filteringJointVcf/test_10_samples.23.avg.vcf.gz"],
+  "JointVcfFilteringSnpThenIndel.input_vcf_idxs": ["/home/runner/work/gatk/gatk/src/test/resources/large/filteringJointVcf/test_10_samples.22.avg.vcf.gz.tbi",
+    "/home/runner/work/gatk/gatk/src/test/resources/large/filteringJointVcf/test_10_samples.23.avg.vcf.gz.tbi"],
+  "JointVcfFilteringSnpThenIndel.sites_only_vcf": "/home/runner/work/gatk/gatk/src/test/resources/large/filteringJointVcf/test_10_samples.sites_only.vcf.gz",
+  "JointVcfFilteringSnpThenIndel.sites_only_vcf_idx": "/home/runner/work/gatk/gatk/src/test/resources/large/filteringJointVcf/test_10_samples.sites_only.vcf.gz.tbi",
+  "JointVcfFilteringSnpThenIndel.output_prefix": "test_10_samples",
+  "JointVcfFilteringSnpThenIndel.snp_annotations": ["ReadPosRankSum", "FS", "SOR", "QD", "AVERAGE_TREE_SCORE", "AVERAGE_ASSEMBLED_HAPS", "AVERAGE_FILTERED_HAPS"],
+  "JointVcfFilteringSnpThenIndel.indel_annotations": ["MQRankSum", "ReadPosRankSum", "FS", "SOR", "QD", "AVERAGE_TREE_SCORE"],
+  "JointVcfFilteringSnpThenIndel.JointVcfFilteringSnp.score_runtime_attributes": {
+    "command_mem_gb": 16,
+    "machine_mem_gb": 15
+  },
+  "JointVcfFilteringSnpThenIndel.JointVcfFilteringIndel.score_runtime_attributes": {
+    "command_mem_gb": 16,
+    "machine_mem_gb": 15
+  }
+}
