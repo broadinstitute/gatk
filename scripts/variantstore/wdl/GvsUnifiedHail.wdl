@@ -111,9 +111,10 @@ workflow GvsUnifiedHail {
 
     call CreateVds {
         input:
-            # hail_gvs_import_script = GvsExtractAvroFilesForHail.hail_gvs_import_script,
             hail_gvs_import_script = "gs://fc-a1621719-20ea-471d-a0ef-a41383dc76bd/submissions/e7e3bf72-c849-4845-b0c2-f324569afb69/GvsQuickstartHailIntegration/e23f1bd3-29b5-43b2-bd53-f22f1e1509d5/call-GvsUnifiedHail/GvsUnifiedHail/a783025e-e639-42e7-981c-cc7ff4d923de/call-GvsExtractAvroFilesForHail/GvsExtractAvroFilesForHail/94a25fb5-5913-4432-9c2a-f1efdc0160f8/call-GenerateHailScripts/hail_gvs_import.py",
             hail_wheel = hail_wheel,
+            avro_prefix = "gs://fc-a1621719-20ea-471d-a0ef-a41383dc76bd/submissions/e7e3bf72-c849-4845-b0c2-f324569afb69/GvsQuickstartHailIntegration/e23f1bd3-29b5-43b2-bd53-f22f1e1509d5/call-GvsUnifiedHail/GvsUnifiedHail/a783025e-e639-42e7-981c-cc7ff4d923de/call-GvsExtractAvroFilesForHail/GvsExtractAvroFilesForHail/94a25fb5-5913-4432-9c2a-f1efdc0160f8/call-OutputPath/avro",
+            vds_destination_path = "gs://fc-a1621719-20ea-471d-a0ef-a41383dc76bd/submissions/e7e3bf72-c849-4845-b0c2-f324569afb69/GvsQuickstartHailIntegration/e23f1bd3-29b5-43b2-bd53-f22f1e1509d5/call-GvsUnifiedHail/GvsUnifiedHail/a783025e-e639-42e7-981c-cc7ff4d923de/call-GvsExtractAvroFilesForHail/GvsExtractAvroFilesForHail/94a25fb5-5913-4432-9c2a-f1efdc0160f8/call-OutputPath/gvs_export.vds"
     }
 
     output {
@@ -126,13 +127,23 @@ task CreateVds {
     input {
         File hail_gvs_import_script
         File hail_wheel
+        String avro_prefix
+        String vds_destination_path
     }
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        gcloud storage --recursive ~{avro_prefix}
+        export AVRO=$PWD/avro
+        mkdir -p ${AVRO}
+
+        gsutil ls -r ~{avro_prefix} | grep -E '\.avro$' | gcloud storage cp -I ${AVRO}
+
+        export REFERENCES=$PWD/references
+        mkdir -p ${REFERENCES}
+
+        gcloud storage cp 'gs://hail-common/references/Homo_sapiens_assembly38.fasta*' ${REFERENCES}
 
         # Temurin Java 8
         apt-get -qq install wget apt-transport-https gnupg
@@ -144,8 +155,11 @@ task CreateVds {
         pip install ~{hail_wheel}
         export PYSPARK_SUBMIT_ARGS='--driver-memory 16g --executor-memory 16g pyspark-shell'
 
-        export
-        python3 ~{hail_gvs_import_script} --
+        export WORK=$PWD/work
+        mkdir ${WORK}
+        python3 ~{hail_gvs_import_script} --avro_prefix ${AVRO} --write_prefix ${WORK} --references-dir ${REFERENCES}
+
+        gcloud storage cp --recursive ${WORK}/gvs_export.vds ~{vds_destination_path}
     >>>
     runtime {
         docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:406.0.0-slim"
