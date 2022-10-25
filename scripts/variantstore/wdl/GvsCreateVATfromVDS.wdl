@@ -192,7 +192,11 @@ task AnnotateVCF {
     String path_reference = "/References/Homo_sapiens.GRCh38.Nirvana.dat"
 
     command <<<
-        set -e
+        # set -e
+
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         # =======================================
         # Handle our data sources:
