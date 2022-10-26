@@ -127,7 +127,7 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-10-24-alpine"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:rc_616_var_store_2022_10_25"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -169,7 +169,7 @@ task CreateCustomAnnotationsFile {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-09-28-slim"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:rc_616_var_store_2022_10_25"
         memory: "1 GB"
         cpu: "1"
         preemptible: 3
@@ -291,7 +291,7 @@ task PrepAnnotationJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-09-28-slim"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:rc_616_var_store_2022_10_25"
         memory: "8 GB"
         preemptible: 5
         cpu: "1"
