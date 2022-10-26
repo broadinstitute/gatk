@@ -276,7 +276,7 @@ task PrepAnnotationJson {
         set -e
 
         # for debugging purposes only
-        gsutil cp ~{annotation_json} '~{output_annotations_gcp_path}'
+        gsutil cp ~{annotation_json} '~{output_annotations_gcp_path}' #TODO: Can we run this task without cp-ing down this file?
 
         ## the annotation jsons are split into the specific VAT schema
         python3 /app/create_variant_annotation_table.py \
@@ -292,7 +292,7 @@ task PrepAnnotationJson {
     # Runtime settings:
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:rc_616_var_store_2022_10_25"
-        memory: "8 GB"
+        memory: "60 GB"
         preemptible: 5
         cpu: "1"
         disks: "local-disk 250 SSD"
