@@ -368,7 +368,7 @@ public final class VariantAnnotatorEngine {
         // annotate db occurrences
         try {
             return variantOverlapAnnotator.annotateOverlaps(features, variantOverlapAnnotator.annotateRsID(features, annotated));
-        } catch (IllegalArgumentException e) {
+        } catch (UserException.WarnableAnnotationFailure e) {
             logger.warn("failed to apply variantOverlapAnnotator to VC at " + IntervalUtils.locatableToString(annotated) + ": " + e.getMessage());
             return annotated;
         }
