@@ -46,85 +46,147 @@ workflow GvsUnifiedHail {
         Int? SNP_VQSR_mem_gb_override
         # End GvsCreateFilterSet
 
+        # Begin GvsPrepareRangesCallset
+        String extract_table_prefix
+
+        String query_project = project_id
+        String destination_project = project_id
+        String destination_dataset = dataset_name
+        String fq_temp_table_dataset = "~{destination_project}.~{destination_dataset}"
+
+        Array[String]? query_labels
+        File? sample_names_to_extract
+        # End GvsPrepareRangesCallset
+
+        # Begin GvsExtractCallset
+        Int? extract_scatter_count
+
+        File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
+
+        String extract_output_file_base_name = sub(filter_set_name, " ", "-")
+
+        Int? extract_maxretries_override
+        Int? extract_preemptible_override
+        String? extract_output_gcs_dir
+        Int? split_intervals_disk_size_override
+        Int? split_intervals_mem_override
+        Boolean extract_do_not_filter_override = false
+        # End GvsExtractCallset
+
         # Begin CreateVds
         File hail_wheel = "gs://gvs-internal-scratch/hail-wheels/2022-10-18/0.2.102-964bee061eb0/hail-0.2.102-py3-none-any.whl"
         # End CreateVds
-
-        Array[File] tieout_vcfs
-        Array[File] tieout_vcf_indexes
     }
 
-#    call AssignIds.GvsAssignIds as AssignIds {
-#        input:
-#            dataset_name = dataset_name,
-#            project_id = project_id,
-#            external_sample_names = external_sample_names,
-#            assign_ids_gatk_override = gatk_override
-#    }
-#
-#    call ImportGenomes.GvsImportGenomes {
-#        input:
-#            go = AssignIds.done,
-#            dataset_name = dataset_name,
-#            project_id = project_id,
-#            external_sample_names = external_sample_names,
-#            input_vcfs = input_vcfs,
-#            input_vcf_indexes = input_vcf_indexes,
-#            interval_list = interval_list,
-#            load_data_preemptible_override = load_data_preemptible_override,
-#            load_data_maxretries_override = load_data_maxretries_override,
-#            load_data_gatk_override = gatk_override,
-#            load_data_batch_size = load_data_batch_size,
-#            drop_state = drop_state
-#    }
-#
-#    call PopulateAltAllele.GvsPopulateAltAllele {
-#        input:
-#            call_set_identifier = call_set_identifier,
-#            go = GvsImportGenomes.done,
-#            dataset_name = dataset_name,
-#            project_id = project_id
-#    }
-#
-#    call CreateFilterSet.GvsCreateFilterSet {
-#        input:
-#            go = GvsPopulateAltAllele.done,
-#            dataset_name = dataset_name,
-#            project_id = project_id,
-#            call_set_identifier = call_set_identifier,
-#            filter_set_name = filter_set_name,
-#            indel_recalibration_annotation_values = indel_recalibration_annotation_values,
-#            snp_recalibration_annotation_values = snp_recalibration_annotation_values,
-#            interval_list = interval_list,
-#            gatk_override = gatk_override,
-#            INDEL_VQSR_max_gaussians_override = INDEL_VQSR_max_gaussians_override,
-#            INDEL_VQSR_mem_gb_override = INDEL_VQSR_mem_gb_override,
-#            SNP_VQSR_max_gaussians_override = SNP_VQSR_max_gaussians_override,
-#            SNP_VQSR_mem_gb_override = SNP_VQSR_mem_gb_override
-#    }
-#
-#    call ExtractAvroFilesForHail.GvsExtractAvroFilesForHail {
-#        input:
-#            go = GvsCreateFilterSet.done,
-#            project_id = project_id,
-#            dataset = dataset_name,
-#            filter_set_name = filter_set_name,
-#            scatter_width = 10,
-#    }
+    call AssignIds.GvsAssignIds as AssignIds {
+        input:
+            dataset_name = dataset_name,
+            project_id = project_id,
+            external_sample_names = external_sample_names,
+            assign_ids_gatk_override = gatk_override
+    }
+
+    call ImportGenomes.GvsImportGenomes {
+        input:
+            go = AssignIds.done,
+            dataset_name = dataset_name,
+            project_id = project_id,
+            external_sample_names = external_sample_names,
+            input_vcfs = input_vcfs,
+            input_vcf_indexes = input_vcf_indexes,
+            interval_list = interval_list,
+            load_data_preemptible_override = load_data_preemptible_override,
+            load_data_maxretries_override = load_data_maxretries_override,
+            load_data_gatk_override = gatk_override,
+            load_data_batch_size = load_data_batch_size,
+            drop_state = drop_state
+    }
+
+    call PopulateAltAllele.GvsPopulateAltAllele {
+        input:
+            call_set_identifier = call_set_identifier,
+            go = GvsImportGenomes.done,
+            dataset_name = dataset_name,
+            project_id = project_id
+    }
+
+    call CreateFilterSet.GvsCreateFilterSet {
+        input:
+            go = GvsPopulateAltAllele.done,
+            dataset_name = dataset_name,
+            project_id = project_id,
+            call_set_identifier = call_set_identifier,
+            filter_set_name = filter_set_name,
+            indel_recalibration_annotation_values = indel_recalibration_annotation_values,
+            snp_recalibration_annotation_values = snp_recalibration_annotation_values,
+            interval_list = interval_list,
+            gatk_override = gatk_override,
+            INDEL_VQSR_max_gaussians_override = INDEL_VQSR_max_gaussians_override,
+            INDEL_VQSR_mem_gb_override = INDEL_VQSR_mem_gb_override,
+            SNP_VQSR_max_gaussians_override = SNP_VQSR_max_gaussians_override,
+            SNP_VQSR_mem_gb_override = SNP_VQSR_mem_gb_override
+    }
+
+    call PrepareRangesCallset.GvsPrepareCallset {
+        input:
+            call_set_identifier = call_set_identifier,
+            go = GvsCreateFilterSet.done,
+            dataset_name = dataset_name,
+            project_id = project_id,
+            extract_table_prefix = extract_table_prefix,
+            query_project = query_project,
+            destination_project = destination_project,
+            destination_dataset = destination_dataset,
+            fq_temp_table_dataset = fq_temp_table_dataset,
+            query_labels = query_labels,
+            sample_names_to_extract = sample_names_to_extract
+    }
+
+    call ExtractCallset.GvsExtractCallset {
+        input:
+            go = GvsPrepareCallset.done,
+            dataset_name = dataset_name,
+            project_id = project_id,
+            call_set_identifier = call_set_identifier,
+            extract_table_prefix = extract_table_prefix,
+            filter_set_name = filter_set_name,
+            query_project = query_project,
+            scatter_count = extract_scatter_count,
+            interval_list = interval_list,
+            interval_weights_bed = interval_weights_bed,
+            gatk_override = gatk_override,
+            output_file_base_name = extract_output_file_base_name,
+            extract_maxretries_override = extract_maxretries_override,
+            extract_preemptible_override = extract_preemptible_override,
+            output_gcs_dir = extract_output_gcs_dir,
+            split_intervals_disk_size_override = split_intervals_disk_size_override,
+            split_intervals_mem_override = split_intervals_mem_override,
+            do_not_filter_override = extract_do_not_filter_override,
+            drop_state = drop_state
+    }
+
+    call ExtractAvroFilesForHail.GvsExtractAvroFilesForHail {
+        input:
+            go = GvsCreateFilterSet.done,
+            project_id = project_id,
+            dataset = dataset_name,
+            filter_set_name = filter_set_name,
+            scatter_width = 10,
+    }
 
     call CreateVds {
         input:
             branch_name = branch_name,
             hail_wheel = hail_wheel,
-            avro_prefix = "gs://fc-a1621719-20ea-471d-a0ef-a41383dc76bd/submissions/e7e3bf72-c849-4845-b0c2-f324569afb69/GvsQuickstartHailIntegration/e23f1bd3-29b5-43b2-bd53-f22f1e1509d5/call-GvsUnifiedHail/GvsUnifiedHail/a783025e-e639-42e7-981c-cc7ff4d923de/call-GvsExtractAvroFilesForHail/GvsExtractAvroFilesForHail/94a25fb5-5913-4432-9c2a-f1efdc0160f8/call-OutputPath/avro",
-            vds_destination_path = "gs://fc-a1621719-20ea-471d-a0ef-a41383dc76bd/submissions/e7e3bf72-c849-4845-b0c2-f324569afb69/GvsQuickstartHailIntegration/e23f1bd3-29b5-43b2-bd53-f22f1e1509d5/call-GvsUnifiedHail/GvsUnifiedHail/a783025e-e639-42e7-981c-cc7ff4d923de/call-GvsExtractAvroFilesForHail/GvsExtractAvroFilesForHail/94a25fb5-5913-4432-9c2a-f1efdc0160f8/call-OutputPath/gvs_export.vds",
-            tieout_vcfs = tieout_vcfs,
-            tieout_vcf_indexes = tieout_vcf_indexes,
+            avro_prefix = GvsExtractAvroFilesForHail.avro_prefix,
+            vds_destination_path = GvsExtractAvroFilesForHail.vds_output_path,
+            tieout_vcfs = GvsExtractCallset.output_vcfs,
+            tieout_vcf_indexes = GvsExtractCallset.output_vcf_indexes,
     }
 
     output {
         Boolean done = true
-        # String vds_output_path = GvsExtractAvroFilesForHail.vds_output_path
+        String vds_output_path = GvsExtractAvroFilesForHail.vds_output_path
     }
 }
 

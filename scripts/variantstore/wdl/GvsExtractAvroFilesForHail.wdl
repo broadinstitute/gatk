@@ -62,6 +62,7 @@ workflow GvsExtractAvroFilesForHail {
         String vds_output_path = GenerateHailScripts.vds_output_path
         String sites_only_vcf_output_path = GenerateHailScripts.sites_only_vcf_output_path
         String vat_inputs_output_path = GenerateHailScripts.vat_inputs_output_path
+        String avro_prefix = ExtractFromNonSuperpartitionedTables.output_prefix
     }
 }
 
