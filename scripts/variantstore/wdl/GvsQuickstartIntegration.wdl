@@ -104,6 +104,8 @@ workflow GvsQuickstartIntegration {
         Array[File] output_vcf_indexes = GvsUnified.output_vcf_indexes
         Float total_vcfs_size_mb = GvsUnified.total_vcfs_size_mb
         File manifest = GvsUnified.manifest
+        String dataset_name = BuildGATKJarAndCreateDataset.dataset_name
+        String filter_set_name = "quickit"
         Boolean done = true
     }
 }

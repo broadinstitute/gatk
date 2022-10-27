@@ -1,347 +1,133 @@
 version 1.0
 
-import "GvsUnifiedHail.wdl" as Unified
 import "GvsUtils.wdl" as Utils
+import "GvsExtractAvroFilesForHail.wdl" as ExtractAvroFilesForHail
+import "GvsQuickstartIntegration.wdl" as QuickstartVCFIntegration
 
 workflow GvsQuickstartHailIntegration {
-
     input {
         String branch_name
-        String expected_output_prefix = "gs://gvs-internal-quickstart/integration/2022-10-20/"
-
-        Array[String] external_sample_names = [
-                                              "ERS4367795",
-                                              "ERS4367796",
-                                              "ERS4367797",
-                                              "ERS4367798",
-                                              "ERS4367799",
-                                              "ERS4367800",
-                                              "ERS4367801",
-                                              "ERS4367803",
-                                              "ERS4367804",
-                                              "ERS4367805"
-                                              ]
-
-        Array[File] input_vcfs = [
-                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00405.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
-                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00408.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
-                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00418.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
-                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00420.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
-                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00423.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
-                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00427.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
-                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00429.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
-                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00444.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
-                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00447.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
-                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00450.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz"
-                                 ]
-
-        Array[File] input_vcf_indexes = [
-                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00405.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
-                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00408.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
-                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00418.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
-                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00420.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
-                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00423.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
-                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00427.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
-                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00429.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
-                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00444.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
-                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00447.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
-                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00450.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi"
-                                        ]
-
-        Int? extract_scatter_count
-        String drop_state = "NONE"
-
+        String hail_wheel = "gs://gvs-internal-scratch/hail-wheels/2022-10-18/0.2.102-964bee061eb0/hail-0.2.102-py3-none-any.whl"
     }
+
     String project_id = "gvs-internal"
 
-    call Utils.BuildGATKJarAndCreateDataset {
+    call QuickstartVCFIntegration.GvsQuickstartIntegration as QuickstartVCFIntegration {
         input:
             branch_name = branch_name,
-            dataset_prefix = "quickit"
     }
 
-    call Unified.GvsUnifiedHail {
+    call ExtractAvroFilesForHail.GvsExtractAvroFilesForHail {
+        input:
+            go = QuickstartVCFIntegration.done,
+            project_id = project_id,
+            dataset = QuickstartVCFIntegration.dataset_name,
+            filter_set_name = QuickstartVCFIntegration.filter_set_name,
+            scatter_width = 10,
+    }
+
+    call CreateVds {
         input:
             branch_name = branch_name,
-            dataset_name = BuildGATKJarAndCreateDataset.dataset_name,
-            project_id = project_id,
-            external_sample_names = external_sample_names,
-            gatk_override = BuildGATKJarAndCreateDataset.jar,
-            input_vcfs = input_vcfs,
-            input_vcf_indexes = input_vcf_indexes,
-            filter_set_name = "quickit",
-            extract_table_prefix = "quickit",
-            extract_scatter_count = extract_scatter_count,
-            # Force filtering off as it is not deterministic and the initial version of this integration test does not
-            # allow for inexact matching of actual and expected results.
-            extract_do_not_filter_override = true,
-            drop_state = drop_state,
-    }
-
-    call AssertIdenticalOutputs {
-        input:
-            expected_output_prefix = expected_output_prefix,
-            actual_vcfs = GvsUnifiedHail.output_vcfs
-    }
-
-    call AssertCostIsTrackedAndExpected {
-        input:
-            go = GvsUnifiedHail.done,
-            dataset_name = BuildGATKJarAndCreateDataset.dataset_name,
-            project_id = project_id,
-            expected_output_csv = expected_output_prefix + "cost_observability_expected.csv"
-    }
-
-    call AssertTableSizesAreExpected {
-        input:
-            go = GvsUnifiedHail.done,
-            dataset_name = BuildGATKJarAndCreateDataset.dataset_name,
-            project_id = project_id,
-            expected_output_csv = expected_output_prefix + "table_sizes_expected.csv"
+            hail_wheel = hail_wheel,
+            avro_prefix = GvsExtractAvroFilesForHail.avro_prefix,
+            vds_destination_path = GvsExtractAvroFilesForHail.vds_output_path,
+            tieout_vcfs = QuickstartVCFIntegration.output_vcfs,
+            tieout_vcf_indexes = QuickstartVCFIntegration.output_vcf_indexes,
     }
 
     output {
-        Array[File] output_vcfs = GvsUnifiedHail.output_vcfs
-        Array[File] output_vcf_indexes = GvsUnifiedHail.output_vcf_indexes
-        Float total_vcfs_size_mb = GvsUnifiedHail.total_vcfs_size_mb
-        File manifest = GvsUnifiedHail.manifest
-        String vds_output_path = GvsUnifiedHail.vds_output_path
+        Array[File] output_vcfs = QuickstartVCFIntegration.output_vcfs
+        Array[File] output_vcf_indexes = QuickstartVCFIntegration.output_vcf_indexes
+        Float total_vcfs_size_mb = QuickstartVCFIntegration.total_vcfs_size_mb
+        File manifest = QuickstartVCFIntegration.manifest
+        String vds_output_path = GvsExtractAvroFilesForHail.vds_output_path
         Boolean done = true
     }
 }
 
 
-task AssertIdenticalOutputs {
+task CreateVds {
     input {
-        String expected_output_prefix
-        Array[File] actual_vcfs
+        File hail_wheel
+        String branch_name
+        String avro_prefix
+        String vds_destination_path
+        Array[File] tieout_vcfs
+        Array[File] tieout_vcf_indexes
     }
-
+    parameter_meta {
+        tieout_vcfs: {
+             localization_optional: true
+         }
+        tieout_vcf_indexes: {
+            localization_optional: true
+        }
+    }
     command <<<
-        set -o errexit
-        set -o nounset
-        set -o pipefail
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
-        failures=()
+        script_url_prefix="https://raw.githubusercontent.com/broadinstitute/gatk/~{branch_name}/scripts/variantstore/wdl/extract"
 
-        # Where the current set of expected results lives in the cloud
-        expected_prefix="~{expected_output_prefix}"
-        # Remove a trailing slash if there is one
-        expected_prefix=${expected_prefix%/}
-
-        # Download all the expected data
-        mkdir expected
-        cd expected
-        # Make a FOFN for more efficient downloading
-        for file in ~{sep= ' ' actual_vcfs}; do
-            echo "$expected_prefix/$(basename $file)" >> expected_fofn.txt
-        done
-        # Download and unzip all the expected data
-        cat expected_fofn.txt | gsutil -m cp -I .
-        gzip -d *.gz
-        cd ..
-
-        # Also unzip actual result data
-        gzip -d ~{sep= ' ' actual_vcfs}
-
-        # Headers first, these can yield useful diagnostics when there are mismatches.
-        for file in ~{sep=' ' actual_vcfs}; do
-          unzipped=${file%.gz}
-          expected="expected/$(basename $unzipped)"
-          set +o errexit
-          cmp <(grep '^#' $unzipped) <(grep '^#' $expected)
-          rc=$?
-          set -o errexit
-          if [[ $rc -ne 0 ]]; then
-            # If there is a mismatch add it to a list of failures but keep on looking for mismatches.
-            failures+=( $unzipped )
-          fi
+        for script in hail_gvs_import.py hail_join_vds_vcfs.py gvs_vds_tie_out.py
+        do
+        curl --silent --location --remote-name "${script_url_prefix}/${script}"
         done
 
-        if [[ ${#failures[@]} -ne 0 ]]; then
-          echo "Error: headers for the following files do not match:"
-          for failure in ${failures[@]}; do
-            echo $(basename $failure)
-            expected="expected/$(basename $failure)"
-            diff $failure $expected
-          done
-          exit 1
-        fi
-
-        # If the headers all matched look for any mismatches in overall file content.
-        fail=0
-        for file in ~{sep=' ' actual_vcfs}; do
-          unzipped=${file%.gz}
-          expected="expected/$(basename $unzipped)"
-          set +o errexit
-          cmp $unzipped $expected
-          rc=$?
-          set -o errexit
-          if [[ $rc -ne 0 ]]; then
-            echo "Error: file contents of expected and actual do not match: $(basename $unzipped)"
-            fail=1
-          fi
+        # Create a manifest of VCFs and indexes to bulk download with `gcloud storage cp`.
+        touch vcf_manifest.txt
+        for file in ~{sep=' ' tieout_vcfs} ~{sep=' ' tieout_vcf_indexes}
+        do
+        echo $file >> vcf_manifest.txt
         done
 
-        if [[ $fail -ne 0 ]]; then
-          exit 1
-        fi
+        # Copy VCFs and indexes to the current directory.
+        cat vcf_manifest.txt | gcloud storage cp -I .
 
-        echo "All vcfs compared and matched!"
+        # `avro_prefix` includes a trailing `avro` so don't add another `avro` here.
+        gcloud storage cp --recursive ~{avro_prefix} $PWD
+
+        export REFERENCES=$PWD/references
+        mkdir -p ${REFERENCES}
+
+        gcloud storage cp 'gs://hail-common/references/Homo_sapiens_assembly38.fasta*' ${REFERENCES}
+
+        # Temurin Java 8
+        apt-get -qq install wget apt-transport-https gnupg
+        wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | apt-key add -
+        echo "deb https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | tee /etc/apt/sources.list.d/adoptium.list
+        apt-get -qq update
+        apt -qq install -y temurin-8-jdk
+
+        pip install ~{hail_wheel}
+        export PYSPARK_SUBMIT_ARGS='--driver-memory 16g --executor-memory 16g pyspark-shell'
+
+        export WORK=$PWD/work
+        mkdir ${WORK}
+        export AVRO=$PWD/avro
+        python3 ./hail_gvs_import.py --avro-prefix ${AVRO} --write-prefix ${WORK} --references-dir ${REFERENCES}
+
+        export LOCAL_VDS_PATH=${WORK}/gvs_export.vds
+        export JOINED_MATRIX_TABLE_PATH=${WORK}/joined.mt
+
+        python3 ./hail_join_vds_vcfs.py --vds-path ${LOCAL_VDS_PATH} --joined-matrix-table-path ${JOINED_MATRIX_TABLE_PATH} *.vcf.gz
+
+        # Copy up the VDS
+        gcloud storage cp --recursive ${LOCAL_VDS_PATH} ~{vds_destination_path}
+
+        pip install pytest
+        ln -s ${WORK}/joined.mt .
+        pytest ./gvs_vds_tie_out.py
     >>>
-
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:402.0.0-alpine"
-        disks: "local-disk 500 HDD"
+        # `slim` here to be able to use Java
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:406.0.0-slim"
+        disks: "local-disk 2000 HDD"
+        memory: "30 GiB"
     }
-
     output {
-        File fofn = "expected/expected_fofn.txt"
         Boolean done = true
-    }
-}
-
-task AssertCostIsTrackedAndExpected {
-    meta {
-        # we want to check the database each time this runs
-        volatile: true
-    }
-
-    input {
-        Boolean go = true
-        String dataset_name
-        String project_id
-        File expected_output_csv
-    }
-
-    command <<<
-        set -o errexit
-        set -o nounset
-        set -o pipefail
-
-        echo "project_id = ~{project_id}" > ~/.bigqueryrc
-        bq query --project_id=~{project_id} --format=csv --use_legacy_sql=false \
-            "SELECT call, step, event_key, sum(event_bytes) \
-              FROM \`~{dataset_name}.cost_observability\` \
-              GROUP BY call, step, event_key \
-              ORDER BY call, step, event_key" > cost_observability_output.csv
-
-        # Put the exit code in a file because we are using a subshell (while) later and changes to the variable *in* the subshell are lost
-        echo "0" > ret_val.txt
-
-        paste cost_observability_output.csv ~{expected_output_csv} | while  IFS=$'\t' read observed expected; do
-        IFS=, read -ra OBS <<< "$observed"
-        IFS=, read -ra EXP <<< "$expected"
-        if [[ "${#OBS[@]}" -ne 4  || "${#EXP[@]}" -ne 4 ]]; then
-          echo "Unexpected number of rows found in the input files"
-          exit 1
-        fi
-
-        OBS_KEY=${OBS[0]}.${OBS[1]}.${OBS[2]}
-        EXP_KEY=${EXP[0]}.${EXP[1]}.${EXP[2]}
-        if [[ "$OBS_KEY" != "$EXP_KEY" ]]; then
-          echo "Mismatched keys in results files - were these sorted properly?"
-          exit 1
-        fi
-
-        if [[ "$OBS_KEY" == "call.step.event_key" ]]; then
-          # Skip the header
-          continue;
-        fi
-
-        OBS_BYTES=${OBS[3]}
-        EXP_BYTES=${EXP[3]}
-
-        TOLERANCE=0
-
-        # For these two costs, there is non-determinism in the pipeline - we allow a % difference
-        if [[ $OBS_KEY == "ExtractFilterTask.GvsCreateFilterSet.BigQuery Query Scanned" ]]; then
-          TOLERANCE=0.015   # 1.5% tolerance  (Note - have seen as high as: 0.0109429)
-        elif [[ $OBS_KEY == "ExtractTask.GvsCreateCallset.Storage API Scanned" ]]; then
-          TOLERANCE=0.01   # 1% tolerance  (Note - have seen as high as: 0.00608656)
-        elif [[ $OBS_KEY == "ExtractFilterTask.GvsCreateFilterSet.Storage API Scanned" ]]; then
-          TOLERANCE=0.05  # 5% tolerance (Note - have seen as high as: 0.0281223)
-        fi
-
-        if [[ $OBS_BYTES -ne $EXP_BYTES ]]; then
-          echo "The bytes observed ($OBS_BYTES) for '$OBS_KEY' differ from those expected ($EXP_BYTES)"
-
-          if [[ $OBS_BYTES -ge $EXP_BYTES ]]; then
-            DIFF_FOUND=$(echo $OBS_BYTES $EXP_BYTES | awk '{print ($1-$2)/$1}')
-          else
-            DIFF_FOUND=$(echo $EXP_BYTES $OBS_BYTES | awk '{print ($1-$2)/$1}')
-          fi
-
-          if ! awk "BEGIN{ exit ($DIFF_FOUND > $TOLERANCE) }"
-          then
-            echo "FAIL!!! The relative difference between these is $DIFF_FOUND, which is greater than the allowed tolerance ($TOLERANCE)"
-            echo "1" > ret_val.txt
-          else
-            echo "However, the relative difference between these is $DIFF_FOUND, which is below the allowed tolerance ($TOLERANCE)"
-          fi
-        fi
-        done
-
-        RET_VAL=`cat ret_val.txt`
-        exit $RET_VAL
-
-    >>>
-
-    runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:402.0.0-alpine"
-        disks: "local-disk 10 HDD"
-    }
-
-    output {
-        File cost_observability_output_csv = "cost_observability_output.csv"
-    }
-}
-
-task AssertTableSizesAreExpected {
-    meta {
-        # we want to check the database each time this runs
-        volatile: true
-    }
-
-    input {
-        Boolean go = true
-        String dataset_name
-        String project_id
-        File expected_output_csv
-    }
-
-    command <<<
-        set -o errexit
-        set -o nounset
-        set -o pipefail
-
-        echo "project_id = ~{project_id}" > ~/.bigqueryrc
-        bq query --project_id=~{project_id} --format=csv --use_legacy_sql=false \
-            "SELECT 'vet_total' AS total_name, sum(total_billable_bytes) AS total_bytes FROM \
-            \`~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS\` WHERE table_name LIKE 'vet_%' \
-            UNION ALL \
-            SELECT 'ref_ranges_total' AS total_name, sum(total_billable_bytes) AS total_bytes \
-            FROM \`~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS\` \
-            WHERE table_name LIKE 'ref_ranges_%' ORDER BY total_name" > table_size_output.csv
-
-        set +o errexit
-        diff -w table_size_output.csv ~{expected_output_csv} > differences.txt
-        set -o errexit
-
-        if [[ -s differences.txt ]]; then
-            echo "Differences found:"
-            cat differences.txt
-            exit 1
-        fi
-    >>>
-
-    runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:402.0.0-alpine"
-        disks: "local-disk 10 HDD"
-    }
-
-    output {
-        File table_size_output_csv = "table_size_output.csv"
-        File differences = "differences.txt"
     }
 }
