@@ -195,9 +195,12 @@ task CreateVds {
 
         python3 ./hail_join_vds_vcfs.py --vds-path ${LOCAL_VDS_PATH} --joined-matrix-table-path ${JOINED_MATRIX_TABLE_PATH} *.vcf.gz
 
-        python3 ./gvs-vds-tie-out.py
-
+        # Copy up the VDS
         gcloud storage cp --recursive ${LOCAL_VDS_PATH} ~{vds_destination_path}
+
+        pip install pytest
+        ln ${WORK}/joined.mt .
+        pytest ./gvs_vds_tie_out.py
     >>>
     runtime {
         # `slim` here to be able to use Java
