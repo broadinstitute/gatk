@@ -4,6 +4,8 @@ import "GvsAssignIds.wdl" as AssignIds
 import "GvsImportGenomes.wdl" as ImportGenomes
 import "GvsPopulateAltAllele.wdl" as PopulateAltAllele
 import "GvsCreateFilterSet.wdl" as CreateFilterSet
+import "GvsPrepareRangesCallset.wdl" as PrepareRangesCallset
+import "GvsExtractCallset.wdl" as ExtractCallset
 import "GvsExtractAvroFilesForHail.wdl" as ExtractAvroFilesForHail
 
 workflow GvsUnifiedHail {
@@ -186,6 +188,12 @@ workflow GvsUnifiedHail {
 
     output {
         Boolean done = true
+        Array[File] output_vcfs = GvsExtractCallset.output_vcfs
+        Array[File] output_vcf_indexes = GvsExtractCallset.output_vcf_indexes
+        Float total_vcfs_size_mb = GvsExtractCallset.total_vcfs_size_mb
+        Array[File] output_vcf_interval_files = GvsExtractCallset.output_vcf_interval_files
+        File? sample_name_list = GvsExtractCallset.sample_name_list
+        File manifest = GvsExtractCallset.manifest
         String vds_output_path = GvsExtractAvroFilesForHail.vds_output_path
     }
 }

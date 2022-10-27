@@ -62,7 +62,7 @@ workflow GvsQuickstartHailIntegration {
 
     call Unified.GvsUnifiedHail {
         input:
-            call_set_identifier = branch_name,
+            branch_name = branch_name,
             dataset_name = BuildGATKJarAndCreateDataset.dataset_name,
             project_id = project_id,
             external_sample_names = external_sample_names,
