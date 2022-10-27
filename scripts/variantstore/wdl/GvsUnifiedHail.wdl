@@ -199,7 +199,7 @@ task CreateVds {
         gcloud storage cp --recursive ${LOCAL_VDS_PATH} ~{vds_destination_path}
 
         pip install pytest
-        ln ${WORK}/joined.mt .
+        ln -s ${WORK}/joined.mt .
         pytest ./gvs_vds_tie_out.py
     >>>
     runtime {
