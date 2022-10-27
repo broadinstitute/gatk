@@ -290,7 +290,7 @@ workflow GvsQuickstartHailIntegration {
 
     call Unified.GvsUnifiedHail {
         input:
-            call_set_identifier = branch_name,
+            branch_name = branch_name,
             dataset_name = "quickit_vs_639_hail_testing_spike_80af46a",
             project_id = project_id,
             external_sample_names = external_sample_names,
