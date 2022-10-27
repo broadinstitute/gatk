@@ -15,6 +15,7 @@ workflow GvsQuickstartHailIntegration {
     call QuickstartVCFIntegration.GvsQuickstartIntegration as QuickstartVCFIntegration {
         input:
             branch_name = branch_name,
+            drop_state = "NONE",
     }
 
     call ExtractAvroFilesForHail.GvsExtractAvroFilesForHail {
