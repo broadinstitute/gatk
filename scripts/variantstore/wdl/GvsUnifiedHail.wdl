@@ -11,10 +11,10 @@ workflow GvsUnifiedHail {
         # Begin GvsAssignIds
         String dataset_name
         String project_id
-        String call_set_identifier
+        String branch_name
+        String call_set_identifier = branch_name
 
         Array[String] external_sample_names
-        String call_set_identifier
 
         File? gatk_override
         # End GvsAssignIds
@@ -49,6 +49,9 @@ workflow GvsUnifiedHail {
         # Begin CreateVds
         File hail_wheel = "gs://gvs-internal-scratch/hail-wheels/2022-10-18/0.2.102-964bee061eb0/hail-0.2.102-py3-none-any.whl"
         # End CreateVds
+
+        Array[File] tieout_vcfs
+        Array[File] tieout_vcf_indexes
     }
 
 #    call AssignIds.GvsAssignIds as AssignIds {
@@ -111,10 +114,12 @@ workflow GvsUnifiedHail {
 
     call CreateVds {
         input:
-            hail_gvs_import_script = "https://raw.githubusercontent.com/broadinstitute/gatk/vs_639_hail_testing_spike/scripts/variantstore/wdl/extract/hail_gvs_import.py",
+            branch_name = branch_name,
             hail_wheel = hail_wheel,
             avro_prefix = "gs://fc-a1621719-20ea-471d-a0ef-a41383dc76bd/submissions/e7e3bf72-c849-4845-b0c2-f324569afb69/GvsQuickstartHailIntegration/e23f1bd3-29b5-43b2-bd53-f22f1e1509d5/call-GvsUnifiedHail/GvsUnifiedHail/a783025e-e639-42e7-981c-cc7ff4d923de/call-GvsExtractAvroFilesForHail/GvsExtractAvroFilesForHail/94a25fb5-5913-4432-9c2a-f1efdc0160f8/call-OutputPath/avro",
-            vds_destination_path = "gs://fc-a1621719-20ea-471d-a0ef-a41383dc76bd/submissions/e7e3bf72-c849-4845-b0c2-f324569afb69/GvsQuickstartHailIntegration/e23f1bd3-29b5-43b2-bd53-f22f1e1509d5/call-GvsUnifiedHail/GvsUnifiedHail/a783025e-e639-42e7-981c-cc7ff4d923de/call-GvsExtractAvroFilesForHail/GvsExtractAvroFilesForHail/94a25fb5-5913-4432-9c2a-f1efdc0160f8/call-OutputPath/gvs_export.vds"
+            vds_destination_path = "gs://fc-a1621719-20ea-471d-a0ef-a41383dc76bd/submissions/e7e3bf72-c849-4845-b0c2-f324569afb69/GvsQuickstartHailIntegration/e23f1bd3-29b5-43b2-bd53-f22f1e1509d5/call-GvsUnifiedHail/GvsUnifiedHail/a783025e-e639-42e7-981c-cc7ff4d923de/call-GvsExtractAvroFilesForHail/GvsExtractAvroFilesForHail/94a25fb5-5913-4432-9c2a-f1efdc0160f8/call-OutputPath/gvs_export.vds",
+            tieout_vcfs = tieout_vcfs,
+            tieout_vcf_indexes = tieout_vcf_indexes,
     }
 
     output {
@@ -126,18 +131,43 @@ workflow GvsUnifiedHail {
 task CreateVds {
     input {
         File hail_wheel
-        String hail_gvs_import_script
+        String branch_name
         String avro_prefix
         String vds_destination_path
+        Array[File] tieout_vcfs
+        Array[File] tieout_vcf_indexes
+    }
+    parameter_meta {
+        tieout_vcfs: {
+            localization_optional: true
+        }
+        tieout_vcf_indexes: {
+            localization_optional: true
+        }
     }
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        curl --silent --location --remote-name ~{hail_gvs_import_script}
+        script_url_prefix="https://raw.githubusercontent.com/broadinstitute/gatk/~{branch_name}/scripts/variantstore/wdl/extract"
 
-        # `avro_prefix` includes a trailing `avro`
+        for script in hail_gvs_import.py hail_join_vds_vcfs.py gvs_vds_tie_out.py
+        do
+            curl --silent --location --remote-name "${script_url_prefix}/${script}"
+        done
+
+        # Create a manifest of VCFs and indexes to bulk download with `gcloud storage cp`.
+        touch vcf_manifest.txt
+        for file in ~{sep=' ' tieout_vcfs} ~{sep=' ' tieout_vcf_indexes}
+        do
+            echo $file >> vcf_manifest.txt
+        done
+
+        # Copy VCFs and indexes to the current directory.
+        cat vcf_manifest.txt | gcloud storage cp -I .
+
+        # `avro_prefix` includes a trailing `avro` so don't add another `avro` here.
         gcloud storage cp --recursive ~{avro_prefix} $PWD
 
         export REFERENCES=$PWD/references
@@ -160,9 +190,17 @@ task CreateVds {
         export AVRO=$PWD/avro
         python3 ./hail_gvs_import.py --avro-prefix ${AVRO} --write-prefix ${WORK} --references-dir ${REFERENCES}
 
-        gcloud storage cp --recursive ${WORK}/gvs_export.vds ~{vds_destination_path}
+        export LOCAL_VDS_PATH=${WORK}/gvs_export.vds
+        export JOINED_MATRIX_TABLE_PATH=${WORK}/joined.mt
+
+        python3 ./hail_join_vds_vcfs.py --vds-path ${LOCAL_VDS_PATH} --joined-matrix-table-path ${JOINED_MATRIX_TABLE_PATH} *.vcf.gz
+
+        python3 ./gvs-vds-tie-out.py
+
+        gcloud storage cp --recursive ${LOCAL_VDS_PATH} ~{vds_destination_path}
     >>>
     runtime {
+        # `slim` here to be able to use Java
         docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:406.0.0-slim"
         disks: "local-disk 2000 HDD"
         memory: "30 GiB"
