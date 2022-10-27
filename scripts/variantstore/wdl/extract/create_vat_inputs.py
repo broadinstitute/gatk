@@ -47,7 +47,7 @@ def download_ancestry_file(gcs_ancestry_file):
     blob = bucket.get_blob(blob_name)
     fd, temp_file = tempfile.mkstemp()
     # Close open descriptor, do not remove temporary file.
-    fd.close()
+    # fd.close()
 
     blob.download_to_filename(temp_file)
     return temp_file

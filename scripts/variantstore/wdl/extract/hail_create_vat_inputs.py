@@ -97,6 +97,8 @@ def vds_ac_an_af(mt, vds):
 
 def write_sites_only_vcf(vds, sites_only_vcf_path):
     # TODO we will want to drop some cols because there's no reason to carry around some of this stuff
+    split_filtered_vds = hl.vds.split_multi(vds)
+    hl.export_vcf(split_filtered_vds.variant_data.rows(), sites_only_vcf_path)
     hl.export_vcf(vds.variant_data.rows(), sites_only_vcf_path)
 
 
@@ -138,8 +140,7 @@ def write_vat_custom_annotations(mt, vat_custom_annotations_tsv_path):
     ac_an_af_rows=ac_an_af_rows.drop('snp_vqslod_threshold')
     ac_an_af_rows=ac_an_af_rows.drop('indel_vqslod_threshold')
 
-
-    hl.export_table(ac_an_af_rows.rows(), vat_custom_annotations_tsv_path)
+    hl.Table.export(ac_an_af_rows.rows(), vat_custom_annotations_tsv_path)
 
 
 
@@ -196,7 +197,7 @@ def write_tie_out_vcf(vds, vcf_output_path):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False, description='Create VAT inputs TSV')
     parser.add_argument('--ancestry_file', type=str, help='Input ancestry file', required=True)
-    parser.add_argument('--vds_path', type=str, help='Input VDS Path', default="@VDS_INPUT_PATH@")
+    parser.add_argument('--vds_path', type=str, help='Input VDS Path', default="@VDS_INPUT_PATH@") #TODO: names feel confusing to me that this is an input and the next two are outputs?
     parser.add_argument('--sites_only_vcf', type=str, help='Output sites-only VCF file',
                         default="@SITES_ONLY_VCF_OUTPUT_PATH@")
     parser.add_argument('--vat_custom_annotations', type=str, help='Output VAT custom annotations file',
