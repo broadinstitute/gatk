@@ -73,14 +73,14 @@ task CreateVds {
 
         for script in hail_gvs_import.py hail_join_vds_vcfs.py gvs_vds_tie_out.py
         do
-        curl --silent --location --remote-name "${script_url_prefix}/${script}"
+            curl --silent --location --remote-name "${script_url_prefix}/${script}"
         done
 
         # Create a manifest of VCFs and indexes to bulk download with `gcloud storage cp`.
         touch vcf_manifest.txt
         for file in ~{sep=' ' tieout_vcfs} ~{sep=' ' tieout_vcf_indexes}
         do
-        echo $file >> vcf_manifest.txt
+            echo $file >> vcf_manifest.txt
         done
 
         # Copy VCFs and indexes to the current directory.
