@@ -50,6 +50,7 @@ workflow GvsQuickstartIntegration {
 
         Int? extract_scatter_count
         String drop_state = "FORTY"
+        Boolean extract_do_not_filter_override = true
     }
     String project_id = "gvs-internal"
 
@@ -73,30 +74,33 @@ workflow GvsQuickstartIntegration {
             extract_scatter_count = extract_scatter_count,
             # Force filtering off as it is not deterministic and the initial version of this integration test does not
             # allow for inexact matching of actual and expected results.
-            extract_do_not_filter_override = true,
+            extract_do_not_filter_override = extract_do_not_filter_override,
             drop_state = drop_state
     }
 
-    call AssertIdenticalOutputs {
-        input:
-            expected_output_prefix = expected_output_prefix,
-            actual_vcfs = GvsUnified.output_vcfs
-    }
+    # Only assert identical outputs if we did not filter (filtering is not deterministic)
+    if (extract_do_not_filter_override) {
+        call AssertIdenticalOutputs {
+            input:
+                expected_output_prefix = expected_output_prefix,
+                actual_vcfs = GvsUnified.output_vcfs
+        }
 
-    call AssertCostIsTrackedAndExpected {
-        input:
-            go = GvsUnified.done,
-            dataset_name = BuildGATKJarAndCreateDataset.dataset_name,
-            project_id = project_id,
-            expected_output_csv = expected_output_prefix + "cost_observability_expected.csv"
-    }
+        call AssertCostIsTrackedAndExpected {
+            input:
+                go = GvsUnified.done,
+                dataset_name = BuildGATKJarAndCreateDataset.dataset_name,
+                project_id = project_id,
+                expected_output_csv = expected_output_prefix + "cost_observability_expected.csv"
+        }
 
-    call AssertTableSizesAreExpected {
-        input:
-            go = GvsUnified.done,
-            dataset_name = BuildGATKJarAndCreateDataset.dataset_name,
-            project_id = project_id,
-            expected_output_csv = expected_output_prefix + "table_sizes_expected.csv"
+        call AssertTableSizesAreExpected {
+            input:
+                go = GvsUnified.done,
+                dataset_name = BuildGATKJarAndCreateDataset.dataset_name,
+                project_id = project_id,
+                expected_output_csv = expected_output_prefix + "table_sizes_expected.csv"
+        }
     }
 
     output {
