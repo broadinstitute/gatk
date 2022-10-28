@@ -7,7 +7,7 @@ workflow GvsQuickstartIntegration {
 
     input {
         String branch_name
-        String expected_output_prefix = "gs://gvs-internal-quickstart/integration/2022-07-05/"
+        String expected_output_prefix = "gs://gvs-internal-quickstart/integration/2022-10-20/"
 
         Array[String] external_sample_names = [
                                               "ERS4367795",
