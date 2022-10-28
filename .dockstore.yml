@@ -135,6 +135,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_vs_697
    - name: GvsCreateVAT
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVAT.wdl
