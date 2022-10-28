@@ -110,10 +110,11 @@ COPY --from=build /bcftools /bcftools
 
 # Copy the application source code.
 RUN mkdir /app
-COPY *.py /app
-COPY *.sql /app
+COPY *.py /app/
+COPY *.sql /app/
 
 # Copy the schema files needed for VAT creation.
+RUN mkdir -p /data/variant_annotation_table/schema
 COPY ./variant_annotation_table/schema/*.json /data/variant_annotation_table/schema/
 
 ENV PATH=/bcftools/bin\:$PATH
