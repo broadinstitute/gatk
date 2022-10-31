@@ -2,7 +2,7 @@
 # Creating the Variant Annotations Table
 
 ### The VAT pipeline is a set of WDLs
-- [GvsCreateVATfromVDS.wdl](/scripts/variantstore/wdl/≈.wdl)
+- [GvsCreateVATfromVDS.wdl](/scripts/variantstore/wdl/GvsCreateVATfromVDS.wdl)
 - [GvsValidateVAT.wdl](/scripts/variantstore/variant_annotations_table/GvsValidateVAT.wdl)
 
 The pipeline takes in jointVCFs (and their index files), creates a queryable table in BigQuery, and outputs a bgzipped TSV file containing the contents of that table. That TSV file is the sole AoU deliverable.
