@@ -99,7 +99,6 @@ def write_sites_only_vcf(vds, sites_only_vcf_path):
     # TODO we will want to drop some cols because there's no reason to carry around some of this stuff
     split_filtered_vds = hl.vds.split_multi(vds)
     hl.export_vcf(split_filtered_vds.variant_data.rows(), sites_only_vcf_path)
-    hl.export_vcf(vds.variant_data.rows(), sites_only_vcf_path)
 
 
 def write_vat_custom_annotations(mt, vat_custom_annotations_tsv_path):
@@ -109,7 +108,6 @@ def write_vat_custom_annotations(mt, vat_custom_annotations_tsv_path):
     # TODO:
     # Do we need to track the dropped sites?
     # filter out sites with too many alt alleles
-    # normalize, left align and remove duplicate lines
     # filter out variants with an AC of 0
 
 
@@ -132,7 +130,7 @@ def write_vat_custom_annotations(mt, vat_custom_annotations_tsv_path):
         eas_homozygote_count = ac_an_af_split.call_stats_by_pop.get('eas').homozygote_count[1],
     )
 
-    # SC = AC - homozygote_count
+    # note that SC = AC - homozygote_count
 
     ac_an_af_rows=ac_an_af_rows.drop('tranche_data')
     ac_an_af_rows=ac_an_af_rows.drop('truth_sensitivity_snp_threshold')
