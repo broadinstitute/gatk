@@ -7,7 +7,7 @@ import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
-import org.broadinstitute.hellbender.cmdline.programgroups.PathSeqProgramGroup;
+import org.broadinstitute.hellbender.cmdline.programgroups.MetagenomicsProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerShort;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 @DocumentedFeature
 @CommandLineProgramProperties(summary = "Get PathSeq file information",
         oneLineSummary = "Get PathSeq file information",
-        programGroup = PathSeqProgramGroup.class)
+        programGroup = MetagenomicsProgramGroup.class)
 @BetaFeature
 public final class PathSeqInfo extends CommandLineProgram {
 
@@ -51,7 +51,7 @@ public final class PathSeqInfo extends CommandLineProgram {
         }
         if (taxonomyFile != null) {
             final PSTaxonomyDatabase taxonomyDatabase = PSScorer.readTaxonomyDatabase(taxonomyFile);
-            writeTaxonomySpeciesWithReferences(taxonomyDatabase, speciesList);
+            writeTaxonomyTree(taxonomyDatabase, speciesList);
             printTaxonomyInfo(taxonomyDatabase);
         }
         if (kmerFile != null) {
@@ -97,17 +97,25 @@ public final class PathSeqInfo extends CommandLineProgram {
         return maskedBaseList;
     }
 
-    private static void writeTaxonomySpeciesWithReferences(final PSTaxonomyDatabase taxonomyDatabase, final String speciesListPath) {
+    private static void writeTaxonomyTree(final PSTaxonomyDatabase taxonomyDatabase, final String speciesListPath) {
         Utils.nonNull(taxonomyDatabase, "Cannot print species for null taxonomy database");
         if (speciesListPath == null) return;
         final PSTree tree = taxonomyDatabase.tree;
+        final Map<Integer, List<String>> taxIdToAccessionMap = new HashMap<>();
+        for (final Map.Entry<String, Integer> entry : taxonomyDatabase.accessionToTaxId.entrySet()) {
+            taxIdToAccessionMap.putIfAbsent(entry.getValue(), new ArrayList<>());
+            taxIdToAccessionMap.get(entry.getValue()).add(entry.getKey());
+        }
         try (final PrintStream printStream = new PrintStream(BucketUtils.createFile(speciesListPath))) {
-            final List<Integer> list = getNodesWithReference(tree);
+            final List<Integer> list = new ArrayList<>(tree.getNodeIDs());
             Collections.sort(list);
-            printStream.println("#taxonomy_id\tname\tlength\tparent_id\trank\tpath");
+            printStream.println("#taxonomy_id\tname\trank\tparent_id\tpath\tref_length\taccessions");
             for (final Integer nodeId : list) {
+                final List<String> accessions = taxIdToAccessionMap.getOrDefault(nodeId, Collections.emptyList());
                 final List<String> path = tree.getPathOf(nodeId).stream().map(String::valueOf).collect(Collectors.toList());
-                printStream.println(nodeId + "\t" + tree.getNameOf(nodeId) + "\t" + tree.getLengthOf(nodeId) + "\t" + tree.getParentOf(nodeId) + "\t" + tree.getRankOf(nodeId) + "\t" + String.join(",", path));
+                printStream.println(nodeId + "\t" + tree.getNameOf(nodeId) + "\t" + tree.getRankOf(nodeId)
+                        + "\t" + tree.getParentOf(nodeId) + "\t" + String.join(",", path)
+                        + "\t" + tree.getLengthOf(nodeId) + "\t" + String.join(",", accessions));
             }
         }
     }
