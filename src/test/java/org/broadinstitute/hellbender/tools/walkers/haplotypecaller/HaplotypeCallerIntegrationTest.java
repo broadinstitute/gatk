@@ -1979,6 +1979,120 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         }
     }
 
+    @Test(dataProvider="HaplotypeCallerTestInputs")
+    public void testPileupCallingDRAGEN378ModeConsistentWithPastResults(final String inputFileName, final String referenceFileName) throws Exception {
+        Utils.resetRandomGenerator();
+
+        final File output = createTempFile("testVCFModeIsConsistentWithPastResults", ".vcf");
+        final File expected = new File(TEST_FILES_DIR, "expected.pileupCallerDRAGEN.378.gatk4.vcf");
+
+        final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
+
+        final String[] args = {
+                "-I", inputFileName,
+                "-R", referenceFileName,
+                "-L", "20:10000000-10100000",
+                "-O", outputPath,
+                "-pairHMM", "AVX_LOGLESS_CACHING",
+                "--dragen-378-concordance-mode",
+                "--dragstr-params-path", TEST_FILES_DIR+"example.dragstr-params.txt",
+
+//                // Pileup Caller args
+//                "--" + PileupDetectionArgumentCollection.PILEUP_DETECTION_LONG_NAME,
+//                "--" + PileupDetectionArgumentCollection.PILEUP_DETECTION_ABSOLUTE_ALT_DEPTH, "0",
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false",
+//
+//                // Pileup caller and PDHMM arguments
+//                "--" + PileupDetectionArgumentCollection.PILEUP_DETECTION_BAD_READ_RATIO_LONG_NAME, "0.40",
+//                "--" + PileupDetectionArgumentCollection.PILEUP_DETECTION_ENABLE_INDELS,
+//                "--" + PileupDetectionArgumentCollection.PILEUP_DETECTION_ACTIVE_REGION_LOD_THRESHOLD_LONG_NAME, "3.0",
+//                "--" + PileupDetectionArgumentCollection.GENERATE_PARTIALLY_DETERMINED_HAPLOTYPES_LONG_NAME,
+        };
+
+        runCommandLine(args);
+
+        // Test for an exact match against past results
+        if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
+            IntegrationTestSpec.assertEqualTextFiles(output, expected);
+        }
+    }
+
+    @Test(dataProvider="HaplotypeCallerTestInputs")
+    public void testPileupCallingDRAGEN378OptimizedModeConsistentWithPastResults(final String inputFileName, final String referenceFileName) throws Exception {
+        Utils.resetRandomGenerator();
+
+        final File output = createTempFile("testVCFModeIsConsistentWithPastResults", ".vcf");
+        final File expected = new File(TEST_FILES_DIR, "expected.pileupCallerDRAGEN.378.gatk4.vcf");
+
+        final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
+
+        final String[] args = {
+                "-I", inputFileName,
+                "-R", referenceFileName,
+                "-L", "20:10000000-10100000",
+                "-O", outputPath,
+                "-pairHMM", "AVX_LOGLESS_CACHING",
+                "--dragen-378-concordance-mode",
+                "--dragstr-params-path", TEST_FILES_DIR+"example.dragstr-params.txt",
+
+//                // Pileup Caller args
+//                "--" + PileupDetectionArgumentCollection.PILEUP_DETECTION_LONG_NAME,
+//                "--" + PileupDetectionArgumentCollection.PILEUP_DETECTION_ABSOLUTE_ALT_DEPTH, "0",
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false",
+
+//                // Pileup caller and PDHMM arguments
+//                "--" + PileupDetectionArgumentCollection.PILEUP_DETECTION_BAD_READ_RATIO_LONG_NAME, "0.40",
+//                "--" + PileupDetectionArgumentCollection.PILEUP_DETECTION_ENABLE_INDELS,
+//                "--" + PileupDetectionArgumentCollection.PILEUP_DETECTION_ACTIVE_REGION_LOD_THRESHOLD_LONG_NAME, "3.0",
+//                "--" + PileupDetectionArgumentCollection.GENERATE_PARTIALLY_DETERMINED_HAPLOTYPES_LONG_NAME,
+
+                // This optimization in PDHMM mode should have essentially no bearing on the output, this test deliberately
+                // uses the same expected output as the above test to enforce that over this short test range the optimization
+                // doesn't impact the results in any meaningful way.
+                "--" + PileupDetectionArgumentCollection.PDHMM_READ_OVERLAP_OPTIMIZATION
+        };
+
+        runCommandLine(args);
+
+        // Test for an exact match against past results
+        if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
+            IntegrationTestSpec.assertEqualTextFiles(output, expected);
+        }
+    }
+
+//    @Test()
+//    public void testThing4NA12878() throws Exception {
+//        Utils.resetRandomGenerator();
+//
+//        final File output = createTempFile("testVCFModeIsConsistentWithPastResults", ".vcf");
+//        final File expected = new File(TEST_FILES_DIR, "expected.pileupCallerDRAGEN.gatk4.vcf");
+//
+//        final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
+//
+//        final String[] args = {
+//                "-R","gs://gcp-public-data--broad-references/hg38/v0/dragen_reference/Homo_sapiens_assembly38_masked.fasta",
+//                "-I","gs://broad-dsde-methods-dragen/reprocessed_data_v3.7.5_masked/NA12878_PCRplus_1/NA12878_PCRplus_1.bam",
+//                "-L","chr1:194,149,515-194,149,948",
+//                "-O",outputPath,
+//                "--pileup-detection","--pileup-detection-bad-read-tolerance","0.40","--pileup-detection-enable-indel-pileup-calling", "--pileup-detection-active-region-phred-threshold","3.0",
+//                "-contamination","0.0 ", "--use-pdhmm", "--enable-legacy-assembly-region-trimming", "--print-pileupcalling-status",// "--use-pdhmm-overlap-optimization", //"--make-determined-haps-from-pd-code",
+//                "--use-pdhmm-overlap-optimization",
+////                "--make-determined-haps-from-pd-code",
+//                "-G","StandardAnnotation","-G","StandardHCAnnotation",
+//                "--dragen-mode",
+//                "--disable-spanning-event-genotyping",
+//                "--debug-genotyper-output", "/Users/emeryj/hellbender/gatk/testDebugOutputStream3.txt",
+//                "--dragstr-params-path","/Users/emeryj/hellbender/DRAGENMatlab/personalEvaluation/FINALSTRETCH/debuggingV12/NA12878_PCRplus_1.bam.dragstr",
+//                "-GQB","10","-GQB","20","-GQB","30","-GQB","40","-GQB","50","-GQB","60","-GQB","70","-GQB","80","-GQB","90",
+//        };
+//
+//        runCommandLine(args);
+//
+//        // Test for an exact match against past results
+//        if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
+//            IntegrationTestSpec.assertEqualTextFiles(output, expected);
+//        }
+//    }
 
     @DataProvider(name="PairHMMResultsModes")
     public Object[][] PairHMMResultsModes() {
@@ -2032,6 +2146,48 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
             }
         }
     }
+
+    @Test()
+    // Since the PDHMM isn't currently slot-in compared to the pairHMM modes this has to be computed seperately...
+    public void testPDPairHMMResultsFile() throws Exception {
+        Utils.resetRandomGenerator();
+
+        final File vcfOutput = createTempFile("hmmResultFileTest", ".vcf");
+        final File hmmOutput = createTempFile("hmmResult", ".txt");
+        final File expected = new File(TEST_FILES_DIR, "expected.PDHMM.hmmresults.txt");
+
+        final String hmmOutputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : hmmOutput.getAbsolutePath();
+
+        final String[] args = {
+                "-I", NA12878_20_21_WGS_bam,
+                "-R", b37_reference_20_21,
+                "-L", "20:10009875", // site selected as one of the more complex in our standard test inputs (which means lots of PD events in the haplotypes)
+                "-ip", "300",
+                "-O", vcfOutput.getAbsolutePath(),
+                "--dragen-mode",
+                "--dragstr-params-path", TEST_FILES_DIR+"example.dragstr-params.txt",
+
+                // Pileup Caller args
+                "--" + PileupDetectionArgumentCollection.PILEUP_DETECTION_LONG_NAME,
+                "--" + PileupDetectionArgumentCollection.PILEUP_DETECTION_ABSOLUTE_ALT_DEPTH, "0",
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false",
+
+                // Pileup caller and PDHMM arguments
+                "--" + PileupDetectionArgumentCollection.PILEUP_DETECTION_BAD_READ_RATIO_LONG_NAME, "0.40",
+                "--" + PileupDetectionArgumentCollection.PILEUP_DETECTION_ENABLE_INDELS,
+                "--" + PileupDetectionArgumentCollection.PILEUP_DETECTION_ACTIVE_REGION_LOD_THRESHOLD_LONG_NAME, "3.0",
+                "--" + PileupDetectionArgumentCollection.GENERATE_PARTIALLY_DETERMINED_HAPLOTYPES_LONG_NAME,
+
+                "--pdhmm-results-file", hmmOutputPath
+        };
+
+        runCommandLine(args);
+
+        if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
+            IntegrationTestSpec.assertEqualTextFiles(hmmOutput, expected);
+        }
+    }
+
     @Test
     public void testVcfFlowLikelihoodOptimizedCompConsistentWithPreviousResults() throws Exception {
         Utils.resetRandomGenerator();

@@ -31,6 +31,7 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     public static final String DO_NOT_CORRECT_OVERLAPPING_BASE_QUALITIES_LONG_NAME = "do-not-correct-overlapping-quality";
     public static final String OUTPUT_BLOCK_LOWER_BOUNDS = "floor-blocks";
     public static final String DRAGEN_GATK_MODE_LONG_NAME = "dragen-mode";
+    public static final String DRAGEN_378_GATK_MODE_LONG_NAME = "dragen-378-concordance-mode";
     public static final String APPLY_BQD_LONG_NAME = "apply-bqd";
     public static final String APPLY_FRD_LONG_NAME = "apply-frd";
     public static final String TRANSFORM_DRAGEN_MAPPING_QUALITY_LONG_NAME = "transform-dragen-mapping-quality";
@@ -151,8 +152,13 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
      *
      *
      */
-    @Argument(fullName = DRAGEN_GATK_MODE_LONG_NAME, optional = true, doc="Single argument for enabling the bulk of DRAGEN-GATK features. NOTE: THIS WILL OVERWRITE PROVIDED ARGUMENT CHECK TOOL INFO TO SEE WHICH ARGUMENTS ARE SET).")
+    @Argument(fullName = DRAGEN_GATK_MODE_LONG_NAME, optional = true, doc="Single argument for enabling the bulk of DRAGEN-GATK features. NOTE: THIS WILL OVERWRITE PROVIDED ARGUMENT CHECK TOOL INFO TO SEE WHICH ARGUMENTS ARE SET).", mutex = {DRAGEN_378_GATK_MODE_LONG_NAME})
     public Boolean dragenMode = false;
+    /**
+     * DRAGEN-GATK version 2: This includes PDHMM and Columnwise detection (with hopes to add Joint Detection and new STRE as well in the future)
+     */
+    @Argument(fullName = DRAGEN_378_GATK_MODE_LONG_NAME, optional = true, doc="Single argument for enabling the bulk of DRAGEN-GATK features including new developments for concordance against DRAGEN 3.7.8. NOTE: THIS WILL OVERWRITE PROVIDED ARGUMENT CHECK TOOL INFO TO SEE WHICH ARGUMENTS ARE SET).", mutex = {DRAGEN_GATK_MODE_LONG_NAME})
+    public Boolean dragen378Mode = false;
     @Advanced
     @Argument(fullName = FLOW_GATK_MODE_LONG_NAME, optional = true, doc="Single argument for enabling the bulk of Flow Based features. NOTE: THIS WILL OVERWRITE PROVIDED ARGUMENT CHECK TOOL INFO TO SEE WHICH ARGUMENTS ARE SET).")
     public FlowMode flowMode = FlowMode.NONE;
@@ -244,6 +250,34 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
                 GenotypeCalculationArgumentCollection.USE_POSTERIORS_TO_CALCULATE_QUAL_LONG_NAME, "true",
         };
     }
+
+    public String[] getDragenVersion2NameValuePairs() {
+        return new String[]{
+                APPLY_BQD_LONG_NAME, "true",
+                APPLY_FRD_LONG_NAME, "true",
+                TRANSFORM_DRAGEN_MAPPING_QUALITY_LONG_NAME, "true",
+                SOFT_CLIP_LOW_QUALITY_ENDS_LONG_NAME, "true",
+                MAPPING_QUALITY_THRESHOLD_FOR_GENOTYPING_LONG_NAME, "1",
+                ReadFilterArgumentDefinitions.MINIMUM_MAPPING_QUALITY_NAME, "1",
+                ALLELE_EXTENSION_LONG_NAME, "1",
+                LikelihoodEngineArgumentCollection.DISABLE_CAP_BASE_QUALITIES_TO_MAP_QUALITY_LONG_NAME, "true",
+                LikelihoodEngineArgumentCollection.ENABLE_DYNAMIC_READ_DISQUALIFICATION_FOR_GENOTYPING_LONG_NAME, "true",
+                LikelihoodEngineArgumentCollection.EXPECTED_MISMATCH_RATE_FOR_READ_DISQUALIFICATION_LONG_NAME, "0.03",
+                GenotypeCalculationArgumentCollection.GENOTYPE_ASSIGNMENT_METHOD_LONG_NAME, String.valueOf(GenotypeAssignmentMethod.USE_POSTERIOR_PROBABILITIES),
+                AssemblyRegionArgumentCollection.INDEL_PADDING_LONG_NAME, "150",
+                GenotypeCalculationArgumentCollection.CALL_CONFIDENCE_LONG_NAME, "1.0", //NOTE: this is different from the above mode, we find it results in slightly less noise with DRAGEN
+                GenotypeCalculationArgumentCollection.USE_POSTERIORS_TO_CALCULATE_QUAL_LONG_NAME, "true",
+
+                // Pileup caller and PDHMM arguments
+                PileupDetectionArgumentCollection.PILEUP_DETECTION_LONG_NAME, "true",
+                PileupDetectionArgumentCollection.PILEUP_DETECTION_ABSOLUTE_ALT_DEPTH, "0",
+                PileupDetectionArgumentCollection.PILEUP_DETECTION_BAD_READ_RATIO_LONG_NAME, "0.40",
+                PileupDetectionArgumentCollection.PILEUP_DETECTION_ENABLE_INDELS, "true",
+                PileupDetectionArgumentCollection.PILEUP_DETECTION_ACTIVE_REGION_LOD_THRESHOLD_LONG_NAME, "3.0",
+                PileupDetectionArgumentCollection.GENERATE_PARTIALLY_DETERMINED_HAPLOTYPES_LONG_NAME, "true"
+        };
+    }
+
 
     @Advanced
     @Hidden

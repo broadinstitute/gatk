@@ -172,19 +172,19 @@ public class HaplotypeCaller extends AssemblyRegionWalker {
      */
     @Override
     protected String[] customCommandLineValidation() {
-        if (hcArgs.dragenMode && hcArgs.flowMode != HaplotypeCallerArgumentCollection.FlowMode.NONE ) {
+        if ((hcArgs.dragenMode || hcArgs.dragen378Mode) && hcArgs.flowMode != HaplotypeCallerArgumentCollection.FlowMode.NONE ) {
             throw new UserException("dragen mode and flow mode can't be both specified");
         }
 
-        if (hcArgs.dragenMode) {
+        if (hcArgs.dragenMode || hcArgs.dragen378Mode) {
             final GATKReadFilterPluginDescriptor readFilterPlugin =
                     getCommandLineParser().getPluginDescriptor(GATKReadFilterPluginDescriptor.class);
             Optional<ReadFilter> filterOptional = readFilterPlugin.getResolvedInstances().stream().filter(rf -> rf instanceof MappingQualityReadFilter).findFirst();
             filterOptional.ifPresent(readFilter -> ((MappingQualityReadFilter) readFilter).minMappingQualityScore = 1);
             ModeArgumentUtils.setArgValues(
                     getCommandLineParser(),
-                    hcArgs.getDragenNameValuePairs(),
-                    HaplotypeCallerArgumentCollection.DRAGEN_GATK_MODE_LONG_NAME);
+                    hcArgs.dragen378Mode? hcArgs.getDragenVersion2NameValuePairs() : hcArgs.getDragenNameValuePairs(),
+                    hcArgs.dragen378Mode? HaplotypeCallerArgumentCollection.DRAGEN_378_GATK_MODE_LONG_NAME : HaplotypeCallerArgumentCollection.DRAGEN_GATK_MODE_LONG_NAME);
         }
         if (hcArgs.flowMode != HaplotypeCallerArgumentCollection.FlowMode.NONE) {
             ModeArgumentUtils.setArgValues(

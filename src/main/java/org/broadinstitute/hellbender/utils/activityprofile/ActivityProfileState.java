@@ -14,6 +14,8 @@ public final class ActivityProfileState {
     private double activeProb;
     private final Type resultState;
     private final Number resultValue;
+    //TODO hack garbage
+    private double originalActiveProb = 0.0;
 
     // When range-checking probabilities, we allow this much tolerance.
     private static final double PROBABILITY_TOLERANCE = 0.01;
@@ -49,6 +51,14 @@ public final class ActivityProfileState {
      */
     public Number getResultValue() {
         return resultValue;
+    }
+
+    public double getOriginalActiveProb() {
+        return originalActiveProb;
+    }
+
+    public void setOriginalActiveProb(double originalActiveProb) {
+        this.originalActiveProb = originalActiveProb;
     }
 
     /**

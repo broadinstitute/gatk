@@ -31,8 +31,10 @@ import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
+import org.broadinstitute.hellbender.utils.haplotype.PartiallyDeterminedHaplotype;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState;
+import org.broadinstitute.hellbender.utils.pileup.PileupBasedAlleles;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.*;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
@@ -263,8 +265,7 @@ public final class AssemblyBasedCallerUtils {
                                                                                     final boolean handleSoftclips,
                                                                                     final ReadLikelihoodCalculationEngine.Implementation implementation) {
         //AlleleLikelihoods::normalizeLikelihoods uses Double.NEGATIVE_INFINITY as a flag to disable capping
-        final double log10GlobalReadMismappingRate = likelihoodArgs.phredScaledGlobalReadMismappingRate < 0 ? Double.NEGATIVE_INFINITY
-                : QualityUtils.qualToErrorProbLog10(likelihoodArgs.phredScaledGlobalReadMismappingRate);
+        final double log10GlobalReadMismappingRate = getGlobalMismatchingRateFromArgs(likelihoodArgs);
 
         switch ( implementation) {
             // TODO these constructors should eventually be matched so they both incorporate all the same ancilliary arguments
@@ -282,6 +283,14 @@ public final class AssemblyBasedCallerUtils {
             default:
                 throw new UserException("Unsupported likelihood calculation engine.");
         }
+    }
+
+    /**
+     * Exposed so that PDHMM can be constructed outside of this class
+     */
+    public static double getGlobalMismatchingRateFromArgs(LikelihoodEngineArgumentCollection likelihoodArgs) {
+        return likelihoodArgs.phredScaledGlobalReadMismappingRate < 0 ? Double.NEGATIVE_INFINITY
+                : QualityUtils.qualToErrorProbLog10(likelihoodArgs.phredScaledGlobalReadMismappingRate);
     }
 
     public static Optional<HaplotypeBAMWriter> createBamWriter(final AssemblyBasedCallerArgumentCollection args,
@@ -320,7 +329,6 @@ public final class AssemblyBasedCallerUtils {
      * for further HC steps
      */
     public static AssemblyResultSet assembleReads(final AssemblyRegion region,
-                                                  final List<VariantContext> forcedPileupAlleles,
                                                   final AssemblyBasedCallerArgumentCollection argumentCollection,
                                                   final SAMFileHeader header,
                                                   final SampleList sampleList,
@@ -397,10 +405,15 @@ public final class AssemblyBasedCallerUtils {
                             haplotypeCollapsing);
 
             assemblyResultSet.setHaplotypeCollapsingEngine(haplotypeCollapsing);
-
-            if (!forcedPileupAlleles.isEmpty()) {
-                processPileupAlleles(region, forcedPileupAlleles, argumentCollection.pileupDetectionArgs.snpAdajacentToAssemblyIndel, argumentCollection.maxMnpDistance, aligner, refHaplotype, assemblyResultSet, argumentCollection.pileupDetectionArgs.numHaplotypesToIterate, argumentCollection.pileupDetectionArgs.filteringKmerSize, argumentCollection.getHaplotypeToReferenceSWParameters());
-            }
+//
+//            List<VariantContext> pileupAllelesFoundShouldFilter = forcedPileupAlleles.stream()
+//                    .filter(v -> PileupBasedAlleles.shouldFilterAssemblyVariant(argumentCollection.pileupDetectionArgs, v))
+//                    .collect(Collectors.toList());
+//            List<VariantContext> pileupAllelesPassingFilters = forcedPileupAlleles.stream()
+//                    .filter(v -> PileupBasedAlleles.passesFilters(argumentCollection.pileupDetectionArgs, v))
+//                    .collect(Collectors.toList());
+//
+//            applyPileupEventsAsForcedAlleles(region, argumentCollection, aligner, refHaplotype, assemblyResultSet, pileupAllelesFoundShouldFilter, pileupAllelesPassingFilters);
             assemblyResultSet.setDebug(argumentCollection.assemblerArgs.debugAssembly);
             assemblyResultSet.debugDump(logger);
             return assemblyResultSet;
@@ -430,14 +443,67 @@ public final class AssemblyBasedCallerUtils {
     }
 
     /**
+     * Helper method that handles the actual "GGA-like" Merging of haplotype alleles into an assembly result set.
+     *
+     * First this method will filter out haplotypes that contain alleles that have failed the pileup calling filtering steps,
+     * Then the list will attempt to poke into the haplotype list artificial haplotypes that have the found alleles present.
+     *
+     * @param region
+     * @param argumentCollection
+     * @param aligner
+     * @param refHaplotype
+     * @param assemblyResultSet
+     * @param pileupAllelesFoundShouldFilter
+     * @param pileupAllelesPassingFilters
+     * @return
+     */
+    public static AssemblyResultSet applyPileupEventsAsForcedAlleles(final AssemblyRegion region, final AssemblyBasedCallerArgumentCollection argumentCollection,
+                                                                      final SmithWatermanAligner aligner, final Haplotype refHaplotype,
+                                                                      final AssemblyResultSet assemblyResultSet, final List<VariantContext> pileupAllelesFoundShouldFilter,
+                                                                      final List<VariantContext> pileupAllelesPassingFilters, final boolean debug) {
+        List<Haplotype> haplotypesWithFilterAlleles = new ArrayList<>();
+        if (!pileupAllelesFoundShouldFilter.isEmpty() && !argumentCollection.pileupDetectionArgs.generatePDHaplotypes) {
+            // TODO this is a bad algorithm for bad people
+            for(VariantContext delVariant : pileupAllelesFoundShouldFilter) {
+                for (Haplotype hap : assemblyResultSet.getHaplotypeList()) {
+                    if (hap.getEventMap()==null) {
+                        if (!hap.isReference()) {
+                            //throw new RuntimeException("empty event map for haplotype" + hap);
+                        }
+                    } else {
+                        if (hap.getEventMap().getVariantContexts().stream().anyMatch(v -> v.getStart() == delVariant.getStart()
+                                && delVariant.getReference().equals(v.getReference())
+                                && delVariant.getAlternateAllele(0).equals(v.getAlternateAllele(0)))) {
+                            if (argumentCollection.pileupDetectionArgs.debugPileupStdout) System.err.println("Flagging hap " + hap + " for containing variant " + delVariant);
+                            haplotypesWithFilterAlleles.add(hap);
+                        }
+                    }
+                }
+            }
+        }
+        // TODO removing haplotypes whole cloth is dangerous and might have to be fixed
+        if (!haplotypesWithFilterAlleles.isEmpty()) {
+            if (debug) System.out.println("Found Assembly Haps with filtered Variants:\n"+haplotypesWithFilterAlleles.stream().map(Haplotype::toString).collect(Collectors.joining("\n")));
+
+            for (Haplotype hap : haplotypesWithFilterAlleles) {
+                assemblyResultSet.removeHapltotype(hap);
+            }
+        }
+        if (!pileupAllelesPassingFilters.isEmpty()) {
+            processPileupAlleles(region, pileupAllelesPassingFilters, argumentCollection.maxMnpDistance, argumentCollection.pileupDetectionArgs.snpAdajacentToAssemblyIndel, aligner, refHaplotype, assemblyResultSet, argumentCollection.pileupDetectionArgs.numHaplotypesToIterate, argumentCollection.pileupDetectionArgs.filteringKmerSize, argumentCollection.getHaplotypeToReferenceSWParameters(), debug);
+        }
+        return assemblyResultSet;
+    }
+
+    /**
      * Handle pileup detected alternate alleles.
      */
     @VisibleForTesting
     @SuppressWarnings("deprecation")
-    static void processPileupAlleles(final AssemblyRegion region, final List<VariantContext> givenAlleles, final int maxMnpDistance,
+    static void processPileupAlleles(final AssemblyRegion region, final List<VariantContext> pileupVC, final int maxMnpDistance,
                                      final int snpAdjacentToIndelLimit, final SmithWatermanAligner aligner, final Haplotype refHaplotype,
                                      final AssemblyResultSet assemblyResultSet, final int numHaplotypesPerIteration, final int hapFilteringKmerSize,
-                                     final SWParameters haplotypeToReferenceSWParameters) {
+                                     final SWParameters haplotypeToReferenceSWParameters, final boolean debug) {
         final int activeRegionStart = refHaplotype.getAlignmentStartHapwrtRef();
         final Map<Integer, VariantContext> assembledVariants = assemblyResultSet.getVariationEvents(maxMnpDistance).stream()
                 .collect(Collectors.groupingBy(VariantContext::getStart, Collectors.collectingAndThen(Collectors.toList(), AssemblyBasedCallerUtils::makeMergedVariantContext)));
@@ -455,7 +521,7 @@ public final class AssemblyBasedCallerUtils {
         Map<Kmer, Integer> kmerReadCounts = getKmerReadCounts(region.getHardClippedPileupReads(), hapFilteringKmerSize);
 
         // Remove SNPs that are too close to assembled indels.
-        final List<VariantContext> givenAllelesFiltered = givenAlleles.stream().filter(vc -> vc.isIndel() || assembledIndels.stream().noneMatch(indel -> vc.withinDistanceOf(indel, snpAdjacentToIndelLimit))).collect(Collectors.toList());
+        final List<VariantContext> givenAllelesFiltered = pileupVC.stream().filter(vc -> vc.isIndel() || assembledIndels.stream().noneMatch(indel -> vc.withinDistanceOf(indel, snpAdjacentToIndelLimit))).collect(Collectors.toList());
 
         for (final VariantContext givenVC : givenAllelesFiltered) {
             final VariantContext assembledVC = assembledVariants.get(givenVC.getStart());
@@ -470,6 +536,7 @@ public final class AssemblyBasedCallerUtils {
 
             final List<Haplotype> newPileupHaplotypes = new ArrayList<>();
             for (final Allele givenAllele : unassembledNonSymbolicAlleles) {
+                if (debug) System.out.println("Processing new Haplotypes for Pileup Allele that was not in the assembly: "+givenVC);
                 for (final Haplotype baseHaplotype : baseHaplotypes) {
                     // make sure this allele doesn't collide with a variant on the haplotype
                     if (baseHaplotype.getEventMap() == null || baseHaplotype.getEventMap().getVariantContexts().stream().noneMatch(vc -> vc.overlaps(givenVC))) {
@@ -490,7 +557,9 @@ public final class AssemblyBasedCallerUtils {
                 }
             }
 
-            baseHaplotypes.addAll(filterPileupHaplotypes(newPileupHaplotypes, kmerReadCounts, numHaplotypesPerIteration, hapFilteringKmerSize));
+            Set<Haplotype> refactoredHaps = filterPileupHaplotypes(newPileupHaplotypes, kmerReadCounts, numHaplotypesPerIteration, hapFilteringKmerSize);
+            baseHaplotypes.addAll(refactoredHaps);
+            if (debug) System.out.println("Constructed the following new Pileup Haplotypes after filtering:\n"+refactoredHaps.stream().map(Haplotype::toString).collect(Collectors.joining("\n")));
 
         }
         baseHaplotypes.forEach(assemblyResultSet::add);
@@ -556,7 +625,8 @@ public final class AssemblyBasedCallerUtils {
                     ReferenceConfidenceVariantContextMerger.remapAlleles(assembledVC, longerRef));
             final Set<Allele> givenAlleleSet = new HashSet<>(longerRef.length() == givenVCRefLength ? givenVC.getAlternateAlleles() :
                     ReferenceConfidenceVariantContextMerger.remapAlleles(givenVC, longerRef));
-            unassembledGivenAlleles = givenAlleleSet.stream().filter(a -> !assembledAlleleSet.contains(a)).collect(Collectors.toList());
+            //TODO ADD A TEST FOR THIS CHANGE! IT WAS A RARE BUG BEFORE
+            unassembledGivenAlleles = givenAlleleSet.stream().filter(a -> !assembledAlleleSet.contains(a)).filter(a -> !a.isReference()).collect(Collectors.toList());
         }
         return unassembledGivenAlleles;
     }
@@ -856,6 +926,10 @@ public final class AssemblyBasedCallerUtils {
 
         for (final Haplotype h : haplotypes) {
 
+            // Partially determined haplotypes know at what position they are determined, only determined position haps should be considered for genotyping
+            if (h instanceof PartiallyDeterminedHaplotype && ((PartiallyDeterminedHaplotype) h).getDeterminedPosition() != loc) {
+                continue;
+            }
             final List<VariantContext> spanningEvents = h.getEventMap().getOverlappingEvents(loc);
 
             if (spanningEvents.isEmpty()) {    //no events --> this haplotype supports the reference at this locus
