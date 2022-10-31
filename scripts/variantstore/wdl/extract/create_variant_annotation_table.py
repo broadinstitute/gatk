@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
-import uuid
-import time
 from datetime import datetime
 
-import csv
 import json
 import ijson
 import gzip
@@ -176,9 +173,7 @@ def get_subpopulation_calculations(subpop_annotations):
         subpop_ac_val = subpop_annotations.get("_".join(["AC", gvs_subpop]), 0)
         subpop_an_val = subpop_annotations.get("_".join(["AN", gvs_subpop]), 0)
         subpop_af_val = subpop_annotations.get("_".join(["AF", gvs_subpop]), None)
-        # note the assumption is made that AC_Hom must be even because by it's nature it means there are two, but there could be an error
-        # subpop_sc_val = int(subpop_annotations.get("_".join(["AC_Hom", gvs_subpop]), 0) / 2 ) + subpop_annotations.get("_".join(["AC_Het", gvs_subpop]), 0) + subpop_annotations.get("_".join(["AC_Hemi", gvs_subpop]), 0)
-        # for the VDS flavor, we get the homozygote_count and subtract it from the AC value
+        # From the VDS, we get the homozygote_count and subtract it from the AC value
         subpop_sc_val = subpop_annotations.get("_".join(["AC", gvs_subpop]), 0) - subpop_annotations.get("_".join(["Hom", gvs_subpop]), 0)
 
         row["_".join(["gvs", gvs_subpop, "ac"])] = subpop_ac_val
@@ -275,8 +270,7 @@ def make_annotated_json_row(row_position, row_ref, row_alt, variant_line, transc
         nirvana_gvs_alleles_fieldname = vat_nirvana_gvs_alleles_dictionary.get(vat_gvs_alleles_fieldname)
         gvs_alleles_fieldvalue = gvs_annotations.get(nirvana_gvs_alleles_fieldname)
         row[vat_gvs_alleles_fieldname] = gvs_alleles_fieldvalue
-        # row["gvs_all_sc"] = int(gvs_annotations.get("AC_Hom") / 2 ) + gvs_annotations.get('AC_Het') ## should this include the hemi value?
-        row["gvs_all_sc"] = gvs_annotations.get("AC") - gvs_annotations.get('Hom') ## should this include the hemi value?
+        row["gvs_all_sc"] = gvs_annotations.get("AC") - gvs_annotations.get('Hom') ## TODO: should this include the hemi value?
 
 
     subpopulation_info = get_subpopulation_calculations(gvs_annotations)
