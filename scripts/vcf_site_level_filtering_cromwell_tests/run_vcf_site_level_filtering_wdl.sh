@@ -27,17 +27,10 @@ else
 fi
 echo "Docker build done =========="
 
-sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" $CROMWELL_TEST_DIR/vcf_site_level_filtering_original.json >$WORKING_DIR/vcf_site_level_filtering_original_mod.json
-sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" $CROMWELL_TEST_DIR/vcf_site_level_filtering_snp_then_indel.json >$WORKING_DIR/vcf_site_level_filtering_snp_then_indel_mod.json
 sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" $CROMWELL_TEST_DIR/vcf_site_level_filtering.json >$WORKING_DIR/vcf_site_level_filtering_mod.json
 sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" $CROMWELL_TEST_DIR/vcf_site_level_filtering_pos_neg.json >$WORKING_DIR/vcf_site_level_filtering_pos_neg_mod.json
 
 echo "Running Filtering WDL through cromwell"
-cat $WORKING_DIR/vcf_site_level_filtering_original_mod.json
-java -jar $CROMWELL_JAR run $WDL_DIR/JointVcfFilteringOriginal.wdl -i $WORKING_DIR/vcf_site_level_filtering_original_mod.json
-
-cat $WORKING_DIR/vcf_site_level_filtering_snp_then_indel_mod.json
-java -jar $CROMWELL_JAR run $WDL_DIR/JointVcfFilteringSnpThenIndel.wdl -i $WORKING_DIR/vcf_site_level_filtering_snp_then_indel_mod.json
 
 cat $WORKING_DIR/vcf_site_level_filtering_mod.json
 java -jar $CROMWELL_JAR run $WDL_DIR/JointVcfFiltering.wdl -i $WORKING_DIR/vcf_site_level_filtering_mod.json
