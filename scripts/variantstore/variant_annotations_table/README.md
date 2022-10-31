@@ -2,20 +2,22 @@
 # Creating the Variant Annotations Table
 
 ### The VAT pipeline is a set of WDLs
-- [GvsCreateVAT.wdl](/scripts/variantstore/wdl/GvsCreateVAT.wdl)
+- [GvsCreateVATfromVDS.wdl](/scripts/variantstore/wdl/≈.wdl)
 - [GvsValidateVAT.wdl](/scripts/variantstore/variant_annotations_table/GvsValidateVAT.wdl)
 
 The pipeline takes in jointVCFs (and their index files), creates a queryable table in BigQuery, and outputs a bgzipped TSV file containing the contents of that table. That TSV file is the sole AoU deliverable.
 
-**GvsCreateVAT** creates the table, while
+**GvsCreateVATfromVDS** creates the variant annotations table from a sites only VCF and a TSV both created from a VDS
 **GvsValidateVAT** checks and validates the created VAT and prints a report of any failing validation
 
 
-### Run GvsCreateVAT:
+### Run GvsCreateVATfromVDS:
 
-Most of the inputs are constants — like the reference, or a table schema — and don't require any additional work, or have defaults set in the WDL). However for the specific data being put in the VAT, three inputs need to be created.
+Most of the inputs are constants — like the reference, or a table schema — and don't require any additional work, or have defaults set in the WDL). 
+However for the specific data being put in the VAT, three inputs need to be created.
 
-The first two of these inputs are two files — one of the file/vcf/shards you want to use for the VAT, and their corresponding index files. These are labelled as `inputFileofFileNames` and `inputFileofIndexFileNames` and need to be copied into a GCP bucket that this pipeline will have access to (eg. this bucket: `gs://aou-genomics-curation-prod-processing/vat/`) for easy access during the workflow.
+The first of these inputs is a Sites Only VCF
+The second of these inputs is a TSV of custom annotations (AC AN and AF)
 The third input is the ancestry file from the ancestry pipeline which will be used to calculate AC, AN and AF for all subpopulations. It needs to be copied into a GCP bucket that this pipeline will have access to. This input has been labelled as the `ancestry_file`.
 
 Most of the other files are specific to where the VAT will live, like the project_id and dataset_name and the table_suffix which will name the VAT itself as vat_`table_suffix` as well as a GCP bucket location, the output_path, for the intermediary files and the VAT export in tsv form.
@@ -53,11 +55,9 @@ _(dont forget to do this for the indices as well)_
 
 Variants may be filtered out of the VAT (that were in the GVS extract) for the following reasons:
 - they are hard-filtered out based on the initial soft filtering from the GVS extract
-- they have excess alternate alleles--currently that cut off is 50 alternate alleles
-- they are duplicates of other variants (this occurs very rarely after normalization) Both duplicates are dropped.
-- there is an N in the reference -- this will be removed from future releases of the VAT
-All dropped variants are tracked in external files, one file for each shard, called track_dropped.tsv
+- they have excess alternate alleles--currently that cut off is 100 alternate alleles
 
+## TODO: we are currently not tracking dropped variants / sites and we need to before Delta
 
 
 
