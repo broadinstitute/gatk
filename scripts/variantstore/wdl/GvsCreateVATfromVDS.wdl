@@ -210,10 +210,8 @@ task AnnotateVCF {
 
         echo "Extracting annotation data sources tar/gzip file..."
         mkdir datasources_dir
-        tar zxvf ~{nirvana_data_tar} -C datasources_dir  --strip-components 2
-        DATA_SOURCES_FOLDER="$PWD/references"
-        ls
-        
+        tar zxvf ~{nirvana_data_tar} -C datasources_dir  ## --strip-components 2
+        DATA_SOURCES_FOLDER="$PWD/datasources_dir"
 
 
         # =======================================
