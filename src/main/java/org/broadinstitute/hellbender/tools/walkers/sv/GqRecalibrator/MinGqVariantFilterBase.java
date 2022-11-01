@@ -71,8 +71,8 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
     @Argument(fullName="keep-homvar", shortName="kh", doc="Keep homvar variants even if their GQ is less than min-GQ", optional=true)
     public boolean keepHomvar = false;
 
-    @Argument(fullName="train-homref", doc="Do not train xgboost classifier with HOMREF genotypes", optional=true)
-    public boolean trainHomref = true;
+    @Argument(fullName="keep-homref", doc="Do not train or filter xgboost classifier with HOMREF genotypes", optional=true)
+    public boolean keepHomref = true;
 
     @Argument(fullName="keep-multiallelic", shortName="km", doc="Keep multiallelic variants even if their GQ is less than min-GQ", optional=true)
     public boolean keepMultiallelic = true;
@@ -418,7 +418,8 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
                 options.toArray(new Options[0]));
         final Set<VCFHeaderLine> hInfo = new LinkedHashSet<>(getHeaderForVariants().getMetaDataInInputOrder());
         final String filterableVariant = (keepMultiallelic ? "biallelic " : "") +
-                                         (keepHomvar ? "non-homvar" : "") +
+                                         (keepHomref ? (keepHomvar ? "het" : "non-ref" ) :
+                                                       (keepHomvar ? "non-homvar" : "")) +
                                          "variant";
         hInfo.add(new VCFFormatHeaderLine(scaledLogitProperty, 1, VCFHeaderLineType.Integer,
                                LOGIT_SCALE + " times the logits that a genotype is correct"));
@@ -511,9 +512,6 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
                    !getFilterableTruthSampleIndices(variantContext, badVariantSampleIndices, sampleAlleleCounts,
                            sampleNoCallCounts).isEmpty();
         }
-//        return badVariantSampleIndices != null &&
-//              !getFilterableTruthSampleIndices(variantContext, badVariantSampleIndices, sampleAlleleCounts,
-//                                               sampleNoCallCounts).isEmpty();
         return false;
     }
 
@@ -565,17 +563,24 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
     }
 
     /**
-     * A genotype is filterable if its allele count is filterable and it isn't fully no-call
+     * A genotype is filterable if its allele count is filterable and it is fully called
      */
     protected boolean genotypeIsFilterable(final int alleleCount, final int noCallCount) {
-        return noCallCount < 2 && alleleCountIsFilterable(alleleCount);
+        return noCallCount == 0 && alleleCountIsFilterable(alleleCount);
     }
 
     /**
      * An allele count is filterable if it's HOMREF or HET, or if it's HOMVAR and keepHomvar is not true,
      */
     protected boolean alleleCountIsFilterable(final int alleleCount) {
-        return !keepHomvar || alleleCount < 2;
+        switch(alleleCount) {
+            case 0:
+                return !keepHomref;
+            case 1:
+                return true;
+            default:
+                return !keepHomvar;
+        }
     }
 
 
@@ -605,36 +610,14 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
     }
 
 
-    private List<Set<Integer>> filterableButNotTrainable = null;
     /**
      * A sample Variant is trainable if a) it is filterable, and b) there is truth data (inheritance or known good/bad)
+     * Since each site has a GQ and this code sets a minGQ for any Variant that has some inheritance or known/good bad
+     * genotypes, that means that practically speaking, every filterable site is trainable. Keep this function to make
+     * this explicit, and to be a place for code to live if it needs to change
      */
     protected boolean getSampleVariantIsTrainable(final int variantIndex, final int sampleIndex) {
-        if(filterableButNotTrainable == null) {
-            filterableButNotTrainable = IntStream.range(0, numVariants)
-                .mapToObj(
-                    vIndex -> {
-                        final Set<Integer> inheritanceTrainable = getInheritanceTrainableSampleIndices(vIndex);
-                        final Set<Integer> goodSampleIndices = getGoodSampleIndices(vIndex);
-                        final Set<Integer> badSampleIndices = getBadSampleIndices(vIndex);
-                        return IntStream.range(0, numSamples)
-                            .filter(sIndex -> getSampleVariantIsFilterable(vIndex, sIndex))
-                            .filter(sIndex -> !inheritanceTrainable.contains(sIndex))
-                            .filter(sIndex -> !goodSampleIndices.contains(sIndex))
-                            .filter(sIndex -> !badSampleIndices.contains(sIndex))
-                            .boxed()
-                            .collect(Collectors.toSet());
-                    }
-                )
-                .collect(Collectors.toList());
-        }
-        if(getSampleVariantIsFilterable(variantIndex, sampleIndex)) {
-            // don't train on data with any no-call counts, or with no training data
-            // return !filterableButNotTrainable.get(variantIndex).contains(sampleIndex);
-            return trainHomref || sampleVariantAlleleCounts.getAsInt(variantIndex, sampleIndex) > 0;
-        } else {
-            return false;
-        }
+        return getSampleVariantIsFilterable(variantIndex, sampleIndex);
     }
 
     private void getTrackProperties(final TrackOverlapDetector trackOverlapDetector,
@@ -1331,7 +1314,9 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
         for(int sampleIndex = 0; sampleIndex < numSamples; ++sampleIndex) {
             final byte alleleCount = sampleAlleleCounts[sampleIndex];
             if(alleleCount <= 1) {
-                hetBuilder.add(sampleGqs[sampleIndex]);
+                if(alleleCount == 1 || !keepHomref) {
+                    hetBuilder.add(sampleGqs[sampleIndex]);
+                }
             } else if(!keepHomvar) {
                 homvarBuilder.add(sampleGqs[sampleIndex]);
             }
@@ -2543,7 +2528,7 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
     static final double PHRED_COEF = FastMath.log(10.0) / 10.0;
 
     protected double phredToProb(final double phred) {
-        return 1.0 - 0.5 * FastMath.exp(-PHRED_COEF * (1.0 - phred));
+        return 1.0 - 0.5 * FastMath.exp(PHRED_COEF * (1.0 - phred));
     }
 
     private float[] outputProbabilitiesForAdjustedGq = null;
