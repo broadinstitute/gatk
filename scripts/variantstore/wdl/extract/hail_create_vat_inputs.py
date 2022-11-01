@@ -138,6 +138,8 @@ def write_vat_custom_annotations(mt, vat_custom_annotations_tsv_path):
     ac_an_af_rows=ac_an_af_rows.drop('snp_vqslod_threshold')
     ac_an_af_rows=ac_an_af_rows.drop('indel_vqslod_threshold')
 
+    print("Now lets export the custom annotations tsv")
+
     hl.Table.export(ac_an_af_rows.rows(), vat_custom_annotations_tsv_path)
 
 

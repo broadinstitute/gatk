@@ -1,7 +1,5 @@
 version 1.0
 
-# import "GvsCreateVATAnnotations.wdl" as Annotations
-
 workflow GvsCreateVATfromVDS {
     input {
         File input_sites_only_vcf
@@ -25,9 +23,6 @@ workflow GvsCreateVATfromVDS {
     # String input_vds_name = basename(input_VDS_file)
     ## TODO: where do we need to validate that there are no hemis?
     String input_vcf_name = "gvs"
-
-
-    # nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
 
     call MakeSubpopulationFilesAndReadSchemaFiles {
         input:
