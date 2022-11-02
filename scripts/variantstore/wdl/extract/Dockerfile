@@ -7,7 +7,7 @@
 # Because this is an Alpine-based image it is more bare-bones than its Debian-based peers. Key components missing here
 # are the Apache Arrow library (a requirement for pyarrow which in turn is a requirement for the google-cloud-bigquery
 # Python module) and bcftools.
-FROM gcr.io/google.com/cloudsdktool/cloud-sdk:406.0.0-alpine as build
+FROM gcr.io/google.com/cloudsdktool/cloud-sdk:408.0.0-alpine as build
 
 RUN apk update && apk upgrade
 RUN python3 -m ensurepip --upgrade
@@ -28,7 +28,7 @@ RUN apk add autoconf bash cmake g++ gcc make ninja python3-dev git openssl-dev z
 
 # Build Apache Arrow version 8.0.0 as version 9.0.0 does not compile under Alpine:
 # https://issues.apache.org/jira/browse/ARROW-17329
-ARG ARROW_VERSION=8.0.0
+ARG ARROW_VERSION=10.0.0
 RUN cd / && \
     curl -O https://dlcdn.apache.org/arrow/arrow-$ARROW_VERSION/apache-arrow-$ARROW_VERSION.tar.gz && \
     tar xfz apache-arrow-$ARROW_VERSION.tar.gz
@@ -68,6 +68,7 @@ RUN mkdir /apache-arrow-$ARROW_VERSION/cpp/build && \
 ARG PYARROW_WITH_PARQUET=1
 ARG PYARROW_WITH_DATASET=1
 ARG PYARROW_PARALLEL=4
+ARG CMAKE_PREFIX_PATH=$ARROW_HOME:$CMAKE_PREFIX_PATH
 RUN cd /apache-arrow-$ARROW_VERSION/python && \
     python3 setup.py build_ext --inplace && \
     pip3 install wheel && \
@@ -95,7 +96,7 @@ RUN mkdir /bcftools bcftools-build && \
     make install
 
 # The main layer does not install development tools, instead copies artifacts from the build layer above.
-FROM gcr.io/google.com/cloudsdktool/cloud-sdk:406.0.0-alpine as main
+FROM gcr.io/google.com/cloudsdktool/cloud-sdk:408.0.0-alpine as main
 
 RUN apk update && apk upgrade
 RUN python3 -m ensurepip --upgrade
