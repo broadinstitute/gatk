@@ -122,7 +122,6 @@ def find_violations(ht, predicate):
     if violations > 0:
         ht = ht.filter(~ht.CHECK)
         ht.show()
-
         assert False, f'{violations} violations'
 
 
@@ -172,18 +171,6 @@ def test_ft_equivalence():
                     .when((ft1 == True) & (ft2 == 'PASS'), True)
                     .when((ft1 == False) & (ft2 != 'PASS'), True)
                     .default(False))
-
-
-def test_call_stats_equivalence():
-    mt = updated_local_alleles(ft_filter(gq0_filter()))
-    mt = mt.annotate_rows(
-        vds_call_stats=hl.agg.call_stats(hl.vds.lgt_to_gt(mt.vds_entry.LGT, hl.coalesce(mt.vds_entry.LA_vcf, [0])),
-                                         hl.len(mt.vds_row.alleles)))
-    r = mt.rows()
-    find_violations(r, (r.vds_call_stats.AN == r.vcf_row.info.AN)
-                    & hl.all(lambda x: x, hl._zip_func(r.vds_call_stats.AF[1:], r.vcf_row.info.AF,
-                                                       f=lambda t1, t2: hl.approx_equal(t1, t2, tolerance=0.01)))
-                    & ((r.vds_call_stats.AC[1:] == r.vcf_row.info.AC)))
 
 
 def test_call_stats_equivalence_an():

@@ -28,7 +28,7 @@ workflow GvsQuickstartHailIntegration {
             scatter_width = 10,
     }
 
-    call CreateVds {
+    call CreateAndTieOutVds {
         input:
             branch_name = branch_name,
             hail_wheel = hail_wheel,
@@ -49,7 +49,7 @@ workflow GvsQuickstartHailIntegration {
 }
 
 
-task CreateVds {
+task CreateAndTieOutVds {
     input {
         File hail_wheel
         String branch_name
@@ -80,10 +80,14 @@ task CreateVds {
 
         # Create a manifest of VCFs and indexes to bulk download with `gcloud storage cp`.
         touch vcf_manifest.txt
+        # This is extremely noisy and not interesting, turn off xtrace.
+        set +o xtrace
         for file in ~{sep=' ' tieout_vcfs} ~{sep=' ' tieout_vcf_indexes}
         do
             echo $file >> vcf_manifest.txt
         done
+        # xtrace back on
+        set -o xtrace
 
         # Copy VCFs and indexes to the current directory.
         cat vcf_manifest.txt | gcloud storage cp -I .
