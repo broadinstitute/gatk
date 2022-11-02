@@ -72,6 +72,7 @@ Entry fields:
     }
     'vds_entry': struct {
         LGT: call,
+        GT: call,
         GQ: int32,
         RGQ: int32,
         LAD: array<int32>,
@@ -97,14 +98,14 @@ def updated_local_alleles(mt=mt):
 def gq0_filter(mt=mt):
     """Sets VDS LGTs to missing at reference genotypes when GQ is 0"""
     mt2 = mt.annotate_entries(vds_entry=mt.vds_entry.annotate(
-        LGT=hl.or_missing(mt.vds_entry.LGT.is_non_ref() | (mt.vds_entry.GQ > 0), mt.vds_entry.LGT)))
+        GT=hl.or_missing(mt.vds_entry.GT.is_non_ref() | (mt.vds_entry.GQ > 0), mt.vds_entry.GT)))
     return mt2
 
 
 def ft_filter(mt=mt):
     """Sets VDS LGTs to missing at non-ref genotypes when FT is False"""
     mt2 = mt.annotate_entries(
-        vds_entry=mt.vds_entry.annotate(LGT=hl.or_missing(hl.coalesce(mt.vds_entry.FT, True), mt.vds_entry.LGT)))
+        vds_entry=mt.vds_entry.annotate(GT=hl.or_missing(hl.coalesce(mt.vds_entry.FT, True), mt.vds_entry.GT)))
     return mt2
 
 
@@ -176,8 +177,7 @@ def test_ft_equivalence():
 def test_call_stats_equivalence_an():
     mt = updated_local_alleles(ft_filter(gq0_filter()))
     mt = mt.annotate_rows(
-        vds_call_stats=hl.agg.call_stats(hl.vds.lgt_to_gt(mt.vds_entry.LGT, hl.coalesce(mt.vds_entry.LA_vcf, [0])),
-                                         hl.len(mt.vds_row.alleles)))
+        vds_call_stats=hl.agg.call_stats(mt.vds_entry.GT, hl.len(mt.vds_row.alleles)))
     r = mt.rows()
     find_violations(r, (r.vds_call_stats.AN == r.vcf_row.info.AN))
 
@@ -185,8 +185,7 @@ def test_call_stats_equivalence_an():
 def test_call_stats_equivalence_ac():
     mt = updated_local_alleles(ft_filter(gq0_filter()))
     mt = mt.annotate_rows(
-        vds_call_stats=hl.agg.call_stats(hl.vds.lgt_to_gt(mt.vds_entry.LGT, hl.coalesce(mt.vds_entry.LA_vcf, [0])),
-                                         hl.len(mt.vds_row.alleles)))
+        vds_call_stats=hl.agg.call_stats(mt.vds_entry.GT, hl.len(mt.vds_row.alleles)))
     r = mt.rows()
     find_violations(r, (r.vds_call_stats.AC[1:] == r.vcf_row.info.AC))
 
@@ -194,8 +193,7 @@ def test_call_stats_equivalence_ac():
 def test_call_stats_equivalence_af():
     mt = updated_local_alleles(ft_filter(gq0_filter()))
     mt = mt.annotate_rows(
-        vds_call_stats=hl.agg.call_stats(hl.vds.lgt_to_gt(mt.vds_entry.LGT, hl.coalesce(mt.vds_entry.LA_vcf, [0])),
-                                         hl.len(mt.vds_row.alleles)))
+        vds_call_stats=hl.agg.call_stats(mt.vds_entry.GT, hl.len(mt.vds_row.alleles)))
     r = mt.rows()
     find_violations(r, hl.all(lambda x: x, hl._zip_func(r.vds_call_stats.AF[1:], r.vcf_row.info.AF,
                                                         f=lambda t1, t2: hl.approx_equal(t1, t2, tolerance=0.01))))
