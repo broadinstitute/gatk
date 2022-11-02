@@ -4,9 +4,11 @@ import hail as hl
 
 def vds_mt(vds_path):
     vds = hl.vds.read_vds(vds_path)
+    # Currently required as otherwise GT takes priority but AC will be wrong as alleles will be mistmatched
+    vds.variant_data = vds.variant_data.drop('GT')
     mt = hl.vds.to_dense_mt(vds)
-    vds_path = 'vds_dense.mt'
-    mt.write(vds_path, overwrite=True)
+    dense_vds_path = 'vds_dense.mt'
+    mt.write(dense_vds_path, overwrite=True)
     mt = hl.read_matrix_table(vds_path).key_rows_by('locus')
     return mt
 
