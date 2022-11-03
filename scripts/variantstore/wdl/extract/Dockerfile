@@ -26,8 +26,6 @@ RUN apk add autoconf bash cmake g++ gcc make ninja python3-dev git openssl-dev z
 # including the numpy Python module. The main stage will then use the same base image and copy over the artifacts
 # produced by the build stage without having to install development tools or clean up after a build.
 
-# Build Apache Arrow version 8.0.0 as version 9.0.0 does not compile under Alpine:
-# https://issues.apache.org/jira/browse/ARROW-17329
 ARG ARROW_VERSION=10.0.0
 RUN cd / && \
     curl -O https://dlcdn.apache.org/arrow/arrow-$ARROW_VERSION/apache-arrow-$ARROW_VERSION.tar.gz && \
