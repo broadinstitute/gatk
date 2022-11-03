@@ -50,6 +50,18 @@ RUN mkdir /$ARROW_SRC_DIR/cpp/build && \
     cmake --build . && \
     cmake --install .
 
+
+# The following block builds from the head of google-cloud-bigquery and is required until released versions allow
+# PyArrow >= 10.0.0 (that change was only merged 2022-11-02).
+RUN pip3 install build
+RUN mkdir /gitrepos && \
+    cd /gitrepos && \
+    git clone https://github.com/googleapis/python-bigquery.git && \
+    cd python-bigquery && \
+    python -m build --wheel && \
+    pip install $(find . -name '*.whl')
+
+
 ARG PYARROW_WITH_PARQUET=1
 ARG PYARROW_WITH_DATASET=1
 ARG PYARROW_PARALLEL=4
