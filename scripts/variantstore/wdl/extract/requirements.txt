@@ -1,3 +1,4 @@
+requests
 google-cloud-bigquery
 ijson
 numpy
