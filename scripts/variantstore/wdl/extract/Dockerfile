@@ -50,18 +50,6 @@ RUN mkdir /$ARROW_SRC_DIR/cpp/build && \
     cmake --build . && \
     cmake --install .
 
-
-# The following block builds from the head of google-cloud-bigquery and is required until released versions allow
-# PyArrow >= 10.0.0 (that change was only merged 2022-11-02).
-RUN pip3 install build
-RUN mkdir /gitrepos && \
-    cd /gitrepos && \
-    git clone https://github.com/googleapis/python-bigquery.git && \
-    cd python-bigquery && \
-    python -m build --wheel && \
-    pip install $(find . -name '*.whl')
-
-
 ARG PYARROW_WITH_PARQUET=1
 ARG PYARROW_WITH_DATASET=1
 ARG PYARROW_PARALLEL=4
@@ -71,6 +59,16 @@ RUN cd $ARROW_SRC_DIR/python && \
     python3 setup.py build_ext --build-type=release \
               --bundle-arrow-cpp bdist_wheel && \
     pip3 install --user /apache-arrow-$ARROW_VERSION/python/dist/pyarrow-$ARROW_VERSION-*.whl
+
+# The following block builds from the head of google-cloud-bigquery and is required until released versions allow
+# PyArrow >= 10.0.0 (that change was only merged 2022-11-02).
+RUN pip3 install build
+RUN mkdir /gitrepos && \
+    cd /gitrepos && \
+    git clone https://github.com/googleapis/python-bigquery.git && \
+    cd python-bigquery && \
+    python3 -m build --wheel && \
+    pip3 install $(find . -name '*.whl')
 
 # Install all of our variantstore Python requirements.
 COPY requirements.txt requirements.txt
