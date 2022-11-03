@@ -46,7 +46,7 @@ ARG ARROW_HOME=/dist
 ARG LD_LIBRARY_PATH=/$ARROW_HOME/lib:$LD_LIBRARY_PATH
 RUN mkdir /$ARROW_SRC_DIR/cpp/build && \
     cd /$ARROW_SRC_DIR/cpp/build && \
-    cmake .. --preset ninja-release-python -DCMAKE_INSTALL_PREFIX=$ARROW_HOME && \
+    cmake .. --preset ninja-release-python && \
     cmake --build . && \
     cmake --install .
 
