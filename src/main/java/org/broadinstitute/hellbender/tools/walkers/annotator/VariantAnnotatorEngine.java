@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.GenotypeGVCFsAnnotationArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotationData;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
@@ -365,7 +366,12 @@ public final class VariantAnnotatorEngine {
         final VariantContext annotated = builder.attributes(infoAnnotMap).make();
 
         // annotate db occurrences
-        return variantOverlapAnnotator.annotateOverlaps(features, variantOverlapAnnotator.annotateRsID(features, annotated));
+        try {
+            return variantOverlapAnnotator.annotateOverlaps(features, variantOverlapAnnotator.annotateRsID(features, annotated));
+        } catch (UserException.WarnableAnnotationFailure e) {
+            logger.warn("failed to apply variantOverlapAnnotator to VC at " + IntervalUtils.locatableToString(annotated) + ": " + e.getMessage());
+            return annotated;
+        }
     }
 
     private Map<String, Object> addInfoAnnotations(VariantContext vc, FeatureContext features, ReferenceContext ref,
