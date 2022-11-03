@@ -70,10 +70,6 @@ RUN mkdir /gitrepos && \
     python3 -m build --wheel && \
     pip3 install $(find . -name '*.whl')
 
-# Install all of our variantstore Python requirements.
-COPY requirements.txt requirements.txt
-RUN pip3 install --user -r requirements.txt
-
 # Straightforward bcftools build following these instructions:
 # https://github.com/samtools/bcftools/blob/develop/INSTALL
 ARG BCFTOOLS_VERSION=1.16
@@ -88,6 +84,10 @@ RUN mkdir /bcftools bcftools-build && \
     ./configure --prefix /bcftools && \
     make && \
     make install
+
+# Install all of our variantstore Python requirements.
+COPY requirements.txt requirements.txt
+RUN pip3 install --user -r requirements.txt
 
 # The main layer does not install development tools, instead copies artifacts from the build layer above.
 FROM gcr.io/google.com/cloudsdktool/cloud-sdk:408.0.1-alpine as main
