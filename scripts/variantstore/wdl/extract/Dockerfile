@@ -7,7 +7,7 @@
 # Because this is an Alpine-based image it is more bare-bones than its Debian-based peers. Key components missing here
 # are the Apache Arrow library (a requirement for pyarrow which in turn is a requirement for the google-cloud-bigquery
 # Python module) and bcftools.
-FROM gcr.io/google.com/cloudsdktool/cloud-sdk:408.0.0-alpine as build
+FROM gcr.io/google.com/cloudsdktool/cloud-sdk:408.0.1-alpine as build
 
 RUN apk update && apk upgrade
 RUN python3 -m ensurepip --upgrade
@@ -48,30 +48,13 @@ ARG ARROW_HOME=/dist
 ARG LD_LIBRARY_PATH=/$ARROW_HOME/lib:$LD_LIBRARY_PATH
 RUN mkdir /$ARROW_SRC_DIR/cpp/build && \
     cd /$ARROW_SRC_DIR/cpp/build && \
-    cmake -DCMAKE_INSTALL_PREFIX=$ARROW_HOME \
-          -DARROW_BUILD_TESTS=OFF \
-          -DARROW_COMPUTE=ON \
-          -DARROW_CSV=ON \
-          -DARROW_DATASET=ON \
-          -DARROW_FILESYSTEM=ON \
-          -DARROW_HDFS=ON \
-          -DARROW_JSON=ON \
-          -DARROW_PARQUET=ON \
-          -DARROW_WITH_BROTLI=ON \
-          -DARROW_WITH_BZ2=ON \
-          -DARROW_WITH_LZ4=ON \
-          -DARROW_WITH_SNAPPY=ON \
-          -DARROW_WITH_ZLIB=ON \
-          -DARROW_WITH_ZSTD=ON \
-          -DPARQUET_REQUIRE_ENCRYPTION=ON \
-          .. && \
-    make -j4 && \
-    make install
+    cmake .. --preset ninja-release-python -DCMAKE_INSTALL_PREFIX=$ARROW_HOME && \
+    cmake --build . && \
+    cmake --install .
 
 ARG PYARROW_WITH_PARQUET=1
 ARG PYARROW_WITH_DATASET=1
 ARG PYARROW_PARALLEL=4
-ARG CMAKE_PREFIX_PATH=$ARROW_SRC_DIR/cpp/build/src/arrow:$CMAKE_PREFIX_PATH
 RUN cd $ARROW_SRC_DIR/python && \
     python3 setup.py build_ext --inplace && \
     pip3 install wheel && \
@@ -99,7 +82,7 @@ RUN mkdir /bcftools bcftools-build && \
     make install
 
 # The main layer does not install development tools, instead copies artifacts from the build layer above.
-FROM gcr.io/google.com/cloudsdktool/cloud-sdk:408.0.0-alpine as main
+FROM gcr.io/google.com/cloudsdktool/cloud-sdk:408.0.1-alpine as main
 
 RUN apk update && apk upgrade
 RUN python3 -m ensurepip --upgrade
