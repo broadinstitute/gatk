@@ -7,6 +7,7 @@ workflow GvsQuickstartVcfIntegration {
 
     input {
         String branch_name
+        String test_run_prefix = "quickit_vcf"
         String expected_output_prefix = "gs://gvs-internal-quickstart/integration/2022-10-20/"
 
         Array[String] external_sample_names = [
@@ -57,7 +58,7 @@ workflow GvsQuickstartVcfIntegration {
     call Utils.BuildGATKJarAndCreateDataset {
         input:
             branch_name = branch_name,
-            dataset_prefix = "quickit"
+            dataset_prefix = test_run_prefix,
     }
 
     call Unified.GvsUnified {
@@ -69,8 +70,8 @@ workflow GvsQuickstartVcfIntegration {
             gatk_override = BuildGATKJarAndCreateDataset.jar,
             input_vcfs = input_vcfs,
             input_vcf_indexes = input_vcf_indexes,
-            filter_set_name = "quickit",
-            extract_table_prefix = "quickit",
+            filter_set_name = test_run_prefix,
+            extract_table_prefix = test_run_prefix,
             extract_scatter_count = extract_scatter_count,
             # Force filtering off as it is not deterministic and the initial version of this integration test does not
             # allow for inexact matching of actual and expected results.
@@ -109,7 +110,7 @@ workflow GvsQuickstartVcfIntegration {
         Float total_vcfs_size_mb = GvsUnified.total_vcfs_size_mb
         File manifest = GvsUnified.manifest
         String dataset_name = BuildGATKJarAndCreateDataset.dataset_name
-        String filter_set_name = "quickit"
+        String filter_set_name = test_run_prefix
         Boolean done = true
     }
 }
