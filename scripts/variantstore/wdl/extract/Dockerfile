@@ -68,7 +68,7 @@ RUN mkdir /gitrepos && \
     git clone https://github.com/googleapis/python-bigquery.git && \
     cd python-bigquery && \
     python3 -m build --wheel && \
-    pip3 install $(find . -name '*.whl')
+    pip3 install --user $(find . -name '*.whl')
 
 # Straightforward bcftools build following these instructions:
 # https://github.com/samtools/bcftools/blob/develop/INSTALL
