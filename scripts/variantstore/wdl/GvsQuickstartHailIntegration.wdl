@@ -2,7 +2,7 @@ version 1.0
 
 import "GvsUtils.wdl" as Utils
 import "GvsExtractAvroFilesForHail.wdl" as ExtractAvroFilesForHail
-import "GvsQuickstartIntegration.wdl" as QuickstartVCFIntegration
+import "GvsQuickstartVcfIntegration.wdl" as QuickstartVcfIntegration
 
 workflow GvsQuickstartHailIntegration {
     input {
@@ -12,7 +12,7 @@ workflow GvsQuickstartHailIntegration {
 
     String project_id = "gvs-internal"
 
-    call QuickstartVCFIntegration.GvsQuickstartIntegration as QuickstartVCFIntegration {
+    call QuickstartVcfIntegration.GvsQuickstartVcfIntegration {
         input:
             branch_name = branch_name,
             drop_state = "NONE",
@@ -21,10 +21,10 @@ workflow GvsQuickstartHailIntegration {
 
     call ExtractAvroFilesForHail.GvsExtractAvroFilesForHail {
         input:
-            go = QuickstartVCFIntegration.done,
+            go = GvsQuickstartVcfIntegration.done,
             project_id = project_id,
-            dataset = QuickstartVCFIntegration.dataset_name,
-            filter_set_name = QuickstartVCFIntegration.filter_set_name,
+            dataset = GvsQuickstartVcfIntegration.dataset_name,
+            filter_set_name = GvsQuickstartVcfIntegration.filter_set_name,
             scatter_width = 10,
     }
 
@@ -34,15 +34,15 @@ workflow GvsQuickstartHailIntegration {
             hail_wheel = hail_wheel,
             avro_prefix = GvsExtractAvroFilesForHail.avro_prefix,
             vds_destination_path = GvsExtractAvroFilesForHail.vds_output_path,
-            tieout_vcfs = QuickstartVCFIntegration.output_vcfs,
-            tieout_vcf_indexes = QuickstartVCFIntegration.output_vcf_indexes,
+            tieout_vcfs = GvsQuickstartVcfIntegration.output_vcfs,
+            tieout_vcf_indexes = GvsQuickstartVcfIntegration.output_vcf_indexes,
     }
 
     output {
-        Array[File] output_vcfs = QuickstartVCFIntegration.output_vcfs
-        Array[File] output_vcf_indexes = QuickstartVCFIntegration.output_vcf_indexes
-        Float total_vcfs_size_mb = QuickstartVCFIntegration.total_vcfs_size_mb
-        File manifest = QuickstartVCFIntegration.manifest
+        Array[File] output_vcfs = GvsQuickstartVcfIntegration.output_vcfs
+        Array[File] output_vcf_indexes = GvsQuickstartVcfIntegration.output_vcf_indexes
+        Float total_vcfs_size_mb = GvsQuickstartVcfIntegration.total_vcfs_size_mb
+        File manifest = GvsQuickstartVcfIntegration.manifest
         String vds_output_path = GvsExtractAvroFilesForHail.vds_output_path
         Boolean done = true
     }
