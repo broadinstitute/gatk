@@ -40,27 +40,30 @@ RUN cd / && \
 # - Do not build tests.
 # - Install PyArrow and its dependencies specifying the --user flag so all artifacts go to the /root/.local directory
 #   which can easily be copied to the main stage below.
-RUN pip3 install --user -r /apache-arrow-$ARROW_VERSION/python/requirements-build.txt
+ARG ARROW_SRC_DIR=/apache-arrow-$ARROW_VERSION
+RUN pip3 install --user -r $ARROW_SRC_DIR/python/requirements-build.txt
 
 RUN mkdir /dist
 ARG ARROW_HOME=/dist
-ARG LD_LIBRARY_PATH=/dist/lib:$LD_LIBRARY_PATH
-RUN mkdir /apache-arrow-$ARROW_VERSION/cpp/build && \
-    cd /apache-arrow-$ARROW_VERSION/cpp/build && \
+ARG LD_LIBRARY_PATH=/$ARROW_HOME/lib:$LD_LIBRARY_PATH
+RUN mkdir /$ARROW_SRC_DIR/cpp/build && \
+    cd /$ARROW_SRC_DIR/cpp/build && \
     cmake -DCMAKE_INSTALL_PREFIX=$ARROW_HOME \
-          -DCMAKE_INSTALL_LIBDIR=lib \
-          -DCMAKE_BUILD_TYPE=Release \
+          -DARROW_BUILD_TESTS=OFF \
+          -DARROW_COMPUTE=ON \
+          -DARROW_CSV=ON \
           -DARROW_DATASET=ON \
+          -DARROW_FILESYSTEM=ON \
+          -DARROW_HDFS=ON \
+          -DARROW_JSON=ON \
+          -DARROW_PARQUET=ON \
+          -DARROW_WITH_BROTLI=ON \
           -DARROW_WITH_BZ2=ON \
-          -DARROW_WITH_ZLIB=ON \
-          -DARROW_WITH_ZSTD=ON \
           -DARROW_WITH_LZ4=ON \
           -DARROW_WITH_SNAPPY=ON \
-          -DARROW_WITH_BROTLI=ON \
-          -DARROW_PARQUET=ON \
+          -DARROW_WITH_ZLIB=ON \
+          -DARROW_WITH_ZSTD=ON \
           -DPARQUET_REQUIRE_ENCRYPTION=ON \
-          -DARROW_PYTHON=ON \
-          -DARROW_BUILD_TESTS=OFF \
           .. && \
     make -j4 && \
     make install
@@ -68,8 +71,8 @@ RUN mkdir /apache-arrow-$ARROW_VERSION/cpp/build && \
 ARG PYARROW_WITH_PARQUET=1
 ARG PYARROW_WITH_DATASET=1
 ARG PYARROW_PARALLEL=4
-ARG CMAKE_PREFIX_PATH=$ARROW_HOME:$CMAKE_PREFIX_PATH
-RUN cd /apache-arrow-$ARROW_VERSION/python && \
+ARG CMAKE_PREFIX_PATH=$ARROW_SRC_DIR/cpp/build/src/arrow:$CMAKE_PREFIX_PATH
+RUN cd $ARROW_SRC_DIR/python && \
     python3 setup.py build_ext --inplace && \
     pip3 install wheel && \
     python3 setup.py build_ext --build-type=release \
