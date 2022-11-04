@@ -61,16 +61,6 @@ RUN cd $ARROW_SRC_DIR/python && \
               --bundle-arrow-cpp bdist_wheel && \
     pip3 install --user /apache-arrow-$ARROW_VERSION/python/dist/pyarrow-$ARROW_VERSION-*.whl
 
-# The following block builds from the head of google-cloud-bigquery and is required until released versions allow
-# PyArrow >= 10.0.0 (that change was only merged 2022-11-02).
-RUN pip3 install build
-RUN mkdir /gitrepos && \
-    cd /gitrepos && \
-    git clone https://github.com/googleapis/python-bigquery.git && \
-    cd python-bigquery && \
-    python3 -m build --wheel && \
-    pip3 install --user $(find . -name '*.whl')
-
 # Straightforward bcftools build following these instructions:
 # https://github.com/samtools/bcftools/blob/develop/INSTALL
 ARG BCFTOOLS_VERSION=1.16
