@@ -149,7 +149,7 @@ task AssertIdenticalOutputs {
         touch actual_manifest.txt
         # Making the manifest is pretty uninteresting and very noisy so turn off xtrace temporarily.
         set +o xtrace
-        for file in ~{actual_vcfs}
+        for file in ~{sep=' ' actual_vcfs}
         do
             echo $file >> actual_manifest.txt
         done
