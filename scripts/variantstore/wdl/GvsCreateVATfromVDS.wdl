@@ -205,6 +205,7 @@ task AnnotateVCF {
         tar zxvf ~{nirvana_data_tar} -C datasources_dir  ## --strip-components 2
         DATA_SOURCES_FOLDER="$PWD/datasources_dir/references"
 
+        sed s/NA/\./g ~{custom_annotations_file} > ac_an_af_noNAs.tsv
 
         # =======================================
         echo "Creating custom annotations"
@@ -215,7 +216,7 @@ task AnnotateVCF {
         ## use --skip-ref once you are on a version of nirvana later than 3.14 (once they have created a docker image for it)
         dotnet ~{custom_creation_location} customvar \
             -r $DATA_SOURCES_FOLDER~{path_reference} \
-            -i ~{custom_annotations_file} \
+            -i ac_an_af_noNAs.tsv \
             -o $CUSTOM_ANNOTATIONS_FOLDER
 
         # =======================================
