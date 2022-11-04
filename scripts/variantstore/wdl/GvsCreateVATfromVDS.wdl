@@ -147,6 +147,7 @@ task CreateCustomAnnotationsFile {
         File custom_annotations_body
     }
 
+    Int disk_size = ceil(size(custom_annotations_body, "GB") * 2.5) + 100
     String custom_annotations_file_name = "ac_an_af.tsv"
 
     command <<<
@@ -163,8 +164,8 @@ task CreateCustomAnnotationsFile {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:rc_616_var_store_2022_10_25"
         memory: "1 GB"
         cpu: "1"
-        preemptible: 3
-        disks: "local-disk 100 HDD"
+        preemptible: 1
+        disks: "local-disk " + disk_size + " HDD"
     }
     # ------------------------------------------------
     # Outputs:
