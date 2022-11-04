@@ -4,9 +4,9 @@
 # Google Cloud Storage. Sharing the base image with Cromwell's GCS localization should result in reuse of a cached copy
 # of this base (and by far largest) image layer when running GVS pipelines in Terra / Cromwell.
 #
-# This is a multi-stage build that uses a custom "build-base" image for the build stage. Th3 "build-base" image is
+# This is a multi-stage build that uses a custom "build-base" image for the build stage. The build-base image is
 # expensive to create and isn't expected to change often, while the steps in this Dockerfile are much less expensive and
-# more likely to change. Using a "build-base" image essentially allows the expensive layers to be globally cached which
+# more likely to change. Using a build-base image essentially allows the expensive layers to be globally cached which
 # should make building the final image much faster in most cases.
 FROM us.gcr.io/broad-dsde-methods/variantstore:2022-11-04-alpine-build-base as build
 
