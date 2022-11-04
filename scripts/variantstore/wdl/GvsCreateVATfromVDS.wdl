@@ -237,7 +237,7 @@ task AnnotateVCF {
         memory: "32 GB"
         cpu: "2"
         preemptible: 5
-        disks: "local-disk 250 HDD"
+        disks: "local-disk 2000 HDD"
     }
     # ------------------------------------------------
     # Outputs:
