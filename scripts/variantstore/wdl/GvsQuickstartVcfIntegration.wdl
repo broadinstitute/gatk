@@ -122,7 +122,11 @@ task AssertIdenticalOutputs {
         String expected_output_prefix
         Array[File] actual_vcfs
     }
-
+    parameter_meta {
+        actual_vcfs: {
+            localization_optional: true
+        }
+    }
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
@@ -142,8 +146,18 @@ task AssertIdenticalOutputs {
         gzip -d *.gz
         cd ..
 
-        # Also unzip actual result data
-        gzip -d ~{sep= ' ' actual_vcfs}
+        touch actual_manifest.txt
+        # Making the manifest is pretty uninteresting and very noisy so turn off xtrace temporarily.
+        set +o xtrace
+        for file in ~{actual_vcfs}
+        do
+            echo $file >> actual_manifest.txt
+        done
+
+        set -o xtrace
+        cat actual_manifest.txt | gcloud storage cp -I .
+        # Unzip actual result data.
+        ls -1 | grep -E '\.vcf\.gz$' | xargs gzip -d
 
         # Headers first, these can yield useful diagnostics when there are mismatches.
         for file in ~{sep=' ' actual_vcfs}; do
@@ -197,7 +211,6 @@ task AssertIdenticalOutputs {
     }
 
     output {
-        File fofn = "expected/expected_fofn.txt"
         Boolean done = true
     }
 }
