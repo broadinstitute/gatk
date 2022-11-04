@@ -42,10 +42,8 @@ ARG ARROW_SRC_DIR=/apache-arrow-$ARROW_VERSION
 RUN pip3 install --user -r $ARROW_SRC_DIR/python/requirements-build.txt
 
 RUN mkdir /dist
-ARG ARROW_HOME=/dist
-ARG LD_LIBRARY_PATH=/$ARROW_HOME/lib:$LD_LIBRARY_PATH
-RUN mkdir /$ARROW_SRC_DIR/cpp/build && \
-    cd /$ARROW_SRC_DIR/cpp/build && \
+RUN mkdir $ARROW_SRC_DIR/cpp/build && \
+    cd $ARROW_SRC_DIR/cpp/build && \
     cmake .. --preset ninja-release-python && \
     cmake --build . && \
     cmake --install .
