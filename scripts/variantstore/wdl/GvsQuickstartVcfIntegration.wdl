@@ -123,9 +123,9 @@ task AssertIdenticalOutputs {
     }
 
     command <<<
-        set -o errexit
-        set -o nounset
-        set -o pipefail
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         failures=()
 
@@ -137,12 +137,7 @@ task AssertIdenticalOutputs {
         # Download all the expected data
         mkdir expected
         cd expected
-        # Make a FOFN for more efficient downloading
-        for file in ~{sep= ' ' actual_vcfs}; do
-            echo "$expected_prefix/$(basename $file)" >> expected_fofn.txt
-        done
-        # Download and unzip all the expected data
-        cat expected_fofn.txt | gsutil -m cp -I .
+        gcloud storage cp -r "${expected_prefix}"'/*.vcf.gz' .
         gzip -d *.gz
         cd ..
 
