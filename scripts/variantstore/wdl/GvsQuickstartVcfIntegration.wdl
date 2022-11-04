@@ -51,13 +51,15 @@ workflow GvsQuickstartVcfIntegration {
         Int? extract_scatter_count
         String drop_state = "FORTY"
         Boolean extract_do_not_filter_override = true
+        String dataset_suffix = "vcf"
     }
     String project_id = "gvs-internal"
 
     call Utils.BuildGATKJarAndCreateDataset {
         input:
             branch_name = branch_name,
-            dataset_prefix = "quickit"
+            dataset_prefix = "quickit",
+            dataset_suffix = dataset_suffix,
     }
 
     call Unified.GvsUnified {

@@ -214,6 +214,7 @@ task BuildGATKJarAndCreateDataset {
   input {
     String branch_name
     String dataset_prefix
+    String dataset_suffix
   }
   meta {
     # Branch may be updated so do not call cache!
@@ -263,7 +264,7 @@ task BuildGATKJarAndCreateDataset {
     # Build a dataset name based on the branch name and the git hash of the most recent commit on this branch.
     # Dataset names must be alphanumeric and underscores only. Convert any dashes to underscores, then delete
     # any remaining characters that are not alphanumeric or underscores.
-    dataset="$(echo ~{dataset_prefix}_${branch}_${hash} | tr '-' '_' | tr -c -d '[:alnum:]_')"
+    dataset="$(echo ~{dataset_prefix}_${branch}_${hash}_~{dataset_suffix} | tr '-' '_' | tr -c -d '[:alnum:]_')"
 
     bq mk --project_id="gvs-internal" "$dataset"
 
