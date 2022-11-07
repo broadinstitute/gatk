@@ -72,13 +72,19 @@ def load_sample_names(sample_names_to_extract, fq_temp_table_dataset):
     return fq_sample_table
 
 
-def get_all_sample_ids(fq_destination_table_samples):
-    sql = f"select sample_id from `{fq_destination_table_samples}`"
+def get_all_sample_ids(fq_destination_table_samples, only_output_vet_tables, fq_sample_mapping_table):
+    if only_output_vet_tables:
+        sql = f"select sample_id from `{fq_sample_mapping_table}` WHERE is_control = false AND withdrawn IS NULL"
+        sample_table = fq_sample_mapping_table
+    else:
+        sql = f"select sample_id from `{fq_destination_table_samples}`"
+        sample_table = fq_destination_table_samples
 
     query_return = utils.execute_with_retry(client, "read cohort sample table", sql)
     JOBS.append({'job': query_return['job'], 'label': query_return['label']})
     sample_ids = [row.sample_id for row in list(query_return['results'])]
     sample_ids.sort()
+    print(f"Discovered {len(sample_ids)} samples in {sample_table}...")
     return sample_ids
 
 
@@ -286,8 +292,7 @@ def make_extract_table(call_set_identifier,
                                      fq_sample_mapping_table, honor_withdrawn=not sample_names_to_extract)
 
         # pull the sample ids back down
-        sample_ids = get_all_sample_ids(fq_destination_table_samples)
-        print(f"Discovered {len(sample_ids)} samples in {fq_destination_table_samples}...")
+        sample_ids = get_all_sample_ids(fq_destination_table_samples, only_output_vet_tables, fq_sample_mapping_table)
 
         # create and populate the tables for extract data
         if not only_output_vet_tables:
