@@ -35,6 +35,10 @@ workflow GvsCreateVATfromVDS {
             custom_annotations_body = custom_annotations_file,
     }
 
+    call RemoveDuplicatesFromSitesOnlyVCF {
+        input:
+    }
+
     ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
     call AnnotateVCF {
         input:
@@ -171,6 +175,13 @@ task CreateCustomAnnotationsFile {
     # Outputs:
     output {
         File custom_annotations = "~{custom_annotations_file_name}"
+    }
+}
+
+
+task RemoveDuplicatesFromSitesOnlyVCF {
+    input {
+
     }
 }
 
