@@ -205,7 +205,8 @@ task AnnotateVCF {
         tar zxvf ~{nirvana_data_tar} -C datasources_dir  ## --strip-components 2
         DATA_SOURCES_FOLDER="$PWD/datasources_dir/references"
 
-        sed s/NA/\./g ~{custom_annotations_file} > ac_an_af_noNAs.tsv
+        ## TODO - TEMP - try to change the NAs to nothing
+        sed s/NA//g ~{custom_annotations_file} > ac_an_af_noNAs.tsv
 
         # =======================================
         echo "Creating custom annotations"
