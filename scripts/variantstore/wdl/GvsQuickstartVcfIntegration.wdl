@@ -146,54 +146,60 @@ task AssertIdenticalOutputs {
         gzip -d *.gz
         cd ..
 
+        mkdir actual
+        cd actual
         touch actual_manifest.txt
         # Making the manifest is pretty uninteresting and very noisy so turn off xtrace temporarily.
         set +o xtrace
-        for file in ~{sep=' ' actual_vcfs}
+        for actual in ~{sep=' ' actual_vcfs}
         do
-            echo $file >> actual_manifest.txt
+            echo $actual >> actual_manifest.txt
         done
-
         set -o xtrace
+
         cat actual_manifest.txt | gcloud storage cp -I .
         # Unzip actual result data.
         ls -1 | grep -E '\.vcf\.gz$' | xargs gzip -d
+        cd ..
 
         # Headers first, these can yield useful diagnostics when there are mismatches.
-        for file in ~{sep=' ' actual_vcfs}; do
-          unzipped=${file%.gz}
-          expected="expected/$(basename $unzipped)"
+        for vcf in $(ls -1 actual | grep -E '\.vcf$')
+        do
+          actual="actual/$vcf"
+          expected="expected/$vcf"
           set +o errexit
-          cmp <(grep '^#' $unzipped) <(grep '^#' $expected)
+          cmp <(grep '^#' $actual) <(grep '^#' $expected)
           rc=$?
           set -o errexit
           if [[ $rc -ne 0 ]]; then
             # If there is a mismatch add it to a list of failures but keep on looking for mismatches.
-            failures+=( $unzipped )
+            failures+=( $vcf )
           fi
         done
 
         if [[ ${#failures[@]} -ne 0 ]]; then
           echo "Error: headers for the following files do not match:"
           for failure in ${failures[@]}; do
-            echo $(basename $failure)
-            expected="expected/$(basename $failure)"
-            diff $failure $expected
+            echo $failure
+            expected="expected/$failure"
+            actual="actual/$failure"
+            diff $actual $expected
           done
           exit 1
         fi
 
         # If the headers all matched look for any mismatches in overall file content.
         fail=0
-        for file in ~{sep=' ' actual_vcfs}; do
-          unzipped=${file%.gz}
-          expected="expected/$(basename $unzipped)"
+        for vcf in $(ls -1 | grep -E '\.vcf$')
+        do
+          expected="expected/$vcf"
+          actual="actual/$vcf"
           set +o errexit
-          cmp $unzipped $expected
+          cmp $actual $expected
           rc=$?
           set -o errexit
           if [[ $rc -ne 0 ]]; then
-            echo "Error: file contents of expected and actual do not match: $(basename $unzipped)"
+            echo "Error: file contents of expected and actual do not match: $vcf"
             fail=1
           fi
         done
@@ -270,7 +276,7 @@ task AssertCostIsTrackedAndExpected {
 
         # For these two costs, there is non-determinism in the pipeline - we allow a % difference
         if [[ $OBS_KEY == "ExtractFilterTask.GvsCreateFilterSet.BigQuery Query Scanned" ]]; then
-          TOLERANCE=0.015   # 1.5% tolerance  (Note - have seen as high as: 0.0109429)
+          TOLERANCE=0.02   # 2% tolerance  (Note - have seen as high as: 0.0157154)
         elif [[ $OBS_KEY == "ExtractTask.GvsCreateCallset.Storage API Scanned" ]]; then
           TOLERANCE=0.01   # 1% tolerance  (Note - have seen as high as: 0.00608656)
         elif [[ $OBS_KEY == "ExtractFilterTask.GvsCreateFilterSet.Storage API Scanned" ]]; then
