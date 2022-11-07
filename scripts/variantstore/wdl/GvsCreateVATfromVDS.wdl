@@ -95,7 +95,6 @@ workflow GvsCreateVATfromVDS {
             export_done = BigQueryExportVat.done,
             contig_array = contig_array,
             output_path = output_path,
-            project_id = project_id,
             merge_vcfs_disk_size_override = merge_vcfs_disk_size_override
     }
 
@@ -213,7 +212,7 @@ task FixVcfHeader {
     }
 
     output {
-        String output_vcf = output_vcf_name
+        File output_vcf = output_vcf_name
     }
 }
 
@@ -239,7 +238,7 @@ task RemoveDuplicatesFromSitesOnlyVCF {
 
         echo_date "VAT: normalize, left align and split multi allelic sites to new lines, remove duplicate lines"
         ## note that normalization may create sites with more than 50 alt alleles
-        bcftools norm --threads 4 -m- --check-ref w -f Homo_sapiens_assembly38.fasta sites_only.bcf -O b -o normalized.bcf
+        bcftools norm --threads 4 -m- --check-ref w -f ~{ref} sites_only.bcf -O b -o normalized.bcf
         rm sites_only.bcf
 
         echo_date "VAT: detecting and removing duplicate rows from sites-only VCF"
@@ -779,7 +778,6 @@ task MergeVatTSVs {
     input {
         Array[Boolean] export_done
         Array[String] contig_array
-        String project_id
         String output_path
 
         Int? merge_vcfs_disk_size_override
