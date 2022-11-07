@@ -19,7 +19,7 @@ workflow GvsPrepareCallset {
 
     Array[String]? query_labels
     File? sample_names_to_extract
-    Boolean skip_ref_ranges_tables = false
+    Boolean only_output_vet_tables = false
   }
 
   String full_extract_prefix = if (control_samples) then "~{extract_table_prefix}_controls" else extract_table_prefix
@@ -40,7 +40,7 @@ workflow GvsPrepareCallset {
       fq_destination_dataset          = fq_destination_dataset,
       temp_table_ttl_in_hours         = 72,
       control_samples                 = control_samples,
-      skip_ref_ranges_tables          = skip_ref_ranges_tables
+      only_output_vet_tables          = only_output_vet_tables
   }
 
   output {
@@ -63,7 +63,7 @@ task PrepareRangesCallsetTask {
     String fq_destination_dataset
     Array[String]? query_labels
     Int temp_table_ttl_in_hours = 24
-    Boolean skip_ref_ranges_tables
+    Boolean only_output_vet_tables
   }
   meta {
     # All kinds of BQ reading happening in the referenced Python script.
@@ -102,7 +102,7 @@ task PrepareRangesCallsetTask {
           ~{sep=" " query_label_args} \
           --fq_sample_mapping_table ~{fq_sample_mapping_table} \
           --ttl ~{temp_table_ttl_in_hours} \
-          ~{true="--skip_ref_ranges_tables True" false='' skip_ref_ranges_tables}
+          ~{true="--only_output_vet_tables True" false='' only_output_vet_tables}
 
   >>>
   output {
