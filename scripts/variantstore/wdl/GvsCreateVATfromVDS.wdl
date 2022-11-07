@@ -213,7 +213,7 @@ task FixVcfHeader {
     }
 
     output {
-        String output_fvcf = output_vcf_name
+        String output_vcf = output_vcf_name
     }
 }
 
