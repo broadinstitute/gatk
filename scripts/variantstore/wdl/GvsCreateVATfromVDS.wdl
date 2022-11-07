@@ -50,7 +50,7 @@ workflow GvsCreateVATfromVDS {
     ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
     call AnnotateVCF {
         input:
-            input_vcf = input_sites_only_vcf,
+            input_vcf = RemoveDuplicatesFromSitesOnlyVCF.output_vcf,
             output_annotated_file_name = "${input_vcf_name}_annotated",
             nirvana_data_tar = nirvana_data_directory,
             custom_annotations_file = CreateCustomAnnotationsFile.custom_annotations,
@@ -434,7 +434,7 @@ task BigQueryLoadJson {
     }
 
     # If the vat version is undefined or v1 then the vat tables would be named like filter_vat, otherwise filter_vat_v2.
-    String effective_vat_version = if (defined(vat_version) && vat_version != "v1") then "_" + vat_version else ""
+    String effective_vat_version = if (defined(vat_version) && select_first([vat_version]) != "v1") then "_" + select_first([vat_version]) else ""
 
     # There are two pre-vat tables. A variant table and a genes table. They are joined together for the vat table
     String vat_table = filter_set_name + "_vat" + effective_vat_version
@@ -786,7 +786,7 @@ task MergeVatTSVs {
     }
 
     # going large with the default to make gsutil -m cp really zippy
-    Int disk_size = if (defined(merge_vcfs_disk_size_override)) then merge_vcfs_disk_size_override else 250
+    Int disk_size = if (defined(merge_vcfs_disk_size_override)) then select_first([merge_vcfs_disk_size_override]) else 250
 
     command <<<
         apt-get update
