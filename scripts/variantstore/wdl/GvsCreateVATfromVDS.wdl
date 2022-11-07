@@ -35,8 +35,16 @@ workflow GvsCreateVATfromVDS {
             custom_annotations_body = custom_annotations_file,
     }
 
+    call FixVcfHeader {
+        input:
+            input_vcf = input_sites_only_vcf,
+            output_vcf_name = "reheadered_sites_only.vcf"
+    }
+
     call RemoveDuplicatesFromSitesOnlyVCF {
         input:
+            input_vcf = FixVcfHeader.output_vcf,
+            ref = reference,
     }
 
     ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
@@ -54,7 +62,6 @@ workflow GvsCreateVATfromVDS {
             output_file_suffix = "${input_vcf_name}.json.gz",
             output_path = output_path,
     }
-
 
 
     call BigQueryLoadJson {
@@ -178,10 +185,149 @@ task CreateCustomAnnotationsFile {
     }
 }
 
+task FixVcfHeader {
+    input {
+        File input_vcf
+        String output_vcf_name
+        String docker_image = "us.gcr.io/broad-gatk/gatk:4.2.6.1"
+    }
+
+    Int disk_size = ceil(size(input_vcf, "GB") * 2.5) + 50
+
+    command {
+        set -euo pipefail
+        set -x
+
+        gatk --java-options "-Xms3g -Xmx3g" \
+            FixVcfHeader \
+            -I ~{input_vcf} \
+            -O ~{output_vcf_name}
+    }
+
+    runtime {
+        memory: "5 GB"
+        bootDiskSizeGb: "15"
+        disks: "local-disk " + disk_size + " HDD"
+        preemptible: 3
+        docker: docker_image
+    }
+
+    output {
+        String output_fvcf = output_vcf_name
+    }
+}
+
 
 task RemoveDuplicatesFromSitesOnlyVCF {
     input {
+        File sites_only_vcf
+        File ref
+    }
 
+    Int disk_size = ceil(size(sites_only_vcf, "GB") * 5) + 100
+
+    # separate multi-allelic sites into their own lines, remove deletions and filtered sites and make a sites only vcf
+    # while extracting and calculating the an/ac/af & sc by subpopulation into a tsv
+    command <<<
+        set -e
+
+        # custom function to prepend the current datetime to an echo statement
+        echo_date () { echo "`date "+%Y/%m/%d %H:%M:%S"` $1"; }
+
+#        echo_date "VAT: Custom localization of inputs"
+#
+#        cp ~{custom_annotations_template} ~{custom_annotations_file_name}
+#
+#        gsutil cp ~{input_vcf} ~{local_input_vcf}
+#        gsutil cp ~{input_vcf_index} ~{local_input_vcf_index}
+#        gsutil cp ~{ref} Homo_sapiens_assembly38.fasta
+#
+        echo_date "VAT: Convert input to BCF format"
+        bcftools convert --threads 4 -O b -o sites_only.bcf ~{sites_only_vcf}
+#        rm ~{sites_only_vcf}
+#
+#        echo_date "VAT: Calculating number of +50 alt alleles on N sites"
+#
+#        ## track the dropped variants with +50 alt alleles or N's in the reference (Since Nirvana cant handle N as a base, drop them for now)
+#        bcftools view --threads 4 -i 'N_ALT>50 || REF~"N"' -O u original.bcf | bcftools query -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > track_dropped.tsv
+#
+#        echo_date "VAT: filter out sites with too many alt alleles and trim extraneous INFO and FORMAT fields"
+#        bcftools view --threads 4 -e 'N_ALT>50 || REF~"N"' --no-update original.bcf -O u | \
+#        ## filter out the non-passing sites
+#        bcftools view --threads 4 -f 'PASS,.' --no-update -O u | \
+#        ## remove extraneous INFO and FORMAT fields
+#        bcftools annotate -x ^INFO/AC,INFO/AF,INFO/AN,^FORMAT/FT,FORMAT/GT -O b -o filtered.bcf
+#
+        echo_date "VAT: normalize, left align and split multi allelic sites to new lines, remove duplicate lines"
+        ## note that normalization may create sites with more than 50 alt alleles
+        bcftools norm --threads 4 -m- --check-ref w -f Homo_sapiens_assembly38.fasta sites_only.bcf -O b -o normalized.bcf
+#        rm filtered.bcf
+#
+#        echo_date "VAT: filter out spanning deletions and variants with an AC of 0, respect the FT flag"
+#        bcftools view --threads 4 -e 'ALT[0]="*" || AC=0' --no-update normalized.bcf -O u | \
+#        ## ensure that we respect the FT tag
+#        bcftools filter --threads 4 -i "FORMAT/FT='PASS,.'" --set-GTs . -O b -o normalized.filtered.bcf
+#
+#        ## clean up unneeded file
+#        rm normalized.bcf
+#
+        echo_date "VAT: detecting and removing duplicate rows from sites-only VCF"
+
+        ## During normalization, sometimes duplicate variants appear but with different calculations. This seems to be a bug in bcftools. For now we are dropping all duplicate variants
+        ## to locate the duplicates, we first make a file of just the first 5 columns
+        bcftools query normalized.bcf -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' | sort | uniq -d > duplicates.tsv
+
+        # If there ARE dupes to remove
+        if [ -s duplicates.tsv ]; then
+            ## remove those rows (that match up to the first 5 cols)
+            bcftools view --threads 4 normalized.bcf | grep -v -wFf duplicates.tsv | bcftools view --threads 4 -O b -o deduplicated.bcf
+        else
+            # There are no duplicates to remove
+            cp normalized.bcf deduplicated.bcf
+        fi
+        bcftools view deduplicated.bcf > deduplicated.vcf
+        rm normalized.bcf
+
+        ## add duplicates to the file that's tracking dropped variants
+        cat duplicates.tsv >> track_dropped.tsv
+        rm duplicates.tsv ## clean up unneeded file
+
+#        SUBPOPS=$(cut -f 2 ~{subpopulation_sample_list} | sort | uniq | tr '\n' ' ')
+#        echo_date "VAT: calculate annotations for the following subpopulations '$SUBPOPS'"
+#
+#        VCF_FIELDS=$(grep ^#CHROM ~{custom_annotations_template} | sed s/^#/%/g | awk  '{gsub("\t","\\t%",$0); print;}')
+#        echo_date "VAT: Here are the VCF fields to pull with bcftools: $VCF_FIELDS"
+#
+#        ## AC_het,AC_hom and AC_Hemi are used to calculate the participant count
+#        bcftools plugin fill-tags --threads 4 -- deduplicated.bcf -S ~{subpopulation_sample_list} -t AC,AF,AN,AC_het,AC_hom,AC_Hemi | bcftools query -f \
+#        "$VCF_FIELDS\n" >> ~{custom_annotations_file_name}
+#
+#        ## for validation of the pipeline
+#        wc -l ~{custom_annotations_file_name} | awk '{print $1 -7}'  > count.txt
+#
+#        echo_date "VAT: produce sites-only VCf"
+#
+#        ## compress the vcf and index it, make it sites-only for the next step
+#        bcftools view --threads 4 --no-update --drop-genotypes deduplicated.bcf -O z -o ~{normalized_vcf_compressed}
+#        bcftools index --tbi ~{normalized_vcf_compressed}
+
+        echo_date "VAT: finished"
+    >>>
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-10-25-alpine"
+        maxRetries: 3
+        memory: "16 GB"
+        preemptible: 3
+        cpu: "4"
+        disks: "local-disk " + disk_size + " HDD"
+    }
+    # ------------------------------------------------
+    # Outputs:
+    output {
+        File track_dropped = "track_dropped.tsv"
+        File output_vcf = "deduplicated.vcf"
     }
 }
 
