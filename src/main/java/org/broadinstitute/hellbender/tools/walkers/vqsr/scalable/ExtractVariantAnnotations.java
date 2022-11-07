@@ -295,21 +295,31 @@ public final class ExtractVariantAnnotations extends LabeledVariantAnnotationsWa
                     variant, featureContext, unlabeledDataReservoir != null);
             final boolean isVariantExtracted = !metadata.isEmpty();
             if (isVariantExtracted) {
-                final boolean isUnlabeled = metadata.stream().map(Triple::getRight).allMatch(Set::isEmpty);
-                if (!isUnlabeled) {
-                    addExtractedVariantToData(data, variant, metadata);
-                    writeExtractedVariantToVCF(variant, metadata);
-                } else {
-                    // Algorithm R for reservoir sampling: https://en.wikipedia.org/wiki/Reservoir_sampling#Simple_algorithm
-                    if (unlabeledIndex < maximumNumberOfUnlabeledVariants) {
-                        addExtractedVariantToData(unlabeledDataReservoir, variant, metadata);
-                    } else {
-                        final int j = rng.nextInt(unlabeledIndex);
-                        if (j < maximumNumberOfUnlabeledVariants) {
-                            setExtractedVariantInData(unlabeledDataReservoir, variant, metadata, j);
+                // metadata may contain a mix of labeled and unlabeled alleles (e.g., when extracting unlabeled variants in allele-specific mode)
+                // which we separate here accordingly
+                final List<Triple<List<Allele>, VariantType, TreeSet<String>>> labeledMetadata = metadata.stream()
+                        .filter(m -> !m.getRight().isEmpty())
+                        .collect(Collectors.toList());
+                if (!labeledMetadata.isEmpty()) {
+                    addExtractedVariantToData(data, variant, labeledMetadata);
+                    writeExtractedVariantToVCF(variant, labeledMetadata);
+                }
+                if (unlabeledDataReservoir != null) {
+                    final List<Triple<List<Allele>, VariantType, TreeSet<String>>> unlabeledMetadata = metadata.stream()
+                            .filter(m -> m.getRight().isEmpty())
+                            .collect(Collectors.toList());
+                    if (!unlabeledMetadata.isEmpty()) {
+                        // Algorithm R for reservoir sampling: https://en.wikipedia.org/wiki/Reservoir_sampling#Simple_algorithm
+                        if (unlabeledIndex < maximumNumberOfUnlabeledVariants) {
+                            addExtractedVariantToData(unlabeledDataReservoir, variant, unlabeledMetadata);
+                        } else {
+                            final int j = rng.nextInt(unlabeledIndex);
+                            if (j < maximumNumberOfUnlabeledVariants) {
+                                setExtractedVariantInData(unlabeledDataReservoir, variant, unlabeledMetadata, j);
+                            }
                         }
+                        unlabeledIndex++;
                     }
-                    unlabeledIndex++;
                 }
             }
         }
@@ -359,7 +369,7 @@ public final class ExtractVariantAnnotations extends LabeledVariantAnnotationsWa
             logger.info(String.format("Extracted unlabeled annotations for %d variants of type %s.",
                     unlabeledDataReservoir.getVariantTypeFlat().stream().mapToInt(t -> t == variantType ? 1 : 0).sum(), variantType));
         }
-        logger.info(String.format("Extracted unlabeled annotations for %s total variants.", unlabeledDataReservoir.size()));
+        logger.info(String.format("Extracted unlabeled annotations for %s total variants.", unlabeledDataReservoir.flatSize()));
 
         logger.info("Writing unlabeled annotations...");
         // TODO coordinate sort
