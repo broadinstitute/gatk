@@ -22,18 +22,14 @@ import re
 gcs_re = re.compile("^gs://(?P<bucket_name>[^/]+)/(?P<object_prefix>.*)$")
 
 
-def init_hail(references_path, temp_path):
+def import_gvs(argsfn, vds_path, references_path, temp_path):
     import hail as hl
     hl.init(tmp_dir=f'{temp_path}/hail_tmp_general')
 
     rg38 = hl.get_reference('GRCh38')
     rg38.add_sequence(f'{references_path}/Homo_sapiens_assembly38.fasta.gz',
                       f'{references_path}/Homo_sapiens_assembly38.fasta.fai')
-    return rg38
 
-
-def import_gvs(argsfn, rg38, vds_path, temp_path):
-    import hail as hl
 
     hl.import_gvs(
         vets=argsfn('vets'),
@@ -96,18 +92,6 @@ def gcs_generate_avro_args(bucket, blob_prefix, key):
     return ret
 
 
-def gcs_import_gvs(avro_path, vds_path, temp_path):
-    rg38 = init_hail('gs://hail-common/references', temp_path)
-
-    avro_bucket_name, avro_object_prefix = gcs_re.match(avro_path).groups()
-    avro_bucket = storage.Client().get_bucket(avro_bucket_name)
-
-    def args(key):
-        return gcs_generate_avro_args(avro_bucket, avro_object_prefix, key)
-
-    import_gvs(args, rg38, vds_path, temp_path)
-
-
 def local_generate_avro_args(avro_prefix, key):
     def superpartitioned_handler():
         parts = root.split('/')
@@ -132,15 +116,6 @@ def local_generate_avro_args(avro_prefix, key):
     return ret
 
 
-def local_import_gvs(avro_path, temp_path, vds_path, references_path):
-    rg38 = init_hail(references_path, temp_path)
-
-    def args(key):
-        return local_generate_avro_args(avro_path, key)
-
-    import_gvs(args, rg38, vds_path, temp_path)
-
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False,
                                      description='Create base Hail VDS from exported GVS Avro files.')
@@ -160,13 +135,24 @@ if __name__ == '__main__':
     is_not_gcs = [not g for g in is_gcs]
 
     if all(is_gcs):
-        gcs_import_gvs(avro_path, vds_path, temp_path)
+        avro_bucket_name, avro_object_prefix = gcs_re.match(avro_path).groups()
+        avro_bucket = storage.Client().get_bucket(avro_bucket_name)
+
+        def args(key):
+            return gcs_generate_avro_args(avro_bucket, avro_object_prefix, key)
+
+        import_gvs(args, vds_path, 'gs://hail-common/references', temp_path)
+
     elif all(is_not_gcs):
         references_path = args.references_path
         if not references_path:
             raise ValueError(f"--references-path must be specified with local files")
         if gcs_re.match(references_path):
             raise ValueError(f"--references-path must refer to a local path")
-        local_import_gvs(avro_path, temp_path, vds_path, references_path)
+
+        def args(key):
+            return local_generate_avro_args(avro_path, key)
+
+        import_gvs(args, vds_path, references_path, temp_path)
     else:
         raise ValueError("Arguments appear to be some unsavory mix of GCS and local paths, all or nothing please.")
