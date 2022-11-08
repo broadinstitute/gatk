@@ -166,7 +166,7 @@ task CreateCustomAnnotationsFile {
         cat ~{custom_annotations_header} > ~{custom_annotations_file_name}
         cat ~{custom_annotations_body} | cut -f3- | sed '1d'  >> ~{custom_annotations_file_name}
         # Convert NAs in the custom annotations file to '.' characters
-        sed i s/NA/\./g ~{custom_annotations_file_name}
+        sed -i s/NA/\./g ~{custom_annotations_file_name}
 
     >>>
     # ------------------------------------------------
