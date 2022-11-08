@@ -165,7 +165,8 @@ task CreateCustomAnnotationsFile {
         
         cat ~{custom_annotations_header} > ~{custom_annotations_file_name}
         cat ~{custom_annotations_body} | cut -f3- | sed '1d'  >> ~{custom_annotations_file_name}
-
+        # Convert NAs in the custom annotations file to '.' characters
+        sed i s/NA/\./g ~{custom_annotations_file_name}
 
     >>>
     # ------------------------------------------------
@@ -319,8 +320,8 @@ task AnnotateVCF {
         tar zxvf ~{nirvana_data_tar} -C datasources_dir  ## --strip-components 2
         DATA_SOURCES_FOLDER="$PWD/datasources_dir/references"
 
-        ## TODO - TEMP - try to change the NAs to nothing
-        sed s/NA//g ~{custom_annotations_file} | grep -v '^chr1\t1289677\t' > ac_an_af_noNAs.tsv
+        ## TODO - TEMP - Just remove one weird entry
+        cat ~{custom_annotations_file} | grep -v '^chr1\t1289677\t' > ac_an_af_RemovedSite.tsv
 
         # =======================================
         echo "Creating custom annotations"
@@ -331,7 +332,7 @@ task AnnotateVCF {
         ## use --skip-ref once you are on a version of nirvana later than 3.14 (once they have created a docker image for it)
         dotnet ~{custom_creation_location} customvar \
             -r $DATA_SOURCES_FOLDER~{path_reference} \
-            -i ac_an_af_noNAs.tsv \
+            -i ac_an_af_RemovedSite.tsv \
             -o $CUSTOM_ANNOTATIONS_FOLDER
 
         # =======================================
