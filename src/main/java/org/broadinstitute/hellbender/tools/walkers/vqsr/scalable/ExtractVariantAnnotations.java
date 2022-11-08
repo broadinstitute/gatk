@@ -251,7 +251,9 @@ public final class ExtractVariantAnnotations extends LabeledVariantAnnotationsWa
                     "of sites from input sites that are not present in the specified resources. " +
                     "Choice of this number should be guided by considerations for training the negative model in " +
                     "TrainVariantAnnotationsModel; users may wish to choose a number that is comparable to the " +
-                    "expected size of the labeled training set or that is compatible with available memory resources.",
+                    "expected size of the labeled training set or that is compatible with available memory resources. " +
+                    "Note that in allele-specific mode (--" + LabeledVariantAnnotationsWalker.USE_ALLELE_SPECIFIC_ANNOTATIONS_LONG_NAME +
+                    " true), this argument limits the number of variant records, rather than the number of alleles.",
             minValue = 0)
     private int maximumNumberOfUnlabeledVariants = 0;
 
@@ -369,6 +371,7 @@ public final class ExtractVariantAnnotations extends LabeledVariantAnnotationsWa
             logger.info(String.format("Extracted unlabeled annotations for %d variants of type %s.",
                     unlabeledDataReservoir.getVariantTypeFlat().stream().mapToInt(t -> t == variantType ? 1 : 0).sum(), variantType));
         }
+        logger.info(String.format("Extracted unlabeled annotations for %s total records.", unlabeledDataReservoir.size()));
         logger.info(String.format("Extracted unlabeled annotations for %s total variants.", unlabeledDataReservoir.flatSize()));
 
         logger.info("Writing unlabeled annotations...");

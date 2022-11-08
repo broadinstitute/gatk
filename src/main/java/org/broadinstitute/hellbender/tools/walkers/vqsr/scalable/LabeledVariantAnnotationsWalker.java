@@ -229,6 +229,7 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
         }
 
         data = new LabeledVariantAnnotationsData(annotationNames, resourceLabels, useASAnnotations);
+        logger.info(String.format("Using %d annotations %s...", data.getSortedAnnotationNames().size(), data.getSortedAnnotationNames()));
 
         vcfWriter = createVCFWriter(outputVCFFile);
         vcfWriter.writeHeader(constructVCFHeader(data.getSortedLabels()));
@@ -282,6 +283,7 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
             logger.info(String.format("Extracted annotations for %d variants labeled as %s.",
                     data.isLabelFlat(label).stream().mapToInt(b -> b ? 1 : 0).sum(), label));
         }
+        logger.info(String.format("Extracted annotations for %s total records.", data.size()));
         logger.info(String.format("Extracted annotations for %s total variants.", data.flatSize()));
 
         logger.info("Writing annotations...");
