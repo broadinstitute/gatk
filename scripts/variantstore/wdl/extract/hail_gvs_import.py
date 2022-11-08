@@ -120,10 +120,14 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False,
                                      description='Create base Hail VDS from exported GVS Avro files.')
     parser.add_argument('--avro-path', type=str, help='Path at which exported GVS Avro files are found',
-                        default="@AVRO_PATH")
-    parser.add_argument('--vds-path', type=str, help='Path to which the VDS should be written', default="@VDS_PATH@")
-    parser.add_argument('--temp-path', type=str, help='Path to temporary directory', default="@TEMP_DIR@")
-    parser.add_argument('--references-path', type=str, help='Path to references, only required for local files')
+                        default="@AVRO_PATH@",
+                        required=True)
+    parser.add_argument('--vds-path', type=str, help='Path to which the VDS should be written', default="@VDS_PATH@",
+                        required=True)
+    parser.add_argument('--temp-path', type=str, help='Path to temporary directory', default="@TEMP_DIR@",
+                        required=True)
+    parser.add_argument('--references-path', type=str, help='Path to references, only required for local files',
+                        required=False)
 
     args = parser.parse_args()
 

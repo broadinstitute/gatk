@@ -96,8 +96,8 @@ task CreateAndTieOutVds {
         # `avro_prefix` includes a trailing `avro` so don't add another `avro` here.
         gcloud storage cp --recursive ~{avro_prefix} $PWD
 
-        export REFERENCES=$PWD/references
-        mkdir -p ${REFERENCES}
+        export REFERENCES_PATH=$PWD/references
+        mkdir -p ${REFERENCES_PATH}
 
         gcloud storage cp 'gs://hail-common/references/Homo_sapiens_assembly38.fasta*' ${REFERENCES}
 
@@ -113,13 +113,18 @@ task CreateAndTieOutVds {
 
         export WORK=$PWD/work
         mkdir ${WORK}
-        export AVRO=$PWD/avro
-        python3 ./hail_gvs_import.py --avro-prefix ${AVRO} --write-prefix ${WORK} --references-dir ${REFERENCES}
 
-        export LOCAL_VDS_PATH=${WORK}/gvs_export.vds
+        export TEMP_PATH=$WORK/temp
+        mkdir ${TEMP_PATH}
+
+        export VDS_PATH=$WORK/gvs_import.vds
+        export AVRO_PATH=$PWD/avro
+
+        python3 ./hail_gvs_import.py --avro-path ${AVRO_PATH} --vds-path ${VDS_PATH} --temp-path ${TEMP_PATH} --references-path ${REFERENCES_PATH}
+
         export JOINED_MATRIX_TABLE_PATH=${WORK}/joined.mt
 
-        python3 ./hail_join_vds_vcfs.py --vds-path ${LOCAL_VDS_PATH} --joined-matrix-table-path ${JOINED_MATRIX_TABLE_PATH} *.vcf.gz
+        python3 ./hail_join_vds_vcfs.py --vds-path ${VDS_PATH} --joined-matrix-table-path ${JOINED_MATRIX_TABLE_PATH} *.vcf.gz
 
         # Copy up the VDS
         gcloud storage cp --recursive ${LOCAL_VDS_PATH} ~{vds_destination_path}
@@ -130,7 +135,7 @@ task CreateAndTieOutVds {
     >>>
     runtime {
         # `slim` here to be able to use Java
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:406.0.0-slim"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-slim"
         disks: "local-disk 2000 HDD"
         memory: "30 GiB"
     }
