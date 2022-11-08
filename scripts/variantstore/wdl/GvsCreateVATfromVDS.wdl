@@ -247,12 +247,18 @@ task RemoveDuplicatesFromSitesOnlyVCF {
         ## to locate the duplicates, we first make a file of just the first 5 columns
         bcftools query normalized.bcf -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' | sort | uniq -d > duplicates.tsv
 
+        echo_date "VAT: done with duplicate detection"
+        wc -l duplicates.tsv
+        echo_date "VAT: Duplicates may have been found"
+
         # If there ARE dupes to remove
         if [ -s duplicates.tsv ]; then
             ## remove those rows (that match up to the first 5 cols)
+            echo_date "VAT: Removing those rows"
             bcftools view --threads 4 normalized.bcf | grep -v -wFf duplicates.tsv | bcftools view --threads 4 -O b -o deduplicated.bcf
         else
             # There are no duplicates to remove
+            echo_date "VAT: No duplicates found"
             cp normalized.bcf deduplicated.bcf
         fi
         bcftools view deduplicated.bcf > deduplicated.vcf
@@ -314,7 +320,7 @@ task AnnotateVCF {
         DATA_SOURCES_FOLDER="$PWD/datasources_dir/references"
 
         ## TODO - TEMP - try to change the NAs to nothing
-        sed s/NA//g ~{custom_annotations_file} > ac_an_af_noNAs.tsv
+        sed s/NA//g ~{custom_annotations_file} | grep -v '^chr1\t1289677\t' > ac_an_af_noNAs.tsv
 
         # =======================================
         echo "Creating custom annotations"
