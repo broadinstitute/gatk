@@ -164,9 +164,8 @@ task CreateCustomAnnotationsFile {
         set -e
         
         cat ~{custom_annotations_header} > ~{custom_annotations_file_name}
-        cat ~{custom_annotations_body} | cut -f3- | sed '1d'  >> ~{custom_annotations_file_name}
-        # Convert NAs in the custom annotations file to '.' characters
-        sed -i s/NA/\./g ~{custom_annotations_file_name}
+        # Remove the first two columns, Remove the first line, Convert 'NA' to '.'
+        cat ~{custom_annotations_body} | cut -f3- | sed '1d' | sed 's/NA/\./g' >> ~{custom_annotations_file_name}
 
     >>>
     # ------------------------------------------------
@@ -321,7 +320,7 @@ task AnnotateVCF {
         DATA_SOURCES_FOLDER="$PWD/datasources_dir/references"
 
         ## TODO - TEMP - Just remove one weird entry
-        cat ~{custom_annotations_file} | grep -v '^chr1\t1289677\t' > ac_an_af_RemovedSite.tsv
+#        cat ~{custom_annotations_file} | grep -v '^chr1\t1289677\t' > ac_an_af_RemovedSite.tsv
 
         # =======================================
         echo "Creating custom annotations"
@@ -330,10 +329,10 @@ task AnnotateVCF {
 
         # Add AC/AN/AF as custom annotations
         ## use --skip-ref once you are on a version of nirvana later than 3.14 (once they have created a docker image for it)
-        dotnet ~{custom_creation_location} customvar \
-            -r $DATA_SOURCES_FOLDER~{path_reference} \
-            -i ac_an_af_RemovedSite.tsv \
-            -o $CUSTOM_ANNOTATIONS_FOLDER
+#        dotnet ~{custom_creation_location} customvar \
+#            -r $DATA_SOURCES_FOLDER~{path_reference} \
+#            -i ac_an_af_RemovedSite.tsv \
+#            -o $CUSTOM_ANNOTATIONS_FOLDER
 
         # =======================================
         # Create Nirvana annotations:
@@ -342,7 +341,7 @@ task AnnotateVCF {
         dotnet ~{nirvana_location} \
             -c $DATA_SOURCES_FOLDER~{path} \
             --sd $DATA_SOURCES_FOLDER~{path_supplementary_annotations} \
-            --sd $CUSTOM_ANNOTATIONS_FOLDER \
+#            --sd $CUSTOM_ANNOTATIONS_FOLDER \
             -r $DATA_SOURCES_FOLDER~{path_reference} \
             -i ~{input_vcf} \
             -o ~{output_annotated_file_name}
