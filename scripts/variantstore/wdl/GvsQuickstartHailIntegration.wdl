@@ -99,7 +99,7 @@ task CreateAndTieOutVds {
         export REFERENCES_PATH=$PWD/references
         mkdir -p ${REFERENCES_PATH}
 
-        gcloud storage cp 'gs://hail-common/references/Homo_sapiens_assembly38.fasta*' ${REFERENCES}
+        gcloud storage cp 'gs://hail-common/references/Homo_sapiens_assembly38.fasta*' ${REFERENCES_PATH}
 
         # Temurin Java 8
         apt-get -qq install wget apt-transport-https gnupg
