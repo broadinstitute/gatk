@@ -72,8 +72,8 @@ task CreateAndTieOutVds {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
+        # Copy the versions of the Hail import and tieout scripts for this branch from GitHub.
         script_url_prefix="https://raw.githubusercontent.com/broadinstitute/gatk/~{branch_name}/scripts/variantstore/wdl/extract"
-
         for script in hail_gvs_import.py hail_join_vds_vcfs.py gvs_vds_tie_out.py
         do
             curl --silent --location --remote-name "${script_url_prefix}/${script}"
