@@ -450,6 +450,8 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
                 logger.info("Running in PYTHON_IFOREST mode...");
                 break;
             case PYTHON_SCRIPT:
+                Utils.validateArg(hyperparametersJSONFile != null,
+                        "Hyperparameters JSON must be provided when using PYTHON_SCRIPT backend.");
                 IOUtils.canReadFile(pythonScriptFile);
                 IOUtils.canReadFile(hyperparametersJSONFile);
                 logger.info("Running in PYTHON_SCRIPT mode...");
