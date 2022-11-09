@@ -127,7 +127,7 @@ task CreateAndTieOutVds {
         python3 ./hail_join_vds_vcfs.py --vds-path ${VDS_PATH} --joined-matrix-table-path ${JOINED_MATRIX_TABLE_PATH} *.vcf.gz
 
         # Copy up the VDS
-        gcloud storage cp --recursive ${LOCAL_VDS_PATH} ~{vds_destination_path}
+        gcloud storage cp --recursive ${VDS_PATH} ~{vds_destination_path}
 
         pip install pytest
         ln -s ${WORK}/joined.mt .
