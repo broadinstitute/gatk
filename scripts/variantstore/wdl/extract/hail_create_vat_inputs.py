@@ -60,6 +60,17 @@ def failing_gts_to_no_call(vds):
     return hl.vds.VariantDataset(vds.reference_data, filtered_vd)
 
 
+def remove_too_many_alt_allele_sites(vds):
+    """
+     Remove sites with more than 50 alternate alleles (and print how many)
+    """
+    vd = vds.variant_data
+    print(vd.aggregate_rows(hl.agg.count_where(hl.len(vd.alleles) > 50)))
+    vd_50_aa_cutoff = vd.filter_rows(hl.len(vd.alleles) <= 50)
+
+    return hl.vds.VariantDataset(vds.reference_data, vd_50_aa_cutoff)
+
+
 def gq0_to_no_call(vds):
     """
     Turn the GQ0s into no calls so that ANs are correct
@@ -153,6 +164,7 @@ def main(vds, ancestry_file_location, sites_only_vcf_path, vat_custom_annotation
         hard_filter_non_passing_sites,
         replace_lgt_with_gt,
         failing_gts_to_no_call,
+        remove_too_many_alt_allele_sites,
         gq0_to_no_call
     ]
 
