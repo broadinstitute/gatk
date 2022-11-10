@@ -30,7 +30,8 @@ The third input can be created using the ancestry pipeline which is in another w
 The first and second inputs can be creating using this python script:`scripts/variantstore/wdl/extract/hail_create_vat_inputs.py`
 We recommend using a Terra python Notebook with a small Hail cluster. 
 The python script needs the following inputs:
-
+* VDS -- this can be created using the GVS callset creation pipeline
+* Ancestry tsv -- this can be created using the Ancestry pipeline
 
 
 ### Notes:
