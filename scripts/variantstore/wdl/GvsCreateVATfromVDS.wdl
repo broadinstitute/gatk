@@ -48,13 +48,12 @@ workflow GvsCreateVATfromVDS {
     }
 
     ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
-    ## BIG TODO - just passing the template to make things fast.
     call AnnotateVCF {
         input:
             input_vcf = RemoveDuplicatesFromSitesOnlyVCF.output_vcf,
             output_annotated_file_name = "${input_vcf_name}_annotated",
             nirvana_data_tar = nirvana_data_directory,
-            custom_annotations_file = MakeSubpopulationFilesAndReadSchemaFiles.custom_annotations_template_file,
+            custom_annotations_file = CreateCustomAnnotationsFile.custom_annotations,
     }
 
     call PrepAnnotationJson {
@@ -320,9 +319,6 @@ task AnnotateVCF {
         tar zxvf ~{nirvana_data_tar} -C datasources_dir  ## --strip-components 2
         DATA_SOURCES_FOLDER="$PWD/datasources_dir/references"
 
-        ## TODO - TEMP - Just remove one weird entry
-#        cat ~{custom_annotations_file} | grep -v '^chr1\t1289677\t' > ac_an_af_RemovedSite.tsv
-
         # =======================================
         echo "Creating custom annotations"
         mkdir customannotations_dir
@@ -330,10 +326,10 @@ task AnnotateVCF {
 
         # Add AC/AN/AF as custom annotations
         ## use --skip-ref once you are on a version of nirvana later than 3.14 (once they have created a docker image for it)
-#        dotnet ~{custom_creation_location} customvar \
-#            -r $DATA_SOURCES_FOLDER~{path_reference} \
-#            -i ac_an_af_RemovedSite.tsv \
-#            -o $CUSTOM_ANNOTATIONS_FOLDER
+        dotnet ~{custom_creation_location} customvar \
+            -r $DATA_SOURCES_FOLDER~{path_reference} \
+            -i ac_an_af_RemovedSite.tsv \
+            -o $CUSTOM_ANNOTATIONS_FOLDER
 
         # =======================================
         # Create Nirvana annotations:
@@ -343,6 +339,7 @@ task AnnotateVCF {
             -i ~{input_vcf} \
             -c $DATA_SOURCES_FOLDER~{path} \
             --sd $DATA_SOURCES_FOLDER~{path_supplementary_annotations} \
+            --sd $CUSTOM_ANNOTATIONS_FOLDER \
             -r $DATA_SOURCES_FOLDER~{path_reference} \
             -o ~{output_annotated_file_name}
 
@@ -405,9 +402,9 @@ task PrepAnnotationJson {
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:rc_616_var_store_2022_10_25"
         memory: "60 GB"
-        preemptible: 5
+        preemptible: 3
         cpu: "1"
-        disks: "local-disk 250 SSD"
+        disks: "local-disk 250 HDD"
     }
     # ------------------------------------------------
     # Outputs:
