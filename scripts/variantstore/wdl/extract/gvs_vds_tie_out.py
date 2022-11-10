@@ -1,5 +1,3 @@
-# gvs_vds_tie_out.py
-
 import hail as hl
 import pytest
 
