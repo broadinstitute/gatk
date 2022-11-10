@@ -52,9 +52,10 @@ releases of the toolkit.
 ## <a name="requirements">Requirements</a>
 * To run GATK:
     * Java 8 is needed to run or build GATK. 
-    We recommend either of the following:
-        * OpenJDK 8 with Hotspot from [AdoptOpenJdk](https://adoptopenjdk.net/)
-        * [OracleJDK 8](https://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html)
+    We recommend one of the following:
+        * Download the Eclipse Foundation's distribution of OpenJDK 8 from [adoptium.net](https://adoptium.net/). Navigate to the [release archive](https://adoptium.net/temurin/archive/?version=8) to find downloads for Java 8.
+        * On Mac OS, you can install the [Homebrew package manager](https://brew.sh/) and run `brew tap homebrew/cask-versions` followed by `brew install --cask temurin8` to install the Eclipse Foundation's OpenJDK 8. 
+        * Or you can download the older [OracleJDK 8](https://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html)
     which requires an Oracle account to download and comes with restrictive [license conditions](https://www.oracle.com/downloads/licenses/javase-license1.html).
     * Python 2.6 or greater (required to run the `gatk` frontend script)
     * Python 3.6.2, along with a set of additional Python packages, is required to run some tools and workflows.
