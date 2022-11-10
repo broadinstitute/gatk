@@ -24,6 +24,14 @@ Most of the other files are specific to where the VAT will live, like the projec
 
 All optional inputs are provided with default values.
 
+### Preparing to run GvsCreateVATfromVDS:
+Three inputs need to be created from the VDS.
+The third input can be created using the ancestry pipeline which is in another workspace.
+The first and second inputs can be creating using this python script:`scripts/variantstore/wdl/extract/hail_create_vat_inputs.py`
+We recommend using a Terra python Notebook with a small Hail cluster. 
+The python script needs the following inputs:
+
+
 
 ### Notes:
 
