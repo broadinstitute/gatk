@@ -201,6 +201,21 @@ workflows:
        branches:
          - master
          - ah_var_store
+   - name: GvsQuickstartVcfIntegration
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartVcfIntegration.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+   - name: GvsQuickstartHailIntegration
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartHailIntegration.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_639_hail_testing_spike
    - name: GvsQuickstartIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartIntegration.wdl
@@ -208,7 +223,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_707_azure_setup
+         - vs_639_hail_testing_spike
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl

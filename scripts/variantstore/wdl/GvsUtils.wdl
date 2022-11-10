@@ -164,7 +164,7 @@ task GetBQTableLastModifiedDatetime {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -202,7 +202,7 @@ task GetBQTablesMaxLastModifiedTimestamp {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -214,6 +214,7 @@ task BuildGATKJarAndCreateDataset {
   input {
     String branch_name
     String dataset_prefix
+    String dataset_suffix
   }
   meta {
     # Branch may be updated so do not call cache!
@@ -263,7 +264,7 @@ task BuildGATKJarAndCreateDataset {
     # Build a dataset name based on the branch name and the git hash of the most recent commit on this branch.
     # Dataset names must be alphanumeric and underscores only. Convert any dashes to underscores, then delete
     # any remaining characters that are not alphanumeric or underscores.
-    dataset="$(echo ~{dataset_prefix}_${branch}_${hash} | tr '-' '_' | tr -c -d '[:alnum:]_')"
+    dataset="$(echo ~{dataset_prefix}_${branch}_${hash}_~{dataset_suffix} | tr '-' '_' | tr -c -d '[:alnum:]_')"
 
     bq mk --project_id="gvs-internal" "$dataset"
 
@@ -283,7 +284,7 @@ task BuildGATKJarAndCreateDataset {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-slim"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-slim"
     disks: "local-disk 500 HDD"
   }
 }
@@ -386,7 +387,7 @@ task GetNumSamplesLoaded {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -414,7 +415,7 @@ task CountSuperpartitions {
         ' | sed 1d > num_superpartitions.txt
     >>>
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
         disks: "local-disk 500 HDD"
     }
     output {
@@ -459,7 +460,7 @@ task ValidateFilterSetName {
     }
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
         memory: "3 GB"
         disks: "local-disk 500 HDD"
         preemptible: 3
