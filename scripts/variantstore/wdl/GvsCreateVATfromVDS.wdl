@@ -50,7 +50,7 @@ workflow GvsCreateVATfromVDS {
     ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
     call AnnotateVCF {
         input:
-            input_vcf = RemoveDuplicatesFromSitesOnlyVCF.output_vcf,
+            input_vcf = input_sites_only_vcf,
             output_annotated_file_name = "${input_vcf_name}_annotated",
             nirvana_data_tar = nirvana_data_directory,
             custom_annotations_file = CreateCustomAnnotationsFile.custom_annotations,
@@ -328,7 +328,7 @@ task AnnotateVCF {
         ## use --skip-ref once you are on a version of nirvana later than 3.14 (once they have created a docker image for it)
         dotnet ~{custom_creation_location} customvar \
             -r $DATA_SOURCES_FOLDER~{path_reference} \
-            -i ac_an_af_RemovedSite.tsv \
+            -i ~{custom_annotations_file} \
             -o $CUSTOM_ANNOTATIONS_FOLDER
 
         # =======================================
