@@ -1,6 +1,6 @@
 # How to Run the GvsExtractCohortFromSampleNames Workflow
 
-The purpose of `GvsExtractCohortFromSampleNames.wdl` is to take advantage of a completely created GVS (Genomic Variant Store) in BigQuery, complete with filter model, to generate a callset with a subset of specified samples' data.  It calls existing WDLs for the "Prepare" and "Extract" steps and allows for the data required to create the subset callset to be stored and queried (and, therefore, paid for) by a different Google project than the "parent" GVS (most probably paid for by AoU).
+The purpose of `GvsExtractCohortFromSampleNames.wdl` is to take advantage of an existing GVS (Genomic Variant Store) in BigQuery, complete with filter model, to generate a callset with a subset of specified samples' data.  It calls existing WDLs for the "Prepare" and "Extract" steps and allows for the data required to create the subset callset to be stored and queried (and, therefore, paid for) by a different Google project than the "parent" GVS (most probably paid for by AoU).
 
 Required inputs:
 
@@ -22,7 +22,7 @@ Required inputs:
 
 Optional inputs of interest:
 
- | Parameter      | Description                                                                                          |
- |----------------|------------------------------------------------------------------------------------------------------|
+| Parameter              | Description                              |
+|------------------------|--------------------------------------------|
  | drop_state     | This should correspond to the same value set in `GvsImportGenomes` (or `GvsJointVariantCalling`)     |
  | output_gcs_dir | GCS path to a directory to copy the interval list files, the extract VCFs and a sample manifest into | 

@@ -228,7 +228,8 @@ def make_extract_table(call_set_identifier,
                        destination_table_prefix,
                        fq_sample_mapping_table,
                        temp_table_ttl_hours,
-                       only_output_vet_tables):
+                       only_output_vet_tables,
+                       write_cost_to_db):
     try:
         fq_destination_table_ref_data = f"{fq_destination_dataset}.{destination_table_prefix}__REF_DATA"
         fq_destination_table_vet_data = f"{fq_destination_dataset}.{destination_table_prefix}__VET_DATA"
@@ -304,7 +305,7 @@ def make_extract_table(call_set_identifier,
 
     finally:
         utils.write_job_stats(JOBS, client, f"{fq_destination_dataset}", call_set_identifier, 'GvsPrepareRanges',
-                              'PrepareRangesCallsetTask', output_table_prefix)
+                              'PrepareRangesCallsetTask', output_table_prefix, write_cost_to_db)
 
 
 if __name__ == '__main__':
@@ -334,6 +335,8 @@ if __name__ == '__main__':
     parser.add_argument('--ttl', type=int, help='Temp table TTL in hours', required=False, default=72)
     parser.add_argument('--only_output_vet_tables', type=bool,
                       help='Only create __VET_DATA table, skip __REF_DATA and __SAMPLES tables', required=False, default=False)
+    parser.add_argument('--write_cost_to_db', type=bool,
+                        help='Populate cost_observability table with BigQuery query bytes scanned', required=False, default=True)
 
     sample_args = parser.add_mutually_exclusive_group(required=True)
     sample_args.add_argument('--sample_names_to_extract', type=str,

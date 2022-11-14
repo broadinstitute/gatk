@@ -286,7 +286,7 @@ task GenerateHailScripts {
         File hail_create_vat_inputs_script = 'hail_create_vat_inputs.py'
     }
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-11-08-alpine"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-11-14-alpine"
         disks: "local-disk 500 HDD"
     }
 }

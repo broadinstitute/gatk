@@ -36,6 +36,7 @@ workflow GvsExtractCallset {
     Int? split_intervals_mem_override
     Float x_bed_weight_scaling = 4
     Float y_bed_weight_scaling = 4
+    Boolean write_cost_to_db = true
   }
 
   File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
@@ -165,6 +166,7 @@ workflow GvsExtractCallset {
         extract_maxretries_override        = extract_maxretries_override,
         emit_pls                           = emit_pls,
         emit_ads                           = emit_ads,
+        write_cost_to_db = write_cost_to_db
     }
   }
 
@@ -241,6 +243,7 @@ task ExtractTask {
     String fq_filter_set_site_table
     String fq_filter_set_tranches_table
     String? filter_set_name
+    Boolean write_cost_to_db
 
     # Runtime Options:
     File? gatk_override
@@ -289,11 +292,11 @@ task ExtractTask {
         ~{true='--emit-ads' false='' emit_ads} \
         ${FILTERING_ARGS} \
         --dataset-id ~{dataset_id} \
-        --cost-observability-tablename ~{cost_observability_tablename} \
         --call-set-identifier ~{call_set_identifier} \
         --wdl-step GvsCreateCallset \
         --wdl-call ExtractTask \
-        --shard-identifier ~{intervals_name}
+        --shard-identifier ~{intervals_name} \
+        ~{true="--cost-observability-tablename ~{cost_observability_tablename}" false='' write_cost_to_db}
 
     # Drop trailing slash if one exists
     OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
