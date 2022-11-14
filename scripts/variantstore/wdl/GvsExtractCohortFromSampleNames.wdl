@@ -39,7 +39,7 @@ workflow GvsExtractCohortFromSampleNames {
     File? gatk_override
   }
 
-  Boolean write_cost_to_db = if (query_project != destination_project_id) then false else true
+  Boolean write_cost_to_db = if ((gvs_project != destination_project_id) || (gvs_project != query_project)) then false else true
 
   # writing the array to a file has to be done in a task
   # https://support.terra.bio/hc/en-us/community/posts/360071465631-write-lines-write-map-write-tsv-write-json-fail-when-run-in-a-workflow-rather-than-in-a-task
