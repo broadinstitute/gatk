@@ -375,6 +375,8 @@ task PrepAnnotationJson {
     String output_genes_gcp_path = output_path + 'genes/'
     String output_annotations_gcp_path = output_path + 'annotations/'
 
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
     ## note: these temp files do not currently get cleaned up as some of them may be helpful for recovery.
 
     command <<<
@@ -383,6 +385,8 @@ task PrepAnnotationJson {
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
+
+        bash ~{monitoring_script} > monitoring.log &
 
         # for debugging purposes only
         gsutil cp ~{annotation_json} '~{output_annotations_gcp_path}' #TODO: Can we run this task without cp-ing down this file?
@@ -404,7 +408,7 @@ task PrepAnnotationJson {
         memory: "60 GB"
         preemptible: 3
         cpu: "1"
-        disks: "local-disk 250 HDD"
+        disks: "local-disk 500 HDD"
     }
     # ------------------------------------------------
     # Outputs:
@@ -412,6 +416,7 @@ task PrepAnnotationJson {
         File vat_vt_json="~{output_vt_json}"
         File vat_genes_json="~{output_genes_json}"
         Boolean done = true
+        File monitoring_log = "monitoring.log"
     }
 }
 
