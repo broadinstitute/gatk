@@ -19,19 +19,19 @@ channels:
 dependencies:
 
 # core python dependencies
-- conda-forge::python=3.7.8       # do not update
+- conda-forge::python=3.7.8         # do not update
 - pip=20.0.2                        # specifying channel may cause a warning to be emitted by conda
-- conda-forge::mkl=2022.1.0           # MKL typically provides dramatic performance increases for theano, tensorflow, and other key dependencies
+- conda-forge::mkl=2022.1.0         # MKL typically provides dramatic performance increases for theano, tensorflow, and other key dependencies
 - conda-forge::mkl-service=2.4.0
 - conda-forge::numpy=1.21.2         # do not update, this will break scipy=1.0.0
                                     #   verify that numpy is compiled against MKL (e.g., by checking *_mkl_info using numpy.show_config())
                                     #   and that it is used in tensorflow, theano, and other key dependencies
 - conda-forge::theano=1.0.5         # it is unlikely that new versions of theano will be released
-                                      #   verify that this is using numpy compiled against MKL (e.g., by the presence of -lmkl_rt in theano.config.blas.ldflags)
+                                    #   verify that this is using numpy compiled against MKL (e.g., by the presence of -lmkl_rt in theano.config.blas.ldflags)
 
 - conda-forge::pymc3=3.5            # do not update, this will break gcnvkernel
-- conda-forge::scipy=1.5.3          # do not update, this will break a scipy.misc.logsumexp import (deprecated in scipy=1.0.0) in pymc3=3.1
-- conda-forge::h5py=3.1.0             # newer versions produces an import issue https://github.com/h5py/h5py/issues/1880
+- conda-forge::scipy=1.5.3
+- conda-forge::h5py=3.1.0
 
 - defaults::intel-openmp=2021.4.0
 - conda-forge::scikit-learn=0.23.1
@@ -42,12 +42,12 @@ dependencies:
 - pytorch=1.10.1
 - setuptools=59.5.0
 
-
-#other python dependencies; these should be removed after functionality is moved into Java code
+# other python dependencies; these should be removed after functionality is moved into Java code
 - biopython=1.76
 - pyvcf=0.6.8
 - bioconda::pysam=0.15.3            # using older conda-installed versions may result in libcrypto / openssl bugs
 
+# core R dependencies; these should only be used for plotting and do not take precedence over core python dependencies!
 - r-base=3.6.2
 - r-data.table=1.12.8
 - r-dplyr=0.8.5

@@ -182,7 +182,7 @@ def perform_genotyping(log_p: np.ndarray) -> Tuple[int, float]:
 
 
 def stochastic_node_mean_symbolic(approx: pm.MeanField, node, size=100,
-                                  more_replacements=None, shape=None, dtype=None):
+                                  more_replacements=None):
     """Symbolic mean of a given PyMC3 stochastic node with respect to a given variational
     posterior approximation.
 
@@ -192,12 +192,6 @@ def stochastic_node_mean_symbolic(approx: pm.MeanField, node, size=100,
         size: the number of samples to use for calculating the mean
         more_replacements: (optional) an ordered dictionary of node replacements to be
             applied to the computational graph before sampling
-        shape: (optional) shape of the node
-        dtype: (optional) dtype of the node
-
-    Raises:
-        ValueError: If `node.tag.test_value` is not present and `shape` and `dtype` are
-            not provided
 
     Returns:
         Symbolic approximate mean of the stochastic node
@@ -205,50 +199,10 @@ def stochastic_node_mean_symbolic(approx: pm.MeanField, node, size=100,
 
     assert size > 0
 
-    if shape is not None and dtype is not None:
-        cum_sum = tt.zeros(shape, dtype)
-    elif hasattr(node.tag, 'test_value') and node.tag.test_value is not None:
-        cum_sum = tt.zeros(node.tag.test_value.shape, node.tag.test_value.dtype)
-    else:
-        raise ValueError("Can not determine the shape of the node to be sampled")
-
-    #if more_replacements is not None:
-    #    node = th.clone(node, more_replacements, strict=False)
-    #posterior_samples = approx.sample(size).get_values()
-    #node = approx.to_flat_input(node)
-
-    #def add_sample_to_cum_sum(posterior_sample, _cum_sum):
-    #    new_sample = th.clone(node, {approx.input: posterior_sample}, strict=False)
-    #    return _cum_sum + tt.patternbroadcast(new_sample, _cum_sum.broadcastable)
-
-    #outputs, _ = th.scan(add_sample_to_cum_sum,
-    #                     sequences=[posterior_samples],
-    #                     outputs_info=[cum_sum],
-    #                     n_steps=size)
-
-    #return outputs[-1] / size
-
     nodes = approx.symbolic_sample_over_posterior(node)
     posterior_samples = approx.set_size_and_deterministic(nodes, s=size, d=True, more_replacements=more_replacements)
-   
-
-    #if more_replacements is not None:
-    #    node = th.clone(node, more_replacements, strict=False)
-    #posterior_samples = approx.symbolic_random(size)
-
-    #node = approx.to_flat_input(node)
-
-    #def add_sample_to_cum_sum(posterior_sample, _cum_sum):
-    #    new_sample = th.clone(node, {approx.input: posterior_sample}, strict=False)
-    #    return _cum_sum + tt.patternbroadcast(new_sample, _cum_sum.broadcastable)
-
-    #outputs, _ = th.scan(add_sample_to_cum_sum,
-    #                     sequences=[posterior_samples],
-    #                     outputs_info=[cum_sum],
-    #                     n_steps=size)
-
-    #return outputs[-1] / size
     return posterior_samples.mean(axis=0)
+
 
 def get_sampling_generator_for_model_approximation(model_approx: pm.MeanField, node,
                                                    num_samples: int = 20) -> Generator:
