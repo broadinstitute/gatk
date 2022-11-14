@@ -361,4 +361,5 @@ if __name__ == '__main__':
                        args.destination_cohort_table_prefix,
                        args.fq_sample_mapping_table,
                        args.ttl,
-                       args.only_output_vet_tables)
+                       args.only_output_vet_tables,
+                       args.write_cost_to_db)
