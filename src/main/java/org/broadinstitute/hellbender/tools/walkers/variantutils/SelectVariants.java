@@ -2,13 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.variantutils;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.tribble.util.ParsingUtils;
-import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.Genotype;
-import htsjdk.variant.variantcontext.GenotypeBuilder;
-import htsjdk.variant.variantcontext.GenotypesContext;
-import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.variantcontext.VariantContextBuilder;
-import htsjdk.variant.variantcontext.VariantContextUtils;
+import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
 
@@ -42,6 +36,7 @@ import org.broadinstitute.hellbender.utils.variant.*;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Select a subset of variants from a VCF file
@@ -184,11 +179,18 @@ public final class SelectVariants extends VariantWalker {
     private Set<String> XLsampleExpressions = new LinkedHashSet<>(0);
 
     /**
-     * See example commands above for detailed usage examples. Note that these expressions are evaluated *after* the
-     * specified samples are extracted and the INFO field annotations are updated.
+     * See example commands above for detailed usage examples. The expressions given to this argument
+     * should either refer to INFO fields, or access FORMAT field with the VariantContext object
+     * e.g. --select "vc.getGenotype('NA12878').getGQ() > 35"
      */
-    @Argument(fullName="select-expressions", shortName="select", doc="One or more criteria to use when selecting the data", optional=true)
+    @Argument(fullName="select-expressions", shortName="select", doc="", optional=true)
     private ArrayList<String> selectExpressions = new ArrayList<>();
+
+    /**
+     *
+     */
+    @Argument(fullName="select-genotype-expressions", shortName="select-genotype", doc="", optional=true)
+    private ArrayList<String> selectGenotypeExpressions = new ArrayList<>();
 
     /**
      * This flag is provided in case the user wishes to do JEXL filtering
@@ -312,7 +314,7 @@ public final class SelectVariants extends VariantWalker {
                     doc="Select a fraction of variants at random from the input", optional=true)
     private double fractionRandom = 0;
 
-    /**
+    /** tsato: why would anyone do this?
      * The value of this argument should be a number between 0 and 1 specifying the fraction of total variants to be
      * randomly selected from the input callset and set to no-call (./). Note that this is done using a probabilistic
      * function, so the final result is not guaranteed to carry the exact fraction requested. Can be used for large fractions.
@@ -379,7 +381,7 @@ public final class SelectVariants extends VariantWalker {
 
     /**
      * If this argument is provided, select sites where at least a minimum number of samples are filtered at
-     * the genotype level.
+     * the genotype level. tsato: why would anyone want to do this....
      */
     @Argument(fullName="min-filtered-genotypes", optional=true,
                     doc="Minimum number of samples filtered at the genotype level")
@@ -464,7 +466,10 @@ public final class SelectVariants extends VariantWalker {
 
     private Set<VariantContext.Type> selectedTypes = new LinkedHashSet<>();
     private final ArrayList<String> selectNames = new ArrayList<>();
-    private List<VariantContextUtils.JexlVCMatchExp> jexls = null;
+    private final ArrayList<String> selectGenotypeNames = new ArrayList<>();
+
+    private List<VariantContextUtils.JexlVCMatchExp> infoJexls = null;
+    private List<VariantContextUtils.JexlVCMatchExp> genotypeJexls = null;
 
     private boolean discordanceOnly = false;
     private boolean concordanceOnly = false;
@@ -502,7 +507,7 @@ public final class SelectVariants extends VariantWalker {
 
         final List<String> genotypeField = getHeaderForVariants().getGenotypeSamples();
         if(!ParsingUtils.isSorted(genotypeField)){
-            if(genotypeField.size() > 10) {
+            if(!genotypeField.isEmpty()) {
                 logger.warn("***************************************************************************************************************************");
                 logger.warn("* Detected unsorted genotype fields on input.                                                                             *");
                 logger.warn("* SelectVariants will sort the genotypes on output which could result in slow traversal as it involves genotype parsing.  *");
@@ -513,18 +518,15 @@ public final class SelectVariants extends VariantWalker {
             }
         }
 
-
-
         // Initialize VCF header lines
         final Set<VCFHeaderLine> headerLines = createVCFHeaderLineList(vcfHeaders);
 
-        for (int i = 0; i < selectExpressions.size(); i++) {
-            // It's not necessary that the user supply select names for the JEXL expressions, since those
-            // expressions will only be needed for omitting records.  Make up the select names here.
-            selectNames.add(String.format("select-%d", i));
-        }
+        IntStream.range(0, selectExpressions.size()).forEach(i -> selectNames.add(String.format("select-%d", i)));
+        IntStream.range(0, selectGenotypeExpressions.size()).forEach(i -> selectGenotypeNames.add(String.format("genotype-select-%d", i)));
+
         // sato: this is just a map of (name, jexl expression class)
-        jexls = VariantContextUtils.initializeMatchExps(selectNames, selectExpressions);
+        infoJexls = VariantContextUtils.initializeMatchExps(selectNames, selectExpressions);
+        genotypeJexls = VariantContextUtils.initializeMatchExps(selectGenotypeNames, selectGenotypeExpressions);
 
         // Prepare the sample names and types to be used by the corresponding filters
         samples = createSampleNameInclusionList(vcfHeaders);
@@ -560,16 +562,15 @@ public final class SelectVariants extends VariantWalker {
             Path refPath = referenceArguments.getReferencePath();
             sequenceDictionary= this.getReferenceDictionary();
             actualHeaderLines = VcfUtils.updateHeaderContigLines(headerLines, refPath, sequenceDictionary, suppressReferencePath);
-        }
-        else { // tsato: Shouldn't we use the header from the vcf by default?
+        } else {
             sequenceDictionary = getHeaderForVariants().getSequenceDictionary();
             if (sequenceDictionary != null) {
                 actualHeaderLines = VcfUtils.updateHeaderContigLines(headerLines, null, sequenceDictionary, suppressReferencePath);
-            } // tsato: move else up
-            else {
+            } else {
                 actualHeaderLines = headerLines;
             }
         }
+
         if (!infoAnnotationsToDrop.isEmpty()) {
             for (final String infoField : infoAnnotationsToDrop) {
                 logger.info(String.format("Will drop info annotation: %s",infoField));
@@ -600,6 +601,15 @@ public final class SelectVariants extends VariantWalker {
         if (fullyDecode) { // tsato: fullyDecode means convert from strings to appropriate types (word choice?)
             vc = vc.fullyDecode(getHeaderForVariants(), lenientVCFProcessing); // don't we want to always fully decode?
         }
+
+        if (excludeFiltered && vc.isFiltered()){ // tsato: moving this up to before subsetting; SelectVariants does not filter variants so we should check this early
+            return;
+        }
+
+        if (selectRandomFraction && Utils.getRandomGenerator().nextDouble() >= fractionRandom){ // tsato: ditto
+            return;
+        }
+
         // tsato: Start checking some filter criteria...Consider grouping them into categories and extracting methods.
         if (mendelianViolations && invertLogic((mv.countFamilyViolations(sampleDB, samples, vc) == 0), invertMendelianViolations)) {
             return;
@@ -624,13 +634,21 @@ public final class SelectVariants extends VariantWalker {
         if (containsIndelLargerOrSmallerThan(vc, maxIndelSize, minIndelSize)) {
             return;
         }
+
+        // START TSATO EXPERIMENTAL
+        final GenotypeJEXLContext genotypeJexl = new GenotypeJEXLContext(vc, vc.getGenotype(0));
+        VariantContextUtils.JexlVCMatchExp exp = infoJexls.get(0);
+        final Object test = exp.exp.evaluate(genotypeJexl);
         // tsato: is there a way to parse the jexl expressions into (fields, threshold) or something like that?
-        if (applyJexlFiltersBeforeFilteringGenotypes && ! matchesJexlFilters(vc)) {
+        int d = 3;
+        // END TSATO EXPERIMENTAL
+
+        if (applyJexlFiltersBeforeFilteringGenotypes && !passesJexlFilters(vc)) {
             return;
         }
 
-        // tsato: 'fitered genotypes' means ???
-        if (considerFilteredGenotypes()) {
+        // tsato: 'fitered genotypes' means ??? I see. these are filtered in the sense of GF (?) tag.
+        if (considerFilteredGenotypes()) { // tsato: mark this as @Deprecate
             final int numFilteredSamples = numFilteredGenotypes(vc);
             final double fractionFilteredGenotypes = samples.isEmpty() ? 0.0 : numFilteredSamples / samples.size();
             if (numFilteredSamples > maxFilteredGenotypes || numFilteredSamples < minFilteredGenotypes ||
@@ -638,22 +656,19 @@ public final class SelectVariants extends VariantWalker {
                 return;
         }
 
-        if (considerNoCallGenotypes()) {
+        if (considerNoCallGenotypes()) { // tsato: if these are set to true...doing the jexl filter first can definitely improve speed.
             final int numNoCallSamples = numNoCallGenotypes(vc);
             final double fractionNoCallGenotypes = samples.isEmpty() ? 0.0 : ((double) numNoCallSamples) / samples.size();
             if (numNoCallSamples > maxNOCALLnumber || fractionNoCallGenotypes > maxNOCALLfraction)
                 return;
         }
         // tsato: what is this? Removing some genotypes? If this variant will eventually be filtered out, we want to avoid it
-        final VariantContext sub = subsetRecord(vc, preserveAlleles, removeUnusedAlternates);
-        final VariantContext filteredGenotypeToNocall;
+        VariantContext result = subsetGenotypesBySampleNames(vc, preserveAlleles, removeUnusedAlternates);
 
         if ( setFilteredGenotypesToNocall ) {
-            final VariantContextBuilder builder = new VariantContextBuilder(sub);
-            GATKVariantContextUtils.setFilteredGenotypeToNocall(builder, sub, setFilteredGenotypesToNocall, this::getGenotypeFilters);
-            filteredGenotypeToNocall = builder.make();
-        } else {
-            filteredGenotypeToNocall = sub;
+            final VariantContextBuilder builder = new VariantContextBuilder(result);
+            GATKVariantContextUtils.setFilteredGenotypeToNocall(builder, result, setFilteredGenotypesToNocall, this::getGenotypeFilters);
+            result = builder.make();
         }
 
         // After subsetting samples (e.g. to a single sample), it's possible that:
@@ -661,45 +676,40 @@ public final class SelectVariants extends VariantWalker {
         // 2. the only remaining alternate allele is spanning deletion (*)
 
         // In this instance we call it a non-variant. We remove it from the output based on {@code excludeNonVariants}
-        final boolean nonVariant = ! filteredGenotypeToNocall.isPolymorphicInSamples() || GATKVariantContextUtils.isSpanningDeletionOnly(filteredGenotypeToNocall);
+        final boolean nonVariant = ! result.isPolymorphicInSamples() || GATKVariantContextUtils.isSpanningDeletionOnly(result);
         if (excludeNonVariants && nonVariant){
             return;
         }
 
-        if (excludeFiltered && filteredGenotypeToNocall.isFiltered()){
+        if (! applyJexlFiltersBeforeFilteringGenotypes && ! passesJexlFilters(result)){
             return;
         }
 
-        if (! applyJexlFiltersBeforeFilteringGenotypes && ! matchesJexlFilters(filteredGenotypeToNocall)){
-            return;
-        }
-
-        if (selectRandomFraction && Utils.getRandomGenerator().nextDouble() >= fractionRandom){
-            return;
-        }
-
-        pendingVariants.add(dropAnnotations(filteredGenotypeToNocall, infoAnnotationsToDrop, genotypeAnnotationsToDrop));
+        pendingVariants.add(dropAnnotations(result, infoAnnotationsToDrop, genotypeAnnotationsToDrop));
     }
 
     /**
-     *  Applies     JEXL filters
+     *  Applies JEXL filters
      *
-     *  Notes:
      *  - Expressions that contain logical-and (&&) should appear in a single -select argument.
      *  - When an annotation is absent, the logical-or returns false, even when the other argument evaluates to true.
+     *   (Default behavior is decided by the argument xxx )
      *  - When multiple -select arguments are given, the logical expressions are combined with the logical-or operator. In particular,
      *  we do not currently support complex logical expressions involving both logical-and's and logical-or's. e.g. (x || y) && z
      *
      */
-    private boolean matchesJexlFilters(final VariantContext vc){
-        if (jexls.isEmpty()){
+    private boolean passesJexlFilters(final VariantContext vc){
+        if (infoJexls.isEmpty() && genotypeJexls.isEmpty()){
             return true;
         }
 
+        boolean infoJexlResult = false;
+        boolean genotypeJexlResult = false;
+
         try {
-            for (VariantContextUtils.JexlVCMatchExp jexl : jexls) {
+            for (VariantContextUtils.JexlVCMatchExp jexl : infoJexls) {
                 // If invert-select is set to true, we take the complement (i.e. "not") of each jexl expression,
-                // then take the logcal-or.
+                // then take the logical-or.
                 // e.g. -select AF > 0.01, -select ReadPosRankSum < -20.0
                 // If invert-select is false, we have "AF > 0.01 || ReadPosRankSum < -20.0"
                 // If invert-select is true, we have "not (AF > 0.01) || not (ReadPosRankSum < -20.0)"
@@ -1086,7 +1096,7 @@ public final class SelectVariants extends VariantWalker {
      * @param removeUnusedAlternates removes alternate alleles with AC=0
      * @return the subsetted VariantContext
      */
-    private VariantContext subsetRecord(final VariantContext vc, final boolean preserveAlleles, final boolean removeUnusedAlternates) {
+    private VariantContext subsetGenotypesBySampleNames(final VariantContext vc, final boolean preserveAlleles, final boolean removeUnusedAlternates) {
         //subContextFromSamples() always decodes the vc, which is a fairly expensive operation.  Avoid if possible
         if (noSamplesSpecified && !removeUnusedAlternates) {
             return vc;
@@ -1111,7 +1121,7 @@ public final class SelectVariants extends VariantWalker {
             newGC = sub.getGenotypes();
         }
 
-        //remove a fraction of the genotypes if requested
+        // Change a fraction of the genotypes to NOCALL if requested
         if (fractionGenotypes > 0) {
             final List<Genotype> genotypes = newGC.stream().map(genotype -> randomGenotypes.nextDouble() > fractionGenotypes ? genotype :
                     new GenotypeBuilder(genotype).alleles(getNoCallAlleles(genotype.getPloidy())).noGQ().make()).collect(Collectors.toList());
@@ -1125,7 +1135,7 @@ public final class SelectVariants extends VariantWalker {
         addAnnotations(builder, vc, sub.getSampleNames());
         final VariantContext subset = builder.make();
 
-        return preserveAlleles? subset : GATKVariantContextUtils.trimAlleles(subset,true,true);
+        return preserveAlleles ? subset : GATKVariantContextUtils.trimAlleles(subset,true,true);
     }
 
     /**
@@ -1242,7 +1252,7 @@ public final class SelectVariants extends VariantWalker {
 
     /**
      * Should the number of filtered genotypes be considered for filtering?
-     *
+     * tsato: i.e. was any of the command line that ... interesting, these are the "one-of" or "all of" creteria
      * @return true if any of the filtered genotype samples arguments is used (not the default value), false otherwise
      */
     private boolean considerFilteredGenotypes(){ // tsato: return true if default has been overridden. Make that clear.

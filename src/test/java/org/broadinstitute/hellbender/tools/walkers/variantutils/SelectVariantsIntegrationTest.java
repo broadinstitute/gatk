@@ -513,8 +513,97 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         spec.executeTest("InvalidJexl", this);
     }
 
+    // tsato: add multiple jexl test here, should be
+    // Also: deprecate the invertlogic argument?
+
+    // Tests needed:
+    // * Filter by genotypes; what does that even mean? VariantFiltration goes through the genotypes and adds a flag, rather than subsetting
+    // * Multiple select expression as logical-or
+    // * Test string field (ALGORITHM == 'depth')
+    // * Jexl with logical-and
+    // * test accessing genotypes directly vc.getsample('NA12878') etc.
+    // * DP > 0; which field is fetched? Make sure if --select, it's
+    // * select AF > 0.01 AND GQ > 0.01; is that possible if select statements are split?
+
+    // If two separate --select commandlines are used e.g. --select "'AF > 0.05'" --select "'MQRankSum > 3'"
+    // then the booleans should be combined with the logical-or
     @Test
-    public void testTsatoJexlGenotypeFilter() throws IOException {
+    public void testMultipleJexls() {
+        // multiple INFO jexls (separate test, combine genotype and info jexls)
+        beforeJexlTest();
+        final GATKPath testVcf = new GATKPath(getToolTestDataDir() + "hgdb_sv_multi_sample_mini.vcf");
+        // Is File acceptable here? Path? GATKPath?
+        final File testOutput = createTempFile("multiple_jexl_test", "vcf");
+
+        // START Chris/Louis/David
+        // Attempt 1, does not work
+//        final ArgumentsBuilder args1 = new ArgumentsBuilder()
+//                .add("V", testVcf.toString())
+//                .add("O", testOutput.getAbsolutePath())
+//                .add("--select", "'AC > 1'")
+//                .add("--select", "'AF > 0'");
+//        // .add("select", "'GQ > 0'"); // tsato: this does not work for some reason...
+//        runCommandLine(args1, SelectVariants.class.getSimpleName());
+
+        // Attempt 2 (remove single quotes), does not work
+//        final ArgumentsBuilder args2 = new ArgumentsBuilder()
+//                .add("V", testVcf.toString())
+//                .add("O", testOutput.getAbsolutePath())
+//                .add("--select", "AC > 1")
+//                .add("--select", "AF > 0");
+//        // .add("select", "'GQ > 0'"); // tsato: this does not work for some reason...
+//        runCommandLine(args2, SelectVariants.class.getSimpleName());
+
+        // Atempt 3 (remove spaces). commandline parser lets this through but not the JEXL parser
+//        final ArgumentsBuilder args3 = new ArgumentsBuilder()
+//                .add("V", testVcf.toString())
+//                .add("O", testOutput.getAbsolutePath())
+//                .addRaw("--select 'AC>1'")
+//                .addRaw("--select 'AF>0'");
+//                // .add("select", "'GQ > 0'"); // tsato: this does not work for some reason...
+//        runCommandLine(args3, SelectVariants.class.getSimpleName());
+
+        // Attempt 4 (give a list to runCommandLine), works
+//        runCommandLine(Arrays.asList("-V", testVcf.toString(),
+//                        "-O", testOutput.getAbsolutePath(),
+//                        "--select","AC > 1"),
+//                SelectVariants.class.getSimpleName());
+
+        // Attempt 5, works!
+//        runCommandLine(Arrays.asList("-V", testVcf.toString(),
+//                        "-O", testOutput.getAbsolutePath(),
+//                        "--select", "ALGORITHMS == 'depth'"),
+//                SelectVariants.class.getSimpleName());
+
+        // Attempt 6, works!
+        runCommandLine(Arrays.asList("-V", testVcf.toString(),
+                        "-O", testOutput.getAbsolutePath(),
+                        "--select", "SVTYPE == 'DEL'"),
+                SelectVariants.class.getSimpleName());
+        // END Chris/Louis/David
+
+        // see Mutect integration test
+        final Pair<VCFHeader, List<VariantContext>> result = VariantContextTestUtils.readEntireVCFIntoMemory(testOutput.getAbsolutePath());
+
+        Assert.assertEquals(result.getRight().size(), 6);
+    }
+
+    // Confirm that the correct value is used when a JEXL expression refers to field that could either be an INFO or FORMAT field (e.g. AF, DP),
+    @Test
+    public void testAmbiguousJexlExpression() {
+        beforeJexlTest();
+        final GATKPath testVcf = new GATKPath(getToolTestDataDir() + "haploid-multisample.vcf");
+        final File testOutput = createTempFile("jexl_genotype_test", "vcf");
+
+        runCommandLine(Arrays.asList("-V", testVcf.toString(), "-O", testOutput.getAbsolutePath(), "--select","DP > 0"),
+                SelectVariants.class.getSimpleName());
+
+        final Pair<VCFHeader, List<VariantContext>> result = VariantContextTestUtils.readEntireVCFIntoMemory(testOutput.getAbsolutePath());
+        Assert.assertEquals(result.getRight().size(), 6);
+    }
+
+    @Test
+    public void testTsatoJexlGenotypeFilter() {
         final GATKPath testVcf = new GATKPath(getToolTestDataDir() + "hgdb_sv_multi_sample_mini.vcf");
         // Is File acceptable here? Path? GATKPath?
         final File testOutput = createTempFile("jexl_genotype_test", "vcf");
@@ -525,7 +614,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
                 .add("V", testVcf.toString())
                 .add("O", testOutput.getAbsolutePath())
                 .addRaw("--select 'GQ > 0'");
-                // .add("select", "'GQ > 0'"); // tsato: this does not work for some reason...
+        // .add("select", "'GQ > 0'"); // tsato: this does not work for some reason...
 
         // tsato: if it were really a commandline I would do "'GQ > 0'" but the parser did not like that. Functionally, "GQ > 0" does the right thing.
         runCommandLine(Arrays.asList("-V", testVcf.toString(), "-O", testOutput.getAbsolutePath(), "--select","GQ > 0"),
@@ -537,6 +626,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
 
         Assert.assertEquals(result.getRight().size(), 6);
     }
+
 
     @Test
     public void testAlleleTrimming() throws IOException {
@@ -661,16 +751,6 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
 
         spec.executeTest("testInvertSelection--" + testFile, this);
     }
-
-    // tsato: add multiple jexl test here, should be
-    // Also: deprecate the invertlogic argument?
-
-    // Tests needed:
-    // * Filter by genotypes; what does that even mean? VariantFiltration goes through the genotypes and adds a flag, rather than subsetting
-    // * Multiple select expression as logical-or
-    // * Jexl with logical-and
-    // * 
-
 
     /**
      * Test inverting the variant selection criteria by inverting the JEXL expression logic following -select
