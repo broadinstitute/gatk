@@ -260,6 +260,7 @@ task ExtractTask {
   }
 
   String intervals_name = basename(intervals)
+  String cost_observability_line = if (write_cost_to_db == true) then "--cost-observability-tablename ~{cost_observability_tablename}" else ""
 
   command <<<
     set -e
@@ -296,7 +297,7 @@ task ExtractTask {
         --wdl-step GvsCreateCallset \
         --wdl-call ExtractTask \
         --shard-identifier ~{intervals_name} \
-        ~{true="--cost-observability-tablename ~{cost_observability_tablename}" false='' write_cost_to_db}
+        ~{cost_observability_line}
 
     # Drop trailing slash if one exists
     OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
