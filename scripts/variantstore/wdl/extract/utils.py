@@ -74,4 +74,4 @@ def write_job_stats(jobs, client, fq_dataset, call_set_identifier, step, call, s
                 CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(), {total})"""
         query = client.query(sql)
         query.result()
-z
+
