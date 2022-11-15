@@ -213,8 +213,7 @@ task AddCustomAnnotationsToSitesOnlyVcf {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        ## TODO!
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:rc_616_var_store_2022_10_25"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-561_var_store_2022_11_14"
         memory: "1 GB"
         cpu: "1"
         preemptible: 2
