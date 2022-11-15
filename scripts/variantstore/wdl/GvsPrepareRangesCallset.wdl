@@ -106,7 +106,7 @@ task PrepareRangesCallsetTask {
           --fq_sample_mapping_table ~{fq_sample_mapping_table} \
           --ttl ~{temp_table_ttl_in_hours} \
           ~{true="--only_output_vet_tables True" false='' only_output_vet_tables} \
-          ~{true="--write_cost_to_db True" false="--write_cost_to_db False" write_cost_to_db}
+          ~{true="--write_cost_to_db True" false="--write_cost_to_db ''" write_cost_to_db}
 
   >>>
   output {
