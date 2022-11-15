@@ -38,7 +38,7 @@ workflow GvsCreateVATfromVDS {
     call AddCustomAnnotationsToSitesOnlyVcf {
         input:
             sites_only_vcf = input_sites_only_vcf,
-            custom_annotations_file = CreateCustomAnnotationsFile.custom_annotation,
+            custom_annotations_file = CreateCustomAnnotationsFile.custom_annotations,
             output_annotated_file_name = "${input_vcf_name}.annotated.sites_only.vcf"
     }
 
