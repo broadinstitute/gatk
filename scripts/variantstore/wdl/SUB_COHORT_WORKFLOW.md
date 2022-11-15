@@ -25,4 +25,4 @@ Optional inputs of interest:
 | Parameter              | Description                              |
 |------------------------|--------------------------------------------|
  | drop_state     | This should correspond to the same value set in `GvsImportGenomes` (or `GvsJointVariantCalling`)     |
- | output_gcs_dir | GCS path to a directory to copy the interval list files, the extract VCFs and a sample manifest into | 
+ | output_gcs_dir | GCS path to a directory to copy the interval list files, the extract VCFs and a sample manifest into |
