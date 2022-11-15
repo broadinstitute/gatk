@@ -24,7 +24,7 @@ def add_custom_annotations_to_sites_only_vcf(sites_only_vcf, annot_tsv, output_v
                     info_fields = []
                     for key, value in names_to_value.items():
                         if (key != "#CHROM" and key != "POS" and key != "REF" and key != "ALT"):
-                            token = key + ":" + value
+                            token = key + "=" + value
                             info_fields.append(token)
                     info_field = ';'.join(info_fields)
 

@@ -19,7 +19,7 @@ workflow GvsCreateVATfromVDS {
     File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
     File nirvana_data_directory = "gs://gvs_quickstart_storage/Nirvana/Nirvana-references-2022-10-07.tgz"
 
-    ## TODO # do we need to shard the sites only VCF?
+    ## TODO # do we need to shard the sites only VCF? Hmmm????
     # String input_vds_name = basename(input_VDS_file)
     ## TODO: where do we need to validate that there are no hemis?
     String input_vcf_name = "gvs"
