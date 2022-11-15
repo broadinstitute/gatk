@@ -57,7 +57,7 @@ workflow GvsCreateVATfromVDS {
     ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
     call AnnotateVCF {
         input:
-            input_vcf = input_sites_only_vcf,
+            input_vcf = RemoveDuplicatesFromSitesOnlyVCF.output_vcf,
             output_annotated_file_name = "${input_vcf_name}_annotated",
             nirvana_data_tar = nirvana_data_directory,
             custom_annotations_file = CreateCustomAnnotationsFile.custom_annotations,
@@ -213,7 +213,7 @@ task AddCustomAnnotationsToSitesOnlyVcf {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-561_var_store_2022_11_14"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-561_var_store_2022_11_15"
         memory: "1 GB"
         cpu: "1"
         preemptible: 2
