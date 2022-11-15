@@ -35,9 +35,16 @@ workflow GvsCreateVATfromVDS {
             custom_annotations_body = custom_annotations_file,
     }
 
+    call AddCustomAnnotationsToSitesOnlyVcf {
+        input:
+            sites_only_vcf = input_sites_only_vcf,
+            custom_annotations_file = CreateCustomAnnotationsFile.custom_annotation,
+            output_annotated_file_name = "${input_vcf_name}.annotated.sites_only.vcf"
+    }
+
     call FixVcfHeader {
         input:
-            input_vcf = input_sites_only_vcf,
+            input_vcf = AddCustomAnnotationsToSitesOnlyVcf.output_vcf,
             output_vcf_name = "reheadered_sites_only.vcf"
     }
 
@@ -183,6 +190,43 @@ task CreateCustomAnnotationsFile {
         File custom_annotations = "~{custom_annotations_file_name}"
     }
 }
+
+task AddCustomAnnotationsToSitesOnlyVcf {
+    input {
+        File sites_only_vcf
+        File custom_annotations_file
+        String output_annotated_file_name
+    }
+
+    Int disk_size = ceil((size(sites_only_vcf, "GB") + size(custom_annotations_file, "GB")) * 2.5) + 100
+
+    command <<<
+        set -e
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        python3 /app/add_custom_annotations_to_sites_only_vcf.py \
+        --input_vcf ~{sites_only_vcf} \
+        --custom_annotations_tsv ~{custom_annotations_file} \
+        --output_vcf ~{output_annotated_file_name}
+
+    >>>
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        ## TODO!
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:rc_616_var_store_2022_10_25"
+        memory: "1 GB"
+        cpu: "1"
+        preemptible: 2
+        disks: "local-disk " + disk_size + " HDD"
+    }
+    # ------------------------------------------------
+    # Outputs:
+    output {
+        File output_vcf = output_annotated_file_name
+    }
+}
+
 
 task FixVcfHeader {
     input {
