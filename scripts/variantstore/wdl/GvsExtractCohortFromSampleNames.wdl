@@ -36,7 +36,8 @@ workflow GvsExtractCohortFromSampleNames {
     Int? split_intervals_disk_size_override
     Int? split_intervals_mem_override
 
-    File gatk_override = "gs://fc-93670912-8238-4968-a446-efb36e7dfeb5/subcohort_samples.tsv"
+    File gatk_override = "gs://gvs-internal-scratch/rsa/gatk-package-4.2.0.0-624-ga2bb04e-SNAPSHOT-local.jar"
+
   }
 
   Boolean write_cost_to_db = if ((gvs_project != destination_project_id) || (gvs_project != query_project)) then false else true
