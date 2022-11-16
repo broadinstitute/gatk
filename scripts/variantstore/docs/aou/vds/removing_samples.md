@@ -8,7 +8,7 @@ of the VDS with the samples in question filtered out, and then save this new VDS
 ## Configuring the Terra notebook cluster
 
 To work with a Delta-sized VDS (roughly 250K samples) we use our PMI ops accounts to create a cluster in a Terra
-notebook with the following configuration:
+customized Jupyter notebook with the following configuration:
 
 ![AoU Delta Cluster Config](./AoU Delta VDS Cluster Configuration.png)
 
@@ -25,12 +25,12 @@ with contents:
 printf "\nspark.driver.memory=85g\n" >> /etc/spark/conf/spark-defaults.conf
 ```
 
-Note that this script hardcodes a memory value for the driver node. If using a driver node with a different amount of
+**Note:** this script hardcodes a memory value for the driver node. If using a driver node with a different amount of
 memory this value should be adjusted to avoid using too little or too much memory.
 
 ## Installing the current Hail wheel
 
-Once the cluster is up and running, open a notebook terminal. Within the terminal copy down the latest Hail wheel:
+Once the cluster is up and running, open a notebook terminal. Within the terminal copy down the latest Hail wheel. **Note:** you will need the proxy group of your PMI ops account to have at least the "Storage Object Viewer" role on the bucket where the Hail wheel lives.
 
 ```
 $ gsutil -m cp gs://gvs-internal-scratch/hail-wheels/2022-10-18/0.2.102-964bee061eb0/hail-0.2.102-py3-none-any.whl .
