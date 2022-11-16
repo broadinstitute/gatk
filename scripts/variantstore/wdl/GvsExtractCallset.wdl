@@ -166,7 +166,7 @@ workflow GvsExtractCallset {
         extract_maxretries_override        = extract_maxretries_override,
         emit_pls                           = emit_pls,
         emit_ads                           = emit_ads,
-        write_cost_to_db = write_cost_to_db
+        write_cost_to_db                   = write_cost_to_db
     }
   }
 
