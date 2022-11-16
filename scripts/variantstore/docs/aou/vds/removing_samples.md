@@ -26,7 +26,8 @@ printf "\nspark.driver.memory=85g\n" >> /etc/spark/conf/spark-defaults.conf
 ```
 
 **Note:** this script hardcodes a memory value for the driver node. If using a driver node with a different amount of
-memory this value should be adjusted to avoid using too little or too much memory.
+memory this value should be adjusted to avoid using too little or too much memory. One can ask the Hail team in Zulip if
+uncertain what value to use.
 
 ## Installing the current Hail wheel
 
@@ -36,7 +37,8 @@ Once the cluster is up and running, open a notebook terminal. Within the termina
 $ gsutil -m cp gs://gvs-internal-scratch/hail-wheels/2022-10-18/0.2.102-964bee061eb0/hail-0.2.102-py3-none-any.whl .
 ```
 
-Install the Hail wheel and its dependencies:
+Install the Hail wheel and its dependencies. At the time of this writing the installation process produces a lot of
+warnings and messages in red text which appear to be benign and can be ignored.
 
 ```
 $ pip install --force-reinstall hail-0.2.102-py3-none-any.whl
@@ -44,17 +46,7 @@ $ pip install --force-reinstall hail-0.2.102-py3-none-any.whl
 
 ## Create a filtered VDS
 
-Start a Python REPL:
-
-```
-$ python
-Python 3.7.12 | packaged by conda-forge | (default, Oct 26 2021, 06:08:53)
-[GCC 9.4.0] on linux
-Type "help", "copyright", "credits" or "license" for more information.
->>>
-```
-
-Import Hail:
+First start a Python REPL and import Hail:
 
 ```python
 >>> import hail as hl
