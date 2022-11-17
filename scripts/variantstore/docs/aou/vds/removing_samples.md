@@ -12,10 +12,10 @@ customized Jupyter notebook with the following configuration:
 
 ![AoU Delta Cluster Config](./AoU Delta VDS Cluster Configuration.png)
 
-The startup script is at
+The startup script can be found at
 
 ```
-gs://fc-secure-6e835ef6-2d1f-4ebf-9f21-313c0302f45b/patch_memory.sh
+gs://gvs-internal/bigquery-jointcalling/hail/delta/patch_memory_2022_11_17.sh
 ```
 
 with contents:
@@ -26,7 +26,7 @@ printf "\nspark.driver.memory=85g\n" >> /etc/spark/conf/spark-defaults.conf
 ```
 
 **Note:** this script hardcodes a memory value for the driver node. If using a driver node with a different amount of
-memory this value should be adjusted to avoid using too little or too much memory. One can ask the Hail team in Zulip if
+memory this value should be adjusted to avoid using too little or too much memory. Please ask the Hail team in Zulip if
 uncertain what value to use.
 
 ## Installing the current Hail wheel
