@@ -5,6 +5,7 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsExtractAvroFilesForHail {
     input {
+        Boolean go = true
         String project_id
         String dataset
         String filter_set_name
@@ -61,6 +62,7 @@ workflow GvsExtractAvroFilesForHail {
         String vds_output_path = GenerateHailScripts.vds_output_path
         String sites_only_vcf_output_path = GenerateHailScripts.sites_only_vcf_output_path
         String vat_inputs_output_path = GenerateHailScripts.vat_inputs_output_path
+        String avro_prefix = ExtractFromNonSuperpartitionedTables.output_prefix
     }
 }
 
@@ -80,7 +82,7 @@ task OutputPath {
         File out = stdout()
     }
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
         disks: "local-disk 500 HDD"
     }
 }
@@ -151,7 +153,7 @@ task ExtractFromNonSuperpartitionedTables {
     }
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
         disks: "local-disk 500 HDD"
     }
 }
@@ -218,7 +220,7 @@ task ExtractFromSuperpartitionedTables {
     }
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
         disks: "local-disk 500 HDD"
     }
 }
