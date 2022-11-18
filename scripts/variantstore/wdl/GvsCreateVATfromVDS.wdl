@@ -3,7 +3,7 @@ version 1.0
 workflow GvsCreateVATfromVDS {
     input {
         File input_sites_only_vcf
-        File custom_annotations_file
+#        File custom_annotations_file
         File ancestry_file
 
         String project_id
@@ -29,38 +29,46 @@ workflow GvsCreateVATfromVDS {
             input_ancestry_file = ancestry_file
     }
 
-    call CreateCustomAnnotationsFile {
-        input:
-            custom_annotations_header = MakeSubpopulationFilesAndReadSchemaFiles.custom_annotations_template_file,
-            custom_annotations_body = custom_annotations_file,
-    }
+#    call CreateCustomAnnotationsFile {
+#        input:
+#            custom_annotations_header = MakeSubpopulationFilesAndReadSchemaFiles.custom_annotations_template_file,
+#            custom_annotations_body = custom_annotations_file,
+#    }
 
-    call AddCustomAnnotationsToSitesOnlyVcf {
-        input:
-            sites_only_vcf = input_sites_only_vcf,
-            custom_annotations_file = CreateCustomAnnotationsFile.custom_annotations,
-            output_annotated_file_name = "${input_vcf_name}.annotated.sites_only.vcf"
-    }
+#    call AddCustomAnnotationsToSitesOnlyVcf {
+#        input:
+#            sites_only_vcf = input_sites_only_vcf,
+#            custom_annotations_file = CreateCustomAnnotationsFile.custom_annotations,
+#            output_annotated_file_name = "${input_vcf_name}.annotated.sites_only.vcf"
+#    }
 
-    call FixVcfHeader {
-        input:
-            input_vcf = AddCustomAnnotationsToSitesOnlyVcf.output_vcf,
-            output_vcf_name = "reheadered_sites_only.vcf"
-    }
+#    call FixVcfHeader {
+#        input:
+#            input_vcf = AddCustomAnnotationsToSitesOnlyVcf.output_vcf,
+#            output_vcf_name = "reheadered_sites_only.vcf"
+#    }
 
     call RemoveDuplicatesFromSitesOnlyVCF {
         input:
-            sites_only_vcf = FixVcfHeader.output_vcf,
+            sites_only_vcf = input_sites_only_vcf,
             ref = reference
+    }
+
+    call StripCustomAnnotationsFromSitesOnlyVCF {
+        input:
+            input_vcf = RemoveDuplicatesFromSitesOnlyVCF.output_vcf,
+            custom_annotations_header = MakeSubpopulationFilesAndReadSchemaFiles.custom_annotations_template_file,
+            output_vcf_name = "${input_vcf_name}.unannotated.sites_only.vcf",
+            output_custom_annotations_filename = "ac_an_af.tsv"
     }
 
     ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
     call AnnotateVCF {
         input:
-            input_vcf = RemoveDuplicatesFromSitesOnlyVCF.output_vcf,
+            input_vcf = StripCustomAnnotationsFromSitesOnlyVCF.output_vcf,
             output_annotated_file_name = "${input_vcf_name}_annotated",
             nirvana_data_tar = nirvana_data_directory,
-            custom_annotations_file = CreateCustomAnnotationsFile.custom_annotations,
+            custom_annotations_file = StripCustomAnnotationsFromSitesOnlyVCF.output_custom_annotations_file,
     }
 
     call PrepAnnotationJson {
@@ -191,30 +199,32 @@ task CreateCustomAnnotationsFile {
     }
 }
 
-task AddCustomAnnotationsToSitesOnlyVcf {
+task StripCustomAnnotationsFromSitesOnlyVCF {
     input {
-        File sites_only_vcf
-        File custom_annotations_file
-        String output_annotated_file_name
+        File input_vcf
+        File custom_annotations_header
+        String output_vcf_name
+        String output_custom_annotations_filename
     }
 
-    Int disk_size = ceil((size(sites_only_vcf, "GB") + size(custom_annotations_file, "GB")) * 2.5) + 100
+    Int disk_size = ceil((size(input_vcf, "GB") + size(custom_annotations_header, "GB")) * 4) + 100
 
     command <<<
         set -e
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        python3 /app/add_custom_annotations_to_sites_only_vcf.py \
-        --input_vcf ~{sites_only_vcf} \
-        --custom_annotations_tsv ~{custom_annotations_file} \
-        --output_vcf ~{output_annotated_file_name}
+        python3 /app/strip_custom_annotations_from_sites_only_vcf.py \
+        --input_vcf ~{input_vcf} \
+        --input_custom_annotations_tsv ~{custom_annotations_header} \
+        --output_vcf ~{output_vcf_name} \
+        --output_custom_annotations_tsv ~{output_custom_annotations_filename}
 
     >>>
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-561_var_store_2022_11_15"
-        memory: "1 GB"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-561_var_store_2022_11_18"
+        memory: "3.5 GiB"
         cpu: "1"
         preemptible: 2
         disks: "local-disk " + disk_size + " HDD"
@@ -222,7 +232,8 @@ task AddCustomAnnotationsToSitesOnlyVcf {
     # ------------------------------------------------
     # Outputs:
     output {
-        File output_vcf = output_annotated_file_name
+        File output_vcf = output_vcf_name
+        File output_custom_annotations_file = output_custom_annotations_filename
     }
 }
 
