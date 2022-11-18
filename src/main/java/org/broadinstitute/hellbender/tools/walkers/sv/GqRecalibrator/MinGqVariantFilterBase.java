@@ -2227,9 +2227,11 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
                                          final int[] variantIndices) {
         final boolean[] sampleVariantIsGood = getSampleVariantTruth(variantIndices);
         // zero out derivative arrays
-        for(int predictIndex = 0; predictIndex < pSampleVariantIsGood.length; ++predictIndex) {
-            d1Loss[predictIndex] = 0F;
-            d2Loss[predictIndex] = 0F;
+        if(d1Loss != null) {
+            for (int predictIndex = 0; predictIndex < pSampleVariantIsGood.length; ++predictIndex) {
+                d1Loss[predictIndex] = 0F;
+                d2Loss[predictIndex] = 0F;
+            }
         }
 
         int predictIndex = 0;
@@ -2286,7 +2288,9 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
                 }
                 final double derivWeight = sampleInheritanceWeight + sampleTruthWeight;
 
-                setLossDerivs(p, d1, d2, derivWeight, d1Loss, d2Loss, predictIndex);
+                if(d1Loss != null) {
+                    setLossDerivs(p, d1, d2, derivWeight, d1Loss, d2Loss, predictIndex);
+                }
                 final FilterLoss sampleVariantLoss =
                     new FilterLoss(deltaLoss, deltaLoss, sampleInheritanceWeight, sampleTruthWeight, null);
                 loss = FilterLoss.add(loss, sampleVariantLoss);
@@ -2296,59 +2300,6 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
         return loss;
     }
 
-    protected FilterLoss getTrainingLoss(final float[] pSampleVariantIsGood, final int[] variantIndices) {
-        final boolean[] sampleVariantIsGood = getSampleVariantTruth(variantIndices);
-
-        int predictIndex = 0;
-        FilterLoss loss = FilterLoss.EMPTY;
-        for(final int variantIndex : variantIndices) {
-            final Set<Integer> inheritanceTrainableSampleIndices = getInheritanceTrainableSampleIndices(variantIndex);
-            final Set<Integer> truthTrainableSampleIndices = new HashSet<>(
-                    getGoodSampleIndices(variantIndex)
-            );
-            truthTrainableSampleIndices.addAll(
-                    getBadSampleIndices(variantIndex)
-            );
-            final int propertyBin = propertyBins[variantIndex];
-            final float minGqWeight = propertyBinMinGqWeights[propertyBin];
-            final float halfMinGqWeight = minGqWeight / 2F;
-            final float goodTruthWeight = halfMinGqWeight + propertyBinGoodTruthWeights[propertyBin];
-            final float badTruthWeight = halfMinGqWeight + propertyBinBadTruthWeights[propertyBin];
-            final float goodInheritanceWeight = halfMinGqWeight + propertyBinGoodInheritanceWeights[propertyBin];
-            final float badInheritanceWeight = halfMinGqWeight + propertyBinBadInheritanceWeights[propertyBin];
-            final float truthWeight = halfMinGqWeight + (float)propertyBinTruthWeights[propertyBin];
-            final float inheritanceWeight = halfMinGqWeight + (float)propertyBinInheritanceWeights[propertyBin];
-
-            for(int sampleIndex = 0; sampleIndex < numSamples; ++sampleIndex) {
-                if(!getSampleVariantIsTrainable(variantIndex, sampleIndex)) {
-                    continue;
-                }
-                final double p = pSampleVariantIsGood[predictIndex];
-                final boolean sampleIsGood = sampleVariantIsGood[predictIndex];
-                final double deltaLoss = -FastMath.log(FastMath.max(PROB_EPS, sampleIsGood ? p : 1.0 - p));
-
-                final double sampleInheritanceWeight, sampleTruthWeight;
-                if(inheritanceTrainableSampleIndices.contains(sampleIndex)) {
-                    sampleInheritanceWeight = sampleIsGood ? goodInheritanceWeight : badInheritanceWeight;
-                    //sampleInheritanceWeight = inheritanceWeight;
-                } else {
-                    sampleInheritanceWeight = halfMinGqWeight;
-                }
-                if(truthTrainableSampleIndices.contains(sampleIndex)) {
-                    sampleTruthWeight = sampleIsGood ? goodTruthWeight : badTruthWeight;
-                    //sampleTruthWeight = truthWeight;
-                } else {
-                    sampleTruthWeight = halfMinGqWeight;
-                }
-
-                final FilterLoss sampleVariantLoss =
-                        new FilterLoss(deltaLoss, deltaLoss, sampleInheritanceWeight, sampleTruthWeight, null);
-                loss = FilterLoss.add(loss, sampleVariantLoss);
-                ++predictIndex;
-            }
-        }
-        return loss;
-    }
 
     private boolean[][] getSampleVariantPasses(final float[] pSampleVariantIsGood, final int[] variantIndices) {
         final boolean[][] sampleVariantPasses = new boolean[variantIndices.length][];
