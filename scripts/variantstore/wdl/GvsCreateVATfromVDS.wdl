@@ -304,6 +304,7 @@ task RemoveDuplicatesFromSitesOnlyVCF {
             echo_date "VAT: No duplicates found"
             cp normalized.bcf deduplicated.bcf
         fi
+        echo_date "VAT: Converting deduplicated bcf to vcf"
         bcftools view deduplicated.bcf > deduplicated.vcf
         rm normalized.bcf
 

@@ -98,7 +98,9 @@ def vds_ac_an_af(mt, vds):
 def write_sites_only_vcf(vds, sites_only_vcf_path):
     # TODO we will want to drop some cols because there's no reason to carry around some of this stuff
     split_filtered_vds = hl.vds.split_multi(vds)
-    hl.export_vcf(split_filtered_vds.variant_data.rows(), sites_only_vcf_path)
+    ht = split_filtered_vds.variant_data.rows()
+    ht = ht.filter(ht.alleles[1] != "*")
+    hl.export_vcf(ht, sites_only_vcf_path)
 
 
 def write_vat_custom_annotations(mt, vat_custom_annotations_tsv_path):
@@ -120,45 +122,45 @@ def write_vat_custom_annotations(mt, vat_custom_annotations_tsv_path):
         POS=ac_an_af_split.row.locus.position,
         REF=ac_an_af_split.row.alleles[0],
         ALT=ac_an_af_split.row.alleles[1],
-        AC=ac_an_af_split.row.ac_an_af.AC[1],
+        AC=ac_an_af_split.row.ac_an_af.AC[ac_an_af_split.a_index],
         AN=ac_an_af_split.row.ac_an_af.AN,
-        AF=ac_an_af_split.row.ac_an_af.AF[1],
-        homozygote_count=ac_an_af_split.row.ac_an_af.homozygote_count[1],
+        AF=ac_an_af_split.row.ac_an_af.AF[ac_an_af_split.a_index],
+        homozygote_count=ac_an_af_split.row.ac_an_af.homozygote_count[ac_an_af_split.a_index],
 
-        afr_AC = ac_an_af_split.call_stats_by_pop.get('afr').AC[1],
+        afr_AC = ac_an_af_split.call_stats_by_pop.get('afr').AC[ac_an_af_split.a_index],
         afr_AN = ac_an_af_split.call_stats_by_pop.get('afr').AN,
-        afr_AF = ac_an_af_split.call_stats_by_pop.get('afr').AF[1],
-        afr_homozygote_count = ac_an_af_split.call_stats_by_pop.get('afr').homozygote_count[1],
+        afr_AF = ac_an_af_split.call_stats_by_pop.get('afr').AF[ac_an_af_split.a_index],
+        afr_homozygote_count = ac_an_af_split.call_stats_by_pop.get('afr').homozygote_count[ac_an_af_split.a_index],
 
-        amr_AC = ac_an_af_split.call_stats_by_pop.get('amr').AC[1],
+        amr_AC = ac_an_af_split.call_stats_by_pop.get('amr').AC[ac_an_af_split.a_index],
         amr_AN = ac_an_af_split.call_stats_by_pop.get('amr').AN,
-        amr_AF = ac_an_af_split.call_stats_by_pop.get('amr').AF[1],
-        amr_homozygote_count = ac_an_af_split.call_stats_by_pop.get('amr').homozygote_count[1],
+        amr_AF = ac_an_af_split.call_stats_by_pop.get('amr').AF[ac_an_af_split.a_index],
+        amr_homozygote_count = ac_an_af_split.call_stats_by_pop.get('amr').homozygote_count[ac_an_af_split.a_index],
 
-        eas_AC = ac_an_af_split.call_stats_by_pop.get('eas').AC[1],
+        eas_AC = ac_an_af_split.call_stats_by_pop.get('eas').AC[ac_an_af_split.a_index],
         eas_AN = ac_an_af_split.call_stats_by_pop.get('eas').AN,
-        eas_AF = ac_an_af_split.call_stats_by_pop.get('eas').AF[1],
-        eas_homozygote_count = ac_an_af_split.call_stats_by_pop.get('eas').homozygote_count[1],
+        eas_AF = ac_an_af_split.call_stats_by_pop.get('eas').AF[ac_an_af_split.a_index],
+        eas_homozygote_count = ac_an_af_split.call_stats_by_pop.get('eas').homozygote_count[ac_an_af_split.a_index],
 
-        eur_AC = ac_an_af_split.call_stats_by_pop.get('eur').AC[1],
+        eur_AC = ac_an_af_split.call_stats_by_pop.get('eur').AC[ac_an_af_split.a_index],
         eur_AN = ac_an_af_split.call_stats_by_pop.get('eur').AN,
-        eur_AF = ac_an_af_split.call_stats_by_pop.get('eur').AF[1],
-        eur_homozygote_count = ac_an_af_split.call_stats_by_pop.get('eur').homozygote_count[1],
+        eur_AF = ac_an_af_split.call_stats_by_pop.get('eur').AF[ac_an_af_split.a_index],
+        eur_homozygote_count = ac_an_af_split.call_stats_by_pop.get('eur').homozygote_count[ac_an_af_split.a_index],
 
-        mid_AC = ac_an_af_split.call_stats_by_pop.get('mid').AC[1],
+        mid_AC = ac_an_af_split.call_stats_by_pop.get('mid').AC[ac_an_af_split.a_index],
         mid_AN = ac_an_af_split.call_stats_by_pop.get('mid').AN,
-        mid_AF = ac_an_af_split.call_stats_by_pop.get('mid').AF[1],
-        mid_homozygote_count = ac_an_af_split.call_stats_by_pop.get('mid').homozygote_count[1],
+        mid_AF = ac_an_af_split.call_stats_by_pop.get('mid').AF[ac_an_af_split.a_index],
+        mid_homozygote_count = ac_an_af_split.call_stats_by_pop.get('mid').homozygote_count[ac_an_af_split.a_index],
 
-        oth_AC = ac_an_af_split.call_stats_by_pop.get('oth').AC[1],
+        oth_AC = ac_an_af_split.call_stats_by_pop.get('oth').AC[ac_an_af_split.a_index],
         oth_AN = ac_an_af_split.call_stats_by_pop.get('oth').AN,
-        oth_AF = ac_an_af_split.call_stats_by_pop.get('oth').AF[1],
-        oth_homozygote_count = ac_an_af_split.call_stats_by_pop.get('oth').homozygote_count[1],
+        oth_AF = ac_an_af_split.call_stats_by_pop.get('oth').AF[ac_an_af_split.a_index],
+        oth_homozygote_count = ac_an_af_split.call_stats_by_pop.get('oth').homozygote_count[ac_an_af_split.a_index],
 
-        sas_AC = ac_an_af_split.call_stats_by_pop.get('sas').AC[1],
+        sas_AC = ac_an_af_split.call_stats_by_pop.get('sas').AC[ac_an_af_split.a_index],
         sas_AN = ac_an_af_split.call_stats_by_pop.get('sas').AN,
-        sas_AF = ac_an_af_split.call_stats_by_pop.get('sas').AF[1],
-        sas_homozygote_count = ac_an_af_split.call_stats_by_pop.get('sas').homozygote_count[1],
+        sas_AF = ac_an_af_split.call_stats_by_pop.get('sas').AF[ac_an_af_split.a_index],
+        sas_homozygote_count = ac_an_af_split.call_stats_by_pop.get('sas').homozygote_count[ac_an_af_split.a_index],
     )
 
     # note that SC = AC - homozygote_count

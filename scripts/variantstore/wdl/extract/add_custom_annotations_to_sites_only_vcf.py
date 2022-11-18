@@ -104,8 +104,6 @@ def get_name_to_column_map(line):
     """
     A method to parse the #CHROM line of the custom annotations TSV file and return a map of
     name to column index.
-
-    A method to parse the FORMAT field and return it a map of format field name to column index
     :param line: The #CHROM line from the custom annotations TSV file header
     :return: a dictionary of the field names to their index in the line
     """
@@ -117,7 +115,7 @@ def get_name_to_column_map(line):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(allow_abbrev=False, description='A tool to compare a GVS-generated VCF with one generated from VDS')
+    parser = argparse.ArgumentParser(allow_abbrev=False, description='A tool to parse a custom annotations file and add those annotations as INFO fields to a sites-only VCF')
 
     parser.add_argument('--input_vcf', type=str, help='Input (sites-only) VCF', required=True)
     parser.add_argument('--custom_annotations_tsv', type=str, help='Custom annotations file', required=True)
