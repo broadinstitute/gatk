@@ -3,7 +3,6 @@ version 1.0
 workflow GvsCreateVATfromVDS {
     input {
         File input_sites_only_vcf
-#        File custom_annotations_file
         File ancestry_file
 
         String project_id
@@ -19,7 +18,7 @@ workflow GvsCreateVATfromVDS {
     File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
     File nirvana_data_directory = "gs://gvs_quickstart_storage/Nirvana/Nirvana-references-2022-10-07.tgz"
 
-    ## TODO # do we need to shard the sites only VCF? Hmmm????
+    ## TODO # do we need to shard the sites only VCF?
     # String input_vds_name = basename(input_VDS_file)
     ## TODO: where do we need to validate that there are no hemis?
     String input_vcf_name = "gvs"
@@ -28,25 +27,6 @@ workflow GvsCreateVATfromVDS {
         input:
             input_ancestry_file = ancestry_file
     }
-
-#    call CreateCustomAnnotationsFile {
-#        input:
-#            custom_annotations_header = MakeSubpopulationFilesAndReadSchemaFiles.custom_annotations_template_file,
-#            custom_annotations_body = custom_annotations_file,
-#    }
-
-#    call AddCustomAnnotationsToSitesOnlyVcf {
-#        input:
-#            sites_only_vcf = input_sites_only_vcf,
-#            custom_annotations_file = CreateCustomAnnotationsFile.custom_annotations,
-#            output_annotated_file_name = "${input_vcf_name}.annotated.sites_only.vcf"
-#    }
-
-#    call FixVcfHeader {
-#        input:
-#            input_vcf = AddCustomAnnotationsToSitesOnlyVcf.output_vcf,
-#            output_vcf_name = "reheadered_sites_only.vcf"
-#    }
 
     call RemoveDuplicatesFromSitesOnlyVCF {
         input:
@@ -77,7 +57,6 @@ workflow GvsCreateVATfromVDS {
             output_file_suffix = "${input_vcf_name}.json.gz",
             output_path = output_path,
     }
-
 
     call BigQueryLoadJson {
         input:
@@ -166,39 +145,6 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
 }
 
 
-task CreateCustomAnnotationsFile {
-    input {
-        File custom_annotations_header
-        File custom_annotations_body
-    }
-
-    Int disk_size = ceil(size(custom_annotations_body, "GB") * 2.5) + 100
-    String custom_annotations_file_name = "ac_an_af.tsv"
-
-    command <<<
-        set -e
-        
-        cat ~{custom_annotations_header} > ~{custom_annotations_file_name}
-        # Remove the first two columns, Remove the first line, Convert 'NA' to '.'
-        cat ~{custom_annotations_body} | cut -f3- | sed '1d' | sed 's/NA/\./g' >> ~{custom_annotations_file_name}
-
-    >>>
-    # ------------------------------------------------
-    # Runtime settings:
-    runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:rc_616_var_store_2022_10_25"
-        memory: "1 GB"
-        cpu: "1"
-        preemptible: 1
-        disks: "local-disk " + disk_size + " HDD"
-    }
-    # ------------------------------------------------
-    # Outputs:
-    output {
-        File custom_annotations = "~{custom_annotations_file_name}"
-    }
-}
-
 task StripCustomAnnotationsFromSitesOnlyVCF {
     input {
         File input_vcf
@@ -234,39 +180,6 @@ task StripCustomAnnotationsFromSitesOnlyVCF {
     output {
         File output_vcf = output_vcf_name
         File output_custom_annotations_file = output_custom_annotations_filename
-    }
-}
-
-
-task FixVcfHeader {
-    input {
-        File input_vcf
-        String output_vcf_name
-        String docker_image = "us.gcr.io/broad-gatk/gatk:4.2.6.1"
-    }
-
-    Int disk_size = ceil(size(input_vcf, "GB") * 2.5) + 50
-
-    command {
-        set -euo pipefail
-        set -x
-
-        gatk --java-options "-Xms3g -Xmx3g" \
-            FixVcfHeader \
-            -I ~{input_vcf} \
-            -O ~{output_vcf_name}
-    }
-
-    runtime {
-        memory: "5 GB"
-        bootDiskSizeGb: "15"
-        disks: "local-disk " + disk_size + " HDD"
-        preemptible: 3
-        docker: docker_image
-    }
-
-    output {
-        File output_vcf = output_vcf_name
     }
 }
 
@@ -430,8 +343,6 @@ task PrepAnnotationJson {
     String output_genes_gcp_path = output_path + 'genes/'
     String output_annotations_gcp_path = output_path + 'annotations/'
 
-    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
-
     ## note: these temp files do not currently get cleaned up as some of them may be helpful for recovery.
 
     command <<<
@@ -440,8 +351,6 @@ task PrepAnnotationJson {
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
-
-        bash ~{monitoring_script} > monitoring.log &
 
         # for debugging purposes only
         gsutil cp ~{annotation_json} '~{output_annotations_gcp_path}' #TODO: Can we run this task without cp-ing down this file?
@@ -471,7 +380,6 @@ task PrepAnnotationJson {
         File vat_vt_json="~{output_vt_json}"
         File vat_genes_json="~{output_genes_json}"
         Boolean done = true
-        File monitoring_log = "monitoring.log"
     }
 }
 

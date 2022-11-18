@@ -126,7 +126,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False, description='A tool to take the custom annotations added to a sites-only VCF and recreate a custom annotations file from them')
 
     parser.add_argument('--input_vcf', type=str, help='Input (sites-only) VCF', required=True)
-    parser.add_argument('--input_custom_annotations_tsv', type=str, help='Input custom annotations file', required=True)
+    parser.add_argument('--input_custom_annotations_tsv', type=str, help='Input custom annotations header file', required=True)
     parser.add_argument('--output_vcf', type=str, help='Output (sites-only) VCF - will be stripped of custom annotations', required=True)
     parser.add_argument('--output_custom_annotations_tsv', type=str, help='Output custom annotations file', required=True)
     parser.add_argument("--verbose", action="store_true", help="increase output verbosity")
