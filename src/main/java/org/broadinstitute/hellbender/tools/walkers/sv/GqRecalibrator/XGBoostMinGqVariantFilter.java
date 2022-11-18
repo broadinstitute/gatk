@@ -515,7 +515,9 @@ public class XGBoostMinGqVariantFilter extends MinGqVariantFilterBase {
                     throw new GATKException("In " + name + " DataSubset: Boost error", xgBoostError);
                 }
             } else {
-                lossForTraining = getTrainingLoss(pSampleVariantGood, variantIndices);
+                lossForTraining = getTrainingLoss(pSampleVariantGood, null, null, variantIndices);
+                System.out.format("\t%s\n\t\t%s\n", "validation objective loss",
+                        lossForTraining.toString().replaceAll("\n", "\n\t\t"));
             }
 
             final FilterLoss lossForDiagnostics = getLoss(pSampleVariantGood, variantIndices);
@@ -548,6 +550,12 @@ public class XGBoostMinGqVariantFilter extends MinGqVariantFilterBase {
             if(score < bestScore) {
                 bestScore = score;
                 bestScoreInd = getRound();
+                System.out.format("DataSubSet %s had best score (%.3f) at round %d\n",
+                                    name, bestScore, bestScoreInd);
+            } else {
+                System.out.format(
+                "DataSubSet %s had NON-best score (%.3f >= %.3f) at round %d, %d rounds since best\n",
+                    name, score, bestScore, getRound(), getRound() - bestScoreInd);
             }
         }
 
