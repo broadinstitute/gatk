@@ -183,13 +183,17 @@ public final class SelectVariants extends VariantWalker {
      * should either refer to INFO fields, or access FORMAT field with the VariantContext object
      * e.g. --select "vc.getGenotype('NA12878').getGQ() > 35"
      */
-    @Argument(fullName="select-expressions", shortName="select", doc="", optional=true)
+    public static final String SELECT_SHORT_NAME = "select";
+    public static final String SELECT_LONG_NAME = "select-expressions";
+    @Argument(fullName=SELECT_LONG_NAME, shortName=SELECT_SHORT_NAME, doc="", optional=true)
     private ArrayList<String> selectExpressions = new ArrayList<>();
 
     /**
-     *
+     * Add doc
      */
-    @Argument(fullName="select-genotype-expressions", shortName="select-genotype", doc="", optional=true)
+    public static final String GENOTYPE_SELECT_SHORT_NAME = "select-genotype";
+    public static final String GENOTYPE_SELECT_LONG_NAME = "select-genotype-expressions";
+    @Argument(fullName=GENOTYPE_SELECT_LONG_NAME, shortName=GENOTYPE_SELECT_SHORT_NAME, doc="", optional=true)
     private ArrayList<String> selectGenotypeExpressions = new ArrayList<>();
 
     /**
@@ -637,10 +641,12 @@ public final class SelectVariants extends VariantWalker {
 
         // START TSATO EXPERIMENTAL
         final GenotypeJEXLContext genotypeJexl = new GenotypeJEXLContext(vc, vc.getGenotype(0));
-        VariantContextUtils.JexlVCMatchExp exp = infoJexls.get(0);
-        final Object test = exp.exp.evaluate(genotypeJexl);
-        // tsato: is there a way to parse the jexl expressions into (fields, threshold) or something like that?
-        int d = 3;
+        if (!infoJexls.isEmpty()){
+            VariantContextUtils.JexlVCMatchExp exp = infoJexls.get(0);
+            final Object test = exp.exp.evaluate(genotypeJexl);
+            // tsato: is there a way to parse the jexl expressions into (fields, threshold) or something like that?
+            int d = 3;
+        }
         // END TSATO EXPERIMENTAL
 
         if (applyJexlFiltersBeforeFilteringGenotypes && !passesJexlFilters(vc)) {
@@ -681,7 +687,7 @@ public final class SelectVariants extends VariantWalker {
             return;
         }
 
-        if (! applyJexlFiltersBeforeFilteringGenotypes && ! passesJexlFilters(result)){
+        if (!applyJexlFiltersBeforeFilteringGenotypes && ! passesJexlFilters(result)){
             return;
         }
 
@@ -697,16 +703,16 @@ public final class SelectVariants extends VariantWalker {
      *  - When multiple -select arguments are given, the logical expressions are combined with the logical-or operator. In particular,
      *  we do not currently support complex logical expressions involving both logical-and's and logical-or's. e.g. (x || y) && z
      *
+     * When both the INFO and genotype filters are specified, the current behavior is to take the logical-or of them.
+     * We should support combining by logical-and if requested.
      */
     private boolean passesJexlFilters(final VariantContext vc){
         if (infoJexls.isEmpty() && genotypeJexls.isEmpty()){
             return true;
         }
 
-        boolean infoJexlResult = false;
-        boolean genotypeJexlResult = false;
-
         try {
+            // ##### Apply INFO JEXL filters #####
             for (VariantContextUtils.JexlVCMatchExp jexl : infoJexls) {
                 // If invert-select is set to true, we take the complement (i.e. "not") of each jexl expression,
                 // then take the logical-or.
@@ -715,6 +721,15 @@ public final class SelectVariants extends VariantWalker {
                 // If invert-select is true, we have "not (AF > 0.01) || not (ReadPosRankSum < -20.0)"
                 if (invertLogic(VariantContextUtils.match(vc, jexl), invertSelect)){ // tsato: this match method sets the vc genotype to null
                     return true; // we have to give it the genotype if we want to enable genotype filtering.
+                }
+            }
+
+            // ##### Apply Genotype JEXL filters #####
+            for (VariantContextUtils.JexlVCMatchExp jexl : genotypeJexls) {
+                for (Genotype g : vc.getGenotypes()){
+                    if (invertLogic(VariantContextUtils.match(vc, g, jexl), invertSelect)){
+                        return true;
+                    }
                 }
             }
         } catch (IllegalArgumentException e) {
