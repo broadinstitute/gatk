@@ -141,22 +141,22 @@ hour or so to complete. Building on the preceding step, the following snippet va
 >>> vds.validate()
 ```
 
-## Reset GCS permissions
+## Remove storage roles
 
-After the VDS has been delivered, the permissions that
-were [granted above](#grant-sts-service-account-permissions-on-source-bucket) to the STS service account and a
+After the VDS has been delivered, the storage-related roles that
+were [assigned above](#grant-sts-service-account-permissions-on-source-bucket) to the STS service account and a
 Variants team member's `@firecloud.org` principal should now be removed.
 
-### Remove bucket permissions from STS service account
+### Remove admin role from STS service account
 
-With a `@firecloud.org` identity, navigate to the callset workspace bucket and remove the `Storage Object Admin` from
-the project's STS service account. In the dialog below, press the three trashcan icons corresponding to the three
+With a `@firecloud.org` identity, navigate to the callset workspace bucket and remove the `Storage Object Admin` role
+from the project's STS service account. In the dialog below, press the three trashcan icons corresponding to the three
 permissions and hit `Save`:
 
 ![Remove Storage Object Admin](./Remove%20STS%20SA%20Storage%20Object%20Admin.png)
 
-### Remove Storage Admin permission from firecloud.org principal
+### Remove admin role from firecloud.org principal
 
-With the same `@firecloud.org` identity, navigate to IAM and remove `Storage Admin` from the principal:
+With the same `@firecloud.org` identity, navigate to IAM and remove the `Storage Admin` role from the principal:
 
 ![Remove Storage Admin](./Remove%20Storage%20Admin.png)
