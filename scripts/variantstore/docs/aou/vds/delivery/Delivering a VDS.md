@@ -44,10 +44,10 @@ for our workspace project. This request should include our callset workspace pro
 in the previous step.
 For reference [this](https://precisionmedicineinitiative.atlassian.net/browse/PD-8286) was the ticket used for this
 purpose for the Delta callset. For Echo and other future callsets it would be necessary to do at least the second bullet
-point in this ticket to add the `Storage Object Power User` permission for
+point in this ticket to add the `Storage Object Power User` role to
 the `project-<project number>@storage-transfer-service.iam.gserviceaccount.com` STS service account.
 
-### Grant STS service account permissions on source bucket
+### Grant STS service account admin role on workspace bucket
 
 **Note:** The following steps required the use of a `@firecloud.org` account and were all performed within the Google
 Cloud Console.
@@ -144,8 +144,8 @@ hour or so to complete. Building on the preceding step, the following snippet va
 ## Remove storage roles
 
 After the VDS has been delivered, the storage-related roles that
-were [assigned above](#grant-sts-service-account-permissions-on-source-bucket) to the STS service account and a
-Variants team member's `@firecloud.org` principal should now be removed.
+were [assigned above](#grant-sts-service-account-admin-role-on-workspace-bucket) to the STS service account and a
+`@firecloud.org` principal should now be removed.
 
 ### Remove admin role from STS service account
 
