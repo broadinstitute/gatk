@@ -124,7 +124,6 @@ def write_vat_custom_annotations(mt, vat_custom_annotations_tsv_path):
         AN=ac_an_af_split.row.ac_an_af.AN,
         AF=ac_an_af_split.row.ac_an_af.AF[1],
         homozygote_count=ac_an_af_split.row.ac_an_af.homozygote_count[1],
-
         eas_AC = ac_an_af_split.call_stats_by_pop.get('eas').AC[1],
         eas_AN = ac_an_af_split.call_stats_by_pop.get('eas').AN,
         eas_AF = ac_an_af_split.call_stats_by_pop.get('eas').AF[1],
