@@ -44,7 +44,7 @@ for our workspace project. This request should include our callset workspace pro
 in the previous step.
 For reference [this](https://precisionmedicineinitiative.atlassian.net/browse/PD-8286) was the ticket used for this
 purpose for the Delta callset. For Echo and other future callsets it would be necessary to do at least the second bullet
-point in this ticket add the `Storage Object Power User` permission for
+point in this ticket to add the `Storage Object Power User` permission for
 the `project-<project number>@storage-transfer-service.iam.gserviceaccount.com` STS service account.
 
 ### Grant STS service account permissions on source bucket
@@ -75,13 +75,13 @@ Cloud Console.
 **Note:** For the Delta callset the Variants
 team [delivered two versions of the VDS](https://broadworkbench.atlassian.net/browse/VS-716), one with AI/AN samples and
 one without. Since the text and screenshots in this document draw from both deliveries the paths and principals involved
-are not consistent. Miguel's principal was used for the version of the VDS without AI/AN and George's principal was used
-for the version of the VDS with AI/AN.
+are not consistent. Miguel's `@firecloud.org` principal was used for the version of the VDS without AI/AN and
+George's `@firecloud.org` principal was used for the version with AI/AN.
 
 #### Go to the Storage Transfer Service (STS) Transfer Jobs Page
 
 From the Google Cloud Console, enter 'Storage Transfer Service' in the search bar and select the 'Data Transfer' result
-(circle in red below):
+(circled in red below):
 
 ![STS Transfer Jobs Page](./STS%200.png)
 
@@ -95,24 +95,68 @@ case is Google Cloud Storage to Google Cloud Storage:
 
 ![STS Get Started](./STS%202.png)
 
-Next choose the source path. This is a GCS URL that can be either a bucket or a directory but the `gs://` prefix must
-not be included:
+Next choose the source path. This is a GCS URL that can be either a bucket or a directory but must not include
+the `gs://` prefix. Enter the workspace path to the VDS here (remember that VDSes are directory trees):
 
 ![STS Source](./STS%203.png)
 
-Now choose the destination path. Like the preceding step, this is a GCS URL that can be either a bucket or a directory but the `gs://` prefix must
-not be included:
+Now choose the destination path. Like the preceding step, this is a GCS URL that can be either a bucket or a directory
+but must not include the `gs://` prefix. Enter the VDS delivery path as specified by Lee here:
 
 ![STS Destination](./STS%204.png)
 
-Take the defaults of "Run once" and "Starting now":
+On the next step, take the defaults of "Run once" and "Starting now":
 
 ![STS How and when to run](./STS%205.png)
 
-Finally, provide a description to identify the job and choose some conservative options for transfer:
+Finally, provide a description to identify the job, choose some conservative options, and kick off the transfer:
 
 * When to overwrite: Never
 * When to delete: Never
 
 ![STS Identify job](./STS%206.png)
 
+At this point the STS job should actually begin to run. For Delta these jobs completed in well under an hour for both
+VDS deliveries.
+
+## Check transferred VDS
+
+### Configure a Terra notebook cluster
+
+Please follow the instructions
+in [AoU Delta VDS Cluster Configuration](./AoU%20Delta%20VDS%20Cluster%20Configuration.md) to set up a Delta-scale
+cluster.
+
+### Run Hail VDS Validation
+
+Hail offers
+a [validate() method](https://hail.is/docs/0.2/vds/hail.vds.VariantDataset.html#hail.vds.VariantDataset.validate) on
+VDS objects which "eagerly checks necessary representational properties of the VDS". This method will throw errors if
+inconsistencies are found, otherwise completing without returning a result. For the Delta callset this took about an
+hour or so to complete. Building on the preceding step, the following snippet validates the VDS at the delivery path:
+
+```python
+>>> vds_path = "gs://delivery-bucket/delivery-path.vds"
+>>> vds = hl.vds.read_vds('vds_path')
+>>> vds.validate()
+```
+
+## Reset GCS permissions
+
+After the VDS has been delivered, the permissions that
+were [granted above](#grant-sts-service-account-permissions-on-source-bucket) to the STS service account and a
+Variants team member's `@firecloud.org` principal should now be removed.
+
+### Remove bucket permissions from STS service account
+
+With a `@firecloud.org` identity, navigate to the callset workspace bucket and remove the `Storage Object Admin` from
+the project's STS service account. In the dialog below, press the three trashcan icons corresponding to the three
+permissions and hit `Save`:
+
+![Remove Storage Object Admin](./Remove%20STS%20SA%20Storage%20Object%20Admin.png)
+
+### Remove Storage Admin permission from firecloud.org principal
+
+With the same `@firecloud.org` identity, navigate to IAM and remove `Storage Admin` from the principal:
+
+![Remove Storage Admin](./Remove%20Storage%20Admin.png)
