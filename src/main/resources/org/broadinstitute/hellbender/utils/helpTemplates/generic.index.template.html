@@ -48,6 +48,8 @@
                                         <td>**EXPERIMENTAL** ${datum.summary} </td>
                                     <#elseif datum.beta?? && datum.beta == "true">
                                         <td>**BETA** ${datum.summary}</td>
+                                    <#elseif datum.deprecated?? && datum.deprecated == "true">
+                                        <td>**DEPRECATED** ${datum.summary}</a></td>
                                     <#else>
                                         <td>${datum.summary}</td>
                                     </#if>

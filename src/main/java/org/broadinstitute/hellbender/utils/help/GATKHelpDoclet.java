@@ -79,7 +79,7 @@ public class GATKHelpDoclet extends HelpDoclet {
             final List<Map<String, String>> groupMaps,
             final List<Map<String, String>> featureMaps)
     {
-        GATKGSONWorkUnit gatkGSONWorkUnit = new GATKGSONWorkUnit();
+        GATKGSONWorkUnit gatkGSONWorkUnit = new GATKGSONWorkUnit(workUnit);
         gatkGSONWorkUnit.setWalkerType((String)workUnit.getRootMap().get(WALKER_TYPE_MAP_ENTRY));
         return gatkGSONWorkUnit;
     }
