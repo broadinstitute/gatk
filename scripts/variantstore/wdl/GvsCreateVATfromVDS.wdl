@@ -3,7 +3,6 @@ version 1.0
 workflow GvsCreateVATfromVDS {
     input {
         File input_sites_only_vcf
-        File custom_annotations_file
         File ancestry_file
 
         String project_id
@@ -17,7 +16,7 @@ workflow GvsCreateVATfromVDS {
 
     Array[String] contig_array = ["chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrX", "chrY", "chrM"]
     File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
-    File nirvana_data_directory = "gs://gvs-internal/bigquery-jointcalling/VAT/Nirvana/Nirvana-references-2022-10-07.tgz"
+    File nirvana_data_directory = "gs://gvs_quickstart_storage/Nirvana/Nirvana-references-2022-10-07.tgz"
 
     ## TODO # do we need to shard the sites only VCF?
     # String input_vds_name = basename(input_VDS_file)
@@ -29,19 +28,27 @@ workflow GvsCreateVATfromVDS {
             input_ancestry_file = ancestry_file
     }
 
-    call CreateCustomAnnotationsFile {
+    call RemoveDuplicatesFromSitesOnlyVCF {
         input:
+            sites_only_vcf = input_sites_only_vcf,
+            ref = reference
+    }
+
+    call StripCustomAnnotationsFromSitesOnlyVCF {
+        input:
+            input_vcf = RemoveDuplicatesFromSitesOnlyVCF.output_vcf,
             custom_annotations_header = MakeSubpopulationFilesAndReadSchemaFiles.custom_annotations_template_file,
-            custom_annotations_body = custom_annotations_file,
+            output_vcf_name = "${input_vcf_name}.unannotated.sites_only.vcf",
+            output_custom_annotations_filename = "ac_an_af.tsv"
     }
 
     ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
     call AnnotateVCF {
         input:
-            input_vcf = input_sites_only_vcf,
+            input_vcf = StripCustomAnnotationsFromSitesOnlyVCF.output_vcf,
             output_annotated_file_name = "${input_vcf_name}_annotated",
             nirvana_data_tar = nirvana_data_directory,
-            custom_annotations_file = CreateCustomAnnotationsFile.custom_annotations,
+            custom_annotations_file = StripCustomAnnotationsFromSitesOnlyVCF.output_custom_annotations_file,
     }
 
     call PrepAnnotationJson {
@@ -50,8 +57,6 @@ workflow GvsCreateVATfromVDS {
             output_file_suffix = "${input_vcf_name}.json.gz",
             output_path = output_path,
     }
-
-
 
     call BigQueryLoadJson {
         input:
@@ -84,7 +89,6 @@ workflow GvsCreateVATfromVDS {
             export_done = BigQueryExportVat.done,
             contig_array = contig_array,
             output_path = output_path,
-            project_id = project_id,
             merge_vcfs_disk_size_override = merge_vcfs_disk_size_override
     }
 
@@ -141,36 +145,114 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
 }
 
 
-task CreateCustomAnnotationsFile {
+task StripCustomAnnotationsFromSitesOnlyVCF {
     input {
+        File input_vcf
         File custom_annotations_header
-        File custom_annotations_body
+        String output_vcf_name
+        String output_custom_annotations_filename
     }
 
-    Int disk_size = ceil(size(custom_annotations_body, "GB") * 2.5) + 100
-    String custom_annotations_file_name = "ac_an_af.tsv"
+    Int disk_size = ceil((size(input_vcf, "GB") + size(custom_annotations_header, "GB")) * 4) + 100
 
     command <<<
         set -e
-        
-        cat ~{custom_annotations_header} > ~{custom_annotations_file_name}
-        cat ~{custom_annotations_body} | cut -f3- | sed '1d'  >> ~{custom_annotations_file_name}
+        set -o errexit -o nounset -o pipefail -o xtrace
 
+        python3 /app/strip_custom_annotations_from_sites_only_vcf.py \
+        --input_vcf ~{input_vcf} \
+        --input_custom_annotations_tsv ~{custom_annotations_header} \
+        --output_vcf ~{output_vcf_name} \
+        --output_custom_annotations_tsv ~{output_custom_annotations_filename}
 
     >>>
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:rc_616_var_store_2022_10_25"
-        memory: "1 GB"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-561_var_store_2022_11_18"
+        memory: "3.5 GiB"
         cpu: "1"
-        preemptible: 1
+        preemptible: 2
         disks: "local-disk " + disk_size + " HDD"
     }
     # ------------------------------------------------
     # Outputs:
     output {
-        File custom_annotations = "~{custom_annotations_file_name}"
+        File output_vcf = output_vcf_name
+        File output_custom_annotations_file = output_custom_annotations_filename
+    }
+}
+
+
+task RemoveDuplicatesFromSitesOnlyVCF {
+    input {
+        File sites_only_vcf
+        File ref
+    }
+
+    Int disk_size = ceil(size(sites_only_vcf, "GB") * 5) + 100
+
+    # separate multi-allelic sites into their own lines, remove deletions and filtered sites and make a sites only vcf
+    # while extracting and calculating the an/ac/af & sc by subpopulation into a tsv
+    command <<<
+        set -e
+
+        # custom function to prepend the current datetime to an echo statement
+        echo_date () { echo "`date "+%Y/%m/%d %H:%M:%S"` $1"; }
+
+        echo_date "VAT: Convert input to BCF format"
+        bcftools convert --threads 4 -O b -o sites_only.bcf ~{sites_only_vcf}
+
+        echo_date "VAT: normalize, left align and split multi allelic sites to new lines, remove duplicate lines"
+        ## note that normalization may create sites with more than 50 alt alleles
+        bcftools norm --threads 4 -m- --check-ref w -f ~{ref} sites_only.bcf -O b -o normalized.bcf
+        rm sites_only.bcf
+
+        echo_date "VAT: detecting and removing duplicate rows from sites-only VCF"
+
+        ## During normalization, sometimes duplicate variants appear but with different calculations. This seems to be a bug in bcftools. For now we are dropping all duplicate variants
+        ## to locate the duplicates, we first make a file of just the first 5 columns
+        bcftools query normalized.bcf -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' | sort | uniq -d > duplicates.tsv
+
+        echo_date "VAT: done with duplicate detection"
+        wc -l duplicates.tsv
+        echo_date "VAT: Duplicates may have been found"
+
+        # If there ARE dupes to remove
+        if [ -s duplicates.tsv ]; then
+            ## remove those rows (that match up to the first 5 cols)
+            echo_date "VAT: Removing those rows"
+            bcftools view --threads 4 normalized.bcf | grep -v -wFf duplicates.tsv | bcftools view --threads 4 -O b -o deduplicated.bcf
+        else
+            # There are no duplicates to remove
+            echo_date "VAT: No duplicates found"
+            cp normalized.bcf deduplicated.bcf
+        fi
+        echo_date "VAT: Converting deduplicated bcf to vcf"
+        bcftools view deduplicated.bcf > deduplicated.vcf
+        rm normalized.bcf
+
+        ## add duplicates to the file that's tracking dropped variants
+        cat duplicates.tsv >> track_dropped.tsv
+        rm duplicates.tsv ## clean up unneeded file
+
+        echo_date "VAT: finished"
+    >>>
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-10-25-alpine"
+        maxRetries: 3
+        memory: "16 GB"
+        preemptible: 3
+        cpu: "4"
+        disks: "local-disk " + disk_size + " HDD"
+    }
+    # ------------------------------------------------
+    # Outputs:
+    output {
+        File track_dropped = "track_dropped.tsv"
+        File output_vcf = "deduplicated.vcf"
     }
 }
 
@@ -205,9 +287,6 @@ task AnnotateVCF {
         tar zxvf ~{nirvana_data_tar} -C datasources_dir  ## --strip-components 2
         DATA_SOURCES_FOLDER="$PWD/datasources_dir/references"
 
-        ## TODO - TEMP - try to change the NAs to nothing
-        sed s/NA//g ~{custom_annotations_file} > ac_an_af_noNAs.tsv
-
         # =======================================
         echo "Creating custom annotations"
         mkdir customannotations_dir
@@ -217,7 +296,7 @@ task AnnotateVCF {
         ## use --skip-ref once you are on a version of nirvana later than 3.14 (once they have created a docker image for it)
         dotnet ~{custom_creation_location} customvar \
             -r $DATA_SOURCES_FOLDER~{path_reference} \
-            -i ac_an_af_noNAs.tsv \
+            -i ~{custom_annotations_file} \
             -o $CUSTOM_ANNOTATIONS_FOLDER
 
         # =======================================
@@ -225,11 +304,11 @@ task AnnotateVCF {
 
 
         dotnet ~{nirvana_location} \
+            -i ~{input_vcf} \
             -c $DATA_SOURCES_FOLDER~{path} \
             --sd $DATA_SOURCES_FOLDER~{path_supplementary_annotations} \
             --sd $CUSTOM_ANNOTATIONS_FOLDER \
             -r $DATA_SOURCES_FOLDER~{path_reference} \
-            -i ~{input_vcf} \
             -o ~{output_annotated_file_name}
 
     >>>
@@ -291,9 +370,9 @@ task PrepAnnotationJson {
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:rc_616_var_store_2022_10_25"
         memory: "60 GB"
-        preemptible: 5
+        preemptible: 3
         cpu: "1"
-        disks: "local-disk 250 SSD"
+        disks: "local-disk 500 HDD"
     }
     # ------------------------------------------------
     # Outputs:
@@ -325,7 +404,7 @@ task BigQueryLoadJson {
     }
 
     # If the vat version is undefined or v1 then the vat tables would be named like filter_vat, otherwise filter_vat_v2.
-    String effective_vat_version = if (defined(vat_version) && vat_version != "v1") then "_" + vat_version else ""
+    String effective_vat_version = if (defined(vat_version) && select_first([vat_version]) != "v1") then "_" + select_first([vat_version]) else ""
 
     # There are two pre-vat tables. A variant table and a genes table. They are joined together for the vat table
     String vat_table = filter_set_name + "_vat" + effective_vat_version
@@ -670,14 +749,13 @@ task MergeVatTSVs {
     input {
         Array[Boolean] export_done
         Array[String] contig_array
-        String project_id
         String output_path
 
         Int? merge_vcfs_disk_size_override
     }
 
     # going large with the default to make gsutil -m cp really zippy
-    Int disk_size = if (defined(merge_vcfs_disk_size_override)) then merge_vcfs_disk_size_override else 250
+    Int disk_size = if (defined(merge_vcfs_disk_size_override)) then select_first([merge_vcfs_disk_size_override]) else 250
 
     command <<<
         apt-get update
