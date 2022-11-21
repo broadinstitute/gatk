@@ -36,8 +36,11 @@ workflow GvsExtractCohortFromSampleNames {
     Int? split_intervals_disk_size_override
     Int? split_intervals_mem_override
 
-    File? gatk_override
+    File gatk_override = "gs://gvs-internal-scratch/rsa/gatk-package-4.2.0.0-624-ga2bb04e-SNAPSHOT-local.jar"
+
   }
+
+  Boolean write_cost_to_db = if ((gvs_project != destination_project_id) || (gvs_project != query_project)) then false else true
 
   # writing the array to a file has to be done in a task
   # https://support.terra.bio/hc/en-us/community/posts/360071465631-write-lines-write-map-write-tsv-write-json-fail-when-run-in-a-workflow-rather-than-in-a-task
@@ -62,7 +65,8 @@ workflow GvsExtractCohortFromSampleNames {
       dataset_name                    = gvs_dataset, # unused if fq_* args are given
       destination_project             = destination_project_id,
       destination_dataset             = destination_dataset_name,
-      fq_temp_table_dataset           = fq_gvs_extraction_temp_tables_dataset
+      fq_temp_table_dataset           = fq_gvs_extraction_temp_tables_dataset,
+      write_cost_to_db                = write_cost_to_db
   }
 
   call GvsExtractCallset.GvsExtractCallset {
@@ -87,7 +91,8 @@ workflow GvsExtractCohortFromSampleNames {
       split_intervals_disk_size_override = split_intervals_disk_size_override,
       split_intervals_mem_override = split_intervals_mem_override,
 
-      gatk_override = gatk_override
+      gatk_override = gatk_override,
+      write_cost_to_db = write_cost_to_db
   }
 
   output {

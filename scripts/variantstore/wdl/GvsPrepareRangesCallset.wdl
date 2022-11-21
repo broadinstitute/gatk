@@ -20,6 +20,7 @@ workflow GvsPrepareCallset {
     Array[String]? query_labels
     File? sample_names_to_extract
     Boolean only_output_vet_tables = false
+    Boolean write_cost_to_db = true
   }
 
   String full_extract_prefix = if (control_samples) then "~{extract_table_prefix}_controls" else extract_table_prefix
@@ -40,7 +41,8 @@ workflow GvsPrepareCallset {
       fq_destination_dataset          = fq_destination_dataset,
       temp_table_ttl_in_hours         = 72,
       control_samples                 = control_samples,
-      only_output_vet_tables          = only_output_vet_tables
+      only_output_vet_tables          = only_output_vet_tables,
+      write_cost_to_db                = write_cost_to_db
   }
 
   output {
@@ -64,6 +66,7 @@ task PrepareRangesCallsetTask {
     Array[String]? query_labels
     Int temp_table_ttl_in_hours = 24
     Boolean only_output_vet_tables
+    Boolean write_cost_to_db
   }
   meta {
     # All kinds of BQ reading happening in the referenced Python script.
@@ -102,7 +105,8 @@ task PrepareRangesCallsetTask {
           ~{sep=" " query_label_args} \
           --fq_sample_mapping_table ~{fq_sample_mapping_table} \
           --ttl ~{temp_table_ttl_in_hours} \
-          ~{true="--only_output_vet_tables True" false='' only_output_vet_tables}
+          ~{true="--only_output_vet_tables True" false='' only_output_vet_tables} \
+          ~{true="--write_cost_to_db True" false="--write_cost_to_db ''" write_cost_to_db}
 
   >>>
   output {
@@ -110,7 +114,7 @@ task PrepareRangesCallsetTask {
   }
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-11-08-alpine"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-11-17-alpine"
     memory: "3 GB"
     disks: "local-disk 100 HDD"
     bootDiskSizeGb: 15
