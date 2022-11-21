@@ -118,7 +118,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_vs_521_subcohort_cost
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
@@ -167,7 +166,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_vs_521_subcohort_cost
    - name: GvsWithdrawSamples
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsWithdrawSamples.wdl
