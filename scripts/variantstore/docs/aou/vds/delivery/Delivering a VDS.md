@@ -1,32 +1,32 @@
 # Delivering a VDS
 
-## Initial VDS Creation
+## VDS Creation and QA
 
 The Hail VDSes produced by GVS workflows are created within the callset workspace bucket. These are the usual
 Terra workspace buckets with names like `gs://fc-secure-fb908548-fe3c-41d6-adaf-7ac20d541375`. Once a VDS has been
-created, the Variants team works in conjunction with Lee to QA the VDS before we consider delivering it to AoU.
+created the Variants team will also generate callset statistics using `GvsCallsetStatistics.wdl`. The Variants team
+then forwards both the workspace path to the VDS and the output callset statistics TSV to Lee to quality check the VDS.
 
 ## VDS Delivery to AoU
 
-### Determine the VDS destination path
+### Get a VDS delivery path from Lee
 
-Once the VDS has passed QA the Variants team can begin the process of delivery to AoU. The designated delivery bucket
-for AoU callsets is `gs://prod-drc-broad/`. Within the Variants team we refer to callsets by
+Once the VDS has passed Lee's QA the Variants team can begin the process of delivery to AoU. The designated delivery
+bucket for AoU callsets is `gs://prod-drc-broad/`. Within the Variants team we refer to callsets by
 their [NATO phonetic alphabet](https://en.wikipedia.org/wiki/NATO_phonetic_alphabet) names (e.g. Charlie, Delta, Echo
-etc.), but AoU does not know about these names.
+etc.), but AoU does not use these names.
 
-Ask Lee what the delivery path of the VDS should be within the AoU delivery bucket. e.g. for the Delta callset the final
-VDS had a source path
+The Variants team should ask Lee what the delivery path of the VDS should be within the AoU delivery bucket. e.g. for
+the Delta callset the final VDS had a workspace path
 of `gs://fc-secure-fb908548-fe3c-41d6-adaf-7ac20d541375/delta_ai_an_filtered_2022_11_15.vds` and a delivery path
 of `gs://prod-drc-broad/v7/wgs/without_aian_prod/vds/aou_srwgs_short_variants_v7_prod.vds`. The source path was named to
-make sense to members of the Variants team only, while the delivery path was completely specified by Lee apart from the
+make sense to members of the Variants team, while the delivery path was completely specified by Lee, apart from the
 standard delivery bucket name.
 
 ### Collect callset workspace project info
 
 In order to configure permissions for the VDS transfer we will need both the Google project id and project number. The
-project ID can be found in the workspace dashboard at the far left (circled in red in this
-example):
+project ID can be found in the workspace dashboard at the far left (circled in red):
 
 ![Project number](Callset%20Workspace%20Dashboard.png)
 
@@ -39,12 +39,12 @@ $ gcloud projects describe terra-b3b4392d --format json | jq -r .projectNumber
 
 ### Open PMI DRC JIRA ticket to enable STS
 
-At this point we will need to ask the PMI DRC to add the appropriate permissions for the STS service account for our
-workspace project. This request should include our callset workspace project ID and project number we collected in the
-previous step.
-For reference [this](https://precisionmedicineinitiative.atlassian.net/browse/PD-8286) was the ticket
-we used for this purpose for the Delta callset. For Echo and other future callsets it would be necessary to do at least
-the second bullet point in this ticket add the `Storage Object Power User` permission for
+At this point the Variants team needs to ask the PMI DRC to add the appropriate permissions for the STS service account
+for our workspace project. This request should include our callset workspace project ID and project number we collected
+in the previous step.
+For reference [this](https://precisionmedicineinitiative.atlassian.net/browse/PD-8286) was the ticket used for this
+purpose for the Delta callset. For Echo and other future callsets it would be necessary to do at least the second bullet
+point in this ticket add the `Storage Object Power User` permission for
 the `project-<project number>@storage-transfer-service.iam.gserviceaccount.com` STS service account.
 
 ### Grant STS service account permissions on source bucket
@@ -52,10 +52,9 @@ the `project-<project number>@storage-transfer-service.iam.gserviceaccount.com` 
 **Note:** The following steps required the use of a `@firecloud.org` account and were all performed within the Google
 Cloud Console.
 
-For Delta I (Miguel) first went to
+For the Delta callset, I (Miguel) first went to
 the [IAM page for this project](https://console.cloud.google.com/iam-admin/iam?project=terra-b3b4392d)
-and granted my  `mcovarr@firecloud.org` principal a `Storage Admin` role in the `terra-b3b4392d`
-project:
+and granted my  `mcovarr@firecloud.org` principal a `Storage Admin` role in the `terra-b3b4392d` project:
 
 ![Firecloud Storage Admin](Firecloud%20Storage%20Admin.png)
 
@@ -73,4 +72,8 @@ account for the callset workspace project:
 **Note:** The following steps required the use of a `@firecloud.org` account and were all performed within the Google
 Cloud Console.
 
-insert notes and George's screenshots here
+**Note:** For the Delta callset the Variants
+team [delivered two versions of the VDS](https://broadworkbench.atlassian.net/browse/VS-716), one with AI/AN samples and
+one without. Since the text and screenshots in this document draw from both deliveries the paths and principals involved
+are not consistent.
+
