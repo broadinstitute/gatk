@@ -90,10 +90,11 @@ def matrix_table_ac_an_af(mt, ancestry_file):
     sample_id_to_sub_population = create_vat_inputs.parse_ancestry_file(ancestry_file)
 
     mt = mt.annotate_cols(pop=hl.literal(sample_id_to_sub_population)[mt.s])
-    return mt.select_rows(
+    ac_an_af_mt = mt.select_rows(
         ac_an_af=hl.agg.call_stats(mt.GT, mt.alleles),
         call_stats_by_pop=hl.agg.group_by(mt.pop, hl.agg.call_stats(mt.GT, mt.alleles)),
     )
+    return hl.methods.split_multi(ac_an_af_mt) # split each alternate allele onto it's own row
 
 
 def vds_ac_an_af(mt, vds):
@@ -106,10 +107,71 @@ def vds_ac_an_af(mt, vds):
     return hl.vds.VariantDataset(vds.reference_data, vd) ## TODO: IT LOOKS LIKE IT DOES HARD FILTER!
 
 
-def write_sites_only_vcf(vds, sites_only_vcf_path):
+def write_sites_only_vcf(ac_an_af_split, sites_only_vcf_path):
     # TODO we will want to drop some cols because there's no reason to carry around some of this stuff
-    split_filtered_vds = hl.vds.split_multi(vds)
-    hl.export_vcf(split_filtered_vds.variant_data.rows(), sites_only_vcf_path)
+    # CHROM	POS	REF	ALT	AC	AN	AF	AC_Hom	AC_Het	AC_Hemi	AC_afr	AN_afr	AF_afr	AC_Hom_afr	AC_Het_afr	AC_Hemi_afr	AC_amr	AN_amr	AF_amr	AC_Hom_amr	AC_Het_amr	AC_Hemi_amr	AC_eas	AN_eas	AF_eas	AC_Hom_eas	AC_Het_eas	AC_Hemi_eas	AC_eur	AN_eur	AF_eur	AC_Hom_eur	AC_Het_eur	AC_Hemi_eur	AC_mid	AN_mid	AF_mid	AC_Hom_mid	AC_Het_mid	AC_Hemi_mid	AC_oth	AN_oth	AF_oth	AC_Hom_oth	AC_Het_oth	AC_Hemi_oth	AC_sas	AN_sas	AF_sas	AC_Hom_sas	AC_Het_sas	AC_Hemi_sas
+    ac_an_af_rows = ac_an_af_split.annotate_rows(
+        info = hl.struct(
+            #CHROM=ac_an_af_split.row.locus.contig,
+            #POS=ac_an_af_split.row.locus.position,
+            #REF=ac_an_af_split.row.alleles[0],
+            #ALT=ac_an_af_split.row.alleles[1],
+
+            AC=ac_an_af_split.row.ac_an_af.AC[ac_an_af_split.row.a_index],
+            AN=ac_an_af_split.row.ac_an_af.AN,
+            AF=ac_an_af_split.row.ac_an_af.AF[ac_an_af_split.row.a_index],
+            Hom=ac_an_af_split.row.ac_an_af.homozygote_count[ac_an_af_split.row.a_index],
+
+            AC_afr = ac_an_af_split.call_stats_by_pop.get('afr').AC[ac_an_af_split.row.a_index],
+            AN_afr = ac_an_af_split.call_stats_by_pop.get('afr').AN,
+            AF_afr = ac_an_af_split.call_stats_by_pop.get('afr').AF[ac_an_af_split.row.a_index],
+            Hom_afr = ac_an_af_split.call_stats_by_pop.get('afr').homozygote_count[ac_an_af_split.row.a_index],
+
+            AC_amr = ac_an_af_split.call_stats_by_pop.get('amr').AC[ac_an_af_split.row.a_index],
+            AN_amr = ac_an_af_split.call_stats_by_pop.get('amr').AN,
+            AF_amr = ac_an_af_split.call_stats_by_pop.get('amr').AF[ac_an_af_split.row.a_index],
+            Hom_amr = ac_an_af_split.call_stats_by_pop.get('amr').homozygote_count[ac_an_af_split.row.a_index],
+
+            AC_eas = ac_an_af_split.call_stats_by_pop.get('eas').AC[ac_an_af_split.row.a_index],
+            AN_eas = ac_an_af_split.call_stats_by_pop.get('eas').AN,
+            AF_eas = ac_an_af_split.call_stats_by_pop.get('eas').AF[ac_an_af_split.row.a_index],
+            Hom_eas = ac_an_af_split.call_stats_by_pop.get('eas').homozygote_count[ac_an_af_split.row.a_index],
+
+            AC_eur = ac_an_af_split.call_stats_by_pop.get('eur').AC[ac_an_af_split.row.a_index],
+            AN_eur = ac_an_af_split.call_stats_by_pop.get('eur').AN,
+            AF_eur = ac_an_af_split.call_stats_by_pop.get('eur').AF[ac_an_af_split.row.a_index],
+            Hom_eur = ac_an_af_split.call_stats_by_pop.get('eur').homozygote_count[ac_an_af_split.row.a_index],
+
+            AC_mid = ac_an_af_split.call_stats_by_pop.get('mid').AC[ac_an_af_split.row.a_index],
+            AN_mid = ac_an_af_split.call_stats_by_pop.get('mid').AN,
+            AF_mid = ac_an_af_split.call_stats_by_pop.get('mid').AF[ac_an_af_split.row.a_index],
+            Hom_mid = ac_an_af_split.call_stats_by_pop.get('mid').homozygote_count[ac_an_af_split.row.a_index],
+
+            AC_oth = ac_an_af_split.call_stats_by_pop.get('oth').AC[ac_an_af_split.row.a_index],
+            AN_oth = ac_an_af_split.call_stats_by_pop.get('oth').AN,
+            AF_oth = ac_an_af_split.call_stats_by_pop.get('oth').AF[ac_an_af_split.row.a_index],
+            Hom_oth = ac_an_af_split.call_stats_by_pop.get('oth').homozygote_count[ac_an_af_split.row.a_index],
+
+            AC_sas = ac_an_af_split.call_stats_by_pop.get('sas').AC[ac_an_af_split.row.a_index],
+            AN_sas = ac_an_af_split.call_stats_by_pop.get('sas').AN,
+            AF_sas = ac_an_af_split.call_stats_by_pop.get('sas').AF[ac_an_af_split.row.a_index],
+            Hom_sas = ac_an_af_split.call_stats_by_pop.get('sas').homozygote_count[ac_an_af_split.row.a_index],
+    )
+)
+
+    # note that SC = AC - homozygote_count
+
+    # ac_an_af_rows=ac_an_af_rows.drop('tranche_data')
+    # ac_an_af_rows=ac_an_af_rows.drop('truth_sensitivity_snp_threshold')
+    # ac_an_af_rows=ac_an_af_rows.drop('truth_sensitivity_indel_threshold')
+    # ac_an_af_rows=ac_an_af_rows.drop('snp_vqslod_threshold')
+    # ac_an_af_rows=ac_an_af_rows.drop('indel_vqslod_threshold')
+
+    ht = ac_an_af_rows.rows()
+    ht = ht.filter(ht.alleles[1] != "*") # remove spanning deletions
+    # create a filtered sites only VCF
+    hl.export_vcf(ac_an_af_rows.rows(), sites_only_vcf_path)
+    hl.export_vcf(ht, sites_only_vcf_path)
 
 
 def write_vat_custom_annotations(mt, vat_custom_annotations_tsv_path):
@@ -127,10 +189,10 @@ def write_vat_custom_annotations(mt, vat_custom_annotations_tsv_path):
 
     #CHROM	POS	REF	ALT	AC	AN	AF	AC_Hom	AC_Het	AC_Hemi	AC_afr	AN_afr	AF_afr	AC_Hom_afr	AC_Het_afr	AC_Hemi_afr	AC_amr	AN_amr	AF_amr	AC_Hom_amr	AC_Het_amr	AC_Hemi_amr	AC_eas	AN_eas	AF_eas	AC_Hom_eas	AC_Het_eas	AC_Hemi_eas	AC_eur	AN_eur	AF_eur	AC_Hom_eur	AC_Het_eur	AC_Hemi_eur	AC_mid	AN_mid	AF_mid	AC_Hom_mid	AC_Het_mid	AC_Hemi_mid	AC_oth	AN_oth	AF_oth	AC_Hom_oth	AC_Het_oth	AC_Hemi_oth	AC_sas	AN_sas	AF_sas	AC_Hom_sas	AC_Het_sas	AC_Hemi_sas
     ac_an_af_rows = ac_an_af_split.select_rows(
-        CHROM=ac_an_af_split.row.locus.contig,
-        POS=ac_an_af_split.row.locus.position,
-        REF=ac_an_af_split.row.alleles[0],
-        ALT=ac_an_af_split.row.alleles[1],
+        # CHROM=ac_an_af_split.row.locus.contig,
+        # POS=ac_an_af_split.row.locus.position,
+        # REF=ac_an_af_split.row.alleles[0],
+        # ALT=ac_an_af_split.row.alleles[1],
         AC=ac_an_af_split.row.ac_an_af.AC[1],
         AN=ac_an_af_split.row.ac_an_af.AN,
         AF=ac_an_af_split.row.ac_an_af.AF[1],
@@ -174,16 +236,15 @@ def main(vds, ancestry_file_location, sites_only_vcf_path, vat_custom_annotation
     mt = hl.vds.to_dense_mt(transformed_vds)
 
     with open(ancestry_file_location, 'r') as ancestry_file:
-        mt = matrix_table_ac_an_af(mt, ancestry_file)
+        mt = matrix_table_ac_an_af(mt, ancestry_file) # this add subpopulation information and splits our multi-allelic rows
 
     # merge AC, AN, AF back to the original VDS (TODO: make sure this join does not hard filter!!!!)
-    vds = vds_ac_an_af(mt, vds)
-    # TODO: write this vds somewhere now that is has AC, AN and AF?
+    # vds = vds_ac_an_af(mt, vds)
 
     # create a sites only VCF (that is hard filtered!)
-    write_sites_only_vcf(transformed_vds, sites_only_vcf_path)
+    write_sites_only_vcf(mt, sites_only_vcf_path)
     # create a custom annotations TSV for Nirvana to use with AC, AN, AF, SC for all subpopulations and populations
-    write_vat_custom_annotations(mt, vat_custom_annotations_tsv_path)
+    # write_vat_custom_annotations(mt, vat_custom_annotations_tsv_path)
 
 
 def annotate_entry_filter_flag(mt):
