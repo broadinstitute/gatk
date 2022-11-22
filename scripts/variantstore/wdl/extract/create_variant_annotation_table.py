@@ -5,6 +5,7 @@ import json
 import ijson
 import gzip
 import argparse
+import logging
 
 vat_nirvana_positions_dictionary = {
     "position": "position", # required
@@ -291,6 +292,7 @@ def make_positions_json(annotated_json, output_json):
 
     for p in positions:
         position=p['position']
+        logging.info(f"Position: {position}")
         refAllele=p['refAllele'] # ref_allele
         altAlleles=p['altAlleles'] # this is an array that we need to split into each alt_allele
         variants=p['variants']
@@ -343,6 +345,7 @@ def make_genes_json(annotated_json, output_genes_json):
 
     omim_fieldnames = list(vat_nirvana_omim_dictionary.keys())
     for gene_line in genes:
+        logging.info(f"gene_line: {gene_line}")
         if gene_line.get("omim") != None:
             row = {}
             row["gene_symbol"] = gene_line.get("name")
@@ -367,9 +370,17 @@ def make_genes_json(annotated_json, output_genes_json):
 
 
 def make_annotation_jsons(annotated_json, output_json, output_genes_json):
+    logging.basicConfig(
+        format='%(asctime)s %(levelname)-8s %(message)s',
+        level=logging.INFO,
+        datefmt='%Y-%m-%d %H:%M:%S')
+
+    logging.info("Making the positions json")
     make_positions_json(annotated_json, output_json)
     # we've already read the whole file once so we have to open it again
+    logging.info("Making the genes json")
     make_genes_json(annotated_json, output_genes_json)
+    logging.info("Done")
 
 
 if __name__ == '__main__':

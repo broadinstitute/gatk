@@ -169,7 +169,7 @@ task StripCustomAnnotationsFromSitesOnlyVCF {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-561_var_store_2022_11_18"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-561_var_store_2022_11_22"
         memory: "3.5 GiB"
         cpu: "1"
         preemptible: 2
@@ -368,11 +368,11 @@ task PrepAnnotationJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:rc_616_var_store_2022_10_25"
-        memory: "60 GB"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-561_var_store_2022_11_22"
+        memory: "15 GB"
         preemptible: 3
         cpu: "1"
-        disks: "local-disk 500 HDD"
+        disks: "local-disk 500 SSD"
     }
     # ------------------------------------------------
     # Outputs:
