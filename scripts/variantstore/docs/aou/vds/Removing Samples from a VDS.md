@@ -7,52 +7,13 @@ of the VDS with the samples in question filtered out, and then save this new VDS
 
 ## Configuring the Terra notebook cluster
 
-To work with a Delta-sized VDS (roughly 250K samples) we use our PMI ops accounts to create a cluster in a Terra
-customized Jupyter notebook with the following configuration:
-
-![AoU Delta Cluster Config](./AoU Delta VDS Cluster Configuration.png)
-
-The startup script can be found at
-
-```
-gs://gvs-internal/bigquery-jointcalling/hail/delta/patch_memory_2022_11_17.sh
-```
-
-with contents:
-
-```shell
-#!/bin/sh
-printf "\nspark.driver.memory=85g\n" >> /etc/spark/conf/spark-defaults.conf
-```
-
-**Note:** this script hardcodes a memory value for the driver node. If using a driver node with a different amount of
-memory this value should be adjusted to avoid using too little or too much memory. Please ask the Hail team in Zulip if
-uncertain what value to use.
-
-## Installing the current Hail wheel
-
-Once the cluster is up and running, open a notebook terminal. Within the terminal copy down the latest Hail wheel. **Note:** you will need the proxy group of your PMI ops account to have at least the "Storage Object Viewer" role on the bucket where the Hail wheel lives.
-
-```
-$ gsutil -m cp gs://gvs-internal-scratch/hail-wheels/2022-10-18/0.2.102-964bee061eb0/hail-0.2.102-py3-none-any.whl .
-```
-
-Install the Hail wheel and its dependencies. At the time of this writing the installation process produces a lot of
-warnings and messages in red text which appear to be benign and can be ignored.
-
-```
-$ pip install --force-reinstall hail-0.2.102-py3-none-any.whl
-```
+Please follow the instructions
+in [AoU Delta VDS Cluster Configuration](./AoU%20Delta%20VDS%20Cluster%20Configuration.md) to set up a Delta-scale
+cluster.
 
 ## Create a filtered VDS
 
-First start a Python REPL and import Hail:
-
-```python
->>> import hail as hl
-```
-
-Read the baseline VDS:
+Within the Python REPL created in the preceding steps, read the baseline VDS:
 
 ```python
 >>> baseline_vds_path = 'gs://fc-secure-fb908548-fe3c-41d6-adaf-7ac20d541375/submissions/c86a6e8f-71a1-4c38-9e6a-f5229520641e/GvsExtractAvroFilesForHail/efb3dbe8-13e9-4542-8b69-02237ec77ca5/call-OutputPath/2022-10-19-6497f023/dead_alleles_removed_vs_667_249047_samples/gvs_export.vds'
@@ -130,7 +91,7 @@ Yay!
 
 ## Write the filtered VDS
 
-The following lines take 8 to 10 hours for a Delta-sized VDS using the cluster spec above. As a reminder this cluster
+The following lines take several hours to execute for a Delta-scale VDS. As a reminder the specified cluster config
 costs more than $100 / hour so it would be advisable to schedule the write for a time when the cluster can be paused
 soon after the write is expected to complete.
 
