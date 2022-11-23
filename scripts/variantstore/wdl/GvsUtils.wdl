@@ -74,6 +74,8 @@ task SplitIntervals {
   Int java_memory = disk_memory - 4
 
   String gatkTool = if (use_interval_weights && defined(interval_weights_bed)) then 'WeightedSplitIntervals' else 'SplitIntervals'
+  # This is hacky but it only has to work for now
+  String weight_bed_java_arg =  if (use_interval_weights) then "--weight-bed-file" else ""
 
   parameter_meta {
     intervals: {
@@ -94,12 +96,12 @@ task SplitIntervals {
     set -e
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
-    WEIGHT_BED_FILE="~{interval_weights_bed}"
+    WEIGHT_BED_JAVE_ARG="~{weight_bed_java_arg}"
     if [ -z "$WEIGHT_BED_FILE" ]
     then
       WEIGHT_BED_ARG=""
     else
-      WEIGHT_BED_ARG="--weight-bed-file $WEIGHT_BED_FILE"
+      WEIGHT_BED_ARG="~{"--weight-bed-file " + interval_weights_bed}"
     fi
 
     mkdir interval-files
