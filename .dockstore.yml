@@ -166,6 +166,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - ah_exome_changes
    - name: GvsWithdrawSamples
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsWithdrawSamples.wdl

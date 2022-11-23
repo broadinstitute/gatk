@@ -56,6 +56,7 @@ task SplitIntervals {
     File ref_fai
     File ref_dict
     Int scatter_count
+    Boolean use_interval_weights = true
     File? interval_weights_bed
     String? intervals_file_extension
     String? split_intervals_extra_args
@@ -72,7 +73,7 @@ task SplitIntervals {
   Int disk_memory = if (defined(split_intervals_mem_override)) then split_intervals_mem_override else 16
   Int java_memory = disk_memory - 4
 
-  String gatkTool = if (defined(interval_weights_bed)) then 'WeightedSplitIntervals' else 'SplitIntervals'
+  String gatkTool = if (use_interval_weights && defined(interval_weights_bed)) then 'WeightedSplitIntervals' else 'SplitIntervals'
 
   parameter_meta {
     intervals: {
