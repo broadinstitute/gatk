@@ -640,7 +640,7 @@ public final class VariantContextTestUtils {
                 Collections.emptySet());
         List<String> args = new ArrayList<>();
         args.add("--enable-all-annotations");
-        clp.parseArguments(new PrintStream(new NullOutputStream()), args.toArray(new String[args.size()]));
+        clp.parseArguments(new PrintStream(NullOutputStream.NULL_OUTPUT_STREAM), args.toArray(new String[args.size()]));
         return instantiateAnnotations(clp);
     }
 

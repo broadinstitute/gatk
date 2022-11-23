@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
 public class GATKReadFilterPluginDescriptorTest extends GATKBaseTest {
 
     // null print stream for the tests
-    private static final PrintStream nullMessageStream = new PrintStream(new NullOutputStream());
+    private static final PrintStream nullMessageStream = new PrintStream(NullOutputStream.NULL_OUTPUT_STREAM);
 
     @DataProvider(name = "defaultFiltersForAllowedValues")
     public Object[][] defaultFiltersForAllowedValues() {
