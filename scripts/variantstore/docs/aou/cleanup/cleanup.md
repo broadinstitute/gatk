@@ -6,30 +6,36 @@ During the normal course of creating an AoU callset several large and expensive 
 * Avro files (Delta onward)
 * Hail VariantDataset (VDS) (Delta onward)
 
-The Variants team would like to establish policies around the cleanup of these artifacts so AoU can decide how their
-money should be spent.
+The current Variants AoU callset policy is effectively to retain all of these artifacts for all callset versions
+forever. As there can be very significant storage costs involved, the Variants team would like to make artifacts costs
+more clear so AoU can make conscious choices about which artifacts they actually want to keep.
 
 ## Establish an AoU callset signoff protocol
 
 ### Existing internal signoff protocol
 
-Once a candidate VDS has been generated for a callset, the Variants team will generate callset statistics and forward
-those and the VDS to Lee for review. Once Lee gives his approval the callset can
-be [delivered to AoU](../vds/delivery/Delivering%20a%20VDS.md).
+The Variants team currently has the following internal VDS signoff protocol:
 
-### AoU signoff protocol
+* Generate a VDS for the candidate callset
+* Generate callset statistics for the candidate callset
+* Forward both items above to Lee for QA / approval
+
+Successful completion of this internal signoff protocol gates
+the [delivery of the VDS to AoU](../vds/delivery/Delivering%20a%20VDS.md).
+
+### Future AoU signoff protocol
 
 Analogous to the existing internal signoff protocol, the Variants team would like to have an external AoU callset
-signoff protocol. Once AoU signoff has been received the Variants team could begin a cleanup procedure to remove
-intermediate data generated during the course of creating the callset.
+signoff protocol. The completion of this protocol could gate removal of intermediate data such as Avro files and
+pre-delivery copies of the VDS.
 
-There are tradeoffs in cost and time between retaining intermediate callset data and regenerating it if required,
-details of which are discussed below. Ultimately it is AoU's money that is being spent on cloud resources so AoU should
+There are tradeoffs in cost and time between retaining intermediate callset data versus regenerating it if required,
+details of which are discussed below. Ultimately AoU is the party paying for these cloud resources so AoU should
 decide what they would like the cleanup policies to be.
 
 ### Avro file storage versus regeneration
 
-The Avro files generated from the Delta callset onward are very big, significantly larger than the final Hail VDS.
+The Avro files generated from the Delta callset onward are very large, significantly larger than the final Hail VDS.
 For the ~250K sample Delta callset the Avro files consume nearly 80 TiB of GCS storage while the delivered VDS is
 "only" about 26 TiB.
 
@@ -63,17 +69,15 @@ point in the callset.
 
 And sometimes we might just mess something up.
 
-These "inflection points" in callset creation should motivate us to think about what data generated
-up to that point ought to be cleaned up. This should not only help our future selves make sense of the work we did for
-the current callset, but would also prevent us from wasting AoU’s money storing data that is definitely not going to be
-delivered.
+These "inflection points" in callset creation should motivate the Variants team to think about what data generated
+up to that point should be deleted. This should not only help make clear the work that does belong to the current
+callset, but would also prevent spending money on the storage of data that is not part of the callset.
 
-As soon as it becomes clear that a set of data is not going to be useful going forward we should delete it. Some of this
-data can consume significant space: for Delta we found ~300 TiB of junk that was costing AoU several thousand dollars
+Some of this data can consume significant space: for Delta we found ~300 TiB of junk costing several thousand dollars
 per month. Cleanup usually includes separately deleting the BQ dataset and workspace as the deletion of one does not
 cascade to the other.
 
-For the AoU Delta callset, the Variants team will deliver the callset in Hail VDS format for the first time. Our team’s
+For the AoU Delta callset, the Variants team delivered the callset in Hail VDS format for the first time. The team’s
 lack of familiarity with Hail unsurprisingly caused us to make several wrong turns trying to make this callset:
 
 1. Our first attempt to extract Avro files produced unusable results since an incorrect filter name was supplied and the
@@ -85,10 +89,10 @@ lack of familiarity with Hail unsurprisingly caused us to make several wrong tur
 3. The Delta v1 workspace + BQ dataset was similarly abandoned due to improperly reblocked VCFs and should have been
    deleted promptly.
 4. We unexpectedly found ourselves running the "prepare" step in order to generate callset statistics as we had not
-   realized the callset statistics logic depended on the tables created and populated in this step. While we only needed
-   the variant data to generate callset statistics, at the time the "prepare" workflow did not have the ability to
-   bypass generation of reference and sample data tables. The "prepare" reference data in particular consumed ~30 TiB
-   and should have been deleted right away.
+   realized during callset planning that callset statistics generation depended on the tables created and populated in
+   this step. While we only needed the variant data to generate callset statistics, at the time the "prepare" workflow
+   did not have the ability to bypass generation of reference and sample data tables. The "prepare" reference data in
+   particular consumed ~30 TiB and should have been deleted right away.
 5. The Hail GVS import script specifies a temporary "directory” which is not automatically cleaned up if the import
    fails. This was useful for our team when the Hail import was failing after creating intermediate VDSes since we were
    able to pick up where we left off on subsequent attempts and save a lot of compute. However once the import finally
@@ -117,7 +121,6 @@ which would now be considered historical (methodology [here](#code-for-querying-
 |rc_add_AD_1000|3.84| ?                  |
 |temp_tables|0.0| ?                  |
 
-
 # Appendix
 
 ## Tickets to be created
@@ -131,7 +134,7 @@ which would now be considered historical (methodology [here](#code-for-querying-
     * Document the purpose of the existing AoU datasets
     * Classify these datasets by: "Should be deleted", "Should not be deleted", and "Unsure".
     * Make any tickets required to attain certainty over whether datasets should be retained or not.
-      * Can we copy filters from previous callsets into the awkwardly named Delta callset?
+        * Can we copy filters from previous callsets into the awkwardly named Delta callset?
 * Delete any "Should be deleted" datasets identified above.
 
 ## Code for querying datasets and their sizes
