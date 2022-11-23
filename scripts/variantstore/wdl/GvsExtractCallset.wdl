@@ -24,7 +24,7 @@ workflow GvsExtractCallset {
     String drop_state = "NONE"
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
-    File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
+    File? interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
     File? gatk_override
 
     String output_file_base_name = filter_set_name
@@ -63,11 +63,14 @@ workflow GvsExtractCallset {
 
   String intervals_file_extension = if (zero_pad_output_vcf_filenames) then '-~{output_file_base_name}.vcf.gz.interval_list' else '-scattered.interval_list'
 
-  call Utils.ScaleXYBedValues {
-    input:
-      interval_weights_bed = interval_weights_bed,
-      x_bed_weight_scaling = x_bed_weight_scaling,
-      y_bed_weight_scaling = y_bed_weight_scaling
+  # If interval_weights_bed was overriden by the inputs to be None, we don't want to run this step
+  if (defined(interval_weights_bed)) {
+    call Utils.ScaleXYBedValues {
+      input:
+        interval_weights_bed = select_first([interval_weights_bed]),
+        x_bed_weight_scaling = x_bed_weight_scaling,
+        y_bed_weight_scaling = y_bed_weight_scaling
+    }
   }
 
   call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
@@ -93,13 +96,15 @@ workflow GvsExtractCallset {
                                                          else if GetNumSamplesLoaded.num_samples < 100000 then 20000 # Charlie
                                                               else 40000
 
+  File? possibly_scaled_interval_weights_bed = select_first([ScaleXYBedValues.xy_scaled_bed, interval_weights_bed])
+   
   call Utils.SplitIntervals {
     input:
       intervals = interval_list,
       ref_fasta = reference,
       ref_fai = reference_index,
       ref_dict = reference_dict,
-      interval_weights_bed = ScaleXYBedValues.xy_scaled_bed,
+      interval_weights_bed = possibly_scaled_interval_weights_bed,
       intervals_file_extension = intervals_file_extension,
       scatter_count = effective_scatter_count,
       output_gcs_dir = output_gcs_dir,

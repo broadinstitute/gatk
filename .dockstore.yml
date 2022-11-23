@@ -118,6 +118,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - kc_optional_weighting
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
