@@ -1,6 +1,6 @@
 # Callset cleanup
 
-During the normal course of creating an AoU callset several large and expensive artifacts will be created:
+During the normal course of creating an AoU callset several large and expensive artifacts are created:
 
 * BigQuery dataset
 * Avro files (Delta onward)
@@ -12,29 +12,34 @@ below.
 
 ## Establish an AoU callset signoff protocol
 
-The Variants team has a protocol for Lee to sign off on a callset prior to delivery to AoU: the Variants team generates
-the callset and callset statistics and forwards both to Lee for review. However the Variants team currently does not
-have a protocol for AoU to sign off on the callset.
+### Existing internal signoff protocol
 
-The Variants team should work with Lee in conjunction with AoU to develop a signoff protocol. Once AoU has signed off
-on a callset AoU is paying for the Variants team's use of cloud services on their behalf so ultimately they
-should be the ones making this decision.
+Once a candidate VDS has been generated for a callset, the Variants team will generate callset statistics and forward
+those and the VDS to Lee for review. Once Lee gives his approval the callset can
+be [delivered to AoU](../vds/delivery/Delivering%20a%20VDS.md).
 
-It has been proposed that once AoU signs off on a callset a timer starts before the Variants team begins cleaning up the
-intermediate products of the callset creation (Avro files, the Variants team's copy of the VDS).
+### AoU signoff protocol
+
+Analogous to the existing internal signoff protocol, the Variants team would like to develop an external AoU callset
+signoff protocol. Once AoU signoff has been received the Variants team could begin a cleanup procedure to remove
+intermediate data generated during the course of creating the callset.
+
+There are tradeoffs in cost and time between retaining intermediate callset data and regenerating it if required,
+details of which are discussed below. Ultimately it is AoU's money that is being spent on cloud resources so AoU should
+decide what they would like the cleanup policies to be.
 
 ### Avro file storage versus regeneration
 
 The Avro files generated from the Delta callset onward are very big, significantly larger than the final Hail VDS.
-For the ~250K sample Delta callset the Avro files consume nearly 80 TiB of GCS storage whereas the delivered VDS is
+For the ~250K sample Delta callset the Avro files consume nearly 80 TiB of GCS storage while the delivered VDS is
 "only" about 26 TiB.
 
-If the Avro files needed to be regenerated there would be a significant cost to re-scan all BigQuery tables that
-were used to make them. On the other hand, continuing to store the existing Avro files incurs significant GCS storage
-fees. Per
+If the Avro files needed to be regenerated there would be a significant cost to re-scan the BigQuery tables that
+were used to make them. On the other hand, continuing to store the existing and currently unused Avro files incurs
+significant GCS storage fees. Per
 the [cost spreadsheet](https://docs.google.com/spreadsheets/d/1fcmEVWvjsx4XFLT9ZUsruUznnlB94xKgDIIyCGu6ryQ/edit#gid=0),
-for the Delta callset recreating the Avro files would take about 12 hours and cost approximately
-$3000 in BigQuery scan charges versus continued storage of Delta Avro files at approximately $1500 / month.
+for the Delta callset, recreating the Avro files would take about 12 hours and cost approximately $3000 in BigQuery scan
+charges. Alternatively, continued storage of Delta Avro files costs approximately $1500 / month.
 
 Action item ticket:
 
@@ -42,16 +47,15 @@ Action item ticket:
 
 ### Hail VariantDataset (VDS) storage versus regeneration
 
-The Hail VDS generated for the Delta callset consumes about 26 TiB of space in GCS at a cost of approixmately $500 /
+The Hail VDS generated for the Delta callset consumes about 26 TiB of space in GCS at a cost of approximately $500 /
 month. Recreating the VDS from Avro files would take around 10 hours at about $100 / hour in cluster time for a total of
-about $1000. Note that re-creating the VDS requires Avro files. If we have not retained the Avro files per the step
+about $1000. Note that re-creating the VDS requires Avro files; if we have not retained the Avro files per the step
 above, we would need to regenerate those as well which would add significantly to the cost.
 
 Action item ticket:
 
 * Present these tradeoffs to AoU as part of their signoff considerations. As an added wrinkle for Delta, we actually
   have two versions of the VDS with and without AI/AN samples, so the actual costs are double those stated above.
-
 
 ## "Inflection points"
 
@@ -124,8 +128,7 @@ BQ dataset action items (tickets):
 * Identify all of these, flag any datasets which are clearly not needed anymore
 * Delete any datasets flagged above
 * Ask AoU what they would like us to do with the datasets that are not the latest callset
-  * Can we copy filters from previous callsets into the awkwardly named Delta callset?
-
+    * Can we copy filters from previous callsets into the awkwardly named Delta callset?
 
 # Appendix
 
