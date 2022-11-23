@@ -372,7 +372,12 @@ public final class SVCallRecordUtils {
             }
         } else {
             contigB = contigA;
-            positionB = variant.getEnd();
+            // Force reset of END coordinate
+            if (type.equals(StructuralVariantType.INS)) {
+                positionB = positionA + 1;
+            } else {
+                positionB = variant.getEnd();
+            }
         }
 
         final Map<String, Object> sanitizedAttributes = sanitizeAttributes(attributes);

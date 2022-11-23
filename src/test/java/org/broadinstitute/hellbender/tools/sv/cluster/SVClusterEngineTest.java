@@ -25,9 +25,18 @@ public class SVClusterEngineTest {
 
     private final SVClusterEngine engine = SVTestUtils.defaultSingleLinkageEngine;
 
+    private static final ClusteringParameters depthOnlyParametersSizeSimilarity = ClusteringParameters.createDepthParameters(0.1, 0.5, 0, 0);
+    private static final ClusteringParameters mixedParametersSizeSimilarity = ClusteringParameters.createMixedParameters(0.1, 0.5, 5000, 0);
+    private static final ClusteringParameters evidenceParametersSizeSimilarity = ClusteringParameters.createPesrParameters(0.1, 0.5, 5000, 0);
+    private final CanonicalSVLinkage<SVCallRecord> linkageSizeSimilarity = new CanonicalSVLinkage<>(SVTestUtils.hg38Dict, false);
+    private final SVClusterEngine engineSizeSimilarity = new SVClusterEngine(SVClusterEngine.CLUSTERING_TYPE.SINGLE_LINKAGE, SVTestUtils.defaultCollapser::collapse, linkageSizeSimilarity, SVTestUtils.hg38Dict);
+
     @BeforeTest
     public void initializeClusterEngine() {
         engine.add(SVTestUtils.call1);
+        linkageSizeSimilarity.setDepthOnlyParams(depthOnlyParametersSizeSimilarity);
+        linkageSizeSimilarity.setMixedParams(mixedParametersSizeSimilarity);
+        linkageSizeSimilarity.setEvidenceParams(evidenceParametersSizeSimilarity);
     }
 
     @Test
@@ -75,6 +84,65 @@ public class SVClusterEngineTest {
         Assert.assertFalse(engine.getLinkage().areClusterable(SVTestUtils.depthOnly, SVTestUtils.inversion));
         Assert.assertFalse(engine.getLinkage().areClusterable(SVTestUtils.call1, SVTestUtils.call2));
         Assert.assertTrue(engine.getLinkage().areClusterable(SVTestUtils.call1, SVTestUtils.overlapsCall1));
+    }
+
+    @DataProvider(name = "testClusterTogetherWithSizeSimilarityDataProvider")
+    public Object[][] testClusterTogetherWithSizeSimilarityDataProvider() {
+        return new Object[][]{
+                {1001, 2000, 1001, 2000, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, true},
+                {1001, 2000, 1501, 2000, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, true},
+                {1001, 2000, 1900, 2900, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, true},
+                // Fails size similarity
+                {1001, 2000, 1502, 2000, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, false},
+                {1001, 2000, 1901, 2399, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, false},
+                // Fails reciprocal overlap
+                {1001, 2000, 1902, 2900, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, false}
+        };
+    }
+
+    @Test(dataProvider= "testClusterTogetherWithSizeSimilarityDataProvider")
+    public void testClusterTogetherWithSizeSimilarity(final int start1, final int end1,
+                                                      final int start2, final int end2,
+                                                      final GATKSVVCFConstants.StructuralVariantAnnotationType svtype,
+                                                      final boolean expectedResult) {
+        // PESR
+        final SVCallRecord record1 = SVTestUtils.newPESRCallRecordWithIntervalAndType(start1, end1, svtype);
+        final SVCallRecord record2 = SVTestUtils.newPESRCallRecordWithIntervalAndType(start2, end2, svtype);
+        Assert.assertEquals(engineSizeSimilarity.getLinkage().areClusterable(record1, record2), expectedResult);
+        Assert.assertEquals(engineSizeSimilarity.getLinkage().areClusterable(record2, record1), expectedResult);
+
+        // Depth only
+        final SVCallRecord record3 = SVTestUtils.newDepthCallRecordWithIntervalAndType(start1, end1, svtype);
+        final SVCallRecord record4 = SVTestUtils.newDepthCallRecordWithIntervalAndType(start2, end2, svtype);
+        Assert.assertEquals(engineSizeSimilarity.getLinkage().areClusterable(record3, record4), expectedResult);
+        Assert.assertEquals(engineSizeSimilarity.getLinkage().areClusterable(record4, record3), expectedResult);
+    }
+
+    @DataProvider(name = "testClusterTogetherWithSizeSimilarityInsertionsDataProvider")
+    public Object[][] testClusterTogetherWithSizeSimilarityInsertionsDataProvider() {
+        return new Object[][]{
+                {1000, 1000, 1000, 1000, true},
+                {1000, 1000, 1000, 500, true},
+                {1000, 1000, 1000, 2000, true},
+                {1000, 1000, 100, 1000, true},
+                {1000, 1000, 1900, 1000, true},
+                // Fails reciprocal overlap
+                {1000, 1000, 99, 1000, false},
+                {1000, 1000, 1901, 1000, false},
+                // Fails size similarity
+                {1000, 1000, 1000, 499, false},
+                {1000, 2001, 1000, 1000, false},
+        };
+    }
+
+    @Test(dataProvider= "testClusterTogetherWithSizeSimilarityInsertionsDataProvider")
+    public void testClusterTogetherWithSizeSimilarityInsertions(final int start1, final int length1,
+                                                                final int start2, final int length2,
+                                                                final boolean expectedResult) {
+        final SVCallRecord record1 = SVTestUtils.newInsertionWithPositionAndLength(start1, length1);
+        final SVCallRecord record2 = SVTestUtils.newInsertionWithPositionAndLength(start2, length2);
+        Assert.assertEquals(engineSizeSimilarity.getLinkage().areClusterable(record1, record2), expectedResult);
+        Assert.assertEquals(engineSizeSimilarity.getLinkage().areClusterable(record2, record1), expectedResult);
     }
 
     @Test(expectedExceptions = { IllegalArgumentException.class })
@@ -344,7 +412,7 @@ public class SVClusterEngineTest {
                 1002, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM), Collections.emptyList(), Collections.emptyList(), Collections.emptyMap(), SVTestUtils.hg38Dict);
         // Cluster with default parameters
         Assert.assertTrue(testEngine1.getLinkage().areClusterable(call1, call2));
-        final ClusteringParameters exactMatchParameters = ClusteringParameters.createDepthParameters(1.0, 0, 1.0);
+        final ClusteringParameters exactMatchParameters = ClusteringParameters.createDepthParameters(1.0, 0, 0, 1.0);
         final CanonicalSVLinkage<SVCallRecord> exactMatchLinkage = SVTestUtils.getNewDefaultLinkage();
         exactMatchLinkage.setDepthOnlyParams(exactMatchParameters);
         // Do not cluster requiring exact overlap
@@ -443,7 +511,7 @@ public class SVClusterEngineTest {
         for (int i = 0; i < numRecords; i++) {
             final int start = 1000 + 10 * i;
             final int end = start + length - 1;
-            engine.add(SVTestUtils.newCallRecordWithIntervalAndType(start, end, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL));
+            engine.add(SVTestUtils.newPESRCallRecordWithIntervalAndType(start, end, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL));
         }
         final List<SVCallRecord> result = engine.forceFlush();
         Assert.assertEquals(result.size(), 50);
@@ -546,7 +614,7 @@ public class SVClusterEngineTest {
         for (int i = 0; i < 1000; i++) {
             final int pos1 = rand.nextInt(9000) + 1;
             final int pos2 = rand.nextInt(10000) + 1;
-            records.add(SVTestUtils.newCallRecordWithIntervalAndType(Math.min(pos1, pos2), Math.max(pos1, pos2), GATKSVVCFConstants.StructuralVariantAnnotationType.DEL));
+            records.add(SVTestUtils.newPESRCallRecordWithIntervalAndType(Math.min(pos1, pos2), Math.max(pos1, pos2), GATKSVVCFConstants.StructuralVariantAnnotationType.DEL));
         }
         final SVClusterEngine engine = SVTestUtils.getNewDefaultMaxCliqueEngine();
         records.stream().sorted(SVCallRecordUtils.getCallComparator(SVTestUtils.hg38Dict)).forEach(engine::add);

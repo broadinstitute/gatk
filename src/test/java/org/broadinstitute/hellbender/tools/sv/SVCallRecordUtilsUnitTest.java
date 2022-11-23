@@ -340,18 +340,18 @@ public class SVCallRecordUtilsUnitTest {
                 },
                 // SV type
                 {
-                        SVTestUtils.newCallRecordWithIntervalAndType(1000, 1999, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL),
-                        SVTestUtils.newCallRecordWithIntervalAndType(1000, 1999, GATKSVVCFConstants.StructuralVariantAnnotationType.DUP),
+                        SVTestUtils.newPESRCallRecordWithIntervalAndType(1000, 1999, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL),
+                        SVTestUtils.newPESRCallRecordWithIntervalAndType(1000, 1999, GATKSVVCFConstants.StructuralVariantAnnotationType.DUP),
                         GATKSVVCFConstants.StructuralVariantAnnotationType.DEL.compareTo(GATKSVVCFConstants.StructuralVariantAnnotationType.DUP)
                 },
                 {
-                        SVTestUtils.newCallRecordWithIntervalAndType(1000, 1999, GATKSVVCFConstants.StructuralVariantAnnotationType.DUP),
-                        SVTestUtils.newCallRecordWithIntervalAndType(1000, 1999, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL),
+                        SVTestUtils.newPESRCallRecordWithIntervalAndType(1000, 1999, GATKSVVCFConstants.StructuralVariantAnnotationType.DUP),
+                        SVTestUtils.newPESRCallRecordWithIntervalAndType(1000, 1999, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL),
                         GATKSVVCFConstants.StructuralVariantAnnotationType.DUP.compareTo(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL)
                 },
                 {
-                        SVTestUtils.newCallRecordWithIntervalAndType(1000, 1000, GATKSVVCFConstants.StructuralVariantAnnotationType.BND),
-                        SVTestUtils.newCallRecordWithIntervalAndType(1000, 1000, GATKSVVCFConstants.StructuralVariantAnnotationType.INS),
+                        SVTestUtils.newPESRCallRecordWithIntervalAndType(1000, 1000, GATKSVVCFConstants.StructuralVariantAnnotationType.BND),
+                        SVTestUtils.newPESRCallRecordWithIntervalAndType(1000, 1000, GATKSVVCFConstants.StructuralVariantAnnotationType.INS),
                         GATKSVVCFConstants.StructuralVariantAnnotationType.BND.compareTo(GATKSVVCFConstants.StructuralVariantAnnotationType.INS)
                 }
         };
@@ -364,7 +364,7 @@ public class SVCallRecordUtilsUnitTest {
 
     @Test
     public void testConvertInversionsToBreakends() {
-        final SVCallRecord nonInversion = SVTestUtils.newCallRecordWithIntervalAndType(1000, 1999, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL);
+        final SVCallRecord nonInversion = SVTestUtils.newPESRCallRecordWithIntervalAndType(1000, 1999, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL);
         final List<SVCallRecord> nonInversionResult = SVCallRecordUtils.convertInversionsToBreakends(nonInversion, SVTestUtils.hg38Dict).collect(Collectors.toList());
         Assert.assertEquals(nonInversionResult.size(), 1);
         Assert.assertNotNull(nonInversionResult.get(0));

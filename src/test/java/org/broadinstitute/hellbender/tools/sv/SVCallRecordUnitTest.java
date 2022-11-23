@@ -41,14 +41,14 @@ public class SVCallRecordUnitTest {
     @DataProvider(name = "testIsCNVData")
     public Object[][] testIsCNVData() {
         return new Object[][]{
-                {SVTestUtils.newCallRecordWithIntervalAndType(1000, 1999, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL), true},
-                {SVTestUtils.newCallRecordWithIntervalAndType(1000, 1999, GATKSVVCFConstants.StructuralVariantAnnotationType.DUP), true},
-                {SVTestUtils.newCallRecordWithIntervalAndType(1000, 1999, GATKSVVCFConstants.StructuralVariantAnnotationType.CNV), true},
-                {SVTestUtils.newCallRecordWithIntervalAndType(1000, 1999, GATKSVVCFConstants.StructuralVariantAnnotationType.INV), false},
-                {SVTestUtils.newCallRecordWithIntervalAndType(1000, 1000, GATKSVVCFConstants.StructuralVariantAnnotationType.BND), false},
-                {SVTestUtils.newCallRecordWithIntervalAndType(1000, 1000, GATKSVVCFConstants.StructuralVariantAnnotationType.INS), false},
-                {SVTestUtils.newCallRecordWithIntervalAndType(1000, 1000, GATKSVVCFConstants.StructuralVariantAnnotationType.CPX), false},
-                {SVTestUtils.newCallRecordWithIntervalAndType(1000, 1000, GATKSVVCFConstants.StructuralVariantAnnotationType.CTX), false}
+                {SVTestUtils.newPESRCallRecordWithIntervalAndType(1000, 1999, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL), true},
+                {SVTestUtils.newPESRCallRecordWithIntervalAndType(1000, 1999, GATKSVVCFConstants.StructuralVariantAnnotationType.DUP), true},
+                {SVTestUtils.newPESRCallRecordWithIntervalAndType(1000, 1999, GATKSVVCFConstants.StructuralVariantAnnotationType.CNV), true},
+                {SVTestUtils.newPESRCallRecordWithIntervalAndType(1000, 1999, GATKSVVCFConstants.StructuralVariantAnnotationType.INV), false},
+                {SVTestUtils.newPESRCallRecordWithIntervalAndType(1000, 1000, GATKSVVCFConstants.StructuralVariantAnnotationType.BND), false},
+                {SVTestUtils.newPESRCallRecordWithIntervalAndType(1000, 1000, GATKSVVCFConstants.StructuralVariantAnnotationType.INS), false},
+                {SVTestUtils.newPESRCallRecordWithIntervalAndType(1000, 1000, GATKSVVCFConstants.StructuralVariantAnnotationType.CPX), false},
+                {SVTestUtils.newPESRCallRecordWithIntervalAndType(1000, 1000, GATKSVVCFConstants.StructuralVariantAnnotationType.CTX), false}
         };
     }
 

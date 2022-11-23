@@ -23,7 +23,8 @@ import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
 import org.broadinstitute.hellbender.tools.sv.cluster.*;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 
-import java.util.*;
+import java.util.List;
+import java.util.Set;
 
 import static org.broadinstitute.hellbender.tools.walkers.sv.JointGermlineCNVSegmentation.BREAKPOINT_SUMMARY_STRATEGY_LONG_NAME;
 
@@ -379,8 +380,9 @@ public final class SVCluster extends MultiVariantWalker {
                       final ReferenceContext referenceContext, final FeatureContext featureContext) {
         final SVCallRecord call = SVCallRecordUtils.create(variant);
         final SVCallRecord filteredCall;
-        if (fastMode) {
+        if (fastMode && call.getType() != GATKSVVCFConstants.StructuralVariantAnnotationType.CNV) {
             // Strip out non-carrier genotypes to save memory and compute
+            // Don't do for multi-allelic CNVs since carrier status can't be determined
             final GenotypesContext filteredGenotypes = GenotypesContext.copy(call.getCarrierGenotypeList());
             filteredCall = SVCallRecordUtils.copyCallWithNewGenotypes(call, filteredGenotypes);
         } else {

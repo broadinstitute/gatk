@@ -209,7 +209,7 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
 
         setIntervals(parser);
 
-        final ClusteringParameters clusterArgs = ClusteringParameters.createDepthParameters(clusterIntervalOverlap, clusterWindow, CLUSTER_SAMPLE_OVERLAP_FRACTION);
+        final ClusteringParameters clusterArgs = ClusteringParameters.createDepthParameters(clusterIntervalOverlap, 0, clusterWindow, CLUSTER_SAMPLE_OVERLAP_FRACTION);
         if (callIntervals == null) {
             defragmenter = SVClusterEngineFactory.createCNVDefragmenter(dictionary, altAlleleSummaryStrategy, reference, defragmentationPadding, minSampleSetOverlap);
         } else {

@@ -52,9 +52,9 @@ public class SVTestUtils {
         return new SVClusterEngine(SVClusterEngine.CLUSTERING_TYPE.MAX_CLIQUE, defaultCollapser::collapse, getNewDefaultLinkage(), hg38Dict);
     }
 
-    public static final ClusteringParameters defaultDepthOnlyParameters = ClusteringParameters.createDepthParameters(0.8, 0, 0);
-    public static final ClusteringParameters defaultMixedParameters = ClusteringParameters.createMixedParameters(0.8, 1000, 0);
-    public static final ClusteringParameters defaultEvidenceParameters = ClusteringParameters.createPesrParameters(0.5, 500, 0);
+    public static final ClusteringParameters defaultDepthOnlyParameters = ClusteringParameters.createDepthParameters(0.8, 0, 0, 0);
+    public static final ClusteringParameters defaultMixedParameters = ClusteringParameters.createMixedParameters(0.8, 0, 1000, 0);
+    public static final ClusteringParameters defaultEvidenceParameters = ClusteringParameters.createPesrParameters(0.5, 0, 500, 0);
 
     public static final SVClusterEngine defaultSingleLinkageEngine = getNewDefaultSingleLinkageEngine();
     public static final SVClusterEngine defaultMaxCliqueEngine = getNewDefaultMaxCliqueEngine();
@@ -421,9 +421,22 @@ public class SVTestUtils {
     }
 
     // Note strands and length may not be set properly
-    public static SVCallRecord newCallRecordWithIntervalAndType(final int start, final int end, final GATKSVVCFConstants.StructuralVariantAnnotationType svtype) {
+    public static SVCallRecord newPESRCallRecordWithIntervalAndType(final int start, final int end, final GATKSVVCFConstants.StructuralVariantAnnotationType svtype) {
         return new SVCallRecord("", "chr1", start, getValidTestStrandA(svtype), "chr1", end, getValidTestStrandB(svtype),
                 svtype, null, getLength(start, end, svtype), PESR_ONLY_ALGORITHM_LIST, Collections.emptyList(),
+                Collections.emptyList(), Collections.emptyMap());
+    }
+
+    // Note strands and length may not be set properly
+    public static SVCallRecord newInsertionWithPositionAndLength(final int start, final int length) {
+        return new SVCallRecord("", "chr1", start, true, "chr1", start + 1, false,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.INS, null, length, PESR_ONLY_ALGORITHM_LIST, Collections.emptyList(),
+                Collections.emptyList(), Collections.emptyMap());
+    }
+
+    public static SVCallRecord newDepthCallRecordWithIntervalAndType(final int start, final int end, final GATKSVVCFConstants.StructuralVariantAnnotationType svtype) {
+        return new SVCallRecord("", "chr1", start, getValidTestStrandA(svtype), "chr1", end, getValidTestStrandB(svtype),
+                svtype, null, getLength(start, end, svtype), DEPTH_ONLY_ALGORITHM_LIST, Collections.emptyList(),
                 Collections.emptyList(), Collections.emptyMap());
     }
 
