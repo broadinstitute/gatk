@@ -96,7 +96,7 @@ workflow GvsExtractCallset {
                                                          else if GetNumSamplesLoaded.num_samples < 100000 then 20000 # Charlie
                                                               else 40000
 
-  File? possibly_scaled_interval_weights_bed = select_first([ScaleXYBedValues.xy_scaled_bed, interval_weights_bed])
+  File? possibly_scaled_interval_weights_bed = if defined(ScaleXYBedValues.xy_scaled_bed) then ScaleXYBedValues.xy_scaled_bed else interval_weights_bed
    
   call Utils.SplitIntervals {
     input:
