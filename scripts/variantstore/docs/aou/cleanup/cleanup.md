@@ -142,22 +142,6 @@ which would now be considered historical (methodology [here](#code-for-querying-
 With PMI ops auth:
 
 ```shell
-$ bq ls --project_id aou-genomics-curation-prod --format prettyjson | jq -r '..|.datasetId? // empty'
-alpha1_1000
-alpha2_prelim2
-aou_wgs
-aou_wgs_10k
-aou_wgs_fullref_v2
-batch_effects_test_v1
-beta2_99k
-beta_release
-cdr_metadata
-nosa_wdl_test_v1
-rc_add_AD_1000
-temp_tables
-```
-
-```shell
 i=0
 echo '[' > out.json
 for dataset in $(bq ls --project_id aou-genomics-curation-prod --format prettyjson | jq -r '..|.datasetId? // empty')
@@ -174,6 +158,7 @@ do
         ROUND(SUM(size_bytes) / POWER(2, 40), 2) as tebibytes
     FROM
       \`aou-genomics-curation-prod.${dataset}.__TABLES__\`
+
     " >> out.json
 done
 echo ']' >> out.json
