@@ -94,12 +94,20 @@ task SplitIntervals {
     set -e
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
+    WEIGHT_BED_FILE="~{interval_weights_bed}"
+    if [ -z "$WEIGHT_BED_FILE" ]
+    then
+      WEIGHT_BED_ARG=""
+    else
+      WEIGHT_BED_ARG="--weight-bed-file $WEIGHT_BED_FILE"
+    fi
+
     mkdir interval-files
     gatk --java-options "-Xmx~{java_memory}g" ~{gatkTool} \
       --dont-mix-contigs \
       -R ~{ref_fasta} \
       ~{"-L " + intervals} \
-      ~{"--weight-bed-file " + interval_weights_bed} \
+      $WEIGHT_BED_ARG \
       -scatter ~{scatter_count} \
       -O interval-files \
       ~{"--extension " + intervals_file_extension} \
