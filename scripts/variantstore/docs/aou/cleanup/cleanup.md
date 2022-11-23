@@ -6,9 +6,8 @@ During the normal course of creating an AoU callset several large and expensive 
 * Avro files (Delta onward)
 * Hail VariantDataset (VDS) (Delta onward)
 
-The Variants team would like to establish policies around the cleanup of these artifacts so AoU will be able to
-understand how their money is being spent. There are implications for the deletions of these artifacts as described
-below.
+The Variants team would like to establish policies around the cleanup of these artifacts so AoU can decide how their
+money should be spent.
 
 ## Establish an AoU callset signoff protocol
 
@@ -20,7 +19,7 @@ be [delivered to AoU](../vds/delivery/Delivering%20a%20VDS.md).
 
 ### AoU signoff protocol
 
-Analogous to the existing internal signoff protocol, the Variants team would like to develop an external AoU callset
+Analogous to the existing internal signoff protocol, the Variants team would like to have an external AoU callset
 signoff protocol. Once AoU signoff has been received the Variants team could begin a cleanup procedure to remove
 intermediate data generated during the course of creating the callset.
 
@@ -41,9 +40,7 @@ the [cost spreadsheet](https://docs.google.com/spreadsheets/d/1fcmEVWvjsx4XFLT9Z
 for the Delta callset, recreating the Avro files would take about 12 hours and cost approximately $3000 in BigQuery scan
 charges. Alternatively, continued storage of Delta Avro files costs approximately $1500 / month.
 
-Action item ticket:
-
-* Present these tradeoffs to AoU as part of their signoff considerations.
+See "AoU signoff protocol" in [Tickets to be created](#tickets-to-be-created)below.
 
 ### Hail VariantDataset (VDS) storage versus regeneration
 
@@ -52,10 +49,7 @@ month. Recreating the VDS from Avro files would take around 10 hours at about $1
 about $1000. Note that re-creating the VDS requires Avro files; if we have not retained the Avro files per the step
 above, we would need to regenerate those as well which would add significantly to the cost.
 
-Action item ticket:
-
-* Present these tradeoffs to AoU as part of their signoff considerations. As an added wrinkle for Delta, we actually
-  have two versions of the VDS with and without AI/AN samples, so the actual costs are double those stated above.
+See "AoU signoff protocol" in [Tickets to be created](#tickets-to-be-created)below.
 
 ## "Inflection points"
 
@@ -106,7 +100,7 @@ lack of familiarity with Hail unsurprisingly caused us to make several wrong tur
 ### BigQuery datasets
 
 Several large datasets exist within the `aou-genomics-curation-prod` project, most of
-which would now be considered historical (methodology [here](#querying-datasets-and-their-sizes)):
+which would now be considered historical (methodology [here](#code-for-querying-datasets-and-their-sizes)):
 
 | Name | Size (TiB) | Notes              |
 |------|------------|--------------------|
@@ -123,16 +117,24 @@ which would now be considered historical (methodology [here](#querying-datasets-
 |rc_add_AD_1000|3.84| ?                  |
 |temp_tables|0.0| ?                  |
 
-BQ dataset action items (tickets):
-
-* Identify all of these, flag any datasets which are clearly not needed anymore
-* Delete any datasets flagged above
-* Ask AoU what they would like us to do with the datasets that are not the latest callset
-    * Can we copy filters from previous callsets into the awkwardly named Delta callset?
 
 # Appendix
 
-## Querying datasets and their sizes
+## Tickets to be created
+
+* AoU signoff protocol
+    * Talk to Lee to identify people on the AoU side who could sign off on a delivered callset
+    * Once the AoU decisionmakers have been identified, explain the intermediate data we're currently keeping and the
+      cost tradeoffs of keeping versus regenerating data. In particular note that for Delta we are currently keeping two
+      copies of the VDS (though not two sets of Avro files).
+* Identifying existing BigQuery datasets
+    * Document the purpose of the existing AoU datasets
+    * Classify these datasets by: "Should be deleted", "Should not be deleted", and "Unsure".
+    * Make any tickets required to attain certainty over whether datasets should be retained or not.
+      * Can we copy filters from previous callsets into the awkwardly named Delta callset?
+* Delete any "Should be deleted" datasets identified above.
+
+## Code for querying datasets and their sizes
 
 With PMI ops auth:
 
