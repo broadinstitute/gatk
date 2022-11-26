@@ -151,6 +151,7 @@ task StripCustomAnnotationsFromSitesOnlyVCF {
         File custom_annotations_header
         String output_vcf_name
         String output_custom_annotations_filename
+        File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     }
 
     Int disk_size = ceil((size(input_vcf, "GB") + size(custom_annotations_header, "GB")) * 4) + 100
@@ -158,6 +159,8 @@ task StripCustomAnnotationsFromSitesOnlyVCF {
     command <<<
         set -e
         set -o errexit -o nounset -o pipefail -o xtrace
+
+        bash ~{monitoring_script} > monitoring.log &
 
         python3 /app/strip_custom_annotations_from_sites_only_vcf.py \
         --input_vcf ~{input_vcf} \
@@ -169,10 +172,10 @@ task StripCustomAnnotationsFromSitesOnlyVCF {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-561_var_store_2022_11_22"
-        memory: "3.5 GiB"
-        cpu: "1"
-        preemptible: 2
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-561_var_store_2022_11_26"
+        memory: "7 GiB"
+        cpu: "2"
+        preemptible: 0
         disks: "local-disk " + disk_size + " HDD"
     }
     # ------------------------------------------------
@@ -180,6 +183,7 @@ task StripCustomAnnotationsFromSitesOnlyVCF {
     output {
         File output_vcf = output_vcf_name
         File output_custom_annotations_file = output_custom_annotations_filename
+        File monitoring_log = "monitoring.log"
     }
 }
 
@@ -263,6 +267,7 @@ task AnnotateVCF {
         String output_annotated_file_name
         File nirvana_data_tar
         File custom_annotations_file
+        File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     }
     String annotation_json_name = output_annotated_file_name + ".json.gz"
     String annotation_json_name_jsi = annotation_json_name + ".jsi"
@@ -274,6 +279,8 @@ task AnnotateVCF {
 
     command <<<
         # set -e
+
+        bash ~{monitoring_script} > monitoring.log &
 
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
@@ -326,6 +333,7 @@ task AnnotateVCF {
     output {
         File annotation_json = "~{annotation_json_name}"
         File annotation_json_jsi = "~{annotation_json_name_jsi}"
+        File monitoring_log = "monitoring.log"
     }
 }
 
