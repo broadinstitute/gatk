@@ -185,7 +185,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_NonExistingSelection.vcf")
         );
 
-        spec.executeTest("testNonExistingSelection--" + testFile, this);
+        spec.executeTest("testNonExistingSelection--" + testFile, this); // tsato: failing
     }
 
     /**
@@ -393,7 +393,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String testFile = getToolTestDataDir() + "selectVariants.onePosition.vcf";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" -select 'KG_FREQ < 0.5' ", testFile),
+                baseTestString(" -select 'KG_FREQ < 0.5' ", testFile), // tsato: another jexl test
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_MultipleRecordsAtOnePosition.vcf")
         );
 
@@ -534,7 +534,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
                         "--select", "AC > 0"),
                 SelectVariants.class.getSimpleName());
         final Pair<VCFHeader, List<VariantContext>> result = VariantContextTestUtils.readEntireVCFIntoMemory(testOutput.getAbsolutePath());
-        final int actualCount = (int) result.getRight().stream().filter(filter).count();
+        final int actualCount = result.getRight().size();
         Assert.assertEquals(expectedCount, actualCount);
     }
 
@@ -556,7 +556,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
                         "--select", "SVTYPE == 'DEL' && AC > 0"),
                 SelectVariants.class.getSimpleName());
         final Pair<VCFHeader, List<VariantContext>> result = VariantContextTestUtils.readEntireVCFIntoMemory(testOutput.getAbsolutePath());
-        final int actualCount = (int) result.getRight().stream().filter(andFilter).count();
+        final int actualCount = result.getRight().size();
         Assert.assertEquals(expectedCount, actualCount);
     }
 
@@ -577,7 +577,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
                 SelectVariants.class.getSimpleName());
 
         final Pair<VCFHeader, List<VariantContext>> result = VariantContextTestUtils.readEntireVCFIntoMemory(testOutput.getAbsolutePath());
-        final int actualNumVCs = (int) result.getRight().stream().filter(filter).count();
+        final int actualNumVCs = result.getRight().size();
 
         Assert.assertEquals(expectedNumVCs, actualNumVCs);
     }
@@ -598,7 +598,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
                 SelectVariants.class.getSimpleName());
 
         final Pair<VCFHeader, List<VariantContext>> result = VariantContextTestUtils.readEntireVCFIntoMemory(testOutput.getAbsolutePath());
-        final int actualNumVCs = (int) result.getRight().stream().filter(filter).count();
+        final int actualNumVCs = result.getRight().size();
 
         Assert.assertEquals(expectedNumVCs, actualNumVCs);
     }
@@ -624,7 +624,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
                         "-select","DP > 20"),
                 SelectVariants.class.getSimpleName());
         final Pair<VCFHeader, List<VariantContext>> resultInfo = VariantContextTestUtils.readEntireVCFIntoMemory(testOutputInfo.getAbsolutePath());
-        final int actualNumVCsInfo = (int) resultInfo.getRight().stream().filter(filterInfoDep).count();
+        final int actualNumVCsInfo = resultInfo.getRight().size();
         Assert.assertEquals(expectedNumVCsInfo, actualNumVCsInfo);
 
         runCommandLine(Arrays.asList("-V", haploidMultiSampleVcf.toString(),
@@ -632,7 +632,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
                         "-select-genotype","DP > 20"),
                 SelectVariants.class.getSimpleName());
         final Pair<VCFHeader, List<VariantContext>> resultGenotype = VariantContextTestUtils.readEntireVCFIntoMemory(testOutputGenotype.getAbsolutePath());
-        final int actualNumVCsGenotype = (int) resultGenotype.getRight().stream().filter(filterInfoDep).count();
+        final int actualNumVCsGenotype = resultGenotype.getRight().size();
         Assert.assertEquals(expectedNumVCsGenotype, actualNumVCsGenotype);
     }
 
@@ -653,9 +653,39 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
                 SelectVariants.class.getSimpleName());
 
         final Pair<VCFHeader, List<VariantContext>> result = VariantContextTestUtils.readEntireVCFIntoMemory(testOutput.getAbsolutePath());
-        final int actualNumVCs = (int) result.getRight().stream().filter(filter).count();
-
+        final int actualNumVCs = result.getRight().size();
         Assert.assertEquals(expectedNumVCs, actualNumVCs);
+
+        // Test the cases where we give an INFO field expression to --select-genotype, and vice versa.
+        // This works (unfortunately), since we are giving the VariantContext object to JEXL parser (so it can find info fields)
+        final Predicate<VariantContext> filter2 = vc -> vc.getAttributeAsString("SVTYPE", "").equals("DEL");
+        final int expectedNumVCs2 = (int) preFilter.getRight().stream().filter(filter2).count();
+        final File testOutput2 = createTempFile("jexl_genotype_info_mixup_test", "vcf");
+        runCommandLine(Arrays.asList("-V", svHGDBMultiSampleVcf.toString(),
+                        "-O", testOutput2.getAbsolutePath(),
+                        "-" + SelectVariants.GENOTYPE_SELECT_SHORT_NAME,"SVTYPE == 'DEL'"), // INFO filter expression given to genotype filter
+                SelectVariants.class.getSimpleName());
+        final Pair<VCFHeader, List<VariantContext>> result2 = VariantContextTestUtils.readEntireVCFIntoMemory(testOutput2.getAbsolutePath());
+        final int actualNumVCs2 = result2.getRight().size();
+        Assert.assertEquals(expectedNumVCs2, actualNumVCs2);
+
+
+        // Giving a genotype field expression --select
+        // It would silently filter all, because we don't give the genotype object to the jexl parser,
+        // and so the parser cannot find the requested genotype fields.
+        final File testOutput3 = createTempFile("jexl_genotype_info_mixup_test", "vcf");
+        runCommandLine(Arrays.asList("-V", svHGDBMultiSampleVcf.toString(),
+                        "-O", testOutput3.getAbsolutePath(),
+                        "-" + SelectVariants.SELECT_SHORT_NAME,"GQ > " + gqThreshold), // genotype filter expression given to INFO filter
+                SelectVariants.class.getSimpleName());
+        final Pair<VCFHeader, List<VariantContext>> result3 = VariantContextTestUtils.readEntireVCFIntoMemory(testOutput3.getAbsolutePath());
+        final int actualNumVCs3 = result3.getRight().size();
+        Assert.assertEquals(0, actualNumVCs3);
+
+
+
+
+        // Assert.assertEquals(expectedNumVCs2, actualNumVCs2);D
     }
 
 
