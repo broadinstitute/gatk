@@ -303,8 +303,15 @@ public class ExtractCohortEngine {
         // need to manually add the upstream padding to the set of intervals
         List<SimpleInterval> overlapIntervals = new ArrayList<>();
         overlapIntervals.addAll(traversalIntervals);
+        // Related to the problem in createSortedVetCollectionFromExtractTableBigQuery with having a minLocation within
+        // IngestConstants.MAX_DELETION_SIZE of the start of a chromosome
+        int adjustedStartingLocation = (SchemaUtils.decodePosition(minLocation) - IngestConstants.MAX_DELETION_SIZE + 1);
+        if (adjustedStartingLocation < 0) {
+            adjustedStartingLocation = 0;
+        }
+
         overlapIntervals.add(new SimpleInterval(SchemaUtils.decodeContig(minLocation),
-                                                SchemaUtils.decodePosition(minLocation) - IngestConstants.MAX_DELETION_SIZE + 1,
+                                                adjustedStartingLocation,
                                                 SchemaUtils.decodePosition(minLocation)));
         final OverlapDetector<SimpleInterval> intervalsOverlapDetector = OverlapDetector.create(overlapIntervals);
 
@@ -827,8 +834,21 @@ public class ExtractCohortEngine {
                 // We need to look upstream MAX_DELETION_SIZE bases in case there is a deletion that begins before
                 // the requested range, but spans into our processing range.  We don't use a "length" or end position
                 // because it would break the clustering indexing
+
+                // We want to look upstream... but don't want to go past the beginning of a chromosome.  Check for underflow by
+                // explicitly checking the chromosome by decoding the adjustment to locations that we make for chromosome.  If
+                // we accidentally switch chromosomes, just start at the beginning of the chromosome that we started on.
+                long adjustedStartingLocation = (minLocation - IngestConstants.MAX_DELETION_SIZE + 1);
+
+                long startingChromosome = minLocation / SchemaUtils.chromAdjustment;
+                long adjustedStartingChromosome = adjustedStartingLocation / SchemaUtils.chromAdjustment;
+
+                if (startingChromosome != adjustedStartingChromosome) {
+                    // This is just the start of the chromosome
+                    adjustedStartingLocation = startingChromosome * SchemaUtils.chromAdjustment;
+                }
                 final String vetRowRestriction =
-                        "location >= " + (minLocation - IngestConstants.MAX_DELETION_SIZE + 1)+ " AND location <= " + maxLocation + sampleRestriction;
+                        "location >= " + adjustedStartingLocation + " AND location <= " + maxLocation + sampleRestriction;
                 try (StorageAPIAvroReader vetReader = new StorageAPIAvroReader(vetTableRef, vetRowRestriction, projectID)) {
                     if (sortedVet == null) {
                         sortedVet = getAvroSortingCollection(vetReader.getSchema(), localSortMaxRecordsInRam);
@@ -969,8 +989,22 @@ public class ExtractCohortEngine {
         // We need to look upstream MAX_DELETION_SIZE bases in case there is a deletion that begins before
         // the requested range, but spans into our processing range.  We don't use a "length" or end position
         // because it would break the clustering indexing
+
+        // We want to look upstream... but don't want to go past the beginning of a chromosome.  Check for underflow by
+        // explicitly checking the chromosome by decoding the adjustment to locations that we make for chromosome.  If
+        // we accidentally switch chromosomes, just start at the beginning of the chromosome that we started on.
+        long adjustedStartingLocation = (minLocation - IngestConstants.MAX_DELETION_SIZE + 1);
+
+        long startingChromosome = minLocation / SchemaUtils.chromAdjustment;
+        long adjustedStartingChromosome = adjustedStartingLocation / SchemaUtils.chromAdjustment;
+
+        if (startingChromosome != adjustedStartingChromosome) {
+            // This is just the start of the chromosome
+            adjustedStartingLocation = startingChromosome * SchemaUtils.chromAdjustment;
+        }
+
         final String vetRowRestriction =
-                "location >= " + (minLocation - IngestConstants.MAX_DELETION_SIZE + 1)+ " AND location <= " + maxLocation;
+                "location >= " + adjustedStartingLocation+ " AND location <= " + maxLocation;
         try (StorageAPIAvroReader vetReader = new StorageAPIAvroReader(tableRef, vetRowRestriction, projectID)) {
             SortingCollection<GenericRecord> sortedVet = getAvroSortingCollection(vetReader.getSchema(), localSortMaxRecordsInRam);
             addToVetSortingCollection(sortedVet, vetReader, vbs);
