@@ -307,6 +307,7 @@ public class ExtractCohortEngine {
         // IngestConstants.MAX_DELETION_SIZE of the start of a chromosome
         int adjustedStartingLocation = (SchemaUtils.decodePosition(minLocation) - IngestConstants.MAX_DELETION_SIZE + 1);
         if (adjustedStartingLocation < 1) {
+            // These are 1 indexed, not 0 indexed.  This is the first valid location
             adjustedStartingLocation = 1;
         }
 
