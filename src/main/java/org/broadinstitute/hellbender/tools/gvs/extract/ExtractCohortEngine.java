@@ -306,8 +306,8 @@ public class ExtractCohortEngine {
         // Related to the problem in createSortedVetCollectionFromExtractTableBigQuery with having a minLocation within
         // IngestConstants.MAX_DELETION_SIZE of the start of a chromosome
         int adjustedStartingLocation = (SchemaUtils.decodePosition(minLocation) - IngestConstants.MAX_DELETION_SIZE + 1);
-        if (adjustedStartingLocation < 0) {
-            adjustedStartingLocation = 0;
+        if (adjustedStartingLocation < 1) {
+            adjustedStartingLocation = 1;
         }
 
         overlapIntervals.add(new SimpleInterval(SchemaUtils.decodeContig(minLocation),
