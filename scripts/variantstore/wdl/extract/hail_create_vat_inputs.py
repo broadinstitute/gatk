@@ -11,12 +11,13 @@ import create_vat_inputs
 # hard filter based on FT flag:
 # get GT, ~replace_lgt_with_gt()~, swap to no-calls: failing_gts_to_no_call(), TODO: do we still need this with Tim's change?
 # turn the GQ0s into no calls so that ANs are correct -- hmmm maybe we should check with Lee about this because we do have GQ0s in the VDS
-# track how many sites have more than 100 alt alleles
-# drop 100+ alternate alleles (TODO: or DONT!!!!)
+# track how many sites have more than 50 alt alleles TODO: we currently aren't tracking this, are we?
+# drop 50+ alternate alleles
 # calculate the AC, AN, AF, SC, for the full population and for the subpopulations
-### I think the rest of these things we're gonna do with bcftools?
-# make a tsv that's one variant per row (do we want to do this with bcftools or just like grep in a WDL?)
-# drop any * rows in that tsv (I dont think these exist!)
+# split multi allelic sites to be one variant per row (note that we want to do this after the above calculations)
+# drop all spanning deletions
+### The rest of these things we're gonna do with bcftools?
+# make a tsv for custom annotations (do we want to do this with bcftools or just like grep in a WDL?)
 # drop sites where AC=0??!?!?!??!! (We probably want to do this _after_ we join this back with the original VDS?)
 
 
@@ -110,54 +111,24 @@ def vds_ac_an_af(mt, vds):
 def write_sites_only_vcf(ac_an_af_split, sites_only_vcf_path):
     # TODO we will want to drop some cols because there's no reason to carry around some of this stuff
     # CHROM	POS	REF	ALT	AC	AN	AF	AC_Hom	AC_Het	AC_Hemi	AC_afr	AN_afr	AF_afr	AC_Hom_afr	AC_Het_afr	AC_Hemi_afr	AC_amr	AN_amr	AF_amr	AC_Hom_amr	AC_Het_amr	AC_Hemi_amr	AC_eas	AN_eas	AF_eas	AC_Hom_eas	AC_Het_eas	AC_Hemi_eas	AC_eur	AN_eur	AF_eur	AC_Hom_eur	AC_Het_eur	AC_Hemi_eur	AC_mid	AN_mid	AF_mid	AC_Hom_mid	AC_Het_mid	AC_Hemi_mid	AC_oth	AN_oth	AF_oth	AC_Hom_oth	AC_Het_oth	AC_Hemi_oth	AC_sas	AN_sas	AF_sas	AC_Hom_sas	AC_Het_sas	AC_Hemi_sas
+
+    pop_info_fields = {}
+    for pop in ['afr', 'amr', 'eas', 'eur', 'mid', 'oth', 'sas']: ## TODO double check that this is all of them
+        pop_info_fields[f'AC_{pop}'] = ac_an_af_split.call_stats_by_pop.get(pop).AC[ac_an_af_split.row.a_index]
+        pop_info_fields[f'AN_{pop}'] = ac_an_af_split.call_stats_by_pop.get(pop).AN
+        pop_info_fields[f'AF_{pop}'] = ac_an_af_split.call_stats_by_pop.get(pop).AF[ac_an_af_split.row.a_index]
+        pop_info_fields[f'Hom_{pop}'] = ac_an_af_split.call_stats_by_pop.get(pop).homozygote_count[ac_an_af_split.row.a_index]
+
+
     ac_an_af_rows = ac_an_af_split.annotate_rows(
         info = hl.struct(
-            #CHROM=ac_an_af_split.row.locus.contig,
-            #POS=ac_an_af_split.row.locus.position,
-            #REF=ac_an_af_split.row.alleles[0],
-            #ALT=ac_an_af_split.row.alleles[1],
-
             AC=ac_an_af_split.row.ac_an_af.AC[ac_an_af_split.row.a_index],
             AN=ac_an_af_split.row.ac_an_af.AN,
             AF=ac_an_af_split.row.ac_an_af.AF[ac_an_af_split.row.a_index],
             Hom=ac_an_af_split.row.ac_an_af.homozygote_count[ac_an_af_split.row.a_index],
-
-            AC_afr = ac_an_af_split.call_stats_by_pop.get('afr').AC[ac_an_af_split.row.a_index],
-            AN_afr = ac_an_af_split.call_stats_by_pop.get('afr').AN,
-            AF_afr = ac_an_af_split.call_stats_by_pop.get('afr').AF[ac_an_af_split.row.a_index],
-            Hom_afr = ac_an_af_split.call_stats_by_pop.get('afr').homozygote_count[ac_an_af_split.row.a_index],
-
-            AC_amr = ac_an_af_split.call_stats_by_pop.get('amr').AC[ac_an_af_split.row.a_index],
-            AN_amr = ac_an_af_split.call_stats_by_pop.get('amr').AN,
-            AF_amr = ac_an_af_split.call_stats_by_pop.get('amr').AF[ac_an_af_split.row.a_index],
-            Hom_amr = ac_an_af_split.call_stats_by_pop.get('amr').homozygote_count[ac_an_af_split.row.a_index],
-
-            AC_eas = ac_an_af_split.call_stats_by_pop.get('eas').AC[ac_an_af_split.row.a_index],
-            AN_eas = ac_an_af_split.call_stats_by_pop.get('eas').AN,
-            AF_eas = ac_an_af_split.call_stats_by_pop.get('eas').AF[ac_an_af_split.row.a_index],
-            Hom_eas = ac_an_af_split.call_stats_by_pop.get('eas').homozygote_count[ac_an_af_split.row.a_index],
-
-            AC_eur = ac_an_af_split.call_stats_by_pop.get('eur').AC[ac_an_af_split.row.a_index],
-            AN_eur = ac_an_af_split.call_stats_by_pop.get('eur').AN,
-            AF_eur = ac_an_af_split.call_stats_by_pop.get('eur').AF[ac_an_af_split.row.a_index],
-            Hom_eur = ac_an_af_split.call_stats_by_pop.get('eur').homozygote_count[ac_an_af_split.row.a_index],
-
-            AC_mid = ac_an_af_split.call_stats_by_pop.get('mid').AC[ac_an_af_split.row.a_index],
-            AN_mid = ac_an_af_split.call_stats_by_pop.get('mid').AN,
-            AF_mid = ac_an_af_split.call_stats_by_pop.get('mid').AF[ac_an_af_split.row.a_index],
-            Hom_mid = ac_an_af_split.call_stats_by_pop.get('mid').homozygote_count[ac_an_af_split.row.a_index],
-
-            AC_oth = ac_an_af_split.call_stats_by_pop.get('oth').AC[ac_an_af_split.row.a_index],
-            AN_oth = ac_an_af_split.call_stats_by_pop.get('oth').AN,
-            AF_oth = ac_an_af_split.call_stats_by_pop.get('oth').AF[ac_an_af_split.row.a_index],
-            Hom_oth = ac_an_af_split.call_stats_by_pop.get('oth').homozygote_count[ac_an_af_split.row.a_index],
-
-            AC_sas = ac_an_af_split.call_stats_by_pop.get('sas').AC[ac_an_af_split.row.a_index],
-            AN_sas = ac_an_af_split.call_stats_by_pop.get('sas').AN,
-            AF_sas = ac_an_af_split.call_stats_by_pop.get('sas').AF[ac_an_af_split.row.a_index],
-            Hom_sas = ac_an_af_split.call_stats_by_pop.get('sas').homozygote_count[ac_an_af_split.row.a_index],
+            **pop_info_fields
+        )
     )
-)
 
     # note that SC = AC - homozygote_count
 
@@ -174,54 +145,8 @@ def write_sites_only_vcf(ac_an_af_split, sites_only_vcf_path):
     hl.export_vcf(ht, sites_only_vcf_path)
 
 
-def write_vat_custom_annotations(mt, vat_custom_annotations_tsv_path):
-    """
-    Create a VAT TSV file with subpopulation data from the input dense matrix table.
-    """
-    # TODO:
-    # Do we need to track the dropped sites?
-    # filter out sites with too many alt alleles
-    # filter out variants with an AC of 0
 
-
-    # split multi allelic sites to new lines
-    ac_an_af_split = hl.methods.split_multi(mt)
-
-    #CHROM	POS	REF	ALT	AC	AN	AF	AC_Hom	AC_Het	AC_Hemi	AC_afr	AN_afr	AF_afr	AC_Hom_afr	AC_Het_afr	AC_Hemi_afr	AC_amr	AN_amr	AF_amr	AC_Hom_amr	AC_Het_amr	AC_Hemi_amr	AC_eas	AN_eas	AF_eas	AC_Hom_eas	AC_Het_eas	AC_Hemi_eas	AC_eur	AN_eur	AF_eur	AC_Hom_eur	AC_Het_eur	AC_Hemi_eur	AC_mid	AN_mid	AF_mid	AC_Hom_mid	AC_Het_mid	AC_Hemi_mid	AC_oth	AN_oth	AF_oth	AC_Hom_oth	AC_Het_oth	AC_Hemi_oth	AC_sas	AN_sas	AF_sas	AC_Hom_sas	AC_Het_sas	AC_Hemi_sas
-    ac_an_af_rows = ac_an_af_split.select_rows(
-        # CHROM=ac_an_af_split.row.locus.contig,
-        # POS=ac_an_af_split.row.locus.position,
-        # REF=ac_an_af_split.row.alleles[0],
-        # ALT=ac_an_af_split.row.alleles[1],
-        AC=ac_an_af_split.row.ac_an_af.AC[1],
-        AN=ac_an_af_split.row.ac_an_af.AN,
-        AF=ac_an_af_split.row.ac_an_af.AF[1],
-        homozygote_count=ac_an_af_split.row.ac_an_af.homozygote_count[1],
-        eas_AC = ac_an_af_split.call_stats_by_pop.get('eas').AC[1],
-        eas_AN = ac_an_af_split.call_stats_by_pop.get('eas').AN,
-        eas_AF = ac_an_af_split.call_stats_by_pop.get('eas').AF[1],
-        eas_homozygote_count = ac_an_af_split.call_stats_by_pop.get('eas').homozygote_count[1],
-    )
-
-    # note that SC = AC - homozygote_count
-
-    ac_an_af_rows=ac_an_af_rows.drop('tranche_data')
-    ac_an_af_rows=ac_an_af_rows.drop('truth_sensitivity_snp_threshold')
-    ac_an_af_rows=ac_an_af_rows.drop('truth_sensitivity_indel_threshold')
-    ac_an_af_rows=ac_an_af_rows.drop('snp_vqslod_threshold')
-    ac_an_af_rows=ac_an_af_rows.drop('indel_vqslod_threshold')
-
-    print("Now lets export the custom annotations tsv")
-
-    hl.Table.export(ac_an_af_rows.rows(), vat_custom_annotations_tsv_path)
-
-
-
-
-
-
-
-def main(vds, ancestry_file_location, sites_only_vcf_path, vat_custom_annotations_tsv_path):
+def main(vds, ancestry_file_location, sites_only_vcf_path):
     transforms = [
         hard_filter_non_passing_sites,
         replace_lgt_with_gt,
@@ -236,20 +161,17 @@ def main(vds, ancestry_file_location, sites_only_vcf_path, vat_custom_annotation
     mt = hl.vds.to_dense_mt(transformed_vds)
 
     with open(ancestry_file_location, 'r') as ancestry_file:
-        mt = matrix_table_ac_an_af(mt, ancestry_file) # this add subpopulation information and splits our multi-allelic rows
+        mt = matrix_table_ac_an_af(mt, ancestry_file) # this adds subpopulation information and splits our multi-allelic rows
 
-    # merge AC, AN, AF back to the original VDS (TODO: make sure this join does not hard filter!!!!)
-    # vds = vds_ac_an_af(mt, vds)
+    # potentially in the future: merge AC, AN, AF back to the original VDS with: vds = vds_ac_an_af(mt, vds)
 
-    # create a sites only VCF (that is hard filtered!)
+    # create a sites only VCF (that is hard filtered!) and that can be made into a custom annotations TSV for Nirvana to use with AC, AN, AF, SC for all subpopulations and populations
     write_sites_only_vcf(mt, sites_only_vcf_path)
-    # create a custom annotations TSV for Nirvana to use with AC, AN, AF, SC for all subpopulations and populations
-    # write_vat_custom_annotations(mt, vat_custom_annotations_tsv_path)
 
 
 def annotate_entry_filter_flag(mt):
     """
-    Annotate FT flag for entries
+    Annotate FT flag for entries--this is needed so that tools like bcftools can handle the output vcf
     """
     fail_case = 'FAIL'
     return mt.annotate_entries(FT=hl.if_else(mt.FT, 'PASS', fail_case))
@@ -273,8 +195,6 @@ if __name__ == '__main__':
     parser.add_argument('--vds_path', type=str, help='Input VDS Path', default="@VDS_INPUT_PATH@") #TODO: names feel confusing to me that this is an input and the next two are outputs?
     parser.add_argument('--sites_only_vcf', type=str, help='Output sites-only VCF file',
                         default="@SITES_ONLY_VCF_OUTPUT_PATH@")
-    parser.add_argument('--vat_custom_annotations', type=str, help='Output VAT custom annotations file',
-                        default="@VAT_CUSTOM_ANNOTATIONS_OUTPUT_PATH@")
 
     args = parser.parse_args()
 
@@ -282,4 +202,4 @@ if __name__ == '__main__':
     # write_sites_only_vcf(vds, args.sites_only_vcf)
     local_ancestry_file = create_vat_inputs.download_ancestry_file(args.ancestry_file)
 
-    main(vds, local_ancestry_file, args.sites_only_vcf, args.vat_custom_annotations)
+    main(vds, local_ancestry_file, args.sites_only_vcf)
