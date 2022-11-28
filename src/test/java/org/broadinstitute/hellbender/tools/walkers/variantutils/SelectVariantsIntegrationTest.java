@@ -185,7 +185,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_NonExistingSelection.vcf")
         );
 
-        spec.executeTest("testNonExistingSelection--" + testFile, this); // tsato: failing
+        spec.executeTest("testNonExistingSelection--" + testFile, this);
     }
 
     /**
@@ -393,7 +393,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String testFile = getToolTestDataDir() + "selectVariants.onePosition.vcf";
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" -select 'KG_FREQ < 0.5' ", testFile), // tsato: another jexl test
+                baseTestString(" -select 'KG_FREQ < 0.5' ", testFile),
                 Collections.singletonList(getToolTestDataDir() + "expected/" + "testSelectVariants_MultipleRecordsAtOnePosition.vcf")
         );
 
