@@ -134,7 +134,6 @@ def write_sites_only_vcf(ac_an_af_split, sites_only_vcf_path):
     ht = ac_an_af_rows.rows()
     ht = ht.filter(ht.alleles[1] != "*") # remove spanning deletions
     # create a filtered sites only VCF
-    hl.export_vcf(ac_an_af_rows.rows(), sites_only_vcf_path)
     hl.export_vcf(ht, sites_only_vcf_path)
 
 
@@ -142,7 +141,7 @@ def write_sites_only_vcf(ac_an_af_split, sites_only_vcf_path):
 def main(vds, ancestry_file_location, sites_only_vcf_path):
     transforms = [
         hard_filter_non_passing_sites,
-        replace_lgt_with_gt,
+        replace_lgt_with_gt, ## TODO check with Tim
         failing_gts_to_no_call,
         remove_too_many_alt_allele_sites,
         gq0_to_no_call
