@@ -109,7 +109,6 @@ def vds_ac_an_af(mt, vds):
 
 
 def write_sites_only_vcf(ac_an_af_split, sites_only_vcf_path):
-    # TODO we will want to drop some cols because there's no reason to carry around some of this stuff
     # CHROM	POS	REF	ALT	AC	AN	AF	AC_Hom	AC_Het	AC_Hemi	AC_afr	AN_afr	AF_afr	AC_Hom_afr	AC_Het_afr	AC_Hemi_afr	AC_amr	AN_amr	AF_amr	AC_Hom_amr	AC_Het_amr	AC_Hemi_amr	AC_eas	AN_eas	AF_eas	AC_Hom_eas	AC_Het_eas	AC_Hemi_eas	AC_eur	AN_eur	AF_eur	AC_Hom_eur	AC_Het_eur	AC_Hemi_eur	AC_mid	AN_mid	AF_mid	AC_Hom_mid	AC_Het_mid	AC_Hemi_mid	AC_oth	AN_oth	AF_oth	AC_Hom_oth	AC_Het_oth	AC_Hemi_oth	AC_sas	AN_sas	AF_sas	AC_Hom_sas	AC_Het_sas	AC_Hemi_sas
 
     pop_info_fields = {}
@@ -132,12 +131,6 @@ def write_sites_only_vcf(ac_an_af_split, sites_only_vcf_path):
 
     # note that SC = AC - homozygote_count
 
-    # ac_an_af_rows=ac_an_af_rows.drop('tranche_data')
-    # ac_an_af_rows=ac_an_af_rows.drop('truth_sensitivity_snp_threshold')
-    # ac_an_af_rows=ac_an_af_rows.drop('truth_sensitivity_indel_threshold')
-    # ac_an_af_rows=ac_an_af_rows.drop('snp_vqslod_threshold')
-    # ac_an_af_rows=ac_an_af_rows.drop('indel_vqslod_threshold')
-
     ht = ac_an_af_rows.rows()
     ht = ht.filter(ht.alleles[1] != "*") # remove spanning deletions
     # create a filtered sites only VCF
@@ -154,9 +147,9 @@ def main(vds, ancestry_file_location, sites_only_vcf_path):
         remove_too_many_alt_allele_sites,
         gq0_to_no_call
     ]
-
+    transformed_vds=vds
     for transform in transforms:
-        transformed_vds = transform(vds)
+        transformed_vds = transform(transformed_vds)
 
     mt = hl.vds.to_dense_mt(transformed_vds)
 
