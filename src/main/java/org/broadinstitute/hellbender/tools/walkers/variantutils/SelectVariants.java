@@ -2,7 +2,13 @@ package org.broadinstitute.hellbender.tools.walkers.variantutils;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.tribble.util.ParsingUtils;
-import htsjdk.variant.variantcontext.*;
+import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.Genotype;
+import htsjdk.variant.variantcontext.GenotypeBuilder;
+import htsjdk.variant.variantcontext.GenotypesContext;
+import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.variantcontext.VariantContextUtils;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
 
@@ -92,13 +98,22 @@ import java.util.stream.IntStream;
  *     -O output.chr20.vcf
  * </pre>
  *
- * <h4>Use JEXL Expressions to filter a subset of   </h4>
+ * <h4>Use JEXL Expressions to filter variants by INFO fields </h4>
  * <pre>
  *     gatk SelectVariants \
  *     -R Homo_sapiens_assembly38.fasta \
- *     -V gendb://genomicsDB \
- *     -L 20 \
- *     -O output.chr20.vcf
+ *     -V input.vcf \
+ *     -select "AF > 0.001" \
+ *     -O output.vcf
+ * </pre>
+ *
+ * <h4>Use JEXL Expressions to filter variants by genotype fields. The variant will be kept in the output vcf if at least one sample meets the criterion.</h4>
+ * <pre>
+ *     gatk SelectVariants \
+ *     -R Homo_sapiens_assembly38.fasta \
+ *     -V input.vcf \
+ *     -select-genotype "GQ > 50" \
+ *     -O output.vcf
  * </pre>
  */
 @CommandLineProgramProperties(
@@ -189,7 +204,8 @@ public final class SelectVariants extends VariantWalker {
     private ArrayList<String> selectExpressions = new ArrayList<>();
 
     /**
-     * Add doc
+     * JEXL expressions to be applied to genotype (FORMAT) fields e.g. GQ, AD.
+     * If at least one of the samples meets the criteria, the variant will be kept.
      */
     public static final String GENOTYPE_SELECT_SHORT_NAME = "select-genotype";
     public static final String GENOTYPE_SELECT_LONG_NAME = "select-genotype-expressions";
@@ -202,7 +218,7 @@ public final class SelectVariants extends VariantWalker {
      * on INFO fields only, and the subsetting of format fields (which is expensive) should be avoided
      * on variants that fail the JEXL filters.
      *
-     * This option may be  useful when working with a large cohort vcf that contains genotypes for
+     * This option may be useful when working with a large cohort vcf that contains genotypes for
      * thousands of samples (format fields).
      *
      */
@@ -318,7 +334,7 @@ public final class SelectVariants extends VariantWalker {
                     doc="Select a fraction of variants at random from the input", optional=true)
     private double fractionRandom = 0;
 
-    /** tsato: why would anyone do this?
+    /**
      * The value of this argument should be a number between 0 and 1 specifying the fraction of total variants to be
      * randomly selected from the input callset and set to no-call (./). Note that this is done using a probabilistic
      * function, so the final result is not guaranteed to carry the exact fraction requested. Can be used for large fractions.
@@ -361,9 +377,14 @@ public final class SelectVariants extends VariantWalker {
     @Argument(fullName="exclude-ids", shortName="xl-ids", doc="List of variant rsIDs to exclude", optional=true)
     private Set<String> rsIDsToRemove = new HashSet<>();
 
-    @Hidden // sato: given this is a hidden option, should we make it clear this is for debugging purpose only?
+    /**
+     * If true, this each VariantContext object will fully-decode the genotypes i.e. convert each genotype field
+     * from a String to appropriate data types such as integers and arrays. This option is used only by developers
+     * making changes to the tool.
+     */
+    @Hidden
     @Argument(fullName="fully-decode", doc="If true, the incoming VariantContext will be fully decoded", optional=true)
-    private boolean fullyDecode = false; // sato: what does this mean? why would one use this option?
+    private boolean fullyDecode = false;
 
     /**
      * If this argument is provided, indels that are larger than the specified size will be excluded.
@@ -385,7 +406,7 @@ public final class SelectVariants extends VariantWalker {
 
     /**
      * If this argument is provided, select sites where at least a minimum number of samples are filtered at
-     * the genotype level. tsato: why would anyone want to do this....
+     * the genotype level.
      */
     @Argument(fullName="min-filtered-genotypes", optional=true,
                     doc="Minimum number of samples filtered at the genotype level")
@@ -498,7 +519,8 @@ public final class SelectVariants extends VariantWalker {
         }
         return genomicsDBOptions;
     }
-    // sato: We cannot simply output the vcf entries in the order they arrive, as sometimes alleles can be trimmed such that the start position is changed. (e.g. in an multiallelic site, add example from 6444).
+    // We do not output the vcf entries in the order they arrive, as trimming alleles may changes start positions
+    // (e.g. in an multiallelic site, add example from 6444).
     final private PriorityQueue<VariantContext> pendingVariants = new PriorityQueue<>(Comparator.comparingInt(VariantContext::getStart));
     // sato: (cont) so instead of writing the variant immediately, first add to this priority queue, then if its start position is less than the start position of the current variant, add to vcf writer. But what if the current vcf start position moves to the left? Is that impossible?
     /**

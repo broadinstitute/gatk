@@ -403,7 +403,8 @@ public final class VariantFiltration extends VariantWalker {
         }
 
         for ( final JexlVCMatchExp exp : filterExps ) {
-            if ( matchesFilter(vc, null, exp, invertFilterExpression) ) { // tsato: again g is null...like selectVariants
+            // Note that g is set to null since filterExps contains INFO-level filters
+            if ( matchesFilter(vc, null, exp, invertFilterExpression) ) {
                 filters.add(exp.name);
             }
         }
@@ -437,8 +438,9 @@ public final class VariantFiltration extends VariantWalker {
 
         // Add if expression filters the variant context
         for (final JexlVCMatchExp exp : genotypeFilterExps) {
+            // Give the genotype g to mathchesFilter enables JEXL matching on genotype fields
             if (matchesFilter(vc, g, exp, invertGenotypeFilterExpression)) {
-                filters.add(exp.name); // tsato: this is where filtering happens, still not fully decoding?
+                filters.add(exp.name);
             }
         }
 

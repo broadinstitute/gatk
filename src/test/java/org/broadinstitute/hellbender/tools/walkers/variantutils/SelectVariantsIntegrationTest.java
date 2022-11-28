@@ -502,7 +502,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         htsjdk.variant.variantcontext.VariantContextUtils.engine.get().setSilent(false);
     }
 
-    @Test // tsato: this test fails for teh wrongs reason; ac0.vcf does not exist
+    @Test // tsato: this test fails for the wrong reason; ac0.vcf does not exist
     public void testInvalidJexl() throws IOException {
         final GATKPath testFile = new GATKPath(getToolTestDataDir() + "ac0.vcf");
         beforeJexlTest();
