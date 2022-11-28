@@ -6,9 +6,10 @@ During the normal course of creating an AoU callset several large and expensive 
 * Avro files (Delta onward)
 * Hail VariantDataset (VDS) (Delta onward)
 
-The current Variants AoU callset policy is effectively to retain all artifacts for all callset versions indefinitely. As
-the storage costs for these artifacts can very significant, the Variants team would like to make costs more clear so AoU
-can make conscious choices about which artifacts they want to keep and for how long.
+The current Variants policy for AoU callsets is effectively to retain all artifacts for all callset versions forever. As
+the storage costs for these artifacts can be very significant (particularly from Delta onward), the Variants team would
+like to make costs more clear so AoU can make conscious choices about which artifacts they want to keep and for how
+long.
 
 ## Establish an AoU callset signoff protocol
 
