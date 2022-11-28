@@ -73,12 +73,12 @@ jobs:
     needs: check-secrets
     strategy:
       matrix:
-        java: [ 8, 11 ]
+        java: [ 8, 11.0.11+9 ]
         experimental: [ false ]
         scalaVersion: [ 2.11, 2.12 ]
         testType: [ cloud, integration, unit ]
         exclude:
-          - java: 11
+          - java: 11.0.11+9
             scalaVersion: 2.11
           - java: 8
             scalaVersion: 2.12
