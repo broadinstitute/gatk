@@ -96,8 +96,8 @@ task SplitIntervals {
     set -e
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
-    WEIGHT_BED_JAVE_ARG="~{using_weighted_beds}"
-    if [ -z "$WEIGHT_BED_FILE" ]
+    WEIGHTED_BED_BEING_USED="~{using_weighted_beds}"
+    if [ -z "$WEIGHTED_BED_BEING_USED" ]
     then
       WEIGHT_BED_ARG=""
     else
