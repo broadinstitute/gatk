@@ -74,8 +74,9 @@ def skip_vcf_header(fp):
     """
     vcf_header = ""
     while (line := fp.readline().rstrip()):
-        vcf_header += line + '\n'
-        if not line.startswith("##"):
+        if line.startswith("#"):
+            vcf_header += line + '\n'
+        else:
             return vcf_header, line
 
 
