@@ -157,7 +157,6 @@ task StripCustomAnnotationsFromSitesOnlyVCF {
     Int disk_size = ceil((size(input_vcf, "GB") + size(custom_annotations_header, "GB")) * 4) + 100
 
     command <<<
-        set -e
         set -o errexit -o nounset -o pipefail -o xtrace
 
         bash ~{monitoring_script} > monitoring.log &
