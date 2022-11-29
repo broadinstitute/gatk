@@ -9,7 +9,7 @@ import create_vat_inputs
 # filtering:
 # hard filter bad sites: hard_filter_non_passing_sites()
 # hard filter based on FT flag:
-# get GT, ~replace_lgt_with_gt()~, swap to no-calls: failing_gts_to_no_call(), TODO: do we still need this with Tim's change?
+# get GT, ~replace_lgt_with_gt()~, swap to no-calls: failing_gts_to_no_call(), (no longer need to replace_lgt_with_gt now that lgt is included in the VDS)
 # turn the GQ0s into no calls so that ANs are correct -- hmmm maybe we should check with Lee about this because we do have GQ0s in the VDS
 # track how many sites have more than 50 alt alleles TODO: we currently aren't tracking this, are we?
 # drop 50+ alternate alleles
@@ -38,7 +38,6 @@ def hard_filter_non_passing_sites(vds):
 def replace_lgt_with_gt(vds):
     """
     Replace LGT with GT for easier calculations later.
-    TODO note that this may no longer be needed depending on Tim's changes
     """
     filtered_vd = vds.variant_data
     filtered_vd = filtered_vd.annotate_entries(GT=hl.vds.lgt_to_gt(filtered_vd.LGT, filtered_vd.LA))
@@ -95,7 +94,7 @@ def matrix_table_ac_an_af(mt, ancestry_file):
         ac_an_af=hl.agg.call_stats(mt.GT, mt.alleles),
         call_stats_by_pop=hl.agg.group_by(mt.pop, hl.agg.call_stats(mt.GT, mt.alleles)),
     )
-    return hl.methods.split_multi(ac_an_af_mt) # split each alternate allele onto it's own row
+    return hl.methods.split_multi(ac_an_af_mt, left_aligned=True) # split each alternate allele onto it's own row
 
 
 def vds_ac_an_af(mt, vds):
@@ -109,7 +108,7 @@ def vds_ac_an_af(mt, vds):
 
 
 def write_sites_only_vcf(ac_an_af_split, sites_only_vcf_path):
-    # CHROM	POS	REF	ALT	AC	AN	AF	AC_Hom	AC_Het	AC_Hemi	AC_afr	AN_afr	AF_afr	AC_Hom_afr	AC_Het_afr	AC_Hemi_afr	AC_amr	AN_amr	AF_amr	AC_Hom_amr	AC_Het_amr	AC_Hemi_amr	AC_eas	AN_eas	AF_eas	AC_Hom_eas	AC_Het_eas	AC_Hemi_eas	AC_eur	AN_eur	AF_eur	AC_Hom_eur	AC_Het_eur	AC_Hemi_eur	AC_mid	AN_mid	AF_mid	AC_Hom_mid	AC_Het_mid	AC_Hemi_mid	AC_oth	AN_oth	AF_oth	AC_Hom_oth	AC_Het_oth	AC_Hemi_oth	AC_sas	AN_sas	AF_sas	AC_Hom_sas	AC_Het_sas	AC_Hemi_sas
+    # CHROM	POS	REF	ALT	AC	AN	AF	Hom	AC_afr	AN_afr	AF_afr	Hom_afr	AC_amr	AN_amr	AF_amr	Hom_amr	AC_eas	AN_eas	AF_eas	AC_Hom_eas	AC_Het_eas	AC_Hemi_eas	AC_eur	AN_eur	AF_eur	AC_Hom_eur	AC_Het_eur	AC_Hemi_eur	AC_mid	AN_mid	AF_mid	AC_Hom_mid	AC_Het_mid	AC_Hemi_mid	AC_oth	AN_oth	AF_oth	AC_Hom_oth	AC_Het_oth	AC_Hemi_oth	AC_sas	AN_sas	AF_sas	AC_Hom_sas	AC_Het_sas	AC_Hemi_sas
 
     pop_info_fields = {}
     for pop in ['afr', 'amr', 'eas', 'eur', 'mid', 'oth', 'sas']: ## TODO double check that this is all of them
@@ -141,7 +140,6 @@ def write_sites_only_vcf(ac_an_af_split, sites_only_vcf_path):
 def main(vds, ancestry_file_location, sites_only_vcf_path):
     transforms = [
         hard_filter_non_passing_sites,
-        replace_lgt_with_gt, ## TODO check with Tim
         failing_gts_to_no_call,
         remove_too_many_alt_allele_sites,
         gq0_to_no_call
