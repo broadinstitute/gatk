@@ -70,7 +70,7 @@ def skip_vcf_header(fp):
     """
     A method to skip over the header in the VCF
     :param fp: The file's file pointer
-    :return: The nextmost line that is not a header line
+    :return: The VCF Header (as a text block) and th next line that is not a header line
     """
     vcf_header = ""
     while (line := fp.readline().rstrip()):
