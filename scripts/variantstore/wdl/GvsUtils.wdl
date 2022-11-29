@@ -92,8 +92,12 @@ task SplitIntervals {
     }
   }
 
-  command {
+  command <<<
+    # Updating to use standard shell boilerplate
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
     set -e
+
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
     WEIGHTED_BED_BEING_USED="~{using_weighted_beds}"
@@ -123,7 +127,7 @@ task SplitIntervals {
     if [ -n "$OUTPUT_GCS_DIR" ]; then
       gsutil -m cp *.interval_list $OUTPUT_GCS_DIR/
     fi
-  }
+  >>>
 
   runtime {
     docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2022_10_17_2a8c210ac35094997603259fa1cd784486b92e42"
