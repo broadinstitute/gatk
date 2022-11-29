@@ -5,6 +5,7 @@ During the normal course of creating an AoU callset several large and expensive 
 * BigQuery dataset
 * Avro files (Delta onward)
 * Hail VariantDataset (VDS) (Delta onward)
+* TODO workspaces? Ask Sophie
 
 The current Variants policy for AoU callsets is effectively to retain all artifacts for all callset versions forever. As
 the storage costs for these artifacts can be very significant (particularly from Delta onward), the Variants team would
