@@ -290,9 +290,13 @@ def make_positions_json(annotated_json, output_json):
 
     positions = ijson.items(json_data, 'positions.item', use_float=True)
 
+    last_chrom = ""
     for p in positions:
+        chrom=p['chromosome']
+        if (chrom != last_chrom):
+            last_chrom = chrom
+            logging.info(f"Chrom: {chrom}")
         position=p['position']
-        logging.info(f"Position: {position}")
         refAllele=p['refAllele'] # ref_allele
         altAlleles=p['altAlleles'] # this is an array that we need to split into each alt_allele
         variants=p['variants']
@@ -341,9 +345,10 @@ def make_genes_json(annotated_json, output_genes_json):
     else:
         json_data = open(annotated_json, 'rb')
 
+    logging.info(f"Loading the genes json data")
     genes = ijson.items(json_data, 'genes.item', use_float=True)
+    logging.info(f"Done loading the genes json data")
 
-    omim_fieldnames = list(vat_nirvana_omim_dictionary.keys())
     for gene_line in genes:
         logging.info(f"gene_line: {gene_line}")
         if gene_line.get("omim") != None:
@@ -355,7 +360,7 @@ def make_genes_json(annotated_json, output_genes_json):
             row["gene_omim_id"] = omim_line.get("mimNumber")
             if omim_line.get("phenotypes") != None:
                 phenotypes = omim_line["phenotypes"]
-                for vat_omim_fieldname in omim_fieldnames:  # like "mimNumber", "phenotype"
+                for vat_omim_fieldname in vat_nirvana_omim_dictionary.keys():  # like "mimNumber", "phenotype"
                     omim_field_array=[]
                     for phenotype in phenotypes:
                         nirvana_omim_fieldname = vat_nirvana_omim_dictionary.get(vat_omim_fieldname)

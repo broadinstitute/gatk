@@ -175,7 +175,7 @@ task StripCustomAnnotationsFromSitesOnlyVCF {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-561_var_store_2022_11_26"
         memory: "7 GiB"
         cpu: "2"
-        preemptible: 0
+        preemptible: 3
         disks: "local-disk " + disk_size + " HDD"
     }
     # ------------------------------------------------
@@ -192,6 +192,7 @@ task RemoveDuplicatesFromSitesOnlyVCF {
     input {
         File sites_only_vcf
         File ref
+        File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     }
 
     Int disk_size = ceil(size(sites_only_vcf, "GB") * 5) + 100
@@ -201,16 +202,27 @@ task RemoveDuplicatesFromSitesOnlyVCF {
     command <<<
         set -e
 
+        bash ~{monitoring_script} > monitoring.log &
+
         # custom function to prepend the current datetime to an echo statement
         echo_date () { echo "`date "+%Y/%m/%d %H:%M:%S"` $1"; }
 
         echo_date "VAT: Convert input to BCF format"
         bcftools convert --threads 4 -O b -o sites_only.bcf ~{sites_only_vcf}
 
+        echo_date "VAT: Calculating number of sites with Ns"
+
+        ## track the dropped variants with N's in the reference (Since Nirvana cant handle N as a base, drop them for now)
+        bcftools view --threads 4 -i 'REF~"N"' -O u sites_only.bcf | bcftools query -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > track_dropped.tsv
+
+        echo_date "VAT: filter out sites with N's in the reference"
+        bcftools view --threads 4 -e 'REF~"N"' -O b sites_only.bcf -o filtered_sites_only.bcf
+        rm sites_only.bcf
+
         echo_date "VAT: normalize, left align and split multi allelic sites to new lines, remove duplicate lines"
         ## note that normalization may create sites with more than 50 alt alleles
-        bcftools norm --threads 4 -m- --check-ref w -f ~{ref} sites_only.bcf -O b -o normalized.bcf
-        rm sites_only.bcf
+        bcftools norm --threads 4 -m- --check-ref w -f ~{ref} filtered_sites_only.bcf -O b -o normalized.bcf
+        rm filtered_sites_only.bcf
 
         echo_date "VAT: detecting and removing duplicate rows from sites-only VCF"
 
@@ -226,14 +238,12 @@ task RemoveDuplicatesFromSitesOnlyVCF {
         if [ -s duplicates.tsv ]; then
             ## remove those rows (that match up to the first 5 cols)
             echo_date "VAT: Removing those rows"
-            bcftools view --threads 4 normalized.bcf | grep -v -wFf duplicates.tsv | bcftools view --threads 4 -O b -o deduplicated.bcf
+            bcftools view --threads 4 normalized.bcf | grep -v -wFf duplicates.tsv > deduplicated.vcf
         else
             # There are no duplicates to remove
             echo_date "VAT: No duplicates found"
-            cp normalized.bcf deduplicated.bcf
+            bcftools view --threads 4 normalized.bcf -o deduplicated.vcf
         fi
-        echo_date "VAT: Converting deduplicated bcf to vcf"
-        bcftools view deduplicated.bcf > deduplicated.vcf
         rm normalized.bcf
 
         ## add duplicates to the file that's tracking dropped variants
@@ -249,7 +259,7 @@ task RemoveDuplicatesFromSitesOnlyVCF {
         maxRetries: 3
         memory: "16 GB"
         preemptible: 3
-        cpu: "4"
+        cpu: "8"
         disks: "local-disk " + disk_size + " HDD"
     }
     # ------------------------------------------------
@@ -257,6 +267,7 @@ task RemoveDuplicatesFromSitesOnlyVCF {
     output {
         File track_dropped = "track_dropped.tsv"
         File output_vcf = "deduplicated.vcf"
+        File monitoring_log = "monitoring.log"
     }
 }
 
@@ -377,11 +388,11 @@ task PrepAnnotationJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-561_var_store_2022_11_22"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-561_var_store_2022_11_28"
         memory: "15 GB"
         preemptible: 3
         cpu: "1"
-        disks: "local-disk 500 SSD"
+        disks: "local-disk 500 HDD"
     }
     # ------------------------------------------------
     # Outputs:

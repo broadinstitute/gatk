@@ -24,18 +24,19 @@ def strip_custom_annotations_from_sites_only_vcf(input_sites_only_vcf, input_cus
                         vcf_fields = vcf_line.split("\t")
                         info_field_map = get_info_fields(vcf_fields[7])
 
+                        # Populate the annotations line
                         annotations = []
-                        annotations.append(vcf_fields[0])
-                        annotations.append(vcf_fields[1])
-                        annotations.append(vcf_fields[3])
-                        annotations.append(vcf_fields[4])
+                        annotations.append(vcf_fields[0])   # Chrom
+                        annotations.append(vcf_fields[1])   # Position
+                        annotations.append(vcf_fields[3])   # Ref
+                        annotations.append(vcf_fields[4])   # Alt
                         for index in range(0, len(column_names)):
                             key = column_names[index]
-                            if (key not in info_field_map):
-                                print(f"ERROR: Custom annotations field {key} not found in fields parsed from input_vcf {input_sites_only_vcf}")
-                                sys.exit(1)
-                            value = info_field_map[key]
-                            del info_field_map[key]
+                            if (key in info_field_map):
+                                value = info_field_map[key]
+                                del info_field_map[key]
+                            else:
+                                value = "."
                             annotations.append(value)
 
                         # Error checking - did we find any unexpected fields in the VCF INFO field?
