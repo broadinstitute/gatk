@@ -126,7 +126,7 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:rc_616_var_store_2022_10_25"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-561_var_store_2022_11_29"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -171,7 +171,7 @@ task StripCustomAnnotationsFromSitesOnlyVCF {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-561_var_store_2022_11_26"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-561_var_store_2022_11_29"
         memory: "7 GiB"
         cpu: "2"
         preemptible: 3
@@ -354,6 +354,7 @@ task PrepAnnotationJson {
         File annotation_json
         String output_file_suffix
         String output_path
+        File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     }
 
     String output_vt_json = "vat_vt_bq_load" + output_file_suffix
@@ -366,6 +367,8 @@ task PrepAnnotationJson {
 
     command <<<
         # set -e
+
+        bash ~{monitoring_script} > monitoring.log &
 
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
@@ -387,7 +390,7 @@ task PrepAnnotationJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-561_var_store_2022_11_28"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-561_var_store_2022_11_29"
         memory: "15 GB"
         preemptible: 3
         cpu: "1"
@@ -399,6 +402,7 @@ task PrepAnnotationJson {
         File vat_vt_json="~{output_vt_json}"
         File vat_genes_json="~{output_genes_json}"
         Boolean done = true
+        File monitoring_log = "monitoring.log"
     }
 }
 
