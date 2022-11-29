@@ -103,7 +103,7 @@ workflow GvsExtractCohortFromSampleNames {
       cohort_dataset_name = destination_dataset_name,
       extract_table_prefix = cohort_table_prefix,
 
-      scatter_count = scatter_count,
+      scatter_count = effective_scatter_count,
       filter_set_name = filter_set_name,
       output_file_base_name = output_file_base_name,
       output_gcs_dir = output_gcs_dir,
