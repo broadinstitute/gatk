@@ -36,7 +36,7 @@ import java.util.stream.Stream;
 
 public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
     // null print stream for the tests
-    private static final PrintStream nullMessageStream = new PrintStream(new NullOutputStream());
+    private static final PrintStream nullMessageStream = new PrintStream(NullOutputStream.NULL_OUTPUT_STREAM);
 
 //======================================================================================================================
 // Methods for computing individual annotations
