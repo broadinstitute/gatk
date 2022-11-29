@@ -324,9 +324,9 @@ task AnnotateVCF {
     # Runtime settings:
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
-        memory: "32 GB"
-        cpu: "2"
-        preemptible: 5
+        memory: "64 GB"
+        cpu: "4"
+        preemptible: 3
         disks: "local-disk 2000 HDD"
     }
     # ------------------------------------------------
