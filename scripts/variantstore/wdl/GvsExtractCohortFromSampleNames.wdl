@@ -2,6 +2,7 @@ version 1.0
 
 import "GvsPrepareRangesCallset.wdl" as GvsPrepareCallset
 import "GvsExtractCallset.wdl" as GvsExtractCallset
+import "GvsUtils.wdl" as Utils
 
 # Workflow used by AoU to extract variants for a given cohort of sample_names
 
@@ -25,7 +26,7 @@ workflow GvsExtractCohortFromSampleNames {
     String extraction_uuid
     String filter_set_name
     String output_file_base_name
-    Int scatter_count
+    Int? scatter_count
 
     String? output_gcs_dir
     # set to "NONE" if all the reference data was loaded into GVS in GvsImportGenomes
@@ -41,6 +42,28 @@ workflow GvsExtractCohortFromSampleNames {
   }
 
   Boolean write_cost_to_db = if ((gvs_project != destination_project_id) || (gvs_project != query_project)) then false else true
+
+  call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
+    input:
+      query_project = query_project,
+      fq_table = "~{gvs_project}.~{gvs_dataset}.sample_info"
+  }
+
+  call Utils.GetNumSamplesLoaded {
+    input:
+      fq_sample_table = "~{gvs_project}.~{gvs_dataset}.sample_info",
+      project_id = gvs_project,
+      sample_table_timestamp = SamplesTableDatetimeCheck.last_modified_timestamp
+  }
+
+  Int effective_scatter_count = if defined(scatter_count) then select_first([scatter_count])
+                                else if GetNumSamplesLoaded.num_samples < 100 then 50 # Quickstart
+                                     else if GetNumSamplesLoaded.num_samples < 1000 then 250
+                                          else if GetNumSamplesLoaded.num_samples < 5000 then 500
+                                               else if GetNumSamplesLoaded.num_samples < 20000 then 1000 # Stroke Anderson
+                                                    else if GetNumSamplesLoaded.num_samples < 50000 then 5000
+                                                         else if GetNumSamplesLoaded.num_samples < 100000 then 10000 # Charlie
+                                                              else 20000
 
   # writing the array to a file has to be done in a task
   # https://support.terra.bio/hc/en-us/community/posts/360071465631-write-lines-write-map-write-tsv-write-json-fail-when-run-in-a-workflow-rather-than-in-a-task
@@ -80,7 +103,7 @@ workflow GvsExtractCohortFromSampleNames {
       cohort_dataset_name = destination_dataset_name,
       extract_table_prefix = cohort_table_prefix,
 
-      scatter_count = scatter_count,
+      scatter_count = effective_scatter_count,
       filter_set_name = filter_set_name,
       output_file_base_name = output_file_base_name,
       output_gcs_dir = output_gcs_dir,
