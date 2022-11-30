@@ -362,6 +362,12 @@ task PrepAnnotationJson {
     String output_genes_gcp_path = output_path + 'genes/'
     String output_annotations_gcp_path = output_path + 'annotations/'
 
+    parameter_meta {
+        annotation_json: {
+            localization_optional: true
+        }
+    }
+
     ## note: these temp files do not currently get cleaned up as some of them may be helpful for recovery.
 
     command <<<
@@ -374,7 +380,7 @@ task PrepAnnotationJson {
         set -o errexit -o nounset -o pipefail -o xtrace
 
         # for debugging purposes only
-        gsutil cp ~{annotation_json} '~{output_annotations_gcp_path}' #TODO: Can we run this task without cp-ing down this file?
+        gsutil cp ~{annotation_json} '~{output_annotations_gcp_path}'
 
         ## the annotation jsons are split into the specific VAT schema
         python3 /app/create_variant_annotation_table.py \
