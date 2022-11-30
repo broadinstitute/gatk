@@ -834,17 +834,12 @@ public class ExtractCohortEngine {
                 // because it would break the clustering indexing
 
                 // We want to look upstream... but don't want to go past the beginning of a chromosome.  Check for underflow by
-                // explicitly checking the chromosome by decoding the adjustment to locations that we make for chromosome.  If
-                // we accidentally switch chromosomes, just start at the beginning of the chromosome that we started on.
+                // calculating the start of the current chromosome.  Math.max ensures that it'll work as a floor, stopping
+                // the subtraction from going too far back.
                 long adjustedStartingLocation = (minLocation - IngestConstants.MAX_DELETION_SIZE + 1);
+                long startOfChromosome = (minLocation / SchemaUtils.chromAdjustment) * SchemaUtils.chromAdjustment;
+                adjustedStartingLocation = Math.max(startOfChromosome, adjustedStartingLocation);
 
-                long startingChromosome = minLocation / SchemaUtils.chromAdjustment;
-                long adjustedStartingChromosome = adjustedStartingLocation / SchemaUtils.chromAdjustment;
-
-                if (startingChromosome != adjustedStartingChromosome) {
-                    // This is just the start of the chromosome
-                    adjustedStartingLocation = startingChromosome * SchemaUtils.chromAdjustment;
-                }
                 final String vetRowRestriction =
                         "location >= " + adjustedStartingLocation + " AND location <= " + maxLocation + sampleRestriction;
                 try (StorageAPIAvroReader vetReader = new StorageAPIAvroReader(vetTableRef, vetRowRestriction, projectID)) {
@@ -989,17 +984,11 @@ public class ExtractCohortEngine {
         // because it would break the clustering indexing
 
         // We want to look upstream... but don't want to go past the beginning of a chromosome.  Check for underflow by
-        // explicitly checking the chromosome by decoding the adjustment to locations that we make for chromosome.  If
-        // we accidentally switch chromosomes, just start at the beginning of the chromosome that we started on.
+        // calculating the start of the current chromosome.  Math.max ensures that it'll work as a floor, stopping
+        // the subtraction from going too far back.
         long adjustedStartingLocation = (minLocation - IngestConstants.MAX_DELETION_SIZE + 1);
-
-        long startingChromosome = minLocation / SchemaUtils.chromAdjustment;
-        long adjustedStartingChromosome = adjustedStartingLocation / SchemaUtils.chromAdjustment;
-
-        if (startingChromosome != adjustedStartingChromosome) {
-            // This is just the start of the chromosome
-            adjustedStartingLocation = startingChromosome * SchemaUtils.chromAdjustment;
-        }
+        long startOfChromosome = (minLocation / SchemaUtils.chromAdjustment) * SchemaUtils.chromAdjustment;
+        adjustedStartingLocation = Math.max(startOfChromosome, adjustedStartingLocation);
 
         final String vetRowRestriction =
                 "location >= " + adjustedStartingLocation+ " AND location <= " + maxLocation;
