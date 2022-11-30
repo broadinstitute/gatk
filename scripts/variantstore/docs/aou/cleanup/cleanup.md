@@ -3,9 +3,9 @@
 During the normal course of creating an AoU callset several large and expensive artifacts are created:
 
 * BigQuery dataset
+* Terra workspace
 * Avro files (Delta onward)
 * Hail VariantDataset (VDS) (Delta onward)
-* TODO workspaces? Ask Sophie
 
 The current Variants policy for AoU callsets is effectively to retain all artifacts for all callset versions forever. As
 the storage costs for these artifacts can be very significant (particularly from Delta onward), the Variants team would
@@ -103,51 +103,52 @@ lack of familiarity with Hail unsurprisingly caused us to make several wrong tur
 
 ## Historical cleanup
 
-### BigQuery datasets
+### BigQuery workspaces and datasets
 
-Several large datasets exist within the `aou-genomics-curation-prod` project, most of
-which would now be considered historical (methodology [here](#code-for-querying-datasets-and-their-sizes)):
+Several large datasets exist within the `aou-genomics-curation-prod` project, most of which would now be considered
+historical (methodology [here](#code-for-querying-datasets-and-their-sizes)). I am currently assuming our datasets are
+using the Logical storage billing model as this is the default and I have not seen any evidence that we have ever tried
+to use the Physical model.
 
-| Name | Size (TiB) | Notes              |
-|------|------------|--------------------|
-|alpha1_1000|6.17| ?                  |
-|alpha2_prelim2|205.41| ?                  |
-|aou_wgs|469.92| Beta + Charlie?    |
-|aou_wgs_10k|53.18| ?                  |
-|aou_wgs_fullref_v2|691.2| Delta              |
-|batch_effects_test_v1|15.25| ?                  |
-|beta2_99k|385.84| Beta intermediate? |
-|beta_release|1004.57| Beta?              |
-|cdr_metadata|0.0| ?                  |
-|nosa_wdl_test_v1|0.06| ?                  |
-|rc_add_AD_1000|3.84| ?                  |
-|temp_tables|0.0| ?                  |
+| Dataset Name          | Total $ / month | Dataset Logical $ / month | Dataset Physical $ / month | Workspace                                                                                                                                                    | Workspace Storage $ / month | Notes |
+|-----------------------|-----------------|---------------------------|----------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------|-------|
+| alpha1_1000           | 67.17           | 67.17                     | 18.50                      | ?                                                                                                                                                            | ?                           |
+| alpha2_prelim2        | 2103.38         | 2103.38                   | 755.85                     | ?                                                                                                                                                            | ?                           |
+| aou_wgs               | 7391.13         | 6916.36                   | 1816.46                    | [GVS AoU WGS Charlie](https://app.terra.bio/#workspaces/allofus-drc-wgs-dev/GVS%20AoU%20WGS%20Charlie)                                                       | 474.77                      |
+| aou_wgs_10k           | 1612.33         | 1091.13                   | 310.96                     | [GVS AoU WGS 10K Callset](https://app.terra.bio/#workspaces/allofus-drc-wgs-dev/GVS%20AoU%20WGS%2010K%20Callset)                                             | 521.20                      |
+| aou_wgs_fullref_v2    | 16716.52        | 14155.77                  | 3866.40                    | [GVS AoU WGS Delta Callset v2](https://app.terra.bio/#workspaces/allofus-drc-wgs-dev/GVS%20AoU%20WGS%20Delta%20Callset%20v2)                                 | 2560.75                     |
+| batch_effects_test_v1 | 164.38          | 156.13                    | 42.80                      | [AoU Saliva and Blood Batch Effects Test](https://app.terra.bio/#workspaces/gp-dsp-gvs-operations-terra/AoU%20Saliva%20and%20Blood%20Batch%20Effects%20Test) | 8.25                        |
+| beta2_99k             | 5571.78         | 4988.78                   | 1203.12                    | [AoU_DRC_WGS_12-6-21_beta_ingest](https://app.terra.bio/#workspaces/allofus-drc-wgs-dev/AoU_DRC_WGS_12-6-21_beta_ingest)                                     | 583.00                      |
+| beta_release          | 10286.79        | 10286.79                  | 3086.9                     | ?                                                                                                                                                            | ?                           |
+| cdr_metadata          | 0.00            | 0.00                      | 0.00                       | ?                                                                                                                                                            | ?                           |
+| rc_add_AD_1000        | 78.59           | 78.59                     | 22.57                      | ?                                                                                                                                                            | ?                           |
+| temp_tables           | 0.00            | 0.00                      | 0.00                       |                                                                                                                                                              | ?                           |
 
 ## Code for querying datasets and their sizes
 
 With PMI ops auth:
 
 ```shell
-i=0
-echo '[' > out.json
-for dataset in $(bq ls --project_id aou-genomics-curation-prod --format prettyjson | jq -r '..|.datasetId? // empty')
-do
-    if [[ $i -ne 0 ]]; then
-        echo ',' >> out.json
-    fi
-    i=$((i+1))
+bq query --project_id='aou-genomics-curation-prod' --format=csv --use_legacy_sql=false '
 
-    bq query --nouse_legacy_sql --project_id=aou-genomics-curation-prod --format=prettyjson "
-    
-    SELECT
-        '${dataset}' as dataset,
-        ROUND(SUM(size_bytes) / POWER(2, 40), 2) as tebibytes
-    FROM
-      \`aou-genomics-curation-prod.${dataset}.__TABLES__\`
+SELECT
+  table_schema as dataset_name,
+  -- https://cloud.google.com/bigquery/pricing#storage
+  -- https://cloud.google.com/bigquery/docs/datasets-intro#dataset_storage_billing_models
+  ROUND((SUM(active_logical_bytes) / POW(1024, 3)) * 0.02 + (SUM(long_term_logical_bytes) / POW(1024, 3)) * 0.01, 2) AS logical_dataset_storage_cost,
+  ROUND((SUM(active_physical_bytes) / POW(1024, 3)) * 0.04 + (SUM(long_term_physical_bytes) / POW(1024, 3)) * 0.02, 2) AS physical_dataset_storage_cost,
+  -- ROUND((SUM(active_logical_bytes) / POW(1024, 3)) * 0.02, 2) AS active_logical,
+  -- ROUND((SUM(long_term_logical_bytes) / POW(1024, 3)) * 0.01, 2) AS long_term_logical,
+  -- ROUND((SUM(active_physical_bytes) / POW(1024, 3)) * 0.04, 2) AS active_physical,
+  -- ROUND((SUM(long_term_physical_bytes) / POW(1024, 3)) * 0.02, 2) AS long_term_physical
+FROM
+  region-us.INFORMATION_SCHEMA.TABLE_STORAGE
+GROUP BY
+  project_id,
+  project_number,
+  table_schema
+ORDER BY
+  table_schema
 
-    " >> out.json
-done
-echo ']' >> out.json
-
-cat out.json | jq -r '.[] | .[0] | [.dataset, .tebibytes] | @tsv' | sed "s/\t/|/" | sed -E 's/(.*)/|\1|/'
+'
 ```
