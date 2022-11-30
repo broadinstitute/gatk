@@ -73,10 +73,10 @@ def skip_vcf_header(fp):
     :return: The VCF Header (as a text block) and th next line that is not a header line
     """
     vcf_header = ""
-    while (line := fp.readline().rstrip()):
-        if line.startswith("#"):
-            vcf_header += line + '\n'
-        else:
+    for line in fp:
+        line = line.rstrip()
+        vcf_header += line + '\n'
+        if not line.startswith("##"):
             return vcf_header, line
 
 

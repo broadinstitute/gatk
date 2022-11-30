@@ -171,7 +171,7 @@ task StripCustomAnnotationsFromSitesOnlyVCF {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-561_var_store_2022_11_29"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-561_var_store_2022_11_29a"
         memory: "7 GiB"
         cpu: "2"
         preemptible: 3
@@ -312,7 +312,6 @@ task AnnotateVCF {
         # Add AC/AN/AF as custom annotations
         ## use --skip-ref once you are on a version of nirvana later than 3.14 (once they have created a docker image for it)
         dotnet ~{custom_creation_location} customvar \
-            --skip-ref \
             -r $DATA_SOURCES_FOLDER~{path_reference} \
             -i ~{custom_annotations_file} \
             -o $CUSTOM_ANNOTATIONS_FOLDER
