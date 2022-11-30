@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.copynumber.utils.genotyping;
 
-import com.google.common.collect.HashMultiset;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.LinkedHashMultiset;
 import com.google.common.collect.Multiset;
 import htsjdk.samtools.util.Locatable;
 import org.apache.commons.math3.special.Beta;
@@ -184,7 +184,7 @@ public final class NaiveHeterozygousPileupGenotypingUtils {
             final int maxNumHetSites = hetAllelicCountsPerSample.stream()
                     .mapToInt(AllelicCountCollection::size)
                     .max().getAsInt();
-            final Multiset<SimpleInterval> hetSitesMultiset = HashMultiset.create(maxNumHetSites);
+            final Multiset<SimpleInterval> hetSitesMultiset = LinkedHashMultiset.create(maxNumHetSites);
             hetAllelicCountsPerSample.stream()
                     .map(AllelicCountCollection::getIntervals)
                     .forEach(hetSitesMultiset::addAll);
