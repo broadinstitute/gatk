@@ -118,7 +118,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - VS-741-fix-indefinite-freeze-in-split-intervals-task-when-using-exome-data
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
