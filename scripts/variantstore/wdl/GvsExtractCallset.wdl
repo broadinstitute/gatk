@@ -93,20 +93,24 @@ workflow GvsExtractCallset {
                                                          else if GetNumSamplesLoaded.num_samples < 100000 then 20000 # Charlie
                                                               else 40000
 
+  # WDL 1.0 trick to set a variable ('none') to be undefined.
+  if (false) {
+    File? none = ""
+  }
+
   call Utils.SplitIntervals {
     input:
       intervals = interval_list,
       ref_fasta = reference,
       ref_fai = reference_index,
       ref_dict = reference_dict,
-      interval_weights_bed = ScaleXYBedValues.xy_scaled_bed,
+      interval_weights_bed = if (use_interval_weights) then ScaleXYBedValues.xy_scaled_bed else none,
       intervals_file_extension = intervals_file_extension,
       scatter_count = effective_scatter_count,
       output_gcs_dir = output_gcs_dir,
       split_intervals_disk_size_override = split_intervals_disk_size_override,
       split_intervals_mem_override = split_intervals_mem_override,
-      gatk_override = gatk_override,
-      use_interval_weights = use_interval_weights
+      gatk_override = gatk_override
   }
 
   call Utils.GetBQTableLastModifiedDatetime as FilterSetInfoTimestamp {

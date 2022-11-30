@@ -56,7 +56,6 @@ task SplitIntervals {
     File ref_fai
     File ref_dict
     Int scatter_count
-    Boolean use_interval_weights = true
     File? interval_weights_bed
     String? intervals_file_extension
     String? split_intervals_extra_args
@@ -73,9 +72,7 @@ task SplitIntervals {
   Int disk_memory = if (defined(split_intervals_mem_override)) then split_intervals_mem_override else 16
   Int java_memory = disk_memory - 4
 
-  String gatkTool = if (use_interval_weights && defined(interval_weights_bed)) then 'WeightedSplitIntervals' else 'SplitIntervals'
-  # This is hacky but it only has to work for now
-  String using_weighted_beds =  if (use_interval_weights) then "using them!" else ""
+  String gatkTool = if (defined(interval_weights_bed)) then 'WeightedSplitIntervals' else 'SplitIntervals'
 
   parameter_meta {
     intervals: {
@@ -100,20 +97,12 @@ task SplitIntervals {
 
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
-    WEIGHTED_BED_BEING_USED="~{using_weighted_beds}"
-    if [ -z "$WEIGHTED_BED_BEING_USED" ]
-    then
-      WEIGHT_BED_ARG=""
-    else
-      WEIGHT_BED_ARG="~{"--weight-bed-file " + interval_weights_bed}"
-    fi
-
     mkdir interval-files
     gatk --java-options "-Xmx~{java_memory}g" ~{gatkTool} \
       --dont-mix-contigs \
       -R ~{ref_fasta} \
       ~{"-L " + intervals} \
-      $WEIGHT_BED_ARG \
+      ~{"--weight-bed-file " + interval_weights_bed} \
       -scatter ~{scatter_count} \
       -O interval-files \
       ~{"--extension " + intervals_file_extension} \
