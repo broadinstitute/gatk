@@ -116,7 +116,8 @@ task ExtractFromNonSuperpartitionedTables {
             SELECT sample_id, sample_name, '40',
             'gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list' as intervals_file
             FROM \`~{project_id}.~{dataset}.sample_info\`
-            WHERE withdrawn IS NULL
+            WHERE withdrawn IS NULL AND
+            is_control = false
             ORDER BY sample_id
         "
 
@@ -199,7 +200,8 @@ task ExtractFromSuperpartitionedTables {
                 SELECT location, v.sample_id, ref, REPLACE(alt,',<NON_REF>','') alt, call_GT as GT, call_AD as AD, call_GQ as GQ, cast(SPLIT(call_pl,',')[OFFSET(0)] as int64) as RGQ
                 FROM \`~{project_id}.~{dataset}.vet_${str_table_index}\` v
                 INNER JOIN \`~{project_id}.~{dataset}.sample_info\` s ON s.sample_id = v.sample_id
-                WHERE withdrawn IS NULL
+                WHERE withdrawn IS NULL AND
+                is_control = false
                 ORDER BY location
             "
 
@@ -209,7 +211,8 @@ task ExtractFromSuperpartitionedTables {
                 SELECT location, r.sample_id, length, state
                 FROM \`~{project_id}.~{dataset}.ref_ranges_${str_table_index}\` r
                 INNER JOIN \`~{project_id}.~{dataset}.sample_info\` s ON s.sample_id = r.sample_id
-                WHERE withdrawn IS NULL
+                WHERE withdrawn IS NULL AND
+                is_control = false
                 ORDER BY location
             "
         done
