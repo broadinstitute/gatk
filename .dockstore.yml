@@ -142,6 +142,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rc_update_nirvana_for_tieout
    - name: GvsCreateVATAnnotations
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVATAnnotations.wdl
@@ -151,6 +152,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rc_update_nirvana_for_tieout
    - name: GvsValidateVat
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/variant_annotations_table/GvsValidateVAT.wdl
