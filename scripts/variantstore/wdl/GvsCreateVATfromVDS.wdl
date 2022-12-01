@@ -222,8 +222,9 @@ task RemoveDuplicatesFromSitesOnlyVCF {
         ## track the dropped variants with N's in the reference (Since Nirvana cant handle N as a base, drop them for now)
         bcftools view --threads 4 -i 'REF~"N"' -O u sites_only.bcf | bcftools query -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > track_dropped.tsv
 
-        echo_date "VAT: filter out sites with N's in the reference"
-        bcftools view --threads 4 -e 'REF~"N"' -O b sites_only.bcf -o filtered_sites_only.bcf
+        echo_date "VAT: filter out sites with N's in the reference AND sites with AC=0"
+        # TODO - NOTE - we are NOT tracking the sites with AC=0 - should we? For Lee (Rori is checking)
+        bcftools view --threads 4 -e 'REF~"N" || AC=0' -O b sites_only.bcf -o filtered_sites_only.bcf
         rm sites_only.bcf
 
         echo_date "VAT: normalize, left align and split multi allelic sites to new lines, remove duplicate lines"
