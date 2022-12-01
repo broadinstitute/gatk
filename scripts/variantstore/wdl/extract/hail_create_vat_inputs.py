@@ -94,7 +94,7 @@ def matrix_table_ac_an_af(mt, ancestry_file):
         ac_an_af=hl.agg.call_stats(mt.GT, mt.alleles),
         call_stats_by_pop=hl.agg.group_by(mt.pop, hl.agg.call_stats(mt.GT, mt.alleles)),
     )
-    return hl.methods.split_multi(ac_an_af_mt, left_aligned=True) # split each alternate allele onto it's own row
+    return hl.methods.split_multi(ac_an_af_mt, left_aligned=True) # split each alternate allele onto it's own row. This will also remove all spanning delstions for us
 
 
 def vds_ac_an_af(mt, vds):
