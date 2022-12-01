@@ -1,5 +1,3 @@
-from datetime import datetime
-
 import json
 import ijson
 import gzip
