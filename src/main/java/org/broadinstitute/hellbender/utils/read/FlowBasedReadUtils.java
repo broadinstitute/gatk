@@ -29,7 +29,7 @@ public class FlowBasedReadUtils {
 
         private String  reversedFlowOrder = null;
 
-        ReadGroupInfo(final SAMReadGroupRecord readGroup) {
+        public ReadGroupInfo(final SAMReadGroupRecord readGroup) {
 
             Utils.nonNull(readGroup);
             this.flowOrder = readGroup.getFlowOrder();

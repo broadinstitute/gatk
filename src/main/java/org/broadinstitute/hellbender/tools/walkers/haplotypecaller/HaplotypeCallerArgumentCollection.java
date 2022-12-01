@@ -264,7 +264,7 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
                 MIN_BASE_QUALITY_SCORE_SHORT_NAME, "0",
                 FILTER_ALLELES, "true",
                 FILTER_ALLELES_SOR_THRESHOLD, "3",
-                FLOW_ASSEMBLY_COLLAPSE_HMER_SIZE_LONG_NAME, "20",
+                FLOW_ASSEMBLY_COLLAPSE_HMER_SIZE_LONG_NAME, String.valueOf(AssemblyBasedCallerUtils.DETERMINE_COLLAPSE_THRESHOLD),
                 OVERRIDE_FRAGMENT_SOFTCLIP_CHECK_LONG_NAME, "true",
                 FlowBasedAlignmentArgumentCollection.FLOW_LIKELIHOOD_PARALLEL_THREADS_LONG_NAME, "2",
                 FlowBasedAlignmentArgumentCollection.FLOW_LIKELIHOOD_OPTIMIZED_COMP_LONG_NAME, "true",

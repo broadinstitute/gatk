@@ -4,6 +4,7 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFileWriter;
+import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
@@ -52,6 +53,7 @@ import java.util.stream.Collectors;
 public final class AssemblyBasedCallerUtils {
 
     public static final int REFERENCE_PADDING_FOR_ASSEMBLY = 500;
+    public static final int DETERMINE_COLLAPSE_THRESHOLD = -1;
     public static final int NUM_HAPLOTYPES_TO_INJECT_FORCE_CALLING_ALLELES_INTO = 5;
     public static final String SUPPORTED_ALLELES_TAG="XA";
     public static final String CALLABLE_REGION_TAG = "CR";
@@ -363,8 +365,12 @@ public final class AssemblyBasedCallerUtils {
         final SWParameters haplotypeToReferenceSWParameters = argumentCollection.getHaplotypeToReferenceSWParameters();
 
         // establish reference mapper, if needed
-        final LongHomopolymerHaplotypeCollapsingEngine haplotypeCollapsing = (argumentCollection.flowAssemblyCollapseHKerSize > 0 && LongHomopolymerHaplotypeCollapsingEngine.needsCollapsing(refHaplotype.getBases(), argumentCollection.flowAssemblyCollapseHKerSize, logger))
-                                            ? new LongHomopolymerHaplotypeCollapsingEngine(argumentCollection.flowAssemblyCollapseHKerSize, argumentCollection.flowAssemblyCollapsePartialMode, fullReferenceWithPadding,
+        int collapseHmerSize = argumentCollection.flowAssemblyCollapseHKerSize;
+        if (collapseHmerSize == DETERMINE_COLLAPSE_THRESHOLD){
+            collapseHmerSize = AssemblyBasedCallerUtils.determineFlowAssemblyColapseHmer(header);
+        }
+        final LongHomopolymerHaplotypeCollapsingEngine haplotypeCollapsing = ( collapseHmerSize > 0 && LongHomopolymerHaplotypeCollapsingEngine.needsCollapsing(refHaplotype.getBases(), collapseHmerSize, logger))
+                                            ? new LongHomopolymerHaplotypeCollapsingEngine(collapseHmerSize, argumentCollection.flowAssemblyCollapsePartialMode, fullReferenceWithPadding,
                 paddedReferenceLoc, logger, argumentCollection.assemblerArgs.debugAssembly, aligner, argumentCollection.getHaplotypeToReferenceSWParameters())
                                             : null;
         if ( haplotypeCollapsing != null ) {
@@ -409,6 +415,18 @@ public final class AssemblyBasedCallerUtils {
             }
             throw e;
         }
+    }
+
+    private static int determineFlowAssemblyColapseHmer(SAMFileHeader readsHeader) {
+        int result = 0;
+        List<SAMReadGroupRecord> rgr = readsHeader.getReadGroups();
+        for (SAMReadGroupRecord rg : rgr) {
+            FlowBasedReadUtils.ReadGroupInfo rgi = new FlowBasedReadUtils.ReadGroupInfo(rg);
+            if (rgi.maxClass >= result) {
+                result = rgi.maxClass;
+            }
+        }
+        return result;
     }
 
     /**
@@ -1217,4 +1235,5 @@ public final class AssemblyBasedCallerUtils {
         result.setAttribute(ReferenceConfidenceModel.ORIGINAL_SOFTCLIP_END_TAG, softEnd);
         return result;
     }
+
 }
