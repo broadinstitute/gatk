@@ -187,32 +187,45 @@ task ExtractAnAcAfFromVCF {
     }
 }
 
+
 task AnnotateVCF {
     input {
-        File input_vcf
-        File input_vcf_index
+        File input_vcf ## TODO do we need a sites only index file?
         String output_annotated_file_name
         File nirvana_data_tar
         File custom_annotations_file
+        File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     }
+
+    parameter_meta {
+        nirvana_data_tar: {
+          localization_optional: true
+        }
+    }
+
     String annotation_json_name = output_annotated_file_name + ".json.gz"
     String annotation_json_name_jsi = annotation_json_name + ".jsi"
-    String nirvana_location = "/opt/nirvana/Nirvana.dll"
-    String custom_creation_location = "/opt/nirvana/SAUtils.dll"
+    String nirvana_location = "/Nirvana/Nirvana.dll"
+    String custom_creation_location = "/Nirvana/SAUtils.dll"
     String path = "/Cache/GRCh38/Both"
     String path_supplementary_annotations = "/SupplementaryAnnotation/GRCh38"
     String path_reference = "/References/Homo_sapiens.GRCh38.Nirvana.dat"
 
     command <<<
-        set -e
+        bash ~{monitoring_script} > monitoring.log &
+
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         # =======================================
         # Handle our data sources:
 
+        # gcloud storage cp ~{nirvana_data_tar} .
         echo "Extracting annotation data sources tar/gzip file..."
         mkdir datasources_dir
-        tar zxvf ~{nirvana_data_tar} -C datasources_dir  --strip-components 2
-        DATA_SOURCES_FOLDER="$PWD/datasources_dir"
+        tar xfz *.tar.gz -C datasources_dir
+        DATA_SOURCES_FOLDER="$PWD/datasources_dir/references"
 
 
         # =======================================
@@ -232,28 +245,29 @@ task AnnotateVCF {
 
 
         dotnet ~{nirvana_location} \
+            -i ~{input_vcf} \
             -c $DATA_SOURCES_FOLDER~{path} \
             --sd $DATA_SOURCES_FOLDER~{path_supplementary_annotations} \
             --sd $CUSTOM_ANNOTATIONS_FOLDER \
             -r $DATA_SOURCES_FOLDER~{path_reference} \
-            -i ~{input_vcf} \
             -o ~{output_annotated_file_name}
 
     >>>
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "annotation/nirvana:3.14"
-        memory: "32 GB"
-        cpu: "2"
-        preemptible: 5
-        disks: "local-disk 250 HDD"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
+        memory: "64 GB"
+        cpu: "4"
+        preemptible: 3
+        disks: "local-disk 2000 HDD"
     }
     # ------------------------------------------------
     # Outputs:
     output {
         File annotation_json = "~{annotation_json_name}"
         File annotation_json_jsi = "~{annotation_json_name_jsi}"
+        File monitoring_log = "monitoring.log"
     }
 }
 
