@@ -51,7 +51,14 @@ workflow GvsCreateVATfromVDS {
             custom_annotations_file = StripCustomAnnotationsFromSitesOnlyVCF.output_custom_annotations_file,
     }
 
-    call PrepAnnotationJson {
+    call PrepVtAnnotationJson {
+        input:
+            annotation_json = AnnotateVCF.annotation_json,
+            output_file_suffix = "${input_vcf_name}.json.gz",
+            output_path = output_path,
+    }
+
+    call PrepGenesAnnotationJson {
         input:
             annotation_json = AnnotateVCF.annotation_json,
             output_file_suffix = "${input_vcf_name}.json.gz",
@@ -68,7 +75,8 @@ workflow GvsCreateVATfromVDS {
             output_path = output_path,
             filter_set_name = filter_set_name,
             vat_version = vat_version,
-            prep_jsons_done = PrepAnnotationJson.done,
+            prep_vt_json_done = PrepVtAnnotationJson.done,
+            prep_genes_json_done = PrepGenesAnnotationJson.done
     }
 
 
@@ -347,57 +355,45 @@ task AnnotateVCF {
     }
 }
 
-
-task PrepAnnotationJson {
+task PrepVtAnnotationJson {
     input {
         File annotation_json
         String output_file_suffix
         String output_path
-        File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     }
 
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
     String output_vt_json = "vat_vt_bq_load" + output_file_suffix
-    String output_genes_json = "vat_genes_bq_load" + output_file_suffix
     String output_vt_gcp_path = output_path + 'vt/'
-    String output_genes_gcp_path = output_path + 'genes/'
     String output_annotations_gcp_path = output_path + 'annotations/'
 
-#    parameter_meta {
-#        annotation_json: {
-#            localization_optional: true
-#        }
-#    }
-
-    ## note: these temp files do not currently get cleaned up as some of them may be helpful for recovery.
-
     command <<<
-        # set -e
+        set -o errexit -o nounset -o pipefail -o xtrace
 
+        # Kick off the monitoring script
         bash ~{monitoring_script} > monitoring.log &
 
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
-        set -o errexit -o nounset -o pipefail -o xtrace
 
         # for debugging purposes only
         gsutil cp ~{annotation_json} '~{output_annotations_gcp_path}'
 
         ## the annotation jsons are split into the specific VAT schema
-        python3 /app/create_variant_annotation_table.py \
-            --annotated_json ~{annotation_json} \
-            --output_vt_json ~{output_vt_json} \
-            --output_genes_json ~{output_genes_json}
+        python3 /app/create_vt_bqloadjson_from_annotations.py \
+        --annotated_json ~{annotation_json} \
+        --output_vt_json ~{output_vt_json}
 
         gsutil cp ~{output_vt_json} '~{output_vt_gcp_path}'
-        gsutil cp ~{output_genes_json} '~{output_genes_gcp_path}'
 
     >>>
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-561_var_store_2022_11_29"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-561_var_store_2022_12_01"
         memory: "15 GB"
-        preemptible: 3
+        preemptible: 0
         cpu: "1"
         disks: "local-disk 500 HDD"
     }
@@ -405,12 +401,57 @@ task PrepAnnotationJson {
     # Outputs:
     output {
         File vat_vt_json="~{output_vt_json}"
-        File vat_genes_json="~{output_genes_json}"
         Boolean done = true
         File monitoring_log = "monitoring.log"
     }
 }
 
+task PrepGenesAnnotationJson {
+    input {
+        File annotation_json
+        String output_file_suffix
+        String output_path
+    }
+
+    # Kick off the monitoring script
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
+    String output_genes_json = "vat_genes_bq_load" + output_file_suffix
+    String output_genes_gcp_path = output_path + 'genes/'
+
+    command <<<
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        bash ~{monitoring_script} > monitoring.log &
+
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+
+        ## the annotation jsons are split into the specific VAT schema
+        python3 /app/create_genes_bqloadjson_from_annotations.py \
+        --annotated_json ~{annotation_json} \
+        --output_genes_json ~{output_genes_json}
+
+        gsutil cp ~{output_genes_json} '~{output_genes_gcp_path}'
+
+    >>>
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-561_var_store_2022_12_01"
+        memory: "15 GB"
+        preemptible: 0
+        cpu: "1"
+        disks: "local-disk 500 HDD"
+    }
+    # ------------------------------------------------
+    # Outputs:
+    output {
+        File vat_genes_json="~{output_genes_json}"
+        Boolean done = true
+        File monitoring_log = "monitoring.log"
+    }
+}
 
 
 task BigQueryLoadJson {
@@ -428,7 +469,8 @@ task BigQueryLoadJson {
         String project_id
         String dataset_name
         String output_path
-        Boolean prep_jsons_done
+        Boolean prep_vt_json_done
+        Boolean prep_genes_json_done
     }
 
     # If the vat version is undefined or v1 then the vat tables would be named like filter_vat, otherwise filter_vat_v2.
