@@ -266,7 +266,7 @@ task RemoveDuplicatesFromSitesOnlyVCF {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-10-25-alpine"
         maxRetries: 3
         memory: "16 GB"
-        preemptible: 3
+        preemptible: 0
         cpu: "8"
         disks: "local-disk " + disk_size + " HDD"
     }
@@ -344,7 +344,7 @@ task AnnotateVCF {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
         memory: "64 GB"
         cpu: "4"
-        preemptible: 3
+        preemptible: 0
         disks: "local-disk 2000 HDD"
     }
     # ------------------------------------------------
