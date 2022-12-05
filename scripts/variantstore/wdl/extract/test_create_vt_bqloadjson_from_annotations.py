@@ -1,16 +1,8 @@
-# -*- coding: utf-8 -*-
-import uuid
-import time
-from datetime import datetime
-
-import csv
 import json
-import gzip
-import argparse
 import unittest
 import copy
 
-from create_variant_annotation_table import make_annotated_json_row
+from create_vt_bqloadjson_from_annotations import make_annotated_json_row
 
 dir='variant_annotation_table_test_files/'
 with open(dir + 'vat_expected_pathogenic.json') as vat_expected_pathogenic, open(dir + 'vat_test_pathogenic.json') as vat_test_pathogenic:
