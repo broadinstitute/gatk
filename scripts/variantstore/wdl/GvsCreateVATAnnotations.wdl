@@ -191,6 +191,7 @@ task ExtractAnAcAfFromVCF {
 task AnnotateVCF {
     input {
         File input_vcf ## TODO do we need a sites only index file?
+        File input_vcf_index
         String output_annotated_file_name
         File nirvana_data_tar
         File custom_annotations_file
