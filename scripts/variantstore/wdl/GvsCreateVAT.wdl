@@ -1,6 +1,7 @@
 version 1.0
 
 import "GvsCreateVATAnnotations.wdl" as Annotations
+# update
 
 workflow GvsCreateVAT {
     input {
