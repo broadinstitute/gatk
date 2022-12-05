@@ -186,7 +186,7 @@ task EnsureVatTableHasVariants {
         set -e
         echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
 
-        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT COUNT (DISTINCT vid) AS count FROM ~{fq_vat_table}' > bq_variant_count.csv
+        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT COUNT (DISTINCT vid) AS count FROM `~{fq_vat_table}`' > bq_variant_count.csv
 
         NUMVARS=$(python3 -c "csvObj=open('bq_variant_count.csv','r');csvContents=csvObj.read();print(csvContents.split('\n')[1]);")
 
@@ -244,7 +244,7 @@ task SpotCheckForExpectedTranscripts {
             gene_symbol,
             variant_consequence
         FROM
-            ~{fq_vat_table},
+            `~{fq_vat_table}`,
             UNNEST(consequence) AS variant_consequence
         WHERE
             contig = "chr19" AND
@@ -319,7 +319,7 @@ task SchemaNoNullRequiredFields {
               case(genomic_location is null) when true then 'genomic_location ' else '' end
            ) AS null_fields
         FROM
-            ~{fq_vat_table}
+            `~{fq_vat_table}`
         WHERE
             vid IS NULL OR
             contig IS NULL OR
@@ -381,7 +381,7 @@ task SchemaOnlyOneRowPerNullTranscript {
             vid,
             COUNT(vid) AS num_rows
         FROM
-            ~{fq_vat_table}
+            `~{fq_vat_table}`
         WHERE
             transcript_source is NULL AND
             transcript is NULL
@@ -439,7 +439,7 @@ task SchemaPrimaryKey {
             COUNT(vid) AS num_vids,
             COUNT(transcript) AS num_transcripts
         FROM
-            ~{fq_vat_table}
+            `~{fq_vat_table}`
         GROUP BY vid, transcript
         HAVING num_vids > 1 OR num_transcripts > 1' > bq_primary_key.csv
 
@@ -493,7 +493,7 @@ task SchemaEnsemblTranscripts {
             transcript,
             transcript_source
         FROM
-            ~{fq_vat_table}
+            `~{fq_vat_table}`
         WHERE
             transcript IS NOT NULL AND
             transcript_source != "Ensembl"' > bq_transcript_output.csv
@@ -548,7 +548,7 @@ task SchemaNonzeroAcAn {
             gvs_all_ac,
             gvs_all_an
         FROM
-            ~{fq_vat_table}
+            `~{fq_vat_table}`
         WHERE
             gvs_all_ac IS NULL OR
             gvs_all_ac = 0 OR
@@ -603,7 +603,7 @@ task SchemaNullTranscriptsExist {
         bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT
             vid
         FROM
-            ~{fq_vat_table}
+            `~{fq_vat_table}`
         WHERE
             transcript_source is NULL AND
             transcript is NULL' > bq_variant_count.csv
@@ -657,7 +657,7 @@ task SubpopulationMax {
         bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT
             vid
         FROM
-            ~{fq_vat_table}
+            `~{fq_vat_table}`
         WHERE
             gvs_max_af < gvs_afr_af OR
             gvs_max_af < gvs_amr_af OR
@@ -716,7 +716,7 @@ task SubpopulationAlleleCount {
         bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT
             vid
         FROM
-            ~{fq_vat_table}
+            `~{fq_vat_table}`
         WHERE
             gvs_all_ac != gvs_afr_ac + gvs_amr_ac + gvs_eas_ac + gvs_eur_ac + gvs_mid_ac + gvs_oth_ac + gvs_sas_ac'  > bq_query_output.csv
 
@@ -769,7 +769,7 @@ task SubpopulationAlleleNumber {
         bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT
         vid
         FROM
-        ~{fq_vat_table}
+        `~{fq_vat_table}`
         WHERE
         gvs_all_an != gvs_afr_an + gvs_amr_an + gvs_eas_an + gvs_eur_an + gvs_mid_an + gvs_oth_an + gvs_sas_an' > bq_an_output.csv
 
@@ -834,7 +834,7 @@ task ClinvarSignificance {
         bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT
           distinct(unnested_clinvar_classification)
           FROM
-        ~{fq_vat_table}, UNNEST(clinvar_classification) AS unnested_clinvar_classification'| sed "2 d" > bq_clinvar_classes.csv
+        `~{fq_vat_table}`, UNNEST(clinvar_classification) AS unnested_clinvar_classification'| sed "2 d" > bq_clinvar_classes.csv
 
         echo 'affects
         association
@@ -906,7 +906,7 @@ task SchemaAAChangeAndExonNumberConsistent {
         COUNT (DISTINCT vid) AS count FROM
         (
             SELECT vid
-            FROM ~{fq_vat_table}
+            FROM `~{fq_vat_table}`
             WHERE exon_number IS NULL
             AND aa_change IS NOT NULL
             AND NOT (("intron_variant" IN UNNEST(consequence) AND (variant_type IN ("insertion", "deletion"))))
@@ -917,7 +917,7 @@ task SchemaAAChangeAndExonNumberConsistent {
             AND "coding_sequence_variant" NOT IN UNNEST(consequence)
         UNION DISTINCT
             SELECT vid
-            FROM ~{fq_vat_table}
+            FROM `~{fq_vat_table}`
             WHERE exon_number IS NOT NULL
             AND aa_change IS NULL
             AND "non_coding_transcript_exon_variant" NOT IN UNNEST(consequence)
@@ -1003,47 +1003,47 @@ task SpotCheckForAAChangeAndExonNumberConsistency {
         COUNT (DISTINCT vid) FROM
         (
             SELECT vid, transcript, exon_number, aa_change, consequence, variant_type
-            FROM ~{fq_vat_table}
+            FROM `~{fq_vat_table}`
             WHERE vid = "12-42446055-C-CGACCCTGCA" AND transcript = "ENST00000610488.4" AND exon_number IS NULL
             AND aa_change = "ENSP00000479913.1:p.(Ser375_Ala376insThrLeuGln)" AND "intron_variant" IN UNNEST(consequence) AND variant_type = "insertion"
             -- Another insertion
         UNION ALL
             SELECT vid, transcript, exon_number, aa_change, consequence, variant_type
-            FROM ~{fq_vat_table}
+            FROM `~{fq_vat_table}`
             WHERE vid = "16-29810099-G-GGCGGCGGCAGCGGCA" AND transcript = "ENST00000566906.6" AND exon_number IS NULL
             AND aa_change = "ENSP00000461174.1:p.(Gly95_Ser99dup)" AND "intron_variant" IN UNNEST(consequence) AND variant_type = "insertion"
         UNION ALL
             SELECT vid, transcript, exon_number, aa_change, consequence, variant_type
-            FROM ~{fq_vat_table}
+            FROM `~{fq_vat_table}`
             WHERE vid = "7-114631524-CCAG-C" AND transcript = "ENST00000393495.7" AND exon_number IS NULL
             AND aa_change = "ENSP00000377133.3:p.(Gln63del)" AND "intron_variant" IN UNNEST(consequence) AND variant_type = "deletion"
             --another
         UNION ALL
             SELECT vid, transcript, exon_number, aa_change, consequence, variant_type
-            FROM ~{fq_vat_table}
+            FROM `~{fq_vat_table}`
             WHERE vid = "7-23198205-CTTTTTTT-C" and transcript = "ENST00000548367.2" AND exon_number IS NULL
             AND aa_change = "ENSP00000482736.1:p.(Phe25Ter)" AND "intron_variant" IN UNNEST(consequence) AND variant_type = "deletion"
         UNION ALL
             SELECT vid, transcript, exon_number, aa_change, consequence, variant_type
-            FROM ~{fq_vat_table}
+            FROM `~{fq_vat_table}`
             WHERE vid = "1-40060064-T-TA" AND transcript = "ENST00000449311.5"
             AND exon_number IS NULL AND aa_change IS NULL
             AND "intron_variant" IN UNNEST(consequence) AND variant_type = "insertion"
         UNION ALL
             SELECT vid, transcript, exon_number, aa_change, consequence, variant_type
-            FROM ~{fq_vat_table}
+            FROM `~{fq_vat_table}`
             WHERE vid = "17-1483061-T-TG" AND transcript = "ENST00000574790.5"
             AND exon_number IS NULL AND aa_change IS NULL
             AND "intron_variant" IN UNNEST(consequence) AND variant_type = "insertion"
         UNION ALL
             SELECT vid, transcript, exon_number, aa_change, consequence, variant_type
-            FROM ~{fq_vat_table}
+            FROM `~{fq_vat_table}`
             WHERE vid = "1-46560284-TG-T" AND transcript = "ENST00000371945.8"
             AND exon_number IS NULL AND aa_change IS NULL
             AND "intron_variant" IN UNNEST(consequence) AND variant_type = "deletion"
         UNION ALL
             SELECT vid, transcript, exon_number, aa_change, consequence, variant_type
-            FROM ~{fq_vat_table}
+            FROM `~{fq_vat_table}`
             WHERE vid = "6-111741100-CA-C" AND transcript = "ENST00000518295.5"
             AND exon_number IS NULL AND aa_change IS NULL
             AND "intron_variant" IN UNNEST(consequence) AND variant_type = "deletion"

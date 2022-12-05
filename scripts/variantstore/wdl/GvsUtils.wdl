@@ -89,8 +89,12 @@ task SplitIntervals {
     }
   }
 
-  command {
+  command <<<
+    # Updating to use standard shell boilerplate
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
     set -e
+
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
     mkdir interval-files
@@ -112,7 +116,7 @@ task SplitIntervals {
     if [ -n "$OUTPUT_GCS_DIR" ]; then
       gsutil -m cp *.interval_list $OUTPUT_GCS_DIR/
     fi
-  }
+  >>>
 
   runtime {
     docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2022_10_17_2a8c210ac35094997603259fa1cd784486b92e42"
@@ -164,7 +168,7 @@ task GetBQTableLastModifiedDatetime {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -202,7 +206,7 @@ task GetBQTablesMaxLastModifiedTimestamp {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -214,6 +218,7 @@ task BuildGATKJarAndCreateDataset {
   input {
     String branch_name
     String dataset_prefix
+    String dataset_suffix
   }
   meta {
     # Branch may be updated so do not call cache!
@@ -263,7 +268,7 @@ task BuildGATKJarAndCreateDataset {
     # Build a dataset name based on the branch name and the git hash of the most recent commit on this branch.
     # Dataset names must be alphanumeric and underscores only. Convert any dashes to underscores, then delete
     # any remaining characters that are not alphanumeric or underscores.
-    dataset="$(echo ~{dataset_prefix}_${branch}_${hash} | tr '-' '_' | tr -c -d '[:alnum:]_')"
+    dataset="$(echo ~{dataset_prefix}_${branch}_${hash}_~{dataset_suffix} | tr '-' '_' | tr -c -d '[:alnum:]_')"
 
     bq mk --project_id="gvs-internal" "$dataset"
 
@@ -283,7 +288,7 @@ task BuildGATKJarAndCreateDataset {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-slim"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-slim"
     disks: "local-disk 500 HDD"
   }
 }
@@ -347,7 +352,7 @@ task ScaleXYBedValues {
     }
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-10-25-alpine"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-11-17-alpine"
         maxRetries: 3
         memory: "7 GB"
         preemptible: 3
@@ -386,7 +391,7 @@ task GetNumSamplesLoaded {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -414,7 +419,7 @@ task CountSuperpartitions {
         ' | sed 1d > num_superpartitions.txt
     >>>
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
         disks: "local-disk 500 HDD"
     }
     output {
@@ -459,7 +464,7 @@ task ValidateFilterSetName {
     }
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
         memory: "3 GB"
         disks: "local-disk 500 HDD"
         preemptible: 3

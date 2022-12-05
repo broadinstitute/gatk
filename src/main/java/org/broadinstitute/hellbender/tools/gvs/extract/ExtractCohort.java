@@ -274,9 +274,9 @@ public class ExtractCohort extends ExtractTool {
     @Override
     protected String[] customCommandLineValidation() {
         final List<String> errors = new ArrayList<>();
-        if (projectID != null || datasetID != null || costObservabilityTableName != null || callSetIdentifier != null || wdlStep != null || wdlCall != null || shardIdentifier != null) {
-            if (projectID == null || datasetID == null || costObservabilityTableName == null || callSetIdentifier == null || wdlStep == null || wdlCall == null || shardIdentifier == null) {
-                errors.add("Parameters 'project-id', 'dataset-id', 'cost-observability-tablename', 'call-set-identifier', 'wdl-step', 'wdl-call', and 'shardIdentifier' must either ALL be set or ALL NOT BE set");
+        if (costObservabilityTableName != null) {
+            if (projectID == null || datasetID == null || callSetIdentifier == null || wdlStep == null || wdlCall == null || shardIdentifier == null) {
+                errors.add("Parameters 'project-id', 'dataset-id', 'call-set-identifier', 'wdl-step', 'wdl-call', and 'shardIdentifier' must be set if 'cost-observability-tablename' is set.");
             }
         }
         if (!errors.isEmpty()) {

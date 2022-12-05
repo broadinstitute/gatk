@@ -134,7 +134,11 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
+<<<<<<< HEAD:scripts/variantstore/wdl/GvsCreateVATfromVDS.wdl
         docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-561_var_store_2022_11_29"
+=======
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-11-17-alpine"
+>>>>>>> ah_var_store:scripts/variantstore/wdl/GvsCreateVAT.wdl
         memory: "1 GB"
         preemptible: 3
         cpu: "1"

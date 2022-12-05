@@ -24,6 +24,7 @@ workflow GvsExtractCallset {
     String drop_state = "NONE"
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
+    Boolean use_interval_weights = true
     File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
     File? gatk_override
 
@@ -36,6 +37,7 @@ workflow GvsExtractCallset {
     Int? split_intervals_mem_override
     Float x_bed_weight_scaling = 4
     Float y_bed_weight_scaling = 4
+    Boolean write_cost_to_db = true
   }
 
   File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
@@ -92,13 +94,18 @@ workflow GvsExtractCallset {
                                                          else if GetNumSamplesLoaded.num_samples < 100000 then 20000 # Charlie
                                                               else 40000
 
+  # WDL 1.0 trick to set a variable ('none') to be undefined.
+  if (false) {
+    File? none = ""
+  }
+
   call Utils.SplitIntervals {
     input:
       intervals = interval_list,
       ref_fasta = reference,
       ref_fai = reference_index,
       ref_dict = reference_dict,
-      interval_weights_bed = ScaleXYBedValues.xy_scaled_bed,
+      interval_weights_bed = if (use_interval_weights) then ScaleXYBedValues.xy_scaled_bed else none,
       intervals_file_extension = intervals_file_extension,
       scatter_count = effective_scatter_count,
       output_gcs_dir = output_gcs_dir,
@@ -165,6 +172,7 @@ workflow GvsExtractCallset {
         extract_maxretries_override        = extract_maxretries_override,
         emit_pls                           = emit_pls,
         emit_ads                           = emit_ads,
+        write_cost_to_db                   = write_cost_to_db
     }
   }
 
@@ -241,6 +249,7 @@ task ExtractTask {
     String fq_filter_set_site_table
     String fq_filter_set_tranches_table
     String? filter_set_name
+    Boolean write_cost_to_db
 
     # Runtime Options:
     File? gatk_override
@@ -257,6 +266,7 @@ task ExtractTask {
   }
 
   String intervals_name = basename(intervals)
+  String cost_observability_line = if (write_cost_to_db == true) then "--cost-observability-tablename ~{cost_observability_tablename}" else ""
 
   command <<<
     set -e
@@ -289,11 +299,11 @@ task ExtractTask {
         ~{true='--emit-ads' false='' emit_ads} \
         ${FILTERING_ARGS} \
         --dataset-id ~{dataset_id} \
-        --cost-observability-tablename ~{cost_observability_tablename} \
         --call-set-identifier ~{call_set_identifier} \
         --wdl-step GvsCreateCallset \
         --wdl-call ExtractTask \
-        --shard-identifier ~{intervals_name}
+        --shard-identifier ~{intervals_name} \
+        ~{cost_observability_line}
 
     # Drop trailing slash if one exists
     OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
@@ -355,7 +365,7 @@ task SumBytes {
     print(total_mb);"
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 500 HDD"
     preemptible: 3
@@ -394,7 +404,7 @@ task CreateManifest {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 500 HDD"
     preemptible: 3
@@ -436,7 +446,7 @@ task GenerateSampleListFile {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 500 HDD"
     preemptible: 3
