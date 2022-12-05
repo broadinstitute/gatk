@@ -54,7 +54,7 @@ workflow GvsCreateVATfromVDS {
     }
 
 
-    # Call split intervals on the mother interval list - Hello. 4
+    # Call split intervals on the mother interval list - Hello. 5
     # maybe 1000 (is there a way not to jump across contigs?)
     # Use SelectVariants on the sites only VCF
     # scatter, George
@@ -948,7 +948,7 @@ task SelectVariants {
 
         gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
         SelectVariants \
-            -V ~{input_vcf}.gz \
+            -V ~{input_vcf} \
             -L ~{interval_list} \
             -O ~{output_basename}.vcf
     >>>
