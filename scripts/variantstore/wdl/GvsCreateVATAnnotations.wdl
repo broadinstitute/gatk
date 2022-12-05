@@ -190,18 +190,12 @@ task ExtractAnAcAfFromVCF {
 
 task AnnotateVCF {
     input {
-        File input_vcf ## TODO do we need a sites only index file?
+        File input_vcf
         File input_vcf_index
         String output_annotated_file_name
         File nirvana_data_tar
         File custom_annotations_file
         File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
-    }
-
-    parameter_meta {
-        nirvana_data_tar: {
-          localization_optional: true
-        }
     }
 
     String annotation_json_name = output_annotated_file_name + ".json.gz"
@@ -222,10 +216,9 @@ task AnnotateVCF {
         # =======================================
         # Handle our data sources:
 
-        gcloud storage cp ~{nirvana_data_tar} .
         echo "Extracting annotation data sources tar/gzip file..."
         mkdir datasources_dir
-        tar xfz *.tar.gz -C datasources_dir
+        tar xfz ~{nirvana_data_tar} -C datasources_dir
         DATA_SOURCES_FOLDER="$PWD/datasources_dir/references"
 
 
