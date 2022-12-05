@@ -48,13 +48,13 @@ workflow GvsCreateVATfromVDS {
             ref_fai = reference_index,
             ref_dict = reference_dict,
             scatter_count = effective_scatter_count,
-            output_gcs_dir = output_path + "/intervals",
+            output_gcs_dir = output_path + "intervals",
             split_intervals_disk_size_override = split_intervals_disk_size_override,
             split_intervals_mem_override = split_intervals_mem_override,
     }
 
 
-    # Call split intervals on the mother interval list - Hello. 2
+    # Call split intervals on the mother interval list - Hello. 3
     # maybe 1000 (is there a way not to jump across contigs?)
     # Use SelectVariants on the sites only VCF
     # scatter, George
@@ -939,12 +939,15 @@ task SelectVariants {
 
     command <<<
         echo "Indexing it"
-        tabix ~{input_vcf}
+        ls -altrh
+        bgzip ~{input_vcf}
+        ls -altrh
+        tabix "~{input_vcf}.gz"
         echo "Done indexing"
 
         gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
         SelectVariants \
-            -V ~{input_vcf} \
+            -V ~{input_vcf}.gz \
             -L ~{interval_list} \
             -O ~{output_basename}.vcf.gz
     >>>
