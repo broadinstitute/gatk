@@ -266,7 +266,7 @@ task RemoveDuplicatesFromSitesOnlyVCF {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-10-25-alpine"
         maxRetries: 3
         memory: "16 GB"
-        preemptible: 0
+        preemptible: 3
         cpu: "8"
         disks: "local-disk " + disk_size + " HDD"
     }
@@ -344,7 +344,7 @@ task AnnotateVCF {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
         memory: "64 GB"
         cpu: "4"
-        preemptible: 0
+        preemptible: 3
         disks: "local-disk 2000 HDD"
     }
     # ------------------------------------------------
@@ -394,7 +394,7 @@ task PrepVtAnnotationJson {
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-561_var_store_2022_12_01"
         memory: "15 GB"
-        preemptible: 0
+        preemptible: 3
         cpu: "1"
         disks: "local-disk 500 HDD"
     }
@@ -441,7 +441,7 @@ task PrepGenesAnnotationJson {
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-561_var_store_2022_12_01"
         memory: "15 GB"
-        preemptible: 0
+        preemptible: 3
         cpu: "1"
         disks: "local-disk 500 HDD"
     }
