@@ -1,109 +1,118 @@
 version 1.0
 
-workflow GvsCreateVATfromVDS {
-    input {
-        File input_sites_only_vcf
-        File ancestry_file
+workflow JasixParse {
+    File nirvana_json = "gs://fc-secure-7d81c3a3-7065-48fc-adff-c159a735ef01/11_28/annotations/gvs_annotated.json.gz"
 
-        String project_id
-        String dataset_name
-        String filter_set_name
-        String? vat_version
-
-        String output_path
-        Int? merge_vcfs_disk_size_override
-    }
-
-    Array[String] contig_array = ["chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrX", "chrY", "chrM"]
-    File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
-    File nirvana_data_directory = "gs://gvs_quickstart_storage/Nirvana/Nirvana-references-2022-10-07.tgz"
-
-    ## TODO # do we need to shard the sites only VCF?
-    # String input_vds_name = basename(input_VDS_file)
-    ## TODO: where do we need to validate that there are no hemis?
-    String input_vcf_name = "gvs"
-
-    call MakeSubpopulationFilesAndReadSchemaFiles {
+    call JasixParseNirvanaJson {
         input:
-            input_ancestry_file = ancestry_file
-    }
-
-    call RemoveDuplicatesFromSitesOnlyVCF {
-        input:
-            sites_only_vcf = input_sites_only_vcf,
-            ref = reference
-    }
-
-    call StripCustomAnnotationsFromSitesOnlyVCF {
-        input:
-            input_vcf = RemoveDuplicatesFromSitesOnlyVCF.output_vcf,
-            custom_annotations_header = MakeSubpopulationFilesAndReadSchemaFiles.custom_annotations_template_file,
-            output_vcf_name = "${input_vcf_name}.unannotated.sites_only.vcf",
-            output_custom_annotations_filename = "ac_an_af.tsv"
-    }
-
-    ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
-    call AnnotateVCF {
-        input:
-            input_vcf = StripCustomAnnotationsFromSitesOnlyVCF.output_vcf,
-            output_annotated_file_name = "${input_vcf_name}_annotated",
-            nirvana_data_tar = nirvana_data_directory,
-            custom_annotations_file = StripCustomAnnotationsFromSitesOnlyVCF.output_custom_annotations_file,
-    }
-
-    call PrepVtAnnotationJson {
-        input:
-            annotation_json = AnnotateVCF.annotation_json,
-            output_file_suffix = "${input_vcf_name}.json.gz",
-            output_path = output_path,
-    }
-
-    call PrepGenesAnnotationJson {
-        input:
-            annotation_json = AnnotateVCF.annotation_json,
-            output_file_suffix = "${input_vcf_name}.json.gz",
-            output_path = output_path,
-    }
-
-    call BigQueryLoadJson {
-        input:
-            nirvana_schema = MakeSubpopulationFilesAndReadSchemaFiles.vat_schema_json_file,
-            vt_schema = MakeSubpopulationFilesAndReadSchemaFiles.variant_transcript_schema_json_file,
-            genes_schema = MakeSubpopulationFilesAndReadSchemaFiles.genes_schema_json_file,
-            project_id = project_id,
-            dataset_name = dataset_name,
-            output_path = output_path,
-            filter_set_name = filter_set_name,
-            vat_version = vat_version,
-            prep_vt_json_done = PrepVtAnnotationJson.done,
-            prep_genes_json_done = PrepGenesAnnotationJson.done
-    }
-
-
-    scatter(i in range(length(contig_array)) ) {
-        call BigQueryExportVat {
-            input:
-                contig = contig_array[i],
-                project_id = project_id,
-                dataset_name = dataset_name,
-                output_path = output_path,
-                vat_table = BigQueryLoadJson.vat_table_name,
-                load_jsons_done = BigQueryLoadJson.done
-        }
-    }
-
-    call MergeVatTSVs {
-        input:
-            export_done = BigQueryExportVat.done,
-            contig_array = contig_array,
-            output_path = output_path,
-            merge_vcfs_disk_size_override = merge_vcfs_disk_size_override
-    }
-
-    output {
-        File final_tsv_file = MergeVatTSVs.tsv_file
+            annotation_json = nirvana_json,
     }
 }
+
+#workflow GvsCreateVATfromVDS {
+#    input {
+#        File input_sites_only_vcf
+#        File ancestry_file
+#
+#        String project_id
+#        String dataset_name
+#        String filter_set_name
+#        String? vat_version
+#
+#        String output_path
+#        Int? merge_vcfs_disk_size_override
+#    }
+#
+#    Array[String] contig_array = ["chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrX", "chrY", "chrM"]
+#    File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
+#    File nirvana_data_directory = "gs://gvs_quickstart_storage/Nirvana/Nirvana-references-2022-10-07.tgz"
+#
+#    ## TODO # do we need to shard the sites only VCF?
+#    # String input_vds_name = basename(input_VDS_file)
+#    ## TODO: where do we need to validate that there are no hemis?
+#    String input_vcf_name = "gvs"
+#
+#    call MakeSubpopulationFilesAndReadSchemaFiles {
+#        input:
+#            input_ancestry_file = ancestry_file
+#    }
+#
+#    call RemoveDuplicatesFromSitesOnlyVCF {
+#        input:
+#            sites_only_vcf = input_sites_only_vcf,
+#            ref = reference
+#    }
+#
+#    call StripCustomAnnotationsFromSitesOnlyVCF {
+#        input:
+#            input_vcf = RemoveDuplicatesFromSitesOnlyVCF.output_vcf,
+#            custom_annotations_header = MakeSubpopulationFilesAndReadSchemaFiles.custom_annotations_template_file,
+#            output_vcf_name = "${input_vcf_name}.unannotated.sites_only.vcf",
+#            output_custom_annotations_filename = "ac_an_af.tsv"
+#    }
+#
+#    ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
+#    call AnnotateVCF {
+#        input:
+#            input_vcf = StripCustomAnnotationsFromSitesOnlyVCF.output_vcf,
+#            output_annotated_file_name = "${input_vcf_name}_annotated",
+#            nirvana_data_tar = nirvana_data_directory,
+#            custom_annotations_file = StripCustomAnnotationsFromSitesOnlyVCF.output_custom_annotations_file,
+#    }
+#
+#    call PrepVtAnnotationJson {
+#        input:
+#            annotation_json = AnnotateVCF.annotation_json,
+#            output_file_suffix = "${input_vcf_name}.json.gz",
+#            output_path = output_path,
+#    }
+#
+#    call PrepGenesAnnotationJson {
+#        input:
+#            annotation_json = AnnotateVCF.annotation_json,
+#            output_file_suffix = "${input_vcf_name}.json.gz",
+#            output_path = output_path,
+#    }
+#
+#    call BigQueryLoadJson {
+#        input:
+#            nirvana_schema = MakeSubpopulationFilesAndReadSchemaFiles.vat_schema_json_file,
+#            vt_schema = MakeSubpopulationFilesAndReadSchemaFiles.variant_transcript_schema_json_file,
+#            genes_schema = MakeSubpopulationFilesAndReadSchemaFiles.genes_schema_json_file,
+#            project_id = project_id,
+#            dataset_name = dataset_name,
+#            output_path = output_path,
+#            filter_set_name = filter_set_name,
+#            vat_version = vat_version,
+#            prep_vt_json_done = PrepVtAnnotationJson.done,
+#            prep_genes_json_done = PrepGenesAnnotationJson.done
+#    }
+#
+#
+#    scatter(i in range(length(contig_array)) ) {
+#        call BigQueryExportVat {
+#            input:
+#                contig = contig_array[i],
+#                project_id = project_id,
+#                dataset_name = dataset_name,
+#                output_path = output_path,
+#                vat_table = BigQueryLoadJson.vat_table_name,
+#                load_jsons_done = BigQueryLoadJson.done
+#        }
+#    }
+#
+#    call MergeVatTSVs {
+#        input:
+#            export_done = BigQueryExportVat.done,
+#            contig_array = contig_array,
+#            output_path = output_path,
+#            merge_vcfs_disk_size_override = merge_vcfs_disk_size_override
+#    }
+#
+#    output {
+#        File final_tsv_file = MergeVatTSVs.tsv_file
+#    }
+#}
 
 ################################################################################
 
@@ -276,6 +285,51 @@ task RemoveDuplicatesFromSitesOnlyVCF {
         File track_dropped = "track_dropped.tsv"
         File output_vcf = "deduplicated.vcf"
         File monitoring_log = "monitoring.log"
+    }
+}
+
+task JasixParseNirvanaJson {
+    input {
+        File annotation_json
+        # Add the index here if available and remove the code in the command block below that creates it.
+    }
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        INPUT_JSON=$(ls -1 *.json.gz)
+        # Find out how many CPUs are available to determine the parallelism in extracting by position below.
+        NUM_CPUS=$(nproc --all)
+
+        # https://illumina.github.io/NirvanaDocumentation/introduction/parsing-json#jasix
+        # Make an index
+        /usr/bin/dotnet /Nirvana/Jasix.dll --in ~{annotation_json} --index
+
+        # Genes section
+        /usr/bin/dotnet /Nirvana/Jasix.dll --in ~{annotation_json} --section genes --out genes
+
+        # Positions sharded by chromosome
+        /usr/bin/dotnet /Nirvana/Jasix.dll --in ~{annotation_json} --list | grep -E 'chr' | xargs -I {} -n 1 -P ${NUM_CPUS} bash -c '
+            PS4="\D{+%F %T} \w $ "
+            set -o errexit -o nounset -o xtrace -o pipefail
+
+            /usr/bin/dotnet /Nirvana/Jasix.dll --in ~{annotation_json} --query {} --out {}
+        '
+    >>>
+    runtime {
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
+        memory: "64 GB"
+        cpu: 4
+        preemptible: 3
+        disks: "local-disk 2000 HDD"
+    }
+    output {
+        File genes = "genes.json.gz"
+        File genes_index = "genes.json.gz.jsi"
+
+        Array[File] chrs = glob("chr*.json.gz")
+        Array[File] chrs_index = glob("chr*.json.gz.jsi")
     }
 }
 
