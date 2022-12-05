@@ -134,11 +134,7 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-<<<<<<< HEAD:scripts/variantstore/wdl/GvsCreateVATfromVDS.wdl
         docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-561_var_store_2022_11_29"
-=======
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-11-17-alpine"
->>>>>>> ah_var_store:scripts/variantstore/wdl/GvsCreateVAT.wdl
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -365,6 +361,11 @@ task PrepVtAnnotationJson {
         File annotation_json
         String output_file_suffix
         String output_path
+    }
+    parameter_meta {
+        annotation_json: {
+            localization_optional: true
+        }
     }
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
