@@ -222,7 +222,7 @@ task AnnotateVCF {
         # =======================================
         # Handle our data sources:
 
-        # gcloud storage cp ~{nirvana_data_tar} .
+        gcloud storage cp ~{nirvana_data_tar} .
         echo "Extracting annotation data sources tar/gzip file..."
         mkdir datasources_dir
         tar xfz *.tar.gz -C datasources_dir
