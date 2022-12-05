@@ -54,7 +54,7 @@ workflow GvsCreateVATfromVDS {
     }
 
 
-    # Call split intervals on the mother interval list - Hello. 1
+    # Call split intervals on the mother interval list - Hello. 2
     # maybe 1000 (is there a way not to jump across contigs?)
     # Use SelectVariants on the sites only VCF
     # scatter, George
@@ -69,6 +69,7 @@ workflow GvsCreateVATfromVDS {
         call SelectVariants {
             input:
                 input_vcf = RemoveDuplicatesFromSitesOnlyVCF.output_vcf,
+#                input_vcf_index = RemoveDuplicatesF
                 interval_list = SplitIntervals.interval_files[i],
                 output_basename = vcf_filename
         }
@@ -926,7 +927,7 @@ task MergeVatTSVs {
 task SelectVariants {
     input {
         File input_vcf
-        #        File input_vcf_index
+#        File input_vcf_index
         File interval_list
         String output_basename
 
@@ -937,6 +938,10 @@ task SelectVariants {
     Int max_heap = memory_mb - 500
 
     command <<<
+        echo "Indexing it"
+        tabix ~{input_vcf}
+        echo "Done indexing"
+
         gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
         SelectVariants \
             -V ~{input_vcf} \
@@ -1020,8 +1025,10 @@ task SplitIntervals {
         # Drop trailing slash if one exists
         OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
 
+        echo "Hello"
         if [ -n "$OUTPUT_GCS_DIR" ]; then
-            gsutil -m cp interval-files/*.interval_list $OUTPUT_GCS_DIR/
+            echo "There"
+            gsutil -m cp *.interval_list $OUTPUT_GCS_DIR/
         fi
     }
 
