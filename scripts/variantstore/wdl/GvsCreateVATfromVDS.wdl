@@ -1,5 +1,6 @@
 version 1.0
 
+
 workflow GvsCreateVATfromVDS {
     input {
         File input_sites_only_vcf
@@ -10,18 +11,24 @@ workflow GvsCreateVATfromVDS {
         String filter_set_name
         String? vat_version
 
+        Int effective_scatter_count = 5
+
         String output_path
+        Int? split_intervals_disk_size_override
+        Int? split_intervals_mem_override
         Int? merge_vcfs_disk_size_override
     }
 
+    File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
+
     Array[String] contig_array = ["chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrX", "chrY", "chrM"]
     File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
+    File reference_dict = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict"
+    File reference_index = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai"
+
     File nirvana_data_directory = "gs://gvs_quickstart_storage/Nirvana/Nirvana-references-2022-10-07.tgz"
 
-    ## TODO # do we need to shard the sites only VCF?
-    # String input_vds_name = basename(input_VDS_file)
     ## TODO: where do we need to validate that there are no hemis?
-    String input_vcf_name = "gvs"
 
     call MakeSubpopulationFilesAndReadSchemaFiles {
         input:
@@ -34,35 +41,70 @@ workflow GvsCreateVATfromVDS {
             ref = reference
     }
 
-    call StripCustomAnnotationsFromSitesOnlyVCF {
+    call SplitIntervals {
         input:
-            input_vcf = RemoveDuplicatesFromSitesOnlyVCF.output_vcf,
-            custom_annotations_header = MakeSubpopulationFilesAndReadSchemaFiles.custom_annotations_template_file,
-            output_vcf_name = "${input_vcf_name}.unannotated.sites_only.vcf",
-            output_custom_annotations_filename = "ac_an_af.tsv"
+            intervals = interval_list,
+            ref_fasta = reference,
+            ref_fai = reference_index,
+            ref_dict = reference_dict,
+            scatter_count = effective_scatter_count,
+            output_gcs_dir = output_path + "/intervals",
+            split_intervals_disk_size_override = split_intervals_disk_size_override,
+            split_intervals_mem_override = split_intervals_mem_override,
     }
 
-    ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
-    call AnnotateVCF {
-        input:
-            input_vcf = StripCustomAnnotationsFromSitesOnlyVCF.output_vcf,
-            output_annotated_file_name = "${input_vcf_name}_annotated",
-            nirvana_data_tar = nirvana_data_directory,
-            custom_annotations_file = StripCustomAnnotationsFromSitesOnlyVCF.output_custom_annotations_file,
-    }
 
-    call PrepVtAnnotationJson {
-        input:
-            annotation_json = AnnotateVCF.annotation_json,
-            output_file_suffix = "${input_vcf_name}.json.gz",
-            output_path = output_path,
-    }
+    # Call split intervals on the mother interval list
+    # maybe 1000 (is there a way not to jump across contigs?)
+    # Use SelectVariants on the sites only VCF
+    # scatter, George
+    # Make sure that the scattered intervals and VCFs have unique file naming.
 
-    call PrepGenesAnnotationJson {
-        input:
-            annotation_json = AnnotateVCF.annotation_json,
-            output_file_suffix = "${input_vcf_name}.json.gz",
-            output_path = output_path,
+    String sites_only_vcf_basename = basename(basename(input_sites_only_vcf, ".gz"), ".vcf")
+
+    scatter(i in range(length(SplitIntervals.interval_files))) {
+        String interval_file_basename = basename(SplitIntervals.interval_files[i], ".interval_list")
+        String vcf_filename = interval_file_basename + "." + sites_only_vcf_basename
+
+        call SelectVariants {
+            input:
+                input_vcf = RemoveDuplicatesFromSitesOnlyVCF.output_vcf,
+                interval_list = SplitIntervals.interval_files[i],
+                output_basename = vcf_filename
+        }
+
+        call StripCustomAnnotationsFromSitesOnlyVCF {
+            input:
+                input_vcf = SelectVariants.output_vcf,
+                custom_annotations_header = MakeSubpopulationFilesAndReadSchemaFiles.custom_annotations_template_file,
+                output_vcf_name = "${vcf_filename}.unannotated.sites_only.vcf",
+                output_custom_annotations_filename = "${vcf_filename}.custom_annotations.tsv"
+        }
+
+        ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
+        call AnnotateVCF {
+            input:
+                input_vcf = StripCustomAnnotationsFromSitesOnlyVCF.output_vcf,
+                output_annotated_file_name = "${vcf_filename}_annotated",
+                nirvana_data_tar = nirvana_data_directory,
+                custom_annotations_file = StripCustomAnnotationsFromSitesOnlyVCF.output_custom_annotations_file,
+        }
+
+
+        call PrepVtAnnotationJson {
+            input:
+                annotation_json = AnnotateVCF.annotation_json,
+                output_file_suffix = "${vcf_filename}.json.gz",
+                output_path = output_path,
+        }
+
+        call PrepGenesAnnotationJson {
+            input:
+                annotation_json = AnnotateVCF.annotation_json,
+                output_file_suffix = "${vcf_filename}.json.gz",
+                output_path = output_path,
+        }
+
     }
 
     call BigQueryLoadJson {
@@ -470,8 +512,8 @@ task BigQueryLoadJson {
         String project_id
         String dataset_name
         String output_path
-        Boolean prep_vt_json_done
-        Boolean prep_genes_json_done
+        Array[Boolean] prep_vt_json_done
+        Array[Boolean] prep_genes_json_done
     }
 
     # If the vat version is undefined or v1 then the vat tables would be named like filter_vat, otherwise filter_vat_v2.
@@ -880,3 +922,121 @@ task MergeVatTSVs {
     }
 }
 
+    # TODO - put me in Utils.
+task SelectVariants {
+    input {
+        File input_vcf
+        #        File input_vcf_index
+        File interval_list
+
+        String output_basename
+
+        String gatk_docker = "us.gcr.io/broad-gatk/gatk:4.2.6.1"
+        Int cpu = 1
+        Int memory_mb = 7500
+        Int disk_size_gb = ceil(2*size(input_vcf, "GiB")) + 50
+    }
+    Int command_mem = memory_mb - 1000
+    Int max_heap = memory_mb - 500
+
+    command <<<
+        gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
+        SelectVariants \
+        -V ~{input_vcf} \
+        "-L " + contig \
+        -O ~{output_basename}.vcf.gz
+    >>>
+
+    runtime {
+        docker: gatk_docker
+        cpu: cpu
+        memory: "${memory_mb} MiB"
+        disks: "local-disk ${disk_size_gb} HDD"
+        bootDiskSizeGb: 15
+        preemptible: 1
+    }
+
+    output {
+        File output_vcf = "~{output_basename}.vcf.gz"
+        File output_vcf_index = "~{output_basename}.vcf.gz.tbi"
+    }
+}
+
+task SplitIntervals {
+    input {
+        File intervals
+        File ref_fasta
+        File ref_fai
+        File ref_dict
+        Int scatter_count
+        File? interval_weights_bed
+        String? intervals_file_extension
+        String? split_intervals_extra_args
+        Int? split_intervals_disk_size_override
+        Int? split_intervals_mem_override
+        String? output_gcs_dir
+        File? gatk_override
+    }
+    meta {
+        # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
+    }
+
+    Int disk_size = if (defined(split_intervals_disk_size_override)) then select_first([split_intervals_disk_size_override]) else 10
+    Int disk_memory = if (defined(split_intervals_mem_override)) then select_first([split_intervals_mem_override]) else 16
+    Int java_memory = disk_memory - 4
+
+    String gatkTool = if (defined(interval_weights_bed)) then 'WeightedSplitIntervals' else 'SplitIntervals'
+
+    parameter_meta {
+        intervals: {
+                       localization_optional: true
+                   }
+        ref_fasta: {
+                       localization_optional: true
+                   }
+        ref_fai: {
+                     localization_optional: true
+                 }
+        ref_dict: {
+                      localization_optional: true
+                  }
+    }
+
+    command {
+        set -e
+        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+
+        mkdir interval-files
+        gatk --java-options "-Xmx~{java_memory}g" ~{gatkTool} \
+        --dont-mix-contigs \
+        -R ~{ref_fasta} \
+        ~{"-L " + intervals} \
+        ~{"--weight-bed-file " + interval_weights_bed} \
+        -scatter ~{scatter_count} \
+        -O interval-files \
+        ~{"--extension " + intervals_file_extension} \
+        --interval-file-num-digits 10 \
+        ~{split_intervals_extra_args}
+        cp interval-files/*.interval_list .
+
+        # Drop trailing slash if one exists
+        OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
+
+        if [ -n "$OUTPUT_GCS_DIR" ]; then
+        gsutil -m cp *.interval_list $OUTPUT_GCS_DIR/
+        fi
+    }
+
+    runtime {
+        docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2022_10_17_2a8c210ac35094997603259fa1cd784486b92e42"
+        bootDiskSizeGb: 15
+        memory: "~{disk_memory} GB"
+        disks: "local-disk ~{disk_size} HDD"
+        preemptible: 3
+        cpu: 1
+    }
+
+    output {
+        Array[File] interval_files = glob("*.interval_list")
+    }
+}
