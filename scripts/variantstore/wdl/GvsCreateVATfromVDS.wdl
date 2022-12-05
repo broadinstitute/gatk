@@ -298,7 +298,6 @@ task JasixParseNirvanaJson {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        INPUT_JSON=$(ls -1 *.json.gz)
         # Find out how many CPUs are available to determine the parallelism in extracting by position below.
         NUM_CPUS=$(nproc --all)
 
