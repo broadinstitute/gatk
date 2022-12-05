@@ -54,7 +54,7 @@ workflow GvsCreateVATfromVDS {
     }
 
 
-    # Call split intervals on the mother interval list
+    # Call split intervals on the mother interval list - Hello. 1
     # maybe 1000 (is there a way not to jump across contigs?)
     # Use SelectVariants on the sites only VCF
     # scatter, George
@@ -928,11 +928,8 @@ task SelectVariants {
         File input_vcf
         #        File input_vcf_index
         File interval_list
-
         String output_basename
 
-        String gatk_docker = "us.gcr.io/broad-gatk/gatk:4.2.6.1"
-        Int cpu = 1
         Int memory_mb = 7500
         Int disk_size_gb = ceil(2*size(input_vcf, "GiB")) + 50
     }
@@ -942,14 +939,14 @@ task SelectVariants {
     command <<<
         gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
         SelectVariants \
-        -V ~{input_vcf} \
-        "-L " + contig \
-        -O ~{output_basename}.vcf.gz
+            -V ~{input_vcf} \
+            -L ~{interval_list} \
+            -O ~{output_basename}.vcf.gz
     >>>
 
     runtime {
-        docker: gatk_docker
-        cpu: cpu
+        docker: "us.gcr.io/broad-gatk/gatk:4.2.6.1"
+        cpu: 1
         memory: "${memory_mb} MiB"
         disks: "local-disk ${disk_size_gb} HDD"
         bootDiskSizeGb: 15
@@ -1008,22 +1005,23 @@ task SplitIntervals {
 
         mkdir interval-files
         gatk --java-options "-Xmx~{java_memory}g" ~{gatkTool} \
-        --dont-mix-contigs \
-        -R ~{ref_fasta} \
-        ~{"-L " + intervals} \
-        ~{"--weight-bed-file " + interval_weights_bed} \
-        -scatter ~{scatter_count} \
-        -O interval-files \
-        ~{"--extension " + intervals_file_extension} \
-        --interval-file-num-digits 10 \
-        ~{split_intervals_extra_args}
+            --dont-mix-contigs \
+            -R ~{ref_fasta} \
+            ~{"-L " + intervals} \
+            ~{"--weight-bed-file " + interval_weights_bed} \
+            -scatter ~{scatter_count} \
+            -O interval-files \
+            ~{"--extension " + intervals_file_extension} \
+            --interval-file-num-digits 10 \
+            ~{split_intervals_extra_args}
+
         cp interval-files/*.interval_list .
 
         # Drop trailing slash if one exists
         OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
 
         if [ -n "$OUTPUT_GCS_DIR" ]; then
-        gsutil -m cp *.interval_list $OUTPUT_GCS_DIR/
+            gsutil -m cp interval-files/*.interval_list $OUTPUT_GCS_DIR/
         fi
     }
 
