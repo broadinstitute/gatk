@@ -349,6 +349,8 @@ task JasixParseNirvanaJson {
         # Positions sharded by chromosome, parallelized by the number of cpus.
         /usr/bin/dotnet /Nirvana/Jasix.dll --in ${INPUT_JSON} --list | grep -E 'chr' > chrs.txt
 
+        cat chrs.txt
+
         cat chrs.txt | xargs -I {} -n 1 -P ${NUM_CPUS} bash -c "
 
             PS4='\D{+%F %T} \w $ '
