@@ -59,7 +59,7 @@ workflow GvsCreateVATfromVDS {
     }
 
 
-    # Call split intervals on the mother interval list - Hello. 7
+    # Call split intervals on the mother interval list - Hello. 8
     # maybe 1000 (is there a way not to jump across contigs?)
     # Use SelectVariants on the sites only VCF
     # scatter, George
@@ -73,7 +73,7 @@ workflow GvsCreateVATfromVDS {
 
         call SelectVariants {
             input:
-                input_vcf = RemoveDuplicatesFromSitesOnlyVCF.output_vcf,
+                input_vcf = IndexVcf.output_vcf,
                 input_vcf_index = IndexVcf.output_vcf_index,
                 interval_list = SplitIntervals.interval_files[i],
                 output_basename = vcf_filename
@@ -939,18 +939,18 @@ task IndexVcf {
     Int command_mem = memory_mb - 1000
     Int max_heap = memory_mb - 500
 
-    String output_basename = basename(input_vcf)
+    String local_file = basename(input_vcf)
 
     command <<<
         set -e
 
+        # Localize the passed input_vcf to the working directory so when the
+        # newly created index file doesn't get delocalized with the long path.
+        cp ~{input_vcf} ~{local_file}
+
         gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
             IndexFeatureFile \
-            -I ~{input_vcf}
-
-        # Copy the index file to the working directory
-        cp "~{input_vcf}.idx" .
-        ls -altrh "~{input_vcf}*"
+            -I ~{local_file}
 
     >>>
 
@@ -964,7 +964,9 @@ task IndexVcf {
     }
 
     output {
-        File output_vcf_index = "~{output_basename}.idx"
+        # output the path to the copied local file AND the created index so they are side by side.
+        File output_vcf = local_file
+        File output_vcf_index = "~{local_file}.idx"
     }
 }
 
