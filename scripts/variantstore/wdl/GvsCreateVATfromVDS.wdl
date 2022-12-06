@@ -1,17 +1,18 @@
 version 1.0
 
 workflow JasixParse {
-    File nirvana_json = "gs://fc-secure-7d81c3a3-7065-48fc-adff-c159a735ef01/11_28/annotations/gvs_annotated.json.gz"
+    File nirvana_json = "gs://fc-secure-7d81c3a3-7065-48fc-adff-c159a735ef01/submissions/f4ab05af-29b7-4766-9cbf-af161daccc72/GvsCreateVATfromVDS/46a3f54e-569a-4416-96c0-78c94db70bb6/call-AnnotateVCF/gvs_annotated.json.gz"
+    File nirvana_json_index = "gs://fc-secure-7d81c3a3-7065-48fc-adff-c159a735ef01/submissions/f4ab05af-29b7-4766-9cbf-af161daccc72/GvsCreateVATfromVDS/46a3f54e-569a-4416-96c0-78c94db70bb6/call-AnnotateVCF/gvs_annotated.json.gz.jsi"
 
-    call JasixCreateIndex {
-        input:
-            annotation_json = nirvana_json,
-    }
+    # call JasixCreateIndex {
+    #     input:
+    #         annotation_json = nirvana_json,
+    # }
 
     call JasixParseNirvanaJson {
         input:
             annotation_json = nirvana_json,
-            annotation_json_index = JasixCreateIndex.annotation_json_index,
+            annotation_json_index = nirvana_json_index,
     }
 }
 
