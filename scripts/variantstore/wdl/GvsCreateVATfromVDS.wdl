@@ -3,9 +3,15 @@ version 1.0
 workflow JasixParse {
     File nirvana_json = "gs://fc-secure-7d81c3a3-7065-48fc-adff-c159a735ef01/11_28/annotations/gvs_annotated.json.gz"
 
+    call JasixCreateIndex {
+        input:
+            annotation_json = nirvana_json,
+    }
+
     call JasixParseNirvanaJson {
         input:
             annotation_json = nirvana_json,
+            annotation_json_index = JasixCreateIndex.annotation_json_index,
     }
 }
 
@@ -288,10 +294,9 @@ task RemoveDuplicatesFromSitesOnlyVCF {
     }
 }
 
-task JasixParseNirvanaJson {
+task JasixCreateIndex {
     input {
         File annotation_json
-        # Add the index here if available and remove the code in the command block below that creates it.
     }
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
@@ -300,20 +305,55 @@ task JasixParseNirvanaJson {
 
         # Find out how many CPUs are available to determine the parallelism in extracting by position below.
         NUM_CPUS=$(nproc --all)
+        INPUT_JSON=$(ls -1 *.json.gz)
 
         # https://illumina.github.io/NirvanaDocumentation/introduction/parsing-json#jasix
-        # Make an index
-        /usr/bin/dotnet /Nirvana/Jasix.dll --in ~{annotation_json} --index
+        # Create an index
+        /usr/bin/dotnet /Nirvana/Jasix.dll --in ${INPUT_JSON} --out ${INPUT_JSON}.jsi --index
 
+        echo ~{annotation_json}.jsi > index.out
+    >>>
+    runtime {
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
+        memory: "64 GB"
+        cpu: 4
+        preemptible: 3
+        disks: "local-disk 2000 HDD"
+    }
+    output {
+        File annotation_json_index = read_string("index.out")
+    }
+}
+
+task JasixParseNirvanaJson {
+    input {
+        File annotation_json
+        File annotation_json_index
+    }
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        # Make sure these files are siblings.
+        mv ~{annotation_json} .
+        mv ~{annotation_json_index} .
+
+        INPUT_JSON=$(ls -1 *.json.gz)
+
+        # https://illumina.github.io/NirvanaDocumentation/introduction/parsing-json#jasix
         # Genes section
-        /usr/bin/dotnet /Nirvana/Jasix.dll --in ~{annotation_json} --section genes --out genes
+        /usr/bin/dotnet /Nirvana/Jasix.dll --in ${INPUT_JSON} --section genes --out genes
 
-        # Positions sharded by chromosome
-        /usr/bin/dotnet /Nirvana/Jasix.dll --in ~{annotation_json} --list | grep -E 'chr' | xargs -I {} -n 1 -P ${NUM_CPUS} bash -c '
+        # Find out how many CPUs are available to determine the parallelism in extracting by position below.
+        NUM_CPUS=$(nproc --all)
+
+        # Positions sharded by chromosome, parallelized by the number of cpus.
+        /usr/bin/dotnet /Nirvana/Jasix.dll --in ${INPUT_JSON} --list | grep -E 'chr' | xargs -I {} -n 1 -P ${NUM_CPUS} bash -c '
             PS4="\D{+%F %T} \w $ "
             set -o errexit -o nounset -o xtrace -o pipefail
 
-            /usr/bin/dotnet /Nirvana/Jasix.dll --in ~{annotation_json} --query {} --out {}
+            /usr/bin/dotnet /Nirvana/Jasix.dll --in ${INPUT_JSON} --query {} --out {}
         '
     >>>
     runtime {
