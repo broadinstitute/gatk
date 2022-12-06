@@ -349,7 +349,7 @@ task JasixParseNirvanaJson {
             PS4='\D{+%F %T} \w $ '
             set -o errexit -o nounset -o xtrace -o pipefail
 
-            /usr/bin/dotnet /Nirvana/Jasix.dll --in ${INPUT_JSON} --query {} --out {}.json.gz
+            /usr/bin/dotnet /Nirvana/Jasix.dll --in ${INPUT_JSON} --query {} --out $PWD/{}.json.gz
         "
     >>>
     runtime {
