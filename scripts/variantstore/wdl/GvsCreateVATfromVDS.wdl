@@ -356,9 +356,9 @@ task JasixParseNirvanaJson {
             PS4='\D{+%F %T} \w $ '
             set -o errexit -o nounset -o xtrace -o pipefail
 
-            CHR="{}"
-            if ! [[ $CHR =~ "^chr" ]]; then
-                CHR="chr${CHR}"
+            CHR='{}'
+            if ! [[ $CHR =~ '^chr' ]]; then
+                CHR=chr${CHR}
             fi
 
             /usr/bin/dotnet /Nirvana/Jasix.dll --in ${INPUT_JSON} --query {} --out ${CHR}.json.gz
