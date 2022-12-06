@@ -404,11 +404,6 @@ task PrepVtAnnotationJson {
         String output_file_suffix
         String output_path
     }
-    parameter_meta {
-        annotation_json: {
-            localization_optional: true
-        }
-    }
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
