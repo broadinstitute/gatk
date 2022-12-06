@@ -351,12 +351,17 @@ task JasixParseNirvanaJson {
 
         cat list.txt
 
-        cat list.txt | grep -E '^chr' | xargs -I {} -n 1 -P ${NUM_CPUS} bash -c "
+        cat list.txt | grep -E '^(chr)?[12]?[0-9XY]$' | xargs -I {} -n 1 -P ${NUM_CPUS} bash -c "
 
             PS4='\D{+%F %T} \w $ '
             set -o errexit -o nounset -o xtrace -o pipefail
 
-            /usr/bin/dotnet /Nirvana/Jasix.dll --in ${INPUT_JSON} --query {} --out {}.json.gz
+            CHR="{}"
+            if ! [[ $CHR =~ "^chr" ]];
+                CHR="chr${CHR}"
+            fi
+
+            /usr/bin/dotnet /Nirvana/Jasix.dll --in ${INPUT_JSON} --query {} --out ${CHR}.json.gz
 
         "
     >>>
