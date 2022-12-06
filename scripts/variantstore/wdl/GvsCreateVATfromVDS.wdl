@@ -335,7 +335,7 @@ task JasixParseNirvanaJson {
         mv ~{annotation_json} .
         mv ~{annotation_json_index} .
 
-        INPUT_JSON=$(ls -1 *.json.gz)
+        INPUT_JSON=$(ls -1 $PWD/*.json.gz)
 
         # https://illumina.github.io/NirvanaDocumentation/introduction/parsing-json#jasix
         # Genes section
@@ -345,12 +345,12 @@ task JasixParseNirvanaJson {
         NUM_CPUS=$(nproc --all)
 
         # Positions sharded by chromosome, parallelized by the number of cpus.
-        /usr/bin/dotnet /Nirvana/Jasix.dll --in ${INPUT_JSON} --list | grep -E 'chr' | xargs -I {} -n 1 -P ${NUM_CPUS} bash -c '
-            PS4="\D{+%F %T} \w $ "
+        /usr/bin/dotnet /Nirvana/Jasix.dll --in ${INPUT_JSON} --list | grep -E 'chr' | xargs -I {} -n 1 -P ${NUM_CPUS} bash -c "
+            PS4='\D{+%F %T} \w $ '
             set -o errexit -o nounset -o xtrace -o pipefail
 
             /usr/bin/dotnet /Nirvana/Jasix.dll --in ${INPUT_JSON} --query {} --out {}.json.gz
-        '
+        "
     >>>
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
