@@ -305,9 +305,8 @@ task JasixCreateIndex {
 
         # https://illumina.github.io/NirvanaDocumentation/introduction/parsing-json#jasix
         # Create an index
-        /usr/bin/dotnet /Nirvana/Jasix.dll --in ~{annotation_json} --index --out ~{annotation_json}.jsi
-
-       echo ~{annotation_json}.jsi > index.out
+        INDEX_PATH="${PWD}/$(basename ~{annotation_json}).jsi"
+        /usr/bin/dotnet /Nirvana/Jasix.dll --in ${INPUT_JSON} --index --out ${INDEX_PATH}
     >>>
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
@@ -317,7 +316,7 @@ task JasixCreateIndex {
         disks: "local-disk 2000 HDD"
     }
     output {
-        File annotation_json_index = read_string("index.out")
+        File annotation_json_index = glob("*.json.gz.jsi")
     }
 }
 
