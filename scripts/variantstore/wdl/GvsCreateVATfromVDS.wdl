@@ -303,9 +303,6 @@ task JasixCreateIndex {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        # Find out how many CPUs are available to determine the parallelism in extracting by position below.
-        NUM_CPUS=$(nproc --all)
-
         # https://illumina.github.io/NirvanaDocumentation/introduction/parsing-json#jasix
         # Create an index
         /usr/bin/dotnet /Nirvana/Jasix.dll --in ~{annotation_json} --index
