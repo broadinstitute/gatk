@@ -345,12 +345,18 @@ task JasixParseNirvanaJson {
         NUM_CPUS=$(nproc --all)
 
         # Positions sharded by chromosome, parallelized by the number of cpus.
-        /usr/bin/dotnet /Nirvana/Jasix.dll --in ${INPUT_JSON} --list | grep -E 'chr' | xargs -I {} -n 1 -P ${NUM_CPUS} bash -c "
+        /usr/bin/dotnet /Nirvana/Jasix.dll --in ${INPUT_JSON} --list | grep -E 'chr' > chrs.txt
+
+        cat chrs.txt | xargs -I {} -n 1 -P ${NUM_CPUS} bash -c "
+
             PS4='\D{+%F %T} \w $ '
             set -o errexit -o nounset -o xtrace -o pipefail
 
-            /usr/bin/dotnet /Nirvana/Jasix.dll --in ${INPUT_JSON} --query {} --out $PWD/{}.json.gz
+            /usr/bin/dotnet /Nirvana/Jasix.dll --in ${INPUT_JSON} --query {} --out {}
+
         "
+
+        find .
     >>>
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
