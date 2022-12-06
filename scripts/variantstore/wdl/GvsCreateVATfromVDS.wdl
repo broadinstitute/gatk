@@ -59,7 +59,7 @@ workflow GvsCreateVATfromVDS {
     }
 
 
-    # Call split intervals on the mother interval list - Hello. 8
+    # Call split intervals on the mother interval list - Hello. 9
     # maybe 1000 (is there a way not to jump across contigs?)
     # Use SelectVariants on the sites only VCF
     # scatter, George
@@ -933,20 +933,23 @@ task IndexVcf {
     input {
         File input_vcf
 
-        Int memory_mb = 7500
-        Int disk_size_gb = ceil(2*size(input_vcf, "GiB")) + 50
+        Int memory_mb = 2500
+        Int disk_size_gb = ceil(2 * size(input_vcf, "GiB")) + 20
     }
     Int command_mem = memory_mb - 1000
     Int max_heap = memory_mb - 500
 
     String local_file = basename(input_vcf)
+    Boolean is_compressed = sub(local_file, ".*\\.", "") == "gz"
+    String index_extension = if is_compressed then ".tbi" else ".idx"
 
     command <<<
         set -e
 
-        # Localize the passed input_vcf to the working directory so when the
-        # newly created index file doesn't get delocalized with the long path.
-        cp ~{input_vcf} ~{local_file}
+        # Localize the passed input_vcf to the working directory so the
+        # to-be-created index file is also created there, alongside it.
+        # TODO - Could ln ?
+        ln -s ~{input_vcf} ~{local_file}
 
         gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
             IndexFeatureFile \
@@ -966,7 +969,7 @@ task IndexVcf {
     output {
         # output the path to the copied local file AND the created index so they are side by side.
         File output_vcf = local_file
-        File output_vcf_index = "~{local_file}.idx"
+        File output_vcf_index = "~{local_file}~{index_extension}"
     }
 }
 
