@@ -338,7 +338,7 @@ task JasixParseNirvanaJson {
 
         # https://illumina.github.io/NirvanaDocumentation/introduction/parsing-json#jasix
         # Genes section
-        /usr/bin/dotnet /Nirvana/Jasix.dll --in ${INPUT_JSON} --section genes --out genes
+        /usr/bin/dotnet /Nirvana/Jasix.dll --in ${INPUT_JSON} --section genes --out genes.json.gz
 
         # Find out how many CPUs are available to determine the parallelism in extracting by position below.
         NUM_CPUS=$(nproc --all)
@@ -348,7 +348,7 @@ task JasixParseNirvanaJson {
             PS4="\D{+%F %T} \w $ "
             set -o errexit -o nounset -o xtrace -o pipefail
 
-            /usr/bin/dotnet /Nirvana/Jasix.dll --in ${INPUT_JSON} --query {} --out {}
+            /usr/bin/dotnet /Nirvana/Jasix.dll --in ${INPUT_JSON} --query {} --out {}.json.gz
         '
     >>>
     runtime {
@@ -360,10 +360,7 @@ task JasixParseNirvanaJson {
     }
     output {
         File genes = "genes.json.gz"
-        File genes_index = "genes.json.gz.jsi"
-
-        Array[File] chrs = glob("chr*.json.gz")
-        Array[File] chrs_index = glob("chr*.json.gz.jsi")
+        Array[File] chromosomes = glob("chr*.json.gz")
     }
 }
 
