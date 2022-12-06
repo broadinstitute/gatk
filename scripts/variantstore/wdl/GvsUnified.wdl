@@ -15,7 +15,6 @@ workflow GvsUnified {
         String call_set_identifier
 
         Array[String] external_sample_names
-        String call_set_identifier
 
         File? gatk_override
         # End GvsAssignIds

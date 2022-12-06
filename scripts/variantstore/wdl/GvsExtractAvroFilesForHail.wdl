@@ -5,6 +5,7 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsExtractAvroFilesForHail {
     input {
+        Boolean go = true
         String project_id
         String dataset
         String filter_set_name
@@ -61,6 +62,7 @@ workflow GvsExtractAvroFilesForHail {
         String vds_output_path = GenerateHailScripts.vds_output_path
         String sites_only_vcf_output_path = GenerateHailScripts.sites_only_vcf_output_path
         String vat_inputs_output_path = GenerateHailScripts.vat_inputs_output_path
+        String avro_prefix = ExtractFromNonSuperpartitionedTables.output_prefix
     }
 }
 
@@ -80,7 +82,7 @@ task OutputPath {
         File out = stdout()
     }
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
         disks: "local-disk 500 HDD"
     }
 }
@@ -114,7 +116,8 @@ task ExtractFromNonSuperpartitionedTables {
             SELECT sample_id, sample_name, '40',
             'gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list' as intervals_file
             FROM \`~{project_id}.~{dataset}.sample_info\`
-            WHERE withdrawn IS NULL
+            WHERE withdrawn IS NULL AND
+            is_control = false
             ORDER BY sample_id
         "
 
@@ -151,7 +154,7 @@ task ExtractFromNonSuperpartitionedTables {
     }
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
         disks: "local-disk 500 HDD"
     }
 }
@@ -197,7 +200,8 @@ task ExtractFromSuperpartitionedTables {
                 SELECT location, v.sample_id, ref, REPLACE(alt,',<NON_REF>','') alt, call_GT as GT, call_AD as AD, call_GQ as GQ, cast(SPLIT(call_pl,',')[OFFSET(0)] as int64) as RGQ
                 FROM \`~{project_id}.~{dataset}.vet_${str_table_index}\` v
                 INNER JOIN \`~{project_id}.~{dataset}.sample_info\` s ON s.sample_id = v.sample_id
-                WHERE withdrawn IS NULL
+                WHERE withdrawn IS NULL AND
+                is_control = false
                 ORDER BY location
             "
 
@@ -207,7 +211,8 @@ task ExtractFromSuperpartitionedTables {
                 SELECT location, r.sample_id, length, state
                 FROM \`~{project_id}.~{dataset}.ref_ranges_${str_table_index}\` r
                 INNER JOIN \`~{project_id}.~{dataset}.sample_info\` s ON s.sample_id = r.sample_id
-                WHERE withdrawn IS NULL
+                WHERE withdrawn IS NULL AND
+                is_control = false
                 ORDER BY location
             "
         done
@@ -218,7 +223,7 @@ task ExtractFromSuperpartitionedTables {
     }
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
         disks: "local-disk 500 HDD"
     }
 }
@@ -286,7 +291,7 @@ task GenerateHailScripts {
         File hail_create_vat_inputs_script = 'hail_create_vat_inputs.py'
     }
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-10-25-alpine"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-11-17-alpine"
         disks: "local-disk 500 HDD"
     }
 }

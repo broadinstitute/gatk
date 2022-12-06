@@ -56,7 +56,7 @@ def utf8len(s):
     return len(s.encode('utf-8'))
 
 
-def write_job_stats(jobs, client, fq_dataset, call_set_identifier, step, call, shard_identifier):
+def write_job_stats(jobs, client, fq_dataset, call_set_identifier, step, call, shard_identifier, write_cost_to_db = True):
     total = 0
 
     for query_return in jobs:
@@ -67,9 +67,11 @@ def write_job_stats(jobs, client, fq_dataset, call_set_identifier, step, call, s
     print("\nTotal GiBs billed ", total/(1024 * 1024 * 1024), " GiBs\n")
 
     # populate cost_observability data
-    sql = f"""INSERT INTO `{fq_dataset}.cost_observability`
-            (call_set_identifier, step, call, shard_identifier, event_key, call_start_timestamp, event_timestamp, event_bytes)
-            VALUES('{call_set_identifier}', '{step}', '{call}', '{shard_identifier}', 'BigQuery Query Scanned',
-            CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(), {total})"""
-    query = client.query(sql)
-    query.result()
+    if write_cost_to_db:
+        sql = f"""INSERT INTO `{fq_dataset}.cost_observability`
+                (call_set_identifier, step, call, shard_identifier, event_key, call_start_timestamp, event_timestamp, event_bytes)
+                VALUES('{call_set_identifier}', '{step}', '{call}', '{shard_identifier}', 'BigQuery Query Scanned',
+                CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(), {total})"""
+        query = client.query(sql)
+        query.result()
+

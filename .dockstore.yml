@@ -125,7 +125,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_VS-637_RespectSampleLoadStatusFinishedFlag
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
@@ -195,6 +194,21 @@ workflows:
        branches:
          - master
          - ah_var_store
+   - name: GvsQuickstartVcfIntegration
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartVcfIntegration.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+   - name: GvsQuickstartHailIntegration
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartHailIntegration.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_639_hail_testing_spike
    - name: GvsQuickstartIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartIntegration.wdl
@@ -202,7 +216,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_699_fix_missing_vat_schema_jsons
+         - vs_639_hail_testing_spike
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
@@ -224,7 +238,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_655_avro_extract_warn_on_bad_filter_name
+         - rsa_vs_749
    - name: GvsCallsetStatistics
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCallsetStatistics.wdl
@@ -232,7 +246,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_655_avro_extract_warn_on_bad_filter_name
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl

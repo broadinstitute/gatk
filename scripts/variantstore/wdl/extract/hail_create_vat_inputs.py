@@ -99,12 +99,12 @@ def matrix_table_ac_an_af(mt, ancestry_file):
 
 def vds_ac_an_af(mt, vds):
     """
-    Join the dense matrix table input (just AC, AN and AF) back to the original VDS.
+    Join the dense matrix table input (just AC, AN and AF) back to the original VDS. Note any hard filtering
     """
-    qc_data = mt.rows() ### TODO: make sure this join does not hard filter!!!!)
+    qc_data = mt.rows()
     vd = vds.variant_data
     vd = vd.annotate_rows(ac_an_af=qc_data[vd.row_key])
-    return hl.vds.VariantDataset(vds.reference_data, vd) ## TODO: IT LOOKS LIKE IT DOES HARD FILTER!
+    return hl.vds.VariantDataset(vds.reference_data, vd)
 
 
 def write_sites_only_vcf(ac_an_af_split, sites_only_vcf_path):

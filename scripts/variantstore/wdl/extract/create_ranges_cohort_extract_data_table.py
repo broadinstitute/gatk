@@ -72,13 +72,19 @@ def load_sample_names(sample_names_to_extract, fq_temp_table_dataset):
     return fq_sample_table
 
 
-def get_all_sample_ids(fq_destination_table_samples):
-    sql = f"select sample_id from `{fq_destination_table_samples}`"
+def get_all_sample_ids(fq_destination_table_samples, only_output_vet_tables, fq_sample_mapping_table):
+    if only_output_vet_tables:
+        sql = f"select sample_id from `{fq_sample_mapping_table}` WHERE is_control = false AND withdrawn IS NULL"
+        sample_table = fq_sample_mapping_table
+    else:
+        sql = f"select sample_id from `{fq_destination_table_samples}`"
+        sample_table = fq_destination_table_samples
 
     query_return = utils.execute_with_retry(client, "read cohort sample table", sql)
     JOBS.append({'job': query_return['job'], 'label': query_return['label']})
     sample_ids = [row.sample_id for row in list(query_return['results'])]
     sample_ids.sort()
+    print(f"Discovered {len(sample_ids)} samples in {sample_table}...")
     return sample_ids
 
 
@@ -221,8 +227,9 @@ def make_extract_table(call_set_identifier,
                        fq_destination_dataset,
                        destination_table_prefix,
                        fq_sample_mapping_table,
-                       temp_table_ttl_hours
-                       ):
+                       temp_table_ttl_hours,
+                       only_output_vet_tables,
+                       write_cost_to_db):
     try:
         fq_destination_table_ref_data = f"{fq_destination_dataset}.{destination_table_prefix}__REF_DATA"
         fq_destination_table_vet_data = f"{fq_destination_dataset}.{destination_table_prefix}__VET_DATA"
@@ -281,23 +288,24 @@ def make_extract_table(call_set_identifier,
         # drive the extract. If this script was explicitly given a list of sample names then it should create the
         # cohort from those samples without regard to `withdrawn` on the `sample_info` table, otherwise only include
         # samples with a null `withdrawn` date in the cohort.
-        create_extract_samples_table(control_samples, fq_destination_table_samples, fq_sample_name_table,
+        if not only_output_vet_tables:
+            create_extract_samples_table(control_samples, fq_destination_table_samples, fq_sample_name_table,
                                      fq_sample_mapping_table, honor_withdrawn=not sample_names_to_extract)
 
         # pull the sample ids back down
-        sample_ids = get_all_sample_ids(fq_destination_table_samples)
-        print(f"Discovered {len(sample_ids)} samples in {fq_destination_table_samples}...")
+        sample_ids = get_all_sample_ids(fq_destination_table_samples, only_output_vet_tables, fq_sample_mapping_table)
 
-        # create the tables for extract data
-        create_final_extract_ref_table(fq_destination_table_ref_data)
+        # create and populate the tables for extract data
+        if not only_output_vet_tables:
+            create_final_extract_ref_table(fq_destination_table_ref_data)
+            populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_table_ref_data, sample_ids)
+
         create_final_extract_vet_table(fq_destination_table_vet_data)
-
-        populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_table_ref_data, sample_ids)
         populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_table_vet_data, sample_ids)
 
     finally:
         utils.write_job_stats(JOBS, client, f"{fq_destination_dataset}", call_set_identifier, 'GvsPrepareRanges',
-                              'PrepareRangesCallsetTask', output_table_prefix)
+                              'PrepareRangesCallsetTask', output_table_prefix, write_cost_to_db)
 
 
 if __name__ == '__main__':
@@ -325,6 +333,10 @@ if __name__ == '__main__':
     parser.add_argument('--max_tables',type=int, help='Maximum number of vet/ref ranges tables to consider', required=False,
                         default=250)
     parser.add_argument('--ttl', type=int, help='Temp table TTL in hours', required=False, default=72)
+    parser.add_argument('--only_output_vet_tables', type=bool,
+                      help='Only create __VET_DATA table, skip __REF_DATA and __SAMPLES tables', required=False, default=False)
+    parser.add_argument('--write_cost_to_db', type=bool,
+                        help='Populate cost_observability table with BigQuery query bytes scanned', required=False, default=True)
 
     sample_args = parser.add_mutually_exclusive_group(required=True)
     sample_args.add_argument('--sample_names_to_extract', type=str,
@@ -348,4 +360,6 @@ if __name__ == '__main__':
                        args.fq_destination_dataset,
                        args.destination_cohort_table_prefix,
                        args.fq_sample_mapping_table,
-                       args.ttl)
+                       args.ttl,
+                       args.only_output_vet_tables,
+                       args.write_cost_to_db)
