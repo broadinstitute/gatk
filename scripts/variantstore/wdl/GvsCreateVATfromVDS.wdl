@@ -304,10 +304,12 @@ task JasixCreateIndex {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
+        mv ~{annotation_json} .
+
         # https://illumina.github.io/NirvanaDocumentation/introduction/parsing-json#jasix
         # Create an index
-        INDEX_PATH="${PWD}/$(basename ~{annotation_json}).jsi"
-        /usr/bin/dotnet /Nirvana/Jasix.dll --in ~{annotation_json} --index --out ${INDEX_PATH}
+        JSON_PATH="${PWD}/$(basename ~{annotation_json})"
+        /usr/bin/dotnet /Nirvana/Jasix.dll --in ${JSON_PATH} --index
     >>>
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
@@ -331,7 +333,7 @@ task JasixParseNirvanaJson {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        # Make sure these files are siblings.
+        # Make these files siblings in the current directory.
         mv ~{annotation_json} .
         mv ~{annotation_json_index} .
 
@@ -352,7 +354,7 @@ task JasixParseNirvanaJson {
             PS4='\D{+%F %T} \w $ '
             set -o errexit -o nounset -o xtrace -o pipefail
 
-            /usr/bin/dotnet /Nirvana/Jasix.dll --in ${INPUT_JSON} --query {} --out {}
+            /usr/bin/dotnet /Nirvana/Jasix.dll --in ${INPUT_JSON} --query {} --out {}.json.gz
 
         "
 
