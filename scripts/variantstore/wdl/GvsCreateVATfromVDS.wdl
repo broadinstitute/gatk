@@ -1,5 +1,6 @@
 version 1.0
 
+import "GvsUtils.wdl" as Utils
 
 workflow GvsCreateVATfromVDS {
     input {
@@ -11,7 +12,7 @@ workflow GvsCreateVATfromVDS {
         String filter_set_name
         String? vat_version
 
-        Int effective_scatter_count = 5
+        Int effective_scatter_count = 10
 
         String output_path
         Int? split_intervals_disk_size_override
@@ -41,12 +42,12 @@ workflow GvsCreateVATfromVDS {
             ref = reference
     }
 
-    call IndexVcf {
+    call Utils.IndexVcf {
         input:
             input_vcf = RemoveDuplicatesFromSitesOnlyVCF.output_vcf
     }
 
-    call SplitIntervals {
+    call Utils.SplitIntervals {
         input:
             intervals = interval_list,
             ref_fasta = reference,
@@ -58,20 +59,13 @@ workflow GvsCreateVATfromVDS {
             split_intervals_mem_override = split_intervals_mem_override,
     }
 
-
-    # Call split intervals on the mother interval list - Hello. 9
-    # maybe 1000 (is there a way not to jump across contigs?)
-    # Use SelectVariants on the sites only VCF
-    # scatter, George
-    # Make sure that the scattered intervals and VCFs have unique file naming.
-
     String sites_only_vcf_basename = basename(basename(input_sites_only_vcf, ".gz"), ".vcf")
 
     scatter(i in range(length(SplitIntervals.interval_files))) {
         String interval_file_basename = basename(SplitIntervals.interval_files[i], ".interval_list")
         String vcf_filename = interval_file_basename + "." + sites_only_vcf_basename
 
-        call SelectVariants {
+        call Utils.SelectVariants {
             input:
                 input_vcf = IndexVcf.output_vcf,
                 input_vcf_index = IndexVcf.output_vcf_index,
@@ -330,7 +324,7 @@ task RemoveDuplicatesFromSitesOnlyVCF {
 
 task AnnotateVCF {
     input {
-        File input_vcf ## TODO do we need a sites only index file?
+        File input_vcf
         String output_annotated_file_name
         File nirvana_data_tar
         File custom_annotations_file
@@ -436,8 +430,8 @@ task PrepVtAnnotationJson {
 
         ## the annotation jsons are split into the specific VAT schema
         python3 /app/create_vt_bqloadjson_from_annotations.py \
-        --annotated_json ~{annotation_json} \
-        --output_vt_json ~{output_vt_json}
+            --annotated_json ~{annotation_json} \
+            --output_vt_json ~{output_vt_json}
 
         gsutil cp ~{output_vt_json} '~{output_vt_gcp_path}'
 
@@ -446,7 +440,7 @@ task PrepVtAnnotationJson {
     # Runtime settings:
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-561_var_store_2022_12_01"
-        memory: "15 GB"
+        memory: "7 GB"
         preemptible: 3
         cpu: "1"
         disks: "local-disk 500 HDD"
@@ -483,8 +477,8 @@ task PrepGenesAnnotationJson {
 
         ## the annotation jsons are split into the specific VAT schema
         python3 /app/create_genes_bqloadjson_from_annotations.py \
-        --annotated_json ~{annotation_json} \
-        --output_genes_json ~{output_genes_json}
+            --annotated_json ~{annotation_json} \
+            --output_genes_json ~{output_genes_json}
 
         gsutil cp ~{output_genes_json} '~{output_genes_gcp_path}'
 
@@ -493,7 +487,7 @@ task PrepGenesAnnotationJson {
     # Runtime settings:
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-561_var_store_2022_12_01"
-        memory: "15 GB"
+        memory: "7 GB"
         preemptible: 3
         cpu: "1"
         disks: "local-disk 500 HDD"
@@ -930,168 +924,5 @@ task MergeVatTSVs {
     # Outputs:
     output {
         File tsv_file = "vat_complete.bgz.tsv.gz"
-    }
-}
-
-# TODO - put me in Utils.
-task IndexVcf {
-    input {
-        File input_vcf
-
-        Int memory_mb = 2500
-        Int disk_size_gb = ceil(2 * size(input_vcf, "GiB")) + 20
-    }
-    Int command_mem = memory_mb - 1000
-    Int max_heap = memory_mb - 500
-
-    String local_file = basename(input_vcf)
-    Boolean is_compressed = sub(local_file, ".*\\.", "") == "gz"
-    String index_extension = if is_compressed then ".tbi" else ".idx"
-
-    command <<<
-        set -e
-
-        # Localize the passed input_vcf to the working directory so the
-        # to-be-created index file is also created there, alongside it.
-        # TODO - Could ln ?
-        ln -s ~{input_vcf} ~{local_file}
-
-        gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
-            IndexFeatureFile \
-            -I ~{local_file}
-
-    >>>
-
-    runtime {
-        docker: "us.gcr.io/broad-gatk/gatk:4.2.6.1"
-        cpu: 1
-        memory: "${memory_mb} MiB"
-        disks: "local-disk ${disk_size_gb} HDD"
-        bootDiskSizeGb: 15
-        preemptible: 1
-    }
-
-    output {
-        # output the path to the copied local file AND the created index so they are side by side.
-        File output_vcf = local_file
-        File output_vcf_index = "~{local_file}~{index_extension}"
-    }
-}
-
-task SelectVariants {
-    input {
-        File input_vcf
-        File input_vcf_index
-        File interval_list
-        String output_basename
-
-        Int memory_mb = 7500
-        Int disk_size_gb = ceil(2*size(input_vcf, "GiB")) + 50
-    }
-    Int command_mem = memory_mb - 1000
-    Int max_heap = memory_mb - 500
-
-    command <<<
-        gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
-        SelectVariants \
-            -V ~{input_vcf} \
-            -L ~{interval_list} \
-            -O ~{output_basename}.vcf
-    >>>
-
-    runtime {
-        docker: "us.gcr.io/broad-gatk/gatk:4.2.6.1"
-        cpu: 1
-        memory: "${memory_mb} MiB"
-        disks: "local-disk ${disk_size_gb} HDD"
-        bootDiskSizeGb: 15
-        preemptible: 1
-    }
-
-    output {
-        File output_vcf = "~{output_basename}.vcf"
-        File output_vcf_index = "~{output_basename}.vcf.idx"
-    }
-}
-
-task SplitIntervals {
-    input {
-        File intervals
-        File ref_fasta
-        File ref_fai
-        File ref_dict
-        Int scatter_count
-        File? interval_weights_bed
-        String? intervals_file_extension
-        String? split_intervals_extra_args
-        Int? split_intervals_disk_size_override
-        Int? split_intervals_mem_override
-        String? output_gcs_dir
-        File? gatk_override
-    }
-    meta {
-        # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
-    }
-
-    Int disk_size = if (defined(split_intervals_disk_size_override)) then select_first([split_intervals_disk_size_override]) else 10
-    Int disk_memory = if (defined(split_intervals_mem_override)) then select_first([split_intervals_mem_override]) else 16
-    Int java_memory = disk_memory - 4
-
-    String gatkTool = if (defined(interval_weights_bed)) then 'WeightedSplitIntervals' else 'SplitIntervals'
-
-    parameter_meta {
-        intervals: {
-                       localization_optional: true
-                   }
-        ref_fasta: {
-                       localization_optional: true
-                   }
-        ref_fai: {
-                     localization_optional: true
-                 }
-        ref_dict: {
-                      localization_optional: true
-                  }
-    }
-
-    command {
-        set -e
-        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
-
-        mkdir interval-files
-        gatk --java-options "-Xmx~{java_memory}g" ~{gatkTool} \
-            --dont-mix-contigs \
-            -R ~{ref_fasta} \
-            ~{"-L " + intervals} \
-            ~{"--weight-bed-file " + interval_weights_bed} \
-            -scatter ~{scatter_count} \
-            -O interval-files \
-            ~{"--extension " + intervals_file_extension} \
-            --interval-file-num-digits 10 \
-            ~{split_intervals_extra_args}
-
-        cp interval-files/*.interval_list .
-
-        # Drop trailing slash if one exists
-        OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
-
-        echo "Hello"
-        if [ -n "$OUTPUT_GCS_DIR" ]; then
-            echo "There"
-            gsutil -m cp *.interval_list $OUTPUT_GCS_DIR/
-        fi
-    }
-
-    runtime {
-        docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2022_10_17_2a8c210ac35094997603259fa1cd784486b92e42"
-        bootDiskSizeGb: 15
-        memory: "~{disk_memory} GB"
-        disks: "local-disk ~{disk_size} HDD"
-        preemptible: 3
-        cpu: 1
-    }
-
-    output {
-        Array[File] interval_files = glob("*.interval_list")
     }
 }
