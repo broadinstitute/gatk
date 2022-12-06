@@ -361,7 +361,7 @@ task JasixParseNirvanaJson {
                 CHR=chr${CHR}
             fi
 
-            /usr/bin/dotnet /Nirvana/Jasix.dll --in ${INPUT_JSON} --query {} --out ${CHR}.json.gz
+            /usr/bin/dotnet /Nirvana/Jasix.dll --in ${INPUT_JSON} --query {} --out \${CHR}.json.gz
 
         "
     >>>
