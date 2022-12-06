@@ -305,11 +305,10 @@ task JasixCreateIndex {
 
         # Find out how many CPUs are available to determine the parallelism in extracting by position below.
         NUM_CPUS=$(nproc --all)
-        INPUT_JSON=$(ls -1 *.json.gz)
 
         # https://illumina.github.io/NirvanaDocumentation/introduction/parsing-json#jasix
         # Create an index
-        /usr/bin/dotnet /Nirvana/Jasix.dll --in ${INPUT_JSON} --out ${INPUT_JSON}.jsi --index
+        /usr/bin/dotnet /Nirvana/Jasix.dll --in ~{annotation_json} --index
 
         echo ~{annotation_json}.jsi > index.out
     >>>
