@@ -41,6 +41,11 @@ workflow GvsCreateVATfromVDS {
             ref = reference
     }
 
+    call IndexVcf {
+        input:
+            input_vcf = RemoveDuplicatesFromSitesOnlyVCF.output_vcf
+    }
+
     call SplitIntervals {
         input:
             intervals = interval_list,
@@ -54,7 +59,7 @@ workflow GvsCreateVATfromVDS {
     }
 
 
-    # Call split intervals on the mother interval list - Hello. 5
+    # Call split intervals on the mother interval list - Hello. 6
     # maybe 1000 (is there a way not to jump across contigs?)
     # Use SelectVariants on the sites only VCF
     # scatter, George
@@ -69,7 +74,7 @@ workflow GvsCreateVATfromVDS {
         call SelectVariants {
             input:
                 input_vcf = RemoveDuplicatesFromSitesOnlyVCF.output_vcf,
-#                input_vcf_index = RemoveDuplicatesF
+                input_vcf_index = IndexVcf.output_vcf_index,
                 interval_list = SplitIntervals.interval_files[i],
                 output_basename = vcf_filename
         }
@@ -923,11 +928,45 @@ task MergeVatTSVs {
     }
 }
 
-    # TODO - put me in Utils.
+# TODO - put me in Utils.
+task IndexVcf {
+    input {
+        File input_vcf
+
+        Int memory_mb = 7500
+        Int disk_size_gb = ceil(2*size(input_vcf, "GiB")) + 50
+    }
+    Int command_mem = memory_mb - 1000
+    Int max_heap = memory_mb - 500
+
+    String output_basename = basename(input_vcf)
+
+    command <<<
+        set -e
+
+        gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
+            IndexFeatureFile \
+            -I ~{input_vcf}
+    >>>
+
+    runtime {
+        docker: "us.gcr.io/broad-gatk/gatk:4.2.6.1"
+        cpu: 1
+        memory: "${memory_mb} MiB"
+        disks: "local-disk ${disk_size_gb} HDD"
+        bootDiskSizeGb: 15
+        preemptible: 1
+    }
+
+    output {
+        File output_vcf_index = "~{output_basename}.idx"
+    }
+}
+
 task SelectVariants {
     input {
         File input_vcf
-#        File input_vcf_index
+        File input_vcf_index
         File interval_list
         String output_basename
 
@@ -938,14 +977,6 @@ task SelectVariants {
     Int max_heap = memory_mb - 500
 
     command <<<
-        set -e
-
-        echo "Indexing it"
-        gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
-        IndexFeatureFile \
-            -I ~{input_vcf}
-        echo "Done indexing"
-
         gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
         SelectVariants \
             -V ~{input_vcf} \
