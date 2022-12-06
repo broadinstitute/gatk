@@ -346,16 +346,18 @@ task JasixParseNirvanaJson {
         # Find out how many CPUs are available to determine the parallelism in extracting by position below.
         NUM_CPUS=$(nproc --all)
 
-        # Positions sharded by chromosome, parallelized by the number of cpus.
+        # List all entries within the input Nirvana annotation JSON file.
         /usr/bin/dotnet /Nirvana/Jasix.dll --in ${INPUT_JSON} --list > list.txt
 
-        cat list.txt
-
+        # Filter the Nirvana annotation entries to only look at chromosomes. If the Jasix index file was produced via
+        # `--index` then the chromosome names will begin with "chr".  Otherwise if the index file was produced as a
+        # byproduct of Nirvana annotation creation, the chromosome names will not have a leading "chr" (so 1, 2, ... Y).
         cat list.txt | grep -E '^(chr)?[12]?[0-9XY]$' | xargs -I {} -n 1 -P ${NUM_CPUS} bash -c "
 
             PS4='\D{+%F %T} \w $ '
             set -o errexit -o nounset -o xtrace -o pipefail
 
+            # Normalize the sharded filenames to always have a "chr" prefix (so chr1.json.gz, chr2.json.gz, etc).
             CHR='{}'
             if ! [[ \$CHR =~ '^chr' ]]; then
                 CHR=chr\${CHR}
