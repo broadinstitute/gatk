@@ -357,7 +357,7 @@ task JasixParseNirvanaJson {
             set -o errexit -o nounset -o xtrace -o pipefail
 
             CHR="{}"
-            if ! [[ $CHR =~ "^chr" ]];
+            if ! [[ $CHR =~ "^chr" ]]; then
                 CHR="chr${CHR}"
             fi
 
