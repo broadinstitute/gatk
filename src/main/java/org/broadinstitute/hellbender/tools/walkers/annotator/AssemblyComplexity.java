@@ -4,6 +4,7 @@ package org.broadinstitute.hellbender.tools.walkers.annotator;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
+import jdk.nashorn.internal.runtime.regexp.joni.constants.EncloseType;
 import org.apache.commons.lang.mutable.MutableInt;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.apache.commons.lang3.tuple.Triple;
@@ -81,8 +82,10 @@ public class AssemblyComplexity implements JumboInfoAnnotation {
         // with the greatest read support is considered germline, and as a heuristic we consider the second-most-supported
         // haplotype to be germline as well if it is at least half as supported (in terms of best read count) as the most-supported.
         // as above, we exclude differences at the variant site itself to avoid reference and germline bias
+        Comparator<Map.Entry<Haplotype,MutableInt>> countComparator = Comparator.comparingInt(entry -> -entry.getValue().intValue());
+        Comparator<Map.Entry<Haplotype,MutableInt>> alleleComparator =Comparator.comparing(entry -> entry.getKey().getBaseString());
         final List<Haplotype> haplotypesByDescendingSupport = haplotypeSupportCounts.entrySet().stream()
-                .sorted(Comparator.comparingInt(entry -> -entry.getValue().intValue()))
+                .sorted(countComparator.thenComparing(alleleComparator))
                 .map(entry -> entry.getKey())
                 .collect(Collectors.toList());
 

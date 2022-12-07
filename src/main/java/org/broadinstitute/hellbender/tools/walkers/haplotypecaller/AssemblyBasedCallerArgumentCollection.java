@@ -337,7 +337,8 @@ public abstract class AssemblyBasedCallerArgumentCollection {
 
     @Hidden
     @Advanced
-    @Argument(fullName=FLOW_ASSEMBLY_COLLAPSE_HMER_SIZE_LONG_NAME, doc="Collapse reference regions with >Nhmer during assembly, normal value when used is 12", optional = true)
+    @Argument(fullName=FLOW_ASSEMBLY_COLLAPSE_HMER_SIZE_LONG_NAME, doc="Collapse reference regions with >Nhmer during assembly, normal value when used is 12, " +
+            "-1 means - determine automatically from mc tag in the reads, 0 - disable", optional = true)
     public int flowAssemblyCollapseHKerSize = 0;
 
     @Advanced

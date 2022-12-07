@@ -1771,6 +1771,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 .add("likelihood-calculation-engine","FlowBased")
                 .add("A", "AssemblyComplexity")
                 .addFlag("assembly-complexity-reference-mode")
+                .add("verbosity","INFO")
                 .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, false);
 
         runCommandLine(args);
