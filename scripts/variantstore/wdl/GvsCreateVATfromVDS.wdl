@@ -343,24 +343,27 @@ task JasixParseNirvanaJson {
         # Genes section
         /usr/bin/dotnet /Nirvana/Jasix.dll --in ${INPUT_JSON} --section genes --out genes.json.gz
 
-        # Find out how many CPUs are available for parallel chromosome extraction below.
-        NUM_CPUS=$(nproc --all)
-
         # List all entries within the input Nirvana annotation JSON file.
         /usr/bin/dotnet /Nirvana/Jasix.dll --in ${INPUT_JSON} --list > list.txt
 
+        # Find out how many CPUs are available for parallel chromosome extraction below.
+        NUM_CPUS=$(nproc --all)
+
         # Filter the Nirvana annotation entries to only look at chromosomes.
-        # If the Jasix index file was produced via `--index` then the chromosome names will begin with "chr"
+        #
+        # If the Jasix index file was produced via `--index` then the chromosome names will begin with "chr".
         # e.g. chr1, chr2, ... chrY.
+        #
         # Otherwise if the index file was produced as a byproduct of Nirvana annotation creation, the chromosome names
         # will not have a leading "chr". e.g. 1, 2, ... Y.
+        #
         # Look for either form of chromosome name in the grep below.
         cat list.txt | grep -E '^(chr)?[12]?[0-9XY]$' | xargs -I {} -n 1 -P ${NUM_CPUS} bash -c "
 
             PS4='\D{+%F %T} \w $ '
             set -o errexit -o nounset -o xtrace -o pipefail
 
-            # Normalize the sharded filenames to always have a "chr" prefix e.g. chr1.json.gz, chr2.json.gz, etc.
+            # Normalize the sharded filenames to always have a "chr" prefix. e.g. chr1.json.gz, chr2.json.gz, etc.
             CHR='{}'
             if ! [[ \$CHR =~ '^chr' ]]; then
                 CHR=chr\${CHR}
@@ -375,7 +378,7 @@ task JasixParseNirvanaJson {
         memory: "64 GB"
         cpu: 4
         # preemptible: 3
-        disks: "local-disk 2000 SSD"
+        disks: "local-disk 2000 HDD"
     }
     output {
         File genes = "genes.json.gz"
