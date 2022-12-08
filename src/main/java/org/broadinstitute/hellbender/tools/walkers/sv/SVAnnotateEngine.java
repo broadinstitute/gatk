@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfFeature;
 import org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfTranscriptFeature;
+import org.broadinstitute.hellbender.utils.variant.GATKSVVariantContextUtils;
 
 import java.util.*;
 
@@ -477,9 +478,7 @@ public class SVAnnotateEngine {
             return StructuralVariantAnnotationType.BND;
         } else if (alt.isSymbolic()) {
             // parse ALT as symbolic allele, assuming format <SVTYPE> or <SVTYPE:SUBTYPE_1:...:SUBTYPE_N>
-            // convert ALT to string, remove first and last character (<>), split by :, take first element
-            return StructuralVariantAnnotationType.valueOf(alt.toString().substring(1, alt.toString().length()-1)
-                    .split(":")[0]);
+            return StructuralVariantAnnotationType.valueOf(GATKSVVariantContextUtils.getSymbolicAlleleSymbols(alt)[0]);
         } else {
             throw new IllegalArgumentException("Unexpected ALT allele: " + alt +
                     ". Expected breakpoint or symbolic ALT allele representing a structural variant record.");
