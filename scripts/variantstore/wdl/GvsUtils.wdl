@@ -477,7 +477,7 @@ task IndexVcf {
         File input_vcf
 
         Int memory_mb = 2500
-        Int disk_size_gb = ceil(2 * size(input_vcf, "GiB")) + 20
+        Int disk_size_gb = ceil(2 * size(input_vcf, "GiB")) + 200
     }
     Int command_mem = memory_mb - 1000
     Int max_heap = memory_mb - 500
@@ -522,7 +522,7 @@ task SelectVariants {
         String output_basename
 
         Int memory_mb = 7500
-        Int disk_size_gb = ceil(2*size(input_vcf, "GiB")) + 50
+        Int disk_size_gb = ceil(2*size(input_vcf, "GiB")) + 200
     }
     Int command_mem = memory_mb - 1000
     Int max_heap = memory_mb - 500
