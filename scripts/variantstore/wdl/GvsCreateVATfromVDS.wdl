@@ -1,5 +1,7 @@
 version 1.0
 
+import "GvsUtils.wdl" as Utils
+
 workflow GvsCreateVATfromVDS {
     input {
         File input_sites_only_vcf
@@ -10,18 +12,24 @@ workflow GvsCreateVATfromVDS {
         String filter_set_name
         String? vat_version
 
+        Int effective_scatter_count = 10
+
         String output_path
+        Int? split_intervals_disk_size_override
+        Int? split_intervals_mem_override
         Int? merge_vcfs_disk_size_override
     }
 
+    File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
+
     Array[String] contig_array = ["chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrX", "chrY", "chrM"]
     File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
+    File reference_dict = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict"
+    File reference_index = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai"
+
     File nirvana_data_directory = "gs://gvs_quickstart_storage/Nirvana/Nirvana-references-2022-10-07.tgz"
 
-    ## TODO # do we need to shard the sites only VCF?
-    # String input_vds_name = basename(input_VDS_file)
     ## TODO: where do we need to validate that there are no hemis?
-    String input_vcf_name = "gvs"
 
     call MakeSubpopulationFilesAndReadSchemaFiles {
         input:
@@ -34,35 +42,69 @@ workflow GvsCreateVATfromVDS {
             ref = reference
     }
 
-    call StripCustomAnnotationsFromSitesOnlyVCF {
+    call Utils.IndexVcf {
         input:
-            input_vcf = RemoveDuplicatesFromSitesOnlyVCF.output_vcf,
-            custom_annotations_header = MakeSubpopulationFilesAndReadSchemaFiles.custom_annotations_template_file,
-            output_vcf_name = "${input_vcf_name}.unannotated.sites_only.vcf",
-            output_custom_annotations_filename = "ac_an_af.tsv"
+            input_vcf = RemoveDuplicatesFromSitesOnlyVCF.output_vcf
     }
 
-    ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
-    call AnnotateVCF {
+    call Utils.SplitIntervals {
         input:
-            input_vcf = StripCustomAnnotationsFromSitesOnlyVCF.output_vcf,
-            output_annotated_file_name = "${input_vcf_name}_annotated",
-            nirvana_data_tar = nirvana_data_directory,
-            custom_annotations_file = StripCustomAnnotationsFromSitesOnlyVCF.output_custom_annotations_file,
+            intervals = interval_list,
+            ref_fasta = reference,
+            ref_fai = reference_index,
+            ref_dict = reference_dict,
+            scatter_count = effective_scatter_count,
+            output_gcs_dir = output_path + "intervals",
+            split_intervals_disk_size_override = split_intervals_disk_size_override,
+            split_intervals_mem_override = split_intervals_mem_override,
     }
 
-    call PrepVtAnnotationJson {
-        input:
-            annotation_json = AnnotateVCF.annotation_json,
-            output_file_suffix = "${input_vcf_name}.json.gz",
-            output_path = output_path,
-    }
+    String sites_only_vcf_basename = basename(basename(input_sites_only_vcf, ".gz"), ".vcf")
 
-    call PrepGenesAnnotationJson {
-        input:
-            annotation_json = AnnotateVCF.annotation_json,
-            output_file_suffix = "${input_vcf_name}.json.gz",
-            output_path = output_path,
+    scatter(i in range(length(SplitIntervals.interval_files))) {
+        String interval_file_basename = basename(SplitIntervals.interval_files[i], ".interval_list")
+        String vcf_filename = interval_file_basename + "." + sites_only_vcf_basename
+
+        call Utils.SelectVariants {
+            input:
+                input_vcf = IndexVcf.output_vcf,
+                input_vcf_index = IndexVcf.output_vcf_index,
+                interval_list = SplitIntervals.interval_files[i],
+                output_basename = vcf_filename
+        }
+
+        call StripCustomAnnotationsFromSitesOnlyVCF {
+            input:
+                input_vcf = SelectVariants.output_vcf,
+                custom_annotations_header = MakeSubpopulationFilesAndReadSchemaFiles.custom_annotations_template_file,
+                output_vcf_name = "${vcf_filename}.unannotated.sites_only.vcf",
+                output_custom_annotations_filename = "${vcf_filename}.custom_annotations.tsv"
+        }
+
+        ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
+        call AnnotateVCF {
+            input:
+                input_vcf = StripCustomAnnotationsFromSitesOnlyVCF.output_vcf,
+                output_annotated_file_name = "${vcf_filename}_annotated",
+                nirvana_data_tar = nirvana_data_directory,
+                custom_annotations_file = StripCustomAnnotationsFromSitesOnlyVCF.output_custom_annotations_file,
+        }
+
+
+        call PrepVtAnnotationJson {
+            input:
+                annotation_json = AnnotateVCF.annotation_json,
+                output_file_suffix = "${vcf_filename}.json.gz",
+                output_path = output_path,
+        }
+
+        call PrepGenesAnnotationJson {
+            input:
+                annotation_json = AnnotateVCF.annotation_json,
+                output_file_suffix = "${vcf_filename}.json.gz",
+                output_path = output_path,
+        }
+
     }
 
     call BigQueryLoadJson {
@@ -134,7 +176,7 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-561_var_store_2022_11_29"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:VS-561_var_store_2022_12_08"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -179,7 +221,7 @@ task StripCustomAnnotationsFromSitesOnlyVCF {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-561_var_store_2022_11_29a"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:VS-561_var_store_2022_12_08"
         memory: "7 GiB"
         cpu: "2"
         preemptible: 3
@@ -282,7 +324,7 @@ task RemoveDuplicatesFromSitesOnlyVCF {
 
 task AnnotateVCF {
     input {
-        File input_vcf ## TODO do we need a sites only index file?
+        File input_vcf
         String output_annotated_file_name
         File nirvana_data_tar
         File custom_annotations_file
@@ -362,11 +404,6 @@ task PrepVtAnnotationJson {
         String output_file_suffix
         String output_path
     }
-    parameter_meta {
-        annotation_json: {
-            localization_optional: true
-        }
-    }
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
@@ -388,8 +425,8 @@ task PrepVtAnnotationJson {
 
         ## the annotation jsons are split into the specific VAT schema
         python3 /app/create_vt_bqloadjson_from_annotations.py \
-        --annotated_json ~{annotation_json} \
-        --output_vt_json ~{output_vt_json}
+            --annotated_json ~{annotation_json} \
+            --output_vt_json ~{output_vt_json}
 
         gsutil cp ~{output_vt_json} '~{output_vt_gcp_path}'
 
@@ -397,8 +434,8 @@ task PrepVtAnnotationJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-561_var_store_2022_12_01"
-        memory: "15 GB"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:VS-561_var_store_2022_12_08"
+        memory: "7 GB"
         preemptible: 3
         cpu: "1"
         disks: "local-disk 500 HDD"
@@ -435,8 +472,8 @@ task PrepGenesAnnotationJson {
 
         ## the annotation jsons are split into the specific VAT schema
         python3 /app/create_genes_bqloadjson_from_annotations.py \
-        --annotated_json ~{annotation_json} \
-        --output_genes_json ~{output_genes_json}
+            --annotated_json ~{annotation_json} \
+            --output_genes_json ~{output_genes_json}
 
         gsutil cp ~{output_genes_json} '~{output_genes_gcp_path}'
 
@@ -444,8 +481,8 @@ task PrepGenesAnnotationJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-561_var_store_2022_12_01"
-        memory: "15 GB"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:VS-561_var_store_2022_12_08"
+        memory: "7 GB"
         preemptible: 3
         cpu: "1"
         disks: "local-disk 500 HDD"
@@ -475,8 +512,8 @@ task BigQueryLoadJson {
         String project_id
         String dataset_name
         String output_path
-        Boolean prep_vt_json_done
-        Boolean prep_genes_json_done
+        Array[Boolean] prep_vt_json_done
+        Array[Boolean] prep_genes_json_done
     }
 
     # If the vat version is undefined or v1 then the vat tables would be named like filter_vat, otherwise filter_vat_v2.
@@ -884,4 +921,3 @@ task MergeVatTSVs {
         File tsv_file = "vat_complete.bgz.tsv.gz"
     }
 }
-
