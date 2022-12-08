@@ -476,13 +476,10 @@ public class SVAnnotateEngine {
             }
             return StructuralVariantAnnotationType.BND;
         } else if (alt.isSymbolic()) {
-            if (alt.toString().contains("INS")) {
-                // account for <INS:ME>, etc. types
-                return StructuralVariantAnnotationType.INS;
-            } else {
-                // parse ALT as symbolic allele, assuming format <SVTYPE>
-                return StructuralVariantAnnotationType.valueOf(alt.toString().substring(1, alt.toString().length()-1));
-            }
+            // parse ALT as symbolic allele, assuming format <SVTYPE> or <SVTYPE:SUBTYPE_1:...:SUBTYPE_N>
+            // convert ALT to string, remove first and last character (<>), split by :, take first element
+            return StructuralVariantAnnotationType.valueOf(alt.toString().substring(1, alt.toString().length()-1)
+                    .split(":")[0]);
         } else {
             throw new IllegalArgumentException("Unexpected ALT allele: " + alt +
                     ". Expected breakpoint or symbolic ALT allele representing a structural variant record.");
