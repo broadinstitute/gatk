@@ -725,9 +725,9 @@ public class Funcotator extends VariantWalker {
 
     //==================================================================================================================
 
-    private OutputRenderer outputRenderer;
+    protected OutputRenderer outputRenderer;
 
-    private FuncotatorEngine funcotatorEngine;
+    protected FuncotatorEngine funcotatorEngine;
 
     //==================================================================================================================
 
@@ -919,7 +919,7 @@ public class Funcotator extends VariantWalker {
      * @param referenceContext {@link ReferenceContext} corresponding to the given {@code variant}.
      * @param featureContext {@link FeatureContext} corresponding to the given {@code variant}.
      */
-    private void enqueueAndHandleVariant(final VariantContext variant, final ReferenceContext referenceContext, final FeatureContext featureContext) {
+    protected void enqueueAndHandleVariant(final VariantContext variant, final ReferenceContext referenceContext, final FeatureContext featureContext) {
 
         final FuncotationMap funcotationMap = funcotatorEngine.createFuncotationMapForVariant(variant, referenceContext, featureContext);
 
