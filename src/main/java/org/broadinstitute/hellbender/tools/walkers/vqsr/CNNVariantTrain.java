@@ -129,8 +129,7 @@ public class CNNVariantTrain extends CommandLineProgram {
     @Argument(fullName = "annotation-set", shortName = "annotation-set", doc = "Which set of annotations to use.", optional = true)
     private String annotationSet = "best_practices";
 
-    // Start the Python executor. This does not actually start the Python process, but fails if python can't be located
-    final PythonScriptExecutor pythonExecutor = new PythonScriptExecutor(true);
+    private PythonScriptExecutor pythonExecutor;
 
 
     @Override
@@ -140,6 +139,9 @@ public class CNNVariantTrain extends CommandLineProgram {
 
     @Override
     protected Object doWork() {
+        // Start the Python executor. This does not actually start the Python process, but fails if python can't be located
+        pythonExecutor = new PythonScriptExecutor(true);
+
         final Resource pythonScriptResource = new Resource("training.py", CNNVariantTrain.class);
         List<String> arguments = new ArrayList<>(Arrays.asList(
                 "--data_dir", inputTensorDir,
