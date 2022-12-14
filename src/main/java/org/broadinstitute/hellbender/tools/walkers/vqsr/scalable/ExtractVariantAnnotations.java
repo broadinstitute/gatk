@@ -65,7 +65,7 @@ import java.util.stream.Collectors;
  * <ul>
  *     <li>
  *         Input VCF file. Site-level annotations will be extracted from the contained variants (or alleles, 
- *         if the {@value USE_ALLELE_SPECIFIC_ANNOTATIONS_LONG_NAME} argument is specified).
+ *         if at least one allele-specific annotation with {@code Number=A} is specified).
  *     </li>
  *     <li>
  *         Annotations to extract.
@@ -128,7 +128,7 @@ import java.util.stream.Collectors;
  *         <p>
  *             Here, each chunk is a double matrix, with dimensions given by (number of sites in the chunk) x (number of annotations).
  *             See the methods {@link HDF5Utils#writeChunkedDoubleMatrix} and {@link HDF5Utils#writeIntervals} for additional details.
- *             If {@value USE_ALLELE_SPECIFIC_ANNOTATIONS_LONG_NAME} is specified, each record corresponds to an individual allele;
+ *             In allele-specific mode (i.e., when allele-specific annotations are requested), each record corresponds to an individual allele;
  *             otherwise, each record corresponds to a variant site, which may contain multiple alleles.
  *             Storage of alleles can be omitted using the {@value OMIT_ALLELES_IN_HDF5_LONG_NAME} argument, which will reduce
  *             the size of the file. This file will only be produced if resources are provided and the number of extracted
@@ -184,9 +184,8 @@ import java.util.stream.Collectors;
  *     1000000 unlabeled (i.e., non-training/calibration) sites, producing the outputs
  *     1) {@code extract.annot.hdf5}, 2) {@code extract.unlabeled.annot.hdf5}, 3) {@code extract.vcf.gz},
  *     and 4) {@code extract.vcf.gz.tbi}. The HDF5 files can then be provided to {@link TrainVariantAnnotationsModel}
- *     to train a model using a positive-negative approach (similar to that used in {@link VariantRecalibrator}).
- *     Note that the {@value MODE_LONG_NAME} arguments are made explicit here, although both SNP and INDEL modes are
- *     selected by default.
+ *     to train a model using a positive-unlabeled approach. Note that the {@value MODE_LONG_NAME} arguments
+ *     are made explicit here, although both SNP and INDEL modes are selected by default.
  *
  * <pre>
  *     gatk ExtractVariantAnnotations \
@@ -200,9 +199,15 @@ import java.util.stream.Collectors;
  *          --mode INDEL \
  *          --resource:indel-training,training=true indel-training.vcf \
  *          --resource:indel-calibration,calibration=true indel-calibration.vcf \
- *          --maximum-number-of-unlableled-variants 1000000
+ *          --maximum-number-of-unlabeled-variants 1000000
  *          -O extract
  * </pre>
+ * </p>
+ *
+ * <p>
+ *     Note that separate SNP and INDEL resources are shown in the above examples purely for demonstration purposes,
+ *     as are separate training and calibration resources. However, it may be desirable to specify combined
+ *     resource(s); e.g., {@code --resource:snp-and-indel-resource,training=true,calibration=true snp-and-indel-resource.vcf}.
  * </p>
  *
  * <p>
@@ -221,12 +226,20 @@ import java.util.stream.Collectors;
  *          -A annotation_N \
  *          --mode SNP \
  *          --mode INDEL \
- *          --maximum-number-of-unlableled-variants 1000000
+ *          --maximum-number-of-unlabeled-variants 1000000
  *          -O extract
  * </pre>
  * </p>
  *
- * DEVELOPER NOTE: See documentation in {@link LabeledVariantAnnotationsWalker}.
+ * <p>
+ *     Alternatively, if resource VCFs are unavailable, one might want to specify the input VCF itself as a resource
+ *     and extract annotations for the input variants (or a subset thereof). Again, this may be useful for
+ *     exploratory analyses.
+ * </p>
+ *
+ * <p>
+ *     DEVELOPER NOTE: See documentation in {@link LabeledVariantAnnotationsWalker}.
+ * </p>
  *
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
@@ -249,11 +262,10 @@ public final class ExtractVariantAnnotations extends LabeledVariantAnnotationsWa
             doc = "Maximum number of unlabeled variants to extract. " +
                     "If greater than zero, reservoir sampling will be used to randomly sample this number " +
                     "of sites from input sites that are not present in the specified resources. " +
-                    "Choice of this number should be guided by considerations for training the negative model in " +
+                    "Choice of this number should be guided by considerations for training the model in " +
                     "TrainVariantAnnotationsModel; users may wish to choose a number that is comparable to the " +
                     "expected size of the labeled training set or that is compatible with available memory resources. " +
-                    "Note that in allele-specific mode (--" + LabeledVariantAnnotationsWalker.USE_ALLELE_SPECIFIC_ANNOTATIONS_LONG_NAME +
-                    " true), this argument limits the number of variant records, rather than the number of alleles.",
+                    "Note that in allele-specific mode, this argument limits the number of variant records, rather than the number of alleles.",
             minValue = 0)
     private int maximumNumberOfUnlabeledVariants = 0;
 

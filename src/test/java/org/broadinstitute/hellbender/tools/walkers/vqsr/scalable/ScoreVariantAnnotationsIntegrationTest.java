@@ -100,8 +100,8 @@ public final class ScoreVariantAnnotationsIntegrationTest extends CommandLinePro
     public Object[][] dataValidInputs() {
         final List<List<Pair<String, Function<ArgumentsBuilder, ArgumentsBuilder>>>> testConfigurations = Lists.cartesianProduct(
                 Arrays.asList(
-                        Pair.of("extract.nonAS.snpIndel.posUn.train.snpIndel.posNeg", Function.identity()),
-                        Pair.of("extract.AS.snpIndel.posUn.train.snpIndel.posNeg", Function.identity())),
+                        Pair.of("extract.nonAS.snpIndel.posUn.train.snpIndel.posOnly", Function.identity()),
+                        Pair.of("extract.AS.snpIndel.posUn.train.snpIndel.posOnly", Function.identity())),
                 Arrays.asList(
                         Pair.of("IF.score", ab -> ADD_MODEL_BACKEND.apply(ab, VariantAnnotationsModelBackend.PYTHON_IFOREST)), // this and the following case give the same results, so they are given the same IF.score tag
                         Pair.of("IF.score", ADD_ISOLATION_FOREST_PYTHON_SCRIPT
@@ -113,7 +113,7 @@ public final class ScoreVariantAnnotationsIntegrationTest extends CommandLinePro
 
         return testConfigurations.stream()
                 .map(tagAndAddFunctionPairs -> new Object[]{
-                        tagAndAddFunctionPairs.stream().map(Pair::getLeft).collect(Collectors.joining(".")), // e.g., extract.nonAS.snpIndel.posUn.train.snpIndel.posNeg.IF.score.snp
+                        tagAndAddFunctionPairs.stream().map(Pair::getLeft).collect(Collectors.joining(".")), // e.g., extract.nonAS.snpIndel.posUn.train.snpIndel.posOnly.IF.score.snp
                         tagAndAddFunctionPairs.stream().map(Pair::getRight)                                              // creates the corresponding ArgumentsBuilder
                                 .reduce(Function.identity(), Function::andThen)                                          //  by stringing together functions that add the
                                 .apply(BASE_ARGUMENTS_BUILDER_SUPPLIER.get())})                                          //  appropriate arguments
@@ -121,7 +121,7 @@ public final class ScoreVariantAnnotationsIntegrationTest extends CommandLinePro
     }
 
     /**
-     * Checks expected outputs given a tag (e.g., "extract.nonAS.snpIndel.posUn.train.snpIndel.posNeg.IF.score.snp") and arguments corresponding to the
+     * Checks expected outputs given a tag (e.g., "extract.nonAS.snpIndel.posUn.train.snpIndel.posOnly.IF.score.snp") and arguments corresponding to the
      * Cartesian products generated in {@link #dataValidInputs}.
      *
      * We perform exact-match tests of any HDF5 files produced using h5diff, which is insensitive to timestamps within the file.
@@ -136,7 +136,7 @@ public final class ScoreVariantAnnotationsIntegrationTest extends CommandLinePro
         argsBuilder.addOutput(outputPrefix);
 
         // add arguments for model prefix based on the
-        // train tag (the portion of the tag preceding ".score", e.g., extract.nonAS.snpIndel.posUn.train.snp.posNeg.IF),
+        // train tag (the portion of the tag preceding ".score", e.g., extract.nonAS.snpIndel.posUn.train.snp.posOnly.IF),
         // which gives the basename for the model files
         final String trainTag = tag.split(".score")[0];
         if (tag.contains("nonAS")) {
