@@ -28,12 +28,8 @@ fi
 echo "Docker build done =========="
 
 sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" $CROMWELL_TEST_DIR/vcf_site_level_filtering.json >$WORKING_DIR/vcf_site_level_filtering_mod.json
-sed -r "s/__GATK_DOCKER__/broadinstitute\/gatk\:$HASH_TO_USE/g" $CROMWELL_TEST_DIR/vcf_site_level_filtering_pos_neg.json >$WORKING_DIR/vcf_site_level_filtering_pos_neg_mod.json
 
 echo "Running Filtering WDL through cromwell"
 
 cat $WORKING_DIR/vcf_site_level_filtering_mod.json
 java -jar $CROMWELL_JAR run $WDL_DIR/JointVcfFiltering.wdl -i $WORKING_DIR/vcf_site_level_filtering_mod.json
-
-cat $WORKING_DIR/vcf_site_level_filtering_pos_neg_mod.json
-java -jar $CROMWELL_JAR run $WDL_DIR/JointVcfFiltering.wdl -i $WORKING_DIR/vcf_site_level_filtering_pos_neg_mod.json

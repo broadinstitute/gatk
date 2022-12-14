@@ -1,9 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable;
 
 import com.google.common.collect.Streams;
-import com.google.common.primitives.Doubles;
 import org.apache.commons.math3.stat.descriptive.moment.Variance;
-import org.apache.commons.math3.stat.descriptive.rank.Percentile;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -17,8 +15,8 @@ import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.LabeledVar
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.VariantType;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.BGMMVariantAnnotationsModel;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.BGMMVariantAnnotationsScorer;
-import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.PythonSklearnVariantAnnotationsModel;
-import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.PythonSklearnVariantAnnotationsScorer;
+import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.PythonVariantAnnotationsModel;
+import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.PythonVariantAnnotationsScorer;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.VariantAnnotationsModel;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.VariantAnnotationsModelBackend;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.VariantAnnotationsScorer;
@@ -31,7 +29,6 @@ import picard.cmdline.programgroups.VariantFilteringProgramGroup;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -59,29 +56,21 @@ import java.util.stream.IntStream;
  * <h3>Modeling approaches</h3>
  *
  * <p>
- *     This tool can perform modeling using either a positive-only approach or a positive-negative approach.
+ *     This tool can perform modeling using either a positive-only approach or a positive-unlabeled approach.
  *     In a positive-only approach, the annotation-space distribution of training sites is used to learn a
  *     function for converting annotations for subsequent sites into a score; typically, higher scores correspond to
- *     regions of annotation space that are more densely populated by training sites. In contrast, a positive-negative
- *     approach attempts to additionally use unlabeled sites to better identify regions of annotation space that correspond
- *     to low scores against the original, positive-only model (with the assumption being that unlabeled sites are
- *     more likely to populate such regions than are training sites). A second, negative model can then be trained,
- *     and the resulting scores (which are presumably higher in regions of annotation space that are less densely
- *     populated by the original training sites) can be subtracted from the original scores to produce a final score.
- *     (Note that this positive-negative approach could be considered as a single iteration of a more general
- *     approach typically referred to as positive-unlabeled learning.)
+ *     regions of annotation space that are more densely populated by training sites. In contrast, a positive-unlabeled
+ *     approach attempts to additionally use unlabeled sites to better learn not only these regions of annotation space
+ *     populated by training sites, but also those that are populated by sites that may be drawn from a different distribution.
  * </p>
  *
  * <p>
  *     A positive-only approach is likely to perform well in cases where a sufficient number of reliable training sites
  *     is available. In contrast, if 1) only a small number of reliable training sites is available, and/or
  *     2) the reliability of the training sites is questionable (e.g., the sites may be contaminated by
- *     a non-negigible number of sequencing artifacts), then a positive-negative approach may be beneficial.
- *     However, note that the positive-negative approach introduces an additional hyperparameter---the threshold
- *     that determines the selection of sites for training the negative model, controlled by the
- *     {@value CALIBRATION_SENSITIVITY_THRESHOLD_LONG_NAME} argument---which may require tuning.
+ *     a non-negigible number of sequencing artifacts), then a positive-unlabeled approach may be beneficial.
  *     Further note that although {@link VariantRecalibrator} (which this tool supplants) has typically been used to
- *     implement a positive-negative approach, a positive-only approach likely suffices in many use cases.
+ *     implement a naive positive-unlabeled approach, a positive-only approach likely suffices in many use cases.
  * </p>
  *
  * <p>
@@ -94,24 +83,9 @@ import java.util.stream.IntStream;
  *                 generated using the positive model and output to a file.</li>
  *     </ul>
  *
- *     Additionally, if a positive-negative approach has been specified (i.e., the {@value UNLABELED_ANNOTATIONS_HDF5_LONG_NAME}
- *     and {@value CALIBRATION_SENSITIVITY_THRESHOLD_LONG_NAME} arguments have been provided),
- *     and if both unlabeled and calibration sites of the variant type are available, then:
- *
- *     <ul>
- *         <li> 4) The calibration scores generated from the positive model are used to convert the
- *                 calibration-sensitivity threshold into a score threshold,</li>
- *         <li> 5) Training sites with scores below the score threshold are selected for training a negative model,</li>
- *         <li> 6) Scores for unlabeled sites are generated using the positive model and output to a file,</li>
- *         <li> 7) Unlabeled sites with scores below the score threshold are selected for training a negative model,</li>
- *         <li> 8) A negative model is trained using these selected training and unlabeled sites and is serialized to file,</li>
- *         <li> 9) Scores for calibration sites are generated using the positive-negative model and overwritten in the existing file.</li>
- *     </ul>
- *
- *     Note that the positive-negative approach thus yields 1) scores for training and unlabeled sites generated from
- *     the positive model and 2) scores for calibration sites generated from the positive-negative model. This is opposed
- *     to generating scores from all sites from the positive-negative model, since these can simply be obtained from
- *     a downstream run of {@link ScoreVariantAnnotations}.
+ *     In contrast, a positive-unlabeled approach may instead be specified by providing the
+ *     {@value UNLABELED_ANNOTATIONS_HDF5_LONG_NAME} argument. Currently, this requires the use of a custom modeling backend;
+ *     see below.
  * </p>
  *
  * <h3>Modeling backends</h3>
@@ -173,8 +147,7 @@ import java.util.stream.IntStream;
  *     <li>
  *         (Optional) Unlabeled-annotations HDF5 file (.unlabeled.annot.hdf5). Annotation data and metadata for
  *         unlabeled sites are stored in the HDF5 directory structure given in the documentation for the
- *         {@link ExtractVariantAnnotations} tool. If provided, a positive-negative modeling approach (similar to
- *         that used in {@link VariantRecalibrator} will be used.
+ *         {@link ExtractVariantAnnotations} tool. If provided, a positive-unlabeled modeling approach will be used.
  *     </li>
  *     <li>
  *         Variant types (i.e., SNP and/or INDEL) for which to train models. Logic for determining variant type was retained from
@@ -219,17 +192,8 @@ import java.util.stream.IntStream;
  *         Positive-model serialized scorer file. (.scorer.pkl for the default {@code PYTHON_IFOREST} model backend).
  *     </li>
  *     <li>
- *         (Optional) Unlabeled-set positive-model scores HDF5 file (.unlabeledScores.hdf5). This is only output
- *         if a positive-negative modeling approach is used.
- *     </li>
- *     <li>
  *         (Optional) Calibration-set scores HDF5 file (.calibrationScores.hdf5). This is only output if a calibration
- *         set is provided. If a positive-only modeling approach is used, scores will be generated from the positive model;
- *         if a positive-negative modeling approach is used, scores will be generated from the positive-negative model.
- *     </li>
- *     <li>
- *         (Optional) Negative-model serialized scorer file. (.negative.scorer.pkl for the default {@code PYTHON_IFOREST} model backend).
- *         This is only output if a positive-negative modeling approach is used.
+ *         set is provided.
  *     </li>
  * </ul>
  *
@@ -252,37 +216,17 @@ import java.util.stream.IntStream;
  * </pre>
  * </p>
  *
- * <p>
- *     Train SNP and INDEL models using the default Python IsolationForest model backend with a positive-negative approach
- *     (using a calibration-sensitivity threshold of 0.95 to select sites for training the negative model),
- *     given an input labeled-annotations HDF5 file that contains labels for both training and calibration sets
- *     and an input unlabeled-annotations HDF5 file (with both HDF5 files generated by {@link ExtractVariantAnnotations}),
- *     producing the outputs 1) train.snp.scorer.pkl, 2) train.snp.negative.scorer.pkl, 3) train.snp.trainingScores.hdf5,
- *     4) train.snp.calibrationScores.hdf5, and 5) train.snp.unlabeledScores.hdf5, as well as analogous files
- *     for the INDEL model. Note that the {@value MODE_LONG_NAME} arguments are made explicit here, although both
- *     SNP and INDEL modes are selected by default.
- *
- * <pre>
- *     gatk TrainVariantAnnotationsModel \
- *          --annotations-hdf5 extract.annot.hdf5 \
- *          --unlabeled-annotations-hdf5 extract.unlabeled.annot.hdf5 \
- *          --mode SNP \
- *          --mode INDEL \
- *          --calibration-sensitivity-threshold 0.95 \
- *          -O train
- * </pre>
- * </p>
- *
  * <h3>Custom modeling/scoring backends (ADVANCED)</h3>
  *
  * <p>
  *     The primary modeling functionality performed by this tool is accomplished by a "modeling backend"
  *     whose fundamental contract is to take an input HDF5 file containing an annotation matrix for sites of a
- *     single variant type (i.e., SNP or INDEL) and to output a serialized scorer for that variant type.
+ *     single variant type (i.e., SNP or INDEL) (as well as an analogous HDF5 file for unlabeled sites,
+ *     if a positive-unlabeled modeling approach has been specified) and to output a serialized scorer for that variant type.
  *     Rather than using one of the available, implemented backends, advanced users may provide their own backend
  *     via the {@value PYTHON_SCRIPT_LONG_NAME} argument. See documentation in the modeling and scoring interfaces
  *     ({@link VariantAnnotationsModel} and {@link VariantAnnotationsScorer}, respectively), as well as the default
- *     Python IsolationForest implementation at {@link PythonSklearnVariantAnnotationsModel} and
+ *     Python IsolationForest implementation at {@link PythonVariantAnnotationsModel} and
  *     src/main/resources/org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/isolation-forest.py.
  * </p>
  *
@@ -311,7 +255,6 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
     public static final String MODEL_BACKEND_LONG_NAME = "model-backend";
     public static final String PYTHON_SCRIPT_LONG_NAME = "python-script";
     public static final String HYPERPARAMETERS_JSON_LONG_NAME = "hyperparameters-json";
-    public static final String CALIBRATION_SENSITIVITY_THRESHOLD_LONG_NAME = "calibration-sensitivity-threshold";
 
     public static final String ISOLATION_FOREST_PYTHON_SCRIPT = "isolation-forest.py";
     public static final String ISOLATION_FOREST_HYPERPARAMETERS_JSON = "isolation-forest-hyperparameters.json";
@@ -323,7 +266,6 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
     public static final String TRAINING_SCORES_HDF5_SUFFIX = ".trainingScores.hdf5";
     public static final String CALIBRATION_SCORES_HDF5_SUFFIX = ".calibrationScores.hdf5";
     public static final String UNLABELED_SCORES_HDF5_SUFFIX = ".unlabeledScores.hdf5";
-    public static final String NEGATIVE_TAG = ".negative";
 
     @Argument(
             fullName = ANNOTATIONS_HDF5_LONG_NAME,
@@ -333,8 +275,7 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
     @Argument(
             fullName = UNLABELED_ANNOTATIONS_HDF5_LONG_NAME,
             doc = "HDF5 file containing annotations extracted with ExtractVariantAnnotations. " +
-                    "If specified with " + CALIBRATION_SENSITIVITY_THRESHOLD_LONG_NAME + ", " +
-                    "a positive-unlabeled modeling approach will be used; otherwise, a positive-only modeling " +
+                    "If specified, a positive-unlabeled modeling approach will be used; otherwise, a positive-only modeling " +
                     "approach will be used.",
             optional = true)
     private File inputUnlabeledAnnotationsFile;
@@ -369,20 +310,6 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
     private String outputPrefix;
 
     @Argument(
-            fullName = CALIBRATION_SENSITIVITY_THRESHOLD_LONG_NAME,
-            doc = "Calibration-sensitivity threshold that determines which sites will be used for training the negative model " +
-                    "in the positive-unlabeled modeling approach. " +
-                    "Increasing this will decrease the corresponding positive-model score threshold; sites with scores below this score " +
-                    "threshold will be used for training the negative model. Thus, this parameter should typically be chosen to " +
-                    "be close to 1, so that sites that score highly according to the positive model will not be used to train the negative model. " +
-                    "The " + UNLABELED_ANNOTATIONS_HDF5_LONG_NAME + " argument must be specified in conjunction with this argument. " +
-                    "If separate thresholds for SNP and INDEL models are desired, run the tool separately for each mode with its respective threshold.",
-            optional = true,
-            minValue = 0.,
-            maxValue = 1.)
-    private Double calibrationSensitivityThreshold;
-
-    @Argument(
             fullName = MODE_LONG_NAME,
             doc = "Variant types for which to train models. Duplicate values will be ignored.",
             minElements = 1)
@@ -411,11 +338,7 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
     private void validateArgumentsAndSetModes() {
         IOUtils.canReadFile(inputAnnotationsFile);
 
-        Utils.validateArg((inputUnlabeledAnnotationsFile == null) == (calibrationSensitivityThreshold == null),
-                "Unlabeled annotations and calibration-sensitivity threshold must both be unspecified (for positive-only model training) " +
-                        "or specified (for positive-negative model training).");
-
-        availableLabelsMode = inputUnlabeledAnnotationsFile != null && calibrationSensitivityThreshold != null
+        availableLabelsMode = inputUnlabeledAnnotationsFile != null
                 ? AvailableLabelsMode.POSITIVE_UNLABELED
                 : AvailableLabelsMode.POSITIVE_ONLY;
 
@@ -485,7 +408,29 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
             logger.info(String.format("Training %s model with %d training sites x %d annotations %s...",
                     variantTypeString, numTrainingAndVariantType, annotationNames.size(), annotationNames));
             final File labeledTrainingAndVariantTypeAnnotationsFile = LabeledVariantAnnotationsData.subsetAnnotationsToTemporaryFile(annotationNames, annotations, isTrainingAndVariantType);
-            trainAndSerializeModel(labeledTrainingAndVariantTypeAnnotationsFile, outputPrefixTag);
+
+            File unlabeledAndVariantTypeAnnotationsFile = null;
+            int numUnlabeledAndVariantType = 0;
+            if (availableLabelsMode == AvailableLabelsMode.POSITIVE_UNLABELED) {
+                final double[][] unlabeledAnnotations = LabeledVariantAnnotationsData.readAnnotations(inputUnlabeledAnnotationsFile);
+                final List<Boolean> unlabeledIsSNP = LabeledVariantAnnotationsData.readLabel(inputUnlabeledAnnotationsFile, "snp");
+                final List<Boolean> isUnlabeledAndVariantType = variantType == VariantType.SNP ? unlabeledIsSNP : unlabeledIsSNP.stream().map(x -> !x).collect(Collectors.toList());
+
+                numUnlabeledAndVariantType = numPassingFilter(isUnlabeledAndVariantType);
+
+                if (numUnlabeledAndVariantType > 0) {
+                    logger.info(String.format("Training %s model with %d unlabeled sites x %d annotations %s...",
+                            variantTypeString, numUnlabeledAndVariantType, annotationNames.size(), annotationNames));
+                    unlabeledAndVariantTypeAnnotationsFile = LabeledVariantAnnotationsData.subsetAnnotationsToTemporaryFile(
+                            annotationNames, unlabeledAnnotations, isUnlabeledAndVariantType);
+                } else {
+                    throw new UserException.BadInput(String.format("Attempted to train %s model, " +
+                            "but no suitable unlabeled sites were found in the provided annotations.", variantTypeString));
+                }
+            }
+
+            trainAndSerializeModel(labeledTrainingAndVariantTypeAnnotationsFile, unlabeledAndVariantTypeAnnotationsFile, outputPrefixTag);
+
             logger.info(String.format("%s model trained and serialized with output prefix \"%s\".", variantTypeString, outputPrefix + outputPrefixTag));
 
             if (modelBackend == VariantAnnotationsModelBackend.JAVA_BGMM) {
@@ -508,64 +453,10 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
                 logger.warn(String.format("No %s calibration sites were available.", variantTypeString));
             }
 
-            // negative model
-            if (availableLabelsMode == AvailableLabelsMode.POSITIVE_UNLABELED) {
-                if (numLabeledCalibrationAndVariantType == 0) {
-                    throw new UserException.BadInput(String.format("Attempted to train %s negative model, " +
-                            "but no suitable calibration sites were found in the provided annotations.", variantTypeString));
-                }
-                final double[][] unlabeledAnnotations = LabeledVariantAnnotationsData.readAnnotations(inputUnlabeledAnnotationsFile);
-                final List<Boolean> unlabeledIsSNP = LabeledVariantAnnotationsData.readLabel(inputUnlabeledAnnotationsFile, "snp");
-                final List<Boolean> isUnlabeledVariantType = variantType == VariantType.SNP ? unlabeledIsSNP : unlabeledIsSNP.stream().map(x -> !x).collect(Collectors.toList());
-
-                final int numUnlabeledVariantType = numPassingFilter(isUnlabeledVariantType);
-
-                if (numUnlabeledVariantType > 0) {
-                    final File labeledCalibrationAndVariantTypeScoresFile = new File(outputPrefix + outputPrefixTag + CALIBRATION_SCORES_HDF5_SUFFIX);
-                    final double[] labeledCalibrationAndVariantTypeScores = VariantAnnotationsScorer.readScores(labeledCalibrationAndVariantTypeScoresFile);
-                    final double scoreThreshold = calibrationSensitivityThreshold == 1. // Percentile requires quantile > 0, so we treat this as a special case
-                            ? Doubles.min(labeledCalibrationAndVariantTypeScores)
-                            : new Percentile(100. * (1. - calibrationSensitivityThreshold)).evaluate(labeledCalibrationAndVariantTypeScores);
-                    logger.info(String.format("Using %s score threshold of %.4f corresponding to specified calibration-sensitivity threshold of %.4f ...",
-                            variantTypeString, scoreThreshold, calibrationSensitivityThreshold));
-
-                    final double[] labeledTrainingAndVariantTypeScores = VariantAnnotationsScorer.readScores(labeledTrainingAndVariantTypeScoresFile);
-                    final List<Boolean> isNegativeTrainingFromLabeledTrainingAndVariantType = Arrays.stream(labeledTrainingAndVariantTypeScores).boxed().map(s -> s < scoreThreshold).collect(Collectors.toList());
-
-                    logger.info(String.format("Scoring %d unlabeled %s sites...", numUnlabeledVariantType, variantTypeString));
-                    final File unlabeledVariantTypeAnnotationsFile = LabeledVariantAnnotationsData.subsetAnnotationsToTemporaryFile(annotationNames, unlabeledAnnotations, isUnlabeledVariantType);
-                    final File unlabeledVariantTypeScoresFile = score(unlabeledVariantTypeAnnotationsFile, outputPrefixTag, UNLABELED_SCORES_HDF5_SUFFIX);
-                    final double[] unlabeledVariantTypeScores = VariantAnnotationsScorer.readScores(unlabeledVariantTypeScoresFile);
-                    final List<Boolean> isNegativeTrainingFromUnlabeledVariantType = Arrays.stream(unlabeledVariantTypeScores).boxed().map(s -> s < scoreThreshold).collect(Collectors.toList()); // length matches unlabeledAnnotationsFile
-                    final int numNegativeTrainingFromUnlabeledVariantType = numPassingFilter(isNegativeTrainingFromUnlabeledVariantType);
-                    logger.info(String.format("Selected %d unlabeled %s sites below score threshold of %.4f for negative-model training...",
-                            numNegativeTrainingFromUnlabeledVariantType, variantTypeString, scoreThreshold));
-
-                    final double[][] negativeTrainingAndVariantTypeAnnotations = concatenateLabeledAndUnlabeledNegativeTrainingData(
-                            annotationNames, annotations, unlabeledAnnotations, isNegativeTrainingFromLabeledTrainingAndVariantType, isNegativeTrainingFromUnlabeledVariantType);
-                    final int numNegativeTrainingAndVariantType = negativeTrainingAndVariantTypeAnnotations.length;
-                    final List<Boolean> isNegativeTrainingAndVariantType = Collections.nCopies(numNegativeTrainingAndVariantType, true);
-
-                    if (numNegativeTrainingAndVariantType > 0) {
-                        logger.info(String.format("Training %s negative model with %d negative-training sites x %d annotations %s...",
-                                variantTypeString, numNegativeTrainingAndVariantType, annotationNames.size(), annotationNames));
-                        final File negativeTrainingAnnotationsFile = LabeledVariantAnnotationsData.subsetAnnotationsToTemporaryFile(
-                                annotationNames, negativeTrainingAndVariantTypeAnnotations, isNegativeTrainingAndVariantType);
-                        trainAndSerializeModel(negativeTrainingAnnotationsFile, outputPrefixTag + NEGATIVE_TAG);
-                        logger.info(String.format("%s negative model trained and serialized with output prefix \"%s\".", variantTypeString, outputPrefix + outputPrefixTag + NEGATIVE_TAG));
-                    } else {
-                        throw new UserException.BadInput(String.format("Attempted to train %s negative model, " +
-                                "but no suitable sites with scores below the specified threshold were found in the provided annotations.", variantTypeString));
-                    }
-
-                    logger.info(String.format("Re-scoring %d %s calibration sites...", numLabeledCalibrationAndVariantType, variantTypeString));
-                    final File labeledCalibrationAnnotationsFile = LabeledVariantAnnotationsData.subsetAnnotationsToTemporaryFile(annotationNames, annotations, isLabeledCalibrationAndVariantType);
-                    final File labeledCalibrationScoresFile = positiveNegativeScore(labeledCalibrationAnnotationsFile, outputPrefixTag, CALIBRATION_SCORES_HDF5_SUFFIX);
-                    logger.info(String.format("Calibration scores written to %s.", labeledCalibrationScoresFile.getAbsolutePath()));
-                } else {
-                    throw new UserException.BadInput(String.format("Attempted to train %s negative model, " +
-                            "but no suitable unlabeled sites were found in the provided annotations.", variantTypeString));
-                }
+            if (availableLabelsMode == AvailableLabelsMode.POSITIVE_UNLABELED && unlabeledAndVariantTypeAnnotationsFile != null) {
+                logger.info(String.format("Scoring %d %s unlabeled sites...", numUnlabeledAndVariantType, variantTypeString));
+                final File unlabeledAndVariantTypeScoresFile = score(unlabeledAndVariantTypeAnnotationsFile, outputPrefixTag, UNLABELED_SCORES_HDF5_SUFFIX);
+                logger.info(String.format("%s unlabeled scores written to %s.", variantTypeString, unlabeledAndVariantTypeScoresFile.getAbsolutePath()));
             }
         } else {
             throw new UserException.BadInput(String.format("Attempted to train %s model, " +
@@ -577,34 +468,41 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
         return (int) isPassing.stream().filter(x -> x).count();
     }
 
+    /**
+     * @param unlabeledAnnotationsFile  if not {@code null}, use a positive-unlabeled approach
+     */
     private void trainAndSerializeModel(final File trainingAnnotationsFile,
+                                        final File unlabeledAnnotationsFile,
                                         final String outputPrefixTag) {
-        readAndValidateTrainingAnnotations(trainingAnnotationsFile, outputPrefixTag);
+        readAndValidateAnnotations(trainingAnnotationsFile, outputPrefixTag);
+        if (unlabeledAnnotationsFile != null) {
+            readAndValidateAnnotations(unlabeledAnnotationsFile, outputPrefixTag);
+        }
         final VariantAnnotationsModel model;
         switch (modelBackend) {
             case JAVA_BGMM:
                 model = new BGMMVariantAnnotationsModel(hyperparametersJSONFile);
                 break;
             case PYTHON_IFOREST:
-                model = new PythonSklearnVariantAnnotationsModel(pythonScriptFile, hyperparametersJSONFile);
+                model = new PythonVariantAnnotationsModel(pythonScriptFile, hyperparametersJSONFile);
                 break;
             case PYTHON_SCRIPT:
-                model = new PythonSklearnVariantAnnotationsModel(pythonScriptFile, hyperparametersJSONFile);
+                model = new PythonVariantAnnotationsModel(pythonScriptFile, hyperparametersJSONFile);
                 break;
             default:
                 throw new GATKException.ShouldNeverReachHereException("Unknown model mode.");
         }
-        model.trainAndSerialize(trainingAnnotationsFile, outputPrefix + outputPrefixTag);
+        model.trainAndSerialize(trainingAnnotationsFile, unlabeledAnnotationsFile, outputPrefix + outputPrefixTag);
     }
 
     /**
      * When training models on data that has been subset to a given variant type,
      * we FAIL if any annotation is completely missing and WARN if any annotation has zero variance.
      */
-    private void readAndValidateTrainingAnnotations(final File trainingAnnotationsFile,
-                                                    final String outputPrefixTag) {
-        final List<String> annotationNames = LabeledVariantAnnotationsData.readAnnotationNames(trainingAnnotationsFile);
-        final double[][] annotations = LabeledVariantAnnotationsData.readAnnotations(trainingAnnotationsFile);
+    private void readAndValidateAnnotations(final File annotationsFile,
+                                            final String outputPrefixTag) {
+        final List<String> annotationNames = LabeledVariantAnnotationsData.readAnnotationNames(annotationsFile);
+        final double[][] annotations = LabeledVariantAnnotationsData.readAnnotations(annotationsFile);
 
         // these checks are redundant, but we err on the side of robustness
         final int numAnnotationNames = annotationNames.size();
@@ -631,14 +529,8 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
         if (!completelyMissingAnnotationNames.isEmpty()) {
             throw new UserException.BadInput(
                     String.format("All values of the following annotations are missing in the training data for the %s model: %s. " +
-                                    "Consider repeating the extraction step with this annotation dropped. " +
-                                    "If this is a negative model and the amount of negative training data is small, " +
-                                    "perhaps also consider lowering the value of the %s argument so that more " +
-                                    "training data is considered, which may ultimately admit data with non-missing values for the annotation " +
-                                    "(although note that this will also have implications for the resulting model fit); " +
-                                    "alternatively, consider excluding the %s and %s arguments and running positive-only modeling.",
-                            outputPrefix + outputPrefixTag, completelyMissingAnnotationNames,
-                            CALIBRATION_SENSITIVITY_THRESHOLD_LONG_NAME, UNLABELED_ANNOTATIONS_HDF5_LONG_NAME, CALIBRATION_SENSITIVITY_THRESHOLD_LONG_NAME));
+                                    "Consider repeating the extraction step without specifying these annotations. ",
+                            outputPrefix + outputPrefixTag, completelyMissingAnnotationNames));
         }
     }
 
@@ -652,7 +544,7 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
                 break;
             case PYTHON_IFOREST:
             case PYTHON_SCRIPT:
-                scorer = new PythonSklearnVariantAnnotationsScorer(pythonScriptFile, new File(outputPrefix + outputPrefixTag + PythonSklearnVariantAnnotationsScorer.PYTHON_SCORER_PKL_SUFFIX));
+                scorer = new PythonVariantAnnotationsScorer(pythonScriptFile, new File(outputPrefix + outputPrefixTag + PythonVariantAnnotationsScorer.PYTHON_SCORER_PKL_SUFFIX));
                 break;
 
             default:
@@ -661,57 +553,5 @@ public final class TrainVariantAnnotationsModel extends CommandLineProgram {
         final File outputScoresFile = new File(outputPrefix + outputPrefixTag + outputSuffix);
         scorer.score(annotationsFile, outputScoresFile);
         return outputScoresFile;
-    }
-
-    private File positiveNegativeScore(final File annotationsFile,
-                                       final String outputPrefixTag,
-                                       final String outputSuffix) {
-        final VariantAnnotationsScorer scorer;
-        switch (modelBackend) {
-            case JAVA_BGMM:
-                scorer = VariantAnnotationsScorer.combinePositiveAndNegativeScorer(
-                        BGMMVariantAnnotationsScorer.deserialize(new File(outputPrefix + outputPrefixTag + BGMMVariantAnnotationsScorer.BGMM_SCORER_SER_SUFFIX)),
-                        BGMMVariantAnnotationsScorer.deserialize(new File(outputPrefix + outputPrefixTag + NEGATIVE_TAG + BGMMVariantAnnotationsScorer.BGMM_SCORER_SER_SUFFIX)));
-                break;
-            case PYTHON_IFOREST:
-            case PYTHON_SCRIPT:
-                scorer = VariantAnnotationsScorer.combinePositiveAndNegativeScorer(
-                        new PythonSklearnVariantAnnotationsScorer(pythonScriptFile, new File(outputPrefix + outputPrefixTag + PythonSklearnVariantAnnotationsScorer.PYTHON_SCORER_PKL_SUFFIX)),
-                        new PythonSklearnVariantAnnotationsScorer(pythonScriptFile, new File(outputPrefix + outputPrefixTag + NEGATIVE_TAG + PythonSklearnVariantAnnotationsScorer.PYTHON_SCORER_PKL_SUFFIX)));
-                break;
-            default:
-                throw new GATKException.ShouldNeverReachHereException("Unknown model mode.");
-        }
-        final File outputScoresFile = new File(outputPrefix + outputPrefixTag + outputSuffix);
-        scorer.score(annotationsFile, outputScoresFile);
-        return outputScoresFile;
-    }
-
-    private static double[][] concatenateLabeledAndUnlabeledNegativeTrainingData(final List<String> annotationNames,
-                                                                                 final double[][] annotations,
-                                                                                 final double[][] unlabeledAnnotations,
-                                                                                 final List<Boolean> isNegativeTrainingFromLabeledTrainingAndVariantType,
-                                                                                 final List<Boolean> isNegativeTrainingFromUnlabeledVariantType) {
-        final double[][] negativeTrainingFromLabeledTrainingAndVariantTypeAnnotations;
-        if (numPassingFilter(isNegativeTrainingFromLabeledTrainingAndVariantType) > 0) {
-            final File negativeTrainingFromLabeledTrainingAndVariantTypeAnnotationsFile =
-                    LabeledVariantAnnotationsData.subsetAnnotationsToTemporaryFile(annotationNames, annotations, isNegativeTrainingFromLabeledTrainingAndVariantType);
-            negativeTrainingFromLabeledTrainingAndVariantTypeAnnotations = LabeledVariantAnnotationsData.readAnnotations(negativeTrainingFromLabeledTrainingAndVariantTypeAnnotationsFile);
-        } else {
-            negativeTrainingFromLabeledTrainingAndVariantTypeAnnotations = new double[0][];
-        }
-
-        final double[][] negativeTrainingFromUnlabeledVariantTypeAnnotations;
-        if (numPassingFilter(isNegativeTrainingFromUnlabeledVariantType) > 0) {
-            final File negativeTrainingFromUnlabeledVariantTypeAnnotationsFile =
-                    LabeledVariantAnnotationsData.subsetAnnotationsToTemporaryFile(annotationNames, unlabeledAnnotations, isNegativeTrainingFromUnlabeledVariantType);
-            negativeTrainingFromUnlabeledVariantTypeAnnotations = LabeledVariantAnnotationsData.readAnnotations(negativeTrainingFromUnlabeledVariantTypeAnnotationsFile);
-        } else {
-            negativeTrainingFromUnlabeledVariantTypeAnnotations = new double[0][];
-        }
-
-        return Streams.concat(
-                Arrays.stream(negativeTrainingFromLabeledTrainingAndVariantTypeAnnotations),
-                Arrays.stream(negativeTrainingFromUnlabeledVariantTypeAnnotations)).toArray(double[][]::new);
     }
 }
