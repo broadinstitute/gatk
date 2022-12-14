@@ -292,4 +292,70 @@ public class CompareReferencesIntegrationTest extends CommandLineProgramTest {
         final File actualOutput = new File(output, actualOutputFileName);
         IntegrationTestSpec.assertEqualTextFiles(actualOutput, expectedOutput);
     }
+
+
+    /*@DataProvider(name = "findSNPsEquivalentSequencesData")
+    public Object[][] findSNPsEquivalentSequencesData() {
+        return new Object[][]{
+                // ref1, ref2, equivalency file, output name, expected output
+                new Object[]{ new File(getToolTestDataDir() + "hg19mini.fasta"),
+                        new File(getToolTestDataDir() + "hg19mini_chr2multiplesnps.fasta"),
+                        "/Users/ocohen/workingcode/gatk/tempreferences/equivalent_sequences.tsv",
+                        "hg19mini.fasta_hg19mini_chr2multiplesnps.fasta_snps.tsv",
+                        new File(getToolTestDataDir(), "expected.hg19mini.fasta_hg19mini_chr2multiplesnps.fasta_snps.tsv"),
+                },
+                new Object[]{ new File(getToolTestDataDir() + "hg19mini.fasta"),
+                        new File(getToolTestDataDir() + "hg19mini_chr2iupacsnps.fasta"),
+                        "hg19mini.fasta_hg19mini_chr2iupacsnps.fasta_snps.tsv",
+                        new File(getToolTestDataDir(), "expected.hg19mini.fasta_hg19mini_chr2iupacsnps.fasta_snps.tsv"),
+                },
+                // produces empty output file bc FIND_SNPS_ONLY doesn't work on indels
+                new Object[]{ new File(getToolTestDataDir() + "hg19mini.fasta"),
+                        new File(getToolTestDataDir() + "hg19mini_chr1indel.fasta"),
+                        "hg19mini.fasta_hg19mini_chr1indel.fasta_snps.tsv",
+                        new File(getToolTestDataDir(), "expected.hg19mini.fasta_hg19mini_chr1indel.fasta_snps.tsv"),
+                },
+        };
+    }*/
+    /*@Test(dataProvider = "findSNPsData")
+    public void testFindSNPs(File ref1, File ref2, File equivalentSequences, String actualOutputFileName, File expectedOutput) throws IOException{
+        final File output = IOUtils.createTempDir("tempFindSNPs");
+
+        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-base-comparison", "FIND_SNPS_ONLY", "-base-comparison-output", output.getAbsolutePath()};
+        runCommandLine(args);
+
+        final File actualOutput = new File(output, actualOutputFileName);
+        IntegrationTestSpec.assertEqualTextFiles(actualOutput, expectedOutput);
+    }*/
+
+    @Test
+    public void testFullAlignmentEquivalentSequences() throws IOException{
+        File ref1 = new File(getToolTestDataDir() + "hg19mini_1renamed_snp1and2.fasta");
+        File ref2 = new File(getToolTestDataDir() + "hg19mini.fasta");
+        File equivalentSeqs = new File("/Users/ocohen/workingcode/gatk/tempreferences/equivalent_sequences.tsv");
+        File output = new File("/Users/ocohen/workingcode/gatk/tempreferences/");
+
+        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-base-comparison", "FULL_ALIGNMENT", "-base-comparison-output", output.getAbsolutePath(), "-sequences-to-align", equivalentSeqs.getAbsolutePath()};
+        runCommandLine(args);
+
+        //final File actualOutput = new File(output, actualOutputFileName);
+        //IntegrationTestSpec.assertEqualTextFiles(actualOutput, expectedOutput);
+    }
+
+    @Test
+    public void testFindSNPsEquivalentSequences() throws IOException{
+        File ref1 = new File(getToolTestDataDir() + "hg19mini.fasta");
+        File ref2 = new File(getToolTestDataDir() + "hg19mini_1renamed_snp1and2.fasta") ;
+        File equivalentSeqs = new File("/Users/ocohen/workingcode/gatk/tempreferences/equivalent_sequences.tsv");
+        File output = new File("/Users/ocohen/workingcode/gatk/tempreferences/");
+
+        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-base-comparison", "FIND_SNPS_ONLY", "-base-comparison-output", output.getAbsolutePath(), "-sequences-to-align", equivalentSeqs.getAbsolutePath()};
+        runCommandLine(args);
+
+        //final File actualOutput = new File(output, actualOutputFileName);
+        //IntegrationTestSpec.assertEqualTextFiles(actualOutput, expectedOutput);
+    }
+
+
+
 }
