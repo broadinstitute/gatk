@@ -575,11 +575,6 @@ workflow CNVSomaticPairWorkflow {
         Float? scaled_delta_MAD_value_normal = PlotDenoisedCopyRatiosNormal.scaled_delta_MAD_value
         File? modeled_segments_plot_normal = PlotModeledSegmentsNormal.modeled_segments_plot
 
-        # File? oncotated_called_file_tumor = select_first([CNVOncotatorWorkflow.oncotated_called_file, "null"])
-        # File? oncotated_called_gene_list_file_tumor = select_first([CNVOncotatorWorkflow.oncotated_called_gene_list_file, "null"])
-        # File? funcotated_called_file_tumor = select_first([CNVFuncotateSegmentsWorkflow.funcotated_seg_simple_tsv, "null"])
-        # File? funcotated_called_gene_list_file_tumor = select_first([CNVFuncotateSegmentsWorkflow.funcotated_gene_list_tsv, "null"])
-
         File? oncotated_called_file_tumor = CNVOncotatorWorkflow.oncotated_called_file
         File? oncotated_called_gene_list_file_tumor = CNVOncotatorWorkflow.oncotated_called_gene_list_file
         File? funcotated_called_file_tumor = CNVFuncotateSegmentsWorkflow.funcotated_seg_simple_tsv
