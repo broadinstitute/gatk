@@ -34,16 +34,16 @@ def write_custom_annotations_files(observed_subpopulations, custom_annotations_t
         csvout.writerow(["#assembly=GRCh38"])
         csvout.writerow(["#matchVariantsBy=allele"])
 
-        chrom_line = ["#CHROM", "POS", "REF", "ALT", "AC", "AN", "AF", "AC_Hom", "AC_Het", "AC_Hemi"]
-        categories_line = ["#categories", ".", ".", ".", "AlleleCount", "AlleleNumber", "AlleleFrequency", "AlleleCount", "AlleleCount", "AlleleCount"]
-        description_line = ["#descriptions", ".", ".", ".", ".", ".", ".", ".", ".", "."]
-        type_line = ["#type", ".", ".", ".", "number", "number", "number", "number", "number", "number"]
+        chrom_line = ["#CHROM", "POS", "REF", "ALT", "AC", "AN", "AF", "Hom"]
+        categories_line = ["#categories", ".", ".", ".", "AlleleCount", "AlleleNumber", "AlleleFrequency", "AlleleCount"]
+        description_line = ["#descriptions", ".", ".", ".", ".", ".", ".", "."]
+        type_line = ["#type", ".", ".", ".", "number", "number", "number", "number"]
 
         for subpopulation in sorted(observed_subpopulations):
-            for annotation in (["AC", "AN", "AF", "AC_Hom", "AC_Het", "AC_Hemi"]):
+            for annotation in (["AC", "AN", "AF", "Hom"]):
                 chrom_line.append(f"{annotation}_{subpopulation}")
-            categories_line += ["AlleleCount", "AlleleNumber", "AlleleFrequency", "AlleleCount", "AlleleCount", "AlleleCount"]
-            for i in range(6):
+            categories_line += ["AlleleCount", "AlleleNumber", "AlleleFrequency", "AlleleCount"]
+            for i in range(4):
                 description_line.append(".")
                 type_line.append("number")
 
@@ -51,6 +51,34 @@ def write_custom_annotations_files(observed_subpopulations, custom_annotations_t
         csvout.writerow(categories_line)
         csvout.writerow(description_line)
         csvout.writerow(type_line)
+
+# The above code works for the VDS flavored GVS output
+# The below code works for the VCF flavored GVS output
+# def write_custom_annotations_files(observed_subpopulations, custom_annotations_template_path):
+#
+#     with open(custom_annotations_template_path, 'w', newline='') as csvout:
+#         csvout = csv.writer(csvout, delimiter='\t', lineterminator="\n")
+#         csvout.writerow(["#title=gvsAnnotations"])
+#         csvout.writerow(["#assembly=GRCh38"])
+#         csvout.writerow(["#matchVariantsBy=allele"])
+#
+#         chrom_line = ["#CHROM", "POS", "REF", "ALT", "AC", "AN", "AF", "AC_Hom", "AC_Het", "AC_Hemi"]
+#         categories_line = ["#categories", ".", ".", ".", "AlleleCount", "AlleleNumber", "AlleleFrequency", "AlleleCount", "AlleleCount", "AlleleCount"]
+#         description_line = ["#descriptions", ".", ".", ".", ".", ".", ".", ".", ".", "."]
+#         type_line = ["#type", ".", ".", ".", "number", "number", "number", "number", "number", "number"]
+#
+#         for subpopulation in sorted(observed_subpopulations):
+#             for annotation in (["AC", "AN", "AF", "AC_Hom", "AC_Het", "AC_Hemi"]):
+#                 chrom_line.append(f"{annotation}_{subpopulation}")
+#             categories_line += ["AlleleCount", "AlleleNumber", "AlleleFrequency", "AlleleCount", "AlleleCount", "AlleleCount"]
+#             for i in range(6):
+#                 description_line.append(".")
+#                 type_line.append("number")
+#
+#         csvout.writerow(chrom_line)
+#         csvout.writerow(categories_line)
+#         csvout.writerow(description_line)
+#         csvout.writerow(type_line)
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(allow_abbrev=False, description='Extract subpopulation per sample data out of a callset TSV')

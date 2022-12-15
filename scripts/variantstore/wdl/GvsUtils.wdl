@@ -68,8 +68,8 @@ task SplitIntervals {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
-  Int disk_size = if (defined(split_intervals_disk_size_override)) then split_intervals_disk_size_override else 10
-  Int disk_memory = if (defined(split_intervals_mem_override)) then split_intervals_mem_override else 16
+  Int disk_size = if (defined(split_intervals_disk_size_override)) then select_first([split_intervals_disk_size_override]) else 10
+  Int disk_memory = if (defined(split_intervals_mem_override)) then select_first([split_intervals_mem_override]) else 16
   Int java_memory = disk_memory - 4
 
   String gatkTool = if (defined(interval_weights_bed)) then 'WeightedSplitIntervals' else 'SplitIntervals'
@@ -469,5 +469,83 @@ task ValidateFilterSetName {
         disks: "local-disk 500 HDD"
         preemptible: 3
         cpu: 1
+    }
+}
+
+task IndexVcf {
+    input {
+        File input_vcf
+
+        Int memory_mb = 2500
+        Int disk_size_gb = ceil(2 * size(input_vcf, "GiB")) + 200
+    }
+    Int command_mem = memory_mb - 1000
+    Int max_heap = memory_mb - 500
+
+    String local_file = basename(input_vcf)
+    Boolean is_compressed = sub(local_file, ".*\\.", "") == "gz"
+    String index_extension = if is_compressed then ".tbi" else ".idx"
+
+    command <<<
+        set -e
+
+        # Localize the passed input_vcf to the working directory so the
+        # to-be-created index file is also created there, alongside it.
+        ln -s ~{input_vcf} ~{local_file}
+
+        gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
+            IndexFeatureFile \
+            -I ~{local_file}
+
+    >>>
+
+    runtime {
+        docker: "us.gcr.io/broad-gatk/gatk:4.2.6.1"
+        cpu: 1
+        memory: "${memory_mb} MiB"
+        disks: "local-disk ${disk_size_gb} HDD"
+        bootDiskSizeGb: 15
+        preemptible: 3
+    }
+
+    output {
+        File output_vcf = local_file
+        File output_vcf_index = "~{local_file}~{index_extension}"
+    }
+}
+
+task SelectVariants {
+    input {
+        File input_vcf
+        File input_vcf_index
+        File interval_list
+        String output_basename
+
+        Int memory_mb = 7500
+        Int disk_size_gb = ceil(2*size(input_vcf, "GiB")) + 200
+    }
+    Int command_mem = memory_mb - 1000
+    Int max_heap = memory_mb - 500
+
+    command <<<
+      gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
+        SelectVariants \
+          -V ~{input_vcf} \
+          -L ~{interval_list} \
+          -O ~{output_basename}.vcf
+    >>>
+
+    runtime {
+        docker: "us.gcr.io/broad-gatk/gatk:4.2.6.1"
+        cpu: 1
+        memory: "${memory_mb} MiB"
+        disks: "local-disk ${disk_size_gb} HDD"
+        bootDiskSizeGb: 15
+        preemptible: 3
+    }
+
+    output {
+        File output_vcf = "~{output_basename}.vcf"
+        File output_vcf_index = "~{output_basename}.vcf.idx"
     }
 }

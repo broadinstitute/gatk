@@ -1,47 +1,110 @@
 version 1.0
 
-import "GvsCreateVATAnnotations.wdl" as Annotations
+import "GvsUtils.wdl" as Utils
 
-workflow GvsCreateVAT {
+workflow GvsCreateVATfromVDS {
     input {
-        File input_file_of_file_names
-        File input_file_of_index_file_names
+        File input_sites_only_vcf
+        File ancestry_file
+
         String project_id
         String dataset_name
         String filter_set_name
         String? vat_version
-        String output_path
 
+        Int effective_scatter_count = 10
+
+        String output_path
+        Int? split_intervals_disk_size_override
+        Int? split_intervals_mem_override
         Int? merge_vcfs_disk_size_override
-        File ancestry_file
     }
+
+    File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
 
     Array[String] contig_array = ["chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrX", "chrY", "chrM"]
     File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
-    File nirvana_data_directory = "gs://broad-public-datasets/gvs/vat-annotations/Nirvana/NirvanaData.tar.gz"
+    File reference_dict = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict"
+    File reference_index = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai"
+
+    File nirvana_data_directory = "gs://gvs_quickstart_storage/Nirvana/Nirvana-references-2022-10-07.tgz"
+
+    ## TODO: where do we need to validate that there are no hemis?
 
     call MakeSubpopulationFilesAndReadSchemaFiles {
         input:
-            input_ancestry_file = ancestry_file,
-            input_file_of_file_names = input_file_of_file_names,
-            input_file_of_index_file_names = input_file_of_index_file_names
+            input_ancestry_file = ancestry_file
     }
 
-    ## Scatter across the shards from the GVS jointVCF
-    scatter(i in range(length(MakeSubpopulationFilesAndReadSchemaFiles.input_vcfs)) ) {
-        ## Create a sites-only VCF from the original GVS jointVCF
-        ## Calculate AC/AN/AF for subpopulations and extract them for custom annotations
-        call Annotations.GvsCreateVATAnnotations {
+    call RemoveDuplicatesFromSitesOnlyVCF {
+        input:
+            sites_only_vcf = input_sites_only_vcf,
+            ref = reference
+    }
+
+    call Utils.IndexVcf {
+        input:
+            input_vcf = RemoveDuplicatesFromSitesOnlyVCF.output_vcf
+    }
+
+    call Utils.SplitIntervals {
+        input:
+            intervals = interval_list,
+            ref_fasta = reference,
+            ref_fai = reference_index,
+            ref_dict = reference_dict,
+            scatter_count = effective_scatter_count,
+            output_gcs_dir = output_path + "intervals",
+            split_intervals_disk_size_override = split_intervals_disk_size_override,
+            split_intervals_mem_override = split_intervals_mem_override,
+    }
+
+    String sites_only_vcf_basename = basename(basename(input_sites_only_vcf, ".gz"), ".vcf")
+
+    scatter(i in range(length(SplitIntervals.interval_files))) {
+        String interval_file_basename = basename(SplitIntervals.interval_files[i], ".interval_list")
+        String vcf_filename = interval_file_basename + "." + sites_only_vcf_basename
+
+        call Utils.SelectVariants {
             input:
-                input_vcf = MakeSubpopulationFilesAndReadSchemaFiles.input_vcfs[i],
-                input_vcf_index = MakeSubpopulationFilesAndReadSchemaFiles.input_vcf_indices[i],
-                input_vcf_name = basename(MakeSubpopulationFilesAndReadSchemaFiles.input_vcfs[i], ".vcf.gz"),
-                ancestry_mapping_list = MakeSubpopulationFilesAndReadSchemaFiles.ancestry_mapping_list,
-                nirvana_data_directory = nirvana_data_directory,
-                output_path = output_path,
-                custom_annotations_template = MakeSubpopulationFilesAndReadSchemaFiles.custom_annotations_template_file,
-                ref = reference
+                input_vcf = IndexVcf.output_vcf,
+                input_vcf_index = IndexVcf.output_vcf_index,
+                interval_list = SplitIntervals.interval_files[i],
+                output_basename = vcf_filename
         }
+
+        call StripCustomAnnotationsFromSitesOnlyVCF {
+            input:
+                input_vcf = SelectVariants.output_vcf,
+                custom_annotations_header = MakeSubpopulationFilesAndReadSchemaFiles.custom_annotations_template_file,
+                output_vcf_name = "${vcf_filename}.unannotated.sites_only.vcf",
+                output_custom_annotations_filename = "${vcf_filename}.custom_annotations.tsv"
+        }
+
+        ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
+        call AnnotateVCF {
+            input:
+                input_vcf = StripCustomAnnotationsFromSitesOnlyVCF.output_vcf,
+                output_annotated_file_name = "${vcf_filename}_annotated",
+                nirvana_data_tar = nirvana_data_directory,
+                custom_annotations_file = StripCustomAnnotationsFromSitesOnlyVCF.output_custom_annotations_file,
+        }
+
+
+        call PrepVtAnnotationJson {
+            input:
+                annotation_json = AnnotateVCF.annotation_json,
+                output_file_suffix = "${vcf_filename}.json.gz",
+                output_path = output_path,
+        }
+
+        call PrepGenesAnnotationJson {
+            input:
+                annotation_json = AnnotateVCF.annotation_json,
+                output_file_suffix = "${vcf_filename}.json.gz",
+                output_path = output_path,
+        }
+
     }
 
     call BigQueryLoadJson {
@@ -54,18 +117,10 @@ workflow GvsCreateVAT {
             output_path = output_path,
             filter_set_name = filter_set_name,
             vat_version = vat_version,
-            prep_jsons_done = GvsCreateVATAnnotations.done
+            prep_vt_json_done = PrepVtAnnotationJson.done,
+            prep_genes_json_done = PrepGenesAnnotationJson.done
     }
 
-    call BigQuerySmokeTest {
-        input:
-            project_id = project_id,
-            dataset_name = dataset_name,
-            counts_variants = GvsCreateVATAnnotations.count_variants,
-            track_dropped_variants = GvsCreateVATAnnotations.track_dropped,
-            vat_table = BigQueryLoadJson.vat_table_name,
-            load_jsons_done = BigQueryLoadJson.done
-    }
 
     scatter(i in range(length(contig_array)) ) {
         call BigQueryExportVat {
@@ -75,7 +130,7 @@ workflow GvsCreateVAT {
                 dataset_name = dataset_name,
                 output_path = output_path,
                 vat_table = BigQueryLoadJson.vat_table_name,
-                validate_jsons_done = BigQuerySmokeTest.done
+                load_jsons_done = BigQueryLoadJson.done
         }
     }
 
@@ -84,7 +139,6 @@ workflow GvsCreateVAT {
             export_done = BigQueryExportVat.done,
             contig_array = contig_array,
             output_path = output_path,
-            project_id = project_id,
             merge_vcfs_disk_size_override = merge_vcfs_disk_size_override
     }
 
@@ -98,8 +152,6 @@ workflow GvsCreateVAT {
 task MakeSubpopulationFilesAndReadSchemaFiles {
     input {
         File input_ancestry_file
-        File input_file_of_file_names
-        File input_file_of_index_file_names
 
         String schema_filepath = "/data/variant_annotation_table/schema/"
         String vat_schema_json_filename = "vat_schema.json"
@@ -124,7 +176,7 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-11-17-alpine"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:VS-561_var_store_2022_12_08"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -139,10 +191,311 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
 
         File ancestry_mapping_list = output_ancestry_filename
         File custom_annotations_template_file = custom_annotations_template_filename
-        Array[File] input_vcfs = read_lines(input_file_of_file_names)
-        Array[File] input_vcf_indices = read_lines(input_file_of_index_file_names)
     }
 }
+
+
+task StripCustomAnnotationsFromSitesOnlyVCF {
+    input {
+        File input_vcf
+        File custom_annotations_header
+        String output_vcf_name
+        String output_custom_annotations_filename
+        File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+    }
+
+    Int disk_size = ceil((size(input_vcf, "GB") + size(custom_annotations_header, "GB")) * 4) + 100
+
+    command <<<
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        bash ~{monitoring_script} > monitoring.log &
+
+        python3 /app/strip_custom_annotations_from_sites_only_vcf.py \
+        --input_vcf ~{input_vcf} \
+        --input_custom_annotations_tsv ~{custom_annotations_header} \
+        --output_vcf ~{output_vcf_name} \
+        --output_custom_annotations_tsv ~{output_custom_annotations_filename}
+
+    >>>
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:VS-561_var_store_2022_12_08"
+        memory: "7 GiB"
+        cpu: "2"
+        preemptible: 3
+        disks: "local-disk " + disk_size + " HDD"
+    }
+    # ------------------------------------------------
+    # Outputs:
+    output {
+        File output_vcf = output_vcf_name
+        File output_custom_annotations_file = output_custom_annotations_filename
+        File monitoring_log = "monitoring.log"
+    }
+}
+
+
+task RemoveDuplicatesFromSitesOnlyVCF {
+    input {
+        File sites_only_vcf
+        File ref
+        File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+    }
+
+    Int disk_size = ceil(size(sites_only_vcf, "GB") * 5) + 100
+
+    # separate multi-allelic sites into their own lines, remove deletions and filtered sites and make a sites only vcf
+    # while extracting and calculating the an/ac/af & sc by subpopulation into a tsv
+    command <<<
+        set -e
+
+        bash ~{monitoring_script} > monitoring.log &
+
+        # custom function to prepend the current datetime to an echo statement
+        echo_date () { echo "`date "+%Y/%m/%d %H:%M:%S"` $1"; }
+
+        echo_date "VAT: Convert input to BCF format"
+        bcftools convert --threads 4 -O b -o sites_only.bcf ~{sites_only_vcf}
+
+        echo_date "VAT: Calculating number of sites with Ns"
+
+        ## track the dropped variants with N's in the reference (Since Nirvana cant handle N as a base, drop them for now)
+        bcftools view --threads 4 -i 'REF~"N"' -O u sites_only.bcf | bcftools query -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > track_dropped.tsv
+
+        echo_date "VAT: filter out sites with N's in the reference AND sites with AC=0"
+        # TODO - NOTE - we are NOT tracking the sites with AC=0 - should we? For Lee (Rori is checking)
+        bcftools view --threads 4 -e 'REF~"N" || AC=0' -O b sites_only.bcf -o filtered_sites_only.bcf
+        rm sites_only.bcf
+
+        echo_date "VAT: normalize, left align and split multi allelic sites to new lines, remove duplicate lines"
+        ## note that normalization may create sites with more than 50 alt alleles
+        bcftools norm --threads 4 -m- --check-ref w -f ~{ref} filtered_sites_only.bcf -O b -o normalized.bcf
+        rm filtered_sites_only.bcf
+
+        echo_date "VAT: detecting and removing duplicate rows from sites-only VCF"
+
+        ## During normalization, sometimes duplicate variants appear but with different calculations. This seems to be a bug in bcftools. For now we are dropping all duplicate variants
+        ## to locate the duplicates, we first make a file of just the first 5 columns
+        bcftools query normalized.bcf -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' | sort | uniq -d > duplicates.tsv
+
+        echo_date "VAT: done with duplicate detection"
+        wc -l duplicates.tsv
+        echo_date "VAT: Duplicates may have been found"
+
+        # If there ARE dupes to remove
+        if [ -s duplicates.tsv ]; then
+            ## remove those rows (that match up to the first 5 cols)
+            echo_date "VAT: Removing those rows"
+            bcftools view --threads 4 normalized.bcf | grep -v -wFf duplicates.tsv > deduplicated.vcf
+        else
+            # There are no duplicates to remove
+            echo_date "VAT: No duplicates found"
+            bcftools view --threads 4 normalized.bcf -o deduplicated.vcf
+        fi
+        rm normalized.bcf
+
+        ## add duplicates to the file that's tracking dropped variants
+        cat duplicates.tsv >> track_dropped.tsv
+        rm duplicates.tsv ## clean up unneeded file
+
+        echo_date "VAT: finished"
+    >>>
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-10-25-alpine"
+        maxRetries: 3
+        memory: "16 GB"
+        preemptible: 3
+        cpu: "8"
+        disks: "local-disk " + disk_size + " HDD"
+    }
+    # ------------------------------------------------
+    # Outputs:
+    output {
+        File track_dropped = "track_dropped.tsv"
+        File output_vcf = "deduplicated.vcf"
+        File monitoring_log = "monitoring.log"
+    }
+}
+
+
+task AnnotateVCF {
+    input {
+        File input_vcf
+        String output_annotated_file_name
+        File nirvana_data_tar
+        File custom_annotations_file
+        File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+    }
+    String annotation_json_name = output_annotated_file_name + ".json.gz"
+    String annotation_json_name_jsi = annotation_json_name + ".jsi"
+    String nirvana_location = "/Nirvana/Nirvana.dll"
+    String custom_creation_location = "/Nirvana/SAUtils.dll"
+    String path = "/Cache/GRCh38/Both"
+    String path_supplementary_annotations = "/SupplementaryAnnotation/GRCh38"
+    String path_reference = "/References/Homo_sapiens.GRCh38.Nirvana.dat"
+
+    command <<<
+        # set -e
+
+        bash ~{monitoring_script} > monitoring.log &
+
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        # =======================================
+        # Handle our data sources:
+
+        echo "Extracting annotation data sources tar/gzip file..."
+        mkdir datasources_dir
+        tar zxvf ~{nirvana_data_tar} -C datasources_dir  ## --strip-components 2
+        DATA_SOURCES_FOLDER="$PWD/datasources_dir/references"
+
+        # =======================================
+        echo "Creating custom annotations"
+        mkdir customannotations_dir
+        CUSTOM_ANNOTATIONS_FOLDER="$PWD/customannotations_dir"
+
+        # Add AC/AN/AF as custom annotations
+        ## use --skip-ref once you are on a version of nirvana later than 3.14 (once they have created a docker image for it)
+        dotnet ~{custom_creation_location} customvar \
+            -r $DATA_SOURCES_FOLDER~{path_reference} \
+            -i ~{custom_annotations_file} \
+            -o $CUSTOM_ANNOTATIONS_FOLDER
+
+        # =======================================
+        # Create Nirvana annotations:
+
+
+        dotnet ~{nirvana_location} \
+            -i ~{input_vcf} \
+            -c $DATA_SOURCES_FOLDER~{path} \
+            --sd $DATA_SOURCES_FOLDER~{path_supplementary_annotations} \
+            --sd $CUSTOM_ANNOTATIONS_FOLDER \
+            -r $DATA_SOURCES_FOLDER~{path_reference} \
+            -o ~{output_annotated_file_name}
+
+    >>>
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
+        memory: "64 GB"
+        cpu: "4"
+        preemptible: 3
+        disks: "local-disk 2000 HDD"
+    }
+    # ------------------------------------------------
+    # Outputs:
+    output {
+        File annotation_json = "~{annotation_json_name}"
+        File annotation_json_jsi = "~{annotation_json_name_jsi}"
+        File monitoring_log = "monitoring.log"
+    }
+}
+
+task PrepVtAnnotationJson {
+    input {
+        File annotation_json
+        String output_file_suffix
+        String output_path
+    }
+
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
+    String output_vt_json = "vat_vt_bq_load" + output_file_suffix
+    String output_vt_gcp_path = output_path + 'vt/'
+    String output_annotations_gcp_path = output_path + 'annotations/'
+
+    command <<<
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        # Kick off the monitoring script
+        bash ~{monitoring_script} > monitoring.log &
+
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+
+        # for debugging purposes only
+        gsutil cp ~{annotation_json} '~{output_annotations_gcp_path}'
+
+        ## the annotation jsons are split into the specific VAT schema
+        python3 /app/create_vt_bqloadjson_from_annotations.py \
+            --annotated_json ~{annotation_json} \
+            --output_vt_json ~{output_vt_json}
+
+        gsutil cp ~{output_vt_json} '~{output_vt_gcp_path}'
+
+    >>>
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:VS-561_var_store_2022_12_08"
+        memory: "7 GB"
+        preemptible: 3
+        cpu: "1"
+        disks: "local-disk 500 HDD"
+    }
+    # ------------------------------------------------
+    # Outputs:
+    output {
+        File vat_vt_json="~{output_vt_json}"
+        Boolean done = true
+        File monitoring_log = "monitoring.log"
+    }
+}
+
+task PrepGenesAnnotationJson {
+    input {
+        File annotation_json
+        String output_file_suffix
+        String output_path
+    }
+
+    # Kick off the monitoring script
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
+    String output_genes_json = "vat_genes_bq_load" + output_file_suffix
+    String output_genes_gcp_path = output_path + 'genes/'
+
+    command <<<
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        bash ~{monitoring_script} > monitoring.log &
+
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+
+        ## the annotation jsons are split into the specific VAT schema
+        python3 /app/create_genes_bqloadjson_from_annotations.py \
+            --annotated_json ~{annotation_json} \
+            --output_genes_json ~{output_genes_json}
+
+        gsutil cp ~{output_genes_json} '~{output_genes_gcp_path}'
+
+    >>>
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:VS-561_var_store_2022_12_08"
+        memory: "7 GB"
+        preemptible: 3
+        cpu: "1"
+        disks: "local-disk 500 HDD"
+    }
+    # ------------------------------------------------
+    # Outputs:
+    output {
+        File vat_genes_json="~{output_genes_json}"
+        Boolean done = true
+        File monitoring_log = "monitoring.log"
+    }
+}
+
 
 task BigQueryLoadJson {
     meta {
@@ -159,11 +512,12 @@ task BigQueryLoadJson {
         String project_id
         String dataset_name
         String output_path
-        Array[String] prep_jsons_done
+        Array[Boolean] prep_vt_json_done
+        Array[Boolean] prep_genes_json_done
     }
 
     # If the vat version is undefined or v1 then the vat tables would be named like filter_vat, otherwise filter_vat_v2.
-    String effective_vat_version = if (defined(vat_version) && vat_version != "v1") then "_" + vat_version else ""
+    String effective_vat_version = if (defined(vat_version) && select_first([vat_version]) != "v1") then "_" + select_first([vat_version]) else ""
 
     # There are two pre-vat tables. A variant table and a genes table. They are joined together for the vat table
     String vat_table = filter_set_name + "_vat" + effective_vat_version
@@ -356,68 +710,6 @@ task BigQueryLoadJson {
     }
 }
 
-task BigQuerySmokeTest {
-    input {
-        String project_id
-        String dataset_name
-        String vat_table
-        Array[Int] counts_variants
-        Array[File] track_dropped_variants
-        Boolean load_jsons_done
-    }
-    # Now query the final table for expected results
-    # Compare the number of variants we expect from the input with the size of the output / VAT
-    # The number of passing variants in GVS matches the number of variants in the VAT.
-    # Please note that we are counting the number of variants in GVS, not the number of sites, which may add a difficulty to this task.
-
-
-    command <<<
-        set -e
-        echo "project_id = ~{project_id}" > ~/.bigqueryrc
-
-        # ------------------------------------------------
-        # VALIDATION CALCULATION
-        # sum all the initial input variants across the shards
-
-        INITIAL_VARIANT_COUNT=$(python -c "print(sum([~{sep=', ' counts_variants}]))")
-        ## here a list of files: ~{sep=', ' track_dropped_variants}
-        ## I need to get the lines from each file
-        awk 'FNR==1{print ""}1' ~{sep=' ' track_dropped_variants} > dropped_variants.txt
-
-        echo "Dropped variants:"
-        cat dropped_variants.txt
-
-        # Count number of variants in the VAT
-        bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT COUNT (DISTINCT vid) AS count FROM `~{dataset_name}.~{vat_table}`' > bq_variant_count.csv
-        VAT_COUNT=$(python3 -c "csvObj=open('bq_variant_count.csv','r');csvContents=csvObj.read();print(csvContents.split('\n')[1]);")
-        # if the result of the bq call and the csv parsing is a series of digits, then check that it matches the input
-        if [[ $VAT_COUNT =~ ^[0-9]+$ ]]; then
-            if [[ $INITIAL_VARIANT_COUNT -ne $VAT_COUNT ]]; then
-                echo "FAIL: The VAT table ~{vat_table} has $VAT_COUNT variants in it, and the input files had $INITIAL_VARIANT_COUNT."
-            else
-                echo "PASS: The VAT table ~{vat_table} has $VAT_COUNT variants in it, which is the expected number."
-            fi
-        # otherwise, something is off, so return the output from the bq query call
-        else
-            echo "Something went wrong. The attempt to count the variants returned: " $(cat bq_variant_count.csv)
-        fi
-    >>>
-    # ------------------------------------------------
-    # Runtime settings:
-    runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
-        memory: "1 GB"
-        preemptible: 3
-        cpu: "1"
-        disks: "local-disk 100 HDD"
-    }
-    # ------------------------------------------------
-    # Outputs:
-    output {
-        Boolean done = true
-    }
-}
-
 task BigQueryExportVat {
     input {
         String contig
@@ -425,7 +717,7 @@ task BigQueryExportVat {
         String dataset_name
         String vat_table
         String output_path
-        Boolean validate_jsons_done
+        Boolean load_jsons_done
     }
 
     String export_path = output_path + "export/" + contig + "/*.tsv.gz"
@@ -570,14 +862,13 @@ task MergeVatTSVs {
     input {
         Array[Boolean] export_done
         Array[String] contig_array
-        String project_id
         String output_path
 
         Int? merge_vcfs_disk_size_override
     }
 
     # going large with the default to make gsutil -m cp really zippy
-    Int disk_size = if (defined(merge_vcfs_disk_size_override)) then merge_vcfs_disk_size_override else 250
+    Int disk_size = if (defined(merge_vcfs_disk_size_override)) then select_first([merge_vcfs_disk_size_override]) else 250
 
     command <<<
         apt-get update
@@ -630,4 +921,3 @@ task MergeVatTSVs {
         File tsv_file = "vat_complete.bgz.tsv.gz"
     }
 }
-

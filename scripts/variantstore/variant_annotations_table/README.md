@@ -25,6 +25,7 @@ Most of the other files are specific to where the VAT will live, like the projec
 All optional inputs are provided with default values.
 
 ### Preparing to run GvsCreateVATfromVDS:
+
 Two inputs need to be created from the VDS.
 The first input can be created using the ancestry pipeline which is in another workspace. This input is also needed to create the second input.
 The second input can be creating using this Python script:`scripts/variantstore/wdl/extract/hail_create_vat_inputs.py`
@@ -81,6 +82,7 @@ Variants may be filtered out of the VAT (that were in the GVS extract) for the f
 - they are spanning deletions
 
 ## note that there are sometimes duplicate variants that are removed and tracked
+
 
 
 
