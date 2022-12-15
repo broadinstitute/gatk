@@ -215,7 +215,7 @@ import java.util.stream.IntStream;
  *         set is provided.
  *     </li>
  *     <li>
- *         (Optional) TODO BGMM positive/negative fits
+ *         (Optional) TODO BGMM fit
  *     </li>
  * </ul>
  *
