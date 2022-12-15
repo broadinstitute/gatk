@@ -3,6 +3,7 @@ import ijson
 import gzip
 import argparse
 import logging
+import sys
 
 vat_nirvana_omim_dictionary = {
     "omim_phenotypes_id": "mimNumber", # nullable
@@ -21,6 +22,10 @@ def make_genes_json(annotated_json, output_genes_json):
     logging.info(f"Loading the genes json data")
     genes = ijson.items(json_data, 'genes.item', use_float=True)
     logging.info(f"Done loading the genes json data")
+    if len(genes) == 0:
+        print(f"ERROR - Found no items in annotated json file: {annotated_json}")
+        sys.exit(1)
+
 
     for gene_line in genes:
         logging.info(f"gene_line: {gene_line}")

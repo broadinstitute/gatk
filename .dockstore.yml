@@ -142,6 +142,7 @@ workflows:
          - master
          - ah_var_store
          - rc-vs-651-vat-from-vds
+         - gg_VS-757_JASIX_make_subjsons
    - name: GvsValidateVat
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/variant_annotations_table/GvsValidateVAT.wdl
