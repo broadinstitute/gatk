@@ -397,7 +397,6 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
             default:
                 throw new GATKException.ShouldNeverReachHereException("Unknown model-backend mode.");
         }
-        logger.info(String.format("Running in %s mode...", modelBackend));
 
         if (snpScorer == null && indelScorer == null) {
             throw new UserException.BadInput(String.format("At least one serialized scorer must be present " +
