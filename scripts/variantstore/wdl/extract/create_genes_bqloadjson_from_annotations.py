@@ -22,12 +22,10 @@ def make_genes_json(annotated_json, output_genes_json):
     logging.info(f"Loading the genes json data")
     genes = ijson.items(json_data, 'genes.item', use_float=True)
     logging.info(f"Done loading the genes json data")
-    if len(genes) == 0:
-        print(f"ERROR - Found no items in annotated json file: {annotated_json}")
-        sys.exit(1)
 
-
+    gene_count = 0
     for gene_line in genes:
+        gene_count += 1
         logging.info(f"gene_line: {gene_line}")
         if gene_line.get("omim") != None:
             row = {}
@@ -51,6 +49,9 @@ def make_genes_json(annotated_json, output_genes_json):
     output_genes_file.close()
     json_data.close()
 
+    if gene_count == 0:
+        print(f"ERROR - Found no items in annotated json file: {annotated_json}")
+        sys.exit(1)
 
 def make_annotation_jsons(annotated_json, output_genes_json):
     logging.basicConfig(

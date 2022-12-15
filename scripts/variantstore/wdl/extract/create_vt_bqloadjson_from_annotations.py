@@ -284,12 +284,11 @@ def make_positions_json(annotated_json, output_json):
         json_data = open(annotated_json, 'rb')
 
     positions = ijson.items(json_data, 'item', use_float=True)
-    if len(positions) == 0:
-        print(f"ERROR - Found no items in annotated json file: {annotated_json}")
-        sys.exit(1)
 
+    position_count = 0
     last_chrom = ""
     for p in positions:
+        position_count += 1
         chrom=p['chromosome']
         if (chrom != last_chrom):
             last_chrom = chrom
@@ -335,6 +334,9 @@ def make_positions_json(annotated_json, output_json):
     output_file.close()
     json_data.close()
 
+    if position_count == 0:
+        print(f"ERROR - Found no items in annotated json file: {annotated_json}")
+        sys.exit(1)
 
 def make_annotation_jsons(annotated_json, output_json):
     logging.basicConfig(

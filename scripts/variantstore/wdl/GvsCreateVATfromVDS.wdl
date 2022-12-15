@@ -29,8 +29,7 @@ workflow GvsCreateVATfromVDS {
 
     File nirvana_data_directory = "gs://gvs_quickstart_storage/Nirvana/Nirvana-references-2022-10-07.tgz"
 
-    ## Flag A
-    ## TODO: where do we need to validate that there are no hemis?
+    ## Flag B
 
     call MakeSubpopulationFilesAndReadSchemaFiles {
         input:
@@ -462,7 +461,7 @@ task PrepVtAnnotationJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-757_var_store_2022_12_15"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-757_var_store_2022_12_15a"
         memory: "7 GB"
         preemptible: 3
         cpu: "1"
@@ -509,7 +508,7 @@ task PrepGenesAnnotationJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-757_var_store_2022_12_15"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-757_var_store_2022_12_15a"
         memory: "7 GB"
         preemptible: 3
         cpu: "1"
