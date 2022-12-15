@@ -286,13 +286,8 @@ def make_positions_json(annotated_json, output_json):
     positions = ijson.items(json_data, 'item', use_float=True)
 
     position_count = 0
-    last_chrom = ""
     for p in positions:
         position_count += 1
-        chrom=p['chromosome']
-        if (chrom != last_chrom):
-            last_chrom = chrom
-            logging.info(f"Chrom: {chrom}")
         position=p['position']
         refAllele=p['refAllele'] # ref_allele
         altAlleles=p['altAlleles'] # this is an array that we need to split into each alt_allele

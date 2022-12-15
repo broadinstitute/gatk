@@ -20,7 +20,7 @@ def make_genes_json(annotated_json, output_genes_json):
         json_data = open(annotated_json, 'rb')
 
     logging.info(f"Loading the genes json data")
-    genes = ijson.items(json_data, 'genes.item', use_float=True)
+    genes = ijson.items(json_data, 'item', use_float=True)
     logging.info(f"Done loading the genes json data")
 
     gene_count = 0
