@@ -29,7 +29,7 @@ workflow GvsCreateVATfromVDS {
 
     File nirvana_data_directory = "gs://gvs_quickstart_storage/Nirvana/Nirvana-references-2022-10-07.tgz"
 
-    ## Flag C
+    ## Flag D
 
     call MakeSubpopulationFilesAndReadSchemaFiles {
         input:
@@ -93,7 +93,6 @@ workflow GvsCreateVATfromVDS {
 
         call PrepVtAnnotationJson {
             input:
-                annotation_json = AnnotateVCF.annotation_json,
                 positions_annotation_json = AnnotateVCF.positions_annotation_json,
                 output_file_suffix = "${vcf_filename}.json.gz",
                 output_path = output_path,
@@ -177,7 +176,7 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-757_var_store_2022_12_15"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-757_var_store_2022_12_15d"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -222,7 +221,7 @@ task StripCustomAnnotationsFromSitesOnlyVCF {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-757_var_store_2022_12_15"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-757_var_store_2022_12_15d"
         memory: "7 GiB"
         cpu: "2"
         preemptible: 3
@@ -332,7 +331,6 @@ task AnnotateVCF {
         File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     }
     String annotation_json_name = output_annotated_file_name + ".json.gz"
-    String annotation_json_name_jsi = annotation_json_name + ".jsi"
     String gene_annotation_json_name = output_annotated_file_name + ".genes.json.gz"
     String positions_annotation_json_name = output_annotated_file_name + ".positions.json.gz"
     String nirvana_location = "/Nirvana/Nirvana.dll"
@@ -374,7 +372,6 @@ task AnnotateVCF {
         # =======================================
         # Create Nirvana annotations:
 
-
         dotnet ~{nirvana_location} \
             -i ~{input_vcf} \
             -c $DATA_SOURCES_FOLDER~{path} \
@@ -384,24 +381,17 @@ task AnnotateVCF {
             -o ~{output_annotated_file_name}
 
         # https://illumina.github.io/NirvanaDocumentation/introduction/parsing-json#jasix
-        # Genes section
-        echo "Here is stuff"
-        ls -l
-        echo "Now we try"
+        # Parse out the Genes section into a separate annotated json
         dotnet  ~{jasix_location} \
             --in ~{annotation_json_name} \
             --section genes \
             --out ~{gene_annotation_json_name}
-        echo "Here is more stuff"
-        ls -l
-        echo "Positions Now"
+
+        # Parse out the Positions section into a separate annotated json
         dotnet  ~{jasix_location} \
         --in ~{annotation_json_name} \
         --section positions \
         --out ~{positions_annotation_json_name}
-        echo "Here is even more stuff"
-        ls -l
-        echo "Now we end"
 
     >>>
     # ------------------------------------------------
@@ -416,8 +406,6 @@ task AnnotateVCF {
     # ------------------------------------------------
     # Outputs:
     output {
-        File annotation_json = "~{annotation_json_name}"
-        File annotation_json_jsi = "~{annotation_json_name_jsi}"
         File genes_annotation_json = "~{gene_annotation_json_name}"
         File positions_annotation_json = "~{positions_annotation_json_name}"
         File monitoring_log = "monitoring.log"
@@ -426,7 +414,6 @@ task AnnotateVCF {
 
 task PrepVtAnnotationJson {
     input {
-        File annotation_json
         File positions_annotation_json
         String output_file_suffix
         String output_path
@@ -435,8 +422,6 @@ task PrepVtAnnotationJson {
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
     String output_vt_json = "vat_vt_bq_load" + output_file_suffix
-    String output_vt_gcp_path = output_path + 'vt/'
-    String output_annotations_gcp_path = output_path + 'annotations/'
 
     command <<<
         set -o errexit -o nounset -o pipefail -o xtrace
@@ -447,21 +432,16 @@ task PrepVtAnnotationJson {
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
 
-        # for debugging purposes only
-        gsutil cp ~{annotation_json} '~{output_annotations_gcp_path}'
-
         ## the annotation jsons are split into the specific VAT schema
         python3 /app/create_vt_bqloadjson_from_annotations.py \
             --annotated_json ~{positions_annotation_json} \
             --output_vt_json ~{output_vt_json}
 
-        gsutil cp ~{output_vt_json} '~{output_vt_gcp_path}'
-
     >>>
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-757_var_store_2022_12_15c"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-757_var_store_2022_12_15d"
         memory: "7 GB"
         preemptible: 3
         cpu: "1"
@@ -487,7 +467,6 @@ task PrepGenesAnnotationJson {
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
     String output_genes_json = "vat_genes_bq_load" + output_file_suffix
-    String output_genes_gcp_path = output_path + 'genes/'
 
     command <<<
         set -o errexit -o nounset -o pipefail -o xtrace
@@ -502,13 +481,11 @@ task PrepGenesAnnotationJson {
             --annotated_json ~{genes_annotation_json} \
             --output_genes_json ~{output_genes_json}
 
-        gsutil cp ~{output_genes_json} '~{output_genes_gcp_path}'
-
     >>>
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-757_var_store_2022_12_15c"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-757_var_store_2022_12_15d"
         memory: "7 GB"
         preemptible: 3
         cpu: "1"
