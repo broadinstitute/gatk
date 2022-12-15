@@ -103,9 +103,9 @@ public final class ScoreVariantAnnotationsIntegrationTest extends CommandLinePro
                         Pair.of("extract.AS.snpIndel.posUn.train.snpIndel.posOnly", Function.identity())),
                 Arrays.asList(
                         Pair.of("BGMM.score", ab -> ADD_MODEL_BACKEND.apply(ab, VariantAnnotationsModelBackend.JAVA_BGMM))),
-                        //Pair.of("IF.score", ab -> ADD_MODEL_BACKEND.apply(ab, VariantAnnotationsModelBackend.PYTHON_IFOREST)), // this and the following case give the same results, so they are given the same IF.score tag
-                        //Pair.of("IF.score", ADD_ISOLATION_FOREST_PYTHON_SCRIPT
-                        //        .andThen(ab -> ADD_MODEL_BACKEND.apply(ab, VariantAnnotationsModelBackend.PYTHON_SCRIPT)))),
+                        Pair.of("IF.score", ab -> ADD_MODEL_BACKEND.apply(ab, VariantAnnotationsModelBackend.PYTHON_IFOREST)), // this and the following case give the same results, so they are given the same IF.score tag
+                        Pair.of("IF.score", ADD_ISOLATION_FOREST_PYTHON_SCRIPT
+                                .andThen(ab -> ADD_MODEL_BACKEND.apply(ab, VariantAnnotationsModelBackend.PYTHON_SCRIPT)))),
                 Arrays.asList(
                         Pair.of("snp", ExtractVariantAnnotationsIntegrationTest.ADD_SNP_MODE_AND_RESOURCES),
                         Pair.of("snpIndel", ExtractVariantAnnotationsIntegrationTest.ADD_SNP_MODE_AND_RESOURCES
