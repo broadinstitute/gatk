@@ -29,7 +29,7 @@ workflow GvsCreateVATfromVDS {
 
     File nirvana_data_directory = "gs://gvs_quickstart_storage/Nirvana/Nirvana-references-2022-10-07.tgz"
 
-    ## Flag D
+    ## Flag E
 
     call MakeSubpopulationFilesAndReadSchemaFiles {
         input:
@@ -422,6 +422,7 @@ task PrepVtAnnotationJson {
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
     String output_vt_json = "vat_vt_bq_load" + output_file_suffix
+    String output_vt_gcp_path = output_path + 'vt/'
 
     command <<<
         set -o errexit -o nounset -o pipefail -o xtrace
@@ -436,6 +437,8 @@ task PrepVtAnnotationJson {
         python3 /app/create_vt_bqloadjson_from_annotations.py \
             --annotated_json ~{positions_annotation_json} \
             --output_vt_json ~{output_vt_json}
+
+        gsutil cp ~{output_vt_json} '~{output_vt_gcp_path}'
 
     >>>
     # ------------------------------------------------
@@ -467,6 +470,7 @@ task PrepGenesAnnotationJson {
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
     String output_genes_json = "vat_genes_bq_load" + output_file_suffix
+    String output_genes_gcp_path = output_path + 'genes/'
 
     command <<<
         set -o errexit -o nounset -o pipefail -o xtrace
@@ -480,6 +484,8 @@ task PrepGenesAnnotationJson {
         python3 /app/create_genes_bqloadjson_from_annotations.py \
             --annotated_json ~{genes_annotation_json} \
             --output_genes_json ~{output_genes_json}
+
+        gsutil cp ~{output_genes_json} '~{output_genes_gcp_path}'
 
     >>>
     # ------------------------------------------------
