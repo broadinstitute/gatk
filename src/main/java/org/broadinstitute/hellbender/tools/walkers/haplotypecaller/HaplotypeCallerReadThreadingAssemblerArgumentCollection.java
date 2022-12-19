@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.DeprecatedFeature;
 import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
 
@@ -32,7 +33,7 @@ public class HaplotypeCallerReadThreadingAssemblerArgumentCollection extends Rea
     /**
      * As of version 3.3, this argument is no longer needed because dangling end recovery is now the default behavior. See GATK 3.3 release notes for more details.
      */
-    @Deprecated
+    @DeprecatedFeature
     @Argument(fullName= RECOVER_DANGLING_HEADS_LONG_NAME, doc="This argument is deprecated since version 3.3", optional = true)
     public boolean DEPRECATED_RecoverDanglingHeads = false;
 

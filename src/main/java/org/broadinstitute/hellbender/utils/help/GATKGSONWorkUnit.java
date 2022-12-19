@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.help;
 
+import org.broadinstitute.barclay.help.DocWorkUnit;
 import org.broadinstitute.barclay.help.GSONWorkUnit;
 
 /**
@@ -10,6 +11,10 @@ import org.broadinstitute.barclay.help.GSONWorkUnit;
 public class GATKGSONWorkUnit extends GSONWorkUnit {
 
     private String walkerType;
+
+    public GATKGSONWorkUnit(DocWorkUnit workUnit) {
+        super(workUnit);
+    }
 
     public void setWalkerType(final String walkerType){
         this.walkerType = walkerType;

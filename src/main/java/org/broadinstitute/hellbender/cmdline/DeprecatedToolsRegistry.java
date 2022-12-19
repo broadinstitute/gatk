@@ -6,8 +6,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * When a tool is removed from GATK (after having been @Deprecated for a suitable period), an entry should
- * be added to this list to issue a message when the user tries to run that tool.
+ * When a tool is removed from GATK (after having been tagged with @DeprecatedFeature for a suitable period), an
+ * entry should be added to this list to issue a message when the user tries to run that tool.
  *
  * NOTE: Picard tools should be listed here as well, since by definition such tools will not be found in
  * the Picard jar.
