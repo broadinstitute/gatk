@@ -174,7 +174,7 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-757_var_store_2022_12_15d"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-757_var_store_2022_12_19"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -219,7 +219,7 @@ task StripCustomAnnotationsFromSitesOnlyVCF {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-757_var_store_2022_12_15d"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-757_var_store_2022_12_19"
         memory: "7 GiB"
         cpu: "2"
         preemptible: 3
@@ -263,6 +263,8 @@ task RemoveDuplicatesFromSitesOnlyVCF {
         bcftools view --threads 4 -i 'REF~"N"' -O u sites_only.bcf | bcftools query -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > track_dropped.tsv
 
         echo_date "VAT: filter out sites with N's in the reference AND sites with AC=0"
+        ## NOTE: Sites that were filtered out because of AC=0 are not recorded in the 'track_dropped.tsv' file, but can be
+        ##       determined by examining the sites-only VCF provided to this WDL.
         bcftools view --threads 4 -e 'REF~"N" || AC=0' -O b sites_only.bcf -o filtered_sites_only.bcf
         rm sites_only.bcf
 
@@ -441,7 +443,7 @@ task PrepVtAnnotationJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-757_var_store_2022_12_15d"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-757_var_store_2022_12_19"
         memory: "7 GB"
         preemptible: 3
         cpu: "1"
@@ -488,7 +490,7 @@ task PrepGenesAnnotationJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-757_var_store_2022_12_15d"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:gg_VS-757_var_store_2022_12_19"
         memory: "7 GB"
         preemptible: 3
         cpu: "1"
