@@ -150,6 +150,16 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
     )
     public static String scaledLogitProperty = "SL";
 
+    @Argument(fullName="percent-likelihood-per-logit", optional=true,
+              doc="Percent change in likelihood that results in a change of +-1 SL near p=0.5")
+    public static double percent_liklelihood_per_logit = 0.1;
+
+
+    @Argument(fullName="original-gq-property", optional=true,
+            doc="Name of genotype property for original (pre-filtering) value of GQ"
+    )
+    public static String originalGqProperty = "OGQ";
+
     @Argument(fullName="error-on-no-trios", optional=true, doc="Throw exception if there are no trios in training mode")
     public static Boolean errorOnNoTrios = true;
 
@@ -423,6 +433,8 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
                                          "variant";
         hInfo.add(new VCFFormatHeaderLine(scaledLogitProperty, 1, VCFHeaderLineType.Integer,
                                LOGIT_SCALE + " times the logits that a genotype is correct"));
+        hInfo.add(new VCFFormatHeaderLine(originalGqProperty, 1, VCFHeaderLineType.Integer,
+                "Original value of GQ before filtering"));
         hInfo.add(new VCFInfoHeaderLine(MIN_QUALITY_KEY, 1, VCFHeaderLineType.Integer,
                             "Minimum passing GQ for each " + filterableVariant));
         hInfo.add(new VCFFilterHeaderLine(EXCESSIVE_MIN_QUALITY_FILTER_KEY,
@@ -1032,6 +1044,7 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
         int numVariantOutputVar = 0;
         for(int sampleIndex = 0; sampleIndex < numSamples; ++sampleIndex) {
             final Genotype genotype = filterGenotypes[sampleIndex];
+            final short originalGq = sampleVariantCallQualities.values[0][sampleIndex];
             final short callQuality;
             final short scaledLogits;
             if(sampleVariantFilterableForFilterVariantContext[sampleIndex]) {
@@ -1043,13 +1056,15 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
             } else {
                 // Still need to compute scaledLogits. Also: don't allow no-calls to have a passing quality
                 callQuality = maybeFilterable && filterGenotypes[sampleIndex].isNoCall() ?
-                    (short)Integer.min(sampleVariantCallQualities.values[0][sampleIndex], FAILING_GQ) :
-                    sampleVariantCallQualities.values[0][sampleIndex];
+                    (short)Integer.min(originalGq, FAILING_GQ) :
+                    originalGq;
                 scaledLogits = probToScaledLogits(1.0 - phredToProb(callQuality));
             }
             final boolean needsFilter = sampleVariantFilterableForFilterVariantContext[sampleIndex] &&
                                         scaledLogits < minScaledLogits;
-            final Genotype filteredGenotype = getFilteredGenotype(genotype, callQuality, scaledLogits, needsFilter);
+            final Genotype filteredGenotype = getFilteredGenotype(
+                genotype, originalGq, callQuality, scaledLogits, needsFilter
+            );
             if(needsFilter) {
                 ++numFiltered;
             }
@@ -1080,9 +1095,15 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
         return variantContextBuilder.make();
     }
 
-    private Genotype getFilteredGenotype(final Genotype inputGenotype, final short callQuality,
-                                         final short scaledLogits, final boolean needsFilter) {
+    private Genotype getFilteredGenotype(
+            final Genotype inputGenotype,
+            final short originalCallQuality,
+            final short callQuality,
+            final short scaledLogits,
+            final boolean needsFilter
+    ) {
         final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(inputGenotype)
+                .attribute(originalGqProperty, originalCallQuality)
                 .attribute(scaledLogitProperty, scaledLogits);
         if(needsFilter) {
             // Set GT and copy-number calls to no-call
@@ -2502,7 +2523,9 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
     }
 
     // near p=0.5, each scaled logit is ~ 0.1% change in likelihood
-    static final double LOGIT_SCALE = 1.0 / FastMath.log(0.501 / 0.499);
+    static final double LOGIT_SCALE = 1.0 / FastMath.log(
+        (0.5 + percent_liklelihood_per_logit / 100) / (0.5 - percent_liklelihood_per_logit / 100)
+    );
 
     protected short probToScaledLogits(final double p) {
         return p == 0 ? Short.MIN_VALUE :
