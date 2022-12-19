@@ -4,7 +4,6 @@ package org.broadinstitute.hellbender.tools.walkers.annotator;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
-import jdk.nashorn.internal.runtime.regexp.joni.constants.EncloseType;
 import org.apache.commons.lang.mutable.MutableInt;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.apache.commons.lang3.tuple.Triple;
