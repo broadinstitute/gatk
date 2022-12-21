@@ -187,7 +187,6 @@ public final class SVCluster extends MultiVariantWalker {
     public static final String ALGORITHM_LONG_NAME = "algorithm";
     public static final String FAST_MODE_LONG_NAME = "fast-mode";
     public static final String OMIT_MEMBERS_LONG_NAME = "omit-members";
-    public static final String INSERTION_LENGTH_SUMMARY_STRATEGY_LONG_NAME = "insertion-length-summary-strategy";
     public static final String DEFAULT_NO_CALL_LONG_NAME = "default-no-call";
 
     /**
@@ -275,7 +274,7 @@ public final class SVCluster extends MultiVariantWalker {
             doc = "Strategy to use for choosing a representative value for a breakpoint cluster.",
             optional = true)
     private CanonicalSVCollapser.BreakpointSummaryStrategy breakpointSummaryStrategy =
-            CanonicalSVCollapser.BreakpointSummaryStrategy.MEDIAN_START_MEDIAN_END;
+            CanonicalSVCollapser.BreakpointSummaryStrategy.REPRESENTATIVE;
 
     @Argument(fullName = JointGermlineCNVSegmentation.ALT_ALLELE_SUMMARY_STRATEGY_LONG_NAME,
             doc = "Strategy to use for choosing a representative alt allele for non-CNV biallelic sites with " +
@@ -283,12 +282,6 @@ public final class SVCluster extends MultiVariantWalker {
             optional = true)
     private CanonicalSVCollapser.AltAlleleSummaryStrategy altAlleleSummaryStrategy =
             CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE;
-
-    @Argument(fullName = INSERTION_LENGTH_SUMMARY_STRATEGY_LONG_NAME,
-            doc = "Strategy to use for choosing a representative value for insertion length when unknown.",
-            optional = true)
-    private CanonicalSVCollapser.InsertionLengthSummaryStrategy insertionLengthSummaryStrategy =
-            CanonicalSVCollapser.InsertionLengthSummaryStrategy.MEDIAN;
 
     @Argument(fullName = DEFRAG_PADDING_FRACTION_LONG_NAME,
             doc = "Padding as a fraction of variant length for CNV defragmentation mode.",
@@ -353,7 +346,7 @@ public final class SVCluster extends MultiVariantWalker {
             final SVClusterEngine.CLUSTERING_TYPE type = algorithm == CLUSTER_ALGORITHM.SINGLE_LINKAGE ?
                     SVClusterEngine.CLUSTERING_TYPE.SINGLE_LINKAGE : SVClusterEngine.CLUSTERING_TYPE.MAX_CLIQUE;
             clusterEngine = SVClusterEngineFactory.createCanonical(type, breakpointSummaryStrategy,
-                    altAlleleSummaryStrategy, insertionLengthSummaryStrategy, dictionary, reference, enableCnv,
+                    altAlleleSummaryStrategy, dictionary, reference, enableCnv,
                     clusterParameterArgs.getDepthParameters(), clusterParameterArgs.getMixedParameters(),
                     clusterParameterArgs.getPESRParameters());
         } else {
@@ -455,7 +448,7 @@ public final class SVCluster extends MultiVariantWalker {
 
         // Build new variant
         final SVCallRecord finalCall = new SVCallRecord(newId, call.getContigA(), call.getPositionA(), call.getStrandA(),
-                call.getContigB(), call.getPositionB(), call.getStrandB(), call.getType(), call.getLength(),
+                call.getContigB(), call.getPositionB(), call.getStrandB(), call.getType(), call.getComplexSubtype(), call.getLength(),
                 call.getAlgorithms(), call.getAlleles(), filledGenotypes, call.getAttributes(), dictionary);
         final VariantContextBuilder builder = SVCallRecordUtils.getVariantBuilder(finalCall);
         if (omitMembers) {

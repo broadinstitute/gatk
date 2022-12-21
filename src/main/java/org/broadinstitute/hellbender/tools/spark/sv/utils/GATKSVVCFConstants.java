@@ -76,6 +76,22 @@ public final class GATKSVVCFConstants {
     public static final String CPX_INTERVALS = "CPX_INTERVALS";
     public static final String CPX_TYPE = "CPX_TYPE";
 
+    public enum ComplexVariantSubtype {
+        delINV,
+        INVdel,
+        dupINV,
+        INVdup,
+        delINVdel,
+        dupINVdup,
+        delINVdup,
+        dupINVdel,
+        piDUP_FR,
+        piDUP_RF,
+        dDUP,
+        dDUP_iDEL,
+        INS_iDEL
+    }
+
     // not defined in output vcf header but used in internal id that is currently output in the ID column
     public static final String INTERVAL_VARIANT_ID_FIELD_SEPARATOR = "_";
     public static final String DUP_TAN_CONTRACTION_INTERNAL_ID_START_STRING = "DEL-DUPLICATION-TANDEM-CONTRACTION";
@@ -106,7 +122,6 @@ public final class GATKSVVCFConstants {
     public static final String CLUSTER_MEMBER_IDS_KEY = "MEMBERS";
 
     // Concordance
-
     public static final String GENOTYPE_CONCORDANCE_INFO = "GENOTYPE_CONCORDANCE";
     public static final String NON_REF_GENOTYPE_CONCORDANCE_INFO = "NON_REF_GENOTYPE_CONCORDANCE";
 
@@ -148,6 +163,18 @@ public final class GATKSVVCFConstants {
     public static final String NONCODING_BREAKPOINT = "PREDICTED_NONCODING_BREAKPOINT";
     public static final String NEAREST_TSS = "PREDICTED_NEAREST_TSS";
     public static final String TSS_DUP = "PREDICTED_TSS_DUP";
+
+    // SVTYPE classes
+    public enum StructuralVariantAnnotationType {
+        DEL,
+        DUP,
+        INS,
+        INV,
+        CPX,
+        BND,
+        CTX,
+        CNV
+    }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

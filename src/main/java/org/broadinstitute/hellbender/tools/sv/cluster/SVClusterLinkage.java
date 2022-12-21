@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.sv.cluster;
 
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypesContext;
-import htsjdk.variant.variantcontext.StructuralVariantType;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
@@ -71,7 +70,7 @@ public abstract class SVClusterLinkage<T extends SVLocatable> {
      */
     protected static boolean hasSampleOverlap(final SVCallRecord a, final SVCallRecord b, final double minSampleOverlap) {
         if (minSampleOverlap > 0) {
-            if (a.getType() == StructuralVariantType.CNV || b.getType() == StructuralVariantType.CNV) {
+            if (a.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV || b.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV) {
                 // CNV sample overlap
                 final GenotypesContext genotypesA = a.getGenotypes();
                 final GenotypesContext genotypesB = b.getGenotypes();
@@ -82,6 +81,7 @@ public abstract class SVClusterLinkage<T extends SVLocatable> {
                 for (final String sample : samples) {
                     final Genotype genotypeA = genotypesA.get(sample);
                     final Genotype genotypeB = genotypesB.get(sample);
+                    // If one sample doesn't exist in the other set, assume reference copy state
                     final int cnA = genotypeA == null ?
                             VariantContextGetters.getAttributeAsInt(genotypeB, GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 0)
                             : VariantContextGetters.getAttributeAsInt(genotypeA, GATKSVVCFConstants.COPY_NUMBER_FORMAT, 0);

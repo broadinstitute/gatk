@@ -177,12 +177,12 @@ public class SVAlleleCounterTest extends GATKBaseTest {
         }
 
         final List<Allele> alleles = Arrays.asList(altAlleles);
-        final SVAlleleCounter counter = SVAlleleCounter.create(alleles, genotypesList);
+        final SVAlleleCounter counter = new SVAlleleCounter(alleles, genotypesList);
 
         Assert.assertEquals(counter.getAlleles(), alleles);
-        Assert.assertEquals(counter.getAlleleCounts(), expectedAlleleCounts);
-        Assert.assertEquals(counter.computeFrequencies(), expectedAlleleFrequencies);
-        Assert.assertEquals(counter.getAlleleNumber(), expectedAlleleNumber);
+        Assert.assertEquals(counter.getCounts(), expectedAlleleCounts);
+        Assert.assertEquals(counter.getFrequencies(), expectedAlleleFrequencies);
+        Assert.assertEquals(counter.getNumber(), expectedAlleleNumber);
     }
 
 }

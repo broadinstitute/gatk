@@ -4,8 +4,10 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Simple allele counter for SVs. Supports multi-allelic variants, except for multi-allelic CNVs that lack genotype alleles.
@@ -13,57 +15,54 @@ import java.util.Map;
 public class SVAlleleCounter {
 
     private final List<Allele> alleles;
-    private final int[] alleleCounts;
-    private final int alleleNumber;
+    private final int[] counts;
+    private final double[] frequencies;
+    private final int number;
 
-    protected SVAlleleCounter(final List<Allele> alleles,
-                           final int[] alleleCounts,
-                           final int alleleNumber) {
+    public SVAlleleCounter(final List<Allele> alleles,
+                           final List<Genotype> genotypes) {
         this.alleles = alleles;
-        this.alleleCounts = alleleCounts;
-        this.alleleNumber = alleleNumber;
+        final Map<Allele, Long> alleleCountsMap = computeCounts(genotypes);
+        number = alleleCountsMap.values().stream().mapToInt(Long::intValue).sum();
+        counts = new int[alleles.size()];
+        for (int i = 0; i < alleles.size(); i++) {
+            counts[i] = alleleCountsMap.getOrDefault(alleles.get(i), 0L).intValue();
+        }
+        this.frequencies = computeFrequencies(counts, number);
     }
 
     public List<Allele> getAlleles() {
         return alleles;
     }
 
-    public int[] getAlleleCounts() {
-        return alleleCounts;
+    public int[] getCounts() {
+        return counts;
     }
 
-    public int getAlleleNumber() {
-        return alleleNumber;
+    public int getNumber() {
+        return number;
+    }
+
+    public double[] getFrequencies() { return frequencies; }
+
+    /**
+     * Counts unique alleles in the given set of genotypes.
+     */
+    private static Map<Allele, Long> computeCounts(final Collection<Genotype> genotypes) {
+        return genotypes.stream().map(Genotype::getAlleles).flatMap(Collection::stream)
+                .collect(Collectors.groupingBy(a -> a, Collectors.counting()));
     }
 
     /**
-     * Factory method for counting alleles. All calculations except AF are performed here.
-     * @param alleles alternate alleles to count
-     * @param genotypes genotypes with assigned alleles
-     * @return result
+     * Compute allele frequencies (AF) based on counts.
      */
-    public static SVAlleleCounter create(final List<Allele> alleles, final List<Genotype> genotypes) {
-        final Map<Allele, Long> alleleCountsMap = SVCallRecordUtils.getAlleleCounts(genotypes);
-        final int alleleNumber = alleleCountsMap.values().stream().mapToInt(Long::intValue).sum();
-
-        final int[] alleleCounts = new int[alleles.size()];
-        for (int i = 0; i < alleles.size(); i++) {
-            alleleCounts[i] = alleleCountsMap.getOrDefault(alleles.get(i), 0L).intValue();
-        }
-        return new SVAlleleCounter(alleles, alleleCounts, alleleNumber);
-    }
-
-    /**
-     * Get allele frequencies (AF). Avoid calling this repeatedly on the same object, as computations are performed
-     * on the fly.
-     */
-    public double[] computeFrequencies() {
-        final double[] freq = new double[alleleCounts.length];
-        if (alleleNumber == 0) {
+    private static double[] computeFrequencies(final int[] counts, final int number) {
+        final double[] freq = new double[counts.length];
+        if (number == 0) {
             Arrays.fill(freq, Double.NaN);
         } else {
-            for (int i = 0; i < alleleCounts.length; i++) {
-                freq[i] = alleleCounts[i] / (double) alleleNumber;
+            for (int i = 0; i < counts.length; i++) {
+                freq[i] = counts[i] / (double) number;
             }
         }
         return freq;

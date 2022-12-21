@@ -11,6 +11,7 @@ import java.util.List;
 public class GATKSVVariantContextUtils {
 
     public static final Allele BND_ALLELE = Allele.create("<BND>");
+    public static final Allele CPX_ALLELE = Allele.create("<CPX>");
 
     /**
      * Build the list of called alleles based on reference and called copy numbers
@@ -84,7 +85,18 @@ public class GATKSVVariantContextUtils {
     /**
      * Determines whether a given SV type represents a CNV.
      */
+    public static boolean isCnvType(final GATKSVVCFConstants.StructuralVariantAnnotationType type) {
+        return type == GATKSVVCFConstants.StructuralVariantAnnotationType.DEL
+                || type == GATKSVVCFConstants.StructuralVariantAnnotationType.DUP
+                || type == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV;
+    }
+
+    /**
+     * Determines whether a given SV type represents a CNV.
+     */
     public static boolean isCnvType(final StructuralVariantType type) {
-        return type == StructuralVariantType.DEL || type == StructuralVariantType.DUP || type == StructuralVariantType.CNV;
+        return type == StructuralVariantType.DEL
+                || type == StructuralVariantType.DUP
+                || type == StructuralVariantType.CNV;
     }
 }

@@ -47,7 +47,7 @@ public class SVConcordanceAnnotator {
 
         final ArrayList<Genotype> newGenotypes = new ArrayList<>(evalGenotypes.size());
         final GenotypeConcordanceCounts counts = new GenotypeConcordanceCounts();
-        final boolean isCnv = evalRecord.getType() == StructuralVariantType.CNV;
+        final boolean isCnv = evalRecord.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV;
         Integer numCnvMatches = 0;
         for (final String sample : evalGenotypes.getSampleNames()) {
             GenotypeBuilder builder = new GenotypeBuilder(evalGenotypes.get(sample));
@@ -91,12 +91,12 @@ public class SVConcordanceAnnotator {
             attributes.put(GATKSVVCFConstants.VAR_SPECIFICITY_INFO, metrics.VAR_SPECIFICITY);
         }
 
-        if (evalRecord.getType() != StructuralVariantType.CNV) {
+        if (evalRecord.getType() != GATKSVVCFConstants.StructuralVariantAnnotationType.CNV) {
             // Compute allele frequency in eval
-            final SVAlleleCounter counter = SVAlleleCounter.create(evalRecord.getAltAlleles(), evalRecord.getGenotypes());
-            attributes.put(VCFConstants.ALLELE_COUNT_KEY, counter.getAlleleCounts());
-            attributes.put(VCFConstants.ALLELE_FREQUENCY_KEY, counter.computeFrequencies());
-            attributes.put(VCFConstants.ALLELE_NUMBER_KEY, counter.getAlleleNumber());
+            final SVAlleleCounter counter = new SVAlleleCounter(evalRecord.getAltAlleles(), evalRecord.getGenotypes());
+            attributes.put(VCFConstants.ALLELE_COUNT_KEY, counter.getCounts());
+            attributes.put(VCFConstants.ALLELE_FREQUENCY_KEY, counter.getFrequencies());
+            attributes.put(VCFConstants.ALLELE_NUMBER_KEY, counter.getNumber());
 
             // Add in truth AF
             if (truthRecord == null) {
@@ -114,10 +114,10 @@ public class SVConcordanceAnnotator {
                         truthAttr.get(GATKSVVCFConstants.TRUTH_ALLELE_NUMBER_INFO));
             } else {
                 // Calculate truth AF
-                final SVAlleleCounter truthCounter = SVAlleleCounter.create(evalRecord.getAltAlleles(), truthRecord.getGenotypes());
-                attributes.put(GATKSVVCFConstants.TRUTH_ALLELE_COUNT_INFO, truthCounter.getAlleleCounts());
-                attributes.put(GATKSVVCFConstants.TRUTH_ALLELE_FREQUENCY_INFO, truthCounter.computeFrequencies());
-                attributes.put(GATKSVVCFConstants.TRUTH_ALLELE_NUMBER_INFO, truthCounter.getAlleleNumber());
+                final SVAlleleCounter truthCounter = new SVAlleleCounter(evalRecord.getAltAlleles(), truthRecord.getGenotypes());
+                attributes.put(GATKSVVCFConstants.TRUTH_ALLELE_COUNT_INFO, truthCounter.getCounts());
+                attributes.put(GATKSVVCFConstants.TRUTH_ALLELE_FREQUENCY_INFO, truthCounter.getFrequencies());
+                attributes.put(GATKSVVCFConstants.TRUTH_ALLELE_NUMBER_INFO, truthCounter.getNumber());
             }
         }
 
@@ -147,19 +147,17 @@ public class SVConcordanceAnnotator {
     public Boolean cnvGenotypesMatch(final String sample, final SVCallRecord eval, final SVCallRecord truth) {
         Utils.nonNull(sample);
         Utils.nonNull(eval);
-        Utils.validateArg(eval.getType() == StructuralVariantType.CNV, "Expected CNV evaluation variant");
+        Utils.validateArg(eval.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV, "Expected CNV evaluation variant");
         if (truth == null) {
             return null;
         }
-        final List<Allele> evalAltAlleles = eval.getAltAlleles();
-        Utils.validateArg(evalAltAlleles.contains(Allele.SV_SIMPLE_DEL), "DEL alt allele not found");
-        Utils.validateArg(evalAltAlleles.contains(Allele.SV_SIMPLE_DUP), "DUP alt allele not found");
         final Genotype evalGenotype = eval.getGenotypes().get(sample);
-        SVCallRecordUtils.assertHasCopyStateFields(evalGenotype);
-        final Integer evalCopyNumber = VariantContextGetters.getAttributeAsInt(evalGenotype, GATKSVVCFConstants.COPY_NUMBER_FORMAT, -1);
+        final int evalCopyNumber = VariantContextGetters.getAttributeAsInt(evalGenotype, GATKSVVCFConstants.COPY_NUMBER_FORMAT, -1);
         final Genotype truthGenotype = truth.getGenotypes().get(sample);
-        SVCallRecordUtils.assertHasCopyStateFields(truthGenotype);
-        final Integer copyNumber = VariantContextGetters.getAttributeAsInt(truthGenotype, GATKSVVCFConstants.COPY_NUMBER_FORMAT, -1);
+        if (evalGenotype.hasExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT) != truthGenotype.hasExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT)) {
+            throw new IllegalArgumentException("One genotype for sample " + sample + " has CN but the other does not");
+        }
+        final int copyNumber = VariantContextGetters.getAttributeAsInt(truthGenotype, GATKSVVCFConstants.COPY_NUMBER_FORMAT, -1);
         return copyNumber == evalCopyNumber;
     }
 
@@ -195,7 +193,7 @@ public class SVConcordanceAnnotator {
         } else if (g.isMixed()) {
             return GenotypeConcordanceStates.CallState.IS_MIXED;
         } else {
-            throw new IllegalArgumentException("Could not determine truth state for genotype: " + g);
+            throw new IllegalArgumentException("Could not determine eval state for genotype: " + g);
         }
     }
 

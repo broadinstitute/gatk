@@ -31,28 +31,16 @@ public class SVAnnotateEngine {
             GATKSVVCFConstants.COPY_GAIN,
             GATKSVVCFConstants.TSS_DUP);
 
-    @VisibleForTesting
-    protected enum StructuralVariantAnnotationType {
-        DEL,
-        DUP,
-        INS,
-        INV,
-        CPX,
-        BND,
-        CTX,
-        CNV
-    }
-
     // Mini class to package SV type and interval into one object
     @VisibleForTesting
     protected static final class SVSegment {
-        private final StructuralVariantAnnotationType intervalSVType;
+        private final GATKSVVCFConstants.StructuralVariantAnnotationType intervalSVType;
         private final SimpleInterval interval;
-        protected SVSegment(final StructuralVariantAnnotationType svType, final SimpleInterval interval) {
+        protected SVSegment(final GATKSVVCFConstants.StructuralVariantAnnotationType svType, final SimpleInterval interval) {
             this.intervalSVType = svType;
             this.interval = interval;
         }
-        public StructuralVariantAnnotationType getIntervalSVType() {
+        public GATKSVVCFConstants.StructuralVariantAnnotationType getIntervalSVType() {
             return intervalSVType;
         }
         public SimpleInterval getInterval() {
@@ -355,7 +343,7 @@ public class SVAnnotateEngine {
      */
     @VisibleForTesting
     protected void annotateTranscript(final SimpleInterval variantInterval,
-                                             final StructuralVariantAnnotationType svType,
+                                             final GATKSVVCFConstants.StructuralVariantAnnotationType svType,
                                              final GencodeGtfTranscriptFeature transcript,
                                              final Map<String, Set<String>> variantConsequenceDict) {
         final String consequence;
@@ -465,7 +453,7 @@ public class SVAnnotateEngine {
      * @return - SV type determined from ALT field of VCF
      */
     @VisibleForTesting
-    protected static StructuralVariantAnnotationType getSVType(final VariantContext variant) {
+    protected static GATKSVVCFConstants.StructuralVariantAnnotationType getSVType(final VariantContext variant) {
         if (variant.getAlternateAlleles().size() > 1) {
             throw new IllegalArgumentException("Expected single ALT allele, found multiple: " +
                     variant.getAlternateAlleles());
@@ -473,12 +461,12 @@ public class SVAnnotateEngine {
         final Allele alt = variant.getAlternateAllele(0);
         if (alt.isBreakpoint()) {
             if (variant.hasAttribute(GATKSVVCFConstants.CPX_INTERVALS)) {
-                return StructuralVariantAnnotationType.CPX;
+                return GATKSVVCFConstants.StructuralVariantAnnotationType.CPX;
             }
-            return StructuralVariantAnnotationType.BND;
+            return GATKSVVCFConstants.StructuralVariantAnnotationType.BND;
         } else if (alt.isSymbolic()) {
             // parse ALT as symbolic allele, assuming format <SVTYPE> or <SVTYPE:SUBTYPE_1:...:SUBTYPE_N>
-            return StructuralVariantAnnotationType.valueOf(GATKSVVariantContextUtils.getSymbolicAlleleSymbols(alt)[0]);
+            return GATKSVVCFConstants.StructuralVariantAnnotationType.valueOf(GATKSVVariantContextUtils.getSymbolicAlleleSymbols(alt)[0]);
         } else {
             throw new IllegalArgumentException("Unexpected ALT allele: " + alt +
                     ". Expected breakpoint or symbolic ALT allele representing a structural variant record.");
@@ -493,7 +481,7 @@ public class SVAnnotateEngine {
      */
     @VisibleForTesting
     protected void annotateGeneOverlaps(final SimpleInterval variantInterval,
-                                               final StructuralVariantAnnotationType svType,
+                                               final GATKSVVCFConstants.StructuralVariantAnnotationType svType,
                                                final Map<String, Set<String>> variantConsequenceDict) {
         final Iterator<SVIntervalTree.Entry<GencodeGtfTranscriptFeature>> gtfTranscriptsForVariant =
                 gtfIntervalTrees.getTranscriptIntervalTree().overlappers(
@@ -514,7 +502,7 @@ public class SVAnnotateEngine {
     @VisibleForTesting
     protected static SVSegment parseCPXIntervalString(final String cpxInterval) {
         final String[] parsed = cpxInterval.split("_");
-        final StructuralVariantAnnotationType svTypeForInterval = StructuralVariantAnnotationType.valueOf(parsed[0]);
+        final GATKSVVCFConstants.StructuralVariantAnnotationType svTypeForInterval = GATKSVVCFConstants.StructuralVariantAnnotationType.valueOf(parsed[0]);
         final SimpleInterval interval = new SimpleInterval(parsed[1]);
         return new SVSegment(svTypeForInterval, interval);
     }
@@ -530,26 +518,26 @@ public class SVAnnotateEngine {
      * @param chr2 - second chromosome for the variant - CHR2 INFO field value
      * @return - SV type to use for annotation of breakend record
      */
-    private static StructuralVariantAnnotationType getAnnotationTypeForBreakend(final VariantContext variant,
-                                                                                final String complexType,
-                                                                                final int maxBreakendLen,
-                                                                                final int svLen,
-                                                                                final String chrom, final String chr2) {
+    private static GATKSVVCFConstants.StructuralVariantAnnotationType getAnnotationTypeForBreakend(final VariantContext variant,
+                                                                                                   final String complexType,
+                                                                                                   final int maxBreakendLen,
+                                                                                                   final int svLen,
+                                                                                                   final String chrom, final String chr2) {
         if (complexType != null && complexType.contains("CTX")) {
-            return StructuralVariantAnnotationType.CTX;
+            return GATKSVVCFConstants.StructuralVariantAnnotationType.CTX;
         } else if (maxBreakendLen > 0 && chr2 != null && chrom.equals(chr2) && svLen <= maxBreakendLen) {
             // if maxBreakendLenForOverlapAnnotation argument provided, annotate as DUP or DEL if applicable
             final String strand = variant.getAttributeAsString(GATKSVVCFConstants.STRANDS_ATTRIBUTE, null);
             if (strand == null) {
-                return StructuralVariantAnnotationType.BND;  // not enough info to annotate as DEL or DUP TODO: throw error?
+                return GATKSVVCFConstants.StructuralVariantAnnotationType.BND;  // not enough info to annotate as DEL or DUP TODO: throw error?
             }
             if (strand.equals(GATKSVVCFConstants.BND_DELETION_STRANDS)) {
-                return StructuralVariantAnnotationType.DEL;
+                return GATKSVVCFConstants.StructuralVariantAnnotationType.DEL;
             } else if (strand.equals(GATKSVVCFConstants.BND_DUPLICATION_STRANDS)) {
-                return StructuralVariantAnnotationType.DUP;
+                return GATKSVVCFConstants.StructuralVariantAnnotationType.DUP;
             }
         }
-        return StructuralVariantAnnotationType.BND;
+        return GATKSVVCFConstants.StructuralVariantAnnotationType.BND;
     }
 
     /**
@@ -565,7 +553,7 @@ public class SVAnnotateEngine {
      */
     @VisibleForTesting
     protected static List<SVSegment> getSVSegments(final VariantContext variant,
-                                                   final StructuralVariantAnnotationType overallSVType,
+                                                   final GATKSVVCFConstants.StructuralVariantAnnotationType overallSVType,
                                                    final int maxBreakendLen) {
         final List<SVSegment> intervals;
         final String complexType = variant.getAttributeAsString(GATKSVVCFConstants.CPX_TYPE, null);
@@ -573,7 +561,7 @@ public class SVAnnotateEngine {
         final int pos = variant.getStart();
         final String chr2 = variant.getAttributeAsString(GATKSVVCFConstants.CONTIG2_ATTRIBUTE, null);
         final int end2 = variant.getAttributeAsInt(GATKSVVCFConstants.END2_ATTRIBUTE, pos);
-        if (overallSVType.equals(StructuralVariantAnnotationType.CPX)) {
+        if (overallSVType.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.CPX)) {
             final List<String> cpxIntervalsString = variant.getAttributeAsStringList(GATKSVVCFConstants.CPX_INTERVALS, null);
             if (cpxIntervalsString == null) {
                 throw new UserException("Complex (CPX) variant must contain CPX_INTERVALS INFO field");
@@ -586,10 +574,10 @@ public class SVAnnotateEngine {
                 intervals.add(parseCPXIntervalString(cpxInterval));
             }
             if (complexType.contains("dDUP")) {
-                intervals.add(new SVSegment(StructuralVariantAnnotationType.INS,
+                intervals.add(new SVSegment(GATKSVVCFConstants.StructuralVariantAnnotationType.INS,
                         new SimpleInterval(chrom, pos, pos + 1)));
             }
-        } else if (overallSVType.equals(StructuralVariantAnnotationType.CTX)) {
+        } else if (overallSVType.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.CTX)) {
             intervals = new ArrayList<>(2);
             intervals.add(new SVSegment(overallSVType, new SimpleInterval(variant)));  // CHROM:POS-POS+1
             // annotate both breakpoints of translocation - CHR2:END2-END2+1
@@ -598,14 +586,14 @@ public class SVAnnotateEngine {
             }
             intervals.add(new SVSegment(overallSVType,
                     new SimpleInterval(chr2, end2, end2 + 1)));
-        } else if (overallSVType.equals(StructuralVariantAnnotationType.BND)){
+        } else if (overallSVType.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.BND)){
             intervals = new ArrayList<>(2);
             final int svLen = variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
             // if BND representation of CTX event, get intervals as if BND but annotate as CTX
-            final StructuralVariantAnnotationType annotateAs = getAnnotationTypeForBreakend(variant, complexType,
+            final GATKSVVCFConstants.StructuralVariantAnnotationType annotateAs = getAnnotationTypeForBreakend(variant, complexType,
                     maxBreakendLen, svLen, chrom, chr2);
-            if (annotateAs.equals(StructuralVariantAnnotationType.DEL) ||
-                    annotateAs.equals(StructuralVariantAnnotationType.DUP)) {
+            if (annotateAs.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL) ||
+                    annotateAs.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.DUP)) {
                 intervals.add(new SVSegment(annotateAs, new SimpleInterval(chrom, pos, pos + svLen)));
             } else {
                 intervals.add(new SVSegment(annotateAs, new SimpleInterval(chrom, pos, pos)));
@@ -622,7 +610,7 @@ public class SVAnnotateEngine {
                     intervals.add(new SVSegment(annotateAs, new SimpleInterval(chr2, end2, end2))); // if no end2 would just add duplicate segment which is ok
                 } // TODO: else parse ALT field? Or just annotate this position and annotate the rest in the other records?
             }
-        } else if (overallSVType.equals(StructuralVariantAnnotationType.INS)) {
+        } else if (overallSVType.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.INS)) {
             intervals = Collections.singletonList(new SVSegment(overallSVType,
                     new SimpleInterval(chrom, pos, pos + 1)));
         } else {
@@ -660,7 +648,7 @@ public class SVAnnotateEngine {
     @VisibleForTesting
     protected Map<String, Object> annotateStructuralVariant(final VariantContext variant) {
         final Map<String, Set<String>> variantConsequenceDict = new HashMap<>();
-        final StructuralVariantAnnotationType overallSVType = getSVType(variant);
+        final GATKSVVCFConstants.StructuralVariantAnnotationType overallSVType = getSVType(variant);
         final List<SVSegment> svSegments = getSVSegments(variant, overallSVType, maxBreakendLen);
         if (gtfIntervalTrees != null && gtfIntervalTrees.getTranscriptIntervalTree() != null) {
             for (SVSegment svSegment : svSegments) {

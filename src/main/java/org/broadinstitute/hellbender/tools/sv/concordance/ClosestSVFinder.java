@@ -6,7 +6,6 @@ import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
-import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.*;
@@ -16,7 +15,7 @@ import java.util.stream.Collectors;
 /**
  * Efficiently clusters a set of evaluation ("eval") SVs with their closest truth SVs.
  *
- * "Closest" is defined in the {@link #getClosestItem} method an selects first on total breakpoint distance
+ * "Closest" is defined in the {@link #getClosestItem} method and selects first on total breakpoint distance
  * (sum of both ends). As a tiebreaker, it then considers the distance of the closest breakend, number of
  * matching genotypes, and finally the variant ID.
  *
@@ -113,13 +112,9 @@ public class ClosestSVFinder {
             lastItemContig = null;
             return output;
         } else {
-            // Find finalized ref items
-            final List<Long> finalizedRefItems = truthIdToItemMap.entrySet().stream()
-                    .filter(e -> linkage.getMaxClusterableStartingPosition(e.getValue()) < lastItemStart)
-                    .map(Map.Entry::getKey)
-                    .collect(Collectors.toList());
-            finalizedRefItems.forEach(truthIdToItemMap::remove);
-            // Find finalized clusters
+            // Remove finalized ref items
+            truthIdToItemMap.values().removeIf(v -> linkage.getMaxClusterableStartingPosition(v) < lastItemStart);
+            // Find and remove finalized clusters
             final List<Map.Entry<Long, ActiveClosestPair>> finalizedClusters = idToClusterMap.entrySet().stream()
                     .filter(e -> e.getValue().getMaxClusterableStartingPosition() < lastItemStart)
                     .collect(Collectors.toList());
@@ -157,73 +152,23 @@ public class ClosestSVFinder {
      */
     @VisibleForTesting
     public Map.Entry<Long, SVCallRecord> getClosestItem(final SVCallRecord evalRecord, final Set<Map.Entry<Long, SVCallRecord>> candidates) {
-        final List<Map.Entry<Long, SVCallRecord>> linkedItems = candidates.stream()
+        final Comparator<Map.Entry<Long, SVCallRecord>> distanceComparator = Comparator.comparingInt(o -> totalDistance(evalRecord, o.getValue()));
+        final Comparator<Map.Entry<Long, SVCallRecord>> minDistanceComparator = Comparator.comparingInt(o -> minDistance(evalRecord, o.getValue()));
+        final Comparator<Map.Entry<Long, SVCallRecord>> genotypeDistanceComparator = Comparator.comparingInt(o -> genotypeDistance(evalRecord, o.getValue()));
+        // For consistency, in case all other criteria are equal
+        final Comparator<Map.Entry<Long, SVCallRecord>> idEqualComparator = Comparator.comparing(o -> !o.getValue().getId().equals(evalRecord.getId()));
+        final Comparator<Map.Entry<Long, SVCallRecord>> idOrderComparator = Comparator.comparing(o -> o.getValue().getId());
+        final Optional<Map.Entry<Long, SVCallRecord>> result = candidates.stream()
                 .filter(other -> linkage.areClusterable(evalRecord, other.getValue()))
-                .collect(Collectors.toList());
-        final int[] distances = linkedItems.stream()
-                .mapToInt(e -> totalDistance(evalRecord, e.getValue()))
-                .toArray();
-        if (distances.length == 0) {
-            return null;
-        }
-        final int minDistance = MathUtils.arrayMin(distances);
-        int numMin = 0;
-        int minDistIndex = 0;
-        for (int i = 0; i < distances.length; i++) {
-            if (distances[i] == minDistance) {
-                numMin++;
-                minDistIndex = i;
-            }
-        }
-        if (numMin == 1) {
-            return linkedItems.get(minDistIndex);
-        } else {
-            return getClosestItemWithTiebreakers(evalRecord, linkedItems);
-        }
-    }
-
-    /**
-     * Tiebreakers for "closest"
-     */
-    private static Map.Entry<Long, SVCallRecord> getClosestItemWithTiebreakers(final SVCallRecord evalRecord, final List<Map.Entry<Long, SVCallRecord>> items) {
-        if (items.stream().map(e -> e.getValue().getId()).anyMatch(s -> s.equals("ref_panel_1kg_raw_00001f09"))) {
-            int x = 0;
-        }
-        // Rare tiebreaker case
-        final List<Map.Entry<Long, SVCallRecord>> bothEndsItems = getClosestItemsList(items, r -> ClosestSVFinder.totalDistance(evalRecord, r));
-        // First tiebreaker - min breakend distance
-        final List<Map.Entry<Long, SVCallRecord>> minDistItems = getClosestItemsList(bothEndsItems, r -> ClosestSVFinder.minDistance(evalRecord, r));
-        if (minDistItems.size() == 1) {
-            return minDistItems.get(0);
-        } else {
-            // Second tiebreaker - most similar genotypes
-            final List<Map.Entry<Long, SVCallRecord>> genotypeMatchesItems = getClosestItemsList(minDistItems, r -> ClosestSVFinder.genotypeDistance(evalRecord, r));
-            if (genotypeMatchesItems.size() == 1) {
-                return genotypeMatchesItems.get(0);
-            } else {
-                // Determine by VID, for stability
-                return genotypeMatchesItems.stream().min(Comparator.comparing(e -> e.getValue().getId())).get();
-            }
-        }
-    }
-
-    private static List<Map.Entry<Long, SVCallRecord>> getClosestItemsList(final List<Map.Entry<Long, SVCallRecord>> linked,
-                                                                           final Function<SVCallRecord, Integer> metricFunction) {
-        final List<Map.Entry<Long, SVCallRecord>> tiedItems = new ArrayList<>(linked.size());
-        final int minValue = linked.stream().map(Map.Entry::getValue).mapToInt(metricFunction::apply).min().getAsInt();
-        for (int i = 0; i < linked.size(); i++) {
-            if (metricFunction.apply(linked.get(i).getValue()) == minValue) {
-                tiedItems.add(linked.get(i));
-            }
-        }
-        return tiedItems;
+                .min(distanceComparator.thenComparing(minDistanceComparator).thenComparing(genotypeDistanceComparator)
+                        .thenComparing(idEqualComparator).thenComparing(idOrderComparator));
+        return result.orElseGet(() -> null);
     }
 
     /**
      * Total distance between breakends, or {@link Integer#MAX_VALUE} if one record is null. Asserts
      * that non-null records have the same start and end contigs.
      */
-    @VisibleForTesting
     public static int totalDistance(final SVCallRecord a, final SVCallRecord b) {
         if (a == null || b == null) {
             return Integer.MAX_VALUE;
@@ -238,7 +183,6 @@ public class ClosestSVFinder {
      * Distance between closest breakends, or {@link Integer#MAX_VALUE} if one record is null. Asserts
      * that non-null records have the same start and end contigs.
      */
-    @VisibleForTesting
     public static int minDistance(final SVCallRecord a, final SVCallRecord b) {
         if (a == null || b == null) {
             return Integer.MAX_VALUE;
@@ -253,7 +197,6 @@ public class ClosestSVFinder {
      * Genotype distance, defined as the negative fraction of matching genotypes, or {@link Integer#MAX_VALUE} if one
      * record is null. Asserts that non-null records have the same start and end contigs.
      */
-    @VisibleForTesting
     public static int genotypeDistance(final SVCallRecord a, final SVCallRecord b) {
         if (a == null || b == null) {
             return Integer.MAX_VALUE;
@@ -301,7 +244,6 @@ public class ClosestSVFinder {
         Long closestId;
         SVCallRecord closest;
         final int maxClusterableStartingPosition;
-        int distance;
 
         ActiveClosestPair(final Long itemId, final SVCallRecord item,
                           final Long closestId, final SVCallRecord closest,
@@ -311,7 +253,6 @@ public class ClosestSVFinder {
             this.closestId = closestId;
             this.closest = closest;
             this.maxClusterableStartingPosition = maxClusterableStartingPosition;
-            this.distance = totalDistance(item, closest);
         }
 
         /**
@@ -319,25 +260,23 @@ public class ClosestSVFinder {
          */
         boolean update(final Long newClosestId, final SVCallRecord newClosest) {
             Utils.nonNull(newClosest);
-            final int newDistance = totalDistance(item, newClosest);
-            if (newDistance <= distance) {
-                // Tiebreakers
-                if (newDistance == distance) {
-                    final List<Map.Entry<Long, SVCallRecord>> candidates = new ArrayList<>(2);
-                    candidates.add(new AbstractMap.SimpleImmutableEntry<>(closestId, closest));
-                    candidates.add(new AbstractMap.SimpleImmutableEntry<>(newClosestId, newClosest));
-                    final Map.Entry<Long, SVCallRecord> closest = getClosestItemWithTiebreakers(item, candidates);
-                    if (closest.getKey() == closestId) {
-                        return false;
-                    }
-                }
-                closestId = Utils.nonNull(newClosestId);
-                closest = newClosest;
-                distance = newDistance;
-                return true;
-            } else {
+            final Comparator<Map.Entry<Long, SVCallRecord>> distanceComparator = Comparator.comparingInt(o -> totalDistance(item, o.getValue()));
+            final Comparator<Map.Entry<Long, SVCallRecord>> minDistanceComparator = Comparator.comparingInt(o -> minDistance(item, o.getValue()));
+            final Comparator<Map.Entry<Long, SVCallRecord>> genotypeDistanceComparator = Comparator.comparingInt(o -> genotypeDistance(item, o.getValue()));
+            final Comparator<Map.Entry<Long, SVCallRecord>> idEqualComparator = Comparator.comparing(o -> !o.getValue().getId().equals(item.getId()));
+            final Comparator<Map.Entry<Long, SVCallRecord>> idOrderComparator = Comparator.comparing(o -> o.getValue().getId());
+            final List<Map.Entry<Long, SVCallRecord>> candidates = new ArrayList<>(2);
+            candidates.add(new AbstractMap.SimpleImmutableEntry<>(closestId, closest));
+            candidates.add(new AbstractMap.SimpleImmutableEntry<>(newClosestId, newClosest));
+            final Map.Entry<Long, SVCallRecord> result = candidates.stream()
+                    .min(distanceComparator.thenComparing(minDistanceComparator).thenComparing(genotypeDistanceComparator)
+                            .thenComparing(idEqualComparator).thenComparing(idOrderComparator)).get();
+            if (result.getKey() == closestId) {
                 return false;
             }
+            closestId = Utils.nonNull(newClosestId);
+            closest = newClosest;
+            return true;
         }
 
         Long getItemId() {

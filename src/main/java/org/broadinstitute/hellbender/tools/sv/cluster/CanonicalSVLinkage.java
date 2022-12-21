@@ -1,7 +1,9 @@
 package org.broadinstitute.hellbender.tools.sv.cluster;
 
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.variant.variantcontext.StructuralVariantType;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -48,6 +50,8 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
     public static final double DEFAULT_RECIPROCAL_OVERLAP_PESR = 0.5;
     public static final int DEFAULT_WINDOW_PESR = 500;
     public static final double DEFAULT_SAMPLE_OVERLAP_PESR = 0;
+
+    protected static final Logger logger = LogManager.getLogger(CanonicalSVLinkage.class);
 
     public static final ClusteringParameters DEFAULT_DEPTH_ONLY_PARAMS =
             ClusteringParameters.createDepthParameters(
@@ -104,14 +108,14 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
      * Tests if SVTYPEs match, allowing for DEL/DUP/CNVs to match in some cases.
      */
     protected boolean typesMatch(final SVCallRecord a, final SVCallRecord b) {
-        final StructuralVariantType aType = a.getType();
-        final StructuralVariantType bType = b.getType();
-        if (aType == bType) {
+        final GATKSVVCFConstants.StructuralVariantAnnotationType aType = a.getType();
+        final GATKSVVCFConstants.StructuralVariantAnnotationType bType = b.getType();
+        if (aType == bType && a.getComplexSubtype() == b.getComplexSubtype()) {
             return true;
         }
         // Allow CNVs to cluster with both DELs and DUPs, but only allow DEL/DUP clustering if enabled
         if (a.isSimpleCNV() && b.isSimpleCNV()) {
-            if (clusterDelWithDup || (aType == StructuralVariantType.CNV || bType == StructuralVariantType.CNV)) {
+            if (clusterDelWithDup || (aType == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV || bType == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV)) {
                 return true;
             }
         }
@@ -157,8 +161,16 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
         // Breakend proximity
         final SimpleInterval intervalA1 = a.getPositionAInterval().expandWithinContig(params.getWindow(), dictionary);
         final SimpleInterval intervalA2 = a.getPositionBInterval().expandWithinContig(params.getWindow(), dictionary);
-        Utils.nonNull(intervalA1, "Invalid start position " + a.getPositionA() + " in record " + a.getId());
-        Utils.nonNull(intervalA2, "Invalid end position " + a.getPositionB() + " in record " + a.getId());
+        if (intervalA1 == null) {
+            logger.warn("Invalid start position " + a.getPositionA() + " in record " + a.getId() +
+                    " - record will not be matched");
+            return false;
+        }
+        if (intervalA2 == null) {
+            logger.warn("Invalid end position " + a.getPositionB() + " in record " + a.getId() +
+                    " - record will not be matched");
+            return false;
+        }
         final SimpleInterval intervalB1 = b.getPositionAInterval();
         final SimpleInterval intervalB2 = b.getPositionBInterval();
         if (!(intervalA1.overlaps(intervalB1) && intervalA2.overlaps(intervalB2))) {
@@ -174,10 +186,14 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
      */
     private static int getLengthForOverlap(final SVCallRecord record) {
         Utils.validate(record.isIntrachromosomal(), "Record even must be intra-chromosomal");
-        if (record.getType() == StructuralVariantType.INS) {
-            return record.getLength() == null ? INSERTION_ASSUMED_LENGTH_FOR_OVERLAP : Math.max(record.getLength(), 1);
-        } else if (record.getType() == StructuralVariantType.BND) {
-            return record.getPositionB() - record.getPositionA() + 1;
+        final Integer length = record.getLength();
+        if (length == null) {
+            if (record.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.INS
+                || record.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.CPX){
+                return INSERTION_ASSUMED_LENGTH_FOR_OVERLAP;
+            } else {
+                return 1;
+            }
         } else {
             // TODO lengths less than 1 shouldn't be valid
             return Math.max(record.getLength(), 1);

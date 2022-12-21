@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.sv.concordance;
 import com.google.common.collect.Lists;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
-import htsjdk.variant.variantcontext.StructuralVariantType;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 import org.broadinstitute.hellbender.tools.sv.SVTestUtils;
@@ -38,7 +37,7 @@ public class ClosestSVFinderTest {
                 "chr1",
                 100001,
                 false,
-                StructuralVariantType.INS,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.INS,
                 1000,
                 SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
@@ -56,7 +55,7 @@ public class ClosestSVFinderTest {
                 "chr1",
                 100011,
                 false,
-                StructuralVariantType.INS,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.INS,
                 1000,
                 SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
@@ -73,7 +72,7 @@ public class ClosestSVFinderTest {
                 "chr1",
                 300011,
                 false,
-                StructuralVariantType.INS,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.INS,
                 1000,
                 SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
@@ -103,7 +102,7 @@ public class ClosestSVFinderTest {
                 "chr2",
                 200000,
                 false,
-                StructuralVariantType.INS,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.INS,
                 1000,
                 SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
@@ -121,7 +120,7 @@ public class ClosestSVFinderTest {
                 "chr2",
                 300000,
                 false,
-                StructuralVariantType.INS,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.INS,
                 1000,
                 SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
@@ -159,7 +158,7 @@ public class ClosestSVFinderTest {
                 "chr1",
                 100002,
                 false,
-                StructuralVariantType.INS,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.INS,
                 1000,
                 SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
@@ -175,7 +174,7 @@ public class ClosestSVFinderTest {
                 "chr1",
                 100002,
                 false,
-                StructuralVariantType.INS,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.INS,
                 1000,
                 SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
@@ -191,7 +190,7 @@ public class ClosestSVFinderTest {
                 "chr1",
                 100401,
                 false,
-                StructuralVariantType.INS,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.INS,
                 1000,
                 SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
@@ -207,7 +206,7 @@ public class ClosestSVFinderTest {
                 "chr1",
                 100601,
                 false,
-                StructuralVariantType.INS,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.INS,
                 1000,
                 SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
@@ -222,7 +221,7 @@ public class ClosestSVFinderTest {
                 "chr1",
                 200002,
                 false,
-                StructuralVariantType.INS,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.INS,
                 1000,
                 SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
@@ -238,7 +237,7 @@ public class ClosestSVFinderTest {
                 "chr1",
                 201002,
                 false,
-                StructuralVariantType.INS,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.INS,
                 1000,
                 SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
@@ -253,7 +252,7 @@ public class ClosestSVFinderTest {
                 "chr1",
                 301102,
                 false,
-                StructuralVariantType.INS,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.INS,
                 1000,
                 SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS),
@@ -326,10 +325,10 @@ public class ClosestSVFinderTest {
                 "chr1",
                 100001,
                 null,
-                StructuralVariantType.CNV,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.CNV,
                 null,
                 SVTestUtils.DEPTH_ONLY_ALGORITHM_LIST,
-                SVTestUtils.getCNVAlleles(StructuralVariantType.CNV),
+                SVTestUtils.getCNVAlleles(GATKSVVCFConstants.StructuralVariantAnnotationType.CNV),
                 Collections.singletonList(SVTestUtils.getDiploidCNVGenotypeBuilder("sample1", evalCopyNumber))
         );
 
@@ -341,10 +340,10 @@ public class ClosestSVFinderTest {
                 "chr1",
                 100001,
                 null,
-                StructuralVariantType.CNV,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.CNV,
                 null,
                 SVTestUtils.DEPTH_ONLY_ALGORITHM_LIST,
-                SVTestUtils.getCNVAlleles(StructuralVariantType.CNV),
+                SVTestUtils.getCNVAlleles(GATKSVVCFConstants.StructuralVariantAnnotationType.CNV),
                 Collections.singletonList(SVTestUtils.getDiploidCNVGenotypeBuilder("sample1", truthCopyNumber))
         );
 

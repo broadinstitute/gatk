@@ -15,7 +15,6 @@ public class SVClusterEngineFactory {
     public static SVClusterEngine createCanonical(final SVClusterEngine.CLUSTERING_TYPE type,
                                                   final CanonicalSVCollapser.BreakpointSummaryStrategy breakpointSummaryStrategy,
                                                   final CanonicalSVCollapser.AltAlleleSummaryStrategy altAlleleSummaryStrategy,
-                                                  final CanonicalSVCollapser.InsertionLengthSummaryStrategy insertionLengthSummaryStrategy,
                                                   final SAMSequenceDictionary dictionary,
                                                   final ReferenceSequenceFile reference,
                                                   final boolean enableCNV,
@@ -26,7 +25,7 @@ public class SVClusterEngineFactory {
         linkage.setDepthOnlyParams(depthParameters);
         linkage.setMixedParams(mixedParameters);
         linkage.setEvidenceParams(pesrParameters);
-        final CanonicalSVCollapser collapser = new CanonicalSVCollapser(reference, altAlleleSummaryStrategy, breakpointSummaryStrategy, insertionLengthSummaryStrategy);
+        final CanonicalSVCollapser collapser = new CanonicalSVCollapser(reference, altAlleleSummaryStrategy, breakpointSummaryStrategy);
         return new SVClusterEngine(type, collapser::collapse, linkage, dictionary);
     }
 
@@ -36,7 +35,7 @@ public class SVClusterEngineFactory {
                                                         final double paddingFraction,
                                                         final double minSampleOverlap) {
         final SVClusterLinkage<SVCallRecord> linkage = new CNVLinkage(dictionary, paddingFraction, minSampleOverlap);
-        final CanonicalSVCollapser collapser = new CanonicalSVCollapser(reference, altAlleleSummaryStrategy, CanonicalSVCollapser.BreakpointSummaryStrategy.MIN_START_MAX_END, CanonicalSVCollapser.InsertionLengthSummaryStrategy.MEDIAN);
+        final CanonicalSVCollapser collapser = new CanonicalSVCollapser(reference, altAlleleSummaryStrategy, CanonicalSVCollapser.BreakpointSummaryStrategy.MIN_START_MAX_END);
         return new SVClusterEngine(SVClusterEngine.CLUSTERING_TYPE.SINGLE_LINKAGE, collapser::collapse, linkage, dictionary);
     }
 
@@ -47,7 +46,7 @@ public class SVClusterEngineFactory {
                                                               final double minSampleOverlap,
                                                               final List<GenomeLoc> coverageIntervals) {
         final SVClusterLinkage<SVCallRecord> linkage = new BinnedCNVLinkage(dictionary, paddingFraction, minSampleOverlap, coverageIntervals);
-        final CanonicalSVCollapser collapser = new CanonicalSVCollapser(reference, altAlleleSummaryStrategy, CanonicalSVCollapser.BreakpointSummaryStrategy.MIN_START_MAX_END, CanonicalSVCollapser.InsertionLengthSummaryStrategy.MEDIAN);
+        final CanonicalSVCollapser collapser = new CanonicalSVCollapser(reference, altAlleleSummaryStrategy, CanonicalSVCollapser.BreakpointSummaryStrategy.MIN_START_MAX_END);
         return new SVClusterEngine(SVClusterEngine.CLUSTERING_TYPE.SINGLE_LINKAGE, collapser::collapse, linkage, dictionary);
     }
 }

@@ -38,7 +38,7 @@ public class BinnedCNVDefragmenterTest {
         Assert.assertEquals(testGenotype1.getExtendedAttributes(), expectedGenotype1.getExtendedAttributes());
 
         final Genotype testGenotype2 = sameBoundsThreeSamples.getGenotypes().get(SVTestUtils.sample2.make().getSampleName());
-        final Genotype expectedGenotype2 = SVTestUtils.sample2.alleles(Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL)).make();
+        final Genotype expectedGenotype2 = SVTestUtils.sample2.alleles(Lists.newArrayList(Allele.REF_T, Allele.SV_SIMPLE_DUP)).make();
         Assert.assertEquals(testGenotype2.getAlleles(), expectedGenotype2.getAlleles());
         Assert.assertEquals(testGenotype2.getExtendedAttributes(), expectedGenotype2.getExtendedAttributes());
 

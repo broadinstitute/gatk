@@ -4,7 +4,6 @@ import com.google.common.collect.Lists;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
-import htsjdk.variant.variantcontext.StructuralVariantType;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 import org.broadinstitute.hellbender.tools.sv.SVTestUtils;
@@ -177,8 +176,8 @@ public class SVConcordanceAnnotatorTest {
 
         final SVCallRecord evalRecord = SVTestUtils.newCallRecordWithAlleles(
                 Collections.nCopies(evalExpectedCopyNumber, Allele.NO_CALL),
-                SVTestUtils.getCNVAlleles(StructuralVariantType.CNV),
-                StructuralVariantType.CNV,
+                SVTestUtils.getCNVAlleles(GATKSVVCFConstants.StructuralVariantAnnotationType.CNV),
+                GATKSVVCFConstants.StructuralVariantAnnotationType.CNV,
                 evalExpectedCopyNumber,
                 evalCopyNumber
         );
@@ -187,8 +186,8 @@ public class SVConcordanceAnnotatorTest {
         final int truthExpectedCopyNumber = 2;  // this shouldn't matter
         final SVCallRecord truthRecord = SVTestUtils.newCallRecordWithAlleles(
                 Lists.newArrayList(Allele.NO_CALL, Allele.NO_CALL),
-                SVTestUtils.getCNVAlleles(StructuralVariantType.CNV),
-                StructuralVariantType.CNV,
+                SVTestUtils.getCNVAlleles(GATKSVVCFConstants.StructuralVariantAnnotationType.CNV),
+                GATKSVVCFConstants.StructuralVariantAnnotationType.CNV,
                 truthExpectedCopyNumber,
                 truthCopyNumber
         );
@@ -203,8 +202,8 @@ public class SVConcordanceAnnotatorTest {
         final String sample = "sample";
         final SVCallRecord evalRecord = SVTestUtils.newCallRecordWithAlleles(
                 Arrays.asList(Allele.NO_CALL, Allele.NO_CALL),
-                SVTestUtils.getCNVAlleles(StructuralVariantType.CNV),
-                StructuralVariantType.CNV,
+                SVTestUtils.getCNVAlleles(GATKSVVCFConstants.StructuralVariantAnnotationType.CNV),
+                GATKSVVCFConstants.StructuralVariantAnnotationType.CNV,
                 2,
                 2
         );
