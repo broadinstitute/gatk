@@ -29,8 +29,6 @@ workflow GvsCreateVATfromVDS {
 
     File nirvana_data_directory = "gs://gvs_quickstart_storage/Nirvana/Nirvana-references-2022-10-07.tgz"
 
-    ## TODO: where do we need to validate that there are no hemis?
-
     call MakeSubpopulationFilesAndReadSchemaFiles {
         input:
             input_ancestry_file = ancestry_file
@@ -93,14 +91,14 @@ workflow GvsCreateVATfromVDS {
 
         call PrepVtAnnotationJson {
             input:
-                annotation_json = AnnotateVCF.annotation_json,
+                positions_annotation_json = AnnotateVCF.positions_annotation_json,
                 output_file_suffix = "${vcf_filename}.json.gz",
                 output_path = output_path,
         }
 
         call PrepGenesAnnotationJson {
             input:
-                annotation_json = AnnotateVCF.annotation_json,
+                genes_annotation_json = AnnotateVCF.genes_annotation_json,
                 output_file_suffix = "${vcf_filename}.json.gz",
                 output_path = output_path,
         }
@@ -176,7 +174,7 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:VS-561_var_store_2022_12_08"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_12_22"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -221,7 +219,7 @@ task StripCustomAnnotationsFromSitesOnlyVCF {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:VS-561_var_store_2022_12_08"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_12_22"
         memory: "7 GiB"
         cpu: "2"
         preemptible: 3
@@ -265,7 +263,8 @@ task RemoveDuplicatesFromSitesOnlyVCF {
         bcftools view --threads 4 -i 'REF~"N"' -O u sites_only.bcf | bcftools query -f '%CHROM\t%POS\t%ID\t%REF\t%ALT\n' > track_dropped.tsv
 
         echo_date "VAT: filter out sites with N's in the reference AND sites with AC=0"
-        # TODO - NOTE - we are NOT tracking the sites with AC=0 - should we? For Lee (Rori is checking)
+        ## NOTE: Sites that were filtered out because of AC=0 are not recorded in the 'track_dropped.tsv' file, but can be
+        ##       determined by examining the sites-only VCF provided to this WDL.
         bcftools view --threads 4 -e 'REF~"N" || AC=0' -O b sites_only.bcf -o filtered_sites_only.bcf
         rm sites_only.bcf
 
@@ -331,9 +330,11 @@ task AnnotateVCF {
         File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     }
     String annotation_json_name = output_annotated_file_name + ".json.gz"
-    String annotation_json_name_jsi = annotation_json_name + ".jsi"
+    String gene_annotation_json_name = output_annotated_file_name + ".genes.json.gz"
+    String positions_annotation_json_name = output_annotated_file_name + ".positions.json.gz"
     String nirvana_location = "/Nirvana/Nirvana.dll"
     String custom_creation_location = "/Nirvana/SAUtils.dll"
+    String jasix_location = "/Nirvana/Jasix.dll"
     String path = "/Cache/GRCh38/Both"
     String path_supplementary_annotations = "/SupplementaryAnnotation/GRCh38"
     String path_reference = "/References/Homo_sapiens.GRCh38.Nirvana.dat"
@@ -370,7 +371,6 @@ task AnnotateVCF {
         # =======================================
         # Create Nirvana annotations:
 
-
         dotnet ~{nirvana_location} \
             -i ~{input_vcf} \
             -c $DATA_SOURCES_FOLDER~{path} \
@@ -378,6 +378,19 @@ task AnnotateVCF {
             --sd $CUSTOM_ANNOTATIONS_FOLDER \
             -r $DATA_SOURCES_FOLDER~{path_reference} \
             -o ~{output_annotated_file_name}
+
+        # https://illumina.github.io/NirvanaDocumentation/introduction/parsing-json#jasix
+        # Parse out the Genes section into a separate annotated json
+        dotnet  ~{jasix_location} \
+            --in ~{annotation_json_name} \
+            --section genes \
+            --out ~{gene_annotation_json_name}
+
+        # Parse out the Positions section into a separate annotated json
+        dotnet  ~{jasix_location} \
+        --in ~{annotation_json_name} \
+        --section positions \
+        --out ~{positions_annotation_json_name}
 
     >>>
     # ------------------------------------------------
@@ -392,15 +405,15 @@ task AnnotateVCF {
     # ------------------------------------------------
     # Outputs:
     output {
-        File annotation_json = "~{annotation_json_name}"
-        File annotation_json_jsi = "~{annotation_json_name_jsi}"
+        File genes_annotation_json = "~{gene_annotation_json_name}"
+        File positions_annotation_json = "~{positions_annotation_json_name}"
         File monitoring_log = "monitoring.log"
     }
 }
 
 task PrepVtAnnotationJson {
     input {
-        File annotation_json
+        File positions_annotation_json
         String output_file_suffix
         String output_path
     }
@@ -409,7 +422,6 @@ task PrepVtAnnotationJson {
 
     String output_vt_json = "vat_vt_bq_load" + output_file_suffix
     String output_vt_gcp_path = output_path + 'vt/'
-    String output_annotations_gcp_path = output_path + 'annotations/'
 
     command <<<
         set -o errexit -o nounset -o pipefail -o xtrace
@@ -420,12 +432,9 @@ task PrepVtAnnotationJson {
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
 
-        # for debugging purposes only
-        gsutil cp ~{annotation_json} '~{output_annotations_gcp_path}'
-
         ## the annotation jsons are split into the specific VAT schema
         python3 /app/create_vt_bqloadjson_from_annotations.py \
-            --annotated_json ~{annotation_json} \
+            --annotated_json ~{positions_annotation_json} \
             --output_vt_json ~{output_vt_json}
 
         gsutil cp ~{output_vt_json} '~{output_vt_gcp_path}'
@@ -434,7 +443,7 @@ task PrepVtAnnotationJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:VS-561_var_store_2022_12_08"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_12_22"
         memory: "7 GB"
         preemptible: 3
         cpu: "1"
@@ -451,7 +460,7 @@ task PrepVtAnnotationJson {
 
 task PrepGenesAnnotationJson {
     input {
-        File annotation_json
+        File genes_annotation_json
         String output_file_suffix
         String output_path
     }
@@ -472,7 +481,7 @@ task PrepGenesAnnotationJson {
 
         ## the annotation jsons are split into the specific VAT schema
         python3 /app/create_genes_bqloadjson_from_annotations.py \
-            --annotated_json ~{annotation_json} \
+            --annotated_json ~{genes_annotation_json} \
             --output_genes_json ~{output_genes_json}
 
         gsutil cp ~{output_genes_json} '~{output_genes_gcp_path}'
@@ -481,7 +490,7 @@ task PrepGenesAnnotationJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:VS-561_var_store_2022_12_08"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2022_12_22"
         memory: "7 GB"
         preemptible: 3
         cpu: "1"

@@ -3,6 +3,7 @@ import ijson
 import gzip
 import argparse
 import logging
+import sys
 
 vat_nirvana_omim_dictionary = {
     "omim_phenotypes_id": "mimNumber", # nullable
@@ -19,17 +20,19 @@ def make_genes_json(annotated_json, output_genes_json):
         json_data = open(annotated_json, 'rb')
 
     logging.info(f"Loading the genes json data")
-    genes = ijson.items(json_data, 'genes.item', use_float=True)
+    genes = ijson.items(json_data, 'item', use_float=True)
     logging.info(f"Done loading the genes json data")
 
+    gene_count = 0
     for gene_line in genes:
+        gene_count += 1
         logging.info(f"gene_line: {gene_line}")
         if gene_line.get("omim") != None:
             row = {}
             row["gene_symbol"] = gene_line.get("name")
             omim_line = gene_line["omim"][0]
             if len(gene_line.get("omim")) > 1:
-                print("WARNING: An assumption about the possible count of omim values is incorrect.", gene_line.get("name"),len(gene_line.get("omim")))
+                logging.warn("WARNING: An assumption about the possible count of omim values is incorrect.", gene_line.get("name"),len(gene_line.get("omim")))
             row["gene_omim_id"] = omim_line.get("mimNumber")
             if omim_line.get("phenotypes") != None:
                 phenotypes = omim_line["phenotypes"]
@@ -46,6 +49,9 @@ def make_genes_json(annotated_json, output_genes_json):
     output_genes_file.close()
     json_data.close()
 
+    if gene_count == 0:
+        logging.info(f"ERROR - Found no items in annotated json file: {annotated_json}")
+        sys.exit(1)
 
 def make_annotation_jsons(annotated_json, output_genes_json):
     logging.basicConfig(

@@ -5,6 +5,7 @@ import ijson
 import gzip
 import argparse
 import logging
+import sys
 
 vat_nirvana_positions_dictionary = {
     "position": "position", # required
@@ -108,21 +109,21 @@ gvs_subpopulations = [
 def check_filtering(variant):
     # skip any row (with a warning) if no gvsAnnotations exist
     if variant.get("gvsAnnotations") == None: # <-- enum since we need this to be in tandem with the custom annotations header / template
-        print("WARNING: There has been an error in creating custom annotations for AC/AF/AN", variant.get("vid"))
+        logging.warn("WARNING: There has been an error in creating custom annotations for AC/AF/AN", variant.get("vid"))
         return False
     # skip any row (with a warning) if the AC value is 0
     elif variant["gvsAnnotations"].get("AC") == 0:
-        print("WARNING: Its AC is 0 so we are dropping this variant", variant.get("vid"))
+        logging.warn("WARNING: Its AC is 0 so we are dropping this variant", variant.get("vid"))
         return False
     # skip any row (with a warning) if AC, AN or AF is missing
     elif variant["gvsAnnotations"].get("AC") == None:
-        print("WARNING: There has been an error-- there is no AC value---should AN be 0 for this variant?", variant.get("vid"))
+        logging.warn("WARNING: There has been an error-- there is no AC value---should AN be 0 for this variant?", variant.get("vid"))
         return False
     elif variant["gvsAnnotations"].get("AN") == None:
-        print("WARNING: There has been an error-- there is an AC value---but no AN value", variant.get("vid"))
+        logging.warn("WARNING: There has been an error-- there is an AC value---but no AN value", variant.get("vid"))
         return False
     elif variant["gvsAnnotations"].get("AF") == None:
-        print("WARNING: There has been an error-- there is an AC value---but no AF value", variant.get("vid"))
+        logging.warn("WARNING: There has been an error-- there is an AC value---but no AF value", variant.get("vid"))
         return False
     else:
         return True
@@ -282,14 +283,11 @@ def make_positions_json(annotated_json, output_json):
     else:
         json_data = open(annotated_json, 'rb')
 
-    positions = ijson.items(json_data, 'positions.item', use_float=True)
+    positions = ijson.items(json_data, 'item', use_float=True)
 
-    last_chrom = ""
+    position_count = 0
     for p in positions:
-        chrom=p['chromosome']
-        if (chrom != last_chrom):
-            last_chrom = chrom
-            logging.info(f"Chrom: {chrom}")
+        position_count += 1
         position=p['position']
         refAllele=p['refAllele'] # ref_allele
         altAlleles=p['altAlleles'] # this is an array that we need to split into each alt_allele
@@ -331,6 +329,9 @@ def make_positions_json(annotated_json, output_json):
     output_file.close()
     json_data.close()
 
+    if position_count == 0:
+        logging.error(f"ERROR - Found no items in annotated json file: {annotated_json}")
+        sys.exit(1)
 
 def make_annotation_jsons(annotated_json, output_json):
     logging.basicConfig(
