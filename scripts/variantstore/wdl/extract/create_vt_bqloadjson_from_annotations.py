@@ -333,7 +333,7 @@ def make_positions_json(annotated_json, output_json):
         logging.error(f"ERROR - Found no items in annotated json file: {annotated_json}")
         sys.exit(1)
 
-def make_annotation_jsons(annotated_json, output_json):
+def make_annotation_json(annotated_json, output_json):
     logging.basicConfig(
         format='%(asctime)s %(levelname)-8s %(message)s',
         level=logging.INFO,
@@ -351,5 +351,5 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    make_annotation_jsons(args.annotated_json,
+    make_annotation_json(args.annotated_json,
                           args.output_vt_json)
