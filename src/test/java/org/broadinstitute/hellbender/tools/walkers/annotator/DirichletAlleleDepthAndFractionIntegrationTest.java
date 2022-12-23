@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCaller;
 import org.broadinstitute.hellbender.tools.walkers.mutect.SomaticLikelihoodsEngine;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -20,13 +21,21 @@ public class DirichletAlleleDepthAndFractionIntegrationTest extends GatkToolInte
 
     public static final String TEST_FILES_DIR = toolsTestDir + "haplotypecaller/";
 
-    public static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = true;
+    public static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = false;
 
     @Override
     public String getTestedToolName() {
         return HaplotypeCaller.class.getSimpleName();
     }
 
+    /*
+     * Make sure that someone didn't leave the UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS toggle turned on
+     */
+    @Test
+    public void assertThatExpectedOutputUpdateToggleIsDisabled() {
+        Assert.assertFalse(UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS, "The toggle to update expected outputs should not be left enabled");
+    }
+    
     /*
      * Test that in VCF mode we're consistent with past GATK4 results
      */
