@@ -58,6 +58,7 @@ public class ExampleStreamingPythonExecutor extends ReadWalker {
     final StreamingPythonScriptExecutor<String> pythonExecutor = new StreamingPythonScriptExecutor<>(true);
 
     private List<String> batchList = new ArrayList<>(batchSize);
+    private boolean batchIsOutstanding = false;
     private int batchCount = 0;
 
     @Override
@@ -77,8 +78,11 @@ public class ExampleStreamingPythonExecutor extends ReadWalker {
         // Extract data from the read and accumulate, unless we've reached a batch size, in which case we
         // kick off an asynchronous batch write.
         if (batchCount == batchSize) {
-            pythonExecutor.waitForPreviousBatchCompletion();
+            if (batchIsOutstanding) {
+                pythonExecutor.waitForPreviousBatchCompletion();
+            }
             startAsynchronousBatchWrite();      // start a new batch
+            batchIsOutstanding = true;
         }
         batchList.add(String.format(
                 "Read at %s:%d-%d:\n%s\n",
@@ -91,12 +95,15 @@ public class ExampleStreamingPythonExecutor extends ReadWalker {
      * @return Success indicator.
      */
     public Object onTraversalSuccess() {
-        pythonExecutor.waitForPreviousBatchCompletion(); // wait for the previous batch to complete, if there is one
         if (batchCount != 0) {
             // If we have any accumulated reads that haven't been dispatched, start one last
             // async batch write, and then wait for it to complete
+            if (batchIsOutstanding) {
+                pythonExecutor.waitForPreviousBatchCompletion();
+            }
             startAsynchronousBatchWrite();
             pythonExecutor.waitForPreviousBatchCompletion();
+            batchIsOutstanding = false;
         }
 
         return true;
@@ -108,6 +115,7 @@ public class ExampleStreamingPythonExecutor extends ReadWalker {
         pythonExecutor.startBatchWrite(
                 String.format("for i in range(%s):\n    tempFile.write(tool.readDataFIFO())" + NL + NL, batchCount),
                 batchList);
+        batchIsOutstanding = true;
         batchList = new ArrayList<>(batchSize);
         batchCount = 0;
     }
