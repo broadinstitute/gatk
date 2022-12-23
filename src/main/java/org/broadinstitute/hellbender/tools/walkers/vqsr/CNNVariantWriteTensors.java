@@ -117,16 +117,19 @@ public class CNNVariantWriteTensors extends CommandLineProgram {
     @Argument(fullName = "max-tensors", shortName = "max-tensors", doc = "Maximum number of tensors to write.", optional = true, minValue = 0)
     private int maxTensors = 1000000;
 
-    // Start the Python executor. This does not actually start the Python process, but fails if python can't be located
-    final PythonScriptExecutor pythonExecutor = new PythonScriptExecutor(true);
+    private PythonScriptExecutor pythonExecutor;
 
     @Override
     protected void onStartup() {
         PythonScriptExecutor.checkPythonEnvironmentForPackage("vqsr_cnn");
+
+        // Start the Python executor. This does not actually start the Python process, but fails if python can't be located
+        pythonExecutor = new PythonScriptExecutor(true);
     }
 
     @Override
     protected Object doWork() {
+
         final Resource pythonScriptResource = new Resource("training.py", CNNVariantWriteTensors.class);
         List<String> arguments = new ArrayList<>(Arrays.asList(
                 "--reference_fasta", reference,
