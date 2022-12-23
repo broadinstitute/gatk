@@ -1,5 +1,5 @@
 # stage 1 for constructing the GATK zip
-FROM broadinstitute/gatk:gatkbase-2.3.0 AS gradleBuild
+FROM lbergelson/gatk:gatkbase-2.4.0.rc-micromamba AS gradleBuild
 LABEL stage=gatkIntermediateBuildImage
 ARG RELEASE=false
 
@@ -14,6 +14,7 @@ RUN apt-get --assume-yes install git-lfs
 RUN git lfs install --force
 
 #Download only resources required for the build, not for testing
+RUN git remote set-url origin https://github.com/broadinstitute/gatk
 RUN git lfs pull --include src/main/resources/large
 
 RUN export GRADLE_OPTS="-Xmx4048m -Dorg.gradle.daemon=false" && /gatk/gradlew clean collectBundleIntoDir shadowTestClassJar shadowTestJar -Drelease=$RELEASE
@@ -21,7 +22,7 @@ RUN cp -r $( find /gatk/build -name "*bundle-files-collected" )/ /gatk/unzippedJ
 RUN unzip -o -j $( find /gatk/unzippedJar -name "gatkPython*.zip" ) -d /gatk/unzippedJar/scripts
 
 # Using OpenJDK 8
-FROM broadinstitute/gatk:gatkbase-2.3.0
+FROM lbergelson/gatk:gatkbase-2.4.0.rc-micromamba
 
 WORKDIR /gatk
 
@@ -72,10 +73,10 @@ ENV CLASSPATH /gatk/gatk.jar:$CLASSPATH
 WORKDIR /gatk
 RUN chmod -R a+rw /gatk
 ENV PATH $CONDA_PATH/envs/gatk/bin:$CONDA_PATH/bin:$PATH
-RUN conda env create -n gatk -f /gatk/gatkcondaenv.yml && \
+RUN micromamba env create -n gatk -f /gatk/gatkcondaenv.yml && \
     echo "source activate gatk" >> /gatk/gatkenv.rc && \
     echo "source /gatk/gatk-completion.sh" >> /gatk/gatkenv.rc && \
-    conda clean -afy && \
+    micromamba clean -afy && \
     find /opt/miniconda/ -follow -type f -name '*.a' -delete && \
     find /opt/miniconda/ -follow -type f -name '*.pyc' -delete && \
     rm -rf /root/.cache/pip
