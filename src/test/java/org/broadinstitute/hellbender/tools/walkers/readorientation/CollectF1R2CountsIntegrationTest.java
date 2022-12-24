@@ -239,7 +239,7 @@ public class CollectF1R2CountsIntegrationTest extends CommandLineProgramTest {
     }
 
     static File createSyntheticSam(final int refDepth, final int altDepth, final String sampleName) throws IOException {
-        final File samFile = File.createTempFile("synthetic", ".bam");
+        final File samFile = IOUtils.createTempFile("synthetic", ".bam");
         final SAMFileHeader samHeader = M2TestingUtils.createSamHeader(sampleName);
         final SAMFileGATKReadWriter writer = M2TestingUtils.getBareBonesSamWriter(samFile, samHeader);
         //            Ref Sequence: "CATCACACTCACTAAGCACACAGAGAATAAT".getBytes();

@@ -573,8 +573,7 @@ public final class GenomicsDBImport extends GATKTool {
             IOUtils.assertPathsAreReadable(vcfHeader);
             final String header = GenomicsDBUtils.readEntireFile(vcfHeader);
             try {
-                File tempHeader = File.createTempFile("tempheader", ".vcf");
-                tempHeader.deleteOnExit();
+                File tempHeader = IOUtils.createTempFile("tempheader", ".vcf");
                 Files.write(tempHeader.toPath(), header.getBytes(StandardCharsets.UTF_8));
                 mergedHeaderSequenceDictionary = VCFFileReader.getSequenceDictionary(tempHeader);
             } catch (final IOException e) {
