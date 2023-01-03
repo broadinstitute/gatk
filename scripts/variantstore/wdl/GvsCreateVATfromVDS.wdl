@@ -34,15 +34,9 @@ workflow GvsCreateVATfromVDS {
             input_ancestry_file = ancestry_file
     }
 
-    call RemoveDuplicatesFromSitesOnlyVCF {
-        input:
-            sites_only_vcf = input_sites_only_vcf,
-            ref = reference
-    }
-
     call Utils.IndexVcf {
         input:
-            input_vcf = RemoveDuplicatesFromSitesOnlyVCF.output_vcf
+            input_vcf = input_sites_only_vcf
     }
 
     call Utils.SplitIntervals {
@@ -71,9 +65,15 @@ workflow GvsCreateVATfromVDS {
                 output_basename = vcf_filename
         }
 
+        call RemoveDuplicatesFromSitesOnlyVCF {
+            input:
+                sites_only_vcf = SelectVariants.output_vcf,
+                ref = reference
+        }
+
         call StripCustomAnnotationsFromSitesOnlyVCF {
             input:
-                input_vcf = SelectVariants.output_vcf,
+                input_vcf = RemoveDuplicatesFromSitesOnlyVCF.output_vcf,
                 custom_annotations_header = MakeSubpopulationFilesAndReadSchemaFiles.custom_annotations_template_file,
                 output_vcf_name = "${vcf_filename}.unannotated.sites_only.vcf",
                 output_custom_annotations_filename = "${vcf_filename}.custom_annotations.tsv"
@@ -87,7 +87,6 @@ workflow GvsCreateVATfromVDS {
                 nirvana_data_tar = nirvana_data_directory,
                 custom_annotations_file = StripCustomAnnotationsFromSitesOnlyVCF.output_custom_annotations_file,
         }
-
 
         call PrepVtAnnotationJson {
             input:
@@ -104,6 +103,8 @@ workflow GvsCreateVATfromVDS {
         }
 
     }
+
+    # TODO - should we merge the (scattered) dropped files from RemoveDuplicatesFromSitesOnlyVCF ?
 
     call BigQueryLoadJson {
         input:
