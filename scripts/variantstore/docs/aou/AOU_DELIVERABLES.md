@@ -68,7 +68,8 @@
      - the name of the BigQuery dataset you used for all the GVS WDLs (`dataset_name` input)
      - the `extract_table_prefix` input from `GvsExtractCallset` step
      - the `filter_set_name` input from `GvsCreateFilterSet` step
-12. [GvsCalculatePrecisionAndSensitivity](../../tieout/AoU_PRECISION_SENSITIVITY.md#generating-callset-precision-and-sensitivity-values) workflow
+12. [GvsCalculatePrecisionAndSensitivity](../../tieout/AoU_PRECISION_SENSITIVITY.md#generating-callset-precision-and-sensitivity-values) workflow, for which you need
+    - "Storage Object View" access granted for your @pmi-ops proxy group on the `gs://broad-dsp-spec-ops/gvs/truth` directory
 13. `GvsCallsetCost`
     - The cost from this callset, which represents the total BigQuery cost (which is not represented in the Terra UI total workflow cost) from the GVS pipeline workflows, is used to calculate the cost of the callset as a whole and by sample.
 
