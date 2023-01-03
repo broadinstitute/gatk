@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling;
 
-import com.google.common.collect.ImmutableList;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.LabeledVariantAnnotationsData;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -13,6 +12,8 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public final class BGMMVariantAnnotationsScorer implements VariantAnnotationsScorer, Serializable {
@@ -27,7 +28,7 @@ public final class BGMMVariantAnnotationsScorer implements VariantAnnotationsSco
     public BGMMVariantAnnotationsScorer(final List<String> annotationNames,
                                         final BGMMVariantAnnotationsModel.Preprocesser preprocesser,
                                         final BayesianGaussianMixtureModeller bgmm) {
-        this.annotationNames = ImmutableList.copyOf(annotationNames);
+        this.annotationNames = Collections.unmodifiableList(new ArrayList<>(annotationNames));      // ImmutableList does not de/serialize consistently
         this.preprocesser = preprocesser;
         this.bgmm = bgmm;
     }
