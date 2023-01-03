@@ -135,8 +135,6 @@ public final class GATKVCFConstants {
     public static final String HAPLOTYPE_CALLER_PHASING_ID_KEY =    "PID";
     public static final String PHRED_SCALED_POSTERIORS_KEY =        "PP"; //FamilyLikelihoodsUtils / PosteriorLikelihoodsUtils
     public static final String REFERENCE_GENOTYPE_QUALITY =         "RGQ";
-    public static final String GENOTYPE_QUALITY_BY_ALLELE_BALANCE = "ABGQ"; //GnarlyGenotyper
-    public static final String GENOTYPE_QUALITY_BY_ALT_CONFIDENCE = "ALTGQ"; //GnarlyGenotyper
     public static final String STRAND_COUNT_BY_SAMPLE_KEY =         "SAC";
     public static final String STRAND_BIAS_BY_SAMPLE_KEY =          "SB";
     public static final String FEATURIZED_READ_SETS_KEY =           "FRS";
