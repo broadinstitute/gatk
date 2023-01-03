@@ -135,6 +135,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
     }
 
     @Advanced
+    @DeprecatedFeature(detail="This argument introduces 'holes', resulting in an invalid GVCF")
     @Argument(fullName=DROP_LOW_QUALS_ARG_NAME, shortName=DROP_LOW_QUALS_ARG_NAME, doc="Exclude variants and homRef blocks that are GQ0 from the reblocked GVCF to save space; drop low quality/uncalled alleles", optional = true)
     protected boolean dropLowQuals = false;
 

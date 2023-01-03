@@ -31,7 +31,7 @@ public class GnarlyGenotyperEngineUnitTest {
     //use more alts than the maxAltAllelesToOutput for the engine, forcing on-the-fly generation of PL counts not in the cache
     @Test
     public void testLotsOfAlts() {
-        final GnarlyGenotyperEngine engine = new GnarlyGenotyperEngine(false, 4, false, true);
+        final GnarlyGenotyperEngine engine = new GnarlyGenotyperEngine(false, 4, true);
 
         final Genotype g1 = VariantContextTestUtils.makeG("g1", oneInserted, twoInserted, sample1pls);
         final Genotype g2 = VariantContextTestUtils.makeG("g1", Aref, oneInserted, sample2pls);
@@ -45,7 +45,7 @@ public class GnarlyGenotyperEngineUnitTest {
         final int[] rawGenotypeCounts = {0, 1, 1};
 
         final GenotypesContext genotypes = engine.iterateOnGenotypes(vc, Arrays.asList(Aref, oneInserted, twoInserted, threeInserted, fourRepeats),
-                alleleCounts, sbSum, false, false, rawGenotypeCounts);
+                alleleCounts, sbSum, false, rawGenotypeCounts);
 
         Assert.assertTrue(genotypes.get(0).hasPL() && genotypes.get(0).getPL().length == 15);
         Assert.assertTrue(genotypes.get(1).hasPL() && genotypes.get(1).getPL().length == 15);
@@ -54,7 +54,7 @@ public class GnarlyGenotyperEngineUnitTest {
     //use more alts than the maxAltAllelesToOutput for the engine, forcing on-the-fly generation of GLCalculator not in the cache
     @Test
     public void testGenotypeCallForLotsOfAlts() {
-        final GnarlyGenotyperEngine engine = new GnarlyGenotyperEngine(false, 4, false, true);
+        final GnarlyGenotyperEngine engine = new GnarlyGenotyperEngine(false, 4, true);
 
         final Genotype g1 = VariantContextTestUtils.makeG("g1", oneInserted, twoInserted, sample1pls);
         final Genotype g2 = VariantContextTestUtils.makeG("g1", Aref, oneInserted, sample2pls);
