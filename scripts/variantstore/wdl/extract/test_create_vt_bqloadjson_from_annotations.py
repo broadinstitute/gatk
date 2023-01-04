@@ -4,8 +4,7 @@ import copy
 import gzip
 import tempfile
 
-from create_vt_bqloadjson_from_annotations import make_annotated_json_row
-from create_vt_bqloadjson_from_annotations import make_annotation_json
+from create_vt_bqloadjson_from_annotations import make_annotation_json, make_annotated_json_row
 
 dir='variant_annotation_table_test_files/'
 normal_annotated_positions_json=dir + "test_annotated_positions.json.gz"
