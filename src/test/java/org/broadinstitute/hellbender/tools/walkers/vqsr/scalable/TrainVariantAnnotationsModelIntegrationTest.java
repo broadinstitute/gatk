@@ -46,8 +46,6 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
         Assert.assertFalse(UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS, "The toggle to update expected outputs should not be left enabled.");
     }
     
-    private static final double CALIBRATION_SENSITIVITY_THRESHOLD = 0.9;
-
     private static final File TEST_FILES_DIR = new File(largeFileTestDir,
             "org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/train");
     private static final File INPUT_FROM_EXTRACT_EXPECTED_TEST_FILES_DIR = new File(largeFileTestDir,
