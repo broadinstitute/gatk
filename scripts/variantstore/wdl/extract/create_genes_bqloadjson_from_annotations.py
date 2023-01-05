@@ -53,12 +53,7 @@ def make_genes_json(annotated_json, output_genes_json):
         logging.error(f"ERROR - Found no items in annotated json file: {annotated_json}")
         sys.exit(1)
 
-def make_annotation_json(annotated_json, output_genes_json):
-    logging.basicConfig(
-        format='%(asctime)s %(levelname)-8s %(message)s',
-        level=logging.INFO,
-        datefmt='%Y-%m-%d %H:%M:%S')
-
+def make_annotation_json(annotated_json, output_genes_json, logging):
     logging.info("Making the genes json")
     make_genes_json(annotated_json, output_genes_json)
     logging.info("Done")
@@ -71,5 +66,11 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    logging.basicConfig(
+        format='%(asctime)s %(levelname)-8s %(message)s',
+        level=logging.INFO,
+        datefmt='%Y-%m-%d %H:%M:%S')
+
     make_annotation_json(args.annotated_json,
-                         args.output_genes_json)
+                         args.output_genes_json,
+                         logging)
