@@ -6,8 +6,8 @@ import logging
 import sys
 
 vat_nirvana_omim_dictionary = {
-    "omim_phenotypes_id": "mimNumber", # nullable
-    "omim_phenotypes_name": "phenotype" # nullable
+    "omim_phenotypes_id": "mimNumber",      # nullable
+    "omim_phenotypes_name": "phenotype"     # nullable
 }
 
 
@@ -26,7 +26,7 @@ def make_genes_json(annotated_json, output_genes_json):
     gene_count = 0
     for gene_line in genes:
         gene_count += 1
-        logging.info(f"gene_line: {gene_line}")
+        logging.debug(f"gene_line: {gene_line}")
         if gene_line.get("omim") != None:
             row = {}
             row["gene_symbol"] = gene_line.get("name")
@@ -50,15 +50,10 @@ def make_genes_json(annotated_json, output_genes_json):
     json_data.close()
 
     if gene_count == 0:
-        logging.info(f"ERROR - Found no items in annotated json file: {annotated_json}")
+        logging.error(f"ERROR - Found no items in annotated json file: {annotated_json}")
         sys.exit(1)
 
-def make_annotation_jsons(annotated_json, output_genes_json):
-    logging.basicConfig(
-        format='%(asctime)s %(levelname)-8s %(message)s',
-        level=logging.INFO,
-        datefmt='%Y-%m-%d %H:%M:%S')
-
+def make_annotation_json(annotated_json, output_genes_json, logging):
     logging.info("Making the genes json")
     make_genes_json(annotated_json, output_genes_json)
     logging.info("Done")
@@ -71,5 +66,11 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    make_annotation_jsons(args.annotated_json,
-                          args.output_genes_json)
+    logging.basicConfig(
+        format='%(asctime)s %(levelname)-8s %(message)s',
+        level=logging.INFO,
+        datefmt='%Y-%m-%d %H:%M:%S')
+
+    make_annotation_json(args.annotated_json,
+                         args.output_genes_json,
+                         logging)
