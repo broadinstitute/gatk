@@ -557,7 +557,11 @@ task MergeTsvs {
     }
 
     command <<<
-      mv ~{write_lines(input_files)} ~{output_file_name}
+      echo -n > ~{output_file_name}
+      for f in ~{sep=' ' input_files}
+      do
+        cat $f >> ~{output_file_name}
+      done
     >>>
 
     runtime {
