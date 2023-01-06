@@ -549,3 +549,23 @@ task SelectVariants {
         File output_vcf_index = "~{output_basename}.vcf.idx"
     }
 }
+
+task MergeTsvs {
+    input {
+        Array[String] input_files
+        String output_file_name
+    }
+
+    command <<<
+      mv ~{write_lines(input_files)} ~{output_file_name}
+    >>>
+
+    runtime {
+      docker: "ubuntu:latest"
+    }
+
+    output {
+      File output_file = output_file_name
+    }
+
+}

@@ -29,6 +29,8 @@ workflow GvsCreateVATfromVDS {
 
     File nirvana_data_directory = "gs://gvs_quickstart_storage/Nirvana/Nirvana-references-2022-10-07.tgz"
 
+    # A comment A
+
     call MakeSubpopulationFilesAndReadSchemaFiles {
         input:
             input_ancestry_file = ancestry_file
@@ -104,7 +106,11 @@ workflow GvsCreateVATfromVDS {
 
     }
 
-    # TODO - should we merge the (scattered) dropped files from RemoveDuplicatesFromSitesOnlyVCF ?
+    call Utils.MergeTsvs {
+        input:
+            input_files = RemoveDuplicatesFromSitesOnlyVCF.track_dropped,
+            output_file_name = "${sites_only_vcf_basename}.dropped.tsv"
+    }
 
     call BigQueryLoadJson {
         input:
@@ -143,6 +149,7 @@ workflow GvsCreateVATfromVDS {
 
     output {
         File final_tsv_file = MergeVatTSVs.tsv_file
+        File dropped_sites_file = MergeTsvs.output_file
     }
 }
 
@@ -301,6 +308,8 @@ task RemoveDuplicatesFromSitesOnlyVCF {
         rm duplicates.tsv ## clean up unneeded file
 
         echo_date "VAT: finished"
+        # temp statement for debugging.
+        date >> track_dropped.tsv
     >>>
     # ------------------------------------------------
     # Runtime settings:
