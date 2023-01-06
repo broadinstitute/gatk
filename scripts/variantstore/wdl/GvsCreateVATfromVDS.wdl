@@ -29,7 +29,7 @@ workflow GvsCreateVATfromVDS {
 
     File nirvana_data_directory = "gs://gvs_quickstart_storage/Nirvana/Nirvana-references-2022-10-07.tgz"
 
-    # A comment C
+    # A comment D
 
     call MakeSubpopulationFilesAndReadSchemaFiles {
         input:
@@ -308,8 +308,6 @@ task RemoveDuplicatesFromSitesOnlyVCF {
         rm duplicates.tsv ## clean up unneeded file
 
         echo_date "VAT: finished"
-        # temp statement for debugging.
-        date >> track_dropped.tsv
     >>>
     # ------------------------------------------------
     # Runtime settings:
