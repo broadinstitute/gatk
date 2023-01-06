@@ -552,7 +552,7 @@ task SelectVariants {
 
 task MergeTsvs {
     input {
-        Array[String] input_files
+        Array[File] input_files
         String output_file_name
     }
 
