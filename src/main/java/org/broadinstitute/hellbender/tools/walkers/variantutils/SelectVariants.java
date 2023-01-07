@@ -545,7 +545,7 @@ public final class SelectVariants extends VariantWalker {
         return genomicsDBOptions;
     }
     // We do not output the vcf entries in the order they arrive, as trimming alleles may change the start position
-    // (e.g. in an multiallelic site, see #6444).
+    // (e.g. at a multiallelic site, see #6444).
     final private PriorityQueue<VariantContext> pendingVariants = new PriorityQueue<>(Comparator.comparingInt(VariantContext::getStart));
     /**
      * Set up the VCF writer, the sample expressions and regexs, filters inputs, and the JEXL matcher
@@ -578,7 +578,7 @@ public final class SelectVariants extends VariantWalker {
         IntStream.range(0, selectGenotypeExpressions.size()).forEach(i -> selectGenotypeNames.add(String.format("genotype-select-%d", i)));
 
         // These are maps of type (name, JEXL expression class)
-        // Note that infoJexls could also contain JEXL expressions that access genotype fields via the VariantContext object vc
+        // Note that infoJexls could also contain JEXL expressions that access genotype fields via the VariantContext object
         infoJexls = VariantContextUtils.initializeMatchExps(selectNames, selectExpressions);
         genotypeJexls = VariantContextUtils.initializeMatchExps(selectGenotypeNames, selectGenotypeExpressions);
 
@@ -689,7 +689,7 @@ public final class SelectVariants extends VariantWalker {
         //     2. the only remaining alternate allele is spanning deletion (*)
         // If this is the case, we call it a non-variant and remove it from the output based on {@code excludeNonVariants}
         if (excludeNonVariants) {
-            // It would be cleaner to write "if (excludeNonVariants && nonVariant) {...}", but isPolymorphicInSamples() could be relatively expensive,
+            // It would be cleaner to say "if (excludeNonVariants && nonVariant) {...}", but isPolymorphicInSamples() could be relatively expensive,
             // when we have many samples, so we call it only when excludeNonVariants is set to true.
             final boolean nonVariant = ! result.isPolymorphicInSamples() || GATKVariantContextUtils.isSpanningDeletionOnly(result);
             if (nonVariant) {
@@ -782,8 +782,7 @@ public final class SelectVariants extends VariantWalker {
                 // Note that this is not equivalent to "!(AF > 0.01 || ReadPosRankSum < -20.0)"
 
                 // Notice here that calling the match method without the genotype g leads to genotype g being set to null,
-                // which is fine since infoJexls should not refer to genotype fields (unless using vc.getGenotype(), in which case
-                // JEXL can access genotype     fields via vc)
+                // which is fine since infoJexls should not refer to genotype fields (except via vc.getGenotype())
                 if (invertLogic(VariantContextUtils.match(vc, jexl), invertSelect)){
                     return true;
                 }

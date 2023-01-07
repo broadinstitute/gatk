@@ -695,9 +695,9 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
 
     @Test
     public void testSelectRandomFraction() {
-        final File testOutput = createTempFile("jexl_genotype_info_test", "vcf");
         beforeJexlTest();
-
+        final File testOutput = createTempFile("jexl_genotype_info_test", "vcf");
+        // There are 80 variants in this vcf
         final File inputVcf = getTestFile("tetraploid-multisample-sac.g.vcf");
         final int numInputVariants = VariantContextTestUtils.readEntireVCFIntoMemory(inputVcf.getAbsolutePath()).getRight().size();
         final double fractionToKeep = 0.5;
