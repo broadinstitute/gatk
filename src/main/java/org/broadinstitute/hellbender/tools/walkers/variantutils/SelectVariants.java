@@ -42,6 +42,7 @@ import org.broadinstitute.hellbender.utils.variant.*;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Select a subset of variants from a VCF file
@@ -95,6 +96,52 @@ import java.util.stream.Collectors;
  *     -V gendb://genomicsDB \
  *     -L 20 \
  *     -O output.chr20.vcf
+ * </pre>
+ *
+ * <h4>Use JEXL Expressions to filter variants by INFO fields </h4>
+ * <pre>
+ *     gatk SelectVariants \
+ *     -R Homo_sapiens_assembly38.fasta \
+ *     -V input.vcf \
+ *     -select "AF > 0.001" \
+ *     -O output.vcf
+ * </pre>
+ *
+ * <h4>Use JEXL Expressions to filter variants by genotype fields. The variant will be kept in the output vcf if at least one sample meets the criterion.</h4>
+ * <pre>
+ *     gatk SelectVariants \
+ *     -R Homo_sapiens_assembly38.fasta \
+ *     -V input.vcf \
+ *     -select-genotype "GQ > 50" \
+ *     -O output.vcf
+ * </pre>
+ *
+ * <h4>Filter by a genotype field in a specific sample (e.g. NA12878) by directly accessing the VariantContext object with -select. Contrast this to -select-genotype (see above), which looks at the genotype field for all samples.</h4>
+ * <pre>
+ *     gatk SelectVariants \
+ *     -R Homo_sapiens_assembly38.fasta \
+ *     -V input.vcf \
+ *     -select "vc.getGenotype('NA12878').getGQ() > 35" \
+ *     -O output.vcf
+ * </pre>
+ *
+ * <h4> We recommend that a -select expression that contains the logical-or be split into two separate -select arguments, as in the first example. This approach is robust to the case where one of the arguments to the logical-or evaluates to null. For example, the filtering expression of the following command is equivalent to "AF > 0.01 || MQ > 55".</h4>
+ * <pre>
+ *     gatk SelectVariants \
+ *     -R Homo_sapiens_assembly38.fasta \
+ *     -V input.vcf \
+ *     -select "AF > 0.01" \
+ *     -select "MQ > 55" \
+ *     -O output.vcf
+ * </pre>
+ *
+ * <h4> On the other hand, the logical-and expression must be a single -select expression.</h4>
+ * <pre>
+ *     gatk SelectVariants \
+ *     -R Homo_sapiens_assembly38.fasta \
+ *     -V input.vcf \
+ *     -select "AF > 0.01 && MQ > 55" \
+ *     -O output.vcf
  * </pre>
  */
 @CommandLineProgramProperties(
@@ -175,11 +222,33 @@ public final class SelectVariants extends VariantWalker {
     private Set<String> XLsampleExpressions = new LinkedHashSet<>(0);
 
     /**
-     * See example commands above for detailed usage examples. Note that these expressions are evaluated *after* the
-     * specified samples are extracted and the INFO field annotations are updated.
+     * See example commands above for detailed usage examples. The expressions given to this argument
+     * should either refer to INFO fields, or access FORMAT field with the VariantContext object
+     * e.g. -select "vc.getGenotype('NA12878').getGQ() > 35"
      */
-    @Argument(shortName="select", doc="One or more criteria to use when selecting the data", optional=true)
+    public static final String SELECT_NAME = "select";
+    @Argument(fullName=SELECT_NAME, doc="A filtering expression in terms of either INFO fields or the VariantContext object). If the expression evaluates to true for a variant, it will be kept in the output vcf.", optional=true)
     private ArrayList<String> selectExpressions = new ArrayList<>();
+
+    /**
+     * JEXL expressions to be applied to genotype (FORMAT) fields e.g. GQ, AD.
+     * If at least one of the samples meets the criteria, the variant will be included in the output.
+     */
+    public static final String GENOTYPE_SELECT_SHORT_NAME = "select-genotype";
+    public static final String GENOTYPE_SELECT_LONG_NAME = "select-genotype-expressions";
+    @Argument(fullName=GENOTYPE_SELECT_LONG_NAME, shortName=GENOTYPE_SELECT_SHORT_NAME, doc="A filtering expression in terms of FORMAT fields. If the expression evaluates to true for a variant, it will be kept in the output vcf.", optional=true)
+    private ArrayList<String> selectGenotypeExpressions = new ArrayList<>();
+
+    /**
+     * This flag is provided to allow the user to do JEXL filtering
+     * before subsetting the format fields, in particular the case where the filtering is done
+     * on INFO fields only, which may improve speed when working with a large cohort vcf that contains genotypes for
+     * thousands of samples (format fields).
+     */
+    public static final String APPLY_JEXL_FIRST_SHORT_NAME = "jexl-first";
+    public static final String APPLY_JEXL_FIRST_LONG_NAME = "apply-jexl-filters-first";
+    @Argument(fullName=APPLY_JEXL_FIRST_LONG_NAME, shortName=APPLY_JEXL_FIRST_SHORT_NAME, doc="Apply JEXL-based filtering before subsetting samples", optional=true)
+    private boolean applyJexlFiltersBeforeFilteringGenotypes = false;
 
     /**
      * Invert the selection criteria for -select.
@@ -192,14 +261,14 @@ public final class SelectVariants extends VariantWalker {
      * of the selected samples display evidence of variation) will be excluded from the output.
      */
     @Argument(fullName="exclude-non-variants", doc="Don't include non-variant sites", optional=true)
-    private boolean XLnonVariants = false;
+    private boolean excludeNonVariants = false;
 
     /**
      * If this flag is enabled, sites that have been marked as filtered (i.e. have anything other than `.` or `PASS`
      * in the FILTER field) will be excluded from the output.
      */
     @Argument(fullName="exclude-filtered", doc="Don't include filtered sites", optional=true)
-    private boolean XLfiltered = false;
+    private boolean excludeFiltered = false;
 
     /**
      * The default behavior of this tool is to remove bases common to all remaining alleles after subsetting
@@ -286,9 +355,11 @@ public final class SelectVariants extends VariantWalker {
      * randomly selected from the input callset. Note that this is done using a probabilistic function, so the final
      * result is not guaranteed to carry the exact fraction requested. Can be used for large fractions.
      */
-    @Argument(fullName="select-random-fraction", shortName="fraction",
+    public static final String FRACTION_TO_KEEP_SHORT_NAME = "fraction";
+    public static final String FRACTION_TO_KEEP_LONG_NAME = "select-random-fraction";
+    @Argument(fullName=FRACTION_TO_KEEP_LONG_NAME, shortName=FRACTION_TO_KEEP_SHORT_NAME,
                     doc="Select a fraction of variants at random from the input", optional=true)
-    private double fractionRandom = 0;
+    private double fractionToKeep = 1.0;
 
     /**
      * The value of this argument should be a number between 0 and 1 specifying the fraction of total variants to be
@@ -333,6 +404,12 @@ public final class SelectVariants extends VariantWalker {
     @Argument(fullName="exclude-ids", shortName="xl-ids", doc="List of variant rsIDs to exclude", optional=true)
     private Set<String> rsIDsToRemove = new HashSet<>();
 
+    /**
+     * If set to true, before we start processing each VariantContext,
+     * we fully-decode the genotypes i.e. convert each genotype field
+     * from a String to appropriate data types such as integers and arrays.
+     * (Not immediately clear why this is useful.)
+     */
     @Hidden
     @Argument(fullName="fully-decode", doc="If true, the incoming VariantContext will be fully decoded", optional=true)
     private boolean fullyDecode = false;
@@ -442,16 +519,16 @@ public final class SelectVariants extends VariantWalker {
 
     private Set<VariantContext.Type> selectedTypes = new LinkedHashSet<>();
     private final ArrayList<String> selectNames = new ArrayList<>();
-    private List<VariantContextUtils.JexlVCMatchExp> jexls = null;
+    private final ArrayList<String> selectGenotypeNames = new ArrayList<>();
+
+    private List<VariantContextUtils.JexlVCMatchExp> infoJexls = null;
+    private List<VariantContextUtils.JexlVCMatchExp> genotypeJexls = null;
 
     private boolean discordanceOnly = false;
     private boolean concordanceOnly = false;
 
     private MendelianViolation mv = null;
     private SampleDB sampleDB = null;
-
-    /* variables used by the SELECT RANDOM modules */
-    private boolean selectRandomFraction = false;
 
     // Random number generator for the genotypes to remove
     private final Random randomGenotypes = new Random();
@@ -467,9 +544,9 @@ public final class SelectVariants extends VariantWalker {
         }
         return genomicsDBOptions;
     }
-
+    // We do not output the vcf entries in the order they arrive, as trimming alleles may change the start position
+    // (e.g. at a multiallelic site, see #6444).
     final private PriorityQueue<VariantContext> pendingVariants = new PriorityQueue<>(Comparator.comparingInt(VariantContext::getStart));
-
     /**
      * Set up the VCF writer, the sample expressions and regexs, filters inputs, and the JEXL matcher
      *
@@ -480,6 +557,7 @@ public final class SelectVariants extends VariantWalker {
 
         final List<String> genotypeField = getHeaderForVariants().getGenotypeSamples();
         if(!ParsingUtils.isSorted(genotypeField)){
+            // We do not warn the user if there are only a few samples
             if(genotypeField.size() > 10) {
                 logger.warn("***************************************************************************************************************************");
                 logger.warn("* Detected unsorted genotype fields on input.                                                                             *");
@@ -491,18 +569,18 @@ public final class SelectVariants extends VariantWalker {
             }
         }
 
-
-
         // Initialize VCF header lines
         final Set<VCFHeaderLine> headerLines = createVCFHeaderLineList(vcfHeaders);
 
-        for (int i = 0; i < selectExpressions.size(); i++) {
-            // It's not necessary that the user supply select names for the JEXL expressions, since those
-            // expressions will only be needed for omitting records.  Make up the select names here.
-            selectNames.add(String.format("select-%d", i));
-        }
+        // It's not necessary that the user supply select names for the JEXL expressions, since those
+        // expressions will only be needed for omitting records.  Make up the select names here.
+        IntStream.range(0, selectExpressions.size()).forEach(i -> selectNames.add(String.format("select-%d", i)));
+        IntStream.range(0, selectGenotypeExpressions.size()).forEach(i -> selectGenotypeNames.add(String.format("genotype-select-%d", i)));
 
-        jexls = VariantContextUtils.initializeMatchExps(selectNames, selectExpressions);
+        // These are maps of type (name, JEXL expression class)
+        // Note that infoJexls could also contain JEXL expressions that access genotype fields via the VariantContext object
+        infoJexls = VariantContextUtils.initializeMatchExps(selectNames, selectExpressions);
+        genotypeJexls = VariantContextUtils.initializeMatchExps(selectGenotypeNames, selectGenotypeExpressions);
 
         // Prepare the sample names and types to be used by the corresponding filters
         samples = createSampleNameInclusionList(vcfHeaders);
@@ -524,30 +602,28 @@ public final class SelectVariants extends VariantWalker {
             mv = new MendelianViolation(mendelianViolationQualThreshold, false, true);
         }
 
-        selectRandomFraction = fractionRandom > 0;
-        if (selectRandomFraction) {
-            logger.info("Selecting approximately " + 100.0*fractionRandom + "% of the variants at random from the variant track");
+        if (fractionToKeep < 1.0) {
+            logger.info("Selecting approximately " + 100.0* fractionToKeep + "% of the variants at random from the variant track");
         }
 
         //TODO: this should be refactored/consolidated as part of
         // https://github.com/broadinstitute/gatk/issues/121 and
         // https://github.com/broadinstitute/gatk/issues/1116
-        Set<VCFHeaderLine> actualLines = null;
+        Set<VCFHeaderLine> actualHeaderLines = null;
         SAMSequenceDictionary sequenceDictionary = null;
         if (hasReference()) {
             Path refPath = referenceArguments.getReferencePath();
             sequenceDictionary= this.getReferenceDictionary();
-            actualLines = VcfUtils.updateHeaderContigLines(headerLines, refPath, sequenceDictionary, suppressReferencePath);
-        }
-        else {
+            actualHeaderLines = VcfUtils.updateHeaderContigLines(headerLines, refPath, sequenceDictionary, suppressReferencePath);
+        } else {
             sequenceDictionary = getHeaderForVariants().getSequenceDictionary();
-            if (null != sequenceDictionary) {
-                actualLines = VcfUtils.updateHeaderContigLines(headerLines, null, sequenceDictionary, suppressReferencePath);
-            }
-            else {
-                actualLines = headerLines;
+            if (sequenceDictionary != null) {
+                actualHeaderLines = VcfUtils.updateHeaderContigLines(headerLines, null, sequenceDictionary, suppressReferencePath);
+            } else {
+                actualHeaderLines = headerLines;
             }
         }
+
         if (!infoAnnotationsToDrop.isEmpty()) {
             for (final String infoField : infoAnnotationsToDrop) {
                 logger.info(String.format("Will drop info annotation: %s",infoField));
@@ -561,7 +637,7 @@ public final class SelectVariants extends VariantWalker {
 
         final Path outPath = vcfOutput.toPath();
         vcfWriter = createVCFWriter(outPath);
-        vcfWriter.writeHeader(new VCFHeader(actualLines, samples));
+        vcfWriter.writeHeader(new VCFHeader(actualHeaderLines, samples));
     }
 
     @Override
@@ -575,34 +651,16 @@ public final class SelectVariants extends VariantWalker {
             vcfWriter.add(pendingVariants.poll());
         }
 
+        // fullyDecode means to convert from strings to appropriate data types (e.g. int, array)
         if (fullyDecode) {
             vc = vc.fullyDecode(getHeaderForVariants(), lenientVCFProcessing);
         }
 
-        if (mendelianViolations && invertLogic((mv.countFamilyViolations(sampleDB, samples, vc) == 0), invertMendelianViolations)) {
+        if (applyFirstRoundOfFiltering(vc, featureContext)){
             return;
         }
 
-        if (discordanceOnly && !isDiscordant(vc, featureContext.getValues(discordanceTrack))) {
-            return;
-        }
-
-        if (concordanceOnly && !isConcordant(vc, featureContext.getValues(concordanceTrack))) {
-            return;
-        }
-
-        if (alleleRestriction.equals(NumberAlleleRestriction.BIALLELIC) && !vc.isBiallelic()) {
-            return;
-        }
-
-        if (alleleRestriction.equals(NumberAlleleRestriction.MULTIALLELIC) && vc.isBiallelic()) {
-            return;
-        }
-
-        if (containsIndelLargerOrSmallerThan(vc, maxIndelSize, minIndelSize)) {
-            return;
-        }
-
+        // Filtered genotypes are ones with the FT FORMAT field
         if (considerFilteredGenotypes()) {
             final int numFilteredSamples = numFilteredGenotypes(vc);
             final double fractionFilteredGenotypes = samples.isEmpty() ? 0.0 : numFilteredSamples / samples.size();
@@ -618,51 +676,136 @@ public final class SelectVariants extends VariantWalker {
                 return;
         }
 
-        final VariantContext sub = subsetRecord(vc, preserveAlleles, removeUnusedAlternates);
-        final VariantContext filteredGenotypeToNocall;
+        VariantContext result = subsetGenotypesBySampleNames(vc, preserveAlleles, removeUnusedAlternates);
 
         if ( setFilteredGenotypesToNocall ) {
-            final VariantContextBuilder builder = new VariantContextBuilder(sub);
-            GATKVariantContextUtils.setFilteredGenotypeToNocall(builder, sub, setFilteredGenotypesToNocall, this::getGenotypeFilters);
-            filteredGenotypeToNocall = builder.make();
-        } else {
-            filteredGenotypeToNocall = sub;
+            final VariantContextBuilder builder = new VariantContextBuilder(result);
+            GATKVariantContextUtils.setFilteredGenotypeToNocall(builder, result, setFilteredGenotypesToNocall, this::getGenotypeFilters);
+            result = builder.make();
         }
 
-        // Not excluding non-variants OR (subsetted polymorphic variants AND not spanning deletion) AND (including filtered loci OR subsetted variant) is not filtered
-        // If exclude non-variants argument is not called, filtering will NOT occur.
-        // If exclude non-variants is called, and a spanning deletion exists, the spanning deletion will be filtered
-        // If exclude non-variants is called, it is a polymorphic variant, but not a spanning deletion, filtering will not occur
-        // True iff exclude-filtered is not called or the filteredGenotypeToNocall is not already filtered
+        // After subsetting samples (e.g. to a single sample), it's possible that:
+        //     1. none of the remaining samples has the variant in question (i.e. site is no longer polymorphic);
+        //     2. the only remaining alternate allele is spanning deletion (*)
+        // If this is the case, we call it a non-variant and remove it from the output based on {@code excludeNonVariants}
+        if (excludeNonVariants) {
+            // It would be cleaner to say "if (excludeNonVariants && nonVariant) {...}", but isPolymorphicInSamples() could be relatively expensive,
+            // when we have many samples, so we call it only when excludeNonVariants is set to true.
+            final boolean nonVariant = ! result.isPolymorphicInSamples() || GATKVariantContextUtils.isSpanningDeletionOnly(result);
+            if (nonVariant) {
+                return;
+            }
+        }
 
-        if ((!XLnonVariants || (filteredGenotypeToNocall.isPolymorphicInSamples() && !GATKVariantContextUtils.isSpanningDeletionOnly(filteredGenotypeToNocall)))
-                && (!XLfiltered || !filteredGenotypeToNocall.isFiltered()))
-        {
+        if (!applyJexlFiltersBeforeFilteringGenotypes && ! passesJexlFilters(result)){
+            return;
+        }
 
-            // Write the subsetted variant if it matches all of the expressions
-            boolean failedJexlMatch = false;
+        pendingVariants.add(dropAnnotations(result, infoAnnotationsToDrop, genotypeAnnotationsToDrop));
+    }
 
-            try {
-                for (VariantContextUtils.JexlVCMatchExp jexl : jexls) {
-                    if (invertLogic(!VariantContextUtils.match(filteredGenotypeToNocall, jexl), invertSelect)){
-                        failedJexlMatch = true;
-                        break;
+    /**
+     * Group all the initial checks we do before subsetting samples.
+     * If any of these predicates evaluates to true we are safe to remove the present variant from the output,
+     * return (i.e. short-circuit) out of apply(), and skip to the next variant.
+     */
+    private boolean applyFirstRoundOfFiltering(final VariantContext vc, final FeatureContext featureContext){
+        // Since SelectVariants does not modify the filter field,
+        // we can check this before doing expensive operations
+        if (excludeFiltered && vc.isFiltered()){
+            return true;
+        }
+
+        if (fractionToKeep < 1.0 && Utils.getRandomGenerator().nextDouble() >= fractionToKeep){
+            return true;
+        }
+
+        if (mendelianViolations && invertLogic((mv.countFamilyViolations(sampleDB, samples, vc) == 0), invertMendelianViolations)) {
+            return true;
+        }
+
+        if (discordanceOnly && !isDiscordant(vc, featureContext.getValues(discordanceTrack))) {
+            return true;
+        }
+
+        if (concordanceOnly && !isConcordant(vc, featureContext.getValues(concordanceTrack))) {
+            return true;
+        }
+
+        if (alleleRestriction.equals(NumberAlleleRestriction.BIALLELIC) && !vc.isBiallelic()) {
+            return true;
+        }
+
+        if (alleleRestriction.equals(NumberAlleleRestriction.MULTIALLELIC) && vc.isBiallelic()) {
+            return true;
+        }
+
+        if (containsIndelLargerOrSmallerThan(vc, maxIndelSize, minIndelSize)) {
+            return true;
+        }
+
+        if (applyJexlFiltersBeforeFilteringGenotypes && !passesJexlFilters(vc)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     *  Applies JEXL filters
+     *
+     *  - Expressions that contain the logical-and (&&) should appear in a single -select argument.
+     *  - When an annotation is absent, the logical-or expression returns false, even when the other argument evaluates to true.
+     *   (This behavior may be overridden by changing {@code JEXLMap.howToTreatMissingValues}).
+     *  - When multiple -select arguments are given, the logical expressions are combined with the logical-or operator. In particular,
+     *    we do not currently support complex logical expressions involving both logical-and's and logical-or's. e.g. (x || y) && z
+     *
+     * When both the INFO (--select) and genotype (--select-genotype) filters are given, the current behavior is to take the logical-or of the resulting boolean values.
+     * We should support combining by logical-and if the users request it.
+     */
+    private boolean passesJexlFilters(final VariantContext vc){
+        if (infoJexls.isEmpty() && genotypeJexls.isEmpty()){
+            return true;
+        }
+
+        try {
+            // ##### Apply INFO JEXL filters #####
+            // Note that an element in infoJexls can either be an info JEXL or a genotype field accessed via the VariantContext object (e.g. vc.getGenotype('NA12878')...)
+            for (VariantContextUtils.JexlVCMatchExp jexl : infoJexls) {
+                // If invert-select is set to true, we take the complement (i.e. "not") of each jexl expression,
+                // then take the logical-or across the expressions in infoJexls.
+                //
+                // For example, given the command line
+                // "-select AF > 0.01 -select ReadPosRankSum < -20.0"
+                // If invert-select is false, the expression is understood to be "AF > 0.01 || ReadPosRankSum < -20.0"
+                // If invert-select is true, it is "!(AF > 0.01) || !(ReadPosRankSum < -20.0)", or
+                // Note that this is not equivalent to "!(AF > 0.01 || ReadPosRankSum < -20.0)"
+
+                // Notice here that calling the match method without the genotype g leads to genotype g being set to null,
+                // which is fine since infoJexls should not refer to genotype fields (except via vc.getGenotype())
+                if (invertLogic(VariantContextUtils.match(vc, jexl), invertSelect)){
+                    return true;
+                }
+            }
+
+            // ##### Apply Genotype JEXL filters #####
+            for (VariantContextUtils.JexlVCMatchExp jexl : genotypeJexls) {
+                // We separate the genotype vs INFO cases into two separate arguments because we don't want to be
+                // looping over all genotypes by default
+                for (Genotype g : vc.getGenotypes()){
+                    if (invertLogic(VariantContextUtils.match(vc, g, jexl), invertSelect)){
+                        return true;
                     }
                 }
-            } catch (IllegalArgumentException e) {
-                // The IAE thrown by htsjdk already includes an informative error message ("Invalid JEXL
-                //  expression detected...")
-                throw new UserException(e.getMessage() +
-                        "\nSee https://gatk.broadinstitute.org/hc/en-us/articles/360035891011-JEXL-filtering-expressions for documentation on using JEXL in GATK", e);
             }
-
-            if (!failedJexlMatch &&
-                    (!selectRandomFraction || Utils.getRandomGenerator().nextDouble() < fractionRandom)) {
-                //remove annotations being dropped and write variantcontext
-                final VariantContext variantContextToWrite = buildVariantContextWithDroppedAnnotationsRemoved(filteredGenotypeToNocall);
-                pendingVariants.add(variantContextToWrite);
-            }
+        } catch (IllegalArgumentException e) {
+            // The IAE thrown by htsjdk already includes an informative error message ("Invalid JEXL
+            //  expression detected...")
+            throw new UserException(e.getMessage() +
+                    "\nSee https://gatk.broadinstitute.org/hc/en-us/articles/360035891011-JEXL-filtering-expressions for documentation on using JEXL in GATK", e);
         }
+
+        return false;
     }
 
     /**
@@ -676,7 +819,8 @@ public final class SelectVariants extends VariantWalker {
         return null;
     }
 
-    private VariantContext buildVariantContextWithDroppedAnnotationsRemoved(final VariantContext vc) {
+    private VariantContext dropAnnotations(final VariantContext vc, final List<String> infoAnnotationsToDrop,
+                                           List<String> genotypeAnnotationsToDrop) {
         if (infoAnnotationsToDrop.isEmpty() && genotypeAnnotationsToDrop.isEmpty()) {
             return vc;
         }
@@ -732,7 +876,6 @@ public final class SelectVariants extends VariantWalker {
     @Override
     protected CountingVariantFilter makeVariantFilter() {
         CountingVariantFilter compositeFilter = new CountingVariantFilter(VariantFilterLibrary.ALLOW_ALL_VARIANTS);
-
         if (!selectedTypes.isEmpty()) {
             compositeFilter = compositeFilter.and(new CountingVariantFilter(new VariantTypesVariantFilter(selectedTypes)));
         }
@@ -755,9 +898,8 @@ public final class SelectVariants extends VariantWalker {
         final SortedSet<String> vcfSamples = VcfUtils.getSortedSampleSet(vcfHeaders, GATKVariantContextUtils.GenotypeMergeType.REQUIRE_UNIQUE);
         final Collection<String> samplesFromExpressions = Utils.filterCollectionByExpressions(vcfSamples, sampleExpressions, false);
 
-        // first, find any samples that were listed on the command line but which don't exist in in the header
+        // first, find any samples that were listed on the command line but don't exist in the header
         final Set<String> samplesNotInHeader = new LinkedHashSet<>(samplesFromExpressions.size()+sampleNames.size());
-        samplesNotInHeader.addAll(samplesFromExpressions);
         samplesNotInHeader.addAll(sampleNames);
         samplesNotInHeader.removeAll(vcfSamples);
 
@@ -1006,7 +1148,7 @@ public final class SelectVariants extends VariantWalker {
     }
 
     private boolean sampleHasVariant(final Genotype g) {
-        return (g !=null && !g.isHomRef() && (g.isCalled() || (g.isFiltered() && !XLfiltered)));
+        return (g !=null && !g.isHomRef() && (g.isCalled() || (g.isFiltered() && !excludeFiltered)));
     }
 
     private boolean haveSameGenotypes(final Genotype g1, final Genotype g2) {
@@ -1016,7 +1158,7 @@ public final class SelectVariants extends VariantWalker {
 
         if ((g1.isCalled() && g2.isFiltered()) ||
                 (g2.isCalled() && g1.isFiltered()) ||
-                (g1.isFiltered() && g2.isFiltered() && XLfiltered)) {
+                (g1.isFiltered() && g2.isFiltered() && excludeFiltered)) {
             return false;
         }
 
@@ -1033,12 +1175,11 @@ public final class SelectVariants extends VariantWalker {
      * @param removeUnusedAlternates removes alternate alleles with AC=0
      * @return the subsetted VariantContext
      */
-    private VariantContext subsetRecord(final VariantContext vc, final boolean preserveAlleles, final boolean removeUnusedAlternates) {
+    private VariantContext subsetGenotypesBySampleNames(final VariantContext vc, final boolean preserveAlleles, final boolean removeUnusedAlternates) {
         //subContextFromSamples() always decodes the vc, which is a fairly expensive operation.  Avoid if possible
         if (noSamplesSpecified && !removeUnusedAlternates) {
             return vc;
         }
-
         // strip out the alternate alleles that aren't being used
         final VariantContext sub = vc.subContextFromSamples(samples, removeUnusedAlternates);
 
@@ -1058,7 +1199,7 @@ public final class SelectVariants extends VariantWalker {
             newGC = sub.getGenotypes();
         }
 
-        //remove a fraction of the genotypes if requested
+        // Change a fraction of the genotypes to NOCALL if requested
         if (fractionGenotypes > 0) {
             final List<Genotype> genotypes = newGC.stream().map(genotype -> randomGenotypes.nextDouble() > fractionGenotypes ? genotype :
                     new GenotypeBuilder(genotype).alleles(getNoCallAlleles(genotype.getPloidy())).noGQ().make()).collect(Collectors.toList());
@@ -1072,7 +1213,7 @@ public final class SelectVariants extends VariantWalker {
         addAnnotations(builder, vc, sub.getSampleNames());
         final VariantContext subset = builder.make();
 
-        return preserveAlleles? subset : GATKVariantContextUtils.trimAlleles(subset,true,true);
+        return preserveAlleles ? subset : GATKVariantContextUtils.trimAlleles(subset,true,true);
     }
 
     /**
@@ -1189,10 +1330,10 @@ public final class SelectVariants extends VariantWalker {
 
     /**
      * Should the number of filtered genotypes be considered for filtering?
-     *
      * @return true if any of the filtered genotype samples arguments is used (not the default value), false otherwise
      */
     private boolean considerFilteredGenotypes(){
+        // Returns true if default has been overridden, otherwise false.
         return maxFilteredGenotypes != MAX_FILTERED_GENOTYPES_DEFAULT_VALUE ||
                 minFilteredGenotypes != MIN_FILTERED_GENOTYPES_DEFAULT_VALUE ||
                 maxFractionFilteredGenotypes != MAX_FRACTION_FILTERED_GENOTYPES_DEFAULT_VALUE ||

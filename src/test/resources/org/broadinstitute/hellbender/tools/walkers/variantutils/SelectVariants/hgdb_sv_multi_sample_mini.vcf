@@ -1,0 +1,95 @@
+##fileformat=VCFv4.2
+##ALT=<ID=BND,Description="Translocation">
+##ALT=<ID=CNV,Description="Copy Number Polymorphism">
+##ALT=<ID=CPX,Description="Complex SV">
+##ALT=<ID=CTX,Description="Reciprocal chromosomal translocation">
+##ALT=<ID=DEL,Description="Deletion">
+##ALT=<ID=DUP,Description="Duplication">
+##ALT=<ID=INS,Description="Insertion">
+##ALT=<ID=INS:ME,Description="Mobile element insertion of unspecified ME class">
+##ALT=<ID=INS:ME:ALU,Description="Alu element insertion">
+##ALT=<ID=INS:ME:LINE1,Description="LINE1 element insertion">
+##ALT=<ID=INS:ME:SVA,Description="SVA element insertion">
+##ALT=<ID=INS:UNK,Description="Sequence insertion of unspecified origin">
+##ALT=<ID=INV,Description="Inversion">
+##CPX_TYPE_INS_iDEL="Insertion with deletion at insertion site."
+##CPX_TYPE_INVdel="Complex inversion with 3' flanking deletion."
+##CPX_TYPE_INVdup="Complex inversion with 3' flanking duplication."
+##CPX_TYPE_dDUP="Dispersed duplication."
+##CPX_TYPE_dDUP_iDEL="Dispersed duplication with deletion at insertion site."
+##CPX_TYPE_delINV="Complex inversion with 5' flanking deletion."
+##CPX_TYPE_delINVdel="Complex inversion with 5' and 3' flanking deletions."
+##CPX_TYPE_delINVdup="Complex inversion with 5' flanking deletion and 3' flanking duplication."
+##CPX_TYPE_dupINV="Complex inversion with 5' flanking duplication."
+##CPX_TYPE_dupINVdel="Complex inversion with 5' flanking duplication and 3' flanking deletion."
+##CPX_TYPE_dupINVdup="Complex inversion with 5' and 3' flanking duplications."
+##CPX_TYPE_piDUP_FR="Palindromic inverted tandem duplication, forward-reverse orientation."
+##CPX_TYPE_piDUP_RF="Palindromic inverted tandem duplication, reverse-forward orientation."
+##FILTER=<ID=BOTHSIDES_SUPPORT,Description="Variant has read-level support for both sides of breakpoint">
+##FILTER=<ID=HIGH_SR_BACKGROUND,Description="High number of SR splits in background samples indicating messy region">
+##FILTER=<ID=MULTIALLELIC,Description="Multiallelic site">
+##FILTER=<ID=PASS,Description="All filters passed">
+##FILTER=<ID=PESR_GT_OVERDISPERSION,Description="High PESR dispersion count">
+##FILTER=<ID=UNRESOLVED,Description="Variant is unresolved">
+##FORMAT=<ID=CN,Number=1,Type=Integer,Description="Predicted copy state">
+##FORMAT=<ID=CNQ,Number=1,Type=Integer,Description="Read-depth genotype quality">
+##FORMAT=<ID=EV,Number=1,Type=String,Description="Classes of evidence supporting final genotype">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=PE_GQ,Number=1,Type=Integer,Description="Paired-end genotype quality">
+##FORMAT=<ID=PE_GT,Number=1,Type=Integer,Description="Paired-end genotype">
+##FORMAT=<ID=RD_CN,Number=1,Type=Integer,Description="Predicted copy state">
+##FORMAT=<ID=RD_GQ,Number=1,Type=Integer,Description="Read-depth genotype quality">
+##FORMAT=<ID=SR_GQ,Number=1,Type=Integer,Description="Split read genotype quality">
+##FORMAT=<ID=SR_GT,Number=1,Type=Integer,Description="Split-read genotype">
+##GATKCommandLine=<ID=SelectVariants,CommandLine="SelectVariants --output hgdb_sv_multi_sample_mini.vcf --variant hgdb_sv_multi_sample.vcf --intervals chr1:1-50000 --jexl-first false --invertSelect false --exclude-non-variants false --exclude-filtered false --preserve-alleles false --remove-unused-alternates false --restrict-alleles-to ALL --keep-original-ac false --keep-original-dp false --mendelian-violation false --invert-mendelian-violation false --mendelian-violation-qual-threshold 0.0 --select-random-fraction 0.0 --remove-fraction-genotypes 0.0 --fully-decode false --max-indel-size 2147483647 --min-indel-size 0 --max-filtered-genotypes 2147483647 --min-filtered-genotypes 0 --max-fraction-filtered-genotypes 1.0 --min-fraction-filtered-genotypes 0.0 --max-nocall-number 2147483647 --max-nocall-fraction 1.0 --set-filtered-gt-to-nocall false --allow-nonoverlapping-command-line-samples false --suppress-reference-path false --fail-on-unsorted-genotype false --genomicsdb-max-alternate-alleles 50 --call-genotypes false --genomicsdb-use-bcf-codec false --genomicsdb-shared-posixfs-optimizations false --genomicsdb-use-gcs-hdfs-connector false --interval-set-rule UNION --interval-padding 0 --interval-exclusion-padding 0 --interval-merging-rule ALL --read-validation-stringency SILENT --seconds-between-progress-updates 10.0 --disable-sequence-dictionary-validation false --create-output-bam-index true --create-output-bam-md5 false --create-output-variant-index true --create-output-variant-md5 false --max-variants-per-shard 0 --lenient false --add-output-sam-program-record true --add-output-vcf-command-line true --cloud-prefetch-buffer 40 --cloud-index-prefetch-buffer -1 --disable-bam-index-caching false --sites-only-vcf-output false --help false --version false --showHidden false --verbosity INFO --QUIET false --use-jdk-deflater false --use-jdk-inflater false --gcs-max-retries 20 --gcs-project-for-requester-pays  --disable-tool-default-read-filters false",Version="4.2.6.1-52-gbbdfb01-SNAPSHOT",Date="October 24, 2022 7:07:48 PM EDT">
+##GATKCommandLine=<ID=SelectVariants,CommandLine="SelectVariants --output test1_small.vcf --sample-name __HGDP00007__ --sample-name __HGDP00013__ --sample-name __HGDP00029__ --sample-name __HGDP01347__ --variant /dsde/working/tsato/sv/hgdp_and_hgsv.cleaned_fixed.vcf.gz --intervals chr1:1-130000 --jexl-first false --invertSelect false --exclude-non-variants false --exclude-filtered false --preserve-alleles false --remove-unused-alternates false --restrict-alleles-to ALL --keep-original-ac false --keep-original-dp false --mendelian-violation false --invert-mendelian-violation false --mendelian-violation-qual-threshold 0.0 --select-random-fraction 0.0 --remove-fraction-genotypes 0.0 --fully-decode false --max-indel-size 2147483647 --min-indel-size 0 --max-filtered-genotypes 2147483647 --min-filtered-genotypes 0 --max-fraction-filtered-genotypes 1.0 --min-fraction-filtered-genotypes 0.0 --max-nocall-number 2147483647 --max-nocall-fraction 1.0 --set-filtered-gt-to-nocall false --allow-nonoverlapping-command-line-samples false --suppress-reference-path false --fail-on-unsorted-genotype false --genomicsdb-max-alternate-alleles 50 --call-genotypes false --genomicsdb-use-bcf-codec false --genomicsdb-shared-posixfs-optimizations false --genomicsdb-use-gcs-hdfs-connector false --interval-set-rule UNION --interval-padding 0 --interval-exclusion-padding 0 --interval-merging-rule ALL --read-validation-stringency SILENT --seconds-between-progress-updates 10.0 --disable-sequence-dictionary-validation false --create-output-bam-index true --create-output-bam-md5 false --create-output-variant-index true --create-output-variant-md5 false --max-variants-per-shard 0 --lenient false --add-output-sam-program-record true --add-output-vcf-command-line true --cloud-prefetch-buffer 40 --cloud-index-prefetch-buffer -1 --disable-bam-index-caching false --sites-only-vcf-output false --help false --version false --showHidden false --verbosity INFO --QUIET false --use-jdk-deflater false --use-jdk-inflater false --gcs-max-retries 20 --gcs-project-for-requester-pays  --disable-tool-default-read-filters false",Version="4.2.6.1-55-g724df13-SNAPSHOT",Date="October 22, 2022 11:04:42 AM EDT">
+##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
+##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
+##INFO=<ID=ALGORITHMS,Number=.,Type=String,Description="Source algorithms">
+##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
+##INFO=<ID=CHR2,Number=1,Type=String,Description="Chromosome for END coordinate">
+##INFO=<ID=CPX_INTERVALS,Number=.,Type=String,Description="Genomic intervals constituting complex variant.">
+##INFO=<ID=CPX_TYPE,Number=1,Type=String,Description="Class of complex variant.">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
+##INFO=<ID=END,Number=1,Type=Integer,Description="End position of the structural variant">
+##INFO=<ID=END2,Number=1,Type=Integer,Description="Position of breakpoint on CHR2">
+##INFO=<ID=EVIDENCE,Number=.,Type=String,Description="Classes of random forest support.">
+##INFO=<ID=SOURCE,Number=1,Type=String,Description="Source of inserted sequence.">
+##INFO=<ID=STRANDS,Number=1,Type=String,Description="Breakpoint strandedness [++,+-,-+,--]">
+##INFO=<ID=SVLEN,Number=1,Type=Integer,Description="SV length">
+##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant">
+##INFO=<ID=UNRESOLVED_TYPE,Number=1,Type=String,Description="Class of unresolved variant.">
+##bcftools_concatCommand=concat -a --allow-overlaps --output-type z --file-list /cromwell_root/fc-4f7d6060-18d4-47ce-9f00-d83a04c1e312/547bf530-6a24-49fc-9d37-4ab0430f28b6/Module0506/5ee557ba-571a-4799-92de-639f2d857537/call-Module0506Clean/Module0506Clean/4d33714f-5e35-4b61-a9c3-6a0c915f6ff6/call-ConcatCleanedVcfs/write_lines_75d54427c5d0a6a1ccab213d2f2c72a7.tmp --output hgdp_and_hgsv.cleaned.vcf.gz; Date=Wed Jun 30 20:21:50 2021
+##bcftools_concatVersion=1.9+htslib-1.9
+##contig=<ID=chr1,length=248956422>
+##contig=<ID=chr10,length=133797422>
+##contig=<ID=chr11,length=135086622>
+##contig=<ID=chr12,length=133275309>
+##contig=<ID=chr13,length=114364328>
+##contig=<ID=chr14,length=107043718>
+##contig=<ID=chr15,length=101991189>
+##contig=<ID=chr16,length=90338345>
+##contig=<ID=chr17,length=83257441>
+##contig=<ID=chr18,length=80373285>
+##contig=<ID=chr19,length=58617616>
+##contig=<ID=chr2,length=242193529>
+##contig=<ID=chr20,length=64444167>
+##contig=<ID=chr21,length=46709983>
+##contig=<ID=chr22,length=50818468>
+##contig=<ID=chr3,length=198295559>
+##contig=<ID=chr4,length=190214555>
+##contig=<ID=chr5,length=181538259>
+##contig=<ID=chr6,length=170805979>
+##contig=<ID=chr7,length=159345973>
+##contig=<ID=chr8,length=145138636>
+##contig=<ID=chr9,length=138394717>
+##contig=<ID=chrX,length=156040895>
+##contig=<ID=chrY,length=57227415>
+##source=SelectVariants
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	__HGDP00007__	__HGDP00013__	__HGDP00029__	__HGDP01347__
+chr1	10639	hgdp_and_hgsv_BND_chr1_1	N	<BND>	328	HIGH_SR_BACKGROUND;UNRESOLVED	AC=2;AF=0.250;ALGORITHMS=manta;AN=8;CHR2=chr15;END=10640;END2=101980265;EVIDENCE=SR;STRANDS=--;SVLEN=-1;SVTYPE=BND;UNRESOLVED_TYPE=SINGLE_ENDER_--	GT:EV:GQ:PE_GQ:PE_GT:SR_GQ:SR_GT	0/0:PE,SR:99:9:0:999:0	0/1:PE:0:1:1:999:0	0/0:PE,SR:2:25:0:4:0	0/1:PE:0:1:1:999:0
+chr1	11000	hgdp_and_hgsv_DUP_chr1_1	N	<DUP>	143	PASS	AC=1;AF=0.125;ALGORITHMS=depth;AN=8;END=51000;EVIDENCE=RD;SVLEN=40000;SVTYPE=DUP	GT:EV:GQ:RD_CN:RD_GQ	0/0:RD:11:2:113	0/1:RD:13:3:131	0/0:RD:1:2:11	0/0:RD:7:2:73
+chr1	29000	hgdp_and_hgsv_DUP_chr1_2	N	<DUP>	999	PASS	AC=2;AF=0.250;ALGORITHMS=depth;AN=8;END=140000;EVIDENCE=BAF,RD;SVLEN=111000;SVTYPE=DUP	GT:EV:GQ:RD_CN:RD_GQ	0/0:RD:12:1:117	0/1:RD:10:3:103	0/0:RD:1:2:11	0/1:RD:6:3:58
+chr1	40000	hgdp_and_hgsv_DEL_chr1_1	N	<DEL>	133	PASS	AC=1;AF=0.125;ALGORITHMS=depth;AN=8;END=46000;EVIDENCE=RD;SVLEN=6000;SVTYPE=DEL	GT:EV:GQ:RD_CN:RD_GQ	0/0:RD:5:2:50	0/0:RD:1:2:6	0/1:RD:9:1:87	0/0:RD:2:2:21
+chr1	40000	hgdp_and_hgsv_CNV_chr1_1	N	<CNV>	999	MULTIALLELIC	AC=0;AF=0.00;ALGORITHMS=depth;AN=0;END=107150;EVIDENCE=BAF,RD;SVLEN=67150;SVTYPE=CNV	GT:CN:CNQ:EV:RD_CN:RD_GQ	.:1:1:RD:1:1	.:3:83:RD:3:83	.:2:1:RD:2:1	.:2:142:RD:2:142

@@ -1,15 +1,20 @@
 package org.broadinstitute.hellbender.tools.walkers.variantutils;
 
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFHeader;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
@@ -24,6 +29,8 @@ import com.google.common.collect.Comparators;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
 
@@ -488,20 +495,263 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         spec.executeTest(name, this);
     }
 
-    @Test
-    public void testInvalidJexl() throws IOException {
-        final String testFile = getToolTestDataDir() + "ac0.vcf";
-
+    private void beforeJexlTest(){
         // NOTE: JexlEngine singleton construction in VariantContextUtils sets silent to false.
         // However VariantFiltration.initialize() sets setSilent(true) on the shared instance.
         // Just in case this test runs after a VariantFiltration in the same VM, always set silent back to false.
         htsjdk.variant.variantcontext.VariantContextUtils.engine.get().setSilent(false);
+    }
+
+    final GATKPath svHGDBMultiSampleVcf = new GATKPath(getToolTestDataDir() + "hgdb_sv_multi_sample_mini.vcf");
+    final Pair<VCFHeader, List<VariantContext>> svHGDBMultiSampleVariants = VariantContextTestUtils.readEntireVCFIntoMemory(svHGDBMultiSampleVcf.toString());
+    final int gqThreshold = 60; // For JEXL filtering by sample GQ
+
+    @Test
+    public void testInvalidJexl() throws IOException {
+        beforeJexlTest();
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                baseTestString(" -select 'vc.getGenotype(\"FAKE_SAMPLE\").isHomRef()' ", testFile),
+                baseTestString(" -select 'vc.getGenotype(\"FAKE_SAMPLE\").isHomRef()' ", svHGDBMultiSampleVcf.toString()),
                 1,
                 UserException.class);
         spec.executeTest("InvalidJexl", this);
+    }
+
+    // If two separate -select command lines are used e.g. --select "'AF > 0.05'" --select "'MQRankSum > 3'"
+    // then the booleans should be combined with the logical-or
+    @Test
+    public void testMultipleINFOJexls() {
+        beforeJexlTest();
+        final File testOutput = createTempFile("multiple_jexl_test", "vcf");
+        final Predicate<VariantContext> filter = vc -> vc.getAttributeAsInt("AC", -1) > 0 ||
+                vc.getAttributeAsString("SVTYPE", "").equals("DEL");
+
+        final int expectedCount = (int) svHGDBMultiSampleVariants.getRight().stream().filter(filter).count();
+        Assert.assertTrue(expectedCount > 0); // Otherwise the test is not informative
+
+        runCommandLine(Arrays.asList("-V", svHGDBMultiSampleVcf.toString(),
+                        "-O", testOutput.getAbsolutePath(),
+                        "-select", "SVTYPE == 'DEL'",
+                        "-select", "AC > 0"),
+                SelectVariants.class.getSimpleName());
+        final Pair<VCFHeader, List<VariantContext>> result = VariantContextTestUtils.readEntireVCFIntoMemory(testOutput.getAbsolutePath());
+        final int actualCount = result.getRight().size();
+        Assert.assertEquals(expectedCount, actualCount);
+    }
+
+    // Test JEXL expressions like "AC > 0 && AF > 0.001"
+    // The recommended usage for logical-or is to place individual expressions as separate --select command
+    // e.g. -select AC > 0 -select AF > 0.001 for "AC > 0 || AF > 0.001"
+    @Test
+    public void testLogicalAndOrInJexl() {
+        beforeJexlTest();
+        final File testOutput = createTempFile("multiple_jexl_test", "vcf");
+
+        final Predicate<VariantContext> andFilter = vc -> vc.getAttributeAsInt("AC", -1) > 0 &&
+                vc.getAttributeAsString("SVTYPE", "").equals("DEL");
+        final int expectedCount = (int) svHGDBMultiSampleVariants.getRight().stream().filter(andFilter).count();
+        Assert.assertTrue(expectedCount > 0);
+
+        runCommandLine(Arrays.asList("-V", svHGDBMultiSampleVcf.toString(),
+                        "-O", testOutput.getAbsolutePath(),
+                        "--select", "SVTYPE == 'DEL' && AC > 0"),
+                SelectVariants.class.getSimpleName());
+        final Pair<VCFHeader, List<VariantContext>> result = VariantContextTestUtils.readEntireVCFIntoMemory(testOutput.getAbsolutePath());
+        final int actualCount = result.getRight().size();
+        Assert.assertEquals(expectedCount, actualCount);
+    }
+
+
+    /** One of the five variants does not have the GQ field. It is silently removed from the output. **/
+    @Test
+    public void testJexlGenotypeFilter() {
+        final File testOutput = createTempFile("jexl_genotype_test", "vcf");
+        beforeJexlTest();
+        final int threshold = 1;
+        final Predicate<VariantContext> filter = vc -> vc.getGenotypes().stream().anyMatch(g -> g.getGQ() > threshold);
+        final int expectedNumVCs = (int) svHGDBMultiSampleVariants.getRight().stream().filter(filter).count();
+        Assert.assertTrue(expectedNumVCs > 0);
+
+        runCommandLine(Arrays.asList("-V", svHGDBMultiSampleVcf.toString(),
+                        "-O", testOutput.getAbsolutePath(),
+                        "-" + SelectVariants.GENOTYPE_SELECT_SHORT_NAME,"GQ > " + threshold),
+                SelectVariants.class.getSimpleName());
+
+        final Pair<VCFHeader, List<VariantContext>> result = VariantContextTestUtils.readEntireVCFIntoMemory(testOutput.getAbsolutePath());
+        final int actualNumVCs = result.getRight().size();
+
+        Assert.assertEquals(expectedNumVCs, actualNumVCs);
+    }
+
+    @Test
+    public void testJexlDirectlyAccessGenotype() {
+        final File testOutput = createTempFile("jexl_genotype_test", "vcf");
+        beforeJexlTest();
+        final String sampleName = "__HGDP00029__";
+        final int threshold = 1;
+        final Predicate<VariantContext> filter = vc -> vc.getGenotype(sampleName).getGQ() > threshold;
+        final int expectedNumVCs = (int) svHGDBMultiSampleVariants.getRight().stream().filter(filter).count();
+        Assert.assertTrue(expectedNumVCs > 0);
+
+        runCommandLine(Arrays.asList("-V", svHGDBMultiSampleVcf.toString(),
+                        "-O", testOutput.getAbsolutePath(),
+                        "-" + SelectVariants.SELECT_NAME, "vc.getGenotype('__HGDP00029__').getGQ() > " + threshold),
+                SelectVariants.class.getSimpleName());
+
+        final Pair<VCFHeader, List<VariantContext>> result = VariantContextTestUtils.readEntireVCFIntoMemory(testOutput.getAbsolutePath());
+        final int actualNumVCs = result.getRight().size();
+
+        Assert.assertEquals(expectedNumVCs, actualNumVCs);
+    }
+
+    @Test
+    public void testUseCorrectDPInJexl() {
+        beforeJexlTest();
+        final GATKPath haploidMultiSampleVcf = new GATKPath(getToolTestDataDir() + "haploid-multisample.vcf");
+        final Pair<VCFHeader, List<VariantContext>> haploidMultiSampleVcfVariants = VariantContextTestUtils.readEntireVCFIntoMemory(haploidMultiSampleVcf.toString());
+        final File testOutputInfo = createTempFile("jexl_info", "vcf");
+        final File testOutputGenotype = createTempFile("jexl_genotype", "vcf");
+
+        final int threshold = 20;
+        final Predicate<VariantContext> filterInfoDep = vc -> vc.getAttributeAsInt("DP", -1) > threshold;
+        final Predicate<VariantContext> filterGenotypeDep = vc -> vc.getGenotypes().stream().anyMatch(g -> g.getDP() > threshold);
+
+        final int expectedNumVCsInfo = (int) haploidMultiSampleVcfVariants.getRight().stream().filter(filterInfoDep).count();
+        final int expectedNumVCsGenotype = (int) haploidMultiSampleVcfVariants.getRight().stream().filter(filterGenotypeDep).count();
+
+
+        runCommandLine(Arrays.asList("-V", haploidMultiSampleVcf.toString(),
+                        "-O", testOutputInfo.getAbsolutePath(),
+                        "-select","DP > 20"),
+                SelectVariants.class.getSimpleName());
+        final Pair<VCFHeader, List<VariantContext>> resultInfo = VariantContextTestUtils.readEntireVCFIntoMemory(testOutputInfo.getAbsolutePath());
+        final int actualNumVCsInfo = resultInfo.getRight().size();
+        Assert.assertEquals(expectedNumVCsInfo, actualNumVCsInfo);
+
+        runCommandLine(Arrays.asList("-V", haploidMultiSampleVcf.toString(),
+                        "-O", testOutputGenotype.getAbsolutePath(),
+                        "-select-genotype","DP > 20"),
+                SelectVariants.class.getSimpleName());
+        final Pair<VCFHeader, List<VariantContext>> resultGenotype = VariantContextTestUtils.readEntireVCFIntoMemory(testOutputGenotype.getAbsolutePath());
+        final int actualNumVCsGenotype = resultGenotype.getRight().size();
+        Assert.assertEquals(expectedNumVCsGenotype, actualNumVCsGenotype);
+    }
+
+    // Combining -select and -select-genotype is done by logical-or by default.
+    @Test
+    public void testCombineInfoAndGenotypeJexl() {
+        final File testOutput = createTempFile("jexl_genotype_info_test", "vcf");
+        beforeJexlTest();
+        final Predicate<VariantContext> filter = vc -> vc.getAttributeAsString("SVTYPE", "").equals("DEL") ||
+                vc.getGenotypes().stream().anyMatch(g -> g.getGQ() > gqThreshold);
+        final int expectedNumVCs = (int) svHGDBMultiSampleVariants.getRight().stream().filter(filter).count();
+
+        runCommandLine(Arrays.asList("-V", svHGDBMultiSampleVcf.toString(),
+                        "-O", testOutput.getAbsolutePath(),
+                        "-" + SelectVariants.SELECT_NAME, "SVTYPE == 'DEL'",
+                        "-" + SelectVariants.GENOTYPE_SELECT_SHORT_NAME, "GQ > " + gqThreshold),
+                SelectVariants.class.getSimpleName());
+
+        final Pair<VCFHeader, List<VariantContext>> result = VariantContextTestUtils.readEntireVCFIntoMemory(testOutput.getAbsolutePath());
+        final int actualNumVCs = result.getRight().size();
+        Assert.assertEquals(expectedNumVCs, actualNumVCs);
+    }
+
+    // Erroneously give an INFO field to -select-genotype
+    // This (unfortunately) works, since we give the whole VariantContext object to the JEXL parser (so it can find info fields)
+    // when we filter by the genotype field.
+    // Adding the capability to detect such a mix-up should be added in the future.
+    @Test
+    public void testINFOFieldGivenToSelectGenotype() {
+        final Predicate<VariantContext> filter = vc -> vc.getAttributeAsString("SVTYPE", "").equals("DEL");
+        final int expectedNumVCs = (int) svHGDBMultiSampleVariants.getRight().stream().filter(filter).count();
+        Assert.assertTrue(expectedNumVCs > 0);
+
+        final File testOutput = createTempFile("jexl_genotype_info_mixup_test", "vcf");
+        runCommandLine(Arrays.asList("-V", svHGDBMultiSampleVcf.toString(),
+                        "-O", testOutput.getAbsolutePath(),
+                        "-" + SelectVariants.GENOTYPE_SELECT_SHORT_NAME, "SVTYPE == 'DEL'"), // INFO filter expression given to genotype filter
+                SelectVariants.class.getSimpleName());
+        final Pair<VCFHeader, List<VariantContext>> result = VariantContextTestUtils.readEntireVCFIntoMemory(testOutput.getAbsolutePath());
+        final int actualNumVCs2 = result.getRight().size();
+        Assert.assertEquals(expectedNumVCs, actualNumVCs2);
+    }
+
+    // Erroneously give a genotype field expression --select
+    // The tool silently filters everything (i.e. output an empty vcf), because we don't give the genotype object to the jexl parser,
+    // and so the parser cannot find the requested genotype fields.
+    // Adding the capability to detect such a mix-up should be added in the future.
+    @Test
+    public void testFORMATFieldGivenToSelect() {
+        final File testOutput = createTempFile("jexl_genotype_info_mixup_test", "vcf");
+        runCommandLine(Arrays.asList("-V", svHGDBMultiSampleVcf.toString(),
+                        "-O", testOutput.getAbsolutePath(),
+                        "-" + SelectVariants.SELECT_NAME,"GQ > " + gqThreshold), // genotype filter expression given to INFO filter
+                SelectVariants.class.getSimpleName());
+        final Pair<VCFHeader, List<VariantContext>> result = VariantContextTestUtils.readEntireVCFIntoMemory(testOutput.getAbsolutePath());
+        final int actualNumVCs3 = result.getRight().size();
+        Assert.assertEquals(0, actualNumVCs3);
+    }
+
+    @Test
+    public void testSelectRandomFraction() {
+        beforeJexlTest();
+        final File testOutput = createTempFile("jexl_genotype_info_test", "vcf");
+        // There are 80 variants in this vcf
+        final File inputVcf = getTestFile("tetraploid-multisample-sac.g.vcf");
+        final int numInputVariants = VariantContextTestUtils.readEntireVCFIntoMemory(inputVcf.getAbsolutePath()).getRight().size();
+        final double fractionToKeep = 0.5;
+
+        runCommandLine(Arrays.asList("-V", inputVcf.getAbsolutePath(),
+                        "-O", testOutput.getAbsolutePath(),
+                        "-" + SelectVariants.FRACTION_TO_KEEP_SHORT_NAME, Double.toString(fractionToKeep)),
+                SelectVariants.class.getSimpleName());
+
+        final int numOutputVariants = VariantContextTestUtils.readEntireVCFIntoMemory(testOutput.getAbsolutePath()).getRight().size();
+        final double fractionKept = (double) numOutputVariants/numInputVariants;
+        final double epsilon = 0.12; // Not chosen rigorously.
+        Assert.assertEquals(MathUtils.compareDoubles(fractionToKeep, fractionKept, epsilon), 0);
+    }
+
+    // Check that the applying JEXL filter before the sample subsetting does not affect the final output
+    @Test
+    public void testJEXLFilterFirst() {
+        beforeJexlTest();
+        final File testOutputJexlBefore = createTempFile("jexl_before_test", "vcf");
+        final File testOutputJexlAfter = createTempFile("jexl_after_test", "vcf");
+
+        final Predicate<VariantContext> filter = vc -> vc.getAttributeAsInt("AC", -1) > 0 ||
+                vc.getAttributeAsString("SVTYPE", "").equals("DEL");
+
+        final List<VariantContext> expectedVariants = svHGDBMultiSampleVariants.getRight().stream().filter(filter).collect(Collectors.toList());
+        Assert.assertTrue(expectedVariants.size() > 0);
+
+        // Run the JEXL filters before subsetting samples
+        runCommandLine(Arrays.asList("-V", svHGDBMultiSampleVcf.toString(),
+                        "-O", testOutputJexlBefore.getAbsolutePath(),
+                        "-select", "SVTYPE == 'DEL'",
+                        "-select", "AC > 0",
+                        "-" + SelectVariants.APPLY_JEXL_FIRST_SHORT_NAME, "true"),
+                SelectVariants.class.getSimpleName());
+
+        // Run then after subsetting samples
+        runCommandLine(Arrays.asList("-V", svHGDBMultiSampleVcf.toString(),
+                        "-O", testOutputJexlAfter.getAbsolutePath(),
+                        "-select", "SVTYPE == 'DEL'",
+                        "-select", "AC > 0"),
+                SelectVariants.class.getSimpleName());
+        final List<VariantContext> resultJexlBefore = VariantContextTestUtils.readEntireVCFIntoMemory(testOutputJexlBefore.getAbsolutePath()).getRight();
+        final List<VariantContext> resultJexlAfter = VariantContextTestUtils.readEntireVCFIntoMemory(testOutputJexlAfter.getAbsolutePath()).getRight();
+
+        Assert.assertEquals(expectedVariants.size(), resultJexlBefore.size());
+        Assert.assertEquals(resultJexlBefore.size(), resultJexlAfter.size());
+        for (int i = 0; i < expectedVariants.size(); i++){
+            final VariantContext expectedVariant = expectedVariants.get(i);
+            final VariantContext variantBefore = resultJexlBefore.get(i);
+            final VariantContext variantAfter = resultJexlAfter.get(i);
+            Assert.assertEquals(expectedVariant.getStart(), variantBefore.getStart());
+            Assert.assertEquals(variantBefore.getStart(), variantAfter.getStart());
+        }
     }
 
     @Test
