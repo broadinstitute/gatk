@@ -656,7 +656,7 @@ public final class SelectVariants extends VariantWalker {
             vc = vc.fullyDecode(getHeaderForVariants(), lenientVCFProcessing);
         }
 
-        if (skipVariant(vc, featureContext)){
+        if (applyFirstRoundOfFiltering(vc, featureContext)){
             return;
         }
 
@@ -709,7 +709,7 @@ public final class SelectVariants extends VariantWalker {
      * If any of these predicates evaluates to true we are safe to remove the present variant from the output,
      * return (i.e. short-circuit) out of apply(), and skip to the next variant.
      */
-    private boolean skipVariant(final VariantContext vc, final FeatureContext featureContext){
+    private boolean applyFirstRoundOfFiltering(final VariantContext vc, final FeatureContext featureContext){
         // Since SelectVariants does not modify the filter field,
         // we can check this before doing expensive operations
         if (excludeFiltered && vc.isFiltered()){
