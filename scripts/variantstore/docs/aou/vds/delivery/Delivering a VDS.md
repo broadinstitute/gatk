@@ -105,7 +105,7 @@ but must not include the `gs://` prefix. Enter the VDS delivery path as specifie
 
 ![STS Destination](./STS%204.png)
 
-On the next step, take the defaults of "Run once" and "Starting now":
+On the next step, take the defaults of "Batch", "Run once" and "Starting now":
 
 ![STS How and when to run](./STS%205.png)
 
@@ -137,7 +137,7 @@ hour or so to complete. Building on the preceding step, the following snippet va
 
 ```python
 >>> vds_path = "gs://delivery-bucket/delivery-path.vds"
->>> vds = hl.vds.read_vds('vds_path')
+>>> vds = hl.vds.read_vds(vds_path)
 >>> vds.validate()
 ```
 
