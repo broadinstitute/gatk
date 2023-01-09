@@ -56,8 +56,12 @@ workflow GvsCreateFilterSet {
   String fq_sample_table = "~{project_id}.~{dataset_name}.sample_info"
   String fq_alt_allele_table = "~{project_id}.~{dataset_name}.alt_allele"
   String fq_info_destination_table = "~{project_id}.~{dataset_name}.filter_set_info"
+  String fq_info_destination_table_vqsr_lite = "~{project_id}.~{dataset_name}.vqsr_lite_filter_set_info"
   String fq_tranches_destination_table = "~{project_id}.~{dataset_name}.filter_set_tranches"
   String fq_filter_sites_destination_table = "~{project_id}.~{dataset_name}.filter_set_sites"
+
+  String fq_info_destination_table_schema = "filter_set_name:string,type:string,location:integer,ref:string,alt:string,vqslod:float,culprit:string,training_label:string,yng_status:string"
+  String fq_info_destination_table_vqsr_lite_schema = "filter_set_name:string,type:string,location:integer,ref:string,alt:string,vqslod:float,culprit:string,training_label:string,yng_status:string,calibration_sensitivity:float"
 
   call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
     input:
@@ -163,8 +167,10 @@ workflow GvsCreateFilterSet {
         snp_recal_file_index = MergeSNPScoredVCFs.output_vcf_index,
         indel_recal_file = MergeINDELScoredVCFs.output_vcf,
         indel_recal_file_index = MergeINDELScoredVCFs.output_vcf_index,
-        fq_info_destination_table = fq_info_destination_table,
-        query_project = project_id
+        fq_info_destination_table = fq_info_destination_table_vqsr_lite,
+        filter_schema = fq_info_destination_table_vqsr_lite_schema,
+        query_project = project_id,
+        useClassic = false
     }
 
     call PopulateFilterSetSites {
@@ -303,7 +309,9 @@ workflow GvsCreateFilterSet {
         indel_recal_file = IndelsVariantRecalibrator.recalibration,
         indel_recal_file_index = IndelsVariantRecalibrator.recalibration_index,
         fq_info_destination_table = fq_info_destination_table,
-        query_project = project_id
+        filter_schema = fq_info_destination_table_schema,
+        query_project = project_id,
+        useClassic = true
     }
 
     call PopulateFilterSetSites as PopulateFilterSetSitesClassic {
@@ -413,7 +421,9 @@ task ExtractFilterTask {
 task PopulateFilterSetInfo {
   input {
     String filter_set_name
+    String filter_schema
     String fq_info_destination_table
+    Boolean useClassic = true
 
     File snp_recal_file
     File snp_recal_file_index
@@ -429,6 +439,7 @@ task PopulateFilterSetInfo {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
+#      --schema "filter_set_name:string,type:string,location:integer,ref:string,alt:string,vqslod:float,culprit:string,training_label:string,yng_status:string" \
   command <<<
     set -eo pipefail
 
@@ -442,6 +453,7 @@ task PopulateFilterSetInfo {
       --ref-version 38 \
       --filter-set-name ~{filter_set_name} \
       -mode SNP \
+      --classic ~{useClassic} \
       -V ~{snp_recal_file} \
       -O ~{filter_set_name}.snps.recal.tsv
 
@@ -465,7 +477,7 @@ task PopulateFilterSetInfo {
     bq load --project_id=~{query_project} --skip_leading_rows 0 -F "tab" \
       --range_partitioning=location,0,26000000000000,6500000000 \
       --clustering_fields=location \
-      --schema "filter_set_name:string,type:string,location:integer,ref:string,alt:string,vqslod:float,culprit:string,training_label:string,yng_status:string" \
+      --schema "~{filter_schema}" \
       ${bq_table} \
       ~{filter_set_name}.filter_set_load.tsv > status_load_filter_set_info
   >>>
