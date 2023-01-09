@@ -2,7 +2,7 @@
 
 During the normal course of creating an AoU callset several large and expensive artifacts are created:
 
-* BigQuery dataset
+* BigQuery dataset (new dataset or adding to an existing dataset)
 * Terra workspace
 * Avro files (Delta onward)
 * Hail VariantDataset (VDS) (Delta onward)
@@ -59,45 +59,3 @@ Approximate figures for the ~250K samples Delta callset:
 
 * VDS storage cost: $500 / month. Note AoU should have exact copies of the two VDSes generated for Delta.
 * VDS regeneration cost: $1000 (~10 hours @ ~$100 / hour cluster cost) + $3000 to regenerate Avro files if necessary.
-
-## "Inflection points"
-
-With each new AoU callset the Variants team has pushed the limits of scale beyond any previous callsets
-we’ve created. Many times this requires us to plan for new approaches where we know we’ve hit scale limitations, but
-other times the team only discovers that we’ve hit a scale limitation once the callset is underway.
-
-While a callset is underway the team might receive a request from Lee and/or AoU to make changes to the format,
-contents, or delivery of callset data. These requests may invalidate some of the data that has been produced up to that
-point in the callset.
-
-And sometimes we might just mess something up.
-
-These "inflection points" in callset creation should motivate the Variants team to think about what data generated
-up to that point should be deleted. This should not only help make clear the work that does belong to the current
-callset, but would also prevent spending money on the storage of data that is not part of the callset.
-
-Some of this data can consume significant space: for Delta we found ~300 TiB of junk costing several thousand dollars
-per month. Cleanup usually includes separately deleting the BQ dataset and workspace as the deletion of one does not
-cascade to the other.
-
-For the AoU Delta callset, the Variants team delivered the callset in Hail VDS format for the first time. The team’s
-lack of familiarity with Hail unsurprisingly caused us to make several wrong turns trying to make this callset:
-
-1. Our first attempt to extract Avro files produced unusable results since an incorrect filter name was supplied and the
-   code at the time did not validate filter names. We noticed the mistake fairly soon after completing the export, but
-   unfortunately it took a while for us to realize that the unusable Avro output was consuming ~80 TiB of GCS storage.
-2. Some of our intermediate callsets used a GQ 40 drop state which turned out to be unworkable for Hail. Once we
-   realized this and committed to a "NONE" drop state we should have promptly cleaned up unusable BQ datasets and
-   associated workspaces.
-3. The Delta v1 workspace + BQ dataset was similarly abandoned due to improperly reblocked VCFs and should have been
-   deleted promptly.
-4. We unexpectedly found ourselves running the "prepare" step in order to generate callset statistics as we had not
-   realized during callset planning that callset statistics generation depended on the tables created and populated in
-   this step. While we only needed the variant data to generate callset statistics, at the time the "prepare" workflow
-   did not have the ability to bypass generation of reference and sample data tables. The "prepare" reference data in
-   particular consumed ~30 TiB and should have been deleted right away.
-5. The Hail GVS import script specifies a temporary "directory” which is not automatically cleaned up if the import
-   fails. This was useful for our team when the Hail import was failing after creating intermediate VDSes since we were
-   able to pick up where we left off on subsequent attempts and save a lot of compute. However once the import finally
-   succeeded we did not immediately realize that the temporary directory is still not cleaned up automatically, and
-   furthermore that this directory’s contents are several times larger than the actual output VDS.
