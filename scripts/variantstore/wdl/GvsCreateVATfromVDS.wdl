@@ -29,20 +29,16 @@ workflow GvsCreateVATfromVDS {
 
     File nirvana_data_directory = "gs://gvs_quickstart_storage/Nirvana/Nirvana-references-2022-10-07.tgz"
 
+    # A comment D
+
     call MakeSubpopulationFilesAndReadSchemaFiles {
         input:
             input_ancestry_file = ancestry_file
     }
 
-    call RemoveDuplicatesFromSitesOnlyVCF {
-        input:
-            sites_only_vcf = input_sites_only_vcf,
-            ref = reference
-    }
-
     call Utils.IndexVcf {
         input:
-            input_vcf = RemoveDuplicatesFromSitesOnlyVCF.output_vcf
+            input_vcf = input_sites_only_vcf
     }
 
     call Utils.SplitIntervals {
@@ -71,9 +67,15 @@ workflow GvsCreateVATfromVDS {
                 output_basename = vcf_filename
         }
 
+        call RemoveDuplicatesFromSitesOnlyVCF {
+            input:
+                sites_only_vcf = SelectVariants.output_vcf,
+                ref = reference
+        }
+
         call StripCustomAnnotationsFromSitesOnlyVCF {
             input:
-                input_vcf = SelectVariants.output_vcf,
+                input_vcf = RemoveDuplicatesFromSitesOnlyVCF.output_vcf,
                 custom_annotations_header = MakeSubpopulationFilesAndReadSchemaFiles.custom_annotations_template_file,
                 output_vcf_name = "${vcf_filename}.unannotated.sites_only.vcf",
                 output_custom_annotations_filename = "${vcf_filename}.custom_annotations.tsv"
@@ -87,7 +89,6 @@ workflow GvsCreateVATfromVDS {
                 nirvana_data_tar = nirvana_data_directory,
                 custom_annotations_file = StripCustomAnnotationsFromSitesOnlyVCF.output_custom_annotations_file,
         }
-
 
         call PrepVtAnnotationJson {
             input:
@@ -103,6 +104,12 @@ workflow GvsCreateVATfromVDS {
                 output_path = output_path,
         }
 
+    }
+
+    call Utils.MergeTsvs {
+        input:
+            input_files = RemoveDuplicatesFromSitesOnlyVCF.track_dropped,
+            output_file_name = "${sites_only_vcf_basename}.dropped.tsv"
     }
 
     call BigQueryLoadJson {
@@ -142,6 +149,7 @@ workflow GvsCreateVATfromVDS {
 
     output {
         File final_tsv_file = MergeVatTSVs.tsv_file
+        File dropped_sites_file = MergeTsvs.output_file
     }
 }
 
