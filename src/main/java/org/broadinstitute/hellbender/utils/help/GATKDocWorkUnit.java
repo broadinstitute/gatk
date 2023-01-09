@@ -1,16 +1,10 @@
 package org.broadinstitute.hellbender.utils.help;
 
-import org.broadinstitute.barclay.argparser.NamedArgumentDefinition;
 import org.broadinstitute.barclay.help.DocWorkUnit;
 import org.broadinstitute.barclay.help.DocWorkUnitHandler;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-
 import org.broadinstitute.hellbender.utils.runtime.RuntimeUtils;
-
 import javax.lang.model.element.Element;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  * Custom DocWorkUnit used for generating GATK help/documentation. Overrides the defaults to provide tool
