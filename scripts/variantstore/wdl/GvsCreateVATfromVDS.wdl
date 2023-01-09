@@ -29,8 +29,6 @@ workflow GvsCreateVATfromVDS {
 
     File nirvana_data_directory = "gs://gvs_quickstart_storage/Nirvana/Nirvana-references-2022-10-07.tgz"
 
-    # A comment D
-
     call MakeSubpopulationFilesAndReadSchemaFiles {
         input:
             input_ancestry_file = ancestry_file
@@ -61,7 +59,7 @@ workflow GvsCreateVATfromVDS {
 
         call Utils.SelectVariants {
             input:
-                input_vcf = IndexVcf.output_vcf,
+                input_vcf = input_sites_only_vcf,
                 input_vcf_index = IndexVcf.output_vcf_index,
                 interval_list = SplitIntervals.interval_files[i],
                 output_basename = vcf_filename

@@ -476,8 +476,10 @@ task IndexVcf {
     input {
         File input_vcf
 
-        Int memory_mb = 2500
+        Int memory_mb = 7500
         Int disk_size_gb = ceil(2 * size(input_vcf, "GiB")) + 200
+
+        File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     }
     Int command_mem = memory_mb - 1000
     Int max_heap = memory_mb - 500
@@ -488,6 +490,8 @@ task IndexVcf {
 
     command <<<
         set -e
+
+        bash ~{monitoring_script} > monitoring.log &
 
         # Localize the passed input_vcf to the working directory so the
         # to-be-created index file is also created there, alongside it.
@@ -509,8 +513,8 @@ task IndexVcf {
     }
 
     output {
-        File output_vcf = local_file
         File output_vcf_index = "~{local_file}~{index_extension}"
+        File monitoring_log = "monitoring.log"
     }
 }
 
