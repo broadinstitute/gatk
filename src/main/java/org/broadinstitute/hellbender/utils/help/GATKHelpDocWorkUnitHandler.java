@@ -1,15 +1,9 @@
 package org.broadinstitute.hellbender.utils.help;
 
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.barclay.argparser.NamedArgumentDefinition;
 import org.broadinstitute.barclay.help.DefaultDocWorkUnitHandler;
 import org.broadinstitute.barclay.help.DocWorkUnit;
-
 import org.broadinstitute.barclay.help.HelpDoclet;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  * The GATK Documentation work unit handler class that is the companion to GATKHelpDoclet.

@@ -75,6 +75,5 @@ public class DocumentationGenerationIntegrationTest extends CommandLineProgramTe
 
         final int retCode = jdProvider.run(System.out, System.err, args);
         Assert.assertEquals(retCode, 0);
-
     }
 }

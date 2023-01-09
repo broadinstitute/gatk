@@ -232,6 +232,7 @@ configurations {
 
 dependencies {
 
+    implementation ('org.freemarker:freemarker:2.3.30')
     implementation 'org.broadinstitute:barclay:' + barclayVersion
     // Library for configuration:
     implementation 'org.aeonbits.owner:owner:1.0.9'
