@@ -463,6 +463,7 @@ task PopulateFilterSetInfo {
       --ref-version 38 \
       --filter-set-name ~{filter_set_name} \
       -mode INDEL \
+      --classic ~{useClassic} \
       -V ~{indel_recal_file} \
       -O ~{filter_set_name}.indels.recal.tsv
 
