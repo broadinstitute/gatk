@@ -476,8 +476,10 @@ task IndexVcf {
     input {
         File input_vcf
 
-        Int memory_mb = 2500
+        Int memory_mb = 7500
         Int disk_size_gb = ceil(2 * size(input_vcf, "GiB")) + 200
+
+        File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     }
     Int command_mem = memory_mb - 1000
     Int max_heap = memory_mb - 500
@@ -488,6 +490,8 @@ task IndexVcf {
 
     command <<<
         set -e
+
+        bash ~{monitoring_script} > monitoring.log &
 
         # Localize the passed input_vcf to the working directory so the
         # to-be-created index file is also created there, alongside it.
@@ -509,8 +513,8 @@ task IndexVcf {
     }
 
     output {
-        File output_vcf = local_file
         File output_vcf_index = "~{local_file}~{index_extension}"
+        File monitoring_log = "monitoring.log"
     }
 }
 
@@ -523,14 +527,28 @@ task SelectVariants {
 
         Int memory_mb = 7500
         Int disk_size_gb = ceil(2*size(input_vcf, "GiB")) + 200
+
+        File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     }
     Int command_mem = memory_mb - 1000
     Int max_heap = memory_mb - 500
 
+    String local_vcf = basename(input_vcf)
+    String local_index = basename(input_vcf_index)
+
     command <<<
+      set -e
+
+      bash ~{monitoring_script} > monitoring.log &
+
+      # Localize the passed input_vcf and input_vcf_index to the working directory so the
+      # index and the VCF are side by side in the same directory.
+      ln -s ~{input_vcf} ~{local_vcf}
+      ln -s ~{input_vcf_index} ~{local_index}
+
       gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
         SelectVariants \
-          -V ~{input_vcf} \
+          -V ~{local_vcf} \
           -L ~{interval_list} \
           -O ~{output_basename}.vcf
     >>>
@@ -547,6 +565,7 @@ task SelectVariants {
     output {
         File output_vcf = "~{output_basename}.vcf"
         File output_vcf_index = "~{output_basename}.vcf.idx"
+        File monitoring_log = "monitoring.log"
     }
 }
 
