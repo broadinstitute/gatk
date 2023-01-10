@@ -57,11 +57,11 @@ class TestCreateVtBqloadjsonFromAnnotations(unittest.TestCase):
                 level=logging.INFO,
                 datefmt='%Y-%m-%d %H:%M:%S')
             make_annotation_json(old_annotated_positions_json, output_json.name, logging)
-        self.assertEqual(cm.exception.code, 1)  # We expect it to fail
+        self.assertEqual(cm.exception.code, 0)  # We expect it to pass with a warning
         # Print the output from the method for understanding the (expected) failure.
         print(f.getvalue())
 
-        self.assertTrue("ERROR - Found no items in annotated json file" in f.getvalue())
+        self.assertTrue("WARNING - Found no items in annotated json file" in f.getvalue())
 
 class TestMakeAnnotatedJsonRow(unittest.TestCase):
 

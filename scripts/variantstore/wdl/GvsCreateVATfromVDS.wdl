@@ -180,7 +180,7 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2023_01_05"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2023_01_10"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -225,7 +225,7 @@ task StripCustomAnnotationsFromSitesOnlyVCF {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2023_01_05"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2023_01_10"
         memory: "7 GiB"
         cpu: "2"
         preemptible: 3
@@ -449,7 +449,7 @@ task PrepVtAnnotationJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2023_01_05"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2023_01_10"
         memory: "7 GB"
         preemptible: 3
         cpu: "1"
@@ -496,7 +496,7 @@ task PrepGenesAnnotationJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2023_01_05"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2023_01_10"
         memory: "7 GB"
         preemptible: 3
         cpu: "1"

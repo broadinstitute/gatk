@@ -32,7 +32,7 @@ def make_genes_json(annotated_json, output_genes_json):
             row["gene_symbol"] = gene_line.get("name")
             omim_line = gene_line["omim"][0]
             if len(gene_line.get("omim")) > 1:
-                logging.warn("WARNING: An assumption about the possible count of omim values is incorrect.", gene_line.get("name"),len(gene_line.get("omim")))
+                logging.warning("WARNING: An assumption about the possible count of omim values is incorrect.", gene_line.get("name"),len(gene_line.get("omim")))
             row["gene_omim_id"] = omim_line.get("mimNumber")
             if omim_line.get("phenotypes") != None:
                 phenotypes = omim_line["phenotypes"]
@@ -50,8 +50,8 @@ def make_genes_json(annotated_json, output_genes_json):
     json_data.close()
 
     if gene_count == 0:
-        logging.error(f"ERROR - Found no items in annotated json file: {annotated_json}")
-        sys.exit(1)
+        logging.warning(f"WARNING - Found no items in annotated json file: {annotated_json}")
+        sys.exit(0)
 
 def make_annotation_json(annotated_json, output_genes_json, logging):
     logging.info("Making the genes json")

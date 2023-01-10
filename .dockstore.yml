@@ -142,6 +142,7 @@ workflows:
          - master
          - ah_var_store
          - gg_AddMonitoringToIndexVcf
+         - gg_AllowCreateGenesBqloadjson_To_handle_emptiness
    - name: GvsValidateVat
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/variant_annotations_table/GvsValidateVAT.wdl

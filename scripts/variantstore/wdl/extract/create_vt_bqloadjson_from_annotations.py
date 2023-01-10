@@ -109,21 +109,21 @@ gvs_subpopulations = [
 def check_filtering(variant):
     # skip any row (with a warning) if no gvsAnnotations exist
     if variant.get("gvsAnnotations") == None: # <-- enum since we need this to be in tandem with the custom annotations header / template
-        logging.warn("WARNING: There has been an error in creating custom annotations for AC/AF/AN", variant.get("vid"))
+        logging.warning("WARNING: There has been an error in creating custom annotations for AC/AF/AN", variant.get("vid"))
         return False
     # skip any row (with a warning) if the AC value is 0
     elif variant["gvsAnnotations"].get("AC") == 0:
-        logging.warn("WARNING: Its AC is 0 so we are dropping this variant", variant.get("vid"))
+        logging.warning("WARNING: Its AC is 0 so we are dropping this variant", variant.get("vid"))
         return False
     # skip any row (with a warning) if AC, AN or AF is missing
     elif variant["gvsAnnotations"].get("AC") == None:
-        logging.warn("WARNING: There has been an error-- there is no AC value---should AN be 0 for this variant?", variant.get("vid"))
+        logging.warning("WARNING: There has been an error-- there is no AC value---should AN be 0 for this variant?", variant.get("vid"))
         return False
     elif variant["gvsAnnotations"].get("AN") == None:
-        logging.warn("WARNING: There has been an error-- there is an AC value---but no AN value", variant.get("vid"))
+        logging.warning("WARNING: There has been an error-- there is an AC value---but no AN value", variant.get("vid"))
         return False
     elif variant["gvsAnnotations"].get("AF") == None:
-        logging.warn("WARNING: There has been an error-- there is an AC value---but no AF value", variant.get("vid"))
+        logging.warning("WARNING: There has been an error-- there is an AC value---but no AF value", variant.get("vid"))
         return False
     else:
         return True
@@ -330,8 +330,8 @@ def make_positions_json(annotated_json, output_json):
     json_data.close()
 
     if position_count == 0:
-        logging.error(f"ERROR - Found no items in annotated json file: {annotated_json}")
-        sys.exit(1)
+        logging.warning(f"WARNING - Found no items in annotated json file: {annotated_json}")
+        sys.exit(0)
 
 def make_annotation_json(annotated_json, output_json, logging):
     logging.info("Making the positions json")
