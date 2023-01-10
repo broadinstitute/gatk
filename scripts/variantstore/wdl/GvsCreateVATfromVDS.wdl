@@ -29,7 +29,7 @@ workflow GvsCreateVATfromVDS {
 
     File nirvana_data_directory = "gs://gvs_quickstart_storage/Nirvana/Nirvana-references-2022-10-07.tgz"
 
-    # A Log A
+    # A Log B
 
     call MakeSubpopulationFilesAndReadSchemaFiles {
         input:

@@ -548,7 +548,7 @@ task SelectVariants {
 
       gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
         SelectVariants \
-          -V ~{input_vcf} \
+          -V ~{local_vcf} \
           -L ~{interval_list} \
           -O ~{output_basename}.vcf
     >>>
