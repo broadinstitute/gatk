@@ -141,7 +141,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_AddMonitoringToIndexVcf
          - gg_AllowCreateGenesBqloadjson_To_handle_emptiness
    - name: GvsValidateVat
      subclass: WDL

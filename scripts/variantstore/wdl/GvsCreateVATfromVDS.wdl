@@ -882,10 +882,15 @@ task MergeVatTSVs {
         Int? merge_vcfs_disk_size_override
     }
 
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
     # going large with the default to make gsutil -m cp really zippy
-    Int disk_size = if (defined(merge_vcfs_disk_size_override)) then select_first([merge_vcfs_disk_size_override]) else 250
+    Int disk_size = if (defined(merge_vcfs_disk_size_override)) then select_first([merge_vcfs_disk_size_override]) else 500
 
     command <<<
+        # Kick off the monitoring script
+        bash ~{monitoring_script} > monitoring.log &
+
         apt-get update
         apt-get install tabix
 
@@ -934,5 +939,6 @@ task MergeVatTSVs {
     # Outputs:
     output {
         File tsv_file = "vat_complete.bgz.tsv.gz"
+        File monitoring_log = "monitoring.log"
     }
 }
