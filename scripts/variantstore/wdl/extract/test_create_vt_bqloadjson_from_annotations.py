@@ -61,7 +61,7 @@ class TestCreateVtBqloadjsonFromAnnotations(unittest.TestCase):
         # Print the output from the method for understanding the (expected) failure.
         print(f.getvalue())
 
-        self.assertTrue("WARNING:  Found no items in annotated json file" in f.getvalue())
+        self.assertTrue("WARNING: Found no items in annotated json file" in f.getvalue())
 
 class TestMakeAnnotatedJsonRow(unittest.TestCase):
 

@@ -330,7 +330,7 @@ def make_positions_json(annotated_json, output_json):
     json_data.close()
 
     if position_count == 0:
-        logging.warning(f"WARNING:  Found no items in annotated json file: {annotated_json}")
+        logging.warning(f"WARNING: Found no items in annotated json file: {annotated_json}")
         sys.exit(0)
 
 def make_annotation_json(annotated_json, output_json, logging):

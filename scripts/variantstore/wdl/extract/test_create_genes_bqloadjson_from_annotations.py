@@ -48,7 +48,7 @@ class TestCreateGenesBqloadjsonFromAnnotations(unittest.TestCase):
         # Print the output from the method for understanding the (expected) failure.
         print(f.getvalue())
 
-        self.assertTrue("WARNING - Found no items in annotated json file" in f.getvalue())
+        self.assertTrue("WARNING: Found no items in annotated json file" in f.getvalue())
 
     # This test tries to read an old-style json file and verifies that the program will fail if fed such a file
     def test_old(self):
@@ -73,4 +73,4 @@ class TestCreateGenesBqloadjsonFromAnnotations(unittest.TestCase):
         # Print the output from the method for understanding the (expected) failure.
         print(f.getvalue())
 
-        self.assertTrue("WARNING:  Found no items in annotated json file" in f.getvalue())
+        self.assertTrue("WARNING: Found no items in annotated json file" in f.getvalue())
