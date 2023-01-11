@@ -158,6 +158,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_vs_772
    - name: GvsWithdrawSamples
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsWithdrawSamples.wdl
