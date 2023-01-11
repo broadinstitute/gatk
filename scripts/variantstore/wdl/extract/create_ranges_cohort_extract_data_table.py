@@ -97,6 +97,7 @@ def create_extract_samples_table(control_samples, fq_destination_table_samples, 
         SELECT m.sample_id, m.sample_name, m.is_loaded, {"m.withdrawn," if honor_withdrawn else "NULL as withdrawn,"} m.is_control FROM `{fq_sample_name_table}` s JOIN
         `{fq_sample_mapping_table}` m ON (s.sample_name = m.sample_name) WHERE
              m.is_loaded IS TRUE AND m.is_control = {control_samples}
+             {"AND m.withdrawn IS NULL" if honor_withdrawn else ""}
     )
 
     """
