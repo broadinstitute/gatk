@@ -29,6 +29,8 @@ workflow GvsCreateVATfromVDS {
 
     File nirvana_data_directory = "gs://gvs_quickstart_storage/Nirvana/Nirvana-references-2022-10-07.tgz"
 
+    # A comment is here!
+
     call MakeSubpopulationFilesAndReadSchemaFiles {
         input:
             input_ancestry_file = ancestry_file
@@ -930,9 +932,9 @@ task MergeVatTSVs {
     # Runtime settings:
     runtime {
         docker: "us.gcr.io/broad-gatk/gatk:4.2.6.1"
-        memory: "2 GB"
+        memory: "4 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: "2"
         disks: "local-disk ~{disk_size} HDD"
     }
     # ------------------------------------------------
