@@ -138,7 +138,7 @@ hour or so to complete. Building on the preceding step, the following snippet va
 ```python
 >>> vds_path = "gs://delivery-bucket/delivery-path.vds"
 >>> vds = hl.vds.read_vds(vds_path)
->>> vds.validate()
+>>> vds.validate(); print("VDS validation successful!")
 ```
 
 ## Remove storage roles
