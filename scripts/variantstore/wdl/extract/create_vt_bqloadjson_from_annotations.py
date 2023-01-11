@@ -117,13 +117,13 @@ def check_filtering(variant):
         return False
     # skip any row (with a warning) if AC, AN or AF is missing
     elif variant["gvsAnnotations"].get("AC") == None:
-        logging.warning("WARNING: There has been an error-- there is no AC value---should AN be 0 for this variant?", variant.get("vid"))
+        logging.warning("WARNING: There has been an error -- there is no AC value -- should AN be 0 for this variant?", variant.get("vid"))
         return False
     elif variant["gvsAnnotations"].get("AN") == None:
-        logging.warning("WARNING: There has been an error-- there is an AC value---but no AN value", variant.get("vid"))
+        logging.warning("WARNING: There has been an error -- there is an AC value -- but no AN value", variant.get("vid"))
         return False
     elif variant["gvsAnnotations"].get("AF") == None:
-        logging.warning("WARNING: There has been an error-- there is an AC value---but no AF value", variant.get("vid"))
+        logging.warning("WARNING: There has been an error -- there is an AC value -- but no AF value", variant.get("vid"))
         return False
     else:
         return True
@@ -330,7 +330,7 @@ def make_positions_json(annotated_json, output_json):
     json_data.close()
 
     if position_count == 0:
-        logging.warning(f"WARNING - Found no items in annotated json file: {annotated_json}")
+        logging.warning(f"WARNING:  Found no items in annotated json file: {annotated_json}")
         sys.exit(0)
 
 def make_annotation_json(annotated_json, output_json, logging):

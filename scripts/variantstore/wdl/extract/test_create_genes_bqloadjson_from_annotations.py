@@ -34,7 +34,7 @@ class TestCreateGenesBqloadjsonFromAnnotations(unittest.TestCase):
 
         f = io.StringIO()
         with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(f):
-            # logging runs within its own thread, we need to configure/instantiateit here so the test can get at its stderr
+            # logging runs within its own thread, we need to configure/instantiate it here so the test can get at its stderr
             # but, if a previous test has set up logging already, then its already running in its own thread
             # So we shut down and reload it for the test to work.
             logging.shutdown()
@@ -73,4 +73,4 @@ class TestCreateGenesBqloadjsonFromAnnotations(unittest.TestCase):
         # Print the output from the method for understanding the (expected) failure.
         print(f.getvalue())
 
-        self.assertTrue("WARNING - Found no items in annotated json file" in f.getvalue())
+        self.assertTrue("WARNING:  Found no items in annotated json file" in f.getvalue())
