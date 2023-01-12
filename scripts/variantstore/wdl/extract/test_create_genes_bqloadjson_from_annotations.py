@@ -26,6 +26,30 @@ class TestCreateGenesBqloadjsonFromAnnotations(unittest.TestCase):
         expected_contents = Path(expected_output_annotated_genes_bq_json).read_text()
         self.assertEqual(contents, expected_contents)
 
+    # This test reads an empty genes json file
+    def test_empty(self):
+        empty_annotated_genes_json=dir + "test_empty_annotated_genes.json"
+
+        output_json = tempfile.NamedTemporaryFile(prefix="test_empty_output_annotated_genes_bq", suffix=".json.gz")
+
+        f = io.StringIO()
+        with self.assertRaises(SystemExit) as cm, contextlib.redirect_stderr(f):
+            # logging runs within its own thread, we need to configure/instantiate it here so the test can get at its stderr
+            # but, if a previous test has set up logging already, then its already running in its own thread
+            # So we shut down and reload it for the test to work.
+            logging.shutdown()
+            reload(logging)
+            logging.basicConfig(
+                format='%(asctime)s %(levelname)-8s %(message)s',
+                level=logging.INFO,
+                datefmt='%Y-%m-%d %H:%M:%S')
+            make_annotation_json(empty_annotated_genes_json, output_json.name, logging)
+        self.assertEqual(cm.exception.code, 0)  # We expect it to pass, with a warning
+        # Print the output from the method for understanding the (expected) failure.
+        print(f.getvalue())
+
+        self.assertTrue("WARNING: Found no items in annotated json file" in f.getvalue())
+
     # This test tries to read an old-style json file and verifies that the program will fail if fed such a file
     def test_old(self):
         # An old style (before we separated positions and genes jsons into separate files) - expected to fail
@@ -45,8 +69,8 @@ class TestCreateGenesBqloadjsonFromAnnotations(unittest.TestCase):
                 level=logging.INFO,
                 datefmt='%Y-%m-%d %H:%M:%S')
             make_annotation_json(old_annotated_genes_json, output_json.name, logging)
-        self.assertEqual(cm.exception.code, 1)  # We expect it to fail
+        self.assertEqual(cm.exception.code, 0)  # We expect it to pass, with a warning
         # Print the output from the method for understanding the (expected) failure.
         print(f.getvalue())
 
-        self.assertTrue("ERROR - Found no items in annotated json file" in f.getvalue())
+        self.assertTrue("WARNING: Found no items in annotated json file" in f.getvalue())
