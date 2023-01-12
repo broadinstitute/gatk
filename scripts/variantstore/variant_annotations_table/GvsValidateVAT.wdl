@@ -5,11 +5,11 @@ import "../wdl/GvsUtils.wdl" as Utils
 workflow GvsValidateVat {
     input {
         String query_project_id
-        String default_dataset
+        String dataset_name
         String vat_table_name
     }
 
-    String fq_vat_table = "~{query_project_id}.~{default_dataset}.~{vat_table_name}"
+    String fq_vat_table = "~{query_project_id}.~{dataset_name}.~{vat_table_name}"
 
     call Utils.GetBQTableLastModifiedDatetime {
         input:

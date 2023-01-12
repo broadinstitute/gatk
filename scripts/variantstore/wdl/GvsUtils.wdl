@@ -180,7 +180,7 @@ task GetBQTablesMaxLastModifiedTimestamp {
   input {
     String query_project
     String data_project
-    String data_dataset
+    String dataset_name
     Array[String] table_patterns
   }
   meta {
@@ -196,7 +196,7 @@ task GetBQTablesMaxLastModifiedTimestamp {
     echo "project_id = ~{query_project}" > ~/.bigqueryrc
 
     bq --project_id=~{query_project} query --format=csv --use_legacy_sql=false \
-    "SELECT UNIX_MICROS(MAX(last_modified_time)) last_modified_time FROM \`~{data_project}\`.~{data_dataset}.INFORMATION_SCHEMA.PARTITIONS WHERE table_name like '~{sep="' OR table_name like '" table_patterns}'" > results.txt
+    "SELECT UNIX_MICROS(MAX(last_modified_time)) last_modified_time FROM \`~{data_project}\`.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS WHERE table_name like '~{sep="' OR table_name like '" table_patterns}'" > results.txt
 
     tail -1 results.txt | cut -d, -f1 > max_last_modified_timestamp.txt
   >>>
@@ -432,7 +432,7 @@ task ValidateFilterSetName {
         Boolean go = true
         String filter_set_name
         String data_project
-        String data_dataset
+        String dataset_name
         String query_project = data_project
         String filter_set_info_timestamp = ""
     }
@@ -448,13 +448,13 @@ task ValidateFilterSetName {
 
         echo "project_id = ~{query_project}" > ~/.bigqueryrc
 
-        OUTPUT=$(bq --project_id=~{query_project} --format=csv query --use_legacy_sql=false ~{bq_labels} "SELECT filter_set_name as available_filter_set_names FROM \`~{data_project}.~{data_dataset}.filter_set_info\` GROUP BY filter_set_name")
+        OUTPUT=$(bq --project_id=~{query_project} --format=csv query --use_legacy_sql=false ~{bq_labels} "SELECT filter_set_name as available_filter_set_names FROM \`~{data_project}.~{dataset_name}.filter_set_info\` GROUP BY filter_set_name")
         FILTERSETS=${OUTPUT#"available_filter_set_names"}
 
         if [[ $FILTERSETS =~ "~{filter_set_name}" ]]; then
             echo "Filter set name '~{filter_set_name}' found."
         else
-            echo "ERROR: '~{filter_set_name}' is not an existing filter_set_name. Available in ~{data_project}.~{data_dataset} are"
+            echo "ERROR: '~{filter_set_name}' is not an existing filter_set_name. Available in ~{data_project}.~{dataset_name} are"
             echo $FILTERSETS
             exit 1
         fi

@@ -16,7 +16,7 @@ workflow GvsCallsetStatistics {
     call Utils.ValidateFilterSetName {
         input:
             data_project = project_id,
-            data_dataset = dataset_name,
+            dataset_name = dataset_name,
             filter_set_name = filter_set_name
     }
 

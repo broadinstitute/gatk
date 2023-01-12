@@ -3,7 +3,7 @@ version 1.0
 workflow GvsBenchmarkExtractTask {
    input {
         String data_project
-        String default_dataset
+        String dataset_name
 
         File wgs_intervals
 
@@ -18,14 +18,14 @@ workflow GvsBenchmarkExtractTask {
        # without a default value, ranges users are forced to specify a value even though it is meaningless
        String extract_table_prefix = ""
        String query_project = data_project
-       String fq_ranges_dataset = "~{data_project}.~{default_dataset}"
+       String fq_ranges_dataset = "~{data_project}.~{dataset_name}"
 
         Boolean do_not_filter_override = false
         String? filter_set_name
         Boolean? vqslod_filter_by_site
-        String fq_filter_set_info_table = "~{data_project}.~{default_dataset}.filter_set_info"
-        String fq_filter_set_site_table = "~{data_project}.~{default_dataset}.filter_set_sites"
-        String fq_filter_set_tranches_table = "~{data_project}.~{default_dataset}.filter_set_tranches"
+        String fq_filter_set_info_table = "~{data_project}.~{dataset_name}.filter_set_info"
+        String fq_filter_set_site_table = "~{data_project}.~{dataset_name}.filter_set_sites"
+        String fq_filter_set_tranches_table = "~{data_project}.~{dataset_name}.filter_set_tranches"
 
         # if these are unset, default sensitivity levels will be used
         Float? snps_truth_sensitivity_filter_level_override
@@ -48,8 +48,8 @@ workflow GvsBenchmarkExtractTask {
         File? gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/kc_vqsr_magic_20220324/gatk-package-4.2.0.0-478-gd0e381c-SNAPSHOT-local.jar"
         Int local_disk_for_extract = 150
 
-        String fq_samples_to_extract_table = "~{data_project}.~{default_dataset}.~{extract_table_prefix}__SAMPLES"
-        String fq_cohort_extract_table  = "~{data_project}.~{default_dataset}.~{extract_table_prefix}__DATA"
+        String fq_samples_to_extract_table = "~{data_project}.~{dataset_name}.~{extract_table_prefix}__SAMPLES"
+        String fq_cohort_extract_table  = "~{data_project}.~{dataset_name}.~{extract_table_prefix}__DATA"
    }
 
 

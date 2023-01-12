@@ -127,7 +127,7 @@ workflow GvsExtractCallset {
       filter_set_name = filter_set_name,
       filter_set_info_timestamp = FilterSetInfoTimestamp.last_modified_timestamp,
       data_project = project_id,
-      data_dataset = dataset_name
+      dataset_name = dataset_name
     }
   }
 
@@ -135,7 +135,7 @@ workflow GvsExtractCallset {
     input:
       query_project = query_project,
       data_project = project_id,
-      data_dataset = dataset_name,
+      dataset_name = dataset_name,
       table_patterns = tables_patterns_for_datetime_check
   }
 

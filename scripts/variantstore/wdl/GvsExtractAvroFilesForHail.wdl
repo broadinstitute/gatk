@@ -7,7 +7,7 @@ workflow GvsExtractAvroFilesForHail {
     input {
         Boolean go = true
         String project_id
-        String dataset
+        String dataset_name
         String filter_set_name
         Int scatter_width = 10
     }
@@ -15,7 +15,7 @@ workflow GvsExtractAvroFilesForHail {
     call Utils.ValidateFilterSetName {
         input:
             data_project = project_id,
-            data_dataset = dataset,
+            dataset_name = dataset_name,
             filter_set_name = filter_set_name,
     }
 
@@ -26,7 +26,7 @@ workflow GvsExtractAvroFilesForHail {
     call ExtractFromNonSuperpartitionedTables {
         input:
             project_id = project_id,
-            dataset = dataset,
+            dataset_name = dataset_name,
             filter_set_name = filter_set_name,
             avro_sibling = OutputPath.out
     }
@@ -34,14 +34,14 @@ workflow GvsExtractAvroFilesForHail {
     call Utils.CountSuperpartitions {
         input:
             project_id = project_id,
-            dataset_name = dataset
+            dataset_name = dataset_name
     }
 
     scatter (i in range(scatter_width)) {
         call ExtractFromSuperpartitionedTables {
             input:
                 project_id = project_id,
-                dataset = dataset,
+                dataset_name = dataset_name,
                 filter_set_name = filter_set_name,
                 avro_sibling = OutputPath.out,
                 num_superpartitions = CountSuperpartitions.num_superpartitions,
@@ -96,7 +96,7 @@ task ExtractFromNonSuperpartitionedTables {
     }
     input {
         String project_id
-        String dataset
+        String dataset_name
         String filter_set_name
         String avro_sibling
     }
@@ -115,7 +115,7 @@ task ExtractFromNonSuperpartitionedTables {
             uri='${avro_prefix}/sample_mapping/sample_mapping_*.avro', format='AVRO', compression='SNAPPY') AS
             SELECT sample_id, sample_name, '40',
             'gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list' as intervals_file
-            FROM \`~{project_id}.~{dataset}.sample_info\`
+            FROM \`~{project_id}.~{dataset_name}.sample_info\`
             WHERE withdrawn IS NULL AND
             is_control = false
             ORDER BY sample_id
@@ -125,7 +125,7 @@ task ExtractFromNonSuperpartitionedTables {
             EXPORT DATA OPTIONS(
             uri='${avro_prefix}/vqsr_filtering_data/vqsr_filtering_data_*.avro', format='AVRO', compression='SNAPPY') AS
             SELECT location, type as model, ref, alt, vqslod, yng_status
-            FROM \`~{project_id}.~{dataset}.filter_set_info\`
+            FROM \`~{project_id}.~{dataset_name}.filter_set_info\`
             WHERE filter_set_name = '~{filter_set_name}'
             ORDER BY location
         "
@@ -134,7 +134,7 @@ task ExtractFromNonSuperpartitionedTables {
             EXPORT DATA OPTIONS(
             uri='${avro_prefix}/site_filtering_data/site_filtering_data_*.avro', format='AVRO', compression='SNAPPY') AS
             SELECT location, filters
-            FROM \`~{project_id}.~{dataset}.filter_set_sites\`
+            FROM \`~{project_id}.~{dataset_name}.filter_set_sites\`
             WHERE filter_set_name = '~{filter_set_name}'
             ORDER BY location
         "
@@ -143,7 +143,7 @@ task ExtractFromNonSuperpartitionedTables {
             EXPORT DATA OPTIONS(
             uri='${avro_prefix}/vqsr_tranche_data/vqsr_tranche_data_*.avro', format='AVRO', compression='SNAPPY') AS
             SELECT model, truth_sensitivity, min_vqslod, filter_name
-            FROM \`~{project_id}.~{dataset}.filter_set_tranches\`
+            FROM \`~{project_id}.~{dataset_name}.filter_set_tranches\`
             WHERE filter_set_name = '~{filter_set_name}'
         "
     >>>
@@ -168,7 +168,7 @@ task ExtractFromSuperpartitionedTables {
     }
     input {
         String project_id
-        String dataset
+        String dataset_name
         String filter_set_name
         String avro_sibling
         Int num_superpartitions
@@ -198,8 +198,8 @@ task ExtractFromSuperpartitionedTables {
                 EXPORT DATA OPTIONS(
                 uri='${avro_prefix}/vets/vet_${str_table_index}/vet_${str_table_index}_*.avro', format='AVRO', compression='SNAPPY') AS
                 SELECT location, v.sample_id, ref, REPLACE(alt,',<NON_REF>','') alt, call_GT as GT, call_AD as AD, call_GQ as GQ, cast(SPLIT(call_pl,',')[OFFSET(0)] as int64) as RGQ
-                FROM \`~{project_id}.~{dataset}.vet_${str_table_index}\` v
-                INNER JOIN \`~{project_id}.~{dataset}.sample_info\` s ON s.sample_id = v.sample_id
+                FROM \`~{project_id}.~{dataset_name}.vet_${str_table_index}\` v
+                INNER JOIN \`~{project_id}.~{dataset_name}.sample_info\` s ON s.sample_id = v.sample_id
                 WHERE withdrawn IS NULL AND
                 is_control = false
                 ORDER BY location
@@ -209,8 +209,8 @@ task ExtractFromSuperpartitionedTables {
                 EXPORT DATA OPTIONS(
                 uri='${avro_prefix}/refs/ref_ranges_${str_table_index}/ref_ranges_${str_table_index}_*.avro', format='AVRO', compression='SNAPPY') AS
                 SELECT location, r.sample_id, length, state
-                FROM \`~{project_id}.~{dataset}.ref_ranges_${str_table_index}\` r
-                INNER JOIN \`~{project_id}.~{dataset}.sample_info\` s ON s.sample_id = r.sample_id
+                FROM \`~{project_id}.~{dataset_name}.ref_ranges_${str_table_index}\` r
+                INNER JOIN \`~{project_id}.~{dataset_name}.sample_info\` s ON s.sample_id = r.sample_id
                 WHERE withdrawn IS NULL AND
                 is_control = false
                 ORDER BY location
