@@ -70,6 +70,7 @@ public abstract class GenotypingEngine<Config extends StandardCallerArgumentColl
         this.samples = samples;
         this.doAlleleSpecificCalcs = doAlleleSpecificCalcs;
         logger = LogManager.getLogger(getClass());
+        oneShotLogger = new OneShotLogger(logger);
         numberOfGenomes = this.samples.numberOfSamples() * configuration.genotypeArgs.samplePloidy;
         alleleFrequencyCalculator = AlleleFrequencyCalculator.makeCalculator(configuration.genotypeArgs);
     }
