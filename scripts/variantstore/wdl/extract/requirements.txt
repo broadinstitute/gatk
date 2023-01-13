@@ -3,3 +3,4 @@ ijson
 numpy
 google-cloud-storage
 firecloud
+terra-notebook-utils

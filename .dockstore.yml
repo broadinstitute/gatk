@@ -125,7 +125,12 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - VS-816
+   - name: GvsPrepareBulkImport
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareBulkImport.wdl
+     filters:
+       branches:
+         - VS-778-spike-import-limit
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
