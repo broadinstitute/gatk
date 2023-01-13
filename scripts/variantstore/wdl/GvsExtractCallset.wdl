@@ -428,14 +428,16 @@ task GenerateSampleListFile {
   String bq_labels = "--label service:gvs --label team:variants --label managedby:extract_callset"
 
   command <<<
-    set -e
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     # Drop trailing slash if one exists
     OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
 
     echo "project_id = ~{query_project}" > ~/.bigqueryrc
 
-    bq --project_id=~{query_project} --format=csv query --use_legacy_sql=false ~{bq_labels} "SELECT sample_name FROM ~{fq_samples_to_extract_table}" | sed 1d > sample-name-list.txt
+    bq --project_id=~{query_project} --format=csv query --use_legacy_sql=false ~{bq_labels} 'SELECT sample_name FROM `~{fq_samples_to_extract_table}`' | sed 1d > sample-name-list.txt
 
     if [ -n "$OUTPUT_GCS_DIR" ]; then
       gsutil cp sample-name-list.txt ${OUTPUT_GCS_DIR}/
