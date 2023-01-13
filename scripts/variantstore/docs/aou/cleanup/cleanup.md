@@ -1,7 +1,27 @@
 # AoU callset cleanup
 
-During the normal course of creating an AoU callset several large and expensive artifacts are created:
+## Overview
 
+The current Variants policy for AoU callsets is effectively to retain all versions of all artifacts forever. As the
+storage costs for these artifacts can be significant (particularly from Delta onward), the Variants team would like to
+make the cost of retaining artifacts more clear so conscious choices can be made about what to keep and what to delete.
+
+As a general rule, any of these large artifacts that have clearly become obsolete (e.g. VDSes with known issues that
+have been superseded by corrected versions, "prepare" tables for prior callset statistics runs, etc.) should be deleted
+ASAP. If it's not clear to the Variants team whether an artifact should be cleaned up or not, we should calculate the
+monthly cost to preserve the artifact (e.g. GCS or BigQuery storage costs) as well as the cost to regenerate the
+artifact. Reach out to Lee with these numbers for his verdict on whether to keep or delete.
+
+## Specific AoU GVS Artifacts
+
+During the course of creating an AoU callset several large and expensive artifacts are created:
+
+* Pilot workspace / dataset
+    * For Delta we created an AoU 10K workspace and dataset to pilot the Hail-related processes we were using for the
+      first time. At some point our processes will mature to the point where some or all of the contents of this
+      workspace and dataset should be deleted. This is likely not an issue for discussion with Lee as it is internal to
+      the Variants team's development process, but we should be mindful to clean this up wholly or in part when we feel
+      we are done using it.
 * BigQuery dataset
     * The plan from Delta forward is to use the same BigQuery dataset for all future callsets. This was also the
       plan historically as well, but in practice that didn't work out for various reasons. For Delta in particular we
@@ -9,24 +29,15 @@ During the normal course of creating an AoU callset several large and expensive 
     * "Prepare" tables for callset statistics starting with Delta (also used for extract in pre-Delta callsets).
 * Terra workspace
     * It seems that VAT workflows may generate large amounts of data under the submissions "folder". e.g. ~10 TiB of
-      data under this folder in the AoU 10K workspace (!)
+      data under this folder in the AoU 10K workspace (!).
 * Avro files (Delta onward)
-    * These are huge, several times larger than the corresponding Hail VDS which itself is tens of TiB.
+    * These are huge, several times larger than the corresponding Hail VDS. It's not clear that there's any point to
+      keeping these files around unless there was a bug in the Hail GVS import code that required a patch and re-import.
 * Hail VariantDataset (VDS) (Delta onward)
-    * ~26 TiB for Delta
-* Pilot workspaces
-    * For Delta we created an AoU 10K workspace to pilot the various Hail-related processes we were using for the first
-      time. We should delete this at some point but it's not currently clear when.
-
-The current Variants policy for AoU callsets is effectively to retain all versions of all artifacts forever. As the
-storage costs for these artifacts can be significant (particularly from Delta onward), the Variants team would like to
-make the cost of retaining artifacts more clear so conscious choices can be made about what to keep and what to delete.
-
-As a general rule, any of these large artifacts that have clearly become obsolete (e.g. VDS versions with known issues
-that have been superseded by corrected versions, "prepare" tables for old callset statistics runs etc., entire
-lower-scale workspaces like AoU 10K) should be deleted ASAP. If it's not clear whether an artifact should be cleaned up
-or not, figure out the monthly cost to preserve the artifact (e.g. GCS or BigQuery storage costs) as well as the cost to
-regenerate the artifact. Reach out to Lee with these numbers for his verdict on whether to keep or delete.
+    * The Variants team creates a copy of the VDS and then delivers a copy to the AoU preprod datasets bucket. That copy
+      of the VDS seems to stay in the delivery location for at least a few days, but it's not clear if that copy gets
+      cleaned up after AoU later copies the VDS to production. The Variants team should not rely on this copy of the VDS
+      being available long-term.
 
 ## Signoff protocol
 
@@ -47,33 +58,26 @@ VDS callset workflow and does not use these "prepare" tables for extract). AoU D
 
 * Running
   GvsPrepareRangesCallset: [$1,803.14](https://docs.google.com/spreadsheets/d/1fcmEVWvjsx4XFLT9ZUsruUznnlB94xKgDIIyCGu6ryQ/edit#gid=0)
-* Storing "prepare" data: $878.39 / month
+* Storing "prepare" data: $878.39 / month (currently two "prepare" sets in Delta)
 
-PROPOSED: Successful completion of the internal signoff protocol should trigger a timer for deletion of the "prepare"
-tables used to generate callset statistics.
+QUESTION: Is there a point to keeping this "prepare" data around after callset statistics have been generated? If we
+needed to remove samples we'd need to generate a fresh set of "prepare" tables.
 
 QUESTION: Should successful delivery of the VDS trigger a timer for deletion of the Variants team's copy of the VDS?
 Anecdotally the Variants team has been able to access the copy of the VDS delivered to AoU for at least a couple of days
 after we "throw it over the wall", but we don't know if that copy of the VDS would remain accessible long term.
-
-PROPOSED: Regeneration of callset statistics for any reason (e.g. removal of samples) should trigger the deletion of the
-previous versions of "prepare" tables.
-
-Current Delta "prepare" tables are named like `delta_v2_no_aian_%` and `delta_v2_no_ext_aian_%`. There are multiple
-tables named with each prefix. While all the tables of a given prefix should be deleted, only the `%__VET_DATA` tables
-are large.
-
-* `delta_v2_no_aian__VET_DATA` $878.39 / month
-* `delta_v2_no_ext_aian__VET_DATA` $878.28 / month
+* Current Delta "prepare" tables are named like `delta_v2_no_aian_%` and `delta_v2_no_ext_aian_%`. There are multiple
+  tables named with each prefix. While all the tables of a given prefix should be deleted, only the `%__VET_DATA` tables
+  are large.
 
 ### Failed internal signoff
 
 If the VDS that is delivered to Lee does not get his approval, the Variants team may need to do one or more of the
 following:
 
-* Generate new callset statistics
-* Create a new VDS based on the rejected VDS
-* Re-import from Avro files
+* Generate new callset statistics => delete old "prepare" tables
+* Create a new VDS based on the rejected VDS => delete copy of rejected VDS once new VDS is generated
+* Re-import from Avro files => only if there's a bug in Hail import code?
 
 ### Avro file storage versus regeneration
 
@@ -83,7 +87,7 @@ For the ~250K sample Delta callset the Avro files consume nearly 80 TiB of GCS s
 
 Approximate figures for the ~250K sample Delta callset:
 
-* Avro storage cost: $1568 / month.
+* Avro storage cost: $1568 / month (might be lowered if could be copied to a colder bucket).
     * `76.61 TiB  gs://fc-secure-fb908548-fe3c-41d6-adaf-7ac20d541375/submissions/c86a6e8f-71a1-4c38-9e6a-f5229520641e/GvsExtractAvroFilesForHail/efb3dbe8-13e9-4542-8b69-02237ec77ca5/call-OutputPath/avro`
 * [Avro generation cost](https://docs.google.com/spreadsheets/d/1fcmEVWvjsx4XFLT9ZUsruUznnlB94xKgDIIyCGu6ryQ/edit#gid=0):
   $3000, 12 hours runtime.
@@ -98,8 +102,7 @@ above, we would need to regenerate those as well which would add significantly t
 Approximate figures for the ~250K samples Delta callset:
 
 * VDS storage cost: ~$500 / month. Note AoU should have exact copies of the VDSes we have delivered for Delta.
-    * `gs://fc-secure-fb908548-fe3c-41d6-adaf-7ac20d541375/submissions/c86a6e8f-71a1-4c38-9e6a-f5229520641e/GvsExtractAvroFilesForHail/efb3dbe8-13e9-4542-8b69-02237ec77ca5/call-OutputPath/2022-10-19-6497f023/dead_alleles_removed_vs_667_249047_samples`
-      ==> `gs://fc-secure-fb908548-fe3c-41d6-adaf-7ac20d541375/vds/2022-10-19/dead_alleles_removed_vs_667_249047_samples/gvs_export.vds`
+    * `gs://fc-secure-fb908548-fe3c-41d6-adaf-7ac20d541375/vds/2022-10-19/dead_alleles_removed_vs_667_249047_samples/gvs_export.vds`
         * First version of the callset, includes many samples that were later removed (multiple rounds of AI/AN,
           controls)
     * ~~`gs://fc-secure-fb908548-fe3c-41d6-adaf-7ac20d541375/delta_ai_an_control_filtered_2022_12_13.vds/`~~
@@ -107,25 +110,11 @@ Approximate figures for the ~250K samples Delta callset:
     * `gs://fc-secure-fb908548-fe3c-41d6-adaf-7ac20d541375/vds/01-04-2023-correct-GT` (LATEST)
 * VDS regeneration cost: $1000 (~10 hours @ ~$100 / hour cluster cost) + $3000 to regenerate Avro files if necessary.
 
-## New BigQuery Dataset required
-
-If it turns out that we need to create a new BigQuery dataset for the callset we're working on, the Variants team should
-ask Lee what we should do with the old dataset(s). Present Lee with the costs of retaining the old datasets to help him
-make his decision.
-
-## New set of "prepare" tables required
-
-If a new set of prepare tables is required it should be safe to delete the previous set.
-
-## New Avro files generated
-
-If new Avro files are generated (fully or in part) the superseded Avro files should be deleted.
-
-## New VDS generated
-
-If a new version of a VDS is being created for a callset, consider deleting the previous version.
-
 # Topics for discussion with Lee
 
-* Disposition toward pre-Delta callsets [VS-747](https://broadworkbench.atlassian.net/browse/VS-747)
-    * These are sizeable and expensive.
+* Disposition toward expensive pre-Delta callsets [VS-747](https://broadworkbench.atlassian.net/browse/VS-747)
+  * If we removed these we might not be able to generate exact copies 
+* Should we keep the first VDS generated above? `gs://fc-secure-fb908548-fe3c-41d6-adaf-7ac20d541375/vds/2022-10-19/dead_alleles_removed_vs_667_249047_samples/gvs_export.vds`
+  * Storage $500 / month, regeneration $3000 Avro + $1000 VDS
+* Should we keep a copy of the most recent VDS? `gs://fc-secure-fb908548-fe3c-41d6-adaf-7ac20d541375/vds/01-04-2023-correct-GT`
+  * Storage $500 / month, regeneration $3000 Avro + $1000 VDS
