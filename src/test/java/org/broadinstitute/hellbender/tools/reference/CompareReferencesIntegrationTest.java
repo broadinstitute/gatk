@@ -168,7 +168,6 @@ public class CompareReferencesIntegrationTest extends CommandLineProgramTest {
     }
 
     // FIND_SNPS_ONLY tests:
-
     @DataProvider(name = "findSNPsData")
     public Object[][] findSNPsData() {
         return new Object[][]{
@@ -293,69 +292,81 @@ public class CompareReferencesIntegrationTest extends CommandLineProgramTest {
         IntegrationTestSpec.assertEqualTextFiles(actualOutput, expectedOutput);
     }
 
-
-    /*@DataProvider(name = "findSNPsEquivalentSequencesData")
+    @DataProvider(name = "findSNPsEquivalentSequencesData")
     public Object[][] findSNPsEquivalentSequencesData() {
         return new Object[][]{
                 // ref1, ref2, equivalency file, output name, expected output
                 new Object[]{ new File(getToolTestDataDir() + "hg19mini.fasta"),
-                        new File(getToolTestDataDir() + "hg19mini_chr2multiplesnps.fasta"),
-                        "/Users/ocohen/workingcode/gatk/tempreferences/equivalent_sequences.tsv",
-                        "hg19mini.fasta_hg19mini_chr2multiplesnps.fasta_snps.tsv",
-                        new File(getToolTestDataDir(), "expected.hg19mini.fasta_hg19mini_chr2multiplesnps.fasta_snps.tsv"),
-                },
-                new Object[]{ new File(getToolTestDataDir() + "hg19mini.fasta"),
-                        new File(getToolTestDataDir() + "hg19mini_chr2iupacsnps.fasta"),
-                        "hg19mini.fasta_hg19mini_chr2iupacsnps.fasta_snps.tsv",
-                        new File(getToolTestDataDir(), "expected.hg19mini.fasta_hg19mini_chr2iupacsnps.fasta_snps.tsv"),
-                },
-                // produces empty output file bc FIND_SNPS_ONLY doesn't work on indels
-                new Object[]{ new File(getToolTestDataDir() + "hg19mini.fasta"),
-                        new File(getToolTestDataDir() + "hg19mini_chr1indel.fasta"),
-                        "hg19mini.fasta_hg19mini_chr1indel.fasta_snps.tsv",
-                        new File(getToolTestDataDir(), "expected.hg19mini.fasta_hg19mini_chr1indel.fasta_snps.tsv"),
-                },
+                        new File(getToolTestDataDir() + "hg19mini_1renamed_snp1and2.fasta"),
+                        new File(getToolTestDataDir() + "equivalent_sequences.tsv"),
+                        "hg19mini.fasta_hg19mini_1renamed_snp1and2.fasta_snps.tsv",
+                        new File(getToolTestDataDir(), "expected.hg19mini.fasta_hg19mini_1renamed_snp1and2.fasta_snps.tsv"),
+                }
         };
-    }*/
-    /*@Test(dataProvider = "findSNPsData")
-    public void testFindSNPs(File ref1, File ref2, File equivalentSequences, String actualOutputFileName, File expectedOutput) throws IOException{
+    }
+    @Test(dataProvider = "findSNPsEquivalentSequencesData")
+    public void testFindSNPsEquivalentSequences(File ref1, File ref2, File equivalentSequences, String actualOutputFileName, File expectedOutput) throws IOException{
         final File output = IOUtils.createTempDir("tempFindSNPs");
+
+        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-base-comparison", "FIND_SNPS_ONLY", "-base-comparison-output", output.getAbsolutePath(), "-sequences-to-align", equivalentSequences.getAbsolutePath()};
+        runCommandLine(args);
+
+        final File actualOutput = new File(output, actualOutputFileName);
+        IntegrationTestSpec.assertEqualTextFiles(actualOutput, expectedOutput);
+    }
+
+    @DataProvider(name = "fullAlignmentEquivalentSequencesData")
+    public Object[][] findFullAlignmentEquivalentSequencesData() {
+        return new Object[][]{
+                // ref1, ref2, equivalency file, output name, expected output
+                new Object[]{ new File(getToolTestDataDir() + "hg19mini.fasta"),
+                        new File(getToolTestDataDir() + "hg19mini_1renamed_snp1and2.fasta"),
+                        new File(getToolTestDataDir() + "equivalent_sequences.tsv"),
+                        "hg19mini.fasta_hg19mini_1renamed_snp1and2.fasta.vcf",
+                        new File(getToolTestDataDir(), "expected.hg19mini.fasta_hg19mini_1renamed_snp1and2.fasta.vcf"),
+                }
+        };
+    }
+    @Test(dataProvider = "fullAlignmentEquivalentSequencesData")
+    public void testFullAlignmentEquivalentSequences(File ref1, File ref2, File equivalentSequences, String actualOutputFileName, File expectedOutput) throws IOException{
+        final File output = IOUtils.createTempDir("tempFullAlignment");
+
+        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-base-comparison", "FULL_ALIGNMENT", "-base-comparison-output", output.getAbsolutePath(), "-sequences-to-align", equivalentSequences.getAbsolutePath()};
+        runCommandLine(args);
+
+        final File actualOutput = new File(output, actualOutputFileName);
+        IntegrationTestSpec.assertEqualTextFiles(actualOutput, expectedOutput);
+    }
+
+    @Test
+    public void testCasePreservation() throws IOException{
+        File ref1 = new File(getToolTestDataDir() + "hg19mini.fasta");
+        File ref2 = new File(getToolTestDataDir() + "hg19mini_snp1_casechange1.fasta");
+        final File output = IOUtils.createTempDir("tempIgnoreCaseDifferences");
+        String actualOutputFileName =  "hg19mini.fasta_hg19mini_snp1_casechange1.fasta_snps.tsv";
+        File expectedOutput = new File(getToolTestDataDir() + "expected.case_sensitive_hg19mini.fasta_hg19mini_snp1_casechange1.fasta_snps.tsv");
 
         final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-base-comparison", "FIND_SNPS_ONLY", "-base-comparison-output", output.getAbsolutePath()};
         runCommandLine(args);
 
         final File actualOutput = new File(output, actualOutputFileName);
         IntegrationTestSpec.assertEqualTextFiles(actualOutput, expectedOutput);
-    }*/
-
-    @Test
-    public void testFullAlignmentEquivalentSequences() throws IOException{
-        File ref1 = new File(getToolTestDataDir() + "hg19mini_1renamed_snp1and2.fasta");
-        File ref2 = new File(getToolTestDataDir() + "hg19mini.fasta");
-        File equivalentSeqs = new File("/Users/ocohen/workingcode/gatk/tempreferences/equivalent_sequences.tsv");
-        File output = new File("/Users/ocohen/workingcode/gatk/tempreferences/");
-
-        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-base-comparison", "FULL_ALIGNMENT", "-base-comparison-output", output.getAbsolutePath(), "-sequences-to-align", equivalentSeqs.getAbsolutePath()};
-        runCommandLine(args);
-
-        //final File actualOutput = new File(output, actualOutputFileName);
-        //IntegrationTestSpec.assertEqualTextFiles(actualOutput, expectedOutput);
     }
 
     @Test
-    public void testFindSNPsEquivalentSequences() throws IOException{
+    public void testIgnoreCaseDifferences() throws IOException{
         File ref1 = new File(getToolTestDataDir() + "hg19mini.fasta");
-        File ref2 = new File(getToolTestDataDir() + "hg19mini_1renamed_snp1and2.fasta") ;
-        File equivalentSeqs = new File("/Users/ocohen/workingcode/gatk/tempreferences/equivalent_sequences.tsv");
-        File output = new File("/Users/ocohen/workingcode/gatk/tempreferences/");
+        File ref2 = new File(getToolTestDataDir() + "hg19mini_snp1_casechange1.fasta");
+        String actualOutputFileName =  "hg19mini.fasta_hg19mini_snp1_casechange1.fasta_snps.tsv";
+        File expectedOutput = new File(getToolTestDataDir() + "expected.ignore_case_differences_hg19mini.fasta_hg19mini_snp1_casechange1.fasta_snps.tsv");
+        final File output = IOUtils.createTempDir("tempIgnoreCaseDifferences");
 
-        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-base-comparison", "FIND_SNPS_ONLY", "-base-comparison-output", output.getAbsolutePath(), "-sequences-to-align", equivalentSeqs.getAbsolutePath()};
+
+        final String[] args = new String[] {"-R", ref1.getAbsolutePath() , "-refcomp", ref2.getAbsolutePath(), "-base-comparison", "FIND_SNPS_ONLY", "-base-comparison-output", output.getAbsolutePath(), "-ignore-case-level-differences"};
         runCommandLine(args);
 
-        //final File actualOutput = new File(output, actualOutputFileName);
-        //IntegrationTestSpec.assertEqualTextFiles(actualOutput, expectedOutput);
+        final File actualOutput = new File(output, actualOutputFileName);
+        IntegrationTestSpec.assertEqualTextFiles(actualOutput, expectedOutput);
     }
-
-
 
 }

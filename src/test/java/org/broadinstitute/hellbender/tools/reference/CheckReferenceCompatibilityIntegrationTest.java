@@ -55,7 +55,7 @@ public class CheckReferenceCompatibilityIntegrationTest extends CommandLineProgr
     public Object[][] testReferenceCompatibilityBAMWithoutMD5sData() {
         return new Object[][]{
                 // reference, dictionary for comparison, expected output
-                new Object[]{ // this
+                new Object[]{
                         // exact match
                         new File(COMPARE_REFERENCES_TEST_FILES_DIRECTORY + "hg19mini.fasta"),
                         new File(getToolTestDataDir() + "reads_data_source_test1_withoutmd5s.bam"),
@@ -161,7 +161,7 @@ public class CheckReferenceCompatibilityIntegrationTest extends CommandLineProgr
     }
 
     @DataProvider(name = "testReferenceCompatibilityVCFWithoutMD5sData")
-    public Object[][] testReferenceCompatibilityVCFWithoutMD5sData() { // this
+    public Object[][] testReferenceCompatibilityVCFWithoutMD5sData() {
         return new Object[][]{
                 // reference, dictionary for comparison, expected output
                 new Object[]{
@@ -256,26 +256,4 @@ public class CheckReferenceCompatibilityIntegrationTest extends CommandLineProgr
 
         IntegrationTestSpec.assertEqualTextFiles(output, expected);
     }
-
-    // generating new test files for changed wording
-    @Test
-    public void generateTestFiles() throws IOException { // this
-        final File ref1 = new File(COMPARE_REFERENCES_TEST_FILES_DIRECTORY + "hg19mini.fasta");
-        final File ref2 = new File(getToolTestDataDir() + "example_variants_withSequenceDict_withoutmd5s.vcf");
-        final File expectedOutput = new File(getToolTestDataDir(), "expected.testReferenceCompatibilityVCFWithoutMD5s_match.table");
-
-
-        //final File ref1 = new File(COMPARE_REFERENCES_TEST_FILES_DIRECTORY + "hg19mini.fasta");
-        //final File ref2 = new File(COMPARE_REFERENCES_TEST_FILES_DIRECTORY + "hg19mini_1renamed.fasta");
-        //final File ref3 = new File(COMPARE_REFERENCES_TEST_FILES_DIRECTORY + "hg19mini_chr2snp.fasta");
-        //final File dict = new File(getToolTestDataDir() + "reads_data_source_test1_withoutmd5s.bam");
-        //final File output = createTempFile("testReferenceCompatibilityMultipleReferencesWithoutMD5s", ".table");
-        // final File expectedOutput = new File(getToolTestDataDir(), "expected.testReferenceCompatibilityMultipleReferencesBAMWithoutMD5s.table");
-
-        final String[] args = new String[] {"-refcomp", ref1.getAbsolutePath(), "-V", ref2.getAbsolutePath(), "-O", expectedOutput.getAbsolutePath()};
-        runCommandLine(args);
-
-        //IntegrationTestSpec.assertEqualTextFiles(output, expectedOutput);
-    }
-
 }

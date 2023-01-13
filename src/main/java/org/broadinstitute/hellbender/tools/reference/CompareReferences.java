@@ -120,6 +120,9 @@ public class CompareReferences extends GATKTool {
     @Argument(fullName = "sequences-to-align", doc="", optional=true)
     private GATKPath sequenceEquivalencyFile;
 
+    @Argument(fullName = "ignore-case-level-differences", doc = "If provided, FIND_SNPS mode will ignore case level differences in the MD5.", optional = true)
+    private boolean ignoreCaseLevelDifferences = false;
+
     public enum MD5CalculationMode {
         // use only MD5s found in dictionary; if MD5 missing, crashes
         USE_DICT,
@@ -169,6 +172,7 @@ public class CompareReferences extends GATKTool {
             if(referenceSources.size() != 2) {
                 throw new UserException.BadInput("Base comparison modes can only be run on 2 references.");
             }
+
         }
     }
 
@@ -194,19 +198,20 @@ public class CompareReferences extends GATKTool {
         }
 
 
-        if(baseComparisonMode != BaseComparisonMode.NO_BASE_COMPARISON && Files.exists(sequenceEquivalencyFile.toPath())){
-            // read in equivalent sequences from file, populate map to establish equivalency relationship
-            try(SequenceEquivalencyTableReader reader = new SequenceEquivalencyTableReader(sequenceEquivalencyFile.toPath())){
-                Iterator<EquivalentSequencesRecord> i = reader.iterator();
-                while(i.hasNext()){
-                    EquivalentSequencesRecord record = reader.readRecord();
-                    // add twice to hold equivalent sequences bidirectionally
-                    equivalentSequences.put(record.getSequence(), record.getEquivalentSequence());
-                    equivalentSequences.put(record.getEquivalentSequence(), record.getSequence());
+        if(baseComparisonMode != BaseComparisonMode.NO_BASE_COMPARISON){
+            if(sequenceEquivalencyFile != null){
+                // read in equivalent sequences from file, populate map to establish equivalency relationship
+                try (SequenceEquivalencyTableReader reader = new SequenceEquivalencyTableReader(sequenceEquivalencyFile.toPath())) {
+                    Iterator<EquivalentSequencesRecord> i = reader.iterator();
+                    while (i.hasNext()) {
+                        EquivalentSequencesRecord record = reader.readRecord();
+                        // add twice to hold equivalent sequences bidirectionally
+                        equivalentSequences.put(record.getSequence(), record.getEquivalentSequence());
+                        equivalentSequences.put(record.getEquivalentSequence(), record.getSequence());
+                    }
+                } catch (IOException e) {
+                    throw new UserException.BadInput("");
                 }
-            }
-            catch(IOException e){
-                throw new UserException.BadInput("");
             }
         }
 
@@ -299,7 +304,7 @@ public class CompareReferences extends GATKTool {
                 Set<ReferenceSequenceTable.TableRow> rows = table.queryBySequenceName(sequenceName);
 
                 // EQUIVALENT SEQS: equivalency relationship defined in map indicates an equivalent
-                if(Files.exists(sequenceEquivalencyFile.toPath())) {
+                if(sequenceEquivalencyFile != null) {
                     String equivalentSeq = equivalentSequences.get(sequenceName);
                     if (equivalentSeq != null) {
                         GATKPath ref1Path = refPair.getRef1();
@@ -385,16 +390,24 @@ public class CompareReferences extends GATKTool {
             VariantContextWriter writer = createVCFWriter(vcf);
             ReferenceDataSource source = ReferenceDataSource.of(refPair.getRef1().toPath())) {
 
-            Map<String, String> referenceHeaderMap = new HashMap<>();
-            referenceHeaderMap.put("ID", "1");
-            for(String s : equivalentSequences.keySet()){
-                referenceHeaderMap.put(refPair.getRef1AsString(), s);
-                referenceHeaderMap.put(refPair.getRef2AsString(), equivalentSequences.get(s));
-            }
-
             VCFHeader header = new VCFHeader();
             header.setSequenceDictionary(getReferenceDictionary());
-            header.addMetaDataLine(new VCFSimpleHeaderLine("SequenceEquivalency", referenceHeaderMap));
+
+            if(sequenceEquivalencyFile != null) {
+                Map<String, String> referenceHeaderMap = new HashMap<>();
+                int IDCounter = 1;
+                for (String s : equivalentSequences.keySet()) {
+                    String id = String.valueOf(IDCounter);
+                    referenceHeaderMap.put("ID", id);
+                    referenceHeaderMap.put("FirstReference", refPair.getRef1AsString());
+                    referenceHeaderMap.put("FirstSequence", s);
+                    referenceHeaderMap.put("SecondReference", refPair.getRef2AsString());
+                    referenceHeaderMap.put("SecondSequence", equivalentSequences.get(s));
+                    IDCounter++;
+                }
+                header.addMetaDataLine(new VCFSimpleHeaderLine("SequenceEquivalency", referenceHeaderMap));
+            }
+
             writer.writeHeader(header);
 
             MummerIndel currentIndel = null;
@@ -463,20 +476,20 @@ public class CompareReferences extends GATKTool {
      * @param table
      */
     private void runFindSNPS(ReferencePair refPair, ReferenceSequenceTable table) {
-        if(refPair.getAnalysis().contains(ReferencePair.Status.DIFFER_IN_SEQUENCE) || Files.exists(sequenceEquivalencyFile.toPath())) {
+        if(refPair.getAnalysis().contains(ReferencePair.Status.DIFFER_IN_SEQUENCE) || sequenceEquivalencyFile != null) {
             TableColumnCollection columns = new TableColumnCollection(Arrays.asList("Sequence Name", "Position", refPair.getRef1AsString(), refPair.getRef2AsString()));
             File snpsOutput = new File(baseComparisonOutputDirectory.toPath().toString(), String.format("%s_%s_snps.tsv", refPair.getRef1AsString(), refPair.getRef2AsString()));
 
-            try(FindSNPsOnlyTableWriter writer = new FindSNPsOnlyTableWriter(snpsOutput.toPath(), columns); final ReferenceDataSource source1 = ReferenceDataSource.of(refPair.getRef1().toPath(), true);
-                final ReferenceDataSource source2 = ReferenceDataSource.of(refPair.getRef2().toPath(), true)){
-                //writer.writeHeaderIfApplies();
+            boolean preserveCapitalization = !ignoreCaseLevelDifferences;
+
+            try(FindSNPsOnlyTableWriter writer = new FindSNPsOnlyTableWriter(snpsOutput.toPath(), columns); final ReferenceDataSource source1 = ReferenceDataSource.of(refPair.getRef1().toPath(), preserveCapitalization);
+                final ReferenceDataSource source2 = ReferenceDataSource.of(refPair.getRef2().toPath(), preserveCapitalization)){
+                List<SNPRecord> records = new ArrayList<>();
 
                 for (String sequenceName : table.getAllSequenceNames()) {
-                    if(Files.exists(sequenceEquivalencyFile.toPath())){
+                    if(sequenceEquivalencyFile != null){
                         String equivalentSeq = equivalentSequences.get(sequenceName);
                         if(equivalentSeq != null){
-                            writer.writeComment("Sequence Equivalency = <" + refPair.getRef1AsString() + "=" + sequenceName + "," + refPair.getRef2AsString() + "=" + equivalentSeq + ">");
-
                             int sequence1Length = source1.getSequenceDictionary().getSequence(sequenceName).getSequenceLength();
                             int sequence2Length = source2.getSequenceDictionary().getSequence(equivalentSeq).getSequenceLength();
                             if(sequence1Length != sequence2Length){
@@ -493,10 +506,9 @@ public class CompareReferences extends GATKTool {
                                 Byte ref1Allele = ref1BaseIterator.next();
                                 Byte ref2Allele = ref2BaseIterator.next();
                                 if (!ref1Allele.equals(ref2Allele)) {
-                                    writer.writeHeaderIfApplies();
-
                                     SNPRecord record = new SNPRecord(sequenceName, position, new String(new byte[]{ref1Allele}), new String(new byte[]{ref2Allele}), refPair.getRef1AsString(), refPair.getRef2AsString());
-                                    writer.writeRecord(record);
+                                    records.add(record);
+                                    //writer.writeRecord(record);
                                 }
                             }
                             if(ref1BaseIterator.hasNext() || ref2BaseIterator.hasNext()){
@@ -529,13 +541,22 @@ public class CompareReferences extends GATKTool {
                             Byte ref2Allele = ref2BaseIterator.next();
                             if (!ref1Allele.equals(ref2Allele)) {
                                 SNPRecord record = new SNPRecord(sequenceName, position, new String(new byte[]{ref1Allele}), new String(new byte[]{ref2Allele}), refPair.getRef1AsString(), refPair.getRef2AsString());
-                                writer.writeRecord(record);
+                                //writer.writeRecord(record);
+                                records.add(record);
                             }
                         }
                         if(ref1BaseIterator.hasNext() || ref2BaseIterator.hasNext()){
                             throw new GATKException.ShouldNeverReachHereException("");
                         }
                     }
+                }
+                if(sequenceEquivalencyFile != null){
+                    String equivalencyMetidata = findSNPSWriteEquivalencyMetidata(refPair);
+                    writer.writeComment(equivalencyMetidata);
+                }
+                writer.writeHeaderIfApplies();
+                for(SNPRecord r : records){
+                    writer.writeRecord(r);
                 }
             }
             catch(IOException exception){
@@ -545,6 +566,28 @@ public class CompareReferences extends GATKTool {
         else{
             logger.info("No mismatching sequences found.");
         }
+    }
+
+    public String findSNPSWriteEquivalencyMetidata(ReferencePair refPair){
+        Map<String, String> equivalencyMetidataMap = new HashMap<>();
+        for(String s : equivalentSequences.keySet()) {
+            equivalencyMetidataMap.put("FirstReference", refPair.getRef1AsString());
+            equivalencyMetidataMap.put("FirstSequence", s);
+            equivalencyMetidataMap.put("SecondReference", refPair.getRef2AsString());
+            equivalencyMetidataMap.put("SecondSequence", equivalentSequences.get(s));
+        }
+
+        String equivalencyMetidata = "##SequenceEquivalency=<";
+        int count = 1;
+        for (String str : equivalencyMetidataMap.keySet()) {
+            if (count == equivalencyMetidataMap.size()) {
+                equivalencyMetidata += str + "=" + equivalencyMetidataMap.get(str) + ">";
+            } else {
+                equivalencyMetidata += str + "=" + equivalencyMetidataMap.get(str) + ",";
+            }
+            count++;
+        }
+        return equivalencyMetidata;
     }
 
     /**
