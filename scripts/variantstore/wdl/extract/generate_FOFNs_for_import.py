@@ -1,6 +1,9 @@
 import os
 import argparse
 
+from terra_notebook_utils import table
+from terra_notebook_utils import workspace
+
 from google.cloud import storage
 from pathlib import Path
 
@@ -19,15 +22,14 @@ def generate_FOFNs_from_data_table(data_table_name, vcf_files_column_name, vcf_i
     sample_names_file = open(sample_names_file_name, "w")
 
     # Replace this with the actual data in the tables later
-    sample_names_file.write("Writing some name stuff\n")
-    vcf_files.write("Writing some vcf paths\n")
-    vcf_index_files.write("Writing some vcf index paths\n")
+    for row in table.list_rows(data_table_name):
+        sample_names_file.write(f"{row.name}\n")
+        vcf_files.write(f'{row.attributes[vcf_files_column_name]}\n')
+        vcf_index_files.write(f'{row.attributes[vcf_index_files_column_name]}\n')
 
     vcf_files.close()
     vcf_index_files.close()
     sample_names_file.close()
-
-    return f'I did a thing and copied data from {data_table_name} to files!'
 
 
 if __name__ == '__main__':
