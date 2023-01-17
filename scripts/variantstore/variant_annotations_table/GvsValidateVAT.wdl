@@ -801,6 +801,93 @@ task SubpopulationAlleleNumber {
     }
 }
 
+task DuplicateAnnotations {
+    input {
+        String query_project_id
+        String fq_vat_table
+        String last_modified_timestamp
+    }
+    # there are vids with duplicate annotations
+    # make sure there aren't matching sites with mis-matched ANs and matching variants with mis-matched ACs
+
+    String pf_file = "pf.txt"
+    String results_file = "results.txt"
+
+    command <<<
+        set -e
+
+        echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
+
+        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT * from
+        (SELECT contig, position, gvs_all_an, COUNT(DISTINCT gvs_all_an) AS an_count FROM `~{fq_vat_table}`
+        group by contig, position, gvs_all_an)
+        where  an_count >1
+        ' > bq_an_output.csv
+
+        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT * from
+        (SELECT contig, position, vid, gvs_all_ac, COUNT(DISTINCT gvs_all_ac) AS ac_count FROM `~{fq_vat_table}`
+        group by contig, position, vid, gvs_all_ac)
+        where  ac_count >1
+        ' > bq_ac_output.csv
+
+        # get number of lines in bq query output
+        NUMANRESULTS=$(awk 'END{print NR}' bq_an_output.csv)
+        NUMACRESULTS=$(awk 'END{print NR}' bq_ac_output.csv)
+
+
+
+
+
+        echo "false" > ~{pf_file}
+        # if the result of the query has any rows, that means there are sites with mis-matched gvs_all_an
+        if [[ $NUMANRESULTS = "0" ]]; then
+          echo "The VAT table ~{fq_vat_table} has a correct calculation for AN and the AN of subpopulations" > ~{results_file}
+          echo "true" > ~{pf_file}
+       # if the result of the query has any rows, that means there are variants with mis-matched gvs_all_ac
+        else if [[ $NUMACRESULTS = "0" ]]; then
+          echo "The VAT table ~{fq_vat_table} has a correct calculation for AN and the AN of subpopulations" > ~{results_file}
+          echo "true" > ~{pf_file}
+        else
+          echo "The VAT table ~{fq_vat_table} has mis-matched gvs_all_an or mis-matched gvs_all_ac calculations" > ~{results_file}
+        fi
+
+
+        echo "false" > ~{pf_file}
+        # if the result of the query has any rows, that means there are sites with mis-matched gvs_all_an
+        if [[ $NUMANRESULTS = "0" ]]; then
+          echo "The VAT table ~{fq_vat_table} has correct calculations for AN across sites" > ~{results_file}
+          echo "true" > ~{pf_file}
+        else
+          echo "The VAT table ~{fq_vat_table} has a site with mis-matched gvs_all_an values" > ~{results_file}
+        fi
+
+
+        echo "false" > ~{pf_file}
+        # if the result of the query has any rows, that means there are variants with mis-matched gvs_all_ac
+        if [[ $NUMACRESULTS = "0" ]]; then
+          echo "The VAT table ~{fq_vat_table} has correct calculations for AC across variants" > ~{results_file}
+          echo "true" > ~{pf_file}
+        else
+          echo "The VAT table ~{fq_vat_table} has a variant with mis-matched gvs_all_ac values" > ~{results_file}
+        fi
+    >>>
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:305.0.0"
+        memory: "1 GB"
+        preemptible: 3
+        cpu: "1"
+        disks: "local-disk 100 HDD"
+    }
+    output {
+        Boolean pass = read_boolean(pf_file)
+        String name = "SubpopulationAlleleNumber"
+        String result = read_string(results_file)
+    }
+}
+
+
 task ClinvarSignificance {
     input {
         String project_id
