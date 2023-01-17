@@ -125,8 +125,7 @@ workflow GvsCreateFilterSet {
   }
 
   # From this point, the paths diverge depending on whether they're using classic VQSR or VQSR-Lite
-  # The first branch here is the new way, and the second is the old VQSR
-  # This is the new VQSR-Lite implementation
+  # The first branch here is VQSR-Lite, and the second is classic VQSR
   if (!use_classic_VQSR) {
     call VQSRLite.JointVcfFiltering as JointVcfFiltering {
       input:
