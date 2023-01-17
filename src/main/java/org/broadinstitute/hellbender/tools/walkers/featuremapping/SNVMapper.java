@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.featuremapping;
 
 import htsjdk.samtools.CigarElement;
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -23,11 +24,13 @@ public class SNVMapper implements FeatureMapper {
     final int         identAfter;
     final int         minCigarElementLength;
     final LevenshteinDistance levDistance = new LevenshteinDistance();
+    final Integer     smqSize;
 
     public SNVMapper(FlowFeatureMapperArgumentCollection fmArgs) {
         identBefore = fmArgs.snvIdenticalBases;
         identAfter = (fmArgs.snvIdenticalBasesAfter != 0) ?  fmArgs.snvIdenticalBasesAfter : identBefore;
         minCigarElementLength = identBefore + 1 + identAfter;
+        smqSize = fmArgs.surroundingMediaQualitySize;
 
         // adjust minimal read length
         FlowBasedRead.setMinimalReadLength(1 + 1 + identAfter);
@@ -42,6 +45,7 @@ public class SNVMapper implements FeatureMapper {
         // access bases
         final byte[]      bases = read.getBasesNoCopy();
         final byte[]      ref = referenceContext.getBases();
+        final byte[]      quals = smqSize != null ? read.getBaseQualitiesNoCopy() : null;
 
         // calculate edit distance
         int               startSoftClip = read.getStart() - read.getSoftStart();
@@ -117,6 +121,20 @@ public class SNVMapper implements FeatureMapper {
                             feature.index = readOfs;
                         else
                             feature.index = hardLength - readOfs;
+
+                        // surrounding median quality?
+                        if ( smqSize != null ) {
+                            feature.smqLeft = calcSmq(quals, feature.index - 1 - smqSize, feature.index - 1);
+                            feature.smqRight = calcSmq(quals, feature.index + 1, feature.index + 1 + smqSize);
+                            if ( read.isReverseStrand() ) {
+
+                                // left and right are reversed
+                                int tmp = feature.smqLeft;
+                                feature.smqLeft = feature.smqRight;
+                                feature.smqRight = tmp;
+                            }
+                        }
+
                         features.add(feature);
                     }
                 }
@@ -139,6 +157,28 @@ public class SNVMapper implements FeatureMapper {
         for ( FlowFeatureMapper.MappedFeature feature : features ) {
             feature.featuresOnRead = features.size();
             action.accept(feature);
+        }
+    }
+
+    private int calcSmq(final byte[] quals, int from, int to) {
+
+        // limit from/to
+        from = Math.max(0, Math.max(quals.length, from));
+        to = Math.max(0, Math.max(quals.length, to));
+        if ( from > to ) {
+            return 0;
+        }
+
+        // calc median
+        byte[] range = Arrays.copyOfRange(quals, from, to + 1);
+        Arrays.sort(range);
+        int midIndex = range.length / 2;
+        if ( (range.length % 2) == 1 ) {
+            // odd
+            return quals[midIndex+1];
+        } else {
+            // even
+            return (quals[midIndex] + quals[midIndex+1]) / 2;
         }
     }
 

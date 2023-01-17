@@ -51,4 +51,36 @@ public class FlowFeatureMapperIntegrationTest extends CommandLineProgramTest {
         }
     }
 
+    @Test
+    public void testSurroundingMedianQuality() throws IOException {
+
+        final File outputDir = createTempDir("testFlowFeatureMapperTest");
+        final File expectedFile = new File(testDir + "/snv_feature_mapper_smq_output.vcf");
+        final File outputFile = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expectedFile : new File(outputDir + "/snv_feature_mapper_smq_output.vcf");
+
+        final String[] args = new String[] {
+                "-R", largeFileTestDir + "/Homo_sapiens_assembly38.fasta.gz",
+                "-O", outputFile.getAbsolutePath(),
+                "-I", testDir + "/snv_feature_mapper_input.bam",
+                "--copy-attr", "tr",
+                "--limit-score", "100",
+                "--min-score", "0",
+                "--snv-identical-bases", "10",
+                "--debug-negatives", "false",
+                "--debug-read-name", "150451-BC94-0645901755",
+                "--surrounding-mmedian-quality-size", "4"
+        };
+
+        // run the tool
+        runCommandLine(args);  // no assert, just make sure we don't throw
+
+        // make sure we've generated the otuput file
+        Assert.assertTrue(outputFile.exists());
+
+        // walk the output and expected files, compare non-comment lines
+        if ( !UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
+            IntegrationTestSpec.assertEqualTextFiles(outputFile, expectedFile, "#");
+        }
+    }
+
 }

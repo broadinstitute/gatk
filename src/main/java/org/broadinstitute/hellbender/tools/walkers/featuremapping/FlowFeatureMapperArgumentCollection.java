@@ -102,4 +102,11 @@ public class FlowFeatureMapperArgumentCollection implements Serializable{
     @Hidden
     @Argument(fullName = "debug-read-name", doc = "debug specific reads?", optional = true)
     public List<String> debugReadName = null;
+
+    /**
+     *  surrounding media quality (size) - if not specified, this feature is off
+     **/
+    @Hidden
+    @Argument(fullName = "surrounding-mmedian-quality-size", doc = "number of bases around the feature to calculate surrounding median quality", optional = true)
+    public Integer surroundingMediaQualitySize = null;
 }

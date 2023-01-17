@@ -97,6 +97,8 @@ public final class FlowFeatureMapper extends ReadWalker {
     private static final String     VCF_LENGTH = "X_LENGTH";
     private static final String     VCF_EDIST = "X_EDIST";
     private static final String     VCF_INDEX = "X_INDEX";
+    private static final String     VCF_SMQ_LEFT = "X_SMQ_LEFT";
+    private static final String     VCF_SMQ_RIGHT = "X_SMQ_RIGHT";
 
     private static final Double     LOWEST_PROB = 0.0001;
 
@@ -166,6 +168,8 @@ public final class FlowFeatureMapper extends ReadWalker {
         int         featuresOnRead;
         int         refEditDistance;
         int         index;
+        int         smqLeft;
+        int         smqRight;
 
         public MappedFeature(GATKRead read, FlowFeatureMapperArgumentCollection.MappingFeatureEnum  type, byte[] readBases,
                              byte[] refBases, int readBasesOffset, int start, int offsetDelta) {
@@ -303,6 +307,8 @@ public final class FlowFeatureMapper extends ReadWalker {
         headerInfo.add(new VCFInfoHeaderLine(VCF_LENGTH, 1, VCFHeaderLineType.Integer, "Read length"));
         headerInfo.add(new VCFInfoHeaderLine(VCF_EDIST, 1, VCFHeaderLineType.Integer, "Read Levenshtein edit distance from reference"));
         headerInfo.add(new VCFInfoHeaderLine(VCF_INDEX, 1, VCFHeaderLineType.Integer, "Ordinal index, from start of the read, where the feature was found"));
+        headerInfo.add(new VCFInfoHeaderLine(VCF_SMQ_LEFT, 1, VCFHeaderLineType.Integer, "Ordinal Median quality of N bases to the left of the feature"));
+        headerInfo.add(new VCFInfoHeaderLine(VCF_SMQ_RIGHT, 1, VCFHeaderLineType.Integer, "Ordinal Median quality of N bases to the right of the feature"));
         for ( String name : fmArgs.copyAttr ) {
             headerInfo.add(new VCFInfoHeaderLine(fmArgs.copyAttrPrefix + name, 1, VCFHeaderLineType.String, "copy-attr: " + name));
         }
@@ -602,6 +608,13 @@ public final class FlowFeatureMapper extends ReadWalker {
         vcb.attribute(VCF_LENGTH, fr.read.getLength());
         vcb.attribute(VCF_EDIST, fr.refEditDistance);
         vcb.attribute(VCF_INDEX, fr.index);
+
+        // median quality on?
+        if ( fmArgs.surroundingMediaQualitySize != null ) {
+            vcb.attribute(VCF_SMQ_LEFT, fr.smqLeft);
+            vcb.attribute(VCF_SMQ_RIGHT, fr.smqRight);
+        }
+
         for ( String name : fmArgs.copyAttr ) {
             if ( fr.read.hasAttribute(name) ) {
                 vcb.attribute(fmArgs.copyAttrPrefix + name, fr.read.getAttributeAsString(name));
