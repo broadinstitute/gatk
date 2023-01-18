@@ -51,6 +51,7 @@ task GenerateFOFNsFromDataTables {
         set -o errexit -o nounset -o xtrace -o pipefail
 
         export GOOGLE_PROJECT='~{project_id}'
+        export WORKSPACE_NAMESPACE='~{project_id}'
         export WORKSPACE_NAME='~{workspace_name}'
         export WORKSPACE_BUCKET='~{workspace_bucket}'
 
