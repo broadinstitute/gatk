@@ -4,7 +4,8 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvePrepareBulkImport {
     input {
-        Boolean go = true
+        String workspace_name
+        String workspace_bucket
         String samples_table_name = "sample"
         String vcf_files_column_name = "hg38_reblocked_v2_vcf"
         String vcf_index_files_column_name = "hg38_reblocked_v2_vcf_index"
@@ -12,6 +13,8 @@ workflow GvePrepareBulkImport {
 
     call GenerateFOFNsFromDataTables {
         input:
+            workspace_name = workspace_name,
+            workspace_bucket  = workspace_bucket,
             samples_table_name = samples_table_name,
             vcf_files_column_name = vcf_files_column_name,
             vcf_index_files_column_name = vcf_index_files_column_name
@@ -25,7 +28,8 @@ workflow GvePrepareBulkImport {
 
 task GenerateFOFNsFromDataTables {
     input {
-        Boolean go = true
+        String workspace_name
+        String workspace_bucket
         String samples_table_name = "sample"
         String vcf_files_column_name = "hg38_reblocked_v2_vcf"
         String vcf_index_files_column_name = "hg38_reblocked_v2_vcf_index"
@@ -42,6 +46,9 @@ task GenerateFOFNsFromDataTables {
 
     command <<<
         set -o errexit -o nounset -o xtrace -o pipefail
+
+        export WORKSPACE_NAME=~{workspace_name}
+        export WORKSPACE_BUCKET=~{workspace_bucket}
 
         python3 /app/generate_FOFNs_for_import.py \
         --data_table_name ~{samples_table_name} \
