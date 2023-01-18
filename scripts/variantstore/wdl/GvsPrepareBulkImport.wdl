@@ -23,9 +23,9 @@ workflow GvePrepareBulkImport {
     }
 
     output {
-        File sampleFOFN = GenerateFOFNsFromDataTables.sample_names_file_name
-        File vcfFOFN = GenerateFOFNsFromDataTables.vcf_files_name
-        File vcfIndexFOFN = GenerateFOFNsFromDataTables.vcf_index_files_name
+        File sampleFOFN = GenerateFOFNsFromDataTables.sampleFOFN
+        File vcfFOFN = GenerateFOFNsFromDataTables.vcfFOFN
+        File vcfIndexFOFN = GenerateFOFNsFromDataTables.vcfIndexFOFN
     }
 }
 
