@@ -268,6 +268,8 @@ task ExtractTask {
   String intervals_name = basename(intervals)
   String cost_observability_line = if (write_cost_to_db == true) then "--cost-observability-tablename ~{cost_observability_tablename}" else ""
 
+  String inferred_reference_state = if (drop_state == "NONE") then "ZERO" else drop_state
+
   command <<<
     set -e
     export GATK_LOCAL_JAR="~{default="/root/gatk.jar" gatk_override}"
@@ -292,7 +294,7 @@ task ExtractTask {
         -O ~{output_file} \
         --local-sort-max-records-in-ram ~{local_sort_max_records_in_ram} \
         --sample-table ~{fq_samples_to_extract_table} \
-        ~{"--inferred-reference-state " + drop_state} \
+        ~{"--inferred-reference-state " + inferred_reference_state} \
         -L ~{intervals} \
         --project-id ~{read_project_id} \
         ~{true='--emit-pls' false='' emit_pls} \
