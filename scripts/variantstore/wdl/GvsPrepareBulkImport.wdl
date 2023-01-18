@@ -47,7 +47,7 @@ task GenerateFOFNsFromDataTables {
     command <<<
         set -o errexit -o nounset -o xtrace -o pipefail
 
-        export WORKSPACE_NAME=~{workspace_name}
+        export WORKSPACE_NAME='~{workspace_name}'
         export WORKSPACE_BUCKET=~{workspace_bucket}
 
         python3 /app/generate_FOFNs_for_import.py \
