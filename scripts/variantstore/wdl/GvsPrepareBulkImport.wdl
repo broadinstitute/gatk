@@ -58,7 +58,7 @@ task GenerateFOFNsFromDataTables {
         python3 /app/generate_FOFNs_for_import.py \
         --data_table_name ~{samples_table_name} \
         --vcf_files_column_name ~{vcf_files_column_name} \
-        --vcf_index_files_column_name ~{vcf_index_files_column_name}}
+        --vcf_index_files_column_name ~{vcf_index_files_column_name}
 
     >>>
     runtime {
