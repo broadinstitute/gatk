@@ -4,6 +4,7 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvePrepareBulkImport {
     input {
+        String project_name
         String workspace_name
         String workspace_bucket
         String samples_table_name = "sample"
@@ -13,6 +14,7 @@ workflow GvePrepareBulkImport {
 
     call GenerateFOFNsFromDataTables {
         input:
+            project_name = project_name,
             workspace_name = workspace_name,
             workspace_bucket  = workspace_bucket,
             samples_table_name = samples_table_name,
@@ -28,6 +30,7 @@ workflow GvePrepareBulkImport {
 
 task GenerateFOFNsFromDataTables {
     input {
+        String project_name
         String workspace_name
         String workspace_bucket
         String samples_table_name = "sample"
@@ -47,8 +50,9 @@ task GenerateFOFNsFromDataTables {
     command <<<
         set -o errexit -o nounset -o xtrace -o pipefail
 
+        export GOOGLE_PROJECT='~{project_name}'
         export WORKSPACE_NAME='~{workspace_name}'
-        export WORKSPACE_BUCKET=~{workspace_bucket}
+        export WORKSPACE_BUCKET='~{workspace_bucket}'
 
         python3 /app/generate_FOFNs_for_import.py \
         --data_table_name ~{samples_table_name} \
