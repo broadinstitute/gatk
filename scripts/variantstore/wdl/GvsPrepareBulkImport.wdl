@@ -22,12 +22,14 @@ workflow GvePrepareBulkImport {
             vcf_index_files_column_name = vcf_index_files_column_name
     }
 
-
     output {
-        Boolean done = false
+        File sampleFOFN = GenerateFOFNsFromDataTables.sample_names_file_name
+        File vcfFOFN = GenerateFOFNsFromDataTables.vcf_files_name
+        File vcfIndexFOFN = GenerateFOFNsFromDataTables.vcf_index_files_name
     }
 }
 
+# This copies the entirety of the data tables over.  We'll want a different task to make FOFNs for just a sample set
 task GenerateFOFNsFromDataTables {
     input {
         String project_id
@@ -41,11 +43,6 @@ task GenerateFOFNsFromDataTables {
     String sample_names_file_name = "sample_names.txt"
     String vcf_files_name = "vcf_files.txt"
     String vcf_index_files_name = "vcf_index_files.txt"
-
-    meta {
-        # because this is being used to determine the current state of the GVS database, never use call cache
-        volatile: false
-    }
 
     command <<<
         set -o errexit -o nounset -o xtrace -o pipefail
