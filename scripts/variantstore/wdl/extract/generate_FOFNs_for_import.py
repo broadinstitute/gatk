@@ -23,7 +23,7 @@ def generate_FOFNs_from_data_table(data_table_name, sample_id_column_name, vcf_f
     sample_names_file = open(sample_names_file_name, "w")
     error_file = open(error_file_name, "w")
 
-    # Replace this with the actual data in the tables later
+    count = 0
     for row in table.list_rows(data_table_name):
         try:
             current_sample_name = row.attributes[sample_id_column_name]
