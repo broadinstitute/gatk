@@ -68,7 +68,7 @@ task BigQueryExportVat {
         compression="GZIP",
         overwrite=true,
         header=false,
-        field_delimiter=" ") AS
+        field_delimiter="\t") AS
         SELECT
         vid,
         transcript,
