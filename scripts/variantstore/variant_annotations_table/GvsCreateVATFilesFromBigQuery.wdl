@@ -54,6 +54,10 @@ task BigQueryExportVat {
     String export_path = output_path + "export/" + contig + "/*.tsv.gz"
 
     command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+        
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
         # note: tab delimiter and compression creates tsv.gz files
@@ -64,7 +68,7 @@ task BigQueryExportVat {
         compression="GZIP",
         overwrite=true,
         header=false,
-        field_delimiter=" ") AS
+        field_delimiter=tab) AS
         SELECT
         vid,
         transcript,
@@ -176,7 +180,7 @@ task BigQueryExportVat {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "openbridge/ob_google-bigquery:latest"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:413.0.0-alpine"
         memory: "2 GB"
         preemptible: 3
         cpu: "1"
@@ -206,7 +210,9 @@ task MergeVatTSVs {
     command <<<
         # Kick off the monitoring script
         bash ~{monitoring_script} > monitoring.log &
-
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
         apt-get update
         apt-get install tabix
 
@@ -221,7 +227,7 @@ task MergeVatTSVs {
         for i in "${contigs[@]}"
         do
             echo_date "copying files from ~{output_path}export/$i/*.tsv.gz"
-            gsutil -m cp ~{output_path}export/$i/*.tsv.gz TSVs/
+            gcloud storage cp ~{output_path}export/$i/*.tsv.gz TSVs/
             echo_date "concatenating local tsv.gz files"
 
             # the internet says that * is deterministic, see https://serverfault.com/questions/122737/in-bash-are-wildcard-expansions-guaranteed-to-be-in-order
@@ -240,12 +246,12 @@ task MergeVatTSVs {
         echo_date "bgzipping concatenated file"
         cat vat_complete.tsv.gz | gunzip | bgzip > vat_complete.bgz.tsv.gz
         echo_date "copying bgzipped file to ~{output_path}"
-        gsutil -m cp vat_complete.bgz.tsv.gz ~{output_path}
+        gcloud storage cp vat_complete.bgz.tsv.gz ~{output_path}
     >>>
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-gatk/gatk:4.2.6.1"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:413.0.0-slim"
         memory: "4 GB"
         preemptible: 3
         cpu: "2"
