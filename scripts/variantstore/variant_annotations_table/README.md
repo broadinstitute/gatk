@@ -14,11 +14,10 @@ The pipeline takes in jointVCFs (and their index files), creates a queryable tab
 ### Run GvsCreateVATfromVDS:
 
 Most of the inputs are constants — like the reference, or a table schema — and don't require any additional work, or have defaults set in the WDL). 
-However for the specific data being put in the VAT, three inputs need to be created.
+However for the specific data being put in the VAT, two inputs need to be created.
 
-The first of these inputs is a Sites Only VCF
-The second of these inputs is a TSV of custom annotations (AC AN and AF)
-The third input is the ancestry file from the ancestry pipeline which will be used to calculate AC, AN and AF for all subpopulations. It needs to be copied into a GCP bucket that this pipeline will have access to. This input has been labelled as the `ancestry_file`.
+The first of these inputs is a Sites Only VCF (We affectionately call it a Decorated Sites Only VCF because it also includes subpopulation level calculations for AC AN, AF and SC)
+The second input is the ancestry file from the ancestry pipeline which will be used to calculate AC, AN and AF for all subpopulations. It needs to be copied into a GCP bucket that this pipeline will have access to. This input has been labelled as the `ancestry_file`.
 
 Most of the other files are specific to where the VAT will live, like the project_id and dataset_name and the table_suffix which will name the VAT itself as vat_`table_suffix` as well as a GCP bucket location, the output_path, for the intermediary files and the VAT export in TSV form.
 
