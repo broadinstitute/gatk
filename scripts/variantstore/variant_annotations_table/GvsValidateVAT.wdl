@@ -835,9 +835,6 @@ task DuplicateAnnotations {
         NUMACRESULTS=$(awk 'END{print NR}' bq_ac_output.csv)
 
 
-
-
-
         echo "false" > ~{pf_file}
         # if the result of the query has any rows, that means there are sites with mis-matched gvs_all_an
         if [[ $NUMANRESULTS = "0" ]]; then
