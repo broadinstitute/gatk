@@ -8,6 +8,7 @@ workflow GvsPrepareBulkImport {
         String workspace_name
         String workspace_bucket
         String samples_table_name = "sample"
+        String sample_id_column_name = "sample_id"
         String vcf_files_column_name = "hg38_reblocked_v2_vcf"
         String vcf_index_files_column_name = "hg38_reblocked_v2_vcf_index"
     }
@@ -18,6 +19,7 @@ workflow GvsPrepareBulkImport {
             workspace_name = workspace_name,
             workspace_bucket  = workspace_bucket,
             samples_table_name = samples_table_name,
+            sample_id_column_name = sample_id_column_name,
             vcf_files_column_name = vcf_files_column_name,
             vcf_index_files_column_name = vcf_index_files_column_name
     }
@@ -36,6 +38,7 @@ task GenerateFOFNsFromDataTables {
         String workspace_name
         String workspace_bucket
         String samples_table_name = "sample"
+        String sample_id_column_name = "sample_id"
         String vcf_files_column_name = "hg38_reblocked_v2_vcf"
         String vcf_index_files_column_name = "hg38_reblocked_v2_vcf_index"
     }
@@ -43,6 +46,7 @@ task GenerateFOFNsFromDataTables {
     String sample_names_file_name = "sample_names.txt"
     String vcf_files_name = "vcf_files.txt"
     String vcf_index_files_name = "vcf_index_files.txt"
+    String error_file_name = "errors.txt"
 
     command <<<
         set -o errexit -o nounset -o xtrace -o pipefail
@@ -54,12 +58,13 @@ task GenerateFOFNsFromDataTables {
 
         python3 /app/generate_FOFNs_for_import.py \
         --data_table_name ~{samples_table_name} \
+        --sample_id_column_name ~{sample_id_column_name} \
         --vcf_files_column_name ~{vcf_files_column_name} \
         --vcf_index_files_column_name ~{vcf_index_files_column_name}
 
     >>>
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-1-13-FOFN_1"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-1-19-FOFN"
         memory: "3 GB"
         disks: "local-disk 10 HDD"
         cpu: 1
@@ -69,5 +74,6 @@ task GenerateFOFNsFromDataTables {
         File sampleFOFN = sample_names_file_name
         File vcfFOFN = vcf_files_name
         File vcfIndexFOFN = vcf_index_files_name
+        File errors = error_file_name
     }
 }
