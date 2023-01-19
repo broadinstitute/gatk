@@ -136,7 +136,7 @@ workflow GvsCreateVATfromVDS {
    }
 
     output {
-        File final_tsv_file = GvsCreateVATFilesFromBigQuery.tsv_file
+        File final_tsv_file = GvsCreateVATFilesFromBigQuery.final_tsv_file
         File dropped_sites_file = MergeTsvs.output_file
     }
 }
