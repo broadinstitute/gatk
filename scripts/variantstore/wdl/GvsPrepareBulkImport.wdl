@@ -28,6 +28,7 @@ workflow GvsPrepareBulkImport {
         File sampleFOFN = GenerateFOFNsFromDataTables.sampleFOFN
         File vcfFOFN = GenerateFOFNsFromDataTables.vcfFOFN
         File vcfIndexFOFN = GenerateFOFNsFromDataTables.vcfIndexFOFN
+        File errorRows = GenerateFOFNsFromDataTables.errors
     }
 }
 
