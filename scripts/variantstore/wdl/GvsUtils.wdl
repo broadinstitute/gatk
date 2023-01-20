@@ -478,9 +478,10 @@ task IndexVcf {
 
         Int memory_mb = 7500
         Int disk_size_gb = ceil(2 * size(input_vcf, "GiB")) + 200
-
-        File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     }
+
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
     Int command_mem = memory_mb - 1000
     Int max_heap = memory_mb - 500
 
@@ -527,9 +528,10 @@ task SelectVariants {
 
         Int memory_mb = 7500
         Int disk_size_gb = ceil(2*size(input_vcf, "GiB")) + 200
-
-        File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     }
+
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
     Int command_mem = memory_mb - 1000
     Int max_heap = memory_mb - 500
 

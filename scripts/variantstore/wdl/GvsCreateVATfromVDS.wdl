@@ -180,7 +180,7 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2023_01_05"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2023_01_11"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -205,9 +205,9 @@ task StripCustomAnnotationsFromSitesOnlyVCF {
         File custom_annotations_header
         String output_vcf_name
         String output_custom_annotations_filename
-        File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     }
 
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     Int disk_size = ceil((size(input_vcf, "GB") + size(custom_annotations_header, "GB")) * 4) + 100
 
     command <<<
@@ -225,7 +225,7 @@ task StripCustomAnnotationsFromSitesOnlyVCF {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2023_01_05"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2023_01_11"
         memory: "7 GiB"
         cpu: "2"
         preemptible: 3
@@ -245,9 +245,9 @@ task RemoveDuplicatesFromSitesOnlyVCF {
     input {
         File sites_only_vcf
         File ref
-        File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     }
 
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     Int disk_size = ceil(size(sites_only_vcf, "GB") * 5) + 100
 
     # separate multi-allelic sites into their own lines, remove deletions and filtered sites and make a sites only vcf
@@ -333,8 +333,10 @@ task AnnotateVCF {
         String output_annotated_file_name
         File nirvana_data_tar
         File custom_annotations_file
-        File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     }
+
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
     String annotation_json_name = output_annotated_file_name + ".json.gz"
     String gene_annotation_json_name = output_annotated_file_name + ".genes.json.gz"
     String positions_annotation_json_name = output_annotated_file_name + ".positions.json.gz"
@@ -449,7 +451,7 @@ task PrepVtAnnotationJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2023_01_05"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2023_01_11"
         memory: "7 GB"
         preemptible: 3
         cpu: "1"
@@ -471,7 +473,6 @@ task PrepGenesAnnotationJson {
         String output_path
     }
 
-    # Kick off the monitoring script
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
     String output_genes_json = "vat_genes_bq_load" + output_file_suffix
@@ -496,7 +497,7 @@ task PrepGenesAnnotationJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2023_01_05"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2023_01_11"
         memory: "7 GB"
         preemptible: 3
         cpu: "1"
@@ -882,10 +883,15 @@ task MergeVatTSVs {
         Int? merge_vcfs_disk_size_override
     }
 
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
     # going large with the default to make gsutil -m cp really zippy
-    Int disk_size = if (defined(merge_vcfs_disk_size_override)) then select_first([merge_vcfs_disk_size_override]) else 250
+    Int disk_size = if (defined(merge_vcfs_disk_size_override)) then select_first([merge_vcfs_disk_size_override]) else 500
 
     command <<<
+        # Kick off the monitoring script
+        bash ~{monitoring_script} > monitoring.log &
+
         apt-get update
         apt-get install tabix
 
@@ -925,14 +931,15 @@ task MergeVatTSVs {
     # Runtime settings:
     runtime {
         docker: "us.gcr.io/broad-gatk/gatk:4.2.6.1"
-        memory: "2 GB"
+        memory: "4 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: "2"
         disks: "local-disk ~{disk_size} HDD"
     }
     # ------------------------------------------------
     # Outputs:
     output {
         File tsv_file = "vat_complete.bgz.tsv.gz"
+        File monitoring_log = "monitoring.log"
     }
 }
