@@ -64,7 +64,7 @@ task GenerateFOFNsFromDataTables {
 
     >>>
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-1-19-FOFN"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-1-20-FOFN"
         memory: "3 GB"
         disks: "local-disk 10 HDD"
         cpu: 1

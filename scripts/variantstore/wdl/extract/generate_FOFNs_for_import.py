@@ -24,8 +24,16 @@ def generate_FOFNs_from_data_table(data_table_name, sample_id_column_name, vcf_f
     error_file = open(error_file_name, "w")
 
     count = 0
+    processed_entities = 0
     for row in table.list_rows(data_table_name):
         try:
+            # The table data model is weird, as each row has a "name" property followed by a hash of attributes.  But it
+            # is all displayed as though they are equivalent columns, and the name field is mapped to an imaginary
+            # column with the name table_name_id.  Map "name" to that imaginary attribute here so none of the lookups
+            # below fail if they reference that call.  This is safe, as this Row object is a read only copy of the actual
+            # table content, and it is disposed
+            row.attributes[f"{data_table_name}_id"] = row.name
+
             current_sample_name = row.attributes[sample_id_column_name]
             current_vcf_file = row.attributes[vcf_files_column_name]
             current_vcf_index_file = row.attributes[vcf_index_files_column_name]
@@ -37,8 +45,9 @@ def generate_FOFNs_from_data_table(data_table_name, sample_id_column_name, vcf_f
             error_file.write(f'Row "{row.name}" skipped: missing columns\n')
 
         count += 1
+        processed_entities += 1
         if count >= attempts_between_pauses:
-            print("sleeping between requests...")
+            print(f"sleeping between requests ({processed_entities} processed)...")
             time.sleep(1)
             count = 0
 
