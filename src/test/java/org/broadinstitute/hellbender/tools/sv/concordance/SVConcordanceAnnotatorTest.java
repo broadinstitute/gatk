@@ -283,7 +283,7 @@ public class SVConcordanceAnnotatorTest {
     public void testGetTruthNullGenotypeState() {
         final SVConcordanceAnnotator collapser = new SVConcordanceAnnotator(false);
         final GenotypeConcordanceStates.TruthState actualTruthState = collapser.getTruthState(null);
-        Assert.assertEquals(actualTruthState, GenotypeConcordanceStates.TruthState.HOM_REF);
+        Assert.assertEquals(actualTruthState, GenotypeConcordanceStates.TruthState.NO_CALL);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)

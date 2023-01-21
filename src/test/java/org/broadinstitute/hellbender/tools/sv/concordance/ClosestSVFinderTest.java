@@ -92,7 +92,8 @@ public class ClosestSVFinderTest {
         final SVCallRecord outEval1 = out1.get(0);
         Assert.assertEquals(outEval1.getId(), eval1.getId());
         assertConcordanceMembers(outEval1, truth1.getId());
-        Assert.assertEquals(outEval1.getAttributes().get(GATKSVVCFConstants.GENOTYPE_CONCORDANCE_INFO), 1.);
+        // Would be 1 if missing samples were treated as hom-ref
+        Assert.assertEquals(outEval1.getAttributes().get(GATKSVVCFConstants.GENOTYPE_CONCORDANCE_INFO), 0.5);
 
         final SVCallRecord eval2 = SVTestUtils.makeRecord(
                 "eval2",

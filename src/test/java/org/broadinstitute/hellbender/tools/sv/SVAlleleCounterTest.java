@@ -99,6 +99,17 @@ public class SVAlleleCounterTest extends GATKBaseTest {
                         new double[]{1.},
                         2
                 },
+                // No-call not counted toward AN
+                {
+                        new Allele[]{Allele.SV_SIMPLE_INS},
+                        new Allele[][]{
+                                {Allele.SV_SIMPLE_INS},
+                                {Allele.NO_CALL}
+                        },
+                        new int[]{1},
+                        new double[]{1.},
+                        1
+                },
                 // Multi-allelic
                 {
                         new Allele[]{Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DUP},

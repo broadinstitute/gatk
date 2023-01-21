@@ -50,6 +50,7 @@ public class SVAlleleCounter {
      */
     private static Map<Allele, Long> computeCounts(final Collection<Genotype> genotypes) {
         return genotypes.stream().map(Genotype::getAlleles).flatMap(Collection::stream)
+                .filter(a -> !(a == null || a.equals(Allele.NO_CALL)))
                 .collect(Collectors.groupingBy(a -> a, Collectors.counting()));
     }
 

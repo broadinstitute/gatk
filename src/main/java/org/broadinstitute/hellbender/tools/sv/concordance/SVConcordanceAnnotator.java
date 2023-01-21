@@ -164,7 +164,9 @@ public class SVConcordanceAnnotator {
     @VisibleForTesting
     protected GenotypeConcordanceStates.TruthState getTruthState(final Genotype g) {
         // Treat non-existent genotype as hom-ref
-        if (g == null || g.isHomRef()) {
+        if (g == null) {
+            return GenotypeConcordanceStates.TruthState.NO_CALL;
+        } else if (g.isHomRef()) {
             return GenotypeConcordanceStates.TruthState.HOM_REF;
         } else if (g.isHet()) {
             return GenotypeConcordanceStates.TruthState.HET_REF_VAR1;

@@ -45,7 +45,7 @@ import java.util.Set;
  * after meeting minimum overlap criteria. Evaluation variants that are sucessfully matched are annotated with
  * genotype concordance metrics, including allele frequency of the truth variant. See output header for descriptions
  * of the specific fields. Note that genotypes of samples that are present in the evaluation VCF but not the truth
- * VCF are assumed to be homozygous-reference. For multi-allelic CNVs, only a copy state concordance metric is
+ * VCF are assumed to be no-calls for concordance. For multi-allelic CNVs, only a copy state concordance metric is
  * annotated.
  *
  * <h3>Inputs</h3>
