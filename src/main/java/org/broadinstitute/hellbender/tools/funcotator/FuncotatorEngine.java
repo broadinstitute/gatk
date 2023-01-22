@@ -121,7 +121,7 @@ public final class FuncotatorEngine implements AutoCloseable {
     /**
      * @return An unmodifiable {@link List<DataSourceFuncotationFactory>} being used by this {@link FuncotatorEngine} to create {@link Funcotation}s.
      */
-    List<DataSourceFuncotationFactory> getFuncotationFactories() {
+    public List<DataSourceFuncotationFactory> getFuncotationFactories() {
         return Collections.unmodifiableList(dataSourceFactories);
     }
 
@@ -427,7 +427,7 @@ public final class FuncotatorEngine implements AutoCloseable {
      * @param annotationMap {@link Map} (of ANNOTATION_NAME : ANNOTATION_VALUE) to check
      * @return A {@link LinkedHashMap} of annotations in the given {@code annotationMap} that do not occur in the given {@code dataSourceFactories}.
      */
-    private LinkedHashMap<String, String> getUnaccountedForAnnotations( final List<DataSourceFuncotationFactory> dataSourceFactories,
+    public LinkedHashMap<String, String> getUnaccountedForAnnotations( final List<DataSourceFuncotationFactory> dataSourceFactories,
                                                                         final Map<String, String> annotationMap ) {
         final LinkedHashMap<String, String> outAnnotations = new LinkedHashMap<>();
 
