@@ -9,7 +9,6 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications.Filter;
 
 import java.io.*;
 import java.util.*;
@@ -312,6 +311,9 @@ public class XGBoostMinGqVariantFilter extends MinGqVariantFilterBase {
             int propertyIndex = 0;
             for (final String propertyName : propertiesTable.getPropertyNames()) {
                 final PropertiesTable.Property property = propertiesTable.get(propertyName);
+                if(!property.usePropertyInTable) {
+                    continue;
+                }
                 if (property instanceof PropertiesTable.BooleanArrProperty) {
                     final boolean value = ((PropertiesTable.BooleanArrProperty) property).values[variantIndex];
                     if (value) {

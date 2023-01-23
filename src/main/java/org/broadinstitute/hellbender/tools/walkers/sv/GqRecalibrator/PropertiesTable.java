@@ -299,21 +299,22 @@ class PropertiesTable implements Iterable<PropertiesTable.Property> {
         return getConsistentIntPropertyValue(Property::getNumRows, "rows");
     }
 
-    public int getNumProperties() {
+    public int getNumPropertiesUsedInTable() {
+        return getNumProperties(false);
+    }
+    public int getNumProperties(final boolean countUnused) {
         if(allNumeric) {
             return properties.size();
         }
         return properties.values().stream()
+                .filter(property -> countUnused || property.usePropertyInTable)
                 .mapToInt(
                         property -> {
                             final List<String> allLabels = labelsEncoding.containsKey(property.name) ?
                                     labelsEncoding.get(property.name) :
                                     property.getAllLabels();
                             return allLabels == null ?
-                                    1 :
-                                    allLabels.size() > 2 ?
-                                            allLabels.size() :
-                                            allLabels.size() == 2 ? 1 : 0;
+                                    1 : allLabels.size();
                         }
                 )
                 .sum();
@@ -373,14 +374,19 @@ class PropertiesTable implements Iterable<PropertiesTable.Property> {
      *   4) ensure that baseline and scale are appropriately set for every Property
      *   5) allocate float[] propertiesRow so that rows can be efficiently queried for inference
      */
-    public void validateAndFinalize() {
+    public void validateAndFinalize(final Set<String> omittedProperties) {
+        for(final String propertyName : properties.keySet()) {
+            if(omittedProperties.contains(propertyName)) {
+                properties.get(propertyName).usePropertyInTable = false;
+            }
+        }
         oneHot();
         setOrderedPropertyNames();
         getNumColumns();
         getNumRows();
         trim();
         setBaselineAndScales();
-        propertiesRow = new float[getNumProperties()];
+        propertiesRow = new float[getNumPropertiesUsedInTable()];
     }
 
     /**
@@ -399,6 +405,9 @@ class PropertiesTable implements Iterable<PropertiesTable.Property> {
         }
         for(final String propertyName : orderedPropertyNames) {
             final Property property = properties.get(propertyName);
+            if(!property.usePropertyInTable) {
+                continue;
+            }
             outArray[outIndex] = property.getAsFloat(rowIndex, columnIndex, normalize);
             if(!Float.isFinite(outArray[outIndex])) {
                 System.out.println(propertyName + " = " + outArray[outIndex] + " at row " + rowIndex + ", column " + columnIndex);
@@ -606,10 +615,17 @@ class PropertiesTable implements Iterable<PropertiesTable.Property> {
         private Float baseline = null;
         private Float scale = null;
         protected int numRows;
+        // some properties are necessary for program logic, but may not be wanted in property table for training or
+        // filtering. They can have usePropertyInTable set to false, and the property (and any dependent properties e.g.
+        // after 1-hot encoding) will not count in getNumProperties(), and won't be used.
+        public boolean usePropertyInTable;
 
         static final int ALLOCATION_GROWTH_SCALE = 2;
 
-        Property(final String name) { this.name = name; }
+        Property(final String name) {
+            this.name = name;
+            this.usePropertyInTable = true; // set true by default, can be overridden
+        }
 
         abstract Property set(final Object values);
         abstract public float getAsFloat(final int rowIndex, final int hyperIndex);
@@ -1212,14 +1228,21 @@ class PropertiesTable implements Iterable<PropertiesTable.Property> {
         @Override public void oneHot(final List<String> allLabels, final PropertiesTable propertiesTable) {
             final int numProperties = allLabels.size();
             final List<Property> properties = IntStream.range(0, numProperties)
-                    .mapToObj(i ->
-                            (BooleanArrProperty)propertiesTable.getOrCreateProperty(
-                                    name + "=" + allLabels.get(i),
-                                    PropertyClass.BooleanArrProperty, numRows
-                            )
-                    )
-                    .collect(Collectors.toList());
-            properties.forEach(p -> p.numRows = 0);
+                .mapToObj(
+                    i -> {
+                        final BooleanArrProperty property =
+                            (BooleanArrProperty) propertiesTable.getOrCreateProperty(
+                                name + "=" + allLabels.get(i),
+                                PropertyClass.BooleanArrProperty, numRows
+                            );
+                        property.numRows = 0;
+                        // use this if the property is wanted for use and there's more than one label
+                        // since this is a String Property, if there is only one label, it's always the same
+                        property.usePropertyInTable = usePropertyInTable && numProperties > 1;
+                        return property;
+                    }
+                )
+                .collect(Collectors.toList());
             for(int row = 0; row < numRows; ++row) {
                 final String value = indexToString.get(ordinalEncoding[row]);
                 for(int propertyIndex = 0; propertyIndex < numProperties; ++propertyIndex) {
@@ -1296,14 +1319,21 @@ class PropertiesTable implements Iterable<PropertiesTable.Property> {
             final int numColumns = numRows > 0 ? getNumColumns() : 0;
             final int numProperties = allLabels.size();
             final List<BooleanMatProperty> properties = IntStream.range(0, numProperties)
-                    .mapToObj(i ->
-                            (BooleanMatProperty)propertiesTable.getOrCreateProperty(
-                                    name + "=" + allLabels.get(i),
-                                    PropertyClass.BooleanMatProperty, 0
-                            ).set(new boolean[numRows][numColumns])
-                    )
-                    .collect(Collectors.toList());
-            properties.forEach(p -> p.numRows = 0);
+                .mapToObj(
+                    i -> {
+                    final BooleanMatProperty property =
+                        (BooleanMatProperty) propertiesTable.getOrCreateProperty(
+                            name + "=" + allLabels.get(i),
+                            PropertyClass.BooleanMatProperty, 0
+                        ).set(new boolean[numRows][numColumns]);
+                    property.numRows = numRows;
+                    // use this if the property is wanted for use and there's more than one label
+                    // since this is a String Property, if there is only one label, it's always the same
+                    property.usePropertyInTable = usePropertyInTable && numProperties > 1;
+                    return property;
+                    }
+                )
+                .collect(Collectors.toList());
             for(int row = 0; row < numRows; ++row) {
                 final int[] rowIndices = ordinalEncoding[row];
                 for(int propertyIndex = 0; propertyIndex < numProperties; ++propertyIndex) {
@@ -1385,14 +1415,22 @@ class PropertiesTable implements Iterable<PropertiesTable.Property> {
         @Override public void oneHot(final List<String> allLabels, final PropertiesTable propertiesTable) {
             final int numProperties = allLabels.size();
             final List<Property> properties = IntStream.range(0, numProperties)
-                    .mapToObj(i ->
-                            (BooleanArrProperty)propertiesTable.getOrCreateProperty(
-                                    name + "=" + allLabels.get(i),
-                                    PropertyClass.BooleanArrProperty, numRows
-                            )
-                    )
-                    .collect(Collectors.toList());
-            properties.forEach(p -> p.numRows = 0);
+                .mapToObj(
+                    i -> {
+                        final BooleanArrProperty property =
+                            (BooleanArrProperty) propertiesTable.getOrCreateProperty(
+                                name + "=" + allLabels.get(i),
+                                PropertyClass.BooleanArrProperty, numRows
+                            );
+                        property.numRows = 0;
+                        // use this if the property is wanted
+                        // since this is a StringSet Property, labels may sometimes be completely omitted, so even if
+                        // there's only one label, it may be useful
+                        property.usePropertyInTable = usePropertyInTable;
+                        return property;
+                    }
+                )
+                .collect(Collectors.toList());
             for(int row = 0; row < numRows; ++row) {
                 final Set<String> value = indexToSets.get(ordinalEncoding[row]);
                 for(int propertyIndex = 0; propertyIndex < numProperties; ++propertyIndex) {
@@ -1480,14 +1518,22 @@ class PropertiesTable implements Iterable<PropertiesTable.Property> {
             final int numProperties = allLabels.size();
             final int numColumns = numRows > 0 ? getNumColumns() : 0;
                 final List<BooleanMatProperty> properties = IntStream.range(0, numProperties)
-                        .mapToObj(i ->
-                                (BooleanMatProperty)propertiesTable.getOrCreateProperty(
-                                        name + "=" + allLabels.get(i),
-                                        PropertyClass.BooleanMatProperty, numRows
-                                ).set(new boolean[numRows][numColumns])
-                        )
-                        .collect(Collectors.toList());
-                properties.forEach(p -> p.numRows = 0);
+                    .mapToObj(
+                        i -> {
+                            final BooleanMatProperty property =
+                                (BooleanMatProperty) propertiesTable.getOrCreateProperty(
+                                    name + "=" + allLabels.get(i),
+                                    PropertyClass.BooleanMatProperty, numRows
+                                ).set(new boolean[numRows][numColumns]);
+                            property.numRows = 0;
+                            // use this if the property is wanted
+                            // since this is a StringSet Property, labels may sometimes be completely omitted, so even if
+                            // there's only one label, it may be useful
+                            property.usePropertyInTable = usePropertyInTable;
+                            return property;
+                        }
+                    )
+                    .collect(Collectors.toList());
                 for(int row = 0; row < numRows; ++row) {
                     final int[] rowIndices = ordinalEncoding[row];
                     for(int propertyIndex = 0; propertyIndex < numProperties; ++propertyIndex) {

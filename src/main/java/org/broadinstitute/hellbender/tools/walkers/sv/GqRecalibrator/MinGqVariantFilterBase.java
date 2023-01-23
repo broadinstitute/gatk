@@ -107,7 +107,9 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
               doc="If the VCF does not have allele frequency, estimate it from the sample population if there are at least this many samples. Otherwise throw an exception.")
     public int minSamplesToEstimateAlleleFrequency = 100;
 
-    @Argument(fullName="genome-track", shortName="gt", optional=true)
+    @Argument(fullName="genome-track", shortName="gt", optional=true,
+              doc="Full path to genome track .bed file to use as a property (overlap with variants)."
+                 +" May specify more than one by passing --genome-track multiple times.")
     final List<String> genomeTrackFiles = new ArrayList<>();
 
     @Argument(fullName="min-scaled-logits", shortName="sl", optional=true)
@@ -168,6 +170,12 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
                  +"use GQ < minGQ as the arbiter of truth."
     )
     public static boolean overrideMinGq = false;
+
+    @Argument(fullName="omit-property", optional=true,
+              doc="Don't collect specified property for use in either training or filtering."
+                  +" May specify multiple properties by passing --omit-property multiple times."
+    )
+    final Set<String> omittedProperties = new HashSet<>();
 
     List<TrackOverlapDetector> trackOverlapDetectors = null;
 
@@ -237,6 +245,11 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
     private static final String SR_GQ_KEY = "SR_GQ";
     private static final short MISSING_GQ_VAL = -1;
 
+    // properties that are available even if not present in the VCF, because they are or can be calculated
+    private static final Set<String> calculatedProperties = new HashSet<>(Arrays.asList(
+            VCFConstants.ALLELE_COUNT_KEY, NO_CALL_COUNTS_KEY,
+            IS_COPY_NUMBER_CALL_KEY, CALL_QUALITY_KEY, VCFConstants.ALLELE_FREQUENCY_KEY, SVLEN_KEY
+    ));
 
     // properties used to gather main matrix / tensors during apply function
     // map from variant ID to array of known good/bad sample indices for that variant
@@ -255,7 +268,7 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
     protected final int getNumVariants() { return propertiesTable.getNumRows(); }
     protected final int getNumSamples() { return numSamples; }
     protected final int getNumTrios() { return numTrios; }
-    protected final int getNumProperties() { return propertiesTable.getNumProperties(); }
+    protected final int getNumProperties() { return propertiesTable.getNumPropertiesUsedInTable(); }
     protected final int[] getTrainingIndices() { return trainingIndices; }
     protected final int[] getValidationIndices() { return validationIndices; }
 
@@ -450,6 +463,8 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
             getHeaderForVariants().getInfoHeaderLines().stream().map(VCFCompoundHeaderLine::getID),
             getHeaderForVariants().getFormatHeaderLines().stream().map(VCFCompoundHeaderLine::getID)
         ).collect(Collectors.toSet());
+        checkOmitedProperties();
+
         // get failing GQ by converting min passing scaled logits to GQ, then decreasing by 1
         FAILING_GQ = (short)(probToPhred(scaledLogitsToP(minScaledLogits)) - 1);
         // set propertyBinsMap bins
@@ -481,6 +496,22 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
             numDroppedVariants = 0;
             propertiesTable.setNumAllocatedRows(1);
             System.out.println("minScaledLogits=" + minScaledLogits);
+        }
+    }
+
+    private void checkOmitedProperties() {
+        final Set<String> allowedProperties = Stream.concat(
+                vcfHeaderIds.stream(),
+                calculatedProperties.stream()
+        ).collect(Collectors.toSet());
+        final Set<String> omitedNonexistant = omittedProperties.stream()
+                .filter(property -> !allowedProperties.contains(property))
+                .collect(Collectors.toSet());
+        if(!omitedNonexistant.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Can't omit nonexistant properties: " + String.join(", ", omitedNonexistant)
+                    + "\nAvailable properties: " + String.join(", ", allowedProperties)
+            );
         }
     }
 
@@ -969,13 +1000,14 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
             variantIds.add(variantContext.getID());
         } else {
             if(sampleVariantCallQualities == null) {
+                // first execution of apply for filter
                 variantIds.add(variantContext.getID());
                 sampleVariantCallQualities = useCopyNumberCalls ?
                     (PropertiesTable.ShortMatProperty) propertiesTable.get(CALL_QUALITY_KEY) :
                     (PropertiesTable.ShortMatProperty) propertiesTable.get(VCFConstants.GENOTYPE_QUALITY_KEY);
                 sampleVariantAlleleCounts = (PropertiesTable.ByteMatProperty) propertiesTable.get(VCFConstants.ALLELE_COUNT_KEY);
                 sampleVariantNoCallCounts = (PropertiesTable.ByteMatProperty) propertiesTable.get(NO_CALL_COUNTS_KEY);
-                propertiesTable.validateAndFinalize();
+                propertiesTable.validateAndFinalize(omittedProperties);
             } else {
                 variantIds.set(0, variantContext.getID()); // only one variant ID at a time in context when filtering
                 propertiesTable.oneHot();
@@ -2546,7 +2578,7 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
 
             setPropertyBins();
             setPropertyBinIsLargeAlleleFraction();
-            propertiesTable.validateAndFinalize();
+            propertiesTable.validateAndFinalize(omittedProperties);
             sampleVariantCallQualities = useCopyNumberCalls ?
                     (PropertiesTable.ShortMatProperty) propertiesTable.get(CALL_QUALITY_KEY) :
                     (PropertiesTable.ShortMatProperty) propertiesTable.get(VCFConstants.GENOTYPE_QUALITY_KEY);
