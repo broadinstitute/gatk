@@ -111,10 +111,11 @@ task PrepareRangesCallsetTask {
   >>>
   output {
     String fq_cohort_extract_table_prefix = "~{fq_destination_dataset}.~{destination_cohort_table_prefix}" # implementation detail of create_ranges_cohort_extract_data_table.py
+    String fq_cohort_extract_table_prefix = "~{fq_destination_dataset}.~{destination_cohort_table_prefix}" # implementation detail of create_ranges_cohort_extract_data_table.py
   }
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-01-11-v3-alpine"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-01-23-alpine"
     memory: "3 GB"
     disks: "local-disk 100 HDD"
     bootDiskSizeGb: 15

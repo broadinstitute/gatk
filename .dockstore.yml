@@ -118,7 +118,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_vs_772
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
@@ -135,7 +134,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_vs_772
    - name: GvsCreateVATfromVDS
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVATfromVDS.wdl
@@ -168,7 +166,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_vs_772
    - name: GvsWithdrawSamples
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsWithdrawSamples.wdl
@@ -248,7 +245,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_vs_749
    - name: GvsCallsetStatistics
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCallsetStatistics.wdl

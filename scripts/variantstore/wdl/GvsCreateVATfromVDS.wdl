@@ -300,7 +300,7 @@ task RemoveDuplicatesFromSitesOnlyVCF {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-01-11-v3-alpine"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-01-23-alpine"
         maxRetries: 3
         memory: "16 GB"
         preemptible: 3

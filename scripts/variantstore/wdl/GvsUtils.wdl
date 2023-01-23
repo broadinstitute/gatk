@@ -352,7 +352,7 @@ task ScaleXYBedValues {
     }
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-01-11-v3-alpine"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-01-23-alpine"
         maxRetries: 3
         memory: "7 GB"
         preemptible: 3
