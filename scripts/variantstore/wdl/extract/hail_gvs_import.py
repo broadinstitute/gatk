@@ -30,7 +30,7 @@ def import_gvs(argsfn, vds_path, references_path, temp_path):
     rg38.add_sequence(f'{references_path}/Homo_sapiens_assembly38.fasta.gz',
                       f'{references_path}/Homo_sapiens_assembly38.fasta.fai')
 
-
+    ## note that a full description of the import_gvs function written by Hail for this process can be found here: hail/python/hail/methods/impex.py
     hl.import_gvs(
         vets=argsfn('vets'),
         refs=argsfn('refs'),
@@ -41,6 +41,12 @@ def import_gvs(argsfn, vds_path, references_path, temp_path):
         reference_genome=rg38,
         final_path=vds_path,
         tmp_dir=f'{temp_path}/hail_tmp_import_gvs',
+        # truth_sensitivity_snp_threshold: 'float' = 0.997,
+        # truth_sensitivity_indel_threshold: 'float' = 0.990,
+        # partitions_per_sample=0.35,
+        # intermediate_resume_point=0,
+        # skip_final_merge=false,
+        # unphase=false,
     )
 
 
