@@ -15,6 +15,7 @@
   - [GvsCreateFilterSet](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsCreateFilterSet) workflow
   - [GvsPrepareRangesCallset](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsPrepareRangesCallset) workflow (VCF output)
   - [GvsExtractCallset](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsExtractCallset) workflow (VCF output)
+  - [GvsExtractAvroFilesForHail](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsExtractAvroFilesForHail) workflow (Hail VDS output)
   - [GvsCalculatePrecisionAndSensitivity](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCalculatePrecisionAndSensitivity) workflow
   - [GvsCallsetCost](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCallsetCost) workflow
   - **TBD VDS Prepare WDL/notebook/??**
@@ -52,22 +53,31 @@
    - This step calculates features from the `alt_allele` table, and trains the VQSR filtering model along with site-level QC filters and loads them into BigQuery into a series of `filter_set_*` tables.
    - See [naming conventions doc](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow) for guidance on what to use for `filter_set_name`, which you will need to keep track of for the `GvsExtractCallset` WDL. If, for some reason, this step needs to be run multiple times, be sure to use a different `filter_set_name` (the doc has guidance for this, as well).
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
-7. `GvsPrepareRangesCallset` workflow
+7. `GvsPrepareRangesCallset` workflow (VCF output) ## do we need to point out that a version of this is needed for VDS callset stats?
    - This workflow transforms the data in the vet and ref_ranges tables into a schema optimized for VCF generation during the Extract step.
    - It will need to be run twice, once with `control_samples` set to "true" (see [naming conventions doc](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow) for guidance on what to use for `extract_table_prefix` or cohort prefix, which you will need to keep track of for the `GvsExtractCallset` WDL); the default value is `false`.
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
-8. `GvsExtractCallset` workflow
-   - This workflow extracts the data in BigQuery and transforms it into a sharded joint called VCF incorporating the VQSR filter set data.  We will probably not run this on callsets of more than 100K samples.
+8. `GvsExtractCallset` workflow (VCF output)
+   - This workflow extracts the data in BigQuery and transforms it into a sharded joint called VCF incorporating the VQSR filter set data.  We do not recommend running this on callsets of more than 100K samples.
    - It also needs to be run twice, once with `control_samples` set to "true", and with the `filter_set_name` and `extract_table_prefix` from step 5 & 6.  Include a valid (and secure) "output_gcs_dir" parameter, which is where the VCF, interval list, manifest, and sample name list files will go.
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
-9. **TBD VDS Prepare WDL/notebook/??**
-10. **TBD VDS Extract WDL/notebook/??**
+9. `GvsExtractAvroFilesForHail` workflow (Hail VDS output)    
+   - This workflow extracts the data in BigQuery and transforms it into Avro files in a Google bucket, incorporating the VQSR filter set data.  We suggest this method for callsets of more than 100k samples.
+   - The extracted Avro files will then be used as the input for the below notebook which can then be run to produce a Hail VDS
+10. VDS Extract using a notebook/python script
+   - This step creates a VDS based on the Avro files
+   - Notebook provisioning can be found in the file: AoU Delta VDS Cluster Configuration.md
+   - hail_gvs_import.py is the python script that needs to be run in the notebook
+   - inputs to the python script are:
+     1. the directory for the Avro files in GCP
+     2. the desired output path of the VDS
+     3. the reference (this really shouldn't be something we are asking for, do we really need it?)
 11. Run the notebook to create callset stats (**TODO**, see [VS-388](https://broadworkbench.atlassian.net/browse/VS-388)), for which you need
-     - "BigQuery Data Viewer" role for your @pmi-ops proxy group on the `spec-ops-aou:gvs_public_reference_data.gnomad_v3_sites` table
-     - the Google project ID you used for all the GVS WDLs (`project_id` input)
-     - the name of the BigQuery dataset you used for all the GVS WDLs (`dataset_name` input)
-     - the `extract_table_prefix` input from `GvsExtractCallset` step
-     - the `filter_set_name` input from `GvsCreateFilterSet` step
+   - "BigQuery Data Viewer" role for your @pmi-ops proxy group on the `spec-ops-aou:gvs_public_reference_data.gnomad_v3_sites` table
+   - the Google project ID you used for all the GVS WDLs (`project_id` input)
+   - the name of the BigQuery dataset you used for all the GVS WDLs (`dataset_name` input)
+   - the `extract_table_prefix` input from `GvsExtractCallset` step
+   - the `filter_set_name` input from `GvsCreateFilterSet` step
 12. [GvsCalculatePrecisionAndSensitivity](../../tieout/AoU_PRECISION_SENSITIVITY.md#generating-callset-precision-and-sensitivity-values) workflow, for which you need
     - "Storage Object View" access granted for your @pmi-ops proxy group on the `gs://broad-dsp-spec-ops/gvs/truth` directory
 13. `GvsCallsetCost`
