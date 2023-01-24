@@ -363,9 +363,7 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
         if ((qualOfs == 0) | (qualOfs==probs.length)){ // do not report zero error probability on the edge of the read
             return;
         }
-        if ((probs[qualOfs-1])==(probs[qualOfs])){
-            flowMatrix[1][flowIdx] = Math.max(flowMatrix[1][flowIdx], Math.max(probs[qualOfs-1],probs[qualOfs]));
-        }
+        flowMatrix[1][flowIdx] = Math.max(flowMatrix[1][flowIdx], Math.min(probs[qualOfs-1],probs[qualOfs]));
     }
 
     public String getFlowOrder() {
