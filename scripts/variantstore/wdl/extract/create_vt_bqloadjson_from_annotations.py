@@ -1,13 +1,11 @@
-# -*- coding: utf-8 -*-
-import uuid
-import time
 from datetime import datetime
 
-import csv
 import json
 import ijson
 import gzip
 import argparse
+import logging
+import sys
 
 vat_nirvana_positions_dictionary = {
     "position": "position", # required
@@ -70,11 +68,6 @@ vat_nirvana_gnomad_dictionary = {
     "gnomad_failed_filter": "failedFilter" #nullable
 }
 
-vat_nirvana_omim_dictionary = {
-    "omim_phenotypes_id": "mimNumber", # nullable
-    "omim_phenotypes_name": "phenotype" # nullable
-}
-
 significance_ordering = [
     "benign",
     "likely benign",
@@ -116,21 +109,21 @@ gvs_subpopulations = [
 def check_filtering(variant):
     # skip any row (with a warning) if no gvsAnnotations exist
     if variant.get("gvsAnnotations") == None: # <-- enum since we need this to be in tandem with the custom annotations header / template
-        print("WARNING: There has been an error in creating custom annotations for AC/AF/AN", variant.get("vid"))
+        logging.warning("WARNING: There has been an error in creating custom annotations for AC/AF/AN", variant.get("vid"))
         return False
     # skip any row (with a warning) if the AC value is 0
     elif variant["gvsAnnotations"].get("AC") == 0:
-        print("WARNING: Its AC is 0 so we are dropping this variant", variant.get("vid"))
+        logging.warning("WARNING: Its AC is 0 so we are dropping this variant", variant.get("vid"))
         return False
     # skip any row (with a warning) if AC, AN or AF is missing
     elif variant["gvsAnnotations"].get("AC") == None:
-        print("WARNING: There has been an error-- there is no AC value---should AN be 0 for this variant?", variant.get("vid"))
+        logging.warning("WARNING: There has been an error -- there is no AC value -- should AN be 0 for this variant?", variant.get("vid"))
         return False
     elif variant["gvsAnnotations"].get("AN") == None:
-        print("WARNING: There has been an error-- there is an AC value---but no AN value", variant.get("vid"))
+        logging.warning("WARNING: There has been an error -- there is an AC value -- but no AN value", variant.get("vid"))
         return False
     elif variant["gvsAnnotations"].get("AF") == None:
-        print("WARNING: There has been an error-- there is an AC value---but no AF value", variant.get("vid"))
+        logging.warning("WARNING: There has been an error -- there is an AC value -- but no AF value", variant.get("vid"))
         return False
     else:
         return True
@@ -176,8 +169,8 @@ def get_subpopulation_calculations(subpop_annotations):
         subpop_ac_val = subpop_annotations.get("_".join(["AC", gvs_subpop]), 0)
         subpop_an_val = subpop_annotations.get("_".join(["AN", gvs_subpop]), 0)
         subpop_af_val = subpop_annotations.get("_".join(["AF", gvs_subpop]), None)
-        # note the assumption is made that AC_Hom must be even because by it's nature it means there are two, but there could be an error
-        subpop_sc_val = int(subpop_annotations.get("_".join(["AC_Hom", gvs_subpop]), 0) / 2 ) + subpop_annotations.get("_".join(["AC_Het", gvs_subpop]), 0) + subpop_annotations.get("_".join(["AC_Hemi", gvs_subpop]), 0)
+        # From the VDS, we get the homozygote_count and subtract it from the AC value
+        subpop_sc_val = subpop_annotations.get("_".join(["AC", gvs_subpop]), 0) - subpop_annotations.get("_".join(["Hom", gvs_subpop]), 0)
 
         row["_".join(["gvs", gvs_subpop, "ac"])] = subpop_ac_val
         row["_".join(["gvs", gvs_subpop, "an"])] = subpop_an_val
@@ -273,7 +266,7 @@ def make_annotated_json_row(row_position, row_ref, row_alt, variant_line, transc
         nirvana_gvs_alleles_fieldname = vat_nirvana_gvs_alleles_dictionary.get(vat_gvs_alleles_fieldname)
         gvs_alleles_fieldvalue = gvs_annotations.get(nirvana_gvs_alleles_fieldname)
         row[vat_gvs_alleles_fieldname] = gvs_alleles_fieldvalue
-        row["gvs_all_sc"] = int(gvs_annotations.get("AC_Hom") / 2 ) + gvs_annotations.get('AC_Het')
+        row["gvs_all_sc"] = gvs_annotations.get("AC") - gvs_annotations.get('Hom') ## TODO: should this include the hemi value?
 
 
     subpopulation_info = get_subpopulation_calculations(gvs_annotations)
@@ -290,9 +283,11 @@ def make_positions_json(annotated_json, output_json):
     else:
         json_data = open(annotated_json, 'rb')
 
-    positions = ijson.items(json_data, 'positions.item', use_float=True)
+    positions = ijson.items(json_data, 'item', use_float=True)
 
+    position_count = 0
     for p in positions:
+        position_count += 1
         position=p['position']
         refAllele=p['refAllele'] # ref_allele
         altAlleles=p['altAlleles'] # this is an array that we need to split into each alt_allele
@@ -334,55 +329,23 @@ def make_positions_json(annotated_json, output_json):
     output_file.close()
     json_data.close()
 
-def make_genes_json(annotated_json, output_genes_json):
-    output_genes_file=gzip.open(output_genes_json, 'w')
+    if position_count == 0:
+        logging.warning(f"WARNING: Found no items in annotated json file: {annotated_json}")
+        sys.exit(0)
 
-    if annotated_json.endswith(".gz"):
-        json_data = gzip.open(annotated_json, 'rb')
-    else:
-        json_data = open(annotated_json, 'rb')
-
-    genes = ijson.items(json_data, 'genes.item', use_float=True)
-
-    omim_fieldnames = list(vat_nirvana_omim_dictionary.keys())
-    for gene_line in genes:
-        if gene_line.get("omim") != None:
-            row = {}
-            row["gene_symbol"] = gene_line.get("name")
-            omim_line = gene_line["omim"][0]
-            if len(gene_line.get("omim")) > 1:
-                print("WARNING: An assumption about the possible count of omim values is incorrect.", gene_line.get("name"),len(gene_line.get("omim")))
-            row["gene_omim_id"] = omim_line.get("mimNumber")
-            if omim_line.get("phenotypes") != None:
-                phenotypes = omim_line["phenotypes"]
-                for vat_omim_fieldname in omim_fieldnames:  # like "mimNumber", "phenotype"
-                    omim_field_array=[]
-                    for phenotype in phenotypes:
-                        nirvana_omim_fieldname = vat_nirvana_omim_dictionary.get(vat_omim_fieldname)
-                        omim_fieldvalue = phenotype.get(nirvana_omim_fieldname, "")
-                        omim_field_array.append(omim_fieldvalue)
-                    row[vat_omim_fieldname] = omim_field_array
-            json_str = json.dumps(row) + "\n"
-            json_bytes = json_str.encode('utf-8')
-            output_genes_file.write(json_bytes)
-    output_genes_file.close()
-    json_data.close()
-
-
-def make_annotation_jsons(annotated_json, output_json, output_genes_json):
+def make_annotation_json(annotated_json, output_json, logging):
+    logging.info("Making the positions json")
     make_positions_json(annotated_json, output_json)
-    # we've already read the whole file once so we have to open it again
-    make_genes_json(annotated_json, output_genes_json)
+    logging.info("Done")
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(allow_abbrev=False, description='Create BQ load friendly jsons for VAT creation')
+    parser = argparse.ArgumentParser(allow_abbrev=False, description='Create BQ load friendly json for VAT VT table creation')
     parser.add_argument('--annotated_json', type=str, help='nirvana created annotation json', required=True)
     parser.add_argument('--output_vt_json', type=str, help='name of the vt json', required=True)
-    parser.add_argument('--output_genes_json', type=str, help='name of the genes json', required=True)
 
     args = parser.parse_args()
 
-    make_annotation_jsons(args.annotated_json,
-                          args.output_vt_json,
-                          args.output_genes_json)
+    make_annotation_json(args.annotated_json,
+                         args.output_vt_json,
+                         logging)

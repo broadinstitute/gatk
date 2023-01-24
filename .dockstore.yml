@@ -127,7 +127,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_VS-637_RespectSampleLoadStatusFinishedFlag
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
@@ -137,22 +136,22 @@ workflows:
        branches:
          - master
          - ah_var_store
-   - name: GvsCreateVAT
+   - name: GvsCreateVATfromVDS
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVAT.wdl
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVATfromVDS.wdl
      filters:
        branches:
          - master
          - ah_var_store
-   - name: GvsCreateVATAnnotations
+         - gg_VS-785_RegenerateTheVATTsv
+   - name: GvsCreateVATFilesFromBigQuery
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVATAnnotations.wdl
-     testParameterFiles:
-       - /scripts/variantstore/wdl/GvsCreateVATAnnotations.example.inputs.json
+     primaryDescriptorPath: /scripts/variantstore/variant_annotations_table/GvsCreateVATFilesFromBigQuery.wdl
      filters:
        branches:
          - master
          - ah_var_store
+         - gg_VS-785_RegenerateTheVATTsv
    - name: GvsValidateVat
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/variant_annotations_table/GvsValidateVAT.wdl
@@ -204,6 +203,21 @@ workflows:
        branches:
          - master
          - ah_var_store
+   - name: GvsQuickstartVcfIntegration
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartVcfIntegration.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+   - name: GvsQuickstartHailIntegration
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartHailIntegration.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_639_hail_testing_spike
    - name: GvsQuickstartIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartIntegration.wdl
@@ -211,7 +225,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_688_fix_integration_for_alpine
+         - vs_639_hail_testing_spike
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
@@ -233,7 +247,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_655_avro_extract_warn_on_bad_filter_name
    - name: GvsCallsetStatistics
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCallsetStatistics.wdl
@@ -241,7 +254,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_655_avro_extract_warn_on_bad_filter_name
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl

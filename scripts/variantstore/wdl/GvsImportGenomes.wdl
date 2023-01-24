@@ -141,9 +141,8 @@ task CreateFOFNs {
     split -a 5 -l ~{batch_size} ~{input_vcf_index_list} batched_vcf_indexes.
     split -a 5 -l ~{batch_size} ~{sample_name_list} batched_sample_names.
   >>>
-  # Can't use alpine version here because their version of split does not recognize the -d option
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
     bootDiskSizeGb: 15
     memory: "3 GB"
     disks: "local-disk 10 HDD"
@@ -293,7 +292,7 @@ task SetIsLoadedColumn {
                      AND sls2.status = "FINISHED")'
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
     memory: "1 GB"
     disks: "local-disk 10 HDD"
     cpu: 1
@@ -382,7 +381,7 @@ task GetUningestedSampleIds {
     bq --project_id=~{project_id} rm -f=true ~{temp_table}
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
     memory: "1 GB"
     disks: "local-disk 10 HDD"
     preemptible: 5

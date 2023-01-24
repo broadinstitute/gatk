@@ -62,7 +62,7 @@ task WorkflowComputeCosts {
     >>>
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-10-12-alpine"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-01-23-alpine"
     }
 
     output {

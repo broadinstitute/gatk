@@ -77,7 +77,7 @@ class TestWorkflowComputeCosts(unittest.TestCase):
                               )
 
         self.assertEqual(self.__count_gvs_workflows(costs), 2, msg="Expecting exactly two workflow names in costs dictionary")
-        integration = costs['GvsQuickstartIntegration']
+        integration = costs['GvsQuickstartVcfIntegration']
 
         expected = [{'cost': 0.885638,
                      'link': 'https://app.terra.bio/#workspaces/test_workspace_namespace/test_workspace/job_history/73ac71db-0488-46be-a8e8-7f00e795edec',
@@ -115,7 +115,7 @@ class TestWorkflowComputeCosts(unittest.TestCase):
 
         self.assertEqual(self.__count_gvs_workflows(costs), 2, msg="Expecting exactly two kinds of workflows in costs dictionary")
 
-        integration = costs['GvsQuickstartIntegration']
+        integration = costs['GvsQuickstartVcfIntegration']
         expected = [{'cost': 0.885638,
                      'link': 'https://app.terra.bio/#workspaces/test_workspace_namespace/test_workspace/job_history/73ac71db-0488-46be-a8e8-7f00e795edec',
                      'submission_id': '73ac71db-0488-46be-a8e8-7f00e795edec',

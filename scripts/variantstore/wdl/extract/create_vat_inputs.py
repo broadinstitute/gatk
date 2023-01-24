@@ -1,7 +1,6 @@
 import csv
 import re
 
-from datetime import datetime
 from google.cloud import storage
 import tempfile
 
@@ -14,9 +13,6 @@ def parse_ancestry_file(ancestry_file):
     {"ERS4367795":"eur","ERS4367796":"eas","ERS4367797":"eur","ERS4367798":"afr","ERS4367799":"oth", ... }
 
     """
-    start = datetime.now()
-    current_time = start.strftime("%H:%M:%S")
-    print("Start Time =", current_time)
     sample_id_to_sub_population = {}
 
     reader = csv.reader(ancestry_file, delimiter='\t')
@@ -47,7 +43,7 @@ def download_ancestry_file(gcs_ancestry_file):
     blob = bucket.get_blob(blob_name)
     fd, temp_file = tempfile.mkstemp()
     # Close open descriptor, do not remove temporary file.
-    fd.close()
+    # fd.close()
 
     blob.download_to_filename(temp_file)
     return temp_file

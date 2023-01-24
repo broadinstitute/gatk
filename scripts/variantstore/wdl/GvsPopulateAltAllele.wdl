@@ -86,7 +86,7 @@ task GetMaxSampleId {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -138,7 +138,7 @@ task GetVetTableNames {
     split -l $num_tables_per_file vet_tables.csv vet_tables_
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -199,7 +199,7 @@ task CreateAltAlleleTable {
 
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     cpu: 1
@@ -243,7 +243,7 @@ task PopulateAltAlleleTable {
     done
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-10-12-alpine"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-01-23-alpine"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     cpu: 1

@@ -68,8 +68,8 @@ task SplitIntervals {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
-  Int disk_size = if (defined(split_intervals_disk_size_override)) then split_intervals_disk_size_override else 10
-  Int disk_memory = if (defined(split_intervals_mem_override)) then split_intervals_mem_override else 16
+  Int disk_size = if (defined(split_intervals_disk_size_override)) then select_first([split_intervals_disk_size_override]) else 10
+  Int disk_memory = if (defined(split_intervals_mem_override)) then select_first([split_intervals_mem_override]) else 16
   Int java_memory = disk_memory - 4
 
   String gatkTool = if (defined(interval_weights_bed)) then 'WeightedSplitIntervals' else 'SplitIntervals'
@@ -89,8 +89,12 @@ task SplitIntervals {
     }
   }
 
-  command {
+  command <<<
+    # Updating to use standard shell boilerplate
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
     set -e
+
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
     mkdir interval-files
@@ -112,7 +116,7 @@ task SplitIntervals {
     if [ -n "$OUTPUT_GCS_DIR" ]; then
       gsutil -m cp *.interval_list $OUTPUT_GCS_DIR/
     fi
-  }
+  >>>
 
   runtime {
     docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2022_10_17_2a8c210ac35094997603259fa1cd784486b92e42"
@@ -164,7 +168,7 @@ task GetBQTableLastModifiedDatetime {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -202,7 +206,7 @@ task GetBQTablesMaxLastModifiedTimestamp {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -214,6 +218,7 @@ task BuildGATKJarAndCreateDataset {
   input {
     String branch_name
     String dataset_prefix
+    String dataset_suffix
   }
   meta {
     # Branch may be updated so do not call cache!
@@ -263,7 +268,7 @@ task BuildGATKJarAndCreateDataset {
     # Build a dataset name based on the branch name and the git hash of the most recent commit on this branch.
     # Dataset names must be alphanumeric and underscores only. Convert any dashes to underscores, then delete
     # any remaining characters that are not alphanumeric or underscores.
-    dataset="$(echo ~{dataset_prefix}_${branch}_${hash} | tr '-' '_' | tr -c -d '[:alnum:]_')"
+    dataset="$(echo ~{dataset_prefix}_${branch}_${hash}_~{dataset_suffix} | tr '-' '_' | tr -c -d '[:alnum:]_')"
 
     bq mk --project_id="gvs-internal" "$dataset"
 
@@ -283,7 +288,7 @@ task BuildGATKJarAndCreateDataset {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-slim"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-slim"
     disks: "local-disk 500 HDD"
   }
 }
@@ -347,7 +352,7 @@ task ScaleXYBedValues {
     }
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-10-12-alpine"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-01-23-alpine"
         maxRetries: 3
         memory: "7 GB"
         preemptible: 3
@@ -386,7 +391,7 @@ task GetNumSamplesLoaded {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -414,7 +419,7 @@ task CountSuperpartitions {
         ' | sed 1d > num_superpartitions.txt
     >>>
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
         disks: "local-disk 500 HDD"
     }
     output {
@@ -459,10 +464,133 @@ task ValidateFilterSetName {
     }
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:404.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
         memory: "3 GB"
         disks: "local-disk 500 HDD"
         preemptible: 3
         cpu: 1
     }
+}
+
+task IndexVcf {
+    input {
+        File input_vcf
+
+        Int memory_mb = 7500
+        Int disk_size_gb = ceil(2 * size(input_vcf, "GiB")) + 200
+    }
+
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
+    Int command_mem = memory_mb - 1000
+    Int max_heap = memory_mb - 500
+
+    String local_file = basename(input_vcf)
+    Boolean is_compressed = sub(local_file, ".*\\.", "") == "gz"
+    String index_extension = if is_compressed then ".tbi" else ".idx"
+
+    command <<<
+        set -e
+
+        bash ~{monitoring_script} > monitoring.log &
+
+        # Localize the passed input_vcf to the working directory so the
+        # to-be-created index file is also created there, alongside it.
+        ln -s ~{input_vcf} ~{local_file}
+
+        gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
+            IndexFeatureFile \
+            -I ~{local_file}
+
+    >>>
+
+    runtime {
+        docker: "us.gcr.io/broad-gatk/gatk:4.2.6.1"
+        cpu: 1
+        memory: "${memory_mb} MiB"
+        disks: "local-disk ${disk_size_gb} HDD"
+        bootDiskSizeGb: 15
+        preemptible: 3
+    }
+
+    output {
+        File output_vcf_index = "~{local_file}~{index_extension}"
+        File monitoring_log = "monitoring.log"
+    }
+}
+
+task SelectVariants {
+    input {
+        File input_vcf
+        File input_vcf_index
+        File interval_list
+        String output_basename
+
+        Int memory_mb = 7500
+        Int disk_size_gb = ceil(2*size(input_vcf, "GiB")) + 200
+    }
+
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
+    Int command_mem = memory_mb - 1000
+    Int max_heap = memory_mb - 500
+
+    String local_vcf = basename(input_vcf)
+    String local_index = basename(input_vcf_index)
+
+    command <<<
+      set -e
+
+      bash ~{monitoring_script} > monitoring.log &
+
+      # Localize the passed input_vcf and input_vcf_index to the working directory so the
+      # index and the VCF are side by side in the same directory.
+      ln -s ~{input_vcf} ~{local_vcf}
+      ln -s ~{input_vcf_index} ~{local_index}
+
+      gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
+        SelectVariants \
+          -V ~{local_vcf} \
+          -L ~{interval_list} \
+          -O ~{output_basename}.vcf
+    >>>
+
+    runtime {
+        docker: "us.gcr.io/broad-gatk/gatk:4.2.6.1"
+        cpu: 1
+        memory: "${memory_mb} MiB"
+        disks: "local-disk ${disk_size_gb} HDD"
+        bootDiskSizeGb: 15
+        preemptible: 3
+    }
+
+    output {
+        File output_vcf = "~{output_basename}.vcf"
+        File output_vcf_index = "~{output_basename}.vcf.idx"
+        File monitoring_log = "monitoring.log"
+    }
+}
+
+task MergeTsvs {
+    input {
+        Array[File] input_files
+        String output_file_name
+    }
+
+    command <<<
+      echo -n > ~{output_file_name}
+      for f in ~{sep=' ' input_files}
+      do
+        cat $f >> ~{output_file_name}
+      done
+    >>>
+
+    runtime {
+      docker: "ubuntu:latest"
+    }
+
+    output {
+      File output_file = output_file_name
+    }
+
 }
