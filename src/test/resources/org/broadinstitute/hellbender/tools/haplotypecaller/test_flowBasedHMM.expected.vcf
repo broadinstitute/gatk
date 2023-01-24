@@ -23,7 +23,7 @@
 ##INFO=<ID=ReadPosRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt vs. Ref read position bias">
 ##INFO=<ID=SOR,Number=1,Type=Float,Description="Symmetric Odds Ratio of 2x2 contingency table to detect strand bias">
 ##INFO=<ID=SUSP_NOISY_ADJACENT_TP_VARIANT,Number=0,Type=Flag,Description="Indicates a locus where false positive allele might be affecting a true positive allele">
-##INFO=<ID=XC,Number=1,Type=Integer,Description="Indicates collapsing took place">
+##INFO=<ID=XC,Number=1,Type=Integer,Description="Indicates longer hmer collapsing took place (this is a flow-based specific tag)">
 ##contig=<ID=chr1,length=248956422,assembly=38>
 ##contig=<ID=chr2,length=242193529,assembly=38>
 ##contig=<ID=chr3,length=198295559,assembly=38>
