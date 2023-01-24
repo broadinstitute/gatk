@@ -141,6 +141,15 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - gg_VS-785_RegenerateTheVATTsv
+   - name: GvsCreateVATFilesFromBigQuery
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/variant_annotations_table/GvsCreateVATFilesFromBigQuery.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - gg_VS-785_RegenerateTheVATTsv
    - name: GvsValidateVat
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/variant_annotations_table/GvsValidateVAT.wdl
@@ -236,7 +245,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_vs_749
    - name: GvsCallsetStatistics
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCallsetStatistics.wdl
