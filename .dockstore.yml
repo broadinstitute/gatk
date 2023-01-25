@@ -208,6 +208,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - gg_ConsistentlyUseDatasetNameAsInputParameter
    - name: GvsQuickstartHailIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartHailIntegration.wdl
@@ -216,6 +217,7 @@ workflows:
          - master
          - ah_var_store
          - vs_639_hail_testing_spike
+         - gg_ConsistentlyUseDatasetNameAsInputParameter
    - name: GvsQuickstartIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartIntegration.wdl
@@ -224,6 +226,7 @@ workflows:
          - master
          - ah_var_store
          - vs_639_hail_testing_spike
+         - gg_ConsistentlyUseDatasetNameAsInputParameter
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
