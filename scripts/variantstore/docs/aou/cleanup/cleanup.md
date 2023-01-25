@@ -25,13 +25,14 @@ During the course of creating AoU callsets several large and expensive artifacts
 * Production BigQuery dataset
     * The plan from Delta forward is to use the same production BigQuery dataset for all future callsets. This was also
       the plan historically as well, but in practice that didn't work out for various reasons. For Delta in particular
-      the Variants team was forced to create a new dataset due to the use of drop state NONE for Hail compatibility.
-      What should the Variants team do with all the various datasets for previous callsets?
-      See [Topics for discussion with Lee](#topics-for-discussion-with-lee) below.
-* prepare tables
+      the Variants team was forced to create a new dataset due to the use of drop state NONE for Hail compatibility. If
+      we are forced to create another BigQuery dataset in the future, discuss with Lee to determine what to do with the
+      previous dataset(s). In the AoU Delta timeframe, the Variants team additionally reached out to a contact at VUMC
+      to determine if various datasets from the Alpha / Beta eras were still in use or could possibly be deleted.
+* Prepare tables
     * These tables are used for callset statistics only starting with Delta but were previously used for extract as well
-      in pre-Delta callsets. This more limited beginning with Delta might allow the Variants team to more aggressively
-      clean up this large set of tables.
+      in pre-Delta callsets. Per 2023-01-25 meeting with Lee it appears this VET prepare table and associated callset
+      statistics tables can be deleted once the callset statistics have been generated and handed off.
 * Terra workspace
     * It seems that VAT workflows may generate large amounts of data under the submissions "folder". e.g. ~10 TiB of
       data under this folder in the AoU 10K workspace (!). At the time of this writing the VAT process is not fully
@@ -39,12 +40,17 @@ During the course of creating AoU callsets several large and expensive artifacts
 * Avro files (Delta onward)
     * These are huge, several times larger than the corresponding Hail VDS. It's not clear that there's any point to
       keeping these files around unless there was a bug in the Hail GVS import code that would require a patch and
-      re-import.
+      re-import. Per 2023-01-25 meeting with Lee we have now deleted the Delta versions of these Avro files. Per the
+      preceding comments, going forward these files can be deleted once the Variants team feels reasonably confident
+      that they won't be needed for the current callset any longer.
 * Hail VariantDataset (VDS) (Delta onward)
     * The Variants team creates a copy of the VDS and then delivers a copy to the AoU preprod datasets bucket. That copy
       of the VDS seems to stay in the delivery location for at least a few days, but it's not clear if that copy gets
       cleaned up after AoU later copies the VDS to a production bucket. The Variants team should not rely on this copy
-      of the VDS being available long-term.
+      of the VDS being available long-term. Per 2023-01-25 meeting with Lee, we have retained the oldest (with AI/AN +
+      controls) and most recent versions (without AI/AN or controls, corrected phasing and GT) of the Delta VDS. This
+      can serve as our team's guidance for how to handle multiple VDS versions going forward, though of course we can
+      always ask Lee for explicit guidance.
 
 ## Internal sign-off protocol
 
@@ -57,32 +63,13 @@ The Variants team currently has the following VDS internal sign-off protocol:
 * Forward VDS and callset statistics to Lee for QA / approval
 
 
-## Topics for discussion within the Variants team
-
-* Is there any reason to keep prepare tables once callset statistics have been generated?
-* Is there a point to keeping Avro files? If so, we can discuss further with Lee.
-* Are there things we can clean up in the AoU 10K workspace?
-* Are there things we can clean up in the AoU 10K dataset? There are many TiBs of prepare tables here.
-
-## Topics for discussion with Lee
-
-* Disposition toward expensive pre-Delta callsets [VS-747](https://broadworkbench.atlassian.net/browse/VS-747)
-    * If we removed these we might not be able to regenerate exact copies, but they are quite expensive and it's not
-      clear that they're actually being used
-* Should we keep the first Delta VDS we generated that includes AI/AN samples? `gs://fc-secure-fb908548-fe3c-41d6-adaf-7ac20d541375/vds/2022-10-19/dead_alleles_removed_vs_667_249047_samples/gvs_export.vds`
-    * Storage $500 / month, regeneration $3000 Avro + $1000 VDS
-* Should we keep a copy of the most recent VDS? `gs://fc-secure-fb908548-fe3c-41d6-adaf-7ac20d541375/vds/01-04-2023-correct-GT`
-    * Storage $500 / month, regeneration $3000 Avro + $1000 VDS
-* Should successful delivery of a VDS to AoU pre-prod trigger any cleanup on our side (or a timer for when we should
-  begin cleanup)?
-
 ## Storage versus regeneration costs
 
 ### Prepare tables
 
 * Running
   GvsPrepareRangesCallset: [$1,803.14](https://docs.google.com/spreadsheets/d/1fcmEVWvjsx4XFLT9ZUsruUznnlB94xKgDIIyCGu6ryQ/edit#gid=0)
-* Storing prepare data: $878.39 / month (currently two prepare sets in Delta)
+* Storing prepare data: $878.39 / month
 
 ### Avro files
 
