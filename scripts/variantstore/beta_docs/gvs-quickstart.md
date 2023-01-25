@@ -47,9 +47,7 @@ If you already have a Terra account, you can skip this step.
 
 While Terra is an open-access platform, it runs on the Google Cloud Platform (GCP), which means you’ll need to pay for storage and analyses you perform in the cloud using a billing project in Terra. For information on the cost of running the GVS workflow in the workspace, see the Time and cost estimates section below.
 
-If you’ve never used GCP before, you are eligible to receive $300 in GCP credits. You can use these credits to create a billing project in Terra by following the step-by-step instructions in the article [Set up billing with $300 Google credits to explore Terra](https://support.terra.bio/hc/en-us/articles/360046295092).
-
-If you have used GCP before but need to create a billing project in Terra, follow steps 2 and 3 in the article [Set up billing with $300 Google credits to explore Terra](https://support.terra.bio/hc/en-us/articles/360046295092).
+If you’ve never used GCP before, you are eligible to receive $300 in GCP credits. You **cannot** use a billing project using these credits to run the GVS pipeline. Follow steps 2 and 3 in the article [Set up billing with $300 Google credits to explore Terra](https://support.terra.bio/hc/en-us/articles/360046295092).
 
 If you already have a Terra billing account that you would like to use to test the GVS workflow, you can skip this step.
 
@@ -160,4 +158,4 @@ Data Sciences Platform, Broad Institute (*Year, Month Day that the workspace was
 
 ### License
 **Copyright Broad Institute, 2022 | Apache**
-The workflow script is released under the Apache License, Version 2.0 (full license text at https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT). Note however that the programs called by the scripts may be subject to different licenses. Users are responsible for checking that they are authorized to run all programs before running these tools.  
+The workflow script is released under the Apache License, Version 2.0 (full license text at https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT). Note however that the programs called by the scripts may be subject to different licenses. Users are responsible for checking that they are authorized to run all programs before running these tools.
