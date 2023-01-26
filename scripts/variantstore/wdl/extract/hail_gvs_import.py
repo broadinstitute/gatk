@@ -30,7 +30,8 @@ def import_gvs(argsfn, vds_path, references_path, temp_path):
     rg38.add_sequence(f'{references_path}/Homo_sapiens_assembly38.fasta.gz',
                       f'{references_path}/Homo_sapiens_assembly38.fasta.fai')
 
-    ## note that a full description of the import_gvs function written by Hail for this process can be found here: hail/python/hail/methods/impex.py
+    ## Note that a full description of the import_gvs function written by Hail for this process can be found here: hail/python/hail/methods/impex.py
+    ## Commented out parameters are ones where we are comfortable with the default, but want to make them easily accessible to users
     hl.import_gvs(
         vets=argsfn('vets'),
         refs=argsfn('refs'),
