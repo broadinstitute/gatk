@@ -255,6 +255,14 @@ workflows:
        branches:
          - master
          - ah_var_store
+   - name: WorkspaceId
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/WorkspaceId.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - mlc_workspace_id
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
