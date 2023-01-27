@@ -113,7 +113,8 @@ public class FlowBasedAlignmentLikelihoodEngine implements ReadLikelihoodCalcula
         final double log10catastrophicErrorRate = Math.log10(fbargs.fillingValue);
         return read -> {
             final double maxErrorsForRead = capLikelihoods ? Math.max(MAX_ERRORS_FOR_READ_CAP, Math.ceil(read.getLength() * expectedErrorRate)) : Math.ceil(read.getLength() * expectedErrorRate);
-            final double maxCatastrophicErrorsForRead = capLikelihoods ? Math.max(MAX_CATASTROPHIC_ERRORS_FOR_READ_CAP, Math.ceil(read.getLength() * catastrophicErrorRate)) : Math.ceil(read.getLength() * catastrophicErrorRate);
+            final double maxCatastrophicErrorsForRead = capLikelihoods ? Math.max(MAX_CATASTROPHIC_ERRORS_FOR_READ_CAP, Math.ceil(read.getLength() * fbargs.fillingValue)) :
+                    Math.ceil(read.getLength() * fbargs.fillingValue);
             return maxErrorsForRead * log10ErrorRate + maxCatastrophicErrorsForRead * log10catastrophicErrorRate;
         };
     }

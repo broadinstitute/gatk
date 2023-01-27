@@ -124,7 +124,7 @@ public class FlowBasedHMMEngine implements ReadLikelihoodCalculationEngine {
 
         return read -> {
             final double maxErrorsForRead = Math.max(3.0, Math.ceil(read.getLength() * expectedErrorRate));
-            final double maxCatastrophicErrorsForRead = Math.max(2.0, Math.ceil(read.getLength() * catastrophicErrorRate));
+            final double maxCatastrophicErrorsForRead = Math.max(2.0, Math.ceil(read.getLength() * fbargs.fillingValue));
             return maxErrorsForRead * log10ErrorRate + maxCatastrophicErrorsForRead*catastrophicErrorRate;
         };
     }
