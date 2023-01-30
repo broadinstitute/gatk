@@ -58,14 +58,12 @@ Building on the steps above:
 Hail does not normally keep a GT statistic. The custom Hail GVS import code
 calculates [GT from LGT](https://github.com/hail-is/hail/blob/bb2400f5e3ff97c4932115cca833bbb150e4b40e/hail/python/hail/methods/impex.py#L3367)
 and stores GT in the VDS per the Variants' team's request. However when samples are removed from the VDS this import
-logic is not executed, so we will need to
-[recalculate GT manually](https://broadinstitute.slack.com/archives/C024D3SJ5EF/p1672785359833019?thread_ts=1672764167.108029&cid=C024D3SJ5EF:
+logic is not executed, so we will need to recalculate GT manually:
 
 ```
 >>> vds = hl.vds.read_vds('gs://bucket/path/to/baseline.vds')
 >>> vd = vds.variant_data
 >>> vd = vd.drop(vd.GT)
->>> vd = vd.annotate_entries(LGT=vd.LGT.unphase())
 >>> vd = vd.select_entries(GT=hl.vds.lgt_to_gt(vd.LGT, vd.LA), **vd.entry)
 >>> vds = hl.vds.VariantDataset(vds.reference_data, vd)
 ```
