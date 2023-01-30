@@ -55,10 +55,11 @@ Building on the steps above:
 
 ## Correcting GT to account for removed samples
 
-Hail does not normally keep a GT statistic. The custom Hail GVS import code
+Hail normally does not keep a GT statistic. The custom Hail GVS import code
 calculates [GT from LGT](https://github.com/hail-is/hail/blob/bb2400f5e3ff97c4932115cca833bbb150e4b40e/hail/python/hail/methods/impex.py#L3367)
-and stores GT in the VDS per the Variants' team's request. However when samples are removed from the VDS this import
-logic is not executed, so we will need to recalculate GT manually:
+and stores GT in the VDS per the Variants' team's request. When samples are removed from the VDS Hail will automatically
+update LGT statistics, but the GT statistic retains its old value stored at import time. In order to keep GT accurate
+after removing samples we need to recalculate GT from LGT and store it ourselves:
 
 ```
 >>> vd = filtered_vds.variant_data
