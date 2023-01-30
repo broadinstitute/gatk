@@ -189,7 +189,7 @@ public final class PileupBasedAlleles {
         validatePileupVariant(pileupVariant);
         final int pileupSupport = pileupVariant.getAttributeAsInt(PILEUP_ALLELE_SUPPORTING_READS, 0);
         final int assemblyBadReads = pileupVariant.getAttributeAsInt(PILEUP_ALLELE_ASSEMBLY_BAD_READS_TAG, 0);
-        return ((args.assemblyBadReadThreshold <= 0.0) && (double) assemblyBadReads / (double) pileupSupport >= args.assemblyBadReadThreshold);
+        return ((args.assemblyBadReadThreshold > 0.0) && (double) assemblyBadReads / (double) pileupSupport >= args.assemblyBadReadThreshold);
     }
 
     private static void validatePileupVariant(final VariantContext pileupVariant) {

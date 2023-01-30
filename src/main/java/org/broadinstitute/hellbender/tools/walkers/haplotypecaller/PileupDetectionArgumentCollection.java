@@ -148,7 +148,7 @@ public final class PileupDetectionArgumentCollection {
      */
     @Advanced
     @Hidden
-    @Argument(fullName= PILEUP_DETECTION_FILTER_ASSEMBLY_HAPS_THRESHOLD, doc = "If enabled (set to non-zero), will apply the \"badness\" filter to compatable assembled haplotypes.", optional = true)
+    @Argument(fullName= PILEUP_DETECTION_FILTER_ASSEMBLY_HAPS_THRESHOLD, doc = "If enabled (set to non-zero), will apply the \"badness\" filter to compatible assembled haplotypes.", optional = true)
     public double assemblyBadReadThreshold = 0.4;
     @Hidden
     @Argument(fullName= PILEUP_DETECTION_EDIT_DISTANCE_BADNESS_FOR_ASSEMBLY_LONG_NAME, doc = "Pileup Detection: Reject alt reads with greater than this fraction of mismatching bases from the reference (proxied using the NM tag). (Requires '--"+PILEUP_DETECTION_LONG_NAME+"' argument)", optional = true)
