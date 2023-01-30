@@ -462,6 +462,9 @@ public final class AssemblyBasedCallerUtils {
                                                                       final AssemblyResultSet assemblyResultSet, final List<VariantContext> pileupAllelesFoundShouldFilter,
                                                                       final List<VariantContext> pileupAllelesPassingFilters, final boolean debug) {
         List<Haplotype> haplotypesWithFilterAlleles = new ArrayList<>();
+        // IF we find pileup alleles that we want to filter... AND we are not generating the partially determined haplotypes,
+        // we resort to a messy approach where we filter alleles by throwing away every haplotype supporting an allele. This is
+        // very dangerous since this could easily destroy phased variants with the haplotype.
         if (!pileupAllelesFoundShouldFilter.isEmpty() && !argumentCollection.pileupDetectionArgs.generatePDHaplotypes) {
             // TODO this is a bad algorithm for bad people
             for(VariantContext delVariant : pileupAllelesFoundShouldFilter) {

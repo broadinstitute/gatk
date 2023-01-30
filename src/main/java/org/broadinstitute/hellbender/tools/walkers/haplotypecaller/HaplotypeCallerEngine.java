@@ -672,6 +672,7 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                 .filter(v -> PileupBasedAlleles.passesFilters(hcArgs.pileupDetectionArgs, v))
                 .collect(Collectors.toList());
 
+        // Regenerate the list of AllVariationEvents, filtering out assembled variants that must be filtered according to the pileupcaller code.
         final SortedSet<VariantContext> allVariationEvents = new TreeSet<>(
                 AssemblyResultSet.HAPLOTYPE_VARIANT_CONTEXT_COMPARATOR);
         allVariationEvents.addAll(untrimmedAssemblyResult.getVariationEvents(hcArgs.maxMnpDistance).stream()
@@ -679,12 +680,14 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                         && filterAllle.getReference().equals(outerVC.getReference())
                         && filterAllle.getAlternateAllele(0).equals(outerVC.getAlternateAllele(0)));
                 }).collect(Collectors.toList()));
+        // Add any new pileupcaller alleles to the variation events
         for (final VariantContext pileupAllele : pileupAllelesPassingFilters) {
             //these are events from single haplotypes, so we can do a simple comparison without trimming
             if (allVariationEvents.stream().noneMatch(vc -> vc.getStart() == pileupAllele.getStart() && vc.getAlternateAllele(0).basesMatch(pileupAllele.getAlternateAllele(0)))) {
                 allVariationEvents.add(pileupAllele);
             }
         }
+        // Add given alleles to the variation events
         for (final VariantContext given : givenAlleles) {
             //these are events from single haplotypes, so we can do a simple comparison without trimming
             if (allVariationEvents.stream().noneMatch(vc -> vc.getStart() == given.getStart() && vc.getAlternateAllele(0).basesMatch(given.getAlternateAllele(0)))) {
