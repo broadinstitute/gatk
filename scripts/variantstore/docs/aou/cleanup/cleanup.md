@@ -62,19 +62,34 @@ The Variants team currently has the following VDS internal sign-off protocol:
 * Generate callset statistics for the candidate callset using the prepare VET created in the preceding step
 * Forward VDS and callset statistics to Lee for QA / approval
 
-
 ## Storage versus regeneration costs
 
 ### Prepare tables
 
+These numbers assume the `GvsPrepareRangesCallset` workflow is invoked with the `only_output_vet_tables` input set
+to `true`. If this is not the case, meaning the prepare version of the ref ranges table was also generated, all costs
+below should be multiplied by about 4:
+
 * Running
-  GvsPrepareRangesCallset: [$1,803.14](https://docs.google.com/spreadsheets/d/1fcmEVWvjsx4XFLT9ZUsruUznnlB94xKgDIIyCGu6ryQ/edit#gid=0)
+  GvsPrepareRangesCallset: [$429.18](https://docs.google.com/spreadsheets/d/1fcmEVWvjsx4XFLT9ZUsruUznnlB94xKgDIIyCGu6ryQ/edit#gid=0)
+```
+-- Look in the cost observability table for the bytes scanned for the appropriate run of `GvsPrepareRanges`.
+SELECT
+  ROUND(event_bytes * (5 / POW(1024, 4)), 2) AS cost, -- $5 / TiB on demand https://cloud.google.com/bigquery/pricing#on_demand_pricing
+  call_start_timestamp
+FROM
+  `aou-genomics-curation-prod.aou_wgs_fullref_v2.cost_observability`
+WHERE
+  step = 'GvsPrepareRanges'
+ORDER BY call_start_timestamp DESC
+```
 * Storing prepare data: $878.39 / month
+    * Assuming compressed pricing, multiply the number of physical bytes by $0.026 / GiB.
 
 ### Avro files
 
 The Avro files generated from the Delta callset onward are very large, several times the size of the final Hail VDS.
-For the ~250K sample Delta callset the Avro files consume nearly 80 TiB of GCS storage while the delivered VDS is
+For the ~250K sample Delta callset the Avro files consumed nearly 80 TiB of GCS storage while the delivered VDS was
 "only" about 26 TiB.
 
 Approximate figures for the ~250K sample Delta callset:
@@ -96,9 +111,9 @@ Approximate figures for the ~250K samples Delta callset:
 * VDS storage cost: ~$500 / month. Note AoU should have exact copies of the VDSes we have delivered for Delta, though
   it's not certain that these copies will remain accessible to the Variants team in the long term. The Variants team has
   generated four versions of the Delta VDS so far, two of which still exist:
-    * First version of the callset, includes many samples that were later removed `gs://fc-secure-fb908548-fe3c-41d6-adaf-7ac20d541375/vds/2022-10-19/dead_alleles_removed_vs_667_249047_samples/gvs_export.vds`
-    * ~~AI/AN filtering round one `gs://fc-secure-fb908548-fe3c-41d6-adaf-7ac20d541375/delta_ai_an_filtered_2022_11_15.vds/`~~
-    * ~~AI/AN filtering round two, controls removed `gs://fc-secure-fb908548-fe3c-41d6-adaf-7ac20d541375/delta_ai_an_control_filtered_2022_12_13.vds/`~~
-    * Latest version, same samples as previous version with GT and phasing corrected `gs://fc-secure-fb908548-fe3c-41d6-adaf-7ac20d541375/vds/01-04-2023-correct-GT`
+    * First version of the callset, includes many samples that were later
+      removed `gs://fc-secure-fb908548-fe3c-41d6-adaf-7ac20d541375/vds/2022-10-19/dead_alleles_removed_vs_667_249047_samples/gvs_export.vds`
+    * Latest version, same samples as previous version with GT and phasing
+      corrected `gs://fc-secure-fb908548-fe3c-41d6-adaf-7ac20d541375/vds/01-04-2023-correct-GT`
 * VDS regeneration cost: $1000 (~10 hours @ ~$100 / hour cluster cost) + $3000 to regenerate Avro files if necessary.
 
