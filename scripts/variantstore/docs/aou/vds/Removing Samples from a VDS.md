@@ -53,6 +53,21 @@ Building on the steps above:
 >>> filtered_vds = hl.vds.filter_samples(baseline_vds, samples_to_remove_table, keep=False, remove_dead_alleles=True)
 ```
 
+## Correcting GT to account for removed samples
+
+Hail does not normally keep a GT statistic; the Hail GVS import logic calculates and stores GT in the VDS per the
+Variants' team's request. When samples are removed from the VDS we are not running the import logic, so we will need to
+[update GT manually](https://broadinstitute.slack.com/archives/C024D3SJ5EF/p1672785359833019?thread_ts=1672764167.108029&cid=C024D3SJ5EF:
+
+```
+>>> vds = hl.vds.read_vds('gs://bucket/path/to/baseline.vds')
+>>> vd = vds.variant_data
+>>> vd = vd.drop(vd.GT)
+>>> vd = vd.annotate_entries(LGT=vd.LGT.unphase())
+>>> vd = vd.select_entries(GT=hl.vds.lgt_to_gt(vd.LGT, vd.LA), **vd.entry)
+>>> vds = hl.vds.VariantDataset(vds.reference_data, vd)
+```
+
 ## Sanity checks before writing
 
 Writing a Delta-sized VDS takes several hours using the > $100 / hour cluster spec documented above, so it’s a good idea
