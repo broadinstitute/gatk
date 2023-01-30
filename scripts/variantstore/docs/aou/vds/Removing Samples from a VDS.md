@@ -61,11 +61,10 @@ and stores GT in the VDS per the Variants' team's request. However when samples 
 logic is not executed, so we will need to recalculate GT manually:
 
 ```
->>> vds = hl.vds.read_vds('gs://bucket/path/to/baseline.vds')
->>> vd = vds.variant_data
+>>> vd = filtered_vds.variant_data
 >>> vd = vd.drop(vd.GT)
 >>> vd = vd.select_entries(GT=hl.vds.lgt_to_gt(vd.LGT, vd.LA), **vd.entry)
->>> vds = hl.vds.VariantDataset(vds.reference_data, vd)
+>>> filtered_vds = hl.vds.VariantDataset(filtered_vds.reference_data, vd)
 ```
 
 ## Sanity checks before writing
