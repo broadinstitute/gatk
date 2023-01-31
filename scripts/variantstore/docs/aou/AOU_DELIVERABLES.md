@@ -56,30 +56,32 @@
    - Avro files from the above `GvsExtractAvroFilesForHail` step can be found in the avro directory in the OutputPath task: `gs://fc-<workspace-id>/submissions/<submission id>/GvsExtractAvroFilesForHail/<workflow id>/call-OutputPath/avro`
    - We suggest gsutil cp-ing `hail_gvs_import.py` to the notebook and then invoking it directly in the terminal
    - inputs to the python script are:
-     1. `--avro-path`: the directory path at which exported GVS Avro files are found in GCP
+     1. `--avro-path`: the directory path at which exported GVS Avro files are found in GCP.  This path can be found by navigating to the execution directory of the `OutputPath` task in the `GvsExtractAvroFilesForHail ` workflow.  The files are in a directory there named "avro".
      2. `--vds-path`: the desired output path to which the VDS should be written
      3. `--temp-path`: a convenient path to temporary directory. We suggest a folder under the GCP bucket of the workspace that the notebook is in, e.g. `gs://fc-<workspace-id>/hail_tmp`.
 9. `GvsPrepareRangesCallset` workflow
     - This workflow transforms the data in the vet tables into a schema optimized for callset stats creation.
     - It will need to be run once with `only_output_vet_tables` set to "true", the default value is `false`.
-    - See [naming conventions doc](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow) for guidance on what to use for `extract_table_prefix` or cohort prefix, which you will need to keep track of for the callset stats;
+    - See [naming conventions doc](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow) for guidance on what to use for `extract_table_prefix` or cohort prefix, which you will need to keep track of for the callset stats.
     - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
 10. `GvsCallsetStatistics` workflow
     - You will need to have the "BigQuery Data Viewer" role for your @pmi-ops proxy group on the `spec-ops-aou:gvs_public_reference_data.gnomad_v3_sites` table
     - This workflow needs to be run with the `extract_table_prefix` input from `GvsPrepareRangesCallset` step.
     - This workflow needs to be run with the `filter_set_name` input from `GvsCreateFilterSet` step.
     - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
-11. `GvsCallsetStatistics` workflow
-    -  You will need to have "Storage Object View" access granted for your @pmi-ops proxy group on the `gs://broad-dsp-spec-ops/gvs/truth` directory
+11. `GvsCalculatePrecisionAndSensitivity` workflow
+    - You will need to have "Storage Object View" access granted for your @pmi-ops proxy group on the `gs://broad-dsp-spec-ops/gvs/truth` directory
+    - This workflow needs to be run with the `extract_table_prefix` input from `GvsPrepareRangesCallset` step.
+    - Aaaaaand you're going to need to run extract vcf with the control samples (and maybe just chr20) to get the VCFs needed for this step
+    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
 12. `GvsCallsetCost` workflow
     - This workflow calculates the total BigQuery cost of generating this callset (which is not represented in the Terra UI total workflow cost) using the above GVS workflows; it's used to calculate the cost as a whole and by sample.
-    - Note that the VDS creation cost based on the VM time will have to be added and the Avro extraction was not included at the time of this readme note
 
 ## Deliverables (via email to stakeholders once the above steps are complete)
 1. GCS location of the VDS (the `--vds-path` input from `hail_gvs_import.py`)
 2. fully qualified name of the BigQuery dataset (composed of the `project_id` and `dataset_name` inputs from the workflows)
-3. CSV output from `GvsCallsetStatistics` workflow (see step #11 above)
-4. TSV output from `GvsCalculatePrecisionAndSensitivity` workflow (see step #12 above)
+3. CSV output from `GvsCallsetStatistics` workflow (see step #10 above)
+4. TSV output from `GvsCalculatePrecisionAndSensitivity` workflow (see step #11 above)
 
 ## Running the VAT pipeline
 To create a BigQuery table of variant annotations, you may follow the instructions here:
