@@ -15,6 +15,8 @@
   - [GvsCreateFilterSet](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsCreateFilterSet) workflow
   - [GvsExtractAvroFilesForHail](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsExtractAvroFilesForHail) workflow
   - [GvsPrepareRangesCallset](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsPrepareRangesCallset) workflow
+  - [GvsExtractCallset](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsExtractCallset) workflow
+  - [GvsCallsetStatistics](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCallsetStatistics) workflow
   - [GvsCalculatePrecisionAndSensitivity](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCalculatePrecisionAndSensitivity) workflow
   - [GvsCallsetCost](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCallsetCost) workflow
 - Run the "Fetch WGS metadata for samples from list" notebook after you have placed the file with the list of the new samples to ingest in a GCS location the notebook (running with your @pmi-ops account) will have access to.  This will grab the samples from the workspace where they were reblocked and bring them into this callset workspace.
@@ -60,9 +62,14 @@
      2. `--vds-path`: the desired output path to which the VDS should be written
      3. `--temp-path`: a convenient path to temporary directory. We suggest a folder under the GCP bucket of the workspace that the notebook is in, e.g. `gs://fc-<workspace-id>/hail_tmp`.
 9. `GvsPrepareRangesCallset` workflow
-    - This workflow transforms the data in the vet tables into a schema optimized for callset stats creation.
-    - It will need to be run once with `only_output_vet_tables` set to "true", the default value is `false`.
-    - See [naming conventions doc](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow) for guidance on what to use for `extract_table_prefix` or cohort prefix, which you will need to keep track of for the callset stats.
+    - This workflow transforms the data in the vet tables into a schema optimized for callset stats creation and for calculating sensitivity and precision.
+    - It will need to be run twice. Once with `only_output_vet_tables` set to "true" (the default value is `false`) and once with `control_samples` set to "true" (the default value is `false`).
+    - See [naming conventions doc](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow) for guidance on what to use for `extract_table_prefix` or cohort prefix, which you will need to keep track of for the callset stats. Use the same prefix for both runs.
+    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
+8. `GvsExtractCallset` workflow
+    - This workflow extracts the control data in BigQuery and transforms it into a sharded joint VCF incorporating the VQSR filter set data.
+    - It will need to be run once with `control_samples` set to "true", and with the `filter_set_name` from the `GvsCreateFilterSet` step and the `extract_table_prefix` from the `GvsPrepareRangesCallset` step.  
+    - Include a valid `output_gcs_dir` parameter, which is where the VCF, interval list, manifest, and sample name list files will go, e.g. `gs://fc-<workspace-id>/extractedcontrol-vcfs/`
     - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
 10. `GvsCallsetStatistics` workflow
     - You will need to have the "BigQuery Data Viewer" role for your @pmi-ops proxy group on the `spec-ops-aou:gvs_public_reference_data.gnomad_v3_sites` table
@@ -71,8 +78,7 @@
     - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
 11. `GvsCalculatePrecisionAndSensitivity` workflow
     - You will need to have "Storage Object View" access granted for your @pmi-ops proxy group on the `gs://broad-dsp-spec-ops/gvs/truth` directory
-    - This workflow needs to be run with the `extract_table_prefix` input from `GvsPrepareRangesCallset` step.
-    - Aaaaaand you're going to need to run extract vcf with the control samples (and maybe just chr20) to get the VCFs needed for this step
+    - This workflow needs to be run with the control sample chr20 vcfs from `GvsExtractCallset` step which were placed in the `output_gcs_dir`.
     - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
 12. `GvsCallsetCost` workflow
     - This workflow calculates the total BigQuery cost of generating this callset (which is not represented in the Terra UI total workflow cost) using the above GVS workflows; it's used to calculate the cost as a whole and by sample.
@@ -80,8 +86,8 @@
 ## Deliverables (via email to stakeholders once the above steps are complete)
 1. GCS location of the VDS (the `--vds-path` input from `hail_gvs_import.py`)
 2. fully qualified name of the BigQuery dataset (composed of the `project_id` and `dataset_name` inputs from the workflows)
-3. CSV output from `GvsCallsetStatistics` workflow (see step #10 above)
-4. TSV output from `GvsCalculatePrecisionAndSensitivity` workflow (see step #11 above)
+3. CSV output from `GvsCallsetStatistics` workflow
+4. TSV output from `GvsCalculatePrecisionAndSensitivity` workflow
 
 ## Running the VAT pipeline
 To create a BigQuery table of variant annotations, you may follow the instructions here:
