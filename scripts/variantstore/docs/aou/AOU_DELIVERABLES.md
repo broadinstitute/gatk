@@ -61,7 +61,7 @@
    - inputs to the python script are:
      1. `--avro-path`: the directory path at which exported GVS Avro files are found in GCP
      2. `--vds-path`: the desired output path to which the VDS should be written
-     3. `--temp-path`: a convenient path to temporary directory (we suggest the GCP bucket of the workspace that the notebook is in) 
+     3. `--temp-path`: a convenient path to temporary directory. We suggest a folder under the GCP bucket of the workspace that the notebook is in, e.g. `gs://fc-<workspace-id>/hail_tmp`.
 9. `GvsPrepareRangesCallset` workflow
    - This workflow transforms the data in the vet tables into a schema optimized for VCF generation during the Extract step.
    - It will need to be run once with `only_output_vet_tables` set to "true" (see [naming conventions doc](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow) for guidance on what to use for `extract_table_prefix` or cohort prefix, which you will need to keep track of for the callset stats); the default value is `false`.
