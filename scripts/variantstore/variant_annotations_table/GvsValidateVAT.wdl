@@ -94,6 +94,13 @@ workflow GvsValidateVat {
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
     }
 
+    call DuplicateAnnotations {
+        input:
+            query_project_id = query_project_id,
+            fq_vat_table = fq_vat_table,
+            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
+    }
+
     call ClinvarSignificance {
         input:
             project_id = project_id,
@@ -129,6 +136,7 @@ workflow GvsValidateVat {
                        SubpopulationMax.pass,
                        SubpopulationAlleleCount.pass,
                        SubpopulationAlleleNumber.pass,
+                       DuplicateAnnotations.pass,
                        ClinvarSignificance.pass,
                        SchemaAAChangeAndExonNumberConsistent.pass,
                        SpotCheckForAAChangeAndExonNumberConsistency.pass
@@ -145,6 +153,7 @@ workflow GvsValidateVat {
                                SubpopulationMax.name,
                                SubpopulationAlleleCount.name,
                                SubpopulationAlleleNumber.name,
+                               DuplicateAnnotations.name,
                                ClinvarSignificance.name,
                                SchemaAAChangeAndExonNumberConsistent.name,
                                SpotCheckForAAChangeAndExonNumberConsistency.name
@@ -161,6 +170,7 @@ workflow GvsValidateVat {
                                  SubpopulationMax.result,
                                  SubpopulationAlleleCount.result,
                                  SubpopulationAlleleNumber.result,
+                                 DuplicateAnnotations.result,
                                  ClinvarSignificance.result,
                                  SchemaAAChangeAndExonNumberConsistent.result,
                                  SpotCheckForAAChangeAndExonNumberConsistency.result
@@ -879,7 +889,7 @@ task DuplicateAnnotations {
     }
     output {
         Boolean pass = read_boolean(pf_file)
-        String name = "SubpopulationAlleleNumber"
+        String name = "DuplicateAnnotations"
         String result = read_string(results_file)
     }
 }
