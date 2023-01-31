@@ -57,7 +57,7 @@
 8. Run the VDS Extract using a notebook terminal and the python script [hail_gvs_import.py](scripts/variantstore/wdl/extract/hail_gvs_import.py)
    - This step creates a VDS based on the Avro files 
    - Notebook provisioning suggestions and other necessary set up details (e.g. the Hail wheel to use) can be found in the file: [AoU Delta VDS Cluster Configuration.md](vds/cluster/AoU%20Delta%20VDS%20Cluster%20Configuration.md)
-   - We suggest running `hail_gvs_import.py` directly in the terminal
+   - We suggest gsutil cp-ing `hail_gvs_import.py` to the notebook and then invoking it directly in the terminal
    - inputs to the python script are:
      1. `--avro-path`: the directory path at which exported GVS Avro files are found in GCP
      2. `--vds-path`: the desired output path to which the VDS should be written
