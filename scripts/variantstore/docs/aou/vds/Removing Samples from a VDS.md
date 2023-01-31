@@ -68,6 +68,15 @@ after removing samples we need to recalculate GT from LGT and store it ourselves
 >>> filtered_vds = hl.vds.VariantDataset(filtered_vds.reference_data, vd)
 ```
 
+Sanity check the updated variant data:
+
+```
+>>> vd2 = vd.select_rows(max_gt_idx = hl.max(hl.agg.max(vd.GT[0]), hl.agg.max(vd.GT[1])), n_alleles = hl.len(vd.alleles))
+>>> vd2 = vd2.filter_rows(vd2.n_alleles <= vd2.max_gt_idx)
+>>> vd2.rows().show()
+```
+We want NO ROWS here!
+
 ## Sanity checks before writing
 
 Writing a Delta-sized VDS takes several hours using the > $100 / hour cluster spec documented above, so it’s a good idea
