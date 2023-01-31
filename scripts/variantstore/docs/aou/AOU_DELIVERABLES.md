@@ -56,7 +56,7 @@
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
 8. Run the VDS Extract using a notebook terminal and the python script [hail_gvs_import.py](scripts/variantstore/wdl/extract/hail_gvs_import.py)
    - This step creates a VDS based on the Avro files 
-   - Notebook provisioning suggestions can be found in the file: [AoU Delta VDS Cluster Configuration.md](vds/cluster/AoU%20Delta%20VDS%20Cluster%20Configuration.md)
+   - Notebook provisioning suggestions and other necessary set up details (e.g. the Hail wheel to use) can be found in the file: [AoU Delta VDS Cluster Configuration.md](vds/cluster/AoU%20Delta%20VDS%20Cluster%20Configuration.md)
    - We suggest running `hail_gvs_import.py` directly in the terminal
    - inputs to the python script are:
      1. `--avro-path`: the directory path at which exported GVS Avro files are found in GCP
