@@ -72,7 +72,7 @@ task SplitIntervals {
   Int disk_memory = if (defined(split_intervals_mem_override)) then select_first([split_intervals_mem_override]) else 16
   Int java_memory = disk_memory - 4
 
-  String gatkTool = if (defined(interval_weights_bed)) then 'WeightedSplitIntervals' else 'SplitIntervals'
+  String gatk_tool = if (defined(interval_weights_bed)) then 'WeightedSplitIntervals' else 'SplitIntervals'
 
   parameter_meta {
     intervals: {
@@ -98,7 +98,7 @@ task SplitIntervals {
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
     mkdir interval-files
-    gatk --java-options "-Xmx~{java_memory}g" ~{gatkTool} \
+    gatk --java-options "-Xmx~{java_memory}g" ~{gatk_tool} \
       --dont-mix-contigs \
       -R ~{ref_fasta} \
       ~{"-L " + intervals} \

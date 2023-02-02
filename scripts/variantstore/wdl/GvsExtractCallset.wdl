@@ -151,8 +151,9 @@ workflow GvsExtractCallset {
     call ExtractTask {
       input:
         go                                 = select_first([ValidateFilterSetName.done, true]),
-        dataset_id                         = dataset_name,
+        dataset_name                       = dataset_name,
         call_set_identifier                = call_set_identifier,
+        use_classic_VQSR                   = use_classic_VQSR,
         gatk_override                      = gatk_override,
         reference                          = reference,
         reference_index                    = reference_index,
@@ -167,7 +168,7 @@ workflow GvsExtractCallset {
         do_not_filter_override             = do_not_filter_override,
         fq_filter_set_info_table           = fq_filter_set_info_table,
         fq_filter_set_site_table           = fq_filter_set_site_table,
-        fq_filter_set_tranches_table       = fq_filter_set_tranches_table,
+        fq_filter_set_tranches_table       = if (use_classic_VQSR) then fq_filter_set_tranches_table else none,
         filter_set_name                    = filter_set_name,
         drop_state                         = drop_state,
         output_file                        = vcf_filename,
@@ -224,8 +225,10 @@ task ExtractTask {
   input {
     Boolean go
 
-    String dataset_id
+    String dataset_name
     String call_set_identifier
+
+    Boolean use_classic_VQSR
 
     File reference
     File reference_index
@@ -252,12 +255,12 @@ task ExtractTask {
     Boolean do_not_filter_override
     String fq_filter_set_info_table
     String fq_filter_set_site_table
-    String fq_filter_set_tranches_table
+    String? fq_filter_set_tranches_table
     String? filter_set_name
     Boolean write_cost_to_db
 
     # Runtime Options:
-    File? gatk_override
+    File? gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/gg_VS-694_VQSR_Lite_20230202/gatk-package-4.2.0.0-645-g9035af3-SNAPSHOT-local.jar"
     Int? extract_preemptible_override
     Int? extract_maxretries_override
 
@@ -270,28 +273,37 @@ task ExtractTask {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
   String intervals_name = basename(intervals)
   String cost_observability_line = if (write_cost_to_db == true) then "--cost-observability-tablename ~{cost_observability_tablename}" else ""
 
   String inferred_reference_state = if (drop_state == "NONE") then "ZERO" else drop_state
 
+  String gatk_tool = if (use_classic_VQSR == true) then 'ExtractCohort' else 'ExtractCohortLite'
+
   command <<<
     set -e
-    export GATK_LOCAL_JAR="~{default="/root/gatk.jar" gatk_override}"
 
-    df -h
+    bash ~{monitoring_script} > monitoring.log &
+
+    export GATK_LOCAL_JAR="~{default="/root/gatk.jar" gatk_override}"
 
     if [ ~{do_not_filter_override} = 'true' ]; then
       FILTERING_ARGS=''
+    elif [~{use_classic_VQSR} == 'true' ]; then
+      FILTERING_ARGS='--filter-set-info-table ~{fq_filter_set_info_table}
+        --filter-set-site-table ~{fq_filter_set_site_table}
+        --tranches-table ~{fq_filter_set_tranches_table}
+        --filter-set-name ~{filter_set_name}'
     else
       FILTERING_ARGS='--filter-set-info-table ~{fq_filter_set_info_table}
-          --filter-set-site-table ~{fq_filter_set_site_table}
-          --tranches-table ~{fq_filter_set_tranches_table}
-          --filter-set-name ~{filter_set_name}'
+        --filter-set-site-table ~{fq_filter_set_site_table}
+        --filter-set-name ~{filter_set_name}'
     fi
 
     gatk --java-options "-Xmx9g" \
-      ExtractCohort \
+      ~{gatk_tool} \
         --vet-ranges-extract-fq-table ~{fq_ranges_cohort_vet_extract_table} \
         --ref-ranges-extract-fq-table ~{fq_ranges_cohort_ref_extract_table} \
         --ref-version 38 \
@@ -305,9 +317,9 @@ task ExtractTask {
         ~{true='--emit-pls' false='' emit_pls} \
         ~{true='--emit-ads' false='' emit_ads} \
         ${FILTERING_ARGS} \
-        --dataset-id ~{dataset_id} \
+        --dataset-id ~{dataset_name} \
         --call-set-identifier ~{call_set_identifier} \
-        --wdl-step GvsCreateCallset \
+        --wdl-step GvsExtractCallset \
         --wdl-call ExtractTask \
         --shard-identifier ~{intervals_name} \
         ~{cost_observability_line}
@@ -352,6 +364,7 @@ task ExtractTask {
     File output_vcf_index = "~{output_file}.tbi"
     Float output_vcf_index_bytes = read_float("vcf_index_bytes.txt")
     String manifest = read_string("manifest.txt")
+    File monitoring_log = "monitoring.log"
   }
 }
 

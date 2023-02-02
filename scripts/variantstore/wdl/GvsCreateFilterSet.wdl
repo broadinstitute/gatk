@@ -432,7 +432,7 @@ task PopulateFilterSetInfo {
     String query_project
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
-    File? gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/gg_VS-693_VQSR_lite_20230126/gatk-package-4.2.0.0-661-gfac9ef0-SNAPSHOT-local.jar"
+    File? gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/gg_VS-694_VQSR_Lite_20230202/gatk-package-4.2.0.0-645-g9035af3-SNAPSHOT-local.jar"
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
