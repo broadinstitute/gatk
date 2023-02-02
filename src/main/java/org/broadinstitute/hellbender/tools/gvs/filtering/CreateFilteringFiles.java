@@ -38,6 +38,8 @@ public final class CreateFilteringFiles extends VariantWalker {
 
     private List<String> HEADER = 
         Arrays.asList("filter_set_name","mode","location","ref","alt","vqslod","culprit","training_label","yng");
+    private List<String> HEADER_VQSR_LITE =
+            Arrays.asList("filter_set_name","mode","location","ref","alt","vqslod","culprit","training_label","yng", "calibration_sensitivity");
 
     
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, 
@@ -64,6 +66,12 @@ public final class CreateFilteringFiles extends VariantWalker {
         optional = false)
     private String mode;
 
+    @Argument(
+            fullName = "classic",
+            doc = "Whether or not this is using classic VQSR or the newer VQSR-Lite",
+            optional = true)
+    private Boolean usingOldVQSR = null;
+
     @Override
     public boolean requiresIntervals() {
         return false;
@@ -76,7 +84,17 @@ public final class CreateFilteringFiles extends VariantWalker {
         } catch (IOException ioe) {
             throw new GATKException("Unable to initialize writer", ioe);
         }
-        writer.setHeaderLine(HEADER);
+
+        if (usingOldVQSR == null) { // default to using the old, or "classic" VQSR if the user specifies nothing
+            usingOldVQSR = Boolean.TRUE;
+        }
+
+        if (usingOldVQSR) {
+            writer.setHeaderLine(HEADER);
+        } else {
+            writer.setHeaderLine(HEADER_VQSR_LITE);
+        }
+
 
         // Set reference version -- TODO remove this in the future, also, can we get ref version from the header?
         ChromosomeEnum.setRefVersion(refVersion);
@@ -99,17 +117,35 @@ public final class CreateFilteringFiles extends VariantWalker {
         // TODO: check with Laura -- should NEGATIVES also be NAYs?
         String yng = variant.hasAttribute("POSITIVE_TRAIN_SITE")?"Y":"G";
 
-        List<String> row = Arrays.asList(
-            filterSetName,
-            mode,
-            location.toString(),
-            ref,
-            alt,
-            vqslod,
-            culprit,
-            trainingLabel,
-            yng
-        );
+        List<String> row;
+        if (usingOldVQSR) {
+            row = Arrays.asList(
+                    filterSetName,
+                    mode,
+                    location.toString(),
+                    ref,
+                    alt,
+                    vqslod,
+                    culprit,
+                    trainingLabel,
+                    yng
+            );
+        } else {
+            // New VQSR-Lite has CALIBRATION_SENSITIVITY present, so add that column too.
+            String calibration_sensitivity = variant.getAttributeAsString("CALIBRATION_SENSITIVITY","");
+            row = Arrays.asList(
+                    filterSetName,
+                    mode,
+                    location.toString(),
+                    ref,
+                    alt,
+                    vqslod,
+                    culprit,
+                    trainingLabel,
+                    yng,
+                    calibration_sensitivity
+            );
+        }
 
         writer.getNewLineBuilder().setRow(row).write();
 

@@ -81,7 +81,7 @@ public class NaturalLogUtils {
             }
         }
         if ( Double.isNaN(sum) || sum == Double.POSITIVE_INFINITY ) {
-            throw new IllegalArgumentException("log10 p: Values must be non-infinite and non-NAN");
+            throw new IllegalArgumentException("logValues must be non-infinite and non-NAN");
         }
         return maxValue + (sum != 1.0 ? Math.log(sum) : 0.0);
     }
