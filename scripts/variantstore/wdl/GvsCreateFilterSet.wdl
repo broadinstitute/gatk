@@ -432,12 +432,13 @@ task PopulateFilterSetInfo {
     String query_project
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
-    File? gatk_override
+    File? gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/gg_VS-693_VQSR_lite_20230126/gatk-package-4.2.0.0-661-gfac9ef0-SNAPSHOT-local.jar"
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
+#      --schema "filter_set_name:string,type:string,location:integer,ref:string,alt:string,vqslod:float,culprit:string,training_label:string,yng_status:string" \
   command <<<
     set -eo pipefail
 
@@ -445,7 +446,7 @@ task PopulateFilterSetInfo {
 
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
-    echo "Creating SNPs reacalibration file"
+    echo "Creating SNPs recalibration file"
     gatk --java-options "-Xmx1g" \
       CreateFilteringFiles \
       --ref-version 38 \
@@ -455,7 +456,7 @@ task PopulateFilterSetInfo {
       -V ~{snp_recal_file} \
       -O ~{filter_set_name}.snps.recal.tsv
 
-    echo "Creating INDELs reacalibration file"
+    echo "Creating INDELs racalibration file"
     gatk --java-options "-Xmx1g" \
       CreateFilteringFiles \
       --ref-version 38 \

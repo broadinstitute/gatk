@@ -96,7 +96,7 @@ workflows:
          - master
          - ah_var_store
          - rsa_vqsr_lite_poc
-         - VS-693_VQSR_lite
+         - gg_VS-694_VQSR_lite
    - name: GvsPopulateAltAllele
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPopulateAltAllele.wdl
@@ -120,6 +120,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - gg_VS-694_VQSR_lite
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
@@ -143,7 +144,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_VS-785_RegenerateTheVATTsv
    - name: GvsCreateVATFilesFromBigQuery
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/variant_annotations_table/GvsCreateVATFilesFromBigQuery.wdl
@@ -151,7 +151,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_VS-785_RegenerateTheVATTsv
    - name: GvsValidateVat
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/variant_annotations_table/GvsValidateVAT.wdl

@@ -17,8 +17,8 @@ import java.util.TreeMap;
 public class FilterSensitivityTools {
     private static final Logger logger = LogManager.getLogger(FilterSensitivityTools.class);
 
-    private static double DEFAULT_TRUTH_SENSITIVITY_THRESHOLD_SNPS = 99.7;
-    private static double DEFAULT_TRUTH_SENSITIVITY_THRESHOLD_INDELS = 99.0;
+    public static double DEFAULT_TRUTH_SENSITIVITY_THRESHOLD_SNPS = 99.7;
+    public static double DEFAULT_TRUTH_SENSITIVITY_THRESHOLD_INDELS = 99.0;
 
     public static void validateFilteringCutoffs(
             Double truthSensitivitySNPThreshold,
@@ -134,6 +134,6 @@ public class FilterSensitivityTools {
             truthSensitivityThreshold = GATKVCFConstants.SNP.contains(model) ? DEFAULT_TRUTH_SENSITIVITY_THRESHOLD_SNPS : DEFAULT_TRUTH_SENSITIVITY_THRESHOLD_INDELS;
         }
         return new VCFFilterHeaderLine(GATKVCFConstants.VQSR_FAILURE_PREFIX + model,
-                "Site failed " + model + " model sensitivity cutoff (" + truthSensitivityThreshold.toString() + "), corresponding with VQSLOD cutoff of " + vqsLodThreshold.toString());
+                "Site failed " + model + " model sensitivity cutoff (" + truthSensitivityThreshold + "), corresponding with VQSLOD cutoff of " + vqsLodThreshold.toString());
     }
 }

@@ -430,10 +430,9 @@ task CountSuperpartitions {
 task ValidateFilterSetName {
     input {
         Boolean go = true
+        String query_project
+        String fq_filter_set_info_table
         String filter_set_name
-        String data_project
-        String dataset_name
-        String query_project = data_project
         String filter_set_info_timestamp = ""
     }
     meta {
@@ -448,13 +447,13 @@ task ValidateFilterSetName {
 
         echo "project_id = ~{query_project}" > ~/.bigqueryrc
 
-        OUTPUT=$(bq --project_id=~{query_project} --format=csv query --use_legacy_sql=false ~{bq_labels} "SELECT filter_set_name as available_filter_set_names FROM \`~{data_project}.~{dataset_name}.filter_set_info\` GROUP BY filter_set_name")
+        OUTPUT=$(bq --project_id=~{query_project} --format=csv query --use_legacy_sql=false ~{bq_labels} "SELECT filter_set_name as available_filter_set_names FROM \`~{fq_filter_set_info_table}\` GROUP BY filter_set_name")
         FILTERSETS=${OUTPUT#"available_filter_set_names"}
 
         if [[ $FILTERSETS =~ "~{filter_set_name}" ]]; then
             echo "Filter set name '~{filter_set_name}' found."
         else
-            echo "ERROR: '~{filter_set_name}' is not an existing filter_set_name. Available in ~{data_project}.~{dataset_name} are"
+            echo "ERROR: '~{filter_set_name}' is not an existing filter_set_name. Available in ~{fq_filter_set_info_table} are"
             echo $FILTERSETS
             exit 1
         fi

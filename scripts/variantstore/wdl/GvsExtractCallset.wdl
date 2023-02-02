@@ -26,6 +26,8 @@ workflow GvsExtractCallset {
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
     Boolean use_interval_weights = true
     File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
+    Boolean use_classic_VQSR = true
+
     File? gatk_override
 
     String output_file_base_name = filter_set_name
@@ -48,7 +50,11 @@ workflow GvsExtractCallset {
   String fq_cohort_dataset = "~{cohort_project_id}.~{cohort_dataset_name}"
 
   String full_extract_prefix = if (control_samples) then "~{extract_table_prefix}_controls" else extract_table_prefix
-  String fq_filter_set_info_table = "~{fq_gvs_dataset}.filter_set_info"
+
+  String filter_set_info_table_name = "filter_set_info"
+  String filter_set_info_vqsr_lite_table_name = "filter_set_info_vqsr_lite"
+  String fq_filter_set_info_table = if (use_classic_VQSR) then "~{fq_gvs_dataset}.~{filter_set_info_table_name}" else "~{fq_gvs_dataset}.~{filter_set_info_vqsr_lite_table_name}"
+
   String fq_filter_set_site_table = "~{fq_gvs_dataset}.filter_set_sites"
   String fq_filter_set_tranches_table = "~{fq_gvs_dataset}.filter_set_tranches"
   String fq_sample_table = "~{fq_gvs_dataset}.sample_info"
@@ -115,20 +121,19 @@ workflow GvsExtractCallset {
   }
 
   call Utils.GetBQTableLastModifiedDatetime as FilterSetInfoTimestamp {
-       input:
-       query_project = project_id,
-       fq_table = "~{fq_gvs_dataset}.filter_set_info"
+    input:
+      query_project = project_id,
+      fq_table = "~{fq_filter_set_info_table}"
   }
 
   if ( !do_not_filter_override ) {
     call Utils.ValidateFilterSetName {
       input:
-      query_project = query_project,
-      filter_set_name = filter_set_name,
-      filter_set_info_timestamp = FilterSetInfoTimestamp.last_modified_timestamp,
-      data_project = project_id,
-      dataset_name = dataset_name
-    }
+        query_project = query_project,
+        fq_filter_set_info_table = "~{fq_filter_set_info_table}",
+        filter_set_name = filter_set_name,
+        filter_set_info_timestamp = FilterSetInfoTimestamp.last_modified_timestamp
+      }
   }
 
   call Utils.GetBQTablesMaxLastModifiedTimestamp {
