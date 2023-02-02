@@ -5,6 +5,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
+import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.sv.cluster.PloidyTable;
@@ -127,12 +128,14 @@ public final class SVCallRecordUtils {
      * @param samples samples which the resulting genotypes must contain (existing samples are ignored)
      * @param refAlleleDefault default allele to use for samples without genotypes
      * @param ploidyTable ploidy table, which must contain at least all samples with missing genotypes
+     * @param header output vcf header
      * @return genotypes augmented with missing samples
      */
     public static GenotypesContext populateGenotypesForMissingSamplesWithAlleles(final SVCallRecord record,
                                                                                  final Set<String> samples,
                                                                                  final boolean refAlleleDefault,
-                                                                                 final PloidyTable ploidyTable) {
+                                                                                 final PloidyTable ploidyTable,
+                                                                                 final VCFHeader header) {
         Utils.nonNull(record);
         Utils.nonNull(samples);
         final GenotypesContext genotypes = record.getGenotypes();
@@ -143,14 +146,13 @@ public final class SVCallRecordUtils {
         final ArrayList<Genotype> newGenotypes = new ArrayList<>(genotypes.size() + missingSamples.size());
         newGenotypes.addAll(genotypes);
         final String contig = record.getContigA();
-        final List<Allele> altAlleles = record.getAltAlleles();
         final Allele refAllele = record.getRefAllele();
         final boolean isCNV = record.isSimpleCNV();
         for (final String sample : missingSamples) {
             final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(sample);
             final int ploidy = ploidyTable.get(sample, contig);
             genotypeBuilder.attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, ploidy);
-            if (isCNV) {
+            if (isCNV && header.hasFormatLine(GATKSVVCFConstants.COPY_NUMBER_FORMAT)) {
                 genotypeBuilder.attribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT, ploidy);
             }
             genotypeBuilder.alleles(Collections.nCopies(ploidy, refAlleleDefault ? refAllele : Allele.NO_CALL));

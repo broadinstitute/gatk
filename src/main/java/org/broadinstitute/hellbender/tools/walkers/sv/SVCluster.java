@@ -319,6 +319,7 @@ public final class SVCluster extends MultiVariantWalker {
     private ReferenceSequenceFile reference;
     private PloidyTable ploidyTable;
     private VariantContextWriter writer;
+    private VCFHeader header;
     private SVClusterEngine clusterEngine;
     private Set<String> samples;
     private String currentContig;
@@ -354,7 +355,8 @@ public final class SVCluster extends MultiVariantWalker {
         }
 
         writer = createVCFWriter(outputFile);
-        writer.writeHeader(createHeader());
+        header = createHeader();
+        writer.writeHeader(header);
         currentContig = null;
     }
 
@@ -441,7 +443,7 @@ public final class SVCluster extends MultiVariantWalker {
     public VariantContext buildVariantContext(final SVCallRecord call) {
         // Add genotypes for missing samples
         final GenotypesContext filledGenotypes = SVCallRecordUtils.populateGenotypesForMissingSamplesWithAlleles(
-                call, samples, !defaultNoCall, ploidyTable);
+                call, samples, !defaultNoCall, ploidyTable, header);
 
         // Assign new variant ID
         final String newId = variantPrefix == null ? call.getId() : String.format("%s%08x", variantPrefix, numVariantsBuilt++);

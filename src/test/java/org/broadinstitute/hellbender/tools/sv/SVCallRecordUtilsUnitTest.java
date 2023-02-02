@@ -4,8 +4,10 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
+import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFHeaderLines;
 import org.broadinstitute.hellbender.tools.sv.cluster.PloidyTable;
 import org.broadinstitute.hellbender.utils.variant.GATKSVVariantContextUtils;
 import org.testng.Assert;
@@ -173,19 +175,21 @@ public class SVCallRecordUtilsUnitTest {
         rawPloidyMap.put("sample4", sample4PloidyMap);
         final PloidyTable ploidyTable = new PloidyTable(rawPloidyMap);
 
-        final GenotypeBuilder builder1a = new GenotypeBuilder("sample1");
+        final VCFHeader headerWithCopyNumber = new VCFHeader();
+        headerWithCopyNumber.addMetaDataLine(GATKSVVCFHeaderLines.getFormatLine(GATKSVVCFConstants.COPY_NUMBER_FORMAT));
+
         final SVCallRecord record1 = SVTestUtils.makeRecord("record1", "chr20", 1000, true,
                 "chr20", 2000, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null,
                 Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
                 Lists.newArrayList(new GenotypeBuilder(GENOTYPE_DEL_1), new GenotypeBuilder(GENOTYPE_DEL_2)));
         final GenotypesContext resultNoMissing = SVCallRecordUtils.populateGenotypesForMissingSamplesWithAlleles(
-                record1, samplesNoMissing, true, ploidyTable);
+                record1, samplesNoMissing, true, ploidyTable, headerWithCopyNumber);
         Assert.assertEquals(resultNoMissing.size(), 2);
         for (final Genotype g : genotypesContext) {
             VariantContextTestUtils.assertGenotypesAreEqual(g, genotypesContext.get(g.getSampleName()));
         }
 
-        final GenotypesContext result = SVCallRecordUtils.populateGenotypesForMissingSamplesWithAlleles(record1, samples, true, ploidyTable);
+        final GenotypesContext result = SVCallRecordUtils.populateGenotypesForMissingSamplesWithAlleles(record1, samples, true, ploidyTable, headerWithCopyNumber);
         Assert.assertEquals(result.size(), 4);
 
         final Genotype g1 = result.get(GENOTYPE_DEL_1.getSampleName());
@@ -208,6 +212,11 @@ public class SVCallRecordUtilsUnitTest {
         VariantContextTestUtils.assertGenotypesAreEqual(g2, GENOTYPE_DEL_2);
         VariantContextTestUtils.assertGenotypesAreEqual(g3, g3Expected);
         VariantContextTestUtils.assertGenotypesAreEqual(g4, g4Expected);
+
+        // Should omit CN from new genotypes since it's not in the given header
+        final GenotypesContext resultNoCopyNumber = SVCallRecordUtils.populateGenotypesForMissingSamplesWithAlleles(record1, samples, true, ploidyTable, new VCFHeader());
+        Assert.assertFalse(resultNoCopyNumber.get("sample3").hasExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT));
+        Assert.assertFalse(resultNoCopyNumber.get("sample4").hasExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT));
     }
 
     @Test
