@@ -84,14 +84,13 @@
     - This workflow calculates the total BigQuery cost of generating this callset (which is not represented in the Terra UI total workflow cost) using the above GVS workflows; it's used to calculate the cost as a whole and by sample.
 
 ## Deliverables (via email to stakeholders once the above steps are complete)
-1. GCS location of the VDS (the `--vds-path` input from `hail_gvs_import.py`)
-2. Fully qualified name of the BigQuery dataset (composed of the `project_id` and `dataset_name` inputs from the workflows)
-3. CSV output from `GvsCallsetStatistics` workflow
-4. TSV output from `GvsCalculatePrecisionAndSensitivity` workflow
-
 To get the VDS someplace secure and accessible for delivery, see [Delivering a VDS](vds/delivery/Delivering%20a%20VDS.md)
 This includes details of how to get the VDS to the AoU delivery bucket as well as VDS naming conventions.
 The Callset Stats and S&P files can be simply gsutil cp-ed to the AoU delivery bucket since they are so much smaller.
+1. GCS location of the VDS in the AoU delivery bucket
+2. Fully qualified name of the BigQuery dataset (composed of the `project_id` and `dataset_name` inputs from the workflows)
+3. GCS location of the CSV output from `GvsCallsetStatistics` workflow in the AoU delivery bucket
+4. GCS location of the TSV output from `GvsCalculatePrecisionAndSensitivity` in the AoU delivery bucket
 
 
 
