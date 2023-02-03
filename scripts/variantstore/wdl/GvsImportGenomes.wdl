@@ -180,7 +180,7 @@ task LoadData {
     File? gatk_override
     Int load_data_preemptible
     Int load_data_maxretries
-    int rate_limiting_delay
+    Int rate_limiting_delay
   }
 
   Boolean load_ref_ranges = true
