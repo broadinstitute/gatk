@@ -47,7 +47,7 @@ If you already have a Terra account, you can skip this step.
 
 While Terra is an open-access platform, it runs on the Google Cloud Platform (GCP), which means you’ll need to pay for storage and analyses you perform in the cloud using a billing project in Terra. For information on the cost of running the GVS workflow in the workspace, see the Time and cost estimates section below.
 
-If you’ve never used GCP before, you are eligible to receive $300 in GCP credits. You **can not** use these credits to run the GVS pipeline; create a billing project in Terra by following the step-by-step instructions in the article [Set up billing with $300 Google credits to explore Terra](https://support.terra.bio/hc/en-us/articles/360046295092).
+If you’ve never used GCP before, you are eligible to receive $300 in GCP credits, but unfortunately, you **can not** use these credits to run the GVS pipeline. Create a billing project in Terra by following the step-by-step instructions in the article [Set up billing with $300 Google credits to explore Terra](https://support.terra.bio/hc/en-us/articles/360046295092) but do not accept the invitation to use the free credits.
 
 If you have used GCP before but need to create a billing project in Terra, follow steps 2 and 3 in the article [Set up billing with $300 Google credits to explore Terra](https://support.terra.bio/hc/en-us/articles/360046295092).
 
