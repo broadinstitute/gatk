@@ -18,6 +18,9 @@ workflow GvsImportGenomes {
     # set to "NONE" to ingest all the reference data into GVS for VDS (instead of VCF) output
     String drop_state = "NONE"
 
+    # set this to cause the uploading of genomic data to pause between each (currently 10k) batch of lines
+    Int rate_limiting_delay = 0
+
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
     Int? load_data_batch_size
     Int? load_data_preemptible_override
@@ -106,7 +109,8 @@ workflow GvsImportGenomes {
         load_data_preemptible = effective_load_data_preemptible,
         load_data_maxretries = effective_load_data_maxretries,
         sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
-        sample_map = GetUningestedSampleIds.sample_map
+        sample_map = GetUningestedSampleIds.sample_map,
+        rate_limiting_delay = rate_limiting_delay
     }
   }
 
@@ -176,6 +180,7 @@ task LoadData {
     File? gatk_override
     Int load_data_preemptible
     Int load_data_maxretries
+    int rate_limiting_delay
   }
 
   Boolean load_ref_ranges = true
@@ -236,7 +241,9 @@ task LoadData {
         -SN ${sample_name} \
         -SNM ~{sample_map} \
         --ref-version 38 \
+        ~{"--rate-limiting-delay " + rate_limiting_delay} \
         --skip-loading-vqsr-fields ~{skip_loading_vqsr_fields}
+
     done
   >>>
   runtime {

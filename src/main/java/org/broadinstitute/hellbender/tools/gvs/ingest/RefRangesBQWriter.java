@@ -19,8 +19,8 @@ import java.util.concurrent.ExecutionException;
 public class RefRangesBQWriter extends RefRangesWriter {
     private PendingBQWriter bqWriter;
 
-    public RefRangesBQWriter(String projectId, String datasetName, String tableName) throws IOException{
-        bqWriter = new PendingBQWriter(projectId, datasetName, tableName);
+    public RefRangesBQWriter(String projectId, String datasetName, String tableName, int rateLimitingDelay) throws IOException{
+        bqWriter = new PendingBQWriter(projectId, datasetName, tableName, rateLimitingDelay);
     }
 
     @Override

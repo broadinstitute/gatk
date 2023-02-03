@@ -12,6 +12,11 @@ public class PendingBQWriter extends CommittedBQWriter {
         super(projectId, datasetName, tableName, WriteStream.Type.PENDING);
     }
 
+    public PendingBQWriter(String projectId, String datasetName, String tableName, int rateLimitingDelay) {
+        super(projectId, datasetName, tableName, WriteStream.Type.PENDING, rateLimitingDelay);
+    }
+
+
     public void flushBuffer() {
         try {
             if (jsonArr.length() > 0) {
