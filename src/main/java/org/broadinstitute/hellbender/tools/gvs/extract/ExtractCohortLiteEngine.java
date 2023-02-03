@@ -205,19 +205,23 @@ public class ExtractCohortLiteEngine {
             try (StorageAPIAvroReader reader = new StorageAPIAvroReader(filterSetInfoTableRef, rowRestrictionWithFilterSetName, projectID)) {
 
                 for ( final GenericRecord queryRow : reader ) {
-                    final ExtractCohortLiteFilterRecord filterRow = new ExtractCohortLiteFilterRecord( queryRow );
+                    // TODO - This conditional is ONLY here because the filter_set_info_vqsr_lite table contains records
+                    // where calibration_sensitivity is null. I believe this is the case because it includes unfiltered records.
+                    if (queryRow.get(SchemaUtils.CALIBRATION_SENSITIVITY) != null) {
+                        final ExtractCohortLiteFilterRecord filterRow = new ExtractCohortLiteFilterRecord( queryRow );
 
-                    final long location = filterRow.getLocation();
-                    final Double calibrationSensitivity = filterRow.getCalibrationSensitivity();
-                    final String yng = filterRow.getYng();
-                    final Allele ref = Allele.create(filterRow.getRefAllele(), true);
-                    final Allele alt = Allele.create(filterRow.getAltAllele(), false);
-                    fullCalSensMap.putIfAbsent(location, new HashMap<>());
-                    fullCalSensMap.get(location).putIfAbsent(ref, new HashMap<>());
-                    fullCalSensMap.get(location).get(ref).put(alt, calibrationSensitivity);
-                    fullYngMap.putIfAbsent(location, new HashMap<>());
-                    fullYngMap.get(location).putIfAbsent(ref, new HashMap<>());
-                    fullYngMap.get(location).get(ref).put(alt, yng);
+                        final long location = filterRow.getLocation();
+                        final Double calibrationSensitivity = filterRow.getCalibrationSensitivity();
+                        final String yng = filterRow.getYng();
+                        final Allele ref = Allele.create(filterRow.getRefAllele(), true);
+                        final Allele alt = Allele.create(filterRow.getAltAllele(), false);
+                        fullCalSensMap.putIfAbsent(location, new HashMap<>());
+                        fullCalSensMap.get(location).putIfAbsent(ref, new HashMap<>());
+                        fullCalSensMap.get(location).get(ref).put(alt, calibrationSensitivity);
+                        fullYngMap.putIfAbsent(location, new HashMap<>());
+                        fullYngMap.get(location).putIfAbsent(ref, new HashMap<>());
+                        fullYngMap.get(location).get(ref).put(alt, yng);
+                    }
                 }
                 processBytesScanned(reader);
             }

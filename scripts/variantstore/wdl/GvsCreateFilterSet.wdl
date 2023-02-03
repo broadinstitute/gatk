@@ -56,7 +56,7 @@ workflow GvsCreateFilterSet {
   String fq_sample_table = "~{project_id}.~{dataset_name}.sample_info"
   String fq_alt_allele_table = "~{project_id}.~{dataset_name}.alt_allele"
   String fq_info_destination_table = "~{project_id}.~{dataset_name}.filter_set_info"
-  String fq_info_destination_table_vqsr_lite = "~{project_id}.~{dataset_name}.vqsr_lite_filter_set_info"
+  String fq_info_destination_table_vqsr_lite = "~{project_id}.~{dataset_name}.filter_set_info_vqsr_lite"
   String fq_tranches_destination_table = "~{project_id}.~{dataset_name}.filter_set_tranches"
   String fq_filter_sites_destination_table = "~{project_id}.~{dataset_name}.filter_set_sites"
 

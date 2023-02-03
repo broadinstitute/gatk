@@ -2,6 +2,8 @@ version 1.0
 
 import "GvsUtils.wdl" as Utils
 
+# A is for Alpha
+
 workflow GvsExtractCallset {
   input {
     Boolean go = true
@@ -260,7 +262,7 @@ task ExtractTask {
     Boolean write_cost_to_db
 
     # Runtime Options:
-    File? gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/gg_VS-694_VQSR_Lite_20230202/gatk-package-4.2.0.0-645-g9035af3-SNAPSHOT-local.jar"
+    File? gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/gg_VS-694_VQSR_Lite_20230203/gatk-package-4.2.0.0-649-g1a6daf5-SNAPSHOT-local.jar"
     Int? extract_preemptible_override
     Int? extract_maxretries_override
 

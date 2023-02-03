@@ -23,10 +23,7 @@ public class ExtractCohortLiteFilterRecord implements Locatable {
         this.start = SchemaUtils.decodePosition(location);
         this.end = start;
 
-        // TODO - this is because the table contains unfiltered records.
-        Object value = genericRecord.get(SchemaUtils.CALIBRATION_SENSITIVITY);
-        this.calibrationSensitivity = value != null ? Double.parseDouble(value.toString()) : 0.57;
-//        this.calibrationSensitivity = Double.parseDouble(genericRecord.get("calibration_sensitivity").toString());
+        this.calibrationSensitivity = Double.parseDouble(genericRecord.get(SchemaUtils.CALIBRATION_SENSITIVITY).toString());
         this.yng = genericRecord.get(SchemaUtils.YNG_STATUS).toString();
 
         this.refAllele = genericRecord.get(SchemaUtils.REF_ALLELE_FIELD_NAME).toString();
