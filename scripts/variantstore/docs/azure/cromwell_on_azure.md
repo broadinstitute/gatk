@@ -25,6 +25,9 @@ This command can take about 20 minutes to complete.
 Next, launch a [Cloud Shell](https://portal.azure.com/#cloudshell/) from the Azure Portal. In the Cloud Shell:
 
 ```
+# Specify the same Azure subscription id as we used in the local terminal above.
+SUBSCRIPTION_ID=...
+
 # Set our subscription id as the default so we don't need to include it as an argument to every command.
 az account set --subscription ${SUBSCRIPTION_ID}
 
