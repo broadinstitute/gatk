@@ -459,6 +459,7 @@ public final class IOUtils {
         }
     }
 
+
     private static void extractFilesFromArchiveStream(final TarArchiveInputStream archiveStream,
                                                       final Path localTarGzPath,
                                                       final Path destDir,
@@ -564,7 +565,7 @@ public final class IOUtils {
         }
     }
 
-    private static void ensurePathIsOkForOutput(final Path p, final boolean overwriteExistingFiles) {
+    public static void ensurePathIsOkForOutput(final Path p, final boolean overwriteExistingFiles) {
         if ( Files.exists(p) ) {
             if ( overwriteExistingFiles ) {
                 logger.warn("Overwriting existing output destination: " + p.toUri());

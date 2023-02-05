@@ -107,7 +107,7 @@ public class FuncotatorDataSourceDownloaderIntegrationTest extends CommandLinePr
                         FuncotatorDataSourceDownloader.SOMATIC_ARG_LONG_NAME,
                         true,
                         true,
-                        false
+                        true
                 },
                 {
                         FuncotatorDataSourceDownloader.SOMATIC_ARG_LONG_NAME,

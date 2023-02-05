@@ -113,6 +113,36 @@ final public class DataSourceUtils {
     public static final String CONFIG_FILE_FIELD_NAME_LOOKAHEAD_CACHE_BP   = "lookAheadCacheBp";
 
     //==================================================================================================================
+    // Public Static Members used by DataSourceBundler:
+    public static final String DATA_SOURCES_BASE_URL                       = "http://ftp.ensemblgenomes.org/pub/";
+    public static final String DATA_SOURCES_VERSION                        = "current/";
+    public static final String OTHER_CURRENT_EXTENSION                     = "current_gtf/";
+    public static final String GTF_EXTENSION                               = "gtf/";
+    public static final String RELEASE_VERSION                             = "release-";
+    public static final String BACTERIA_DS_EXTENSION                       = "bacteria/";
+    public static final String BACTERIA_COLLECTION_EXTENSION               = "bacteria_128_collection/";
+    public static final String FUNGI_DS_EXTENSION                          = "fungi/";
+    public static final String METAZOA_DS_EXTENSION                        = "metazoa/";
+    public static final String PLANTS_DS_EXTENSION                         = "plants/";
+    public static final String PROTISTS_DS_EXTENSION                       = "protists/";
+    public static final String GTF_GZ_EXTENSION                            = "gtf.gz";
+    public static final String TXT_EXTENSION                               = ".txt";
+    public static final String ENSEMBL_EXTENSION                           = "ensembl";
+    public static final String FASTA_EXTENSION                             = "fasta/";
+    public static final String FASTA_GZ_EXTENSION                          = "fa.gz";
+    public static final String CDNA_EXTENSION                              = "cdna/";
+    public static final String GTF_UNZIPPED_EXTENSION                      = ".gtf";
+    public static final String FASTA_UNZIPPED_EXTENSION                    = ".fasta";
+    public static final String IDX_EXTENSION                               = ".idx";
+    public static final String README_EXTENSION                            = "README";
+    public static final String GTF_README_EXTENSION                        = "GTF_README.txt";
+    public static final String FASTA_README_EXTENSION                      = "FASTA_README.txt";
+    public static final String OTHER_FASTA_EXTENSION                       = "current_fasta/";
+//    public static final String BUNDLER_FOLDER_EXTENSION                    = "_dataSources.v0.0."
+    public static final String FASTA_DICT_EXTENSION                        = ".dict";
+    public static final String REORDERED_EXTENSION                         = ".REORDERED";
+
+    //==================================================================================================================
     // Public Static Methods:
 
     /**

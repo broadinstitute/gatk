@@ -140,9 +140,8 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
             final String rawFieldValue = trimmedExtraField.substring(splitPoint + 1, trimmedExtraField.length());
             final String fieldValue = StringUtils.remove(rawFieldValue.trim(), '"');
 
-            if( fieldValue.contains(EXTRA_FIELD_KEY_VALUE_SPLITTER) ){
-                throw new UserException("Expected a key/value pair but found several values " + fieldName + "/" + fieldValue);
-            }
+            // NOTE: We now allow spaces in field values, and so no longer throw an exception when parsing GTFs that
+            //       contain spaces in the values.
 
             OptionalField<?> optionalField = null;
 
@@ -814,6 +813,22 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
             }
             public GencodeGtfFeature create(final String[] gtfFields, final String gtfFileType) {
                 return GencodeGtfUTRFeature.create(gtfFields, gtfFileType);
+            }
+        },
+        FIVE_PRIME_UTR("five_prime_utr") {
+            public GencodeGtfFeature create(final GencodeGtfFeatureBaseData baseData) {
+                return GencodeGtfFivePrimeUtrFeature.create(baseData);
+            }
+            public GencodeGtfFeature create(final String[] gtfFields, final String gtfFileType) {
+                return GencodeGtfFivePrimeUtrFeature.create(gtfFields, gtfFileType);
+            }
+        },
+        THREE_PRIME_UTR("three_prime_utr") {
+            public GencodeGtfFeature create(final GencodeGtfFeatureBaseData baseData) {
+                return GencodeGtfThreePrimeUtrFeature.create(baseData);
+            }
+            public GencodeGtfFeature create(final String[] gtfFields, final String gtfFileType) {
+                return GencodeGtfThreePrimeUtrFeature.create(gtfFields, gtfFileType);
             }
         };
 
