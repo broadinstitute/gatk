@@ -28,7 +28,7 @@ public class CommittedBQWriter implements AutoCloseable {
     protected WriteStream.Type streamType;
     protected int batchSize = 10000;
     protected JSONArray jsonArr = new JSONArray();
-
+    protected int rateLimitingDelay = 0;
     private final ExponentialBackOff backoff = new ExponentialBackOff.Builder().
             setInitialIntervalMillis(2000).
             setMaxIntervalMillis(30000).
@@ -42,6 +42,12 @@ public class CommittedBQWriter implements AutoCloseable {
     protected CommittedBQWriter(String projectId, String datasetName, String tableName, WriteStream.Type type) {
         this.parentTable = TableName.of(projectId, datasetName, tableName);
         this.streamType = type;
+    }
+
+    protected CommittedBQWriter(String projectId, String datasetName, String tableName, WriteStream.Type type, int rateLimitingDelay) {
+        this.parentTable = TableName.of(projectId, datasetName, tableName);
+        this.streamType = type;
+        this.rateLimitingDelay = rateLimitingDelay;
     }
 
     protected void createStream() throws Descriptors.DescriptorValidationException, InterruptedException, IOException {
@@ -77,6 +83,11 @@ public class CommittedBQWriter implements AutoCloseable {
         try {
             ApiFuture<AppendRowsResponse> future = writer.append(jsonArr);
             future.get();
+            // For rate limiting purposes, we're going to sleep for a set amount of time between
+            // successful writes.  Skip it if it's 0, as passing 0 often does have a small but non-negligible effect
+            if (rateLimitingDelay > 0) {
+                Thread.sleep(rateLimitingDelay);
+            }
             jsonArr = new JSONArray();
         } catch (Exception e) {
             StatusRuntimeException se = extractCausalStatusRuntimeExceptionOrThrow(e);

@@ -145,6 +145,11 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     )
     public boolean skipLoadingVqsrFields = false;
 
+    @Argument(fullName = "rate-limiting-delay",
+            doc = "A delay in milliseconds to pause after a successful write to a given BQ table.  For staying under their new quotas.",
+            optional = true)
+    public Integer rateLimitingDelay;
+
     private boolean shouldWriteLoadStatusStarted = true;
 
     // getGenotypes() returns list of lists for all samples at variant
@@ -186,6 +191,11 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             sampleId = String.valueOf(sampleIdParam);
         } else {
             sampleId = IngestUtils.getSampleId(sampleName, sampleMap);
+        }
+
+        if (rateLimitingDelay == null) {
+            // by default, just write as quickly as we can.
+            rateLimitingDelay = 0;
         }
 
         // TODO when we pass in the full file path or gvs_id as an input arg, use path here instead or gvs_id in addition
@@ -251,11 +261,11 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         intervalArgumentGenomeLocSortedSet = GenomeLocSortedSet.createSetFromList(genomeLocParser, IntervalUtils.genomeLocsFromLocatables(genomeLocParser, intervalArgumentCollection.getIntervals(seqDictionary)));
 
         if (enableReferenceRanges && !refRangesRowsExist) {
-            refCreator = new RefCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStateToIgnore, dropAboveGqThreshold, outputDir, outputType, enableReferenceRanges, projectID, datasetName);
+            refCreator = new RefCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStateToIgnore, dropAboveGqThreshold, outputDir, outputType, enableReferenceRanges, projectID, datasetName, rateLimitingDelay);
         }
 
         if (enableVet && !vetRowsExist) {
-            vetCreator = new VetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, forceLoadingFromNonAlleleSpecific, skipLoadingVqsrFields);
+            vetCreator = new VetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, forceLoadingFromNonAlleleSpecific, skipLoadingVqsrFields, rateLimitingDelay);
         }
     }
 

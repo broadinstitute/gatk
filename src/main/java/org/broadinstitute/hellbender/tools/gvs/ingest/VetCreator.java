@@ -36,7 +36,7 @@ public class VetCreator {
         return BigQueryUtils.doRowsExistFor(projectId, datasetName, VET_FILETYPE_PREFIX + tableNumber, sampleId);
     }
 
-    public VetCreator(String sampleIdentifierForOutputFileName, String sampleId, String tableNumber, final File outputDirectory, final CommonCode.OutputType outputType, final String projectId, final String datasetName, final boolean forceLoadingFromNonAlleleSpecific, final boolean skipLoadingVqsrFields) {
+    public VetCreator(String sampleIdentifierForOutputFileName, String sampleId, String tableNumber, final File outputDirectory, final CommonCode.OutputType outputType, final String projectId, final String datasetName, final boolean forceLoadingFromNonAlleleSpecific, final boolean skipLoadingVqsrFields, final int rateLimitingDelay) {
         this.sampleId = sampleId;
         this.outputType = outputType;
         this.forceLoadingFromNonAlleleSpecific = forceLoadingFromNonAlleleSpecific;
@@ -49,7 +49,7 @@ public class VetCreator {
                     if (projectId == null || datasetName == null) {
                         throw new UserException("Must specify project-id and dataset-name when using BQ output mode.");
                     }
-                    vetBQJsonWriter = new PendingBQWriter(projectId, datasetName, VET_FILETYPE_PREFIX + tableNumber);
+                    vetBQJsonWriter = new PendingBQWriter(projectId, datasetName, VET_FILETYPE_PREFIX + tableNumber, rateLimitingDelay);
 
                     break;
                 case TSV:
