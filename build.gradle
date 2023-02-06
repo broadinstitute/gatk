@@ -232,7 +232,7 @@ configurations {
         exclude module: 'javax.servlet'
         exclude module: 'servlet-api'
         exclude group: 'com.esotericsoftware.kryo'
-        exclude module: 'spark-mllib_2.12'
+        exclude module: 'spark-mllib_2.12.15'
         exclude group: 'org.scala-lang'
         exclude module: 'kryo'
     }
@@ -313,7 +313,10 @@ dependencies {
     implementation ('org.ojalgo:ojalgo-commons-math3:1.0.0') {
         exclude group: 'org.apache.commons'
     }
-    implementation ('org.apache.spark:spark-mllib_' + scalaVersion + ':' + sparkVersion) {
+
+    //TODO: there is no mllib_2.12.15:3.3.0
+    //implementation ('org.apache.spark:spark-mllib_' + scalaVersion + ':' + sparkVersion) {
+    implementation ('org.apache.spark:spark-mllib_2.12:3.3.0') {
         // JUL is used by Google Dataflow as the backend logger, so exclude jul-to-slf4j to avoid a loop
         exclude module: 'jul-to-slf4j'
         exclude module: 'javax.servlet'
@@ -322,7 +325,8 @@ dependencies {
     implementation 'com.thoughtworks.paranamer:paranamer:2.8'
 
     implementation 'org.bdgenomics.bdg-formats:bdg-formats:0.5.0'
-    implementation('org.bdgenomics.adam:adam-core-spark2_' + scalaVersion + ':0.28.0') {
+    //implementation('org.bdgenomics.adam:adam-core-spark2_' + scalaVersion + ':0.28.0') {
+    implementation('org.bdgenomics.adam:adam-core-spark2_2.12:0.28.0') {
         exclude group: 'org.slf4j'
         exclude group: 'org.apache.hadoop'
         exclude group: 'org.scala-lang'
@@ -376,7 +380,8 @@ dependencies {
     
     // natural sort
     implementation('net.grey-panther:natural-comparator:1.1')
-    implementation('com.fasterxml.jackson.module:jackson-module-scala_' + scalaVersion + ':2.9.8')
+    //implementation('com.fasterxml.jackson.module:jackson-module-scala_' + scalaVersion + ':2.9.8')
+    implementation('com.fasterxml.jackson.module:jackson-module-scala_2.12:2.9.8')
 
     testUtilsImplementation sourceSets.main.output
     testUtilsImplementation 'org.testng:testng:' + testNGVersion
