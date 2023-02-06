@@ -1,5 +1,6 @@
-# Setup
+# Setup for Mac
 
+* Install the [Azure CLI locally](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli-macos). 
 * Authenticate locally with `az login`.
 * Install .NET 6.0 from [here](https://dotnet.microsoft.com/en-us/download/dotnet). Note `CromwellOnAzure` wants .NET
   version 6.0 and will not run with .NET 7.0.
@@ -14,31 +15,19 @@ dotnet build
 * Create your deployment of `CromwellOnAzure` in the Variants Azure subscription with:
 
 ```
-# Get the Variants subscription ID from Azure Portal.
-SUBSCRIPTION_ID=...
+SUBSCRIPTION_ID=$(az account list | jq -r '.[] | select(.name | test("variants")) | .id')
 
 dotnet src/deploy-cromwell-on-azure/bin/Debug/net6.0/deploy-cromwell-on-azure.dll --SubscriptionId ${SUBSCRIPTION_ID} --RegionName eastus --MainIdentifierPrefix ${USER}
 ```
 
-This command can take about 20 minutes to complete.
-
-Next, launch a [Cloud Shell](https://portal.azure.com/#cloudshell/) from the Azure Portal. In the Cloud Shell:
+The CoA deployment can take more than 20 minutes to complete. Once that's done:
 
 ```
-# Specify the same Azure subscription id as we used in the local terminal above.
-SUBSCRIPTION_ID=...
+# Fish out the CromwellOnAzure resource group name that was named after your Broad username.
+RESOURCE_GROUP=$(az group list | jq -r ".[] | .name | select(test(\"^${USER}-[0-9a-f]+$\"))")
 
-# Set our subscription id as the default so we don't need to include it as an argument to every command.
-az account set --subscription ${SUBSCRIPTION_ID}
-
-# Fish out our Broad username from this JSON blob stored in an environment variable (in Azure Cloud Shell $USER is set
-# to our first name).
-BROAD_USER=$(echo -n $ACC_STORAGE_PROFILE | jq -r '.fileShareName | split("-") | .[1]')
-
-# Fish out the resource group name that was named after your Broad username.
-RESOURCE_GROUP=$(az group list | jq -r ".[] | .name | select(test(\"^${BROAD_USER}-[0-9a-f]+$\"))")
-
-# Make a strong random password (save this someplace).
+# Make a strong random password. You should probably save this someplace even though it's currenty not used in these
+# instructions beyond the server creation. 
 ADMIN_PASSWORD=$(dd if=/dev/urandom bs=30 count=1 2> /dev/null | base64)
 
 SQL_SERVER=${RESOURCE_GROUP}-azure-sql-server
@@ -59,15 +48,23 @@ EXTERNAL_IP=$(curl --silent ifconfig.me)
 
 az sql server firewall-rule create -n AllowYourIp --start-ip-address $EXTERNAL_IP --end-ip-address $EXTERNAL_IP
 
-sqlcmd -S tcp:${SQL_SERVER}.database.windows.net,1433 -d ${SQL_DATABASE} -U ${BROAD_USER} -P ${ADMIN_PASSWORD} -N -l 30
+# Make yourself Azure Active Directory admin for your Azure SQL Database in the Portal
+az sql server ad-admin update --object-id $(az ad signed-in-user show | jq -r .id) --display-name "$(az ad signed-in-user show | jq -r .displayName)"
 
-1> select "Hello Azure SQL Database!"
-2> go
+# Get a database access token.
+# https://learn.microsoft.com/en-us/sql/connect/odbc/linux-mac/connecting-with-sqlcmd?view=azuresqldb-current
+SQLCMDPASSWORD=$(az account get-access-token --resource https://database.windows.net --output tsv | cut -f 1 | tr -d '\n' | iconv -f ascii -t UTF-16LE)
 
--------------------------
-Hello Azure SQL Database!
+# Say hello to Azure SQL Database!
+sqlcmd -S tcp:${SQL_SERVER}.database.windows.net,1433 -d ${SQL_DATABASE} -G -Q 'select @@version as "Hello Azure SQL Database!"
+                         
+Hello Azure SQL Database!                                                                                                                                                                                                                                                                                   
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Microsoft SQL Azure (RTM) - 12.0.2000.8 
+	Jan 12 2023 05:25:39 
+	Copyright (C) 2022 Microsoft Corporation
 
 
-# TODO: Figure out AAD, username/password is ick
+(1 rows affected)
 
 ```
