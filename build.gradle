@@ -58,7 +58,7 @@ repositories {
 
 final htsjdkVersion = System.getProperty('htsjdk.version','3.0.1')
 final picardVersion = System.getProperty('picard.version','2.27.5')
-final barclayVersion = System.getProperty('barclay.version','4.1.0')
+final barclayVersion = System.getProperty('barclay.version','5.0.0')
 final sparkVersion = System.getProperty('spark.version', '3.3.1')
 final scalaVersion = System.getProperty('scala.version', '2.13')
 final hadoopVersion = System.getProperty('hadoop.version', '3.3.1')
@@ -1062,6 +1062,7 @@ publishing {
 
             artifact testUtilsJar
             artifact testUtilsSourcesJar
+            //TODO:
             //artifact testUtilsJavadocJar
 
         }
