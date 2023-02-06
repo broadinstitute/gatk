@@ -186,10 +186,10 @@ public class GenotypeGVCFsEngine
             //don't count sites with no depth and no confidence towards things like AN and InbreedingCoeff
             vcBuilder.genotypes(assignNoCallsAnnotationExcludedGenotypes(result.getGenotypes()));
             VariantContext annotated = annotationEngine.annotateContext(vcBuilder.make(), features, ref, null, a -> true);
-            return new VariantContextBuilder(annotated).genotypes(cleanupGenotypeAnnotations(result, false, keepSB)).make();
+            return new VariantContextBuilder(annotated).genotypes(cleanupGenotypeAnnotations(result, false, keepSB, genotypeArgs.keepMedianDPInHomRefBlocks)).make();
         } else if (includeNonVariants) {
             // For monomorphic sites we need to make sure e.g. the hom ref genotypes are created and only then are passed to the annotation engine.
-            VariantContext preannotated = new VariantContextBuilder(result).genotypes(cleanupGenotypeAnnotations(result, true, false)).make();
+            VariantContext preannotated = new VariantContextBuilder(result).genotypes(cleanupGenotypeAnnotations(result, true, false, genotypeArgs.keepMedianDPInHomRefBlocks)).make();
             return annotationEngine.annotateContext(preannotated, features, ref, null, GenotypeGVCFsEngine::annotationShouldBeSkippedForHomRefSites);
         } else {
             return null;
@@ -430,13 +430,14 @@ public class GenotypeGVCFsEngine
      * 4. change the PGT value from "0|1" to "1|1" for homozygous variant genotypes
      * 5. move GQ to RGQ if the site is monomorphic
      *
-     * @param vc            the VariantContext with the Genotypes to fix
-     * @param createRefGTs  if true we will also create proper hom ref genotypes since we assume the site is monomorphic
-     * @param keepSB        keep value of SB attribute
+     * @param vc             the VariantContext with the Genotypes to fix
+     * @param createRefGTs   if true we will also create proper hom ref genotypes since we assume the site is monomorphic
+     * @param keepSB         keep value of SB attribute
+     * @param useMedianForDP do not substitute DP (originally median across block) value by MIN_DP (if present).
      * @return a new set of Genotypes
      */
     @VisibleForTesting
-    static List<Genotype> cleanupGenotypeAnnotations(final VariantContext vc, final boolean createRefGTs, final boolean keepSB) {
+    static List<Genotype> cleanupGenotypeAnnotations(final VariantContext vc, final boolean createRefGTs, final boolean keepSB, boolean useMedianForDP) {
         final GenotypesContext oldGTs = vc.getGenotypes();
         final List<Genotype> recoveredGs = new ArrayList<>(oldGTs.size());
         for ( final Genotype oldGT : oldGTs ) {
@@ -446,7 +447,7 @@ public class GenotypeGVCFsEngine
             int depth = oldGT.hasDP() ? oldGT.getDP() : 0;
 
             // move the MIN_DP to DP
-            if ( oldGT.hasExtendedAttribute(GATKVCFConstants.MIN_DP_FORMAT_KEY) ) {
+            if ( !useMedianForDP && oldGT.hasExtendedAttribute(GATKVCFConstants.MIN_DP_FORMAT_KEY) ) {
                 depth = parseInt(oldGT.getAnyAttribute(GATKVCFConstants.MIN_DP_FORMAT_KEY));
                 builder.DP(depth);
                 attrs.remove(GATKVCFConstants.MIN_DP_FORMAT_KEY);
