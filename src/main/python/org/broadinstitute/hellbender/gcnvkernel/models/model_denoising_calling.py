@@ -1235,6 +1235,10 @@ class HHMMClassAndCopyNumberBasicCaller:
                                                   self.calling_config.num_copy_number_classes),
                                                  dtype=types.floatX)
 
+        # this converts TensorType from row to matrix when number in the edge case when number of intervals is equal to 2
+        # (to avoid type mismatch later on)
+        log_class_emission_cum_sum_tk = tt.unbroadcast(log_class_emission_cum_sum_tk, 0)
+
         def inc_log_class_emission_tk_except_for_first_interval(pi_jkc, q_c_tc, cum_sum_tk):
             """Adds the contribution of a given sample to the log class emission (symbolically).
 
