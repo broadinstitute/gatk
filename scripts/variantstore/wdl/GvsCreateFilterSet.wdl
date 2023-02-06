@@ -432,13 +432,13 @@ task PopulateFilterSetInfo {
     String query_project
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+    # TODO - Remove the gatk_override specified here when you have rebuilt the docker
     File? gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/gg_VS-694_VQSR_Lite_20230202/gatk-package-4.2.0.0-645-g9035af3-SNAPSHOT-local.jar"
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
-#      --schema "filter_set_name:string,type:string,location:integer,ref:string,alt:string,vqslod:float,culprit:string,training_label:string,yng_status:string" \
   command <<<
     set -eo pipefail
 
