@@ -48,7 +48,7 @@ EXTERNAL_IP=$(curl --silent ifconfig.me)
 
 az sql server firewall-rule create -n AllowYourIp --start-ip-address $EXTERNAL_IP --end-ip-address $EXTERNAL_IP
 
-# Make yourself Azure Active Directory admin for your Azure SQL Database in the Portal
+# Make yourself Azure Active Directory admin for your server
 az sql server ad-admin create --object-id $(az ad signed-in-user show | jq -r .id) --display-name "$(az ad signed-in-user show | jq -r .displayName)"
 
 # Get a database access token.
