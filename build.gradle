@@ -524,11 +524,17 @@ logger.info("build for version:" + version)
 group = 'org.broadinstitute'
 
 tasks.withType(Jar) {
-    // transform the list of --add-opens directives into manifest format
-    final manifestAddOpens = runtimeAddOpens.stream().collect(java.util.stream.Collectors.joining(" "))
+    // transform the list of --add-opens directives into manifest format, which requires only the source
+    // package (unlike the command line equivalent, the "ALL-UNNAMED" target is implied, and should not
+    // be included in the manifest entry)
+    //TODO: refactor this once it passes tests
+    final manifestAddOpens = runtimeAddOpens.stream()
+            .map(o -> o.substring(0, (o.length() - "ALL-UNNAMED".length()) - 1))
+            .collect(java.util.stream.Collectors.joining(' '))
+    println(manifestAddOpens)
     manifest {
         attributes 'Implementation-Title': 'The Genome Analysis Toolkit (GATK)',
-                'Implementation-Version': archiveVersion,
+                'Implementation-Version': archiveVersion.get(),
                 'Toolkit-Short-Name' : 'GATK',
                 'Main-Class': project.mainClassName,
                 'Picard-Version': picardVersion,
