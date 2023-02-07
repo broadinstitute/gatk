@@ -38,8 +38,8 @@ SQL_DATABASE=${RESOURCE_GROUP}-azure-sql-database
 # Set resource group and sql server defaults to avoid having to include them repeatedly in `az` commands.
 az configure --defaults group="${RESOURCE_GROUP}" sql-server="${SQL_SERVER}"
 
-# Create the server for "serverless" Azure SQL Database
-az sql server create --name ${SQL_SERVER} --location "eastus" --admin-user ${BROAD_USER} --admin-password "${ADMIN_PASSWORD}"
+# Create the server for "serverless" Azure SQL Database. These two steps take a minute or so each.
+az sql server create --name ${SQL_SERVER} --location "eastus" --admin-user ${USER} --admin-password "${ADMIN_PASSWORD}"
 az sql db create --name ${SQL_DATABASE} --edition GeneralPurpose --family Gen5 --capacity 2 --zone-redundant true
 
 # Get the external IP of this machine and create a firewall rule that allows it to connect to the Azure SQL Database. 
@@ -49,14 +49,14 @@ EXTERNAL_IP=$(curl --silent ifconfig.me)
 az sql server firewall-rule create -n AllowYourIp --start-ip-address $EXTERNAL_IP --end-ip-address $EXTERNAL_IP
 
 # Make yourself Azure Active Directory admin for your Azure SQL Database in the Portal
-az sql server ad-admin update --object-id $(az ad signed-in-user show | jq -r .id) --display-name "$(az ad signed-in-user show | jq -r .displayName)"
+az sql server ad-admin create --object-id $(az ad signed-in-user show | jq -r .id) --display-name "$(az ad signed-in-user show | jq -r .displayName)"
 
 # Get a database access token.
 # https://learn.microsoft.com/en-us/sql/connect/odbc/linux-mac/connecting-with-sqlcmd?view=azuresqldb-current
 SQLCMDPASSWORD=$(az account get-access-token --resource https://database.windows.net --output tsv | cut -f 1 | tr -d '\n' | iconv -f ascii -t UTF-16LE)
 
 # Say hello to Azure SQL Database!
-sqlcmd -S tcp:${SQL_SERVER}.database.windows.net,1433 -d ${SQL_DATABASE} -G -Q 'select @@version as "Hello Azure SQL Database!"
+sqlcmd -S tcp:${SQL_SERVER}.database.windows.net,1433 -d ${SQL_DATABASE} -G -Q 'select @@version as "Hello Azure SQL Database!"'
                          
 Hello Azure SQL Database!                                                                                                                                                                                                                                                                                   
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
