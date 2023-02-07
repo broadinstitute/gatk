@@ -2,6 +2,8 @@ version 1.0
 
 import "GvsUtils.wdl" as Utils
 
+# This is a comment
+
 workflow GvsExtractCallset {
   input {
     Boolean go = true
@@ -290,9 +292,9 @@ task ExtractTask {
 
     export GATK_LOCAL_JAR="~{default="/root/gatk.jar" gatk_override}"
 
-    if [ ~{do_not_filter_override} = 'true' ]; then
+    if [ ~{do_not_filter_override} = true ]; then
       FILTERING_ARGS=''
-    elif [~{use_classic_VQSR} == 'true' ]; then
+    elif [ ~{use_classic_VQSR} = true ]; then
       FILTERING_ARGS='--filter-set-info-table ~{fq_filter_set_info_table}
         --filter-set-site-table ~{fq_filter_set_site_table}
         --tranches-table ~{fq_filter_set_tranches_table}
