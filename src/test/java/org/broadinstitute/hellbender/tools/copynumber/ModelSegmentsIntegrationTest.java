@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.copynumber;
 
-import htsjdk.samtools.SAMException;
-import htsjdk.samtools.util.IOUtil;
+import org.apache.hadoop.util.ComparableVersion;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.CopyNumberTestUtils;
@@ -22,12 +21,9 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Integration tests for {@link ModelSegments}.  We test for input validation across various run modes of the tool
@@ -53,6 +49,7 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
 
     private static final File TEST_SUB_DIR = new File(toolsTestDir, "copynumber");
     private static final File LARGE_TEST_RESOURCES_SUB_DIR = new File(largeFileTestDir, "org/broadinstitute/hellbender/tools/copynumber");
+    private static final File EXACT_MATCH_EXPECTED_SUB_DIR_LEGACY = new File(TEST_SUB_DIR, "model-segments-expected/legacy");
     private static final File EXACT_MATCH_EXPECTED_SUB_DIR = new File(TEST_SUB_DIR, "model-segments-expected");
     private static final File TUMOR_1_DENOISED_COPY_RATIOS_FILE = new File(LARGE_TEST_RESOURCES_SUB_DIR,
             "model-segments-wes-tumor-1-denoised-copy-ratios-SM-74P4M-v1-chr20.denoisedCR.tsv");
@@ -184,18 +181,29 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
         };
     }
 
+    /**
+     * We will check for different expected results depending on the Java version to account for numerical differences between versions.
+     * See https://github.com/broadinstitute/gatk/issues/8107.
+     * We assume that 11.0.11 is the delineating version based on information in that thread, but this has not been checked in detail.
+     */
+    private static boolean isLegacyRuntimeVersion() {
+        final ComparableVersion version = new ComparableVersion(System.getProperty("java.version"));
+        return version.compareTo(new ComparableVersion("11.0.11")) <= 0;     // should also be valid for checking pre-Java 9 version strings (e.g. "1.8")
+    }
+
     @Test(dataProvider = "dataValidDataModesSingleSample")
     public void testValidDataModesSingleSample(final String outputPrefix,
                                                final File denoisedCopyRatiosFile,
                                                final File allelicCountsFile,
                                                final File normalAllelicCountsFile) {
-        final File outputDir = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? EXACT_MATCH_EXPECTED_SUB_DIR : createTempDir("testDir");
+        final File expectedDir = isLegacyRuntimeVersion() ? EXACT_MATCH_EXPECTED_SUB_DIR_LEGACY : EXACT_MATCH_EXPECTED_SUB_DIR;
+        final File outputDir = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expectedDir : createTempDir("testDir");
         final ArgumentsBuilder argsBuilder = buildArgsBuilderSingleSample(
                 outputDir, outputPrefix, denoisedCopyRatiosFile, allelicCountsFile, normalAllelicCountsFile);
         runCommandLine(argsBuilder);
         final boolean isAllelicCountsPresent = allelicCountsFile != null;
         final boolean isNormalAllelicCountsPresent = normalAllelicCountsFile != null;
-        assertOutputFilesSingleSample(outputDir, outputPrefix, isAllelicCountsPresent, isNormalAllelicCountsPresent);
+        assertOutputFilesSingleSample(outputDir, outputPrefix, expectedDir, isAllelicCountsPresent, isNormalAllelicCountsPresent);
     }
 
     @Test(dataProvider = "dataInvalidDataModesSingleSample", expectedExceptions = IllegalArgumentException.class)
@@ -236,6 +244,7 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
      */
     private static void assertOutputFilesSingleSample(final File outputDir,
                                                       final String outputPrefix,
+                                                      final File expectedDir,
                                                       final boolean isAllelicCountsPresent,
                                                       final boolean isNormalAllelicCountsPresent) {
         Assert.assertFalse(!isAllelicCountsPresent && isNormalAllelicCountsPresent);
@@ -247,7 +256,7 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
                     ModelSegments.ALLELE_FRACTION_MODEL_PARAMETER_FILE_SUFFIX)) {
                 CopyNumberTestUtils.assertFilesEqualUpToAllowedDeltaForDoubleValues(
                         new File(outputDir, outputPrefix + fileTag + suffix),
-                        new File(EXACT_MATCH_EXPECTED_SUB_DIR, outputPrefix + fileTag + suffix),
+                        new File(expectedDir, outputPrefix + fileTag + suffix),
                         ALLOWED_DELTA_FOR_DOUBLE_VALUES,
                         logger);
             }
@@ -268,7 +277,7 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
 
         CopyNumberTestUtils.assertFilesEqualUpToAllowedDeltaForDoubleValues(
                 new File(outputDir, outputPrefix  + ModelSegments.COPY_RATIO_SEGMENTS_FOR_CALLER_FILE_SUFFIX),
-                new File(EXACT_MATCH_EXPECTED_SUB_DIR, outputPrefix  + ModelSegments.COPY_RATIO_SEGMENTS_FOR_CALLER_FILE_SUFFIX),
+                new File(expectedDir, outputPrefix  + ModelSegments.COPY_RATIO_SEGMENTS_FOR_CALLER_FILE_SUFFIX),
                 ALLOWED_DELTA_FOR_DOUBLE_VALUES,
                 logger);
         final CopyRatioSegmentCollection copyRatioSegments = new CopyRatioSegmentCollection(
@@ -277,12 +286,12 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
 
         CopyNumberTestUtils.assertFilesEqualUpToAllowedDeltaForDoubleValues(
                 new File(outputDir, outputPrefix  + ModelSegments.COPY_RATIO_LEGACY_SEGMENTS_FILE_SUFFIX),
-                new File(EXACT_MATCH_EXPECTED_SUB_DIR, outputPrefix  + ModelSegments.COPY_RATIO_LEGACY_SEGMENTS_FILE_SUFFIX),
+                new File(expectedDir, outputPrefix  + ModelSegments.COPY_RATIO_LEGACY_SEGMENTS_FILE_SUFFIX),
                 ALLOWED_DELTA_FOR_DOUBLE_VALUES,
                 logger);
         CopyNumberTestUtils.assertFilesEqualUpToAllowedDeltaForDoubleValues(
                 new File(outputDir, outputPrefix  + ModelSegments.ALLELE_FRACTION_LEGACY_SEGMENTS_FILE_SUFFIX),
-                new File(EXACT_MATCH_EXPECTED_SUB_DIR, outputPrefix  + ModelSegments.ALLELE_FRACTION_LEGACY_SEGMENTS_FILE_SUFFIX),
+                new File(expectedDir, outputPrefix  + ModelSegments.ALLELE_FRACTION_LEGACY_SEGMENTS_FILE_SUFFIX),
                 ALLOWED_DELTA_FOR_DOUBLE_VALUES,
                 logger);
 
@@ -290,7 +299,7 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
         if (isAllelicCountsPresent) {
             CopyNumberTestUtils.assertFilesEqualUpToAllowedDeltaForDoubleValues(
                     new File(outputDir, outputPrefix  + ModelSegments.HET_ALLELIC_COUNTS_FILE_SUFFIX),
-                    new File(EXACT_MATCH_EXPECTED_SUB_DIR, outputPrefix  + ModelSegments.HET_ALLELIC_COUNTS_FILE_SUFFIX),
+                    new File(expectedDir, outputPrefix  + ModelSegments.HET_ALLELIC_COUNTS_FILE_SUFFIX),
                     ALLOWED_DELTA_FOR_DOUBLE_VALUES,
                     logger);
             hetAllelicCounts = new AllelicCountCollection(
@@ -300,7 +309,7 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
         if (isNormalAllelicCountsPresent) { //if this is true, case sample allelic counts will be present
             CopyNumberTestUtils.assertFilesEqualUpToAllowedDeltaForDoubleValues(
                     new File(outputDir, outputPrefix  + ModelSegments.NORMAL_HET_ALLELIC_COUNTS_FILE_SUFFIX),
-                    new File(EXACT_MATCH_EXPECTED_SUB_DIR, outputPrefix  + ModelSegments.NORMAL_HET_ALLELIC_COUNTS_FILE_SUFFIX),
+                    new File(expectedDir, outputPrefix  + ModelSegments.NORMAL_HET_ALLELIC_COUNTS_FILE_SUFFIX),
                     ALLOWED_DELTA_FOR_DOUBLE_VALUES,
                     logger);
             final AllelicCountCollection hetNormalAllelicCounts = new AllelicCountCollection(
@@ -447,7 +456,8 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
                                                   final List<File> denoisedCopyRatiosFiles,
                                                   final List<File> allelicCountsFiles,
                                                   final File normalAllelicCountsFile) {
-        final File outputDir = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? EXACT_MATCH_EXPECTED_SUB_DIR : createTempDir("testDir");
+        final File expectedDir = isLegacyRuntimeVersion() ? EXACT_MATCH_EXPECTED_SUB_DIR_LEGACY : EXACT_MATCH_EXPECTED_SUB_DIR;
+        final File outputDir = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expectedDir : createTempDir("testDir");
 
         // test joint segmentation
         final ArgumentsBuilder argsBuilder = buildArgsBuilderMultipleSamples(
@@ -455,7 +465,7 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
         runCommandLine(argsBuilder);
         final boolean isAllelicCountsPresent = allelicCountsFiles != null;
         final boolean isNormalAllelicCountsPresent = normalAllelicCountsFile != null;
-        assertOutputFilesMultipleSamples(outputDir, outputPrefix, isAllelicCountsPresent, isNormalAllelicCountsPresent);
+        assertOutputFilesMultipleSamples(outputDir, outputPrefix, expectedDir, isAllelicCountsPresent, isNormalAllelicCountsPresent);
 
         // test using joint segmentation as input to scatter of first case sample
         final ArgumentsBuilder argsBuilderSingleSample = buildArgsBuilderSingleSample(
@@ -467,7 +477,7 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
                 CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME,
                 new File(outputDir, outputPrefix + ModelSegments.PICARD_INTERVAL_LIST_FILE_SUFFIX));
         runCommandLine(argsBuilderSingleSample);
-        assertOutputFilesSingleSample(outputDir, outputPrefix + "-tumor-1", isAllelicCountsPresent, isNormalAllelicCountsPresent);
+        assertOutputFilesSingleSample(outputDir, outputPrefix + "-tumor-1", expectedDir, isAllelicCountsPresent, isNormalAllelicCountsPresent);
     }
 
     @Test(dataProvider = "dataInvalidDataModesMultipleSamples", expectedExceptions = IllegalArgumentException.class)
@@ -504,6 +514,7 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
 
     private static void assertOutputFilesMultipleSamples(final File outputDir,
                                                          final String outputPrefix,
+                                                         final File expectedDir,
                                                          final boolean isAllelicCountsPresent,
                                                          final boolean isNormalAllelicCountsPresent) {
         Assert.assertFalse(!isAllelicCountsPresent && isNormalAllelicCountsPresent);
@@ -523,7 +534,7 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
 
         CopyNumberTestUtils.assertFilesEqualUpToAllowedDeltaForDoubleValues(
                 new File(outputDir, outputPrefix + ModelSegments.PICARD_INTERVAL_LIST_FILE_SUFFIX),
-                new File(EXACT_MATCH_EXPECTED_SUB_DIR, outputPrefix + ModelSegments.PICARD_INTERVAL_LIST_FILE_SUFFIX),
+                new File(expectedDir, outputPrefix + ModelSegments.PICARD_INTERVAL_LIST_FILE_SUFFIX),
                 ALLOWED_DELTA_FOR_DOUBLE_VALUES,
                 logger);
     }

@@ -1,0 +1,5 @@
+@HD	VN:1.6
+@SQ	SN:20	LN:63025520	UR:http://www.broadinstitute.org/ftp/pub/seq/references/Homo_sapiens_assembly19.fasta	AS:GRCh37	M5:0dec9660ec1efaaf33281c0d5ea2560f	SP:Homo Sapiens
+@RG	ID:GATKCopyNumber	SM:SM-74P4M-1
+CONTIG	START	END	NUM_POINTS_COPY_RATIO	MEAN_LOG2_COPY_RATIO
+20	138125	62871232	0	NaN
