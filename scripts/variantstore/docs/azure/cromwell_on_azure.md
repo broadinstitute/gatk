@@ -27,7 +27,7 @@ The CoA deployment can take more than 20 minutes to complete. Once that's done:
 RESOURCE_GROUP=$(az group list | jq -r ".[] | .name | select(test(\"^${USER}-[0-9a-f]+$\"))")
 
 # Make a strong random password. You should probably save this someplace even though it's currenty not used in these
-# instructions beyond the server creation. 
+# instructions beyond creating the Azure SQL Server.
 ADMIN_PASSWORD=$(dd if=/dev/urandom bs=30 count=1 2> /dev/null | base64)
 
 SQL_SERVER=${RESOURCE_GROUP}-azure-sql-server
@@ -48,8 +48,20 @@ EXTERNAL_IP=$(curl --silent ifconfig.me)
 
 az sql server firewall-rule create -n AllowYourIp --start-ip-address $EXTERNAL_IP --end-ip-address $EXTERNAL_IP
 
-# Make yourself Azure Active Directory admin for your server
-az sql server ad-admin create --object-id $(az ad signed-in-user show | jq -r .id) --display-name "$(az ad signed-in-user show | jq -r .displayName)"
+# Create an AD admin group for the Azure SQL Database.
+AZ_SQLDB_AD_ADMIN_GROUP_ID=$(az ad group create --display-name "${RESOURCE_GROUP} Azure SQL Database AD Admin Group" --mail-nickname "${RESOURCE_GROUP}-ad-admin" | jq -r .id)
+
+# Add the whole Variants team to this group.
+VARIANTS_GROUP_ID=$(az ad group list | jq -r '.[] | select(.displayName == "DSP Variants Team") | .id')
+az ad group member add --group $AZ_SQLDB_AD_ADMIN_GROUP_ID --member-id ${VARIANTS_GROUP_ID}
+
+# Also add the User Assigned Managed Identity created by the CromwellOnAzure deployer to this group.
+COA_UAMI_ID=$(az identity list | jq -r ".[] | select(.name == \"${RESOURCE_GROUP}-identity\") | .principalId")
+az ad group member add --group $AZ_SQLDB_AD_ADMIN_GROUP_ID --member-id ${COA_UAMI_ID}
+
+# Make the AD Admin group the AD Admin for the Azure SQL Server. All members of this group will be able to act as
+# Azure AD Admins for this server.
+az sql server ad-admin create --object-id ${AZ_SQLDB_AD_ADMIN_GROUP_ID} --display-name "${RESOURCE_GROUP} Azure SQL Database AD Admin"
 
 # Get a database access token.
 # https://learn.microsoft.com/en-us/sql/connect/odbc/linux-mac/connecting-with-sqlcmd?view=azuresqldb-current
