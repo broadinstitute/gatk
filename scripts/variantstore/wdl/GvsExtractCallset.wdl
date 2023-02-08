@@ -2,8 +2,6 @@ version 1.0
 
 import "GvsUtils.wdl" as Utils
 
-# This is a comment
-
 workflow GvsExtractCallset {
   input {
     Boolean go = true
@@ -262,8 +260,7 @@ task ExtractTask {
     Boolean write_cost_to_db
 
     # Runtime Options:
-    # TODO - Remove the gatk_override specified here when you have rebuilt the docker
-    File? gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/gg_VS-694_VQSR_Lite_20230203/gatk-package-4.2.0.0-649-g1a6daf5-SNAPSHOT-local.jar"
+    File? gatk_override
     Int? extract_preemptible_override
     Int? extract_maxretries_override
 
@@ -351,7 +348,7 @@ task ExtractTask {
     echo ~{interval_index},${OUTPUT_FILE_DEST},${OUTPUT_FILE_BYTES},${OUTPUT_FILE_INDEX_DEST},${OUTPUT_FILE_INDEX_BYTES} >> manifest.txt
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2022_10_17_2a8c210ac35094997603259fa1cd784486b92e42"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_02_07_38fb966b84d138680e9e46992ae60feb28127d41"
     memory: "12 GB"
     disks: "local-disk 150 HDD"
     bootDiskSizeGb: 15
