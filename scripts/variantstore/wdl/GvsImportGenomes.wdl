@@ -20,6 +20,10 @@ workflow GvsImportGenomes {
     # beta customers will almost always have a naive GCP account, and as such will not be able to cross over their quotas
     # without Google shutting import down by throwing them API errors.  For them, we limit our scattering.
     Boolean beta_customer_rate_limit = false
+    # This was determined to be the point at which we come close to but don't cross over the "AppendRows throughput per
+    # project for small regions per minute per region" default quota of ~19G.  Uses up to ~90% of the quota at peaks
+    # without going over
+    Int beta_customer_max_scatter = 200
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
     Int? load_data_batch_size
     Int? load_data_preemptible_override
@@ -29,9 +33,6 @@ workflow GvsImportGenomes {
 
   Int num_samples = length(external_sample_names)
   Int max_auto_batch_size = 20000
-  # This was determined to be the point at which we come close to but don't cross over the "AppendRows throughput per
-  # project for small regions per minute per region" quota
-  Int beta_customer_max_scatter = 200
 
   # If they're a beta customer, figure out the depth of their scatter
   Int beta_effective_load_data_batch_size = if num_samples < beta_customer_max_scatter then 1
