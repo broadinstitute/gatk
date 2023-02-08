@@ -522,7 +522,9 @@ task SelectVariants {
     input {
         File input_vcf
         File input_vcf_index
-        File interval_list
+        File? interval_list
+        String? type_to_include
+        Boolean exclude_filtered = false
         String output_basename
 
         Int memory_mb = 7500
@@ -550,7 +552,9 @@ task SelectVariants {
       gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
         SelectVariants \
           -V ~{local_vcf} \
-          -L ~{interval_list} \
+          ~{"-L " + interval_list} \
+          ~{"--select-type-to-include " + type_to_include} \
+          ~{true="--exclude-filtered true" false="" exclude_filtered} \
           -O ~{output_basename}.vcf
     >>>
 

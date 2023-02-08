@@ -158,14 +158,36 @@ workflow GvsCreateFilterSet {
         preemptible_tries = 3,
     }
 
-    call PopulateFilterSetInfo {
+    # These calls to SelectVariants are being added for two reasons
+    # 1) The snps_variant_scored_vcf and indels_variant_scored_vcf output by JointVcfFiltering contains ALL variants,
+    #     but are currently ONLY annotating SNPs and INDELs respectively.
+    # 2) Those output VCFs also contain filtered sites which we don't want to put into the filter_set_info_vqsr_lite table.
+    call Utils.SelectVariants as CreateFilteredScoredSNPsVCF {
+      input:
+        input_vcf = MergeSNPScoredVCFs.output_vcf,
+        input_vcf_index = MergeSNPScoredVCFs.output_vcf_index,
+        type_to_include = "SNP",
+        exclude_filtered = true,
+        output_basename = "${filter_set_name}.filtered.scored.snps"
+    }
+
+    call Utils.SelectVariants as CreateFilteredScoredINDELsVCF {
+      input:
+        input_vcf = MergeINDELScoredVCFs.output_vcf,
+        input_vcf_index = MergeINDELScoredVCFs.output_vcf_index,
+        type_to_include = "INDEL",
+        exclude_filtered = true,
+        output_basename = "${filter_set_name}.filtered.scored.indels"
+    }
+
+call PopulateFilterSetInfo {
       input:
         gatk_override = gatk_override,
         filter_set_name = filter_set_name,
-        snp_recal_file = MergeSNPScoredVCFs.output_vcf,
-        snp_recal_file_index = MergeSNPScoredVCFs.output_vcf_index,
-        indel_recal_file = MergeINDELScoredVCFs.output_vcf,
-        indel_recal_file_index = MergeINDELScoredVCFs.output_vcf_index,
+        snp_recal_file = CreateFilteredScoredSNPsVCF.output_vcf,
+        snp_recal_file_index = CreateFilteredScoredSNPsVCF.output_vcf_index,
+        indel_recal_file = CreateFilteredScoredINDELsVCF.output_vcf,
+        indel_recal_file_index = CreateFilteredScoredINDELsVCF.output_vcf_index,
         fq_info_destination_table = fq_info_destination_table_vqsr_lite,
         filter_schema = fq_info_destination_table_vqsr_lite_schema,
         query_project = project_id,
