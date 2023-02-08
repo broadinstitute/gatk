@@ -12,7 +12,7 @@ public class ExtractCohortLiteFilterRecord implements Locatable {
     private final Integer start;
     private final Integer end;
 
-    private final Double calibrationSensitivity;
+    private final Double sensitivity;
     private final String yng;
     private final String refAllele;
     private final String altAllele;
@@ -23,7 +23,7 @@ public class ExtractCohortLiteFilterRecord implements Locatable {
         this.start = SchemaUtils.decodePosition(location);
         this.end = start;
 
-        this.calibrationSensitivity = Double.parseDouble(genericRecord.get(SchemaUtils.CALIBRATION_SENSITIVITY).toString());
+        this.sensitivity = Double.parseDouble(genericRecord.get(SchemaUtils.CALIBRATION_SENSITIVITY).toString());
         this.yng = genericRecord.get(SchemaUtils.YNG_STATUS).toString();
 
         this.refAllele = genericRecord.get(SchemaUtils.REF_ALLELE_FIELD_NAME).toString();
@@ -41,7 +41,7 @@ public class ExtractCohortLiteFilterRecord implements Locatable {
 
     public long getLocation() { return this.location; }
 
-    public double getCalibrationSensitivity() { return this.calibrationSensitivity; }
+    public double getSensitivity() { return this.sensitivity; }
 
     public String getYng() { return this.yng; }
 

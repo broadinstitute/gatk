@@ -40,9 +40,9 @@ public class ExtractCohortLiteEngine {
     private final TableReference filterSetInfoTableRef;
     private final TableReference filterSetSiteTableRef;
     private final ReferenceDataSource refSource;
-    private final Double calibrationSensitivitySNPThreshold;
-    private final Double calibrationSensitivityINDELThreshold;
-    private final ExtractCohortLite.CalibrationSensitivityFilteringType calibrationSensitivityFilteringType;
+    private final Double sensitivitySNPThreshold;
+    private final Double sensitivityINDELThreshold;
+    private final ExtractCohortLite.SensitivityFilteringType sensitivityFilteringType;
     private final boolean excludeFilteredSites;
 
     private final ProgressMeter progressMeter;
@@ -102,13 +102,13 @@ public class ExtractCohortLiteEngine {
                                    final String filterSetSiteTableName,
                                    final int localSortMaxRecordsInRam,
                                    final boolean printDebugInformation,
-                                   final Double calibrationSensitivitySNPThreshold,
-                                   final Double calibrationSensitivityINDELThreshold,
+                                   final Double sensitivitySNPThreshold,
+                                   final Double sensitivityINDELThreshold,
                                    final ProgressMeter progressMeter,
                                    final String filterSetName,
                                    final boolean emitPLs,
                                    final boolean emitADs,
-                                   final ExtractCohortLite.CalibrationSensitivityFilteringType calibrationSensitivityFilteringType,
+                                   final ExtractCohortLite.SensitivityFilteringType sensitivityFilteringType,
                                    final boolean excludeFilteredSites,
                                    final GQStateEnum inferredReferenceState,
                                    final boolean presortedAvroFiles
@@ -150,13 +150,13 @@ public class ExtractCohortLiteEngine {
         this.maxLocation = maxLocation;
 
         this.printDebugInformation = printDebugInformation;
-        this.calibrationSensitivitySNPThreshold = calibrationSensitivitySNPThreshold;
-        this.calibrationSensitivityINDELThreshold = calibrationSensitivityINDELThreshold;
-        this.calibrationSensitivityFilteringType = calibrationSensitivityFilteringType;
+        this.sensitivitySNPThreshold = sensitivitySNPThreshold;
+        this.sensitivityINDELThreshold = sensitivityINDELThreshold;
+        this.sensitivityFilteringType = sensitivityFilteringType;
         this.excludeFilteredSites = excludeFilteredSites;
 
-        this.filterSetInfoTableRef = calibrationSensitivityFilteringType.equals(ExtractCohortLite.CalibrationSensitivityFilteringType.NONE) ? null : new TableReference(filterSetInfoTableName, SchemaUtils.VQSLITE_YNG_FIELDS);
-        this.filterSetSiteTableRef = calibrationSensitivityFilteringType.equals(ExtractCohortLite.CalibrationSensitivityFilteringType.NONE) ? null : new TableReference(filterSetSiteTableName, SchemaUtils.FILTER_SET_SITE_FIELDS);
+        this.filterSetInfoTableRef = sensitivityFilteringType.equals(ExtractCohortLite.SensitivityFilteringType.NONE) ? null : new TableReference(filterSetInfoTableName, SchemaUtils.VQSLITE_YNG_FIELDS);
+        this.filterSetSiteTableRef = sensitivityFilteringType.equals(ExtractCohortLite.SensitivityFilteringType.NONE) ? null : new TableReference(filterSetSiteTableName, SchemaUtils.FILTER_SET_SITE_FIELDS);
 
         this.progressMeter = progressMeter;
 
@@ -184,7 +184,7 @@ public class ExtractCohortLiteEngine {
 
     public void traverse() {
         //First allele here is the ref, followed by the alts associated with that ref. We need this because at this point the alleles haven't been joined and remapped to one reference allele.
-        final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullCalSensMap = new HashMap<>();
+        final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullSensitivityMap = new HashMap<>();
         final HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap = new HashMap<>();
         final HashMap<Long, List<String>> siteFilterMap = new HashMap<>();
 
@@ -194,14 +194,14 @@ public class ExtractCohortLiteEngine {
         }
         final String rowRestrictionWithFilterSetName = rowRestriction + " AND " + SchemaUtils.FILTER_SET_NAME + " = '" + filterSetName + "'";
 
-        boolean noCalibrationSensitivityFilteringRequested = calibrationSensitivityFilteringType.equals(ExtractCohortLite.CalibrationSensitivityFilteringType.NONE);
-        if (!noCalibrationSensitivityFilteringRequested) {
-            // ensure calibration sensitivity filters are defined. this really shouldn't ever happen, said the engineer.
-            if (calibrationSensitivitySNPThreshold == null || calibrationSensitivityINDELThreshold == null) {
-                throw new UserException("Calibration sensitivity filtering thresholds for SNPs and INDELs must be defined.");
+        boolean noSensitivityFilteringRequested = sensitivityFilteringType.equals(ExtractCohortLite.SensitivityFilteringType.NONE);
+        if (!noSensitivityFilteringRequested) {
+            // ensure sensitivity filters are defined. this really shouldn't ever happen, said the engineer.
+            if (sensitivitySNPThreshold == null || sensitivityINDELThreshold == null) {
+                throw new UserException("Sensitivity filtering thresholds for SNPs and INDELs must be defined.");
             }
 
-            // get filter info (calibrationSensitivity & yng values)
+            // get filter info (sensitivity & yng values)
             try (StorageAPIAvroReader reader = new StorageAPIAvroReader(filterSetInfoTableRef, rowRestrictionWithFilterSetName, projectID)) {
 
                 for ( final GenericRecord queryRow : reader ) {
@@ -211,13 +211,13 @@ public class ExtractCohortLiteEngine {
                         final ExtractCohortLiteFilterRecord filterRow = new ExtractCohortLiteFilterRecord( queryRow );
 
                         final long location = filterRow.getLocation();
-                        final Double calibrationSensitivity = filterRow.getCalibrationSensitivity();
+                        final Double sensitivity = filterRow.getSensitivity();
                         final String yng = filterRow.getYng();
                         final Allele ref = Allele.create(filterRow.getRefAllele(), true);
                         final Allele alt = Allele.create(filterRow.getAltAllele(), false);
-                        fullCalSensMap.putIfAbsent(location, new HashMap<>());
-                        fullCalSensMap.get(location).putIfAbsent(ref, new HashMap<>());
-                        fullCalSensMap.get(location).get(ref).put(alt, calibrationSensitivity);
+                        fullSensitivityMap.putIfAbsent(location, new HashMap<>());
+                        fullSensitivityMap.get(location).putIfAbsent(ref, new HashMap<>());
+                        fullSensitivityMap.get(location).get(ref).put(alt, sensitivity);
                         fullYngMap.putIfAbsent(location, new HashMap<>());
                         fullYngMap.get(location).putIfAbsent(ref, new HashMap<>());
                         fullYngMap.get(location).get(ref).put(alt, yng);
@@ -250,11 +250,11 @@ public class ExtractCohortLiteEngine {
 
         SortedSet<Long> sampleIdsToExtract = new TreeSet<>(this.sampleIdToName.keySet());
         if (fqRangesExtractVetTable != null) {
-            createVariantsFromUnsortedExtractTableBigQueryRanges(fqRangesExtractVetTable, fqRangesExtractRefTable, sampleIdsToExtract, minLocation, maxLocation, fullCalSensMap, fullYngMap, siteFilterMap, noCalibrationSensitivityFilteringRequested);
+            createVariantsFromUnsortedExtractTableBigQueryRanges(fqRangesExtractVetTable, fqRangesExtractRefTable, sampleIdsToExtract, minLocation, maxLocation, fullSensitivityMap, fullYngMap, siteFilterMap, noSensitivityFilteringRequested);
         } else if (vetRangesFQDataSet != null) {
-            createVariantsFromUnsortedBigQueryRanges(vetRangesFQDataSet, sampleIdsToExtract, minLocation, maxLocation, fullCalSensMap, fullYngMap, siteFilterMap, noCalibrationSensitivityFilteringRequested);
+            createVariantsFromUnsortedBigQueryRanges(vetRangesFQDataSet, sampleIdsToExtract, minLocation, maxLocation, fullSensitivityMap, fullYngMap, siteFilterMap, noSensitivityFilteringRequested);
         } else {
-            createVariantsFromUnsortedAvroRanges(vetAvroFileName, refRangesAvroFileName, sampleIdsToExtract, minLocation, maxLocation, fullCalSensMap, fullYngMap, siteFilterMap, noCalibrationSensitivityFilteringRequested, presortedAvroFiles);
+            createVariantsFromUnsortedAvroRanges(vetAvroFileName, refRangesAvroFileName, sampleIdsToExtract, minLocation, maxLocation, fullSensitivityMap, fullYngMap, siteFilterMap, noSensitivityFilteringRequested, presortedAvroFiles);
         }
 
         logger.debug("Finished Initializing Reader");
@@ -353,11 +353,11 @@ public class ExtractCohortLiteEngine {
 
     protected VariantContext processSampleRecordsForLocation(final long location,
                                                              final Iterable<ExtractCohortRecord> sampleRecordsAtPosition,
-                                                             final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullCalibrationSensitivityMap,
+                                                             final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullSensitivityMap,
                                                              final HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap,
-                                                             final boolean noCalibrationSensitivityFilteringRequested,
+                                                             final boolean noSensitivityFilteringRequested,
                                                              final HashMap<Long, List<String>> siteFilterMap,
-                                                             final ExtractCohortLite.CalibrationSensitivityFilteringType calibrationSensitivityFilteringType) {
+                                                             final ExtractCohortLite.SensitivityFilteringType sensitivityFilteringType) {
 
         final List<VariantContext> unmergedCalls = new ArrayList<>();
         final List<ReferenceGenotypeInfo> refCalls = new ArrayList<>();
@@ -371,19 +371,19 @@ public class ExtractCohortLiteEngine {
         final Allele refAllele = getReferenceAllele(refSource, location, 1);
         int numRecordsAtPosition = 0;
 
-        final HashMap<Allele, HashMap<Allele, Double>> calibrationSensitivityMap;
+        final HashMap<Allele, HashMap<Allele, Double>> sensitivityMap;
         final HashMap<Allele, HashMap<Allele, String>> yngMap;
 
         // TODO: optimize in the case where noFilteringRequested == true, no need to populate this
 
-        // If there's no yng/calibrationSensitivity for this site, then we'll treat these as NAYs because VQSR-Lite dropped them (they have no alt reads).
-        if (fullCalibrationSensitivityMap.get(SchemaUtils.encodeLocation(contig, currentPosition)) == null) {
-            calibrationSensitivityMap = new HashMap<>();
-            calibrationSensitivityMap.put(refAllele, new HashMap<>());
+        // If there's no yng/sensitivity for this site, then we'll treat these as NAYs because VQSR-Lite dropped them (they have no alt reads).
+        if (fullSensitivityMap.get(SchemaUtils.encodeLocation(contig, currentPosition)) == null) {
+            sensitivityMap = new HashMap<>();
+            sensitivityMap.put(refAllele, new HashMap<>());
             yngMap = new HashMap<>();
             yngMap.put(refAllele, new HashMap<>());
         } else {
-            calibrationSensitivityMap = fullCalibrationSensitivityMap.get(SchemaUtils.encodeLocation(contig, currentPosition));
+            sensitivityMap = fullSensitivityMap.get(SchemaUtils.encodeLocation(contig, currentPosition));
             yngMap = fullYngMap.get(SchemaUtils.encodeLocation(contig, currentPosition));
         }
 
@@ -406,7 +406,7 @@ public class ExtractCohortLiteEngine {
             switch (sampleRecord.getState()) {
                 case "v":   // Variant
                     ++totalNumberOfVariants;
-                    VariantContext vc = createVariantContextFromSampleRecord(sampleRecord, calibrationSensitivityMap, yngMap, calibrationSensitivityFilteringType);
+                    VariantContext vc = createVariantContextFromSampleRecord(sampleRecord, sensitivityMap, yngMap, sensitivityFilteringType);
                     unmergedCalls.add(vc);
 
                     currentPositionHasVariant = true;
@@ -448,7 +448,7 @@ public class ExtractCohortLiteEngine {
             logger.info(contig + ":" + currentPosition + ": processed " + numRecordsAtPosition + " total sample records");
         }
 
-        return finalizeCurrentVariant(unmergedCalls, refCalls, samplesSeen, currentPositionHasVariant, location, contig, currentPosition, refAllele, calibrationSensitivityMap, yngMap, noCalibrationSensitivityFilteringRequested, siteFilterMap);
+        return finalizeCurrentVariant(unmergedCalls, refCalls, samplesSeen, currentPositionHasVariant, location, contig, currentPosition, refAllele, sensitivityMap, yngMap, noSensitivityFilteringRequested, siteFilterMap);
     }
 
     VariantContext finalizeCurrentVariant(final List<VariantContext> unmergedVariantCalls,
@@ -459,9 +459,9 @@ public class ExtractCohortLiteEngine {
                                         final String contig,
                                         final long start,
                                         final Allele refAllele,
-                                        final HashMap<Allele, HashMap<Allele, Double>> calibrationSensitivityMap,
+                                        final HashMap<Allele, HashMap<Allele, Double>> sensitivityMap,
                                         final HashMap<Allele, HashMap<Allele, String>> yngMap,
-                                        final boolean noCalibrationSensitivityFilteringRequested,
+                                        final boolean noSensitivityFilteringRequested,
                                         final HashMap<Long, List<String>> siteFilterMap) {
         // If there were no variants at this site, we don't emit a record and there's nothing to do here
         if ( ! currentPositionHasVariant ) {
@@ -518,9 +518,9 @@ public class ExtractCohortLiteEngine {
 
         VariantContext genotypedVC = annotationEngine.annotateContext(mergedVC, new FeatureContext(), referenceContext, null, a -> true);
 
-        // apply Calibration Sensitivity-based filters
+        // apply Sensitivity-based filters
         VariantContext filteredVC =
-                noCalibrationSensitivityFilteringRequested ? genotypedVC : filterSiteByAlleleSpecificCalibrationSensitivity(genotypedVC, calibrationSensitivityMap, yngMap, calibrationSensitivityFilteringType);
+                noSensitivityFilteringRequested ? genotypedVC : filterSiteByAlleleSpecificSensitivity(genotypedVC, sensitivityMap, yngMap, sensitivityFilteringType);
 
         // apply SiteQC-based filters, if they exist
         if ( siteFilterMap.containsKey(location) ) {
@@ -553,21 +553,21 @@ public class ExtractCohortLiteEngine {
         }
     }
 
-    private VariantContext filterSiteByAlleleSpecificCalibrationSensitivity(VariantContext mergedVC, HashMap<Allele, HashMap<Allele, Double>> calibrationSensitivityMap, HashMap<Allele, HashMap<Allele, String>> yngMap, ExtractCohortLite.CalibrationSensitivityFilteringType calibrationSensitivityFilteringType) {
-        final LinkedHashMap<Allele, Double> remappedCalibrationSensitivityMap = remapAllelesInMap(mergedVC, calibrationSensitivityMap, Double.NaN);
+    private VariantContext filterSiteByAlleleSpecificSensitivity(VariantContext mergedVC, HashMap<Allele, HashMap<Allele, Double>> sensitivityMap, HashMap<Allele, HashMap<Allele, String>> yngMap, ExtractCohortLite.SensitivityFilteringType sensitivityFilteringType) {
+        final LinkedHashMap<Allele, Double> remappedSensitivityMap = remapAllelesInMap(mergedVC, sensitivityMap, Double.NaN);
         final LinkedHashMap<Allele, String> remappedYngMap = remapAllelesInMap(mergedVC, yngMap, VCFConstants.EMPTY_INFO_FIELD);
 
-        final LinkedHashMap<Allele, Double> relevantCalibrationSensitivityMap = new LinkedHashMap<>();
-        mergedVC.getAlternateAlleles().forEach(key -> Optional.ofNullable(remappedCalibrationSensitivityMap.get(key)).ifPresent(value -> relevantCalibrationSensitivityMap.put(key, value)));
+        final LinkedHashMap<Allele, Double> relevantSensitivityMap = new LinkedHashMap<>();
+        mergedVC.getAlternateAlleles().forEach(key -> Optional.ofNullable(remappedSensitivityMap.get(key)).ifPresent(value -> relevantSensitivityMap.put(key, value)));
         final LinkedHashMap<Allele, String> relevantYngMap = new LinkedHashMap<>();
         mergedVC.getAlternateAlleles().forEach(key -> Optional.ofNullable(remappedYngMap.get(key)).ifPresent(value -> relevantYngMap.put(key, value)));
 
         final VariantContextBuilder builder = new VariantContextBuilder(mergedVC);
 
-        builder.attribute(GATKVCFConstants.AS_VQS_CAL_SENS_KEY, relevantCalibrationSensitivityMap.values().stream().map(val -> val.equals(Double.NaN) ? VCFConstants.EMPTY_INFO_FIELD : val.toString()).collect(Collectors.toList()));
+        builder.attribute(GATKVCFConstants.AS_VQS_SENS_KEY, relevantSensitivityMap.values().stream().map(val -> val.equals(Double.NaN) ? VCFConstants.EMPTY_INFO_FIELD : val.toString()).collect(Collectors.toList()));
         builder.attribute(GATKVCFConstants.AS_YNG_STATUS_KEY, new ArrayList<>(relevantYngMap.values()));
 
-        if (calibrationSensitivityFilteringType.equals(ExtractCohortLite.CalibrationSensitivityFilteringType.SITES)) { // Note that these filters are not used with Genotype Calibration Sensitivity Filtering
+        if (sensitivityFilteringType.equals(ExtractCohortLite.SensitivityFilteringType.SITES)) { // Note that these filters are not used with Genotype Sensitivity Filtering
             int refLength = mergedVC.getReference().length();
 
             // if there are any Yays, the site is PASS
@@ -579,23 +579,23 @@ public class ExtractCohortLiteEngine {
                 // if it doesn't trigger any of the filters below, we assume it passes.
                 builder.passFilters();
                 if (remappedYngMap.containsValue("G")) {
-                    Optional<Double> snpMax = relevantCalibrationSensitivityMap.entrySet().stream()
+                    Optional<Double> snpMax = relevantSensitivityMap.entrySet().stream()
                             .filter(entry -> entry.getKey().length() == refLength)
                             .map(entry -> entry.getValue())
                             .filter(d -> !(d.isNaN()||d.isInfinite()))
                             .max(Double::compareTo);
-                    if (snpMax.isPresent() && snpMax.get() < calibrationSensitivitySNPThreshold) {
-                        builder.filter(GATKVCFConstants.VQS_CAL_SENS_FAILURE_SNP);
+                    if (snpMax.isPresent() && snpMax.get() < sensitivitySNPThreshold) {
+                        builder.filter(GATKVCFConstants.VQS_SENS_FAILURE_SNP);
                     }
 
-                    Optional<Double> indelMax = relevantCalibrationSensitivityMap.entrySet().stream()
+                    Optional<Double> indelMax = relevantSensitivityMap.entrySet().stream()
                             .filter(entry -> entry.getKey().length() != refLength)
                             .map(entry -> entry.getValue())
                             .filter(d -> !(d.isNaN()||d.isInfinite()))
                             .max(Double::compareTo);
 
-                    if (indelMax.isPresent() && indelMax.get() < calibrationSensitivityINDELThreshold) {
-                        builder.filter(GATKVCFConstants.VQS_CAL_SENS_FAILURE_INDEL);
+                    if (indelMax.isPresent() && indelMax.get() < sensitivityINDELThreshold) {
+                        builder.filter(GATKVCFConstants.VQS_SENS_FAILURE_INDEL);
                     }
                 } else {
                     // per-conversation with Laura, if there is no information we let the site pass (ie no data does not imply failure)
@@ -658,8 +658,8 @@ public class ExtractCohortLiteEngine {
     }
 
 
-    // calibrationSensitivityMap and yngMap are in/out parameters for this method. i.e. they are modified by this method
-    private VariantContext createVariantContextFromSampleRecord(final ExtractCohortRecord sampleRecord, HashMap<Allele, HashMap<Allele, Double>> calibrationSensitivityMap, HashMap<Allele, HashMap<Allele, String>> yngMap, ExtractCohortLite.CalibrationSensitivityFilteringType calibrationSensitivityFilteringType) {
+    // sensitivityMap and yngMap are in/out parameters for this method. i.e. they are modified by this method
+    private VariantContext createVariantContextFromSampleRecord(final ExtractCohortRecord sampleRecord, HashMap<Allele, HashMap<Allele, Double>> sensitivityMap, HashMap<Allele, HashMap<Allele, String>> yngMap, ExtractCohortLite.SensitivityFilteringType sensitivityFilteringType) {
         final VariantContextBuilder builder = new VariantContextBuilder();
         final GenotypeBuilder genotypeBuilder = new GenotypeBuilder();
 
@@ -689,7 +689,7 @@ public class ExtractCohortLiteEngine {
         builder.stop(startPosition + alleles.get(0).length() - 1);
 
         genotypeBuilder.name(sampleName);
-        calibrationSensitivityMap.putIfAbsent(ref, new HashMap<>());
+        sensitivityMap.putIfAbsent(ref, new HashMap<>());
         yngMap.putIfAbsent(ref, new HashMap<>());
 
         // need to re-prepend the leading "|" to AS_QUALapprox for use in gnarly
@@ -711,21 +711,21 @@ public class ExtractCohortLiteEngine {
                             .map(alleleIndex -> alleles.get(alleleIndex))
                             .collect(Collectors.toList());
 
-            if (calibrationSensitivityFilteringType.equals(ExtractCohortLite.CalibrationSensitivityFilteringType.GENOTYPE)) {
+            if (sensitivityFilteringType.equals(ExtractCohortLite.SensitivityFilteringType.GENOTYPE)) {
                 final List<Allele> nonRefAlleles =
                         genotypeAlleles.stream()
                                 .filter(a -> a.isNonReference())
                                 .distinct()
                                 .collect(Collectors.toList());
 
-                final LinkedHashMap<Allele, Double> remappedCalibrationSensitivityMap = remapAllelesInMap(ref, nonRefAlleles, contig, (int) startPosition, calibrationSensitivityMap, Double.NaN);
+                final LinkedHashMap<Allele, Double> remappedSensitivityMap = remapAllelesInMap(ref, nonRefAlleles, contig, (int) startPosition, sensitivityMap, Double.NaN);
                 final LinkedHashMap<Allele, String> remappedYngMap = remapAllelesInMap(ref, nonRefAlleles, contig, (int) startPosition, yngMap, VCFConstants.EMPTY_INFO_FIELD);
 
                 // see https://github.com/broadinstitute/dsp-spec-ops/issues/291 for rationale
-                // take "worst" outcome for yng/calibrationSensitivity, evaluate each allele separately
+                // take "worst" outcome for yng/sensitivity, evaluate each allele separately
                 // if any allele is "N"ay, the genotype is filtered
                 // if any allele is "Y"ay and the rest are "G"rey, the genotype is passed
-                // if all alleles are "G"ray, the Calibration Sensitivity is evaluated
+                // if all alleles are "G"ray, the Sensitivity is evaluated
                 boolean anyNays = nonRefAlleles.stream().map(a -> remappedYngMap.get(a)).anyMatch(v -> "N".equals(v));
                 boolean anyYays = nonRefAlleles.stream().map(a -> remappedYngMap.get(a)).anyMatch(v -> "Y".equals(v));
 
@@ -735,20 +735,20 @@ public class ExtractCohortLiteEngine {
                 } else if (anyYays) {
                     // the genotype is passed, nothing to do here as non-filtered is the default
                 } else {
-                    // get the max (best) calibration sensitivity for all SNP non-Yay sites, and apply the filter
+                    // get the max (best) sensitivity for all SNP non-Yay sites, and apply the filter
                     Optional<Double> snpMax =
-                            nonRefAlleles.stream().filter(a -> a.length() == ref.length()).map(a -> remappedCalibrationSensitivityMap.get(a)).filter(Objects::nonNull).max(Double::compareTo);
+                            nonRefAlleles.stream().filter(a -> a.length() == ref.length()).map(a -> remappedSensitivityMap.get(a)).filter(Objects::nonNull).max(Double::compareTo);
 
-                    if (snpMax.isPresent() && snpMax.get() < calibrationSensitivitySNPThreshold) {
-                        genotypeBuilder.filter(GATKVCFConstants.VQS_CAL_SENS_FAILURE_SNP);
+                    if (snpMax.isPresent() && snpMax.get() < sensitivitySNPThreshold) {
+                        genotypeBuilder.filter(GATKVCFConstants.VQS_SENS_FAILURE_SNP);
                     }
 
-                    // get the max (best) calibration sensitivity for all INDEL non-Yay sites
+                    // get the max (best) sensitivity for all INDEL non-Yay sites
                     Optional<Double> indelMax =
-                            nonRefAlleles.stream().filter(a -> a.length() != ref.length()).map(a -> remappedCalibrationSensitivityMap.get(a)).filter(Objects::nonNull).max(Double::compareTo);
+                            nonRefAlleles.stream().filter(a -> a.length() != ref.length()).map(a -> remappedSensitivityMap.get(a)).filter(Objects::nonNull).max(Double::compareTo);
 
-                    if (indelMax.isPresent() && indelMax.get() < calibrationSensitivityINDELThreshold) {
-                        genotypeBuilder.filter(GATKVCFConstants.VQS_CAL_SENS_FAILURE_INDEL);
+                    if (indelMax.isPresent() && indelMax.get() < sensitivityINDELThreshold) {
+                        genotypeBuilder.filter(GATKVCFConstants.VQS_SENS_FAILURE_INDEL);
                     }
 
                 }
@@ -867,10 +867,10 @@ public class ExtractCohortLiteEngine {
             final SortedSet<Long> sampleIdsToExtract,
             final Long minLocation,
             final Long maxLocation,
-            final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullCalSensMap,
+            final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullSensitivityMap,
             final HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap,
             final HashMap<Long, List<String>> siteFilterMap,
-            final boolean noCalibrationSensitivityFilteringRequested) {
+            final boolean noSensitivityFilteringRequested) {
 
         // We could handle this by making a map of BitSets or something, but it seems unnecessary to support this
         if (!SchemaUtils.decodeContig(minLocation).equals(SchemaUtils.decodeContig(maxLocation))) {
@@ -896,7 +896,7 @@ public class ExtractCohortLiteEngine {
                 localSortMaxRecordsInRam,
                 vbs);
 
-        createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullCalSensMap, fullYngMap, siteFilterMap, noCalibrationSensitivityFilteringRequested);
+        createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullSensitivityMap, fullYngMap, siteFilterMap, noSensitivityFilteringRequested);
     }
 
     //
@@ -908,10 +908,10 @@ public class ExtractCohortLiteEngine {
             final SortedSet<Long> sampleIdsToExtract,
             final Long minLocation,
             final Long maxLocation,
-            final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullCalSensMap,
+            final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullSensitivityMap,
             final HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap,
             final HashMap<Long, List<String>> siteFilterMap,
-            final boolean noCalibrationSensitivityFilteringRequested) {
+            final boolean noSensitivityFilteringRequested) {
 
         // We could handle this by making a map of BitSets or something, but it seems unnecessary to support this
         if (!SchemaUtils.decodeContig(minLocation).equals(SchemaUtils.decodeContig(maxLocation))) {
@@ -935,7 +935,7 @@ public class ExtractCohortLiteEngine {
                 localSortMaxRecordsInRam,
                 vbs);
 
-        createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullCalSensMap, fullYngMap, siteFilterMap, noCalibrationSensitivityFilteringRequested);
+        createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullSensitivityMap, fullYngMap, siteFilterMap, noSensitivityFilteringRequested);
     }
 
     private SortingCollection<GenericRecord> createSortedVetCollectionFromExtractTableBigQuery(final String projectID,
@@ -1001,10 +1001,10 @@ public class ExtractCohortLiteEngine {
             final SortedSet<Long> sampleIdsToExtract,
             final Long minLocation,
             final Long maxLocation,
-            final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullCalSensMap,
+            final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullSensitivityMap,
             final HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap,
             final HashMap<Long, List<String>> siteFilterMap,
-            final boolean noCalibrationSensitivityFilteringRequested,
+            final boolean noSensitivityFilteringRequested,
             final boolean presortedAvroFiles) {
 
         final AvroFileReader vetReader = new AvroFileReader(vetAvroFileName);
@@ -1029,7 +1029,7 @@ public class ExtractCohortLiteEngine {
             sortedReferenceRange = localSortedReferenceRange;
         }
 
-        createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullCalSensMap, fullYngMap, siteFilterMap, noCalibrationSensitivityFilteringRequested);
+        createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullSensitivityMap, fullYngMap, siteFilterMap, noSensitivityFilteringRequested);
 
     }
 
@@ -1037,20 +1037,20 @@ public class ExtractCohortLiteEngine {
     void createVariantsFromSortedRanges(final SortedSet<Long> sampleIdsToExtract,
                                         final Iterable<GenericRecord> sortedVet,
                                         Iterable<GenericRecord> sortedReferenceRange,
-                                        final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullCalibrationSensitivityMap,
+                                        final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullSensitivityMap,
                                         final HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap,
                                         final HashMap<Long, List<String>> siteFilterMap,
-                                        final boolean noCalibrationSensitivityFilteringRequested) {
-        createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullCalibrationSensitivityMap, fullYngMap, siteFilterMap, noCalibrationSensitivityFilteringRequested, (vc) -> writeToVcf(vc));
+                                        final boolean noSensitivityFilteringRequested) {
+        createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullSensitivityMap, fullYngMap, siteFilterMap, noSensitivityFilteringRequested, (vc) -> writeToVcf(vc));
     }
 
     void createVariantsFromSortedRanges(final SortedSet<Long> sampleIdsToExtract,
                                         final Iterable<GenericRecord> sortedVet,
                                         Iterable<GenericRecord> sortedReferenceRange,
-                                        final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullCalibrationSensitivityMap,
+                                        final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullSensitivityMap,
                                         final HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap,
                                         final HashMap<Long, List<String>> siteFilterMap,
-                                        final boolean noCalibrationSensitivityFilteringRequested,
+                                        final boolean noSensitivityFilteringRequested,
                                         Consumer<VariantContext> variantContextConsumer
     ) {
 
@@ -1101,7 +1101,7 @@ public class ExtractCohortLiteEngine {
                 }
 
                 ++totalNumberOfSites;
-                VariantContext vc = processSampleRecordsForLocation(lastPosition, currentPositionRecords.values(), fullCalibrationSensitivityMap, fullYngMap, noCalibrationSensitivityFilteringRequested, siteFilterMap, calibrationSensitivityFilteringType);
+                VariantContext vc = processSampleRecordsForLocation(lastPosition, currentPositionRecords.values(), fullSensitivityMap, fullYngMap, noSensitivityFilteringRequested, siteFilterMap, sensitivityFilteringType);
                 variantContextConsumer.accept(vc);
                 currentPositionRecords.clear();
 
@@ -1132,7 +1132,7 @@ public class ExtractCohortLiteEngine {
 
         if (!currentPositionRecords.isEmpty()) {
             ++totalNumberOfSites;
-            VariantContext vc = processSampleRecordsForLocation(lastPosition, currentPositionRecords.values(), fullCalibrationSensitivityMap, fullYngMap, noCalibrationSensitivityFilteringRequested, siteFilterMap, calibrationSensitivityFilteringType);
+            VariantContext vc = processSampleRecordsForLocation(lastPosition, currentPositionRecords.values(), fullSensitivityMap, fullYngMap, noSensitivityFilteringRequested, siteFilterMap, sensitivityFilteringType);
             variantContextConsumer.accept(vc);
         }
     }

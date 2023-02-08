@@ -29,7 +29,7 @@ public class ExtractCohortLite extends ExtractTool {
     private ExtractCohortLiteEngine engine;
     private SampleList sampleList;
 
-    public enum CalibrationSensitivityFilteringType { GENOTYPE, SITES, NONE }
+    public enum SensitivityFilteringType { GENOTYPE, SITES, NONE }
 
     @Argument(
             fullName = "filter-set-info-table",
@@ -132,23 +132,23 @@ public class ExtractCohortLite extends ExtractTool {
     // what if this was a flag input only?
 
     @Argument(
-            fullName = "calibration-sensitivity-filter-by-site",
-            doc = "If VQS Calibration Sensitivity filtering is applied, it should be at a site level. Default is false",
+            fullName = "sensitivity-filter-by-site",
+            doc = "If VQS Sensitivity filtering is applied, it should be at a site level. Default is false",
             optional = true
     )
-    private boolean performSiteSpecificCalibrationSensitivityFiltering = false;
-    private CalibrationSensitivityFilteringType calibrationSensitivityFilteringType = CalibrationSensitivityFilteringType.NONE;
+    private boolean performSiteSpecificSensitivityFiltering = false;
+    private SensitivityFilteringType sensitivityFilteringType = SensitivityFilteringType.NONE;
 
     @Argument(
             fullName ="snps-truth-sensitivity-filter-level",
-            doc = "The truth calibration sensitivity level at which to start filtering SNPs",
+            doc = "The truth sensitivity level at which to start filtering SNPs",
             optional = true
     )
     private Double truthSensitivitySNPThreshold = FilterSensitivityTools.DEFAULT_TRUTH_SENSITIVITY_THRESHOLD_SNPS / 100;
 
     @Argument(
             fullName = "indels-truth-sensitivity-filter-level",
-            doc = "The truth calibration sensitivity level at which to start filtering INDELs",
+            doc = "The truth sensitivity level at which to start filtering INDELs",
             optional = true
     )
     private Double truthSensitivityINDELThreshold = FilterSensitivityTools.DEFAULT_TRUTH_SENSITIVITY_THRESHOLD_INDELS / 100;
@@ -223,7 +223,7 @@ public class ExtractCohortLite extends ExtractTool {
                 VCFConstants.GENOTYPE_QUALITY_KEY
         );
         headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.REFERENCE_GENOTYPE_QUALITY));
-        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_VQS_CAL_SENS_KEY));
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_VQS_SENS_KEY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_YNG_STATUS_KEY));
 
 
@@ -259,30 +259,30 @@ public class ExtractCohortLite extends ExtractTool {
 
         Set<VCFHeaderLine> extraHeaderLines = new HashSet<>();
 
-        if (filterSetInfoTableName != null) { // filter using calibration sensitivity-- default to GENOTYPE unless SITES specifically selected
-            calibrationSensitivityFilteringType = performSiteSpecificCalibrationSensitivityFiltering ? CalibrationSensitivityFilteringType.SITES : CalibrationSensitivityFilteringType.GENOTYPE;
+        if (filterSetInfoTableName != null) { // filter using sensitivity-- default to GENOTYPE unless SITES specifically selected
+            sensitivityFilteringType = performSiteSpecificSensitivityFiltering ? SensitivityFilteringType.SITES : SensitivityFilteringType.GENOTYPE;
         }
 
-        // filter at a site level (but not necesarily use VQS calibration sensitivity)
+        // filter at a site level (but not necesarily use VQS sensitivity)
         if ((filterSetSiteTableName != null && filterSetName == null) || (filterSetSiteTableName == null && filterSetName != null)) {
            throw new UserException("--filter-set-name and --filter-set-site-table are both necessary for any filtering related operations");
         }
-        if (!calibrationSensitivityFilteringType.equals(CalibrationSensitivityFilteringType.NONE)) {
+        if (!sensitivityFilteringType.equals(SensitivityFilteringType.NONE)) {
           if (filterSetInfoTableName == null || filterSetSiteTableName == null || filterSetName == null) {
-            throw new UserException(" --filter-set-site-table, --filter-set-name and --filter-set-site-table are all necessary for any vqs calibration sensitivity filtering operations");
+            throw new UserException(" --filter-set-site-table, --filter-set-name and --filter-set-site-table are all necessary for any vqs sensitivity filtering operations");
           }
         }
 
-        if (!calibrationSensitivityFilteringType.equals(CalibrationSensitivityFilteringType.NONE)) {
+        if (!sensitivityFilteringType.equals(SensitivityFilteringType.NONE)) {
             // TODO - put a validation that sensitivity between 0 and 1
 
-            extraHeaderLines.add(new VCFFilterHeaderLine(GATKVCFConstants.VQS_CAL_SENS_FAILURE_SNP,
+            extraHeaderLines.add(new VCFFilterHeaderLine(GATKVCFConstants.VQS_SENS_FAILURE_SNP,
                     "Site failed SNP model calibration sensitivity cutoff (" + truthSensitivitySNPThreshold.toString() + ")"));
-            extraHeaderLines.add(new VCFFilterHeaderLine(GATKVCFConstants.VQS_CAL_SENS_FAILURE_INDEL,
+            extraHeaderLines.add(new VCFFilterHeaderLine(GATKVCFConstants.VQS_SENS_FAILURE_INDEL,
                     "Site failed INDEL model calibration sensitivity cutoff (" + truthSensitivityINDELThreshold.toString() + ")"));
         }
 
-        if (calibrationSensitivityFilteringType.equals(CalibrationSensitivityFilteringType.GENOTYPE)) {
+        if (sensitivityFilteringType.equals(SensitivityFilteringType.GENOTYPE)) {
             extraHeaderLines.add(new VCFFormatHeaderLine("FT", 1, VCFHeaderLineType.String, "Genotype Filter Field"));
         }
 
@@ -357,7 +357,7 @@ public class ExtractCohortLite extends ExtractTool {
                 filterSetName,
                 emitPLs,
                 emitADs,
-                calibrationSensitivityFilteringType,
+                sensitivityFilteringType,
                 excludeFilteredSites,
                 inferredReferenceState,
                 presortedAvroFiles);
