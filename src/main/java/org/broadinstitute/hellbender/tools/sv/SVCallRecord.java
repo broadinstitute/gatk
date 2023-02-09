@@ -291,6 +291,12 @@ public class SVCallRecord implements SVLocatable {
                 || type == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV;
     }
 
+    public boolean isDispersedDup() {
+        return type == GATKSVVCFConstants.StructuralVariantAnnotationType.CPX
+                && (cpxSubtype == GATKSVVCFConstants.ComplexVariantSubtype.dDUP
+                || cpxSubtype == GATKSVVCFConstants.ComplexVariantSubtype.dDUP_iDEL);
+    }
+
     public boolean nullStrands() {
         return strandA == null && strandB == null;
     }

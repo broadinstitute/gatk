@@ -37,9 +37,7 @@ public final class SVCallRecordUtils {
         Utils.nonNull(record);
         final int end;
         final GATKSVVCFConstants.StructuralVariantAnnotationType type = record.getType();
-        final GATKSVVCFConstants.ComplexVariantSubtype cpxType = record.getComplexSubtype();
-        final boolean isDispersedDup = cpxType == GATKSVVCFConstants.ComplexVariantSubtype.dDUP
-                || cpxType == GATKSVVCFConstants.ComplexVariantSubtype.dDUP_iDEL;
+        final boolean isDispersedDup = record.isDispersedDup();
         if (type == GATKSVVCFConstants.StructuralVariantAnnotationType.INS
                 || type == GATKSVVCFConstants.StructuralVariantAnnotationType.BND
                 || type == GATKSVVCFConstants.StructuralVariantAnnotationType.CTX
@@ -91,7 +89,7 @@ public final class SVCallRecordUtils {
             builder.attribute(GATKSVVCFConstants.END2_ATTRIBUTE, end2);
             builder.attribute(GATKSVVCFConstants.CONTIG2_ATTRIBUTE, chr2);
         }
-        if (cpxType != null) {
+        if (record.getComplexSubtype() != null) {
             builder.attribute(GATKSVVCFConstants.CPX_TYPE, record.getComplexSubtype().toString());
         }
 
