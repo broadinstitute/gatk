@@ -5,7 +5,6 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.GenotypesContext;
-import htsjdk.variant.variantcontext.StructuralVariantType;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
@@ -176,7 +175,7 @@ public class BreakpointRefiner {
         }
         final EvidenceStatUtils.PoissonTestResult bothsideResult = result.getBothsidesResult();
 
-        final Integer length = record.getType().equals(StructuralVariantType.INS) ? record.getLength() : null;
+        final Integer length = record.getType().equals(GATKSVVCFConstants.StructuralVariantAnnotationType.INS) ? record.getLength() : null;
 
         final Integer startQuality = refinedStartSite.getP() == null || Double.isNaN(refinedStartSite.getP()) ? null : EvidenceStatUtils.probToQual(refinedStartSite.getP(), (byte) 99);
         final Integer endQuality = refinedEndSite.getP() == null || Double.isNaN(refinedEndSite.getP()) ? null : EvidenceStatUtils.probToQual(refinedEndSite.getP(), (byte) 99);
@@ -280,7 +279,8 @@ public class BreakpointRefiner {
         if (!call.isIntrachromosomal()) {
             return 1;
         }
-        if (call.getType().equals(StructuralVariantType.INS) || call.getType().equals(StructuralVariantType.DEL)) {
+        if (call.getType().equals(GATKSVVCFConstants.StructuralVariantAnnotationType.INS)
+                || call.getType().equals(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL)) {
             return refinedStartPosition - maxSplitReadCrossDistance;
         }
         return refinedStartPosition + 1;

@@ -70,7 +70,7 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
                 final List<Allele> alts = variant.getAlternateAlleles();
                 Assert.assertEquals(alts.size(), 1);
                 Assert.assertEquals(alts.get(0), Allele.SV_SIMPLE_DUP);
-                Assert.assertEquals(variant.getStructuralVariantType(), StructuralVariantType.DUP);
+                Assert.assertEquals(variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, ""), GATKSVVCFConstants.StructuralVariantAnnotationType.DUP.toString());
                 for (final Genotype g : variant.getGenotypes()) {
                     if (g.getSampleName().equals("HG00129")) {
                         Assert.assertEquals(VariantContextGetters.getAttributeAsInt(g, GATKSVVCFConstants.COPY_NUMBER_FORMAT, -1), 3);
@@ -155,7 +155,7 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
                 final List<Allele> alts = variant.getAlternateAlleles();
                 Assert.assertEquals(alts.size(), 1);
                 Assert.assertEquals(alts.get(0), Allele.SV_SIMPLE_INS);
-                Assert.assertEquals(variant.getStructuralVariantType(), StructuralVariantType.INS);
+                Assert.assertEquals(variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, ""), GATKSVVCFConstants.StructuralVariantAnnotationType.INS.toString());
                 for (final Genotype g : variant.getGenotypes()) {
                     if (g.getSampleName().equals("HG00096") || g.getSampleName().equals("HG00129")) {
                         Assert.assertTrue(g.isHet());
@@ -224,7 +224,7 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
                 final List<Allele> alts = variant.getAlternateAlleles();
                 Assert.assertEquals(alts.size(), 1);
                 Assert.assertEquals(alts.get(0), Allele.SV_SIMPLE_DUP);
-                Assert.assertEquals(variant.getStructuralVariantType(), StructuralVariantType.DUP);
+                Assert.assertEquals(variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, ""), GATKSVVCFConstants.StructuralVariantAnnotationType.DUP.toString());
                 for (final Genotype g : variant.getGenotypes()) {
                     if (g.getSampleName().equals("HG00096") || g.getSampleName().equals("HG00129")) {
                         Assert.assertTrue(g.isHet());
@@ -384,7 +384,7 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
                 final List<Allele> alts = variant.getAlternateAlleles();
                 Assert.assertEquals(alts.size(), 1);
                 Assert.assertEquals(alts.get(0), Allele.SV_SIMPLE_INV);
-                Assert.assertEquals(variant.getStructuralVariantType(), StructuralVariantType.INV);
+                Assert.assertEquals(variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, ""), GATKSVVCFConstants.StructuralVariantAnnotationType.INV.toString());
                 final String strands = variant.getAttributeAsString(GATKSVVCFConstants.STRANDS_ATTRIBUTE, null);
                 Assert.assertEquals(strands, "--");
                 for (final Genotype g : variant.getGenotypes()) {
@@ -448,7 +448,7 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
                 final List<Allele> alts = variant.getAlternateAlleles();
                 Assert.assertEquals(alts.size(), 1);
                 Assert.assertEquals(alts.get(0), Allele.SV_SIMPLE_DEL);
-                Assert.assertEquals(variant.getStructuralVariantType(), StructuralVariantType.DEL);
+                Assert.assertEquals(variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, ""), GATKSVVCFConstants.StructuralVariantAnnotationType.DEL.toString());
                 final int nonRefGenotypeCount = (int) variant.getGenotypes().stream().filter(g -> SVCallRecordUtils.isAltGenotype(g)).count();
                 Assert.assertEquals(nonRefGenotypeCount, 71);
                 final int alleleCount = (int) variant.getGenotypes().stream().flatMap(g -> g.getAlleles().stream()).filter(SVCallRecordUtils::isAltAllele).count();
@@ -510,7 +510,7 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
                 final List<Allele> alts = variant.getAlternateAlleles();
                 Assert.assertEquals(alts.size(), 1);
                 Assert.assertEquals(alts.get(0), Allele.SV_SIMPLE_DUP);
-                Assert.assertEquals(variant.getStructuralVariantType(), StructuralVariantType.DUP);
+                Assert.assertEquals(variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, ""), GATKSVVCFConstants.StructuralVariantAnnotationType.DUP.toString());
                 for (final Genotype g : variant.getGenotypes()) {
                     if (g.getSampleName().equals("HG00096")) {
                         Assert.assertTrue(g.isNoCall());
