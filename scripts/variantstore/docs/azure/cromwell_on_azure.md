@@ -65,12 +65,32 @@ az ad group member add --group $AZ_SQLDB_AD_ADMIN_GROUP_ID --member-id ${COA_UAM
 # Azure AD Admins for this server.
 az sql server ad-admin create --object-id ${AZ_SQLDB_AD_ADMIN_GROUP_ID} --display-name "${RESOURCE_GROUP} Azure SQL Database AD Admin"
 
-# Get a database access token.
-# https://learn.microsoft.com/en-us/sql/connect/odbc/linux-mac/connecting-with-sqlcmd?view=azuresqldb-current
-SQLCMDPASSWORD=$(az account get-access-token --resource https://database.windows.net --output tsv | cut -f 1 | tr -d '\n' | iconv -f ascii -t UTF-16LE)
+# **NOTE** `sqlcmd` behavior with respect to the `-G` Azure Directory authentication parameter is incompatible between
+# Linux and Mac versions. Mac `sqlcmd` is a [port to the Go language](https://github.com/microsoft/go-sqlcmd) and thus
+# a completely different code base than the Microsoft version of `sqlcmd` for Linux.
+
+get_db_token() {
+    # https://learn.microsoft.com/en-us/sql/connect/odbc/linux-mac/connecting-with-sqlcmd?view=azuresqldb-current
+    az account get-access-token --resource https://database.windows.net --output tsv | cut -f 1 | tr -d '\n' | iconv -f ascii -t UTF-16LE
+}
+
+# On Mac:
+
+# The Mac version of `sqlcmd` does not support `-G` authentication with `-P`, so use the `SQLCMDPASSWORD` environment variable.
+SQLCMDPASSWORD=$(get_db_token)
 
 # Say hello to Azure SQL Database!
 sqlcmd -S tcp:${SQL_SERVER}.database.windows.net,1433 -d ${SQL_DATABASE} -G -Q 'select @@version as "Hello Azure SQL Database!"'
+
+# On Linux:
+
+# The Linux version of `sqlcmd` does not support `-G` authentication with the `SQLCMDPASSWORD` environment variable, so use `-P`.
+# https://learn.microsoft.com/en-us/sql/connect/odbc/linux-mac/connecting-with-sqlcmd?view=azuresqldb-current
+get_db_token > db_token
+
+# Say hello to Azure SQL Database!
+sqlcmd -S tcp:${SQL_SERVER}.database.windows.net,1433 -d ${SQL_DATABASE} -G -Q 'select @@version as "Hello Azure SQL Database!"' -P db_token
+
                          
 Hello Azure SQL Database!                                                                                                                                                                                                                                                                                   
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -80,5 +100,3 @@ Microsoft SQL Azure (RTM) - 12.0.2000.8
 
 
 (1 rows affected)
-
-```
