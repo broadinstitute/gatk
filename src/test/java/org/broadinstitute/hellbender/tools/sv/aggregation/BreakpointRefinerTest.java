@@ -392,7 +392,7 @@ public class BreakpointRefinerTest extends GATKBaseTest {
 
     @Test
     public void refineInsertionCallTest() {
-        final int maxInsertionSplitReadCrossDistance = 20;
+        final int maxSplitReadCrossDistance = 20;
         final GenotypesContext genotypes = GenotypesContext.create();
         genotypes.add(new GenotypeBuilder("sample1").alleles(Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS))
                         .attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2).make());
@@ -411,12 +411,12 @@ public class BreakpointRefinerTest extends GATKBaseTest {
         // Second case has second-most evidence and is in valid range
         // Third case has least evidence
         final List<SplitReadEvidence> endEvidence = Lists.newArrayList(
-                new SplitReadEvidence("sample1", "chr21", 995 - maxInsertionSplitReadCrossDistance - 1, 10, false),
-                new SplitReadEvidence("sample1", "chr21", 995 - maxInsertionSplitReadCrossDistance, 9, false),
+                new SplitReadEvidence("sample1", "chr21", 995 - maxSplitReadCrossDistance - 1, 10, false),
+                new SplitReadEvidence("sample1", "chr21", 995 - maxSplitReadCrossDistance, 9, false),
                 new SplitReadEvidence("sample1", "chr21", 2010, 5, false)
         );
 
-        final BreakpointRefiner refiner = new BreakpointRefiner(sampleCoverageMap, maxInsertionSplitReadCrossDistance, DICTIONARY);
+        final BreakpointRefiner refiner = new BreakpointRefiner(sampleCoverageMap, maxSplitReadCrossDistance, DICTIONARY);
         final BreakpointRefiner.RefineResult result = refiner.testRecord(record, startEvidence, endEvidence,
                 Collections.singleton("sample1"), Collections.emptySet(), null);
         final SVCallRecord test = refiner.applyToRecord(record, result);
@@ -426,7 +426,7 @@ public class BreakpointRefinerTest extends GATKBaseTest {
         Assert.assertEquals(test.getAlgorithms(), Collections.singletonList("pesr"));
         Assert.assertEquals(test.getLength(), Integer.valueOf(500));
         Assert.assertEquals((int) test.getAttributes().get(GATKSVVCFConstants.START_SPLIT_POSITION_ATTRIBUTE), 995);
-        Assert.assertEquals((int) test.getAttributes().get(GATKSVVCFConstants.END_SPLIT_POSITION_ATTRIBUTE), 995 - maxInsertionSplitReadCrossDistance);
+        Assert.assertEquals((int) test.getAttributes().get(GATKSVVCFConstants.END_SPLIT_POSITION_ATTRIBUTE), 995 - maxSplitReadCrossDistance);
         final Integer startCount = VariantContextGetters.getAttributeAsInt(test.getGenotypes().get("sample1"),
                 GATKSVVCFConstants.START_SPLIT_READ_COUNT_ATTRIBUTE, -1);
         Assert.assertEquals(startCount, Integer.valueOf(5));
