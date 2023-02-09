@@ -56,8 +56,8 @@ VARIANTS_GROUP_ID=$(az ad group list | jq -r '.[] | select(.displayName == "DSP 
 az ad group member add --group $AZ_SQLDB_AD_ADMIN_GROUP_ID --member-id ${VARIANTS_GROUP_ID}
 
 # Also add the User Assigned Managed Identity created by the CromwellOnAzure deployer to this group.
-COA_UAMI_ID=$(az identity list | jq -r ".[] | select(.name == \"${RESOURCE_GROUP}-identity\") | .principalId")
-az ad group member add --group $AZ_SQLDB_AD_ADMIN_GROUP_ID --member-id ${COA_UAMI_ID}
+COA_UAMI_PRINCIPAL_ID=$(az identity list | jq -r ".[] | select(.name == \"${RESOURCE_GROUP}-identity\") | .principalId")
+az ad group member add --group $AZ_SQLDB_AD_ADMIN_GROUP_ID --member-id ${COA_UAMI_PRINCIPAL_ID}
 
 # Make the AD Admin group the AD Admin for the Azure SQL Server. All members of this group will be able to act as
 # Azure AD Admins for this server.
