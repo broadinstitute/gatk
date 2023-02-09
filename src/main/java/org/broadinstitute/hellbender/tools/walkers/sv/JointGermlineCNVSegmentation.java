@@ -98,8 +98,8 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
     private SortedSet<String> samples;
     private VariantContextWriter vcfWriter;
     private SAMSequenceDictionary dictionary;
-    private SVClusterEngine<SVCallRecord> defragmenter;
-    private SVClusterEngine<SVCallRecord> clusterEngine;
+    private SVClusterEngine defragmenter;
+    private SVClusterEngine clusterEngine;
     private List<GenomeLoc> callIntervals;
     private String currentContig;
     private SampleDB sampleDB;
@@ -215,7 +215,7 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
         } else {
             defragmenter = SVClusterEngineFactory.createBinnedCNVDefragmenter(dictionary, altAlleleSummaryStrategy, reference, defragmentationPadding, minSampleSetOverlap, callIntervals);
         }
-        clusterEngine = SVClusterEngineFactory.createCanonical(SVClusterEngine.CLUSTERING_TYPE.MAX_CLIQUE, breakpointSummaryStrategy, altAlleleSummaryStrategy, CanonicalSVCollapser.InsertionLengthSummaryStrategy.MEDIAN,
+        clusterEngine = SVClusterEngineFactory.createCanonical(SVClusterEngine.CLUSTERING_TYPE.MAX_CLIQUE, breakpointSummaryStrategy, altAlleleSummaryStrategy,
                 dictionary, reference, true, clusterArgs, CanonicalSVLinkage.DEFAULT_MIXED_PARAMS, CanonicalSVLinkage.DEFAULT_PESR_PARAMS);
 
         vcfWriter = getVCFWriter();

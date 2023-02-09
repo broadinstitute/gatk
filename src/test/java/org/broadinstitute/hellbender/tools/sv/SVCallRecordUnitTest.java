@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.sv;
 
 import com.google.common.collect.Lists;
-import htsjdk.variant.variantcontext.StructuralVariantType;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -42,12 +41,14 @@ public class SVCallRecordUnitTest {
     @DataProvider(name = "testIsCNVData")
     public Object[][] testIsCNVData() {
         return new Object[][]{
-                {SVTestUtils.newCallRecordWithIntervalAndType(1000, 1999, StructuralVariantType.DEL), true},
-                {SVTestUtils.newCallRecordWithIntervalAndType(1000, 1999, StructuralVariantType.DUP), true},
-                {SVTestUtils.newCallRecordWithIntervalAndType(1000, 1999, StructuralVariantType.CNV), true},
-                {SVTestUtils.newCallRecordWithIntervalAndType(1000, 1999, StructuralVariantType.INV), false},
-                {SVTestUtils.newCallRecordWithIntervalAndType(1000, 1999, StructuralVariantType.BND), false},
-                {SVTestUtils.newCallRecordWithIntervalAndType(1000, 1000, StructuralVariantType.INS), false}
+                {SVTestUtils.newCallRecordWithIntervalAndType(1000, 1999, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL), true},
+                {SVTestUtils.newCallRecordWithIntervalAndType(1000, 1999, GATKSVVCFConstants.StructuralVariantAnnotationType.DUP), true},
+                {SVTestUtils.newCallRecordWithIntervalAndType(1000, 1999, GATKSVVCFConstants.StructuralVariantAnnotationType.CNV), true},
+                {SVTestUtils.newCallRecordWithIntervalAndType(1000, 1999, GATKSVVCFConstants.StructuralVariantAnnotationType.INV), false},
+                {SVTestUtils.newCallRecordWithIntervalAndType(1000, 1000, GATKSVVCFConstants.StructuralVariantAnnotationType.BND), false},
+                {SVTestUtils.newCallRecordWithIntervalAndType(1000, 1000, GATKSVVCFConstants.StructuralVariantAnnotationType.INS), false},
+                {SVTestUtils.newCallRecordWithIntervalAndType(1000, 1000, GATKSVVCFConstants.StructuralVariantAnnotationType.CPX), false},
+                {SVTestUtils.newCallRecordWithIntervalAndType(1000, 1000, GATKSVVCFConstants.StructuralVariantAnnotationType.CTX), false}
         };
     }
 
@@ -70,8 +71,8 @@ public class SVCallRecordUnitTest {
 
     @Test(dataProvider="testCreateInvalidCoordinatesData", expectedExceptions = { IllegalArgumentException.class })
     public void testCreateInvalidCoordinates(final String contigA, final int posA, final String contigB, final int posB) {
-        new SVCallRecord("var1", contigA, posA, true, contigB, posB, false, StructuralVariantType.BND,
-                null, SVTestUtils.PESR_ONLY_ALGORITHM_LIST, Collections.emptyList(), Collections.emptyList(),
+        new SVCallRecord("var1", contigA, posA, true, contigB, posB, false, GATKSVVCFConstants.StructuralVariantAnnotationType.BND,
+                null, null, SVTestUtils.PESR_ONLY_ALGORITHM_LIST, Collections.emptyList(), Collections.emptyList(),
                 Collections.emptyMap(), SVTestUtils.hg38Dict);
         Assert.fail("Expected exception not thrown");
     }
@@ -87,8 +88,8 @@ public class SVCallRecordUnitTest {
 
     @Test(dataProvider="testCreateValidCoordinatesData")
     public void testCreateValidCoordinates(final String contigA, final int posA, final String contigB, final int posB) {
-        new SVCallRecord("var1", contigA, posA, true, contigB, posB, false, StructuralVariantType.BND,
-                null, SVTestUtils.PESR_ONLY_ALGORITHM_LIST, Collections.emptyList(), Collections.emptyList(),
+        new SVCallRecord("var1", contigA, posA, true, contigB, posB, false, GATKSVVCFConstants.StructuralVariantAnnotationType.BND,
+                null, null, SVTestUtils.PESR_ONLY_ALGORITHM_LIST, Collections.emptyList(), Collections.emptyList(),
                 Collections.emptyMap(), SVTestUtils.hg38Dict);
     }
 }

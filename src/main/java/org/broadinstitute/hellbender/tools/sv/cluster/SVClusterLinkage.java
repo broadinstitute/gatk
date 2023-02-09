@@ -1,9 +1,15 @@
 package org.broadinstitute.hellbender.tools.sv.cluster;
 
+import htsjdk.variant.variantcontext.Genotype;
+import htsjdk.variant.variantcontext.GenotypesContext;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.SVUtils;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 import org.broadinstitute.hellbender.tools.sv.SVLocatable;
+import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -15,7 +21,7 @@ public abstract class SVClusterLinkage<T extends SVLocatable> {
      * @param a first item
      * @param b second item
      */
-    abstract boolean areClusterable(final T a, final T b);
+    public abstract boolean areClusterable(final T a, final T b);
 
     /**
      * Returns the maximum feasible starting position of any other item with the given item. That is, given item A and
@@ -25,7 +31,7 @@ public abstract class SVClusterLinkage<T extends SVLocatable> {
      * @param item item in question
      * @return max feasible clusterable start coordinate on the current contig
      */
-    abstract int getMaxClusterableStartingPosition(final T item);
+    public abstract int getMaxClusterableStartingPosition(final T item);
 
     /**
      * Compute max feasible starting position of any other item for all items in the given collection. Note the items
@@ -59,13 +65,41 @@ public abstract class SVClusterLinkage<T extends SVLocatable> {
     }
 
     /**
-     * Returns true if there is sufficient fractional carrier sample overlap in the two records.
+     * Returns true if there is sufficient fractional carrier sample overlap in the two records. For CNVs, returns true
+     * if sufficient fraction of copy number states match.
      */
     protected static boolean hasSampleOverlap(final SVCallRecord a, final SVCallRecord b, final double minSampleOverlap) {
         if (minSampleOverlap > 0) {
-            final Set<String> samplesA = a.getCarrierSampleSet();
-            final Set<String> samplesB = b.getCarrierSampleSet();
-            return hasSampleSetOverlap(samplesA, samplesB, minSampleOverlap);
+            if (a.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV || b.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV) {
+                // CNV sample overlap
+                final GenotypesContext genotypesA = a.getGenotypes();
+                final GenotypesContext genotypesB = b.getGenotypes();
+                final Set<String> samples = new HashSet<>(SVUtils.hashMapCapacity(genotypesA.size() + genotypesB.size()));
+                samples.addAll(genotypesA.getSampleNames());
+                samples.addAll(genotypesB.getSampleNames());
+                int numMatches = 0;
+                for (final String sample : samples) {
+                    final Genotype genotypeA = genotypesA.get(sample);
+                    final Genotype genotypeB = genotypesB.get(sample);
+                    // If one sample doesn't exist in the other set, assume reference copy state
+                    final int cnA = genotypeA == null ?
+                            VariantContextGetters.getAttributeAsInt(genotypeB, GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 0)
+                            : VariantContextGetters.getAttributeAsInt(genotypeA, GATKSVVCFConstants.COPY_NUMBER_FORMAT, 0);
+                    final int cnB = genotypeB == null ?
+                            VariantContextGetters.getAttributeAsInt(genotypeA, GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 0)
+                            : VariantContextGetters.getAttributeAsInt(genotypeB, GATKSVVCFConstants.COPY_NUMBER_FORMAT, 0);
+                    if (cnA == cnB) {
+                        numMatches++;
+                    }
+                }
+                final int numSamples = samples.size();
+                return (numMatches / (double) numSamples) >= minSampleOverlap;
+            } else {
+                // Non-CNV
+                final Set<String> samplesA = a.getCarrierSampleSet();
+                final Set<String> samplesB = b.getCarrierSampleSet();
+                return hasSampleSetOverlap(samplesA, samplesB, minSampleOverlap);
+            }
         } else {
             return true;
         }
