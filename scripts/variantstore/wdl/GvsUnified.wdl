@@ -98,7 +98,7 @@ workflow GvsUnified {
             load_data_gatk_override = gatk_override,
             load_data_batch_size = load_data_batch_size,
             drop_state = drop_state,
-            beta_customer_rate_limit = is_beta_user
+            is_rate_limited_beta_customer = is_beta_user
     }
 
     call PopulateAltAllele.GvsPopulateAltAllele {
