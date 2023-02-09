@@ -6,7 +6,6 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.GenotypesContext;
-import htsjdk.variant.variantcontext.StructuralVariantType;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
@@ -359,8 +358,8 @@ public class BreakpointRefinerTest extends GATKBaseTest {
                 .forEach(s -> genotypes.add(new GenotypeBuilder(s).alleles(Lists.newArrayList(Allele.REF_N, Allele.REF_N))
                         .attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2).make()));
         final Map<String, Object> attributes = Collections.singletonMap("TEST_KEY", "TEST_VALUE");
-        final SVCallRecord record = new SVCallRecord("call1", "chr21", 1000, true, "chr21", 2000, false, StructuralVariantType.DEL,
-                null, Collections.singletonList("pesr"), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL), genotypes, attributes, DICTIONARY);
+        final SVCallRecord record = new SVCallRecord("call1", "chr21", 1000, true, "chr21", 2000, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
+                null, null, Collections.singletonList("pesr"), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL), genotypes, attributes, DICTIONARY);
         final Map<String, Double> sampleCoverageMap = new HashMap<>();
         sampleCoverageMap.put("sample1", 35.);
         sampleCoverageMap.put("sample2", 25.);
@@ -374,7 +373,7 @@ public class BreakpointRefinerTest extends GATKBaseTest {
         Assert.assertEquals(test.getPositionB(), 2000);
         Assert.assertEquals(test.getAttributes().get(GATKSVVCFConstants.START_SPLIT_POSITION_ATTRIBUTE), expectedPositionA);
         Assert.assertEquals(test.getAttributes().get(GATKSVVCFConstants.END_SPLIT_POSITION_ATTRIBUTE), expectedPositionB);
-        Assert.assertEquals(test.getType(), StructuralVariantType.DEL);
+        Assert.assertEquals(test.getType(), GATKSVVCFConstants.StructuralVariantAnnotationType.DEL);
         Assert.assertEquals(test.getAlgorithms(), Collections.singletonList("pesr"));
         Assert.assertEquals(test.getAttributes().get("TEST_KEY"), "TEST_VALUE");
         Assert.assertTrue(test.getGenotypes().containsSamples(carrierSamples));
@@ -399,8 +398,8 @@ public class BreakpointRefinerTest extends GATKBaseTest {
                         .attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2).make());
         genotypes.add(new GenotypeBuilder("sample2").alleles(Lists.newArrayList(Allele.REF_N, Allele.REF_N))
                 .attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2).make());
-        final SVCallRecord record = new SVCallRecord("call1", "chr21", 1000, true, "chr21", 1001, false, StructuralVariantType.INS,
-                500, Collections.singletonList("pesr"), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS), genotypes, Collections.emptyMap(), DICTIONARY);
+        final SVCallRecord record = new SVCallRecord("call1", "chr21", 1000, true, "chr21", 1001, false, GATKSVVCFConstants.StructuralVariantAnnotationType.INS,
+                null, 500, Collections.singletonList("pesr"), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS), genotypes, Collections.emptyMap(), DICTIONARY);
         final Map<String, Double> sampleCoverageMap = new HashMap<>();
         sampleCoverageMap.put("sample1", 35.);
         sampleCoverageMap.put("sample2", 25.);
@@ -444,8 +443,8 @@ public class BreakpointRefinerTest extends GATKBaseTest {
                 .attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2).make());
         genotypes.add(new GenotypeBuilder("sample2").alleles(Lists.newArrayList(Allele.REF_N, Allele.REF_N))
                 .attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2).make());
-        final SVCallRecord record = new SVCallRecord("call1", "chr21", 1000, true, "chr22", 8000, false, StructuralVariantType.BND,
-                null, Collections.singletonList("pesr"), Lists.newArrayList(Allele.REF_N, bndAllele), genotypes, Collections.emptyMap(), DICTIONARY);
+        final SVCallRecord record = new SVCallRecord("call1", "chr21", 1000, true, "chr22", 8000, false, GATKSVVCFConstants.StructuralVariantAnnotationType.BND,
+                null, null, Collections.singletonList("pesr"), Lists.newArrayList(Allele.REF_N, bndAllele), genotypes, Collections.emptyMap(), DICTIONARY);
         final Map<String, Double> sampleCoverageMap = new HashMap<>();
         sampleCoverageMap.put("sample1", 35.);
         sampleCoverageMap.put("sample2", 25.);
