@@ -37,16 +37,24 @@ public final class SVCallRecordUtils {
         Utils.nonNull(record);
         final GATKSVVCFConstants.StructuralVariantAnnotationType type = record.getType();
         final int end;
+        final boolean isDispersedDup = record.isDispersedDup();
+        if (type == GATKSVVCFConstants.StructuralVariantAnnotationType.INS
+                || type == GATKSVVCFConstants.StructuralVariantAnnotationType.BND
+                || type == GATKSVVCFConstants.StructuralVariantAnnotationType.CTX
+                || isDispersedDup) {
+            end = record.getPositionA();
+        } else {
+            end = record.getPositionB();
+        }
+
         final Integer end2;
         final String chr2;
         if (type == GATKSVVCFConstants.StructuralVariantAnnotationType.BND
                 || type == GATKSVVCFConstants.StructuralVariantAnnotationType.CTX) {
             // TODO this may need to be modified in the future to handle complex translocations
-            end = record.getPositionA();
             end2 = record.getPositionB();
             chr2 = record.getContigB();
         } else {
-            end = record.getPositionB();
             end2 = null;
             chr2 = null;
         }
@@ -75,6 +83,7 @@ public final class SVCallRecordUtils {
             builder.attribute(GATKSVVCFConstants.END2_ATTRIBUTE, end2);
             builder.attribute(GATKSVVCFConstants.CONTIG2_ATTRIBUTE, chr2);
         }
+
         final GATKSVVCFConstants.ComplexVariantSubtype cpxType = record.getComplexSubtype();
         if (cpxType != null) {
             builder.attribute(GATKSVVCFConstants.CPX_TYPE, getComplexSubtypeString(cpxType));

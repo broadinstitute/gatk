@@ -1,9 +1,9 @@
 package org.broadinstitute.hellbender.tools.sv;
 
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.variant.variantcontext.StructuralVariantType;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.utils.*;
 
 import java.util.*;
@@ -53,10 +53,14 @@ public class IntervalOverlapCalculator {
 
     public Double getOverlapFraction(final SVCallRecord record) {
         // Total overlap as fraction of variant length
-        if (record.getType() == StructuralVariantType.BND) {
+        final GATKSVVCFConstants.StructuralVariantAnnotationType type = record.getType();
+        if (type == GATKSVVCFConstants.StructuralVariantAnnotationType.BND
+                || type == GATKSVVCFConstants.StructuralVariantAnnotationType.CTX) {
             return getEndpointOverlapCount(record) / 2.0;
-        } else if (record.getType() == StructuralVariantType.INS) {
-            return getEndpointOverlapCount(record) > 0 ? 1. : 0.;
+        } else {
+            if (record.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.INS || record.isDispersedDup()) {
+                return getEndpointOverlapCount(record) > 0 ? 1. : 0.;
+            }
         }
         final Integer length = record.getLength();
         if (length == null) {
