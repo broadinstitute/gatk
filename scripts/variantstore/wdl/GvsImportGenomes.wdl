@@ -17,7 +17,13 @@ workflow GvsImportGenomes {
 
     # set to "NONE" to ingest all the reference data into GVS for VDS (instead of VCF) output
     String drop_state = "NONE"
-
+    # beta customers will almost always have a naive GCP account, and as such will not be able to cross over their quotas
+    # without Google shutting import down by throwing them API errors.  For them, we limit our scattering.
+    Boolean is_rate_limited_beta_customer = false
+    # This was determined to be the point at which we come close to but don't cross over the "AppendRows throughput per
+    # project for small regions per minute per region" default quota of ~19G.  Uses up to ~90% of the quota at peaks
+    # without going over
+    Int beta_customer_max_scatter = 200
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
     Int? load_data_batch_size
     Int? load_data_preemptible_override
@@ -27,6 +33,13 @@ workflow GvsImportGenomes {
 
   Int num_samples = length(external_sample_names)
   Int max_auto_batch_size = 20000
+  # Broad users enjoy higher quotas and can scatter more widely than beta users before BigQuery smacks them
+  # We don't expect this to be changed at runtime, so we can keep this as a constant defined in here
+  Int broad_user_max_scatter = 1000
+
+  # figure out max scatter depending on whether they're a Broad internal user or a beta customer.
+  Int max_scatter_for_user =  if is_rate_limited_beta_customer then beta_customer_max_scatter
+                              else broad_user_max_scatter
 
   if ((num_samples > max_auto_batch_size) && !(defined(load_data_batch_size))) {
     call Utils.TerminateWorkflow as DieDueToTooManySamplesWithoutExplicitLoadDataBatchSize {
@@ -35,10 +48,14 @@ workflow GvsImportGenomes {
     }
   }
 
+
   # At least 1, per limits above not more than 20.
+  # But if it's a beta customer, use the number computed above
   Int effective_load_data_batch_size = if (defined(load_data_batch_size)) then select_first([load_data_batch_size])
-                                       else if num_samples < 1000 then 1
-                                            else num_samples / 1000
+                                       else if num_samples < max_scatter_for_user then 1
+                                            else num_samples / max_scatter_for_user
+
+
 
   # Both preemptible and maxretries should be scaled up alongside import batch size since the likelihood of preemptions
   # and retryable random BQ import errors increases with import batch size / job run time.
