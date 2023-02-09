@@ -96,7 +96,7 @@ workflow GvsValidateVat {
 
     call DuplicateAnnotations {
         input:
-            query_project_id = query_project_id,
+            query_project_id = project_id,
             fq_vat_table = fq_vat_table,
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
     }
@@ -193,7 +193,10 @@ task EnsureVatTableHasVariants {
     String results_file = "results.txt"
 
     command <<<
-        set -e
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
         bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT COUNT (DISTINCT vid) AS count FROM `~{fq_vat_table}`' > bq_variant_count.csv
@@ -243,7 +246,9 @@ task SpotCheckForExpectedTranscripts {
     String results_file = "results.txt"
 
     command <<<
-        set -e
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
@@ -383,7 +388,9 @@ task SchemaOnlyOneRowPerNullTranscript {
     String results_file = "results.txt"
 
     command <<<
-        set -e
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
@@ -606,8 +613,9 @@ task SchemaNullTranscriptsExist {
     String results_file = "results.txt"
 
     command <<<
-        set -e
-
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
         bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
@@ -658,7 +666,9 @@ task SubpopulationMax {
     String results_file = "results.txt"
 
     command <<<
-        set -e
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
@@ -717,7 +727,9 @@ task SubpopulationAlleleCount {
     String results_file = "results.txt"
 
     command <<<
-        set -e
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
@@ -770,7 +782,9 @@ task SubpopulationAlleleNumber {
     String results_file = "results.txt"
 
     command <<<
-        set -e
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
@@ -824,7 +838,9 @@ task DuplicateAnnotations {
     String results_file = "results.txt"
 
     command <<<
-        set -e
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
 
@@ -907,7 +923,9 @@ task ClinvarSignificance {
     String results_file = "results.txt"
 
     command <<<
-        set -e
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
@@ -992,7 +1010,9 @@ task SchemaAAChangeAndExonNumberConsistent {
     String results_file = "results.txt"
 
     command <<<
-        set -e
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
@@ -1089,7 +1109,9 @@ task SpotCheckForAAChangeAndExonNumberConsistency {
     # we find cases which have a consequence of intron_variant AND they are insertions or deletionss
 
     command <<<
-        set -e
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
@@ -1188,7 +1210,9 @@ task GenerateFinalReport {
     String report_file = "report.txt"
 
     command <<<
-        set -e
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         declare -a PFS=(~{sep=' ' pf_flags})
         declare -a VNS=(~{sep=' ' validation_names})
