@@ -24,6 +24,8 @@ The CoA deployment can take more than 20 minutes to complete. Once that's done:
 
 ```
 # Fish out the CromwellOnAzure resource group name that was named after your Broad username.
+# Intro to Azure resource groups:
+# https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/manage-resource-groups-portal#what-is-a-resource-group
 RESOURCE_GROUP=$(az group list | jq -r ".[] | .name | select(test(\"^${USER}-[0-9a-f]+$\"))")
 
 # Make a strong random password. You should probably save this someplace even though it's currenty not used in these
