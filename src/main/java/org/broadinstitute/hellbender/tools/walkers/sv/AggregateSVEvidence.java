@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.sv;
 
 import com.google.common.collect.Sets;
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.variant.variantcontext.StructuralVariantType;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
@@ -420,11 +419,11 @@ public final class AggregateSVEvidence extends TwoPassVariantWalker {
     }
 
     private boolean validRecordType(final SVCallRecord call) {
-        return call.getType() != StructuralVariantType.CNV;
+        return call.getType() != GATKSVVCFConstants.StructuralVariantAnnotationType.CNV;
     }
 
     private boolean useDiscordantPairEvidence(final SVCallRecord call) {
-        return !call.isDepthOnly() && call.getType() != StructuralVariantType.INS;
+        return !call.isDepthOnly() && call.getType() != GATKSVVCFConstants.StructuralVariantAnnotationType.INS;
     }
 
     private boolean useSplitReadEvidence(final SVCallRecord call) {
@@ -433,7 +432,7 @@ public final class AggregateSVEvidence extends TwoPassVariantWalker {
 
     private boolean useBafEvidence(final SVCallRecord call) {
         final Integer length = call.getLength();
-        return (call.getType() == StructuralVariantType.DEL || call.getType() == StructuralVariantType.DUP)
+        return (call.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.DEL || call.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.DUP)
                 && length != null && length >= bafMinSize && length <= bafMaxSize;
     }
 
@@ -516,10 +515,10 @@ public final class AggregateSVEvidence extends TwoPassVariantWalker {
             final Set<String> backgroundSamples = Sets.difference(allSamples, carrierSamples);
             if (bafCollectionEnabled() && useBafEvidence(record)) {
                 final List<BafEvidence> bafEvidence = bafCollector.collectEvidence(record).stream().filter(baf -> allSamples.contains(baf.getSample())).collect(Collectors.toList());
-                if (record.getType() == StructuralVariantType.DEL) {
+                if (record.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.DEL) {
                     final Double result = bafHetRatioTester.test(record, bafEvidence, allSamples, carrierSamples, (int) bafPaddingFraction * record.getLength());
                     record = bafHetRatioTester.applyToRecord(record, result);
-                } else if (record.getType() == StructuralVariantType.DUP) {
+                } else if (record.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.DUP) {
                     final BafKolmogorovSmirnovTester.KSTestResult result = bafKolmogorovSmirnovTester.test(record, bafEvidence, carrierSamples);
                     record = bafKolmogorovSmirnovTester.applyToRecord(record, result);
                 }

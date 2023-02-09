@@ -214,14 +214,16 @@ public class BreakpointRefiner {
                     discordantPairTest.getCarrierSignal() + bothsideResult.getCarrierSignal(),
                     discordantPairTest.getBackgroundSignal() + bothsideResult.getBackgroundSignal());
             refinedAttr.put(GATKSVVCFConstants.PESR_CARRIER_SIGNAL_ATTRIBUTE, combinedCarrierSignal);
-            final Integer pesrQuality = Double.isNaN(result.getPesrResult().getP()) ? null : EvidenceStatUtils.probToQual(result.getPesrResult().getP(), (byte) 99);
+            final Integer pesrQuality = Double.isNaN(result.getPesrResult().getP()) ?
+                    null : EvidenceStatUtils.probToQual(result.getPesrResult().getP(), (byte) 99);
             refinedAttr.put(GATKSVVCFConstants.PESR_QUALITY_ATTRIBUTE, pesrQuality);
         }
 
         // Create new record
         return new SVCallRecord(record.getId(), record.getContigA(), record.getPositionA(),
                 record.getStrandA(), record.getContigB(), record.getPositionB(), record.getStrandB(), record.getType(),
-                length, record.getAlgorithms(), record.getAlleles(), newGenotypes, refinedAttr, dictionary);
+                record.getComplexSubtype(), length, record.getAlgorithms(), record.getAlleles(), newGenotypes,
+                refinedAttr, dictionary);
     }
 
     private static EvidenceStatUtils.PoissonTestResult calculateBothsideTest(final SplitReadSite startSite,
