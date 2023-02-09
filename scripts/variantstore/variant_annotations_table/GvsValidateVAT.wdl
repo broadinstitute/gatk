@@ -847,14 +847,12 @@ task DuplicateAnnotations {
         bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT * from
         (SELECT contig, position, gvs_all_an, COUNT(DISTINCT gvs_all_an) AS an_count FROM `~{fq_vat_table}`
         group by contig, position, gvs_all_an)
-        where  an_count >1
-        ' > bq_an_output.csv
+        where  an_count >1' > bq_an_output.csv
 
         bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT * from
         (SELECT contig, position, vid, gvs_all_ac, COUNT(DISTINCT gvs_all_ac) AS ac_count FROM `~{fq_vat_table}`
         group by contig, position, vid, gvs_all_ac)
-        where  ac_count >1
-        ' > bq_ac_output.csv
+        where  ac_count >1' > bq_ac_output.csv
 
         # get number of lines in bq query output
         NUMANRESULTS=$(awk 'END{print NR}' bq_an_output.csv)
@@ -862,37 +860,14 @@ task DuplicateAnnotations {
 
 
         echo "false" > ~{pf_file}
-        # if the result of the query has any rows, that means there are sites with mis-matched gvs_all_an
-        if [[ $NUMANRESULTS = "0" ]]; then
-          echo "The VAT table ~{fq_vat_table} has a correct calculation for AN and the AN of subpopulations" > ~{results_file}
-          echo "true" > ~{pf_file}
-       # if the result of the query has any rows, that means there are variants with mis-matched gvs_all_ac
-        else if [[ $NUMACRESULTS = "0" ]]; then
-          echo "The VAT table ~{fq_vat_table} has a correct calculation for AN and the AN of subpopulations" > ~{results_file}
+        # if the results of the queries have any rows, that means there are sites with mis-matched gvs_all_an or gvs_all_ac
+        if [[ $NUMANRESULTS = "0" && $NUMACRESULTS = "0" ]]; then
+          echo "The VAT table ~{fq_vat_table} has correct calculations for AN, AC, AN of subpopulations and AC of subpopulations" > ~{results_file}
           echo "true" > ~{pf_file}
         else
           echo "The VAT table ~{fq_vat_table} has mis-matched gvs_all_an or mis-matched gvs_all_ac calculations" > ~{results_file}
         fi
 
-
-        echo "false" > ~{pf_file}
-        # if the result of the query has any rows, that means there are sites with mis-matched gvs_all_an
-        if [[ $NUMANRESULTS = "0" ]]; then
-          echo "The VAT table ~{fq_vat_table} has correct calculations for AN across sites" > ~{results_file}
-          echo "true" > ~{pf_file}
-        else
-          echo "The VAT table ~{fq_vat_table} has a site with mis-matched gvs_all_an values" > ~{results_file}
-        fi
-
-
-        echo "false" > ~{pf_file}
-        # if the result of the query has any rows, that means there are variants with mis-matched gvs_all_ac
-        if [[ $NUMACRESULTS = "0" ]]; then
-          echo "The VAT table ~{fq_vat_table} has correct calculations for AC across variants" > ~{results_file}
-          echo "true" > ~{pf_file}
-        else
-          echo "The VAT table ~{fq_vat_table} has a variant with mis-matched gvs_all_ac values" > ~{results_file}
-        fi
     >>>
     # ------------------------------------------------
     # Runtime settings:
