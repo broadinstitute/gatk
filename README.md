@@ -61,6 +61,7 @@ releases of the toolkit.
     * Python 3.6.2, along with a set of additional Python packages, is required to run some tools and workflows.
       See [Python Dependencies](#python) for more information.
     * R 3.2.5 (needed for producing plots in certain tools)
+    * The GCC OpenMP library, `libgomp1`, is needed in order to run the accelerated PairHMM implementation in `HaplotypeCaller` / `Mutect2`. This library is installed automatically when you install `gcc`. If it's not installed, GATK will fall back to using the much slower Java PairHMM implementation.
 * To build GATK:
     * A Java 8 JDK
     * Git 2.5 or greater
