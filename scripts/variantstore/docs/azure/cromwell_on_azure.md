@@ -61,6 +61,12 @@ az ad group member add --group $AZ_SQLDB_AD_ADMIN_GROUP_ID --member-id ${VARIANT
 COA_UAMI_PRINCIPAL_ID=$(az identity list | jq -r ".[] | select(.name == \"${RESOURCE_GROUP}-identity\") | .principalId")
 az ad group member add --group $AZ_SQLDB_AD_ADMIN_GROUP_ID --member-id ${COA_UAMI_PRINCIPAL_ID}
 
+# Grab the server ID as we want to the SQL Security Manager role to the UAMI to be able to add the VM to the server
+# firewall's allowed IP addresses.
+SQL_SERVER_ID=$(az sql server list | jq -r ".[] | select(test(\"${RESOURCE_GROUP}\")) | .id"
+
+az role assignment create --role "SQL Security Manager" --assignee "${COA_UAMI_PRINCIPAL_ID}" --scope "${SQL_SERVER_ID}" 
+
 # Make the AD Admin group the AD Admin for the Azure SQL Server. All members of this group will be able to act as
 # Azure AD Admins for this server.
 az sql server ad-admin create --object-id ${AZ_SQLDB_AD_ADMIN_GROUP_ID} --display-name "${RESOURCE_GROUP} Azure SQL Database AD Admin"

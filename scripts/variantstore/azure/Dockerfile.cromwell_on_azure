@@ -36,3 +36,7 @@ ENV ACCEPT_EULA=Y
 RUN apt-get install --assume-yes mssql-tools unixodbc-dev
 ENV PATH=$PATH:/opt/mssql-tools/bin
 
+# Python!
+RUN apt-get install --assume-yes python3-pip
+COPY requirements.txt requirements.txt
+RUN pip3 install -r requirements.txt
