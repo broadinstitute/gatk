@@ -133,7 +133,7 @@ workflows:
          - VS-778-spike-import-limit
    - name: GvsBulkIngestGenomes
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareBulkImport.wdl
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsBulkIngestGenomes.wdl
      filters:
        branches:
          - rc-VS-778-spike-import-limit
