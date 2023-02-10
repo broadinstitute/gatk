@@ -866,6 +866,8 @@ task DuplicateAnnotations {
           echo "true" > ~{pf_file}
         else
           echo "The VAT table ~{fq_vat_table} has mis-matched gvs_all_an or mis-matched gvs_all_ac calculations" > ~{results_file}
+          cat bq_an_output.csv >> ~{results_file}
+          cat bq_ac_output.csv >> ~{results_file}
         fi
 
     >>>
