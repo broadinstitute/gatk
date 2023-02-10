@@ -26,7 +26,7 @@ public class ClosestSVFinderTest {
     @Test
     public void testMetrics() {
         final SVConcordanceLinkage linkage = new SVConcordanceLinkage(SVTestUtils.hg38Dict);
-        final SVConcordanceAnnotator collapser = new SVConcordanceAnnotator(false);
+        final SVConcordanceAnnotator collapser = new SVConcordanceAnnotator();
         final ClosestSVFinder engine = new ClosestSVFinder(linkage, collapser::annotate, SVTestUtils.hg38Dict);
 
         final SVCallRecord eval1 = SVTestUtils.makeRecord(
@@ -148,7 +148,7 @@ public class ClosestSVFinderTest {
     @Test
     public void testClustering() {
         final SVConcordanceLinkage linkage = new SVConcordanceLinkage(SVTestUtils.hg38Dict);
-        final SVConcordanceAnnotator collapser = new SVConcordanceAnnotator(false);
+        final SVConcordanceAnnotator collapser = new SVConcordanceAnnotator();
         final ClosestSVFinder engine = new ClosestSVFinder(linkage, collapser::annotate, SVTestUtils.hg38Dict);
 
         final SVCallRecord eval1 = SVTestUtils.makeRecord(
@@ -315,7 +315,7 @@ public class ClosestSVFinderTest {
     public void testCNVMatches(final int evalCopyNumber, final int truthCopyNumber,
                          final boolean expectMatch, final Double expectedConcordance) {
         final SVConcordanceLinkage linkage = new SVConcordanceLinkage(SVTestUtils.hg38Dict);
-        final SVConcordanceAnnotator collapser = new SVConcordanceAnnotator(false);
+        final SVConcordanceAnnotator collapser = new SVConcordanceAnnotator();
         final ClosestSVFinder engine = new ClosestSVFinder(linkage, collapser::annotate, SVTestUtils.hg38Dict);
 
         final SVCallRecord eval = SVTestUtils.makeRecord(

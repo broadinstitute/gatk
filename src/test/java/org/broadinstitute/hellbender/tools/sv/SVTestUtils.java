@@ -357,7 +357,14 @@ public class SVTestUtils {
     public static SVCallRecord newCallRecordWithAlleles(final List<Allele> genotypeAlleles, final List<Allele> variantAlleles,
                                                         final GATKSVVCFConstants.StructuralVariantAnnotationType svtype, final Integer expectedCopyNumber,
                                                         final Integer copyNumber) {
-        GenotypeBuilder builder = new GenotypeBuilder("sample").alleles(genotypeAlleles);
+        return newCallRecordWithAllelesAndSampleName("sample", genotypeAlleles, variantAlleles, svtype, expectedCopyNumber, copyNumber);
+    }
+
+    public static SVCallRecord newCallRecordWithAllelesAndSampleName(final String sample,
+                                                                     final List<Allele> genotypeAlleles, final List<Allele> variantAlleles,
+                                                                     final GATKSVVCFConstants.StructuralVariantAnnotationType svtype, final Integer expectedCopyNumber,
+                                                                     final Integer copyNumber) {
+        GenotypeBuilder builder = new GenotypeBuilder(sample).alleles(genotypeAlleles);
         if (expectedCopyNumber != null) {
             builder = builder.attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, expectedCopyNumber);
         }
@@ -380,6 +387,17 @@ public class SVTestUtils {
                 attributes);
     }
 
+    public static SVCallRecord newNamedDeletionRecordWithAttributesAndGenotypes(final String id,
+                                                                                final List<Genotype> genotypes,
+                                                                                final Map<String, Object> attributes) {
+        return new SVCallRecord(id, "chr1", 100, true, "chr1", 199, false,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null,
+                100, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
+                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
+                genotypes,
+                attributes);
+    }
+
     public static final Map<String, Object> keyValueArraysToMap(final String[] keys, final Object[] values) {
         final Map<String, Object> map = new HashMap<>();
         for (int i = 0; i < keys.length; i++) {
@@ -389,25 +407,11 @@ public class SVTestUtils {
     }
 
     // Note that strands may not be valid
-    public static SVCallRecord newCallRecordWithLengthAndTypeAndChrom2(final Integer length, final GATKSVVCFConstants.StructuralVariantAnnotationType svtype, final String chrom2) {
-        final int positionB = length == null ? 1 : CoordMath.getEnd(1, length);
-        return new SVCallRecord("", "chr1", 1, getValidTestStrandA(svtype), chrom2, positionB, getValidTestStrandB(svtype),
-                svtype, null, length, PESR_ONLY_ALGORITHM_LIST, Collections.emptyList(), Collections.emptyList(),
-                Collections.emptyMap());
-    }
-
-    // Note that strands may not be valid
     public static SVCallRecord newCallRecordWithLengthAndType(final Integer length, final GATKSVVCFConstants.StructuralVariantAnnotationType svtype) {
         final int positionB = length == null ? 1 : CoordMath.getEnd(1, length);
         return new SVCallRecord("", "chr1", 1, getValidTestStrandA(svtype), "chr1", positionB, getValidTestStrandB(svtype),
                 svtype, null, length, PESR_ONLY_ALGORITHM_LIST, Collections.emptyList(), Collections.emptyList(),
                 Collections.emptyMap());
-    }
-
-    public static SVCallRecord newDeletionCallRecordWithId(final String id) {
-        return new SVCallRecord(id, "chr1", 1, true, "chr1", 100, false,
-                GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null, 100, PESR_ONLY_ALGORITHM_LIST, Collections.emptyList(),
-                Collections.emptyList(), Collections.emptyMap());
     }
 
     public static SVCallRecord newDeletionCallRecordWithIdAndAlgorithms(final String id, final List<String> algorithms) {
