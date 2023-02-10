@@ -11,18 +11,18 @@ workflow GvsBulkIngestGenomes {
         String project_id
         String workspace_name
         String workspace_bucket
-        String samples_table_name = "sample"
-        String sample_id_column_name = "sample_id"
-        String vcf_files_column_name = "hg38_reblocked_v2_vcf" ## TODO should these stay hardcoded!?!?!
-        String vcf_index_files_column_name = "hg38_reblocked_v2_vcf_index"
+        String samples_table_name
+        String sample_id_column_name # is this just <samples_table_name>_id ?
+        String vcf_files_column_name
+        String vcf_index_files_column_name
         # End GvsPrepareBulkImport
 
-        # Begin GvsAssignIds
+        # Begin GvsAssignIds  ## TODO what should the behavior be if we have run this once already and several samples did not load properly?
         String dataset_name
         String project_id
         String call_set_identifier
 
-        ## Array[String] external_sample_names TODO no longer an input param?
+        ## Array[String] external_sample_names ## TODO no longer an input param?
 
         File? gatk_override
         # End GvsAssignIds
@@ -42,6 +42,8 @@ workflow GvsBulkIngestGenomes {
         Int? load_data_preemptible_override
         Int? load_data_maxretries_override
         # End GvsImportGenomes
+
+        ## TODO do we want to add Alt Allele Table creation?
     }
 
     call PrepareBulkImport {
@@ -55,17 +57,13 @@ workflow GvsBulkIngestGenomes {
             vcf_index_files_column_name = vcf_index_files_column_name
     }
 
-    call ArrayStringify {
-
-    }
-
     call AssignIds {
         input:
-            go = ArrayStringify.done,
+            ## go = PrepareBulkImport.done, ## TODO we're gonna want to add this, right?
             dataset_name = dataset_name,
             project_id = project_id,
-            external_sample_names = ArrayStringify.external_sample_names, ## Do I need the array string format here?
-            samples_are_controls = false ## interesting that this isn't the DEFAULT default
+            external_sample_names = read_lines(PrepareBulkImport.sampleFOFN),
+            samples_are_controls = false ## TODO this shouldn't always be false tho
     }
 
     call ImportGenomes {
@@ -74,9 +72,9 @@ workflow GvsBulkIngestGenomes {
             dataset_name = dataset_name,
             project_id = project_id,
 
-            external_sample_names = ArrayStringify.external_sample_names, ## Do I need the array string format here?
-            input_vcfs = input_vcfs,
-            input_vcf_indexes = input_vcf_indexes,
+            external_sample_names = read_lines(PrepareBulkImport.sampleFOFN),
+            input_vcfs = read_lines(PrepareBulkImport.vcfFOFN),
+            input_vcf_indexes = read_lines(PrepareBulkImport.vcfIndexFOFN),
 
             skip_loading_vqsr_fields = false
 
@@ -92,37 +90,11 @@ workflow GvsBulkIngestGenomes {
             load_data_maxretries_override = load_data_maxretries_override,
             load_data_preemptible_override = load_data_preemptible_override,
             load_data_gatk_override = gatk_override,
-
     }
 
     output {
-        Boolean done = true
-        Array[File] load_data_stderrs = LoadData.stderr
-    }
-}
-
-task ArrayStringify {
-    input {
-        String project_id
-        String workspace_name
-        String workspace_bucket
-    }
-
-
-    command <<<
-        set -o errexit -o nounset -o xtrace -o pipefail
-
-        ## stuff
-
-    >>>
-    runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-1-20-FOFN"
-        memory: "3 GB"
-        disks: "local-disk 200 HDD"
-        cpu: 1
-    }
-
-    output {
-         Array[String] external_sample_names = external_sample_names
+        ## Boolean done = true
+        Array[File] load_data_stderrs = ImportGenomes.stderr
+        File errorRows = PrepareBulkImport.errors
     }
 }
