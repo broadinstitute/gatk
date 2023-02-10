@@ -38,12 +38,12 @@ def get_resource_group(credentials, subscription):
     resource_client = ResourceManagementClient(credentials, subscription.subscription_id)
 
     if args.resource_group:
-        resource_group_filter = lambda g : g.name == args.resource_group
+        resource_group_filter = lambda g: g.name == args.resource_group
         resource_group_descriptor = f"resource group '{args.resource_group}'"
     else:
         pattern = f"{os.environ['USER']}-[a-f0-9]+$"
         resource_group_descriptor = f"resource group matching pattern '{pattern}'"
-        resource_group_filter = lambda g : re.match(pattern, g.name)
+        resource_group_filter = lambda g: re.match(pattern, g.name)
 
     return exactly_one_or_die(resource_client.resource_groups.list(),
                               resource_group_descriptor,
@@ -52,8 +52,12 @@ def get_resource_group(credentials, subscription):
 
 def get_storage_account(credentials, subscription, resource_group):
     storage_client = StorageManagementClient(credentials, subscription.subscription_id)
+    # `az` returns storage account JSONs with a `resourceGroup` attribute, but the objects returned by the Python API do
+    # not have this attribute. However the `id`s of these Python objects do contain the resource group in a predictable
+    # pattern, so look for that instead.
+    id_prefix = f"/subscriptions/{subscription.subscription_id}/resourceGroups/{resource_group.name}"
     return exactly_one_or_die(storage_client.storage_accounts.list(), "storage account",
-                              filter=lambda a: a.resource_group == resource_group.name,
+                              filter=lambda a: a.id.startswith(id_prefix),
                               describer=lambda a: a.name)
 
 

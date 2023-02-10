@@ -65,7 +65,7 @@ az ad group member add --group $AZ_SQLDB_AD_ADMIN_GROUP_ID --member-id ${COA_UAM
 # firewall's allowed IP addresses.
 SQL_SERVER_ID=$(az sql server list | jq -r ".[] | select(test(\"${RESOURCE_GROUP}\")) | .id"
 
-az role assignment create --role "SQL Security Manager" --assignee "${COA_UAMI_PRINCIPAL_ID}" --scope "${SQL_SERVER_ID}" 
+az role assignment create --role "SQL Security Manager" --assignee "${COA_UAMI_PRINCIPAL_ID}" --scope "${SQL_SERVER_ID}"
 
 # Make the AD Admin group the AD Admin for the Azure SQL Server. All members of this group will be able to act as
 # Azure AD Admins for this server.
