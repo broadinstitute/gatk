@@ -94,7 +94,11 @@ public class TransferReadTags extends GATKTool {
         if (unmappedSamIterator.hasNext()){
             currentUnmappedRead = unmappedSamIterator.next();
         } else {
-            throw new UserException("unmapped sam iterator is empty.");
+            if (alignedSamIterator.hasNext()) {
+                throw new UserException("unmapped sam iterator is empty and aligned sam iterator is not.");
+            } else {
+                logger.warn("Input data contains no reads.  Output will also contain no reads.");
+            }
         }
 
         writer = createSAMWriter(new GATKPath(outSamFile.getAbsolutePath()), false);
