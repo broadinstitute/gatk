@@ -21,7 +21,7 @@ def exactly_one_or_die(result, kind, filter=None, describer=None):
     if len(found) > 1:
         message = f"Found multiple {kind}!"
         if describer:
-            message = message + f" :  " + [describer(f) for f in found]
+            message = message + " : " + ", ".join([describer(f) for f in found])
         raise ValueError(message)
 
     return found[0]
@@ -61,6 +61,13 @@ def get_storage_account(credentials, subscription, resource_group):
                               describer=lambda a: a.name)
 
 
+def get_workflows_container(storage_account, credentials):
+    blob_service_client = BlobServiceClient(storage_account.primary_endpoints.blob, credentials)
+    return exactly_one_or_die(blob_service_client.list_containers(),
+                              "blob container with name 'workflows'",
+                              filter=lambda c: c.name == 'workflows')
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False, description='Submit workflow to Cromwell on Azure')
     parser.add_argument('--resource-group', type=str, help='Azure Resource Group name', required=False)
@@ -72,3 +79,5 @@ if __name__ == '__main__':
     subscription = get_subscription(credentials)
     resource_group = get_resource_group(credentials, subscription)
     storage_account = get_storage_account(credentials, subscription, resource_group)
+    workflows_container = get_workflows_container(storage_account, credentials)
+    print(workflows_container)
