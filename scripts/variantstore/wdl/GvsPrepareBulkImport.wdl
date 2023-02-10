@@ -7,10 +7,10 @@ workflow GvsPrepareBulkImport {
         String project_id
         String workspace_name
         String workspace_bucket
-        String samples_table_name = "sample"
-        String sample_id_column_name = "sample_id"
-        String vcf_files_column_name = "hg38_reblocked_v2_vcf"
-        String vcf_index_files_column_name = "hg38_reblocked_v2_vcf_index"
+        String samples_table_name
+        String sample_id_column_name
+        String vcf_files_column_name
+        String vcf_index_files_column_name
     }
 
     call GenerateFOFNsFromDataTables {
@@ -43,6 +43,8 @@ task GenerateFOFNsFromDataTables {
         String vcf_files_column_name = "hg38_reblocked_v2_vcf"
         String vcf_index_files_column_name = "hg38_reblocked_v2_vcf_index"
     }
+
+    ## TODO currently we can only take in samples, but we need to be able to take in sample_sets
 
     String sample_names_file_name = "sample_names.txt"
     String vcf_files_name = "vcf_files.txt"

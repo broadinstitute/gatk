@@ -46,7 +46,7 @@ workflow GvsBulkIngestGenomes {
         ## TODO do we want to add Alt Allele Table creation?
     }
 
-    call PrepareBulkImport {
+    call PrepareBulkImport.GvsPrepareBulkImport as PrepareBulkImport {
         input:
             project_id = project_id,
             workspace_name = workspace_name,
@@ -57,7 +57,7 @@ workflow GvsBulkIngestGenomes {
             vcf_index_files_column_name = vcf_index_files_column_name
     }
 
-    call AssignIds {
+    call AssignIds.GvsAssignIds as AssignIds {
         input:
             ## go = PrepareBulkImport.done, ## TODO we're gonna want to add this, right?
             dataset_name = dataset_name,
@@ -66,7 +66,7 @@ workflow GvsBulkIngestGenomes {
             samples_are_controls = false ## TODO this shouldn't always be false tho
     }
 
-    call ImportGenomes {
+    call ImportGenomes.GvsImportGenomes as ImportGenomes {
         input:
             go = AssignIds.done,
             dataset_name = dataset_name,
@@ -75,11 +75,6 @@ workflow GvsBulkIngestGenomes {
             external_sample_names = read_lines(PrepareBulkImport.sampleFOFN),
             input_vcfs = read_lines(PrepareBulkImport.vcfFOFN),
             input_vcf_indexes = read_lines(PrepareBulkImport.vcfIndexFOFN),
-
-            skip_loading_vqsr_fields = false
-
-            # set to "NONE" to ingest all the reference data into GVS for VDS (instead of VCF) output
-            drop_state = "NONE"
 
             interval_list = interval_list,
 
@@ -94,7 +89,6 @@ workflow GvsBulkIngestGenomes {
 
     output {
         ## Boolean done = true
-        Array[File] load_data_stderrs = ImportGenomes.stderr
-        File errorRows = PrepareBulkImport.errors
+        Array[File] load_data_stderrs = ImportGenomes.load_data_stderrs
     }
 }
