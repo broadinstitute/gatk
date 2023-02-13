@@ -95,6 +95,8 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_vqsr_lite_poc
+         - VS-693_VQSR_lite
    - name: GvsPopulateAltAllele
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPopulateAltAllele.wdl
@@ -125,6 +127,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - VS-816
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
