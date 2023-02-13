@@ -41,8 +41,8 @@ workflow GvsJointVariantCalling {
     Array[String] indel_recalibration_annotation_values = ["AS_FS", "AS_ReadPosRankSum", "AS_MQRankSum", "AS_QD", "AS_SOR"]
     Array[String] snp_recalibration_annotation_values = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"]
     File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
-    # do we ever want non-ceta customers to user this instead of using GvsUnified directly?  If so, we can make this an
-    # argument that just default to true
+    # do we ever want non-beta customers to use this instead of using GvsUnified directly?  If so, we can make this an
+    # argument that just defaults to true
     Boolean is_beta_user = true
 
     call GvsUnified.GvsUnified {
