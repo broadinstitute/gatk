@@ -184,10 +184,6 @@ configurations.all {
         force googleCloudNioDependency
 
         force 'com.esotericsoftware:kryo:4.0.0'
-
-        // hadoop uses an old jetty that doesn't like the new java version numbering scheme but 11.0.1 is
-        //missing methods used by org.apache.hadoop.http.HttpServer2
-        //force 'org.eclipse.jetty:jetty-servlet:9.4.40.v20210413'
     }
     all*.exclude group: 'org.slf4j', module: 'slf4j-jdk14' //exclude this to prevent slf4j complaining about to many slf4j bindings
     all*.exclude group: 'com.google.guava', module: 'guava-jdk5'
@@ -314,8 +310,7 @@ dependencies {
         exclude group: 'org.apache.commons'
     }
 
-    //TODO: there is no mllib_2.12.15:3.3.0
-    //implementation ('org.apache.spark:spark-mllib_' + scalaVersion + ':' + sparkVersion) {
+    //there is no mllib_2.12.15:3.3.0, so stay use 2.12:3.3.0
     implementation ('org.apache.spark:spark-mllib_2.12:3.3.0') {
         // JUL is used by Google Dataflow as the backend logger, so exclude jul-to-slf4j to avoid a loop
         exclude module: 'jul-to-slf4j'
@@ -325,7 +320,6 @@ dependencies {
     implementation 'com.thoughtworks.paranamer:paranamer:2.8'
 
     implementation 'org.bdgenomics.bdg-formats:bdg-formats:0.5.0'
-    //implementation('org.bdgenomics.adam:adam-core-spark2_' + scalaVersion + ':0.28.0') {
     implementation('org.bdgenomics.adam:adam-core-spark2_2.12:0.28.0') {
         exclude group: 'org.slf4j'
         exclude group: 'org.apache.hadoop'
@@ -357,14 +351,14 @@ dependencies {
 
     // Dependency change for including MLLib
     implementation('com.esotericsoftware:kryo:5.3.0'){
-        //exclude group: 'com.esotericsoftware', module: 'reflectasm'
+        exclude group: 'com.esotericsoftware', module: 'reflectasm'
         exclude group: 'org.ow2.asm', module: 'asm'
     }
 
-//    // Dependency change for including MLLib
-//    implementation('com.esotericsoftware:reflectasm:1.10.0:shaded') {
-//        transitive = false
-//    }
+    // Dependency change for including MLLib
+    implementation('com.esotericsoftware:reflectasm:1.10.0:shaded') {
+        transitive = false
+    }
 
     implementation('com.intel.gkl:gkl:0.8.8') {
         exclude module: 'htsjdk'
@@ -380,7 +374,6 @@ dependencies {
     
     // natural sort
     implementation('net.grey-panther:natural-comparator:1.1')
-    //implementation('com.fasterxml.jackson.module:jackson-module-scala_' + scalaVersion + ':2.9.8')
     implementation('com.fasterxml.jackson.module:jackson-module-scala_2.12:2.9.8')
 
     testUtilsImplementation sourceSets.main.output
@@ -393,10 +386,9 @@ dependencies {
     testImplementation "com.google.jimfs:jimfs:1.1"
 }
 
-// The --add-open directives required to run GATK. This list needs to be kept in sync with the corresponding
-// list in scripts/dockertest.gradle.
+// This list needs to be kept in sync with the corresponding list in scripts/dockertest.gradle.
 //
-// These directives need to be:
+// The --add-open directives required to run GATK. These directives need to be:
 //   - included as properties in the manifest file in the jar(s)
 //   - passed to java via the gradle "jvmArgs" task property for any task that executes GATK code from a
 //     classpath that does use a jar (i.e., gradle run, test, javadoc, gatkDoc and jacoco tasks, etc.)
@@ -525,13 +517,11 @@ group = 'org.broadinstitute'
 
 tasks.withType(Jar) {
     // transform the list of --add-opens directives into manifest format, which requires only the source
-    // package (unlike the command line equivalent, the "ALL-UNNAMED" target is implied, and should not
-    // be included in the manifest entry)
-    //TODO: refactor this once it passes tests
+    // package (unlike the command line equivalent, in the manifest the "ALL-UNNAMED" target is implied
+    // and can't be included in the manifest entry syntax)
     final manifestAddOpens = runtimeAddOpens.stream()
             .map(o -> o.substring(0, (o.length() - "ALL-UNNAMED".length()) - 1))
             .collect(java.util.stream.Collectors.joining(' '))
-    println(manifestAddOpens)
     manifest {
         attributes 'Implementation-Title': 'The Genome Analysis Toolkit (GATK)',
                 'Implementation-Version': archiveVersion.get(),

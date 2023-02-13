@@ -146,7 +146,7 @@ task testOnPackagedReleaseJar(type: Test){
 
     jvmArgs = getJVMArgs(runtimeAddOpens, testAddOpens)
 
-    classpath = files( gatkJar, testClassesJar, testDependencyJar)
+    classpath = files( gatkJar, testDependencyJar, testClassesJar)
     testClassesDirs = files(testClassesUnpacked)
 }
 

@@ -75,7 +75,7 @@ jobs:
       matrix:
         java: [ 17.0.1+12 ]
         experimental: [ false ]
-        scalaVersion: [ 2.12 ]
+        scalaVersion: [ 2.13 ]
         testType: [ cloud, integration, unit ]
       fail-fast: false
     continue-on-error: ${{ matrix.experimental }}
@@ -151,7 +151,7 @@ jobs:
       matrix:
         java: [ 17.0.1+12 ]
         experimental: [ false ]
-        scalaVersion: [ 2.12 ]
+        scalaVersion: [ 2.13 ]
         testType: [ integration, unit, variantcalling, conda ]
       fail-fast: false
     continue-on-error: ${{ matrix.experimental }}
@@ -340,8 +340,6 @@ jobs:
         run: |
           echo "Running CNV somatic workflows";
           bash scripts/cnv_cromwell_tests/somatic/run_cnv_somatic_workflows.sh;
-          echo "Gather CNV somatic cromwell workflows logs";
-          bash -c "find /home/runner/work/gatk/gatk/scripts/cnv_cromwell_tests/somatic/cromwell-executions -exec cat {} \;";
 
       - name: "M2_WDL_TEST"
         if: ${{ matrix.wdlTest == 'RUN_M2_WDL' }}
