@@ -8,7 +8,7 @@ import "GvsImportGenomes.wdl" as ImportGenomes
 workflow GvsBulkIngestGenomes {
     input {
         # Begin GvsPrepareBulkImport
-        String project_id
+        String terra_project_id
         String workspace_name
         String workspace_bucket
         String samples_table_name
@@ -19,7 +19,7 @@ workflow GvsBulkIngestGenomes {
 
         # Begin GvsAssignIds  ## TODO what should the behavior be if we have run this once already and several samples did not load properly?
         String dataset_name
-        String project_id
+        String bq_project_id
         String call_set_identifier
 
         ## Array[String] external_sample_names ## TODO no longer an input param?
@@ -28,8 +28,6 @@ workflow GvsBulkIngestGenomes {
         # End GvsAssignIds
 
         # Begin GvsImportGenomes
-        Array[File] input_vcfs
-        Array[File] input_vcf_indexes
         File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
 
         # set to "NONE" to ingest all the reference data into GVS for VDS (instead of VCF) output
@@ -48,7 +46,7 @@ workflow GvsBulkIngestGenomes {
 
     call PrepareBulkImport.GvsPrepareBulkImport as PrepareBulkImport {
         input:
-            project_id = project_id,
+            project_id = terra_project_id,
             workspace_name = workspace_name,
             workspace_bucket  = workspace_bucket,
             samples_table_name = samples_table_name,
@@ -61,7 +59,7 @@ workflow GvsBulkIngestGenomes {
         input:
             ## go = PrepareBulkImport.done, ## TODO we're gonna want to add this, right?
             dataset_name = dataset_name,
-            project_id = project_id,
+            project_id = bq_project_id,
             external_sample_names = read_lines(PrepareBulkImport.sampleFOFN),
             samples_are_controls = false ## TODO this shouldn't always be false tho
     }
@@ -70,7 +68,7 @@ workflow GvsBulkIngestGenomes {
         input:
             go = AssignIds.done,
             dataset_name = dataset_name,
-            project_id = project_id,
+            project_id = bq_project_id,
 
             external_sample_names = read_lines(PrepareBulkImport.sampleFOFN),
             input_vcfs = read_lines(PrepareBulkImport.vcfFOFN),
