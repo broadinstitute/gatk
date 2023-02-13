@@ -29,7 +29,7 @@ workflow GvsUnified {
         # for beta users, rate limit their ingest to stay below quotas
         Boolean is_beta_user = false
 
-    # The larger the `load_data_batch_size` the greater the probability of preemptions and non-retryable
+        # The larger the `load_data_batch_size` the greater the probability of preemptions and non-retryable
         # BigQuery errors so if specifying this adjust preemptible and maxretries accordingly. Or just take the defaults,
         # those should work fine in most cases.
         Int? load_data_batch_size
