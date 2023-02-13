@@ -1,10 +1,10 @@
 version 1.0
 
-workflow CromwellOnAzureSqlDatabase {
-    call HelloAzure
+workflow HelloAzure {
+    call Hello
 }
 
-task HelloAzure {
+task Hello {
     command <<<
         echo 'Hello Azure!'
     >>>

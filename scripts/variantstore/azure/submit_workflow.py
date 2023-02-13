@@ -6,7 +6,7 @@ from azure.identity import DefaultAzureCredential
 from azure.mgmt.resource import ResourceManagementClient
 from azure.mgmt.storage import StorageManagementClient
 from azure.mgmt.subscription import SubscriptionClient
-from azure.storage.blob import BlobServiceClient
+from azure.storage.blob import BlobClient, BlobServiceClient
 
 
 def exactly_one_or_die(result, kind, filter=None, describer=None):
@@ -61,15 +61,21 @@ def get_storage_account(credentials, subscription, resource_group):
                               describer=lambda a: a.name)
 
 
-def get_workflows_container(storage_account, credentials):
-    blob_service_client = BlobServiceClient(storage_account.primary_endpoints.blob, credentials)
-    return exactly_one_or_die(blob_service_client.list_containers(),
-                              "blob container with name 'workflows'",
-                              filter=lambda c: c.name == 'workflows')
+def write_input_file(storage_account, path, data):
+    blob_url = f"{storage_account.primary_endpoints.blob}/inputs/{path}"
+
+    blob_client = BlobClient.from_blob_url(
+        blob_url=blob_url,
+        credential=credentials
+    )
+
+    blob_client.upload_blob(data)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False, description='Submit workflow to Cromwell on Azure')
+    parser.add_argument('--workflow', type=str, help='Workflow WDL source', required=True)
+    parser.add_argument('--inputs', type=str, help='Workflow inputs', required=False)
     parser.add_argument('--resource-group', type=str, help='Azure Resource Group name', required=False)
     args = parser.parse_args()
 
@@ -79,5 +85,6 @@ if __name__ == '__main__':
     subscription = get_subscription(credentials)
     resource_group = get_resource_group(credentials, subscription)
     storage_account = get_storage_account(credentials, subscription, resource_group)
-    workflows_container = get_workflows_container(storage_account, credentials)
-    print(workflows_container)
+
+    with open(args.workflow, "rb") as workflow:
+        write_input_file(storage_account, "hello/HelloAzure.wdl", workflow)
