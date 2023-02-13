@@ -163,22 +163,25 @@ public class SNVMapper implements FeatureMapper {
     private int calcSmq(final byte[] quals, int from, int to) {
 
         // limit from/to
-        from = Math.max(0, Math.max(quals.length, from));
-        to = Math.max(0, Math.max(quals.length, to));
+        from = Math.max(0, Math.min(quals.length, from));
+        to = Math.max(0, Math.min(quals.length, to - 1));
         if ( from > to ) {
             return 0;
         }
 
         // calc median
         byte[] range = Arrays.copyOfRange(quals, from, to + 1);
+        if ( range.length == 0 ) {
+            return 0;
+        }
         Arrays.sort(range);
         int midIndex = range.length / 2;
         if ( (range.length % 2) == 1 ) {
             // odd
-            return quals[midIndex+1];
+            return range[midIndex];
         } else {
             // even
-            return (quals[midIndex] + quals[midIndex+1]) / 2;
+            return (range[midIndex-1] + range[midIndex]) / 2;
         }
     }
 

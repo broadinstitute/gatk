@@ -107,6 +107,6 @@ public class FlowFeatureMapperArgumentCollection implements Serializable{
      *  surrounding media quality (size) - if not specified, this feature is off
      **/
     @Hidden
-    @Argument(fullName = "surrounding-mmedian-quality-size", doc = "number of bases around the feature to calculate surrounding median quality", optional = true)
+    @Argument(fullName = "surrounding-median-quality-size", doc = "number of bases around the feature to calculate surrounding median quality", optional = true)
     public Integer surroundingMediaQualitySize = null;
 }

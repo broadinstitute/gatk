@@ -68,7 +68,7 @@ public class FlowFeatureMapperIntegrationTest extends CommandLineProgramTest {
                 "--snv-identical-bases", "10",
                 "--debug-negatives", "false",
                 "--debug-read-name", "150451-BC94-0645901755",
-                "--surrounding-mmedian-quality-size", "4"
+                "--surrounding-median-quality-size", "1000" // use a high value to stress the code
         };
 
         // run the tool
