@@ -18,7 +18,7 @@ You will want to set up a [notebook in a similar configuration](../docs/aou/vds/
 Once you have copied them, run `python3 hail_create_vat_inputs.py` with the following input(s)
 
 * `--ancestry_file` GCS pointer to the TSV file that maps `sample_name`s to sub-populations
-* `--vds_path` GCS pointer to the top-level direcotory of the VDS
+* `--vds_path` GCS pointer to the top-level directory of the VDS
 * `--sites_only_vcf` (optional, should be pre-populated by the `GvsExtractAvroFilesForHail` workflow) the location to write the sites-only VCF to; save this for the `GvsCreateVATfromVDS` workflow
 
 When the script is done running, it will spit out the path to where it has written the sites-only VCF.
