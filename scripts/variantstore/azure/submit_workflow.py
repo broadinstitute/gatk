@@ -72,6 +72,10 @@ def write_input_file(storage_account, path, data):
     blob_client.upload_blob(data)
 
 
+def get_blob_service_client():
+    return BlobServiceClient.from_connection_string(os.getenv('AZURE_CONNECTION_STRING'))
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False, description='Submit workflow to Cromwell on Azure')
     parser.add_argument('--workflow', type=str, help='Workflow WDL source', required=True)
@@ -79,12 +83,19 @@ if __name__ == '__main__':
     parser.add_argument('--resource-group', type=str, help='Azure Resource Group name', required=False)
     args = parser.parse_args()
 
+    if not os.getenv('AZURE_CONNECTION_STRING'):
+        raise ValueError("Must define 'AZURE_CONNECTION_STRING' as a SAS token, see https://learn.microsoft.com/en-us/azure/storage/common/storage-configure-connection-string#store-a-connection-string")
+
     # https://github.com/Azure/azure-sdk-for-python/issues/22822#issuecomment-1024668507
     credentials = DefaultAzureCredential(exclude_shared_token_cache_credential=True)
 
     subscription = get_subscription(credentials)
     resource_group = get_resource_group(credentials, subscription)
     storage_account = get_storage_account(credentials, subscription, resource_group)
+    blob_service_client = get_blob_service_client()
+
+    inputs_client = blob_service_client.get_container_client('inputs')
 
     with open(args.workflow, "rb") as workflow:
-        write_input_file(storage_account, "hello/HelloAzure.wdl", workflow)
+        blob_client = inputs_client.get_blob_client("hello/HelloAzure.wdl")
+        blob_client.upload_blob(workflow)
