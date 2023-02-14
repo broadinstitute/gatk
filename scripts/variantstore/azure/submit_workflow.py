@@ -124,6 +124,8 @@ def generate_trigger_json(workflow_storage_path, inputs_storage_path):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False, description='Submit workflow to Cromwell on Azure')
     parser.add_argument('--workflow', type=str, help='Workflow WDL source', required=True)
+    parser.add_argument('--sql-server', type=str, help='Azure SQL Server name', required=True)
+    parser.add_argument('--sql-database', type=str, help='Azure SQL Server database', required=True)
     parser.add_argument('--access-token', type=str, help='Azure SQL Database access token', required=True)
     parser.add_argument('--resource-group', type=str, help='Azure Resource Group name', required=False)
     args = parser.parse_args()
@@ -165,15 +167,14 @@ if __name__ == '__main__':
         blob_client.upload_blob(token, overwrite=True)
         access_token_storage_path = f'/{storage_account.name}/inputs/{blob_address}'
 
-    inputs_json = generate_inputs_json(workflow_path.stem, access_token_storage_path, )
-    inputs_path = Path(args.inputs)
-    with open(args.inputs, "rb") as inputs:
-        inputs_json = json.load(inputs)
-        inputs_json[f'{workflow_path.stem}.access_token'] = access_token_storage_path
-        blob_address = f"{inflection.underscore(workflow_path.stem)}/{inputs_path.name}"
-        blob_client = inputs_client.get_blob_client(blob_address)
-        blob_client.upload_blob(inputs, overwrite=True)
-        inputs_storage_path = f'/{storage_account.name}/inputs/{blob_address}'
+    inputs_json = generate_inputs_json(
+        workflow_path.stem, access_token_storage_path, args.sql_server, args.sql_database)
+
+    # Stage the workflow inputs into /<storage container>/inputs/<snake cased workflow name>/<workflow name>.inputs.json
+    blob_address = f"{inflection.underscore(workflow_path.stem)}/{workflow_path.stem}.inputs.json"
+    blob_client = inputs_client.get_blob_client(blob_address)
+    blob_client.upload_blob(bytes(inputs_json, 'utf8'), overwrite=True)
+    inputs_storage_path = f'/{storage_account.name}/inputs/{blob_address}'
 
     # Create the trigger JSON and stage into /<storage account name>/workflows/new.
     trigger_json = generate_trigger_json(workflow_storage_path, inputs_storage_path)
