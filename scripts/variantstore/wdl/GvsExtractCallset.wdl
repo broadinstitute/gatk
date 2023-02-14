@@ -79,7 +79,7 @@ workflow GvsExtractCallset {
 
   call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
     input:
-      query_project = project_id,
+      project_id = project_id,
       fq_table = fq_sample_table
   }
 
@@ -122,14 +122,14 @@ workflow GvsExtractCallset {
 
   call Utils.GetBQTableLastModifiedDatetime as FilterSetInfoTimestamp {
     input:
-      query_project = project_id,
+      project_id = project_id,
       fq_table = "~{fq_filter_set_info_table}"
   }
 
   if ( !do_not_filter_override ) {
     call Utils.ValidateFilterSetName {
       input:
-        query_project = query_project,
+        project_id = query_project,
         fq_filter_set_info_table = "~{fq_filter_set_info_table}",
         filter_set_name = filter_set_name,
         filter_set_info_timestamp = FilterSetInfoTimestamp.last_modified_timestamp
@@ -197,7 +197,7 @@ workflow GvsExtractCallset {
 
     call Utils.GetBQTableLastModifiedDatetime {
       input:
-        query_project = query_project,
+        project_id = query_project,
         fq_table = fq_samples_to_extract_table
     }
 

@@ -135,7 +135,7 @@ task SplitIntervals {
 task GetBQTableLastModifiedDatetime {
   input {
     Boolean go = true
-    String query_project
+    String project_id
     String fq_table
   }
   meta {
@@ -150,12 +150,12 @@ task GetBQTableLastModifiedDatetime {
     set -o xtrace
     set -o errexit
 
-    echo "project_id = ~{query_project}" > ~/.bigqueryrc
+    echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
     # bq needs the project name to be separate by a colon
     DATASET_TABLE_COLON=$(echo ~{fq_table} | sed 's/\./:/')
 
-    LASTMODIFIED=$(bq --project_id=~{query_project} --format=json show ${DATASET_TABLE_COLON} | python3 -c "import sys, json; print(json.load(sys.stdin)['lastModifiedTime']);")
+    LASTMODIFIED=$(bq --project_id=~{project_id} --format=json show ${DATASET_TABLE_COLON} | python3 -c "import sys, json; print(json.load(sys.stdin)['lastModifiedTime']);")
     if [[ $LASTMODIFIED =~ ^[0-9]+$ ]]; then
       echo $LASTMODIFIED
     else
@@ -430,7 +430,7 @@ task CountSuperpartitions {
 task ValidateFilterSetName {
     input {
         Boolean go = true
-        String query_project
+        String project_id
         String fq_filter_set_info_table
         String filter_set_name
         String filter_set_info_timestamp = ""
@@ -445,9 +445,9 @@ task ValidateFilterSetName {
     command <<<
         set -o errexit -o nounset -o xtrace -o pipefail
 
-        echo "project_id = ~{query_project}" > ~/.bigqueryrc
+        echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-        OUTPUT=$(bq --project_id=~{query_project} --format=csv query --use_legacy_sql=false ~{bq_labels} "SELECT filter_set_name as available_filter_set_names FROM \`~{fq_filter_set_info_table}\` GROUP BY filter_set_name")
+        OUTPUT=$(bq --project_id=~{project_id} --format=csv query --use_legacy_sql=false ~{bq_labels} "SELECT filter_set_name as available_filter_set_names FROM \`~{fq_filter_set_info_table}\` GROUP BY filter_set_name")
         FILTERSETS=${OUTPUT#"available_filter_set_names"}
 
         if [[ $FILTERSETS =~ "~{filter_set_name}" ]]; then
