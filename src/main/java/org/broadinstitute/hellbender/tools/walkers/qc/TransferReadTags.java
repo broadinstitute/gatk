@@ -95,7 +95,7 @@ public class TransferReadTags extends GATKTool {
             currentUnmappedRead = unmappedSamIterator.next();
         } else {
             if (alignedSamIterator.hasNext()) {
-                throw new UserException("unmapped sam iterator is empty and aligned sam iterator is not.");
+                throw new UserException("Unmapped sam iterator is empty and aligned sam iterator is not.");
             } else {
                 logger.warn("Input data contains no reads.  Output will also contain no reads.");
             }
