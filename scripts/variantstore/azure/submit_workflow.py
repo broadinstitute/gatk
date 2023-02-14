@@ -1,4 +1,5 @@
 import argparse
+import inflection
 import os
 import re
 
@@ -104,6 +105,7 @@ if __name__ == '__main__':
     if not os.getenv('AZURE_CONNECTION_STRING'):
         raise ValueError("Must define 'AZURE_CONNECTION_STRING' as a SAS token, see https://learn.microsoft.com/en-us/azure/storage/common/storage-configure-connection-string#store-a-connection-string")
 
+    # The default token caching behavior was causing issues with attempts to use expired tokens.
     # https://github.com/Azure/azure-sdk-for-python/issues/22822#issuecomment-1024668507
     credentials = DefaultAzureCredential(exclude_shared_token_cache_credential=True)
 
@@ -113,32 +115,36 @@ if __name__ == '__main__':
     blob_service_client = get_blob_service_client()
 
     inputs_client = blob_service_client.get_container_client('inputs')
-    # 'name' is the filename without leading directory components.
+    # `name` is the filename without leading directory components.
     # e.g. name for /path/to/hello.wdl is hello.wdl
-    # 'stem' is the filename without leading directory components and without an extension.
+    # `stem` is the filename without leading directory components and without an extension.
     # e.g. stem for /path/to/hello.wdl is hello
     workflow_path = Path(args.workflow)
 
     with open(args.workflow, "rb") as workflow:
-        blob_client = inputs_client.get_blob_client(f"{workflow_path.stem}/{workflow_path.name}")
-        blob_client.upload_blob(workflow)
-    workflow_storage_path = f'/{storage_account.name}/inputs/{workflow_path.stem}/{workflow_path.name}'
+        # `inflection.underscore` camel-cases Pascal-cased workflow names.
+        # e.g. "HelloAzure" ==> "hello_azure"
+        # Not strictly required here but nice.
+        blob_address = f"{inflection.underscore(workflow_path.stem)}/{workflow_path.name}"
+        blob_client = inputs_client.get_blob_client(blob_address)
+        blob_client.upload_blob(workflow, overwrite=True)
+        workflow_storage_path = f'/{storage_account.name}/inputs/{blob_address}'
 
     inputs_storage_path = None
     if args.inputs:
         inputs_path = Path(args.inputs)
         with open(args.inputs, "rb") as inputs:
-            blob_client = inputs_client.get_blob_client(f"{workflow_path.stem}/{inputs_path.name}")
-            blob_client.upload_blob(inputs)
-        inputs_storage_path = f'/{storage_account.name}/inputs/{workflow_path.stem}/{workflow_path.name}'
+            blob_address = f"{inflection.underscore(workflow_path.stem)}/{inputs_path.name}"
+            blob_client = inputs_client.get_blob_client(blob_address)
+            blob_client.upload_blob(inputs, overwrite=True)
+            inputs_storage_path = f'/{storage_account.name}/inputs/{blob_address}'
 
-    # Create the trigger JSON and stage into /storage account/workflows/new with a name of
-    # {workflow_path.stem}-<random UUID>.json
+    # Create the trigger JSON and stage into /<storage account name>/workflows/new.
     trigger_json = generate_trigger_json(workflow_storage_path, inputs_storage_path)
     workflows_client = blob_service_client.get_container_client('workflows')
 
-    trigger_file_path = f'new/{workflow_path.stem}-{uuid4()}.json'
-    blob_client = workflows_client.get_blob_client(trigger_file_path)
+    blob_address = f'new/{workflow_path.stem}-{uuid4()}.json'
+    blob_client = workflows_client.get_blob_client(blob_address)
     blob_client.upload_blob(bytes(trigger_json, 'utf8'))
 
-    print(f"Trigger JSON staged to /{storage_account.name}/workflows/{trigger_file_path}.")
+    print(f"Trigger JSON staged to /{storage_account.name}/workflows/{blob_address}.")
