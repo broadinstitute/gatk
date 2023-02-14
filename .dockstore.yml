@@ -95,7 +95,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_vqsr_lite_poc
          - VS-693_VQSR_lite
    - name: GvsPopulateAltAllele
      subclass: WDL
