@@ -8,6 +8,9 @@ from azure.mgmt.storage import StorageManagementClient
 from azure.mgmt.subscription import SubscriptionClient
 from azure.storage.blob import BlobClient, BlobServiceClient
 
+from pathlib import Path
+from uuid import uuid4
+
 
 def exactly_one_or_die(result, kind, filter=None, describer=None):
     found = list(result)
@@ -76,6 +79,21 @@ def get_blob_service_client():
     return BlobServiceClient.from_connection_string(os.getenv('AZURE_CONNECTION_STRING'))
 
 
+def generate_trigger_json(workflow_storage_path, inputs_storage_path):
+    # If defined, enclose in double quotes for interpolation into the f string below.
+    inputs_storage_path = f'"{inputs_storage_path}"' if inputs_storage_path else "null"
+
+    return f"""
+{{
+  "WorkflowUrl": "{workflow_storage_path}",
+  "WorkflowInputsUrl": {inputs_storage_path},
+  "WorkflowInputsUrls": null,
+  "WorkflowOptionsUrl": null,
+  "WorkflowDependenciesUrl": null
+}}
+    """.strip()
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False, description='Submit workflow to Cromwell on Azure')
     parser.add_argument('--workflow', type=str, help='Workflow WDL source', required=True)
@@ -95,7 +113,32 @@ if __name__ == '__main__':
     blob_service_client = get_blob_service_client()
 
     inputs_client = blob_service_client.get_container_client('inputs')
+    # 'name' is the filename without leading directory components.
+    # e.g. name for /path/to/hello.wdl is hello.wdl
+    # 'stem' is the filename without leading directory components and without an extension.
+    # e.g. stem for /path/to/hello.wdl is hello
+    workflow_path = Path(args.workflow)
 
     with open(args.workflow, "rb") as workflow:
-        blob_client = inputs_client.get_blob_client("hello/HelloAzure.wdl")
+        blob_client = inputs_client.get_blob_client(f"{workflow_path.stem}/{workflow_path.name}")
         blob_client.upload_blob(workflow)
+    workflow_storage_path = f'/{storage_account.name}/inputs/{workflow_path.stem}/{workflow_path.name}'
+
+    inputs_storage_path = None
+    if args.inputs:
+        inputs_path = Path(args.inputs)
+        with open(args.inputs, "rb") as inputs:
+            blob_client = inputs_client.get_blob_client(f"{workflow_path.stem}/{inputs_path.name}")
+            blob_client.upload_blob(inputs)
+        inputs_storage_path = f'/{storage_account.name}/inputs/{workflow_path.stem}/{workflow_path.name}'
+
+    # Create the trigger JSON and stage into /storage account/workflows/new with a name of
+    # {workflow_path.stem}-<random UUID>.json
+    trigger_json = generate_trigger_json(workflow_storage_path, inputs_storage_path)
+    workflows_client = blob_service_client.get_container_client('workflows')
+
+    trigger_file_path = f'new/{workflow_path.stem}-{uuid4()}.json'
+    blob_client = workflows_client.get_blob_client(trigger_file_path)
+    blob_client.upload_blob(bytes(trigger_json, 'utf8'))
+
+    print(f"Trigger JSON staged to /{storage_account.name}/workflows/{trigger_file_path}.")
