@@ -1088,8 +1088,11 @@ public abstract class GATKTool extends CommandLineProgram {
     public Object onTraversalSuccess() { return null; }
 
     @Override
+    @SuppressWarnings("try")
     protected final Object doWork() {
-        try {
+        //this makes use of try-with-resource exception suppression to ensure that onShutdown()
+        //doesn't hide casual exceptions thrown during onStartup() or doWork()
+        try(final AutoCloseableNoCheckedExceptions thisTool = this::closeTool){
             onTraversalStart();
             progressMeter.start();
             traverse();
@@ -1097,8 +1100,6 @@ public abstract class GATKTool extends CommandLineProgram {
                 progressMeter.stop();
             }
             return onTraversalSuccess();
-        } finally {
-            closeTool();
         }
     }
 
