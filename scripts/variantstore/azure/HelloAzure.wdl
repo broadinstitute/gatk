@@ -29,7 +29,11 @@ task Hello {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        sqlcmd -S tcp:~{sql_server}.database.windows.net,1433 -d ~{sql_database} -G -Q 'select @@version as "Hello Azure SQL Database!"' -P ~{access_token}
+        # sqlcmd actually cannot cope with the 141 character natural length of this input path... ln to the rescue
+        # Sqlcmd: '-P': Argument too long (maximum is 128 characters).
+        ln -s ~{access_token} /tmp/db_access_token.txt
+
+        sqlcmd -S tcp:~{sql_server}.database.windows.net,1433 -d ~{sql_database} -G -Q 'select @@version as "Hello Azure SQL Database!"' -P /tmp/db_access_token.txt
     >>>
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:coa-2023-02-09"
