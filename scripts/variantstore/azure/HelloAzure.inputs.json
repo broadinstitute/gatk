@@ -1,3 +1,5 @@
 {
-  "HelloAzure.salutation": "Salutations esteemed Azure user!"
+  "HelloAzure.access_token": "/Users/mcovarr/gitrepos/gatk/db_access_token.txt",
+  "HelloAzure.sql_database": "mcovarr-088022-azure-sql-database",
+  "HelloAzure.sql_server": "mcovarr-088022-azure-sql-server"
 }
