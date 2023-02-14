@@ -61,8 +61,7 @@ import java.util.regex.Pattern;
 @CommandLineProgramProperties(
         summary = "For each SV, remap overlapping reads to a revised ref implied by the alt allele, and invoke IGV.",
         oneLineSummary = "Look at how the reads map to a revised reference.",
-        programGroup = VariantEvaluationProgramGroup.class,
-        omitFromCommandLine = true
+        programGroup = VariantEvaluationProgramGroup.class
 )
 public final class VisualizeSVs extends VariantWalker {
     public static final int WINDOW_SIZE = 1000;
