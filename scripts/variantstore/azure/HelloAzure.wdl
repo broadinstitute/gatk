@@ -10,7 +10,7 @@ workflow HelloAzure {
     }
 
     output {
-        String salutation = Hello.salutation
+        String out = Hello.out
     }
 }
 
@@ -25,6 +25,6 @@ task Hello {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:coa-2023-02-09"
     }
     output {
-        String salutation = read_string(stdout())
+        String out = read_string(stdout())
     }
 }
