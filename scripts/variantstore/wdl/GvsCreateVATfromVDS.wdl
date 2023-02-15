@@ -28,8 +28,6 @@ workflow GvsCreateVATfromVDS {
     File reference_dict = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict"
     File reference_index = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai"
 
-    File nirvana_data_directory = "gs://gvs_quickstart_storage/Nirvana/Nirvana-references-2022-10-07.tgz"
-
     call MakeSubpopulationFilesAndReadSchemaFiles {
         input:
             input_ancestry_file = ancestry_file
@@ -85,7 +83,6 @@ workflow GvsCreateVATfromVDS {
             input:
                 input_vcf = StripCustomAnnotationsFromSitesOnlyVCF.output_vcf,
                 output_annotated_file_name = "${vcf_filename}_annotated",
-                nirvana_data_tar = nirvana_data_directory,
                 custom_annotations_file = StripCustomAnnotationsFromSitesOnlyVCF.output_custom_annotations_file,
         }
 
@@ -321,8 +318,12 @@ task AnnotateVCF {
     input {
         File input_vcf
         String output_annotated_file_name
-        File nirvana_data_tar
         File custom_annotations_file
+
+        # Mentioning this path in the inputs section of the task combined with checking the 'Use reference disks' option
+        # in Terra UI tells Cromwell to arrange for the Nirvana reference disk to be attached to this VM.
+        File summon_reference_disk =
+            "gs://broad-public-datasets/gvs/vat-annotations/Nirvana/3.18.1/SupplementaryAnnotation/GRCh38/MITOMAP_20200819.nsa.idx"
     }
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
@@ -338,21 +339,36 @@ task AnnotateVCF {
     String path_reference = "/References/Homo_sapiens.GRCh38.Nirvana.dat"
 
     command <<<
-        # set -e
-
         bash ~{monitoring_script} > monitoring.log &
 
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        # =======================================
-        # Handle our data sources:
+        # There's an issue with how the projects/broad-dsde-cromwell-dev/global/images/nirvana-3-18-1-references-2023-01-03
+        # disk image was built: while all the reference files do exist on the image they are not at the expected
+        # locations. The following code works around this issue and should continue to work even after a corrected
+        # version of the Nirvana reference image is deployed into Terra.
 
-        echo "Extracting annotation data sources tar/gzip file..."
-        mkdir datasources_dir
-        tar zxvf ~{nirvana_data_tar} -C datasources_dir  ## --strip-components 2
-        DATA_SOURCES_FOLDER="$PWD/datasources_dir/references"
+        # Find where the reference disk should have been mounted on this VM.  Note this is referred to as a "candidate
+        # mount point" because we do not actually confirm this is a reference disk until the following code block.
+        CANDIDATE_MOUNT_POINT=$(lsblk | sed -E -n 's!.*(/mnt/[a-f0-9]+).*!\1!p')
+        if [[ -z ${CANDIDATE_MOUNT_POINT} ]]; then
+            >&2 echo "Could not find a mounted volume that looks like a reference disk, exiting."
+            exit 1
+        fi
+
+        # Find one particular reference under the mount path. Note this is not the same reference as was specified in the
+        # `inputs` section, so this would only be present if the volume we're looking at is in fact a reference disk.
+        REFERENCE_FILE="Homo_sapiens.GRCh38.Nirvana.dat"
+        REFERENCE_PATH=$(find ${CANDIDATE_MOUNT_POINT} -name "${REFERENCE_FILE}")
+        if [[ -z ${REFERENCE_PATH} ]]; then
+            >&2 echo "Could not find reference file '${REFERENCE_FILE}' under candidate reference disk mount point '${CANDIDATE_MOUNT_POINT}', exiting."
+            exit 1
+        fi
+
+        # Take the parent of the parent directory of this file as root of the locally mounted references:
+        DATA_SOURCES_FOLDER="$(dirname $(dirname ${REFERENCE_PATH}))"
 
         # =======================================
         echo "Creating custom annotations"

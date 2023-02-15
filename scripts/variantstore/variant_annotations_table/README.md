@@ -47,3 +47,15 @@ Variants may be filtered out of the VAT (that were in the VDS) for the following
 ### Run GvsValidateVAT
 
 This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option. The `project_id` and `dataset_name` are the same as those used for `GvsCreateVATfromVDS`, and `vat_table_name` is `filter_set_name` + "_vat" (+ "_v" + `vat_version`, if used).
+
+### Using the Nirvana reference image in Terra (AoU Echo and later callsets)
+
+The Variants team created a Cromwell reference image containing all reference files used by Nirvana 3.18.1. This is
+useful to avoid having to download tens of GiBs of Nirvana references in each shard of the scattered `AnnotateVCF` task.
+In order to use this reference disk, the 'Use reference disk' option in Terra must be selected as shown below:
+
+![Terra Use reference disks](Reference%20Disk%20Terra%20Opt%20In.png)
+
+**Note:** this Nirvana reference image was not available in time for it to be used to create the Delta VAT. The
+`GvsCreateVATfromVDS` WDL has been updated to take advantage of references loaded from an attached
+reference image and should be ready to use starting with the AoU Echo callset.
