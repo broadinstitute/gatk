@@ -1,8 +1,6 @@
 package org.broadinstitute.hellbender.utils.tsv;
 
 import htsjdk.samtools.util.BufferedLineReader;
-import htsjdk.samtools.util.IOUtil;
-import htsjdk.samtools.util.LineReader;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
@@ -21,7 +19,7 @@ public class SimpleCSVWriterWrapperWithHeaderUnitTest extends GATKBaseTest {
     @Test (groups = "bucket")
     public void testWriteToBucketPathEquivalentToLocalPath() throws IOException {
         Path bucketPath = IOUtils.getPath(BucketUtils.getTempFilePath(
-                getGCPTestStaging() + "testWriteToBucketPathEquivalentToLocalPath", ".tsv"));
+                GCloudTestUtils.getTestStaging() + "testWriteToBucketPathEquivalentToLocalPath", ".tsv"));
         Path localPath = IOUtils.getPath(createTempFile("testWriteToBucketPathEquivalentToLocalPath", ".tsv").getPath());
 
         try (SimpleXSVWriter bucketWriter = new SimpleXSVWriter(bucketPath, '\t');

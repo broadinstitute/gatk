@@ -55,7 +55,7 @@ public final class BaseRecalibratorSparkIntegrationTest extends CommandLineProgr
     }
 
     private String getCloudInputs() {
-        return getGCPTestInputPath() + THIS_TEST_FOLDER;
+        return GCloudTestUtils.getTestInputPath() + THIS_TEST_FOLDER;
     }
 
     @DataProvider(name = "BQSRTest")

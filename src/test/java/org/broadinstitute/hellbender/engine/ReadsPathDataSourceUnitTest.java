@@ -659,7 +659,7 @@ public final class ReadsPathDataSourceUnitTest extends GATKBaseTest {
 
     @DataProvider(name="cloudXorTestData")
     public Object[][] cloudXorTestData() {
-        final String BAM_DIR = getGCPTestInputPath() + "org/broadinstitute/hellbender/engine/";
+        final String BAM_DIR = GCloudTestUtils.getTestInputPath() + "org/broadinstitute/hellbender/engine/";
         final String INDEX_DIR = BAM_DIR;
 
         final List<Path> bams = Arrays.asList(IOUtils.getPath(BAM_DIR + "reads_data_source_test4.xor.bam"));

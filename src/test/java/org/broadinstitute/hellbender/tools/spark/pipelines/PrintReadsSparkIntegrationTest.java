@@ -59,8 +59,8 @@ public final class PrintReadsSparkIntegrationTest extends AbstractPrintReadsInte
     @Test(dataProvider = "gcsTestingData", groups = "bucket")
     public void testGCSInputsAndOutputsWithSparkNio(final String gcsInput, final String outputExtension,
                                         final boolean outputToGCS, final File expectedOutput) throws IOException {
-        final String gcsInputPath = getGCPTestInputPath() + gcsInput;
-        final String outputPrefix = outputToGCS ? getGCPTestStaging() : "testGCSInputsAndOutputs";
+        final String gcsInputPath = GCloudTestUtils.getTestInputPath() + gcsInput;
+        final String outputPrefix = outputToGCS ? GCloudTestUtils.getTestStaging() : "testGCSInputsAndOutputs";
         final String outputPath = BucketUtils.getTempFilePath(outputPrefix, outputExtension);
 
         final ArgumentsBuilder argBuilder = new ArgumentsBuilder();

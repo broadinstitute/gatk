@@ -8,7 +8,6 @@ import htsjdk.tribble.annotation.Strand;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
-import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLineCount;
 import htsjdk.variant.vcf.VCFHeaderLineType;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
@@ -2613,7 +2612,7 @@ public class FuncotatorUtilsUnitTest extends GATKBaseTest {
         expected.put(GencodeFuncotation.VariantClassification.DE_NOVO_START_OUT_FRAME, 0);
 
         return new Object[][] {
-                {new GATKPath(getGCPTestInputPath() + "org/broadinstitute/hellbender/tools/funcotator/custom_variant_context_order_test_file.tsv"), expected},
+                {new GATKPath(GCloudTestUtils.getTestInputPath() + "org/broadinstitute/hellbender/tools/funcotator/custom_variant_context_order_test_file.tsv"), expected},
         };
     }
 

@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.testutils;
 
-import com.google.common.base.Strings;
 import htsjdk.samtools.util.Log;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -101,57 +100,20 @@ public abstract class BaseTest {
         runProcess(ProcessController.getThreadLocal(), baseCommand.toArray(new String[0]));
     }
 
+    public static String getNonNullEnvironmentVariable(String envVarName) {
+        final String value = System.getenv(envVarName);
+        if (null == value) {
+            throw new UserException("For this test, please define environment variable \"" + envVarName + "\"");
+        }
+        return value;
+    }
+
     @BeforeSuite
     public void setTestVerbosity(){
         LoggingUtils.setLoggingLevel(Log.LogLevel.WARNING);
     }
 
     public static final Logger logger = LogManager.getLogger("org.broadinstitute.gatk");
-
-    /**
-     *  This is a public requester pays bucket owned by the broad-gatk-test project.
-     *  It must be owned by a different project than the service account doing the testing or the test may fail because it can access the
-     *  file directly through alternative permissions.
-     */
-    public static final String REQUESTER_PAYS_BUCKET = "gs://hellbender-requester-pays-test/";
-
-    /**
-     * A publicly readable GCS bucket set as requester pays, this should not be owned by the same project that is set
-     * as {@link BaseTest#getGCPTestProject()} or the tests for requester pays access may be invalid.
-     * @return HELLBENDER_REQUESTER_PAYS_BUCKET env. var if defined, {@value BaseTest#REQUESTER_PAYS_BUCKET}.
-     */
-    public static final String getGCPRequesterPaysBucket(){
-        final String valueFromEnvironment = System.getenv("HELLBENDER_REQUESTER_PAYS_BUCKET");
-        return Strings.isNullOrEmpty(valueFromEnvironment) ? REQUESTER_PAYS_BUCKET : valueFromEnvironment;
-    }
-
-    /**
-     * name of the google cloud project that stores the data and will run the code
-     * @return HELLBENDER_TEST_PROJECT env. var if defined, throws otherwise.
-     */
-    public static String getGCPTestProject() {
-        return getNonNullEnvironmentVariable("HELLBENDER_TEST_PROJECT");
-    }
-
-    /**
-     * A writable GCS path where java files can be cached and temporary test files can be written,
-     * of the form gs://bucket/, or gs://bucket/path/.
-     * @return HELLBENDER_TEST_STAGING env. var if defined, throws otherwise.
-     */
-    public static String getGCPTestStaging() {
-        return getNonNullEnvironmentVariable("HELLBENDER_TEST_STAGING");
-    }
-
-    /**
-     *  A GCS path where the test inputs are stored.
-     *
-     *  The value of HELLBENDER_TEST_INPUTS should end in a "/" (for example, "gs://hellbender/test/resources/")
-     *  
-     *  @return HELLBENDER_TEST_INPUTS env. var if defined, throws otherwise.
-     */
-    public static String getGCPTestInputPath() {
-        return getNonNullEnvironmentVariable("HELLBENDER_TEST_INPUTS");
-    }
 
     /**
      *  A path where the test inputs for the Funcotator LargeDataValidationTest are stored.
@@ -170,14 +132,6 @@ public abstract class BaseTest {
      */
     public static String getGoogleServiceAccountKeyPath() {
       return getNonNullEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS");
-    }
-
-    protected static String getNonNullEnvironmentVariable(String envVarName) {
-        String value = System.getenv(envVarName);
-        if (null == value) {
-            throw new UserException("For this test, please define environment variable \""+envVarName+"\"");
-        }
-        return value;
     }
 
     /**
@@ -513,7 +467,7 @@ public abstract class BaseTest {
      */
     protected FileSystem getAuthenticatedGcs(final String bucket) throws IOException {
         final byte[] creds = Files.readAllBytes(Paths.get(getGoogleServiceAccountKeyPath()));
-        return BucketUtils.getAuthenticatedGcs(getGCPTestProject(), bucket, creds);
+        return BucketUtils.getAuthenticatedGcs(GCloudTestUtils.getTestProject(), bucket, creds);
     }
 
     /**

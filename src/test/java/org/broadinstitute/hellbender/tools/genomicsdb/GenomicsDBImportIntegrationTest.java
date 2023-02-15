@@ -50,6 +50,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.BaseTest;
+import org.broadinstitute.hellbender.testutils.GCloudTestUtils;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.IndexFeatureFile;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -536,14 +537,14 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
     /**
      * Converts a list of large file paths into equivalent cloud paths
      * This must be done non-statically because any failure during static initialization results in hard to understand
-     * TestNG errors and it is possible for {@link BaseTest#getGCPTestInputPath()} to fail if the environment isn't
+     * TestNG errors and it is possible for {@link GCloudTestUtils#getTestInputPath()} to fail if the environment isn't
      * fully set up.
      *
      * The cloud bucket must be organized the same way as the local test files in order to resolve correctly.
      */
     private static List<String> resolveLargeFilesAsCloudURIs(final List<String> filenames){
         return filenames.stream()
-                .map( filename -> filename.replace(publicTestDir, getGCPTestInputPath()))
+                .map( filename -> filename.replace(publicTestDir, GCloudTestUtils.getTestInputPath()))
                 .peek( filename -> Assert.assertTrue(BucketUtils.isGcsUrl(filename)))
                 .collect(Collectors.toList());
     }
@@ -1566,7 +1567,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
 
     @Test(groups = {"bucket"})
     public void testWriteToAndQueryFromGCS() throws IOException {
-        final String workspace = BucketUtils.randomRemotePath(getGCPTestStaging(), "", "") + "/";
+        final String workspace = BucketUtils.randomRemotePath(GCloudTestUtils.getTestStaging(), "", "") + "/";
         IOUtils.deleteOnExit(IOUtils.getPath(workspace));
         writeToGenomicsDB(LOCAL_GVCFS, INTERVAL, workspace, 0, false, 0, 1);
         checkJSONFilesAreWritten(workspace);
@@ -1575,7 +1576,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
 
     @Test(groups = {"bucket"}, expectedExceptions = GenomicsDBImport.UnableToCreateGenomicsDBWorkspace.class)
     public void testWriteToExistingGCSDirectory() throws IOException {
-        final String workspace = BucketUtils.randomRemotePath(getGCPTestStaging(), "", "") + "/";
+        final String workspace = BucketUtils.randomRemotePath(GCloudTestUtils.getTestStaging(), "", "") + "/";
         IOUtils.deleteOnExit(IOUtils.getPath(workspace));
         int rc = GenomicsDBUtils.createTileDBWorkspace(workspace, false);
         Assert.assertEquals(rc, 0);
@@ -1584,7 +1585,7 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
 
     @Test(groups = {"bucket"})
     public void testWriteToAndQueryFromGCSUsingConnector() throws IOException {
-        final String workspace = BucketUtils.randomRemotePath(getGCPTestStaging(), "", "") + "/";
+        final String workspace = BucketUtils.randomRemotePath(GCloudTestUtils.getTestStaging(), "", "") + "/";
         IOUtils.deleteOnExit(IOUtils.getPath(workspace));
         Map<String, Object> options = new HashMap<String, Object>();
         options.put(GenomicsDBArgumentCollection.USE_GCS_HDFS_CONNECTOR, true);

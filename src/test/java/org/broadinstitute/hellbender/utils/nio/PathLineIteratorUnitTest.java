@@ -54,7 +54,7 @@ public class PathLineIteratorUnitTest extends GATKBaseTest {
     public void testPathLineIteratorWithGCS() throws IOException {
         // this file, potentially unlike the others in the set, is not marked as "Public link".
         final String privateFilePath = "org/broadinstitute/hellbender/utils/nio/private_file.txt";
-        final String privateFile = getGCPTestInputPath() + privateFilePath;
+        final String privateFile = GCloudTestUtils.getTestInputPath() + privateFilePath;
 
         try {
             Path path = Paths.get(URI.create((privateFile)));

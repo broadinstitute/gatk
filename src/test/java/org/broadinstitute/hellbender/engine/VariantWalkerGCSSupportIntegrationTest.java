@@ -59,7 +59,7 @@ public class VariantWalkerGCSSupportIntegrationTest extends CommandLineProgramTe
         }
 
         final IntegrationTestSpec testSpec = new IntegrationTestSpec(
-                " -V " + getGCPTestInputPath() + vcf +
+                " -V " + GCloudTestUtils.getTestInputPath() + vcf +
                 intervalArg +
                 " -O %s "+ " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE + " false",
                 Collections.singletonList(expectedOutput)

@@ -39,7 +39,7 @@ public class ParallelCopyGCSDirectoryIntoHDFSSparkIntegrationTest extends Comman
 
             // copy a multi-block file
             final Path tempPath = MiniClusterUtils.getTempPath(cluster, "test", "dir");
-            final String gcpInputPath = getGCPTestInputPath() + "huge/CEUTrio.HiSeq.WGS.b37.NA12878.chr1_4.bam.bai";
+            final String gcpInputPath = GCloudTestUtils.getTestInputPath() + "huge/CEUTrio.HiSeq.WGS.b37.NA12878.chr1_4.bam.bai";
             String args =
                     "--" + ParallelCopyGCSDirectoryIntoHDFSSpark.INPUT_GCS_PATH_LONG_NAME + " " + gcpInputPath +
                             " --" + ParallelCopyGCSDirectoryIntoHDFSSpark.OUTPUT_HDFS_DIRECTORY_LONG_NAME + " " + tempPath;
@@ -75,7 +75,7 @@ public class ParallelCopyGCSDirectoryIntoHDFSSparkIntegrationTest extends Comman
 
     @DataProvider(name = "directoryCopy")
     public Object[][] getDirectoryParams() {
-        final String gcpInputPath = getGCPTestInputPath() + "parallel_copy/";
+        final String gcpInputPath = GCloudTestUtils.getTestInputPath() + "parallel_copy/";
         final List<Object[]> tests = new ArrayList<>();
         tests.add(new Object[]{gcpInputPath, null, new String[] { "foo.txt", "bar.txt"}, new String[] { "d3b07384d113edec49eaa6238ad5ff00", "c157a79031e1c40f85931829bc5fc552"}});
         tests.add(new Object[]{gcpInputPath, "foo*", new String[] { "foo.txt" }, new String[] { "d3b07384d113edec49eaa6238ad5ff00" }});

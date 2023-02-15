@@ -48,8 +48,8 @@ public class DataprocIntegrationTest extends CommandLineProgramTest{
 
     @Test(dataProvider = "getCloudPaths", groups = {"cloud", "bucket"}, enabled = false)
     public void printReadSparkOnDataproc(final String input) throws IOException {
-        final String gcsInputPath = getGCPTestInputPath() + input;
-        final String outputPath = BucketUtils.getTempFilePath(getGCPTestStaging(), ".bam");
+        final String gcsInputPath = GCloudTestUtils.getTestInputPath() + input;
+        final String outputPath = BucketUtils.getTempFilePath(GCloudTestUtils.getTestStaging(), ".bam");
 
         final ArgumentsBuilder argBuilder = new ArgumentsBuilder();
         argBuilder.add("input", gcsInputPath)
@@ -81,8 +81,8 @@ public class DataprocIntegrationTest extends CommandLineProgramTest{
     //disabled due to https://github.com/broadinstitute/gatk/issues/3840
     @Test(groups = {"cloud","bucket"}, enabled=false)
     public void printVariantsOnDataproc() throws IOException {
-        final String gcsInputPath = getGCPTestInputPath() + "large/gvcfs/gatk3.7_30_ga4f720357.24_sample.21.expected.vcf";
-        final String outputPath = BucketUtils.getTempFilePath(getGCPTestStaging(), ".vcf");
+        final String gcsInputPath = GCloudTestUtils.getTestInputPath() + "large/gvcfs/gatk3.7_30_ga4f720357.24_sample.21.expected.vcf";
+        final String outputPath = BucketUtils.getTempFilePath(GCloudTestUtils.getTestStaging(), ".vcf");
 
         final ArgumentsBuilder argBuilder = new ArgumentsBuilder();
         argBuilder.add("V", gcsInputPath)
@@ -105,9 +105,9 @@ public class DataprocIntegrationTest extends CommandLineProgramTest{
     //TODO: Re-enable when dataproc tests pass again!
     @Test(groups = {"cloud", "bucket"}, enabled = false)
     public void markDuplicatesSparkOnDataproc() throws IOException {
-        final String gcsInputPath = getGCPTestInputPath() + "large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.tiny.queryname.noMD.bam";
-        final String bamOut = BucketUtils.getTempFilePath(getGCPTestStaging(), ".bam");
-        final String metricsOut = BucketUtils.getTempFilePath(getGCPTestStaging(), ".metrics");
+        final String gcsInputPath = GCloudTestUtils.getTestInputPath() + "large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.tiny.queryname.noMD.bam";
+        final String bamOut = BucketUtils.getTempFilePath(GCloudTestUtils.getTestStaging(), ".bam");
+        final String metricsOut = BucketUtils.getTempFilePath(GCloudTestUtils.getTestStaging(), ".metrics");
 
         final ArgumentsBuilder argBuilder = new ArgumentsBuilder();
         argBuilder.add("I", gcsInputPath)

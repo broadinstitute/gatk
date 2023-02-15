@@ -7,7 +7,6 @@ import htsjdk.samtools.SamFiles;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Iterator;
@@ -48,7 +47,7 @@ public class ReadUtilsIntegrationTest extends GATKBaseTest {
       final boolean createMD5,
       final boolean expectIndex) throws Exception {
 
-    final String outputPathName = BucketUtils.getTempFilePath(getGCPTestStaging() + "samWriterTest", outputExtension);
+    final String outputPathName = BucketUtils.getTempFilePath(GCloudTestUtils.getTestStaging() + "samWriterTest", outputExtension);
     final Path outputPath = BucketUtils.getPathOnGcs(outputPathName);
     final Path md5Path = BucketUtils.getPathOnGcs(outputPathName + ".md5");
 

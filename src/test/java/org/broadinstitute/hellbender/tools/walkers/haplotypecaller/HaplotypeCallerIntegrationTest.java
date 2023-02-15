@@ -737,7 +737,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     @Test(groups={"bucket"})
     public void testBamoutOnGcs() {
         final Path bamOutput = BucketUtils.getPathOnGcs(BucketUtils.getTempFilePath(
-            getGCPTestStaging() + "testBamoutProducesReasonablySizedOutput", ".bam"));
+            GCloudTestUtils.getTestStaging() + "testBamoutProducesReasonablySizedOutput", ".bam"));
         innerTestBamoutProducesReasonablySizedOutput(bamOutput);
     }
 

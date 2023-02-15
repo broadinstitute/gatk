@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.metrics;
 import htsjdk.samtools.metrics.MetricBase;
 import htsjdk.samtools.metrics.MetricsFile;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
+import org.broadinstitute.hellbender.testutils.GCloudTestUtils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
@@ -34,7 +35,7 @@ public class MetricsUtilsTest extends GATKBaseTest {
     public Object[][] getMetricsPaths(){
         return new Object[][]{
                 {"metrics"},
-                {getGCPTestStaging()},
+                {GCloudTestUtils.getTestStaging()},
                 {hdfsWorkingDir}
         };
     }

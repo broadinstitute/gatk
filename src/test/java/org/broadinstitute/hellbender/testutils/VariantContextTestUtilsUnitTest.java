@@ -44,7 +44,7 @@ public class VariantContextTestUtilsUnitTest extends GATKBaseTest {
 
     @Test(groups = {"bucket"}, dataProvider = "testReadEntireVCFIntoMemoryFromGCSData")
     public void testReadEntireVCFIntoMemoryFromGCS(final String vcf, final int expectedNumHeaderLines, final int expectedNumRecords) {
-        testReadEntireVCFIntoMemoryHelper(getGCPTestInputPath() + vcf, expectedNumHeaderLines, expectedNumRecords);
+        testReadEntireVCFIntoMemoryHelper(GCloudTestUtils.getTestInputPath() + vcf, expectedNumHeaderLines, expectedNumRecords);
     }
 
     private void testReadEntireVCFIntoMemoryHelper(final String vcf, final int expectedNumHeaderLines, final int expectedNumRecords) {

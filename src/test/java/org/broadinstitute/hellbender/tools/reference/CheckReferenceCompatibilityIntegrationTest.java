@@ -215,7 +215,7 @@ public class CheckReferenceCompatibilityIntegrationTest extends CommandLineProgr
 
     @DataProvider(name = "cloudInputData")
     public Object[][] cloudInputData() {
-        String testBucket = getGCPTestInputPath() + "org/broadinstitute/hellbender/tools/reference/";
+        String testBucket = GCloudTestUtils.getTestInputPath() + "org/broadinstitute/hellbender/tools/reference/";
         return new Object[][]{
                 // dict, list of refs, expected output, isBAM, isVCF
                 new Object[]{testBucket + "reads_data_source_test1_withmd5s.bam",

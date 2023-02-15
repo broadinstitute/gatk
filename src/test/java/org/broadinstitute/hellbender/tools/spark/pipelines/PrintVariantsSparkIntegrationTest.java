@@ -30,8 +30,8 @@ public final class PrintVariantsSparkIntegrationTest extends CommandLineProgramT
     @Test(dataProvider = "gcsTestingData", groups = "bucket")
     public void testGCSInputsAndOutputs(final String gcsInput, final String outputExtension,
         final boolean outputToGCS) {
-        final String gcsInputPath = getGCPTestInputPath() + gcsInput;
-        final String outputPrefix = outputToGCS ? getGCPTestStaging() : "testGCSInputsAndOutputs";
+        final String gcsInputPath = GCloudTestUtils.getTestInputPath() + gcsInput;
+        final String outputPrefix = outputToGCS ? GCloudTestUtils.getTestStaging() : "testGCSInputsAndOutputs";
         final String outputPath = BucketUtils.getTempFilePath(outputPrefix, outputExtension);
 
         final ArgumentsBuilder argBuilder = new ArgumentsBuilder();

@@ -115,7 +115,7 @@ public final class SimpleCountCollectionUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "simpleCountCollectionReadFromGCSTestData", groups = {"bucket"})
     public void testReadFromGCS(final String subPath) {
-        final SimpleCountCollection counts = SimpleCountCollection.readFromGCS(getGCPTestInputPath() + subPath);
+        final SimpleCountCollection counts = SimpleCountCollection.readFromGCS(GCloudTestUtils.getTestInputPath() + subPath);
         assertCountsExpected(counts);
     }
 
@@ -160,7 +160,7 @@ public final class SimpleCountCollectionUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "simpleCountCollectionReadFromGCSTestData", groups = {"bucket"})
     public void testReadOverlappingSubsetFromGCS(final String subPath) {
-        final String path = getGCPTestInputPath() + subPath;
+        final String path = GCloudTestUtils.getTestInputPath() + subPath;
 
         final SimpleCountCollection countsSubsetNull = SimpleCountCollection.readOverlappingSubsetFromGCS(path,
                 null);
@@ -204,7 +204,7 @@ public final class SimpleCountCollectionUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "simpleCountCollectionReadFromGCSTestData", groups = {"bucket"}, expectedExceptions = IllegalArgumentException.class)
     public void testReadOverlappingSubsetFromGCSSortedIntervals(final String subPath) {
-        final String path = getGCPTestInputPath() + subPath;
+        final String path = GCloudTestUtils.getTestInputPath() + subPath;
 
         SimpleCountCollection.readOverlappingSubsetFromGCS(path,
                 Arrays.asList(
@@ -215,7 +215,7 @@ public final class SimpleCountCollectionUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "simpleCountCollectionReadFromGCSTestData", groups = {"bucket"}, expectedExceptions = IllegalArgumentException.class)
     public void testReadOverlappingSubsetFromGCSNonOverlappingIntervals(final String subPath) {
-        final String path = getGCPTestInputPath() + subPath;
+        final String path = GCloudTestUtils.getTestInputPath() + subPath;
 
         SimpleCountCollection.readOverlappingSubsetFromGCS(path,
                 Arrays.asList(

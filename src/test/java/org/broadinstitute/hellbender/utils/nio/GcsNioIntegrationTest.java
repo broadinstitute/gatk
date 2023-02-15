@@ -48,7 +48,7 @@ public final class GcsNioIntegrationTest extends GATKBaseTest {
     public void writePrivateFile() throws IOException {
         try {
             final String dest = BucketUtils.getTempFilePath(
-                    getGCPTestStaging() +"GcsNioIntegrationTest-writePrivateFile-test", ".txt");
+                    GCloudTestUtils.getTestStaging() +"GcsNioIntegrationTest-writePrivateFile-test", ".txt");
             final Path outputPath = BucketUtils.getPathOnGcs(dest);
             System.out.println("Writing to " + dest);
             try (OutputStream os = Files.newOutputStream(outputPath)) {
@@ -71,7 +71,7 @@ public final class GcsNioIntegrationTest extends GATKBaseTest {
     @Test(groups = {"bucket"})
     public void openPrivateFileUsingDefaultCredentials() throws IOException {
         // this file, potentially unlike the others in the set, is not marked as "Public link".
-        final String privateFile = getGCPTestInputPath() + privateFilePath;
+        final String privateFile = GCloudTestUtils.getTestInputPath() + privateFilePath;
 
         try {
             Path path = Paths.get(URI.create((privateFile)));
@@ -91,7 +91,7 @@ public final class GcsNioIntegrationTest extends GATKBaseTest {
     @Test(groups = {"bucket"})
     public void openPrivateFileWithExplicitCredentials() throws IOException {
         // this file, potentially unlike the others in the set, is not marked as "Public link".
-        final String privateFile = getGCPTestInputPath() + privateFilePath;
+        final String privateFile = getTestInputPath() + privateFilePath;
         final String BUCKET = BucketUtils.getBucket(privateFile);
         final String pathWithoutBucket = BucketUtils.getPathWithoutBucket(privateFile);
 
@@ -116,8 +116,8 @@ public final class GcsNioIntegrationTest extends GATKBaseTest {
     @Test(enabled = false, groups = {"bucket"}, expectedExceptions = {StorageException.class})
     public void explicitCredentialsAreNotKept() throws IOException {
         // this file, potentially unlike the others in the set, is not marked as "Public link".
-        final String privateFile = getGCPTestInputPath() + privateFilePath;
-        final String privateFile2 = getGCPTestInputPath() + privateFilePath2;
+        final String privateFile = GCloudTestUtils.getTestInputPath() + privateFilePath;
+        final String privateFile2 = GCloudTestUtils.getTestInputPath() + privateFilePath2;
         final String BUCKET = BucketUtils.getBucket(privateFile);
         final String pathWithoutBucket = BucketUtils.getPathWithoutBucket(privateFile);
 
@@ -133,7 +133,7 @@ public final class GcsNioIntegrationTest extends GATKBaseTest {
 
     @Test(groups = {"bucket"})
     public void testCloseWhilePrefetching() throws Exception {
-        final String large = getGCPTestInputPath() + largeFilePath;
+        final String large = GCloudTestUtils.getTestInputPath() + largeFilePath;
         SeekableByteChannel chan = BucketUtils.addPrefetcher(10, Files.newByteChannel(Paths.get(URI.create(large))));
         // read just 1 byte, get the prefetching going
         ByteBuffer one = ByteBuffer.allocate(1);

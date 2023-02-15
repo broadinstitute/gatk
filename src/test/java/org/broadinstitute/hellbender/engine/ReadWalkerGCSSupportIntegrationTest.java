@@ -63,7 +63,7 @@ public class ReadWalkerGCSSupportIntegrationTest extends CommandLineProgramTest 
         String intervalArg = intervalArgBuilder.toString();
         
         final IntegrationTestSpec testSpec = new IntegrationTestSpec(
-                " -I " + getGCPTestInputPath() + bam +
+                " -I " + GCloudTestUtils.getTestInputPath() + bam +
                 intervalArg +
                 " -O %s",
                 Collections.singletonList(expectedOutput)
@@ -78,9 +78,9 @@ public class ReadWalkerGCSSupportIntegrationTest extends CommandLineProgramTest 
 
         final String[] args = new String[] {
             "ExampleReadWalkerWithReference",
-            "-I", getGCPTestInputPath() + "large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam",
-            "-R", getGCPTestInputPath() + "large/human_g1k_v37.20.21.fasta",
-            "-L", getGCPTestInputPath() + "large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.smallIntervalList.intervals",
+            "-I", GCloudTestUtils.getTestInputPath() + "large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam",
+            "-R", GCloudTestUtils.getTestInputPath() + "large/human_g1k_v37.20.21.fasta",
+            "-L", GCloudTestUtils.getTestInputPath() + "large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.smallIntervalList.intervals",
             "-O", output.getAbsolutePath()
         };
         new Main().instanceMain(args);

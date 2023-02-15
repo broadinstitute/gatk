@@ -13,7 +13,6 @@ import org.testng.annotations.Test;
 import org.testng.annotations.DataProvider;
 
 import java.io.*;
-import java.util.Arrays;
 
 
 public class ReferenceUtilsUnitTest extends GATKBaseTest {
@@ -87,7 +86,7 @@ public class ReferenceUtilsUnitTest extends GATKBaseTest {
 
     @Test(groups = {"bucket"})
     public void testLoadFastaDictionaryFromGCSBucket() throws IOException {
-        final String bucketDictionary = getGCPTestInputPath() + "org/broadinstitute/hellbender/utils/ReferenceUtilsTest.dict";
+        final String bucketDictionary = GCloudTestUtils.getTestInputPath() + "org/broadinstitute/hellbender/utils/ReferenceUtilsTest.dict";
 
         try ( final InputStream referenceDictionaryStream = BucketUtils.openFile(bucketDictionary) ) {
             final SAMSequenceDictionary dictionary = ReferenceUtils.loadFastaDictionary(referenceDictionaryStream);

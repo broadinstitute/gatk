@@ -2,12 +2,10 @@ package org.broadinstitute.hellbender.utils.gcs;
 
 import com.google.cloud.storage.StorageException;
 import com.google.cloud.storage.contrib.nio.CloudStorageConfiguration;
-import com.google.cloud.storage.contrib.nio.CloudStorageFileSystemProvider;
 import com.google.cloud.storage.contrib.nio.SeekableByteChannelPrefetcher;
 import htsjdk.samtools.util.IOUtil;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.GATKPath;
-import org.broadinstitute.hellbender.testutils.BaseTest;
 import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
 import org.broadinstitute.hellbender.utils.config.ConfigFactory;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -18,8 +16,6 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -37,7 +33,7 @@ public final class BucketUtilsUnitTest extends GATKBaseTest {
      * a different project than the service account doing the testing or the test may fail because it can access the
      * file directly    through alternative permissions.
      */
-    public static final String FILE_IN_REQUESTER_PAYS_BUCKET = getGCPRequesterPaysBucket() + "test/resources/nio/big.txt";
+    public static final String FILE_IN_REQUESTER_PAYS_BUCKET = GCloudTestUtils.getRequesterPaysBucket() + "test/resources/nio/big.txt";
 
     static {
         setDefaultNioOptions();
@@ -58,7 +54,7 @@ public final class BucketUtilsUnitTest extends GATKBaseTest {
     private static void setRequesterPays(){
         BucketUtils.setGlobalNIODefaultOptions(
                 ConfigFactory.getInstance().getGATKConfig().gcsMaxRetries(),
-                BaseTest.getGCPTestProject());
+                GCloudTestUtils.getTestProject());
     }
 
     @Test(groups={"bucket"})
@@ -179,7 +175,7 @@ public final class BucketUtilsUnitTest extends GATKBaseTest {
     public void testCopyAndDeleteGCS() throws IOException {
         final String src = publicTestDir + "empty.vcf";
         File dest = createTempFile("copy-empty", ".vcf");
-        final String intermediate = BucketUtils.randomRemotePath(getGCPTestStaging(), "test-copy-empty", ".vcf");
+        final String intermediate = BucketUtils.randomRemotePath(GCloudTestUtils.getTestStaging(), "test-copy-empty", ".vcf");
         Assert.assertTrue(BucketUtils.isGcsUrl(intermediate), "!BucketUtils.isCloudStorageUrl(intermediate)");
         BucketUtils.copyFile(src, intermediate);
         BucketUtils.copyFile(intermediate, dest.getPath());
@@ -238,7 +234,7 @@ public final class BucketUtilsUnitTest extends GATKBaseTest {
     @Test(groups={"bucket"})
     public void testDirSizeGCS() throws IOException, GeneralSecurityException {
         final String src = publicTestDir + "empty.vcf";
-        final String gcsSubDir = BucketUtils.randomRemotePath(getGCPTestStaging(), "dir-", "/");
+        final String gcsSubDir = BucketUtils.randomRemotePath(GCloudTestUtils.getTestStaging(), "dir-", "/");
         final String intermediate = BucketUtils.randomRemotePath(gcsSubDir, "test-copy-empty", ".vcf");
         BucketUtils.copyFile(src, intermediate);
         Assert.assertTrue(BucketUtils.fileExists(intermediate));
@@ -284,7 +280,7 @@ public final class BucketUtilsUnitTest extends GATKBaseTest {
 
     @Test(groups="cloud")
     public void testCreateSignedUrl() throws IOException {
-        final String gcsPathString = getGCPTestInputPath() + "nio/big.txt";
+        final String gcsPathString = GCloudTestUtils.getTestInputPath() + "nio/big.txt";
         Assert.assertTrue(Files.exists(IOUtils.getPath(gcsPathString)), "test file is missing, " + gcsPathString);
 
         final String signed = BucketUtils.createSignedUrlToGcsObject(gcsPathString, 1);

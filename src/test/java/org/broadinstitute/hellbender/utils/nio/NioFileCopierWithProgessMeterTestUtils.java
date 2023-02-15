@@ -19,7 +19,7 @@ public class NioFileCopierWithProgessMeterTestUtils {
     static Path getSourcePathFromPseudoUrl(final String source) {
         final Path sourcePath;
         if (source.startsWith("GS:")) {
-            sourcePath = IOUtils.getPath(BaseTest.getGCPTestInputPath() + source.substring(3));
+            sourcePath = IOUtils.getPath(GCloudTestUtils.getTestInputPath() + source.substring(3));
         }
         else {
             final String sourceBaseName = FilenameUtils.getBaseName(source);
@@ -34,7 +34,7 @@ public class NioFileCopierWithProgessMeterTestUtils {
         if (dest.startsWith("GS:")) {
             final String destBaseName = FilenameUtils.getBaseName(dest.substring(3));
             final String destExtension = FilenameUtils.getExtension(dest.substring(3));
-            destPath = BucketUtils.getPathOnGcs(BucketUtils.getTempFilePath(BaseTest.getGCPTestStaging() + destBaseName, destExtension));
+            destPath = BucketUtils.getPathOnGcs(BucketUtils.getTempFilePath(GCloudTestUtils.getTestStaging() + destBaseName, destExtension));
         }
         else {
             destPath = BaseTest.getSafeNonExistentPath(dest);

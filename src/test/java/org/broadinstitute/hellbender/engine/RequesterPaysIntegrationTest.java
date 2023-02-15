@@ -5,6 +5,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.GCloudTestUtils;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.tools.examples.ExampleReadWalkerWithVariants;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -26,10 +27,10 @@ public class RequesterPaysIntegrationTest extends CommandLineProgramTest {
     public Object[][] getRequesterPaysPaths() {
 
         //Files here are paid for by the bucket owners
-        final String OWNER = getGCPTestInputPath() + "org/broadinstitute/hellbender/engine/RequesterPaysIntegrationTest/";
+        final String OWNER = GCloudTestUtils.getTestInputPath() + "org/broadinstitute/hellbender/engine/RequesterPaysIntegrationTest/";
 
         //Files here are requester pays
-        final String REQUESTER = getGCPRequesterPaysBucket() + "test/resources/nio/";
+        final String REQUESTER = GCloudTestUtils.getRequesterPaysBucket() + "test/resources/nio/";
 
         return new Object[][]{
                 {OWNER, OWNER, OWNER, OWNER, false},
@@ -62,7 +63,7 @@ public class RequesterPaysIntegrationTest extends CommandLineProgramTest {
                         .addVCF(vcfBase + "example_variants_withSequenceDict.vcf")
                         .addInterval(intervalBase + "hg19mini.all.interval_list")
                         .addOutput(output)
-                        .add(StandardArgumentDefinitions.NIO_PROJECT_FOR_REQUESTER_PAYS_LONG_NAME, getGCPTestProject());
+                        .add(StandardArgumentDefinitions.NIO_PROJECT_FOR_REQUESTER_PAYS_LONG_NAME, GCloudTestUtils.getTestProject());
                 runCommandLine(args);
         IntegrationTestSpec.assertEqualTextFiles(output, new File(packageRootTestDir+"engine/RequesterPaysIntegrationTest/expected_ExampleReadWalkerWithVariantsIntegrationTest_output.txt"));
     }

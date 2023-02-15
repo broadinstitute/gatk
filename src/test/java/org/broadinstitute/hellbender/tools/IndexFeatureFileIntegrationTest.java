@@ -58,7 +58,7 @@ public final class IndexFeatureFileIntegrationTest extends CommandLineProgramTes
     public void testVCFIndexOnCloud() throws IOException {
         final File testFile = getTestFile("test_variants_for_index.vcf");
         final String vcfOnGCS = BucketUtils.getTempFilePath(
-                getGCPTestStaging() +"testIndexOnCloud", ".vcf");
+                GCloudTestUtils.getTestStaging() +"testIndexOnCloud", ".vcf");
         BucketUtils.copyFile(testFile.getAbsolutePath(), vcfOnGCS);
 
         final String[] args = new String[] {

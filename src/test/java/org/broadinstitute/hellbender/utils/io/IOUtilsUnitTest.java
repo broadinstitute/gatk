@@ -419,7 +419,7 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
 
     @Test(groups={"bucket"})
     public void testGetPath() throws IOException {
-        innerTestGetPath(getGCPTestInputPath() + "large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam");
+        innerTestGetPath(GCloudTestUtils.getTestInputPath() + "large/CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam");
         innerTestGetPath("file://" + NA12878_20_21_WGS_bam);
         innerTestGetPath(NA12878_20_21_WGS_bam);
     }
@@ -721,7 +721,7 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
 
     @Test(groups={"bucket"})
     public void testDeleteRecursivelyGCS() throws IOException {
-        final String gcsFolder = BucketUtils.randomRemotePath(getGCPTestStaging(), "test-dir", "");
+        final String gcsFolder = BucketUtils.randomRemotePath(GCloudTestUtils.getTestStaging(), "test-dir", "");
         final Path gcsFolderPath = IOUtils.getPath(gcsFolder+"/");
         Files.createDirectory(gcsFolderPath);
         Assert.assertTrue(Files.exists(gcsFolderPath));

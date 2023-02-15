@@ -104,7 +104,7 @@ public class CompareReferencesIntegrationTest extends CommandLineProgramTest {
 
     @DataProvider(name = "cloudInputData")
     public Object[][] cloudInputData() {
-        String testBucket = getGCPTestInputPath() + "org/broadinstitute/hellbender/tools/reference/";
+        String testBucket = GCloudTestUtils.getTestInputPath() + "org/broadinstitute/hellbender/tools/reference/";
         return new Object[][]{
                 // list of refs, expected output
                 new Object[]{ Arrays.asList(testBucket + "hg19mini.fasta",

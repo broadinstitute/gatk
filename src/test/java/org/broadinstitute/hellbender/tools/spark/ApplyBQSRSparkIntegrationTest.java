@@ -65,7 +65,7 @@ public final class ApplyBQSRSparkIntegrationTest extends CommandLineProgramTest 
 
     @DataProvider(name = "ApplyBQSRTestGCS")
     public Object[][] createABQSRTestDataGCS() {
-        final String resourceDirGCS = getGCPTestInputPath() + THIS_TEST_FOLDER;
+        final String resourceDirGCS = GCloudTestUtils.getTestInputPath() + THIS_TEST_FOLDER;
         final String hiSeqBamGCS = resourceDirGCS + "HiSeq.1mb.1RG.2k_lines.alternate_allaligned.bam";
 
         List<Object[]> tests = new ArrayList<>();
@@ -121,7 +121,7 @@ public final class ApplyBQSRSparkIntegrationTest extends CommandLineProgramTest 
     public void testPR_Cloud(ABQSRTest params) throws IOException {
         String args =
                 " -I " + params.bam +
-                        " --" + StandardArgumentDefinitions.BQSR_TABLE_LONG_NAME + " " + getGCPTestInputPath() + THIS_TEST_FOLDER + "HiSeq.20mb.1RG.table.gz " +
+                        " --" + StandardArgumentDefinitions.BQSR_TABLE_LONG_NAME + " " + GCloudTestUtils.getTestInputPath() + THIS_TEST_FOLDER + "HiSeq.20mb.1RG.table.gz " +
                         params.args +
                         " -O %s";
         IntegrationTestSpec spec = new IntegrationTestSpec(

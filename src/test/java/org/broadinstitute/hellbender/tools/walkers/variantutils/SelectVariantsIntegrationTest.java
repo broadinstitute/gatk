@@ -1233,7 +1233,7 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
         final String testFile = getToolTestDataDir() + "vcfexample2.vcf";
 
         final String out = BucketUtils.getTempFilePath(
-            getGCPTestStaging() +"testSelectVariants_SimpleSelection", ".vcf");
+            GCloudTestUtils.getTestStaging() +"testSelectVariants_SimpleSelection", ".vcf");
 
         final String[] args = new String[]{
             "SelectVariants",
@@ -1261,6 +1261,14 @@ public class SelectVariantsIntegrationTest extends CommandLineProgramTest {
                 .addVCF(input)
                 .addReference(b37Reference)
                 .addOutput(output);
+        runCommandLine(args);
+    }
+
+    @Test
+    public void testLongRef(){
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addVCF("/Users/louisb/Workspace/htsjdk/longRef.vcf")
+                .addOutput("out.vcf.gz");
         runCommandLine(args);
     }
 }
