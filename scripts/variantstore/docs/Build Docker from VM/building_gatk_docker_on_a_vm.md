@@ -27,7 +27,7 @@ sudo bash
 
 Now as root:
 
-````
+```
 apt-get update
 
 # Install git and Docker dependencies
@@ -54,3 +54,5 @@ DOCKER_IMAGE_ID=$(docker images | head -n 2 | tail -n 1 | awk '{print $3}')
 docker tag $DOCKER_IMAGE_ID $DOCKER_TAG
 docker push $DOCKER_TAG
 ```
+
+Don't forget to shut down (and possibly delete) your VM once you're done!
