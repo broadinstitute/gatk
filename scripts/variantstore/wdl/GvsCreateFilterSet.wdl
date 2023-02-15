@@ -16,8 +16,7 @@ workflow GvsCreateFilterSet {
     Array[String] snp_recalibration_annotation_values = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"]
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
-    # TODO! - remove this and use the docker when done testing
-    File? gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/gg_VS-815_AddYNGToVQSRLite_20230213/gatk-package-4.2.0.0-662-g7beea31-SNAPSHOT-local.jar"
+    File? gatk_override
 
     Boolean use_classic_VQSR = true
     Int? INDEL_VQSR_max_gaussians_override = 4
@@ -426,7 +425,7 @@ task ExtractFilterTask {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_02_07_38fb966b84d138680e9e46992ae60feb28127d41"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_02_15_7274e012706cb2fa15ed3fb1e12d7e9ae28aa4a1"
     memory: "7 GB"
     disks: "local-disk 10 HDD"
     bootDiskSizeGb: 15
@@ -506,7 +505,7 @@ task PopulateFilterSetInfo {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_02_07_38fb966b84d138680e9e46992ae60feb28127d41"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_02_15_7274e012706cb2fa15ed3fb1e12d7e9ae28aa4a1"
     memory: "3500 MB"
     disks: "local-disk 250 HDD"
     bootDiskSizeGb: 15
@@ -562,7 +561,7 @@ task PopulateFilterSetSites {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_02_07_38fb966b84d138680e9e46992ae60feb28127d41"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_02_15_7274e012706cb2fa15ed3fb1e12d7e9ae28aa4a1"
     memory: "3500 MB"
     disks: "local-disk 200 HDD"
     bootDiskSizeGb: 15
@@ -609,7 +608,7 @@ task PopulateFilterSetTranches {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_02_07_38fb966b84d138680e9e46992ae60feb28127d41"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_02_15_7274e012706cb2fa15ed3fb1e12d7e9ae28aa4a1"
     memory: "3500 MB"
     disks: "local-disk 200 HDD"
     bootDiskSizeGb: 15
