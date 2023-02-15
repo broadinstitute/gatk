@@ -13,7 +13,7 @@ workflow GvsValidateVat {
 
     call Utils.GetBQTableLastModifiedDatetime {
         input:
-            query_project = project_id,
+            project_id = project_id,
             fq_table = fq_vat_table
     }
 
