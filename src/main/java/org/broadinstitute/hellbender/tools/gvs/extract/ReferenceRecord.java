@@ -6,8 +6,6 @@ import org.apache.avro.util.Utf8;
 import org.apache.commons.lang.builder.ReflectionToStringBuilder;
 import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
 
-import java.util.Objects;
-
 public class ReferenceRecord implements Locatable, Comparable<ReferenceRecord> {
 
     private final long location;
@@ -27,7 +25,7 @@ public class ReferenceRecord implements Locatable, Comparable<ReferenceRecord> {
 
         int length = Math.toIntExact((Long) genericRecord.get("length"));
         this.end = this.start + length - 1;
-        this.endLocation = this.location + + length - 1;
+        this.endLocation = this.location + length - 1;
         this.state = ((Utf8) genericRecord.get(SchemaUtils.STATE_FIELD_NAME)).toString();
     }
 
