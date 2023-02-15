@@ -12,7 +12,7 @@ GCR_TAG="us.gcr.io/${REPO_WITH_TAG}"
 
 docker build . -t "${REPO_WITH_TAG}" -f Dockerfile.cromwell_on_azure
 
-# docker tag "${REPO_WITH_TAG}" "${GCR_TAG}"
-# docker push "${GCR_TAG}"
+docker tag "${REPO_WITH_TAG}" "${GCR_TAG}"
+docker push "${GCR_TAG}"
 
-# echo "docker image pushed to \"${GCR_TAG}\""
+echo "Docker image pushed to \"${GCR_TAG}\""
