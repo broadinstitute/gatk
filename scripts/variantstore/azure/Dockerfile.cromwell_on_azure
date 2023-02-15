@@ -22,6 +22,7 @@ RUN apt-get install --assume-yes azure-cli
 
 # Install sqlcmd
 # https://learn.microsoft.com/en-us/sql/linux/sql-server-linux-setup-tools?view=sql-server-ver16&tabs=ubuntu-install%2Credhat-offline#install-tools-on-linux
+# Also sneak in an installation of the driver for Microsoft databases via `msodbcsql18`.
 RUN curl https://packages.microsoft.com/keys/microsoft.asc | \
     apt-key add -
 
@@ -33,7 +34,7 @@ RUN apt-get update
 # sneaky EULA "acceptance" https://stackoverflow.com/a/42383714
 ENV ACCEPT_EULA=Y
 
-RUN apt-get install --assume-yes mssql-tools unixodbc-dev
+RUN apt-get install --assume-yes mssql-tools unixodbc-dev msodbcsql18
 ENV PATH=$PATH:/opt/mssql-tools/bin
 
 # Python!

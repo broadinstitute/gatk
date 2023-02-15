@@ -126,7 +126,7 @@ if __name__ == '__main__':
     parser.add_argument('--workflow', type=str, help='Workflow WDL source', required=True)
     parser.add_argument('--sql-server', type=str, help='Azure SQL Server name', required=True)
     parser.add_argument('--sql-database', type=str, help='Azure SQL Server database', required=True)
-    parser.add_argument('--access-token', type=str, help='Azure SQL Database access token', required=True)
+    parser.add_argument('--database-access-token', type=str, help='Azure SQL Database access token', required=True)
     parser.add_argument('--resource-group', type=str, help='Azure Resource Group name', required=False)
     args = parser.parse_args()
 
@@ -161,7 +161,7 @@ if __name__ == '__main__':
         workflow_storage_path = f'/{storage_account.name}/inputs/{blob_address}'
 
     # Stage the access token into /<storage container>/inputs/<user name>/db_access_token.txt
-    with open(args.access_token, "rb") as token:
+    with open(args.database_access_token, "rb") as token:
         blob_address = f"{os.environ['USER']}/db_access_token.txt"
         blob_client = inputs_client.get_blob_client(blob_address)
         blob_client.upload_blob(token, overwrite=True)
