@@ -16,7 +16,8 @@ workflow GvsCreateFilterSet {
     Array[String] snp_recalibration_annotation_values = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"]
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
-    File? gatk_override
+    # TODO! - remove this and use the docker when done testing
+    File? gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/gg_VS-815_AddYNGToVQSRLite_20230213/gatk-package-4.2.0.0-662-g7beea31-SNAPSHOT-local.jar"
 
     Boolean use_classic_VQSR = true
     Int? INDEL_VQSR_max_gaussians_override = 4
@@ -60,8 +61,8 @@ workflow GvsCreateFilterSet {
   String fq_tranches_destination_table = "~{project_id}.~{dataset_name}.filter_set_tranches"
   String fq_filter_sites_destination_table = "~{project_id}.~{dataset_name}.filter_set_sites"
 
-  String fq_info_destination_table_schema = "filter_set_name:string,type:string,location:integer,ref:string,alt:string,vqslod:float,culprit:string,training_label:string,yng_status:string"
-  String fq_info_destination_table_vqsr_lite_schema = "filter_set_name:string,type:string,location:integer,ref:string,alt:string,vqslod:float,culprit:string,training_label:string,yng_status:string,calibration_sensitivity:float"
+  String fq_info_destination_table_schema =           "filter_set_name:string,type:string,location:integer,ref:string,alt:string,vqslod:float,culprit:string,training_label:string,yng_status:string"
+  String fq_info_destination_table_vqsr_lite_schema = "filter_set_name:string,type:string,location:integer,ref:string,alt:string,calibration_sensitivity:float,culprit:string,training_label:string,yng_status:string"
 
   call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
     input:
@@ -425,7 +426,7 @@ task ExtractFilterTask {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_02_15_15677b35536995f14da705ac23c5d1c8b30797ae"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_02_07_38fb966b84d138680e9e46992ae60feb28127d41"
     memory: "7 GB"
     disks: "local-disk 10 HDD"
     bootDiskSizeGb: 15
@@ -505,7 +506,7 @@ task PopulateFilterSetInfo {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_02_15_15677b35536995f14da705ac23c5d1c8b30797ae"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_02_07_38fb966b84d138680e9e46992ae60feb28127d41"
     memory: "3500 MB"
     disks: "local-disk 250 HDD"
     bootDiskSizeGb: 15
@@ -561,7 +562,7 @@ task PopulateFilterSetSites {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_02_15_15677b35536995f14da705ac23c5d1c8b30797ae"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_02_07_38fb966b84d138680e9e46992ae60feb28127d41"
     memory: "3500 MB"
     disks: "local-disk 200 HDD"
     bootDiskSizeGb: 15
@@ -608,7 +609,7 @@ task PopulateFilterSetTranches {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_02_15_15677b35536995f14da705ac23c5d1c8b30797ae"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_02_07_38fb966b84d138680e9e46992ae60feb28127d41"
     memory: "3500 MB"
     disks: "local-disk 200 HDD"
     bootDiskSizeGb: 15

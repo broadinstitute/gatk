@@ -28,7 +28,7 @@ workflow GvsExtractCallset {
     File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
     Boolean use_classic_VQSR = true
 
-    File? gatk_override
+    File? gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/gg_VS-694_VQSR_Lite_20230208/gatk-package-4.2.0.0-655-gc55c463-SNAPSHOT-local.jar"
 
     String output_file_base_name = filter_set_name
 
@@ -348,7 +348,7 @@ task ExtractTask {
     echo ~{interval_index},${OUTPUT_FILE_DEST},${OUTPUT_FILE_BYTES},${OUTPUT_FILE_INDEX_DEST},${OUTPUT_FILE_INDEX_BYTES} >> manifest.txt
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_02_15_15677b35536995f14da705ac23c5d1c8b30797ae"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_02_07_38fb966b84d138680e9e46992ae60feb28127d41"
     memory: "12 GB"
     disks: "local-disk 150 HDD"
     bootDiskSizeGb: 15
