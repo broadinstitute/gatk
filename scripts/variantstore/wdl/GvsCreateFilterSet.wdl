@@ -161,7 +161,8 @@ workflow GvsCreateFilterSet {
     # These calls to SelectVariants are being added for two reasons
     # 1) The snps_variant_scored_vcf and indels_variant_scored_vcf output by JointVcfFiltering contains ALL variants,
     #     but are currently ONLY annotating SNPs and INDELs respectively.
-    # 2) Those output VCFs also contain filtered sites which we don't want to put into the filter_set_info_vqsr_lite table.
+    # 2) Those output VCFs also contain filtered sites (sites at which the FILTER field set to anything other than '.' or 'PASS')
+    #     which we don't want to put into the filter_set_info_vqsr_lite table.
     call Utils.SelectVariants as CreateFilteredScoredSNPsVCF {
       input:
         input_vcf = MergeSNPScoredVCFs.output_vcf,
@@ -424,7 +425,7 @@ task ExtractFilterTask {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_02_07_38fb966b84d138680e9e46992ae60feb28127d41"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_02_15_15677b35536995f14da705ac23c5d1c8b30797ae"
     memory: "7 GB"
     disks: "local-disk 10 HDD"
     bootDiskSizeGb: 15
@@ -504,7 +505,7 @@ task PopulateFilterSetInfo {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_02_07_38fb966b84d138680e9e46992ae60feb28127d41"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_02_15_15677b35536995f14da705ac23c5d1c8b30797ae"
     memory: "3500 MB"
     disks: "local-disk 250 HDD"
     bootDiskSizeGb: 15
@@ -560,7 +561,7 @@ task PopulateFilterSetSites {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_02_07_38fb966b84d138680e9e46992ae60feb28127d41"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_02_15_15677b35536995f14da705ac23c5d1c8b30797ae"
     memory: "3500 MB"
     disks: "local-disk 200 HDD"
     bootDiskSizeGb: 15
@@ -607,7 +608,7 @@ task PopulateFilterSetTranches {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_02_07_38fb966b84d138680e9e46992ae60feb28127d41"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_02_15_15677b35536995f14da705ac23c5d1c8b30797ae"
     memory: "3500 MB"
     disks: "local-disk 200 HDD"
     bootDiskSizeGb: 15
