@@ -20,12 +20,6 @@ echo "deb https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_COD
 apt-get -qq update
 apt -qq install -y temurin-8-jdk
 
-# Switch to 150 GiB data disk
-cd /mnt
-mkdir gitrepos
-git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ah_var_store --single-branch
-cd gatk
-
 export GITHUB_HASH=$(git rev-parse HEAD)
 export STAGING_DIR=/mnt/staging-tmp
 bash build_docker.sh -u -e ${GITHUB_HASH} -s -d ${STAGING_DIR}

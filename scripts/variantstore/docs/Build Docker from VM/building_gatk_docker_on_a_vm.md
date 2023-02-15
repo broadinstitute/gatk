@@ -35,8 +35,8 @@ apt-get install --assume-yes git-core git-lfs
 
 # Switch to 150 GiB data disk
 cd /mnt
-mkdir gitrepos
-git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ah_var_store --single-branch
+mkdir gitrepos && cd gitrepos
+git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch vs_827_build_gatk_image_docs --single-branch
 cd gatk
 
 # Run a helper script with lots more commands for building a GATK Docker image:
