@@ -1,7 +1,7 @@
 # Genome Variant Store (GVS) Pipeline for VCF Output
 
 ## Setup
-- Create a Terra workspace and hare it with `dsp-variant-team@firecloud.org` so the rest of the team can see it (Reader) and with the individual users who will be running the workflows (Owner).
+- Create a Terra workspace and share it with `dsp-variant-team@firecloud.org` so the rest of the team can see it (Reader) and with the individual users who will be running the workflows (Owner).
 - Populate the workspace with the following:
   - [Fetch WGS metadata for samples from list](http://app.terra.bio/#workspaces/allofus-drc-wgs-dev/GVS%20AoU%20WGS%20Charlie/notebooks/launch/Fetch%20WGS%20metadata%20for%20samples%20from%20list.ipynb) notebook
   - [GvsAssignIds](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsAssignIds) workflow
@@ -17,7 +17,7 @@
 - Run the "Fetch WGS metadata for samples from list" notebook after you have placed the file with the list of the new samples to ingest in a GCS location the notebook (running with your @pmi-ops account) will have access to.  This will grab the samples from the workspace where they were reblocked and bring them into this callset workspace.
   - Set the `sample_list_file_path` variable in that notebook to the path of the file
   - Run the "now that the data have been copied, you can make sample sets if you wish" step if you want to automatically break up the new samples into smaller sample sets.  Set the `SUBSET_SIZE` and `set_name` variables to customize.
-- **NOTE** If you want to create a large sample set after you have run the notebook, Terra provides (and recommends you use) this python [script](https://github.com/broadinstitute/firecloud-tools/tree/master/scripts/import_large_tsv) which allows you to upload a sample set to the workspace.
+- **NOTE** If you want to create a large sample set after you have run the notebook, Terra provides (and recommends you use) this Python [script](https://github.com/broadinstitute/firecloud-tools/tree/master/scripts/import_large_tsv) which allows you to upload a sample set to the workspace.
 - You will want to increase the Google quotas for the workspace project (you can find this in the workspace dashboard under Cloud Information > Google Project ID) to these levels (all in the workspace region):
   - Persistent Disk Standard (GB): 1,000,000 (1 PB)
   - CPUs: 6,400
@@ -61,6 +61,6 @@
      - Add the "BigQuery Data Viewer" role for your Terra proxy group on the `spec-ops-aou:gvs_public_reference_data.gnomad_v3_sites` table 
      - You will need the `filter_set_name` and `extract_table_prefix` from step 5 & 6.
 9. `GvsCalculatePrecisionAndSensitivity` workflow
-    - Add the "Storage Object View" access granted for your Terra proxy group on the `gs://broad-dsp-spec-ops/gvs/truth` directory
+    - Add the "Storage Object Viewer" access granted for your Terra proxy group on the `gs://broad-dsp-spec-ops/gvs/truth` directory
 10. `GvsCallsetCost`
     - The cost from this callset, which represents the total BigQuery cost (which is not represented in the Terra UI total workflow cost) from the GVS pipeline workflows, is used to calculate the cost of the callset as a whole and by sample.
