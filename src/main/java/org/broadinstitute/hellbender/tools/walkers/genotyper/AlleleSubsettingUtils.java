@@ -138,8 +138,8 @@ public final class AlleleSubsettingUtils {
             if(g.hasAD()) {
                 final int[] newAD = getNewAlleleBasedReadCountAnnotation(allelesToKeep, allelePermutation, g.getAD());
                 gb.AD(newAD);
-                // if we have recalculated AD and the original genotype had AF, then recalculate AF based on AD counts
-                if (g.hasExtendedAttribute(GATKVCFConstants.ALLELE_FRACTION_KEY)) {
+                // if we have recalculated AD and the original genotype had AF but was then removed, then recalculate AF based on AD counts
+                if (alleleBasedLengthAnnots.contains(GATKVCFConstants.ALLELE_FRACTION_KEY) && g.hasExtendedAttribute(GATKVCFConstants.ALLELE_FRACTION_KEY)) {
                     final double[] newAFs = MathUtils.normalizeSumToOne(Arrays.stream(newAD).mapToDouble(x -> x).toArray());
                     gb.attribute(GATKVCFConstants.ALLELE_FRACTION_KEY, Arrays.copyOfRange(newAFs, 1, newAFs.length)); //omit the first entry of the array corresponding to the reference
                 }
