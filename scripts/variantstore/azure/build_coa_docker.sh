@@ -1,6 +1,6 @@
 if [ $# -lt 1 ]; then
     echo "USAGE: ./build_coa_docker.sh [DOCKER_TAG_STRING] [OPTIONAL:LATEST]"
-    echo " e.g.: ./build_coa_docker.sh 2023-02-09"
+    echo " e.g.: ./build_coa_docker.sh $(date -I)"
     exit 1
 fi
 
@@ -12,7 +12,7 @@ GCR_TAG="us.gcr.io/${REPO_WITH_TAG}"
 
 docker build . -t "${REPO_WITH_TAG}" -f Dockerfile.cromwell_on_azure
 
-# docker tag "${REPO_WITH_TAG}" "${GCR_TAG}"
-# docker push "${GCR_TAG}"
-#
-# echo "Docker image pushed to \"${GCR_TAG}\""
+docker tag "${REPO_WITH_TAG}" "${GCR_TAG}"
+docker push "${GCR_TAG}"
+
+echo "Docker image pushed to \"${GCR_TAG}\""

@@ -9,7 +9,7 @@ workflow HelloAzure {
     }
     parameter_meta {
         sql_server: {
-            description: "Name of the Azure SQL Database Server"
+            description: "Name of the Azure SQL Database Server without .database.windows.net suffix"
         }
         sql_database: {
             description: "Name of the Database within the Azure SQL Database Server"
@@ -30,7 +30,6 @@ workflow HelloAzure {
         input:
             sql_server = sql_server,
             sql_database = sql_database,
-            database_access_token = database_access_token,
             python_script = python_script
     }
 
@@ -65,7 +64,7 @@ task HelloFromSqlcmd {
         sqlcmd -S tcp:~{sql_server}.database.windows.net,1433 -d ~{sql_database} -G -Q 'select @@version as "Hello Azure SQL Database!"' -P /tmp/db_access_token.txt
     >>>
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:coa-2023-02-09"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:coa-2023-02-15"
     }
     output {
         String out = read_string(stdout())
@@ -76,7 +75,6 @@ task HelloFromPython {
     input {
         String sql_server
         String sql_database
-        File database_access_token
         File python_script
     }
     command <<<
@@ -84,10 +82,10 @@ task HelloFromPython {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        python3 ~{python_script}
+        python3 ~{python_script} --sql-server ~{sql_server} --sql-database ~{sql_database}
     >>>
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:coa-2023-02-09"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:coa-2023-02-15"
     }
     output {
         String out = read_string(stdout())

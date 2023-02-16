@@ -78,6 +78,9 @@ az sql server ad-admin create --object-id ${AZ_SQLDB_AD_ADMIN_GROUP_ID} --displa
 get_db_token() {
     # https://learn.microsoft.com/en-us/sql/connect/odbc/linux-mac/connecting-with-sqlcmd?view=azuresqldb-current
     az account get-access-token --resource https://database.windows.net --output tsv | cut -f 1 | tr -d '\n' | iconv -f ascii -t UTF-16LE
+
+    # Perhaps (much) more simply per https://techcommunity.microsoft.com/t5/apps-on-azure-blog/how-to-connect-azure-sql-database-from-python-function-app-using/ba-p/3035595
+    # az account get-access-token --resource=https://database.windows.net/ --query accessToken
 }
 
 # On Mac:
