@@ -95,7 +95,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - updating_docker_image
    - name: GvsPopulateAltAllele
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPopulateAltAllele.wdl
