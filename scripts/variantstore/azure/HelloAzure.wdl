@@ -19,6 +19,8 @@ workflow HelloAzure {
         }
     }
 
+    Boolean batch_vms_have_managed_identity = false
+
     call HelloFromSqlcmd {
         input:
             sql_server = sql_server,
@@ -26,16 +28,15 @@ workflow HelloAzure {
             database_access_token = database_access_token
     }
 
-    call HelloFromPython {
-        input:
-            sql_server = sql_server,
-            sql_database = sql_database,
-            python_script = python_script
-    }
-
-    output {
-        String sqlcmd_out = HelloFromSqlcmd.out
-        String python_out = HelloFromPython.out
+    # Only call the Python script if the Azure Batch VMs are assigned managed identities as the script currrently
+    # does not work with access tokens.
+    if (batch_vms_have_managed_identity) {
+        call HelloFromPython {
+            input:
+                sql_server = sql_server,
+                sql_database = sql_database,
+                python_script = python_script
+        }
     }
 }
 
