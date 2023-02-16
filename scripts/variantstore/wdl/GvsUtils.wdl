@@ -72,7 +72,7 @@ task SplitIntervals {
   Int disk_memory = if (defined(split_intervals_mem_override)) then select_first([split_intervals_mem_override]) else 16
   Int java_memory = disk_memory - 4
 
-  String gatkTool = if (defined(interval_weights_bed)) then 'WeightedSplitIntervals' else 'SplitIntervals'
+  String gatk_tool = if (defined(interval_weights_bed)) then 'WeightedSplitIntervals' else 'SplitIntervals'
 
   parameter_meta {
     intervals: {
@@ -98,7 +98,7 @@ task SplitIntervals {
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
     mkdir interval-files
-    gatk --java-options "-Xmx~{java_memory}g" ~{gatkTool} \
+    gatk --java-options "-Xmx~{java_memory}g" ~{gatk_tool} \
       --dont-mix-contigs \
       -R ~{ref_fasta} \
       ~{"-L " + intervals} \
@@ -135,7 +135,7 @@ task SplitIntervals {
 task GetBQTableLastModifiedDatetime {
   input {
     Boolean go = true
-    String query_project
+    String project_id
     String fq_table
   }
   meta {
@@ -150,12 +150,12 @@ task GetBQTableLastModifiedDatetime {
     set -o xtrace
     set -o errexit
 
-    echo "project_id = ~{query_project}" > ~/.bigqueryrc
+    echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
     # bq needs the project name to be separate by a colon
     DATASET_TABLE_COLON=$(echo ~{fq_table} | sed 's/\./:/')
 
-    LASTMODIFIED=$(bq --project_id=~{query_project} --format=json show ${DATASET_TABLE_COLON} | python3 -c "import sys, json; print(json.load(sys.stdin)['lastModifiedTime']);")
+    LASTMODIFIED=$(bq --project_id=~{project_id} --format=json show ${DATASET_TABLE_COLON} | python3 -c "import sys, json; print(json.load(sys.stdin)['lastModifiedTime']);")
     if [[ $LASTMODIFIED =~ ^[0-9]+$ ]]; then
       echo $LASTMODIFIED
     else
@@ -430,10 +430,9 @@ task CountSuperpartitions {
 task ValidateFilterSetName {
     input {
         Boolean go = true
+        String project_id
+        String fq_filter_set_info_table
         String filter_set_name
-        String data_project
-        String dataset_name
-        String query_project = data_project
         String filter_set_info_timestamp = ""
     }
     meta {
@@ -446,15 +445,15 @@ task ValidateFilterSetName {
     command <<<
         set -o errexit -o nounset -o xtrace -o pipefail
 
-        echo "project_id = ~{query_project}" > ~/.bigqueryrc
+        echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-        OUTPUT=$(bq --project_id=~{query_project} --format=csv query --use_legacy_sql=false ~{bq_labels} "SELECT filter_set_name as available_filter_set_names FROM \`~{data_project}.~{dataset_name}.filter_set_info\` GROUP BY filter_set_name")
+        OUTPUT=$(bq --project_id=~{project_id} --format=csv query --use_legacy_sql=false ~{bq_labels} "SELECT filter_set_name as available_filter_set_names FROM \`~{fq_filter_set_info_table}\` GROUP BY filter_set_name")
         FILTERSETS=${OUTPUT#"available_filter_set_names"}
 
         if [[ $FILTERSETS =~ "~{filter_set_name}" ]]; then
             echo "Filter set name '~{filter_set_name}' found."
         else
-            echo "ERROR: '~{filter_set_name}' is not an existing filter_set_name. Available in ~{data_project}.~{dataset_name} are"
+            echo "ERROR: '~{filter_set_name}' is not an existing filter_set_name. Available in ~{fq_filter_set_info_table} are"
             echo $FILTERSETS
             exit 1
         fi
@@ -523,7 +522,9 @@ task SelectVariants {
     input {
         File input_vcf
         File input_vcf_index
-        File interval_list
+        File? interval_list
+        String? type_to_include
+        Boolean exclude_filtered = false
         String output_basename
 
         Int memory_mb = 7500
@@ -551,7 +552,9 @@ task SelectVariants {
       gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
         SelectVariants \
           -V ~{local_vcf} \
-          -L ~{interval_list} \
+          ~{"-L " + interval_list} \
+          ~{"--select-type-to-include " + type_to_include} \
+          ~{true="--exclude-filtered true" false="" exclude_filtered} \
           -O ~{output_basename}.vcf
     >>>
 

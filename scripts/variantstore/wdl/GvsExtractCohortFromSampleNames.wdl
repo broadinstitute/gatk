@@ -45,7 +45,7 @@ workflow GvsExtractCohortFromSampleNames {
 
   call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
     input:
-      query_project = query_project,
+      project_id = query_project,
       fq_table = "~{gvs_project}.~{gvs_dataset}.sample_info"
   }
 
