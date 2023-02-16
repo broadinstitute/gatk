@@ -50,13 +50,13 @@ if __name__ == '__main__':
     # All taken from
     # https://techcommunity.microsoft.com/t5/apps-on-azure-blog/how-to-connect-azure-sql-database-from-python-function-app-using/ba-p/3035595
     #
-    # The MSI (Managed System Identity) branch seems to work fine when I manually allocate a VM and assign a UAMI (User
+    # The default MSI (Managed System Identity) branch works fine when I manually allocate a VM and assign a UAMI (User
     # Assigned Managed Identity) to it. Unfortunately this doesn't work with the Azure Batch VMs spun up by CoA which
-    # don't seem to have managed identities.
+    # don't seem to be assigned managed identities.
     #
-    # I have not had any luck with the access token branch when authed as myself and the error messages are completely
-    # unhelpful. It's not a firewall issue as I can connect with username / password, and it's not a token issue as I
-    # can connect with sqlcmd from the same machine using the same access token.
+    # I have not had any luck with the access token branch either authed as myself or a managed identity and the error
+    # messages are completely unhelpful. It's not a firewall issue as I can connect with username / password, and it's
+    # not a token issue as I can connect with sqlcmd from the same machine using the same access token.
     parser = argparse.ArgumentParser(allow_abbrev=False, description='Say Hello to Azure SQL Database from Python')
     parser.add_argument('--sql-server', type=str, help='Azure SQL Server name', required=True)
     parser.add_argument('--sql-database', type=str, help='Azure SQL Server database', required=True)

@@ -99,10 +99,11 @@ def get_blob_service_client():
     return BlobServiceClient.from_connection_string(os.getenv('AZURE_CONNECTION_STRING'))
 
 
-def generate_inputs_json(workflow_name, access_token_storage_path, server_name, database_name):
+def generate_inputs_json(workflow_name, access_token_storage_path, python_script_storage_path, server_name, database_name):
     return f"""
 {{
-  "{workflow_name}.access_token": "{access_token_storage_path}",
+  "{workflow_name}.database_access_token": "{access_token_storage_path}",
+  "{workflow_name}.python_script": "{python_script_storage_path}",
   "{workflow_name}.sql_server": "{server_name}",
   "{workflow_name}.sql_database": "{database_name}"
 }}
@@ -124,6 +125,7 @@ def generate_trigger_json(workflow_storage_path, inputs_storage_path):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False, description='Submit workflow to Cromwell on Azure')
     parser.add_argument('--workflow', type=str, help='Workflow WDL source', required=True)
+    parser.add_argument('--python-script', type=str, help="Hello World Python script", required=True)
     parser.add_argument('--sql-server', type=str, help='Azure SQL Server name', required=True)
     parser.add_argument('--sql-database', type=str, help='Azure SQL Server database', required=True)
     parser.add_argument('--database-access-token', type=str, help='Azure SQL Database access token', required=True)
@@ -160,6 +162,14 @@ if __name__ == '__main__':
         blob_client.upload_blob(workflow, overwrite=True)
         workflow_storage_path = f'/{storage_account.name}/inputs/{blob_address}'
 
+    # Stage the Python script into /<storage container>/inputs/<snake cased workflow name>/<Python script>.
+    python_script_path = Path(args.python_script)
+    with open(args.python_script, "rb") as python_script:
+        blob_address = f"{inflection.underscore(workflow_path.stem)}/{python_script_path.name}"
+        blob_client = inputs_client.get_blob_client(blob_address)
+        blob_client.upload_blob(python_script, overwrite=True)
+        python_script_storage_path = f'/{storage_account.name}/inputs/{blob_address}'
+
     # Stage the access token into /<storage container>/inputs/<user name>/db_access_token.txt
     with open(args.database_access_token, "rb") as token:
         blob_address = f"{os.environ['USER']}/db_access_token.txt"
@@ -168,7 +178,7 @@ if __name__ == '__main__':
         access_token_storage_path = f'/{storage_account.name}/inputs/{blob_address}'
 
     inputs_json = generate_inputs_json(
-        workflow_path.stem, access_token_storage_path, args.sql_server, args.sql_database)
+        workflow_path.stem, access_token_storage_path, python_script_storage_path, args.sql_server, args.sql_database)
 
     # Stage the workflow inputs into /<storage container>/inputs/<snake cased workflow name>/<workflow name>.inputs.json
     blob_address = f"{inflection.underscore(workflow_path.stem)}/{workflow_path.stem}.inputs.json"
