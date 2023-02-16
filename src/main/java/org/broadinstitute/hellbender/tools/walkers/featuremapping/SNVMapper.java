@@ -1,9 +1,11 @@
 package org.broadinstitute.hellbender.tools.walkers.featuremapping;
 
 import htsjdk.samtools.CigarElement;
+import org.apache.commons.lang.ArrayUtils;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.FlowBasedRead;
 
@@ -25,12 +27,14 @@ public class SNVMapper implements FeatureMapper {
     final int         minCigarElementLength;
     final LevenshteinDistance levDistance = new LevenshteinDistance();
     final Integer     smqSize;
+    final Integer     smqSizeMean;
 
     public SNVMapper(FlowFeatureMapperArgumentCollection fmArgs) {
         identBefore = fmArgs.snvIdenticalBases;
         identAfter = (fmArgs.snvIdenticalBasesAfter != 0) ?  fmArgs.snvIdenticalBasesAfter : identBefore;
         minCigarElementLength = identBefore + 1 + identAfter;
         smqSize = fmArgs.surroundingMediaQualitySize;
+        smqSizeMean = fmArgs.surroundingMeanQualitySize;
 
         // adjust minimal read length
         FlowBasedRead.setMinimalReadLength(1 + 1 + identAfter);
@@ -45,7 +49,6 @@ public class SNVMapper implements FeatureMapper {
         // access bases
         final byte[]      bases = read.getBasesNoCopy();
         final byte[]      ref = referenceContext.getBases();
-        final byte[]      quals = smqSize != null ? read.getBaseQualitiesNoCopy() : null;
 
         // calculate edit distance
         int               startSoftClip = read.getStart() - read.getSoftStart();
@@ -122,18 +125,44 @@ public class SNVMapper implements FeatureMapper {
                         else
                             feature.index = hardLength - readOfs;
 
-                        // surrounding median quality?
-                        if ( smqSize != null ) {
-                            feature.smqLeft = calcSmq(quals, feature.index - 1 - smqSize, feature.index - 1);
-                            feature.smqRight = calcSmq(quals, feature.index + 1, feature.index + 1 + smqSize);
-                            if ( read.isReverseStrand() ) {
+                        // reverse quals?
+                        if ( smqSize != null || smqSizeMean != null  ) {
 
-                                // left and right are reversed
-                                int tmp = feature.smqLeft;
-                                feature.smqLeft = feature.smqRight;
-                                feature.smqRight = tmp;
+                            // prepare qualities
+                            final byte[] quals;
+                            if (!read.isReverseStrand()) {
+                                quals = read.getBaseQualitiesNoCopy();
+                            } else {
+                                quals = read.getBaseQualities();
+                                ArrayUtils.reverse(quals);
                             }
+
+                            // surrounding median quality?
+                            if ( smqSize != null ) {
+                                feature.smqLeft = calcSmq(quals, feature.index - 1 - smqSize, feature.index - 1, true);
+                                feature.smqRight = calcSmq(quals, feature.index + 1, feature.index + 1 + smqSize, true);
+                                if ( read.isReverseStrand() ) {
+
+                                    // left and right are reversed
+                                    int tmp = feature.smqLeft;
+                                    feature.smqLeft = feature.smqRight;
+                                    feature.smqRight = tmp;
+                                }
+                            }
+                            if ( smqSizeMean != null ) {
+                                feature.smqLeftMean = calcSmq(quals, feature.index - 1 - smqSizeMean, feature.index - 1, false);
+                                feature.smqRightMean = calcSmq(quals, feature.index + 1, feature.index + 1 + smqSizeMean, false);
+                                if ( read.isReverseStrand() ) {
+
+                                    // left and right are reversed
+                                    int tmp = feature.smqLeftMean;
+                                    feature.smqLeftMean = feature.smqRightMean;
+                                    feature.smqRightMean = tmp;
+                                }
+                            }
+
                         }
+
 
                         features.add(feature);
                     }
@@ -160,7 +189,7 @@ public class SNVMapper implements FeatureMapper {
         }
     }
 
-    private int calcSmq(final byte[] quals, int from, int to) {
+    private int calcSmq(final byte[] quals, int from, int to, boolean median) {
 
         // limit from/to
         from = Math.max(0, Math.min(quals.length, from));
@@ -174,14 +203,23 @@ public class SNVMapper implements FeatureMapper {
         if ( range.length == 0 ) {
             return 0;
         }
-        Arrays.sort(range);
-        int midIndex = range.length / 2;
-        if ( (range.length % 2) == 1 ) {
-            // odd
-            return range[midIndex];
+
+        if ( median ) {
+            Arrays.sort(range);
+            int midIndex = range.length / 2;
+            if ((range.length % 2) == 1) {
+                // odd
+                return range[midIndex];
+            } else {
+                // even
+                return (range[midIndex - 1] + range[midIndex]) / 2;
+            }
         } else {
-            // even
-            return (range[midIndex-1] + range[midIndex]) / 2;
+            int sum = 0;
+            for ( int i = 0 ; i < range.length ; i++ ) {
+                sum += range[i];
+            }
+            return sum / range.length;
         }
     }
 
