@@ -322,7 +322,7 @@ call PopulateFilterSetInfo {
       }
     }
 
-    call PopulateFilterSetInfo as PopulateFilterSetInfoCLassic {
+    call PopulateFilterSetInfo as PopulateFilterSetInfoClassic {
       input:
         gatk_override = gatk_override,
         filter_set_name = filter_set_name,
