@@ -53,11 +53,14 @@ task SNPsVariantRecalibratorCreateModel {
         --maximum-training-variants ~{maximum_training_variants} \
         --output-model ~{model_report_filename} \
         --max-gaussians ~{max_gaussians} \
-        -resource:hapmap,known=false,training=true,truth=true,prior=15 ~{hapmap_resource_vcf} \
-        -resource:omni,known=false,training=true,truth=true,prior=12 ~{omni_resource_vcf} \
-        -resource:1000G,known=false,training=true,truth=false,prior=10 ~{one_thousand_genomes_resource_vcf} \
-        -resource:dbsnp,known=true,training=false,truth=false,prior=7 ~{dbsnp_resource_vcf}
+        -resource:hapmap,known=false,training=true,truth=true,prior=0 ~{hapmap_resource_vcf} \
+        -resource:omni,known=false,training=true,truth=true,prior=0 ~{omni_resource_vcf} \
+        -resource:1000G,known=false,training=true,truth=false,prior=0 ~{one_thousand_genomes_resource_vcf} \
+        -resource:dbsnp,known=true,training=false,truth=false,prior=0 ~{dbsnp_resource_vcf}
     >>>
+
+    ## TODO ## You have set the priors above to 0 for doing precision and sensitivity
+    ## YOU MUST UNDO THIS PRIOR TO MERGING TO ah_var_store
 
     runtime {
         memory: "~{machine_mem} GiB"
@@ -189,10 +192,13 @@ task IndelsVariantRecalibrator {
         ~{"--input-model " + model_report} \
         --max-gaussians ~{max_gaussians} \
         --maximum-training-variants ~{maximum_training_variants} \
-        -resource:mills,known=false,training=true,truth=true,prior=12 ~{mills_resource_vcf} \
-        -resource:axiomPoly,known=false,training=true,truth=false,prior=10 ~{axiomPoly_resource_vcf} \
-        -resource:dbsnp,known=true,training=false,truth=false,prior=2 ~{dbsnp_resource_vcf}
+        -resource:mills,known=false,training=true,truth=true,prior=0 ~{mills_resource_vcf} \
+        -resource:axiomPoly,known=false,training=true,truth=false,prior=0 ~{axiomPoly_resource_vcf} \
+        -resource:dbsnp,known=true,training=false,truth=false,prior=0 ~{dbsnp_resource_vcf}
     >>>
+
+    ## TODO ## You have set the priors above to 0 for doing precision and sensitivity
+    ## YOU MUST UNDO THIS PRIOR TO MERGING TO ah_var_store
 
     runtime {
         memory: "~{machine_mem} GiB"
@@ -268,11 +274,14 @@ task SNPsVariantRecalibrator {
         --sample-every-Nth-variant 1 \
         ~{model_report_arg} \
         --max-gaussians ~{max_gaussians} \
-        -resource:hapmap,known=false,training=true,truth=true,prior=15 ~{hapmap_resource_vcf} \
-        -resource:omni,known=false,training=true,truth=true,prior=12 ~{omni_resource_vcf} \
-        -resource:1000G,known=false,training=true,truth=false,prior=10 ~{one_thousand_genomes_resource_vcf} \
-        -resource:dbsnp,known=true,training=false,truth=false,prior=7 ~{dbsnp_resource_vcf}
+        -resource:hapmap,known=false,training=true,truth=true,prior=0 ~{hapmap_resource_vcf} \
+        -resource:omni,known=false,training=true,truth=true,prior=0 ~{omni_resource_vcf} \
+        -resource:1000G,known=false,training=true,truth=false,prior=0 ~{one_thousand_genomes_resource_vcf} \
+        -resource:dbsnp,known=true,training=false,truth=false,prior=0 ~{dbsnp_resource_vcf}
     >>>
+
+    ## TODO ## You have set the priors above to 0 for doing precision and sensitivity
+    ## YOU MUST UNDO THIS PRIOR TO MERGING TO ah_var_store
 
     runtime {
         memory: "~{machine_mem} GiB"
