@@ -4,6 +4,9 @@ import "GvsWarpTasks.wdl" as Tasks
 import "GvsUtils.wdl" as Utils
 import "../../vcf_site_level_filtering_wdl/JointVcfFiltering.wdl" as VQSRLite
 
+# This is a comment!
+# This is a reminder to set the priors back to non-zero in GvsWarpTasks before you merge this PR!!  TODO
+
 workflow GvsCreateFilterSet {
   input {
     Boolean go = true

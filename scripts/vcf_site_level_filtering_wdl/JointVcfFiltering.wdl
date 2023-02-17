@@ -154,7 +154,7 @@ task ExtractVariantAnnotations {
 		File? interval_list
 		Boolean use_allele_specific_annotations
 
-		Int memory_mb = 14000
+		Int memory_mb = 28000
 		Int command_mem = memory_mb - 1000
 	}
 	Int disk_size = ceil(size(input_vcf, "GB") + size(input_vcf_index) + 100)
