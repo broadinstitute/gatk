@@ -201,7 +201,7 @@ task TrainVariantAnnotationModel {
 		File? python_script
 		File? hyperparameters_json
 
-		Int memory_mb = 14000
+		Int memory_mb = 28000
 		Int command_mem = memory_mb - 1000
 	}
 	Int disk_size = ceil(size(annots, "GB") + 100)
