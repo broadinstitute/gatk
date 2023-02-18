@@ -1,5 +1,7 @@
 version 1.0
 
+# This is a comment!
+
 import "GvsUtils.wdl" as Utils
 
 workflow GvsExtractCallset {
@@ -28,7 +30,7 @@ workflow GvsExtractCallset {
     File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
     Boolean use_classic_VQSR = true
 
-    File? gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/gg_VS-694_VQSR_Lite_20230208/gatk-package-4.2.0.0-655-gc55c463-SNAPSHOT-local.jar"
+    File? gatk_override
 
     String output_file_base_name = filter_set_name
 
