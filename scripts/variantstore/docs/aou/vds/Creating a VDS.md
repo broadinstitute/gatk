@@ -10,13 +10,6 @@ in [AoU Delta VDS Cluster Configuration](cluster/AoU%20Delta%20VDS%20Cluster%20C
 cluster.
 
 
-
-
-
-
-
-
-
 ## Now we made a VDS for Delta, and then needed to run the following to correct the GQ0s and then re-deliver it
 
 pip install --force-reinstall  hail==0.2.109gi
@@ -36,6 +29,6 @@ vds2 = hl.vds.VariantDataset(reference_data=rd, variant_data=vds.variant_data)
 final_path = 'gs://prod-drc-broad/aou-wgs-delta/vds/2023-02-13-GQ0/aou_srwgs_short_variants_v7_without_ext_aian_prod_gq0.vds'
 vds2.write(final_path, overwrite=True)
 
-vds2.validate()
+""" Validate it """
 
-### TODO Tim is going to help us put together a validation script
+Run [VDS Validation](vds_validation.py) a python script on the created VDS to ensure that it is ready to be shared
