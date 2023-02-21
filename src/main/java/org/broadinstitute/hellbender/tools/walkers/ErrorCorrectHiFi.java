@@ -27,15 +27,14 @@ import java.util.NoSuchElementException;
         programGroup = VariantEvaluationProgramGroup.class
 )
 public final class ErrorCorrectHiFi extends VariantWalker {
-    public static final int WINDOW_SIZE = 1000;
-    public static final int HUGE_EVENT_SIZE = 5000;
+    public static final int WINDOW_SIZE = 2500;
+    public static final int HUGE_EVENT_SIZE = 7500;
     public static final int MIN_ALIGNED_VALUES = 3;
     public static final String SCRIPT_TEXT =
-            "#!/bin/sh\n" +
-                    "samtools faidx ref.fa &&\\\n" +
-                    "    minimap2 -axmap-hifi ref.fa reads.fq | samtools sort -OBAM - > align.bam &&\\\n" +
-                    "    samtools index align.bam &&\\\n" +
-                    "    igv -g ref.fa align.bam\n";
+"#!/bin/sh\n" +
+"    minimap2 -axmap-hifi %s reads.fq | samtools sort -OBAM - > align.bam &&\n" +
+"    samtools index align.bam &&\n" +
+"    igv -g hg38 -n corrected,%s -l %s align.bam %s\n";
 
     public final File tmpDir = IOUtils.createTempDir("echf");
     public final File outputFASTQ = new File(tmpDir, "reads.fq");
@@ -44,14 +43,7 @@ public final class ErrorCorrectHiFi extends VariantWalker {
     public final ProcessBuilder scriptRunner = new ProcessBuilder(scriptFile.getAbsolutePath());
 
     @Override
-    public void onTraversalStart() {
-        super.onTraversalStart();
-        IOUtils.writeByteArrayToFile(SCRIPT_TEXT.getBytes(), scriptFile);
-        if ( !scriptFile.setExecutable(true) ) {
-            throw new UserException("Can't make minimap2/igv script executable.");
-        }
-        scriptRunner.directory(tmpDir).inheritIO();
-    }
+    public boolean requiresReads() { return true; }
 
     @Override
     public void apply( final VariantContext variant,
@@ -71,19 +63,19 @@ public final class ErrorCorrectHiFi extends VariantWalker {
                 final SimpleInterval windowInterval =
                         new SimpleInterval(contig, windowStart, windowEnd);
                 processWindow(windowInterval, readsContext);
-                writeRef(seqName, windowInterval, refContext);
+                writeScript(seqName, windowInterval);
                 alignAndDisplay();
             } else {
                 final SimpleInterval leadInterval =
                         new SimpleInterval(contig, windowStart, eventStart + WINDOW_SIZE);
                 processWindow(leadInterval, readsContext);
-                writeRef(seqName + "_BND1", leadInterval, refContext);
+                writeScript(seqName + "_BND1", leadInterval);
                 alignAndDisplay();
 
                 final SimpleInterval lagInterval =
                         new SimpleInterval(contig, eventEnd - WINDOW_SIZE, windowEnd);
                 processWindow(lagInterval, readsContext);
-                writeRef(seqName + "_BND2", lagInterval, refContext);
+                writeScript(seqName + "_BND2", lagInterval);
                 alignAndDisplay();
             }
         }
@@ -92,25 +84,29 @@ public final class ErrorCorrectHiFi extends VariantWalker {
     private void processWindow( final SimpleInterval interval,
                                 final ReadsContext readsContext ) {
         try ( final BufferedWriter writer = new BufferedWriter(new FileWriter(outputFASTQ)) ) {
-            final List<CallIterator> callIterators = new ArrayList<>();
-            final int refPos = interval.getStart();
-            for ( final GATKRead read : readsContext ) {
+            final List<CallIterator> callIteratorList = new ArrayList<>();
+            int refPos = interval.getStart();
+            final Iterator<GATKRead> iterator = readsContext.iterator(interval);
+            while ( iterator.hasNext() ) {
+                final GATKRead read = iterator.next();
                 if ( interval.overlaps(read) ) {
-                    callIterators.add(new CallIterator(read, refPos));
+                    callIteratorList.add(new CallIterator(read, refPos));
                 }
             }
-            while ( !callIterators.isEmpty() ) {
-                final Iterator<CallIterator> iterator = callIterators.iterator();
+
+            final int endPos = interval.getEnd();
+            for ( ; refPos <= endPos && !callIteratorList.isEmpty(); ++refPos ) {
+                final Iterator<CallIterator> callIteratorIterator = callIteratorList.iterator();
                 Call singletonIndel = null;
                 CallIterator singletonIndelIterator = null;
                 ByteSequence alignedValue = null;
                 int alignedValueCount = 0;
                 boolean hopeless = false;
-                while ( iterator.hasNext() ) {
-                    final CallIterator callIterator = iterator.next();
+                while ( callIteratorIterator.hasNext() ) {
+                    final CallIterator callIterator = callIteratorIterator.next();
                     if ( !callIterator.hasNext() ) {
                         callIterator.writeFASTQ(writer);
-                        iterator.remove();
+                        callIteratorIterator.remove();
                     } else {
                         final Call call = callIterator.next();
                         if ( call != null && !hopeless ) {
@@ -149,11 +145,29 @@ public final class ErrorCorrectHiFi extends VariantWalker {
                     singletonIndelIterator.fixup(singletonIndel, alignedValue);
                 }
             }
+            for ( final CallIterator callIterator : callIteratorList ) {
+                callIterator.writeFASTQ(writer);
+            }
         } catch ( final IOException ioe ) {
             throw new GATKException("Can't write output to " + outputFASTQ, ioe);
         }
     }
 
+    private void writeScript( final String seqName, final SimpleInterval interval ) {
+        final String resolvedScript =
+                String.format(SCRIPT_TEXT,
+                        "/home/tsharpe/data/longReads/chr21.mmi",
+                        seqName,
+                        interval.toString(),
+                        readArguments.getReadPaths().get(0).toAbsolutePath().toString());
+        IOUtils.writeByteArrayToFile(resolvedScript.getBytes(), scriptFile);
+        if ( !scriptFile.setExecutable(true) ) {
+            throw new UserException("Can't make minimap2/igv script executable.");
+        }
+        scriptRunner.directory(tmpDir).inheritIO();
+    }
+
+/*
     private void writeRef( final String seqName, final SimpleInterval interval, final ReferenceContext refContext ) {
         final byte[] bases = refContext.getBases(interval);
         try ( final BufferedWriter writer =
@@ -177,7 +191,7 @@ public final class ErrorCorrectHiFi extends VariantWalker {
             throw new UserException("Can't write altered reference.", ioe);
         }
     }
-
+*/
     private void alignAndDisplay() {
         try {
             final Process process = scriptRunner.start();
@@ -295,6 +309,7 @@ public final class ErrorCorrectHiFi extends VariantWalker {
         private final ByteSequence quals;
         private final List<CigarElement> cigarElements;
         private final List<Fixup> fixups;
+        private final int initialReadIndex;
         private int cigarElementsIndex;
         private int cigarElementIndex;
         private int readIndex;
@@ -310,6 +325,7 @@ public final class ErrorCorrectHiFi extends VariantWalker {
             cigarElementIndex = 0;
             readIndex = 0;
             advance(elements, read.getStart(), initialRefPos);
+            initialReadIndex = readIndex;
         }
 
         public ByteSequence getCalls() { return calls; }
@@ -366,14 +382,16 @@ public final class ErrorCorrectHiFi extends VariantWalker {
         }
 
         public void writeFASTQ( final BufferedWriter writer ) throws IOException {
+            if ( initialReadIndex == readIndex ) {
+                return;
+            }
             writer.write("@");
             writer.write(readName);
             writer.newLine();
-            final int nBytes = calls.length();
             int lineLength = 0;
             Iterator<Fixup> fixupIterator = fixups.iterator();
             Fixup curFixup = fixupIterator.hasNext() ? fixupIterator.next() : null;
-            for ( int idx = 0; idx != nBytes; ++idx ) {
+            for ( int idx = initialReadIndex; idx != readIndex; ++idx ) {
                 if ( curFixup != null && curFixup.getReadIndex() == idx ) {
                     if ( curFixup.getValue() != 0 ) {
                         writer.write(calls.byteAt(idx));
@@ -404,7 +422,7 @@ public final class ErrorCorrectHiFi extends VariantWalker {
             writer.newLine();
             fixupIterator = fixups.iterator();
             curFixup = fixupIterator.hasNext() ? fixupIterator.next() : null;
-            for ( int idx = 0; idx != nBytes; ++idx ) {
+            for ( int idx = initialReadIndex; idx != readIndex; ++idx ) {
                 if ( curFixup != null && curFixup.getReadIndex() == idx ) {
                     if ( curFixup.getValue() != 0 ) {
                         writer.write(SAMUtils.phredToFastq(quals.byteAt(idx)));
