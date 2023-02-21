@@ -1,7 +1,6 @@
 import argparse
 import hail as hl
 
-
 ###
 # VDS validation:
 # check that the reference and variant matrix tables contain the same samples
@@ -42,7 +41,8 @@ def check_densify_small_region(vds):
 
 
 
-def main(vds):
+def main(vds, temp_path):
+    hl.init(tmp_dir=f'{temp_path}/hail_tmp_general') ## used by vds.validate()
     check_samples_match(vds)
     check_ref_blocks(vds)
     check_densify_small_region(vds)
@@ -53,9 +53,11 @@ def main(vds):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False, description='Create VAT inputs TSV')
     parser.add_argument('--vds_path', type=str, help='Input VDS Path', default="@VDS_INPUT_PATH@")
+    parser.add_argument('--temp-path', type=str, help='Path to temporary directory', default="@TEMP_DIR@",
+                        required=True)
 
     args = parser.parse_args()
 
     vds = hl.vds.read_vds(args.vds_path)
 
-    main(vds)
+    main(vds, temp_path)
