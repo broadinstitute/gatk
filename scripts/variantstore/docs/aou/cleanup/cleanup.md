@@ -109,8 +109,8 @@ above, we would need to regenerate those as well which would add significantly t
 Approximate figures for the ~250K samples Delta callset:
 
 * VDS storage cost: ~$500 / month. Note AoU should have exact copies of the VDSes we have delivered for Delta, though
-  it's not certain that these copies will remain accessible to the Variants team in the long term. The delivered VDSes are put here `gs://prod-drc-broad/`. The Variants team has
-  generated four versions of the Delta VDS so far, two of which still exist:
+  it's not certain that these copies will remain accessible to the Variants team in the long term. The delivered VDSes are put here `gs://prod-drc-broad/` and we have noted that we need them to remain there for hot-fixes. The Variants team has
+  generated five versions of the Delta VDS so far, one of which (the original) still exist:
     * First version of the callset, includes many samples that were later
       removed `gs://fc-secure-fb908548-fe3c-41d6-adaf-7ac20d541375/vds/2022-10-19/dead_alleles_removed_vs_667_249047_samples/gvs_export.vds`
 * VDS regeneration cost: $1000 (~10 hours @ ~$100 / hour cluster cost) + $3000 to regenerate Avro files if necessary.
