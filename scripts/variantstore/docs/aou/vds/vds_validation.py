@@ -22,7 +22,7 @@ def check_samples_match(vds):
 
 def check_ref_blocks(vds):
 	print('checking that:\n  * no reference blocks have GQ=0\n  * all ref blocks have END after start\n  * all ref blocks are max 1000 bases long')
-	rd = vds.rd
+	rd = vds.reference_data
 	rd = rd.annotate_rows(locus_start = rd.locus.position)
 
 	LEN = rd.END - rd.locus_start + 1
