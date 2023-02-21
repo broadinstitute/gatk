@@ -203,6 +203,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - gg_VS-815_PullThroughYNGInVQSRLite
    - name: GvsQuickstartVcfIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartVcfIntegration.wdl
