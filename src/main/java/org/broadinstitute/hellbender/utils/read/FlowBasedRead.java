@@ -358,14 +358,17 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
         }
     }
 
-    //convert qualities from the single hmer to a column in a flow matrix
+    // convert qualities from the t0 tag to the probabilities of 1->0 error.
+    // This function deals with t0 tag that encodes the probability of 1->0 error
+    // in this case there is no nucleotide to place the error probability on, so we
+    // place it on the neighboring bases and choose the **lower** error probability between the
+    // neighbors (that's how T0 encoding works). The error is placed only on the 1-mer error assuming
+    // that 2->0 errors are negligibly rare.
     private void parseZeroQuals(final double[] probs, final int flowIdx, final int qualOfs){
         if ((qualOfs == 0) | (qualOfs==probs.length)){ // do not report zero error probability on the edge of the read
             return;
         }
-        if ((probs[qualOfs-1])==(probs[qualOfs])){
-            flowMatrix[1][flowIdx] = Math.max(flowMatrix[1][flowIdx], Math.max(probs[qualOfs-1],probs[qualOfs]));
-        }
+        flowMatrix[1][flowIdx] = Math.max(flowMatrix[1][flowIdx], Math.min(probs[qualOfs-1],probs[qualOfs]));
     }
 
     public String getFlowOrder() {
