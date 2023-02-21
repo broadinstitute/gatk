@@ -158,8 +158,8 @@ public final class ErrorCorrectHiFi extends VariantWalker {
                 String.format(SCRIPT_TEXT,
                         "/home/tsharpe/data/longReads/chr21.mmi",
                         seqName,
-                        interval.toString(),
-                        readArguments.getReadPaths().get(0).toAbsolutePath().toString());
+                        interval,
+                        readArguments.getReadPaths().get(0).toAbsolutePath());
         IOUtils.writeByteArrayToFile(resolvedScript.getBytes(), scriptFile);
         if ( !scriptFile.setExecutable(true) ) {
             throw new UserException("Can't make minimap2/igv script executable.");
