@@ -52,7 +52,7 @@ def main(vds, temp_path):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False, description='Create VAT inputs TSV')
-    parser.add_argument('--vds_path', type=str, help='Input VDS Path', default="@VDS_INPUT_PATH@")
+    parser.add_argument('--vds-path', type=str, help='Input VDS Path', default="@VDS_INPUT_PATH@")
     parser.add_argument('--temp-path', type=str, help='Path to temporary directory', default="@TEMP_DIR@",
                         required=True)
 
