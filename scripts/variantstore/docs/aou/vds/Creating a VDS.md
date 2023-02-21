@@ -12,7 +12,7 @@ cluster.
 
 ## Now we made a VDS for Delta, and then needed to run the following to correct the GQ0s and then re-deliver it
 
-pip install --force-reinstall  hail==0.2.109gi
+pip install --force-reinstall  hail==0.2.109
 python3
 
 import hail as hl
@@ -32,3 +32,5 @@ vds2.write(final_path, overwrite=True)
 """ Validate it """
 
 Run [VDS Validation](vds_validation.py) a python script on the created VDS to ensure that it is ready to be shared
+An example run (on the Anvil 3k) is illustrated below
+python3 validation_script.py --vds-path 'gs://fc-3ecd704c-4d2c-4360-bae1-093e214abce2/vds/vds_GQ0_max_ref_1k' --temp-path 'gs://fc-62891290-7fa3-434d-a39e-c64eeee4db8d/temp'
