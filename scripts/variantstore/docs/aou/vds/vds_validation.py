@@ -40,9 +40,7 @@ def check_densify_small_region(vds):
 
 
 
-
-def main(vds, temp_path):
-    hl.init(tmp_dir=f'{temp_path}/hail_tmp_general') ## used by vds.validate()
+def main(vds):
     check_samples_match(vds)
     check_ref_blocks(vds)
     check_densify_small_region(vds)
@@ -58,6 +56,8 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    hl.init(tmp_dir=f'{args.temp_path}/hail_tmp_general')
+
     vds = hl.vds.read_vds(args.vds_path)
 
-    main(vds, temp_path)
+    main(vds)
