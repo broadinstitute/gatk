@@ -95,7 +95,7 @@ task HelloFromPython {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        python3 ~{python_script} --sql-server ~{sql_server} --sql-database ~{sql_database} --token-file ~{token_file}
+        python3 ~{python_script} --server ~{sql_server} --database ~{sql_database} --token-file ~{token_file}
     >>>
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:coa-2023-02-22"

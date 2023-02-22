@@ -1,5 +1,4 @@
 import argparse
-import json
 
 import inflection
 import os
@@ -99,11 +98,13 @@ def get_blob_service_client():
     return BlobServiceClient.from_connection_string(os.getenv('AZURE_CONNECTION_STRING'))
 
 
-def generate_inputs_json(workflow_name, access_token_storage_path, python_script_storage_path, server_name, database_name):
+def generate_inputs_json(workflow_name, access_token_storage_path, python_script_storage_path,
+                         ammonite_script_storage_path, server_name, database_name):
     return f"""
 {{
-  "{workflow_name}.database_access_token": "{access_token_storage_path}",
+  "{workflow_name}.utf8_token_file": "{access_token_storage_path}",
   "{workflow_name}.python_script": "{python_script_storage_path}",
+  "{workflow_name}.ammonite_script": "{ammonite_script_storage_path}",
   "{workflow_name}.sql_server": "{server_name}",
   "{workflow_name}.sql_database": "{database_name}"
 }}
@@ -126,16 +127,19 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False, description='Submit workflow to Cromwell on Azure')
     parser.add_argument('--workflow', type=str, help='Workflow WDL source', required=True)
     parser.add_argument('--python-script', type=str, help="Hello World Python script", required=True)
+    parser.add_argument('--ammonite-script', type=str, help="Hello World Ammonite script", required=True)
     parser.add_argument('--sql-server', type=str, help='Azure SQL Server name', required=True)
     parser.add_argument('--sql-database', type=str, help='Azure SQL Server database', required=True)
-    parser.add_argument('--database-access-token', type=str, help='Azure SQL Database access token', required=True)
+    parser.add_argument('--utf8-access-token', type=str, help='UTF-8 encoded Azure SQL Database access token',
+                        required=True)
     parser.add_argument('--resource-group', type=str, help='Azure Resource Group name', required=False)
     args = parser.parse_args()
 
     if not os.getenv('AZURE_CONNECTION_STRING'):
         raise ValueError("Must define 'AZURE_CONNECTION_STRING' as a SAS token, see https://learn.microsoft.com/en-us/azure/storage/common/storage-configure-connection-string#store-a-connection-string")
 
-    # The default token caching behavior was causing issues with attempts to use expired tokens.
+    # The dshared token cache was causing issues with attempts to use expired tokens so disable that.
+    # `DefaultAzureCredential` appears to fall back to Azure CLI credentials which works fine.
     # https://github.com/Azure/azure-sdk-for-python/issues/22822#issuecomment-1024668507
     credentials = DefaultAzureCredential(exclude_shared_token_cache_credential=True)
 
@@ -170,15 +174,24 @@ if __name__ == '__main__':
         blob_client.upload_blob(python_script, overwrite=True)
         python_script_storage_path = f'/{storage_account.name}/inputs/{blob_address}'
 
+    # Stage the Ammonite script into /<storage container>/inputs/<snake cased workflow name>/<Ammonite script>.
+    ammonite_script_path = Path(args.ammonite_script)
+    with open(args.ammonite_script, "rb") as ammonite_script:
+        blob_address = f"{inflection.underscore(workflow_path.stem)}/{ammonite_script_path.name}"
+        blob_client = inputs_client.get_blob_client(blob_address)
+        blob_client.upload_blob(ammonite_script, overwrite=True)
+        ammonite_script_storage_path = f'/{storage_account.name}/inputs/{blob_address}'
+
     # Stage the access token into /<storage container>/inputs/<user name>/db_access_token.txt
-    with open(args.database_access_token, "rb") as token:
+    with open(args.utf8_access_token, "rb") as token:
         blob_address = f"{os.environ['USER']}/db_access_token.txt"
         blob_client = inputs_client.get_blob_client(blob_address)
         blob_client.upload_blob(token, overwrite=True)
         access_token_storage_path = f'/{storage_account.name}/inputs/{blob_address}'
 
     inputs_json = generate_inputs_json(
-        workflow_path.stem, access_token_storage_path, python_script_storage_path, args.sql_server, args.sql_database)
+        workflow_path.stem, access_token_storage_path, python_script_storage_path, ammonite_script_storage_path,
+        args.sql_server, args.sql_database)
 
     # Stage the workflow inputs into /<storage container>/inputs/<snake cased workflow name>/<workflow name>.inputs.json
     blob_address = f"{inflection.underscore(workflow_path.stem)}/{workflow_path.stem}.inputs.json"
