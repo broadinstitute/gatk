@@ -73,7 +73,7 @@ jobs:
     needs: check-secrets
     strategy:
       matrix:
-        java: [ 17.0.1+12 ]
+        java: [ 17.0.6+10 ]
         experimental: [ false ]
         scalaVersion: [ 2.13 ]
         testType: [ cloud, integration, unit ]
@@ -149,7 +149,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        java: [ 17.0.1+12 ]
+        java: [ 17.0.6+10 ]
         experimental: [ false ]
         scalaVersion: [ 2.13 ]
         testType: [ integration, unit, variantcalling, conda ]

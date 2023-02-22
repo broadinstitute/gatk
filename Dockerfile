@@ -19,14 +19,14 @@ RUN git lfs install --force
 ##Get Java 17 temurin JDK
 #RUN apt update && apt upgrade
 RUN apt install wget
-RUN wget https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.1%2B12/OpenJDK17U-jdk_x64_linux_hotspot_17.0.1_12.tar.gz
+RUN wget https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.6%2B10/OpenJDK17U-jdk_x64_linux_hotspot_17.0.6_10.tar.gz
 RUN tar -xvf OpenJDK17U-jdk_x64_linux_hotspot_17.*.tar.gz
-RUN mv jdk-17.0.1+12 /opt/
+RUN mv jdk-17.0.6+10 /opt/
 #
-ENV JAVA_HOME /opt/jdk-17.0.1+12
+ENV JAVA_HOME /opt/jdk-17.0.6+10
 ENV PATH $JAVA_HOME/bin:$PATH
 RUN echo $JAVA_HOME
-RUN update-alternatives --install /usr/bin/java java /opt/jdk-17.0.1+12/bin/java 1
+RUN update-alternatives --install /usr/bin/java java /opt/jdk-17.0.6+10/bin/java 1
 RUN java -version
 
 #Download only resources required for the build, not for testing
@@ -46,14 +46,14 @@ RUN apt-key list
 #Get Java 17 temurin JDK
 #RUN apt update && apt upgrade
 RUN apt install wget
-RUN wget https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.1%2B12/OpenJDK17U-jdk_x64_linux_hotspot_17.0.1_12.tar.gz
+RUN wget https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.6%2B10/OpenJDK17U-jdk_x64_linux_hotspot_17.0.6_10.tar.gz
 RUN tar -xvf OpenJDK17U-jdk_x64_linux_hotspot_17.*.tar.gz
-RUN mv jdk-17.0.1+12 /opt/
+RUN mv jdk-17.0.6+10 /opt/
 
-ENV JAVA_HOME /opt/jdk-17.0.1+12
+ENV JAVA_HOME /opt/jdk-17.0.6+10
 ENV PATH $JAVA_HOME/bin:$PATH
 RUN echo $JAVA_HOME
-RUN update-alternatives --install /usr/bin/java java /opt/jdk-17.0.1+12/bin/java 1
+RUN update-alternatives --install /usr/bin/java java /opt/jdk-17.0.6+10/bin/java 1
 RUN java -version
 
 WORKDIR /gatk
