@@ -51,15 +51,6 @@ task HelloFromSqlcmd {
         File token_file
     }
     meta {
-        # Database token generated from a regular `az login` or `az login --identity` MSI plus:
-        #
-        # az account get-access-token --resource https://database.windows.net --output tsv | cut -f 1 | tr -d '\n' | iconv -f ascii -t UTF-16LE > db_access_token.txt
-        #
-        # That pipeline at the end makes sure we have only one field (the token), strips the trailing newline, and
-        # converts to UTF-16LE encoding because the Microsoft SQL drivers actually require that encoding (yes really).
-        #
-        # These tokens have ~1 hour TTL and threading them through explicitly isn't great, but they are enough for
-        # "Hello World" purposes.
         description: "Say hello to Azure SQL Database from sqlcmd using a database access token"
     }
     command <<<
@@ -68,8 +59,8 @@ task HelloFromSqlcmd {
         set -o errexit -o nounset -o pipefail -o xtrace
 
         # sqlcmd is particular about the formatting and encoding of its access token: no whitespace and UTF-16LE.
-        # Python is particular too but these manipulations can be sprinkled into the code. Java / Ammonite doesn't
-        # seem to care about encoding?
+        # Python is particular too but these manipulations are sprinkled into the code. Java / Ammonite doesn't
+        # seem to care about encoding or autodetects and adapts?
         cat ~{token_file} | cut -f 1 | tr -d '\n' | iconv -f ascii -t UTF-16LE > /tmp/db_access_token.txt
 
         # A hopefully temporary hack to allow Azure Batch VMs to connect to the Azure SQL Database Server. We don't know
