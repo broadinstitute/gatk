@@ -1,16 +1,40 @@
+// Package management
 import $ivy.`com.microsoft.sqlserver:mssql-jdbc:12.2.0.jre11`
+import $ivy.`com.azure:azure-identity:1.4.6`
+// ANTLR 4 appears to be required by one of the above Microsoft packages but the dependency is not expressed explicitly
+// so it is not imported automatically. Without adding this import ourselves Ammonite fails to compile this script;
+// adding the import gets around the problem.
+import $ivy.`org.antlr:antlr4:4.12.0`
 
+// Imports
+import com.azure.core.credential.*
+import com.azure.identity.*
+import com.microsoft.sqlserver.jdbc.SQLServerDataSource
+import java.nio.charset.StandardCharsets
+import java.nio.file.*
 import java.sql.*
-import java.util.Properties
+import java.util.*
+
+
+// Nearly everything taken from
+// https://learn.microsoft.com/en-us/azure/app-service/tutorial-connect-msi-azure-database?tabs=sqldatabase%2Csystemassigned%2Cjava%2Cwindowsclient#3-modify-your-code
+def getAccessToken(): String = {
+    val creds = new DefaultAzureCredentialBuilder().build()
+    val request = new TokenRequestContext()
+    request.addScopes("https://database.windows.net//.default");
+    val accessToken = creds.getToken(request).block()
+    return accessToken.getToken()
+}
+
 
 @main
-def main(server: String, database: String, user: String, password: String) = {
-    val properties = new Properties()
-    properties.setProperty("url", s"jdbc:sqlserver://${server}.database.windows.net:1433;database=${database};encrypt=true;trustServerCertificate=false;hostNameInCertificate=*.database.windows.net;loginTimeout=30;")
-    properties.setProperty("user", s"${user}@${server}")
-    properties.setProperty("password", password)
+def main(server: String, database: String) = {
+    val ds = new SQLServerDataSource()
+    ds.setServerName(s"${server}.database.windows.net")
+    ds.setDatabaseName(database)
+    ds.setAccessToken(getAccessToken())
 
-    val connection = DriverManager.getConnection(properties.getProperty("url"), properties)
+    val connection = ds.getConnection()
     val statement = connection.createStatement()
 
     val resultSet = statement.executeQuery("""
