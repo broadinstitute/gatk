@@ -76,9 +76,6 @@ RUN mkdir .gradle
 
 WORKDIR /gatk
 
-# use UTF-8 encoding to get around (??) scala class name shapeless/$tilde$qmark$greater$?.class
-ENV LANG="en_US.UTF-8" LANGUAGE="en_US:en" LC_ALL="en_US.UTF-8"
-
 # Create a simple unit test runner
 ENV CI true
 # "export GATK_DOCKER_CONTAINER=true" is used to allow tests to determine when the're running on the docker
