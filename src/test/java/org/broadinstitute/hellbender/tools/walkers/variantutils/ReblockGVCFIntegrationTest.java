@@ -503,4 +503,18 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(outVCs.get(1).getContig(), "chr13");
         Assert.assertEquals(outVCs.get(1).getStart(), 18173860);
     }
+
+    @Test
+    public void testTreeScoreWithNoAnnotation() {
+        final File output = createTempFile("reblockedgvcf", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add("V", largeFileTestDir + "NA12878.prod.chr20snippet.g.vcf.gz")
+                .addOutput(output)
+                .addReference(b37_reference_20_21)
+                .add(ReblockGVCF.TREE_SCORE_THRESHOLD_LONG_NAME, 0.3)
+                .add("do-qual-approx", true);
+
+        Assert.assertThrows(UserException.class, () -> runCommandLine(args));
+    }
 }
