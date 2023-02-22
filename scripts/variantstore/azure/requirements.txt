@@ -1,4 +1,5 @@
 azure-identity
+azure-keyvault-secrets
 azure-mgmt-resource
 azure-mgmt-sql
 azure-mgmt-storage
