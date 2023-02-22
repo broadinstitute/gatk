@@ -36,7 +36,7 @@ workflow GvsJointVariantCalling {
       Int SNP_VQSR_mem_gb_override = ""
     }
     # This is the most updated snapshot of the code as of Feb 10, 2023
-    File gatk_override = "gs://gvs_quickstart_storage/jars/20230210/gatk-package-4.2.0.0-648-g69ad63b-SNAPSHOT-local.jar"
+    File gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-654-g4a1c203-SNAPSHOT-local.jar"
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
     Array[String] indel_recalibration_annotation_values = ["AS_FS", "AS_ReadPosRankSum", "AS_MQRankSum", "AS_QD", "AS_SOR"]
     Array[String] snp_recalibration_annotation_values = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"]
