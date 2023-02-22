@@ -1,7 +1,5 @@
 version 1.0
 
-# This is a comment!
-
 import "GvsUtils.wdl" as Utils
 
 workflow GvsExtractCallset {

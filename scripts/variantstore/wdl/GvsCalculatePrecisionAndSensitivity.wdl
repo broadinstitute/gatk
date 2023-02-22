@@ -26,7 +26,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
     truth_vcf_indices: "A list of the VCF indices for the truth data VCFs supplied above."
     truth_beds: "A list of the bed files for the truth data used for analyzing the samples in `sample_names`."
     ref_fasta: "The cloud path for the reference fasta sequence."
-    use_classic_VQSR: "Flag to indicate whether to use classic (standard) VQSR or 'VQSR Lite'."
+    use_classic_VQSR: "Flag to indicate whether the input VCFs were generated using classic (standard) VQSR or 'VQSR Lite'."
   }
 
   # WDL 1.0 trick to set a variable ('none') to be undefined.
