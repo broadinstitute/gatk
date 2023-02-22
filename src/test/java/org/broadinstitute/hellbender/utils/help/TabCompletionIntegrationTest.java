@@ -46,8 +46,6 @@ public class TabCompletionIntegrationTest extends CommandLineProgramTest {
         // Setup rote input arguments:
         final List<String> argList = Arrays.asList(
 
-                "javadoc",
-
                 "-doclet", BashTabCompletionDoclet.class.getName(),
 
                 "-docletpath", System.getProperty("java.class.path"),

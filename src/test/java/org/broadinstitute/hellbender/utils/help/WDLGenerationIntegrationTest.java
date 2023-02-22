@@ -113,7 +113,6 @@ public class WDLGenerationIntegrationTest extends CommandLineProgramTest {
     private void doWDLGenTest(List<String> testPackages, final String sourcePath, final File wdlTestTargetDir) {
 
         final String[] argArray = new String[]{
-                "javadoc",
                 "-doclet", GATKWDLDoclet.class.getName(),
                 "-docletpath", System.getProperty("java.class.path"),
                 "-sourcepath", sourcePath,
