@@ -1,0 +1,25 @@
+import $ivy.`com.microsoft.sqlserver:mssql-jdbc:12.2.0.jre11`
+
+import java.sql.*
+import java.util.Properties
+
+@main
+def main(server: String, database: String, user: String, password: String) = {
+    val properties = new Properties()
+    properties.setProperty("url", s"jdbc:sqlserver://${server}.database.windows.net:1433;database=${database};encrypt=true;trustServerCertificate=false;hostNameInCertificate=*.database.windows.net;loginTimeout=30;")
+    properties.setProperty("user", s"${user}@${server}")
+    properties.setProperty("password", password)
+
+    val connection = DriverManager.getConnection(properties.getProperty("url"), properties)
+    val statement = connection.createStatement()
+
+    val resultSet = statement.executeQuery("""
+
+    select @@version as "Hello Azure SQL Database!"
+
+    """)
+
+    resultSet.next()
+    val result = resultSet.getString(1)
+    print(result)
+}
