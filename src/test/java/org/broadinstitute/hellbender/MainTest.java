@@ -1,17 +1,15 @@
 package org.broadinstitute.hellbender;
 
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
+import org.broadinstitute.barclay.argparser.ClassFinder;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.PicardCommandLineProgramExecutor;
 import org.broadinstitute.hellbender.cmdline.TestProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.testng.Assert;
 import org.testng.annotations.Test;
-import picard.cmdline.ClassFinder;
-import picard.cmdline.PicardCommandLine;
 
 import java.lang.reflect.Modifier;
-import java.security.Permission;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.BiConsumer;
