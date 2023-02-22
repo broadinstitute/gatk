@@ -189,6 +189,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_vs_831
    - name: GvsJointVariantCallsetCost
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCallsetCost.wdl
