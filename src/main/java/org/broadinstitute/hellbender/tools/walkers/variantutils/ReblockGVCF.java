@@ -212,7 +212,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
 
         final VCFHeader inputHeader = getHeaderForVariants();
 
-        if (treeScoreThreshold > 0 && !inputHeader.getInfoHeaderLines().contains(GATKVCFConstants.TREE_SCORE)) {
+        if (treeScoreThreshold > 0 && inputHeader.getInfoHeaderLine(GATKVCFConstants.TREE_SCORE) == null) {
             throw new UserException("-" + TREE_SCORE_THRESHOLD_LONG_NAME + " is set to value greater than 0: " + treeScoreThreshold
                 + ", but the " + GATKVCFConstants.TREE_SCORE + " annotation is not present in the input GVCF.");
         }
