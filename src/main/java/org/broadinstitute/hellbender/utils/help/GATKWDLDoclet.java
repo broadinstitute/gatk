@@ -50,16 +50,6 @@ public class GATKWDLDoclet extends WDLDoclet {
         return options;
     }
 
-//    /**
-//     * Create a WDL doclet and generate the FreeMarker templates properties.
-//     * @param docEnv the doclet environment
-//     * @throws IOException
-//     */
-//    @Override
-//    public boolean run(final DocletEnvironment docEnv) {
-//        return new GATKWDLDoclet().startProcessDocs(rootDoc);
-//    }
-
     /**
      * @return the location where the build is running; used in the cromwell validation tests to generate a dummy
      * input file to satisfy cromwell file localization

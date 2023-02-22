@@ -137,11 +137,11 @@ def ensureBuildPrerequisites(largeResourcesFolder, buildPrerequisitesMessage, sk
     if (!JavaVersion.current().equals(JavaVersion.VERSION_17)) {
         println("Warning: using Java ${JavaVersion.current()} but only Java 17 has been tested.")
     }
-//    if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_17)) {
-//        throw new GradleException(
-//                "A Java 17 compatible (Java 17 or later) version is required to build GATK, but ${JavaVersion.current()} was found. "
-//                        + "$buildPrerequisitesMessage")
-//    }
+    if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_17)) {
+        throw new GradleException(
+                "A Java 17 compatible (Java 17 or later) version is required to build GATK, but ${JavaVersion.current()} was found. "
+                        + "$buildPrerequisitesMessage")
+    }
     if (!skipGitCheck && !looksLikeWereInAGitRepository() ) {
         throw new GradleException("This doesn't appear to be a git folder. " +
                 "The GATK Github repository must be cloned using \"git clone\" to run the build. " +
@@ -596,13 +596,12 @@ task shadowTestJar(type: ShadowJar){
 }
 
 task collectBundleIntoDir(type: Copy) {
-    //dependsOn shadowJar, sparkJar, 'condaEnvironmentDefinition', 'gatkTabComplete', 'gatkDoc'
-    dependsOn shadowJar, sparkJar, 'condaEnvironmentDefinition'
+    dependsOn shadowJar, sparkJar, 'condaEnvironmentDefinition', 'gatkTabComplete', 'gatkDoc'
 
     doFirst {
         assert file("gatk").exists()
         assert file("README.md").exists()
-        //assert file("$docBuildDir/tabCompletion/gatk-completion.sh").exists()
+        assert file("$docBuildDir/tabCompletion/gatk-completion.sh").exists()
         assert file("src/main/resources/org/broadinstitute/hellbender/utils/config/GATKConfig.properties").exists()
     }
 
@@ -610,8 +609,8 @@ task collectBundleIntoDir(type: Copy) {
     from(sparkJar.archivePath)
     from("gatk")
     from("README.md")
-    //from("$docBuildDir/tabCompletion/gatk-completion.sh")
-    //from("$docBuildDir/gatkDoc", { into("gatkdoc") })
+    from("$docBuildDir/tabCompletion/gatk-completion.sh")
+    from("$docBuildDir/gatkDoc", { into("gatkdoc") })
 
     from("src/main/resources/org/broadinstitute/hellbender/utils/config/GATKConfig.properties") {
         rename 'GATKConfig.properties', 'GATKConfig.EXAMPLE.properties'
@@ -816,7 +815,7 @@ task gatkTabComplete(type: Javadoc, dependsOn: classes) {
     include '**/*.java'
 
     // The gatkDoc process instantiates any documented feature classes, so to run it we need the entire
-    // runtime classpath, includin Picard.
+    // runtime classpath, including Picard.
     classpath = sourceSets.main.runtimeClasspath
 
     options.docletpath = classpath.asType(List)
@@ -990,10 +989,10 @@ task gatkValidateGeneratedWdl(dependsOn: [gatkWDLGen, shadowJar]) {
  *This specifies what artifacts will be built and uploaded when performing a maven upload.
  */
 artifacts {
-    //archives javadocJar
+    archives javadocJar
     archives sourcesJar
     archives testUtilsJar
-    //archives testUtilsJavadocJar
+    archives testUtilsJavadocJar
     archives testUtilsSourcesJar
 
 }
@@ -1062,8 +1061,7 @@ publishing {
 
             artifact testUtilsJar
             artifact testUtilsSourcesJar
-            //TODO:
-            //artifact testUtilsJavadocJar
+            artifact testUtilsJavadocJar
 
         }
     }
