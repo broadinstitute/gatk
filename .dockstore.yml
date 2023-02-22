@@ -1,5 +1,14 @@
 version: 1.2
 workflows:
+   - name: cnv_germline_case_scattered_workflow
+     subclass: WDL
+     primaryDescriptorPath: /scripts/cnv_wdl/germline/cnv_germline_case_scattered_workflow.wdl
+     testParameterFiles:
+          - /scripts/cnv_cromwell_tests/germline/cnv_germline_case_scattered_workflow.json
+     filters:
+         branches: 
+             - master
+             - tm_add_gcnv_scattered_wdl_to_dockstore 
    - name: cnv_germline_case_workflow
      subclass: WDL
      primaryDescriptorPath: /scripts/cnv_wdl/germline/cnv_germline_case_workflow.wdl
