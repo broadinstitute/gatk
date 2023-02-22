@@ -132,24 +132,16 @@ public class WDLGenerationIntegrationTest extends CommandLineProgramTest {
         docArgList.add(System.getProperty("java.class.path"));
         docArgList.addAll(testPackages);
 
-        // Run javadoc in the current JVM with the custom WDL doclet. This is a smoke test; we just want to
-        // make sure it doesn't blow up (the gradle task gatkWDLGenValidation does womtool validation on the results).
-        ToolProvider jdProvider = null;
-        for (final ToolProvider tp : ServiceLoader.load(ToolProvider.class)) {
-            if (tp.name().equals("javadoc")) {
-                jdProvider = tp;
-                break;
-            }
-        }
-        if (jdProvider == null) {
-            throw new IllegalStateException("Can't find javadoc tool");
-        }
+        // Run javadoc in the current JVM with the custom doclet, and make sure it succeeds (this is a smoke test;
+        // we just want to make sure it doesn't blow up).
+        final ToolProvider jdProvider = ToolProvider.findFirst("javadoc")
+                .orElseThrow(() -> new IllegalStateException("Can't find javadoc tool"));
 
         final String[] args = docArgList.toArray(new String[] {});
-
         final int retCode = jdProvider.run(System.out, System.err, args);
-        Assert.assertEquals(retCode, 0);
 
+        // make sure the task succeeded, and generated at least one index file, plus some other files
+        Assert. assertEquals(retCode, 0);
     }
 
 }

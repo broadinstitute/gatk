@@ -120,9 +120,7 @@ test {
 
 task testOnPackagedReleaseJar(type: Test){
     String testClassesJar = "$System.env.TEST_JAR"
-
     String testDependencyJar = "$System.env.TEST_DEPENDENCY_JAR"
-
     String gatkJar = "$System.env.GATK_JAR"
     String testClassesUnpacked = "$System.env.CP_DIR"
 

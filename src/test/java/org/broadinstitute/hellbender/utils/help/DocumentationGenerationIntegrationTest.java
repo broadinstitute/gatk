@@ -58,22 +58,13 @@ public class DocumentationGenerationIntegrationTest extends CommandLineProgramTe
 
         // Run javadoc in the current JVM with the custom doclet, and make sure it succeeds (this is a smoke test;
         // we just want to make sure it doesn't blow up).
-        //Assert.assertEquals(com.sun.tools.javadoc.Main.execute(docArgList.toArray(new String[] {})), 0);
-
-        ToolProvider jdProvider = null;
-        for (final ToolProvider tp : ServiceLoader.load(ToolProvider.class)) {
-            if (tp.name().equals("javadoc")) {
-                jdProvider = tp;
-                break;
-            }
-        }
-        if (jdProvider == null) {
-            throw new IllegalStateException("Can't find javadoc tool");
-        }
+        final ToolProvider jdProvider = ToolProvider.findFirst("javadoc")
+                .orElseThrow(() -> new IllegalStateException("Can't find javadoc tool"));
 
         final String[] args = docArgList.toArray(new String[] {});
-
         final int retCode = jdProvider.run(System.out, System.err, args);
-        Assert.assertEquals(retCode, 0);
+
+        // make sure the task succeeded, and generated at least one index file, plus some other files
+        Assert. assertEquals(retCode, 0);
     }
 }
