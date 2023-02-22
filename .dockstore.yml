@@ -8,7 +8,6 @@ workflows:
      filters:
          branches: 
              - master
-             - tm_add_gcnv_scattered_wdl_to_dockstore 
    - name: cnv_germline_case_workflow
      subclass: WDL
      primaryDescriptorPath: /scripts/cnv_wdl/germline/cnv_germline_case_workflow.wdl
