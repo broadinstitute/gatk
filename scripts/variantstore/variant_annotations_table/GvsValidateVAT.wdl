@@ -849,14 +849,14 @@ task DuplicateAnnotations {
         group by contig, position, gvs_all_an)
         where  an_count >1' > bq_an_output.csv
 
-        # bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT * from
-        # (SELECT contig, position, vid, gvs_all_ac, COUNT(DISTINCT gvs_all_ac) AS ac_count FROM `~{fq_vat_table}`
-        # group by contig, position, vid, gvs_all_ac)
-        # where  ac_count >1' > bq_ac_output.csv
+        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT * from
+        (SELECT contig, position, vid, gvs_all_ac, COUNT(DISTINCT gvs_all_ac) AS ac_count FROM `~{fq_vat_table}`
+        group by contig, position, vid, gvs_all_ac)
+        where  ac_count >1' > bq_ac_output.csv
 
         # get number of lines in bq query output
         NUMANRESULTS=$(awk 'END{print NR}' bq_an_output.csv)
-        # NUMACRESULTS=$(awk 'END{print NR}' bq_ac_output.csv)
+        NUMACRESULTS=$(awk 'END{print NR}' bq_ac_output.csv)
 
 
         echo "false" > ~{pf_file}
