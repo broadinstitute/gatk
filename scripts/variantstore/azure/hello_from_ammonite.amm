@@ -28,7 +28,7 @@ def getAccessTokenViaRequest(): String = {
 
 // Generate a token via
 // az account get-access-token --resource=https://database.windows.net/ --query accessToken --output tsv > db_access_token.txt
-// Note this produces a token file with a confounding trailing newline, requiring the code below has to `trim()`.
+// Note this produces a token file with a confounding trailing newline, the code below has to `trim()`.
 def getAccessTokenViaFile(tokenFile: String): String = {
     // https://www.digitalocean.com/community/tutorials/java-read-file-to-string
     val token = new String(Files.readAllBytes(Paths.get(tokenFile)))
