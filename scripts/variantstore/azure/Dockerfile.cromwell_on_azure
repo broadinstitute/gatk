@@ -41,3 +41,14 @@ ENV PATH=$PATH:/opt/mssql-tools/bin
 RUN apt-get install --assume-yes python3-pip
 COPY requirements.txt requirements.txt
 RUN pip3 install -r requirements.txt
+
+# Temurin 11
+# https://askubuntu.com/a/1386901
+RUN apt-get install --assume-yes wget
+RUN wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | apt-key add -
+RUN echo "deb https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | tee /etc/apt/sources.list.d/adoptium.list
+RUN apt update && apt install --assume-yes temurin-11-jdk
+
+# Ammonite
+# http://ammonite.io/#InstallationonLinux
+RUN sh -c '(echo "#!/usr/bin/env sh" && curl -L https://github.com/com-lihaoyi/Ammonite/releases/download/3.0.0-M0/2.13-3.0.0-M0) > /usr/local/bin/amm && chmod +x /usr/local/bin/amm'

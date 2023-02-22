@@ -4,8 +4,9 @@ workflow HelloAzure {
     input {
         String sql_server
         String sql_database
-        File database_access_token
+        File utf8_token_file
         File python_script
+        File ammonite_script
     }
     parameter_meta {
         sql_server: {
@@ -14,29 +15,32 @@ workflow HelloAzure {
         sql_database: {
             description: "Name of the Database within the Azure SQL Database Server"
         }
-        database_access_token: {
-            description: "An access token generated with auth that can access the Azure SQL Database Server. e.g. `az account get-access-token --resource https://database.windows.net --output tsv | cut -f 1 | tr -d '\n' | iconv -f ascii -t UTF-16LE > db_access_token.txt`"
+        token_file: {
+            description: "A file with a UTF-8 encoded access token generated with auth that can access the Azure SQL Database Server. e.g. `az account get-access-token --resource=https://database.windows.net/ --query accessToken --output tsv > db_access_token.txt"
         }
     }
-
-    Boolean batch_vms_have_managed_identity = false
 
     call HelloFromSqlcmd {
         input:
             sql_server = sql_server,
             sql_database = sql_database,
-            database_access_token = database_access_token
+            token_file = utf8_token_file
     }
 
-    # Only call the Python script if the Azure Batch VMs are assigned managed identities as the script currrently
-    # does not work with access tokens.
-    if (batch_vms_have_managed_identity) {
-        call HelloFromPython {
-            input:
-                sql_server = sql_server,
-                sql_database = sql_database,
-                python_script = python_script
-        }
+    call HelloFromPython {
+        input:
+            sql_server = sql_server,
+            sql_database = sql_database,
+            python_script = python_script,
+            token_file = utf8_token_file
+    }
+
+    call HelloFromAmmonite {
+        input:
+            sql_server = sql_server,
+            sql_database = sql_database,
+            ammonite_script = ammonite_script,
+            token_file = utf8_token_file
     }
 }
 
@@ -44,12 +48,15 @@ task HelloFromSqlcmd {
     input {
         String sql_server
         String sql_database
-        File database_access_token
+        File token_file
     }
     meta {
         # Database token generated from a regular `az login` or `az login --identity` MSI plus:
         #
         # az account get-access-token --resource https://database.windows.net --output tsv | cut -f 1 | tr -d '\n' | iconv -f ascii -t UTF-16LE > db_access_token.txt
+        #
+        # That pipeline at the end makes sure we have only one field (the token), strips the trailing newline, and
+        # converts to UTF-16LE encoding because the Microsoft SQL drivers actually require that encoding (yes really).
         #
         # These tokens have ~1 hour TTL and threading them through explicitly isn't great, but they are enough for
         # "Hello World" purposes.
@@ -60,9 +67,10 @@ task HelloFromSqlcmd {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        # smh sqlcmd actually refuses to deal with the 141 character length of this input path... ln to the rescue!
-        # Sqlcmd: '-P': Argument too long (maximum is 128 characters).
-        ln -s ~{database_access_token} /tmp/db_access_token.txt
+        # sqlcmd is particular about the formatting and encoding of its access token: no whitespace and UTF-16LE.
+        # Python is particular too but these manipulations can be sprinkled into the code. Java / Ammonite doesn't
+        # seem to care about encoding?
+        cat ~{token_file} | cut -f 1 | tr -d '\n' | iconv -f ascii -t UTF-16LE > /tmp/db_access_token.txt
 
         # A hopefully temporary hack to allow Azure Batch VMs to connect to the Azure SQL Database Server. We don't know
         # the Batch VM IPs in advance and they don't currently seem to have the auth to allow-list only their own IPs.
@@ -74,7 +82,7 @@ task HelloFromSqlcmd {
         sqlcmd -S tcp:~{sql_server}.database.windows.net,1433 -d ~{sql_database} -G -Q 'select @@version as "Hello Azure SQL Database!"' -P /tmp/db_access_token.txt
     >>>
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:coa-2023-02-16"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:coa-2023-02-22"
     }
     output {
         String out = read_string(stdout())
@@ -86,11 +94,9 @@ task HelloFromPython {
         String sql_server
         String sql_database
         File python_script
+        File token_file
     }
     meta {
-        # This task is not currently working under CoA as the Azure Batch VMs spun up by CoA do not appear to have any
-        # assigned identity. There is an additional code path in the script to support the use of access tokens but that
-        # isn't working either for unknown reasons.
         description: "Say hello to Azure SQL Database from Python -> pyodbc -> unixodbc -> MS ODBC driver"
     }
     command <<<
@@ -98,10 +104,35 @@ task HelloFromPython {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        python3 ~{python_script} --sql-server ~{sql_server} --sql-database ~{sql_database}
+        python3 ~{python_script} --sql-server ~{sql_server} --sql-database ~{sql_database} --token-file ~{token_file}
     >>>
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:coa-2023-02-16"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:coa-2023-02-22"
+    }
+    output {
+        String out = read_string(stdout())
+    }
+}
+
+task HelloFromAmmonite {
+    input {
+        String sql_server
+        String sql_database
+        File ammonite_script
+        File token_file
+    }
+    meta {
+        description: "Say hello to Azure SQL Database from Ammonite/Java -> JDBC -> MS JDBC driver"
+    }
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        amm ~{ammonite_script} --sql-server ~{sql_server} --sql-database ~{sql_database} --tokenFile ~{token_file}
+    >>>
+    runtime {
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:coa-2023-02-22"
     }
     output {
         String out = read_string(stdout())

@@ -256,6 +256,14 @@ workflows:
        branches:
          - master
          - ah_var_store
+   - name: GvsHelloAzure
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/azure/HelloAzure.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_812_coa_sql_database
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
