@@ -861,9 +861,6 @@ task DuplicateAnnotations {
 
         echo "false" > ~{pf_file}
         # if the results of the queries have any rows, that means there are sites with mis-matched gvs_all_an or gvs_all_ac
-        # if [[ $NUMANRESULTS = "0" && $NUMACRESULTS = "0" ]]; then
-        # echo "The VAT table ~{fq_vat_table} has correct calculations for AN, AC, AN of subpopulations and AC of subpopulations" > ~{results_file}
-        # echo "true" > ~{pf_file}
         if [[ $NUMANRESULTS != "0" ]]; then
           echo "The VAT table ~{fq_vat_table} has mis-matched calculations for AC, and AC of subpopulations" > ~{results_file}
           cat bq_an_output.csv >> ~{results_file}
@@ -873,8 +870,6 @@ task DuplicateAnnotations {
         else
           echo "The VAT table ~{fq_vat_table} has correct calculations for AN, AC, AN of subpopulations and AC of subpopulations" > ~{results_file}
           echo "true" > ~{pf_file}
-          # cat bq_an_output.csv >> ~{results_file}
-          # cat bq_ac_output.csv >> ~{results_file}
         fi
 
     >>>
