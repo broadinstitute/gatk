@@ -18,7 +18,7 @@ import java.util.*
 
 // Nearly everything taken from
 // https://learn.microsoft.com/en-us/azure/app-service/tutorial-connect-msi-azure-database?tabs=sqldatabase%2Csystemassigned%2Cjava%2Cwindowsclient#3-modify-your-code
-def getAccessToken(): String = {
+def getAccessTokenViaRequest(): String = {
     val creds = new DefaultAzureCredentialBuilder().build()
     val request = new TokenRequestContext()
     request.addScopes("https://database.windows.net//.default");
@@ -26,13 +26,26 @@ def getAccessToken(): String = {
     return accessToken.getToken()
 }
 
+// Generate a token via
+// az account get-access-token --resource=https://database.windows.net/ --query accessToken --output tsv > db_access_token.txt
+// Note this produces a token file with a confounding trailing newline, requiring the code below has to `trim()`.
+def getAccessTokenViaFile(tokenFile: String): String = {
+    // https://www.digitalocean.com/community/tutorials/java-read-file-to-string
+    val token = new String(Files.readAllBytes(Paths.get(tokenFile)))
+    return token.trim()
+}
 
 @main
-def main(server: String, database: String) = {
+def main(server: String, database: String, tokenFile: Option[String] = None) = {
     val ds = new SQLServerDataSource()
+
+    val token = tokenFile match {
+      case Some(file) => getAccessTokenViaFile(file)
+      case None => getAccessTokenViaRequest()
+    }
+    ds.setAccessToken(token)
     ds.setServerName(s"${server}.database.windows.net")
     ds.setDatabaseName(database)
-    ds.setAccessToken(getAccessToken())
 
     val connection = ds.getConnection()
     val statement = connection.createStatement()
