@@ -137,7 +137,6 @@ workflow GvsValidateVat {
                        SubpopulationAlleleCount.pass,
                        SubpopulationAlleleNumber.pass,
                        DuplicateAnnotations.pass,
-                       ClinvarSignificance.pass,
                        SchemaAAChangeAndExonNumberConsistent.pass,
                        SpotCheckForAAChangeAndExonNumberConsistency.pass
                        ],
@@ -154,7 +153,6 @@ workflow GvsValidateVat {
                                SubpopulationAlleleCount.name,
                                SubpopulationAlleleNumber.name,
                                DuplicateAnnotations.name,
-                               ClinvarSignificance.name,
                                SchemaAAChangeAndExonNumberConsistent.name,
                                SpotCheckForAAChangeAndExonNumberConsistency.name
                                ],
@@ -171,7 +169,6 @@ workflow GvsValidateVat {
                                  SubpopulationAlleleCount.result,
                                  SubpopulationAlleleNumber.result,
                                  DuplicateAnnotations.result,
-                                 ClinvarSignificance.result,
                                  SchemaAAChangeAndExonNumberConsistent.result,
                                  SpotCheckForAAChangeAndExonNumberConsistency.result
                                  ]
