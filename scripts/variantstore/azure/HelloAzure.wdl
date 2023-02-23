@@ -66,13 +66,6 @@ task HelloFromSqlcmd {
         # seem to care about encoding or autodetects and adapts?
         cat ~{token_file} | cut -f 1 | tr -d '\n' | iconv -f ascii -t UTF-16LE > /tmp/db_access_token.txt
 
-        # A hopefully temporary hack to allow Azure Batch VMs to connect to the Azure SQL Database Server. We don't know
-        # the Batch VM IPs in advance and they don't currently seem to have the auth to allow-list only their own IPs.
-        # Run this on your personal machine before attempting to run this workflow.
-        # https://learn.microsoft.com/en-us/azure/azure-sql/database/firewall-configure?view=azuresql#connections-from-inside-azure
-        #
-        # az sql server firewall-rule create -n AllowAllWindowsAzureIps --start-ip-address 0.0.0.0 --end-ip-address 0.0.0.0
-
         sqlcmd -S tcp:~{sql_server}.database.windows.net,1433 -d ~{sql_database} -G -Q 'select @@version as "Hello Azure SQL Database!"' -P /tmp/db_access_token.txt
     >>>
     runtime {

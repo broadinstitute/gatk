@@ -18,7 +18,7 @@ def fetch_token():
     return token_str
 
 
-def token_to_struct(token_str: str):
+def token_to_struct(token_str: bytes):
     token_struct = struct.pack(f'<I{len(token_str)}s', len(token_str), token_str)
     return token_struct
 
@@ -58,7 +58,6 @@ def query_and_print(connection):
 if __name__ == '__main__':
     # All taken from
     # https://techcommunity.microsoft.com/t5/apps-on-azure-blog/how-to-connect-azure-sql-database-from-python-function-app-using/ba-p/3035595
-    #
     parser = argparse.ArgumentParser(allow_abbrev=False, description='Say Hello to Azure SQL Database from Python')
     parser.add_argument('--server', type=str, help='Azure SQL Server name', required=True)
     parser.add_argument('--database', type=str, help='Azure SQL Server database', required=True)
@@ -69,7 +68,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     connection_string = build_connection_string(args.server, args.database)
-    print(connection_string)
 
     if args.token_file:
         token = read_token_from_file(args.token_file)

@@ -1,3 +1,5 @@
+// Ammonite script to say Hello to Azure SQL Database from the Java ecosystem.
+
 // Package management
 import $ivy.`com.microsoft.sqlserver:mssql-jdbc:12.2.0.jre11`
 import $ivy.`com.azure:azure-identity:1.4.6`
@@ -28,6 +30,8 @@ def getAccessTokenViaRequest(): String = {
 // Generate a token via
 // az account get-access-token --resource=https://database.windows.net/ --query accessToken --output tsv > db_access_token.txt
 // Note this produces a token file with a confounding trailing newline, the code below has to `trim()`.
+// Also note that unlike the sqlcmd and Python contexts, there is nothing here about UTF-16LE encoding; the Java
+// ecosystem seems to deal with the ASCII / UTF-8 access token just fine without the caller doing anything special.
 def getAccessTokenViaFile(tokenFile: String): String = {
     // https://www.digitalocean.com/community/tutorials/java-read-file-to-string
     val token = new String(Files.readAllBytes(Paths.get(tokenFile)))

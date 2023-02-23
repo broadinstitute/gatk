@@ -50,6 +50,11 @@ EXTERNAL_IP=$(curl --silent ifconfig.me)
 
 az sql server firewall-rule create -n AllowYourIp --start-ip-address $EXTERNAL_IP --end-ip-address $EXTERNAL_IP
 
+# Add an allow rule for all Azure traffic so the Azure Batch VMs spun up by Cromwell on Azure can connect.
+# Hopefully this can be done more narrowly in the future, but likely we won't know the Batch VMs exact IP addresses in advance. 
+# https://learn.microsoft.com/en-us/azure/azure-sql/database/firewall-configure?view=azuresql#connections-from-inside-azure
+az sql server firewall-rule create -n AllowAllWindowsAzureIps --start-ip-address 0.0.0.0 --end-ip-address 0.0.0.0 
+
 # Create an AD admin group for the Azure SQL Database.
 AZ_SQLDB_AD_ADMIN_GROUP_ID=$(az ad group create --display-name "${RESOURCE_GROUP} Azure SQL Database AD Admin Group" --mail-nickname "${RESOURCE_GROUP}-ad-admin" | jq -r .id)
 
@@ -71,34 +76,20 @@ az role assignment create --role "SQL Security Manager" --assignee "${COA_UAMI_P
 # Azure AD Admins for this server.
 az sql server ad-admin create --object-id ${AZ_SQLDB_AD_ADMIN_GROUP_ID} --display-name "${RESOURCE_GROUP} Azure SQL Database AD Admin"
 
-# **NOTE** `sqlcmd` behavior with respect to the `-G` Azure Directory authentication parameter is incompatible between
-# Linux and Mac versions. Mac `sqlcmd` is a [port to the Go language](https://github.com/microsoft/go-sqlcmd) and thus
-# a completely different code base than the Microsoft version of `sqlcmd` for Linux.
-
 get_db_token() {
+    # Fetches a database access token with ~1 hour TTL, ASCII / UTF-8 encoded and newline terminated
     # https://learn.microsoft.com/en-us/sql/connect/odbc/linux-mac/connecting-with-sqlcmd?view=azuresqldb-current
-    az account get-access-token --resource https://database.windows.net --output tsv | cut -f 1 | tr -d '\n' | iconv -f ascii -t UTF-16LE
-
-    # Perhaps (much) more simply per https://techcommunity.microsoft.com/t5/apps-on-azure-blog/how-to-connect-azure-sql-database-from-python-function-app-using/ba-p/3035595
-    # az account get-access-token --resource=https://database.windows.net/ --query accessToken
+    az account get-access-token --resource https://database.windows.net --query accessToken --output tsv
 }
 
-# On Mac:
-
-# The Mac version of `sqlcmd` does not support `-G` authentication with `-P`, so use the `SQLCMDPASSWORD` environment variable.
-SQLCMDPASSWORD=$(get_db_token)
-
-# Say hello to Azure SQL Database!
-sqlcmd -S tcp:${SQL_SERVER}.database.windows.net,1433 -d ${SQL_DATABASE} -G -Q 'select @@version as "Hello Azure SQL Database!"'
-
-# On Linux:
-
-# The Linux version of `sqlcmd` does not support `-G` authentication with the `SQLCMDPASSWORD` environment variable, so use `-P`.
-# https://learn.microsoft.com/en-us/sql/connect/odbc/linux-mac/connecting-with-sqlcmd?view=azuresqldb-current
-get_db_token > db_token
+# Be aware that there are at least two versions of `sqlcmd` circulating and they are not compatible with respect to the
+# handling of Azure Active Directory credentials. The instructions below are for the `mssql-tools` version (as the
+# package is called in both Ubuntu and Homebrew). Note that the `sqlcmd` formula in Homebrew installs a Golang-based
+# version of `sqlcmd` which uses an environment variable SQLCMDPASSWORD to hold the access token rather than a file
+# specified with the -P option.
 
 # Say hello to Azure SQL Database!
-sqlcmd -S tcp:${SQL_SERVER}.database.windows.net,1433 -d ${SQL_DATABASE} -G -Q 'select @@version as "Hello Azure SQL Database!"' -P db_token
+sqlcmd -S tcp:${SQL_SERVER}.database.windows.net,1433 -d ${SQL_DATABASE} -G -Q 'select @@version as "Hello Azure SQL Database!"' -P =(get_db_token | tr -d '\n' | iconv -f ascii -t UTF-16LE)
 
                          
 Hello Azure SQL Database!                                                                                                                                                                                                                                                                                   
@@ -109,3 +100,7 @@ Microsoft SQL Azure (RTM) - 12.0.2000.8
 
 
 (1 rows affected)
+
+# Yes sqlcmd (or more specifically the Microsoft ODBC Driver) really does require newline-stripped UTF-16 Little
+# Endian encoded tokens and will fail to log in with no useful diagnostics if it gets anything else.
+# =() is some zsh trickery that uses temporary files; the usual bash <() construct does not work here.
