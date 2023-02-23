@@ -49,6 +49,14 @@ RUN wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | apt
 RUN echo "deb https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | tee /etc/apt/sources.list.d/adoptium.list
 RUN apt update && apt install --assume-yes temurin-11-jdk
 
-# Ammonite
-# http://ammonite.io/#InstallationonLinux
-RUN sh -c '(echo "#!/usr/bin/env sh" && curl -L https://github.com/com-lihaoyi/Ammonite/releases/download/3.0.0-M0/2.13-3.0.0-M0) > /usr/local/bin/amm && chmod +x /usr/local/bin/amm'
+# Coursier / Ammonite
+# https://get-coursier.io/docs/cli-installation#linux
+#
+# Use the statically linked version for now to get around broken dynamically linked launcher
+# https://github.com/coursier/coursier/issues/2624
+# https://stackoverflow.com/a/75232986/21269164
+RUN curl -fL "https://github.com/coursier/launchers/raw/master/cs-x86_64-pc-linux-static.gz" | gzip -d > /usr/local/bin/cs
+RUN chmod +x /usr/local/bin/cs
+RUN mkdir -p /coursier/bin
+ENV PATH=/coursier/bin\:$PATH
+RUN cs setup --install-dir /coursier/bin --yes

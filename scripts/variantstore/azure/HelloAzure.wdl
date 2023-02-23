@@ -120,7 +120,7 @@ task HelloFromAmmonite {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        amm ~{ammonite_script} --sql-server ~{sql_server} --sql-database ~{sql_database} --tokenFile ~{token_file}
+        amm ~{ammonite_script} --server ~{sql_server} --database ~{sql_database} --tokenFile ~{token_file}
     >>>
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:coa-2023-02-22"
