@@ -1,4 +1,5 @@
 import argparse
+import sys
 
 import inflection
 import os
@@ -16,6 +17,9 @@ from uuid import uuid4
 
 
 def exactly_one_or_die(result, kind, filter=None, describer=None):
+    """
+    Pull out exactly one item from the result or die trying.
+    """
     found = list(result)
 
     if filter:
@@ -83,17 +87,6 @@ def get_sql_database(credentials, subscription, resource_group, server):
                               resource_group_filter)
 
 
-def write_input_file(storage_account, path, data):
-    blob_url = f"{storage_account.primary_endpoints.blob}/inputs/{path}"
-
-    blob_client = BlobClient.from_blob_url(
-        blob_url=blob_url,
-        credential=credentials
-    )
-
-    blob_client.upload_blob(data)
-
-
 def get_blob_service_client():
     return BlobServiceClient.from_connection_string(os.getenv('AZURE_CONNECTION_STRING'))
 
@@ -112,6 +105,10 @@ def generate_inputs_json(workflow_name, access_token_storage_path, python_script
 
 
 def generate_trigger_json(workflow_storage_path, inputs_storage_path):
+    """
+    Creates a trigger JSON of the form accepted by CromwellOnAzure. This is conceptually similar to the JSON payload
+    of a workflow submission POST that would normally go to Cromwell's REST interface.
+    """
     return f"""
 {{
   "WorkflowUrl": "{workflow_storage_path}",
@@ -124,7 +121,18 @@ def generate_trigger_json(workflow_storage_path, inputs_storage_path):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(allow_abbrev=False, description='Submit workflow to Cromwell on Azure')
+    description = """
+
+    Cromwell on Azure (CoA) "Hello Azure!" workflow submission script does the following:
+
+    1. Stages the workflow and its `File` inputs (scripts, database access token) to the CoA inputs container.
+    2. Generates an inputs JSON corresponding to the inputs file from 1. and stages this to the CoA inputs container.
+    3. Generates a trigger JSON for this workflow + inputs and stages this to the CoA workflows container under 'new'.
+
+    The script does *not* attempt to poll the submitted workflow for status, this is simple "fire and forget".
+    """
+
+    parser = argparse.ArgumentParser(allow_abbrev=False, description=description)
     parser.add_argument('--workflow', type=str, help='Workflow WDL source', required=True)
     parser.add_argument('--python-script', type=str, help="Hello World Python script", required=True)
     parser.add_argument('--ammonite-script', type=str, help="Hello World Ammonite script", required=True)
@@ -136,9 +144,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if not os.getenv('AZURE_CONNECTION_STRING'):
-        raise ValueError("Must define 'AZURE_CONNECTION_STRING' as a SAS token, see https://learn.microsoft.com/en-us/azure/storage/common/storage-configure-connection-string#store-a-connection-string")
+        raise ValueError("Must define 'AZURE_CONNECTION_STRING' as a SAS token with write permissions to the CoA storage account, see https://learn.microsoft.com/en-us/azure/storage/common/storage-configure-connection-string#store-a-connection-string")
 
-    # The dshared token cache was causing issues with attempts to use expired tokens so disable that.
+    # The shared token cache was causing issues with attempts to use expired tokens so disable that.
     # `DefaultAzureCredential` appears to fall back to Azure CLI credentials which works fine.
     # https://github.com/Azure/azure-sdk-for-python/issues/22822#issuecomment-1024668507
     credentials = DefaultAzureCredential(exclude_shared_token_cache_credential=True)

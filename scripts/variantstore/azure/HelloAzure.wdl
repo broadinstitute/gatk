@@ -8,6 +8,9 @@ workflow HelloAzure {
         File python_script
         File ammonite_script
     }
+    meta {
+        description: "Workflow to say Hello to Azure SQL database from sqlcmd, Python, and Ammonite (Java ecosystem) contexts"
+    }
     parameter_meta {
         sql_server: {
             description: "Name of the Azure SQL Database Server without .database.windows.net suffix"
