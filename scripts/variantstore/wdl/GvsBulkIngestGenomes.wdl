@@ -74,6 +74,8 @@ workflow GvsBulkIngestGenomes {
             input_vcfs = read_lines(PrepareBulkImport.vcfFOFN),
             input_vcf_indexes = read_lines(PrepareBulkImport.vcfIndexFOFN),
 
+            is_rate_limited_beta_customer = true,
+
             interval_list = interval_list,
 
             # The larger the `load_data_batch_size` the greater the probability of preemptions and non-retryable
