@@ -1,5 +1,7 @@
 version 1.0
 
+# I am a comment.
+
 workflow GvsCalculatePrecisionAndSensitivity {
   input {
     Array[File] input_vcfs
@@ -100,6 +102,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
         truth_bed = truth_beds[i],
         contig = contig,
         output_basename = sample_name + "-bq_roc_filtered",
+        use_classic_VQSR = use_classic_VQSR,
         ref_fasta = ref_fasta
     }
 
@@ -113,6 +116,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
         contig = contig,
         all_records = true,
         output_basename = sample_name + "-bq_all",
+        use_classic_VQSR = use_classic_VQSR,
         ref_fasta = ref_fasta
     }
   }
@@ -341,11 +345,15 @@ task EvaluateVcf {
 
     String output_basename
 
+    Boolean use_classic_VQSR = false
+
     String docker = "docker.io/realtimegenomics/rtg-tools:latest"
     Int cpu = 1
     Int memory_mb = 3500
     Int disk_size_gb = ceil(2 * size(ref_fasta, "GiB")) + 50
   }
+
+  String max_score_tag = if (use_classic_VQSR == true) then 'MAX_AS_VQSLOD' else 'MAX_AS_VQS_SENS'
 
   command <<<
     set -e -o pipefail
@@ -356,7 +364,7 @@ task EvaluateVcf {
       ~{"--region " + contig} \
       ~{if all_records then "--all-records" else ""} \
       --roc-subset snp,indel \
-      --vcf-score-field=INFO.MAX_AS_VQSLOD \
+      --vcf-score-field=INFO.~{max_score_tag} \
       -t human_REF_SDF \
       -b ~{truth_vcf} \
       -e ~{truth_bed}\
