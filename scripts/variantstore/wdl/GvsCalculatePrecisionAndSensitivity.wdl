@@ -1,7 +1,5 @@
 version 1.0
 
-# I am a comment.
-
 workflow GvsCalculatePrecisionAndSensitivity {
   input {
     Array[File] input_vcfs
@@ -80,7 +78,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
         output_basename = output_sample_basename
     }
 
-    call Add_AS_MAX_VQS_Score_ToVcf {
+    call Add_AS_MAX_VQS_FIELD_ToVcf {
       input:
         input_vcf = SelectVariants.output_vcf,
         output_basename = output_sample_basename + ".maxas",
@@ -89,7 +87,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
 
     call BgzipAndTabix {
       input:
-        input_vcf = Add_AS_MAX_VQS_Score_ToVcf.output_vcf,
+        input_vcf = Add_AS_MAX_VQS_FIELD_ToVcf.output_vcf,
         output_basename = output_sample_basename + ".maxas"
     }
 
@@ -267,7 +265,7 @@ task SelectVariants {
   }
 }
 
-task Add_AS_MAX_VQS_Score_ToVcf {
+task Add_AS_MAX_VQS_FIELD_ToVcf {
   input {
     File input_vcf
     String output_basename
@@ -353,7 +351,7 @@ task EvaluateVcf {
     Int disk_size_gb = ceil(2 * size(ref_fasta, "GiB")) + 50
   }
 
-  String max_score_tag = if (use_classic_VQSR == true) then 'MAX_AS_VQSLOD' else 'MAX_AS_VQS_SENS'
+  String max_score_field_tag = if (use_classic_VQSR == true) then 'MAX_AS_VQSLOD' else 'MAX_AS_VQS_SENS'
 
   command <<<
     set -e -o pipefail
@@ -364,7 +362,7 @@ task EvaluateVcf {
       ~{"--region " + contig} \
       ~{if all_records then "--all-records" else ""} \
       --roc-subset snp,indel \
-      --vcf-score-field=INFO.~{max_score_tag} \
+      --vcf-score-field=INFO.~{max_score_field_tag} \
       -t human_REF_SDF \
       -b ~{truth_vcf} \
       -e ~{truth_bed}\
