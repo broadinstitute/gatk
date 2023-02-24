@@ -24,7 +24,7 @@ def getAccessTokenViaRequest(): String = {
     val request = new TokenRequestContext()
     request.addScopes("https://database.windows.net//.default");
     val accessToken = creds.getToken(request).block()
-    return accessToken.getToken()
+    accessToken.getToken()
 }
 
 // Generate a token via
@@ -35,7 +35,7 @@ def getAccessTokenViaRequest(): String = {
 def getAccessTokenViaFile(tokenFile: String): String = {
     // https://www.digitalocean.com/community/tutorials/java-read-file-to-string
     val token = new String(Files.readAllBytes(Paths.get(tokenFile)))
-    return token.trim()
+    token.trim()
 }
 
 @main
