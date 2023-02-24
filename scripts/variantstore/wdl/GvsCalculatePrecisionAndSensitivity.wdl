@@ -345,7 +345,7 @@ task EvaluateVcf {
 
     String output_basename
 
-    Boolean use_classic_VQSR = false
+    Boolean use_classic_VQSR = true
 
     String docker = "docker.io/realtimegenomics/rtg-tools:latest"
     Int cpu = 1
