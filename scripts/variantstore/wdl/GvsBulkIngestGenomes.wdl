@@ -8,9 +8,9 @@ import "GvsImportGenomes.wdl" as ImportGenomes
 workflow GvsBulkIngestGenomes {
     input {
         # Begin GvsPrepareBulkImport
-        String terra_project_id
-        String workspace_name
-        String workspace_bucket
+        String terra_project_id # env vars
+        String workspace_name # env vars
+        String workspace_bucket # env vars -- this is just workspace_id + fc
         String samples_table_name
         String sample_id_column_name # is this just <samples_table_name>_id ?
         String vcf_files_column_name
@@ -44,11 +44,15 @@ workflow GvsBulkIngestGenomes {
         ## TODO do we want to add Alt Allele Table creation?
     }
 
+
+    call WorkspaceIdTask
+
+
     call PrepareBulkImport.GvsPrepareBulkImport as PrepareBulkImport {
         input:
             project_id = terra_project_id,
             workspace_name = workspace_name,
-            workspace_bucket  = workspace_bucket,
+            workspace_bucket = "fc-" + WorkspaceId.workspace_id,
             samples_table_name = samples_table_name,
             sample_id_column_name = sample_id_column_name,
             vcf_files_column_name = vcf_files_column_name,
@@ -93,3 +97,23 @@ workflow GvsBulkIngestGenomes {
         Array[File] load_data_stderrs = ImportGenomes.load_data_stderrs
     }
 }
+
+
+    task WorkspaceIdTask {
+        command <<<
+            # Prepend date, time and pwd to xtrace log entries.
+            PS4='\D{+%F %T} \w $ '
+            set -o errexit -o nounset -o pipefail -o xtrace
+
+            # Sniff the workspace bucket out of the delocalization script and extract the workspace id from that.
+            sed -n -E 's!.*gs://fc-(secure-)?([^\/]+).*!\2!p' /cromwell_root/gcs_delocalization.sh | sort -u > workspace_id.txt
+        >>>
+
+        runtime {
+            docker: "ubuntu:latest"
+        }
+
+        output {
+            String workspace_id = read_string("workspace_id.txt")
+        }
+    }
