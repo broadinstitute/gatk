@@ -1,3 +1,9 @@
+# **Note**
+
+The following describes setup for Microsoft's [CromwellOnAzure](https://github.com/microsoft/CromwellOnAzure) which is
+*not* the same or necessarily even similar to Cromwell on Azure in Terra. Much of what follows below may not be relevant
+to running Cromwell in Terra.
+
 # Setup for Mac
 
 * Install the [Azure CLI locally](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli-macos). 
