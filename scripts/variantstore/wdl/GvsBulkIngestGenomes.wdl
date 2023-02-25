@@ -45,14 +45,14 @@ workflow GvsBulkIngestGenomes {
     }
 
 
-    call WorkspaceIdTask
+    call GetWorkspaceId
 
 
     call PrepareBulkImport.GvsPrepareBulkImport as PrepareBulkImport {
         input:
             project_id = terra_project_id,
             workspace_name = workspace_name,
-            workspace_bucket = "fc-" + WorkspaceId.workspace_id,
+            workspace_bucket = "fc-" + GetWorkspaceId.workspace_id,
             samples_table_name = samples_table_name,
             sample_id_column_name = sample_id_column_name,
             vcf_files_column_name = vcf_files_column_name,
@@ -99,7 +99,7 @@ workflow GvsBulkIngestGenomes {
 }
 
 
-    task WorkspaceIdTask {
+    task GetWorkspaceId {
         command <<<
             # Prepend date, time and pwd to xtrace log entries.
             PS4='\D{+%F %T} \w $ '
