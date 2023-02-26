@@ -8,9 +8,7 @@ import org.json.simple.parser.ParseException;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.util.*;
 import java.util.spi.ToolProvider;
 import java.util.stream.Collectors;
@@ -136,11 +134,14 @@ public class WDLGenerationIntegrationTest extends CommandLineProgramTest {
         final ToolProvider jdProvider = ToolProvider.findFirst("javadoc")
                 .orElseThrow(() -> new IllegalStateException("Can't find javadoc tool"));
 
+        final StringWriter stringWriter = new StringWriter();
+        final PrintWriter outputWriter = new PrintWriter(stringWriter);
+
         final String[] args = docArgList.toArray(new String[] {});
-        final int retCode = jdProvider.run(System.out, System.err, args);
+        final int retCode = jdProvider.run(outputWriter, outputWriter, args);
 
         // make sure the task succeeded, and generated at least one index file, plus some other files
-        Assert. assertEquals(retCode, 0);
+        Assert. assertEquals(retCode, 0, outputWriter.toString());
     }
 
 }
