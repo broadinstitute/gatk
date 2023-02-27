@@ -254,6 +254,10 @@ task LoadData {
         -SNM ~{sample_map} \
         --ref-version 38 \
         --skip-loading-vqsr-fields ~{skip_loading_vqsr_fields}
+
+      rm $input_vcf
+      rm $input_vcf_index
+
     done
   >>>
   runtime {
