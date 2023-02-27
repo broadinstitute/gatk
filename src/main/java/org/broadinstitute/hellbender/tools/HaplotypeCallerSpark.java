@@ -169,7 +169,7 @@ public final class HaplotypeCallerSpark extends AssemblyRegionWalkerSpark {
                                                                                                            final Broadcast<HaplotypeCallerArgumentCollection> hcArgsBroadcast,
                                                                                                            final Broadcast<AssemblyRegionArgumentCollection> assemblyRegionArgsBroadcast,
                                                                                                            final Broadcast<VariantAnnotatorEngine> annotatorEngineBroadcast) {
-        return contexts -> {
+        return (FlatMapFunction<Iterator<AssemblyRegionWalkerContext>, VariantContext>) contexts -> {
             // HaplotypeCallerEngine isn't serializable but is expensive to instantiate, so construct and reuse one for every partition
             final CachingIndexedFastaSequenceFile taskReferenceSequenceFile = taskReferenceSequenceFile(referenceFileName);
             final HaplotypeCallerEngine hcEngine = new HaplotypeCallerEngine(hcArgsBroadcast.value(), assemblyRegionArgsBroadcast.value(), false, false, header, taskReferenceSequenceFile, annotatorEngineBroadcast.getValue());

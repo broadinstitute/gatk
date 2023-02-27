@@ -178,8 +178,6 @@ configurations.all {
         // make sure we don't pick up an incorrect version of the GATK variant of the google-nio library
         // via Picard, etc.
         force googleCloudNioDependency
-
-        force 'com.esotericsoftware:kryo:4.0.0'
     }
     all*.exclude group: 'org.slf4j', module: 'slf4j-jdk14' //exclude this to prevent slf4j complaining about to many slf4j bindings
     all*.exclude group: 'com.google.guava', module: 'guava-jdk5'
@@ -218,7 +216,7 @@ configurations {
         // exclude Hadoop and Spark dependencies, since they are provided when running with Spark
         // (ref: http://unethicalblogger.com/2015/07/15/gradle-goodness-excluding-depends-from-shadow.html)
         exclude group: 'org.apache.hadoop'
-        exclude module: 'spark-core_2.11'
+        exclude module: 'spark-core_2.12'
         exclude group: 'org.slf4j'
         exclude module: 'jul-to-slf4j'
         exclude module: 'javax.servlet'
@@ -337,17 +335,6 @@ dependencies {
     implementation('com.github.fommil.netlib:netlib-native_ref-linux-x86_64:1.1:natives')
     implementation('com.github.fommil.netlib:netlib-native_system-linux-x86_64:1.1:natives')
     implementation('com.github.fommil.netlib:netlib-native_system-osx-x86_64:1.1:natives')
-
-    // Dependency change for including MLLib
-    implementation('com.esotericsoftware:kryo:5.3.0'){
-        exclude group: 'com.esotericsoftware', module: 'reflectasm'
-        exclude group: 'org.ow2.asm', module: 'asm'
-    }
-
-    // Dependency change for including MLLib
-    implementation('com.esotericsoftware:reflectasm:1.10.0:shaded') {
-        transitive = false
-    }
 
     implementation('com.intel.gkl:gkl:0.8.8') {
         exclude module: 'htsjdk'

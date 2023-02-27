@@ -108,7 +108,7 @@ public class WDLGenerationIntegrationTest extends CommandLineProgramTest {
 
     // suppress deprecation warning on Java 11 since we're using deprecated javadoc APIs
     @SuppressWarnings({"deprecation","removal"})
-    private void doWDLGenTest(List<String> testPackages, final String sourcePath, final File wdlTestTargetDir) {
+    private void doWDLGenTest(List<String> testPackages, final String sourcePath, final File wdlTestTargetDir) throws IOException {
 
         final String[] argArray = new String[]{
                 "-doclet", GATKWDLDoclet.class.getName(),
@@ -134,14 +134,15 @@ public class WDLGenerationIntegrationTest extends CommandLineProgramTest {
         final ToolProvider jdProvider = ToolProvider.findFirst("javadoc")
                 .orElseThrow(() -> new IllegalStateException("Can't find javadoc tool"));
 
-        final StringWriter stringWriter = new StringWriter();
-        final PrintWriter outputWriter = new PrintWriter(stringWriter);
+        try (final StringWriter stringWriter = new StringWriter();
+             final PrintWriter outputWriter = new PrintWriter(stringWriter)) {
 
-        final String[] args = docArgList.toArray(new String[] {});
-        final int retCode = jdProvider.run(outputWriter, outputWriter, args);
+            final String[] args = docArgList.toArray(new String[]{});
+            final int retCode = jdProvider.run(outputWriter, outputWriter, args);
 
-        // make sure the task succeeded, and generated at least one index file, plus some other files
-        Assert. assertEquals(retCode, 0, outputWriter.toString());
+            // just make sure the task succeeded
+            Assert.assertEquals(retCode, 0, stringWriter.toString());
+        }
     }
 
 }

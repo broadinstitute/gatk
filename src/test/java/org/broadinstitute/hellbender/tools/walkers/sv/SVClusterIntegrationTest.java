@@ -129,7 +129,7 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
         final VCFHeader header = vcf.getKey();
         final List<VariantContext> records = vcf.getValue();
 
-        Assert.assertEquals(header.getSampleNamesInOrder(), Arrays.asList("HG00096", "HG00129", "HG00140", "NA18945", "NA18956"));
+        Assert.assertEquals(header.getSampleNamesInOrder(), List.of("HG00096", "HG00129", "HG00140", "NA18945", "NA18956"));
 
         Assert.assertEquals(records.size(), 1793);
 

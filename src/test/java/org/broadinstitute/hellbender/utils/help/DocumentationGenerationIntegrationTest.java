@@ -5,12 +5,12 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.ServiceLoader;
 import java.util.spi.ToolProvider;
 
 /**
@@ -38,7 +38,7 @@ public class DocumentationGenerationIntegrationTest extends CommandLineProgramTe
     };
 
     @Test
-    public static void documentationSmokeTest() {
+    public static void documentationSmokeTest() throws IOException {
         final File docTestTarget = createTempDir("docgentest");
         final String[] argArray = new String[]{
                 "-doclet", GATKHelpDoclet.class.getName(),
@@ -63,13 +63,14 @@ public class DocumentationGenerationIntegrationTest extends CommandLineProgramTe
         final ToolProvider jdProvider = ToolProvider.findFirst("javadoc")
                 .orElseThrow(() -> new IllegalStateException("Can't find javadoc tool"));
 
-        final StringWriter stringWriter = new StringWriter();
-        final PrintWriter outputWriter = new PrintWriter(stringWriter);
+        try (final StringWriter stringWriter = new StringWriter();
+             final PrintWriter outputWriter = new PrintWriter(stringWriter)) {
 
-        final String[] args = docArgList.toArray(new String[] {});
-        final int retCode = jdProvider.run(outputWriter, outputWriter, args);
+            final String[] args = docArgList.toArray(new String[]{});
+            final int retCode = jdProvider.run(outputWriter, outputWriter, args);
 
-        // make sure the task succeeded, and generated at least one index file, plus some other files
-        Assert. assertEquals(retCode, 0, outputWriter.toString());
+            // just make sure the task succeeded
+            Assert.assertEquals(retCode, 0, stringWriter.toString());
+        }
     }
 }
