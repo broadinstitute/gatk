@@ -40,64 +40,66 @@ public class TabCompletionIntegrationTest extends CommandLineProgramTest {
     // suppress deprecation warning on Java 11 since we're using deprecated javadoc APIs
     @SuppressWarnings({"deprecation","removal"})
     @Test
-    public static void tabCompleteSmokeTest() throws IOException {
-        final File tabCompletionTestTarget = createTempDir("tabCompletionTest");
+    public void tabCompleteSmokeTest() throws IOException {
+        if (!isGATKDockerContainer()) {
+            final File tabCompletionTestTarget = createTempDir("tabCompletionTest");
 
-        // Setup rote input arguments:
-        final List<String> argList = Arrays.asList(
+            // Setup rote input arguments:
+            final List<String> argList = Arrays.asList(
 
-                "-doclet", BashTabCompletionDoclet.class.getName(),
+                    "-doclet", BashTabCompletionDoclet.class.getName(),
 
-                "-docletpath", System.getProperty("java.class.path"),
-                "-sourcepath", "src/main/java",
-                "-d", tabCompletionTestTarget.getAbsolutePath(), // directory must exist
+                    "-docletpath", System.getProperty("java.class.path"),
+                    "-sourcepath", "src/main/java",
+                    "-d", tabCompletionTestTarget.getAbsolutePath(), // directory must exist
 
-                "-use-default-templates",
+                    "-use-default-templates",
 
-                "-output-file-extension", "sh",
-                "-index-file-extension", "sh",
-                "-absolute-version", "0.0-001",
-                "-build-timestamp", new SimpleDateFormat("dd-mm-yyyy hh:mm:ss").format( new Date() ),
+                    "-output-file-extension", "sh",
+                    "-index-file-extension", "sh",
+                    "-absolute-version", "0.0-001",
+                    "-build-timestamp", new SimpleDateFormat("dd-mm-yyyy hh:mm:ss").format(new Date()),
 
-                "-caller-script-name", "gatk",
+                    "-caller-script-name", "gatk",
 
-                "-caller-pre-legal-args", "--help --list --dry-run --java-options",
-                "-caller-pre-arg-val-types", "null null null String",
-                "-caller-pre-mutex-args", "--help;list,dry-run,java-options --list;help,dry-run,java-options",
-                "-caller-pre-alias-args", "--help;-h",
-                "-caller-pre-arg-min-occurs", "0 0 0 0",
-                "-caller-pre-arg-max-occurs", "1 1 1 1",
+                    "-caller-pre-legal-args", "--help --list --dry-run --java-options",
+                    "-caller-pre-arg-val-types", "null null null String",
+                    "-caller-pre-mutex-args", "--help;list,dry-run,java-options --list;help,dry-run,java-options",
+                    "-caller-pre-alias-args", "--help;-h",
+                    "-caller-pre-arg-min-occurs", "0 0 0 0",
+                    "-caller-pre-arg-max-occurs", "1 1 1 1",
 
-                "-caller-post-legal-args", "--spark-runner --spark-master --cluster --dry-run --java-options --conf --driver-memory --driver-cores --executor-memory --executor-cores --num-executors",
-                "-caller-post-arg-val-types", "String String String null String file int int int int int",
-                "-caller-post-mutex-args", "",
-                "-caller-post-alias-args", "",
-                "-caller-post-arg-min-occurs", "0 0 0 0 0 0 0 0 0 0",
-                "-caller-post-arg-max-occurs", "1 1 1 1 1 1 1 1 1 1",
+                    "-caller-post-legal-args", "--spark-runner --spark-master --cluster --dry-run --java-options --conf --driver-memory --driver-cores --executor-memory --executor-cores --num-executors",
+                    "-caller-post-arg-val-types", "String String String null String file int int int int int",
+                    "-caller-post-mutex-args", "",
+                    "-caller-post-alias-args", "",
+                    "-caller-post-arg-min-occurs", "0 0 0 0 0 0 0 0 0 0",
+                    "-caller-post-arg-max-occurs", "1 1 1 1 1 1 1 1 1 1",
 
-                "-verbose"
-        );
+                    "-verbose"
+            );
 
-        // Point the javadoc at our packages:
-        final List<String> docArgList = new ArrayList<>();
-        docArgList.addAll(argList);
-        docArgList.add("-cp");
-        docArgList.add(System.getProperty("java.class.path"));
-        docArgList.addAll(tabCompletionTestPackages);
+            // Point the javadoc at our packages:
+            final List<String> docArgList = new ArrayList<>();
+            docArgList.addAll(argList);
+            docArgList.add("-cp");
+            docArgList.add(System.getProperty("java.class.path"));
+            docArgList.addAll(tabCompletionTestPackages);
 
-        // Run javadoc in the current JVM with the custom doclet, and make sure it succeeds (this is a smoke test;
-        // we just want to make sure it doesn't blow up).
-        final ToolProvider jdProvider = ToolProvider.findFirst("javadoc")
-                .orElseThrow(() -> new IllegalStateException("Can't find javadoc tool"));
+            // Run javadoc in the current JVM with the custom doclet, and make sure it succeeds (this is a smoke test;
+            // we just want to make sure it doesn't blow up).
+            final ToolProvider jdProvider = ToolProvider.findFirst("javadoc")
+                    .orElseThrow(() -> new IllegalStateException("Can't find javadoc tool"));
 
-        try (final StringWriter stringWriter = new StringWriter();
-             final PrintWriter outputWriter = new PrintWriter(stringWriter)) {
+            try (final StringWriter stringWriter = new StringWriter();
+                 final PrintWriter outputWriter = new PrintWriter(stringWriter)) {
 
-            final String[] args = docArgList.toArray(new String[]{});
-            final int retCode = jdProvider.run(outputWriter, outputWriter, args);
+                final String[] args = docArgList.toArray(new String[]{});
+                final int retCode = jdProvider.run(outputWriter, outputWriter, args);
 
-            // just make sure the task succeeded
-            Assert.assertEquals(retCode, 0, stringWriter.toString());
+                // just make sure the task succeeded
+                Assert.assertEquals(retCode, 0, stringWriter.toString());
+            }
         }
     }
 

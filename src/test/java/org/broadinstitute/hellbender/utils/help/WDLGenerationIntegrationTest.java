@@ -36,13 +36,15 @@ public class WDLGenerationIntegrationTest extends CommandLineProgramTest {
 
     @Test
     private void wdlGenSmokeTest() throws IOException, ParseException {
-        final File wdlTestTargetDir = createTempDir("wdlgentest");
-        doWDLGenTest(wdlGenTestPackages, "src/main/java", wdlTestTargetDir);
+        if (!isGATKDockerContainer()) {
+            final File wdlTestTargetDir = createTempDir("wdlgentest");
+            doWDLGenTest(wdlGenTestPackages, "src/main/java", wdlTestTargetDir);
 
-        // load and parse every generated JSON file to make sure they're valid JSON
-        final File[] jsonFiles = wdlTestTargetDir.listFiles((File dir, String name) -> name.endsWith(".json"));
-        for (final File f : jsonFiles) {
-            assertValidJSONFile(f);
+            // load and parse every generated JSON file to make sure they're valid JSON
+            final File[] jsonFiles = wdlTestTargetDir.listFiles((File dir, String name) -> name.endsWith(".json"));
+            for (final File f : jsonFiles) {
+                assertValidJSONFile(f);
+            }
         }
     }
 
@@ -50,54 +52,56 @@ public class WDLGenerationIntegrationTest extends CommandLineProgramTest {
     // companions, to ensure that the various templates use the template maps correctly.
     @Test
     private void wdlGenTemplateTest() throws IOException, ParseException {
-        final File expectedResultsDir = new File("src/test/resources/org/broadinstitute/hellbender/utils/WDLTestExpectedOutputs/");
-        final File wdlTestTargetDir = createTempDir("wdlgentemplatetest");
+        if (!isGATKDockerContainer()) {
+            final File expectedResultsDir = new File("src/test/resources/org/broadinstitute/hellbender/utils/WDLTestExpectedOutputs/");
+            final File wdlTestTargetDir = createTempDir("wdlgentemplatetest");
 
-        doWDLGenTest(
-                Collections.singletonList("org.broadinstitute.hellbender.utils.help"),
-                "src/test/java",
-                wdlTestTargetDir);
+            doWDLGenTest(
+                    Collections.singletonList("org.broadinstitute.hellbender.utils.help"),
+                    "src/test/java",
+                    wdlTestTargetDir);
 
-        // index
-        final String indexHTML = "index.html";
-        IntegrationTestSpec.assertEqualTextFiles(
-                new File(expectedResultsDir, "expected" + indexHTML),
-                new File(wdlTestTargetDir, indexHTML));
+            // index
+            final String indexHTML = "index.html";
+            IntegrationTestSpec.assertEqualTextFiles(
+                    new File(expectedResultsDir, "expected" + indexHTML),
+                    new File(wdlTestTargetDir, indexHTML));
 
-        // wdls
-        final String defaultWDL = "TestWDLTool.wdl";
-        IntegrationTestSpec.assertEqualTextFiles(
-                new File(expectedResultsDir, "expected" + defaultWDL),
-                new File(wdlTestTargetDir, defaultWDL));
+            // wdls
+            final String defaultWDL = "TestWDLTool.wdl";
+            IntegrationTestSpec.assertEqualTextFiles(
+                    new File(expectedResultsDir, "expected" + defaultWDL),
+                    new File(wdlTestTargetDir, defaultWDL));
 
-        final String allArgsWDL = "TestWDLToolAllArgs.wdl";
-        IntegrationTestSpec.assertEqualTextFiles(
-                new File(expectedResultsDir, "expected" + allArgsWDL),
-                new File(wdlTestTargetDir, allArgsWDL));
+            final String allArgsWDL = "TestWDLToolAllArgs.wdl";
+            IntegrationTestSpec.assertEqualTextFiles(
+                    new File(expectedResultsDir, "expected" + allArgsWDL),
+                    new File(wdlTestTargetDir, allArgsWDL));
 
-        final String allArgsTestWDL = "TestWDLToolAllArgsTest.wdl";
-        IntegrationTestSpec.assertEqualTextFiles(
-                new File(expectedResultsDir, "expected" + allArgsTestWDL),
-                new File(wdlTestTargetDir, allArgsTestWDL));
+            final String allArgsTestWDL = "TestWDLToolAllArgsTest.wdl";
+            IntegrationTestSpec.assertEqualTextFiles(
+                    new File(expectedResultsDir, "expected" + allArgsTestWDL),
+                    new File(wdlTestTargetDir, allArgsTestWDL));
 
-        // jsons
-        final String defaultWDLInputs = "TestWDLToolInputs.json";
-        IntegrationTestSpec.assertEqualTextFiles(
-                new File(expectedResultsDir, "expected" + defaultWDLInputs),
-                new File(wdlTestTargetDir, defaultWDLInputs));
-        assertValidJSONFile(new File(wdlTestTargetDir, defaultWDLInputs));
+            // jsons
+            final String defaultWDLInputs = "TestWDLToolInputs.json";
+            IntegrationTestSpec.assertEqualTextFiles(
+                    new File(expectedResultsDir, "expected" + defaultWDLInputs),
+                    new File(wdlTestTargetDir, defaultWDLInputs));
+            assertValidJSONFile(new File(wdlTestTargetDir, defaultWDLInputs));
 
-        final String allArgsWDLInputs = "TestWDLToolAllArgsInputs.json";
-        IntegrationTestSpec.assertEqualTextFiles(
-                new File(expectedResultsDir, "expected" + allArgsWDLInputs),
-                new File(wdlTestTargetDir, allArgsWDLInputs));
-        assertValidJSONFile(new File(wdlTestTargetDir, allArgsWDLInputs));
+            final String allArgsWDLInputs = "TestWDLToolAllArgsInputs.json";
+            IntegrationTestSpec.assertEqualTextFiles(
+                    new File(expectedResultsDir, "expected" + allArgsWDLInputs),
+                    new File(wdlTestTargetDir, allArgsWDLInputs));
+            assertValidJSONFile(new File(wdlTestTargetDir, allArgsWDLInputs));
 
-        final String allArgsTestWDLInputs = "TestWDLToolAllArgsTestInputs.json";
-        IntegrationTestSpec.assertEqualTextFiles(
-                new File(expectedResultsDir, "expected" + allArgsTestWDLInputs),
-                new File(wdlTestTargetDir, allArgsTestWDLInputs));
-        assertValidJSONFile(new File(wdlTestTargetDir, allArgsTestWDLInputs));
+            final String allArgsTestWDLInputs = "TestWDLToolAllArgsTestInputs.json";
+            IntegrationTestSpec.assertEqualTextFiles(
+                    new File(expectedResultsDir, "expected" + allArgsTestWDLInputs),
+                    new File(wdlTestTargetDir, allArgsTestWDLInputs));
+            assertValidJSONFile(new File(wdlTestTargetDir, allArgsTestWDLInputs));
+        }
     }
 
     private void assertValidJSONFile(final File targetFile) throws IOException, ParseException {
