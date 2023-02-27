@@ -178,6 +178,8 @@ configurations.all {
         // make sure we don't pick up an incorrect version of the GATK variant of the google-nio library
         // via Picard, etc.
         force googleCloudNioDependency
+
+        force 'com.esotericsoftware:kryo:4.0.0'
     }
     all*.exclude group: 'org.slf4j', module: 'slf4j-jdk14' //exclude this to prevent slf4j complaining about to many slf4j bindings
     all*.exclude group: 'com.google.guava', module: 'guava-jdk5'
