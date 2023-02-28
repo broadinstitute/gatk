@@ -37,8 +37,7 @@ public final class CachingIndexedFastaSequenceFile implements ReferenceSequenceF
 
     protected static final Logger logger = LogManager.getLogger(CachingIndexedFastaSequenceFile.class);
 
-    // TODO: this gets around numerous serialization issues with non-serializable lambdas
-    private transient final ReferenceSequenceFile sequenceFile;
+    private final ReferenceSequenceFile sequenceFile;
 
     /** do we want to print debugging information about cache efficiency? */
     private static final boolean PRINT_EFFICIENCY = false;
