@@ -659,7 +659,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
                     engine.evaluateData(dataManager.getData(), goodModel, false);
                     if (goodModel.failedToConverge) {
                         if (outputModel != null) {
-                            final GATKReport report = writeModelReport(goodModel, null, USE_ANNOTATIONS);
+                            final GATKReport report = writeModelReport(goodModel, null, dataManager.getAnnotationKeys());
                             saveModelReport(report, outputModel);
                         }
                         throw new UserException.VQSRPositiveModelFailure("Positive training model failed to converge.  One or more annotations " +
@@ -682,7 +682,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
                 engine.evaluateData(dataManager.getData(), badModel, true);
 
                 if (outputModel != null) {
-                    final GATKReport report = writeModelReport(goodModel, badModel, USE_ANNOTATIONS);
+                    final GATKReport report = writeModelReport(goodModel, badModel, dataManager.getAnnotationKeys());
                     saveModelReport(report, outputModel);
                 }
 
@@ -715,7 +715,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
                             goodModel,
                             badModel,
                             0.0,
-                            dataManager.getAnnotationKeys().toArray(new String[USE_ANNOTATIONS.size()]));
+                            dataManager.getAnnotationKeys().toArray(new String[dataManager.getAnnotationKeys().size()]));
                 }
 
                 if (VRAC.MODE == VariantRecalibratorArgumentCollection.Mode.INDEL) {
