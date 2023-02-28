@@ -106,6 +106,7 @@ workflow GvsImportGenomes {
   scatter (i in range(length(CreateFOFNs.vcf_batch_vcf_fofns))) {
     call LoadData {
       input:
+        index = i,
         dataset_name = dataset_name,
         project_id = project_id,
         skip_loading_vqsr_fields = skip_loading_vqsr_fields,
@@ -171,6 +172,7 @@ task CreateFOFNs {
 
 task LoadData {
   input {
+    Int index
     String dataset_name
     String project_id
 
@@ -216,18 +218,9 @@ task LoadData {
   Int samples_per_table = 4000
   Int num_samples = length(sample_names)
   # add labels for DSP Cloud Cost Control Labeling and Reporting
-  String temp_table="~{dataset_name}.sample_names_to_load_rori" # TODO track a second table for now---should this get its own name in the future?
+  String temp_table = "~{dataset_name}.sample_names_to_load_~{index}" # TODO track a second table for now---should this get its own name in the future?
   String bq_labels = "--label service:gvs --label team:variants --label managedby:import_genomes"
   String table_name = "sample_info"
-
-  File input_samples_to_be_loaded_map = "sample_map.csv"
-  String input_sample_name_list = write_lines(sample_names)
-
-
-  ## the output files from the python:
-  File filtered_input_vcf_indexes = "output_vcf_index_list_file"
-  File filtered_input_vcfs = "output_vcf_list_file"
-  File filtered_sample_names = "output_sample_name_list_file"
 
   command <<<
     set -e
@@ -239,8 +232,6 @@ task LoadData {
     export TMPDIR=/tmp
 
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
-
-
 
 
     ## TODO check if samples even need loading?!? hit the BQ database and get the loaded status for these samples
@@ -292,40 +283,28 @@ task LoadData {
 
     ## delete the table that was only needed for this ingest test
     bq --project_id=~{project_id} rm -f=true ~{temp_table}
+## We are good up to here!
+
+    ## now we want to create a sub list of these samples (without the ones that have already been loaded)
+
+    python3 /app/curate_input_array_files.py --sample_map_to_be_loaded_file_name sample_map.csv \
+      --sample_name_list_file_name $NAMES_FILE \
+      --vcf_list_file_name ~{input_vcfs} \
+      --vcf_index_list_file_name  ~{input_vcf_indexes} \
+      --output_files True
 
 
-    # input_vcf_index_list = write_lines(input_vcf_indexes), ## TODO do we need this?!?!
-    # input_vcf_list = write_lines(input_vcfs), ## TODO do we need this?!?!
-    input_sample_name_list = write_lines(sample_names), ## TODO IS THIS RIGHT?!?!
-    # input_samples_to_be_loaded_map = GetUningestedSampleIds.sample_map
+    ## the output files from the python:
+    # output_vcf_index_list_file
+    # output_vcf_list_file
+    # output_sample_name_list_file
 
 
-    Int max_table_id = ceil(read_float("max_sample_id")) ## TODO do we need this?!?!
-    Int min_table_id = ceil(read_float("min_sample_id")) ## TODO do we need this?!?!
-    # File input_samples_to_be_loaded_map = "sample_map.csv"
-    File gvs_ids = "gvs_ids.csv" ## TODO do we need this?!?!
-
-
-    ## look at CurateInputLists task -- what we want to do is take the array of sample vcfs and filter out all samples that have already been loaded
-    ## that calls curate_input_array_files.py -- this will spit out a new array of the samples that are not already loaded
-    ## then we can pass that sub-list to the following loop
-
-    python3 /app/curate_input_array_files.py --sample_map_to_be_loaded_file_name ~{input_samples_to_be_loaded_map} \
-                                             --sample_name_list_file_name ~{input_sample_name_list} \
-                                             --vcf_list_file_name ~{input_vcfs} \
-                                             --vcf_index_list_file_name  ~{input_vcf_indexes} \
-                                             --output_files True
-
-    ## the output files from this:
-    # File filtered_input_vcf_indexes = "output_vcf_index_list_file"
-    # File filtered_input_vcfs = "output_vcf_list_file"
-    # File filtered_sample_names = "output_sample_name_list_file"
-
-
-    # translate WDL arrays into BASH arrays---but only of the samples that aren't there already
-    VCFS_ARRAY=(~{sep=" " filtered_input_vcfs})
-    VCF_INDEXES_ARRAY=(~{sep=" " filtered_input_vcf_indexes})
-    SAMPLE_NAMES_ARRAY=(~{sep=" " filtered_sample_names})
+    command <<<
+    # translate python files into BASH arrays---but only of the samples that aren't there already
+    VCFS_ARRAY=$(cat output_vcf_list_file |tr "\n" " ")
+    VCF_INDEXES_ARRAY=$(cat output_vcf_index_list_file |tr "\n" " ")
+    SAMPLE_NAMES_ARRAY=$(cat output_sample_name_list_file |tr "\n" " ")
 
 
 
@@ -362,7 +341,9 @@ task LoadData {
       rm $input_vcf_index
 
     done
+
   >>>
+
   runtime {
     docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_02_15"
     maxRetries: load_data_maxretries

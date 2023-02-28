@@ -5,12 +5,15 @@ import "GvsPrepareBulkImport.wdl" as PrepareBulkImport
 import "GvsAssignIds.wdl" as AssignIds
 import "GvsImportGenomes.wdl" as ImportGenomes
 
+# swap to file
+# swap to sample_names direct
+# ok write lines of the array
+# add $NAMES_FILE
 workflow GvsBulkIngestGenomes {
     input {
         # Begin GvsPrepareBulkImport
         String terra_project_id # env vars
         String workspace_name # env vars
-        String workspace_bucket # env vars -- this is just workspace_id + fc
         String samples_table_name
         String sample_id_column_name # is this just <samples_table_name>_id ?
         String vcf_files_column_name
