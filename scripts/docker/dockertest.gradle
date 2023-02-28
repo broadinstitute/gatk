@@ -93,7 +93,8 @@ final runtimeAddOpens = [
         'java.base/jdk.internal.module=ALL-UNNAMED',
         'java.base/java.lang.module=ALL-UNNAMED',
         'java.security.jgss/sun.security.krb5=ALL-UNNAMED',
-        'java.base/jdk.internal.util.jar=ALL-UNNAMED'
+        'java.base/jdk.internal.util.jar=ALL-UNNAMED',
+        'java.base/jdk.internal.misc=ALL-UNNAMED'
 ]
 
 final testAddOpens = [
