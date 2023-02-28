@@ -230,7 +230,7 @@ task LoadData {
     Int num_samples = length(sample_names)
     # add labels for DSP Cloud Cost Control Labeling and Reporting
     String bq_labels = "--label service:gvs --label team:variants --label managedby:import_genomes"
-    String temp_table="~{dataset_name}.sample_names_to_load"
+    String temp_table="~{dataset_name}.sample_names_to_load_rori" # TODO track a second table for now---should this get its own name in the future?
 
     ## TODO check if samples even need loading?!? hit the BQ database and get the loaded status for these samples
 
