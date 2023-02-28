@@ -52,16 +52,12 @@ workflow GvsBulkIngestGenomes {
     #        workspace_id = GetWorkspaceId.workspace_id
     #}
 
-    #call GetWorkspaceName {
-    #    input:
-    #        workspace_id = GetWorkspaceId.workspace_id
-    #}
-
 
     call PrepareBulkImport.GvsPrepareBulkImport as PrepareBulkImport {
         input:
             project_id = terra_project_id,
-            workspace_name = GetWorkspaceNameandNamespace.workspace_name,
+            workspace_name = workspace_name,
+            # workspace_name = GetWorkspaceNameandNamespace.workspace_name,
             workspace_bucket = "fc-" + GetWorkspaceId.workspace_id,
             samples_table_name = samples_table_name,
             sample_id_column_name = sample_id_column_name,
@@ -164,3 +160,4 @@ workflow GvsBulkIngestGenomes {
 #            String terra_project_name = ~{namespace}
 #        }
 #    }
+
