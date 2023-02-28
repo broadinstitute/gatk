@@ -363,7 +363,7 @@ dependencies {
     testImplementation "com.google.jimfs:jimfs:1.1"
 }
 
-// This list needs to be kept in sync with the corresponding list in scripts/dockertest.gradle.
+// This list needs to be kept in sync with the corresponding list in scripts/docker/dockertest.gradle.
 //
 // The --add-open directives required to run GATK. These directives need to be:
 //   - included as properties in the manifest file in the jar(s)
@@ -425,7 +425,8 @@ final runtimeAddOpens = [
         'jdk.jfr/jdk.jfr.internal.management=ALL-UNNAMED',
         'java.base/jdk.internal.module=ALL-UNNAMED',
         'java.base/java.lang.module=ALL-UNNAMED',
-        'java.security.jgss/sun.security.krb5=ALL-UNNAMED'
+        'java.security.jgss/sun.security.krb5=ALL-UNNAMED',
+        'java.base/jdk.internal.util.jar=ALL-UNNAMED'
     ]
 
 final testAddOpens = [
