@@ -55,8 +55,6 @@ workflow GvsImportGenomes {
                                        else if num_samples < max_scatter_for_user then 1
                                             else num_samples / max_scatter_for_user
 
-
-
   # Both preemptible and maxretries should be scaled up alongside import batch size since the likelihood of preemptions
   # and retryable random BQ import errors increases with import batch size / job run time.
 
@@ -65,10 +63,7 @@ workflow GvsImportGenomes {
                                         else if effective_load_data_batch_size < 12 then 3
                                              else effective_load_data_batch_size / 4
 
-  # At least 3, per limits above not more than 5.
-  Int effective_load_data_maxretries = if (defined(load_data_maxretries_override)) then select_first([load_data_maxretries_override])
-                                       else if (effective_load_data_batch_size < 12) then 6
-                                            else effective_load_data_batch_size / 2
+  Int effective_load_data_maxretries = select_first([load_data_max_retries_override, 5])
 
   # return an error if the lengths are not equal
   Int input_length = length(input_vcfs)
@@ -201,6 +196,7 @@ task LoadData {
   meta {
     description: "Load data into BigQuery using the Write Api"
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
+    # TODO Need to revisit the `volatile: true` now that we are querying the database to check for samples there
   }
 
   parameter_meta {
@@ -213,18 +209,114 @@ task LoadData {
     }
   }
 
+  ## TODO what is external_sample_names!?!?!??! Can I swap to sample_names for now?!?!
+  ## It needs to be one of the fofns--not the list of fofns
+  ## where is the loop hitting here?!??!  input_vcfs = read_lines(CreateFOFNs.vcf_batch_vcf_fofns[i]),
+
+
   command <<<
     set -e
+    set -o errexit -o nounset -o xtrace -o pipefail
+
+    echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
     # workaround for https://github.com/broadinstitute/cromwell/issues/3647
     export TMPDIR=/tmp
 
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
-    # translate WDL arrays into BASH arrays
-    VCFS_ARRAY=(~{sep=" " input_vcfs})
-    VCF_INDEXES_ARRAY=(~{sep=" " input_vcf_indexes})
-    SAMPLE_NAMES_ARRAY=(~{sep=" " sample_names})
+
+    Int samples_per_table = 4000
+    Int num_samples = length(sample_names)
+    # add labels for DSP Cloud Cost Control Labeling and Reporting
+    String bq_labels = "--label service:gvs --label team:variants --label managedby:import_genomes"
+    String temp_table="~{dataset_name}.sample_names_to_load"
+
+    ## TODO check if samples even need loading?!? hit the BQ database and get the loaded status for these samples
+
+    # Create temp table with the sample_names and load external sample names into temp table -- make sure it doesn't exist already
+    set +o errexit
+    bq show --project_id ~{project_id} ~{temp_table} > /dev/null
+    BQ_SHOW_RC=$?
+    set -o errexit
+
+    # If there is already a table of sample names or something else is wrong, bail.
+    if [ $BQ_SHOW_RC -eq 0 ]; then
+      echo "There is already a list of sample names. This may need manual cleanup. Exiting"
+      exit 1
+    fi
+
+
+    echo "Creating the external sample name list table ~{temp_table}"
+    bq --project_id=~{project_id} mk ~{temp_table} "sample_name:STRING"
+    NAMES_FILE=~{write_lines(sample_names)}
+    bq load --project_id=~{project_id} ~{temp_table} $NAMES_FILE "sample_name:STRING"
+
+    # Get the current min/max id, or 0 if there are none. Withdrawn samples still have IDs so don't filter them out.
+    bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} '
+      SELECT IFNULL(MIN(sample_id),0) as min, IFNULL(MAX(sample_id),0) as max FROM `~{dataset_name}.~{table_name}`
+        AS samples JOIN `~{temp_table}` AS temp ON samples.sample_name = temp.sample_name' > results.csv
+
+    # prep for being able to return min table id
+    min_sample_id=$(tail -1 results.csv | cut -d, -f1)
+    max_sample_id=$(tail -1 results.csv | cut -d, -f2)
+
+    # no samples have been loaded or we don't have the right sample_names or something else is wrong, bail
+    if [ $max_sample_id -eq 0 ]; then
+      echo "Max id is 0. Exiting"
+      exit 1
+    fi
+
+    python3 -c "from math import ceil; print(ceil($max_sample_id/~{samples_per_table}))" > max_sample_id ## TODO do we need this?!?!
+    python3 -c "from math import ceil; print(ceil($min_sample_id/~{samples_per_table}))" > min_sample_id ## TODO do we need this?!?!
+
+    # get sample map of samples that haven't been loaded yet
+    bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} '
+      SELECT sample_id, samples.sample_name FROM `~{dataset_name}.~{table_name}` AS samples JOIN `~{temp_table}` AS temp ON
+            samples.sample_name = temp.sample_name WHERE
+            samples.sample_id NOT IN (SELECT sample_id FROM `~{dataset_name}.sample_load_status` WHERE status="FINISHED") AND
+            samples.withdrawn is NULL' > sample_map.csv
+
+    cut -d, -f1 sample_map.csv > gvs_ids.csv ## TODO do we need this?!?!
+
+    ## delete the table that was only needed for this ingest test
+    bq --project_id=~{project_id} rm -f=true ~{temp_table}
+
+
+    # input_vcf_index_list = write_lines(input_vcf_indexes), ## TODO do we need this?!?!
+    # input_vcf_list = write_lines(input_vcfs), ## TODO do we need this?!?!
+    input_sample_name_list = write_lines(sample_names),
+    # input_samples_to_be_loaded_map = GetUningestedSampleIds.sample_map
+
+
+    Int max_table_id = ceil(read_float("max_sample_id")) ## TODO do we need this?!?!
+    Int min_table_id = ceil(read_float("min_sample_id")) ## TODO do we need this?!?!
+    File input_samples_to_be_loaded_map = "sample_map.csv"
+    File gvs_ids = "gvs_ids.csv" ## TODO do we need this?!?!
+
+
+    ## look at CurateInputLists task -- what we want to do is take the array of sample vcfs and filter out all samples that have already been loaded
+    ## that calls curate_input_array_files.py -- this will spit out a new array of the samples that are not already loaded
+    ## then we can pass that sub-list to the following loop
+
+    python3 /app/curate_input_array_files.py --sample_map_to_be_loaded_file_name ~{input_samples_to_be_loaded_map} \
+                                             --sample_name_list_file_name ~{input_sample_name_list} \
+                                             --vcf_list_file_name ~{input_vcfs} \
+                                             --vcf_index_list_file_name  ~{input_vcf_indexes} \
+                                             --output_files True
+
+    ## the output files from this:
+    File filtered_input_vcf_indexes = "output_vcf_index_list_file"
+    File filtered_input_vcfs = "output_vcf_list_file"
+    File filtered_sample_names = "output_sample_name_list_file"
+
+
+    # translate WDL arrays into BASH arrays---but only of the samples that aren't there already
+    VCFS_ARRAY=(~{sep=" " filtered_input_vcfs})
+    VCF_INDEXES_ARRAY=(~{sep=" " filtered_input_vcf_indexes})
+    SAMPLE_NAMES_ARRAY=(~{sep=" " filtered_sample_names})
+
+
 
     # loop over the BASH arrays (See https://stackoverflow.com/questions/6723426/looping-over-arrays-printing-both-index-and-value)
     for i in "${!VCFS_ARRAY[@]}"; do
