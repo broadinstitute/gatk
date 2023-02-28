@@ -94,7 +94,6 @@ public final class GnarlyGenotyper extends VariantWalker {
 
     private static final OneShotLogger warning = new OneShotLogger(GnarlyGenotyper.class);
 
-    private static final boolean SUMMARIZE_PLs = false;  //for very large numbers of samples, save on space and hail import time by summarizing PLs with genotype quality metrics
     private static final boolean CALL_GENOTYPES = true;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -128,6 +127,7 @@ public final class GnarlyGenotyper extends VariantWalker {
     private boolean mergeInputIntervals = false;
 
     @Hidden
+    @DeprecatedFeature(detail = "This was specific to a single, old project")
     @Argument(fullName = "strip-allele-specific-annotations", shortName = "strip-as", doc = "Remove raw AS values and don't calculate finalized values")
     private boolean stripASAnnotations = false;
 
@@ -196,7 +196,7 @@ public final class GnarlyGenotyper extends VariantWalker {
 
         setupVCFWriter(inputVCFHeader, samples);
 
-        genotyperEngine = new GnarlyGenotyperEngine(keepAllSites, genotypeArgs.maxAlternateAlleles, SUMMARIZE_PLs, stripASAnnotations);
+        genotyperEngine = new GnarlyGenotyperEngine(keepAllSites, genotypeArgs.maxAlternateAlleles, stripASAnnotations);
 
         Reflections reflections = new Reflections("org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific");
         //not InfoFieldAnnotation.class because we don't want AS_InbreedingCoeff
@@ -251,11 +251,6 @@ public final class GnarlyGenotyper extends VariantWalker {
 
         final Set<String> sampleNameSet = samples.asSetOfSamples();
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY));
-        if (SUMMARIZE_PLs) {
-            headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.REFERENCE_GENOTYPE_QUALITY));
-            headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.GENOTYPE_QUALITY_BY_ALLELE_BALANCE));
-            headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.GENOTYPE_QUALITY_BY_ALT_CONFIDENCE));
-        }
         final VCFHeader vcfHeader = new VCFHeader(headerLines, new TreeSet<>(sampleNameSet));
         final VCFHeader dbHeader = new VCFHeader(headerLines);
         vcfWriter.writeHeader(vcfHeader);

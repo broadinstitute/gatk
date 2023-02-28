@@ -83,8 +83,6 @@ public class GATKVCFHeaderLines {
 
     static {
         addInfoLine(new VCFInfoHeaderLine(SB_TABLE_KEY, 4, VCFHeaderLineType.Integer, "Forward/reverse read counts for strand bias tests"));
-        addFormatLine(new VCFFormatHeaderLine(GENOTYPE_QUALITY_BY_ALLELE_BALANCE, 1, VCFHeaderLineType.Integer, ":"));
-        addFormatLine(new VCFFormatHeaderLine(GENOTYPE_QUALITY_BY_ALT_CONFIDENCE, 1, VCFHeaderLineType.Integer, ":"));
         addInfoLine(new VCFInfoHeaderLine(GATKVCFConstants.AC_ADJUSTED_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Integer, "Allele count for each ALT, adjusted to represent high quality genotypes only"));
 
         addFilterLine(new VCFFilterHeaderLine(LOW_QUAL_FILTER_NAME, "Low quality"));
