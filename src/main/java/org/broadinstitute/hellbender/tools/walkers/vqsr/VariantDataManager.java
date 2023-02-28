@@ -38,7 +38,7 @@ public class VariantDataManager {
         this.data = Collections.emptyList();
         final List<String> uniqueAnnotations = annotationKeys.stream().distinct().collect(Collectors.toList());
         if (annotationKeys.size() != uniqueAnnotations.size()) {
-            logger.warn("Ignoring duplicate annotations for recalibration %s.", Utils.getDuplicatedItems(annotationKeys));
+            logger.warn("Ignoring duplicate annotations for recalibration {}", Utils.getDuplicatedItems(annotationKeys));
         }
         this.annotationKeys = new ArrayList<>( uniqueAnnotations );
         this.VRAC = VRAC;
