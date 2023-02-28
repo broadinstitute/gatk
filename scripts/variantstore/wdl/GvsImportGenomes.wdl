@@ -63,7 +63,7 @@ workflow GvsImportGenomes {
                                         else if effective_load_data_batch_size < 12 then 3
                                              else effective_load_data_batch_size / 4
 
-  Int effective_load_data_maxretries = select_first([load_data_max_retries_override, 5])
+  Int effective_load_data_maxretries = select_first([load_data_maxretries_override, 5])
 
   # return an error if the lengths are not equal
   Int input_length = length(input_vcfs)
@@ -213,6 +213,21 @@ task LoadData {
   ## It needs to be one of the fofns--not the list of fofns
   ## where is the loop hitting here?!??!  input_vcfs = read_lines(CreateFOFNs.vcf_batch_vcf_fofns[i]),
 
+  Int samples_per_table = 4000
+  Int num_samples = length(sample_names)
+  # add labels for DSP Cloud Cost Control Labeling and Reporting
+  String temp_table="~{dataset_name}.sample_names_to_load_rori" # TODO track a second table for now---should this get its own name in the future?
+  String bq_labels = "--label service:gvs --label team:variants --label managedby:import_genomes"
+  String table_name = "sample_info"
+
+  File input_samples_to_be_loaded_map = "sample_map.csv"
+  String input_sample_name_list = write_lines(sample_names)
+
+
+  ## the output files from the python:
+  File filtered_input_vcf_indexes = "output_vcf_index_list_file"
+  File filtered_input_vcfs = "output_vcf_list_file"
+  File filtered_sample_names = "output_sample_name_list_file"
 
   command <<<
     set -e
@@ -226,11 +241,7 @@ task LoadData {
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
 
-    Int samples_per_table = 4000
-    Int num_samples = length(sample_names)
-    # add labels for DSP Cloud Cost Control Labeling and Reporting
-    String bq_labels = "--label service:gvs --label team:variants --label managedby:import_genomes"
-    String temp_table="~{dataset_name}.sample_names_to_load_rori" # TODO track a second table for now---should this get its own name in the future?
+
 
     ## TODO check if samples even need loading?!? hit the BQ database and get the loaded status for these samples
 
@@ -285,13 +296,13 @@ task LoadData {
 
     # input_vcf_index_list = write_lines(input_vcf_indexes), ## TODO do we need this?!?!
     # input_vcf_list = write_lines(input_vcfs), ## TODO do we need this?!?!
-    input_sample_name_list = write_lines(sample_names),
+    input_sample_name_list = write_lines(sample_names), ## TODO IS THIS RIGHT?!?!
     # input_samples_to_be_loaded_map = GetUningestedSampleIds.sample_map
 
 
     Int max_table_id = ceil(read_float("max_sample_id")) ## TODO do we need this?!?!
     Int min_table_id = ceil(read_float("min_sample_id")) ## TODO do we need this?!?!
-    File input_samples_to_be_loaded_map = "sample_map.csv"
+    # File input_samples_to_be_loaded_map = "sample_map.csv"
     File gvs_ids = "gvs_ids.csv" ## TODO do we need this?!?!
 
 
@@ -306,9 +317,9 @@ task LoadData {
                                              --output_files True
 
     ## the output files from this:
-    File filtered_input_vcf_indexes = "output_vcf_index_list_file"
-    File filtered_input_vcfs = "output_vcf_list_file"
-    File filtered_sample_names = "output_sample_name_list_file"
+    # File filtered_input_vcf_indexes = "output_vcf_index_list_file"
+    # File filtered_input_vcfs = "output_vcf_list_file"
+    # File filtered_sample_names = "output_sample_name_list_file"
 
 
     # translate WDL arrays into BASH arrays---but only of the samples that aren't there already
