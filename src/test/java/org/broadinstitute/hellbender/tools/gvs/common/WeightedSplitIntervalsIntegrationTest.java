@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 @SuppressWarnings("ConstantConditions")
 public class WeightedSplitIntervalsIntegrationTest extends CommandLineProgramTest {
 
-    private final String testDir = publicTestDir + "org/broadinstitute/hellbender/tools/gvs/common/";
+    private final String testDir = getToolTestDataDir();
 
     @Test
     public void testNoLossSimple() {
