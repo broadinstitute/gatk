@@ -9,6 +9,7 @@ import "GvsImportGenomes.wdl" as ImportGenomes
 # swap to sample_names direct
 # ok write lines of the array
 # add $NAMES_FILE
+
 workflow GvsBulkIngestGenomes {
     input {
         # Begin GvsPrepareBulkImport
