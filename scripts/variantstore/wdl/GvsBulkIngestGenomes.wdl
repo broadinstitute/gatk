@@ -4,11 +4,8 @@ import "GvsUtils.wdl" as Utils
 import "GvsPrepareBulkImport.wdl" as PrepareBulkImport
 import "GvsAssignIds.wdl" as AssignIds
 import "GvsImportGenomes.wdl" as ImportGenomes
-
-# swap to file
-# swap to sample_names direct
-# ok write lines of the array
-# add $NAMES_FILE
+# 1
+#2
 
 workflow GvsBulkIngestGenomes {
     input {
