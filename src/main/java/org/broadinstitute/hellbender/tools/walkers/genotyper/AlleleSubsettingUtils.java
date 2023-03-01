@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.collections.Permutation;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
+import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
@@ -33,6 +34,8 @@ public final class AlleleSubsettingUtils {
     private AlleleSubsettingUtils() {}  // prevent instantiation
     private static final int PL_INDEX_OF_HOM_REF = 0;
     public static final int NUM_OF_STRANDS = 2; // forward and reverse strands
+
+    private static final OneShotLogger attributesRemovedOneShotLogger = new OneShotLogger(AlleleSubsettingUtils.class);
 
     private static final GenotypeLikelihoodCalculators GL_CALCS = new GenotypeLikelihoodCalculators();
 
@@ -140,9 +143,13 @@ public final class AlleleSubsettingUtils {
                 gb.AD(newAD);
                 // if we have recalculated AD and the original genotype had AF but was then removed, then recalculate AF based on AD counts
                 if (alleleBasedLengthAnnots.contains(GATKVCFConstants.ALLELE_FRACTION_KEY) && g.hasExtendedAttribute(GATKVCFConstants.ALLELE_FRACTION_KEY)) {
+                    attributesToRemove.remove(GATKVCFConstants.ALLELE_FRACTION_KEY);
                     final double[] newAFs = MathUtils.normalizeSumToOne(Arrays.stream(newAD).mapToDouble(x -> x).toArray());
                     gb.attribute(GATKVCFConstants.ALLELE_FRACTION_KEY, Arrays.copyOfRange(newAFs, 1, newAFs.length)); //omit the first entry of the array corresponding to the reference
                 }
+            }
+            if (attributesToRemove.size() > 0) {
+                attributesRemovedOneShotLogger.warn("The following attributes have been removed at sites where alleles were subset: " + String.join(",", attributesToRemove));
             }
             newGTs.add(gb.make());
         }
