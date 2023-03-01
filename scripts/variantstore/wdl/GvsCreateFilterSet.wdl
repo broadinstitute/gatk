@@ -4,6 +4,8 @@ import "GvsWarpTasks.wdl" as Tasks
 import "GvsUtils.wdl" as Utils
 import "../../vcf_site_level_filtering_wdl/JointVcfFiltering.wdl" as VQSRLite
 
+# This is a reminder to get rid of the override jar and rebuild the docker and use it before you merge this PR!! TODO
+
 workflow GvsCreateFilterSet {
   input {
     Boolean go = true
@@ -16,7 +18,7 @@ workflow GvsCreateFilterSet {
     Array[String] snp_recalibration_annotation_values = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"]
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
-    File? gatk_override
+    File? gatk_override = "gs://gvs-internal-scratch/ggrant/jars/gg_VS-695_UpdatesToVQSR_Lite_20230227/gatk-package-4.2.0.0-677-g8850de6-SNAPSHOT-local.jar"
 
     Boolean use_classic_VQSR = true
     Int? INDEL_VQSR_max_gaussians_override = 4
@@ -61,7 +63,7 @@ workflow GvsCreateFilterSet {
   String fq_filter_sites_destination_table = "~{project_id}.~{dataset_name}.filter_set_sites"
 
   String fq_info_destination_table_schema =           "filter_set_name:string,type:string,location:integer,ref:string,alt:string,vqslod:float,culprit:string,training_label:string,yng_status:string"
-  String fq_info_destination_table_vqsr_lite_schema = "filter_set_name:string,type:string,location:integer,ref:string,alt:string,calibration_sensitivity:float,culprit:string,training_label:string,yng_status:string"
+  String fq_info_destination_table_vqsr_lite_schema = "filter_set_name:string,type:string,location:integer,ref:string,alt:string,calibration_sensitivity:float,score:float,training_label:string,yng_status:string"
 
   call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
     input:
@@ -181,7 +183,7 @@ workflow GvsCreateFilterSet {
         output_basename = "${filter_set_name}.filtered.scored.indels"
     }
 
-call PopulateFilterSetInfo {
+    call PopulateFilterSetInfo {
       input:
         gatk_override = gatk_override,
         filter_set_name = filter_set_name,

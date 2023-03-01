@@ -28,7 +28,7 @@ workflow GvsExtractCallset {
     File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
     Boolean use_classic_VQSR = true
 
-    File? gatk_override
+    File? gatk_override = "gs://gvs-internal-scratch/ggrant/jars/gg_VS-695_UpdatesToVQSR_Lite_20230227/gatk-package-4.2.0.0-677-g8850de6-SNAPSHOT-local.jar"
 
     String output_file_base_name = filter_set_name
 

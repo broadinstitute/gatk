@@ -363,6 +363,7 @@ task EvaluateVcf {
       ~{if all_records then "--all-records" else ""} \
       --roc-subset snp,indel \
       --vcf-score-field=INFO.~{max_score_field_tag} \
+      ~{if use_classic_VQSR then "--sort-order descending" else "--sort-order ascending"} \
       -t human_REF_SDF \
       -b ~{truth_vcf} \
       -e ~{truth_bed}\

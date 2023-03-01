@@ -141,14 +141,14 @@ public class ExtractCohortLite extends ExtractTool {
 
     @Argument(
             fullName ="snps-truth-sensitivity-filter-level",
-            doc = "The truth sensitivity level at which to start filtering SNPs",
+            doc = "The truth sensitivity level above which to start filtering SNPs",
             optional = true
     )
     private Double truthSensitivitySNPThreshold = FilterSensitivityTools.DEFAULT_TRUTH_SENSITIVITY_THRESHOLD_SNPS / 100;
 
     @Argument(
             fullName = "indels-truth-sensitivity-filter-level",
-            doc = "The truth sensitivity level at which to start filtering INDELs",
+            doc = "The truth sensitivity level above which to start filtering INDELs",
             optional = true
     )
     private Double truthSensitivityINDELThreshold = FilterSensitivityTools.DEFAULT_TRUTH_SENSITIVITY_THRESHOLD_INDELS / 100;
@@ -224,6 +224,7 @@ public class ExtractCohortLite extends ExtractTool {
         );
         headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.REFERENCE_GENOTYPE_QUALITY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_VQS_SENS_KEY));
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_VQS_SCORE_KEY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_YNG_STATUS_KEY));
 
 
@@ -246,6 +247,12 @@ public class ExtractCohortLite extends ExtractTool {
             if (projectID == null || datasetID == null || callSetIdentifier == null || wdlStep == null || wdlCall == null || shardIdentifier == null) {
                 errors.add("Parameters 'project-id', 'dataset-id', 'call-set-identifier', 'wdl-step', 'wdl-call', and 'shardIdentifier' must be set if 'cost-observability-tablename' is set.");
             }
+        }
+        if (truthSensitivitySNPThreshold < 0.0 || truthSensitivitySNPThreshold > 1.0) {
+            errors.add("Parameter 'snps-truth-sensitivity-filter-level' MUST be between 0.0 and 1.0'");
+        }
+        if (truthSensitivityINDELThreshold < 0.0 || truthSensitivityINDELThreshold > 1.0) {
+            errors.add("Parameter 'indels-truth-sensitivity-filter-level' MUST be between 0.0 and 1.0'");
         }
         if (!errors.isEmpty()) {
             return errors.toArray(new String[0]);
@@ -274,7 +281,8 @@ public class ExtractCohortLite extends ExtractTool {
         }
 
         if (!sensitivityFilteringType.equals(SensitivityFilteringType.NONE)) {
-            // TODO - put a validation that sensitivity between 0 and 1
+            logger.info("Passing all SNP variants with VQSLOD >= " + truthSensitivitySNPThreshold);
+            logger.info("Passing all INDEL variants with VQSLOD >= " + truthSensitivityINDELThreshold);
 
             extraHeaderLines.add(new VCFFilterHeaderLine(GATKVCFConstants.VQS_SENS_FAILURE_SNP,
                     "Site failed SNP model calibration sensitivity cutoff (" + truthSensitivitySNPThreshold.toString() + ")"));
