@@ -517,4 +517,38 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
 
         Assert.assertThrows(UserException.class, () -> runCommandLine(args));
     }
+
+    @Test
+    public void testDragenGvcfs() {
+        final File input = getTestFile("dragen.g.vcf");
+        final File output = createTempFile("reblockedgvcf", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(new File(hg38Reference))
+                .add("V", input)
+                .add("L", "chr1:939436")
+                .addOutput(output);
+        runCommandLine(args);
+
+        final VCFHeader outHeader = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath()).getLeft();
+        final VariantContext outVC = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath()).getRight().get(0);
+        // The extra allele was dropped so this site is now one alt allele and the <NON_REF> allele
+        Assert.assertEquals(outVC.getAlternateAlleles().size(), 2);
+        final Genotype g = outVC.getGenotype(0);
+        Assert.assertEquals(g.getExtendedAttribute(GATKVCFConstants.ALLELE_FRACTION_KEY),"1.00,0.00");
+        Assert.assertEquals(g.getExtendedAttribute(GATKVCFConstants.F1R2_KEY), "0,3,0");
+        Assert.assertEquals(g.getExtendedAttribute(GATKVCFConstants.F2R1_KEY), "0,3,0");
+        for (String attribute : g.getExtendedAttributes().keySet()) {
+            final VCFHeaderLineCount countType = outHeader.getFormatHeaderLine(attribute).getCountType();
+            if (countType.equals(VCFHeaderLineCount.A)) {
+                Assert.assertEquals(((String) g.getExtendedAttribute(attribute)).split(",").length, 2);
+            }
+            if (countType.equals(VCFHeaderLineCount.R)) {
+                Assert.assertEquals(((String) g.getExtendedAttribute(attribute)).split(",").length, 3);
+            }
+            if (countType.equals(VCFHeaderLineCount.G)) {
+                Assert.assertEquals(((String) g.getExtendedAttribute(attribute)).split(",").length, 6);
+            }
+        }
+    }
 }

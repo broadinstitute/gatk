@@ -7,12 +7,14 @@ import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.utils.genotyper.GenotypePriorCalculator;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.collections.Permutation;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
+import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
@@ -33,9 +35,18 @@ public final class AlleleSubsettingUtils {
     private static final int PL_INDEX_OF_HOM_REF = 0;
     public static final int NUM_OF_STRANDS = 2; // forward and reverse strands
 
+    private static final OneShotLogger attributesRemovedOneShotLogger = new OneShotLogger(AlleleSubsettingUtils.class);
+
     private static final GenotypeLikelihoodCalculators GL_CALCS = new GenotypeLikelihoodCalculators();
 
-
+    public static GenotypesContext subsetAlleles(final GenotypesContext originalGs, final int defaultPloidy,
+                                                 final List<Allele> originalAlleles,
+                                                 final List<Allele> allelesToKeep,
+                                                 final GenotypePriorCalculator gpc,
+                                                 final GenotypeAssignmentMethod assignmentMethod) {
+        //TODO: if other usages of this method should update or remove A,R, or G length annotations then header parsing is necessary and the method below should be used
+        return subsetAlleles(originalGs, defaultPloidy, originalAlleles, allelesToKeep, gpc, assignmentMethod, Collections.emptyList());
+    }
     /**
      * Create the new GenotypesContext with the subsetted PLs and ADs
      *
@@ -45,13 +56,15 @@ public final class AlleleSubsettingUtils {
      * @param originalAlleles          the original alleles
      * @param allelesToKeep            the subset of alleles to use with the new Genotypes
      * @param assignmentMethod         assignment strategy for the (subsetted) PLs
+     * @param alleleBasedLengthAnnots  list of annotations that have lengths based on the number of alleles (A, R, and G length types)
      * @return                         a new non-null GenotypesContext
      */
     public static GenotypesContext subsetAlleles(final GenotypesContext originalGs, final int defaultPloidy,
                                                  final List<Allele> originalAlleles,
                                                  final List<Allele> allelesToKeep,
                                                  final GenotypePriorCalculator gpc,
-                                                 final GenotypeAssignmentMethod assignmentMethod) {
+                                                 final GenotypeAssignmentMethod assignmentMethod,
+                                                 final List<String> alleleBasedLengthAnnots) {
         Utils.nonNull(originalGs, "original GenotypesContext must not be null");
         Utils.nonNull(allelesToKeep, "allelesToKeep is null");
         Utils.nonEmpty(allelesToKeep, "must keep at least one allele");
@@ -93,9 +106,23 @@ public final class AlleleSubsettingUtils {
             final GenotypeBuilder gb = new GenotypeBuilder(g);
             final Map<String, Object> attributes = new HashMap<>(g.getExtendedAttributes());
             attributes.remove(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY);
-            //TODO: remove other G-length attributes, although that may require header parsing
             attributes.remove(VCFConstants.GENOTYPE_POSTERIORS_KEY);
             attributes.remove(GATKVCFConstants.GENOTYPE_PRIOR_KEY);
+            final List<String> attributesToRemove = new ArrayList<>();
+            for(final String attribute : attributes.keySet()) {
+                if (alleleBasedLengthAnnots.contains(attribute)) {
+                    if (attribute.equals(GATKVCFConstants.F1R2_KEY) || attribute.equals(GATKVCFConstants.F2R1_KEY)) {
+                        final String oldAttributeString = (String) attributes.get(attribute);
+                        final String[] oldAttributeArray = oldAttributeString.split(AnnotationUtils.LIST_DELIMITER);
+                        final int[] oldAttribute = Arrays.stream(oldAttributeArray).mapToInt(Integer::parseInt).toArray();
+                        final int[] newAttribute = getNewAlleleBasedReadCountAnnotation(allelesToKeep, allelePermutation, oldAttribute);
+                        attributes.put(attribute, newAttribute);
+                    } else {
+                        attributesToRemove.add(attribute);
+                    }
+                }
+            }
+            attributesToRemove.forEach(attributes::remove);
             gb.noPL().noGQ().noAttributes().attributes(attributes);  //if alleles are subset, old PLs and GQ are invalid
             if (newLog10GQ != Double.NEGATIVE_INFINITY && g.hasGQ()) {  //only put GQ if originally present
                 gb.log10PError(newLog10GQ);
@@ -112,17 +139,37 @@ public final class AlleleSubsettingUtils {
 
             // restrict AD to the new allele subset
             if(g.hasAD()) {
-                final int[] oldAD = g.getAD();
-                final int[] newAD = IntStream.range(0, allelesToKeep.size()).map(n -> oldAD[allelePermutation.fromIndex(n)]).toArray();
-                final int nonRefIndex = allelesToKeep.indexOf(Allele.NON_REF_ALLELE);
-                if (nonRefIndex != -1 && nonRefIndex < newAD.length) {
-                    newAD[nonRefIndex] = 0;  //we will "lose" coverage here, but otherwise merging NON_REF AD counts with other alleles "creates" reads
-                }
+                final int[] newAD = getNewAlleleBasedReadCountAnnotation(allelesToKeep, allelePermutation, g.getAD());
                 gb.AD(newAD);
+                // if we have recalculated AD and the original genotype had AF but was then removed, then recalculate AF based on AD counts
+                if (alleleBasedLengthAnnots.contains(GATKVCFConstants.ALLELE_FRACTION_KEY) && g.hasExtendedAttribute(GATKVCFConstants.ALLELE_FRACTION_KEY)) {
+                    attributesToRemove.remove(GATKVCFConstants.ALLELE_FRACTION_KEY);
+                    final double[] newAFs = MathUtils.normalizeSumToOne(Arrays.stream(newAD).mapToDouble(x -> x).toArray());
+                    gb.attribute(GATKVCFConstants.ALLELE_FRACTION_KEY, Arrays.copyOfRange(newAFs, 1, newAFs.length)); //omit the first entry of the array corresponding to the reference
+                }
+            }
+            if (attributesToRemove.size() > 0) {
+                attributesRemovedOneShotLogger.warn(() -> "The following attributes have been removed at sites where alleles were subset: " + String.join(",", attributesToRemove));
             }
             newGTs.add(gb.make());
         }
         return newGTs;
+    }
+
+    /**
+     * Subsets allele length annotation to match the alleles that have been kept
+     * @param allelesToKeep     list of alleles that are not being filtered out
+     * @param allelePermutation permutation that matches the index from the old annotation to the new annotation given which alleles have been removed
+     * @param oldAnnot          the original annotation
+     * @return                  the new subset annotation
+     */
+    private static int[] getNewAlleleBasedReadCountAnnotation(List<Allele> allelesToKeep, Permutation<Allele> allelePermutation, int[] oldAnnot) {
+        final int[] newAnnot = IntStream.range(0, allelesToKeep.size()).map(n -> oldAnnot[allelePermutation.fromIndex(n)]).toArray();
+        final int nonRefIndex = allelesToKeep.indexOf(Allele.NON_REF_ALLELE);
+        if (nonRefIndex != -1 && nonRefIndex < newAnnot.length) {
+            newAnnot[nonRefIndex] = 0;  //we will "lose" coverage here, but otherwise merging NON_REF AD counts with other alleles "creates" reads
+        }
+        return newAnnot;
     }
 
 

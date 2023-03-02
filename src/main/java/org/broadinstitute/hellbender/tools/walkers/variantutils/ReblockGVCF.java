@@ -184,6 +184,8 @@ public final class ReblockGVCF extends MultiVariantWalker {
 
     private CachingIndexedFastaSequenceFile referenceReader;
 
+    private static final List<String> alleleBasedLengthAnnots = new ArrayList<>();
+
     public static class AlleleLengthComparator implements Comparator<Allele> {
         public int compare(Allele a1, Allele a2) {
             return a1.getBaseString().length() - a2.getBaseString().length();
@@ -253,6 +255,15 @@ public final class ReblockGVCF extends MultiVariantWalker {
                 headerLines.add(inputHeader.getInfoHeaderLine(annotation));
             } else {
                 throw new UserException(String.format("%s is not in header of input GVCF but was requested to be kept by %s argument.", annotation, ANNOTATIONS_TO_KEEP_LONG_NAME));
+            }
+        }
+
+        //Allele length and Genotype length annotations need to be subset or removed if alleles are dropped so we need to parse the header for annotation count types
+        for(final VCFFormatHeaderLine formatHeaderLine : inputHeader.getFormatHeaderLines()) {
+            if(formatHeaderLine.getCountType().equals(VCFHeaderLineCount.A) ||
+                    formatHeaderLine.getCountType().equals(VCFHeaderLineCount.R) ||
+                    formatHeaderLine.getCountType().equals(VCFHeaderLineCount.G)) {
+                alleleBasedLengthAnnots.add(formatHeaderLine.getID());
             }
         }
 
@@ -599,7 +610,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
         if(allelesNeedSubsetting && !keepAllAlts) {
             newAlleleSetUntrimmed.removeAll(allelesToDrop);
             final GenotypesContext gc = AlleleSubsettingUtils.subsetAlleles(variant.getGenotypes(), genotype.getPloidy(), variant.getAlleles(),
-                    newAlleleSetUntrimmed, null, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN);
+                    newAlleleSetUntrimmed, null, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, alleleBasedLengthAnnots);
             if (gc.get(0).isHomRef() || !gc.get(0).hasGQ() || gc.get(0).getAlleles().contains(Allele.NO_CALL)) {  //could be low quality or no-call after subsetting
                 if (dropLowQuals) {
                     return null;
