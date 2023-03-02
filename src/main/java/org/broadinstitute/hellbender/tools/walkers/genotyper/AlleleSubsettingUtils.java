@@ -149,7 +149,7 @@ public final class AlleleSubsettingUtils {
                 }
             }
             if (attributesToRemove.size() > 0) {
-                attributesRemovedOneShotLogger.warn("The following attributes have been removed at sites where alleles were subset: " + String.join(",", attributesToRemove));
+                attributesRemovedOneShotLogger.warn(() -> "The following attributes have been removed at sites where alleles were subset: " + String.join(",", attributesToRemove));
             }
             newGTs.add(gb.make());
         }
