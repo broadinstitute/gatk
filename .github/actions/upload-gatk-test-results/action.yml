@@ -11,10 +11,10 @@ inputs:
     description: 'The job-unique identifier to use for uploading the results of this run into a google bucket'
     required: true
   is-docker:
-    description: 'Whether to label the uplaod artifact as coming from a docker test'
+    description: 'Whether to label the upload artifact as coming from a docker test'
     required: false
   identifier:
-    description: 'Identifier to use for finding the unique name for jobs in order to determine html logs location (eg. "Java 8 build and test integration")'
+    description: 'Identifier to use for finding the unique name for jobs in order to determine html logs location (eg. "Java 17 build and test integration")'
     required: true
 ## Secrets and token inputs
   repo-token:
@@ -23,7 +23,7 @@ inputs:
   bot-comment-key:
     description: 'Key corresponding to the user account to be used for making comments on github about test failures'
     required: false
-## option to skip all but the artifact uplaod
+## option to skip all but the artifact upload
   only-artifact:
     description: 'if "true" this will skip any uploading steps that require permissions and only upload the artifact file'
     required: false

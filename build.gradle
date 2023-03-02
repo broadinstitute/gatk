@@ -21,10 +21,7 @@ plugins {
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import de.undercouch.gradle.tasks.download.Download
-
-import javax.tools.ToolProvider
 import java.time.format.DateTimeFormatter
-import java.time.ZonedDateTime
 
 mainClassName = "org.broadinstitute.hellbender.Main"
 
@@ -48,7 +45,6 @@ task downloadGsaLibFile(type: Download) {
 repositories {
     mavenCentral()
 
-    jcenter()
     maven {
         url "https://broadinstitute.jfrog.io/broadinstitute/libs-snapshot/" //for htsjdk snapshots
     }
@@ -60,11 +56,10 @@ repositories {
     mavenLocal()
 }
 
-final htsjdkVersion = System.getProperty('htsjdk.version','3.0.1')
-final picardVersion = System.getProperty('picard.version','2.27.5')
-final barclayVersion = System.getProperty('barclay.version','4.1.0')
-final sparkVersion = System.getProperty('spark.version', '2.4.5')
-final scalaVersion = System.getProperty('scala.version', '2.11')
+final htsjdkVersion = System.getProperty('htsjdk.version','3.0.5')
+final picardVersion = System.getProperty('picard.version','3.0.0')
+final barclayVersion = System.getProperty('barclay.version','5.0.0')
+final sparkVersion = System.getProperty('spark.version', '3.3.1')
 final hadoopVersion = System.getProperty('hadoop.version', '3.3.1')
 final disqVersion = System.getProperty('disq.version','0.3.6')
 final genomicsdbVersion = System.getProperty('genomicsdb.version','1.4.4')
@@ -138,19 +133,13 @@ def looksLikeWereInAGitRepository(){
 // Ensure that we have a clone of the git repository, and resolve any required git-lfs
 // resource files that are needed to run the build but are still lfs stub files.
 def ensureBuildPrerequisites(largeResourcesFolder, buildPrerequisitesMessage, skipGitCheck) {
-    if (!JavaVersion.current().isJava8Compatible()) {
+    if (!JavaVersion.current().equals(JavaVersion.VERSION_17)) {
+        println("Warning: using Java ${JavaVersion.current()} but only Java 17 has been tested.")
+    }
+    if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_17)) {
         throw new GradleException(
-                "Java 8 or later is required to build GATK, but ${JavaVersion.current()} was found. "
+                "A Java 17 compatible (Java 17 or later) version is required to build GATK, but ${JavaVersion.current()} was found. "
                         + "$buildPrerequisitesMessage")
-    }
-    // Make sure we can get a ToolProvider class loader (for Java 8). If not we may have just a JRE.
-    if (JavaVersion.current().isJava8() && ToolProvider.getSystemToolClassLoader() == null) {
-        throw new GradleException(
-                "The ClassLoader obtained from the Java ToolProvider is null. "
-                + "A full Java 8 or 11 JDK must be installed, check that you are not using a JRE. $buildPrerequisitesMessage")
-    }
-    if (!JavaVersion.current().isJava8() && !JavaVersion.current().isJava11()) {
-        println("Warning: using Java ${JavaVersion.current()} but only Java 8 and Java 11 have been tested.")
     }
     if (!skipGitCheck && !looksLikeWereInAGitRepository() ) {
         throw new GradleException("This doesn't appear to be a git folder. " +
@@ -182,11 +171,14 @@ configurations.all {
         // force testng dependency so we don't pick up a different version via GenomicsDB
         force 'org.testng:testng:' + testNGVersion
         force 'org.broadinstitute:barclay:' + barclayVersion
-        force 'com.twitter:chill_2.11:0.8.1'
+        force 'com.twitter:chill_2.12:0.10.0'
+        force 'org.apache.commons:commons-math3:3.5'
 
         // make sure we don't pick up an incorrect version of the GATK variant of the google-nio library
         // via Picard, etc.
         force googleCloudNioDependency
+
+        force 'com.esotericsoftware:kryo:4.0.0'
     }
     all*.exclude group: 'org.slf4j', module: 'slf4j-jdk14' //exclude this to prevent slf4j complaining about to many slf4j bindings
     all*.exclude group: 'com.google.guava', module: 'guava-jdk5'
@@ -225,28 +217,21 @@ configurations {
         // exclude Hadoop and Spark dependencies, since they are provided when running with Spark
         // (ref: http://unethicalblogger.com/2015/07/15/gradle-goodness-excluding-depends-from-shadow.html)
         exclude group: 'org.apache.hadoop'
-        exclude module: 'spark-core_2.11'
+        exclude module: 'spark-core_2.12'
         exclude group: 'org.slf4j'
         exclude module: 'jul-to-slf4j'
         exclude module: 'javax.servlet'
         exclude module: 'servlet-api'
         exclude group: 'com.esotericsoftware.kryo'
-        exclude module: 'spark-mllib_2.11'
+        exclude module: 'spark-mllib_2.12.15'
         exclude group: 'org.scala-lang'
         exclude module: 'kryo'
     }
 }
 
-// Get the jdk files we need to run javaDoc. We need to use these during compile, testCompile,
-// test execution, and gatkDoc generation, but we don't want them as part of the runtime
-// classpath and we don't want to redistribute them in the uber jar.
-final javadocJDKFiles = ToolProvider.getSystemToolClassLoader() == null ? files([]) : files(((URLClassLoader) ToolProvider.getSystemToolClassLoader()).getURLs())
-
 dependencies {
-    // javadoc utilities; compile/test only to prevent redistribution of sdk jars
-    compileOnly(javadocJDKFiles)
-    testImplementation(javadocJDKFiles)
 
+    implementation ('org.freemarker:freemarker:2.3.30')
     implementation 'org.broadinstitute:barclay:' + barclayVersion
     // Library for configuration:
     implementation 'org.aeonbits.owner:owner:1.0.9'
@@ -312,7 +297,9 @@ dependencies {
     implementation ('org.ojalgo:ojalgo-commons-math3:1.0.0') {
         exclude group: 'org.apache.commons'
     }
-    implementation ('org.apache.spark:spark-mllib_' + scalaVersion + ':' + sparkVersion) {
+
+    //there is no mllib_2.12.15:3.3.0, so stay use 2.12:3.3.0
+    implementation ('org.apache.spark:spark-mllib_2.12:3.3.0') {
         // JUL is used by Google Dataflow as the backend logger, so exclude jul-to-slf4j to avoid a loop
         exclude module: 'jul-to-slf4j'
         exclude module: 'javax.servlet'
@@ -321,7 +308,7 @@ dependencies {
     implementation 'com.thoughtworks.paranamer:paranamer:2.8'
 
     implementation 'org.bdgenomics.bdg-formats:bdg-formats:0.5.0'
-    implementation('org.bdgenomics.adam:adam-core-spark2_' + scalaVersion + ':0.28.0') {
+    implementation('org.bdgenomics.adam:adam-core-spark2_2.12:0.28.0') {
         exclude group: 'org.slf4j'
         exclude group: 'org.apache.hadoop'
         exclude group: 'org.scala-lang'
@@ -336,7 +323,7 @@ dependencies {
     implementation('org.apache.hadoop:hadoop-client:' + hadoopVersion) // should be a 'provided' dependency
     implementation('com.github.jsr203hadoop:jsr203hadoop:1.0.3')
 
-    implementation('de.javakaffee:kryo-serializers:0.41') {
+    implementation('de.javakaffee:kryo-serializers:0.45') {
         exclude module: 'kryo' // use Spark's version
     }
 
@@ -349,17 +336,6 @@ dependencies {
     implementation('com.github.fommil.netlib:netlib-native_ref-linux-x86_64:1.1:natives')
     implementation('com.github.fommil.netlib:netlib-native_system-linux-x86_64:1.1:natives')
     implementation('com.github.fommil.netlib:netlib-native_system-osx-x86_64:1.1:natives')
-
-    // Dependency change for including MLLib
-    implementation('com.esotericsoftware:kryo:3.0.3'){
-        exclude group: 'com.esotericsoftware', module: 'reflectasm'
-        exclude group: 'org.ow2.asm', module: 'asm'
-    }
-
-    // Dependency change for including MLLib
-    implementation('com.esotericsoftware:reflectasm:1.10.0:shaded') {
-        transitive = false
-    }
 
     implementation('com.intel.gkl:gkl:0.8.8') {
         exclude module: 'htsjdk'
@@ -375,7 +351,7 @@ dependencies {
     
     // natural sort
     implementation('net.grey-panther:natural-comparator:1.1')
-    implementation('com.fasterxml.jackson.module:jackson-module-scala_' + scalaVersion + ':2.9.8')
+    implementation('com.fasterxml.jackson.module:jackson-module-scala_2.12:2.9.8')
 
     testUtilsImplementation sourceSets.main.output
     testUtilsImplementation 'org.testng:testng:' + testNGVersion
@@ -385,6 +361,99 @@ dependencies {
 
     testImplementation "org.mockito:mockito-core:2.28.2"
     testImplementation "com.google.jimfs:jimfs:1.1"
+}
+
+// This list needs to be kept in sync with the corresponding list in scripts/dockertest.gradle.
+//
+// The --add-open directives required to run GATK. These directives need to be:
+//   - included as properties in the manifest file in the jar(s)
+//   - passed to java via the gradle "jvmArgs" task property for any task that executes GATK code from a
+//     classpath that does use a jar (i.e., gradle run, test, javadoc, gatkDoc and jacoco tasks, etc.)
+//   - passed as java command line args when running from classes directly
+//   - included in any IntelliJ run/debug/profile configurations
+//
+final runtimeAddOpens = [
+        // taken from the union of everything encountered by tests, plus everything defined here:
+        // https://github.com/apache/spark/blob/v3.3.0/launcher/src/main/java/org/apache/spark/launcher/JavaModuleOptions.java
+        'java.base/java.lang=ALL-UNNAMED',
+        'java.base/java.lang.invoke=ALL-UNNAMED',
+        'java.base/java.lang.reflect=ALL-UNNAMED',
+        'java.base/java.io=ALL-UNNAMED',
+        'java.base/java.net=ALL-UNNAMED',
+        'java.base/java.nio=ALL-UNNAMED',
+        'java.base/java.util=ALL-UNNAMED',
+        'java.base/java.util.concurrent=ALL-UNNAMED',
+        'java.base/java.util.concurrent.atomic=ALL-UNNAMED',
+        'java.base/sun.nio.ch=ALL-UNNAMED',
+        'java.base/sun.nio.cs=ALL-UNNAMED',
+        'java.base/sun.security.action=ALL-UNNAMED',
+        'java.base/sun.util.calendar=ALL-UNNAMED',
+        'java.base/sun.nio.fs=ALL-UNNAMED',
+        'java.base/java.nio.channels.spi=ALL-UNNAMED',
+        'java.base/jdk.internal.ref=ALL-UNNAMED',
+        'java.base/java.lang.ref=ALL-UNNAMED',
+        'java.base/java.util.zip=ALL-UNNAMED',
+        'java.base/java.util.jar=ALL-UNNAMED',
+        'java.base/java.nio.file.attribute=ALL-UNNAMED',
+        'java.base/jdk.internal.loader=ALL-UNNAMED',
+        'java.base/sun.net.www.protocol.jar=ALL-UNNAMED',
+        'java.base/sun.invoke.util=ALL-UNNAMED',
+        'java.base/java.util.concurrent.locks=ALL-UNNAMED',
+        'java.base/java.security=ALL-UNNAMED',
+        'java.base/sun.reflect.annotation=ALL-UNNAMED',
+        'java.base/java.text=ALL-UNNAMED',
+        'java.base/java.nio.charset=ALL-UNNAMED',
+        'java.base/sun.reflect.generics.reflectiveObjects=ALL-UNNAMED',
+        'java.management/com.sun.jmx.mbeanserver=ALL-UNNAMED',
+        'java.management/javax.management=ALL-UNNAMED',
+        'java.base/java.util.regex=ALL-UNNAMED',
+        'java.base/sun.util.locale=ALL-UNNAMED',
+        'java.base/jdk.internal.math=ALL-UNNAMED',
+        'java.xml/com.sun.xml.internal.stream.util=ALL-UNNAMED',
+        'java.base/java.time=ALL-UNNAMED',
+        'java.base/sun.reflect.generics.factory=ALL-UNNAMED',
+        'java.base/java.nio.channels=ALL-UNNAMED',
+        'java.base/sun.security.util=ALL-UNNAMED',
+        'java.base/java.time.zone=ALL-UNNAMED',
+        'java.base/sun.reflect.generics.scope=ALL-UNNAMED',
+        'java.base/sun.reflect.generics.tree=ALL-UNNAMED',
+        'java.management/com.sun.jmx.interceptor=ALL-UNNAMED',
+        'java.management/javax.management.openmbean=ALL-UNNAMED',
+        'java.management/sun.management=ALL-UNNAMED',
+        'jdk.management/com.sun.management.internal=ALL-UNNAMED',
+        'jdk.management.jfr/jdk.management.jfr=ALL-UNNAMED',
+        'jdk.jfr/jdk.jfr.internal.management=ALL-UNNAMED',
+        'java.base/jdk.internal.module=ALL-UNNAMED',
+        'java.base/java.lang.module=ALL-UNNAMED',
+        'java.security.jgss/sun.security.krb5=ALL-UNNAMED'
+    ]
+
+final testAddOpens = [
+        'java.prefs/java.util.prefs=ALL-UNNAMED' // required for jacoco tasks
+]
+
+run {
+        // transform the list of runtime configuration --add-opens args into command line argument format
+        final runtimeJVMArgs = runtimeAddOpens.stream()
+                .flatMap(openSpec -> ['--add-opens', openSpec].stream())
+                .toList()
+        // add in any other required args
+        runtimeJVMArgs.add('-Dio.netty.tryReflectionSetAccessible=true')
+        jvmArgs = runtimeJVMArgs
+}
+
+test {
+    // transform the list test configuration --add-opens (which must include both the runtime and test args) into
+    // command line argument format
+    final testJVMAddOpens = new ArrayList<>();
+    testJVMAddOpens.addAll(runtimeAddOpens);
+    testJVMAddOpens.addAll(testAddOpens);
+    final testConfigurationJVMArgs = testJVMAddOpens.stream()
+            .flatMap(openSpec -> ['--add-opens', openSpec].stream())
+            .toList()
+    // add in any other required args
+    testConfigurationJVMArgs.add('-Dio.netty.tryReflectionSetAccessible=true')
+    jvmArgs = testConfigurationJVMArgs
 }
 
 //add gatk launcher script to the jar as a resource
@@ -399,8 +468,8 @@ processTestResources {
     include "org/broadinstitute/hellbender/utils/io/*"
 }
 
-sourceCompatibility = 1.8
-targetCompatibility = 1.8
+sourceCompatibility = 1.17
+targetCompatibility = 1.17
 
 def createSymlinks(archivePath, symlinkLocation) {
     exec {
@@ -424,15 +493,22 @@ logger.info("build for version:" + version)
 group = 'org.broadinstitute'
 
 tasks.withType(Jar) {
+    // transform the list of --add-opens directives into manifest format, which requires only the source
+    // package (unlike the command line equivalent, in the manifest the "ALL-UNNAMED" target is implied
+    // and can't be included in the manifest entry syntax)
+    final manifestAddOpens = runtimeAddOpens.stream()
+            .map(o -> o.substring(0, (o.length() - "ALL-UNNAMED".length()) - 1))
+            .collect(java.util.stream.Collectors.joining(' '))
     manifest {
         attributes 'Implementation-Title': 'The Genome Analysis Toolkit (GATK)',
-                'Implementation-Version': archiveVersion,
+                'Implementation-Version': archiveVersion.get(),
                 'Toolkit-Short-Name' : 'GATK',
                 'Main-Class': project.mainClassName,
                 'Picard-Version': picardVersion,
                 'htsjdk-Version': htsjdkVersion,
                 'Spark-Version': sparkVersion,
-                'Multi-Release': 'true'
+                'Multi-Release': 'true',
+                'Add-Opens': manifestAddOpens
     }
 }
 
@@ -496,6 +572,7 @@ task shadowTestClassJar(type: ShadowJar){
 
 // A minimal jar that only contains the extra dependencies needed for running the tests
 task shadowTestJar(type: ShadowJar){
+    dependsOn 'compileTestUtilsJava', 'processTestUtilsResources'
     group = "Shadow"
     description = " A minimal jar that only contains the extra dependencies needed for running the tests that arent packaged in the main shadow jar"
     from {
@@ -635,7 +712,7 @@ tasks.withType(Javadoc) {
 }
 
 javadoc {
-    // This is a hack to disable the java 8 default javadoc lint until we fix the html formatting
+    // This is a hack to disable the java default javadoc lint until we fix the html formatting
     // We only want to do this for the javadoc task, not gatkDoc
     options.addStringOption('Xdoclint:none', '-quiet')
     source = sourceSets.main.allJava + files(configurations.externalSourceConfiguration.collect { zipTree(it) })
@@ -644,7 +721,7 @@ javadoc {
 
 
 task testUtilsJavadoc(type: Javadoc) {
-    // This is a hack to disable the java 8 default javadoc lint until we fix the html formatting
+    // This is a hack to disable the java default javadoc lint until we fix the html formatting
     // We only want to do this for the javadoc task, not gatkDoc
     options.addStringOption('Xdoclint:none', '-quiet')
     source = sourceSets.testUtils.allJava
@@ -687,8 +764,8 @@ task gatkDoc(type: Javadoc, dependsOn: classes) {
     include '**/*.java'
 
     // The gatkDoc process instantiates any documented feature classes, so to run it we need the entire
-    // runtime classpath, as well as jdk javadoc files such as tools.jar, where com.sun.javadoc lives.
-    classpath = sourceSets.main.runtimeClasspath + javadocJDKFiles
+    // runtime classpath.
+    classpath = sourceSets.main.runtimeClasspath
     options.docletpath = classpath.asType(List)
     options.doclet = "org.broadinstitute.hellbender.utils.help.GATKHelpDoclet"
 
@@ -706,7 +783,7 @@ task gatkDoc(type: Javadoc, dependsOn: classes) {
         options.addStringOption("index-file-extension", phpExtension)
     }
     options.addStringOption("absolute-version", getVersion())
-    options.addStringOption("build-timestamp", ZonedDateTime.now().format(DateTimeFormatter.RFC_1123_DATE_TIME))
+    options.addStringOption("build-timestamp", ZonedDateTime.now().format(DateTimeFormatter.RFC_1123_DATE_TIME).toString())
 }
 
 // Generate GATK Bash Tab Completion File
@@ -726,8 +803,8 @@ task gatkTabComplete(type: Javadoc, dependsOn: classes) {
     include '**/*.java'
 
     // The gatkDoc process instantiates any documented feature classes, so to run it we need the entire
-    // runtime classpath, as well as jdk javadoc files such as tools.jar, where com.sun.javadoc lives, and Picard.
-    classpath = sourceSets.main.runtimeClasspath + javadocJDKFiles
+    // runtime classpath, including Picard.
+    classpath = sourceSets.main.runtimeClasspath
 
     options.docletpath = classpath.asType(List)
     options.doclet = "org.broadinstitute.barclay.help.BashTabCompletionDoclet"
@@ -788,8 +865,8 @@ task gatkWDLGen(type: Javadoc, dependsOn: classes) {
     include '**/*.java'
 
     // The gatkWDLGen process instantiates any documented feature classes, so to run it we need the entire
-    // runtime classpath, as well as jdk javadoc files such as tools.jar, where com.sun.javadoc lives.
-    classpath = sourceSets.main.runtimeClasspath + javadocJDKFiles
+    // runtime classpath, including picard.
+    classpath = sourceSets.main.runtimeClasspath
     options.docletpath = classpath.asType(List)
     options.doclet = "org.broadinstitute.hellbender.utils.help.GATKWDLDoclet"
 

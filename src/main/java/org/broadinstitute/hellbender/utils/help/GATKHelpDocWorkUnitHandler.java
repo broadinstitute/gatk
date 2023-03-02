@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.utils.help;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DefaultDocWorkUnitHandler;
 import org.broadinstitute.barclay.help.DocWorkUnit;
-
 import org.broadinstitute.barclay.help.HelpDoclet;
 
 /**

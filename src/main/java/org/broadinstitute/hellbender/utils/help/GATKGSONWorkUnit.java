@@ -12,9 +12,7 @@ public class GATKGSONWorkUnit extends GSONWorkUnit {
 
     private String walkerType;
 
-    public GATKGSONWorkUnit(DocWorkUnit workUnit) {
-        super(workUnit);
-    }
+    public GATKGSONWorkUnit(DocWorkUnit workUnit) { super(workUnit); }
 
     public void setWalkerType(final String walkerType){
         this.walkerType = walkerType;

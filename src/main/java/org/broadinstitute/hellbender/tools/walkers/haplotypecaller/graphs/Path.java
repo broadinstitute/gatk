@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.Cigar;
-import joptsimple.internal.Strings;
 import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
@@ -153,7 +152,7 @@ public class Path<V extends BaseVertex, E extends BaseEdge> {
 
     @Override
     public String toString() {
-        final String joinedPath = Strings.join(getVertices().stream().map(BaseVertex::getSequenceString).collect(Collectors.toList()), "->");
+        final String joinedPath = getVertices().stream().map(BaseVertex::getSequenceString).collect(Collectors.joining("->"));
         return String.format("Path{path=%s}", joinedPath);
     }
 
