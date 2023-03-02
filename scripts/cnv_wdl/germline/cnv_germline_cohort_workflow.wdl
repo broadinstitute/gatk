@@ -485,8 +485,8 @@ task DetermineGermlineContigPloidyCohortMode {
             --output ~{output_dir_} \
             --output-prefix ~{cohort_entity_id} \
             --verbosity DEBUG \
-            --mean-bias-standard-deviation ~{default="0.01" mean_bias_standard_deviation} \
-            --mapping-error-rate ~{default="0.01" mapping_error_rate} \
+            --mean-bias-standard-deviation ~{default="1" mean_bias_standard_deviation} \
+            --mapping-error-rate ~{default="0.3" mapping_error_rate} \
             --global-psi-scale ~{default="0.001" global_psi_scale} \
             --sample-psi-scale ~{default="0.0001" sample_psi_scale}
 
@@ -599,15 +599,15 @@ task GermlineCNVCallerCohortMode {
             --output ~{output_dir_} \
             --output-prefix ~{cohort_entity_id} \
             --verbosity DEBUG \
-            --p-alt ~{default="1e-6" p_alt} \
-            --p-active ~{default="1e-2" p_active} \
+            --p-alt ~{default="5e-4" p_alt} \
+            --p-active ~{default="1e-1" p_active} \
             --cnv-coherence-length ~{default="10000.0" cnv_coherence_length} \
             --class-coherence-length ~{default="10000.0" class_coherence_length} \
             --max-copy-number ~{default="5" max_copy_number} \
-            --max-bias-factors ~{default="5" max_bias_factors} \
+            --max-bias-factors ~{default="6" max_bias_factors} \
             --mapping-error-rate ~{default="0.01" mapping_error_rate} \
-            --interval-psi-scale ~{default="0.001" interval_psi_scale} \
-            --sample-psi-scale ~{default="0.0001" sample_psi_scale} \
+            --interval-psi-scale ~{default="0.01" interval_psi_scale} \
+            --sample-psi-scale ~{default="0.01" sample_psi_scale} \
             --depth-correction-tau ~{default="10000.0" depth_correction_tau} \
             --log-mean-bias-standard-deviation ~{default="0.1" log_mean_bias_standard_deviation} \
             --init-ard-rel-unexplained-variance ~{default="0.1" init_ard_rel_unexplained_variance} \

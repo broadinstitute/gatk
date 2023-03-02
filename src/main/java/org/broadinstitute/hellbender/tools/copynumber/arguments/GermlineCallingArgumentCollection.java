@@ -37,7 +37,7 @@ public final class GermlineCallingArgumentCollection implements Serializable {
             maxValue = 1.,
             optional = true
     )
-    private double pAlt = 1e-6;
+    private double pAlt = 5e-4;
 
     @Argument(
             doc = "Prior probability of treating an interval as CNV-active (in a CNV-active domains, all " +
@@ -47,7 +47,7 @@ public final class GermlineCallingArgumentCollection implements Serializable {
             maxValue = 1.,
             optional = true
     )
-    private double pActive = 1e-2;
+    private double pActive = 1e-1;
 
     @Argument(
             doc = "Coherence length of CNV events (in the units of bp).",

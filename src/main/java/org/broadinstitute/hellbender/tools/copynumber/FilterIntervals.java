@@ -229,7 +229,7 @@ public final class FilterIntervals extends CommandLineProgram {
             minValue = 0,
             optional = true
     )
-    private int lowCountFilterCountThreshold = 5;
+    private int lowCountFilterCountThreshold = 10;
 
     @Argument(
             doc = "Percentage-of-samples parameter for the low-count filter.  Intervals with a count " +
@@ -241,7 +241,7 @@ public final class FilterIntervals extends CommandLineProgram {
             maxValue = 100.,
             optional = true
     )
-    private double lowCountFilterPercentageOfSamples = 90.;
+    private double lowCountFilterPercentageOfSamples = 50.;
 
     @Argument(
             doc = "Minimum-percentile parameter for the extreme-count filter.  Intervals with a count " +

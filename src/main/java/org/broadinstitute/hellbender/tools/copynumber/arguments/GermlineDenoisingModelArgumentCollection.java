@@ -61,7 +61,7 @@ public final class GermlineDenoisingModelArgumentCollection implements Serializa
             minValue = 0,
             optional = true
     )
-    private int maxBiasFactors = 5;
+    private int maxBiasFactors = 6;
 
     @Argument(
             doc = "Typical mapping error rate.",
@@ -78,7 +78,7 @@ public final class GermlineDenoisingModelArgumentCollection implements Serializa
             minValue = 0.,
             optional = true
     )
-    private double intervalPsiScale = 0.001;
+    private double intervalPsiScale = 0.01;
 
     @Argument(
             doc = "Typical scale of sample-specific correction to the unexplained variance.",
@@ -86,7 +86,7 @@ public final class GermlineDenoisingModelArgumentCollection implements Serializa
             minValue = 0.,
             optional = true
     )
-    private double samplePsiScale = 0.0001;
+    private double samplePsiScale = 0.01;
 
     @Argument(
             doc = "Precision of read depth pinning to its global value.",

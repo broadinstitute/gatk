@@ -8,10 +8,10 @@
  "init_ard_rel_unexplained_variance": 0.1,
  "log_mean_bias_std": 0.1,
  "mapping_error_rate": 0.01,
- "max_bias_factors": 5,
+ "max_bias_factors": 6,
  "num_gc_bins": 20,
  "num_samples_copy_ratio_approx": 200,
- "psi_s_scale": 0.0001,
- "psi_t_scale": 0.001,
+ "psi_s_scale": 0.01,
+ "psi_t_scale": 0.01,
  "q_c_expectation_mode": "hybrid"
 }

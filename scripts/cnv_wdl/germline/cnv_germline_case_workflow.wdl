@@ -323,7 +323,7 @@ task DetermineGermlineContigPloidyCaseMode {
             --output ~{output_dir_} \
             --output-prefix case \
             --verbosity DEBUG \
-            --mapping-error-rate ~{default="0.01" mapping_error_rate} \
+            --mapping-error-rate ~{default="0.3" mapping_error_rate} \
             --sample-psi-scale ~{default="0.0001" sample_psi_scale}
 
         tar c -C ~{output_dir_}/case-calls . | gzip -1 > case-contig-ploidy-calls.tar.gz
@@ -423,11 +423,11 @@ task GermlineCNVCallerCaseMode {
             --output ~{output_dir_} \
             --output-prefix case \
             --verbosity DEBUG \
-            --p-alt ~{default="1e-6" p_alt} \
+            --p-alt ~{default="5e-4" p_alt} \
             --cnv-coherence-length ~{default="10000.0" cnv_coherence_length} \
             --max-copy-number ~{default="5" max_copy_number} \
             --mapping-error-rate ~{default="0.01" mapping_error_rate} \
-            --sample-psi-scale ~{default="0.0001" sample_psi_scale} \
+            --sample-psi-scale ~{default="0.01" sample_psi_scale} \
             --depth-correction-tau ~{default="10000.0" depth_correction_tau} \
             --copy-number-posterior-expectation-mode ~{default="HYBRID" copy_number_posterior_expectation_mode} \
             --active-class-padding-hybrid-mode ~{default="50000" active_class_padding_hybrid_mode} \
