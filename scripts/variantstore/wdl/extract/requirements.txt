@@ -1,5 +1,0 @@
-google-cloud-bigquery
-ijson
-numpy
-google-cloud-storage
-firecloud
