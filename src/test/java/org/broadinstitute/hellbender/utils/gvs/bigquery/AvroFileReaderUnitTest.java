@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.bigquery;
+package org.broadinstitute.hellbender.utils.gvs.bigquery;
 
 
 import org.apache.avro.generic.GenericRecord;
@@ -7,8 +7,6 @@ import org.broadinstitute.hellbender.engine.GATKPath;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 import org.apache.avro.Schema;
-
-import java.util.*;
 
 /**
  * A class to test the functionality of {@link AvroFileReader}.

@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.bigquery.gvs;
+package org.broadinstitute.hellbender.utils.gvs.bigquery;
 
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;

@@ -26,8 +26,8 @@ import org.broadinstitute.hellbender.utils.GenotypeCounts;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bigquery.*;
-import org.broadinstitute.hellbender.utils.localsort.AvroSortingCollection;
-import org.broadinstitute.hellbender.utils.localsort.SortingCollection;
+import org.broadinstitute.hellbender.utils.gvs.localsort.AvroSortingCollection;
+import org.broadinstitute.hellbender.utils.gvs.localsort.SortingCollection;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 

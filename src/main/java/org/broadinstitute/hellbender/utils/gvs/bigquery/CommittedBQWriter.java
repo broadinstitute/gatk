@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.bigquery;
+package org.broadinstitute.hellbender.utils.gvs.bigquery;
 
 import com.google.api.client.util.ExponentialBackOff;
 import com.google.api.core.ApiFuture;
