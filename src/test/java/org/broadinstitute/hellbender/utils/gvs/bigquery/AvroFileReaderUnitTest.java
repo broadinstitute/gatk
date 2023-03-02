@@ -13,7 +13,7 @@ import org.apache.avro.Schema;
  */
 public class AvroFileReaderUnitTest extends GATKBaseTest {
 
-    private static final String avroFileName = "src/test/java/org/broadinstitute/hellbender/utils/bigquery/avro_test_avro_test_file.avro";
+    private static final String avroFileName = "src/test/resources/org/broadinstitute/hellbender/utils/gvs/bigquery/avro_test_avro_test_file.avro";
     private static final AvroFileReader avroFile = new AvroFileReader(new GATKPath(avroFileName));
 
     @Test()
