@@ -1,3 +1,4 @@
+azure-cosmos
 azure-identity
 azure-keyvault-secrets
 azure-mgmt-resource
