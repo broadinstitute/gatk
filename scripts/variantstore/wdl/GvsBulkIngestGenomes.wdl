@@ -6,6 +6,7 @@ import "GvsAssignIds.wdl" as AssignIds
 import "GvsImportGenomes.wdl" as ImportGenomes
 # 1
 # 2
+# 3
 
 workflow GvsBulkIngestGenomes {
     input {

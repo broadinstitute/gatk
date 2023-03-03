@@ -284,8 +284,6 @@ task LoadData {
     ## delete the table that was only needed for this ingest test
     ## bq --project_id=~{project_id} rm -f=true ~{temp_table}
 
-    ## OK UP TO HERE WORKED -- and now we can't find curate_input_array_files.py
-
     ## now we want to create a sub list of these samples (without the ones that have already been loaded)
 
     python3 /app/curate_input_array_files.py --sample_map_to_be_loaded_file_name sample_map.csv \
@@ -299,6 +297,49 @@ task LoadData {
     # output_vcf_index_list_file
     # output_vcf_list_file
     # output_sample_name_list_file
+
+    # translate python files into BASH arrays---but only of the samples that aren't there already
+    VCFS_ARRAY=$(cat output_vcf_list_file |tr "\n" " ")
+    VCF_INDEXES_ARRAY=$(cat output_vcf_index_list_file |tr "\n" " ")
+    SAMPLE_NAMES_ARRAY=$(cat output_sample_name_list_file |tr "\n" " ")
+
+    ## OK UP TO HERE WORKED -- and now we do the GATK stuff
+
+    # loop over the BASH arrays (See https://stackoverflow.com/questions/6723426/looping-over-arrays-printing-both-index-and-value)
+    for i in "${!VCFS_ARRAY[@]}"; do
+      input_vcf="${VCFS_ARRAY[$i]}"
+      input_vcf_basename=$(basename $input_vcf)
+      updated_input_vcf=$input_vcf
+      input_vcf_index="${VCF_INDEXES_ARRAY[$i]}"
+      sample_name="${SAMPLE_NAMES_ARRAY[$i]}"
+
+      # we always do our own localization
+      gsutil cp $input_vcf .
+      gsutil cp $input_vcf_index .
+      updated_input_vcf=$input_vcf_basename
+
+      gatk --java-options "-Xmx2g" CreateVariantIngestFiles \
+        -V ${updated_input_vcf} \
+        -L ~{interval_list} \
+        ~{"-IG " + drop_state} \
+        --force-loading-from-non-allele-specific ~{force_loading_from_non_allele_specific} \
+        --ignore-above-gq-threshold ~{drop_state_includes_greater_than} \
+        --project-id ~{project_id} \
+        --dataset-name ~{dataset_name} \
+        --output-type BQ \
+        --enable-reference-ranges ~{load_ref_ranges} \
+        --enable-vet ~{load_vet} \
+        -SN ${sample_name} \
+        -SNM ~{sample_map} \
+        --ref-version 38 \
+        --skip-loading-vqsr-fields ~{skip_loading_vqsr_fields}
+
+      rm $input_vcf
+      rm $input_vcf_index
+
+    done
+
+
 
   >>>
 
