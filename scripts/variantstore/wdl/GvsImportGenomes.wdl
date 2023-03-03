@@ -284,7 +284,7 @@ task LoadData {
     ## delete the table that was only needed for this ingest test
     ## bq --project_id=~{project_id} rm -f=true ~{temp_table}
 
-    ## OK UP TO HERE WORKED
+    ## OK UP TO HERE WORKED -- and now we can't find curate_input_array_files.py
 
     ## now we want to create a sub list of these samples (without the ones that have already been loaded)
 
@@ -303,7 +303,7 @@ task LoadData {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_02_15"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-10-14"
     maxRetries: load_data_maxretries
     memory: "3.75 GB"
     disks: "local-disk 50 HDD"
