@@ -37,10 +37,10 @@ public final class CreateFilteringFiles extends VariantWalker {
     private SimpleXSVWriter writer;
 
     private List<String> HEADER = 
-        Arrays.asList("filter_set_name", "mode", "location", "ref", "alt", "vqslod", "culprit","training_label","yng");
+        Arrays.asList("filter_set_name", "mode", "location", "ref", "alt", "vqslod", "culprit", "training_label", "yng");
     // TODO - not sure about culprit and training label.
     private List<String> HEADER_VQSR_LITE =
-        Arrays.asList("filter_set_name", "mode", "location", "ref", "alt", "calibration_sensitivity", "culprit", "training_label", "yng");
+        Arrays.asList("filter_set_name", "mode", "location", "ref", "alt", "calibration_sensitivity", "score", "training_label", "yng");
 
     
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, 
@@ -111,11 +111,10 @@ public final class CreateFilteringFiles extends VariantWalker {
         }
         String alt = variant.getAlternateAllele(0).getBaseString();
 
-        String culprit = variant.getAttributeAsString("culprit", "");
-
         List<String> row;
         if (usingOldVQSR) {
             String vqslod = variant.getAttributeAsString("VQSLOD", "");
+            String culprit = variant.getAttributeAsString("culprit", "");
             // TODO: check with Laura -- should NEGATIVES also be NAYs?
             String trainingLabel = variant.hasAttribute("POSITIVE_TRAIN_SITE") ? "POSITIVE" : (variant.hasAttribute("NEGATIVE_TRAIN_SITE") ? "NEGATIVE" : "");
             String yng = variant.hasAttribute("POSITIVE_TRAIN_SITE") ? "Y" : "G";
@@ -133,6 +132,7 @@ public final class CreateFilteringFiles extends VariantWalker {
         } else {
             // New VQSR-Lite has CALIBRATION_SENSITIVITY instead of vqslod
             String calibration_sensitivity = variant.getAttributeAsString("CALIBRATION_SENSITIVITY","");
+            String score = variant.getAttributeAsString("SCORE","");
             String trainingLabel = variant.hasAttribute("training") ? "POSITIVE" : "";
             String yng = variant.hasAttribute("training") ? "Y" : "G";
             row = Arrays.asList(
@@ -142,7 +142,7 @@ public final class CreateFilteringFiles extends VariantWalker {
                     ref,
                     alt,
                     calibration_sensitivity,
-                    culprit,
+                    score,
                     trainingLabel,
                     yng
             );
