@@ -6,7 +6,6 @@ import org.apache.ivy.util.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -451,17 +450,17 @@ public final class BigQueryUtils {
         return new StorageAPIAvroReaderAndBigQueryStatistics(new StorageAPIAvroReader(tr), bigQueryResultAndStatistics.queryStatistics);
     }
 
-    public static boolean doRowsExistFor(String projectID, String datasetName, String tableName, String sampleId) {
+    public static boolean doRowsExistFor(String projectID, String datasetName, String tableName, String columnName, String value) {
         String template = "SELECT COUNT(*) FROM `%s.%s.%s` WHERE %s = %s";
-        String query = String.format(template, projectID, datasetName, tableName, SchemaUtils.SAMPLE_ID_FIELD_NAME, sampleId);
+        String query = String.format(template, projectID, datasetName, tableName, columnName, value);
 
         BigQueryResultAndStatistics resultAndStatistics = BigQueryUtils.executeQuery(projectID, query, true, null);
         for (final FieldValueList row : resultAndStatistics.result.iterateAll()) {
             final long count = row.get(0).getLongValue();
             return count != 0;
         }
-        throw new GATKException(String.format("No rows returned from count of `%s.%s.%s` for sample id %s",
-                projectID, datasetName, tableName, sampleId));
+        throw new GATKException(String.format("No rows returned from count of `%s.%s.%s` for %s = %s",
+                projectID, datasetName, tableName, columnName, value));
     }
 
     private static StatusRuntimeException extractCausalStatusRuntimeExceptionOrThrow(Throwable original, Throwable current) {

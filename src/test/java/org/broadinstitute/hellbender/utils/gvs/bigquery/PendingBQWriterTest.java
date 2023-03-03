@@ -1,8 +1,10 @@
-package org.broadinstitute.hellbender.utils.bigquery;
+package org.broadinstitute.hellbender.utils.gvs.bigquery;
 
 import com.google.cloud.bigquery.FieldValueList;
 import com.google.protobuf.Descriptors;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.bigquery.BigQueryResultAndStatistics;
+import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
 import org.json.JSONObject;
 import org.testng.Assert;
 import org.testng.annotations.AfterTest;
