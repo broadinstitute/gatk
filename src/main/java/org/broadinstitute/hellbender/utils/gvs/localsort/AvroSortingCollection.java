@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.localsort;
+package org.broadinstitute.hellbender.utils.gvs.localsort;
 
 import org.apache.avro.generic.GenericRecord;
 
