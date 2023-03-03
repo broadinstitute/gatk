@@ -249,10 +249,10 @@ public class ExtractCohortLite extends ExtractTool {
             }
         }
         if (truthSensitivitySNPThreshold < 0.0 || truthSensitivitySNPThreshold > 1.0) {
-            errors.add("Parameter 'snps-truth-sensitivity-filter-level' MUST be between 0.0 and 1.0'");
+            errors.add("Parameter 'snps-truth-sensitivity-filter-level' MUST be between 0.0 and 1.0 NOT: " + truthSensitivitySNPThreshold);
         }
         if (truthSensitivityINDELThreshold < 0.0 || truthSensitivityINDELThreshold > 1.0) {
-            errors.add("Parameter 'indels-truth-sensitivity-filter-level' MUST be between 0.0 and 1.0'");
+            errors.add("Parameter 'indels-truth-sensitivity-filter-level' MUST be between 0.0 and 1.0 NOT: " + truthSensitivityINDELThreshold);
         }
         if (!errors.isEmpty()) {
             return errors.toArray(new String[0]);
