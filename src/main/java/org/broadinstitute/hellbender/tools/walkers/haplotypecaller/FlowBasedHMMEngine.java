@@ -85,7 +85,18 @@ public class FlowBasedHMMEngine implements ReadLikelihoodCalculationEngine {
     public AlleleLikelihoods<GATKRead, Haplotype> computeReadLikelihoods(final List<Haplotype> haplotypeList,
                                                                          final SAMFileHeader hdr,
                                                                          final SampleList samples,
-                                                                         final Map<String, List<GATKRead>> perSampleReadList, final boolean filterPoorly) {
+                                                                         final Map<String, List<GATKRead>> perSampleReadList,
+                                                                         final boolean filterPoorly){
+        return computeReadLikelihoods(haplotypeList, hdr, samples, perSampleReadList, filterPoorly, true);
+    }
+
+
+    public AlleleLikelihoods<GATKRead, Haplotype> computeReadLikelihoods(final List<Haplotype> haplotypeList,
+                                                                         final SAMFileHeader hdr,
+                                                                         final SampleList samples,
+                                                                         final Map<String, List<GATKRead>> perSampleReadList,
+                                                                         final boolean filterPoorly,
+                                                                         final boolean normalizeLikelihoods) {
         Utils.nonNull(samples, "samples is null");
         Utils.nonNull(perSampleReadList, "perSampleReadList is null");
         Utils.nonNull(haplotypeList, "haplotypeList is null");
@@ -98,8 +109,9 @@ public class FlowBasedHMMEngine implements ReadLikelihoodCalculationEngine {
         for (int i = 0; i < sampleCount; i++) {
             computeReadLikelihoods(result.sampleMatrix(i), hdr);
         }
-
-        result.normalizeLikelihoods(log10globalReadMismappingRate, true);
+        if (normalizeLikelihoods) {
+            result.normalizeLikelihoods(log10globalReadMismappingRate, true);
+        }
         if ( filterPoorly ) {
             filterPoorlyModeledEvidence(result, dynamicReadDisqualification, expectedErrorRatePerBase, readDisqualificationScale);
         }
@@ -246,18 +258,18 @@ public class FlowBasedHMMEngine implements ReadLikelihoodCalculationEngine {
         }
 
         //NOTE: we assume all haplotypes start and end on the same place!
-        final int haplotypeStart = processedHaplotypes.get(0).getStart();
-        final int haplotypeEnd = processedHaplotypes.get(0).getEnd();
-        for (int i = 0 ; i < processedReads.size(); i++) {
-            final FlowBasedRead fbr=processedReads.get(i);
-            final int readStart = fbr.getStart();
-            final int readEnd = fbr.getEnd();
-            final int diffLeft = haplotypeStart - readStart;
-            final int diffRight = readEnd - haplotypeEnd;
-            //It is rare that this function is applied, maybe just some boundary cases
-            //in general reads are already trimmed to the haplotype starts and ends so diff_left <= 0 and diff_right <= 0
-            fbr.applyBaseClipping(Math.max(0, diffLeft), Math.max(diffRight, 0), false);
-        }
+//        final int haplotypeStart = processedHaplotypes.get(0).getStart();
+//        final int haplotypeEnd = processedHaplotypes.get(0).getEnd();
+//        for (int i = 0 ; i < processedReads.size(); i++) {
+//            final FlowBasedRead fbr=processedReads.get(i);
+//            final int readStart = fbr.getStart();
+//            final int readEnd = fbr.getEnd();
+//            final int diffLeft = haplotypeStart - readStart;
+//            final int diffRight = readEnd - haplotypeEnd;
+//            //It is rare that this function is applied, maybe just some boundary cases
+//            //in general reads are already trimmed to the haplotype starts and ends so diff_left <= 0 and diff_right <= 0
+//            fbr.applyBaseClipping(Math.max(0, diffLeft), Math.max(diffRight, 0), false);
+//        }
         initializeFlowPairHMM(processedHaplotypes, processedReads);
 
 

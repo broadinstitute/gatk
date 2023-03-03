@@ -40,13 +40,10 @@ public class FlowPairHMMAlignReadsToHaplotypes extends ReadWalker {
 
     private static final Logger logger = LogManager.getLogger(FlowPairHMMAlignReadsToHaplotypes.class);
 
-    @Argument(fullName = "haplotypes", shortName = "R", doc="Fasta file with haplotypes")
+    @Argument(fullName = "haplotypes", shortName = "H", doc="Fasta file with haplotypes")
     public GATKPath haplotypes_fa;
 
-    @Argument(fullName = "input", shortName = "I", doc="Input BAM/CRAM file with reads")
-    public GATKPath reads;
-
-    @Argument(fullName = "output", shortName = "O", doc="Readxhaplotype log-likelihood matrix")
+    @Argument(fullName = "output", shortName = "O", doc="Read x haplotype log-likelihood matrix")
     public String output;
 
     @ArgumentCollection
@@ -63,9 +60,11 @@ public class FlowPairHMMAlignReadsToHaplotypes extends ReadWalker {
     AlleleLikelihoodWriter outputWriter;
 
     List<Haplotype> haplotypeList;
-
+    Map<String, String> haplotypeToName;
     List<GATKRead> readBuffer;
-    final int BUFFER_SIZE_LIMIT = 1000;
+    boolean writeHeader=true;
+    int readCount = 0;
+    final int BUFFER_SIZE_LIMIT = 50;
     @Override
     public void onTraversalStart() {
         super.onTraversalStart();
@@ -74,21 +73,26 @@ public class FlowPairHMMAlignReadsToHaplotypes extends ReadWalker {
         haplotypeList = new ArrayList<>();
         FastaSequenceFile haplotypeFile = new FastaSequenceFile(haplotypes_fa.toPath(), false);
         ReferenceSequence seq = haplotypeFile.nextSequence();
-        byte[] flowOrder = FlowBasedReadUtils.getReadFlowOrder(sequenceHeader, null);
         readBuffer = new ArrayList<>();
+        haplotypeToName = new HashMap<>();
         while (seq != null ){
             Haplotype hap = new Haplotype(seq.getBases());
             haplotypeList.add(hap);
+            haplotypeToName.put(new String(seq.getBases()), seq.getName());
             seq = haplotypeFile.nextSequence();
         }
     }
     @Override
     public void apply(final GATKRead read, final ReferenceContext referenceContext, final FeatureContext featureContext){
+
         readBuffer.add(read);
+        readCount++;
         if (readBuffer.size() == BUFFER_SIZE_LIMIT){
             AlleleLikelihoods<GATKRead, Haplotype> readByHaplotypeMatrix = calculateLikelihoods(readBuffer);
-            outputWriter.writeAlleleLikelihoods(readByHaplotypeMatrix);
+            outputWriter.writeAlleleLikelihoodsConcise(readByHaplotypeMatrix, haplotypeToName, writeHeader, readCount - BUFFER_SIZE_LIMIT);
+            writeHeader=false;
             readBuffer.clear();
+            //progressMeter.update(null, BUFFER_SIZE_LIMIT);
         }
     }
 
@@ -96,6 +100,6 @@ public class FlowPairHMMAlignReadsToHaplotypes extends ReadWalker {
         SampleList samples = new IndexedSampleList(Arrays.asList("sm1"));
         Map<String, List<GATKRead>> tmpMap = new HashMap<>();
         tmpMap.put("sm1", reads);
-        return aligner.computeReadLikelihoods(haplotypeList, sequenceHeader, samples, tmpMap, false);
+        return aligner.computeReadLikelihoods(haplotypeList, sequenceHeader, samples, tmpMap, false, false);
     }
 }

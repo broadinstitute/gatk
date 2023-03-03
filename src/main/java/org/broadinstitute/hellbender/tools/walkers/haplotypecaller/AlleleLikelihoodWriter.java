@@ -12,6 +12,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 
 /*
 A class for logging likelihood matrics, possibly constrained by an (include-only) output interval
@@ -92,6 +93,36 @@ public class AlleleLikelihoodWriter implements AutoCloseable {
         }
     }
 
+    /**
+     * Add a likelihood matrix to the output. Only haplotypes falling within the output interval will be output
+     * @param likelihoods - matrix to add
+     */
+    public void writeAlleleLikelihoodsConcise(final AlleleLikelihoods<GATKRead, Haplotype> likelihoods, Map<String, String> haplotypeToNameMap, boolean writeHeader, int readCount){
+        final List<String> samples = likelihoods.samples();
+        final List<Haplotype> haplotypes = likelihoods.alleles();
+        try {
+            for (int s = 0 ; s < samples.size(); s++) {
+                if (writeHeader){
+                    for (int allele = 0; allele < likelihoods.sampleMatrix(s).numberOfAlleles(); allele++) {
+                        output.write(String.format("#Haplotype\t%08d\t%s\n", allele, haplotypeToNameMap.get(haplotypes.get(allele).toString())));
+                    }
+                }
+
+                List<GATKRead> reads = likelihoods.sampleEvidence(0);
+                for (int read = 0; read < likelihoods.sampleMatrix(s).evidenceCount(); read++) {
+                    output.write(String.format("#Read\t%08d\t%s\n", readCount+read, reads.get(read).getName()));
+                    for (int allele = 0; allele < likelihoods.sampleMatrix(s).numberOfAlleles(); allele++) {
+                        output.write(String.format("%08d\t%.3f\n",
+                                allele, likelihoods.sampleMatrix(s).get(allele, read)));
+                    }
+                    output.write("\n");
+                }
+            }
+            output.flush();
+        } catch (IOException err) {
+            throw new RuntimeException(String.format("Unable to write matrix to file"));
+        }
+    }
 
 
     @Override
