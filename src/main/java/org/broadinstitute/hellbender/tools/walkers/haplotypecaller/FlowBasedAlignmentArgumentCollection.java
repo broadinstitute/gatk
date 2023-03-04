@@ -12,6 +12,8 @@ public class FlowBasedAlignmentArgumentCollection extends FlowBasedArgumentColle
     public static final String FLOW_LIKELIHOOD_PARALLEL_THREADS_LONG_NAME = "flow-likelihood-parallel-threads";
     public static final String FLOW_LIKELIHOOD_OPTIMIZED_COMP_LONG_NAME = "flow-likelihood-optimized-comp";
 
+    public static final String TRIM_TO_HAPLOTYPE_LONG_NAME = "trim-to-haplotype";
+    public static final String EXACT_MATCHING_LONG_NAME = "exact-matching";
     @Advanced
     @Hidden
     @Argument(fullName = FLOW_LIKELIHOOD_PARALLEL_THREADS_LONG_NAME, doc = "Number of threads to parallelize likelihood computation inner (read) loop with", optional=true)
@@ -23,5 +25,14 @@ public class FlowBasedAlignmentArgumentCollection extends FlowBasedArgumentColle
             "for common probability values", optional=true)
     public boolean flowLikelihoodOptimizedComp = false;
 
+    @Advanced
+    @Hidden
+    @Argument(fullName = TRIM_TO_HAPLOTYPE_LONG_NAME, doc = "Should the read be trimmed to the haplotype", optional=true)
+    public boolean trimToHaplotype = true;
+
+    @Advanced
+    @Hidden
+    @Argument(fullName = EXACT_MATCHING_LONG_NAME, doc = "Should exact match of haplotype to read be assumed", optional=true)
+    public boolean exactMatching = false;
 
 }

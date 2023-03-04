@@ -14,9 +14,7 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.FlowBasedProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.tools.FlowBasedArgumentCollection;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AlleleLikelihoodWriter;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.FlowBasedHMMEngine;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.LikelihoodEngineArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.*;
 import org.broadinstitute.hellbender.utils.dragstr.DragstrParamUtils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
@@ -47,15 +45,20 @@ public class FlowPairHMMAlignReadsToHaplotypes extends ReadWalker {
     public String output;
 
     @ArgumentCollection
-    public FlowBasedArgumentCollection fbargs = new FlowBasedArgumentCollection();
+    public FlowBasedAlignmentArgumentCollection fbargs = new FlowBasedAlignmentArgumentCollection();
+
+
     LikelihoodEngineArgumentCollection likelihoodArgs = new LikelihoodEngineArgumentCollection();
     SAMFileHeader sequenceHeader;
-    final FlowBasedHMMEngine aligner = new FlowBasedHMMEngine(fbargs, (byte) likelihoodArgs.gcpHMM,
-            10000, likelihoodArgs.expectedErrorRatePerBase, likelihoodArgs.pcrErrorModel,
-            likelihoodArgs.dontUseDragstrPairHMMScores ? null : DragstrParamUtils.parse(likelihoodArgs.dragstrParams),
-            likelihoodArgs.enableDynamicReadDisqualification, likelihoodArgs.readDisqualificationThresholdConstant,
-            likelihoodArgs.minUsableIndelScoreToUse, (byte) likelihoodArgs.flatDeletionPenalty,
-            (byte) likelihoodArgs.flatInsertionPenatly);
+//    final FlowBasedHMMEngine aligner = new FlowBasedHMMEngine(fbargs, (byte) likelihoodArgs.gcpHMM,
+//            10000, likelihoodArgs.expectedErrorRatePerBase, likelihoodArgs.pcrErrorModel,
+//            likelihoodArgs.dontUseDragstrPairHMMScores ? null : DragstrParamUtils.parse(likelihoodArgs.dragstrParams),
+//            likelihoodArgs.enableDynamicReadDisqualification, likelihoodArgs.readDisqualificationThresholdConstant,
+//            likelihoodArgs.minUsableIndelScoreToUse, (byte) likelihoodArgs.flatDeletionPenalty,
+//            (byte) likelihoodArgs.flatInsertionPenatly);
+
+    final FlowBasedAlignmentLikelihoodEngine aligner = new FlowBasedAlignmentLikelihoodEngine(fbargs,
+            10000, 1,false, 0);
 
     AlleleLikelihoodWriter outputWriter;
 
@@ -71,6 +74,9 @@ public class FlowPairHMMAlignReadsToHaplotypes extends ReadWalker {
         sequenceHeader = getHeaderForReads();
         outputWriter = new AlleleLikelihoodWriter(IOUtils.getPath(output), null);
         haplotypeList = new ArrayList<>();
+        fbargs.keepBoundaryFlows = true;
+        fbargs.trimToHaplotype = false;
+        fbargs.exactMatching = true;
         FastaSequenceFile haplotypeFile = new FastaSequenceFile(haplotypes_fa.toPath(), false);
         ReferenceSequence seq = haplotypeFile.nextSequence();
         readBuffer = new ArrayList<>();
@@ -87,12 +93,12 @@ public class FlowPairHMMAlignReadsToHaplotypes extends ReadWalker {
 
         readBuffer.add(read);
         readCount++;
+
         if (readBuffer.size() == BUFFER_SIZE_LIMIT){
             AlleleLikelihoods<GATKRead, Haplotype> readByHaplotypeMatrix = calculateLikelihoods(readBuffer);
             outputWriter.writeAlleleLikelihoodsConcise(readByHaplotypeMatrix, haplotypeToName, writeHeader, readCount - BUFFER_SIZE_LIMIT);
             writeHeader=false;
             readBuffer.clear();
-            //progressMeter.update(null, BUFFER_SIZE_LIMIT);
         }
     }
 

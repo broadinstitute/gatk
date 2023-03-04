@@ -40,6 +40,7 @@ public class FlowBasedAlignmentLikelihoodEngine implements ReadLikelihoodCalcula
 
     private static final int ALIGNMENT_UNCERTAINTY = 4;
     final FlowBasedAlignmentArgumentCollection fbargs;
+
     private final Logger logger = LogManager.getLogger(this.getClass());
 
     private final boolean dynamicReadDisqualification;
@@ -53,7 +54,10 @@ public class FlowBasedAlignmentLikelihoodEngine implements ReadLikelihoodCalcula
      * @param log10globalReadMismappingRate - probability for wrong mapping (maximal contribution of the read to data likelihood)
      * @param expectedErrorRatePerBase - the expected rate of random sequencing errors for a read originating from its true haplotype.
      */
-    public FlowBasedAlignmentLikelihoodEngine(final FlowBasedAlignmentArgumentCollection fbargs, final double log10globalReadMismappingRate, final double expectedErrorRatePerBase, final boolean dynamicReadDisqualification, final double readDisqualificationScale) {
+    public FlowBasedAlignmentLikelihoodEngine(final FlowBasedAlignmentArgumentCollection fbargs,
+                                              final double log10globalReadMismappingRate,
+                                              final double expectedErrorRatePerBase,
+                                              final boolean dynamicReadDisqualification, final double readDisqualificationScale) {
         this.fbargs = fbargs;
         this.log10globalReadMismappingRate = log10globalReadMismappingRate;
         this.expectedErrorRatePerBase = expectedErrorRatePerBase;
@@ -78,6 +82,23 @@ public class FlowBasedAlignmentLikelihoodEngine implements ReadLikelihoodCalcula
                                                                          final SAMFileHeader hdr,
                                                                          final SampleList samples,
                                                                          final Map<String, List<GATKRead>> perSampleReadList, final boolean filterPoorly) {
+        return computeReadLikelihoods(haplotypeList, hdr, samples, perSampleReadList,filterPoorly, true);
+    }
+
+    /**
+     * Read/haplotype likelihood calculation for all samples
+     * @param samples the list of targeted samples.
+     * @param perSampleReadList the input read sets stratified per sample.
+     *
+     * @param filterPoorly - if the poorly modeled reads should be removed
+     * @param normalizeLikelihoods - if the likelihood of each read should be normalized to the highest
+     * @returnd
+     */
+    public AlleleLikelihoods<GATKRead, Haplotype> computeReadLikelihoods(final List<Haplotype> haplotypeList,
+                                                                         final SAMFileHeader hdr,
+                                                                         final SampleList samples,
+                                                                         final Map<String, List<GATKRead>> perSampleReadList,
+                                                                         final boolean filterPoorly, final boolean normalizeLikelihoods) {
         Utils.nonNull(samples, "samples is null");
         Utils.nonNull(perSampleReadList, "perSampleReadList is null");
         Utils.nonNull(haplotypeList, "haplotypeList is null");
@@ -90,12 +111,15 @@ public class FlowBasedAlignmentLikelihoodEngine implements ReadLikelihoodCalcula
         for (int i = 0; i < sampleCount; i++) {
             computeReadLikelihoods(result.sampleMatrix(i), hdr);
         }
-
-        result.normalizeLikelihoods(log10globalReadMismappingRate, symmetricallyNormalizeAllelesToReference);
-        filterPoorlyModeledEvidence(result, dynamicReadDisqualification, expectedErrorRatePerBase, readDisqualificationScale);
-
+        if (normalizeLikelihoods) {
+            result.normalizeLikelihoods(log10globalReadMismappingRate, symmetricallyNormalizeAllelesToReference);
+        }
+        if (filterPoorly) {
+            filterPoorlyModeledEvidence(result, dynamicReadDisqualification, expectedErrorRatePerBase, readDisqualificationScale);
+        }
         return result;
     }
+
 
     /** Calculate minimal likelihood that reasonably matching read can get. We divide errors into "expected", e.g.
      * hmer indels without 0->1/1->0 errors. Those on average occur with expectedErrorRate and "catastrophic' e.g.
@@ -154,18 +178,20 @@ public class FlowBasedAlignmentLikelihoodEngine implements ReadLikelihoodCalcula
             processedHaplotypes.add(fbh);
         }
 
-        //NOTE: we assume all haplotypes start and end on the same place!
-        final int haplotypeStart = processedHaplotypes.get(0).getStart();
-        final int haplotypeEnd = processedHaplotypes.get(0).getEnd();
-        for (int i = 0 ; i < processedReads.size(); i++) {
-            final FlowBasedRead fbr=processedReads.get(i);
-            final int readStart = fbr.getStart();
-            final int readEnd = fbr.getEnd();
-            final int diffLeft = haplotypeStart - readStart;
-            final int diffRight = readEnd - haplotypeEnd;
-            //It is rare that this function is applied, maybe just some boundary cases
-            //in general reads are already trimmed to the haplotype starts and ends so diff_left <= 0 and diff_right <= 0
-            fbr.applyBaseClipping(Math.max(0, diffLeft), Math.max(diffRight, 0), true);
+        if (fbargs.trimToHaplotype) {
+            //NOTE: we assume all haplotypes start and end on the same place!
+            final int haplotypeStart = processedHaplotypes.get(0).getStart();
+            final int haplotypeEnd = processedHaplotypes.get(0).getEnd();
+            for (int i = 0; i < processedReads.size(); i++) {
+                final FlowBasedRead fbr = processedReads.get(i);
+                final int readStart = fbr.getStart();
+                final int readEnd = fbr.getEnd();
+                final int diffLeft = haplotypeStart - readStart;
+                final int diffRight = readEnd - haplotypeEnd;
+                //It is rare that this function is applied, maybe just some boundary cases
+                //in general reads are already trimmed to the haplotype starts and ends so diff_left <= 0 and diff_right <= 0
+                fbr.applyBaseClipping(Math.max(0, diffLeft), Math.max(diffRight, 0), true);
+            }
         }
 
         for (int i = 0; i < likelihoods.numberOfAlleles(); i++){
@@ -174,7 +200,7 @@ public class FlowBasedAlignmentLikelihoodEngine implements ReadLikelihoodCalcula
                 final int haplotypeIndex = i;
                 Callable<Void>  callable = () -> {
                     IntStream.range(0, likelihoods.evidenceCount()).parallel().forEach(j -> {
-                        final double likelihood = haplotypeReadMatching(fbh, processedReads.get(j));
+                        final double likelihood = fbargs.exactMatching ? haplotypeReadMatchingExactLength(fbh, processedReads.get(j)) : haplotypeReadMatching(fbh, processedReads.get(j));
                         likelihoods.set(haplotypeIndex, j, likelihood);
                     });
                     return null;
@@ -186,7 +212,10 @@ public class FlowBasedAlignmentLikelihoodEngine implements ReadLikelihoodCalcula
                 }
             } else {
                 for (int j = 0; j < likelihoods.evidenceCount(); j++) {
-                    final double likelihood = haplotypeReadMatching(fbh, processedReads.get(j));
+                    //System.out.print(j);
+                    //System.out.print(" ");
+
+                    final double likelihood = fbargs.exactMatching ? haplotypeReadMatchingExactLength(fbh, processedReads.get(j)) : haplotypeReadMatching(fbh, processedReads.get(j));
                     likelihoods.set(i, j, likelihood);
                 }
             }
@@ -220,7 +249,7 @@ public class FlowBasedAlignmentLikelihoodEngine implements ReadLikelihoodCalcula
             throw new GATKException.ShouldNeverReachHereException("Read should be aligned with the reference");
         }
 
-        if (!read.isBaseClipped()) {
+        if (!read.isBaseClipped() && fbargs.trimToHaplotype) {
             throw new GATKException.ShouldNeverReachHereException("Reads should be trimmed to the haplotype");
         }
 
@@ -282,6 +311,41 @@ public class FlowBasedAlignmentLikelihoodEngine implements ReadLikelihoodCalcula
                 ? optimizedFlowLikelihoodScore(haplotype, read, clipLeft, clipRight)
                 : flowLikelihoodScore(haplotype, read, clipLeft, clipRight);
     }
+
+    /**
+     * Aligns single read to a single haplotype. The alignment process is based on the assumption that the errors are only
+     * changes in the flow calls. Thus, the length of the haplotype in flow space should be equal to the length of the read
+     * in the flow space (on the region where the read aligns).
+     *
+     * This function is very similar to haplotypeReadMatching, but the assumption is that the read is equal to the haplotype rather than
+     * partially covering the haplotype (e.g. exome sequencing)
+     * @param haplotype FlowBasedHaplotype single haplotype
+     * @param read FlowBasedRead single read (trimmed to the haplotype)
+     * @return a score for the alignment of the read to the haplotype. The higher the score the "better" the alignment
+     *         normally, scores will be negative.
+     * @throws GATKException
+     */
+    public double haplotypeReadMatchingExactLength(final FlowBasedHaplotype haplotype, final FlowBasedRead read) throws GATKException {
+
+        if (read.getDirection() != FlowBasedRead.Direction.REFERENCE ) {
+            throw new GATKException.ShouldNeverReachHereException("Read should be aligned with the reference");
+        }
+
+        if (!read.isBaseClipped() && fbargs.trimToHaplotype) {
+            throw new GATKException.ShouldNeverReachHereException("Reads should be trimmed to the haplotype");
+        }
+
+        if (!read.isValid()) {
+            return Double.NEGATIVE_INFINITY;
+        }
+
+
+        return fbargs.flowLikelihoodOptimizedComp
+                ? optimizedFlowLikelihoodScore(haplotype, read, 0,haplotype.getKeyLength())
+                : flowLikelihoodScore(haplotype, read, 0, haplotype.getKeyLength());
+    }
+
+
 
     /*
      * calculate likelihood score between a read and a haplotype. This code is the non-optimnized (original) version
