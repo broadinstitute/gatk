@@ -299,24 +299,28 @@ task LoadData {
     # output_sample_name_list_file
 
     # translate python files into BASH arrays---but only of the samples that aren't there already
-    VCFS_ARRAY=$(cat output_vcf_list_file |tr "\n" " ")
-    VCF_INDEXES_ARRAY=$(cat output_vcf_index_list_file |tr "\n" " ")
-    SAMPLE_NAMES_ARRAY=$(cat output_sample_name_list_file |tr "\n" " ")
+    VCFS_ARRAY=($(cat output_vcf_list_file |tr "\n" " "))
+    VCF_INDEXES_ARRAY=($(cat output_vcf_index_list_file |tr "\n" " "))
+    SAMPLE_NAMES_ARRAY=($(cat output_sample_name_list_file |tr "\n" " "))
 
-    ## OK UP TO HERE WORKED -- and now we do the GATK stuff
+    # translate WDL arrays into BASH arrays
+    # VCFS_ARRAY=(~{sep=" " input_vcfs})
+    # VCF_INDEXES_ARRAY=(~{sep=" " input_vcf_indexes})
+    # SAMPLE_NAMES_ARRAY=(~{sep=" " sample_names})
+
 
     # loop over the BASH arrays (See https://stackoverflow.com/questions/6723426/looping-over-arrays-printing-both-index-and-value)
     for i in "${!VCFS_ARRAY[@]}"; do
-      input_vcf="${VCFS_ARRAY[$i]}"
-      input_vcf_basename=$(basename $input_vcf)
-      updated_input_vcf=$input_vcf
-      input_vcf_index="${VCF_INDEXES_ARRAY[$i]}"
+      gs_input_vcf="${VCFS_ARRAY[$i]}"
+    # input_vcf_basename=$(basename $input_vcf)
+    # updated_input_vcf=$input_vcf
+      gs_input_vcf_index="${VCF_INDEXES_ARRAY[$i]}"
       sample_name="${SAMPLE_NAMES_ARRAY[$i]}"
 
       # we always do our own localization
-      gsutil cp $input_vcf .
-      gsutil cp $input_vcf_index .
-      updated_input_vcf=$input_vcf_basename
+      gsutil cp $gs_input_vcf input_vcf_$i
+      gsutil cp $gs_input_vcf_index input_vcf_index_$i
+      updated_input_vcf=input_vcf_$i
 
       gatk --java-options "-Xmx2g" CreateVariantIngestFiles \
         -V ${updated_input_vcf} \
@@ -334,8 +338,8 @@ task LoadData {
         --ref-version 38 \
         --skip-loading-vqsr-fields ~{skip_loading_vqsr_fields}
 
-      rm $input_vcf
-      rm $input_vcf_index
+      rm $input_vcf_$i
+      rm $input_vcf_index_$i
 
     done
 

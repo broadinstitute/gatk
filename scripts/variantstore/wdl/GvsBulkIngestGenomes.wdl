@@ -4,9 +4,9 @@ import "GvsUtils.wdl" as Utils
 import "GvsPrepareBulkImport.wdl" as PrepareBulkImport
 import "GvsAssignIds.wdl" as AssignIds
 import "GvsImportGenomes.wdl" as ImportGenomes
-# 1
-# 2
-# 3
+
+# cleanup
+
 
 workflow GvsBulkIngestGenomes {
     input {
