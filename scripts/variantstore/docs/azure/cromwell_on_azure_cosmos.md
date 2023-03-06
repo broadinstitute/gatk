@@ -57,8 +57,8 @@ done
 COSMOS_DB_DATA_CONTRIBUTOR_ROLE_ID=$(az cosmosdb sql role definition list --account-name $COSMOS_DB_NAME | jq -r '.[] | select(.roleName == "Cosmos DB Built-in Data Contributor") | .id')
 
 # Assign the Cosmos DB Data Contributor role to the Cosmos DB Data Contributor group.
-# Unfortunately this does not seem to be working. If we make the Variants Team group this role this seems to work.
-# I'm not sure what's going on here, are nested groups really not supported for role assignments?  
+# Unfortunately this does not seem to be working. If we give the Variants Team group this role everything seems to work.
+# Are nested groups really not supported for role assignments?
 # for id in ${COSMOS_DB_DATA_CONTRIBUTOR_GROUP_ID}
 
 # Assign the Cosmos DB Data Contributor role to the Variants team and the CoA UAMI.
