@@ -264,7 +264,7 @@ public class LocalAssemblerUnitTest {
 
         // re-create the graph, and make sure central contig isn't removed despite having no
         // observations (because it's a cut point)
-        List<ContigImpl> contigs2 = LocalAssembler.buildContigs(kmers);
+        final List<ContigImpl> contigs2 = LocalAssembler.buildContigs(kmers);
         LocalAssembler.connectContigs(contigs2);
         LocalAssembler.removeThinContigs(contigs2, MIN_THIN_OBS, kmers);
         Assert.assertEquals(contigs2.size(), 5);
@@ -457,7 +457,7 @@ public class LocalAssemblerUnitTest {
         final Collection<Traversal> scaffolds =
                 LocalAssembler.createScaffolds(allTraversals, TOO_MANY_SCAFFOLDS, MIN_SV_SIZE);
         Assert.assertEquals(scaffolds.size(), 4);
-        List<String> scaffoldSeqs =
+        final List<String> scaffoldSeqs =
             scaffolds.stream().map(Traversal::getSequence).collect(Collectors.toList());
         Assert.assertTrue(containsSeqOrRC(SEQS_FOR_DOGBONE_GRAPH[0], scaffoldSeqs));
         Assert.assertTrue(containsSeqOrRC(SEQS_FOR_DOGBONE_GRAPH[1], scaffoldSeqs));

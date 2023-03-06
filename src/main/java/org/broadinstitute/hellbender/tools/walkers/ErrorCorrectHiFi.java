@@ -36,11 +36,10 @@ public final class ErrorCorrectHiFi extends VariantWalker {
 "    samtools index align.bam &&\n" +
 "    igv -g hg38 -n corrected,%s -l %s align.bam %s\n";
 
-    public final File tmpDir = IOUtils.createTempDir("echf");
-    public final File outputFASTQ = new File(tmpDir, "reads.fq");
-    public final File refFile = new File(tmpDir, "ref.fa");
-    public final File scriptFile = new File(tmpDir, "run.sh");
-    public final ProcessBuilder scriptRunner = new ProcessBuilder(scriptFile.getAbsolutePath());
+    final File tmpDir = IOUtils.createTempDir("echf");
+    final File outputFASTQ = new File(tmpDir, "reads.fq");
+    final File scriptFile = new File(tmpDir, "run.sh");
+    final ProcessBuilder scriptRunner = new ProcessBuilder(scriptFile.getAbsolutePath());
 
     @Override
     public boolean requiresReads() { return true; }
@@ -62,94 +61,102 @@ public final class ErrorCorrectHiFi extends VariantWalker {
             if ( eventEnd - eventStart < HUGE_EVENT_SIZE ) {
                 final SimpleInterval windowInterval =
                         new SimpleInterval(contig, windowStart, windowEnd);
-                processWindow(windowInterval, readsContext);
+                processWindow(readsContext.iterator(windowInterval));
                 writeScript(seqName, windowInterval);
                 alignAndDisplay();
             } else {
                 final SimpleInterval leadInterval =
                         new SimpleInterval(contig, windowStart, eventStart + WINDOW_SIZE);
-                processWindow(leadInterval, readsContext);
+                processWindow(readsContext.iterator(leadInterval));
                 writeScript(seqName + "_BND1", leadInterval);
                 alignAndDisplay();
 
                 final SimpleInterval lagInterval =
                         new SimpleInterval(contig, eventEnd - WINDOW_SIZE, windowEnd);
-                processWindow(lagInterval, readsContext);
+                processWindow(readsContext.iterator(lagInterval));
                 writeScript(seqName + "_BND2", lagInterval);
                 alignAndDisplay();
             }
         }
     }
 
-    private void processWindow( final SimpleInterval interval,
-                                final ReadsContext readsContext ) {
-        try ( final BufferedWriter writer = new BufferedWriter(new FileWriter(outputFASTQ)) ) {
-            final List<CallIterator> callIteratorList = new ArrayList<>();
-            int refPos = interval.getStart();
-            final Iterator<GATKRead> iterator = readsContext.iterator(interval);
-            while ( iterator.hasNext() ) {
-                final GATKRead read = iterator.next();
-                if ( interval.overlaps(read) ) {
-                    callIteratorList.add(new CallIterator(read, refPos));
-                }
-            }
+    private void processWindow( final Iterator<GATKRead> readsIterator ) {
+        final List<GATKRead> reads = new ArrayList<>();
+        int windowStartPos = Integer.MAX_VALUE;
+        int windowEndPos = 0;
+        while ( readsIterator.hasNext() ) {
+            final GATKRead read = readsIterator.next();
+            reads.add(read);
+            windowStartPos = Math.min(windowStartPos, read.getStart());
+            windowEndPos = Math.max(windowEndPos, read.getEnd());
+        }
 
-            final int endPos = interval.getEnd();
-            for ( ; refPos <= endPos && !callIteratorList.isEmpty(); ++refPos ) {
-                final Iterator<CallIterator> callIteratorIterator = callIteratorList.iterator();
-                Call singletonIndel = null;
-                CallIterator singletonIndelIterator = null;
-                ByteSequence alignedValue = null;
-                int alignedValueCount = 0;
-                boolean hopeless = false;
-                while ( callIteratorIterator.hasNext() ) {
-                    final CallIterator callIterator = callIteratorIterator.next();
-                    if ( !callIterator.hasNext() ) {
-                        callIterator.writeFASTQ(writer);
-                        callIteratorIterator.remove();
-                    } else {
-                        final Call call = callIterator.next();
-                        if ( call != null && !hopeless ) {
-                            final ByteSequence calls = call.getCalls();
-                            final int len = calls.length();
-                            if ( len == 0 ) {
-                                if ( call.getCigarElement().getLength() == 1 && singletonIndel == null ) {
-                                    singletonIndel = call;
-                                    singletonIndelIterator = callIterator;
-                                } else {
-                                    hopeless = true;
-                                }
-                            } else if ( len == 1 ) {
-                                if ( alignedValue == null ) {
-                                    alignedValue = calls;
-                                    alignedValueCount = 1;
-                                } else if ( alignedValue.equals(calls) ) {
-                                    alignedValueCount += 1;
-                                } else {
-                                    hopeless = true;
-                                }
-                            } else if ( len == 2 ) {
-                                if ( singletonIndel == null ) {
-                                    singletonIndel = call;
-                                    singletonIndelIterator = callIterator;
-                                } else {
-                                    hopeless = true;
-                                }
-                            } else {
-                                hopeless = true;
-                            }
-                        }
-                    }
-                }
-                if ( !hopeless && singletonIndel != null && alignedValueCount >= MIN_ALIGNED_VALUES ) {
-                    singletonIndelIterator.fixup(singletonIndel, alignedValue);
-                }
-            }
+        final List<CallIterator> callIteratorList = new ArrayList<>(reads.size());
+        for ( final GATKRead read : reads ) {
+            callIteratorList.add(new CallIterator(read, windowStartPos));
+        }
+
+        errorCorrectWindow(callIteratorList, windowStartPos, windowEndPos);
+
+        try ( final BufferedWriter writer = new BufferedWriter(new FileWriter(outputFASTQ)) ) {
             for ( final CallIterator callIterator : callIteratorList ) {
                 callIterator.writeFASTQ(writer);
             }
         } catch ( final IOException ioe ) {
             throw new GATKException("Can't write output to " + outputFASTQ, ioe);
+        }
+    }
+
+    public static void errorCorrectWindow( final List<CallIterator> callIteratorList,
+                                           final int windowStartPos,
+                                           final int windowEndPos ) {
+        for ( int refPos = windowStartPos; refPos <= windowEndPos && !callIteratorList.isEmpty(); ++refPos ) {
+            final Iterator<CallIterator> callIteratorIterator = callIteratorList.iterator();
+            Call singletonIndel = null;
+            CallIterator singletonIndelIterator = null;
+            ByteSequence alignedValue = null;
+            int alignedValueCount = 0;
+            boolean hopeless = false;
+            while ( callIteratorIterator.hasNext() ) {
+                final CallIterator callIterator = callIteratorIterator.next();
+                if ( !callIterator.hasNext() ) {
+                    continue;
+                }
+                final Call call = callIterator.next();
+                if ( call != null && !hopeless ) {
+                    final ByteSequence calls = call.getCalls();
+                    final int len = calls.length();
+                    if ( len == 0 ) {
+                        if ( call.getCigarElement().getLength() == 1 && singletonIndel == null ) {
+                            singletonIndel = call;
+                            singletonIndelIterator = callIterator;
+                        } else {
+                            hopeless = true;
+                        }
+                    } else if ( len == 1 ) {
+                        if ( alignedValue == null ) {
+                            alignedValue = calls;
+                            alignedValueCount = 1;
+                        } else if ( alignedValue.equals(calls) ) {
+                            alignedValueCount += 1;
+                        } else {
+                            hopeless = true;
+                        }
+                    } else if ( len == 2 ) {
+                        if ( singletonIndel == null ) {
+                            singletonIndel = call;
+                            singletonIndelIterator = callIterator;
+                        } else {
+                            hopeless = true;
+                        }
+                    } else {
+                        hopeless = true;
+                    }
+                }
+            }
+            if ( !hopeless && singletonIndel != null && alignedValueCount >= MIN_ALIGNED_VALUES ) {
+                singletonIndelIterator.fixup(singletonIndel, alignedValue);
+            }
         }
     }
 
@@ -167,31 +174,6 @@ public final class ErrorCorrectHiFi extends VariantWalker {
         scriptRunner.directory(tmpDir).inheritIO();
     }
 
-/*
-    private void writeRef( final String seqName, final SimpleInterval interval, final ReferenceContext refContext ) {
-        final byte[] bases = refContext.getBases(interval);
-        try ( final BufferedWriter writer =
-                      new BufferedWriter(new OutputStreamWriter(new FileOutputStream(refFile))) ) {
-            writer.write(">");
-            writer.write(seqName);
-            writer.newLine();
-            final int nBases = bases.length;
-            int lineLength = 0;
-            for ( int idx = 0; idx != nBases; ++idx ) {
-                writer.write(bases[idx]);
-                if ( ++lineLength == 80 ) {
-                    writer.newLine();
-                    lineLength = 0;
-                }
-            }
-            if ( lineLength > 0 ) {
-                writer.newLine();
-            }
-        } catch ( final IOException ioe ) {
-            throw new UserException("Can't write altered reference.", ioe);
-        }
-    }
-*/
     private void alignAndDisplay() {
         try {
             final Process process = scriptRunner.start();
@@ -204,6 +186,10 @@ public final class ErrorCorrectHiFi extends VariantWalker {
         }
     }
 
+    /**
+     * Immutable sequence of bytes (assuming you don't change the array directly).
+     * Subsequences reference the parent array.
+     */
     public static final class ByteSequence {
         public static final ByteSequence EMPTY = new ByteSequence(new byte[0]);
         final byte[] bytes;
@@ -239,6 +225,7 @@ public final class ErrorCorrectHiFi extends VariantWalker {
             return new ByteSequence(this, start, length() - start);
         }
 
+        /** Note: args are start+length, not start+end */
         public ByteSequence subSequence( final int start, final int len ) {
             return new ByteSequence( this, start, len);
         }
@@ -273,6 +260,14 @@ public final class ErrorCorrectHiFi extends VariantWalker {
         public String toString() { return new String(bytes, start, length); }
     }
 
+    /**
+     * What's happening at some reference position in some read.
+     * Note that inserts are weird:  the calls/quals byte sequence will be one longer than the cigar
+     * element's length, because it has the call at that reference position as well as the inserted
+     * calls.  (It works like a vcf entry that has, for example, a ref allele of A, and an alt
+     * allele of ATC.  That's a 2I, even though the alt allele is 3 base calls in length.)
+     * Deletions have 0-length byte sequences regardless of the length of the cigar element.
+     */
     public static final class Call {
         private final ByteSequence calls;
         private final ByteSequence quals;
@@ -291,6 +286,10 @@ public final class ErrorCorrectHiFi extends VariantWalker {
         public CigarElement getCigarElement() { return cigarElement; }
     }
 
+    /**
+     *  Instructions to remedy a single-base insertion (value will be 0)
+     *  or a single-base deletion (value will be A, C, G, or T) in some read.
+     */
     public static final class Fixup {
         private final int readIndex;
         private final byte value;
@@ -303,6 +302,9 @@ public final class ErrorCorrectHiFi extends VariantWalker {
         public byte getValue() { return value; }
     }
 
+    /**
+     * Iterate over a read to yield a call for each reference position covered by the read.
+     */
     public static final class CallIterator implements Iterator<Call> {
         private final String readName;
         private final ByteSequence calls;
@@ -372,9 +374,9 @@ public final class ErrorCorrectHiFi extends VariantWalker {
 
         public void fixup( final Call call, final ByteSequence alignedValue ) {
             final ByteSequence calls = call.getCalls();
-            if ( calls.length() == 0 ) {
+            if ( calls.length() == 0 ) {  // i.e., we're fixing a single-base deletion
                 fixups.add(new Fixup(calls.getStart(), alignedValue.byteAt(0)));
-            } else if ( calls.length() == 2 ) {
+            } else if ( calls.length() == 2 ) { // i.e., we're fixing a single-base insertion
                 fixups.add(new Fixup(calls.getStart()+1, (byte)0));
             } else {
                 throw new GATKException("unexpected fixup length");

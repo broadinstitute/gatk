@@ -637,8 +637,10 @@ public class LocalAssembler extends PairWalker {
             for ( int idx = 1; idx < lastIdx; ++idx ) {
                 final PathPart pathPart = parts.get(idx);
                 if ( pathPart.isGap() ) {
-                    final char prevCall = parts.get(idx - 1).getLastCall();
-                    final char nextCall = parts.get(idx + 1).getFirstCall();
+                    final CharSequence prevSequence = parts.get(idx - 1).getSequence();
+                    final char prevCall = prevSequence.charAt(prevSequence.length() - Kmer.KSIZE);
+                    final CharSequence nextSequence = parts.get(idx + 1).getSequence();
+                    final char nextCall = nextSequence.charAt(Kmer.KSIZE - 1);
                     String gapFill = prevCall + pathPart.getSequence().toString() + nextCall;
                     final SequenceRC gapFillRC = new SequenceRC(gapFill);
                     if ( gapFillRC.compareTo(gapFill) < 0 ) {
@@ -1044,7 +1046,7 @@ public class LocalAssembler extends PairWalker {
             return;
         }
         startingContigSet.add(firstContig);
-        for ( int idx : indexList ) {
+        for ( final int idx : indexList ) {
             final Traversal extension;
             if ( idx >= 0 ) {
                 extension = allTraversals.get(idx);
@@ -2047,15 +2049,13 @@ public class LocalAssembler extends PairWalker {
     /** A single-Contig portion of a path across the assembly graph. */
     public interface PathPart {
         Contig getContig(); // will be null for PathParts that depart from the graph (PathPartGap)
-        CharSequence getSequence(); // will be null for PathParts on the graph (PathPartContig)
+        CharSequence getSequence();
         void extend( final char call );
-        int getStart();
-        int getStop();
+        int getStart(); // index of first kmer
+        int getStop(); // one more than the index of the last kmer
         boolean isGap();
-        int getLength();
+        int getLength(); // length in kmers
         PathPart rc();
-        char getFirstCall();
-        char getLastCall();
         default boolean startsAtBeginning() { return getStart() == 0; }
         default boolean stopsAtEnd() { return getStop() + Kmer.KSIZE - 1 == getContig().size(); }
     }
@@ -2075,10 +2075,6 @@ public class LocalAssembler extends PairWalker {
         @Override public boolean isGap() { return true; }
         @Override public int getLength() { return sequence.length() - Kmer.KSIZE + 1; }
         @Override public PathPart rc() { return new PathPartGap(new SequenceRC(sequence)); }
-        @Override public char getFirstCall() { return sequence.charAt(Kmer.KSIZE - 1); }
-        @Override public char getLastCall() {
-            return sequence.charAt(sequence.length() - Kmer.KSIZE + 1);
-        }
     }
 
     /** A part of a path that is present as a sub-sequence of some Contig. */
@@ -2097,7 +2093,7 @@ public class LocalAssembler extends PairWalker {
         }
 
         @Override public Contig getContig() { return contig; }
-        @Override public String getSequence() { return null; }
+        @Override public CharSequence getSequence() { return contig.getSequence().subSequence(start, stop + Kmer.KSIZE - 1); }
         @Override public void extend( final char call ) { stop += 1; }
         @Override public int getStart() { return start; }
         @Override public int getStop() { return stop; }
@@ -2107,10 +2103,6 @@ public class LocalAssembler extends PairWalker {
             final int revBase = contig.size() - Kmer.KSIZE + 1;
             return new PathPartContig(contig.rc(), revBase - stop, revBase - start);
         }
-        @Override public char getFirstCall() {
-            return getContig().getSequence().charAt(start + Kmer.KSIZE - 1);
-        }
-        @Override public char getLastCall() { return getContig().getSequence().charAt(stop - 1); }
     }
 
     /** A helper class for Path building.
@@ -2398,7 +2390,7 @@ public class LocalAssembler extends PairWalker {
             }
             this.contigs = new ArrayList<>(contigs);
             int minMaxObservations = Integer.MAX_VALUE;
-            for ( Contig contig : contigs ) {
+            for ( final Contig contig : contigs ) {
                 minMaxObservations = Math.min(minMaxObservations, contig.getMaxObservations());
             }
             this.minMaxObservations = minMaxObservations;
