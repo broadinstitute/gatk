@@ -5,8 +5,6 @@ import "GvsPrepareBulkImport.wdl" as PrepareBulkImport
 import "GvsAssignIds.wdl" as AssignIds
 import "GvsImportGenomes.wdl" as ImportGenomes
 
-# cleanup
-
 
 workflow GvsBulkIngestGenomes {
     input {
@@ -26,7 +24,7 @@ workflow GvsBulkIngestGenomes {
 
         ## Array[String] external_sample_names ## TODO no longer an input param?
 
-        File? gatk_override
+        File gatk ## No longer an override for ImportGenomes
         # End GvsAssignIds
 
         # Begin GvsImportGenomes
@@ -97,7 +95,7 @@ workflow GvsBulkIngestGenomes {
             load_data_batch_size = load_data_batch_size,
             load_data_maxretries_override = load_data_maxretries_override,
             load_data_preemptible_override = load_data_preemptible_override,
-            load_data_gatk_override = gatk_override,
+            load_data_gatk = gatk,
     }
 
     output {

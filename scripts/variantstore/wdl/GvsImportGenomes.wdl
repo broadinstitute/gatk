@@ -28,7 +28,7 @@ workflow GvsImportGenomes {
     Int? load_data_batch_size
     Int? load_data_preemptible_override
     Int? load_data_maxretries_override
-    File? load_data_gatk_override
+    File load_data_gatk
   }
 
   Int num_samples = length(external_sample_names)
@@ -115,7 +115,7 @@ workflow GvsImportGenomes {
         input_vcf_indexes = read_lines(CreateFOFNs.vcf_batch_vcf_index_fofns[i]),
         input_vcfs = read_lines(CreateFOFNs.vcf_batch_vcf_fofns[i]),
         interval_list = interval_list,
-        gatk_override = load_data_gatk_override,
+        gatk = load_data_gatk,
         load_data_preemptible = effective_load_data_preemptible,
         load_data_maxretries = effective_load_data_maxretries,
         sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
@@ -187,7 +187,7 @@ task LoadData {
     Boolean force_loading_from_non_allele_specific = false
     Boolean skip_loading_vqsr_fields = false
 
-    File? gatk_override
+    File gatk
     Int load_data_preemptible
     Int load_data_maxretries
   }
@@ -230,9 +230,6 @@ task LoadData {
 
     # workaround for https://github.com/broadinstitute/cromwell/issues/3647
     export TMPDIR=/tmp
-
-    export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
-
 
     ## TODO check if samples even need loading?!? hit the BQ database and get the loaded status for these samples
 
@@ -303,17 +300,10 @@ task LoadData {
     VCF_INDEXES_ARRAY=($(cat output_vcf_index_list_file |tr "\n" " "))
     SAMPLE_NAMES_ARRAY=($(cat output_sample_name_list_file |tr "\n" " "))
 
-    # translate WDL arrays into BASH arrays
-    # VCFS_ARRAY=(~{sep=" " input_vcfs})
-    # VCF_INDEXES_ARRAY=(~{sep=" " input_vcf_indexes})
-    # SAMPLE_NAMES_ARRAY=(~{sep=" " sample_names})
-
 
     # loop over the BASH arrays (See https://stackoverflow.com/questions/6723426/looping-over-arrays-printing-both-index-and-value)
     for i in "${!VCFS_ARRAY[@]}"; do
       gs_input_vcf="${VCFS_ARRAY[$i]}"
-    # input_vcf_basename=$(basename $input_vcf)
-    # updated_input_vcf=$input_vcf
       gs_input_vcf_index="${VCF_INDEXES_ARRAY[$i]}"
       sample_name="${SAMPLE_NAMES_ARRAY[$i]}"
 
@@ -322,7 +312,7 @@ task LoadData {
       gsutil cp $gs_input_vcf_index input_vcf_index_$i
       updated_input_vcf=input_vcf_$i
 
-      gatk --java-options "-Xmx2g" CreateVariantIngestFiles \
+      java -jar ~{gatk} --java-options "-Xmx2g" CreateVariantIngestFiles \
         -V ${updated_input_vcf} \
         -L ~{interval_list} \
         ~{"-IG " + drop_state} \
