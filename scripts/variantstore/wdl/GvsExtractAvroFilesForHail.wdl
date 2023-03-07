@@ -196,7 +196,7 @@ task ExtractFromSuperpartitionedTables {
 
             # These bq exports error out if there are any objects at the sibling level to where output files would be written
             # so an extra layer of `vet_${str_table_index}` is inserted here.
-            python3 /app/run_avro_query.py "
+            python3 /app/run_avro_query.py --sql "
                 EXPORT DATA OPTIONS(
                 uri='${avro_prefix}/vets/vet_${str_table_index}/vet_${str_table_index}_*.avro', format='AVRO', compression='SNAPPY') AS
                 SELECT location, v.sample_id, ref, REPLACE(alt,',<NON_REF>','') alt, call_GT as GT, call_AD as AD, call_GQ as GQ, cast(SPLIT(call_pl,',')[OFFSET(0)] as int64) as RGQ
@@ -207,7 +207,7 @@ task ExtractFromSuperpartitionedTables {
                 ORDER BY location
             " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name vet_${str_table_index} --project_id ~{project_id}
 
-            python3 /app/run_avro_query.py "
+            python3 /app/run_avro_query.py --sql "
                 EXPORT DATA OPTIONS(
                 uri='${avro_prefix}/refs/ref_ranges_${str_table_index}/ref_ranges_${str_table_index}_*.avro', format='AVRO', compression='SNAPPY') AS
                 SELECT location, r.sample_id, length, state
