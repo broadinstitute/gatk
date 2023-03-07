@@ -28,7 +28,7 @@ workflow GvsImportGenomes {
     Int? load_data_batch_size
     Int? load_data_preemptible_override
     Int? load_data_maxretries_override
-    File load_data_gatk
+    File? load_data_gatk_override
   }
 
   Int num_samples = length(external_sample_names)
@@ -115,7 +115,7 @@ workflow GvsImportGenomes {
         input_vcf_indexes = read_lines(CreateFOFNs.vcf_batch_vcf_index_fofns[i]),
         input_vcfs = read_lines(CreateFOFNs.vcf_batch_vcf_fofns[i]),
         interval_list = interval_list,
-        gatk = load_data_gatk,
+        gatk_override = load_data_gatk_override,
         load_data_preemptible = effective_load_data_preemptible,
         load_data_maxretries = effective_load_data_maxretries,
         sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
@@ -187,7 +187,7 @@ task LoadData {
     Boolean force_loading_from_non_allele_specific = false
     Boolean skip_loading_vqsr_fields = false
 
-    File gatk
+    File? gatk_override
     Int load_data_preemptible
     Int load_data_maxretries
   }
@@ -230,6 +230,9 @@ task LoadData {
 
     # workaround for https://github.com/broadinstitute/cromwell/issues/3647
     export TMPDIR=/tmp
+
+    export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+
 
     ## TODO check if samples even need loading?!? hit the BQ database and get the loaded status for these samples
 
@@ -282,8 +285,10 @@ task LoadData {
     ## bq --project_id=~{project_id} rm -f=true ~{temp_table}
 
     ## now we want to create a sub list of these samples (without the ones that have already been loaded)
+    curl https://raw.githubusercontent.com/broadinstitute/gatk/ah_var_store/scripts/variantstore/wdl/extract/curate_input_array_files.py -o curate_input_array_files.py
 
-    python3 /app/curate_input_array_files.py --sample_map_to_be_loaded_file_name sample_map.csv \
+
+    python3 curate_input_array_files.py --sample_map_to_be_loaded_file_name sample_map.csv \
       --sample_name_list_file_name $NAMES_FILE \
       --vcf_list_file_name ~{write_lines(input_vcfs)} \
       --vcf_index_list_file_name  ~{write_lines(input_vcf_indexes)} \
@@ -312,7 +317,7 @@ task LoadData {
       gsutil cp $gs_input_vcf_index input_vcf_index_$i
       updated_input_vcf=input_vcf_$i
 
-      java -jar ~{gatk} --java-options "-Xmx2g" CreateVariantIngestFiles \
+      gatk --java-options "-Xmx2g" CreateVariantIngestFiles \
         -V ${updated_input_vcf} \
         -L ~{interval_list} \
         ~{"-IG " + drop_state} \
@@ -338,7 +343,7 @@ task LoadData {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-10-14"
+    docker: "us.gcr.io/broad-gatk/gatk:4.3.0.0"
     maxRetries: load_data_maxretries
     memory: "3.75 GB"
     disks: "local-disk 50 HDD"
