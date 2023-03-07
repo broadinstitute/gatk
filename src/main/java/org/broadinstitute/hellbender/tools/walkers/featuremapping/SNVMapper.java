@@ -2,10 +2,9 @@ package org.broadinstitute.hellbender.tools.walkers.featuremapping;
 
 import htsjdk.samtools.CigarElement;
 import org.apache.commons.lang.ArrayUtils;
-import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.FlowBasedRead;
 
@@ -195,13 +194,13 @@ public class SNVMapper implements FeatureMapper {
         from = Math.max(0, Math.min(quals.length, from));
         to = Math.max(0, Math.min(quals.length, to - 1));
         if ( from > to ) {
-            return 0;
+            throw new GATKException("invalid qualities range: from > to");
         }
 
         // calc median
         byte[] range = Arrays.copyOfRange(quals, from, to + 1);
         if ( range.length == 0 ) {
-            return 0;
+            throw new GATKException("invalid qualities range: can't be empty");
         }
 
         if ( median ) {
