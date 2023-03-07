@@ -7,4 +7,5 @@ azure-mgmt-storage
 azure-mgmt-subscription
 azure-storage-blob
 inflection
+pandas
 pyodbc
