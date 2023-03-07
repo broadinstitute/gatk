@@ -5,7 +5,12 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DefaultDocWorkUnitHandler;
 import org.broadinstitute.barclay.help.DocWorkUnit;
 import org.broadinstitute.barclay.help.HelpDoclet;
+import org.broadinstitute.barclay.help.scanners.JavaLanguageModelScanners;
 
+import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -78,13 +83,22 @@ public class GATKHelpDocWorkUnitHandler extends DefaultDocWorkUnitHandler {
             currentWorkUnit.setProperty(WORK_UNIT_SUMMARY_KEY, currentWorkUnit.getSummary());
             final List<Map<String, String>> workUnitMetricsList = new ArrayList<>();
             currentWorkUnit.setProperty(METRICS_MAP_ENTRY_KEY, workUnitMetricsList);
-            final com.sun.javadoc.FieldDoc[] fieldDocs = currentWorkUnit.getClassDoc().fields(false);
-            for (final com.sun.javadoc.FieldDoc fd : fieldDocs) {
-                if (fd.isPublic()) {
-                    final Map<String, String> metricsFields = new HashMap<>();
-                    metricsFields.put(METRICS_MAP_NAME_KEY, fd.name());
-                    metricsFields.put(METRICS_MAP_SUMMARY_KEY, fd.getRawCommentText());
-                    workUnitMetricsList.add(metricsFields);
+            final Field[] fields = currentWorkUnit.getClazz().getFields();
+            for (final Field field : fields) {
+                if (Modifier.isPublic(field.getModifiers())) {
+                    final Element fieldElement = JavaLanguageModelScanners.getElementForField(
+                            getDoclet().getDocletEnv(),
+                            currentWorkUnit.getDocElement(),
+                            field,
+                            ElementKind.FIELD
+                    );
+                    if (fieldElement != null) {
+                        final String docComment = JavaLanguageModelScanners.getDocComment(getDoclet().getDocletEnv(), fieldElement);
+                        final Map<String, String> metricsFields = new HashMap<>();
+                        metricsFields.put(METRICS_MAP_NAME_KEY, field.getName());
+                        metricsFields.put(METRICS_MAP_SUMMARY_KEY, docComment);
+                        workUnitMetricsList.add(metricsFields);
+                    }
                 }
             }
         }
