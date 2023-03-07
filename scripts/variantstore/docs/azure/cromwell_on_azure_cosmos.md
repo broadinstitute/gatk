@@ -1,12 +1,11 @@
 # **Note**
 
-This Cosmos DB exploration spike is not going to follow the pattern of the Azure SQL Database spike of trying to run in
-Microsoft's Cromwell on Azure (CoA) system. We already learned in the Azure SQL Database spike that the Azure Batch VMs
-spun up in CoA are not authed nor have any assigned identity. We believe from our discussions with the Workflows teams
-that the Azure Batch VMs spun up in Terra on Azure will be authed as the user, which is a very significant difference
-with regards to being able to do passwordless auth to Cosmos DB. For that reason the instructions that follow will
-assume an environment where the user is authenticated via the Azure CLI. i.e. the following should return a JSON blob
-that looks like your identity in the DSP Dev Azure Tenant:
+This Cosmos DB exploration spike builds on the learnings from the Azure SQL Database spike, most notably in not trying
+to run inside Microsoft's Cromwell on Azure (CoA) system. The Azure SQL Database spike revealed that the Azure Batch VMs
+spun up in CoA are not authed nor have any assigned identity. However from our discussions with the Workflows teams we
+believe that the Azure Batch VMs spun up in Terra on Azure will be authed as the user. For that reason the instructions
+that follow assume an environment where the user is authenticated via the Azure CLI. i.e. the following should return a
+JSON blob that looks like your identity in the DSP Dev Azure Tenant:
 
 ```
 az ad signed-in-user show
@@ -14,7 +13,7 @@ az ad signed-in-user show
 
 For now these instructions leverage some of the useful items that were created as part of the CoA deployment for
 Azure SQL Database, specifically the resource group and User Assigned Managed Identity. If the ideas from this spike
-live on it would be nice to not have dependencies on these artifacts from the previous spike.
+live on it would be nice to not have dependencies on these artifacts from the previous Azure SQL Database spike.
 
 ```
 # Fish out the CromwellOnAzure resource group name that was named after your Broad username.
