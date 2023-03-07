@@ -59,6 +59,8 @@ def utf8len(s):
 def write_job_stats(jobs, client, fq_dataset, call_set_identifier, step, call, shard_identifier, write_cost_to_db = True):
     total = 0
 
+    print(jobs)
+
     for query_return in jobs:
         job = client.get_job(query_return['job'])
         bytes_billed = int(0 if job.total_bytes_billed is None else job.total_bytes_billed)
