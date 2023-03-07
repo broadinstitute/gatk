@@ -315,7 +315,7 @@ task LoadData {
       # we always do our own localization
       gsutil cp $gs_input_vcf input_vcf_$i.vcf.gz
       gsutil cp $gs_input_vcf_index input_vcf_index_$i.vcf.gz.tbi
-      updated_input_vcf=input_vcf_$i
+      updated_input_vcf=input_vcf_$i.vcf.gz
 
       gatk --java-options "-Xmx2g" CreateVariantIngestFiles \
         -V ${updated_input_vcf} \
@@ -333,8 +333,8 @@ task LoadData {
         --ref-version 38 \
         --skip-loading-vqsr-fields ~{skip_loading_vqsr_fields}
 
-      rm $input_vcf_$i
-      rm $input_vcf_index_$i
+      rm $input_vcf_$i.vcf.gz
+      rm $input_vcf_index_$i.vcf.gz.tbi
 
     done
 

@@ -6,6 +6,7 @@ import "GvsAssignIds.wdl" as AssignIds
 import "GvsImportGenomes.wdl" as ImportGenomes
 
 # ugly hardcoding of file type compression
+    # oh em gee typo
 
 workflow GvsBulkIngestGenomes {
     input {
