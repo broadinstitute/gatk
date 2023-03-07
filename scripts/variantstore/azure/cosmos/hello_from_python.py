@@ -24,16 +24,20 @@ if __name__ == '__main__':
     container_client = database_proxy.get_container_client('sample_info')
 
     dataframe = pandas.read_csv(args.data_table_tsv, sep='\t')
+    item_id = 0
     for idx, sample_name in enumerate(dataframe[args.data_table_sample_name]):
-        id = idx + 1
+        item_id = idx + 1
         item = {
             "id": sample_name,
-            "sampleId": id,
+            "sampleId": item_id,
             "sampleName": sample_name,
             "isLoaded": False,
             "isControl": False,
             "withdrawn": False
         }
         container_client.create_item(item)
-        if id % 10 == 0:
-            print(f"{id} items created")
+        if item_id % 10 == 0:
+            print(f"{item_id} items created")
+
+    if item_id % 10 != 0:
+        print(f"{item_id} items created")
