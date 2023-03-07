@@ -313,8 +313,8 @@ task LoadData {
       sample_name="${SAMPLE_NAMES_ARRAY[$i]}"
 
       # we always do our own localization
-      gsutil cp $gs_input_vcf input_vcf_$i
-      gsutil cp $gs_input_vcf_index input_vcf_index_$i
+      gsutil cp $gs_input_vcf input_vcf_$i.vcf.gz
+      gsutil cp $gs_input_vcf_index input_vcf_index_$i.vcf.gz.tbi
       updated_input_vcf=input_vcf_$i
 
       gatk --java-options "-Xmx2g" CreateVariantIngestFiles \

@@ -5,7 +5,7 @@ import "GvsPrepareBulkImport.wdl" as PrepareBulkImport
 import "GvsAssignIds.wdl" as AssignIds
 import "GvsImportGenomes.wdl" as ImportGenomes
 
-# this should be the right GATK docker -- but does it have python?!?!?
+# ugly hardcoding of file type compression
 
 workflow GvsBulkIngestGenomes {
     input {
