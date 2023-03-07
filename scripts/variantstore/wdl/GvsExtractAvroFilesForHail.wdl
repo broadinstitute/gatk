@@ -131,7 +131,7 @@ task ExtractFromNonSuperpartitionedTables {
             FROM \`~{project_id}.~{dataset_name}.filter_set_info\`
             WHERE filter_set_name = '~{filter_set_name}'
             ORDER BY location
-        " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name sample_info --project_id ~{project_id}
+        " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name filter_set_info --project_id ~{project_id}
 
         python3 /app/run_avro_query.py --sql "
             EXPORT DATA OPTIONS(
@@ -140,7 +140,7 @@ task ExtractFromNonSuperpartitionedTables {
             FROM \`~{project_id}.~{dataset_name}.filter_set_sites\`
             WHERE filter_set_name = '~{filter_set_name}'
             ORDER BY location
-        " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name sample_info --project_id ~{project_id}
+        " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name filter_set_sites --project_id ~{project_id}
 
         python3 /app/run_avro_query.py --sql "
             EXPORT DATA OPTIONS(
@@ -148,7 +148,7 @@ task ExtractFromNonSuperpartitionedTables {
             SELECT model, truth_sensitivity, min_vqslod, filter_name
             FROM \`~{project_id}.~{dataset_name}.filter_set_tranches\`
             WHERE filter_set_name = '~{filter_set_name}'
-        " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name sample_info --project_id ~{project_id}
+        " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name filter_set_tranches --project_id ~{project_id}
     >>>
 
     output {
@@ -188,8 +188,6 @@ task ExtractFromSuperpartitionedTables {
 
     command <<<
         set -o errexit -o nounset -o xtrace -o pipefail
-        echo "project_id = ~{project_id}" > ~/.bigqueryrc
-
         avro_prefix="$(dirname ~{avro_sibling})/avro"
 
         for superpartition in $(seq ~{shard_index + 1} ~{num_shards} ~{num_superpartitions})
@@ -207,7 +205,7 @@ task ExtractFromSuperpartitionedTables {
                 WHERE withdrawn IS NULL AND
                 is_control = false
                 ORDER BY location
-            " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name sample_info --project_id ~{project_id}
+            " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name vet_${str_table_index} --project_id ~{project_id}
 
             python3 /app/run_avro_query.py "
                 EXPORT DATA OPTIONS(
@@ -218,7 +216,7 @@ task ExtractFromSuperpartitionedTables {
                 WHERE withdrawn IS NULL AND
                 is_control = false
                 ORDER BY location
-            " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name sample_info --project_id ~{project_id}
+            " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name ref_ranges_${str_table_index} --project_id ~{project_id}
         done
     >>>
 
@@ -227,7 +225,7 @@ task ExtractFromSuperpartitionedTables {
     }
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-01-23-alpine"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-03-07-alpine"
         disks: "local-disk 500 HDD"
     }
 }
