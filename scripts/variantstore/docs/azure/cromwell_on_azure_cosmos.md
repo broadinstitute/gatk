@@ -113,3 +113,9 @@ azcopy cp 'https://storage.cloud.google.com/<some bucket>/<assembled quickstart 
 ```
 
 Make sure to enclose both the source and destination paths in single quotes to escape metacharacters.
+
+
+for container in vets ref_ranges
+do
+  az cosmosdb sql container create --account-name ${COSMOS_DB_NAME} --database-name cosmos_gvs --partition-key-path "/sample_id" --name $container
+done

@@ -10,3 +10,4 @@ fastavro
 inflection
 pandas
 pyodbc
+python-snappy
