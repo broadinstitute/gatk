@@ -1,13 +1,15 @@
 import $ivy.`org.apache.avro:avro:1.11.1`
 import $ivy.`com.azure:azure-cosmos:4.41.0`
 import $ivy.`com.lihaoyi:ammonite-ops_2.13:2.4.1`
+import $ivy.`org.xerial.snappy:snappy-java:1.1.8.4`
 
 
 import ammonite.ops._
-import com.azure.cosmos.ConsistencyLevel
-import com.azure.cosmos.CosmosAsyncClient
-import com.azure.cosmos.CosmosClientBuilder
+import com.azure.cosmos._
+import java.io.File
 import java.util.NoSuchElementException
+import org.apache.avro.file._
+import org.apache.avro.generic._
 import scala.jdk.CollectionConverters._
 
 
@@ -20,6 +22,8 @@ def main(database: String, container: String, vets_dir: String, refs_dir: String
   val (vet_paths, ref_paths) = determineVetAndRefPaths(vets_dir, refs_dir)
   print(f"vets: $vet_paths\n")
   print(f"refs: $ref_paths\n")
+
+  processFile(vet_paths.head)
 }
 
 
@@ -51,4 +55,17 @@ def determineVetAndRefPaths(vets_dir: String, refs_dir: String): (Seq[Path], Seq
   val refs_listing = ls ! refs_path
 
   (vet_listing.filter(_.isFile), refs_listing.filter(_.isFile))
+}
+
+
+// https://stackoverflow.com/a/45648136/21269164
+def processFile(path: Path): Unit = {
+  val file = new File(path.toString())
+  val reader = new GenericDatumReader()
+  val dataFileReader = new DataFileReader(file, reader)
+
+  while (dataFileReader.hasNext) {
+    val record: AnyRef = dataFileReader.next()
+    System.out.println(record)
+  }
 }
