@@ -1,15 +1,14 @@
-import com.azure.cosmos.ConsistencyLevel
-import com.azure.cosmos.CosmosAsyncClient
-import com.azure.cosmos.CosmosClientBuilder
-import java.util.NoSuchElementException
-import scala.jdk.CollectionConverters._
-
 import $ivy.`org.apache.avro:avro:1.11.1`
 import $ivy.`com.azure:azure-cosmos:4.41.0`
 import $ivy.`com.lihaoyi:ammonite-ops_2.13:2.4.1`
 
 
 import ammonite.ops._
+import com.azure.cosmos.ConsistencyLevel
+import com.azure.cosmos.CosmosAsyncClient
+import com.azure.cosmos.CosmosClientBuilder
+import java.util.NoSuchElementException
+import scala.jdk.CollectionConverters._
 
 
 @main
@@ -46,10 +45,10 @@ def buildClient(endpoint: String, key: String): CosmosAsyncClient = {
 
 
 def determineVetAndRefPaths(vets_dir: String, refs_dir: String): (Seq[Path], Seq[Path]) = {
-  val vets_path = pwd / vets_dir
-  val refs_path = pwd / refs_dir
-  val vet_listing = ls! vets_path
-  val refs_listing = ls! refs_path
+  val vets_path = pwd / RelPath(vets_dir)
+  val refs_path = pwd / RelPath(refs_dir)
+  val vet_listing = ls ! vets_path
+  val refs_listing = ls ! refs_path
 
   (vet_listing.filter(_.isFile), refs_listing.filter(_.isFile))
 }
