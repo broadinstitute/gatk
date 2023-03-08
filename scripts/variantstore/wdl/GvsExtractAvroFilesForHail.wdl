@@ -157,7 +157,7 @@ task ExtractFromNonSuperpartitionedTables {
     }
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-03-07-alpine"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-03-07-alpine-v2"
         disks: "local-disk 500 HDD"
     }
 }
