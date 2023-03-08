@@ -25,7 +25,7 @@ if __name__ == '__main__':
     parser.add_argument('--dataset_name',type=str, help='BigQuery dataset name', required=True)
     parser.add_argument('--table_name',type=str, help='BigQuery table name', required=True)
     parser.add_argument('--project_id', type=str, help='Google project for the GVS dataset', required=True)
-    parser.add_argument('--sql', type=str, help='SQL to run to extract AVRO data', required=True)
+    parser.add_argument('--sql', type=str, help='SQL to run to extract Avro data', required=True)
 
     args = parser.parse_args()
 
