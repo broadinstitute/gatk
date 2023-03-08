@@ -242,12 +242,10 @@ task LoadData {
     BQ_SHOW_RC=$?
     set -o errexit
 
-    # If there is already a table of sample names or something else is wrong, bail.
+    # If there is already a table of sample names or something else is wrong, burn it down to start fresh.
     if [ $BQ_SHOW_RC -eq 0 ]; then
-      echo "There is already a list of sample names. This may need manual cleanup. Exiting"
-      exit 1
+      bq rm -t -f --project_id=~{project_id} ~{temp_table}
     fi
-
 
     echo "Creating the external sample name list table ~{temp_table}"
     bq --project_id=~{project_id} mk ~{temp_table} "sample_name:STRING"
@@ -293,12 +291,6 @@ task LoadData {
       --vcf_list_file_name ~{write_lines(input_vcfs)} \
       --vcf_index_list_file_name  ~{write_lines(input_vcf_indexes)} \
       --output_files True
-
-
-    ## the output files from the python:
-    # output_vcf_index_list_file
-    # output_vcf_list_file
-    # output_sample_name_list_file
 
     # translate python files into BASH arrays---but only of the samples that aren't there already
     VCFS_ARRAY=($(cat output_vcf_list_file |tr "\n" " "))
