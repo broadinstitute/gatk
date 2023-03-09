@@ -23,9 +23,9 @@ def main(database: String, container: String, avrodir: String): Unit = {
   // println(f"Client is $client")
 
   val avro_paths = determineAvroPaths(avrodir)
-  print(f"avros: $avro_paths\n")
+  // println(f"avros: $avro_paths")
 
-  processFile(avro_paths.head)
+  processAvros(avro_paths)
 }
 
 
@@ -59,16 +59,18 @@ def determineAvroPaths(avrodir: String): Seq[Path] = {
 
 
 // https://stackoverflow.com/a/45648136/21269164
-def processFile(path: Path): Unit = {
-  val file = new File(path.toString())
-  val reader = new GenericDatumReader()
-  val dataFileReader = new DataFileReader(file, reader)
-  val schema = dataFileReader.getSchema()
+def processAvros(paths: Iterable[Path]): Unit = {
 
-  val flux =
-    Flux.fromIterable(dataFileReader).
-      take(10).
-      map(_.asInstanceOf[GenericRecord])
+  val flux = Flux.fromIterable(paths.asJava).
+    flatMap(path => {
+      val file = new File(path.toString())
+      val reader = new GenericDatumReader()
+      val dataFileReader = new DataFileReader(file, reader)
+      // val schema = dataFileReader.getSchema()
+      Flux.fromIterable(dataFileReader).
+        map(_.asInstanceOf[GenericRecord])
+    }).
+    take(10)
 
   flux.subscribe(e => System.out.println(e))
 }
