@@ -98,3 +98,23 @@ def executeItemOperationsWithErrorHandling(container: CosmosAsyncContainer, item
 
   }).blockLast()
 }
+
+
+case class Vet(id: String,
+               sample_id: Long,
+               location: Long,
+               ref: String,
+               alt: String,
+               AS_RAW_MQ: String,
+               AS_RAW_MQRankSum: String,
+               QUALapprox: String,
+               AS_QUALapprox: String,
+               AS_RAW_ReadPosRankSum: String,
+               AS_SB_TABLE: String,
+               AS_VarDP: String,
+               call_GT: String,
+               call_AD: String,
+               call_GQ: String,
+               call_PGT: String,
+               call_PID: String,
+               call_PL: String)
