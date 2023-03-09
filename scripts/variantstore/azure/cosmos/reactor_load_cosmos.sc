@@ -16,16 +16,17 @@ import reactor.core.publisher.Mono
 import scala.jdk.CollectionConverters._
 
 
+// Bulk Cosmos writes from Java
+// https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/bulk-executor-java
 @main
 def main(database: String, container: String, avrodir: String): Unit = {
   val (endpoint, key) = extractCosmosEndpointAndKey()
-  // val client = buildClient(endpoint, key)
-  // println(f"Client is $client")
+  val client = buildClient(endpoint, key)
+  val cosmosContainer = client.getDatabase(database).getContainer(container)
 
   val avro_paths = determineAvroPaths(avrodir)
-  // println(f"avros: $avro_paths")
 
-  processAvros(avro_paths)
+  processAvros(cosmosContainer, avro_paths)
 }
 
 
@@ -59,18 +60,41 @@ def determineAvroPaths(avrodir: String): Seq[Path] = {
 
 
 // https://stackoverflow.com/a/45648136/21269164
-def processAvros(paths: Iterable[Path]): Unit = {
+def processAvros(container: CosmosAsyncContainer, paths: Iterable[Path]): Unit = {
 
-  val flux = Flux.fromIterable(paths.asJava).
+  val itemOperations = Flux.fromIterable(paths.asJava).
     flatMap(path => {
       val file = new File(path.toString())
       val reader = new GenericDatumReader()
       val dataFileReader = new DataFileReader(file, reader)
-      // val schema = dataFileReader.getSchema()
       Flux.fromIterable(dataFileReader).
+        // I had to put this `map` here inside the `flatMap` and not directly ahead of the `take` otherwise nothing
+        // happened; I don't know why.
         map(_.asInstanceOf[GenericRecord])
     }).
-    take(10)
+    take(10).
+    map(record => CosmosBulkOperations.getCreateItemOperation(record.toString(), new PartitionKey(record.get("sample_id"))))
 
-  flux.subscribe(e => System.out.println(e))
+  executeItemOperationsWithErrorHandling(container, itemOperations)
+
+  // flux.subscribe(e => System.out.println(e))
+}
+
+
+def executeItemOperationsWithErrorHandling(container: CosmosAsyncContainer, itemOperations: Flux[CosmosItemOperation]): Unit = {
+  container.executeBulkOperations(itemOperations).flatMap(operationResponse => {
+    val itemResponse = operationResponse.getResponse()
+    val itemOperation = operationResponse.getOperation()
+
+    if (operationResponse.getException() != null) {
+      println(f"Bulk operation failed: ${operationResponse.getException()}")
+    }
+
+    if (itemResponse == null) {
+      return Mono.error(new IllegalStateException("No response retrieved."));
+    } else {
+      return Mono.just(itemResponse);
+    }
+
+  }).blockLast()
 }
