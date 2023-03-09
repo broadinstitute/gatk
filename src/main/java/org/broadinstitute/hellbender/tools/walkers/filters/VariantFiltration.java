@@ -124,13 +124,13 @@ public final class VariantFiltration extends VariantWalker {
     private static final String FILTER_DELIMITER = ";";
 
     /**
-     * Any variant which overlaps entries from the provided mask file will be filtered. If the user wants logic to be reversed,
-     * i.e. filter variants that do not overlap with provided mask, then argument --filter-not-in-mask can be used.
-     * Note that it is up to the user to adapt the name of the mask to make it clear that the reverse logic was used
+     * Any variant which overlaps entries from the provided mask file(s) will be filtered. If the user wants logic to be reversed,
+     * i.e. filter variants that do not overlap with provided mask(s), then argument --filter-not-in-mask can be used.
+     * Note that it is up to the user to adapt the name(s) of the mask(s) to make it clear that the reverse logic was used
      * (e.g. if masking against Hapmap, use --mask-name=hapmap for the normal masking and --mask-name=not_hapmap for the reverse masking).
      */
     @Argument(fullName="mask", shortName="mask", doc="Input mask", optional=true)
-    public FeatureInput<Feature> mask;
+    public List<FeatureInput<Feature>> mask = new ArrayList<>();
 
     @Argument(doc="File to which variants should be written", fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, optional = false)
     public GATKPath out = null;
@@ -186,13 +186,14 @@ public final class VariantFiltration extends VariantWalker {
     public Integer maskExtension = 0;
 
     /**
-     * When using the --mask argument, the mask-name will be annotated in the variant record.
+     * When using the --mask argument, the mask-name will be annotated in the variant record.  If using multiple masks,
+     * the same number of mask-names should be provided.
      * Note that when using the --filter-not-in-mask argument to reverse the masking logic,
      * it is up to the user to adapt the name of the mask to make it clear that the reverse logic was used
      * (e.g. if masking against Hapmap, use --mask-name=hapmap for the normal masking and --mask-name=not_hapmap for the reverse masking).
      */
     @Argument(fullName=MASK_NAME_LONG_NAME, doc="The text to put in the FILTER field if a 'mask' is provided and overlaps with a variant call", optional=true)
-    public String maskName = "Mask";
+    public List<String> maskName = new ArrayList<>();
 
     /**
      * By default, if the --mask argument is used, any variant falling in a mask will be filtered.
@@ -304,11 +305,20 @@ public final class VariantFiltration extends VariantWalker {
                 hInfo.add(new VCFFilterHeaderLine(exp.name, possiblyInvertFilterExpression(exp.exp.toString())));
             }
 
-            if ( mask != null ) {
+            if (!mask.isEmpty()) {
+                if (maskName.isEmpty()) {
+                    for(int i = 1; i <= mask.size(); i++) {
+                        maskName.add("Mask" + (i > 1 ? i : ""));
+                    }
+                }
                 if (filterRecordsNotInMask) {
-                    hInfo.add(new VCFFilterHeaderLine(maskName, "Doesn't overlap a user-input mask"));
+                    for(String name : maskName) {
+                        hInfo.add(new VCFFilterHeaderLine(name, "Doesn't overlap a user-input mask"));
+                    }
                 } else {
-                    hInfo.add(new VCFFilterHeaderLine(maskName, "Overlaps a user-input mask"));
+                    for(String name : maskName) {
+                        hInfo.add(new VCFFilterHeaderLine(name, "Overlaps a user-input mask"));
+                    }
                 }
             }
         } catch (final IllegalArgumentException e) {
@@ -328,8 +338,11 @@ public final class VariantFiltration extends VariantWalker {
             throw new CommandLineException.BadArgumentValue(MASK_EXTENSION_LONG_NAME, "negative values are not allowed");
         }
 
-        if (filterRecordsNotInMask && mask == null) {
+        if (filterRecordsNotInMask && mask.isEmpty()) {
             throw new CommandLineException.BadArgumentValue(FILTER_NOT_IN_MASK_LONG_NAME, "argument not allowed if mask argument is not provided");
+        }
+        if (!mask.isEmpty() && !maskName.isEmpty() && mask.size() != maskName.size()) {
+            throw new CommandLineException.BadArgumentValue(MASK_NAME_LONG_NAME, "argument count must match mask argument count if provided");
         }
         filterExps = VariantContextUtils.initializeMatchExps(filterNames, filterExpressions);
         genotypeFilterExps = VariantContextUtils.initializeMatchExps(genotypeFilterNames, genotypeFilterExpressions);
@@ -364,28 +377,44 @@ public final class VariantFiltration extends VariantWalker {
     }
 
     /**
-     * Add mask to variant context filters if it covers its location
-     * @return VariantContext with the mask added if the VariantContext is within the extended mask area
+     * Add mask(s) to variant context filters if it/they cover its location
+     * @return VariantContext with any masks added for which the VariantContext is within the mask area
      */
     private VariantContext addMaskIfCoversVariant(final VariantContext vc, final FeatureContext featureContext) {
-        final List<Feature> maskVariants = featureContext.getValues(mask, maskExtension, maskExtension);
+        // List of filters to add to vc
+        Set<String> filtersToAdd = new HashSet<>();
 
-        final boolean variantsMasked = maskVariants.isEmpty() == filterRecordsNotInMask;
-        if (variantsMasked) {
-            final Set<String> oldFiltersPlusNewOne = Sets.union(vc.getFilters(), singleton(maskName));
-            return new VariantContextBuilder(vc).filters(oldFiltersPlusNewOne).make();
-        } else {
-            return vc;
+        // Check each mask to see if it covers the variant, and add it to the filter list if so
+        for (int i = 0; i < mask.size(); i++) {
+            // Skip this mask if filters already contains it
+            if (filtersToAdd.contains(maskName.get(i))) {
+                continue;
+            }
+
+            final List<Feature> maskVariants = featureContext.getValues(mask.get(i), maskExtension, maskExtension);
+
+            if (!maskVariants.isEmpty()) {
+                filtersToAdd.add(maskName.get(i));
+            }
         }
-    }
 
-    private boolean isMaskFilterPresent(final VariantContext vc) {
-        return vc.getFilters() != null && vc.getFilters().contains(maskName);
+        // If we want to filter only records not in and of the masks, then we'll add none of the filters if it's in any
+        // of them (because we're not filtering it), or all of the filters if it's not in any of them
+        if (filterRecordsNotInMask) {
+            if (filtersToAdd.isEmpty()) {
+                filtersToAdd.addAll(maskName);
+            }
+            else {
+                filtersToAdd.clear();
+            }
+        }
+
+        return new VariantContextBuilder(vc).filters(Sets.union(vc.getFilters(), filtersToAdd)).make();
     }
 
     private VariantContext filter(final VariantContext variant, final FeatureContext featureContext) {
         final VariantContext vcModFilters = invalidatePreviousFilters ? (new VariantContextBuilder(variant)).unfiltered().make() : variant;
-        final VariantContext vc = isMaskFilterPresent(vcModFilters) ? vcModFilters: addMaskIfCoversVariant(vcModFilters, featureContext);
+        final VariantContext vc = addMaskIfCoversVariant(vcModFilters, featureContext);
         final VariantContextBuilder builder = new VariantContextBuilder(vc);
 
         // make new Genotypes based on filters
