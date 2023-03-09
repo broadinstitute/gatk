@@ -38,8 +38,8 @@ COSMOS_DB_NAME=${RESOURCE_GROUP}-cosmos-db
 
 az cosmosdb create --name ${COSMOS_DB_NAME} --locations regionName=${RESOURCE_GROUP_LOCATION}
 
-COSMOS_DB_DOCUMENT_URI="$(az cosmosdb show --name ${COSMOS_DB_NAME} --query documentEndpoint | jq -r)"
-COSMOS_DB_PRIMARY_KEY="$(az cosmosdb keys list --name ${COSMOS_DB_NAME} --type keys --query primaryMasterKey | jq -r)"
+COSMOS_ENDPOINT="$(az cosmosdb show --name ${COSMOS_DB_NAME} --query documentEndpoint | jq -r)"
+COSMOS_KEY="$(az cosmosdb keys list --name ${COSMOS_DB_NAME} --type keys --query primaryMasterKey | jq -r)"
 
 # Add members of the Variants team plus the Cromwell on Azure User Assigned Managed Identity to the Cosmos DB Data
 # Contributors group

@@ -6,28 +6,30 @@ import $ivy.`org.xerial.snappy:snappy-java:1.1.8.4`
 
 import ammonite.ops._
 import com.azure.cosmos._
+import com.azure.cosmos.models._
 import java.io.File
 import java.util.NoSuchElementException
 import org.apache.avro.file._
 import org.apache.avro.generic._
+import reactor.core.publisher.Flux
+import reactor.core.publisher.Mono
 import scala.jdk.CollectionConverters._
 
 
 @main
-def main(database: String, container: String, vets_dir: String, refs_dir: String): Unit = {
-  val (endpoint, key) = extractEndpointAndKey()
+def main(database: String, container: String, avrodir: String): Unit = {
+  val (endpoint, key) = extractCosmosEndpointAndKey()
   // val client = buildClient(endpoint, key)
   // println(f"Client is $client")
 
-  val (vet_paths, ref_paths) = determineVetAndRefPaths(vets_dir, refs_dir)
-  print(f"vets: $vet_paths\n")
-  print(f"refs: $ref_paths\n")
+  val avro_paths = determineAvroPaths(avrodir)
+  print(f"avros: $avro_paths\n")
 
-  processFile(vet_paths.head)
+  processFile(avro_paths.head)
 }
 
 
-def extractEndpointAndKey(): (String, String) = {
+def extractCosmosEndpointAndKey(): (String, String) = {
   try {
     (sys.env("COSMOS_ENDPOINT"), sys.env("COSMOS_KEY"))
   } catch {
@@ -48,13 +50,11 @@ def buildClient(endpoint: String, key: String): CosmosAsyncClient = {
 }
 
 
-def determineVetAndRefPaths(vets_dir: String, refs_dir: String): (Seq[Path], Seq[Path]) = {
-  val vets_path = pwd / RelPath(vets_dir)
-  val refs_path = pwd / RelPath(refs_dir)
-  val vet_listing = ls ! vets_path
-  val refs_listing = ls ! refs_path
+def determineAvroPaths(avrodir: String): Seq[Path] = {
+  val path = pwd / RelPath(avrodir)
+  val listing = ls ! path
 
-  (vet_listing.filter(_.isFile), refs_listing.filter(_.isFile))
+  listing.filter(_.isFile)
 }
 
 
@@ -63,9 +63,12 @@ def processFile(path: Path): Unit = {
   val file = new File(path.toString())
   val reader = new GenericDatumReader()
   val dataFileReader = new DataFileReader(file, reader)
+  val schema = dataFileReader.getSchema()
 
-  while (dataFileReader.hasNext) {
-    val record: AnyRef = dataFileReader.next()
-    System.out.println(record)
-  }
+  val flux =
+    Flux.fromIterable(dataFileReader).
+      take(10).
+      map(_.asInstanceOf[GenericRecord])
+
+  flux.subscribe(e => System.out.println(e))
 }
