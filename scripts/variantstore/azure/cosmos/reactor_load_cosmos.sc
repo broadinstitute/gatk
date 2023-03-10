@@ -1,5 +1,4 @@
 import $ivy.`com.azure:azure-cosmos:4.41.0`
-import $ivy.`com.google.code.gson:gson:2.10.1`
 import $ivy.`com.lihaoyi:ammonite-ops_2.13:2.4.1`
 import $ivy.`org.apache.avro:avro:1.11.1`
 import $ivy.`org.xerial.snappy:snappy-java:1.1.8.4`
@@ -8,7 +7,8 @@ import $ivy.`org.xerial.snappy:snappy-java:1.1.8.4`
 import ammonite.ops._
 import com.azure.cosmos._
 import com.azure.cosmos.models._
-import com.google.gson._
+import com.fasterxml.jackson.databind.{JsonNode, ObjectMapper}
+import com.fasterxml.jackson.databind.node.ObjectNode
 import java.io.File
 import java.util.NoSuchElementException
 import org.apache.avro.file._
@@ -63,8 +63,12 @@ def determineAvroPaths(avrodir: String): Seq[Path] = {
 
 // https://stackoverflow.com/a/45648136/21269164
 def processAvros(container: CosmosAsyncContainer, avro_paths: Iterable[Path]): Unit = {
-  val gson = new Gson()
-  var id = 1
+  var id: Long = 1L
+  // Where the Cosmos JSON serialization magic happens:
+  // https://github.com/Azure/azure-sdk-for-java/blob/80b12e48aeb6ad2f49e86643dfd7223bde7a9a0c/sdk/cosmos/azure-cosmos/src/main/java/com/azure/cosmos/implementation/JsonSerializable.java#L255
+  // Making a Jackson `ObjectNode` from `GenericRecord#toString` JSON seems like the least bad option
+  // (`JsonSerializable` looks like a Jackson thing but is actually an internal Cosmos thing).
+  val objectMapper = new ObjectMapper()
 
   val itemOperations = Flux.fromIterable(avro_paths.asJava).
     flatMap(path => {
@@ -74,15 +78,21 @@ def processAvros(container: CosmosAsyncContainer, avro_paths: Iterable[Path]): U
       Flux.fromIterable(dataFileReader).
         // I had to put this `map` here inside the `flatMap` and not directly ahead of the `take` otherwise nothing
         // happened; I don't know why.
-        map(r => gson.fromJson(r.toString(), classOf[Vet]))
+        map(record => {
+          val jsonNode = objectMapper.readTree(record.toString())
+          val objectNode = jsonNode.asInstanceOf[ObjectNode]
+          objectNode.put("id", objectMapper.convertValue("" + id, classOf[JsonNode]))
+          id = id + 1
+          objectNode
+        })
     }).
-    take(10000).
-    map(r => { r.asInstanceOf[Vet].id = "" + id; id = id + 1; r }).
-    map(r => CosmosBulkOperations.getCreateItemOperation(r, new PartitionKey(r.getSample_id())))
+    take(100000).
+    // map(r => { if (id % 10000 == 0) println(f"${id}..."); r }).
+    map(r => CosmosBulkOperations.getCreateItemOperation(r, new PartitionKey(r.get("sample_id").asLong)))
 
   executeItemOperationsWithErrorHandling(container, itemOperations)
 
-  // flux.subscribe(e => System.out.println(e))
+  // itemOperations.subscribe(e => System.out.println(e))
 }
 
 
@@ -94,11 +104,12 @@ def executeItemOperationsWithErrorHandling(container: CosmosAsyncContainer, item
     if (operationResponse.getException() != null) {
       println(f"Bulk operation failed: ${operationResponse.getException()}")
     } else if (itemResponse == null || !itemResponse.isSuccessStatusCode()) {
+      val objectNode = itemOperation.getItem().asInstanceOf[ObjectNode]
       println(String.format(
         "The operation for Item ID: [%s]  Item PartitionKey Value: [%s] did not complete " +
           "successfully with " + "a" + " %s/%s response code, response: %s.",
-        itemOperation.getItem().asInstanceOf[Vet].id,
-        itemOperation.getItem().asInstanceOf[Vet].sample_id,
+        objectNode.get("id"),
+        objectNode.get("sample_id"),
         if (itemResponse != null) itemResponse.getStatusCode() else "n/a",
         if (itemResponse != null) itemResponse.getSubStatusCode() else "n/a",
         itemResponse.getCosmosDiagnostics()));
@@ -111,45 +122,4 @@ def executeItemOperationsWithErrorHandling(container: CosmosAsyncContainer, item
     }
 
   }).blockLast()
-}
-
-
-case class Vet(
-                val sample_id: Long                 = 0   ,
-                val location: Long                  = 0   ,
-                val ref: String                     = null,
-                val alt: String                     = null,
-                val AS_RAW_MQ: String               = null,
-                val AS_RAW_MQRankSum: String        = null,
-                val QUALapprox: String              = null,
-                val AS_QUALapprox: String           = null,
-                val AS_RAW_ReadPosRankSum: String   = null,
-                val AS_SB_TABLE: String             = null,
-                val AS_VarDP: String                = null,
-                val call_GT: String                 = null,
-                val call_AD: String                 = null,
-                val call_GQ: String                 = null,
-                val call_PGT: String                = null,
-                val call_PID: String                = null,
-                val call_PL: String                 = null
-              ) {
-  var id: String = null
-
-  def getId(): String = id
-  def getSample_id(): Long = this.sample_id
-  def getLocation(): Long = this.location
-  def getRef(): String = this.ref
-  def getAlt(): String = this.alt
-  def getAS_RAW_MQ(): String = this.AS_RAW_MQ
-  def getAS_RAW_MQRankSum(): String = this.AS_RAW_MQRankSum
-  def getQUALapprox(): String = this.QUALapprox
-  def getAS_RAW_ReadPosRankSum(): String = this.AS_RAW_ReadPosRankSum
-  def getAS_SB_TABLE(): String = this.AS_SB_TABLE
-  def getAS_VarDP(): String = this.AS_VarDP
-  def getCall_GT(): String = this.call_GT
-  def getCall_AD(): String = this.call_AD
-  def getCall_GQ(): String = this.call_GQ
-  def getCall_PGT(): String = this.call_PGT
-  def getCall_PID(): String = this.call_PID
-  def getCall_PL(): String = this.call_PL
 }
