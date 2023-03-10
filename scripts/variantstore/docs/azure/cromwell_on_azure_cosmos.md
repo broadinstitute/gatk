@@ -71,6 +71,10 @@ az cosmosdb sql database create --account-name ${COSMOS_DB_NAME} --name cosmos_g
 
 az cosmosdb sql container create --account-name ${COSMOS_DB_NAME} --database-name cosmos_gvs --partition-key-path "/sampleId" --name sample_info
 
+# How many documents are in the container?
+CONTAINER_NAME=vets
+az cosmosdb sql container show --database-name cosmos_gvs --name ${CONTAINER_NAME} --account-name $COSMOS_DB_NAME  | jq -r '..|.documentCount? //empty'
+
 ```
 
 Download the samples table from the quickstart, process into a FOFN with VCFs and indexes:
