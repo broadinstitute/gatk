@@ -128,7 +128,7 @@ def loadAvros(container: CosmosAsyncContainer, avroPaths: Iterable[Path], numRec
 
 
 def executeItemOperationsWithErrorHandling(container: CosmosAsyncContainer, itemOperations: Flux[CosmosItemOperation]): Unit = {
-  // Only the first and last lines are the "execute" bits, the rest is error handling if something goes wrong.
+  // Only the first and last few lines are the "execute" bits, all the rest is error handling iff something goes wrong.
   container.executeBulkOperations(itemOperations).flatMap(operationResponse => {
     val itemResponse = operationResponse.getResponse()
     val itemOperation = operationResponse.getOperation()
