@@ -19,8 +19,15 @@ import reactor.core.publisher.Mono
 import scala.jdk.CollectionConverters._
 
 
+// Loads Avro files into Cosmos at the specified database / container coordinates. Expects the environment
+// variables COSMOS_ENDPOINT and COSMOS_KEY to be set per the instructions in `cromwell_on_azure_cosmos.md`. The Avro
+// records are assumed to contain a String field `sample_id` which will be used as the Cosmos partition key; no other
+// assumptions are made about the shape of the input data. The target container should be empty as this script
+// automatically generates an `id` field which is a stringified Long starting from 1.
+//
 // Bulk Cosmos writes from Java
 // https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/bulk-executor-java
+// Much of the code here is borrowed from / inspired by the sample application described in the link above.
 @main
 def main(database: String, container: String, avrodir: String): Unit = {
   val (endpoint, key) = extractCosmosEndpointAndKey()
@@ -69,19 +76,19 @@ def processAvros(container: CosmosAsyncContainer, avro_paths: Iterable[Path]): U
 
   // Where the Cosmos JSON serialization magic happens:
   // https://github.com/Azure/azure-sdk-for-java/blob/80b12e48aeb6ad2f49e86643dfd7223bde7a9a0c/sdk/cosmos/azure-cosmos/src/main/java/com/azure/cosmos/implementation/JsonSerializable.java#L255
-  // Making a Jackson `ObjectNode` from `GenericRecord#toString` JSON seems like the least bad option
-  // (`JsonSerializable` looks like a Jackson thing but is actually an internal Cosmos thing).
+  // Making a Jackson `ObjectNode` (subtype of `JsonNode`) from `GenericRecord#toString` JSON seems like the least bad
+  // option (`JsonSerializable` looks like a Jackson thing but is actually an internal Cosmos thing).
   val objectMapper = new ObjectMapper()
 
   val numDocsToLoad = 100000
   val numDocsProgressIncrement = 10000
 
   // On a Standard E4-2ads v5 Azure VM this Avro processing easily saturates the default 400 / 4000 RU/s maximum
-  // throughput that Cosmos DB containers have when created in the Azure Portal. For 100K items, all the items print out
-  // in the progress printlns, but then the script sits there waiting for the documents to be written to Cosmos.
-  // This behavior was something of a surprise given the "reactor" structure; I would have expected backpressure to
-  // limit the number of documents that were created if they couldn't actually be written to Cosmos. Is Cosmos silently
-  // buffering documents up the RU/s limit?
+  // throughput that Cosmos DB containers have when created through the Azure Portal. For 100K items, all the items
+  // print out in the progress printlns, but then the script sits there waiting for the documents to be written to
+  // Cosmos. This behavior was something of a surprise given the "reactor" structure; I would have expected backpressure
+  // to limit the number of documents that were created if they couldn't actually be written to Cosmos. Is Cosmos
+  // silently buffering documents up the RU/s limit?
   //
   // To see RU consumption:
   //
