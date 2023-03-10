@@ -1,12 +1,14 @@
-import $ivy.`org.apache.avro:avro:1.11.1`
 import $ivy.`com.azure:azure-cosmos:4.41.0`
+import $ivy.`com.google.code.gson:gson:2.10.1`
 import $ivy.`com.lihaoyi:ammonite-ops_2.13:2.4.1`
+import $ivy.`org.apache.avro:avro:1.11.1`
 import $ivy.`org.xerial.snappy:snappy-java:1.1.8.4`
 
 
 import ammonite.ops._
 import com.azure.cosmos._
 import com.azure.cosmos.models._
+import com.google.gson._
 import java.io.File
 import java.util.NoSuchElementException
 import org.apache.avro.file._
@@ -60,9 +62,11 @@ def determineAvroPaths(avrodir: String): Seq[Path] = {
 
 
 // https://stackoverflow.com/a/45648136/21269164
-def processAvros(container: CosmosAsyncContainer, paths: Iterable[Path]): Unit = {
+def processAvros(container: CosmosAsyncContainer, avro_paths: Iterable[Path]): Unit = {
+  val gson = new Gson()
+  var id = 1
 
-  val itemOperations = Flux.fromIterable(paths.asJava).
+  val itemOperations = Flux.fromIterable(avro_paths.asJava).
     flatMap(path => {
       val file = new File(path.toString())
       val reader = new GenericDatumReader()
@@ -70,10 +74,11 @@ def processAvros(container: CosmosAsyncContainer, paths: Iterable[Path]): Unit =
       Flux.fromIterable(dataFileReader).
         // I had to put this `map` here inside the `flatMap` and not directly ahead of the `take` otherwise nothing
         // happened; I don't know why.
-        map(_.asInstanceOf[GenericRecord])
+        map(r => gson.fromJson(r.toString(), classOf[Vet]))
     }).
     take(10).
-    map(record => CosmosBulkOperations.getCreateItemOperation(record.toString(), new PartitionKey(record.get("sample_id"))))
+    map(r => { r.asInstanceOf[Vet].id = "" + id; id = id + 1; r }).
+    map(r => CosmosBulkOperations.getCreateItemOperation(r, new PartitionKey(r.sample_id)))
 
   executeItemOperationsWithErrorHandling(container, itemOperations)
 
@@ -88,6 +93,15 @@ def executeItemOperationsWithErrorHandling(container: CosmosAsyncContainer, item
 
     if (operationResponse.getException() != null) {
       println(f"Bulk operation failed: ${operationResponse.getException()}")
+    } else if (itemResponse == null || !itemResponse.isSuccessStatusCode()) {
+      println(String.format(
+        "The operation for Item ID: [%s]  Item PartitionKey Value: [%s] did not complete " +
+          "successfully with " + "a" + " %s/%s response code, response: %s.",
+        itemOperation.getItem().asInstanceOf[Vet].id,
+        itemOperation.getItem().asInstanceOf[Vet].sample_id,
+        if (itemResponse != null) itemResponse.getStatusCode() else "n/a",
+        if (itemResponse != null) itemResponse.getSubStatusCode() else "n/a",
+        itemResponse.getCosmosDiagnostics()));
     }
 
     if (itemResponse == null) {
@@ -100,21 +114,33 @@ def executeItemOperationsWithErrorHandling(container: CosmosAsyncContainer, item
 }
 
 
-case class Vet(id: String,
-               sample_id: Long,
-               location: Long,
-               ref: String,
-               alt: String,
-               AS_RAW_MQ: String,
-               AS_RAW_MQRankSum: String,
-               QUALapprox: String,
-               AS_QUALapprox: String,
-               AS_RAW_ReadPosRankSum: String,
-               AS_SB_TABLE: String,
-               AS_VarDP: String,
-               call_GT: String,
-               call_AD: String,
-               call_GQ: String,
-               call_PGT: String,
-               call_PID: String,
-               call_PL: String)
+case class Vet(
+                val sample_id: Long                 = 0   ,
+                val location: Long                  = 0   ,
+                val ref: String                     = null,
+                val alt: String                     = null,
+                val AS_RAW_MQ: String               = null,
+                val AS_RAW_MQRankSum: String        = null,
+                val QUALapprox: String              = null,
+                val AS_QUALapprox: String           = null,
+                val AS_RAW_ReadPosRankSum: String   = null,
+                val AS_SB_TABLE: String             = null,
+                val AS_VarDP: String                = null,
+                val call_GT: String                 = null,
+                val call_AD: String                 = null,
+                val call_GQ: String                 = null,
+                val call_PGT: String                = null,
+                val call_PID: String                = null,
+                val call_PL: String                 = null
+              ) {
+  var id: String = null
+
+  def getId(): String = id
+
+  def setId(id: String): Unit = {
+    this.id = id
+  }
+
+  def getSample_id(): Long = this.sample_id
+}
+

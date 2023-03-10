@@ -13,27 +13,32 @@ import org.apache.avro.generic._
 import org.apache.avro.specific._
 
 
- class Vet() {
-   val id: String                      = null
-   val sample_id: Long                 = 0
-   val location: Long                  = 0
-   val ref: String                     = null
-   val alt: String                     = null
-   val AS_RAW_MQ: String               = null
-   val AS_RAW_MQRankSum: String        = null
-   val QUALapprox: String              = null
-   val AS_QUALapprox: String           = null
-   val AS_RAW_ReadPosRankSum: String   = null
-   val AS_SB_TABLE: String             = null
-   val AS_VarDP: String                = null
-   val call_GT: String                 = null
-   val call_AD: String                 = null
-   val call_GQ: String                 = null
-   val call_PGT: String                = null
-   val call_PID: String                = null
-   val call_PL: String                 = null
- }
+class Vet() {
+  var id: String = null
+  var sample_id: Long = 0
+  var location: Long = 0
+  var ref: String = null
+  var alt: String = null
+  var AS_RAW_MQ: String = null
+  var AS_RAW_MQRankSum: String = null
+  var QUALapprox: String = null
+  var AS_QUALapprox: String = null
+  var AS_RAW_ReadPosRankSum: String = null
+  var AS_SB_TABLE: String = null
+  var AS_VarDP: String = null
+  var call_GT: String = null
+  var call_AD: String = null
+  var call_GQ: String = null
+  var call_PGT: String = null
+  var call_PID: String = null
+  var call_PL: String = null
 
+  def getId(): String = this.id
+
+  def setId(id: String): Unit = {
+    this.id = id
+  }
+}
 
 @main
 def main(avro: String): Unit = {
