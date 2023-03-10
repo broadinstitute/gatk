@@ -76,9 +76,9 @@ def processAvros(container: CosmosAsyncContainer, avro_paths: Iterable[Path]): U
         // happened; I don't know why.
         map(r => gson.fromJson(r.toString(), classOf[Vet]))
     }).
-    take(10).
+    take(10000).
     map(r => { r.asInstanceOf[Vet].id = "" + id; id = id + 1; r }).
-    map(r => CosmosBulkOperations.getCreateItemOperation(r, new PartitionKey(r.sample_id)))
+    map(r => CosmosBulkOperations.getCreateItemOperation(r, new PartitionKey(r.getSample_id())))
 
   executeItemOperationsWithErrorHandling(container, itemOperations)
 
@@ -105,9 +105,9 @@ def executeItemOperationsWithErrorHandling(container: CosmosAsyncContainer, item
     }
 
     if (itemResponse == null) {
-      return Mono.error(new IllegalStateException("No response retrieved."));
+      Mono.error(new IllegalStateException("No response retrieved."));
     } else {
-      return Mono.just(itemResponse);
+      Mono.just(itemResponse);
     }
 
   }).blockLast()
@@ -136,11 +136,20 @@ case class Vet(
   var id: String = null
 
   def getId(): String = id
-
-  def setId(id: String): Unit = {
-    this.id = id
-  }
-
   def getSample_id(): Long = this.sample_id
+  def getLocation(): Long = this.location
+  def getRef(): String = this.ref
+  def getAlt(): String = this.alt
+  def getAS_RAW_MQ(): String = this.AS_RAW_MQ
+  def getAS_RAW_MQRankSum(): String = this.AS_RAW_MQRankSum
+  def getQUALapprox(): String = this.QUALapprox
+  def getAS_RAW_ReadPosRankSum(): String = this.AS_RAW_ReadPosRankSum
+  def getAS_SB_TABLE(): String = this.AS_SB_TABLE
+  def getAS_VarDP(): String = this.AS_VarDP
+  def getCall_GT(): String = this.call_GT
+  def getCall_AD(): String = this.call_AD
+  def getCall_GQ(): String = this.call_GQ
+  def getCall_PGT(): String = this.call_PGT
+  def getCall_PID(): String = this.call_PID
+  def getCall_PL(): String = this.call_PL
 }
-
