@@ -19,24 +19,27 @@ import reactor.core.publisher.Mono
 import scala.jdk.CollectionConverters._
 
 
-// Loads Avro files into Cosmos at the specified database / container coordinates. Expects the environment
-// variables COSMOS_ENDPOINT and COSMOS_KEY to be set per the instructions in `cromwell_on_azure_cosmos.md`. The Avro
-// records are assumed to contain a String field `sample_id` which will be used as the Cosmos partition key; no other
-// assumptions are made about the shape of the input data. The target container should be empty as this script
+// Script to load vet and ref_ranges Avro files into Cosmos at the specified database / container coordinates.
+// This script expects the environment variables `COSMOS_ENDPOINT` and `COSMOS_KEY` to be set per the instructions in
+// `intro_to_azure_cosmos.md`.
+//
+// The Avro records are assumed to contain a String field `sample_id` which will be used as the Cosmos partition key; no
+// other assumptions are made about the shape of the input data. The target container should be empty as this script
 // automatically generates an `id` field which is a stringified Long starting from 1.
 //
 // Bulk Cosmos writes from Java
 // https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/bulk-executor-java
+//
 // Much of the code here is borrowed from / inspired by the sample application described in the link above.
 @main
-def main(database: String, container: String, avrodir: String): Unit = {
+def main(database: String, container: String, avro_dir: String, num_records: Long=100000L, num_progress: Long=10000L): Unit = {
   val (endpoint, key) = extractCosmosEndpointAndKey()
   val client = buildClient(endpoint, key)
   val cosmosContainer = client.getDatabase(database).getContainer(container)
 
-  val avro_paths = determineAvroPaths(avrodir)
+  val avroPaths = determineAvroPaths(avro_dir)
 
-  processAvros(cosmosContainer, avro_paths)
+  loadAvros(cosmosContainer, avroPaths, num_records, num_progress)
 }
 
 
@@ -61,8 +64,8 @@ def buildClient(endpoint: String, key: String): CosmosAsyncClient = {
 }
 
 
-def determineAvroPaths(avrodir: String): Seq[Path] = {
-  val path = pwd / RelPath(avrodir)
+def determineAvroPaths(avroDirectory: String): Seq[Path] = {
+  val path = pwd / RelPath(avroDirectory)
   val listing = ls ! path
 
   listing.filter(_.isFile)
@@ -70,18 +73,9 @@ def determineAvroPaths(avrodir: String): Seq[Path] = {
 
 
 // https://stackoverflow.com/a/45648136/21269164
-def processAvros(container: CosmosAsyncContainer, avro_paths: Iterable[Path]): Unit = {
-  // There can occasionally be 409 race conditions on id if using a regular Long so go atomic.
+def loadAvros(container: CosmosAsyncContainer, avroPaths: Iterable[Path], numRecordsToLoad: Long, numRecordsProgress: Long): Unit = {
+  // There can occasionally be 409 race conditions on `id` if using a regular `Long` so go atomic!
   val id = AtomicLong(0L)
-
-  // Where the Cosmos JSON serialization magic happens:
-  // https://github.com/Azure/azure-sdk-for-java/blob/80b12e48aeb6ad2f49e86643dfd7223bde7a9a0c/sdk/cosmos/azure-cosmos/src/main/java/com/azure/cosmos/implementation/JsonSerializable.java#L255
-  // Making a Jackson `ObjectNode` (subtype of `JsonNode`) from `GenericRecord#toString` JSON seems like the least bad
-  // option (`JsonSerializable` looks like a Jackson thing but is actually an internal Cosmos thing).
-  val objectMapper = new ObjectMapper()
-
-  val numDocsToLoad = 100000
-  val numDocsProgressIncrement = 10000
 
   // On a Standard E4-2ads v5 Azure VM this Avro processing easily saturates the default 400 / 4000 RU/s maximum
   // throughput that Cosmos DB containers have when created through the Azure Portal. For 100K items, all the items
@@ -100,7 +94,16 @@ def processAvros(container: CosmosAsyncContainer, avro_paths: Iterable[Path]): U
   //
   // CONTAINER_NAME=vets
   // az cosmosdb sql container show --database-name cosmos_gvs --name ${CONTAINER_NAME} --account-name ${COSMOS_DB_NAME}  | jq -r '..|.documentCount? //empty'
-  val itemOperations = Flux.fromIterable(avro_paths.asJava).
+  //
+  // Where the Cosmos JSON serialization magic happens:
+  // https://github.com/Azure/azure-sdk-for-java/blob/80b12e48aeb6ad2f49e86643dfd7223bde7a9a0c/sdk/cosmos/azure-cosmos/src/main/java/com/azure/cosmos/implementation/JsonSerializable.java#L255
+  //
+  // Making a Jackson `ObjectNode` (subtype of `JsonNode`) from a `GenericRecord#toString` JSON String seems like the
+  // least bad option for Cosmos serialization (`JsonSerializable` looks like a Jackson thing but is actually an
+  // internal Cosmos thing).
+  val objectMapper = new ObjectMapper()
+
+  val itemOperations = Flux.fromIterable(avroPaths.asJava).
     flatMap(path => {
       val file = new File(path.toString())
       val reader = new GenericDatumReader()
@@ -109,20 +112,18 @@ def processAvros(container: CosmosAsyncContainer, avro_paths: Iterable[Path]): U
         // I had to put this `map` here inside the `flatMap` and not directly ahead of the `take` otherwise nothing
         // happened; I don't know why.
         map(record => {
-          val jsonNode = objectMapper.readTree(record.toString())
-          val objectNode = jsonNode.asInstanceOf[ObjectNode]
-          val idLong = id.addAndGet(1L).longValue
-          objectNode.put("id", objectMapper.convertValue("" + idLong, classOf[JsonNode]))
-          if (idLong % numDocsProgressIncrement == 0L) println(f"${idLong}...");
+          val (objectNode, idLong) = objectNodeFromAvroRecord(objectMapper, record.toString(), id)
+          if (idLong % numRecordsProgress == 0L) println(f"$idLong...");
           objectNode
         })
     }).
-    take(numDocsToLoad).
+    take(numRecordsToLoad).
     map(r => CosmosBulkOperations.getCreateItemOperation(r, new PartitionKey(r.get("sample_id").asLong)))
 
   executeItemOperationsWithErrorHandling(container, itemOperations)
 
-  // itemOperations.subscribe(e => e)
+  // for debug
+  // itemOperations.subscribe(e => println(e))
 }
 
 
@@ -152,4 +153,13 @@ def executeItemOperationsWithErrorHandling(container: CosmosAsyncContainer, item
     }
 
   }).blockLast()
+}
+
+
+def objectNodeFromAvroRecord(objectMapper: ObjectMapper, jsonString: String, id: AtomicLong): (ObjectNode, Long) = {
+  val jsonNode = objectMapper.readTree(jsonString)
+  val objectNode = jsonNode.asInstanceOf[ObjectNode]
+  val idLong = id.addAndGet(1L).longValue
+  objectNode.put("id", objectMapper.convertValue("" + idLong, classOf[JsonNode]))
+  (objectNode, idLong)
 }
