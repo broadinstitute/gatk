@@ -47,7 +47,7 @@ public class GATKHelpDocWorkUnitHandler extends DefaultDocWorkUnitHandler {
 
     /**
      * @param workUnit the classdoc object being processed
-     * @return the name of a the freemarker template to be used for the class being documented.
+     * @return the name of the freemarker template to be used for the class being documented.
      * Must reside in the folder passed to the Barclay Doclet via the "-settings-dir" parameter to
      * Javadoc.
      */
