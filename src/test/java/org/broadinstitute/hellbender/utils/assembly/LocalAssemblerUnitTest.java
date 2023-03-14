@@ -1,12 +1,9 @@
-package org.broadinstitute.hellbender.tools;
+package org.broadinstitute.hellbender.utils.assembly;
 
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMLineParser;
 import htsjdk.samtools.util.SequenceUtil;
-import org.broadinstitute.hellbender.tools.LocalAssembler.*;
-import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
+import org.broadinstitute.hellbender.utils.assembly.LocalAssembler.*;
+import org.broadinstitute.hellbender.utils.read.UnalignedRead;
+import org.broadinstitute.hellbender.utils.read.UnalignedRead.ByteSequence;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -28,9 +25,9 @@ public class LocalAssemblerUnitTest {
     };
 
     // produces a graph that looks like this:
-    //    -------------                          ---------------
-    //     ----------------------------------------------------
-    //    -------------                          ---------------
+    //    -------------|                                                    |---------------
+    //                 .----------------------------------------------------.
+    //    -------------|                                                    |---------------
     // (i.e., 5 contigs, with a branch at each end of a longer contig)
     public static List<ContigImpl> makeDogbone( final KmerSet<KmerAdjacency> kmers ) {
         for ( final String seq : SEQS_FOR_DOGBONE_GRAPH ) {
@@ -43,6 +40,12 @@ public class LocalAssemblerUnitTest {
 
     private static final String SEQ_FOR_LARIAT =
             "ACGCGCCGGCGCAGGCGCAGAGACACATGCTACCGCGTCCAGGGGTGGAGGCATGGCGCAGGCGCAGAGTCGCGCCGGCGCAGGCGCAGAGACACATGCTA";
+
+    private static byte[] makeQuals( final int length ) {
+        final byte[] qualBytes = new byte[length];
+        Arrays.fill(qualBytes, QMIN);
+        return qualBytes;
+    }
 
     // produces a graph that cycles back on itself
     public static List<ContigImpl> makeLariat( final KmerSet<KmerAdjacency> kmers ) {
@@ -91,9 +94,8 @@ public class LocalAssemblerUnitTest {
         Assert.assertSame(kmer.canonical(), kmer);
         Assert.assertEquals(kmer.toString(), seq);
 
-        final byte[] calls = ("A" + seq + "T").getBytes();
-        final byte[] quals = new byte[calls.length];
-        Arrays.fill(quals, QMIN);
+        final ByteSequence calls = new ByteSequence(("A" + seq + "T").getBytes());
+        final ByteSequence quals = new ByteSequence(makeQuals(calls.length()));
         KmerAdjacency.kmerize(calls, quals, QMIN, kmers);
         Assert.assertEquals(kmer.getNObservations(), 1);
         Assert.assertSame(KmerAdjacency.find(kmer.getKVal(), kmers), kmer);
@@ -117,7 +119,7 @@ public class LocalAssemblerUnitTest {
         Assert.assertSame(next.rc().getSoleSuccessor(), kmer.rc());
         Assert.assertSame(KmerAdjacency.find(next.rc().getKVal(), kmers), next.rc());
 
-        final byte[] calls2 = ("C" + seq + "C").getBytes();
+        final ByteSequence calls2 = new ByteSequence(("C" + seq + "C").getBytes());
         KmerAdjacency.kmerize(calls2, quals, QMIN, kmers);
         Assert.assertEquals(kmer.getNObservations(), 2);
         Assert.assertEquals(kmer.getPredecessorCount(), 2);
@@ -130,9 +132,8 @@ public class LocalAssemblerUnitTest {
     public void testSingleContigBuild() {
         final KmerSet<KmerAdjacency> kmers = new KmerSet<>(KMER_SET_CAPACITY);
         final String seq = "AACGTACGTACGTACACACGTACGTACGTACGT";
-        final byte[] calls = seq.getBytes();
-        final byte[] quals = new byte[calls.length];
-        Arrays.fill(quals, QMIN);
+        final ByteSequence calls = new ByteSequence(seq.getBytes());
+        final ByteSequence quals = new ByteSequence(makeQuals(calls.length()));
         KmerAdjacency.kmerize(calls, quals, QMIN, kmers);
         final List<ContigImpl> contigs = LocalAssembler.buildContigs(kmers);
         Assert.assertEquals(contigs.size(), 1);
@@ -188,20 +189,22 @@ public class LocalAssemblerUnitTest {
         final KmerSet<KmerAdjacency> kmers = new KmerSet<>(KMER_SET_CAPACITY);
         makeDogbone(kmers);
         final PathBuilder pathBuilder = new PathBuilder(kmers);
-        final byte[] path1Calls = SEQS_FOR_DOGBONE_GRAPH[0].getBytes();
+        final byte[] path1CallBytes = SEQS_FOR_DOGBONE_GRAPH[0].getBytes();
+        final ByteSequence path1Calls = new ByteSequence(path1CallBytes);
         final Path path1 = new Path(path1Calls, pathBuilder);
         Assert.assertEquals(path1.getParts().size(), 3);
         Assert.assertTrue(pathsEquivalent(path1, path1.rc().rc()));
 
         // exercise our rudimentary error correction by changing one call in the middle of a contig
-        path1Calls[path1Calls.length / 2] = (byte)(path1Calls[path1Calls.length / 2] == 'A' ? 'C' : 'A');
+        final int pos = path1Calls.length() / 2;
+        path1CallBytes[pos] = (byte)(path1CallBytes[pos] == 'A' ? 'C' : 'A');
         Assert.assertTrue(pathsEquivalent(path1, new Path(path1Calls, pathBuilder)));
 
         // path of RC sequence ought to be equivalent to RC of path
-        SequenceUtil.reverseComplement(path1Calls);
+        SequenceUtil.reverseComplement(path1CallBytes);
         Assert.assertTrue(pathsEquivalent(path1.rc(), new Path(path1Calls, pathBuilder)));
 
-        final Path path2 = new Path(SEQS_FOR_DOGBONE_GRAPH[1].getBytes(), pathBuilder);
+        final Path path2 = new Path(new ByteSequence(SEQS_FOR_DOGBONE_GRAPH[1].getBytes()), pathBuilder);
         Assert.assertEquals(path2.getParts().size(), 3);
         Assert.assertFalse(pathsEquivalent(path1, path2));
     }
@@ -325,14 +328,13 @@ public class LocalAssemblerUnitTest {
 
     @Test
     public void testGapFilling() {
-        final byte[] calls = SEQ_FOR_LARIAT.getBytes();
-        final byte[] quals = new byte[calls.length];
-        Arrays.fill(quals, QMIN);
-        quals[quals.length / 2] = 0; // one bad quality score in the middle
-        final GATKRead read =
-                ArtificialReadUtils.createArtificialRead(calls, quals, calls.length + "M");
+        final ByteSequence calls = new ByteSequence(SEQ_FOR_LARIAT.getBytes());
+        final byte[] qualBytes = makeQuals(calls.length());
+        qualBytes[qualBytes.length / 2] = 0; // one bad quality score in the middle
+        final ByteSequence quals = new ByteSequence(qualBytes);
+        final UnalignedRead read = new UnalignedRead("noName", calls, quals);
         final KmerSet<KmerAdjacency> kmers = new KmerSet<>(KMER_SET_CAPACITY);
-        final List<GATKRead> reads = new ArrayList<>(MIN_GAPFILL_COUNT);
+        final List<UnalignedRead> reads = new ArrayList<>(MIN_GAPFILL_COUNT);
         for ( int iii = 0; iii != MIN_GAPFILL_COUNT; ++iii ) {
             reads.add(read);
             KmerAdjacency.kmerize(calls, quals, QMIN, kmers);
@@ -359,15 +361,12 @@ public class LocalAssemblerUnitTest {
 
     @Test
     public void testTraversalPhasing() {
-        final SAMFileHeader header =
-                ArtificialReadUtils.createArtificialSamHeader(1, 1, 100000000);
-        final byte[] quals = new byte[SEQS_FOR_DOGBONE_GRAPH[0].length()];
-        Arrays.fill(quals, QMIN);
-        final GATKRead read1 = ArtificialReadUtils.createArtificialRead(header,
-                "read1", 0, 1, SEQS_FOR_DOGBONE_GRAPH[0].getBytes(), quals);
-        final GATKRead read2 = ArtificialReadUtils.createArtificialRead(header,
-                "read2", 0, 1, SEQS_FOR_DOGBONE_GRAPH[1].getBytes(), quals);
-        final List<GATKRead> reads = new ArrayList<>(2);
+        final ByteSequence calls1 = new ByteSequence(SEQS_FOR_DOGBONE_GRAPH[0].getBytes());
+        final ByteSequence calls2 = new ByteSequence(SEQS_FOR_DOGBONE_GRAPH[1].getBytes());
+        final ByteSequence quals = new ByteSequence(makeQuals(Math.max(calls1.length(),calls2.length())));
+        final UnalignedRead read1 = new UnalignedRead("read1", calls1, quals);
+        final UnalignedRead read2 = new UnalignedRead("read2", calls2, quals);
+        final List<UnalignedRead> reads = new ArrayList<>(2);
         reads.add(read1);
         reads.add(read2);
         final KmerSet<KmerAdjacency> kmers = new KmerSet<>(KMER_SET_CAPACITY);
@@ -417,23 +416,19 @@ public class LocalAssemblerUnitTest {
 
     @Test
     public void testScaffolds() {
-        final String seq1 = SEQS_FOR_DOGBONE_GRAPH[0];
-        final byte[] quals = new byte[seq1.length() - 1];
-        Arrays.fill(quals, QMIN);
+        final ByteSequence calls = new ByteSequence(SEQS_FOR_DOGBONE_GRAPH[0].getBytes());
+        final int length = calls.length() - 1;
+        final ByteSequence quals = new ByteSequence(makeQuals(length));
 
         // this time no read transits the central contig
-        final SAMFileHeader header =
-                ArtificialReadUtils.createArtificialSamHeader(1, 1, 100000000);
-        final GATKRead read1 = ArtificialReadUtils.createArtificialRead(header,
-                "read1", 0, 1, seq1.substring(1).getBytes(), quals);
-        final GATKRead read2 = ArtificialReadUtils.createArtificialRead(header,
-                "read2", 0, 1, seq1.substring(0, seq1.length() - 1).getBytes(), quals);
-        final String seq2 = SEQS_FOR_DOGBONE_GRAPH[1];
-        final GATKRead read3 = ArtificialReadUtils.createArtificialRead(header,
-                "read3", 0, 1, seq2.substring(1).getBytes(), quals);
-        final GATKRead read4 = ArtificialReadUtils.createArtificialRead(header,
-                "read4", 0, 1, seq2.substring(0, seq2.length() - 1).getBytes(), quals);
-        final List<GATKRead> reads = new ArrayList<>(4);
+        final UnalignedRead read1 = new UnalignedRead("read1", calls.subSequence(1, length), quals);
+        final UnalignedRead read2 = new UnalignedRead("read2", calls.subSequence(0, length), quals);
+
+        final ByteSequence calls2 = new ByteSequence(SEQS_FOR_DOGBONE_GRAPH[1].getBytes());
+        final UnalignedRead read3 = new UnalignedRead("read3", calls2.subSequence(1, length), quals);
+        final UnalignedRead read4 = new UnalignedRead("read4", calls2.subSequence(0, length), quals);
+
+        final List<UnalignedRead> reads = new ArrayList<>(4);
         reads.add(read1);
         reads.add(read2);
         reads.add(read3);
@@ -480,17 +475,15 @@ public class LocalAssemblerUnitTest {
                 "ACGCGCCGGCGCAGGCGCAGAGACACATGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACTACCGCGTCCAGGGGTGGAGGCATGGCGCAGGCGCAGAGA",
                 "TCGCGCCGGCGCAGGCGCAGAGACACATGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         };
-        final SAMFileHeader header =
-                ArtificialReadUtils.createArtificialSamHeader(1, 1, 100000000);
-        final byte[] quals1 = new byte[seqs[0].length()];
-        Arrays.fill(quals1, QMIN);
-        final GATKRead read1 = ArtificialReadUtils.createArtificialRead(header,
-                "read1", 0, 1, seqs[0].getBytes(), quals1);
-        final byte[] quals2 = new byte[seqs[1].length()];
-        Arrays.fill(quals2, QMIN);
-        final GATKRead read2 = ArtificialReadUtils.createArtificialRead(header,
-                "read2", 0, 1, seqs[1].getBytes(), quals2);
-        final List<GATKRead> reads = new ArrayList<>(2);
+        final ByteSequence calls1 = new ByteSequence(seqs[0].getBytes());
+        final ByteSequence quals1 = new ByteSequence(makeQuals(calls1.length()));
+        final UnalignedRead read1 = new UnalignedRead("read1", calls1, quals1);
+
+        final ByteSequence calls2 = new ByteSequence(seqs[1].getBytes());
+        final ByteSequence quals2 = new ByteSequence(makeQuals(calls2.length()));
+        final UnalignedRead read2 = new UnalignedRead("read2", calls2, quals2);
+
+        final List<UnalignedRead> reads = new ArrayList<>(2);
         reads.add(read1);
         reads.add(read2);
 
@@ -515,57 +508,5 @@ public class LocalAssemblerUnitTest {
         final Collection<Traversal> scaffolds =
                 LocalAssembler.createScaffolds(traversals, TOO_MANY_SCAFFOLDS, MIN_SV_SIZE);
         Assert.assertEquals(scaffolds.size(), 2);
-    }
-
-    @Test
-    public void testTrimOverruns() {
-        final SAMFileHeader header =
-                ArtificialReadUtils.createArtificialSamHeader(1, 1, 100000000);
-        final SAMLineParser samLineParser = new SAMLineParser(header);
-
-        // two reads that start and end at the same place with a removable soft clip appropriately placed on each
-        final GATKRead read1 = new SAMRecordToGATKReadAdapter(
-                samLineParser.parseLine("read1\t163\t1\t5113820\t49\t111M40S\t=\t5113820\t111\t"+
-                        "ACAGAGACAGGAAGAAGTACGCGTGGGGGGCCCAGTCTGGATATGCTGAGTGGGCGGTGCCCCACTCCAAGTGTAGTGCACAGAGAAGGGCTGGAGTTACAGGCCTCCTTGAGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTGTATTGC\t"+
-                        "???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????"));
-        final GATKRead mate1 = new SAMRecordToGATKReadAdapter(
-                samLineParser.parseLine("mate1\t83\t1\t5113820\t49\t40S111M\t=\t5113820\t-111\t"+
-                        "GTTGGTGTGACTGGAGTTCAGACGTGTGCTCTTCCGATCTACAGAGACAGGAAGAAGTACGCGTGGGGGGCCCAGTCTGGATATGCTGAGTGGGCGGTGCCCCACTCCAAGTGTAGTGCACAGAGAAGGGCTGGAGTTACAGGCCTCCTTG\t"+
-                        "???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????"));
-        LocalAssembler.trimOverruns(read1, mate1);
-
-        // expected results trim soft clip from each read
-        Assert.assertEquals(read1.getCigar().toString(), "111M40H"); // changed 111M40S to 111M40H
-        Assert.assertEquals(read1.getBasesNoCopy().length, 111); // hard-clipped the calls and quals
-        Assert.assertEquals(read1.getBaseQualitiesNoCopy().length, 111);
-        Assert.assertEquals(mate1.getCigar().toString(), "40H111M"); // changed 40S111M to 40H111M
-        Assert.assertEquals(mate1.getBasesNoCopy().length, 111); // hard-clipped the calls and quals
-        Assert.assertEquals(mate1.getBaseQualitiesNoCopy().length, 111);
-    }
-
-
-    @Test
-    public void testNoTrimOverruns() {
-        final SAMFileHeader header =
-                ArtificialReadUtils.createArtificialSamHeader(1, 1, 100000000);
-        final SAMLineParser samLineParser = new SAMLineParser(header);
-        // can't trim this read pair:  cigar is 4S56M91S and the 4S suggests this might be chimeric
-        final GATKRead read1 = new SAMRecordToGATKReadAdapter(
-            samLineParser.parseLine("read1\t99\t1\t5114132\t0\t4S56M91S\t=\t5114132\t56\t"+
-                "GAGCTGGGGGTTGAGTGTGGAGGAGCTGGGAGTGGTGGGGGAGCTGGGGGTTGAGTGTGGAGGAGCTGGGAGTGGTGGGGGGGCTGGGGGTTGAGTGTGGAGGTGCTGGGAGCGGTGGGGGGGCTGGGGGTTGAGTGTGGAGGTCGGGGGA\t"+
-                "??????????????????????????????????????????????????????????????+5?????????????????+?5???????5???+??????++5&55???5$+??+5?5+555???5??55?+5555??+??########"));
-        final GATKRead mate1 = new SAMRecordToGATKReadAdapter(
-            samLineParser.parseLine("mate1\t147\t1\t5114132\t0\t95S56M\t=\t5114132\t-56\t"+
-                "GTAGGGTGTGGGGGGTGGGGTGGGGGTGGGGGGGCGGGGGGGGTCGGGGGGGGGGTGGGGGTTGGGTGGGGGGGCGACGGGGTTGGGGGGGGGGCTGGGGGTTGAGGGTGGAGGAGCTGGGAGTGGGGGGGGAGCTGGGGGTTGAGTGTGG\t"+
-                "###############################################################################?55++5'5?'555'5++???55++555'&+?'5??55++??555+?5'????????????????????????"));
-        LocalAssembler.trimOverruns(read1, mate1);
-
-        // expected results are all unchanged from original
-        Assert.assertEquals(read1.getCigar().toString(), "4S56M91S");
-        Assert.assertEquals(read1.getBasesNoCopy().length, 151);
-        Assert.assertEquals(read1.getBaseQualitiesNoCopy().length, 151);
-        Assert.assertEquals(mate1.getCigar().toString(), "95S56M");
-        Assert.assertEquals(mate1.getBasesNoCopy().length, 151);
-        Assert.assertEquals(mate1.getBaseQualitiesNoCopy().length, 151);
     }
 }

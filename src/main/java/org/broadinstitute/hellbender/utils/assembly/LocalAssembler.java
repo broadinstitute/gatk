@@ -1,152 +1,188 @@
-package org.broadinstitute.hellbender.tools;
+package org.broadinstitute.hellbender.utils.assembly;
 
 import com.google.common.annotations.VisibleForTesting;
-import htsjdk.samtools.Cigar;
-import htsjdk.samtools.CigarElement;
-import htsjdk.samtools.CigarOperator;
-import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.BetaFeature;
-import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.walkers.PairWalker;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.collections.HopscotchSet;
-import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.UnalignedRead;
+import org.broadinstitute.hellbender.utils.read.UnalignedRead.ByteSequence;
 
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
+import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPOutputStream;
 
-@DocumentedFeature
-@BetaFeature
-@CommandLineProgramProperties(
-        summary = "Performs local assembly of small regions to discover structural variants.",
-        oneLineSummary = "Local assembler for SVs",
-        usageExample = "gatk LocalAssembler -L chr21:16187360-16187360 --ip 500 -R 38.fa.gz " +
-                "-I NA19240.cram -I NA19240.distantmate.bam " +
-                "--assembly-name chr21_16187360_16187360_INS --gfa-file test.gfa --fasta-file test.fa.gz",
-        programGroup = CoverageAnalysisProgramGroup.class
-)
-public class LocalAssembler extends PairWalker {
-    @Argument(fullName="assembly-name", doc="Name of assembly used as a prefix for traversal names.")
-    public String assemblyName;
-
-    @Argument(fullName="gfa-file", doc="Path to assembly output in gfa format.", optional=true)
-    public GATKPath gfaFile;
-
-    @Argument(fullName="fasta-file", doc="Path to scaffolds in fasta format.", optional=true)
-    public GATKPath fastaFile;
-
+public class LocalAssembler {
     public static final byte QMIN_DEFAULT = 25;
-    @Argument(fullName="q-min", doc="Minimum base quality when kmerizing reads.", optional=true)
-    private byte qMin = QMIN_DEFAULT;
-
     public static final int MIN_THIN_OBS_DEFAULT = 4;
-    @Argument(fullName="min-thin-observations",
-            doc="Minimum number of observations of some kmer within the contig required to " +
-                    "retain the contig.", optional=true)
-    private int minThinObs = MIN_THIN_OBS_DEFAULT;
-
     public static final int MIN_GAPFILL_COUNT_DEFAULT = 3;
-    @Argument(fullName="min-gapfill-count",
-            doc="Minimum number of observations of a sequence that patches a gap.", optional=true)
-    private int minGapfillCount = MIN_GAPFILL_COUNT_DEFAULT;
-
     public static final int TOO_MANY_TRAVERSALS_DEFAULT = 100000;
-    @Argument(fullName="too-many-traversals",
-            doc="If the assembly graph produces this many traversals, just emit contigs instead.",
-            optional=true)
-    private int tooManyTraversals = TOO_MANY_TRAVERSALS_DEFAULT;
-
     public static final int TOO_MANY_SCAFFOLDS_DEFAULT = 50000;
-    @Argument(fullName="too-many-scaffolds",
-            doc="If the assembly graph produces this many scaffolds, just emit traversals instead.",
-            optional=true)
-    private int tooManyScaffolds = TOO_MANY_SCAFFOLDS_DEFAULT;
-
     public static final int MIN_SV_SIZE_DEFAULT = 50;
-    @Argument(fullName="min-sv-size",
-            doc="Smallest variation size to count as a structural variant.", optional=true)
-    public int minSVSize = MIN_SV_SIZE_DEFAULT;
 
-    @Argument(fullName="no-scaffolding", doc="turn off scaffolding -- write traversals instead", optional=true)
-    private boolean noScaffolding = false;
+    private final List<ContigImpl> contigs;
+    private final List<Path> readPaths;
 
-    private final List<GATKRead> reads = new ArrayList<>();
-
-    @Override public boolean requiresIntervals() { return true; }
-
-    @Override public void apply( final GATKRead read, final GATKRead mate ) {
-        trimOverruns(read, mate);
-        reads.add(read);
-        reads.add(mate);
+    public LocalAssembler( final int regionSize, final List<UnalignedRead> reads ) {
+        this(regionSize, QMIN_DEFAULT, MIN_THIN_OBS_DEFAULT, MIN_GAPFILL_COUNT_DEFAULT, reads);
     }
 
-    @Override public void applyUnpaired( final GATKRead read ) {
-        reads.add(read);
-    }
-
-    @Override public Object onTraversalSuccess() {
-        super.onTraversalSuccess(); // flush any incomplete pairs
-
-        if ( gfaFile == null ) {
-            gfaFile = new GATKPath(assemblyName + ".gfa.gz");
-        }
-        if ( fastaFile == null ) {
-            fastaFile = new GATKPath(assemblyName + ".fa.gz");
-        }
-
-        final int regionSize = getTraversalIntervals().stream().mapToInt(SimpleInterval::size).sum();
+    public LocalAssembler( final int regionSize,
+                           final byte qMin,
+                           final int minThinObs,
+                           final int minGapfillCount,
+                           final List<UnalignedRead> reads ) {
         final KmerSet<KmerAdjacency> kmerAdjacencySet = new KmerSet<>(10 * regionSize);
         kmerizeReads(reads, qMin, kmerAdjacencySet);
 
-        List<ContigImpl> contigs = createAssembly(kmerAdjacencySet, minThinObs);
-        if ( fillGaps(kmerAdjacencySet, minGapfillCount, reads) ) {
-            contigs = createAssembly(kmerAdjacencySet, minThinObs);
-        }
-
-        markCycles(contigs);
-
-        final List<Path> readPaths = pathReads(kmerAdjacencySet, reads);
-        final Map<Contig,List<TransitPairCount>> contigTransitsMap =
-                collectTransitPairCounts(contigs, readPaths);
-        try {
-            final List<Traversal> allTraversals = new ArrayList<>(
-                    traverseAllPaths(contigs, readPaths, tooManyTraversals, contigTransitsMap));
-            contigs.sort(Comparator.comparingInt(ContigImpl::getId));
-            writeGFA(gfaFile, contigs, allTraversals);
-            if ( noScaffolding ) {
-                writeTraversals(fastaFile, assemblyName, allTraversals);
-                return null;
-            }
-            try {
-                writeTraversals(fastaFile, assemblyName,
-                        createScaffolds(allTraversals, tooManyScaffolds, minSVSize));
-            } catch ( final AssemblyTooComplexException x ) {
-                logger.warn("Assembly too complex for scaffolding. Writing traversals to fasta-file");
-                writeTraversals(fastaFile, assemblyName, allTraversals);
-            }
-        } catch ( final AssemblyTooComplexException x ) {
-            logger.warn("Assembly too complex to traverse.  Writing contigs as traversals to fasta-file");
-            final Collection<Traversal> contigTraversals = new ArrayList<>(contigs.size());
-            for ( final Contig contig : contigs ) {
-                contigTraversals.add(new Traversal(Collections.singletonList(contig)));
-            }
-            writeTraversals(fastaFile, assemblyName, contigTraversals);
-        }
-        return null;
+        contigs = createContigs(kmerAdjacencySet, minThinObs, minGapfillCount, reads);
+        readPaths = pathReads(kmerAdjacencySet, reads);
     }
 
-    private static List<ContigImpl> createAssembly( final KmerSet<KmerAdjacency> kmerAdjacencySet,
-                                                    final int minThinObs ) {
+    public List<ContigImpl> getContigs() { return contigs; }
+
+    public List<Path> getReadPaths() { return readPaths; }
+
+    public List<Traversal> getAllTraversals() throws AssemblyTooComplexException {
+        return getAllTraversals(TOO_MANY_TRAVERSALS_DEFAULT);
+    }
+
+    public List<Traversal> getAllTraversals( final int tooManyTraversals ) throws AssemblyTooComplexException {
+        final Map<Contig,List<TransitPairCount>> contigTransitsMap = collectTransitPairCounts(contigs, readPaths);
+        return new ArrayList<>(traverseAllPaths(contigs, readPaths, tooManyTraversals, contigTransitsMap));
+    }
+
+    public List<Traversal> getPathedTraversals() {
+        final List<Traversal> pathedTraversals = new ArrayList<>();
+        final List<Contig> contigList = new ArrayList<>();
+        for ( final Path path : readPaths ) {
+            for ( final PathPart part : path.getParts() ) {
+                if ( part.isGap() ) {
+                    if ( !contigList.isEmpty() ) {
+                        pathedTraversals.add(new Traversal(contigList));
+                        contigList.clear();
+                    }
+                } else {
+                    contigList.add(part.getContig());
+                }
+            }
+            if ( !contigList.isEmpty() ) {
+                pathedTraversals.add(new Traversal(contigList));
+                contigList.clear();
+            }
+        }
+        pathedTraversals.sort(Comparator.comparing(Traversal::getNContigs).reversed());
+
+        for ( int idx1 = 0; idx1 < pathedTraversals.size(); ++idx1 ) {
+            final List<Contig> contigs1 = pathedTraversals.get(idx1).getContigs();
+            int idx2 = pathedTraversals.size();
+            while ( --idx2 > idx1 ) {
+                final List<Contig> contigs2 = pathedTraversals.get(idx2).getContigs();
+                if ( Collections.indexOfSubList(contigs1, contigs2) != -1 ) {
+                    pathedTraversals.remove(idx2);
+                } else {
+                    final List<Contig> contigs2RC = pathedTraversals.get(idx2).rc().getContigs();
+                    if ( Collections.indexOfSubList(contigs1, contigs2RC) != -1 ) {
+                        pathedTraversals.remove(idx2);
+                    }
+                }
+            }
+        }
+        return pathedTraversals;
+    }
+
+    public List<Traversal> getContigsAsTraversals() {
+        final List<Traversal> contigTraversals = new ArrayList<>(contigs.size());
+        for ( final Contig contig : contigs ) {
+            contigTraversals.add(new Traversal(Collections.singletonList(contig)));
+        }
+        return contigTraversals;
+    }
+
+    public List<Traversal> getScaffolds( final List<Traversal> traversals ) {
+        return getScaffolds(TOO_MANY_SCAFFOLDS_DEFAULT, MIN_SV_SIZE_DEFAULT, traversals);
+    }
+
+    public List<Traversal> getScaffolds( final int tooManyScaffolds,
+                                         final int minSVSize,
+                                         final List<Traversal> traversals ) throws AssemblyTooComplexException {
+        return createScaffolds(traversals, tooManyScaffolds, minSVSize);
+    }
+
+    public void writeGFA( final GATKPath gfaFile, final List<Traversal> traversals ) {
+        for ( final ContigImpl contig : contigs ) {
+            contig.setMarked(false);
+        }
+
+        try ( final BufferedWriter writer = createBufferedWriter(gfaFile) ) {
+            writer.write("H\tVN:Z:2.0");
+            writer.newLine();
+            for ( final Contig contig : contigs ) {
+                if ( !contig.isMarked() ) {
+                    writeContig(contig, writer);
+                }
+            }
+            for ( final Traversal traversal : traversals ) {
+                writer.write(traversal.getContigs().stream()
+                        .map(Contig::toRef)
+                        .collect(Collectors.joining(" ", "O\t*\t", "")));
+                writer.newLine();
+            }
+        } catch ( final IOException ioe ) {
+            throw new UserException("Failed to write gfa-file " + gfaFile, ioe);
+        }
+    }
+
+    public void writeTraversals( final GATKPath fastaFile,
+                                 final String assemblyName,
+                                 final List<Traversal> traversals ) {
+        try ( final BufferedWriter writer = createBufferedWriter(fastaFile) ) {
+            int traversalNo = 0;
+            for ( final Traversal traversal : traversals ) {
+                writer.write(">");
+                if ( assemblyName != null ) {
+                    writer.write(assemblyName);
+                    writer.write("_");
+                }
+                writer.write("t");
+                writer.write(Integer.toString(++traversalNo));
+                writer.write(" ");
+                writer.write(traversal.toString());
+                writer.newLine();
+                writer.write(traversal.getSequence());
+                writer.newLine();
+            }
+        } catch ( final IOException ioe ) {
+            throw new UserException("Failed to write fasta-file " + fastaFile, ioe);
+        }
+    }
+
+    @VisibleForTesting
+    static List<ContigImpl> createContigs( final KmerSet<KmerAdjacency> kmerAdjacencySet,
+                                           final int minThinObs,
+                                           final int minGapfillCount,
+                                           final List<UnalignedRead> reads ) {
+        List<ContigImpl> contigs = assembleContigs(kmerAdjacencySet, minThinObs);
+        if ( fillGaps(kmerAdjacencySet, minGapfillCount, reads) ) {
+            contigs = assembleContigs(kmerAdjacencySet, minThinObs);
+        }
+        markCycles(contigs);
+        contigs.sort(Comparator.comparingInt(ContigImpl::getId));
+        return contigs;
+    }
+
+    @VisibleForTesting
+    static void kmerizeReads( final List<UnalignedRead> reads,
+                              final byte qMin,
+                              final KmerSet<KmerAdjacency> kmerAdjacencySet ) {
+        for ( final UnalignedRead read : reads ) {
+            KmerAdjacency.kmerize(read.getCalls(), read.getQuals(), qMin, kmerAdjacencySet);
+        }
+    }
+
+    private static List<ContigImpl> assembleContigs( final KmerSet<KmerAdjacency> kmerAdjacencySet,
+                                                     final int minThinObs ) {
         final List<ContigImpl> contigs = buildContigs(kmerAdjacencySet);
         connectContigs(contigs);
         removeThinContigs(contigs, minThinObs, kmerAdjacencySet);
@@ -154,76 +190,6 @@ public class LocalAssembler extends PairWalker {
         return contigs;
     }
 
-    /** trim read pairs of base calls that have gone past the end of a short fragment */
-    @VisibleForTesting
-    static void trimOverruns( final GATKRead read, final GATKRead mate ) {
-        // if both mapped and they're on different strands
-        if ( !read.isUnmapped() && !mate.isUnmapped() &&
-                read.isReverseStrand() != mate.isReverseStrand() ) {
-            // and both start within 1 base on the ref
-            if ( Math.abs(read.getStart() - read.getMateStart()) <= 1 ) {
-                // and both end within 1 base
-                final int readRefLen = read.getCigar().getReferenceLength();
-                final int mateRefLen = mate.getCigar().getReferenceLength();
-                if ( Math.abs(readRefLen - mateRefLen) <= 1 ) {
-                    if ( mate.isReverseStrand() ) {
-                        trimClips(read, mate);
-                    } else {
-                        trimClips(mate, read);
-                    }
-                }
-            }
-        }
-    }
-
-    private static void trimClips( final GATKRead fwd, final GATKRead rev ) {
-        final List<CigarElement> fwdElements = fwd.getCigarElements();
-        final List<CigarElement> revElements = rev.getCigarElements();
-        final int lastFwdElementIdx = fwdElements.size() - 1;
-        final int lastRevElementIdx = revElements.size() - 1;
-        final CigarElement fwdLastElement = fwdElements.get(lastFwdElementIdx);
-        final CigarElement revLastElement = revElements.get(lastRevElementIdx);
-        final CigarElement fwdFirstElement = fwdElements.get(0);
-        final CigarElement revFirstElement = revElements.get(0);
-        if ( fwdFirstElement.getOperator() == CigarOperator.M &&
-                fwdLastElement.getOperator() == CigarOperator.S &&
-                revFirstElement.getOperator() == CigarOperator.S &&
-                revLastElement.getOperator() == CigarOperator.M ) {
-            final byte[] fwdBases = fwd.getBasesNoCopy();
-            final int lastElementLen = fwdLastElement.getLength();
-            fwd.setBases(Arrays.copyOfRange(fwdBases, 0, fwdBases.length - lastElementLen));
-            final byte[] fwdQuals = fwd.getBaseQualitiesNoCopy();
-            if ( fwdQuals.length > 0 ) {
-                final int qualsLen = fwdQuals.length - lastElementLen;
-                fwd.setBaseQualities(Arrays.copyOfRange(fwdQuals, 0, qualsLen));
-            }
-            final List<CigarElement> newFwdElements = new ArrayList<>(fwdElements);
-            newFwdElements.set(lastFwdElementIdx, new CigarElement(lastElementLen, CigarOperator.H));
-            fwd.setCigar(new Cigar(newFwdElements));
-
-            final byte[] revBases = rev.getBasesNoCopy();
-            final int firstElementLen = revFirstElement.getLength();
-            rev.setBases(Arrays.copyOfRange(revBases, firstElementLen, revBases.length));
-            final byte[] revQuals = rev.getBaseQualitiesNoCopy();
-            if ( revQuals.length > 0 ) {
-                rev.setBaseQualities(Arrays.copyOfRange(revQuals, firstElementLen, revQuals.length));
-            }
-            final List<CigarElement> newRevElements = new ArrayList<>(revElements);
-            newRevElements.set(0, new CigarElement(firstElementLen, CigarOperator.H));
-            rev.setCigar(new Cigar(newRevElements));
-        }
-    }
-
-    @VisibleForTesting
-    static void kmerizeReads( final List<GATKRead> reads,
-                              final byte qMin,
-                              final KmerSet<KmerAdjacency> kmerAdjacencySet ) {
-        for ( final GATKRead read : reads ) {
-            final byte[] calls = read.getBasesNoCopy();
-            final byte[] quals = read.getBaseQualitiesNoCopy();
-            KmerAdjacency.kmerize(calls, quals, qMin, kmerAdjacencySet);
-        }
-    }
 
     /** gather unbranched strings of kmers into contigs */
     @VisibleForTesting
@@ -396,6 +362,8 @@ public class LocalAssembler extends PairWalker {
                 }
             }
 
+            markCycles( contigs );
+
             // remove poorly attested (low max observations) contigs, unless they are cut points
             contigRemoved = false;
             final Iterator<ContigImpl> itr = contigs.iterator();
@@ -403,7 +371,8 @@ public class LocalAssembler extends PairWalker {
                 final Contig contig = itr.next();
                 // TODO: Think about replacing the heuristic "minThinObs" with something that
                 //       takes the observation depth of adjacent contigs into account.
-                if ( contig.getMaxObservations() < minThinObs && !contig.isMarked() ) {
+                if ( !contig.isMarked() && !contig.isCycleMember() &&
+                        contig.getMaxObservations() < minThinObs ) {
                     unlinkContig(contig, kmerAdjacencySet);
                     itr.remove();
                     contigRemoved = true;
@@ -627,11 +596,11 @@ public class LocalAssembler extends PairWalker {
     @VisibleForTesting
     static boolean fillGaps( final KmerSet<KmerAdjacency> kmerAdjacencySet,
                              final int minGapfillCount,
-                             final List<GATKRead> reads ) {
+                             final List<UnalignedRead> reads ) {
         final Map<String, Integer> gapFillCounts = new HashMap<>();
         final PathBuilder pathBuilder = new PathBuilder(kmerAdjacencySet);
-        for ( final GATKRead read : reads ) {
-            final Path path = new Path(read.getBasesNoCopy(), pathBuilder);
+        for ( final UnalignedRead read : reads ) {
+            final Path path = new Path(read.getCalls(), pathBuilder);
             final List<PathPart> parts = path.getParts();
             final int lastIdx = parts.size() - 1;
             for ( int idx = 1; idx < lastIdx; ++idx ) {
@@ -670,19 +639,19 @@ public class LocalAssembler extends PairWalker {
 
     @VisibleForTesting
     static List<Path> pathReads( final KmerSet<KmerAdjacency> kmerAdjacencySet,
-                          final List<GATKRead> reads ) {
+                                 final List<UnalignedRead> reads ) {
         final List<Path> readPaths = new ArrayList<>(reads.size());
         final PathBuilder pathBuilder = new PathBuilder(kmerAdjacencySet);
-        for ( final GATKRead read : reads ) {
-            readPaths.add(new Path(read.getBasesNoCopy(), pathBuilder));
+        for ( final UnalignedRead read : reads ) {
+            readPaths.add(new Path(read.getCalls(), pathBuilder));
         }
         return readPaths;
     }
 
     @VisibleForTesting
     static Map<Contig,List<TransitPairCount>> collectTransitPairCounts(
-            final List<ContigImpl> contigs,
-            final List<Path> readPaths ) {
+                                                                    final List<ContigImpl> contigs,
+                                                                    final List<Path> readPaths ) {
         final Map<Contig,List<TransitPairCount>> contigTransitsMap =
                 new HashMap<>(3 * contigs.size());
         for ( final Path path : readPaths ) {
@@ -719,10 +688,10 @@ public class LocalAssembler extends PairWalker {
 
     @VisibleForTesting
     static Set<Traversal> traverseAllPaths(
-            final List<ContigImpl> contigs,
-            final List<Path> readPaths,
-            final int tooManyTraversals,
-            final Map<Contig, List<TransitPairCount>> contigTransitsMap ) {
+                                    final List<ContigImpl> contigs,
+                                    final List<Path> readPaths,
+                                    final int tooManyTraversals,
+                                    final Map<Contig, List<TransitPairCount>> contigTransitsMap ) {
         final TraversalSet traversalSet = new TraversalSet(tooManyTraversals);
         final List<Contig> contigsList = new ArrayList<>();
         // build traversals from untransited contigs
@@ -734,11 +703,11 @@ public class LocalAssembler extends PairWalker {
                 } else {
                     for ( final Contig successor : contig.getSuccessors() ) {
                         traverse(successor, contig, contigsList,
-                                    readPaths, contigTransitsMap, traversalSet);
+                                readPaths, contigTransitsMap, traversalSet);
                     }
                     for ( final Contig predecessor : contig.getPredecessors() ) {
                         traverse(predecessor.rc(), contig.rc(), contigsList,
-                                    readPaths, contigTransitsMap, traversalSet);
+                                readPaths, contigTransitsMap, traversalSet);
                     }
                 }
             }
@@ -821,7 +790,7 @@ public class LocalAssembler extends PairWalker {
                     }
                     tpc.resetCount();
                     traverse(successor, contig, contigsList,
-                                readPaths, contigTransitsMap, traversalSet);
+                            readPaths, contigTransitsMap, traversalSet);
                     foundTransitInMap = true;
                 }
             }
@@ -880,7 +849,7 @@ public class LocalAssembler extends PairWalker {
                             final Contig prevContig =
                                     extendedContigsList.remove(extendedContigsList.size() - 1);
                             traverse(curContig, prevContig, extendedContigsList, readPaths,
-                                        contigTransitsMap, traversalSet);
+                                    contigTransitsMap, traversalSet);
                             extendedContigsList.add(prevContig);
                             break;
                         }
@@ -893,8 +862,8 @@ public class LocalAssembler extends PairWalker {
     }
 
     private static void clearTransitPairs(
-            final Map<Contig, List<TransitPairCount>> contigTransitsMap,
-            final List<Contig> contigsList ) {
+                                        final Map<Contig, List<TransitPairCount>> contigTransitsMap,
+                                        final List<Contig> contigsList ) {
         final int lastIdx = contigsList.size() - 1;
         for ( int idx = 1; idx < lastIdx; ++idx ) {
             final List<TransitPairCount> pairCounts = contigTransitsMap.get(contigsList.get(idx));
@@ -978,9 +947,9 @@ public class LocalAssembler extends PairWalker {
     }
 
     @VisibleForTesting
-    static Collection<Traversal> createScaffolds( final List<Traversal> allTraversals,
-                                                  final int tooManyScaffolds,
-                                                  final int minSVSize ) {
+    static List<Traversal> createScaffolds( final List<Traversal> allTraversals,
+                                            final int tooManyScaffolds,
+                                            final int minSVSize ) {
         removeTriviallyDifferentTraversals(allTraversals, minSVSize);
 
         final int nTraversals = allTraversals.size();
@@ -1016,10 +985,10 @@ public class LocalAssembler extends PairWalker {
         final List<Traversal> downExtensions = new ArrayList<>();
         final Set<Contig> startingContigSet = new HashSet<>();
         walkTraversals(traversal, touched, startingContigSet, traversalsByFirstContig,
-                        allTraversals, downExtensions);
+                allTraversals, downExtensions);
         final List<Traversal> upExtensions = new ArrayList<>();
         walkTraversals(traversal.rc(), touched, startingContigSet, traversalsByFirstContig,
-                        allTraversals, upExtensions);
+                allTraversals, upExtensions);
         for ( final Traversal down : downExtensions ) {
             for ( final Traversal up : upExtensions ) {
                 if ( scaffolds.size() >= tooManyScaffolds ) {
@@ -1057,14 +1026,13 @@ public class LocalAssembler extends PairWalker {
                 touched[rcIdx] = true;
             }
             walkTraversals(Traversal.combine(traversal, extension), touched, startingContigSet,
-                            traversalsByFirstContig, allTraversals, extensions );
+                    traversalsByFirstContig, allTraversals, extensions );
         }
         startingContigSet.remove(firstContig);
     }
 
-    private static void removeTriviallyDifferentTraversals(
-                                            final Collection<Traversal> allTraversals,
-                                            final int minSVSize ) {
+    private static void removeTriviallyDifferentTraversals( final Collection<Traversal> allTraversals,
+                                                            final int minSVSize ) {
         if ( allTraversals.isEmpty() ) {
             return;
         }
@@ -1171,7 +1139,7 @@ public class LocalAssembler extends PairWalker {
             }
             // among those starting and ending at the same place, sort least observed last
             cmp = -Integer.compare(traversal1.getMinMaxObservations(),
-                                    traversal2.getMinMaxObservations());
+                    traversal2.getMinMaxObservations());
             if ( cmp != 0 ) {
                 return cmp;
             }
@@ -1183,32 +1151,6 @@ public class LocalAssembler extends PairWalker {
                 }
             }
             return Integer.compare(last1, last2);
-        }
-    }
-
-    private static void writeGFA( final GATKPath gfaFile,
-                                  final Collection<ContigImpl> contigs,
-                                  final Collection<Traversal> traversals ) {
-        for ( final ContigImpl contig : contigs ) {
-            contig.setMarked(false);
-        }
-
-        try ( final BufferedWriter writer = createBufferedWriter(gfaFile) ) {
-            writer.write("H\tVN:Z:2.0");
-            writer.newLine();
-            for ( final Contig contig : contigs ) {
-                if ( !contig.isMarked() ) {
-                    writeContig(contig, writer);
-                }
-            }
-            for ( final Traversal traversal : traversals ) {
-                writer.write(traversal.getContigs().stream()
-                        .map(Contig::toRef)
-                        .collect(Collectors.joining(" ", "O\t*\t", "")));
-                writer.newLine();
-            }
-        } catch ( final IOException ioe ) {
-            throw new UserException("Failed to write gfa-file " + gfaFile, ioe);
         }
     }
 
@@ -1244,30 +1186,6 @@ public class LocalAssembler extends PairWalker {
                 (contigLength - Kmer.KSIZE + 1) + "\t" + contigLength + "$\t0\t" +
                 (Kmer.KSIZE - 1) + "\t" + (Kmer.KSIZE - 1) + "M");
         writer.newLine();
-    }
-
-    private static void writeTraversals( final GATKPath fastaFile,
-                                         final String assemblyName,
-                                         final Collection<Traversal> traversals ) {
-        try ( final BufferedWriter writer = createBufferedWriter(fastaFile) ) {
-            int traversalNo = 0;
-            for ( final Traversal traversal : traversals ) {
-                writer.write(">");
-                if ( assemblyName != null ) {
-                    writer.write(assemblyName);
-                    writer.write("_");
-                }
-                writer.write("t");
-                writer.write(Integer.toString(++traversalNo));
-                writer.write(" ");
-                writer.write(traversal.toString());
-                writer.newLine();
-                writer.write(traversal.getSequence());
-                writer.newLine();
-            }
-        } catch ( final IOException ioe ) {
-            throw new UserException("Failed to write fasta-file " + fastaFile, ioe);
-        }
     }
 
     private static BufferedWriter createBufferedWriter( final GATKPath path ) throws IOException {
@@ -1377,16 +1295,17 @@ public class LocalAssembler extends PairWalker {
          * Skip kmers that include a call with a quality < qMin.
          * Skip kmers with non-ACGT calls.
          */
-        public static void kmerize( final byte[] calls,
-                                    final byte[] quals,
+        public static void kmerize( final ByteSequence calls,
+                                    final ByteSequence quals,
                                     final byte qMin,
                                     final KmerSet<KmerAdjacency> kmerAdjacencySet ) {
             int currentCount = 0; // number of calls loaded into currentKVal
             long currentKVal = 0;
             KmerAdjacency prevAdjacency = null;
             KmerAdjacency currentAdjacency = null;
-            for ( int idx = 0; idx < calls.length; ++idx ) {
-                if ( quals[idx] < qMin ) { // if we encounter a low-quality call
+            final int length = calls.length();
+            for ( int idx = 0; idx < length; ++idx ) {
+                if ( quals != null && quals.byteAt(idx) < qMin ) { // if we encounter a low-quality call
                     // take care of the most recent valid KmerAdjacency, if any
                     if ( currentAdjacency != null ) {
                         currentAdjacency.observe(prevAdjacency, null);
@@ -1397,7 +1316,7 @@ public class LocalAssembler extends PairWalker {
                     continue;
                 }
                 currentKVal <<= 2;
-                switch ( calls[idx] ) {
+                switch ( calls.byteAt(idx) ) {
                     case 'A': case 'a': break;
                     case 'C': case 'c': currentKVal += 1; break;
                     case 'G': case 'g': currentKVal += 2; break;
@@ -2056,8 +1975,6 @@ public class LocalAssembler extends PairWalker {
         boolean isGap();
         int getLength(); // length in kmers
         PathPart rc();
-        default boolean startsAtBeginning() { return getStart() == 0; }
-        default boolean stopsAtEnd() { return getStop() + Kmer.KSIZE - 1 == getContig().size(); }
     }
 
     /** A part of a path that isn't present in the graph. */
@@ -2103,6 +2020,8 @@ public class LocalAssembler extends PairWalker {
             final int revBase = contig.size() - Kmer.KSIZE + 1;
             return new PathPartContig(contig.rc(), revBase - stop, revBase - start);
         }
+        public boolean startsAtContigBeginning() { return start == 0; }
+        public boolean stopsAtContigEnd() { return stop + Kmer.KSIZE - 1 == contig.size(); }
     }
 
     /** A helper class for Path building.
@@ -2120,14 +2039,15 @@ public class LocalAssembler extends PairWalker {
             this.parts = new ArrayList<>();
         }
 
-        public List<PathPart> processCalls( final byte[] calls ) {
+        public List<PathPart> processCalls( final ByteSequence calls ) {
             parts.clear();
             kVal = 0;
             count = 0;
             currentPathPart = null;
 
-            for ( int idx = 0; idx != calls.length; ++idx ) {
-                processCall( (char)calls[idx] );
+            final int length = calls.length();
+            for ( int idx = 0; idx != length; ++idx ) {
+                processCall( (char)calls.byteAt(idx) );
             }
             return new ArrayList<>(parts);
         }
@@ -2210,7 +2130,7 @@ public class LocalAssembler extends PairWalker {
                         }
                     }
                 }
-            } else if ( !currentPathPart.stopsAtEnd() || contigOffset != 0 ||
+            } else if ( !((PathPartContig)currentPathPart).stopsAtContigEnd() || contigOffset != 0 ||
                     !currentPathPart.getContig().isSuccessor(contig) ) {
                 // not an end-to-end join across connected contigs -- record a zero-length gap
                 parts.add(zeroLengthGap(currentPathPart));
@@ -2264,7 +2184,7 @@ public class LocalAssembler extends PairWalker {
     public static final class Path {
         private final List<PathPart> parts;
 
-        public Path( final byte[] calls, final PathBuilder pathBuilder ) {
+        public Path( final ByteSequence calls, final PathBuilder pathBuilder ) {
             parts = pathBuilder.processCalls(calls);
         }
 
@@ -2297,7 +2217,7 @@ public class LocalAssembler extends PairWalker {
                     sb.append(contig);
                     final int maxStop = contig.size() - Kmer.KSIZE + 1;
                     if ( (pp != firstPart && pp.getStart() != 0) ||
-                         (pp != lastPart && pp.getStop() != maxStop) ) {
+                            (pp != lastPart && pp.getStop() != maxStop) ) {
                         sb.append('(').append(pp.getStart()).append('-')
                                 .append(pp.getStop()).append('/').append(maxStop).append(')');
                     }
@@ -2401,11 +2321,12 @@ public class LocalAssembler extends PairWalker {
         private Traversal( final Traversal traversal ) {
             final List<Contig> thoseContigs = traversal.contigs;
             this.contigs = thoseContigs instanceof ContigListRC ?
-                            ((ContigListRC)thoseContigs).rc() : new ContigListRC(thoseContigs);
+                    ((ContigListRC)thoseContigs).rc() : new ContigListRC(thoseContigs);
             this.minMaxObservations = traversal.minMaxObservations;
             this.hashCode = 0;
         }
 
+        public int getNContigs() { return contigs.size(); }
         public List<Contig> getContigs() { return Collections.unmodifiableList(contigs); }
         public Contig getFirstContig() { return contigs.get(0); }
         public Contig getLastContig() { return contigs.get(contigs.size() - 1); }

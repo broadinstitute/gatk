@@ -2,8 +2,8 @@ package org.broadinstitute.hellbender.tools.walkers;
 
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
-import htsjdk.samtools.SAMUtils;
 import htsjdk.variant.variantcontext.VariantContext;
+import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -12,6 +12,8 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.UnalignedRead;
+import org.broadinstitute.hellbender.utils.read.UnalignedRead.ByteSequence;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
 import java.io.*;
@@ -35,6 +37,9 @@ public final class ErrorCorrectHiFi extends VariantWalker {
 "    minimap2 -axmap-hifi %s reads.fq | samtools sort -OBAM - > align.bam &&\n" +
 "    samtools index align.bam &&\n" +
 "    igv -g hg38 -n corrected,%s -l %s align.bam %s\n";
+
+    @Argument(fullName = "mmi-index", shortName = "M", doc = "A minimap2 reference index")
+    public File mmiIndex;
 
     final File tmpDir = IOUtils.createTempDir("echf");
     final File outputFASTQ = new File(tmpDir, "reads.fq");
@@ -91,25 +96,25 @@ public final class ErrorCorrectHiFi extends VariantWalker {
             windowEndPos = Math.max(windowEndPos, read.getEnd());
         }
 
-        final List<CallIterator> callIteratorList = new ArrayList<>(reads.size());
-        for ( final GATKRead read : reads ) {
-            callIteratorList.add(new CallIterator(read, windowStartPos));
-        }
-
-        errorCorrectWindow(callIteratorList, windowStartPos, windowEndPos);
+        final List<CallIterator> callIteratorList =
+                errorCorrectWindow(reads, windowStartPos, windowEndPos);
 
         try ( final BufferedWriter writer = new BufferedWriter(new FileWriter(outputFASTQ)) ) {
             for ( final CallIterator callIterator : callIteratorList ) {
-                callIterator.writeFASTQ(writer);
+                callIterator.getUnalignedRead().writeFASTQ(writer);
             }
         } catch ( final IOException ioe ) {
             throw new GATKException("Can't write output to " + outputFASTQ, ioe);
         }
     }
 
-    public static void errorCorrectWindow( final List<CallIterator> callIteratorList,
-                                           final int windowStartPos,
-                                           final int windowEndPos ) {
+    public static List<CallIterator> errorCorrectWindow( final List<GATKRead> reads,
+                                                         final int windowStartPos,
+                                                         final int windowEndPos ) {
+        final List<CallIterator> callIteratorList = new ArrayList<>(reads.size());
+        for ( final GATKRead read : reads ) {
+            callIteratorList.add(new CallIterator(read, windowStartPos));
+        }
         for ( int refPos = windowStartPos; refPos <= windowEndPos && !callIteratorList.isEmpty(); ++refPos ) {
             final Iterator<CallIterator> callIteratorIterator = callIteratorList.iterator();
             Call singletonIndel = null;
@@ -158,12 +163,13 @@ public final class ErrorCorrectHiFi extends VariantWalker {
                 singletonIndelIterator.fixup(singletonIndel, alignedValue);
             }
         }
+        return callIteratorList;
     }
 
     private void writeScript( final String seqName, final SimpleInterval interval ) {
         final String resolvedScript =
                 String.format(SCRIPT_TEXT,
-                        "/home/tsharpe/data/longReads/chr21.mmi",
+                        mmiIndex.getAbsolutePath(),
                         seqName,
                         interval,
                         readArguments.getReadPaths().get(0).toAbsolutePath());
@@ -184,80 +190,6 @@ public final class ErrorCorrectHiFi extends VariantWalker {
         } catch ( final IOException | InterruptedException ex ) {
             throw new UserException("Script that runs minimap2 and igv failed.", ex);
         }
-    }
-
-    /**
-     * Immutable sequence of bytes (assuming you don't change the array directly).
-     * Subsequences reference the parent array.
-     */
-    public static final class ByteSequence {
-        public static final ByteSequence EMPTY = new ByteSequence(new byte[0]);
-        final byte[] bytes;
-        final int start;
-        final int length;
-
-        public ByteSequence( final byte[] bytes ) {
-            this.bytes = bytes;
-            this.start = 0;
-            this.length = bytes.length;
-        }
-
-        private ByteSequence( final ByteSequence bSeq, final int start, final int length ) {
-            if ( start < 0 || start > bSeq.length || length < 0 || start + length > bSeq.length ) {
-                throw new IndexOutOfBoundsException();
-            }
-            this.bytes = bSeq.bytes;
-            this.start = bSeq.start + start;
-            this.length = length;
-        }
-
-        public int getStart() { return start; }
-        public int length() { return length; }
-
-        public byte byteAt( final int idx ) {
-            if ( idx < 0 || idx >= length ) {
-                throw new IndexOutOfBoundsException();
-            }
-            return bytes[start + idx];
-        }
-
-        public ByteSequence subSequence( final int start ) {
-            return new ByteSequence(this, start, length() - start);
-        }
-
-        /** Note: args are start+length, not start+end */
-        public ByteSequence subSequence( final int start, final int len ) {
-            return new ByteSequence( this, start, len);
-        }
-
-        @Override
-        public boolean equals( final Object obj ) {
-            if ( !(obj instanceof ByteSequence) ) {
-                return false;
-            }
-            final ByteSequence that = (ByteSequence)obj;
-            if ( this.length != that.length ) {
-                return false;
-            }
-            for ( int idx = 0; idx != length; ++idx ) {
-                if ( this.byteAt(idx) != that.byteAt(idx) ) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        @Override
-        public int hashCode() {
-            int hash = 83;
-            for ( int idx = 0; idx != length; ++idx ) {
-                hash = (47 * hash) + bytes[idx];
-            }
-            return 41 * hash;
-        }
-
-        @Override
-        public String toString() { return new String(bytes, start, length); }
     }
 
     /**
@@ -315,6 +247,7 @@ public final class ErrorCorrectHiFi extends VariantWalker {
         private int cigarElementsIndex;
         private int cigarElementIndex;
         private int readIndex;
+        private int fixupLengthDelta;
 
         public CallIterator( final GATKRead read, final int initialRefPos ) {
             readName = read.getName();
@@ -326,12 +259,10 @@ public final class ErrorCorrectHiFi extends VariantWalker {
             cigarElementsIndex = 0;
             cigarElementIndex = 0;
             readIndex = 0;
+            fixupLengthDelta = 0;
             advance(elements, read.getStart(), initialRefPos);
             initialReadIndex = readIndex;
         }
-
-        public ByteSequence getCalls() { return calls; }
-        public ByteSequence getQuals() { return quals; }
 
         public boolean hasNext() {
             return cigarElementsIndex < cigarElements.size();
@@ -372,83 +303,46 @@ public final class ErrorCorrectHiFi extends VariantWalker {
             return call;
         }
 
+        public UnalignedRead getUnalignedRead() {
+            final int newLength = readIndex - initialReadIndex + fixupLengthDelta;
+            final byte[] callBytes = new byte[newLength];
+            final byte[] qualBytes = new byte[newLength];
+            final Iterator<Fixup> fixupIterator = fixups.iterator();
+            Fixup curFixup = fixupIterator.hasNext() ? fixupIterator.next() : null;
+            int destIdx = 0;
+            for ( int idx = initialReadIndex; idx != readIndex; ++idx ) {
+                if ( curFixup != null && curFixup.getReadIndex() == idx ) {
+                    if ( curFixup.getValue() != 0 ) {
+                        callBytes[destIdx] = calls.byteAt(idx);
+                        qualBytes[destIdx] = quals.byteAt(idx);
+                        destIdx += 1;
+                        callBytes[destIdx] = curFixup.getValue();
+                        qualBytes[destIdx] = 0;
+                        destIdx += 1;
+                    }
+                    curFixup = fixupIterator.hasNext() ? fixupIterator.next() : null;
+                } else {
+                    callBytes[destIdx] = calls.byteAt(idx);
+                    qualBytes[destIdx] = quals.byteAt(idx);
+                    destIdx += 1;
+                }
+            }
+            if ( destIdx != callBytes.length ) {
+                throw new GATKException("failed call fixup");
+            }
+            return new UnalignedRead(readName, new ByteSequence(callBytes), new ByteSequence(qualBytes));
+        }
+
         public void fixup( final Call call, final ByteSequence alignedValue ) {
             final ByteSequence calls = call.getCalls();
             if ( calls.length() == 0 ) {  // i.e., we're fixing a single-base deletion
                 fixups.add(new Fixup(calls.getStart(), alignedValue.byteAt(0)));
+                fixupLengthDelta += 1;
             } else if ( calls.length() == 2 ) { // i.e., we're fixing a single-base insertion
                 fixups.add(new Fixup(calls.getStart()+1, (byte)0));
+                fixupLengthDelta -= 1;
             } else {
                 throw new GATKException("unexpected fixup length");
-            }
-        }
-
-        public void writeFASTQ( final BufferedWriter writer ) throws IOException {
-            if ( initialReadIndex == readIndex ) {
-                return;
-            }
-            writer.write("@");
-            writer.write(readName);
-            writer.newLine();
-            int lineLength = 0;
-            Iterator<Fixup> fixupIterator = fixups.iterator();
-            Fixup curFixup = fixupIterator.hasNext() ? fixupIterator.next() : null;
-            for ( int idx = initialReadIndex; idx != readIndex; ++idx ) {
-                if ( curFixup != null && curFixup.getReadIndex() == idx ) {
-                    if ( curFixup.getValue() != 0 ) {
-                        writer.write(calls.byteAt(idx));
-                        if ( ++lineLength == 80 ) {
-                            writer.newLine();
-                            lineLength = 0;
-                        }
-                        writer.write(curFixup.getValue());
-                        if ( ++lineLength == 80 ) {
-                            writer.newLine();
-                            lineLength = 0;
-                        }
-                    }
-                    curFixup = fixupIterator.hasNext() ? fixupIterator.next() : null;
-                } else {
-                    writer.write(calls.byteAt(idx));
-                    if ( ++lineLength == 80 ) {
-                        writer.newLine();
-                        lineLength = 0;
-                    }
-                }
-            }
-            if ( lineLength > 0 ) {
-                writer.newLine();
-                lineLength = 0;
-            }
-            writer.write("+");
-            writer.newLine();
-            fixupIterator = fixups.iterator();
-            curFixup = fixupIterator.hasNext() ? fixupIterator.next() : null;
-            for ( int idx = initialReadIndex; idx != readIndex; ++idx ) {
-                if ( curFixup != null && curFixup.getReadIndex() == idx ) {
-                    if ( curFixup.getValue() != 0 ) {
-                        writer.write(SAMUtils.phredToFastq(quals.byteAt(idx)));
-                        if ( ++lineLength == 80 ) {
-                            writer.newLine();
-                            lineLength = 0;
-                        }
-                        writer.write(SAMUtils.phredToFastq(0));
-                        if ( ++lineLength == 80 ) {
-                            writer.newLine();
-                            lineLength = 0;
-                        }
-                    }
-                    curFixup = fixupIterator.hasNext() ? fixupIterator.next() : null;
-                } else {
-                    writer.write(SAMUtils.phredToFastq(quals.byteAt(idx)));
-                    if ( ++lineLength == 80 ) {
-                        writer.newLine();
-                        lineLength = 0;
-                    }
-                }
-            }
-            if ( lineLength > 0 ) {
-                writer.newLine();
             }
         }
 
