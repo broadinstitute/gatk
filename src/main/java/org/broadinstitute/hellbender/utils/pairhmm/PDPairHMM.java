@@ -330,7 +330,7 @@ public abstract class PDPairHMM implements Closeable{
     public void setAndInitializeDebugOutputStream(final OutputStreamWriter writer) {
         try {
             debugOutputStream = writer;
-            debugOutputStream.write("# hap-bases read-bases read-qual read-ins-qual read-del-qual gcp expected-result");
+            debugOutputStream.write("# hap-bases\thap-pd-bases\tread-bases\tread-qual\tread-ins-qual\tread-del-qual\tgcp\texpected-result");
         } catch (IOException e) {
             throw new GATKException("Error writing to specified HMM results output stream", e);
         }
@@ -343,7 +343,7 @@ public abstract class PDPairHMM implements Closeable{
 
         if (debugOutputStream!= null) {
             try {
-                debugOutputStream.write("\n" + new String(alleleBases) + " " + Arrays.toString(allelePDBases) + " " + new String(readBases) + " " + SAMUtils.phredToFastq(readQuals) + " " + SAMUtils.phredToFastq(readInsQuals) + " " + SAMUtils.phredToFastq(readDelQuals) + " " + SAMUtils.phredToFastq(overallGCP) + " " + String.format("%e",lk));
+                debugOutputStream.write("\n" + new String(alleleBases) + "\t" + Arrays.toString(allelePDBases) + "\t" + new String(readBases) + "\t" + SAMUtils.phredToFastq(readQuals) + "\t" + SAMUtils.phredToFastq(readInsQuals) + "\t" + SAMUtils.phredToFastq(readDelQuals) + "\t" + SAMUtils.phredToFastq(overallGCP) + "\t" + String.format("%e",lk));
             } catch (IOException e) {
                 throw new GATKException("Error writing to specified HMM results output stream", e);
             }
