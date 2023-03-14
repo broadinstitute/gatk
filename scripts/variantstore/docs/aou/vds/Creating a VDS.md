@@ -17,6 +17,7 @@ pip install --force-reinstall  hail==0.2.109
 python3
 
 >>> import hail as hl
+>>> hl.init(tmp_dir='gs://fc-secure-fb908548-fe3c-41d6-adaf-7ac20d541375/temp/')
 >>> vds = hl.vds.read_vds('gs://fc-secure-fb908548-fe3c-41d6-adaf-7ac20d541375/vds/01-04-2023-correct-GT/aou_srwgs_short_variants_v7_without_ext_aian_prod.vds')
 ```
 
@@ -39,7 +40,7 @@ python3
 
 ## Validate it to ensure that it is ready to be shared
 
-Copy the [VDS Validation python script](vds_validation.py) to the notebook environment
+Copy the [VDS Validation python script](vds_validation.py) to the notebook environment.
 Run it with the following arguments:
 
 `--vds-path`: the GCS path to the newly-created VDS
