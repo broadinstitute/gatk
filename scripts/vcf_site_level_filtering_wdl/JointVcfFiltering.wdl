@@ -159,8 +159,12 @@ task ExtractVariantAnnotations {
 	}
 	Int disk_size = ceil(size(input_vcf, "GB") + size(input_vcf_index, "GB") + 100)
 
+	File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
 	command {
 		set -e
+
+		bash ~{monitoring_script} > monitoring.log &
 
 		export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
@@ -179,6 +183,7 @@ task ExtractVariantAnnotations {
 		File extracted_training_vcf = "~{basename}.~{mode}.vcf.gz"
 		File extracted_training_vcf_index = "~{basename}.~{mode}.vcf.gz.tbi"
 		Array[File] outputs = glob("~{basename}.~{mode}.*")
+		File monitoring_log = "monitoring.log"
 	}
 	runtime {
 		docker: gatk_docker
@@ -203,8 +208,12 @@ task TrainVariantAnnotationModel {
 	}
 	Int disk_size = ceil(size(annots, "GB") + 100)
 
+	File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
 	command <<<
 		set -e
+
+		bash ~{monitoring_script} > monitoring.log &
 
 		export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
@@ -222,6 +231,7 @@ task TrainVariantAnnotationModel {
 	>>>
 	output {
 		Array[File] outputs = glob("~{basename}.~{mode}.*")
+		File monitoring_log = "monitoring.log"
 	}
 	runtime {
 		docker: gatk_docker
@@ -253,9 +263,13 @@ task ScoreVariantAnnotations {
 	}
 	Int disk_size = ceil(size(vcf, "GB") * 2 + 50)
 
+	File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
 	command {
 		zgrep -v '#' ~{vcf} > empty.txt
 		set -e
+
+		bash ~{monitoring_script} > monitoring.log &
 
 		if [ -s empty.txt ]; then
 			ln -s ~{sep=" . && ln -s " model_files} .
@@ -287,6 +301,7 @@ task ScoreVariantAnnotations {
 		File? annots = "~{basename}.~{mode}.annot.hdf5"
 		File output_vcf = "~{basename}.~{mode}.vcf.gz"
 		File output_vcf_index = "~{basename}.~{mode}.vcf.gz.tbi"
+		File monitoring_log = "monitoring.log"
 	}
 	runtime {
 		docker: gatk_docker
