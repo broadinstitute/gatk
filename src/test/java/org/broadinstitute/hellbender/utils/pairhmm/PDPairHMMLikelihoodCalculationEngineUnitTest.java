@@ -18,7 +18,7 @@ import java.util.Arrays;
 public class PDPairHMMLikelihoodCalculationEngineUnitTest extends GATKBaseTest  {
 
     static final String DRAGEN_GATK_TEST_ASSERT_FILE = toolsTestDir + "haplotypecaller/expected.PDHMM.hmmresults.txt";
-    static final double DOUBLE_ASSERTION_DELTA = 0.001;
+    static final double DOUBLE_ASSERTION_DELTA = 0.0001;
 
     @DataProvider(name="PDPairHMMResultsModes")
     public Object[][] PairHMMResultsModes() {
@@ -36,6 +36,7 @@ public class PDPairHMMLikelihoodCalculationEngineUnitTest extends GATKBaseTest  
              final BufferedLineReader br = new BufferedLineReader(fis)) {
 
             br.lines().skip(1).forEach(line -> {
+
                 final String[] split = line.split("\t");
                 //debugOutputStream.write("\n" + new String(alleleBases) + "\t" + Arrays.toString(allelePDBases) + "\t" + new String(readBases) + "\t" + SAMUtils.phredToFastq(readQuals) + "\t" + SAMUtils.phredToFastq(readInsQuals) + "\t" + SAMUtils.phredToFastq(readDelQuals) + "\t" + SAMUtils.phredToFastq(overallGCP) + "\t" + String.format("%e",lk));
                 byte[] alleleBases = split[0].getBytes(StandardCharsets.UTF_8);
