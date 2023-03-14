@@ -1,3 +1,5 @@
+import $ivy.`ch.qos.logback:logback-core:1.4.5`
+import $ivy.`ch.qos.logback:logback-classic:1.4.5`
 import $ivy.`com.azure:azure-cosmos:4.41.0`
 import $ivy.`com.lihaoyi:ammonite-ops_2.13:2.4.1`
 import $ivy.`org.apache.avro:avro:1.11.1`
@@ -77,12 +79,12 @@ def loadAvros(container: CosmosAsyncContainer, avroPaths: Iterable[Path], numRec
   // There can occasionally be 409 race conditions on `id` if using a regular `Long` so go atomic!
   val id = AtomicLong(0L)
 
-  // On a Standard E4-2ads v5 Azure VM this Avro processing easily saturates the default 400 / 4000 RU/s maximum
+  // On a Standard E4-2ads v5 Azure VM this Avro processing easily saturates the default 400 - 4000 RU/s maximum
   // throughput that Cosmos DB containers have when created through the Azure Portal. For 100K items, all the items
   // print out in the progress printlns, but then the script sits there waiting for the documents to be written to
   // Cosmos. This behavior was something of a surprise given the "reactor" structure; I would have expected backpressure
   // to limit the number of documents that were created if they couldn't actually be written to Cosmos. Is Cosmos
-  // silently buffering documents up the RU/s limit?
+  // silently buffering documents up to the RU/s limit?
   //
   // To see RU consumption:
   //
@@ -99,8 +101,11 @@ def loadAvros(container: CosmosAsyncContainer, avroPaths: Iterable[Path], numRec
   // https://github.com/Azure/azure-sdk-for-java/blob/80b12e48aeb6ad2f49e86643dfd7223bde7a9a0c/sdk/cosmos/azure-cosmos/src/main/java/com/azure/cosmos/implementation/JsonSerializable.java#L255
   //
   // Making a Jackson `ObjectNode` (subtype of `JsonNode`) from a `GenericRecord#toString` JSON String seems like the
-  // least bad option for Cosmos serialization (`JsonSerializable` looks like a Jackson thing but is actually an
-  // internal Cosmos thing).
+  // least bad option for Cosmos serialization (`JsonSerializable` looks like a Jackson type but is actually an
+  // internal Cosmos type). This approach still necessitates an unsavory amount of bit shuffling from
+  // Avro => Stringified JSON => Jackson object => Stringified JSON, but it certainly beats using brittle, clunky POJOs.
+  // And despite all the shuffling this script generates Cosmos items far faster than we can actually push them to
+  // Cosmos with the default container bandwidth configuration.
   val objectMapper = new ObjectMapper()
 
   val itemOperations = Flux.fromIterable(avroPaths.asJava).
@@ -153,6 +158,15 @@ def executeItemOperationsWithErrorHandling(container: CosmosAsyncContainer, item
     }
 
   }).blockLast()
+}
+
+
+def configureLogging(): Unit = {
+  import org.slf4j.LoggerFactory
+  import ch.qos.logback.classic.Level
+
+  val root = LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME).asInstanceOf[ch.qos.logback.classic.Logger]
+  root.setLevel(Level.WARN)
 }
 
 
