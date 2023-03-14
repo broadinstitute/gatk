@@ -34,7 +34,7 @@ runs:
   steps:
     - name: Upload test results
       if: always()
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         # ternary expression syntax is workaround found here https://github.com/actions/runner/issues/409
         name: test-results-${{ inputs.is-docker == 'true' && 'docker-' ||  '' }}${{ matrix.Java }}-${{ matrix.testType }}
