@@ -3,6 +3,7 @@ import $ivy.`ch.qos.logback:logback-classic:1.4.5`
 import $ivy.`com.azure:azure-cosmos:4.41.0`
 import $ivy.`com.lihaoyi:ammonite-ops_2.13:2.4.1`
 import $ivy.`org.apache.avro:avro:1.11.1`
+import $ivy.`org.slf4j:slf4j-api:2.0.6`
 import $ivy.`org.xerial.snappy:snappy-java:1.1.8.4`
 
 
@@ -35,6 +36,7 @@ import scala.jdk.CollectionConverters._
 // Much of the code here is borrowed from / inspired by the sample application described in the link above.
 @main
 def main(database: String, container: String, avro_dir: String, num_records: Long=100000L, num_progress: Long=10000L): Unit = {
+  configureLogging()
   val (endpoint, key) = extractCosmosEndpointAndKey()
   val client = buildClient(endpoint, key)
   val cosmosContainer = client.getDatabase(database).getContainer(container)
