@@ -9,14 +9,15 @@ workflow GvsExtractAvroFilesForHail {
         String project_id
         String dataset_name
         String filter_set_name
+        String call_set_identifier
         Int scatter_width = 10
     }
 
     call Utils.ValidateFilterSetName {
         input:
-            data_project = project_id,
-            dataset_name = dataset_name,
-            filter_set_name = filter_set_name,
+            project_id = project_id,
+            fq_filter_set_info_table = "~{project_id}.~{dataset_name}.filter_set_info",
+            filter_set_name = filter_set_name
     }
 
     call OutputPath {
@@ -28,7 +29,8 @@ workflow GvsExtractAvroFilesForHail {
             project_id = project_id,
             dataset_name = dataset_name,
             filter_set_name = filter_set_name,
-            avro_sibling = OutputPath.out
+            avro_sibling = OutputPath.out,
+            call_set_identifier = call_set_identifier
     }
 
     call Utils.CountSuperpartitions {
@@ -43,6 +45,7 @@ workflow GvsExtractAvroFilesForHail {
                 project_id = project_id,
                 dataset_name = dataset_name,
                 filter_set_name = filter_set_name,
+                call_set_identifier = call_set_identifier,
                 avro_sibling = OutputPath.out,
                 num_superpartitions = CountSuperpartitions.num_superpartitions,
                 shard_index = i,
@@ -99,18 +102,18 @@ task ExtractFromNonSuperpartitionedTables {
         String dataset_name
         String filter_set_name
         String avro_sibling
+        String call_set_identifier
     }
     parameter_meta {
         avro_sibling: "Cloud path to a file that will be the sibling to the 'avro' 'directory' under which output Avro files will be written."
     }
     command <<<
         set -o errexit -o nounset -o xtrace -o pipefail
-        echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
         avro_prefix="$(dirname ~{avro_sibling})/avro"
         echo $avro_prefix > "avro_prefix.out"
 
-        bq query --nouse_legacy_sql --project_id=~{project_id} "
+        python3 /app/run_avro_query.py --sql "
             EXPORT DATA OPTIONS(
             uri='${avro_prefix}/sample_mapping/sample_mapping_*.avro', format='AVRO', compression='SNAPPY') AS
             SELECT sample_id, sample_name, '40',
@@ -119,33 +122,33 @@ task ExtractFromNonSuperpartitionedTables {
             WHERE withdrawn IS NULL AND
             is_control = false
             ORDER BY sample_id
-        "
+        " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name sample_info --project_id ~{project_id}
 
-        bq query --nouse_legacy_sql --project_id=~{project_id} "
+        python3 /app/run_avro_query.py --sql "
             EXPORT DATA OPTIONS(
             uri='${avro_prefix}/vqsr_filtering_data/vqsr_filtering_data_*.avro', format='AVRO', compression='SNAPPY') AS
             SELECT location, type as model, ref, alt, vqslod, yng_status
             FROM \`~{project_id}.~{dataset_name}.filter_set_info\`
             WHERE filter_set_name = '~{filter_set_name}'
             ORDER BY location
-        "
+        " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name filter_set_info --project_id ~{project_id}
 
-        bq query --nouse_legacy_sql --project_id=~{project_id} "
+        python3 /app/run_avro_query.py --sql "
             EXPORT DATA OPTIONS(
             uri='${avro_prefix}/site_filtering_data/site_filtering_data_*.avro', format='AVRO', compression='SNAPPY') AS
             SELECT location, filters
             FROM \`~{project_id}.~{dataset_name}.filter_set_sites\`
             WHERE filter_set_name = '~{filter_set_name}'
             ORDER BY location
-        "
+        " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name filter_set_sites --project_id ~{project_id}
 
-        bq query --nouse_legacy_sql --project_id=~{project_id} "
+        python3 /app/run_avro_query.py --sql "
             EXPORT DATA OPTIONS(
             uri='${avro_prefix}/vqsr_tranche_data/vqsr_tranche_data_*.avro', format='AVRO', compression='SNAPPY') AS
             SELECT model, truth_sensitivity, min_vqslod, filter_name
             FROM \`~{project_id}.~{dataset_name}.filter_set_tranches\`
             WHERE filter_set_name = '~{filter_set_name}'
-        "
+        " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name filter_set_tranches --project_id ~{project_id}
     >>>
 
     output {
@@ -154,7 +157,7 @@ task ExtractFromNonSuperpartitionedTables {
     }
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-03-07-alpine-v2"
         disks: "local-disk 500 HDD"
     }
 }
@@ -171,6 +174,7 @@ task ExtractFromSuperpartitionedTables {
         String dataset_name
         String filter_set_name
         String avro_sibling
+        String call_set_identifier
         Int num_superpartitions
         Int shard_index
         Int num_shards
@@ -184,8 +188,6 @@ task ExtractFromSuperpartitionedTables {
 
     command <<<
         set -o errexit -o nounset -o xtrace -o pipefail
-        echo "project_id = ~{project_id}" > ~/.bigqueryrc
-
         avro_prefix="$(dirname ~{avro_sibling})/avro"
 
         for superpartition in $(seq ~{shard_index + 1} ~{num_shards} ~{num_superpartitions})
@@ -194,7 +196,7 @@ task ExtractFromSuperpartitionedTables {
 
             # These bq exports error out if there are any objects at the sibling level to where output files would be written
             # so an extra layer of `vet_${str_table_index}` is inserted here.
-            bq query --nouse_legacy_sql --project_id=~{project_id} "
+            python3 /app/run_avro_query.py --sql "
                 EXPORT DATA OPTIONS(
                 uri='${avro_prefix}/vets/vet_${str_table_index}/vet_${str_table_index}_*.avro', format='AVRO', compression='SNAPPY') AS
                 SELECT location, v.sample_id, ref, REPLACE(alt,',<NON_REF>','') alt, call_GT as GT, call_AD as AD, call_GQ as GQ, cast(SPLIT(call_pl,',')[OFFSET(0)] as int64) as RGQ
@@ -203,9 +205,9 @@ task ExtractFromSuperpartitionedTables {
                 WHERE withdrawn IS NULL AND
                 is_control = false
                 ORDER BY location
-            "
+            " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name vet_${str_table_index} --project_id ~{project_id}
 
-            bq query --nouse_legacy_sql --project_id=~{project_id} "
+            python3 /app/run_avro_query.py --sql "
                 EXPORT DATA OPTIONS(
                 uri='${avro_prefix}/refs/ref_ranges_${str_table_index}/ref_ranges_${str_table_index}_*.avro', format='AVRO', compression='SNAPPY') AS
                 SELECT location, r.sample_id, length, state
@@ -214,7 +216,7 @@ task ExtractFromSuperpartitionedTables {
                 WHERE withdrawn IS NULL AND
                 is_control = false
                 ORDER BY location
-            "
+            " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name ref_ranges_${str_table_index} --project_id ~{project_id}
         done
     >>>
 
@@ -223,7 +225,7 @@ task ExtractFromSuperpartitionedTables {
     }
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-03-07-alpine-v2"
         disks: "local-disk 500 HDD"
     }
 }
@@ -291,7 +293,7 @@ task GenerateHailScripts {
         File hail_create_vat_inputs_script = 'hail_create_vat_inputs.py'
     }
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-01-23-alpine"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-03-07-alpine-v2"
         disks: "local-disk 500 HDD"
     }
 }

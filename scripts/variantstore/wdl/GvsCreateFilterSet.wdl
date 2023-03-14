@@ -56,16 +56,16 @@ workflow GvsCreateFilterSet {
   String fq_sample_table = "~{project_id}.~{dataset_name}.sample_info"
   String fq_alt_allele_table = "~{project_id}.~{dataset_name}.alt_allele"
   String fq_info_destination_table = "~{project_id}.~{dataset_name}.filter_set_info"
-  String fq_info_destination_table_vqsr_lite = "~{project_id}.~{dataset_name}.vqsr_lite_filter_set_info"
+  String fq_info_destination_table_vqsr_lite = "~{project_id}.~{dataset_name}.filter_set_info_vqsr_lite"
   String fq_tranches_destination_table = "~{project_id}.~{dataset_name}.filter_set_tranches"
   String fq_filter_sites_destination_table = "~{project_id}.~{dataset_name}.filter_set_sites"
 
-  String fq_info_destination_table_schema = "filter_set_name:string,type:string,location:integer,ref:string,alt:string,vqslod:float,culprit:string,training_label:string,yng_status:string"
-  String fq_info_destination_table_vqsr_lite_schema = "filter_set_name:string,type:string,location:integer,ref:string,alt:string,vqslod:float,culprit:string,training_label:string,yng_status:string,calibration_sensitivity:float"
+  String fq_info_destination_table_schema =           "filter_set_name:string,type:string,location:integer,ref:string,alt:string,vqslod:float,culprit:string,training_label:string,yng_status:string"
+  String fq_info_destination_table_vqsr_lite_schema = "filter_set_name:string,type:string,location:integer,ref:string,alt:string,calibration_sensitivity:float,score:float,training_label:string,yng_status:string"
 
   call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
     input:
-      query_project = project_id,
+      project_id = project_id,
       fq_table = fq_sample_table
   }
 
@@ -93,7 +93,7 @@ workflow GvsCreateFilterSet {
 
   call Utils.GetBQTableLastModifiedDatetime as AltAlleleTableDatetimeCheck {
     input:
-      query_project = project_id,
+      project_id = project_id,
       fq_table = fq_alt_allele_table
   }
 
@@ -111,7 +111,7 @@ workflow GvsCreateFilterSet {
         alt_allele_table_timestamp = AltAlleleTableDatetimeCheck.last_modified_timestamp,
         excess_alleles_threshold   = 1000000,
         output_file                = "${filter_set_name}_${i}.vcf.gz",
-        query_project              = project_id,
+        project_id                 = project_id,
         dataset_id                 = dataset_name,
         call_set_identifier        = call_set_identifier
     }
@@ -158,17 +158,40 @@ workflow GvsCreateFilterSet {
         preemptible_tries = 3,
     }
 
+    # These calls to SelectVariants are being added for two reasons
+    # 1) The snps_variant_scored_vcf and indels_variant_scored_vcf output by JointVcfFiltering contains ALL variants,
+    #     but are currently ONLY annotating SNPs and INDELs respectively.
+    # 2) Those output VCFs also contain filtered sites (sites at which the FILTER field set to anything other than '.' or 'PASS')
+    #     which we don't want to put into the filter_set_info_vqsr_lite table.
+    call Utils.SelectVariants as CreateFilteredScoredSNPsVCF {
+      input:
+        input_vcf = MergeSNPScoredVCFs.output_vcf,
+        input_vcf_index = MergeSNPScoredVCFs.output_vcf_index,
+        type_to_include = "SNP",
+        exclude_filtered = true,
+        output_basename = "${filter_set_name}.filtered.scored.snps"
+    }
+
+    call Utils.SelectVariants as CreateFilteredScoredINDELsVCF {
+      input:
+        input_vcf = MergeINDELScoredVCFs.output_vcf,
+        input_vcf_index = MergeINDELScoredVCFs.output_vcf_index,
+        type_to_include = "INDEL",
+        exclude_filtered = true,
+        output_basename = "${filter_set_name}.filtered.scored.indels"
+    }
+
     call PopulateFilterSetInfo {
       input:
         gatk_override = gatk_override,
         filter_set_name = filter_set_name,
-        snp_recal_file = MergeSNPScoredVCFs.output_vcf,
-        snp_recal_file_index = MergeSNPScoredVCFs.output_vcf_index,
-        indel_recal_file = MergeINDELScoredVCFs.output_vcf,
-        indel_recal_file_index = MergeINDELScoredVCFs.output_vcf_index,
+        snp_recal_file = CreateFilteredScoredSNPsVCF.output_vcf,
+        snp_recal_file_index = CreateFilteredScoredSNPsVCF.output_vcf_index,
+        indel_recal_file = CreateFilteredScoredINDELsVCF.output_vcf,
+        indel_recal_file_index = CreateFilteredScoredINDELsVCF.output_vcf_index,
         fq_info_destination_table = fq_info_destination_table_vqsr_lite,
         filter_schema = fq_info_destination_table_vqsr_lite_schema,
-        query_project = project_id,
+        project_id = project_id,
         useClassic = false
     }
 
@@ -179,7 +202,7 @@ workflow GvsCreateFilterSet {
         sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
         sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
         fq_filter_sites_destination_table = fq_filter_sites_destination_table,
-        query_project = project_id
+        project_id = project_id
     }
   }
 
@@ -299,7 +322,7 @@ workflow GvsCreateFilterSet {
       }
     }
 
-    call PopulateFilterSetInfo as PopulateFilterSetInfoCLassic {
+    call PopulateFilterSetInfo as PopulateFilterSetInfoClassic {
       input:
         gatk_override = gatk_override,
         filter_set_name = filter_set_name,
@@ -309,7 +332,7 @@ workflow GvsCreateFilterSet {
         indel_recal_file_index = IndelsVariantRecalibrator.recalibration_index,
         fq_info_destination_table = fq_info_destination_table,
         filter_schema = fq_info_destination_table_schema,
-        query_project = project_id,
+        project_id = project_id,
         useClassic = true
     }
 
@@ -320,7 +343,7 @@ workflow GvsCreateFilterSet {
         sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
         sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
         fq_filter_sites_destination_table = fq_filter_sites_destination_table,
-        query_project = project_id
+        project_id = project_id
     }
 
     call PopulateFilterSetTranches as PopulateFilterSetTranchesClassic {
@@ -330,7 +353,7 @@ workflow GvsCreateFilterSet {
         snp_recal_tranches = select_first([SNPGatherTranches.tranches_file, SNPsVariantRecalibratorClassic.tranches]),
         indel_recal_tranches = IndelsVariantRecalibrator.tranches,
         fq_tranches_destination_table = fq_tranches_destination_table,
-        query_project = project_id
+        project_id = project_id
     }
   }
 
@@ -346,7 +369,7 @@ workflow GvsCreateFilterSet {
 
 task ExtractFilterTask {
   input {
-    String query_project
+    String project_id
     String dataset_id
     String call_set_identifier
 
@@ -393,7 +416,7 @@ task ExtractFilterTask {
       ~{"--excess-alleles-threshold " + excess_alleles_threshold} \
       -L ~{intervals} \
       --dataset-id ~{dataset_id} \
-      --project-id ~{query_project} \
+      --project-id ~{project_id} \
       --cost-observability-tablename ~{cost_observability_tablename} \
       --call-set-identifier ~{call_set_identifier} \
       --wdl-step GvsCreateFilterSet \
@@ -402,7 +425,7 @@ task ExtractFilterTask {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2022_10_17_2a8c210ac35094997603259fa1cd784486b92e42"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_03_01_b01183576153cf000e17dea32144d332cb7b79a9"
     memory: "7 GB"
     disks: "local-disk 10 HDD"
     bootDiskSizeGb: 15
@@ -429,14 +452,15 @@ task PopulateFilterSetInfo {
     File indel_recal_file
     File indel_recal_file_index
 
-    String query_project
+    String project_id
 
-    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     File? gatk_override
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
+
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   command <<<
     set -eo pipefail
@@ -445,7 +469,7 @@ task PopulateFilterSetInfo {
 
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
-    echo "Creating SNPs reacalibration file"
+    echo "Creating SNPs recalibration file"
     gatk --java-options "-Xmx1g" \
       CreateFilteringFiles \
       --ref-version 38 \
@@ -455,7 +479,7 @@ task PopulateFilterSetInfo {
       -V ~{snp_recal_file} \
       -O ~{filter_set_name}.snps.recal.tsv
 
-    echo "Creating INDELs reacalibration file"
+    echo "Creating INDELs racalibration file"
     gatk --java-options "-Xmx1g" \
       CreateFilteringFiles \
       --ref-version 38 \
@@ -473,7 +497,7 @@ task PopulateFilterSetInfo {
     bq_table=$(echo ~{fq_info_destination_table} | sed s/\\./:/)
 
     echo "Loading combined TSV into ~{fq_info_destination_table}"
-    bq load --project_id=~{query_project} --skip_leading_rows 0 -F "tab" \
+    bq load --project_id=~{project_id} --skip_leading_rows 0 -F "tab" \
       --range_partitioning=location,0,26000000000000,6500000000 \
       --clustering_fields=location \
       --schema "~{filter_schema}" \
@@ -482,7 +506,7 @@ task PopulateFilterSetInfo {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2022_10_17_2a8c210ac35094997603259fa1cd784486b92e42"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_03_01_b01183576153cf000e17dea32144d332cb7b79a9"
     memory: "3500 MB"
     disks: "local-disk 250 HDD"
     bootDiskSizeGb: 15
@@ -504,7 +528,7 @@ task PopulateFilterSetSites {
     File sites_only_variant_filtered_vcf
     File sites_only_variant_filtered_vcf_index
 
-    String query_project
+    String project_id
 
     File? gatk_override
   }
@@ -529,7 +553,7 @@ task PopulateFilterSetSites {
     bq_table=$(echo ~{fq_filter_sites_destination_table} | sed s/\\./:/)
 
     echo "Loading filter set sites TSV into ~{fq_filter_sites_destination_table}"
-    bq load --project_id=~{query_project} --skip_leading_rows 1 -F "tab" \
+    bq load --project_id=~{project_id} --skip_leading_rows 1 -F "tab" \
     --range_partitioning=location,0,26000000000000,6500000000 \
     --clustering_fields=location \
     --schema "filter_set_name:string,location:integer,filters:string" \
@@ -538,7 +562,7 @@ task PopulateFilterSetSites {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2022_10_17_2a8c210ac35094997603259fa1cd784486b92e42"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_03_01_b01183576153cf000e17dea32144d332cb7b79a9"
     memory: "3500 MB"
     disks: "local-disk 200 HDD"
     bootDiskSizeGb: 15
@@ -561,7 +585,7 @@ task PopulateFilterSetTranches {
     File snp_recal_tranches
     File indel_recal_tranches
 
-    String query_project
+    String project_id
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
@@ -578,14 +602,14 @@ task PopulateFilterSetTranches {
     bq_table=$(echo ~{fq_tranches_destination_table} | sed s/\\./:/)
 
     echo "Loading combined tranches CSV into ~{fq_tranches_destination_table}"
-    bq load --project_id=~{query_project} --skip_leading_rows 0 -F "," \
+    bq load --project_id=~{project_id} --skip_leading_rows 0 -F "," \
     --schema "filter_set_name:string,target_truth_sensitivity:float,num_known:integer,num_novel:integer,known_ti_tv:float,novel_ti_tv:float,min_vqslod:float,filter_name:string,model:string,accessible_truth_sites:integer,calls_at_truth_sites:integer,truth_sensitivity:float" \
     ${bq_table} \
     ~{filter_set_name}.tranches_load.csv > status_load_filter_set_tranches
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2022_10_17_2a8c210ac35094997603259fa1cd784486b92e42"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_03_01_b01183576153cf000e17dea32144d332cb7b79a9"
     memory: "3500 MB"
     disks: "local-disk 200 HDD"
     bootDiskSizeGb: 15

@@ -1,96 +1,61 @@
-
 # Creating the Variant Annotations Table
 
-### The VAT pipeline is a set of WDLs
-- [GvsCreateVATfromVDS.wdl](/scripts/variantstore/wdl/GvsCreateVATfromVDS.wdl)
-- [GvsValidateVAT.wdl](/scripts/variantstore/variant_annotations_table/GvsValidateVAT.wdl)
+### The VAT pipeline is a python script and a set of WDLs
 
-The pipeline takes in jointVCFs (and their index files), creates a queryable table in BigQuery, and outputs a bgzipped TSV file containing the contents of that table. That TSV file is the sole AoU deliverable.
+- hail_create_vat_inputs.py is a script to be run in a notebook terminal to generate a sites-only VCF.
+- [GvsCreateVATfromVDS.wdl](/scripts/variantstore/wdl/GvsCreateVATfromVDS.wdl) creates the variant annotations table from a sites only VCF and an acestry file TSV.
+- [GvsValidateVAT.wdl](/scripts/variantstore/variant_annotations_table/GvsValidateVAT.wdl) checks and validates the created VAT and prints a report of any failing validation.
 
-**GvsCreateVATfromVDS** creates the variant annotations table from a sites only VCF and a TSV both created from a VDS
-**GvsValidateVAT** checks and validates the created VAT and prints a report of any failing validation
+The pipeline takes in a Hail Variant Dataset (VDS), creates a queryable table in BigQuery, and outputs a bgzipped TSV file containing the contents of that table. That TSV file is the sole AoU deliverable.
 
+### Generate a Sites-Only VCF
 
-### Run GvsCreateVATfromVDS:
+You will want to set up a [notebook in a similar configuration](../docs/aou/vds/cluster/AoU%20Delta%20VDS%20Cluster%20Configuration.md) as you did for creating the VAT (minus the custom wheel) and then copy two python scripts for running locally in the notebook. The two scripts are:
 
-Most of the inputs are constants — like the reference, or a table schema — and don't require any additional work, or have defaults set in the WDL). 
-However for the specific data being put in the VAT, two inputs need to be created.
+* create_vat_inputs.py which you can get via `curl https://raw.githubusercontent.com/broadinstitute/gatk/ah_var_store/scripts/variantstore/wdl/extract/create_vat_inputs.py -o create_vat_inputs.py`
+* the `hail_create_vat_inputs_script` output from the task `GenerateHailScripts`from the run of`GvsExtractAvroFilesForHail` workflow that was used to generate the VDS.
 
-The first of these inputs is a Sites Only VCF (We affectionately call it a Decorated Sites Only VCF because it also includes subpopulation level calculations for AC AN, AF and SC)
-The second input is the ancestry file from the ancestry pipeline which will be used to calculate AC, AN and AF for all subpopulations. It needs to be copied into a GCP bucket that this pipeline will have access to. This input has been labelled as the `ancestry_file`.
+Once you have copied them, run `python3 hail_create_vat_inputs.py` with the following input(s)
 
-Most of the other files are specific to where the VAT will live, like the project_id and dataset_name and the table_suffix which will name the VAT itself as vat_`table_suffix` as well as a GCP bucket location, the output_path, for the intermediary files and the VAT export in TSV form.
+* `--ancestry_file` GCS pointer to the TSV file that maps `sample_name`s to sub-populations
+* `--vds_path` GCS pointer to the top-level directory of the VDS
+* `--sites_only_vcf` (optional, should be pre-populated by the `GvsExtractAvroFilesForHail` workflow) the location to write the sites-only VCF to; save this for the `GvsCreateVATfromVDS` workflow
 
-All optional inputs are provided with default values.
+When the script is done running, it will spit out the path to where it has written the sites-only VCF.
 
-### Preparing to run GvsCreateVATfromVDS:
+### Run GvsCreateVATfromVDS
 
-Two inputs need to be created from the VDS.
-The first input can be created using the ancestry pipeline which is in another workspace. This input is also needed to create the second input.
-The second input can be creating using this Python script:`scripts/variantstore/wdl/extract/hail_create_vat_inputs.py`
-Making the second input:
-`hail_create_vat_inputs.py` script gives us a Sites Only VCF which can then be used to create a custom annotations file for Nirvana.
-This Python script needs the following inputs:
-* VDS -- this can be created using the GVS callset creation pipeline
-* Ancestry TSV -- this can be created using the Ancestry pipeline (and this is also the first input needed to run the WDL)
-We recommend using a Terra Python Notebook with a small Hail cluster to run the Python script and make these VAT pipeline inputs.
-Once those inputs have been created, they can be used by the GvsCreateVATfromVDS WDL
+Most of the inputs are specific to where the VAT will live or will be the same for the VDS creation, like the `project_id`, `dataset_name`, `filter_set_name`, and `output_path`. This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option. For the specific data being put in the VAT, two inputs need to be copied into a GCP bucket that this pipeline will have access to and passed to the WDL:
 
-  These are the required parameters which must be supplied to the GvsCreateVATfromVDS workflow:
+- `input_sites_only_vcf`: The GCS path to a sites-only VCF that we affectionately call it a Decorated Sites Only VCF because it also includes subpopulation level calculations for AC AN, AF and SC. This is the output of the `hail_create_vat_inputs.py` script.
+- `ancestry_file`: The same file that was passed via `--ancestry_file` to `hail_create_vat_inputs.py`.
+- `output_path`: The GCS path to store the intermediate files for the pipeline; should have a trailing slash.
 
-| Parameter            | Description                                           |
-|----------------------|-------------------------------------------------------|
-| ancestry_file        | the GCP path to the ancestry TSV                      |
-| dataset_name         | the name of the dataset you created above             |
-| filter_set_name      | the prefix of the VAT                                 |
-| input_sites_only_vcf | the GCP path to the output of the above python script |
-| output_path          | the path that the temp files will be stored           |
-| project_id           | the name of the google project containing the dataset |
+Other input of note:
 
-### Notes:
+- `vat_version`: if you are creating multiple VATs for one callset, you can distinguish between them (and not overwrite others) by passing in increasing numbers
 
-Note that there are two temporary tables that are created in addition to the main VAT table: the Genes and VT tables. They have a time to live of 24 hours.
-The VAT table is created by that query fresh each time so that there is no risk of duplicates.  
+There are two temporary tables that are created in addition to the main VAT table: the Genes and VT tables. They have a time to live of 24 hours.  The VAT table is created by that query fresh each time so that there is no risk of duplicates.
 
-To check that all of the shards have successfully made it past the first of the sub workflow steps (the most complicated and likely to fail) make sure that the full number of expected files are here:
-`gsutil ls  [output_path]/annotations/  | wc -l`
+Variants may be filtered out of the VAT (that were in the VDS) for the following reasons:
 
-And then once they have been transformed by the Python script and are ready to be loaded into BQ they will be here:
-`gsutil ls  [output_path]/genes/  | wc -l`
-`gsutil ls  [output_path]/vt/  | wc -l`
-
-These numbers are cumulative. Also the names of these json files are retained from the original shard names so as to not cause collisions. If you run the same shards through the VAT twice, the second runs should overwrite the first and the total number of jsons should not change.
-Once the shards have make it into the /genes/ and /vt/ directories, the majority of the expense and transformations needed for that shard are complete.
-They are ready to be loaded into BQ. You will notice that past this step, all there is to do is create the BQ tables, load the BQ tables, run a join query and then the remaining steps are all validations or an export into TSV.
-
-
-Sometimes shards will fail with a 503 from Google. The shards that are affected will need to be collected and put into a new File of File names and re-run.
-In theory you could actually just re-run the pipeline entirely and since the 503s seem to be completely random and intermittent, the same shards likely wont fail twice and you’d get everything you need, but at low efficiency and high expense.
-To grab any files not in the bucket, but in the file of file names:
-
-`gsutil ls [output_path]/genes/ | awk '{print substr($0,90)}' RS='.json.gz\n'  > successful_vcf_shards.txt`  
-`gsutil cat [inputFileofFileNames] | awk '{print substr($0,41)}' RS='.vcf.gz\n' > all_vcf_shards.txt`  
-`comm -3 all_vcf_shards.txt successful_vcf_shards.txt > diff_vcf_shards.txt`  
-`awk '{print g[bucket GVS output VCF shards are in]" $0 ".vcf.gz"}' diff_vcf_shards.txt > fofn_missing_shards.txt`  
-
-_(dont forget to do this for the indices as well)_
-
-Variants may be filtered out of the VAT (that were in the GVS extract) for the following reasons:
-- they are hard-filtered out based on the initial soft filtering from the GVS extract (site and GT level filtering)
-- they have excess alternate alleles--currently that cut off is 50 alternate alleles
+- they are hard-filtered out based on the initial soft filtering from the GVS extract (site- and GT-level filtering)
+- they have excess alternate alleles, currently that cut off is 50 alternate alleles
 - they are spanning deletions
+- they are duplicate variants; they are tracked via the `GvsCreateVATfromVDS` workflow's scattered `RemoveDuplicatesFromSites` task and then merged into one file by the `MergeTsvs` task
 
-## note that there are sometimes duplicate variants that are removed and tracked
+### Run GvsValidateVAT
 
+This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option. The `project_id` and `dataset_name` are the same as those used for `GvsCreateVATfromVDS`, and `vat_table_name` is `filter_set_name` + "_vat" (+ "_v" + `vat_version`, if used).
 
+### Using the Nirvana reference image in Terra (AoU Echo and later callsets)
 
+The Variants team created a Cromwell reference image containing all reference files used by Nirvana 3.18.1. This is
+useful to avoid having to download tens of GiBs of Nirvana references in each shard of the scattered `AnnotateVCF` task.
+In order to use this reference disk, the 'Use reference disk' option in Terra must be selected as shown below:
 
+![Terra Use reference disks](Reference%20Disk%20Terra%20Opt%20In.png)
 
-
-
-
-
-
-
-
-
+**Note:** this Nirvana reference image was not available in time for it to be used to create the Delta VAT. The
+`GvsCreateVATfromVDS` WDL has been updated to take advantage of references loaded from an attached
+reference image and should be ready to use starting with the AoU Echo callset.

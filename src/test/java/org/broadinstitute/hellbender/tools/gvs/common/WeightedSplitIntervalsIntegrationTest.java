@@ -18,9 +18,11 @@ import java.util.stream.Collectors;
 @SuppressWarnings("ConstantConditions")
 public class WeightedSplitIntervalsIntegrationTest extends CommandLineProgramTest {
 
+    private final String testDir = getToolTestDataDir();
+
     @Test
     public void testNoLossSimple() {
-        final File weights = new File(publicTestDir + "example_weights_chr20_chr21.bed.gz");
+        final File weights = new File(testDir + "example_weights_chr20_chr21.bed.gz");
         final int scatterCount = 100;
         final File outputDir = createTempDir("output");
         final Interval interval = new Interval("chr20", 1000000, 2000000);
@@ -49,8 +51,8 @@ public class WeightedSplitIntervalsIntegrationTest extends CommandLineProgramTes
 
     @Test
     public void testNoLossRealisticWgs() {
-        final File weights = new File(publicTestDir + "example_weights_chr20_chr21.bed.gz");
-        final File wgsIntervalList = new File(publicTestDir + "hg38.handcurated.noCentromeres.noTelomeres.chr20_chr21.interval_list");
+        final File weights = new File(testDir + "example_weights_chr20_chr21.bed.gz");
+        final File wgsIntervalList = new File(testDir + "hg38.handcurated.noCentromeres.noTelomeres.chr20_chr21.interval_list");
 
         final int scatterCount = 100;
         final File outputDir = createTempDir("output");
@@ -89,7 +91,7 @@ public class WeightedSplitIntervalsIntegrationTest extends CommandLineProgramTes
         // target: sum 10200 / 10 -> 1020 per shard
         // chr20	60000	60001	.	200
         // chr20	60001	60011	.	10000
-        final File weights = new File(publicTestDir + "example_weights_chr20_test_zero.bed");
+        final File weights = new File(testDir + "example_weights_chr20_test_zero.bed");
         final int scatterCount = 10;
         final File outputDir = createTempDir("output");
         final Interval inputInterval = new Interval("chr20",60000,60109);
@@ -119,7 +121,7 @@ public class WeightedSplitIntervalsIntegrationTest extends CommandLineProgramTes
 
     @Test
     public void testDontMixContigs() {
-        final File weights = new File(publicTestDir + "example_weights_chr20_chr21.bed.gz");
+        final File weights = new File(testDir + "example_weights_chr20_chr21.bed.gz");
         final int scatterCount = 1;
         final File outputDir = createTempDir("output");
 

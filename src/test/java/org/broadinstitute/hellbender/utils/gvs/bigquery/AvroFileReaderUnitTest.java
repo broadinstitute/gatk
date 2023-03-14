@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.bigquery;
+package org.broadinstitute.hellbender.utils.gvs.bigquery;
 
 
 import org.apache.avro.generic.GenericRecord;
@@ -8,14 +8,12 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 import org.apache.avro.Schema;
 
-import java.util.*;
-
 /**
  * A class to test the functionality of {@link AvroFileReader}.
  */
 public class AvroFileReaderUnitTest extends GATKBaseTest {
 
-    private static final String avroFileName = "src/test/java/org/broadinstitute/hellbender/utils/bigquery/avro_test_avro_test_file.avro";
+    private static final String avroFileName = "src/test/resources/org/broadinstitute/hellbender/utils/gvs/bigquery/avro_test_avro_test_file.avro";
     private static final AvroFileReader avroFile = new AvroFileReader(new GATKPath(avroFileName));
 
     @Test()

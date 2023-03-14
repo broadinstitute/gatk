@@ -47,6 +47,8 @@ public class SchemaUtils {
     //Filtering table
     public static final String FILTER_SET_NAME = "filter_set_name";
     public static final String VQSLOD = "vqslod";
+    public static final String CALIBRATION_SENSITIVITY = "calibration_sensitivity";
+    public static final String SCORE = "score";
     public static final String YNG_STATUS = "yng_status";
 
     //Tranches table
@@ -64,6 +66,7 @@ public class SchemaUtils {
 
     public static final List<String> SAMPLE_FIELDS = Arrays.asList(SchemaUtils.SAMPLE_NAME_FIELD_NAME, SchemaUtils.SAMPLE_ID_FIELD_NAME);
     public static final List<String> YNG_FIELDS = Arrays.asList(FILTER_SET_NAME, LOCATION_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME, VQSLOD, YNG_STATUS);
+    public static final List<String> VQSLITE_YNG_FIELDS = Arrays.asList(FILTER_SET_NAME, LOCATION_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME, CALIBRATION_SENSITIVITY, SCORE, YNG_STATUS);
     public static final List<String> TRANCHE_FIELDS = Arrays.asList(TARGET_TRUTH_SENSITIVITY, MIN_VQSLOD, TRANCHE_FILTER_NAME, TRANCHE_MODEL);
 
     public static final List<String> ALT_ALLELE_FIELDS = Arrays.asList(LOCATION_FIELD_NAME, SAMPLE_ID_FIELD_NAME, REF_ALLELE_FIELD_NAME, "allele", ALT_ALLELE_FIELD_NAME, "allele_pos", CALL_GT, AS_RAW_MQ, RAW_MQ, AS_RAW_MQRankSum, "raw_mqranksum_x_10", AS_QUALapprox, "qual", AS_RAW_ReadPosRankSum, "raw_readposranksum_x_10", AS_SB_TABLE, "SB_REF_PLUS","SB_REF_MINUS","SB_ALT_PLUS","SB_ALT_MINUS", CALL_AD, "ref_ad", "ad");

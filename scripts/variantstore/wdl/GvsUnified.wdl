@@ -26,6 +26,8 @@ workflow GvsUnified {
 
         # set to "NONE" to ingest all the reference data into GVS for VDS (instead of VCF) output
         String drop_state = "NONE"
+        # for beta users, rate limit their ingest to stay below quotas
+        Boolean is_beta_user = false
 
         # The larger the `load_data_batch_size` the greater the probability of preemptions and non-retryable
         # BigQuery errors so if specifying this adjust preemptible and maxretries accordingly. Or just take the defaults,
@@ -95,7 +97,8 @@ workflow GvsUnified {
             load_data_maxretries_override = load_data_maxretries_override,
             load_data_gatk_override = gatk_override,
             load_data_batch_size = load_data_batch_size,
-            drop_state = drop_state
+            drop_state = drop_state,
+            is_rate_limited_beta_customer = is_beta_user
     }
 
     call PopulateAltAllele.GvsPopulateAltAllele {

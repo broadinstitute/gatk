@@ -4,113 +4,113 @@ import "../wdl/GvsUtils.wdl" as Utils
 
 workflow GvsValidateVat {
     input {
-        String query_project_id
+        String project_id
         String dataset_name
         String vat_table_name
     }
 
-    String fq_vat_table = "~{query_project_id}.~{dataset_name}.~{vat_table_name}"
+    String fq_vat_table = "~{project_id}.~{dataset_name}.~{vat_table_name}"
 
     call Utils.GetBQTableLastModifiedDatetime {
         input:
-            query_project = query_project_id,
+            project_id = project_id,
             fq_table = fq_vat_table
     }
 
     call EnsureVatTableHasVariants {
         input:
-            query_project_id = query_project_id,
+            project_id = project_id,
             fq_vat_table = fq_vat_table,
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
     }
 
     call SpotCheckForExpectedTranscripts {
         input:
-            query_project_id = query_project_id,
+            project_id = project_id,
             fq_vat_table = fq_vat_table,
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
     }
 
     call SchemaOnlyOneRowPerNullTranscript {
         input:
-            query_project_id = query_project_id,
+            project_id = project_id,
             fq_vat_table = fq_vat_table,
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
     }
 
     call SchemaNullTranscriptsExist {
         input:
-            query_project_id = query_project_id,
+            project_id = project_id,
             fq_vat_table = fq_vat_table,
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
     }
 
     call SchemaNoNullRequiredFields {
         input:
-            query_project_id = query_project_id,
+            project_id = project_id,
             fq_vat_table = fq_vat_table,
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
     }
 
     call SchemaPrimaryKey {
         input:
-            query_project_id = query_project_id,
+            project_id = project_id,
             fq_vat_table = fq_vat_table,
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
     }
 
     call SchemaEnsemblTranscripts {
         input:
-            query_project_id = query_project_id,
+            project_id = project_id,
             fq_vat_table = fq_vat_table,
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
     }
 
     call SchemaNonzeroAcAn {
         input:
-            query_project_id = query_project_id,
+            project_id = project_id,
             fq_vat_table = fq_vat_table,
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
     }
 
     call SubpopulationMax {
         input:
-            query_project_id = query_project_id,
+            project_id = project_id,
             fq_vat_table = fq_vat_table,
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
     }
 
     call SubpopulationAlleleCount {
         input:
-            query_project_id = query_project_id,
+            project_id = project_id,
             fq_vat_table = fq_vat_table,
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
     }
 
     call SubpopulationAlleleNumber {
         input:
-            query_project_id = query_project_id,
+            project_id = project_id,
             fq_vat_table = fq_vat_table,
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
     }
 
     call ClinvarSignificance {
         input:
-            query_project_id = query_project_id,
+            project_id = project_id,
             fq_vat_table = fq_vat_table,
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
     }
 
     call SchemaAAChangeAndExonNumberConsistent {
         input:
-            query_project_id = query_project_id,
+            project_id = project_id,
             fq_vat_table = fq_vat_table,
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
     }
 
     call SpotCheckForAAChangeAndExonNumberConsistency {
          input:
-            query_project_id = query_project_id,
+            project_id = project_id,
             fq_vat_table = fq_vat_table,
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
     }
@@ -174,7 +174,7 @@ workflow GvsValidateVat {
 
 task EnsureVatTableHasVariants {
     input {
-        String query_project_id
+        String project_id
         String fq_vat_table
         String last_modified_timestamp
     }
@@ -184,9 +184,9 @@ task EnsureVatTableHasVariants {
 
     command <<<
         set -e
-        echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
+        echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT COUNT (DISTINCT vid) AS count FROM `~{fq_vat_table}`' > bq_variant_count.csv
+        bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT COUNT (DISTINCT vid) AS count FROM `~{fq_vat_table}`' > bq_variant_count.csv
 
         NUMVARS=$(python3 -c "csvObj=open('bq_variant_count.csv','r');csvContents=csvObj.read();print(csvContents.split('\n')[1]);")
 
@@ -224,7 +224,7 @@ task EnsureVatTableHasVariants {
 
 task SpotCheckForExpectedTranscripts {
     input {
-        String query_project_id
+        String project_id
         String fq_vat_table
         String last_modified_timestamp
     }
@@ -235,9 +235,9 @@ task SpotCheckForExpectedTranscripts {
     command <<<
         set -e
 
-        echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
+        echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT
+        bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
             contig,
             position,
             vid,
@@ -287,7 +287,7 @@ task SpotCheckForExpectedTranscripts {
 
 task SchemaNoNullRequiredFields {
     input {
-        String query_project_id
+        String project_id
         String fq_vat_table
         String last_modified_timestamp
     }
@@ -297,11 +297,11 @@ task SchemaNoNullRequiredFields {
     String results_file = "results.txt"
 
     command <<<
-        echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
+        echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
         # non-nullable fields: vid, contig, position, ref_allele, alt_allele, gvs_all_ac, gvs_all_an, gvs_all_af, variant_type, genomic_location
 
-        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv
+        bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv
         'SELECT
             contig,
             position,
@@ -364,7 +364,7 @@ task SchemaNoNullRequiredFields {
 
 task SchemaOnlyOneRowPerNullTranscript {
     input {
-        String query_project_id
+        String project_id
         String fq_vat_table
         String last_modified_timestamp
     }
@@ -375,9 +375,9 @@ task SchemaOnlyOneRowPerNullTranscript {
     command <<<
         set -e
 
-        echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
+        echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT
+        bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
             vid,
             COUNT(vid) AS num_rows
         FROM
@@ -420,7 +420,7 @@ task SchemaOnlyOneRowPerNullTranscript {
 
 task SchemaPrimaryKey {
     input {
-        String query_project_id
+        String project_id
         String fq_vat_table
         String last_modified_timestamp
     }
@@ -430,9 +430,9 @@ task SchemaPrimaryKey {
     String results_file = "results.txt"
 
     command <<<
-        echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
+        echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv
+        bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv
         'SELECT
             vid,
             transcript,
@@ -474,7 +474,7 @@ task SchemaPrimaryKey {
 
 task SchemaEnsemblTranscripts {
     input {
-        String query_project_id
+        String project_id
         String fq_vat_table
         String last_modified_timestamp
     }
@@ -484,9 +484,9 @@ task SchemaEnsemblTranscripts {
     String results_file = "results.txt"
 
     command <<<
-        echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
+        echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT
+        bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
             contig,
             position,
             vid,
@@ -529,7 +529,7 @@ task SchemaEnsemblTranscripts {
 
 task SchemaNonzeroAcAn {
     input {
-        String query_project_id
+        String project_id
         String fq_vat_table
         String last_modified_timestamp
     }
@@ -539,9 +539,9 @@ task SchemaNonzeroAcAn {
     String results_file = "results.txt"
 
     command <<<
-        echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
+        echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT
+        bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
             contig,
             position,
             vid,
@@ -587,7 +587,7 @@ task SchemaNonzeroAcAn {
 
 task SchemaNullTranscriptsExist {
     input {
-        String query_project_id
+        String project_id
         String fq_vat_table
         String last_modified_timestamp
     }
@@ -598,9 +598,9 @@ task SchemaNullTranscriptsExist {
     command <<<
         set -e
 
-        echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
+        echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT
+        bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
             vid
         FROM
             `~{fq_vat_table}`
@@ -638,7 +638,7 @@ task SchemaNullTranscriptsExist {
 
 task SubpopulationMax {
     input {
-        String query_project_id
+        String project_id
         String fq_vat_table
         String last_modified_timestamp
     }
@@ -650,11 +650,11 @@ task SubpopulationMax {
     command <<<
         set -e
 
-        echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
+        echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
         # gvs subpopulations:  [ "afr", "amr", "eas", "eur", "mid", "oth", "sas"]
 
-        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT
+        bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
             vid
         FROM
             `~{fq_vat_table}`
@@ -697,7 +697,7 @@ task SubpopulationMax {
 
 task SubpopulationAlleleCount {
     input {
-        String query_project_id
+        String project_id
         String fq_vat_table
         String last_modified_timestamp
     }
@@ -709,11 +709,11 @@ task SubpopulationAlleleCount {
     command <<<
         set -e
 
-        echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
+        echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
         # gvs subpopulations:  [ "afr", "amr", "eas", "eur", "mid", "oth", "sas"]
 
-        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT
+        bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
             vid
         FROM
             `~{fq_vat_table}`
@@ -750,7 +750,7 @@ task SubpopulationAlleleCount {
 
 task SubpopulationAlleleNumber {
     input {
-        String query_project_id
+        String project_id
         String fq_vat_table
         String last_modified_timestamp
     }
@@ -762,11 +762,11 @@ task SubpopulationAlleleNumber {
     command <<<
         set -e
 
-        echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
+        echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
         # gvs subpopulations:  [ "afr", "amr", "eas", "eur", "mid", "oth", "sas"]
 
-        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT
+        bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
         vid
         FROM
         `~{fq_vat_table}`
@@ -803,7 +803,7 @@ task SubpopulationAlleleNumber {
 
 task ClinvarSignificance {
     input {
-        String query_project_id
+        String project_id
         String fq_vat_table
         String last_modified_timestamp
     }
@@ -815,7 +815,7 @@ task ClinvarSignificance {
     command <<<
         set -e
 
-        echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
+        echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
         # clinvar significance values:  ["benign",
         #                                 "likely benign",
@@ -831,7 +831,7 @@ task ClinvarSignificance {
         #                                 "other",
         #                                 "not provided"]
 
-        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT
+        bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
           distinct(unnested_clinvar_classification)
           FROM
         `~{fq_vat_table}`, UNNEST(clinvar_classification) AS unnested_clinvar_classification'| sed "2 d" > bq_clinvar_classes.csv
@@ -883,7 +883,7 @@ task ClinvarSignificance {
 
 task SchemaAAChangeAndExonNumberConsistent {
     input {
-        String query_project_id
+        String project_id
         String fq_vat_table
         String last_modified_timestamp
     }
@@ -900,9 +900,9 @@ task SchemaAAChangeAndExonNumberConsistent {
     command <<<
         set -e
 
-        echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
+        echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT
+        bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
         COUNT (DISTINCT vid) AS count FROM
         (
             SELECT vid
@@ -975,7 +975,7 @@ task SchemaAAChangeAndExonNumberConsistent {
 
 task SpotCheckForAAChangeAndExonNumberConsistency {
     input {
-        String query_project_id
+        String project_id
         String fq_vat_table
         String last_modified_timestamp
     }
@@ -997,9 +997,9 @@ task SpotCheckForAAChangeAndExonNumberConsistency {
     command <<<
         set -e
 
-        echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
+        echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT
+        bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
         COUNT (DISTINCT vid) FROM
         (
             SELECT vid, transcript, exon_number, aa_change, consequence, variant_type

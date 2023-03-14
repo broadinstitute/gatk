@@ -29,8 +29,9 @@ import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantCon
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bigquery.*;
-import org.broadinstitute.hellbender.utils.localsort.AvroSortingCollectionCodec;
-import org.broadinstitute.hellbender.utils.localsort.SortingCollection;
+import org.broadinstitute.hellbender.utils.gvs.bigquery.AvroFileReader;
+import org.broadinstitute.hellbender.utils.gvs.localsort.AvroSortingCollectionCodec;
+import org.broadinstitute.hellbender.utils.gvs.localsort.SortingCollection;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
@@ -1150,7 +1151,7 @@ public class ExtractCohortEngine {
             // TODO: use the genotypes of this specific sample (e.g. 0/1 vs 1/2) to decide how big the spanning deletion is.  The current logic matches what we do on ingest though
             // TODO: really, really, really think this through!!!
             handlePotentialSpanningDeletion(vetRow, referenceCache);
-            
+
             lastPosition = variantLocation;
             lastSample = variantSample;
         }

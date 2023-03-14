@@ -26,6 +26,8 @@ workflow GvsExtractCallset {
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
     Boolean use_interval_weights = true
     File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
+    Boolean use_classic_VQSR = true
+
     File? gatk_override
 
     String output_file_base_name = filter_set_name
@@ -48,7 +50,11 @@ workflow GvsExtractCallset {
   String fq_cohort_dataset = "~{cohort_project_id}.~{cohort_dataset_name}"
 
   String full_extract_prefix = if (control_samples) then "~{extract_table_prefix}_controls" else extract_table_prefix
-  String fq_filter_set_info_table = "~{fq_gvs_dataset}.filter_set_info"
+
+  String filter_set_info_table_name = "filter_set_info"
+  String filter_set_info_vqsr_lite_table_name = "filter_set_info_vqsr_lite"
+  String fq_filter_set_info_table = if (use_classic_VQSR) then "~{fq_gvs_dataset}.~{filter_set_info_table_name}" else "~{fq_gvs_dataset}.~{filter_set_info_vqsr_lite_table_name}"
+
   String fq_filter_set_site_table = "~{fq_gvs_dataset}.filter_set_sites"
   String fq_filter_set_tranches_table = "~{fq_gvs_dataset}.filter_set_tranches"
   String fq_sample_table = "~{fq_gvs_dataset}.sample_info"
@@ -73,7 +79,7 @@ workflow GvsExtractCallset {
 
   call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
     input:
-      query_project = project_id,
+      project_id = project_id,
       fq_table = fq_sample_table
   }
 
@@ -115,20 +121,19 @@ workflow GvsExtractCallset {
   }
 
   call Utils.GetBQTableLastModifiedDatetime as FilterSetInfoTimestamp {
-       input:
-       query_project = project_id,
-       fq_table = "~{fq_gvs_dataset}.filter_set_info"
+    input:
+      project_id = project_id,
+      fq_table = "~{fq_filter_set_info_table}"
   }
 
   if ( !do_not_filter_override ) {
     call Utils.ValidateFilterSetName {
       input:
-      query_project = query_project,
-      filter_set_name = filter_set_name,
-      filter_set_info_timestamp = FilterSetInfoTimestamp.last_modified_timestamp,
-      data_project = project_id,
-      dataset_name = dataset_name
-    }
+        project_id = query_project,
+        fq_filter_set_info_table = "~{fq_filter_set_info_table}",
+        filter_set_name = filter_set_name,
+        filter_set_info_timestamp = FilterSetInfoTimestamp.last_modified_timestamp
+      }
   }
 
   call Utils.GetBQTablesMaxLastModifiedTimestamp {
@@ -146,8 +151,9 @@ workflow GvsExtractCallset {
     call ExtractTask {
       input:
         go                                 = select_first([ValidateFilterSetName.done, true]),
-        dataset_id                         = dataset_name,
+        dataset_name                       = dataset_name,
         call_set_identifier                = call_set_identifier,
+        use_classic_VQSR                   = use_classic_VQSR,
         gatk_override                      = gatk_override,
         reference                          = reference,
         reference_index                    = reference_index,
@@ -162,7 +168,7 @@ workflow GvsExtractCallset {
         do_not_filter_override             = do_not_filter_override,
         fq_filter_set_info_table           = fq_filter_set_info_table,
         fq_filter_set_site_table           = fq_filter_set_site_table,
-        fq_filter_set_tranches_table       = fq_filter_set_tranches_table,
+        fq_filter_set_tranches_table       = if (use_classic_VQSR) then fq_filter_set_tranches_table else none,
         filter_set_name                    = filter_set_name,
         drop_state                         = drop_state,
         output_file                        = vcf_filename,
@@ -191,7 +197,7 @@ workflow GvsExtractCallset {
 
     call Utils.GetBQTableLastModifiedDatetime {
       input:
-        query_project = query_project,
+        project_id = query_project,
         fq_table = fq_samples_to_extract_table
     }
 
@@ -219,8 +225,10 @@ task ExtractTask {
   input {
     Boolean go
 
-    String dataset_id
+    String dataset_name
     String call_set_identifier
+
+    Boolean use_classic_VQSR
 
     File reference
     File reference_index
@@ -247,7 +255,7 @@ task ExtractTask {
     Boolean do_not_filter_override
     String fq_filter_set_info_table
     String fq_filter_set_site_table
-    String fq_filter_set_tranches_table
+    String? fq_filter_set_tranches_table
     String? filter_set_name
     Boolean write_cost_to_db
 
@@ -265,28 +273,37 @@ task ExtractTask {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
   String intervals_name = basename(intervals)
   String cost_observability_line = if (write_cost_to_db == true) then "--cost-observability-tablename ~{cost_observability_tablename}" else ""
 
   String inferred_reference_state = if (drop_state == "NONE") then "ZERO" else drop_state
 
+  String gatk_tool = if (use_classic_VQSR == true) then 'ExtractCohort' else 'ExtractCohortLite'
+
   command <<<
     set -e
+
+    bash ~{monitoring_script} > monitoring.log &
+
     export GATK_LOCAL_JAR="~{default="/root/gatk.jar" gatk_override}"
 
-    df -h
-
-    if [ ~{do_not_filter_override} = 'true' ]; then
+    if [ ~{do_not_filter_override} = true ]; then
       FILTERING_ARGS=''
+    elif [ ~{use_classic_VQSR} = true ]; then
+      FILTERING_ARGS='--filter-set-info-table ~{fq_filter_set_info_table}
+        --filter-set-site-table ~{fq_filter_set_site_table}
+        --tranches-table ~{fq_filter_set_tranches_table}
+        --filter-set-name ~{filter_set_name}'
     else
       FILTERING_ARGS='--filter-set-info-table ~{fq_filter_set_info_table}
-          --filter-set-site-table ~{fq_filter_set_site_table}
-          --tranches-table ~{fq_filter_set_tranches_table}
-          --filter-set-name ~{filter_set_name}'
+        --filter-set-site-table ~{fq_filter_set_site_table}
+        --filter-set-name ~{filter_set_name}'
     fi
 
     gatk --java-options "-Xmx9g" \
-      ExtractCohort \
+      ~{gatk_tool} \
         --vet-ranges-extract-fq-table ~{fq_ranges_cohort_vet_extract_table} \
         --ref-ranges-extract-fq-table ~{fq_ranges_cohort_ref_extract_table} \
         --ref-version 38 \
@@ -300,9 +317,9 @@ task ExtractTask {
         ~{true='--emit-pls' false='' emit_pls} \
         ~{true='--emit-ads' false='' emit_ads} \
         ${FILTERING_ARGS} \
-        --dataset-id ~{dataset_id} \
+        --dataset-id ~{dataset_name} \
         --call-set-identifier ~{call_set_identifier} \
-        --wdl-step GvsCreateCallset \
+        --wdl-step GvsExtractCallset \
         --wdl-call ExtractTask \
         --shard-identifier ~{intervals_name} \
         ~{cost_observability_line}
@@ -331,7 +348,7 @@ task ExtractTask {
     echo ~{interval_index},${OUTPUT_FILE_DEST},${OUTPUT_FILE_BYTES},${OUTPUT_FILE_INDEX_DEST},${OUTPUT_FILE_INDEX_BYTES} >> manifest.txt
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2022_10_17_2a8c210ac35094997603259fa1cd784486b92e42"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_03_01_b01183576153cf000e17dea32144d332cb7b79a9"
     memory: "12 GB"
     disks: "local-disk 150 HDD"
     bootDiskSizeGb: 15
@@ -347,6 +364,7 @@ task ExtractTask {
     File output_vcf_index = "~{output_file}.tbi"
     Float output_vcf_index_bytes = read_float("vcf_index_bytes.txt")
     String manifest = read_string("manifest.txt")
+    File monitoring_log = "monitoring.log"
   }
 }
 

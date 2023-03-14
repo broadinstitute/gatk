@@ -13,6 +13,8 @@ workflow GvsCalculatePrecisionAndSensitivity {
     Array[File] truth_beds
 
     File ref_fasta
+
+    Boolean use_classic_VQSR = true
   }
 
   parameter_meta {
@@ -24,6 +26,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
     truth_vcf_indices: "A list of the VCF indices for the truth data VCFs supplied above."
     truth_beds: "A list of the bed files for the truth data used for analyzing the samples in `sample_names`."
     ref_fasta: "The cloud path for the reference fasta sequence."
+    use_classic_VQSR: "Flag to indicate whether the input VCFs were generated using classic (standard) VQSR or 'VQSR Lite'."
   }
 
   # WDL 1.0 trick to set a variable ('none') to be undefined.
@@ -75,15 +78,16 @@ workflow GvsCalculatePrecisionAndSensitivity {
         output_basename = output_sample_basename
     }
 
-    call Add_AS_MAX_VQSLOD_ToVcf {
+    call Add_AS_MAX_VQS_FIELD_ToVcf {
       input:
         input_vcf = SelectVariants.output_vcf,
-        output_basename = output_sample_basename + ".maxas"
+        output_basename = output_sample_basename + ".maxas",
+        use_classic_VQSR = use_classic_VQSR
     }
 
     call BgzipAndTabix {
       input:
-        input_vcf = Add_AS_MAX_VQSLOD_ToVcf.output_vcf,
+        input_vcf = Add_AS_MAX_VQS_FIELD_ToVcf.output_vcf,
         output_basename = output_sample_basename + ".maxas"
     }
 
@@ -96,6 +100,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
         truth_bed = truth_beds[i],
         contig = contig,
         output_basename = sample_name + "-bq_roc_filtered",
+        use_classic_VQSR = use_classic_VQSR,
         ref_fasta = ref_fasta
     }
 
@@ -109,6 +114,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
         contig = contig,
         all_records = true,
         output_basename = sample_name + "-bq_all",
+        use_classic_VQSR = use_classic_VQSR,
         ref_fasta = ref_fasta
     }
   }
@@ -259,21 +265,25 @@ task SelectVariants {
   }
 }
 
-task Add_AS_MAX_VQSLOD_ToVcf {
+task Add_AS_MAX_VQS_FIELD_ToVcf {
   input {
     File input_vcf
     String output_basename
+    Boolean use_classic_VQSR
 
-    String docker = "us.gcr.io/broad-dsde-methods/variantstore:2023-01-23-alpine"
+    String docker = "us.gcr.io/broad-dsde-methods/variantstore:2023-02-21-alpine"
     Int cpu = 1
     Int memory_mb = 3500
     Int disk_size_gb = ceil(2*size(input_vcf, "GiB")) + 50
   }
 
+  String score_tool = if (use_classic_VQSR == true) then 'add_max_as_vqslod.py' else 'add_max_as_vqs_sens.py'
+
+
   command <<<
     set -e
 
-    python3 /app/add_max_as_vqslod.py ~{input_vcf} > ~{output_basename}.vcf
+    python3 /app/~{score_tool} ~{input_vcf} > ~{output_basename}.vcf
   >>>
   runtime {
     docker: docker
@@ -333,11 +343,15 @@ task EvaluateVcf {
 
     String output_basename
 
+    Boolean use_classic_VQSR = true
+
     String docker = "docker.io/realtimegenomics/rtg-tools:latest"
     Int cpu = 1
     Int memory_mb = 3500
     Int disk_size_gb = ceil(2 * size(ref_fasta, "GiB")) + 50
   }
+
+  String max_score_field_tag = if (use_classic_VQSR == true) then 'MAX_AS_VQSLOD' else 'MAX_AS_VQS_SENS'
 
   command <<<
     set -e -o pipefail
@@ -348,7 +362,8 @@ task EvaluateVcf {
       ~{"--region " + contig} \
       ~{if all_records then "--all-records" else ""} \
       --roc-subset snp,indel \
-      --vcf-score-field=INFO.MAX_AS_VQSLOD \
+      --vcf-score-field=INFO.~{max_score_field_tag} \
+      ~{if use_classic_VQSR then "--sort-order descending" else "--sort-order ascending"} \
       -t human_REF_SDF \
       -b ~{truth_vcf} \
       -e ~{truth_bed}\

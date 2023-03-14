@@ -4,7 +4,7 @@ import org.apache.avro.generic.GenericRecord;
 import org.broadinstitute.hellbender.GATKBaseTest;
 
 import org.broadinstitute.hellbender.engine.GATKPath;
-import org.broadinstitute.hellbender.utils.bigquery.AvroFileReader;
+import org.broadinstitute.hellbender.utils.gvs.bigquery.AvroFileReader;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 

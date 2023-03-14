@@ -30,7 +30,7 @@ workflow JointVcfFiltering {
 		Boolean use_allele_specific_annotations
 
 		String snp_resource_args = "--resource:hapmap,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/hapmap_3.3.hg38.vcf.gz --resource:omni,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/1000G_omni2.5.hg38.vcf.gz --resource:1000G,training=true,calibration=false gs://gcp-public-data--broad-references/hg38/v0/1000G_phase1.snps.high_confidence.hg38.vcf.gz"
-		String indel_resource_args = "--resource:mills,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz"
+		String indel_resource_args = "--resource:mills,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz --resource:axiom,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/Axiom_Exome_Plus.genotypes.all_populations.poly.hg38.vcf.gz"
 	}
 
 	parameter_meta {
@@ -154,12 +154,14 @@ task ExtractVariantAnnotations {
 		File? interval_list
 		Boolean use_allele_specific_annotations
 
-		Int memory_mb = 14000
+		Int memory_mb = 28000
 		Int command_mem = memory_mb - 1000
 	}
-	Int disk_size = ceil(size(input_vcf, "GB") + 50)
+	Int disk_size = ceil(size(input_vcf, "GB") + size(input_vcf_index, "GB") + 100)
+
 	command {
 		set -e
+
 		export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
 		gatk --java-options "-Xmx~{command_mem}m" \
@@ -180,7 +182,7 @@ task ExtractVariantAnnotations {
 	}
 	runtime {
 		docker: gatk_docker
-		disks: "local-disk " + disk_size + " LOCAL"
+		disks: "local-disk " + disk_size + " HDD"
 		memory: memory_mb + " MiB"
 	}
 }
@@ -196,10 +198,11 @@ task TrainVariantAnnotationModel {
 		File? python_script
 		File? hyperparameters_json
 
-		Int memory_mb = 14000
+		Int memory_mb = 28000
 		Int command_mem = memory_mb - 1000
 	}
 	Int disk_size = ceil(size(annots, "GB") + 100)
+
 	command <<<
 		set -e
 
@@ -222,7 +225,7 @@ task TrainVariantAnnotationModel {
 	}
 	runtime {
 		docker: gatk_docker
-		disks: "local-disk " + disk_size + " LOCAL"
+		disks: "local-disk " + disk_size + " HDD"
 		memory: memory_mb + " MiB"
 	}
 }
@@ -248,7 +251,7 @@ task ScoreVariantAnnotations {
 		Int memory_mb = 16000
 		Int command_mem = memory_mb - 1000
 	}
-	Int disk_size = ceil(size(vcf, "GB") *2 + 50)
+	Int disk_size = ceil(size(vcf, "GB") * 2 + 50)
 
 	command {
 		zgrep -v '#' ~{vcf} > empty.txt
@@ -287,7 +290,7 @@ task ScoreVariantAnnotations {
 	}
 	runtime {
 		docker: gatk_docker
-		disks: "local-disk " + disk_size + " LOCAL"
+		disks: "local-disk " + disk_size + " HDD"
 		memory: memory_mb + " MiB"
 	}
 }
