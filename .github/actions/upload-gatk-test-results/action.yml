@@ -51,7 +51,8 @@ runs:
         gsutil -m cp -z html -z js -z xml -z css -r build/reports/tests gs:/${{ env.HELLBENDER_TEST_LOGS }}${{ inputs.repo-path }}/;
         VIEW_URL=https://storage.googleapis.com${{ env.HELLBENDER_TEST_LOGS }}${{ inputs.repo-path }}/tests/testOnPackagedReleaseJar/index.html
         echo "See the test report at ${VIEW_URL}";
-        echo ::set-output name=view_url::"${VIEW_URL}"
+        echo view_url="${VIEW_URL}" >> $GITHUB_OUTPUT
+
       shell: bash
 
 # This code is necessary in order to extract the URL for the logs for a particular run. The github context exposes the run_id object
@@ -69,8 +70,8 @@ runs:
         eval "$(curl --get -Ss -H "Authorization: token ${GITHUB_TOKEN}" -H "Accept: application/vnd.github.v3+json" "${GITHUB_BASEURL}${GITHUB_API}?per_page=30" \
         | jq -r --arg job_name "${{ inputs.identifier }}" '.jobs | map(select(.name == $job_name)) | .[0] | @sh "job_id=\(.id) html_url=\(.html_url)"')"
 
-        echo ::set-output name=job_id::"${job_id}"
-        echo ::set-output name=html_url::"${html_url}"
+        echo job_id="${job_id}" >> $GITHUB_OUTPUT
+        echo html_url="${html_url}" >> $GITHUB_OUTPUT
         echo ${job_id}
         echo ${html_url}
       shell: bash
