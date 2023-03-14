@@ -69,7 +69,6 @@ public class GATKHelpDocWorkUnitHandler extends DefaultDocWorkUnitHandler {
      * @param currentWorkUnit the work unit for the feature being documented
      */
     @Override
-    @SuppressWarnings({"deprecation","removal"})
     protected void addCustomBindings(final DocWorkUnit currentWorkUnit) {
         super.addCustomBindings(currentWorkUnit);
 
