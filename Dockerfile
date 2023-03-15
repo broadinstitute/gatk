@@ -1,5 +1,5 @@
 # stage 1 for constructing the GATK zip
-FROM broadinstitute/gatk:gatkbase-2.3.0 AS gradleBuild
+FROM broadinstitute/gatk:gatkbase-3.0.0 AS gradleBuild
 LABEL stage=gatkIntermediateBuildImage
 ARG RELEASE=false
 
@@ -16,19 +16,6 @@ RUN add-apt-repository universe && apt update
 RUN apt-get --assume-yes install git-lfs
 RUN git lfs install --force
 
-##Get Java 17 temurin JDK
-#RUN apt update && apt upgrade
-RUN apt install wget
-RUN wget https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.6%2B10/OpenJDK17U-jdk_x64_linux_hotspot_17.0.6_10.tar.gz
-RUN tar -xvf OpenJDK17U-jdk_x64_linux_hotspot_17.*.tar.gz
-RUN mv jdk-17.0.6+10 /opt/
-#
-ENV JAVA_HOME /opt/jdk-17.0.6+10
-ENV PATH $JAVA_HOME/bin:$PATH
-RUN echo $JAVA_HOME
-RUN update-alternatives --install /usr/bin/java java /opt/jdk-17.0.6+10/bin/java 1
-RUN java -version
-
 #Download only resources required for the build, not for testing
 RUN git lfs pull --include src/main/resources/large
 
@@ -36,25 +23,11 @@ RUN export GRADLE_OPTS="-Xmx4048m -Dorg.gradle.daemon=false" && /gatk/gradlew cl
 RUN cp -r $( find /gatk/build -name "*bundle-files-collected" )/ /gatk/unzippedJar/
 RUN unzip -o -j $( find /gatk/unzippedJar -name "gatkPython*.zip" ) -d /gatk/unzippedJar/scripts
 
-# Using OpenJDK 8
-FROM broadinstitute/gatk:gatkbase-2.3.0
+FROM broadinstitute/gatk:gatkbase-3.0.0
 
 RUN rm /etc/apt/sources.list.d/google-cloud-sdk.list
 RUN apt update
 RUN apt-key list
-
-#Get Java 17 temurin JDK
-#RUN apt update && apt upgrade
-RUN apt install wget
-RUN wget https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.6%2B10/OpenJDK17U-jdk_x64_linux_hotspot_17.0.6_10.tar.gz
-RUN tar -xvf OpenJDK17U-jdk_x64_linux_hotspot_17.*.tar.gz
-RUN mv jdk-17.0.6+10 /opt/
-
-ENV JAVA_HOME /opt/jdk-17.0.6+10
-ENV PATH $JAVA_HOME/bin:$PATH
-RUN echo $JAVA_HOME
-RUN update-alternatives --install /usr/bin/java java /opt/jdk-17.0.6+10/bin/java 1
-RUN java -version
 
 WORKDIR /gatk
 
