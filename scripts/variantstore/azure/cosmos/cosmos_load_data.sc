@@ -168,7 +168,7 @@ def configureLogging(): Unit = {
   import ch.qos.logback.classic.Level
 
   val root = LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME).asInstanceOf[ch.qos.logback.classic.Logger]
-  root.setLevel(Level.WARN)
+  root.setLevel(Level.INFO)
 }
 
 
