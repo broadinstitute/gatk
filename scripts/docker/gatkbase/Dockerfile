@@ -1,4 +1,4 @@
-# Using OpenJDK 8
+# Using OpenJDK 17
 # This Dockerfile does not require any files that are in the GATK4 repo.
 FROM ubuntu:18.04
 
@@ -20,7 +20,6 @@ RUN apt-get update && \
     build-essential \
     openjdk-17-jdk \
     software-properties-common && \
-	
     apt-get -y clean  && \
     apt-get -y autoclean  && \
     apt-get -y autoremove
