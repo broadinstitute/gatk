@@ -5,7 +5,6 @@ import "GvsPrepareBulkImport.wdl" as PrepareBulkImport
 import "GvsAssignIds.wdl" as AssignIds
 import "GvsImportGenomes.wdl" as ImportGenomes
 
-# less cautious
 
 workflow GvsBulkIngestGenomes {
     input {
@@ -22,8 +21,6 @@ workflow GvsBulkIngestGenomes {
         String dataset_name
         String bq_project_id
         String call_set_identifier
-
-        ## Array[String] external_sample_names ## TODO no longer an input param?
 
         File? gatk_override
         # End GvsAssignIds
@@ -48,17 +45,11 @@ workflow GvsBulkIngestGenomes {
 
     call GetWorkspaceId
 
-    #call GetWorkspaceNameandNamespace {
-    #    input:
-    #        workspace_id = GetWorkspaceId.workspace_id
-    #}
-
 
     call PrepareBulkImport.GvsPrepareBulkImport as PrepareBulkImport {
         input:
             project_id = terra_project_id,
             workspace_name = workspace_name,
-            # workspace_name = GetWorkspaceNameandNamespace.workspace_name,
             workspace_bucket = "fc-" + GetWorkspaceId.workspace_id,
             samples_table_name = samples_table_name,
             sample_id_column_name = sample_id_column_name,
@@ -100,7 +91,6 @@ workflow GvsBulkIngestGenomes {
     }
 
     output {
-        ## Boolean done = true
         Array[File] load_data_stderrs = ImportGenomes.load_data_stderrs
     }
 }
@@ -124,41 +114,4 @@ workflow GvsBulkIngestGenomes {
             String workspace_id = read_string("workspace_id.txt")
         }
     }
-
-
-#    task GetWorkspaceNameandNamespace {
-#      input {
-#        String workspace_id
-#      }
-#        command <<<
-#            # Prepend date, time and pwd to xtrace log entries.
-#            PS4='\D{+%F %T} \w $ '
-#            set -o errexit -o nounset -o pipefail -o xtrace
-#
-#
-#            # hit api based on workspace id
-#            https://rawls.dsde-prod.broadinstitute.org/#/workspaces/getWorkspaceById
-#
-#            # python library
-#
-#            # then parse the return blob to get stuff out
-#            String workspace_name = obj.workspace.name
-#            String namespace = obj.workspace.namespace
-#
-#
-#            # curl -X 'GET' \
-#            # 'https://rawls.dsde-prod.broadinstitute.org/api/workspaces/id/65c09f83-820f-4c09-ad92-3a3e83fd5d1b' \
-#            # -H 'accept: application/json' \
-#
-#        >>>
-#
-#        runtime {
-#            docker: "ubuntu:latest"
-#        }
-#
-#        output {
-#            String workspace_name = ~{workspace_name}
-#            String terra_project_name = ~{namespace}
-#        }
-#    }
 
