@@ -280,7 +280,7 @@ task LoadData {
     cut -d, -f1 sample_map.csv > gvs_ids.csv ## TODO do we need this?!?!
 
     ## delete the table that was only needed for this ingest test
-    ## bq --project_id=~{project_id} rm -f=true ~{temp_table}
+    bq --project_id=~{project_id} rm -f=true ~{temp_table}
 
     ## now we want to create a sub list of these samples (without the ones that have already been loaded)
     curl https://raw.githubusercontent.com/broadinstitute/gatk/ah_var_store/scripts/variantstore/wdl/extract/curate_input_array_files.py -o curate_input_array_files.py
