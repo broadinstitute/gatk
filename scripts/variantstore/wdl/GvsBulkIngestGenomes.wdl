@@ -76,8 +76,9 @@ workflow GvsBulkIngestGenomes {
             input_vcfs = read_lines(PrepareBulkImport.vcfFOFN),
             input_vcf_indexes = read_lines(PrepareBulkImport.vcfIndexFOFN),
 
-            is_rate_limited_beta_customer = true,
-            beta_customer_max_scatter = 25,
+            ## TODO the following will be kept short term for testing
+            ## is_rate_limited_beta_customer = true,
+            ## beta_customer_max_scatter = 25,
 
             interval_list = interval_list,
 
