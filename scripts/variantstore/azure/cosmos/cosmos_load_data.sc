@@ -85,14 +85,20 @@ def loadAvros(container: CosmosAsyncContainer, avroPaths: Iterable[Path], numRec
   // There can occasionally be 409 race conditions on `id` if using a regular `Long` so go atomic!
   val id = AtomicLong(0L)
 
-  // On a Standard E4-2ads v5 Azure VM this Avro processing easily saturates the default 400 - 4000 RU/s maximum
-  // throughput that Cosmos DB containers have when created through the Azure Portal. For 100K items, all the items
-  // print out in the progress messages, but then the script sits there waiting for the documents to be written to
-  // Cosmos. This behavior was something of a surprise given the "reactor" structure; I would have expected backpressure
-  // to limit the number of documents that were created if they couldn't actually be written to Cosmos. Is Cosmos
-  // silently buffering documents up to the RU/s limit?
+  // On a Standard E4-2ads v5 Azure VM this Avro processing easily saturates the bandwidth of a 10000 - 100000 RU/s
+  // autoscaling Cosmos container. An earlier version of this script created a `Flux` of Avro files and within that
+  // `flatMap`ed a `Flux` of Avro records into `CosmosItemOperation`s. This worked okay for a few million items, but
+  // eventually the script would crash with a 408 error and very detailed error messages saying that the `BulkExecutor`
+  // was terminating while holding millions of items:
   //
-  // To see RU consumption:
+  // 03:40:03.554 [bulk-executor-bounded-elastic-265] INFO com.azure.cosmos.implementation.batch.BulkExecutor - BulkExecutor.execute flux terminated - Signal: cancel - # left items 6514672, Context: BulkExecutor-32[n/a], Thread[Name: bulk-executor-bounded-elastic-265,Group: main, isDaemon: true, Id: 328]
+  //
+  // i.e., while this script is structured as a reactive program, no backpressure signal seems to get applied to the
+  // source by the Cosmos-writing sink. The script was subsequently reworked into its current form where it iterates
+  // over individual Avro files, writing out all records from each file before moving on to the next. This feels hacky
+  // but still keeps the Cosmos container bandwidth saturated without crashing.
+  //
+  // To see Cosmos RU/s consumption:
   //
   // Azure Portal -> CosmosDB -> Metrics
   // Metric Namespace = 'Cosmos DB standard metrics'
@@ -106,12 +112,11 @@ def loadAvros(container: CosmosAsyncContainer, avroPaths: Iterable[Path], numRec
   // Where the Cosmos JSON serialization magic happens:
   // https://github.com/Azure/azure-sdk-for-java/blob/80b12e48aeb6ad2f49e86643dfd7223bde7a9a0c/sdk/cosmos/azure-cosmos/src/main/java/com/azure/cosmos/implementation/JsonSerializable.java#L255
   //
-  // Making a Jackson `ObjectNode` (subtype of `JsonNode`) from a `GenericRecord#toString` JSON String seems like the
+  // Making a Jackson `ObjectNode` (subtype of `JsonNode`) from a `GenericRecord#toString` JSON String seemed like the
   // least bad option for Cosmos serialization (`JsonSerializable` looks like a Jackson type but is actually an
   // internal Cosmos type). This approach still necessitates an unsavory amount of bit shuffling from
   // Avro => Stringified JSON => Jackson object => Stringified JSON, but it certainly beats using brittle, clunky POJOs.
-  // And despite all the shuffling this script generates Cosmos items far faster than we can actually push them to
-  // Cosmos with the default container bandwidth configuration.
+  // And despite all this bit shuffling, item generation far outpaces our ability to write items to Cosmos.
   val objectMapper = new ObjectMapper()
 
 
