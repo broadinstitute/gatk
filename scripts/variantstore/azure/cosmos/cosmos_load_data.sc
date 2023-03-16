@@ -17,13 +17,9 @@ import java.util.NoSuchElementException
 import java.util.concurrent.atomic.AtomicLong
 import org.apache.avro.file._
 import org.apache.avro.generic._
-import org.slf4j.LoggerFactory
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import scala.jdk.CollectionConverters._
-
-
-val logger = LoggerFactory.getLogger("cosmos_load_data")
 
 
 // Script to load vet and ref_ranges Avro files into Cosmos at the specified database / container coordinates.
@@ -56,7 +52,7 @@ def extractCosmosEndpointAndKey(): (String, String) = {
     (sys.env("COSMOS_ENDPOINT"), sys.env("COSMOS_KEY"))
   } catch {
     case e: NoSuchElementException =>
-      logger.error(f"Error: ${e.getMessage()} environment variable not set.")
+      println(f"Error: ${e.getMessage()} environment variable not set.")
       sys.exit(1)
   }
 }
@@ -87,7 +83,7 @@ def loadAvros(container: CosmosAsyncContainer, avroPaths: Iterable[Path], numRec
 
   // On a Standard E4-2ads v5 Azure VM this Avro processing easily saturates the default 400 - 4000 RU/s maximum
   // throughput that Cosmos DB containers have when created through the Azure Portal. For 100K items, all the items
-  // print out in the progress messages, but then the script sits there waiting for the documents to be written to
+  // print out in the progress printlns, but then the script sits there waiting for the documents to be written to
   // Cosmos. This behavior was something of a surprise given the "reactor" structure; I would have expected backpressure
   // to limit the number of documents that were created if they couldn't actually be written to Cosmos. Is Cosmos
   // silently buffering documents up to the RU/s limit?
@@ -114,28 +110,27 @@ def loadAvros(container: CosmosAsyncContainer, avroPaths: Iterable[Path], numRec
   // Cosmos with the default container bandwidth configuration.
   val objectMapper = new ObjectMapper()
 
+  val itemOperations = Flux.fromIterable(avroPaths.asJava).
+    flatMap(path => {
+      val file = new File(path.toString())
+      val reader = new GenericDatumReader()
+      val dataFileReader = new DataFileReader(file, reader)
+      Flux.fromIterable(dataFileReader).
+        // I had to put this `map` here inside the `flatMap` and not directly ahead of the `take` otherwise nothing
+        // happened; I don't know why.
+        map(record => {
+          val (objectNode, idLong) = objectNodeFromAvroRecord(objectMapper, record.toString(), id)
+          if (idLong % numRecordsProgress == 0L) println(f"$idLong...");
+          objectNode
+        })
+    }).
+    take(numRecordsToLoad).
+    map(r => CosmosBulkOperations.getCreateItemOperation(r, new PartitionKey(r.get("sample_id").asLong)))
 
-  def itemFluxFromAvroPath(path: Path): Flux[CosmosItemOperation] = {
-    val file = new File(path.toString())
-    val reader = new GenericDatumReader()
-    val dataFileReader = new DataFileReader(file, reader)
-    Flux.fromIterable(dataFileReader).
-      map(record => {
-        val (objectNode, idLong) = objectNodeFromAvroRecord(objectMapper, record.toString(), id)
-        val itemOperation =
-          CosmosBulkOperations.getCreateItemOperation(objectNode, new PartitionKey(objectNode.get("sample_id").asLong))
-        if (idLong % numRecordsProgress == 0L) logger.info(f"$idLong...");
-        itemOperation
-      })
-  }
+  executeItemOperationsWithErrorHandling(container, itemOperations)
 
-  for {
-    avroPath <- avroPaths
-    _ = logger.info(s"Processing Avro file '${avroPath}'...")
-    itemFlux: Flux[CosmosItemOperation] = itemFluxFromAvroPath(avroPath)
-    _ = executeItemOperationsWithErrorHandling(container, itemFlux)
-    _ = logger.info(s"Avro file '${avroPath}' processing complete.")
-  } yield ()
+  // for debug
+  // itemOperations.subscribe(e => println(e))
 }
 
 
@@ -146,10 +141,10 @@ def executeItemOperationsWithErrorHandling(container: CosmosAsyncContainer, item
     val itemOperation = operationResponse.getOperation()
 
     if (operationResponse.getException() != null) {
-      logger.error(f"Bulk operation failed: ${operationResponse.getException()}")
+      println(f"Bulk operation failed: ${operationResponse.getException()}")
     } else if (itemResponse == null || !itemResponse.isSuccessStatusCode()) {
       val objectNode = itemOperation.getItem().asInstanceOf[ObjectNode]
-      logger.error(String.format(
+      println(String.format(
         "The operation for Item ID: [%s]  Item PartitionKey Value: [%s] did not complete " +
           "successfully with a %s/%s response code.",
         objectNode.get("id"),
@@ -169,7 +164,9 @@ def executeItemOperationsWithErrorHandling(container: CosmosAsyncContainer, item
 
 
 def configureLogging(): Unit = {
+  import org.slf4j.LoggerFactory
   import ch.qos.logback.classic.Level
+
   val root = LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME).asInstanceOf[ch.qos.logback.classic.Logger]
   root.setLevel(Level.INFO)
 }
