@@ -89,6 +89,9 @@ import static org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumbe
  * the python environment is already set up. Otherwise, the environment must be created and activated as described in the
  * main GATK README.md file.</p>
  *
+ * <p>OpenMP and MKL parallelism can be controlled by setting the <code>OMP_NUM_THREADS</code> and <code>MKL_NUM_THREADS</code>
+ * environment variables, respectively.</p>
+ *
  * <p>Advanced users may wish to set the <code>THEANO_FLAGS</code> environment variable to override the GATK theano
  * configuration. For example, by running
  * <code>THEANO_FLAGS="base_compiledir=PATH/TO/BASE_COMPILEDIR" gatk GermlineCNVCaller ...</code>, users can specify
