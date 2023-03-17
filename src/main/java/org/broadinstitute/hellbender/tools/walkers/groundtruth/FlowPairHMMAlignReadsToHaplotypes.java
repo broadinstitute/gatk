@@ -41,21 +41,16 @@ public class FlowPairHMMAlignReadsToHaplotypes extends ReadWalker {
     @Argument(fullName = "output", shortName = "O", doc="Read x haplotype log-likelihood matrix")
     public String output;
 
+    @Argument(fullName = "aligner", shortName = "E", doc="Aligner: PairHMM or FlowBasedAligner")
+    public String alignmentEngineName;
     @ArgumentCollection
     public FlowBasedAlignmentArgumentCollection fbargs = new FlowBasedAlignmentArgumentCollection();
 
 
     LikelihoodEngineArgumentCollection likelihoodArgs = new LikelihoodEngineArgumentCollection();
     SAMFileHeader sequenceHeader;
-//    final FlowBasedHMMEngine aligner = new FlowBasedHMMEngine(fbargs, (byte) likelihoodArgs.gcpHMM,
-//            10000, likelihoodArgs.expectedErrorRatePerBase, likelihoodArgs.pcrErrorModel,
-//            likelihoodArgs.dontUseDragstrPairHMMScores ? null : DragstrParamUtils.parse(likelihoodArgs.dragstrParams),
-//            likelihoodArgs.enableDynamicReadDisqualification, likelihoodArgs.readDisqualificationThresholdConstant,
-//            likelihoodArgs.minUsableIndelScoreToUse, (byte) likelihoodArgs.flatDeletionPenalty,
-//            (byte) likelihoodArgs.flatInsertionPenatly);
 
-    final FlowBasedAlignmentLikelihoodEngine aligner = new FlowBasedAlignmentLikelihoodEngine(fbargs,
-            10000, 1,false, 0);
+    ReadLikelihoodCalculationEngine aligner;
 
     AlleleLikelihoodWriter outputWriter;
 
@@ -84,6 +79,20 @@ public class FlowPairHMMAlignReadsToHaplotypes extends ReadWalker {
             haplotypeToName.put(new String(seq.getBases()), seq.getName());
             seq = haplotypeFile.nextSequence();
         }
+
+        if (alignmentEngineName.equals("PairHMM")) {
+            aligner = new FlowBasedHMMEngine(fbargs, (byte) likelihoodArgs.gcpHMM,
+                    10000, likelihoodArgs.expectedErrorRatePerBase, likelihoodArgs.pcrErrorModel,
+                    null,
+                    likelihoodArgs.enableDynamicReadDisqualification, likelihoodArgs.readDisqualificationThresholdConstant,
+                    likelihoodArgs.minUsableIndelScoreToUse, (byte) likelihoodArgs.flatDeletionPenalty,
+                    (byte) likelihoodArgs.flatInsertionPenatly);
+        } else if (alignmentEngineName.equals("FBA")) {
+            aligner = new FlowBasedAlignmentLikelihoodEngine(fbargs,
+                    10000, 1, false, 0);
+        } else {
+            throw new RuntimeException("Accepted engines are PairHMM or FBA");
+        }
     }
     @Override
     public void apply(final GATKRead read, final ReferenceContext referenceContext, final FeatureContext featureContext){
@@ -111,6 +120,12 @@ public class FlowPairHMMAlignReadsToHaplotypes extends ReadWalker {
         SampleList samples = new IndexedSampleList(Arrays.asList("sm1"));
         Map<String, List<GATKRead>> tmpMap = new HashMap<>();
         tmpMap.put("sm1", reads);
-        return aligner.computeReadLikelihoods(haplotypeList, sequenceHeader, samples, tmpMap, false, false);
+        if (alignmentEngineName.equals("PairHMM")) {
+            return ((FlowBasedHMMEngine)aligner).computeReadLikelihoods(haplotypeList, sequenceHeader, samples, tmpMap, false, false);
+        } else if (alignmentEngineName.equals("FBA")){
+            return ((FlowBasedAlignmentLikelihoodEngine)aligner).computeReadLikelihoods(haplotypeList, sequenceHeader, samples, tmpMap, false, false);
+        } else {
+            return null;
+        }
     }
 }
