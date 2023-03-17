@@ -13,13 +13,10 @@ import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.FlowBasedProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
-import org.broadinstitute.hellbender.tools.FlowBasedArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.*;
-import org.broadinstitute.hellbender.utils.dragstr.DragstrParamUtils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.read.FlowBasedReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
@@ -102,6 +99,14 @@ public class FlowPairHMMAlignReadsToHaplotypes extends ReadWalker {
         }
     }
 
+    @Override
+    public Object onTraversalSuccess(){
+        AlleleLikelihoods<GATKRead, Haplotype> readByHaplotypeMatrix = calculateLikelihoods(readBuffer);
+        outputWriter.writeAlleleLikelihoodsConcise(readByHaplotypeMatrix, haplotypeToName, writeHeader, readCount - BUFFER_SIZE_LIMIT);
+        writeHeader=false;
+        readBuffer.clear();
+        return null;
+    }
     private AlleleLikelihoods<GATKRead,Haplotype> calculateLikelihoods(final List<GATKRead> reads){
         SampleList samples = new IndexedSampleList(Arrays.asList("sm1"));
         Map<String, List<GATKRead>> tmpMap = new HashMap<>();
