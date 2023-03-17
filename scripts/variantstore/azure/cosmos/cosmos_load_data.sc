@@ -5,6 +5,7 @@ import $ivy.`com.lihaoyi:ammonite-ops_2.13:2.4.1`
 import $ivy.`org.apache.avro:avro:1.11.1`
 import $ivy.`org.slf4j:slf4j-api:2.0.6`
 import $ivy.`org.xerial.snappy:snappy-java:1.1.8.4`
+import $file.BulkWriter
 
 
 import ammonite.ops._
@@ -109,57 +110,27 @@ def loadAvros(container: CosmosAsyncContainer, avroPaths: Iterable[Path], numRec
   // And despite all the shuffling this script generates Cosmos items far faster than we can actually push them to
   // Cosmos with the default container bandwidth configuration.
   val objectMapper = new ObjectMapper()
+  val bulkWriter = new BulkWriter.BulkWriter(container)
 
-  val itemOperations = Flux.fromIterable(avroPaths.asJava).
+  Flux.fromIterable(avroPaths.asJava).
     flatMap(path => {
       val file = new File(path.toString())
       val reader = new GenericDatumReader()
       val dataFileReader = new DataFileReader(file, reader)
       Flux.fromIterable(dataFileReader).
-        // I had to put this `map` here inside the `flatMap` and not directly ahead of the `take` otherwise nothing
-        // happened; I don't know why.
         map(record => {
           val (objectNode, idLong) = objectNodeFromAvroRecord(objectMapper, record.toString(), id)
           if (idLong % numRecordsProgress == 0L) println(f"$idLong...");
-          objectNode
+          val operation = CosmosBulkOperations.getCreateItemOperation(objectNode, new PartitionKey(objectNode.get("sample_id").asLong))
+          bulkWriter.scheduleWrites(operation)
         })
-    }).
-    take(numRecordsToLoad).
-    map(r => CosmosBulkOperations.getCreateItemOperation(r, new PartitionKey(r.get("sample_id").asLong)))
+    })
+    bulkWriter.execute.subscribe()
 
-  executeItemOperationsWithErrorHandling(container, itemOperations)
+  // executeItemOperationsWithErrorHandling(container, itemOperations)
 
   // for debug
   // itemOperations.subscribe(e => println(e))
-}
-
-
-def executeItemOperationsWithErrorHandling(container: CosmosAsyncContainer, itemOperations: Flux[CosmosItemOperation]): Unit = {
-  // Only the first and last few lines are the "execute" bits, all the rest is error handling iff something goes wrong.
-  container.executeBulkOperations(itemOperations).flatMap(operationResponse => {
-    val itemResponse = operationResponse.getResponse()
-    val itemOperation = operationResponse.getOperation()
-
-    if (operationResponse.getException() != null) {
-      println(f"Bulk operation failed: ${operationResponse.getException()}")
-    } else if (itemResponse == null || !itemResponse.isSuccessStatusCode()) {
-      val objectNode = itemOperation.getItem().asInstanceOf[ObjectNode]
-      println(String.format(
-        "The operation for Item ID: [%s]  Item PartitionKey Value: [%s] did not complete " +
-          "successfully with a %s/%s response code.",
-        objectNode.get("id"),
-        objectNode.get("sample_id"),
-        if (itemResponse != null) itemResponse.getStatusCode() else "n/a",
-        if (itemResponse != null) itemResponse.getSubStatusCode() else "n/a"))
-    }
-
-    if (itemResponse == null) {
-      Mono.error(new IllegalStateException("No response retrieved."));
-    } else {
-      Mono.just(itemResponse);
-    }
-
-  }).blockLast()
 }
 
 
