@@ -97,12 +97,14 @@ public final class  PartiallyDeterminedHaplotype extends Haplotype {
                     .thenComparing(Allele::getBaseString);
 
     /**
-     *
-     * @param base
-     * @param isRefAllele
-     * @param pdBytes
-     * @param constituentEvents
-     *
+     * @param base                          base (reference) haplotype used to construct the PDHaplotype
+     * @param isRefAllele                   is the determined allele reference or alt
+     * @param pdBytes                       array of bytes indicating what bases are skips for the pdhmm
+     * @param constituentEvents             events (both determined and undetermined) covered by this haplotype, should follow the rules for PD variants
+     * @param eventWithVariant              event from @param constituentEvents that is determined for this pd haplotype
+     * @param cigar                         haplotype cigar agianst the reference
+     * @param determinedPosition            position (wrt the reference contig) that the haplotype should be considered determined //TODO this will be refactored to be a range of events in JointDetection
+     * @param getAlignmentStartHapwrtRef    alignment startHapwrtRef from baseHaplotype corresponding to the in-memory storage of reference bases (must be set for trimming/clipping ops to work)
      */
     public PartiallyDeterminedHaplotype(final Haplotype base, boolean isRefAllele, byte[] pdBytes, List<VariantContext> constituentEvents,
                                         VariantContext eventWithVariant, Cigar cigar, long determinedPosition, int getAlignmentStartHapwrtRef) {
@@ -121,7 +123,7 @@ public final class  PartiallyDeterminedHaplotype extends Haplotype {
     public byte[] getDisplayBases() {
         byte[] bytes = getBases().clone();
         for (int i = 0; i < bytes.length; i++) {
-            if ((alternateBases[i] & ~3) != 0) { // Don't change the byte if
+            if ((alternateBases[i] & ~7) != 0) { // Change the display byte if we have a partially determined SNP underneath it
                 bytes[i] = 'P';
             }
         }
@@ -144,8 +146,6 @@ public final class  PartiallyDeterminedHaplotype extends Haplotype {
         return v -> "(" + Integer.toString(v.getStart() - offset + (v.isSimpleDeletion()? 1 : 0))+ (v.isSimpleInsertion()?".5":"") + ",Rlen=" + v.getLengthOnReference()+"," + v.getAlternateAlleles() + ")";
     }
 
-    // NOTE, we don't have to trim this because we form these after trimming
-
     @Override
     public boolean equals( final Object h ) {
         return h instanceof PartiallyDeterminedHaplotype
@@ -167,6 +167,7 @@ public final class  PartiallyDeterminedHaplotype extends Haplotype {
 
     public void setAllDeterminedEventsAtThisSite(List<VariantContext> allDeterminedEventsAtThisSite) {
         this.allDeterminedEventsAtThisSite = allDeterminedEventsAtThisSite;
+        cachedExtent = null;
     }
 
     //NOTE: we never want the genotyper to handle reads that were not HMM scored, caching this extent helps keep us safe from messy sites
@@ -219,5 +220,8 @@ public final class  PartiallyDeterminedHaplotype extends Haplotype {
         }
         return output;
     }
+
+    @Override
+    public boolean isPartiallyDetermined() { return true; }
 
 }

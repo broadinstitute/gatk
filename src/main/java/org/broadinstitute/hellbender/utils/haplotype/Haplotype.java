@@ -18,7 +18,6 @@ import spire.math.All;
 import java.util.Arrays;
 import java.util.Comparator;
 
-//TODO re-add final here and refacotor
 public class Haplotype extends SimpleAllele {
     private static final long serialVersionUID = 1L;
 
@@ -343,4 +342,7 @@ public class Haplotype extends SimpleAllele {
     public void setKmerSize(int kmerSize) {
         this.kmerSize = kmerSize;
     }
+
+    // Flag used to control how the haplotype is treated by the hmm and downstream code for the PDHMM.
+    public boolean isPartiallyDetermined() { return false; }
 }

@@ -314,7 +314,8 @@ public final class EventMap extends TreeMap<Integer, VariantContext> {
 
         if( debug ) logger.info("=== Best Haplotypes ===");
         for( final Haplotype h : haplotypes ) {
-            if (h instanceof PartiallyDeterminedHaplotype) {
+            //TODO h.recomputeAndSetEventMap() with overrides for the two haplotype classes should replace this casting+checking code here which is prone to error.
+            if (h.isPartiallyDetermined()) {
                 // Since PD haplotypes Know what allels are variants, simply ask it and generate the map that way.
                 h.setEventMap(new EventMap(((PartiallyDeterminedHaplotype) h).getDeterminedAlleles()));
             } else {
@@ -323,7 +324,7 @@ public final class EventMap extends TreeMap<Integer, VariantContext> {
             }
             startPosKeySet.addAll(h.getEventMap().getStartPositions());
             // Assert that all of the events discovered have 2 alleles
-            h.getEventMap().getVariantContexts().forEach(vc -> Utils.validate(vc.getAlleles().size() == 2, () -> "Error Haplotype event map Variant Context has too many alleles " + vc.getAlleles() + " for hapllotype: " + h));
+            h.getEventMap().getVariantContexts().forEach(vc -> Utils.validate(vc.getAlleles().size() == 2, () -> "Error Haplotype event map Variant Context has too many alleles " + vc.getAlleles() + " for haplotype: " + h));
 
             if (debug) {
                 logger.info(h.toString());

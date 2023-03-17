@@ -2,8 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.broadinstitute.gatk.nativebindings.pairhmm.PairHMMNativeArguments;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -28,8 +26,17 @@ import java.util.*;
 import java.util.function.ToDoubleFunction;
 import java.util.stream.Collectors;
 
-/*
+/**
  * Classic likelihood computation: full pair-hmm all haplotypes vs all reads.
+ *
+ * Note this is the "Partially Determined" Pair hmm engine, which means the haplotypes it sees are expected to be
+ * PartiallyDeterminedHaplotype objects. These are special in that they all have a subset of "determined" or present
+ * bases corresponding to variants and everything else is "undetermined." The likelihood scores are computed by taking
+ * the maximum possible score for the read vs the un-determined bases and behaving normally over the determined ones
+ * that have a real subset of alleles from the assembly region.
+ *
+ * Since the operations and methods differ from the normal PairHMM significantly we have opted to create an entirely seperate
+ * codepath of PD___HMM classes to handle the differences.
  */
 public final class PDPairHMMLikelihoodCalculationEngine implements ReadLikelihoodCalculationEngine {
 
@@ -134,7 +141,7 @@ public final class PDPairHMMLikelihoodCalculationEngine implements ReadLikelihoo
     }
 
     @Override
-    public void filterPoorlyModeledEvidence(AlleleLikelihoods<GATKRead, ?> result, boolean dynamicDisqualification, double expectedErrorRatePerBase, double readDisqualificationScale) {
+    public void filterPoorlyModeledEvidence(AlleleLikelihoods<GATKRead, ? extends Haplotype> result, boolean dynamicDisqualification, double expectedErrorRatePerBase, double readDisqualificationScale) {
         ReadLikelihoodCalculationEngine.super.filterPoorlyModeledEvidence(result, dynamicDisqualification, expectedErrorRatePerBase, readDisqualificationScale);
     }
 
@@ -156,17 +163,19 @@ public final class PDPairHMMLikelihoodCalculationEngine implements ReadLikelihoo
                                                                          Map<String, List<GATKRead>> perSampleReadList,
                                                                          boolean filterPoorly) {
         Utils.nonNull(assemblyResultSet, "assemblyResultSet is null");
-        //TODO add a better exception if these are not the correct object for what we care about
+        if (assemblyResultSet.getHaplotypeList().stream().anyMatch(haplotype -> !haplotype.isPartiallyDetermined())) {
+            throw new GATKException("PDHMM engine requires PartiallyDeterminedHaplotype objects as input");
+        }
         final List<PartiallyDeterminedHaplotype> haplotypeList = assemblyResultSet.getHaplotypeList().stream().map(h -> (PartiallyDeterminedHaplotype)h).collect(Collectors.toList());
 
-        AlleleLikelihoods<GATKRead, Haplotype> resut = (AlleleLikelihoods<GATKRead, Haplotype>) computeReadLikelihoods2(haplotypeList, null, samples, perSampleReadList, filterPoorly);
+        AlleleLikelihoods<GATKRead, Haplotype> resut = (AlleleLikelihoods<GATKRead, Haplotype>) computeReadLikelihoodsPartiallyDetermined(haplotypeList, null, samples, perSampleReadList, filterPoorly);
         return resut;
     }
 
-    public AlleleLikelihoods<GATKRead, ? extends Haplotype> computeReadLikelihoods2( final List<PartiallyDeterminedHaplotype> haplotypeList,
-                                                                          final SAMFileHeader hdr,
-                                                                          final SampleList samples,
-                                                                          final Map<String, List<GATKRead>> perSampleReadList, final boolean filterPoorly) {
+    public AlleleLikelihoods<GATKRead, ? extends Haplotype> computeReadLikelihoodsPartiallyDetermined(final List<PartiallyDeterminedHaplotype> haplotypeList,
+                                                                                                      final SAMFileHeader hdr,
+                                                                                                      final SampleList samples,
+                                                                                                      final Map<String, List<GATKRead>> perSampleReadList, final boolean filterPoorly) {
         Utils.nonNull(samples, "samples is null");
         Utils.nonNull(perSampleReadList, "perSampleReadList is null");
         Utils.nonNull(haplotypeList, "haplotypeList is null");
@@ -246,9 +255,9 @@ public final class PDPairHMMLikelihoodCalculationEngine implements ReadLikelihoo
         // Modify the read qualities by applying the PCR error model and capping the minimum base,insertion,deletion qualities
         final List<GATKRead> processedReads = modifyReadQualities(likelihoods.evidence());
 
-        for(int counter = 0; counter < processedReads.size(); counter++) {
-            GATKRead read = processedReads.get(counter);
-            if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
+        if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
+            for(int counter = 0; counter < processedReads.size(); counter++) {
+                GATKRead read = processedReads.get(counter);
                 HaplotypeCallerGenotypingDebugger.println("Range for Overlaps to Variants for consideration: "+rangeForReadOverlapToDeterminedBases);
                 HaplotypeCallerGenotypingDebugger.println("read "+counter +": "+read.getName()+" cigar: "+read.getCigar()+" mapQ: "+read.getMappingQuality()+" loc: ["+read.getStart() +"-"+ read.getEnd()+"] unclippedloc: ["+read.getUnclippedStart()+"-"+read.getUnclippedEnd()+"]");
                 HaplotypeCallerGenotypingDebugger.println(Arrays.toString(read.getBaseQualitiesNoCopy()));

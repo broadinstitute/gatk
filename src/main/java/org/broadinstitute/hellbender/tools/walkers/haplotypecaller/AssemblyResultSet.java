@@ -39,7 +39,7 @@ public final class AssemblyResultSet {
             .thenComparing(vc -> vc.getAlternateAllele(0));
     private final Map<Integer,AssemblyResult> assemblyResultByKmerSize;
     private final Set<Haplotype> haplotypes;
-    private Set<Haplotype> originalAssemblyHaps = new HashSet<>();
+    private Set<Haplotype> originalAssemblyHaps = new LinkedHashSet<>();
     private final Map<Haplotype,AssemblyResult> assemblyResultByHaplotype;
     private AssemblyRegion regionForGenotyping;
     private byte[] fullReferenceWithPadding;
@@ -594,7 +594,9 @@ public final class AssemblyResultSet {
         }
     }
 
-    //TODO this is REALLY BAD get rid of it for future code:
+    // For PDHMM use: Remove a haplotype from this AssemblyResultSet and update all of the various references in the
+    //                object to that haplotype to be current.
+    // WARNING: Deleting haplotypes in this manner is highly dangerous and will likely lead to lost variants
     public void removeHapltotype(final Haplotype hap) {
 
         haplotypes.remove(hap);
@@ -604,7 +606,6 @@ public final class AssemblyResultSet {
             discovered.remove(hap);
             assemblyResultByKmerSize.get(kmerSize).setDiscoveredHaplotypes(discovered);
         }
-        assemblyResultByKmerSize.keySet().forEach(kmer -> assemblyResultByKmerSize.get(kmer).getDiscoveredHaplotypes());
     }
 
     public void setPartiallyDeterminedMode() {
@@ -615,8 +616,10 @@ public final class AssemblyResultSet {
         return isPartiallyDeterminedList;
     }
 
+    // For PDHMM use: store original assembly haplotypes if we are injecting artificial haplotypes later
+    // WARNING: This is likely not set in every case, use with caution
     public void storeAssemblyHaplotypes() {
-        originalAssemblyHaps = new HashSet<>(haplotypes);
+        originalAssemblyHaps = new LinkedHashSet<>(haplotypes);
     }
 
     public boolean hasOverwrittenHaps() {

@@ -20,11 +20,9 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.HaplotypeFilteringAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
 import org.broadinstitute.hellbender.transformers.DRAGENMappingQualityReadTransformer;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
-import org.broadinstitute.hellbender.cmdline.ModeArgumentUtils;
 
 import java.util.Collection;
 import java.util.List;
@@ -172,21 +170,21 @@ public class HaplotypeCaller extends AssemblyRegionWalker {
      */
     @Override
     protected String[] customCommandLineValidation() {
-        if ((hcArgs.dragenMode || hcArgs.dragen378Mode) && hcArgs.flowMode != HaplotypeCallerArgumentCollection.FlowMode.NONE ) {
+        if ((hcArgs.isDragenGATKMode()) && hcArgs.isFlowBasedCallingMode()) {
             throw new UserException("dragen mode and flow mode can't be both specified");
         }
 
-        if (hcArgs.dragenMode || hcArgs.dragen378Mode) {
+        if (hcArgs.isDragenGATKMode()) {
             final GATKReadFilterPluginDescriptor readFilterPlugin =
                     getCommandLineParser().getPluginDescriptor(GATKReadFilterPluginDescriptor.class);
             Optional<ReadFilter> filterOptional = readFilterPlugin.getResolvedInstances().stream().filter(rf -> rf instanceof MappingQualityReadFilter).findFirst();
             filterOptional.ifPresent(readFilter -> ((MappingQualityReadFilter) readFilter).minMappingQualityScore = 1);
             ModeArgumentUtils.setArgValues(
                     getCommandLineParser(),
-                    hcArgs.dragen378Mode? hcArgs.getDragenVersion2NameValuePairs() : hcArgs.getDragenNameValuePairs(),
+                    hcArgs.dragen378Mode? hcArgs.getDragenVersion378NameValuePairs() : hcArgs.getDragenVersion3412NameValuePairs(),
                     hcArgs.dragen378Mode? HaplotypeCallerArgumentCollection.DRAGEN_378_GATK_MODE_LONG_NAME : HaplotypeCallerArgumentCollection.DRAGEN_GATK_MODE_LONG_NAME);
         }
-        if (hcArgs.flowMode != HaplotypeCallerArgumentCollection.FlowMode.NONE) {
+        if (hcArgs.isFlowBasedCallingMode()) {
             ModeArgumentUtils.setArgValues(
                     getCommandLineParser(),
                     hcArgs.flowMode.getNameValuePairs(),

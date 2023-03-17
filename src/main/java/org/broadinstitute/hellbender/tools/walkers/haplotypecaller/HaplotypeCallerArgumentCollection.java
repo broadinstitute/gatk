@@ -154,33 +154,42 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
      */
     @Argument(fullName = DRAGEN_GATK_MODE_LONG_NAME, optional = true, doc="Single argument for enabling the bulk of DRAGEN-GATK features. NOTE: THIS WILL OVERWRITE PROVIDED ARGUMENT CHECK TOOL INFO TO SEE WHICH ARGUMENTS ARE SET).", mutex = {DRAGEN_378_GATK_MODE_LONG_NAME})
     public Boolean dragenMode = false;
+
     /**
      * DRAGEN-GATK version 2: This includes PDHMM and Columnwise detection (with hopes to add Joint Detection and new STRE as well in the future)
      */
+    @Advanced
     @Argument(fullName = DRAGEN_378_GATK_MODE_LONG_NAME, optional = true, doc="Single argument for enabling the bulk of DRAGEN-GATK features including new developments for concordance against DRAGEN 3.7.8. NOTE: THIS WILL OVERWRITE PROVIDED ARGUMENT CHECK TOOL INFO TO SEE WHICH ARGUMENTS ARE SET).", mutex = {DRAGEN_GATK_MODE_LONG_NAME})
     public Boolean dragen378Mode = false;
+
     @Advanced
     @Argument(fullName = FLOW_GATK_MODE_LONG_NAME, optional = true, doc="Single argument for enabling the bulk of Flow Based features. NOTE: THIS WILL OVERWRITE PROVIDED ARGUMENT CHECK TOOL INFO TO SEE WHICH ARGUMENTS ARE SET).")
     public FlowMode flowMode = FlowMode.NONE;
+
     @Advanced
     @Argument(fullName = APPLY_BQD_LONG_NAME, doc = "If enabled this argument will apply the DRAGEN-GATK BaseQualityDropout model to the genotyping model for filtering sites due to Linked Error mode.", optional = true)
     public boolean applyBQD = false;
+
     @Advanced
     @Argument(fullName = APPLY_FRD_LONG_NAME, doc = "If enabled this argument will apply the DRAGEN-GATK ForeignReadDetection model to the genotyping model for filtering sites.", optional = true)
     public boolean applyFRD = false;
+
     @Advanced
     @Argument(fullName = DISABLE_SPANNING_EVENT_GENOTYPING_LONG_NAME, doc = "If enabled this argument will disable inclusion of the '*' spanning event when genotyping events that overlap deletions", optional = true)
     public boolean disableSpanningEventGenotyping = false;
+
     @Advanced
     @Argument(fullName = TRANSFORM_DRAGEN_MAPPING_QUALITY_LONG_NAME, doc = "If enabled this argument will map DRAGEN aligner aligned reads with mapping quality <=250 to scale up to MQ 50", optional = true)
     public boolean transformDRAGENMapQ = false;
-    //TODO NOTE TO THE REVIEWER, THIS ARGUMENT IS INSUFFICIENT BOTH THIS AND --minimum-mapping-quality must be set, unfortunatley
+
+    //TODO NOTE TO THE REVIEWER, THIS ARGUMENT IS INSUFFICIENT BOTH THIS AND --minimum-mapping-quality must be set, unfortunately
     //TODO they can't be unified since the toolDefaultReadFilters get instantiated before this field gets populated, and we can't
     //TODO pull the threshold from that filter since it might or might not exist by the time we go to filter for threading, really
-    //TODO we should unify on the readFilter version of this check i think but perhaps they are seperate for athropological historical reasons and it is thus culturally protected?
+    //TODO we should unify on the readFilter version of this check i think but perhaps they are separate for anthropological historical reasons and it is thus culturally protected?
     @Advanced
     @Argument(fullName = MAPPING_QUALITY_THRESHOLD_FOR_GENOTYPING_LONG_NAME, doc = "Control the threshold for discounting reads from the genotyper due to mapping quality after the active region detection and assembly steps but before genotyping. NOTE: this is in contrast to the --"+ ReadFilterArgumentDefinitions.MINIMUM_MAPPING_QUALITY_NAME+" argument which filters reads from all parts of the HaplotypeCaller. If you would like to call genotypes with a different threshold both arguments must be set.", optional = true)
     public int mappingQualityThreshold = HaplotypeCallerEngine.DEFAULT_READ_QUALITY_FILTER_THRESHOLD;
+
     @Advanced
     @Argument(fullName = MAX_EFFECTIVE_DEPTH_ADJUSTMENT_FOR_FRD_LONG_NAME, doc = "Set the maximum depth to modify FRD adjustment to in the event of high depth sites (0 to disable)", optional = false)
     public int maxEffectiveDepthAdjustment = 0;
@@ -232,7 +241,7 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     @Argument(fullName= USE_FILTERED_READS_FOR_ANNOTATIONS_LONG_NAME, doc = "Use the contamination-filtered read maps for the purposes of annotating variants", optional=true)
     public boolean useFilteredReadMapForAnnotations = false;
 
-    public String[] getDragenNameValuePairs() {
+    public String[] getDragenVersion3412NameValuePairs() {
         return new String[]{
                 APPLY_BQD_LONG_NAME, "true",
                 APPLY_FRD_LONG_NAME, "true",
@@ -251,7 +260,15 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
         };
     }
 
-    public String[] getDragenVersion2NameValuePairs() {
+    /**
+     * Extra arguments required for DRAGEN-GATK to be Functionally-Equivalent to DRAGEN v3.7.8. These are a super-set
+     * of the arguments above required for DRAGEN v3.4.12 Functional-Equivalence.
+     * The notable differences in the two versions are as follows:
+     *  - v3.7.8 is run with Pileup-Calling enabled which is equivalent to DRAGEN "Joint Detection" in function
+     *  - v3.7.8 adds heuristics to the Pileup-Caller to filter out false-positives. These heuristics may also filter out false positives from the assembly graphs.
+     *  - v3.7.8 is run with the PartiallyDetermined HMM (or "PDHMM") in place of the normal HMM for assigning allele likelihoods
+     */
+    public String[] getDragenVersion378NameValuePairs() {
         return new String[]{
                 APPLY_BQD_LONG_NAME, "true",
                 APPLY_FRD_LONG_NAME, "true",
@@ -273,7 +290,7 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
                 PileupDetectionArgumentCollection.PILEUP_DETECTION_ABSOLUTE_ALT_DEPTH, "0",
                 PileupDetectionArgumentCollection.PILEUP_DETECTION_BAD_READ_RATIO_LONG_NAME, "0.40",
                 PileupDetectionArgumentCollection.PILEUP_DETECTION_ENABLE_INDELS, "true",
-                PileupDetectionArgumentCollection.PILEUP_DETECTION_ACTIVE_REGION_LOD_THRESHOLD_LONG_NAME, "3.0",
+                PileupDetectionArgumentCollection.PILEUP_DETECTION_ACTIVE_REGION_PHRED_THRESHOLD_LONG_NAME, "3.0",
                 PileupDetectionArgumentCollection.GENERATE_PARTIALLY_DETERMINED_HAPLOTYPES_LONG_NAME, "true"
         };
     }
@@ -283,6 +300,17 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     @Hidden
     @Argument(fullName = STEPWISE_FITLERING_ARGUMENT, doc = "If enabled, this will create a FlowBasedAligner to use for filtering haplotypes before using another likelihoods engine for scoring.")
     public boolean stepwiseFiltering = false;
+
+    // Should we make any alterations to the pipeline for DRAGEN-GATK
+    boolean isDragenGATKMode() {
+        return dragenMode || dragen378Mode;
+    }
+
+    // Should we make any alterations to the pipeline for FlowBasedCalling
+    boolean isFlowBasedCallingMode() {
+        return flowMode != FlowMode.NONE;
+    }
+
 
     /**
      * the different flow modes, in terms of their parameters and their values

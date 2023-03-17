@@ -27,7 +27,11 @@ import java.util.Map;
 import java.util.function.Function;
 
 /**
- * Class for performing the pair HMM for global alignment. Figure 4.1 in Durbin 1998 book.
+ * Class for performing the Paritally Determined pair HMM for global alignment.
+ *
+ * NOTE: This is the PDPairHMM which is a modification on the standard PDHMM in that it allows for "undetermined" bases
+ *       across which read mismatches are not penalized so long as they have one of the encoded PD alleles present. This
+ *       class takes different Allele inputs as the standard HMM hierarchy.
  */
 public abstract class PDPairHMM implements Closeable{
     protected static final Logger logger = LogManager.getLogger(PDPairHMM.class);
@@ -263,8 +267,9 @@ public abstract class PDPairHMM implements Closeable{
 
         // Pre-compute the difference between the current haplotype and the next one to be run
         // Looking ahead is necessary for the ArrayLoglessPairHMM implementation
+        //TODO this optimization is very dangerous if we have undetermined haps that could have the same bases but mean different things
         //final int nextHapStartIndex =  (nextHaplotypeBases == null || haplotypeBases.length != nextHaplotypeBases.length) ? 0 : findFirstPositionWhereHaplotypesDiffer(haplotypeBases, haplotypePDBases, nextHaplotypeBases, nextHaplotypePDBases);
-        int nextHapStartIndex = 0; //TODO this optimization is very dangerous if we have undetermined haps that could have the same bases but mean different things
+        int nextHapStartIndex = 0; //disable the optimization for now until its confirmed to be correct
         final double result = subComputeReadLikelihoodGivenHaplotypeLog10(haplotypeBases, haplotypePDBases, readBases, readQuals, insertionGOP, deletionGOP, overallGCP, hapStartIndex, recacheReadValues, nextHapStartIndex);
 
         Utils.validate(result <= 0.0, () -> "PairHMM Log Probability cannot be greater than 0: " + String.format("haplotype: %s, read: %s, result: %f, PairHMM: %s", new String(haplotypeBases), new String(readBases), result, this.getClass().getSimpleName()));

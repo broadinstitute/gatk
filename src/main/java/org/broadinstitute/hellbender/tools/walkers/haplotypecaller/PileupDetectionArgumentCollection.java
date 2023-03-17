@@ -16,9 +16,9 @@ public final class PileupDetectionArgumentCollection {
     public static final String PILEUP_DETECTION_ABSOLUTE_ALT_DEPTH = "pileup-detection-absolute-alt-depth";
     public static final String PILEUP_DETECTION_INDEL_THRESHOLD = "pileup-detection-indel-alt-threshold";
     public static final String PILEUP_DETECTION_FILTER_COVERAGE_LONG_NAME = "pileup-detection-filter-coverage-threshold";
-    public static final String PILEUP_DETECTION_SNP_BASEQUALITY_THRESHOLD = "pileup-detection-snp-basequlaity-filter";
+    public static final String PILEUP_DETECTION_SNP_BASEQUALITY_THRESHOLD = "pileup-detection-snp-basequality-filter";
 
-    public static final String PILEUP_DETECTION_ACTIVE_REGION_LOD_THRESHOLD_LONG_NAME = "pileup-detection-active-region-phred-threshold";
+    public static final String PILEUP_DETECTION_ACTIVE_REGION_PHRED_THRESHOLD_LONG_NAME = "pileup-detection-active-region-phred-threshold";
 
     // Arguments related to DRAGEN heuristics related to "read badness" intended to filter out false positives from the pileup detection code
     public static final String PILEUP_DETECTION_BAD_READ_RATIO_LONG_NAME = "pileup-detection-bad-read-tolerance";
@@ -26,8 +26,8 @@ public final class PileupDetectionArgumentCollection {
     public static final String PILEUP_DETECTION_EDIT_DISTANCE_BADNESS_LONG_NAME = "pileup-detection-edit-distance-read-badness-threshold";
     public static final String PILEUP_DETECTION_CHIMERIC_READ_BADNESS_LONG_NAME = "pileup-detection-chimeric-read-badness";
     //TODO these need to be implemented with some input from Illumina
-    //TODO for the most part as far as we can tell this is a hpothetical necessity but we don't currently have these
-    //TODO values availible to the haplotype caller and almost certianly to do this correctly would involve unifying TLEN and STDLEN
+    //TODO for the most part as far as we can tell this is a hypothetical necessity but we don't currently have these
+    //TODO values available to the haplotype caller and almost certianly to do this correctly would involve unifying TLEN and STDLEN
     public static final String PILEUP_DETECTION_TLEN_MEAN_LONG_NAME = "pileup-detection-template-mean-badness-threshold";
     public static final String PILEUP_DETECTION_TLEN_STD_LONG_NAME = "pileup-detection-template-std-badness-threshold";
 
@@ -55,13 +55,19 @@ public final class PileupDetectionArgumentCollection {
     @Argument(fullName= PILEUP_DETECTION_LONG_NAME, doc = "If enabled, the variant caller will create pileup-based haplotypes in addition to the assembly-based haplotype generation.", optional = true)
     public boolean usePileupDetection = false;
     /**
-     * TODO
+     * This argument enables the PartiallyDeterminedHMM.
+     *
+     * By enabling this triggers the HaplotypeCaller (not currently supported in Mutect2) to use the PDHMM to compute likelihoods instead of the PairHMM.
+     * This means that variants found by both pileupdetection and the assembly engine are going to be treated as equivalent and merged/filtered together
+     * to produce "PartiallyDetermined" Haplotype objects and produce a merged likelihoods score from multiple haplotypes being run together.
+     *
+     * This code is intended for Dragen 3.7.8 concordance and is not recommended to be run outside of that context without being optimized.
      */
-    @Argument(fullName= GENERATE_PARTIALLY_DETERMINED_HAPLOTYPES_LONG_NAME, doc = "Partially Determined HMM, an alternative to the regular assembly haplotypes where we instead construct artificial haplotypes out of the union of the assembly and pileup alleles. Results", optional = true)
+    @Argument(fullName= GENERATE_PARTIALLY_DETERMINED_HAPLOTYPES_LONG_NAME, doc = "Partially Determined HMM, an alternative to the regular assembly haplotypes where we instead construct artificial haplotypes out of the union of the assembly and pileup alleles.", optional = true)
     public boolean generatePDHaplotypes = false;
     @Advanced
     // NOTE: this optimization ASSUMES that we are not realigning reads as part of PDHMM (which is how DRAGEN works)
-    @Argument(fullName= PDHMM_READ_OVERLAP_OPTIMIZATION, doc = "PDHMM: An optimization to PDHMM, if set this will skip running PDHMM haplotype determination on reads that don't overlap (within a few bases) of the determined allele in each haplotype. This substnatially reduces the amount of read-haplotype comparisons at the expense of ignoring read realignment possiblities. (Requires '--"+GENERATE_PARTIALLY_DETERMINED_HAPLOTYPES_LONG_NAME+"' argument)", optional = true)
+    @Argument(fullName= PDHMM_READ_OVERLAP_OPTIMIZATION, doc = "PDHMM: An optimization to PDHMM, if set this will skip running PDHMM haplotype determination on reads that don't overlap (within a few bases) of the determined allele in each haplotype. This substantially reduces the amount of read-haplotype comparisons at the expense of ignoring read realignment mapping artifacts. (Requires '--"+GENERATE_PARTIALLY_DETERMINED_HAPLOTYPES_LONG_NAME+"' argument)", optional = true)
     public boolean pdhmmOptimization = false;
     /**
      * A set of debug/testing arguments related to PDHMM and various off-label configurations for running pdhmm.
@@ -73,10 +79,12 @@ public final class PileupDetectionArgumentCollection {
     @Argument(fullName= DETERMINE_PD_HAPS, doc = "PDHMM: As an alternative to using the PDHMM, run all of the haplotype branching/determination code and instead of using the PDHMM use the old HMM with determined haplotypes. NOTE: this often fails and fallsback to other code due to combinatorial expansion. (Requires '--"+GENERATE_PARTIALLY_DETERMINED_HAPLOTYPES_LONG_NAME+"' argument)", optional = true)
     public boolean determinePDHaps = false;
     @Hidden
-    @Argument(fullName= DEBUG_PILEUPCALLING_ARG, doc = "PDHMM: If set, print to stdout a prodigious amount of debugging information about each of the steps involved in artificial haplotype construciton and filtering. (Requires '--"+GENERATE_PARTIALLY_DETERMINED_HAPLOTYPES_LONG_NAME+"' argument)", optional = true)
+    @Argument(fullName= DEBUG_PILEUPCALLING_ARG, doc = "PDHMM: If set, print to stdout a prodigious amount of debugging information about each of the steps involved in artificial haplotype construction and filtering. (Requires '--"+GENERATE_PARTIALLY_DETERMINED_HAPLOTYPES_LONG_NAME+"' argument)", optional = true)
     public boolean debugPileupStdout = false;
+
+    //NOTE we leave this enabled in the PDHMM because our current implementation has more-strict heuristics for falling back (wrt #variants & complexity of overlap groups) than DRAGEN does for runtime reasons. Hopefully this results in fewer fallback-to-assembly sites
     @Hidden
-    @Argument(fullName= FALLBACK_TO_ALT_HAP_CONSTRUCITON_IF_ABORTED, doc = "PDHMM: An optional fallback for PDHMM. If PDHMM encounters too much complexity in haplotype construction, instead of falling back to the regular assembly haplotypes this will attempt to fallback to the GGA-Based PileupDetection code for construcitng haplotypes. This does not match DRAGEN and is not necessary for DRAGEN FE. (Requires '--"+GENERATE_PARTIALLY_DETERMINED_HAPLOTYPES_LONG_NAME+"' argument)", optional = true)
+    @Argument(fullName= FALLBACK_TO_ALT_HAP_CONSTRUCITON_IF_ABORTED, doc = "PDHMM: An optional fallback for PDHMM. If PDHMM encounters too much complexity in haplotype construction, instead of falling back to the regular assembly haplotypes this will attempt to fallback to the GGA-Based PileupDetection code for constructing haplotypes. This does not match DRAGEN and is not necessary for DRAGEN FE. (Requires '--"+GENERATE_PARTIALLY_DETERMINED_HAPLOTYPES_LONG_NAME+"' argument)", optional = true)
     public boolean useGGAFallback = true;
 
     /**
@@ -87,8 +95,8 @@ public final class PileupDetectionArgumentCollection {
     public boolean detectIndels = false;
     @Advanced
     @Hidden
-    @Argument(fullName= PILEUP_DETECTION_ACTIVE_REGION_LOD_THRESHOLD_LONG_NAME, doc = "Pileup Detection: This argument sets the minimum fast genotyper phred score necessary in active region determination to find a pileup variant. (Requires '--"+PILEUP_DETECTION_LONG_NAME+"'` argument)", optional = true)
-    public double activeRegionPhredThreshold = 2.0;
+    @Argument(fullName= PILEUP_DETECTION_ACTIVE_REGION_PHRED_THRESHOLD_LONG_NAME, doc = "Pileup Detection: This argument sets the minimum fast genotyper phred score necessary in active region determination to find a pileup variant. Not compatible with Mutect2 (Requires '--"+PILEUP_DETECTION_LONG_NAME+"'` argument)", optional = true)
+    public double activeRegionPhredThreshold = 0;
     @Advanced
     @Hidden
     @Argument(fullName= "num-artificial-haplotypes-to-add-per-allele",
@@ -117,7 +125,7 @@ public final class PileupDetectionArgumentCollection {
     public int snpAdajacentToAssemblyIndel = 5;
     @Hidden
     @Argument(fullName= PILEUP_DETECTION_SNP_BASEQUALITY_THRESHOLD, doc = "Pileup Detection: Filters out reads from pileup SNPs with base quality lower than this threshold. (Requires '--"+PILEUP_DETECTION_LONG_NAME+"' argument)", optional = true)
-    public int qualityForSnpsInPileupDeteciton = 12; //WHY is this two different than the regular active region determination limit? Ask DRAGEN engineers.
+    public int qualityForSnpsInPileupDetection = 12; //WHY is this two different than the regular active region determination limit (10)? Ask DRAGEN engineers.
 
     /**
      * Arguments related to the "bad read filtering" where alleles that are supported primarily by reads that fail at least one of a number of heuristics will be filtered out

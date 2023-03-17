@@ -14,7 +14,7 @@ public final class ActivityProfileState {
     private double activeProb;
     private final Type resultState;
     private final Number resultValue;
-    //TODO hack garbage
+    // TODO this is used to store the original isActive() prob (before smoothing) fast genotyping likelihood determination score which is used as a heuristic in DRAGEN-GATK for pileup-calling
     private double originalActiveProb = 0.0;
 
     // When range-checking probabilities, we allow this much tolerance.

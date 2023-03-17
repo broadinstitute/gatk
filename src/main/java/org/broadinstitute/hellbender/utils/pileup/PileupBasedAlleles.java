@@ -25,6 +25,7 @@ import java.util.*;
 public final class PileupBasedAlleles {
 
     final static String MISMATCH_BASES_PERCENTAGE_TAG = "MZ";
+    public static final double MISMATCH_BASES_PERCENTAGE_ADJUSMTENT = 1000.0;
 
     // internal values to be used for tagging the VCF info fields appropriately
     public static String PILEUP_ALLELE_SUPPORTING_READS = "PileupSupportingReads";
@@ -90,7 +91,7 @@ public final class PileupBasedAlleles {
                 }
 
                 // check to see that the base is not ref (and non-deletion) and increment the alt counts (and evaluate if the read is "bad")
-                if (refBase != eachBase && eachBase != 'D' && element.getQual() > args.qualityForSnpsInPileupDeteciton) {
+                if (refBase != eachBase && eachBase != 'D' && element.getQual() > args.qualityForSnpsInPileupDetection) {
                     incrementAltCount(eachBase, altCounts,
                             evaluateBadRead(element.getRead(), referenceContext, args, headerForReads),
                             evaluateBadReadForAssembly(element.getRead(), referenceContext, args, headerForReads));
@@ -233,7 +234,7 @@ public final class PileupBasedAlleles {
         // Assert that the edit distance for the read is in line
         final Integer mismatchPercentage = read.getAttributeAsInteger(MISMATCH_BASES_PERCENTAGE_TAG);
         Utils.nonNull(mismatchPercentage);
-        if ((mismatchPercentage / 1000.0) > args.badReadEditDistance) {
+        if ((mismatchPercentage / MISMATCH_BASES_PERCENTAGE_ADJUSMTENT) > args.badReadEditDistance) {
             return true;
         }
 
@@ -257,7 +258,7 @@ public final class PileupBasedAlleles {
         }
         // TODO other checks?
         Utils.nonNull(read.getAttributeAsInteger(MISMATCH_BASES_PERCENTAGE_TAG));
-        return (read.getAttributeAsInteger(MISMATCH_BASES_PERCENTAGE_TAG) / 1000.0) > args.assemblyBadReadEditDistance;
+        return (read.getAttributeAsInteger(MISMATCH_BASES_PERCENTAGE_TAG) / MISMATCH_BASES_PERCENTAGE_ADJUSMTENT) > args.assemblyBadReadEditDistance;
     }
 
     // Helper methods to manage the badness counting arrays
@@ -291,43 +292,7 @@ public final class PileupBasedAlleles {
         // We adjust the NM score by any indels in the read
         int adjustedNMScore = nmScore - read.getCigarElements().stream().filter(element -> element.getOperator().isIndel()).mapToInt(CigarElement::getLength).sum();
 
-        // We store the percentage as an integer
-        read.setAttribute(MISMATCH_BASES_PERCENTAGE_TAG, 1000 * adjustedNMScore / (read.getCigarElements().stream().filter(element -> element.getOperator().isAlignment()).mapToInt(CigarElement::getLength).sum() ));
+        // NOTE: we store the percentage as an integer x1000 because that is what the read attributes support. 4 units of precision should be more than enough for this ratio in the first place whereas 3 is probably not (reads over 100 bases get binned).
+        read.setAttribute(MISMATCH_BASES_PERCENTAGE_TAG, (int) (MISMATCH_BASES_PERCENTAGE_ADJUSMTENT * adjustedNMScore / (read.getCigarElements().stream().filter(element -> element.getOperator().isAlignment()).mapToInt(CigarElement::getLength).sum() )));
     }
-
-
-    // TODO get rid of this sam record conversion and rewrite the cigar munging code
-//    /**
-//     * Copy of {@link AlignmentUtils.countMismatches}
-//     * @param read
-//     * @param referenceBases
-//     * @param referenceOffset
-//     * @param bisulfiteSequence
-//     * @param matchAmbiguousRef
-//     * @return
-//     */
-//    public static int countMismatches(final GATKRead read, final byte[] referenceBases, final int referenceOffset,
-//                                      final boolean bisulfiteSequence, final boolean matchAmbiguousRef) {
-//        try {
-//            int mismatches = 0;
-//
-//            final byte[] readBases = read.getBasesNoCopy();
-//
-//            for (final AlignmentBlock block : read.get()) {
-//                final int readBlockStart = block.getReadStart() - 1;
-//                final int referenceBlockStart = block.getReferenceStart() - 1 - referenceOffset;
-//                final int length = block.getLength();
-//
-//                for (int i = 0; i < length; ++i) {
-//                    if (!basesMatch(readBases[readBlockStart + i], referenceBases[referenceBlockStart + i],
-//                            read.getReadNegativeStrandFlag(), bisulfiteSequence, matchAmbiguousRef)) {
-//                        ++mismatches;
-//                    }
-//                }
-//            }
-//            return mismatches;
-//        } catch (final Exception e) {
-//            throw new SAMException("Exception counting mismatches for read " + read, e);
-//        }
-//    }
 }

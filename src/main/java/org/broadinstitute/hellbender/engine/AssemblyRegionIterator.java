@@ -140,9 +140,7 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
 
 
             final ActivityProfileState profile = evaluator.isActive(pileup, pileupRefContext, pileupFeatureContext);
-            //TODO pull out the qual score for later
             logger.debug(() -> profile.toString());
-//            if (profile.isActiveProb() > 0.001) System.out.println(profile.toString());
             activityProfile.add(profile);
 
             if (pendingAlignmentData!=null) {
@@ -186,8 +184,6 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
             fillNextAssemblyRegionWithReads(nextRegion);
             // fillnextessemblyregion; check you are on correct chr; if alignment data is not in the assembly region then pop it
             fillNextAssemblyRegionWithPileupData(nextRegion);
-            //TODO this is a hack
-//            fillNextAssemblyRegionWith(activityProfile.)
         }
 
         return nextRegion;

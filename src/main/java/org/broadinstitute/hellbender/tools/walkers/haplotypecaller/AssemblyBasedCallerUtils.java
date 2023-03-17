@@ -628,7 +628,7 @@ public final class AssemblyBasedCallerUtils {
                     ReferenceConfidenceVariantContextMerger.remapAlleles(assembledVC, longerRef));
             final Set<Allele> givenAlleleSet = new HashSet<>(longerRef.length() == givenVCRefLength ? givenVC.getAlternateAlleles() :
                     ReferenceConfidenceVariantContextMerger.remapAlleles(givenVC, longerRef));
-            //TODO ADD A TEST FOR THIS CHANGE! IT WAS A RARE BUG BEFORE
+            //We must filter out the Ref alleles here to protect against edge cases and undexpected behavior from the pileupcalling code
             unassembledGivenAlleles = givenAlleleSet.stream().filter(a -> !assembledAlleleSet.contains(a)).filter(a -> !a.isReference()).collect(Collectors.toList());
         }
         return unassembledGivenAlleles;
@@ -930,7 +930,7 @@ public final class AssemblyBasedCallerUtils {
         for (final Haplotype h : haplotypes) {
 
             // Partially determined haplotypes know at what position they are determined, only determined position haps should be considered for genotyping
-            if (h instanceof PartiallyDeterminedHaplotype && ((PartiallyDeterminedHaplotype) h).getDeterminedPosition() != loc) {
+            if (h.isPartiallyDetermined() && ((PartiallyDeterminedHaplotype) h).getDeterminedPosition() != loc) {
                 continue;
             }
             final List<VariantContext> spanningEvents = h.getEventMap().getOverlappingEvents(loc);

@@ -17,7 +17,7 @@ import java.util.Arrays;
 
 public class PDPairHMMLikelihoodCalculationEngineUnitTest extends GATKBaseTest  {
 
-    static final String DRAGEN_GATK_TEST_ASSERT_FILE = toolsTestDir + "haplotypecaller/expected.PDHMM.hmmresults.txt";
+    static final String DRAGEN_GATK_TEST_ASSERT_FILE = largeFileTestDir + "expected.PDHMM.hmmresults.txt";
     static final double DOUBLE_ASSERTION_DELTA = 0.0001;
 
     @DataProvider(name="PDPairHMMResultsModes")
