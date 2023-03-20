@@ -405,15 +405,6 @@ public final class AssemblyBasedCallerUtils {
                             haplotypeCollapsing);
 
             assemblyResultSet.setHaplotypeCollapsingEngine(haplotypeCollapsing);
-//
-//            List<VariantContext> pileupAllelesFoundShouldFilter = forcedPileupAlleles.stream()
-//                    .filter(v -> PileupBasedAlleles.shouldFilterAssemblyVariant(argumentCollection.pileupDetectionArgs, v))
-//                    .collect(Collectors.toList());
-//            List<VariantContext> pileupAllelesPassingFilters = forcedPileupAlleles.stream()
-//                    .filter(v -> PileupBasedAlleles.passesFilters(argumentCollection.pileupDetectionArgs, v))
-//                    .collect(Collectors.toList());
-//
-//            applyPileupEventsAsForcedAlleles(region, argumentCollection, aligner, refHaplotype, assemblyResultSet, pileupAllelesFoundShouldFilter, pileupAllelesPassingFilters);
             assemblyResultSet.setDebug(argumentCollection.assemblerArgs.debugAssembly);
             assemblyResultSet.debugDump(logger);
             return assemblyResultSet;
