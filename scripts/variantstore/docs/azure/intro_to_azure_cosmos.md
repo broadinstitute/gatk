@@ -19,8 +19,8 @@ live on it would be nice to not have dependencies on these artifacts from the pr
 # Fish out the CromwellOnAzure resource group name that was named after your Broad username.
 # Intro to Azure resource groups:
 # https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/manage-resource-groups-portal#what-is-a-resource-group
-RESOURCE_GROUP=$(az group list | jq -r ".[] | .name | select(test(\"^${USER}-[0-9a-f]+$\"))")
-RESOURCE_GROUP_LOCATION=$(az group list | jq -r ".[] | select(.name | test(\"^${USER}-[0-9a-f]+$\")) | .location")
+export RESOURCE_GROUP=$(az group list | jq -r ".[] | .name | select(test(\"^${USER}-[0-9a-f]+$\"))")
+export RESOURCE_GROUP_LOCATION=$(az group list | jq -r ".[] | select(.name | test(\"^${USER}-[0-9a-f]+$\")) | .location")
 
 
 # Set default resource group and location
@@ -34,12 +34,12 @@ Generally
 following https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/quickstart-python?tabs=azure-cli%2Cpasswordless%2Clinux%2Csign-in-azure-cli%2Csync#create-an-azure-cosmos-db-account
 
 ```
-COSMOS_DB_NAME=${RESOURCE_GROUP}-cosmos-db
+export COSMOS_DB_NAME=${RESOURCE_GROUP}-cosmos-db
 
 az cosmosdb create --name ${COSMOS_DB_NAME} --locations regionName=${RESOURCE_GROUP_LOCATION}
 
-COSMOS_ENDPOINT="$(az cosmosdb show --name ${COSMOS_DB_NAME} --query documentEndpoint | jq -r)"
-COSMOS_KEY="$(az cosmosdb keys list --name ${COSMOS_DB_NAME} --type keys --query primaryMasterKey | jq -r)"
+export COSMOS_ENDPOINT="$(az cosmosdb show --name ${COSMOS_DB_NAME} --query documentEndpoint | jq -r)"
+export COSMOS_KEY="$(az cosmosdb keys list --name ${COSMOS_DB_NAME} --type keys --query primaryMasterKey | jq -r)"
 
 # Add members of the Variants team plus the Cromwell on Azure User Assigned Managed Identity to the Cosmos DB Data
 # Contributors group
@@ -53,7 +53,7 @@ do
 done
 
 # Get the id for the Data Contributor role
-COSMOS_DB_DATA_CONTRIBUTOR_ROLE_ID=$(az cosmosdb sql role definition list --account-name $COSMOS_DB_NAME | jq -r '.[] | select(.roleName == "Cosmos DB Built-in Data Contributor") | .id')
+export COSMOS_DB_DATA_CONTRIBUTOR_ROLE_ID=$(az cosmosdb sql role definition list --account-name $COSMOS_DB_NAME | jq -r '.[] | select(.roleName == "Cosmos DB Built-in Data Contributor") | .id')
 
 # Assign the Cosmos DB Data Contributor role to the Cosmos DB Data Contributor group.
 # Unfortunately this does not seem to be working. If we give the Variants Team group this role everything seems to work.
@@ -72,7 +72,7 @@ az cosmosdb sql database create --account-name ${COSMOS_DB_NAME} --name cosmos_g
 az cosmosdb sql container create --account-name ${COSMOS_DB_NAME} --database-name cosmos_gvs --partition-key-path "/sampleId" --name sample_info
 
 # How many documents are in the container?
-CONTAINER_NAME=vets
+export CONTAINER_NAME=vets
 az cosmosdb sql container show --database-name cosmos_gvs --name ${CONTAINER_NAME} --account-name $COSMOS_DB_NAME  | jq -r '..|.documentCount? //empty'
 
 ```
