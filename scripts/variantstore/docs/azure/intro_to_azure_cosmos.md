@@ -90,12 +90,13 @@ location to facilitate the transfer to Azure:
 cat files.txt | gcloud storage cp -I gs://<some bucket>/<assembled quickstart vcf path>
 ```
 
-`gs://<some bucket>/<assembled quickstart vcf path>` will be the source for the `azcopy copy` command. 
+`gs://<some bucket>/<assembled quickstart vcf path>` will be the source for the `azcopy copy` command.
 
-Download Microsoft's `azcopy` utility from [here](https://learn.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-v10)
+Download Microsoft's `azcopy` utility
+from [here](https://learn.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-v10)
 and put it in your `PATH`.
 
-Create a new storage container in the Azure portal to hold these VCFs and indexes. 
+Create a new storage container in the Azure portal to hold these VCFs and indexes.
 
 From 'Shared access tokens' for this container on the navigation pane of the portal, select the appropriate permissions,
 IP address, and time range and press the big blue 'Generate SAS token and URL' button. Copy the value in the 'Blob SAS
@@ -118,8 +119,64 @@ azcopy cp 'https://storage.cloud.google.com/<some bucket>/<assembled quickstart 
 
 Make sure to enclose both the source and destination paths in single quotes to escape metacharacters.
 
-
+```
 for container in vets ref_ranges
 do
   az cosmosdb sql container create --account-name ${COSMOS_DB_NAME} --database-name cosmos_gvs --partition-key-path "/sample_id" --name $container
 done
+```
+
+# Learnings
+
+## Loading is slow, error prone, and expensive
+
+I made `vets` and `ref_ranges` Cosmos containers for this spike and set their bandwidths to autoscale from 10K to 100K
+RU/s (up from the default of 400 to 4000 RU/s), the maximum before the UI shows a scary checkbox that I would have to
+click to acknowledge how much I would be charged for the requested bandwidth. However even 100K RU/s was painfully slow
+for loading references data. With all indexing turned off, loading the references data for the 10 quickstart samples
+would take about 18 hours and cost tens of dollars per sample. That cost is absolutely nuts, orders of magnitude more
+than we pay per sample for the full variant calling pipeline in GCP. While it's possible we might get around the load
+time bottleneck with a different container layout (e.g. one per sample), the cost problem is independent of that and
+absolutely needs to be solved if we're seriously going to consider Cosmos as a storage solution for GVS on Azure. And
+all of this is assuming the data can even be loaded correctly, something I never managed to do with the reference data
+due to spurious 403 errors.
+
+## What goes up does not come (all the way) down
+
+Cosmos allows for container bandwidth to be edited after creation. After I loaded the vets data and (most of) the
+references data, I went back to scale down Cosmos container bandwidth to save money. However it seems that Cosmos does
+not allow *arbitrary* downsizing of containers, but only up to a maximum of 10x smaller. So setting container bandwidth
+very high to get decent load performance has the very undesirable consequence of setting a high floor for container
+costs after loading is complete.
+
+## Where's my Reactive Programming?
+
+The V4 Cosmos Java client library makes extensive use of
+the [Reactor library](https://projectreactor.io/docs/core/release/reference/) in
+its [Bulk Executor APIs](https://learn.microsoft.com/en-us/azure/cosmos-db/bulk-executor-overview).
+This library aims to "[provide efficient demand management](https://projectreactor.io/)", specifically
+through "[Backpressure](https://projectreactor.io/docs/core/release/reference/#_from_imperative_to_reactive_programming)
+or the ability for the consumer to signal the producer that the rate of emission is too high". Unfortunately in the
+context of this spike, the loader code I wrote did not appear to behave in a reactive manner. The Avro "source"
+generated records far faster than the Cosmos "sink" could process them, causing unflushed records to pile up inside the
+Cosmos client code. The original version of this code created a more elegant `flatMap`ped stream of Avro records which
+were transformed into Jackson `ObjectNode`s and `Flux`ed into the Cosmos client library. However this invariably led to
+memory pressure, thrashing from constant garbage collection, and eventually to a crash with a 408 error. Included among
+the very detailed error messages at the time of the crash was the fact that the Cosmos client library was holding
+millions of unwritten records:
+
+```
+03:40:03.554 [bulk-executor-bounded-elastic-265] INFO com.azure.cosmos.implementation.batch.BulkExecutor - BulkExecutor.execute flux terminated - Signal: cancel - # left items 6514672, Context: BulkExecutor-32[n/a], Thread[Name: bulk-executor-bounded-elastic-265,Group: main, isDaemon: true, Id: 328]
+```
+
+Per Microsoft documentation the "solution" for High CPU utilization-driven 408 errors it to
+"[scale the client up and out](https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/troubleshoot-java-sdk-request-timeout#solution)".
+At least in this case that advice doesn't seem consistent with the intent of the Reactor library, though conceivably
+there could be cases where the CPU load was due to a source that struggled to make items quickly enough to fill a
+fast-moving sink.
+
+This is my first time programming to the Reactor API and I while it's certainly possible I have done something
+horrifically wrong in setting up the spike program, I did closely follow the example of the trivially
+small [sample code](https://github.com/Azure-Samples/azure-cosmos-java-sql-api-samples/blob/main/src/main/java/com/azure/cosmos/examples/bulk/async/SampleBulkQuickStartAsync.java).
+From what little I have had time to read, it does seem that it is the responsibility of the consumer to request only
+as much data as it can actually handle from the producer.
