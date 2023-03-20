@@ -141,13 +141,40 @@ absolutely needs to be solved if we're seriously going to consider Cosmos as a s
 all of this is assuming the data can even be loaded correctly, something I never managed to do with the reference data
 due to spurious 403 errors.
 
+To see RU consumption (narrow this to a single container if appropriate):
+
+```
+Azure Portal -> CosmosDB -> Metrics
+Metric Namespace = 'Cosmos DB standard metrics'
+Metric = 'Normalized RU Consumption'
+```
+
+To see the number of documents written to a Cosmos container:
+
+```
+export CONTAINER_NAME=vets
+az cosmosdb sql container show --database-name cosmos_gvs --name ${CONTAINER_NAME} --account-name ${COSMOS_DB_NAME} |
+  jq -r '..|.documentCount? //empty' |
+  paste --serial --delimiters=+ |
+  bc
+```
+
+Picking this apart:
+* The `az` command returns an informative JSON blob for our Cosmos container of interest.
+* The `jq` command recursively picks out values for all fields keyed by `documentCount`. There can be multiple of these
+  fields, one for each physical (?) Cosmos partition.
+* The `paste` command joins all the `documentCount` lines together on one line, delimited by '+'.
+* The `bc` line evaluates this as an arithmetic expression (a sum).
+
+
 ## What goes up does not come (all the way) down
 
 Cosmos allows for container bandwidth to be edited after creation. After I loaded the vets data and (most of) the
-references data, I went back to scale down Cosmos container bandwidth to save money. However it seems that Cosmos does
+references data, I wanted to scale down my Cosmos container bandwidth to save money. However it seems that Cosmos does
 not allow *arbitrary* downsizing of containers, but only up to a maximum of 10x smaller. So setting container bandwidth
 very high to get decent load performance has the very undesirable consequence of setting a high floor for container
 costs after loading is complete.
+
 
 ## Where's my Reactive Programming?
 
@@ -169,11 +196,15 @@ millions of unwritten records:
 03:40:03.554 [bulk-executor-bounded-elastic-265] INFO com.azure.cosmos.implementation.batch.BulkExecutor - BulkExecutor.execute flux terminated - Signal: cancel - # left items 6514672, Context: BulkExecutor-32[n/a], Thread[Name: bulk-executor-bounded-elastic-265,Group: main, isDaemon: true, Id: 328]
 ```
 
+The code committed as part of this spike replaced the `flatMap` with an iterator over the Avro files. While aesthetically
+unfortunate, this structure did enable loading variant data cleanly and loaded the majority of the reference data delta
+some unexplained 403 failures after several hours of operation.
+
 Per Microsoft documentation the "solution" for High CPU utilization-driven 408 errors it to
 "[scale the client up and out](https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/troubleshoot-java-sdk-request-timeout#solution)".
 At least in this case that advice doesn't seem consistent with the intent of the Reactor library, though conceivably
-there could be cases where the CPU load was due to a source that struggled to make items quickly enough to fill a
-fast-moving sink.
+there could be cases where the CPU load was due to a source that computationally struggled to make items quickly enough
+to fill a fast-moving sink.
 
 This is my first time programming to the Reactor API and I while it's certainly possible I have done something
 horrifically wrong in setting up the spike program, I did closely follow the example of the trivially

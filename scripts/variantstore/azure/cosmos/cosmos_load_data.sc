@@ -85,24 +85,6 @@ def loadAvros(container: CosmosAsyncContainer, avroPaths: Iterable[Path], numRec
   // There can occasionally be 409 race conditions on `id` if using a regular `Long` so go atomic!
   val id = AtomicLong(0L)
 
-  // On a Standard E4-2ads v5 Azure VM this Avro processing easily saturates the default 400 - 4000 RU/s maximum
-  // throughput that Cosmos DB containers have when created through the Azure Portal. For 100K items, all the items
-  // print out in the progress messages, but then the script sits there waiting for the documents to be written to
-  // Cosmos. This behavior was something of a surprise given the "reactor" structure; I would have expected backpressure
-  // to limit the number of documents that were created if they couldn't actually be written to Cosmos. Is Cosmos
-  // silently buffering documents up to the RU/s limit?
-  //
-  // To see RU consumption:
-  //
-  // Azure Portal -> CosmosDB -> Metrics
-  // Metric Namespace = 'Cosmos DB standard metrics'
-  // Metric = 'Normalized RU Consumption'
-  //
-  // To see the number of documents written:
-  //
-  // CONTAINER_NAME=vets
-  // az cosmosdb sql container show --database-name cosmos_gvs --name ${CONTAINER_NAME} --account-name ${COSMOS_DB_NAME}  | jq -r '..|.documentCount? //empty'
-  //
   // Where the Cosmos JSON serialization magic happens:
   // https://github.com/Azure/azure-sdk-for-java/blob/80b12e48aeb6ad2f49e86643dfd7223bde7a9a0c/sdk/cosmos/azure-cosmos/src/main/java/com/azure/cosmos/implementation/JsonSerializable.java#L255
   //
@@ -113,7 +95,6 @@ def loadAvros(container: CosmosAsyncContainer, avroPaths: Iterable[Path], numRec
   // And despite all the shuffling this script generates Cosmos items far faster than we can actually push them to
   // Cosmos with the default container bandwidth configuration.
   val objectMapper = new ObjectMapper()
-
 
   def itemFluxFromAvroPath(path: Path): Flux[CosmosItemOperation] = {
     val file = new File(path.toString())

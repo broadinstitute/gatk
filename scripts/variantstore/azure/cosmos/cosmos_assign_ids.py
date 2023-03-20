@@ -5,6 +5,12 @@ import argparse
 import pandas
 
 
+"""
+Python-based Cosmos data loader, good enough to load 10 sample_info records but definitely not recommended for loading
+"real" variants data in the tens of millions of rows per sample.
+"""
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False, description='Say Hello to Cosmos DB from Python')
     parser.add_argument('--endpoint', type=str, help='Cosmos DB NoSQL Endpoint URI', required=True)
