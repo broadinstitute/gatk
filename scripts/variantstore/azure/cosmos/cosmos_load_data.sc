@@ -93,7 +93,7 @@ def loadAvros(container: CosmosAsyncContainer, avroPaths: Iterable[Path], numRec
   // internal Cosmos type). This approach still necessitates an unsavory amount of bit shuffling from
   // Avro => Stringified JSON => Jackson object => Stringified JSON, but it certainly beats using brittle, clunky POJOs.
   // And despite all the shuffling this script generates Cosmos items far faster than we can actually push them to
-  // Cosmos with the default container bandwidth configuration.
+  // Cosmos with 100K RU/s container bandwidth configuration.
   val objectMapper = new ObjectMapper()
 
   def itemFluxFromAvroPath(path: Path): Flux[CosmosItemOperation] = {

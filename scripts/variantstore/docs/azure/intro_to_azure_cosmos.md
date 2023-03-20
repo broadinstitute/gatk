@@ -30,6 +30,8 @@ az configure --defaults group="${RESOURCE_GROUP}" location=${RESOURCE_GROUP_LOCA
 
 # Azure Cosmos DB
 
+## Basics
+
 Generally
 following https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/quickstart-python?tabs=azure-cli%2Cpasswordless%2Clinux%2Csign-in-azure-cli%2Csync#create-an-azure-cosmos-db-account
 
@@ -76,6 +78,8 @@ export CONTAINER_NAME=vets
 az cosmosdb sql container show --database-name cosmos_gvs --name ${CONTAINER_NAME} --account-name $COSMOS_DB_NAME  | jq -r '..|.documentCount? //empty'
 
 ```
+
+## VCFs
 
 Download the samples table from the quickstart, process into a FOFN with VCFs and indexes:
 
@@ -126,6 +130,35 @@ do
 done
 ```
 
+## Avros
+
+Extract variant data from a GCP Quickstart Integration run. This is what was actually used to drive the
+`cosmos_load_data.sc` script:
+
+```
+EXPORT DATA OPTIONS(
+                uri='gs://someplace/scratch/avro/quickstart-raw/vets/vet_001/vet_001_*.avro', format='AVRO', compression='SNAPPY') AS
+                SELECT v.sample_id as sample_id, location, ref, alt, AS_RAW_MQ, AS_RAW_MQRankSum, QUALapprox, AS_QUALapprox, AS_RAW_ReadPosRankSum, AS_SB_TABLE, AS_VarDP, call_GT, call_AD, call_GQ, call_PGT, call_PID, call_PL
+                FROM `gvs-internal.quickit_vs_639_hail_testing_spike_ed64917_hail.vet_001` v
+                INNER JOIN `gvs-internal.quickit_vs_639_hail_testing_spike_ed64917_hail.sample_info` s ON s.sample_id = v.sample_id
+                WHERE withdrawn IS NULL AND
+                is_control = false
+                ORDER BY location
+```
+
+Extract reference data:
+
+```
+EXPORT DATA OPTIONS(
+                uri='gs://someplace/scratch/avro/quickstart-raw/ref_ranges/ref_ranges_001/ref_ranges_001_*.avro', format='AVRO', compression='SNAPPY') AS
+                SELECT r.sample_id as sample_id, location, length, state
+                FROM `gvs-internal.quickit_vs_639_hail_testing_spike_ed64917_hail.ref_ranges_001` r
+                INNER JOIN `gvs-internal.quickit_vs_639_hail_testing_spike_ed64917_hail.sample_info` s ON s.sample_id = r.sample_id
+                WHERE withdrawn IS NULL AND
+                is_control = false
+                ORDER BY location
+```
+
 # Learnings
 
 ## Loading is slow, error prone, and expensive
@@ -160,12 +193,12 @@ az cosmosdb sql container show --database-name cosmos_gvs --name ${CONTAINER_NAM
 ```
 
 Picking this apart:
+
 * The `az` command returns an informative JSON blob for our Cosmos container of interest.
 * The `jq` command recursively picks out values for all fields keyed by `documentCount`. There can be multiple of these
   fields, one for each physical (?) Cosmos partition.
 * The `paste` command joins all the `documentCount` lines together on one line, delimited by '+'.
 * The `bc` line evaluates this as an arithmetic expression (a sum).
-
 
 ## What goes up does not come (all the way) down
 
@@ -174,7 +207,6 @@ references data, I wanted to scale down my Cosmos container bandwidth to save mo
 not allow *arbitrary* downsizing of containers, but only up to a maximum of 10x smaller. So setting container bandwidth
 very high to get decent load performance has the very undesirable consequence of setting a high floor for container
 costs after loading is complete.
-
 
 ## Where's my Reactive Programming?
 
@@ -196,18 +228,19 @@ millions of unwritten records:
 03:40:03.554 [bulk-executor-bounded-elastic-265] INFO com.azure.cosmos.implementation.batch.BulkExecutor - BulkExecutor.execute flux terminated - Signal: cancel - # left items 6514672, Context: BulkExecutor-32[n/a], Thread[Name: bulk-executor-bounded-elastic-265,Group: main, isDaemon: true, Id: 328]
 ```
 
-The code committed as part of this spike replaced the `flatMap` with an iterator over the Avro files. While aesthetically
-unfortunate, this structure did enable loading variant data cleanly and loaded the majority of the reference data delta
-some unexplained 403 failures after several hours of operation.
+The code committed as part of this spike replaced the `flatMap` with an iterator over the Avro files. While
+aesthetically unfortunate, this structure did enable loading variant data cleanly and loaded the majority of the
+reference data delta some unexplained 403 failures after several hours of operation.
 
 Per Microsoft documentation the "solution" for High CPU utilization-driven 408 errors it to
 "[scale the client up and out](https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/troubleshoot-java-sdk-request-timeout#solution)".
 At least in this case that advice doesn't seem consistent with the intent of the Reactor library, though conceivably
 there could be cases where the CPU load was due to a source that computationally struggled to make items quickly enough
-to fill a fast-moving sink.
+to fill a fast-draining sink.
 
 This is my first time programming to the Reactor API and I while it's certainly possible I have done something
 horrifically wrong in setting up the spike program, I did closely follow the example of the trivially
 small [sample code](https://github.com/Azure-Samples/azure-cosmos-java-sql-api-samples/blob/main/src/main/java/com/azure/cosmos/examples/bulk/async/SampleBulkQuickStartAsync.java).
-From what little I have had time to read, it does seem that it is the responsibility of the consumer to request only
-as much data as it can actually handle from the producer.
+From the limited reading I have done on Reactor, it does seem that it is
+the [responsibility of the consumer](https://stackoverflow.com/a/57298393/21269164) to request
+only as much data as it can actually handle from the producer.
