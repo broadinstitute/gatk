@@ -33,7 +33,7 @@ az configure --defaults group="${RESOURCE_GROUP}" location=${RESOURCE_GROUP_LOCA
 ## Basics
 
 Generally
-following https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/quickstart-python?tabs=azure-cli%2Cpasswordless%2Clinux%2Csign-in-azure-cli%2Csync#create-an-azure-cosmos-db-account
+following [this](https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/quickstart-python?tabs=azure-cli%2Cpasswordless%2Clinux%2Csign-in-azure-cli%2Csync#create-an-azure-cosmos-db-account):
 
 ```
 export COSMOS_DB_NAME=${RESOURCE_GROUP}-cosmos-db
@@ -122,6 +122,11 @@ azcopy cp 'https://storage.cloud.google.com/<some bucket>/<assembled quickstart 
 ```
 
 Make sure to enclose both the source and destination paths in single quotes to escape metacharacters.
+
+Note: the code below creates Cosmos containers with a fixed, default bandwidth of 400 RU/s which is way too slow for
+variant and reference data loading. The containers used for this spike were created through the Azure portal with and
+autoscale bandwidth from 10K to 100K RU/s. It should be possible to modify the code below to create containers with
+similar parameters.
 
 ```
 for container in vets ref_ranges
