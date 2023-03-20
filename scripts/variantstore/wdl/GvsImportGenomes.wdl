@@ -198,7 +198,6 @@ task LoadData {
   meta {
     description: "Load data into BigQuery using the Write Api"
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
-    # TODO Need to revisit the `volatile: true` now that we are querying the database to check for samples there
   }
 
   parameter_meta {
@@ -211,14 +210,10 @@ task LoadData {
     }
   }
 
-  ## TODO what is external_sample_names!?!?!??! Can I swap to sample_names for now?!?!
-  ## It needs to be one of the fofns--not the list of fofns
-  ## where is the loop hitting here?!??!  input_vcfs = read_lines(CreateFOFNs.vcf_batch_vcf_fofns[i]),
-
   Int samples_per_table = 4000
   Int num_samples = length(sample_names)
+  String temp_table = "~{dataset_name}.sample_names_to_load_~{index}"
   # add labels for DSP Cloud Cost Control Labeling and Reporting
-  String temp_table = "~{dataset_name}.sample_names_to_load_~{index}" # TODO track a second table for now---should this get its own name in the future?
   String bq_labels = "--label service:gvs --label team:variants --label managedby:import_genomes"
   String table_name = "sample_info"
 
@@ -233,8 +228,7 @@ task LoadData {
 
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
-
-    ## TODO check if samples even need loading?!? hit the BQ database and get the loaded status for these samples
+    ## check which samples still need loading by looking in the BQ database for the loaded status of these samples
 
     # Create temp table with the sample_names and load external sample names into temp table -- make sure it doesn't exist already
     set +o errexit
@@ -257,27 +251,12 @@ task LoadData {
       SELECT IFNULL(MIN(sample_id),0) as min, IFNULL(MAX(sample_id),0) as max FROM `~{dataset_name}.~{table_name}`
         AS samples JOIN `~{temp_table}` AS temp ON samples.sample_name = temp.sample_name' > results.csv
 
-    # prep for being able to return min table id
-    min_sample_id=$(tail -1 results.csv | cut -d, -f1)
-    max_sample_id=$(tail -1 results.csv | cut -d, -f2)
-
-    # no samples have been loaded or we don't have the right sample_names or something else is wrong, bail
-    if [ $max_sample_id -eq 0 ]; then
-      echo "Max id is 0. Exiting"
-      exit 1
-    fi
-
-    python3 -c "from math import ceil; print(ceil($max_sample_id/~{samples_per_table}))" > max_sample_id ## TODO do we need this?!?!
-    python3 -c "from math import ceil; print(ceil($min_sample_id/~{samples_per_table}))" > min_sample_id ## TODO do we need this?!?!
-
     # get sample map of samples that haven't been loaded yet
     bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} '
       SELECT sample_id, samples.sample_name FROM `~{dataset_name}.~{table_name}` AS samples JOIN `~{temp_table}` AS temp ON
             samples.sample_name = temp.sample_name WHERE
             samples.sample_id NOT IN (SELECT sample_id FROM `~{dataset_name}.sample_load_status` WHERE status="FINISHED") AND
             samples.withdrawn is NULL' > sample_map.csv
-
-    cut -d, -f1 sample_map.csv > gvs_ids.csv ## TODO do we need this?!?!
 
     ## delete the table that was only needed for this ingest test
     bq --project_id=~{project_id} rm -f=true ~{temp_table}
@@ -292,7 +271,7 @@ task LoadData {
       --vcf_index_list_file_name  ~{write_lines(input_vcf_indexes)} \
       --output_files True
 
-    # translate python files into BASH arrays---but only of the samples that aren't there already
+    # translate files created by the python script into BASH arrays---but only of the samples that aren't there already
     VCFS_ARRAY=($(cat output_vcf_list_file |tr "\n" " "))
     VCF_INDEXES_ARRAY=($(cat output_vcf_index_list_file |tr "\n" " "))
     SAMPLE_NAMES_ARRAY=($(cat output_sample_name_list_file |tr "\n" " "))
@@ -329,9 +308,6 @@ task LoadData {
       rm input_vcf_$i.vcf.gz.tbi
 
     done
-
-
-
   >>>
 
   runtime {
