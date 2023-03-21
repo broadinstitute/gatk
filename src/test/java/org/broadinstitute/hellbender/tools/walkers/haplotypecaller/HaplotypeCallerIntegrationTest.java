@@ -2121,6 +2121,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 "--" + PileupDetectionArgumentCollection.PILEUP_DETECTION_BAD_READ_RATIO_LONG_NAME, "0.40",
                 "--" + PileupDetectionArgumentCollection.PILEUP_DETECTION_ENABLE_INDELS,
                 "--" + PileupDetectionArgumentCollection.PILEUP_DETECTION_ACTIVE_REGION_PHRED_THRESHOLD_LONG_NAME, "3.0",
+                "--" + PileupDetectionArgumentCollection.PILEUP_DETECTION_FILTER_ASSEMBLY_HAPS_THRESHOLD, "0.4",
                 "--" + PileupDetectionArgumentCollection.GENERATE_PARTIALLY_DETERMINED_HAPLOTYPES_LONG_NAME,
 
                 "--pdhmm-results-file", hmmOutputPath

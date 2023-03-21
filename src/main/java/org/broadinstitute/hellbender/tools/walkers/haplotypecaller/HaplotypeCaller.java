@@ -182,7 +182,7 @@ public class HaplotypeCaller extends AssemblyRegionWalker {
             ModeArgumentUtils.setArgValues(
                     getCommandLineParser(),
                     hcArgs.dragen378Mode? hcArgs.getDragenVersion378NameValuePairs() : hcArgs.getDragenVersion3412NameValuePairs(),
-                    hcArgs.dragen378Mode? HaplotypeCallerArgumentCollection.DRAGEN_378_GATK_MODE_LONG_NAME : HaplotypeCallerArgumentCollection.DRAGEN_GATK_MODE_LONG_NAME);
+                    hcArgs.dragen378Mode? HaplotypeCallerArgumentCollection.DRAGEN_378_GATK_MODE_LONG_NAME : HaplotypeCallerArgumentCollection.DRAGEN_3412_GATK_MODE_LONG_NAME);
         }
         if (hcArgs.isFlowBasedCallingMode()) {
             ModeArgumentUtils.setArgValues(

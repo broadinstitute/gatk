@@ -33,9 +33,9 @@ public final class PileupBasedAlleles {
     public static String PILEUP_ALLELE_ASSEMBLY_BAD_READS_TAG = "PileupAssemblyBadReads";
     public static String PILEUP_ALLELE_TOTAL_READS = "PileupAssemblyTotalReads";
 
-    private final static int COUNT = 0;
-    private final static int BAD_COUNT = 1;
-    private final static int ASSEMBLY_BAD_COUNT = 2;
+    private final static int COUNT_IDX = 0;
+    private final static int BAD_COUNT_IDX = 1;
+    private final static int ASSEMBLY_BAD_COUNT_IDX = 2;
 
     /**
      * Accepts the raw per-base pileups stored from the active region detection code and parses them for potential variants
@@ -122,9 +122,9 @@ public final class PileupBasedAlleles {
                     alleles.add(Allele.create(allele.getKey()));
                     final VariantContextBuilder pileupSNP = new VariantContextBuilder("pileup", alignmentContext.getContig(), alignmentContext.getStart(), alignmentContext.getEnd(), alleles);
                     pileupVariantList.add(pileupSNP
-                            .attribute(PILEUP_ALLELE_SUPPORTING_READS, allele.getValue()[COUNT])
-                            .attribute(PILEUP_ALLELE_BAD_READS_TAG, allele.getValue()[BAD_COUNT])
-                            .attribute(PILEUP_ALLELE_ASSEMBLY_BAD_READS_TAG, allele.getValue()[ASSEMBLY_BAD_COUNT])
+                            .attribute(PILEUP_ALLELE_SUPPORTING_READS, allele.getValue()[COUNT_IDX])
+                            .attribute(PILEUP_ALLELE_BAD_READS_TAG, allele.getValue()[BAD_COUNT_IDX])
+                            .attribute(PILEUP_ALLELE_ASSEMBLY_BAD_READS_TAG, allele.getValue()[ASSEMBLY_BAD_COUNT_IDX])
                             .attribute(PILEUP_ALLELE_TOTAL_READS, numOfBases).make());
                 }
             }
@@ -138,9 +138,9 @@ public final class PileupBasedAlleles {
                         delAlleles.add(Allele.create((char) referenceContext.getBase() + allele.getKey()));
                         final VariantContextBuilder pileupInsertion = new VariantContextBuilder("pileup", alignmentContext.getContig(), alignmentContext.getStart(), alignmentContext.getEnd(), delAlleles);
                         pileupVariantList.add(pileupInsertion
-                                .attribute(PILEUP_ALLELE_SUPPORTING_READS, allele.getValue()[COUNT])
-                                .attribute(PILEUP_ALLELE_BAD_READS_TAG, allele.getValue()[BAD_COUNT])
-                                .attribute(PILEUP_ALLELE_ASSEMBLY_BAD_READS_TAG, allele.getValue()[ASSEMBLY_BAD_COUNT])
+                                .attribute(PILEUP_ALLELE_SUPPORTING_READS, allele.getValue()[COUNT_IDX])
+                                .attribute(PILEUP_ALLELE_BAD_READS_TAG, allele.getValue()[BAD_COUNT_IDX])
+                                .attribute(PILEUP_ALLELE_ASSEMBLY_BAD_READS_TAG, allele.getValue()[ASSEMBLY_BAD_COUNT_IDX])
                                 .attribute(PILEUP_ALLELE_TOTAL_READS, numOfBases).make());
                     }
                 }
@@ -156,9 +156,9 @@ public final class PileupBasedAlleles {
                             true));
                     final VariantContextBuilder pileupInsertion = new VariantContextBuilder("pileup", alignmentContext.getContig(), alignmentContext.getStart(), alignmentContext.getEnd() + allele.getKey(), insAlleles);
                     pileupVariantList.add(pileupInsertion
-                            .attribute(PILEUP_ALLELE_SUPPORTING_READS, allele.getValue()[COUNT])
-                            .attribute(PILEUP_ALLELE_BAD_READS_TAG, allele.getValue()[BAD_COUNT])
-                            .attribute(PILEUP_ALLELE_ASSEMBLY_BAD_READS_TAG, allele.getValue()[ASSEMBLY_BAD_COUNT])
+                            .attribute(PILEUP_ALLELE_SUPPORTING_READS, allele.getValue()[COUNT_IDX])
+                            .attribute(PILEUP_ALLELE_BAD_READS_TAG, allele.getValue()[BAD_COUNT_IDX])
+                            .attribute(PILEUP_ALLELE_ASSEMBLY_BAD_READS_TAG, allele.getValue()[ASSEMBLY_BAD_COUNT_IDX])
                             .attribute(PILEUP_ALLELE_TOTAL_READS, numOfBases).make());
                 }
             }
@@ -264,15 +264,15 @@ public final class PileupBasedAlleles {
     // Helper methods to manage the badness counting arrays
     private static void incrementInsertionCount(String insertion, Map<String, int[]> insertionCounts, boolean bad, boolean assemblybad){
         int[] values = insertionCounts.computeIfAbsent(insertion, (i) -> new int[3] );
-        values[COUNT]+=1; values[BAD_COUNT]+=bad?1:0; values[ASSEMBLY_BAD_COUNT]+=assemblybad?1:0;
+        values[COUNT_IDX]+=1; values[BAD_COUNT_IDX]+=bad?1:0; values[ASSEMBLY_BAD_COUNT_IDX]+=assemblybad?1:0;
     }
     private static void incrementDeletionCount(Integer deletion, Map<Integer, int[]> deletionCounts, boolean bad, boolean assemblybad){
         int[] values =  deletionCounts.computeIfAbsent(deletion, (i) -> new int[3] );
-        values[COUNT]+=1; values[BAD_COUNT]+=bad?1:0; values[ASSEMBLY_BAD_COUNT]+=assemblybad?1:0;
+        values[COUNT_IDX]+=1; values[BAD_COUNT_IDX]+=bad?1:0; values[ASSEMBLY_BAD_COUNT_IDX]+=assemblybad?1:0;
     }
     private static void incrementAltCount(byte base, Map<Byte, int[]> altCounts, boolean bad, boolean assemblybad){
         int[] values = altCounts.computeIfAbsent(base, (i) -> new int[3] );
-        values[COUNT]+=1; values[BAD_COUNT]+=bad?1:0; values[ASSEMBLY_BAD_COUNT]+=assemblybad?1:0;
+        values[COUNT_IDX]+=1; values[BAD_COUNT_IDX]+=bad?1:0; values[ASSEMBLY_BAD_COUNT_IDX]+=assemblybad?1:0;
     }
 
 

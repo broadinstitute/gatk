@@ -30,7 +30,7 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     public static final String GQ_BAND_SHORT_NAME = "GQB";
     public static final String DO_NOT_CORRECT_OVERLAPPING_BASE_QUALITIES_LONG_NAME = "do-not-correct-overlapping-quality";
     public static final String OUTPUT_BLOCK_LOWER_BOUNDS = "floor-blocks";
-    public static final String DRAGEN_GATK_MODE_LONG_NAME = "dragen-mode";
+    public static final String DRAGEN_3412_GATK_MODE_LONG_NAME = "dragen-mode";
     public static final String DRAGEN_378_GATK_MODE_LONG_NAME = "dragen-378-concordance-mode";
     public static final String APPLY_BQD_LONG_NAME = "apply-bqd";
     public static final String APPLY_FRD_LONG_NAME = "apply-frd";
@@ -152,14 +152,14 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
      *
      *
      */
-    @Argument(fullName = DRAGEN_GATK_MODE_LONG_NAME, optional = true, doc="Single argument for enabling the bulk of DRAGEN-GATK features. NOTE: THIS WILL OVERWRITE PROVIDED ARGUMENT CHECK TOOL INFO TO SEE WHICH ARGUMENTS ARE SET).", mutex = {DRAGEN_378_GATK_MODE_LONG_NAME})
-    public Boolean dragenMode = false;
+    @Argument(fullName = DRAGEN_3412_GATK_MODE_LONG_NAME, optional = true, doc="Single argument for enabling the bulk of DRAGEN-GATK features. NOTE: THIS WILL OVERWRITE PROVIDED ARGUMENT CHECK TOOL INFO TO SEE WHICH ARGUMENTS ARE SET).", mutex = {DRAGEN_378_GATK_MODE_LONG_NAME})
+    public Boolean dragen3412mode = false;
 
     /**
      * DRAGEN-GATK version 2: This includes PDHMM and Columnwise detection (with hopes to add Joint Detection and new STRE as well in the future)
      */
     @Advanced
-    @Argument(fullName = DRAGEN_378_GATK_MODE_LONG_NAME, optional = true, doc="Single argument for enabling the bulk of DRAGEN-GATK features including new developments for concordance against DRAGEN 3.7.8. NOTE: THIS WILL OVERWRITE PROVIDED ARGUMENT CHECK TOOL INFO TO SEE WHICH ARGUMENTS ARE SET).", mutex = {DRAGEN_GATK_MODE_LONG_NAME})
+    @Argument(fullName = DRAGEN_378_GATK_MODE_LONG_NAME, optional = true, doc="Single argument for enabling the bulk of DRAGEN-GATK features including new developments for concordance against DRAGEN 3.7.8. NOTE: THIS WILL OVERWRITE PROVIDED ARGUMENT CHECK TOOL INFO TO SEE WHICH ARGUMENTS ARE SET).", mutex = {DRAGEN_3412_GATK_MODE_LONG_NAME})
     public Boolean dragen378Mode = false;
 
     @Advanced
@@ -291,7 +291,8 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
                 PileupDetectionArgumentCollection.PILEUP_DETECTION_BAD_READ_RATIO_LONG_NAME, "0.40",
                 PileupDetectionArgumentCollection.PILEUP_DETECTION_ENABLE_INDELS, "true",
                 PileupDetectionArgumentCollection.PILEUP_DETECTION_ACTIVE_REGION_PHRED_THRESHOLD_LONG_NAME, "3.0",
-                PileupDetectionArgumentCollection.GENERATE_PARTIALLY_DETERMINED_HAPLOTYPES_LONG_NAME, "true"
+                PileupDetectionArgumentCollection.GENERATE_PARTIALLY_DETERMINED_HAPLOTYPES_LONG_NAME, "true",
+                PileupDetectionArgumentCollection.PILEUP_DETECTION_FILTER_ASSEMBLY_HAPS_THRESHOLD, "0.4"
         };
     }
 
@@ -303,7 +304,7 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
 
     // Should we make any alterations to the pipeline for DRAGEN-GATK
     boolean isDragenGATKMode() {
-        return dragenMode || dragen378Mode;
+        return dragen3412mode || dragen378Mode;
     }
 
     // Should we make any alterations to the pipeline for FlowBasedCalling

@@ -34,6 +34,7 @@ import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
 import org.broadinstitute.hellbender.utils.haplotype.PartiallyDeterminedHaplotype;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState;
+import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.pileup.PileupBasedAlleles;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.*;
@@ -73,6 +74,8 @@ public final class AssemblyBasedCallerUtils {
     // if we don't, the several bases left of reads that end just within the assembly window can
     // get realigned incorrectly.  See https://github.com/broadinstitute/gatk/issues/5060
     public static final int MINIMUM_READ_LENGTH_AFTER_TRIMMING = 10;
+
+    public static final OneShotLogger haplotypeDeletionWarningLogger = new OneShotLogger(AssemblyBasedCallerUtils.class);
 
     // Phase group notation can be interpreted as a representation of the alleles present on the two phased haplotypes at the site:
     // "0": REF or '*'; "1": site-specific alt allele
@@ -461,9 +464,12 @@ public final class AssemblyBasedCallerUtils {
             for(VariantContext delVariant : pileupAllelesFoundShouldFilter) {
                 for (Haplotype hap : assemblyResultSet.getHaplotypeList()) {
                     if (hap.getEventMap()==null) {
-                        if (!hap.isReference()) {
-                            //throw new RuntimeException("empty event map for haplotype" + hap);
-                        }
+                        // NOTE: This check should be a reasonable sanity check on the inputs. However, there edge cases in the assembly engine + SW realignment that can cause
+                        //       haplotypes to re-merge into the reference and end up with an empty event map. (Also the event map code explicitly expects to fail in some instances)
+                        //       thus we can't enforce that the haplotypes no variants.
+//                        if (!hap.isReference()) {
+//                            //throw new RuntimeException("empty event map for haplotype" + hap);
+//                        }
                     } else {
                         if (hap.getEventMap().getVariantContexts().stream().anyMatch(v -> v.getStart() == delVariant.getStart()
                                 && delVariant.getReference().equals(v.getReference())
@@ -475,9 +481,11 @@ public final class AssemblyBasedCallerUtils {
                 }
             }
         }
-        // TODO removing haplotypes whole cloth is dangerous and might have to be fixed
+        // TODO removing haplotypes whole-cloth is messy and will likely lead to errors and dropped variants in this code
         if (!haplotypesWithFilterAlleles.isEmpty()) {
             if (debug) System.out.println("Found Assembly Haps with filtered Variants:\n"+haplotypesWithFilterAlleles.stream().map(Haplotype::toString).collect(Collectors.joining("\n")));
+
+            haplotypeDeletionWarningLogger.warn(() -> "Haplotypes from Assembly are being filtered by heuristics from the PileupCaller. This can lead to missing variants. See --"+PileupDetectionArgumentCollection.PILEUP_DETECTION_FILTER_ASSEMBLY_HAPS_THRESHOLD+" for more details");
 
             for (Haplotype hap : haplotypesWithFilterAlleles) {
                 assemblyResultSet.removeHapltotype(hap);
