@@ -1979,6 +1979,65 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         }
     }
 
+    @Test(dataProvider="HaplotypeCallerTestInputs")
+    public void testPileupCallingDRAGEN378ModeConsistentWithPastResults(final String inputFileName, final String referenceFileName) throws Exception {
+        Utils.resetRandomGenerator();
+
+        final File output = createTempFile("testVCFModeIsConsistentWithPastResults", ".vcf");
+        final File expected = new File(TEST_FILES_DIR, "expected.pileupCallerDRAGEN.378.gatk4.vcf");
+
+        final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
+
+        final String[] args = {
+                "-I", inputFileName,
+                "-R", referenceFileName,
+                "-L", "20:10000000-10100000",
+                "-O", outputPath,
+                "--dragen-378-concordance-mode",
+                "--dragstr-params-path", TEST_FILES_DIR+"example.dragstr-params.txt",
+
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false",
+        };
+
+        runCommandLine(args);
+
+        // Test for an exact match against past results
+        if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
+            IntegrationTestSpec.assertEqualTextFiles(output, expected);
+        }
+    }
+
+    @Test(dataProvider="HaplotypeCallerTestInputs")
+    public void testPileupCallingDRAGEN378OptimizedModeConsistentWithPastResults(final String inputFileName, final String referenceFileName) throws Exception {
+        Utils.resetRandomGenerator();
+
+        final File output = createTempFile("testVCFModeIsConsistentWithPastResults", ".vcf");
+        final File expected = new File(TEST_FILES_DIR, "expected.pileupCallerDRAGEN.378.gatk4.vcf");
+
+        final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
+
+        final String[] args = {
+                "-I", inputFileName,
+                "-R", referenceFileName,
+                "-L", "20:10000000-10100000",
+                "-O", outputPath,
+                "--dragen-378-concordance-mode",
+                "--dragstr-params-path", TEST_FILES_DIR+"example.dragstr-params.txt",
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false",
+
+                // This optimization in PDHMM mode should have essentially no bearing on the output, this test deliberately
+                // uses the same expected output as the above test to enforce that over this short test range the optimization
+                // doesn't impact the results in any meaningful way.
+                "--" + PileupDetectionArgumentCollection.PDHMM_READ_OVERLAP_OPTIMIZATION
+        };
+
+        runCommandLine(args);
+
+        // Test for an exact match against past results
+        if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
+            IntegrationTestSpec.assertEqualTextFiles(output, expected);
+        }
+    }
 
     @DataProvider(name="PairHMMResultsModes")
     public Object[][] PairHMMResultsModes() {
@@ -2032,6 +2091,49 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
             }
         }
     }
+
+    @Test()
+    // Since the PDHMM isn't currently slot-in compared to the pairHMM modes this has to be computed seperately...
+    public void testPDPairHMMResultsFile() throws Exception {
+        Utils.resetRandomGenerator();
+
+        final File vcfOutput = createTempFile("hmmResultFileTest", ".vcf");
+        final File hmmOutput = createTempFile("hmmResult", ".txt");
+        final File expected = new File(largeFileTestDir, "expected.PDHMM.hmmresults.txt");
+
+        final String hmmOutputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : hmmOutput.getAbsolutePath();
+
+        final String[] args = {
+                "-I", NA12878_20_21_WGS_bam,
+                "-R", b37_reference_20_21,
+                "-L", "20:10009875", // site selected as one of the more complex in our standard test inputs (which means lots of PD events in the haplotypes)
+                "-ip", "300",
+                "-O", vcfOutput.getAbsolutePath(),
+                "--dragen-mode",
+                "--dragstr-params-path", TEST_FILES_DIR+"example.dragstr-params.txt",
+
+                // Pileup Caller args
+                "--" + PileupDetectionArgumentCollection.PILEUP_DETECTION_LONG_NAME,
+                "--" + PileupDetectionArgumentCollection.PILEUP_DETECTION_ABSOLUTE_ALT_DEPTH, "0",
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false",
+
+                // Pileup caller and PDHMM arguments
+                "--" + PileupDetectionArgumentCollection.PILEUP_DETECTION_BAD_READ_RATIO_LONG_NAME, "0.40",
+                "--" + PileupDetectionArgumentCollection.PILEUP_DETECTION_ENABLE_INDELS,
+                "--" + PileupDetectionArgumentCollection.PILEUP_DETECTION_ACTIVE_REGION_PHRED_THRESHOLD_LONG_NAME, "3.0",
+                "--" + PileupDetectionArgumentCollection.PILEUP_DETECTION_FILTER_ASSEMBLY_HAPS_THRESHOLD, "0.4",
+                "--" + PileupDetectionArgumentCollection.GENERATE_PARTIALLY_DETERMINED_HAPLOTYPES_LONG_NAME,
+
+                "--pdhmm-results-file", hmmOutputPath
+        };
+
+        runCommandLine(args);
+
+        if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
+            IntegrationTestSpec.assertEqualTextFiles(hmmOutput, expected);
+        }
+    }
+
     @Test
     public void testVcfFlowLikelihoodOptimizedCompConsistentWithPreviousResults() throws Exception {
         Utils.resetRandomGenerator();

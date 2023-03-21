@@ -33,8 +33,13 @@ import java.util.*;
  */
 public final class AssemblyResultSet {
 
+    public static final Comparator<VariantContext> HAPLOTYPE_VARIANT_CONTEXT_COMPARATOR = Comparator.comparingInt(VariantContext::getStart)
+            // Decide arbitrarily so as not to accidentally throw away overlapping variants
+            .thenComparingInt(vc -> vc.getReference().length())
+            .thenComparing(vc -> vc.getAlternateAllele(0));
     private final Map<Integer,AssemblyResult> assemblyResultByKmerSize;
     private final Set<Haplotype> haplotypes;
+    private Set<Haplotype> originalAssemblyHaps = new LinkedHashSet<>();
     private final Map<Haplotype,AssemblyResult> assemblyResultByHaplotype;
     private AssemblyRegion regionForGenotyping;
     private byte[] fullReferenceWithPadding;
@@ -47,6 +52,7 @@ public final class AssemblyResultSet {
     private boolean debug;
     private static final Logger logger = LogManager.getLogger(AssemblyResultSet.class);
     private LongHomopolymerHaplotypeCollapsingEngine haplotypeCollapsingEngine; // this is nullable - indicating no collapsing engine (flow-based specific)
+    private boolean isPartiallyDeterminedList = false;
 
     /**
      * Constructs a new empty assembly result set.
@@ -552,10 +558,7 @@ public final class AssemblyResultSet {
     private static SortedSet<VariantContext> getAllVariantContexts( final List<Haplotype> haplotypes ) {
         // Using the cigar from each called haplotype figure out what events need to be written out in a VCF file
         final TreeSet<VariantContext> vcs = new TreeSet<>(
-                Comparator.comparingInt(VariantContext::getStart)
-                        // Decide arbitrarily so as not to accidentally throw away overlapping variants
-                .thenComparingInt(vc -> vc.getReference().length())
-                .thenComparing(vc -> vc.getAlternateAllele(0)));
+                HAPLOTYPE_VARIANT_CONTEXT_COMPARATOR);
 
         for( final Haplotype h : haplotypes ) {
             vcs.addAll(h.getEventMap().getVariantContexts());
@@ -583,8 +586,43 @@ public final class AssemblyResultSet {
     public void replaceAllHaplotypes(Set<Haplotype> list) {
         haplotypes.clear();;
         refHaplotype = null;
-        for ( Haplotype h : list )
+        for ( Haplotype h : list ) {
             add(h);
+            if (h.isNonReference()) {
+                variationPresent = true;
+            }
+        }
     }
 
+    // For PDHMM use: Remove a haplotype from this AssemblyResultSet and update all of the various references in the
+    //                object to that haplotype to be current.
+    // WARNING: Deleting haplotypes in this manner is highly dangerous and will likely lead to lost variants
+    public void removeHapltotype(final Haplotype hap) {
+
+        haplotypes.remove(hap);
+        assemblyResultByHaplotype.remove(hap);
+        for (Integer kmerSize : assemblyResultByKmerSize.keySet()) {
+            Set<Haplotype> discovered = assemblyResultByKmerSize.get(kmerSize).getDiscoveredHaplotypes();
+            discovered.remove(hap);
+            assemblyResultByKmerSize.get(kmerSize).setDiscoveredHaplotypes(discovered);
+        }
+    }
+
+    public void setPartiallyDeterminedMode() {
+        this.isPartiallyDeterminedList = true;
+    }
+
+    public boolean isPartiallyDeterminedList() {
+        return isPartiallyDeterminedList;
+    }
+
+    // For PDHMM use: store original assembly haplotypes if we are injecting artificial haplotypes later
+    // WARNING: This is likely not set in every case, use with caution
+    public void storeAssemblyHaplotypes() {
+        originalAssemblyHaps = new LinkedHashSet<>(haplotypes);
+    }
+
+    public boolean hasOverwrittenHaps() {
+        return !originalAssemblyHaps.isEmpty();
+    }
 }

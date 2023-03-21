@@ -840,12 +840,11 @@ public class ReferenceConfidenceModel {
             throw new IllegalStateException("Bad alignment start in createReferenceHaplotype " + alignmentStart);
         }
         final Haplotype refHaplotype = new Haplotype(refBases, true);
+        refHaplotype.setGenomeLocation(activeRegion.getPaddedSpan());
         refHaplotype.setAlignmentStartHapwrtRef(alignmentStart);
         final Cigar c = new Cigar();
         c.add(new CigarElement(refHaplotype.getBases().length, CigarOperator.M));
         refHaplotype.setCigar(c);
         return refHaplotype;
     }
-
-
 }

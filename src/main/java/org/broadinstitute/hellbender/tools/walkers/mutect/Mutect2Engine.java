@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.mutect;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Locatable;
+import htsjdk.samtools.util.Tuple;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -256,17 +257,30 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
                 .filter(vc -> MTAC.forceCallFiltered || vc.isNotFiltered()).collect(Collectors.toList());
 
         final List<VariantContext> forcedPileupAlleles= MTAC.pileupDetectionArgs.usePileupDetection ?
-                PileupBasedAlleles.getPileupVariantContexts(originalAssemblyRegion.getAlignmentData(), MTAC.pileupDetectionArgs, header) :
+                PileupBasedAlleles.getPileupVariantContexts(originalAssemblyRegion.getAlignmentData(), MTAC.pileupDetectionArgs, header, MTAC.minBaseQualityScore) :
                 Collections.emptyList();
 
-        final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(originalAssemblyRegion, forcedPileupAlleles, MTAC, header, samplesList, logger, referenceReader, assemblyEngine, aligner, false, MTAC.fbargs, false);
+
+        final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(originalAssemblyRegion, MTAC, header, samplesList, logger, referenceReader, assemblyEngine, aligner, false, MTAC.fbargs, false);
         ReadThreadingAssembler.addAssembledVariantsToEventMapOutput(untrimmedAssemblyResult, assembledEventMapVariants, MTAC.maxMnpDistance, assembledEventMapVcfOutputWriter);
         final LongHomopolymerHaplotypeCollapsingEngine haplotypeCollapsing = untrimmedAssemblyResult.getHaplotypeCollapsingEngine();
 
         final SortedSet<VariantContext> allVariationEvents = untrimmedAssemblyResult.getVariationEvents(MTAC.maxMnpDistance);
+        // PileupCaller events if we need to apply them
+        final List<VariantContext> pileupAllelesFoundShouldFilter = forcedPileupAlleles.stream()
+                .filter(v -> PileupBasedAlleles.shouldFilterAssemblyVariant(MTAC.pileupDetectionArgs, v))
+                .collect(Collectors.toList());
+        final List<VariantContext> pileupAllelesPassingFilters = forcedPileupAlleles.stream()
+                .filter(v -> PileupBasedAlleles.passesFilters(MTAC.pileupDetectionArgs, v))
+                .collect(Collectors.toList());
         for (final VariantContext given : givenAlleles) {
-            if (allVariationEvents.stream().noneMatch(vc -> vc.getStart() == given.getStart() && vc.getAlternateAllele(0).basesMatch(given.getAlternateAllele(0)))) {
+            if (allVariationEvents.stream().noneMatch(vc -> vc.getStart() == given.getStart() && vc.getReference().basesMatch(given.getReference()) && vc.getAlternateAllele(0).basesMatch(given.getAlternateAllele(0)) )) {
                 allVariationEvents.add(given);
+            }
+        }
+        for (final VariantContext pileupAllele : pileupAllelesPassingFilters) {
+            if (allVariationEvents.stream().noneMatch(vc -> vc.getStart() == pileupAllele.getStart() && vc.getReference().basesMatch(pileupAllele.getReference()) && vc.getAlternateAllele(0).basesMatch(pileupAllele.getAlternateAllele(0)))) {
+                allVariationEvents.add(pileupAllele);
             }
         }
 
@@ -274,9 +288,13 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
         if (!trimmingResult.isVariationPresent()) {
             return emitReferenceConfidence() ? referenceModelForNoVariation(originalAssemblyRegion) : NO_CALLS;
         }
-
-        final AssemblyResultSet assemblyResult = untrimmedAssemblyResult.trimTo(trimmingResult.getVariantRegion());
+        AssemblyResultSet assemblyResult = untrimmedAssemblyResult.trimTo(trimmingResult.getVariantRegion());
         AssemblyBasedCallerUtils.addGivenAlleles(givenAlleles, MTAC.maxMnpDistance, aligner, MTAC.getHaplotypeToReferenceSWParameters(), assemblyResult);
+
+        // Apply the forced pileup calling alleles if there are any that we must filter
+        if ((!pileupAllelesFoundShouldFilter.isEmpty() || !pileupAllelesPassingFilters.isEmpty())) {
+            AssemblyBasedCallerUtils.applyPileupEventsAsForcedAlleles(originalAssemblyRegion, MTAC, aligner, assemblyResult.getReferenceHaplotype(), assemblyResult, pileupAllelesFoundShouldFilter, pileupAllelesPassingFilters, MTAC.pileupDetectionArgs.debugPileupStdout);
+        }
 
         // we might find out after assembly that the "active" region actually has no variants
         if( ! assemblyResult.isVariationPresent() ) {
@@ -461,6 +479,9 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
         }
 
         final ReadPileup pileup = context.getBasePileup();
+        if (MTAC.pileupDetectionArgs.usePileupDetection) {
+            pileup.forEach(p -> PileupBasedAlleles.addMismatchPercentageToRead(p.getRead(), header, ref));
+        }
         if (pileup.size() >= minCallableDepth) {
             callableSites.increment();
         }

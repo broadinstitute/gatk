@@ -20,6 +20,7 @@ import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.PileupDetectionArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReadThreadingAssemblerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceMode;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.FilterMutectCalls;
@@ -613,6 +614,40 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(variantKeys.containsAll(expectedKeys));
 
         Assert.assertEquals(variants.get(0).getAttributeAsInt(GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY, 0), 1741);
+    }
+
+    // basic test on a small chunk of NA12878 mitochondria. This is intended to be a sanity check to ensure that the pileup-caller
+    // is A) Hooked up and functioning in Mutect and B) its arguments can be used to make reasonable calls when assembly doesn't detect variants
+    @Test
+    public void testPileupDetection()  {
+        Utils.resetRandomGenerator();
+        final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
+
+        runMutect2(NA12878_MITO_BAM, unfilteredVcf, "chrM:1-1000", MITO_REF.getAbsolutePath(), Optional.empty(),
+                args -> args.add(M2ArgumentCollection.MITOCHONDRIA_MODE_LONG_NAME, true)
+                        // Pileup-Detection arguments
+                        .add(PileupDetectionArgumentCollection.PILEUP_DETECTION_LONG_NAME, true)
+                        .add(PileupDetectionArgumentCollection.PILEUP_DETECTION_ENABLE_INDELS, true)
+                        //.add(PileupDetectionArgumentCollection.PILEUP_DETECTION_ACTIVE_REGION_LOD_THRESHOLD_LONG_NAME, 0) // This is currently incompatible with Mutect 2 (isActive() doesn't store the original activity scores in M2Engine)
+
+                        // NOTE: These arguments are intended to force the assembly to fail at all sites in order to test what gets recovered by the pileup code
+                        .add(ReadThreadingAssemblerArgumentCollection.KMER_SIZE_LONG_NAME, 1)
+                        .add(ReadThreadingAssemblerArgumentCollection.DONT_INCREASE_KMER_SIZE_LONG_NAME, true)
+        );
+
+        final List<VariantContext> variants = VariantContextTestUtils.streamVcf(unfilteredVcf).collect(Collectors.toList());
+        final List<String> variantKeys = variants.stream().map(VariantContextTestUtils::keyForVariant).collect(Collectors.toList());
+        System.out.print(variantKeys);
+
+        // NOTE: This list is un-principled, its simply asserting that we found SOMETHING with the pileupcaller we should because assembly is broken
+        //       this is not set in stone, future changes to the pileupcaller/Mutect2 might cause this list to change
+        final List<String> expectedKeys = Arrays.asList(
+                "chrM:152-152 T*, [C]",
+                "chrM:263-263 A*, [G]",
+                "chrM:302-302 A*, [AC]", //Pileup-calling doesn't detect overlapping indels as well as assembly
+                "chrM:310-310 T*, [C, TC]",
+                "chrM:750-750 A*, [G]");
+        Assert.assertTrue(variantKeys.containsAll(expectedKeys));
     }
 
     /**
