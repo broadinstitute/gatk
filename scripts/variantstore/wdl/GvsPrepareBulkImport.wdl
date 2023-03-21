@@ -44,8 +44,6 @@ task GenerateFOFNsFromDataTables {
         String vcf_index_files_column_name = "hg38_reblocked_v2_vcf_index"
     }
 
-    ## TODO currently we can only take in samples, but we need to be able to take in sample_sets
-
     String sample_names_file_name = "sample_names.txt"
     String vcf_files_name = "vcf_files.txt"
     String vcf_index_files_name = "vcf_index_files.txt"
@@ -60,10 +58,10 @@ task GenerateFOFNsFromDataTables {
         export WORKSPACE_BUCKET='~{workspace_bucket}'
 
         python3 /app/generate_FOFNs_for_import.py \
-        --data_table_name ~{samples_table_name} \
-        --sample_id_column_name ~{sample_id_column_name} \
-        --vcf_files_column_name ~{vcf_files_column_name} \
-        --vcf_index_files_column_name ~{vcf_index_files_column_name}
+            --data_table_name ~{samples_table_name} \
+            --sample_id_column_name ~{sample_id_column_name} \
+            --vcf_files_column_name ~{vcf_files_column_name} \
+            --vcf_index_files_column_name ~{vcf_index_files_column_name}
 
     >>>
     runtime {
