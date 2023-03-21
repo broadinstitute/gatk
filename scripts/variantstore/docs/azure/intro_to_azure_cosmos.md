@@ -213,20 +213,18 @@ not allow *arbitrary* downsizing of containers, but only up to a maximum of 10x 
 very high to get decent load performance has the very undesirable consequence of setting a high floor for container
 costs after loading is complete.
 
-## Where's my Reactive Programming?
+## Reactor not Reacting
 
 The V4 Cosmos Java client library makes extensive use of
 the [Reactor library](https://projectreactor.io/docs/core/release/reference/) in
 its [Bulk Executor APIs](https://learn.microsoft.com/en-us/azure/cosmos-db/bulk-executor-overview).
-This library aims to "[provide efficient demand management](https://projectreactor.io/)", specifically
-through "[Backpressure](https://projectreactor.io/docs/core/release/reference/#_from_imperative_to_reactive_programming)
-or the ability for the consumer to signal the producer that the rate of emission is too high". Unfortunately in the
+This library aims to "[provide efficient demand management](https://projectreactor.io/)". Unfortunately in the
 context of this spike, the loader code I wrote did not appear to behave in a reactive manner. The Avro "source"
 generated records far faster than the Cosmos "sink" could process them, causing unflushed records to pile up inside the
 Cosmos client code. The original version of this code created a more elegant `flatMap`ped stream of Avro records which
 were transformed into Jackson `ObjectNode`s and `Flux`ed into the Cosmos client library. However this invariably led to
-memory pressure, thrashing from constant garbage collection, and eventually to a crash with a 408 error. Included among
-the very detailed error messages at the time of the crash was the fact that the Cosmos client library was holding
+memory pressure, thrashing from constant garbage collection, and eventually a crash with a 408 error. Included among the
+very detailed error messages at the time of the crash was the fact that the Cosmos client library was holding
 millions of unwritten records:
 
 ```
@@ -234,8 +232,8 @@ millions of unwritten records:
 ```
 
 The code committed as part of this spike replaced the `flatMap` with an iterator over the Avro files. While
-aesthetically unfortunate, this structure did enable loading variant data cleanly and loaded the majority of the
-reference data delta some unexplained 403 failures after several hours of operation.
+aesthetically unfortunate, this structure did enable loading variant data cleanly, although the reference data ran into
+a slew of unexplained 403 failures after several hours of running.
 
 Per Microsoft documentation the "solution" for High CPU utilization-driven 408 errors it to
 "[scale the client up and out](https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/troubleshoot-java-sdk-request-timeout#solution)".
@@ -248,4 +246,5 @@ horrifically wrong in setting up the spike program, I did closely follow the exa
 small [sample code](https://github.com/Azure-Samples/azure-cosmos-java-sql-api-samples/blob/main/src/main/java/com/azure/cosmos/examples/bulk/async/SampleBulkQuickStartAsync.java).
 From the limited reading I have done on Reactor, it does seem that it is
 the [responsibility of the consumer](https://stackoverflow.com/a/57298393/21269164) to request
-only as much data as it can actually handle from the producer.
+only as much data as it can actually handle from the producer. See
+also [this piece](https://projectreactor.io/docs/core/release/reference/#reactor.hotCold) on hot versus cold sources.
