@@ -75,7 +75,7 @@ public class SVConcordanceIntegrationTest extends CommandLineProgramTest {
         linkage.setDepthOnlyParams(depthParameters);
         linkage.setMixedParams(mixedParameters);
         linkage.setEvidenceParams(pesrParameters);
-        final SVConcordanceAnnotator annotator = new SVConcordanceAnnotator(false);
+        final SVConcordanceAnnotator annotator = new SVConcordanceAnnotator();
 
         final List<SVCallRecord> inputEvalVariants = VariantContextTestUtils.readEntireVCFIntoMemory(evalVcfPath).getValue()
                 .stream().map(SVCallRecordUtils::create).collect(Collectors.toList());
@@ -225,6 +225,124 @@ public class SVConcordanceIntegrationTest extends CommandLineProgramTest {
             } else {
                 MathUtilsUnitTest.assertEqualsDoubleSmart(outputVariant.getAttributeAsDouble(GATKSVVCFConstants.GENOTYPE_CONCORDANCE_INFO, -1.), 1.0, TOLERANCE);
             }
+        }
+    }
+
+    @Test
+    public void testSelfTruthSubset() {
+
+        // Run a vcf against itself but subsetted to fewer samples and variants
+
+        final File output = createTempFile("concord", ".vcf");
+        final String evalVcfPath = getToolTestDataDir() + "ref_panel_1kg.cleaned.gatk.chr22_chrY.vcf.gz";
+        final String truthVcfPath = getToolTestDataDir() + "ref_panel_1kg.cleaned.gatk.chr22_chrY.sample_subset.vcf.gz";
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addOutput(output)
+                .add(StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, GATKBaseTest.FULL_HG38_DICT)
+                .add(AbstractConcordanceWalker.EVAL_VARIANTS_LONG_NAME, evalVcfPath)
+                .add(AbstractConcordanceWalker.TRUTH_VARIANTS_LONG_NAME, truthVcfPath);
+
+        runCommandLine(args, SVConcordance.class.getSimpleName());
+        assertPerfectConcordance(output, evalVcfPath);
+    }
+
+    @Test
+    public void testSelfEvalSubset() {
+
+        // Run a vcf against itself but with extra samples and variants
+
+        final File output = createTempFile("concord", ".vcf");
+        final String evalVcfPath = getToolTestDataDir() + "ref_panel_1kg.cleaned.gatk.chr22_chrY.sample_subset.vcf.gz";
+        final String truthVcfPath = getToolTestDataDir() + "ref_panel_1kg.cleaned.gatk.chr22_chrY.vcf.gz";
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addOutput(output)
+                .add(StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, GATKBaseTest.FULL_HG38_DICT)
+                .add(AbstractConcordanceWalker.EVAL_VARIANTS_LONG_NAME, evalVcfPath)
+                .add(AbstractConcordanceWalker.TRUTH_VARIANTS_LONG_NAME, truthVcfPath);
+
+        runCommandLine(args, SVConcordance.class.getSimpleName());
+        assertPerfectConcordance(output, evalVcfPath);
+    }
+
+    private void assertPerfectConcordance(final File output, final String evalVcfPath) {
+
+        final Pair<VCFHeader, List<VariantContext>> outputVcf = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
+
+        final SAMSequenceDictionary dictionary = SVTestUtils.hg38Dict;
+        final ClusteringParameters depthParameters = ClusteringParameters.createDepthParameters(0.5, 2000, 0);
+        final ClusteringParameters mixedParameters = ClusteringParameters.createMixedParameters(0.1, 2000, 0);
+        final ClusteringParameters pesrParameters = ClusteringParameters.createPesrParameters(0.1, 500, 0);
+        final SVConcordanceLinkage linkage = new SVConcordanceLinkage(dictionary);
+        linkage.setDepthOnlyParams(depthParameters);
+        linkage.setMixedParams(mixedParameters);
+        linkage.setEvidenceParams(pesrParameters);
+
+        final Comparator<VariantContext> idComparator = Comparator.comparing(VariantContext::getID);
+
+        final List<VariantContext> inputVariants = VariantContextTestUtils.readEntireVCFIntoMemory(evalVcfPath).getValue()
+                .stream()
+                .sorted(idComparator)
+                .collect(Collectors.toList());
+        final List<VariantContext> outputVariants = outputVcf.getValue().stream().sorted(idComparator).collect(Collectors.toList());
+
+        Assert.assertEquals(outputVariants.size(), inputVariants.size());
+        for (int i = 0; i < outputVariants.size(); i++) {
+            final VariantContext outputVariant = outputVariants.get(i);
+            final VariantContext expectedVariant = inputVariants.get(i);
+            Assert.assertEquals(outputVariant.getID(), expectedVariant.getID());
+            Assert.assertEquals(outputVariant.getContig(), expectedVariant.getContig());
+            Assert.assertEquals(outputVariant.getStart(), expectedVariant.getStart());
+            Assert.assertEquals(outputVariant.getEnd(), expectedVariant.getEnd());
+            Assert.assertEquals(outputVariant.getAlleles(), expectedVariant.getAlleles());
+            final String svtype = outputVariant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "test_default");
+            Assert.assertEquals(svtype, expectedVariant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "expected_default"));
+            // check the variant matched itself with perfect concordance
+            if (outputVariant.getAttributeAsString(Concordance.TRUTH_STATUS_VCF_ATTRIBUTE, "test_default") == ConcordanceState.TRUE_POSITIVE.getAbbreviation()) {
+                Assert.assertEquals(outputVariant.getAttributeAsString(GATKSVVCFConstants.TRUTH_VARIANT_ID_INFO, ""), outputVariant.getID());
+                if (svtype.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.CNV.toString())) {
+                    MathUtilsUnitTest.assertEqualsDoubleSmart(outputVariant.getAttributeAsDouble(GATKSVVCFConstants.COPY_NUMBER_CONCORDANCE_INFO, -1.), 1.0, TOLERANCE);
+                } else {
+                    MathUtilsUnitTest.assertEqualsDoubleSmart(outputVariant.getAttributeAsDouble(GATKSVVCFConstants.GENOTYPE_CONCORDANCE_INFO, -1.), 1.0, TOLERANCE);
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testSitesOnly() {
+        final File output = createTempFile("concord_sites_only", ".vcf");
+        final String evalVcfPath = getToolTestDataDir() + "ref_panel_1kg.cleaned.gatk.chr22_chrY.sites_only.vcf.gz";
+        final String truthVcfPath = getToolTestDataDir() + "ref_panel_1kg.raw_calls.chr22_chrY.sites_only.vcf.gz";
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addOutput(output)
+                .add(StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, GATKBaseTest.FULL_HG38_DICT)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_SAMPLE_OVERLAP_FRACTION_NAME, 0)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_INTERVAL_OVERLAP_FRACTION_NAME, 0.5)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_BREAKEND_WINDOW_NAME, 2000)
+                .add(SVClusterEngineArgumentsCollection.MIXED_SAMPLE_OVERLAP_FRACTION_NAME, 0)
+                .add(SVClusterEngineArgumentsCollection.MIXED_INTERVAL_OVERLAP_FRACTION_NAME, 0.1)
+                .add(SVClusterEngineArgumentsCollection.MIXED_BREAKEND_WINDOW_NAME, 2000)
+                .add(SVClusterEngineArgumentsCollection.PESR_SAMPLE_OVERLAP_FRACTION_NAME, 0)
+                .add(SVClusterEngineArgumentsCollection.PESR_INTERVAL_OVERLAP_FRACTION_NAME, 0.1)
+                .add(SVClusterEngineArgumentsCollection.PESR_BREAKEND_WINDOW_NAME, 500)
+                .add(AbstractConcordanceWalker.TRUTH_VARIANTS_LONG_NAME, truthVcfPath)
+                .add(AbstractConcordanceWalker.EVAL_VARIANTS_SHORT_NAME, evalVcfPath);
+
+
+        runCommandLine(args, SVConcordance.class.getSimpleName());
+
+        final Pair<VCFHeader, List<VariantContext>> outputVcf = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
+        final List<SVCallRecord> inputEvalVariants = VariantContextTestUtils.readEntireVCFIntoMemory(evalVcfPath).getValue()
+                .stream().map(SVCallRecordUtils::create).collect(Collectors.toList());
+        Assert.assertEquals(outputVcf.getValue().size(), inputEvalVariants.size());
+        final long numTruePositives = outputVcf.getValue().stream().filter(v -> v.getAttributeAsString(Concordance.TRUTH_STATUS_VCF_ATTRIBUTE, "").equals(ConcordanceState.TRUE_POSITIVE.getAbbreviation())).count();
+        Assert.assertEquals((int) numTruePositives, 1104);
+        for (final VariantContext variant: outputVcf.getValue()) {
+            // Concordance can't be calculated for sites-only
+            Assert.assertTrue(variant.getAttributeAsString(GATKSVVCFConstants.GENOTYPE_CONCORDANCE_INFO, ".").equals("."));
         }
     }
 }

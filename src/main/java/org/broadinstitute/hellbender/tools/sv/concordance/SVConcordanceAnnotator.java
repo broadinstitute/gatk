@@ -27,13 +27,21 @@ public class SVConcordanceAnnotator {
     protected final Logger logger = LogManager.getLogger(this.getClass());
 
     private final GenotypeConcordanceScheme scheme;
-    final boolean useTruthAf;
+    private final Set<String> samples;
 
     /**
-     * @param useTruthAf annotate truth allele counts using original truth record attributes (AF/AC/AN)
+     * Default constructor where all eval record samples will be used for concordance.
      */
-    public SVConcordanceAnnotator(final boolean useTruthAf) {
-        this.useTruthAf = useTruthAf;
+    public SVConcordanceAnnotator() {
+        this(null);
+    }
+
+    /**
+     * Annotator restricted to specific samples.
+     * @param samples samples to include for concordance computations. If null, all samples in eval records will be used.
+     */
+    public SVConcordanceAnnotator(final Set<String> samples) {
+        this.samples = samples;
         this.scheme = new SVGenotypeConcordanceScheme();
     }
 
@@ -48,23 +56,26 @@ public class SVConcordanceAnnotator {
         final ArrayList<Genotype> newGenotypes = new ArrayList<>(evalGenotypes.size());
         final GenotypeConcordanceCounts counts = new GenotypeConcordanceCounts();
         final boolean isCnv = evalRecord.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV;
-        Integer numCnvMatches = 0;
+        int numCnvMatches = 0;
+        int numValidCnvComparisons = 0;
         for (final String sample : evalGenotypes.getSampleNames()) {
             GenotypeBuilder builder = new GenotypeBuilder(evalGenotypes.get(sample));
-            if (isCnv) {
-                final Boolean result = cnvGenotypesMatch(sample, evalRecord, truthRecord);
-                builder = builder.attribute(GATKSVVCFConstants.TRUTH_CN_EQUAL_FORMAT, result == null ? null : result.booleanValue() ? 1 : 0);
-                if (result == null) {
-                    // Null this metric if we encounter any null results
-                    numCnvMatches = null;
-                } else if (numCnvMatches != null && result.booleanValue()) {
-                    numCnvMatches++;
+            if (samples == null || samples.contains(sample)) {
+                if (isCnv) {
+                    final Boolean result = copyNumbersMatch(sample, evalRecord, truthRecord);
+                    builder = builder.attribute(GATKSVVCFConstants.TRUTH_CN_EQUAL_FORMAT, result == null ? null : result.booleanValue() ? 1 : 0);
+                    if (result != null) {
+                        numValidCnvComparisons++;
+                        if (result.booleanValue()) {
+                            numCnvMatches++;
+                        }
+                    }
+                } else {
+                    final GenotypeConcordanceStates.TruthAndCallStates states = getStates(sample, evalRecord, truthRecord);
+                    counts.increment(states);
+                    builder = builder.attribute(GenotypeConcordance.CONTINGENCY_STATE_TAG,
+                            scheme.getContingencyStateString(states.truthState, states.callState));
                 }
-            } else {
-                final GenotypeConcordanceStates.TruthAndCallStates states = getStates(sample, evalRecord, truthRecord);
-                counts.increment(states);
-                builder = builder.attribute(GenotypeConcordance.CONTINGENCY_STATE_TAG,
-                        scheme.getContingencyStateString(states.truthState, states.callState));
             }
             newGenotypes.add(builder.make());
         }
@@ -76,52 +87,64 @@ public class SVConcordanceAnnotator {
         attributes.put(Concordance.TRUTH_STATUS_VCF_ATTRIBUTE, variantStatus.getAbbreviation());
 
         if (isCnv) {
-            final Double cnvConcordance = numCnvMatches == null ? null : newGenotypes.isEmpty() ? Double.NaN : numCnvMatches / (double) newGenotypes.size();
+            final Double cnvConcordance = numValidCnvComparisons == 0 ? null : numCnvMatches / (double) numValidCnvComparisons;
             attributes.put(GATKSVVCFConstants.COPY_NUMBER_CONCORDANCE_INFO, cnvConcordance);
         } else if (truthRecord != null) {
             final GenotypeConcordanceSummaryMetrics metrics = new GenotypeConcordanceSummaryMetrics(VariantContext.Type.SYMBOLIC, counts, "truth", "eval", true);
-            attributes.put(GATKSVVCFConstants.GENOTYPE_CONCORDANCE_INFO, metrics.GENOTYPE_CONCORDANCE);
-            attributes.put(GATKSVVCFConstants.NON_REF_GENOTYPE_CONCORDANCE_INFO, metrics.NON_REF_GENOTYPE_CONCORDANCE);
-            attributes.put(GATKSVVCFConstants.HET_PPV_INFO, metrics.HET_PPV);
-            attributes.put(GATKSVVCFConstants.HET_SENSITIVITY_INFO, metrics.HET_SENSITIVITY);
-            attributes.put(GATKSVVCFConstants.HOMVAR_PPV_INFO, metrics.HOMVAR_PPV);
-            attributes.put(GATKSVVCFConstants.HOMVAR_SENSITIVITY_INFO, metrics.HOMVAR_SENSITIVITY);
-            attributes.put(GATKSVVCFConstants.VAR_PPV_INFO, metrics.VAR_PPV);
-            attributes.put(GATKSVVCFConstants.VAR_SENSITIVITY_INFO, metrics.VAR_SENSITIVITY);
-            attributes.put(GATKSVVCFConstants.VAR_SPECIFICITY_INFO, metrics.VAR_SPECIFICITY);
+            attributes.put(GATKSVVCFConstants.GENOTYPE_CONCORDANCE_INFO, Double.isNaN(metrics.GENOTYPE_CONCORDANCE) ? null : metrics.GENOTYPE_CONCORDANCE);
+            attributes.put(GATKSVVCFConstants.NON_REF_GENOTYPE_CONCORDANCE_INFO, Double.isNaN(metrics.NON_REF_GENOTYPE_CONCORDANCE) ? null : metrics.NON_REF_GENOTYPE_CONCORDANCE);
+            attributes.put(GATKSVVCFConstants.HET_PPV_INFO, Double.isNaN(metrics.HET_PPV) ? null : metrics.HET_PPV);
+            attributes.put(GATKSVVCFConstants.HET_SENSITIVITY_INFO, Double.isNaN(metrics.HET_SENSITIVITY) ? null : metrics.HET_SENSITIVITY);
+            attributes.put(GATKSVVCFConstants.HOMVAR_PPV_INFO, Double.isNaN(metrics.HOMVAR_PPV) ? null : metrics.HOMVAR_PPV);
+            attributes.put(GATKSVVCFConstants.HOMVAR_SENSITIVITY_INFO, Double.isNaN(metrics.HOMVAR_SENSITIVITY) ? null : metrics.HOMVAR_SENSITIVITY);
+            attributes.put(GATKSVVCFConstants.VAR_PPV_INFO, Double.isNaN(metrics.VAR_PPV) ? null : metrics.VAR_PPV);
+            attributes.put(GATKSVVCFConstants.VAR_SENSITIVITY_INFO, Double.isNaN(metrics.VAR_SENSITIVITY) ? null : metrics.VAR_SENSITIVITY);
+            attributes.put(GATKSVVCFConstants.VAR_SPECIFICITY_INFO, Double.isNaN(metrics.VAR_SPECIFICITY) ? null : metrics.VAR_SPECIFICITY);
         }
 
         if (evalRecord.getType() != GATKSVVCFConstants.StructuralVariantAnnotationType.CNV) {
-            // Compute allele frequency in eval
-            final SVAlleleCounter counter = new SVAlleleCounter(evalRecord.getAltAlleles(), evalRecord.getGenotypes());
-            attributes.put(VCFConstants.ALLELE_COUNT_KEY, counter.getCounts());
-            attributes.put(VCFConstants.ALLELE_FREQUENCY_KEY, counter.getFrequencies());
-            attributes.put(VCFConstants.ALLELE_NUMBER_KEY, counter.getNumber());
+            if (!evalRecord.getAllSamples().isEmpty() && !hasAlleleFrequencyAnnotations(evalRecord)) {
+                // Compute allele frequency in eval
+                final SVAlleleCounter counter = new SVAlleleCounter(evalRecord.getAltAlleles(), evalRecord.getGenotypes());
+                attributes.put(VCFConstants.ALLELE_COUNT_KEY, counter.getCounts());
+                attributes.put(VCFConstants.ALLELE_FREQUENCY_KEY, counter.getFrequencies());
+                attributes.put(VCFConstants.ALLELE_NUMBER_KEY, counter.getNumber());
+            }
 
             // Add in truth AF
             if (truthRecord == null) {
                 attributes.put(GATKSVVCFConstants.TRUTH_ALLELE_COUNT_INFO, null);
                 attributes.put(GATKSVVCFConstants.TRUTH_ALLELE_FREQUENCY_INFO, null);
                 attributes.put(GATKSVVCFConstants.TRUTH_ALLELE_NUMBER_INFO, null);
-            } else if (useTruthAf) {
-                // Use AF
-                final Map<String, Object> truthAttr = truthRecord.getAttributes();
-                attributes.put(GATKSVVCFConstants.TRUTH_ALLELE_COUNT_INFO,
-                        truthAttr.get(GATKSVVCFConstants.TRUTH_ALLELE_COUNT_INFO));
-                attributes.put(GATKSVVCFConstants.TRUTH_ALLELE_FREQUENCY_INFO,
-                        truthAttr.get(GATKSVVCFConstants.TRUTH_ALLELE_FREQUENCY_INFO));
-                attributes.put(GATKSVVCFConstants.TRUTH_ALLELE_NUMBER_INFO,
-                        truthAttr.get(GATKSVVCFConstants.TRUTH_ALLELE_NUMBER_INFO));
             } else {
-                // Calculate truth AF
-                final SVAlleleCounter truthCounter = new SVAlleleCounter(evalRecord.getAltAlleles(), truthRecord.getGenotypes());
-                attributes.put(GATKSVVCFConstants.TRUTH_ALLELE_COUNT_INFO, truthCounter.getCounts());
-                attributes.put(GATKSVVCFConstants.TRUTH_ALLELE_FREQUENCY_INFO, truthCounter.getFrequencies());
-                attributes.put(GATKSVVCFConstants.TRUTH_ALLELE_NUMBER_INFO, truthCounter.getNumber());
+                if (hasAlleleFrequencyAnnotations(truthRecord)) {
+                    // Use AF
+                    final Map<String, Object> truthAttr = truthRecord.getAttributes();
+                    attributes.put(GATKSVVCFConstants.TRUTH_ALLELE_COUNT_INFO,
+                            truthAttr.get(VCFConstants.ALLELE_COUNT_KEY));
+                    attributes.put(GATKSVVCFConstants.TRUTH_ALLELE_FREQUENCY_INFO,
+                            truthAttr.get(VCFConstants.ALLELE_FREQUENCY_KEY));
+                    attributes.put(GATKSVVCFConstants.TRUTH_ALLELE_NUMBER_INFO,
+                            truthAttr.get(VCFConstants.ALLELE_NUMBER_KEY));
+                } else {
+                    // Calculate truth AF
+                    final SVAlleleCounter truthCounter = new SVAlleleCounter(evalRecord.getAltAlleles(), truthRecord.getGenotypes());
+                    attributes.put(GATKSVVCFConstants.TRUTH_ALLELE_COUNT_INFO, truthCounter.getCounts());
+                    attributes.put(GATKSVVCFConstants.TRUTH_ALLELE_FREQUENCY_INFO, truthCounter.getFrequencies());
+                    attributes.put(GATKSVVCFConstants.TRUTH_ALLELE_NUMBER_INFO, truthCounter.getNumber());
+                }
             }
         }
 
         return SVCallRecordUtils.copyCallWithNewAttributes(recordWithGenotypes, attributes);
+    }
+
+    private boolean hasAlleleFrequencyAnnotations(final SVCallRecord record) {
+        Utils.nonNull(record);
+        final Map<String, Object> attr = record.getAttributes();
+        return (attr.containsKey(VCFConstants.ALLELE_COUNT_KEY) && attr.get(VCFConstants.ALLELE_COUNT_KEY) != null)
+                        && (attr.containsKey(VCFConstants.ALLELE_FREQUENCY_KEY) && attr.get(VCFConstants.ALLELE_FREQUENCY_KEY) != null)
+                        && (attr.containsKey(VCFConstants.ALLELE_NUMBER_KEY) && attr.get(VCFConstants.ALLELE_NUMBER_KEY) != null);
     }
 
     /**
@@ -144,21 +167,24 @@ public class SVConcordanceAnnotator {
     /**
      * Returns whether the copy state of the given sample's genotype matches. Only use for multi-allelic CNVs.
      */
-    public Boolean cnvGenotypesMatch(final String sample, final SVCallRecord eval, final SVCallRecord truth) {
+    protected Boolean copyNumbersMatch(final String sample, final SVCallRecord eval, final SVCallRecord truth) {
         Utils.nonNull(sample);
-        Utils.nonNull(eval);
-        Utils.validateArg(eval.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV, "Expected CNV evaluation variant");
-        if (truth == null) {
+        if (eval == null || truth == null) {
             return null;
         }
         final Genotype evalGenotype = eval.getGenotypes().get(sample);
-        final int evalCopyNumber = VariantContextGetters.getAttributeAsInt(evalGenotype, GATKSVVCFConstants.COPY_NUMBER_FORMAT, -1);
         final Genotype truthGenotype = truth.getGenotypes().get(sample);
-        if (evalGenotype.hasExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT) != truthGenotype.hasExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT)) {
-            throw new IllegalArgumentException("One genotype for sample " + sample + " has CN but the other does not");
+        if (evalGenotype == null || truthGenotype == null) {
+            return null;
         }
-        final int copyNumber = VariantContextGetters.getAttributeAsInt(truthGenotype, GATKSVVCFConstants.COPY_NUMBER_FORMAT, -1);
-        return copyNumber == evalCopyNumber;
+        final boolean evalHasCn = evalGenotype.hasExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT);
+        final boolean truthHasCn = truthGenotype.hasExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT);
+        if (!evalHasCn || !truthHasCn) {
+            return null;
+        }
+        final int evalCopyNumber = VariantContextGetters.getAttributeAsInt(evalGenotype, GATKSVVCFConstants.COPY_NUMBER_FORMAT, -1);
+        final int truthCopyNumber = VariantContextGetters.getAttributeAsInt(truthGenotype, GATKSVVCFConstants.COPY_NUMBER_FORMAT, -1);
+        return truthCopyNumber == evalCopyNumber;
     }
 
     @VisibleForTesting

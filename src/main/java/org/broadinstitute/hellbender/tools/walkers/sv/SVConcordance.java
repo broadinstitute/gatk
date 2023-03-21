@@ -42,11 +42,12 @@ import java.util.Set;
  *     <li>Genotype concordance</li>
  * </ol>
  *
- * after meeting minimum overlap criteria. Evaluation variants that are sucessfully matched are annotated with
- * genotype concordance metrics, including allele frequency of the truth variant. See output header for descriptions
- * of the specific fields. Note that genotypes of samples that are present in the evaluation VCF but not the truth
- * VCF are assumed to be no-calls for concordance. For multi-allelic CNVs, only a copy state concordance metric is
- * annotated.
+ * after meeting minimum overlap criteria. Evaluation VCF variants that are sucessfully matched are annotated with
+ * genotype concordance metrics, including allele frequency of the truth variant. Concordance metrics are computed
+ * on the intersection of sample sets of the two VCFs, but all other annotations including variant truth status
+ * and allele frequency use all records and samples available. See output header for descriptions
+ * of the specific fields. For multi-allelic CNVs, only a copy state concordance metric is
+ * annotated. Allele frequencies will be recalculated automatically if unavailable in the provided VCFs.
  *
  * <h3>Inputs</h3>
  *
@@ -55,7 +56,7 @@ import java.util.Set;
  *         Evaluation VCF
  *     </li>
  *     <li>
- *         Truth VCF (equal set or subset of samples)
+ *         Truth VCF
  *     </li>
  * </ul>
  *
@@ -97,18 +98,6 @@ public final class SVConcordance extends AbstractConcordanceWalker {
     )
     private GATKPath outputFile;
 
-    /**
-     * By default, truth allele frequencies are calculated on the fly using the evaluation record's allele number as the
-     * denominator. This option forces the tool to use the allele frequency annotations (AF/AN/AC) of the closest-
-     * matching truth variant record (by min distance to both breakpoints) for truth allele frequency annotations.
-     */
-    @Argument(
-            doc = "Use allele frequency annotations from the truth vcf from the best-matching record.",
-            fullName = USE_TRUTH_AF_LONG_NAME,
-            optional = true
-    )
-    private boolean useTruthAf = false;
-
     @ArgumentCollection
     private final SVClusterEngineArgumentsCollection clusterParameterArgs = new SVClusterEngineArgumentsCollection();
 
@@ -131,26 +120,21 @@ public final class SVConcordance extends AbstractConcordanceWalker {
         if (dictionary == null) {
             throw new UserException("Reference sequence dictionary required");
         }
-        validateHeaders();
 
         linkage = new SVConcordanceLinkage(dictionary);
         linkage.setDepthOnlyParams(clusterParameterArgs.getDepthParameters());
         linkage.setMixedParams(clusterParameterArgs.getMixedParameters());
         linkage.setEvidenceParams(clusterParameterArgs.getPESRParameters());
 
-        final SVConcordanceAnnotator collapser = new SVConcordanceAnnotator(useTruthAf);
+        // Concordance computations should be done on common samples only
+        final Set<String> commonSamples = Sets.intersection(
+                new HashSet<>(getEvalHeader().getGenotypeSamples()),
+                new HashSet<>(getTruthHeader().getGenotypeSamples()));
+        final SVConcordanceAnnotator collapser = new SVConcordanceAnnotator(commonSamples);
         engine = new ClosestSVFinder(linkage, collapser::annotate, dictionary);
 
         writer = createVCFWriter(outputFile);
         writer.writeHeader(createHeader(getEvalHeader()));
-    }
-
-    private void validateHeaders() {
-        final Set<String> truthSamples = new HashSet<>(getTruthHeader().getSampleNamesInOrder());
-        final Set<String> evalSamples = new HashSet<>(getEvalHeader().getSampleNamesInOrder());
-        if (!Sets.difference(truthSamples, evalSamples).isEmpty()) {
-            throw new UserException.BadInput("Truth vcf samples must be a subset of eval vcf samples");
-        }
     }
 
     @Override

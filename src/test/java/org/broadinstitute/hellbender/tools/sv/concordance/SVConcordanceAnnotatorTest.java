@@ -4,6 +4,7 @@ import com.google.common.collect.Lists;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
+import htsjdk.variant.vcf.VCFConstants;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 import org.broadinstitute.hellbender.tools.sv.SVTestUtils;
@@ -15,6 +16,8 @@ import picard.vcf.GenotypeConcordanceStates;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 public class SVConcordanceAnnotatorTest {
 
@@ -192,15 +195,15 @@ public class SVConcordanceAnnotatorTest {
                 truthCopyNumber
         );
 
-        final SVConcordanceAnnotator collapser = new SVConcordanceAnnotator(false);
-        final boolean actual = collapser.cnvGenotypesMatch(sample, evalRecord, truthRecord);
+        final SVConcordanceAnnotator collapser = new SVConcordanceAnnotator();
+        final boolean actual = collapser.copyNumbersMatch(sample, evalRecord, truthRecord);
         Assert.assertEquals(actual, expected);
     }
 
     @Test
     public void testMatchCnvNull() {
         final String sample = "sample";
-        final SVCallRecord evalRecord = SVTestUtils.newCallRecordWithAlleles(
+        final SVCallRecord record = SVTestUtils.newCallRecordWithAlleles(
                 Arrays.asList(Allele.NO_CALL, Allele.NO_CALL),
                 SVTestUtils.getCNVAlleles(GATKSVVCFConstants.StructuralVariantAnnotationType.CNV),
                 GATKSVVCFConstants.StructuralVariantAnnotationType.CNV,
@@ -208,10 +211,40 @@ public class SVConcordanceAnnotatorTest {
                 2
         );
 
-        final SVConcordanceAnnotator collapser = new SVConcordanceAnnotator(false);
+        final SVConcordanceAnnotator collapser = new SVConcordanceAnnotator();
 
-        // Null truth results in null call
-        Assert.assertNull(collapser.cnvGenotypesMatch(sample, evalRecord, null));
+        // Null records in null call
+        Assert.assertNull(collapser.copyNumbersMatch(sample, record, null));
+        Assert.assertNull(collapser.copyNumbersMatch(sample, null, record));
+
+
+        final SVCallRecord recordNoSample = SVTestUtils.newCallRecordWithAllelesAndSampleName(
+                "sample2",
+                Arrays.asList(Allele.NO_CALL, Allele.NO_CALL),
+                SVTestUtils.getCNVAlleles(GATKSVVCFConstants.StructuralVariantAnnotationType.CNV),
+                GATKSVVCFConstants.StructuralVariantAnnotationType.CNV,
+                2,
+                2
+        );
+
+        // Null call if sample not found
+        Assert.assertNull(collapser.copyNumbersMatch(sample, recordNoSample, recordNoSample));
+        Assert.assertNull(collapser.copyNumbersMatch(sample, record, recordNoSample));
+        Assert.assertNull(collapser.copyNumbersMatch(sample, recordNoSample, record));
+
+        final SVCallRecord recordNoCn = SVTestUtils.newCallRecordWithAllelesAndSampleName(
+                sample,
+                Arrays.asList(Allele.NO_CALL, Allele.NO_CALL),
+                SVTestUtils.getCNVAlleles(GATKSVVCFConstants.StructuralVariantAnnotationType.CNV),
+                GATKSVVCFConstants.StructuralVariantAnnotationType.CNV,
+                2,
+                null
+        );
+
+        // Null call if CN not found
+        Assert.assertNull(collapser.copyNumbersMatch(sample, recordNoCn, recordNoCn));
+        Assert.assertNull(collapser.copyNumbersMatch(sample, record, recordNoCn));
+        Assert.assertNull(collapser.copyNumbersMatch(sample, recordNoCn, record));
     }
 
     @DataProvider(name = "testGetStateFromGenotypeData")
@@ -256,7 +289,7 @@ public class SVConcordanceAnnotatorTest {
     public void testGetStateFromGenotype(final Allele[] genotypeAlleles,
                                          final GenotypeConcordanceStates.TruthState expectedTruthState) {
         final Genotype genotype = alleleArrayToGenotype(genotypeAlleles, null, null);
-        final SVConcordanceAnnotator collapser = new SVConcordanceAnnotator(false);
+        final SVConcordanceAnnotator collapser = new SVConcordanceAnnotator();
         final GenotypeConcordanceStates.TruthState actualTruthState = collapser.getTruthState(genotype);
         Assert.assertEquals(actualTruthState, expectedTruthState);
 
@@ -281,15 +314,103 @@ public class SVConcordanceAnnotatorTest {
 
     @Test
     public void testGetTruthNullGenotypeState() {
-        final SVConcordanceAnnotator collapser = new SVConcordanceAnnotator(false);
+        final SVConcordanceAnnotator collapser = new SVConcordanceAnnotator();
         final GenotypeConcordanceStates.TruthState actualTruthState = collapser.getTruthState(null);
         Assert.assertEquals(actualTruthState, GenotypeConcordanceStates.TruthState.NO_CALL);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testGetNullEvalGenotypeState() {
-        final SVConcordanceAnnotator collapser = new SVConcordanceAnnotator(false);
+        final SVConcordanceAnnotator collapser = new SVConcordanceAnnotator();
         collapser.getEvalState(null);
+    }
+
+    @Test
+    public void testAnnotateEvalKeepAF() {
+        final Map<String, Object> evalAttr = new HashMap<>();
+        evalAttr.put(VCFConstants.ALLELE_NUMBER_KEY, 200);
+        evalAttr.put(VCFConstants.ALLELE_COUNT_KEY, 3);
+        evalAttr.put(VCFConstants.ALLELE_FREQUENCY_KEY, 3./200.);
+        final GenotypeBuilder builder = new GenotypeBuilder().alleles(Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL));
+        final SVCallRecord evalRecord = SVTestUtils.newNamedDeletionRecordWithAttributesAndGenotypes("eval", Collections.singletonList(builder.make()), evalAttr);
+        final SVCallRecord truthRecord = SVTestUtils.newNamedDeletionRecordWithAttributesAndGenotypes("truth", Collections.singletonList(builder.make()), Collections.emptyMap());
+        final ClosestSVFinder.ClosestPair pair = new ClosestSVFinder.ClosestPair(evalRecord, truthRecord);
+        final SVCallRecord result = new SVConcordanceAnnotator().annotate(pair);
+        Assert.assertTrue(result.getAttributes().containsKey(VCFConstants.ALLELE_NUMBER_KEY));
+        Assert.assertTrue(result.getAttributes().containsKey(VCFConstants.ALLELE_COUNT_KEY));
+        Assert.assertTrue(result.getAttributes().containsKey(VCFConstants.ALLELE_FREQUENCY_KEY));
+        Assert.assertEquals(result.getAttributes().get(VCFConstants.ALLELE_NUMBER_KEY), evalAttr.get(VCFConstants.ALLELE_NUMBER_KEY));
+        Assert.assertEquals(result.getAttributes().get(VCFConstants.ALLELE_COUNT_KEY), evalAttr.get(VCFConstants.ALLELE_COUNT_KEY));
+        Assert.assertEquals(result.getAttributes().get(VCFConstants.ALLELE_FREQUENCY_KEY), evalAttr.get(VCFConstants.ALLELE_FREQUENCY_KEY));
+    }
+
+    @Test
+    public void testAnnotateEvalComputeAF() {
+        final GenotypeBuilder builder = new GenotypeBuilder().alleles(Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL));
+        final SVCallRecord evalRecord = SVTestUtils.newNamedDeletionRecordWithAttributesAndGenotypes("eval", Collections.singletonList(builder.make()), Collections.emptyMap());
+        final SVCallRecord truthRecord = SVTestUtils.newNamedDeletionRecordWithAttributesAndGenotypes("truth", Collections.singletonList(builder.make()), Collections.emptyMap());
+        final ClosestSVFinder.ClosestPair pair = new ClosestSVFinder.ClosestPair(evalRecord, truthRecord);
+        final SVCallRecord result = new SVConcordanceAnnotator().annotate(pair);
+        Assert.assertTrue(result.getAttributes().containsKey(VCFConstants.ALLELE_NUMBER_KEY));
+        Assert.assertTrue(result.getAttributes().containsKey(VCFConstants.ALLELE_COUNT_KEY));
+        Assert.assertTrue(result.getAttributes().containsKey(VCFConstants.ALLELE_FREQUENCY_KEY));
+        Assert.assertEquals(result.getAttributes().get(VCFConstants.ALLELE_NUMBER_KEY), Integer.valueOf(2));
+        Assert.assertEquals((int[]) result.getAttributes().get(VCFConstants.ALLELE_COUNT_KEY), new int[]{1});
+        Assert.assertEquals((double[]) result.getAttributes().get(VCFConstants.ALLELE_FREQUENCY_KEY), new double[]{1/2.0});
+    }
+
+    @Test
+    public void testAnnotateCopyTruthAF() {
+        final Map<String, Object> truthAttr = new HashMap<>();
+        truthAttr.put(VCFConstants.ALLELE_NUMBER_KEY, 200);
+        truthAttr.put(VCFConstants.ALLELE_COUNT_KEY, 3);
+        truthAttr.put(VCFConstants.ALLELE_FREQUENCY_KEY, 3./200.);
+        final GenotypeBuilder builder = new GenotypeBuilder().alleles(Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL));
+        final SVCallRecord evalRecord = SVTestUtils.newNamedDeletionRecordWithAttributesAndGenotypes("eval", Collections.singletonList(builder.make()), Collections.emptyMap());
+        final SVCallRecord truthRecord = SVTestUtils.newNamedDeletionRecordWithAttributesAndGenotypes("truth", Collections.singletonList(builder.make()), truthAttr);
+        final ClosestSVFinder.ClosestPair pair = new ClosestSVFinder.ClosestPair(evalRecord, truthRecord);
+        final SVCallRecord result = new SVConcordanceAnnotator().annotate(pair);
+        Assert.assertTrue(result.getAttributes().containsKey(GATKSVVCFConstants.TRUTH_ALLELE_NUMBER_INFO));
+        Assert.assertTrue(result.getAttributes().containsKey(GATKSVVCFConstants.TRUTH_ALLELE_COUNT_INFO));
+        Assert.assertTrue(result.getAttributes().containsKey(GATKSVVCFConstants.TRUTH_ALLELE_FREQUENCY_INFO));
+        Assert.assertEquals(result.getAttributes().get(GATKSVVCFConstants.TRUTH_ALLELE_NUMBER_INFO), truthAttr.get(VCFConstants.ALLELE_NUMBER_KEY));
+        Assert.assertEquals(result.getAttributes().get(GATKSVVCFConstants.TRUTH_ALLELE_COUNT_INFO), truthAttr.get(VCFConstants.ALLELE_COUNT_KEY));
+        Assert.assertEquals(result.getAttributes().get(GATKSVVCFConstants.TRUTH_ALLELE_FREQUENCY_INFO), truthAttr.get(VCFConstants.ALLELE_FREQUENCY_KEY));
+    }
+
+    @Test
+    public void testAnnotateCalculateTruthAF() {
+        final GenotypeBuilder builder = new GenotypeBuilder().alleles(Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL));
+        final SVCallRecord evalRecord = SVTestUtils.newNamedDeletionRecordWithAttributesAndGenotypes("eval", Collections.singletonList(builder.make()), Collections.emptyMap());
+        final SVCallRecord truthRecord = SVTestUtils.newNamedDeletionRecordWithAttributesAndGenotypes("truth", Collections.singletonList(builder.make()), Collections.emptyMap());
+        final ClosestSVFinder.ClosestPair pair = new ClosestSVFinder.ClosestPair(evalRecord, truthRecord);
+        final SVCallRecord result = new SVConcordanceAnnotator().annotate(pair);
+        Assert.assertTrue(result.getAttributes().containsKey(GATKSVVCFConstants.TRUTH_ALLELE_NUMBER_INFO));
+        Assert.assertTrue(result.getAttributes().containsKey(GATKSVVCFConstants.TRUTH_ALLELE_COUNT_INFO));
+        Assert.assertTrue(result.getAttributes().containsKey(GATKSVVCFConstants.TRUTH_ALLELE_FREQUENCY_INFO));
+        Assert.assertEquals(result.getAttributes().get(GATKSVVCFConstants.TRUTH_ALLELE_NUMBER_INFO), Integer.valueOf(2));
+        Assert.assertEquals(result.getAttributes().get(GATKSVVCFConstants.TRUTH_ALLELE_COUNT_INFO), new int[]{1});
+        Assert.assertEquals(result.getAttributes().get(GATKSVVCFConstants.TRUTH_ALLELE_FREQUENCY_INFO), new double[]{1/2.0});
+    }
+
+    @Test
+    public void testAnnotateOverwriteTruthAF() {
+        // Should overwrite existing TRUTH_AF annotations
+        final Map<String, Object> evalAttr = new HashMap<>();
+        evalAttr.put(GATKSVVCFConstants.TRUTH_ALLELE_NUMBER_INFO, 200);
+        evalAttr.put(GATKSVVCFConstants.TRUTH_ALLELE_COUNT_INFO, 3);
+        evalAttr.put(GATKSVVCFConstants.TRUTH_ALLELE_FREQUENCY_INFO, 1./200.);
+        final GenotypeBuilder builder = new GenotypeBuilder().alleles(Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL));
+        final SVCallRecord evalRecord = SVTestUtils.newNamedDeletionRecordWithAttributesAndGenotypes("eval", Collections.singletonList(builder.make()), Collections.emptyMap());
+        final SVCallRecord truthRecord = SVTestUtils.newNamedDeletionRecordWithAttributesAndGenotypes("truth", Collections.singletonList(builder.make()), Collections.emptyMap());
+        final ClosestSVFinder.ClosestPair pair = new ClosestSVFinder.ClosestPair(evalRecord, truthRecord);
+        final SVCallRecord result = new SVConcordanceAnnotator().annotate(pair);
+        Assert.assertTrue(result.getAttributes().containsKey(GATKSVVCFConstants.TRUTH_ALLELE_NUMBER_INFO));
+        Assert.assertTrue(result.getAttributes().containsKey(GATKSVVCFConstants.TRUTH_ALLELE_COUNT_INFO));
+        Assert.assertTrue(result.getAttributes().containsKey(GATKSVVCFConstants.TRUTH_ALLELE_FREQUENCY_INFO));
+        Assert.assertEquals(result.getAttributes().get(GATKSVVCFConstants.TRUTH_ALLELE_NUMBER_INFO), Integer.valueOf(2));
+        Assert.assertEquals(result.getAttributes().get(GATKSVVCFConstants.TRUTH_ALLELE_COUNT_INFO), new int[]{1});
+        Assert.assertEquals(result.getAttributes().get(GATKSVVCFConstants.TRUTH_ALLELE_FREQUENCY_INFO), new double[]{1/2.0});
     }
 
     private Genotype alleleArrayToGenotype(final Allele[] allelesArr,
