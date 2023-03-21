@@ -12,12 +12,12 @@ workflow GvsBulkIngestGenomes {
         String terra_project_id # env vars
         String workspace_name # env vars
         String samples_table_name
-        String sample_id_column_name # is this just <samples_table_name>_id ?
+        String sample_id_column_name
         String vcf_files_column_name
         String vcf_index_files_column_name
         # End GvsPrepareBulkImport
 
-        # Begin GvsAssignIds  ## TODO what should the behavior be if we have run this once already and several samples did not load properly?
+        # Begin GvsAssignIds
         String dataset_name
         String bq_project_id
         String call_set_identifier
@@ -31,15 +31,12 @@ workflow GvsBulkIngestGenomes {
         # set to "NONE" to ingest all the reference data into GVS for VDS (instead of VCF) output
         String drop_state = "NONE"
 
-        # The larger the `load_data_batch_size` the greater the probability of preemptions and non-retryable
-        # BigQuery errors so if specifying this adjust preemptible and maxretries accordingly. Or just take the defaults,
-        # those should work fine in most cases.
+        # The larger the `load_data_batch_size` the greater the probability of preemptions and non-retryable BigQuery errors,
+        # so if specifying `load_data_batch_size`, adjust preemptible and maxretries accordingly. Or just take the defaults, as those should work fine in most cases.
         Int? load_data_batch_size
         Int? load_data_preemptible_override
         Int? load_data_maxretries_override
         # End GvsImportGenomes
-
-        ## TODO do we want to add Alt Allele Table creation?
     }
 
 
@@ -50,7 +47,7 @@ workflow GvsBulkIngestGenomes {
         input:
             project_id = terra_project_id,
             workspace_name = workspace_name,
-            workspace_bucket = "fc-" + GetWorkspaceId.workspace_id,
+            workspace_bucket = GetWorkspaceId.workspace_bucket,
             samples_table_name = samples_table_name,
             sample_id_column_name = sample_id_column_name,
             vcf_files_column_name = vcf_files_column_name,
@@ -59,11 +56,10 @@ workflow GvsBulkIngestGenomes {
 
     call AssignIds.GvsAssignIds as AssignIds {
         input:
-            ## go = PrepareBulkImport.done, ## TODO we're gonna want to add this, right?
             dataset_name = dataset_name,
             project_id = bq_project_id,
             external_sample_names = read_lines(PrepareBulkImport.sampleFOFN),
-            samples_are_controls = false ## TODO this shouldn't always be false tho
+            samples_are_controls = false
     }
 
     call ImportGenomes.GvsImportGenomes as ImportGenomes {
@@ -105,6 +101,7 @@ workflow GvsBulkIngestGenomes {
 
             # Sniff the workspace bucket out of the delocalization script and extract the workspace id from that.
             sed -n -E 's!.*gs://fc-(secure-)?([^\/]+).*!\2!p' /cromwell_root/gcs_delocalization.sh | sort -u > workspace_id.txt
+            sed -n -E 's!.*gs://(fc-(secure-)?[^\/]+).*!\1!p' /cromwell_root/gcs_delocalization.sh | sort -u > workspace_bucket.txt
         >>>
 
         runtime {
@@ -113,6 +110,7 @@ workflow GvsBulkIngestGenomes {
 
         output {
             String workspace_id = read_string("workspace_id.txt")
+            String workspace_bucket = read_string("workspace_bucket.txt")
         }
     }
 
