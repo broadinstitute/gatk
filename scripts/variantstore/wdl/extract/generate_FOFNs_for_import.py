@@ -17,44 +17,34 @@ error_file_name = "errors.txt"
 attempts_between_pauses=500
 
 def generate_FOFNs_from_data_table(data_table_name, sample_id_column_name, vcf_files_column_name, vcf_index_files_column_name):
+    with open(vcf_files_name, "w") as vcf_files, open(vcf_index_files_name, "w") as vcf_index_files, open(sample_names_file_name, "w") as sample_names_file, open(error_file_name, "w") as error_file
+        count = 0
+        processed_entities = 0
+        for row in table.list_rows(data_table_name):
+            try:
+                # The table data model is weird, as each row has a "name" property followed by a hash of attributes.  But it
+                # is all displayed as though they are equivalent columns, and the name field is mapped to an imaginary
+                # column with the name table_name_id.  Map "name" to that imaginary attribute here so none of the lookups
+                # below fail if they reference that call.  This is safe, as this Row object is a read only copy of the actual
+                # table content, and it is disposed
+                row.attributes[f"{data_table_name}_id"] = row.name
 
-    vcf_files = open(vcf_files_name, "w")
-    vcf_index_files = open(vcf_index_files_name, "w")
-    sample_names_file = open(sample_names_file_name, "w")
-    error_file = open(error_file_name, "w")
+                current_sample_name = row.attributes[sample_id_column_name]
+                current_vcf_file = row.attributes[vcf_files_column_name]
+                current_vcf_index_file = row.attributes[vcf_index_files_column_name]
 
-    count = 0
-    processed_entities = 0
-    for row in table.list_rows(data_table_name):
-        try:
-            # The table data model is weird, as each row has a "name" property followed by a hash of attributes.  But it
-            # is all displayed as though they are equivalent columns, and the name field is mapped to an imaginary
-            # column with the name table_name_id.  Map "name" to that imaginary attribute here so none of the lookups
-            # below fail if they reference that call.  This is safe, as this Row object is a read only copy of the actual
-            # table content, and it is disposed
-            row.attributes[f"{data_table_name}_id"] = row.name
+                sample_names_file.write(f'{current_sample_name}\n')
+                vcf_files.write(f'{current_vcf_file}\n')
+                vcf_index_files.write(f'{current_vcf_index_file}\n')
+            except KeyError:
+                error_file.write(f'Row "{row.name}" skipped: missing columns\n')
 
-            current_sample_name = row.attributes[sample_id_column_name]
-            current_vcf_file = row.attributes[vcf_files_column_name]
-            current_vcf_index_file = row.attributes[vcf_index_files_column_name]
-
-            sample_names_file.write(f'{current_sample_name}\n')
-            vcf_files.write(f'{current_vcf_file}\n')
-            vcf_index_files.write(f'{current_vcf_index_file}\n')
-        except KeyError:
-            error_file.write(f'Row "{row.name}" skipped: missing columns\n')
-
-        count += 1
-        processed_entities += 1
-        if count >= attempts_between_pauses:
-            print(f"sleeping between requests ({processed_entities} processed)...")
-            time.sleep(1)
-            count = 0
-
-    vcf_files.close()
-    vcf_index_files.close()
-    sample_names_file.close()
-    error_file.close()
+            count += 1
+            processed_entities += 1
+            if count >= attempts_between_pauses:
+                print(f"sleeping between requests ({processed_entities} processed)...")
+                time.sleep(1)
+                count = 0
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False,
