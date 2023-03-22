@@ -8,12 +8,15 @@ ADD . /gatk
 WORKDIR /gatk
 
 # Get an updated gcloud signing key, in case the one in the base image has expired
-RUN rm /etc/apt/sources.list.d/google-cloud-sdk.list
-RUN apt update
-RUN apt-key list
-RUN curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg add -
-RUN add-apt-repository universe && apt update
-RUN apt-get --assume-yes install git-lfs
+RUN rm /etc/apt/sources.list.d/google-cloud-sdk.list && \
+    apt update &&\
+    apt-key list && \
+    curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg add - && \
+    add-apt-repository universe && apt update && \
+    apt-get --assume-yes install git-lfs && \
+    apt-get -y clean  && \
+    apt-get -y autoclean  && \
+    apt-get -y autoremove
 RUN git lfs install --force
 
 #Download only resources required for the build, not for testing
