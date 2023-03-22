@@ -22,6 +22,7 @@ out/
 gatkcondaenv.yml
 gatkcondaenv.intel.yml
 gatkPythonPackageArchive.zip
+testfiles/
 
 #Please don't commit me
 client_secret.json
