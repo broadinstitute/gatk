@@ -35,6 +35,7 @@ RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.c
     apt-get -y clean  && \
     apt-get -y autoclean  && \
     apt-get -y autoremove && \
+    rm -rf /usr/lib/google-cloud-sdk/bin/anthoscli /usr/lib/google-cloud-sdk/platform/anthoscli_licenses /usr/lib/google-cloud-sdk/platform/bundledpythonunix && \
     find / -wholename "*__pycache__/*.pyc" -exec rm {} + 
 
 # Set environment variables.
@@ -50,18 +51,19 @@ ENV JAVA_LIBRARY_PATH /usr/lib/jni
 
 # Install miniconda
 ENV DOWNLOAD_DIR /downloads
-ENV CONDA_URL https://repo.continuum.io/miniconda/Miniconda3-4.7.12.1-Linux-x86_64.sh
-ENV CONDA_MD5 = "81c773ff87af5cfac79ab862942ab6b3"
+ENV CONDA_URL https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+ENV CONDA_MD5 = "32d73e1bc33fda089d7cd9ef4c1be542616bd8e437d1f77afeeaf7afdb019787"
 ENV CONDA_PATH /opt/miniconda
+ENV PATH $CONDA_PATH/bin:$PATH
 RUN mkdir $DOWNLOAD_DIR && \
     wget -nv -O $DOWNLOAD_DIR/miniconda.sh $CONDA_URL && \
     test "`md5sum $DOWNLOAD_DIR/miniconda.sh | awk -v FS='  ' '{print $1}'` = $CONDA_MD5" && \
     bash $DOWNLOAD_DIR/miniconda.sh -p $CONDA_PATH -b && \
     rm $DOWNLOAD_DIR/miniconda.sh && \
-    ${CONDA_PATH}/bin/conda clean -afy && \
+    conda clean -afy && \
     find /opt/miniconda/ -follow -type f -name '*.a' -delete && \
     find /opt/miniconda/ -follow -type f -name '*.pyc' -delete && \
-    rm -rf /root/.cache/pip
+    rm -rf /root/.cache/pip 
     
 
 # Deleting unneeded caches
