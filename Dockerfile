@@ -29,9 +29,12 @@ RUN chmod -R a+rw /gatk/unzippedJar
 
 FROM lbergelson/gatk:gatkbase_3.0.5
 
-RUN rm /etc/apt/sources.list.d/google-cloud-sdk.list
-RUN apt update
-RUN apt-key list
+RUN rm /etc/apt/sources.list.d/google-cloud-sdk.list && \
+    apt update && \
+    apt-key list && \
+    apt-get -y clean  && \
+    apt-get -y autoclean  && \
+    apt-get -y autoremove
 
 WORKDIR /gatk
 
