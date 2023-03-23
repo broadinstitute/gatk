@@ -32,7 +32,7 @@ jobs:
         env:
           GCP_CREDENTIALS: ${{ secrets.GCP_CREDENTIALS }}
         if: "${{ env.GCP_CREDENTIALS != '' }}"
-        run: echo "::set-output name=defined::true"
+        run: echo defined=true >> $GITHUB_OUTPUT
 
 
   buildDocker:
@@ -40,29 +40,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout gatk
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
+        uses: docker/metadata-action@v4
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=${{github.sha}}
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
+        uses: docker/setup-buildx-action@v2
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
+        uses: docker/build-push-action@v4
         with:
           context: .
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           outputs: type=docker,dest=/tmp/myimage.tar
       # By uploading the docker image as an artifact we save ourselves the requirement for the image to be built with ghcr push permission
-      - name: Upload docker image as artifact
-        uses: actions/upload-artifact@v2
+      - name: Upload docker image as artifact 
+        uses: actions/upload-artifact@v3
         with:
           name: gatkDockerImage
           path: /tmp/myimage.tar
@@ -84,11 +84,11 @@ jobs:
       SCALA_VERSION: ${{ matrix.scalaVersion }}
     name: Java ${{ matrix.Java }} build and test ${{ matrix.testType }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
       - name: 'Set up java ${{ matrix.Java }}'
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           java-version: ${{ matrix.Java }}
           distribution: 'temurin'
@@ -157,12 +157,12 @@ jobs:
 
     name: Java ${{ matrix.Java }} test on docker ${{matrix.testType}}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0 #TODO make this shallow
 
       - name: 'Set up java ${{ matrix.Java }}'
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           java-version: ${{ matrix.Java }}
           distribution: 'temurin'
@@ -199,7 +199,7 @@ jobs:
           cp scripts/docker/dockertest.gradle .
 
       - name: Download docker image artifact
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: gatkDockerImage
           path: /tmp
@@ -247,11 +247,11 @@ jobs:
     runs-on: ubuntu-latest
     name: Validate script WDLs using womtools
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
-          fetch: 0
+          fetch-depth: 0
       - name: Set up java 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           java-version: '17'
           distribution: 'temurin'
@@ -267,11 +267,11 @@ jobs:
     runs-on: ubuntu-latest
     name: Validate generated WDLs using womtools
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
-          fetch: 0
+          fetch-depth: 0
       - name: Set up java 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           java-version: '17'
           distribution: 'temurin'
@@ -292,13 +292,13 @@ jobs:
     continue-on-error: true
     name: WDL test ${{ matrix.wdlTest }} on cromwell
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
       - name: pull lfs files
         run: git lfs pull
       - name: Set up java 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           java-version: '17'
           distribution: 'temurin'
