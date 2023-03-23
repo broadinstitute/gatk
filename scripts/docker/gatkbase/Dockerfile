@@ -35,6 +35,8 @@ RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.c
     apt-get -y clean  && \
     apt-get -y autoclean  && \
     apt-get -y autoremove && \
+#  Remove the anthos cli tool and related files since they are very large and we / anyone using the docker are unlikely to use them
+#  Remove the bundled python because we have python installed separately
     rm -rf /usr/lib/google-cloud-sdk/bin/anthoscli /usr/lib/google-cloud-sdk/platform/anthoscli_licenses /usr/lib/google-cloud-sdk/platform/bundledpythonunix && \
     find / -wholename "*__pycache__/*.pyc" -exec rm {} + 
 
@@ -51,7 +53,7 @@ ENV JAVA_LIBRARY_PATH /usr/lib/jni
 
 # Install miniconda
 ENV DOWNLOAD_DIR /downloads
-ENV CONDA_URL https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+ENV CONDA_URL https://repo.anaconda.com/miniconda/Miniconda3-py310_23.1.0-1-Linux-x86_64.sh 
 ENV CONDA_MD5 = "32d73e1bc33fda089d7cd9ef4c1be542616bd8e437d1f77afeeaf7afdb019787"
 ENV CONDA_PATH /opt/miniconda
 ENV PATH $CONDA_PATH/bin:$PATH
