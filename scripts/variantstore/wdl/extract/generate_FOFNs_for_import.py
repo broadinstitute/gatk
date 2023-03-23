@@ -17,7 +17,7 @@ error_file_name = "errors.txt"
 attempts_between_pauses=500
 
 def generate_FOFNs_from_data_table(data_table_name, sample_id_column_name, vcf_files_column_name, vcf_index_files_column_name):
-    with open(vcf_files_name, "w") as vcf_files, open(vcf_index_files_name, "w") as vcf_index_files, open(sample_names_file_name, "w") as sample_names_file, open(error_file_name, "w") as error_file
+    with open(vcf_files_name, "w") as vcf_files, open(vcf_index_files_name, "w") as vcf_index_files, open(sample_names_file_name, "w") as sample_names_file, open(error_file_name, "w") as error_file:
         count = 0
         processed_entities = 0
         for row in table.list_rows(data_table_name):
