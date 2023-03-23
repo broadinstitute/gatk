@@ -204,6 +204,14 @@ workflow GvsCreateFilterSet {
         fq_filter_sites_destination_table = fq_filter_sites_destination_table,
         project_id = project_id
     }
+
+    call UberMonitor {
+      input:
+        inputs = [JointVcfFiltering.extract_variant_anotations_snps_monitoring_log,
+                  JointVcfFiltering.extract_variant_anotations_indels_monitoring_log,
+                  JointVcfFiltering.train_variant_anotation_model_snps_monitoring_log,
+                  JointVcfFiltering.train_variant_anotation_model_indels_monitoring_log ]
+    }
   }
 
   if (use_classic_VQSR) {
@@ -629,5 +637,34 @@ task PopulateFilterSetTranches {
   output {
     String status_load_filter_set_tranches = read_string("status_load_filter_set_tranches")
     File monitoring_log = "monitoring.log"
+  }
+}
+
+task UberMonitor {
+  input {
+    Array[File] inputs
+  }
+
+  command <<<
+    set -e
+
+    ## the ancestry file is processed down to a simple mapping from sample to subpopulation
+    python3 /app/uber_monitor.py \
+    --input ~{sep=" " inputs}
+  >>>
+
+  # ------------------------------------------------
+  # Runtime settings:
+  runtime {
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2023_03_23"
+    memory: "1 GB"
+    preemptible: 3
+    cpu: "1"
+    disks: "local-disk 100 HDD"
+  }
+  # ------------------------------------------------
+  # Outputs:
+  output {
+    File out = stdout()
   }
 }
