@@ -373,7 +373,7 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
             final ConcordanceState concordanceState = getConcordanceState(truthGenotype, evalGenotype, evalVC.isFiltered());
             if (evalVC.isSNP()) {
                 aggregators.get(i).get(bin).snp_pearsonCorrelationAggregator.addEntry(evalDosageFrac, truthDosageFrac);
-                if (af >= minAfForAccuracyMetrics && af < firstBinRightEdge) {
+                if (af >= minAfForAccuracyMetrics) {
                     snpMetrics.get(i).incrementMetrics(concordanceState);
                 }
             } else if (evalVC.isIndel()) {
