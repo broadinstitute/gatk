@@ -125,12 +125,13 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rc-VS-778-spike-import-limit
    - name: GvsPrepareBulkImport
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareBulkImport.wdl
      filters:
        branches:
-         - VS-778-spike-import-limit
+         - rc-VS-778-spike-import-limit
    - name: GvsBulkIngestGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsBulkIngestGenomes.wdl
