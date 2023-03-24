@@ -313,11 +313,6 @@ workflow GvsCreateFilterSet {
           output_vcf_name = "${filter_set_name}.vrecalibration.gz",
           preemptible_tries = 3,
       }
-      Array[Array[File]] m1_logs = flatten([[IndelsVariantRecalibrator.monitoring_log],
-                                            [SNPsVariantRecalibratorCreateModel.monitoring_log],
-                                            SNPsVariantRecalibratorScattered.monitoring_log,
-                                            [SNPGatherTranches.monitoring_log],
-                                            [MergeRecalibrationFiles.monitoring_log]])
     }
 
     if (GetNumSamplesLoaded.num_samples <= snps_variant_recalibration_threshold) {
@@ -342,7 +337,6 @@ workflow GvsCreateFilterSet {
           machine_mem_gb = SNP_VQSR_mem_gb_override,
           max_gaussians = SNP_VQSR_max_gaussians_override,
       }
-      Array[Array[File]] m1_logs = flatten([[SNPsVariantRecalibratorClassic.monitoring_log]])
     }
 
     call PopulateFilterSetInfo as PopulateFilterSetInfoClassic {
@@ -379,12 +373,27 @@ workflow GvsCreateFilterSet {
         project_id = project_id
     }
 
-    call UberMonitor as UberMonitorClassic {
-      input:
-        inputs = flatten([m1_logs,
-                         [PopulateFilterSetInfoClassic.monitoring_log],
-                         [PopulateFilterSetSitesClassic.monitoring_log],
-                         [PopulateFilterSetTranches.monitoring_log]])
+    if (GetNumSamplesLoaded.num_samples > snps_variant_recalibration_threshold) {
+      call UberMonitor as UberMonitorClassicManySamples {
+        input:
+          inputs = flatten([[IndelsVariantRecalibrator.monitoring_log],
+                           [SNPsVariantRecalibratorCreateModel.monitoring_log],
+                           SNPsVariantRecalibratorScattered.monitoring_log,
+                           [SNPGatherTranches.monitoring_log],
+                           [MergeRecalibrationFiles.monitoring_log],
+                           [PopulateFilterSetInfoClassic.monitoring_log],
+                           [PopulateFilterSetSitesClassic.monitoring_log],
+                           [PopulateFilterSetTranches.monitoring_log]])
+      }
+    }
+    if (GetNumSamplesLoaded.num_samples <= snps_variant_recalibration_threshold) {
+      call UberMonitor as UberMonitorClassicFewSamples {
+        input:
+          inputs = flatten([[SNPsVariantRecalibratorClassic.monitoring_log],
+                           [PopulateFilterSetInfoClassic.monitoring_log],
+                           [PopulateFilterSetSitesClassic.monitoring_log],
+                           [PopulateFilterSetTranches.monitoring_log]])
+      }
     }
   }
 
