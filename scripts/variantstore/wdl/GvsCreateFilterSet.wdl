@@ -212,13 +212,13 @@ workflow GvsCreateFilterSet {
                   [JointVcfFiltering.train_variant_anotation_model_snps_monitoring_log],
                   [JointVcfFiltering.train_variant_anotation_model_indels_monitoring_log],
                   JointVcfFiltering.score_variant_annotations_snps_monitoring_log,
-                  JointVcfFiltering.score_variant_annotations_indels_monitoring_log],
+                  JointVcfFiltering.score_variant_annotations_indels_monitoring_log,
                   [MergeSNPScoredVCFs.monitoring_log],
                   [MergeINDELScoredVCFs.monitoring_log],
                   [CreateFilteredScoredSNPsVCF.monitoring_log],
                   [CreateFilteredScoredINDELsVCF.monitoring_log],
                   [PopulateFilterSetInfo.monitoring_log],
-                  [PopulateFilterSetSites.monitoring_log])
+                  [PopulateFilterSetSites.monitoring_log]])
     }
   }
 
