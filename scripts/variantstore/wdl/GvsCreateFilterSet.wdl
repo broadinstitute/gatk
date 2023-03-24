@@ -212,7 +212,13 @@ workflow GvsCreateFilterSet {
                   [JointVcfFiltering.train_variant_anotation_model_snps_monitoring_log],
                   [JointVcfFiltering.train_variant_anotation_model_indels_monitoring_log],
                   JointVcfFiltering.score_variant_annotations_snps_monitoring_log,
-                  JointVcfFiltering.score_variant_annotations_indels_monitoring_log])
+                  JointVcfFiltering.score_variant_annotations_indels_monitoring_log],
+                  [MergeSNPScoredVCFs.monitoring_log],
+                  [MergeINDELScoredVCFs.monitoring_log],
+                  [CreateFilteredScoredSNPsVCF.monitoring_log],
+                  [CreateFilteredScoredINDELsVCF.monitoring_log],
+                  [PopulateFilterSetInfo.monitoring_log],
+                  [PopulateFilterSetSites.monitoring_log])
     }
   }
 
@@ -658,7 +664,7 @@ task UberMonitor {
   # ------------------------------------------------
   # Runtime settings:
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2023_03_23"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2023_03_24"
     memory: "1 GB"
     preemptible: 3
     cpu: "1"
