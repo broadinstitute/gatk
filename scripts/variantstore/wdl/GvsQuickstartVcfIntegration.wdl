@@ -235,9 +235,9 @@ task AssertCostIsTrackedAndExpected {
     }
 
     command <<<
-        # Prepend date, time and pwd to xtrace log entries.
-        PS4='\D{+%F %T} \w $ '
-        set -o errexit -o nounset -o pipefail -o xtrace
+        set -o errexit
+        set -o nounset
+        set -o pipefail
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
         bq query --project_id=~{project_id} --format=csv --use_legacy_sql=false \
@@ -331,9 +331,9 @@ task AssertTableSizesAreExpected {
     }
 
     command <<<
-        # Prepend date, time and pwd to xtrace log entries.
-        PS4='\D{+%F %T} \w $ '
-        set -o errexit -o nounset -o pipefail -o xtrace
+        set -o errexit
+        set -o nounset
+        set -o pipefail
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
         bq query --project_id=~{project_id} --format=csv --use_legacy_sql=false \
