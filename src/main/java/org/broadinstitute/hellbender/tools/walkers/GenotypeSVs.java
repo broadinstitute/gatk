@@ -1,5 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers;
 
+import edu.mit.broad.tedsUtils.align.EndsFreeAligner;
+import htsjdk.samtools.CigarElement;
+import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.util.SequenceUtil;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -12,9 +15,11 @@ import org.broadinstitute.hellbender.engine.VariantWalker;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
 import java.io.*;
+import java.util.Iterator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -23,7 +28,7 @@ import java.util.regex.Pattern;
         oneLineSummary = "For each SV, write a couple of snippets of sequence to look for.",
         programGroup = VariantEvaluationProgramGroup.class
 )
-public final class WriteSVTargets extends VariantWalker {
+public final class GenotypeSVs extends VariantWalker {
     public static final int MINIMUM_SV_SIZE = 50;
     public static final int WINDOW_SIZE = 50;
 
@@ -41,8 +46,8 @@ public final class WriteSVTargets extends VariantWalker {
 
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-              shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-              doc="Write output to this file")
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+            doc="Write output to this file")
     public File outputFile;
     public BufferedWriter writer;
 
@@ -96,18 +101,12 @@ public final class WriteSVTargets extends VariantWalker {
 
         final String contig = variant.getContig();
         final int start = variant.getStart();
-        final String seqName = contig + "_" + start + "_" + svType + "_" + Math.abs(svLen) + "_";
-
-        final int leadStart = Math.max(1, start - WINDOW_SIZE + 1);
-        final SimpleInterval leadInterval = new SimpleInterval(contig, leadStart, start);
-        final String leadBases = new String(referenceContext.getBases(leadInterval));
-
         final int end = variant.getEnd();
-        final SimpleInterval lagInterval = new SimpleInterval(contig, end + 1, end + WINDOW_SIZE);
-        final String lagBases = new String(referenceContext.getBases(lagInterval));
 
         switch ( svType ) {
-            case GATKSVVCFConstants.SYMB_ALT_STRING_DEL -> writeRef(seqName, leadBases + lagBases);
+            case GATKSVVCFConstants.SYMB_ALT_STRING_DEL ->
+                    testDeletion(contig, start, end, referenceContext, readsContext);
+/*
             case GATKSVVCFConstants.SYMB_ALT_STRING_INS -> {
                 final String altBases = variant.getAlternateAllele(0).getBaseString();
                 writeRef(seqName + "1", leadBases + altBases.substring(1, WINDOW_SIZE + 1));
@@ -168,19 +167,58 @@ public final class WriteSVTargets extends VariantWalker {
                     logger.warn("Can't interpret the BND description: " + bndDescription);
                 }
             }
+*/
             default -> logger.warn("Don't know how to handle SVTYPE=" + svType + " at " + contig + ":" + start);
         }
     }
 
-    private void writeRef( final String seqName, final String bases ) {
-        try {
-            writer.write(">");
-            writer.write(seqName);
-            writer.newLine();
-            writer.write(bases);
-            writer.newLine();
-        } catch ( final IOException ioe ) {
-            throw new UserException("Can't write to " + outputFile, ioe);
+    private void testDeletion( final String contig, final int start, final int end,
+                               final ReferenceContext referenceContext,
+                               final ReadsContext readsContext ) {
+        final int alignStart = Math.max(1, start - 5);
+        final int alignEnd = end + WINDOW_SIZE;
+        final String refCalls =
+            new String(referenceContext.getBases(new SimpleInterval(contig, alignStart, start))) +
+              new String(referenceContext.getBases(new SimpleInterval(contig, end + 1, alignEnd)));
+        final Iterator<GATKRead> readItr =
+                readsContext.iterator(new SimpleInterval(contig, alignStart, alignEnd));
+        while ( readItr.hasNext() ) {
+            final GATKRead read = readItr.next();
+            if ( read.getStart() > alignStart ) {
+                break;
+            }
+            final int readStartPos = getReadPositionForRefPosition(read, alignStart);
+            if ( readStartPos == -1 ) {
+                continue;
+            }
+            final String allReadCalls = read.getBasesString();
+            final int readEndPos = Math.min(readStartPos + refCalls.length(), allReadCalls.length());
+            final String readCalls = allReadCalls.substring(readStartPos, readEndPos);
+            final EndsFreeAligner aligner = new EndsFreeAligner(readCalls, refCalls);
+            System.out.println(aligner.getAlignment());
         }
+    }
+
+    private int getReadPositionForRefPosition( final GATKRead read, final int refPosition ) {
+        int refPos = read.getStart();
+        int readPos = 0;
+        for ( final CigarElement cigarElement : read.getCigarElements() ) {
+            final int opLen = cigarElement.getLength();
+            final CigarOperator op = cigarElement.getOperator();
+            if ( op.consumesReferenceBases() ) {
+                final int nextRefPos = refPos + opLen;
+                if ( nextRefPos > refPosition ) {
+                    if ( op.consumesReadBases() ) {
+                        readPos += opLen + nextRefPos - refPosition;
+                    }
+                    return readPos;
+                }
+                refPos += opLen;
+            }
+            if ( op.consumesReadBases() ) {
+                readPos += opLen;
+            }
+        }
+        return -1;
     }
 }
