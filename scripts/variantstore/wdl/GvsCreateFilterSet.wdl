@@ -656,7 +656,6 @@ task UberMonitor {
   command <<<
     set -e
 
-    ## the ancestry file is processed down to a simple mapping from sample to subpopulation
     python3 /app/uber_monitor.py \
     --input ~{sep=" " inputs}
   >>>
@@ -664,7 +663,7 @@ task UberMonitor {
   # ------------------------------------------------
   # Runtime settings:
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2023_03_24"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2023_03_24a"
     memory: "1 GB"
     preemptible: 3
     cpu: "1"
