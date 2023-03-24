@@ -224,6 +224,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_866_update_variants_base_image
    - name: GvsQuickstartHailIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartHailIntegration.wdl
@@ -231,6 +232,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_866_update_variants_base_image
    - name: GvsQuickstartIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartIntegration.wdl
@@ -239,6 +241,7 @@ workflows:
          - master
          - ah_var_store
          - vs_834_disentangle
+         - vs_866_update_variants_base_image
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
