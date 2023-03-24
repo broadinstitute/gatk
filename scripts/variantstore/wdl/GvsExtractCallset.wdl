@@ -385,7 +385,7 @@ task SumBytes {
     print(total_mb);"
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 500 HDD"
     preemptible: 3
@@ -424,7 +424,7 @@ task CreateManifest {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 500 HDD"
     preemptible: 3
@@ -468,7 +468,7 @@ task GenerateSampleListFile {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 500 HDD"
     preemptible: 3

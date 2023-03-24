@@ -155,7 +155,7 @@ task CreateFOFNs {
     split -a 5 -l ~{batch_size} ~{sample_name_list} batched_sample_names.
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
     bootDiskSizeGb: 15
     memory: "3 GB"
     disks: "local-disk 10 HDD"
@@ -363,7 +363,7 @@ task SetIsLoadedColumn {
                      AND sls2.status = "FINISHED")'
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
     memory: "1 GB"
     disks: "local-disk 10 HDD"
     cpu: 1
@@ -452,7 +452,7 @@ task GetUningestedSampleIds {
     bq --project_id=~{project_id} rm -f=true ~{temp_table}
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
     memory: "1 GB"
     disks: "local-disk 10 HDD"
     preemptible: 5

@@ -143,7 +143,7 @@ task IngestTieout {
     }
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:398.0.0"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0"
         memory: "14 GB"
         disks: "local-disk 2000 HDD"
         preemptible: 3

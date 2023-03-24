@@ -212,7 +212,7 @@ task AssertIdenticalOutputs {
     >>>
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:402.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
         disks: "local-disk 500 HDD"
     }
 
@@ -235,9 +235,9 @@ task AssertCostIsTrackedAndExpected {
     }
 
     command <<<
-        set -o errexit
-        set -o nounset
-        set -o pipefail
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
         bq query --project_id=~{project_id} --format=csv --use_legacy_sql=false \
@@ -308,7 +308,7 @@ task AssertCostIsTrackedAndExpected {
     >>>
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:402.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
         disks: "local-disk 10 HDD"
     }
 
@@ -331,9 +331,9 @@ task AssertTableSizesAreExpected {
     }
 
     command <<<
-        set -o errexit
-        set -o nounset
-        set -o pipefail
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
         bq query --project_id=~{project_id} --format=csv --use_legacy_sql=false \
@@ -356,7 +356,7 @@ task AssertTableSizesAreExpected {
     >>>
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:402.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
         disks: "local-disk 10 HDD"
     }
 
