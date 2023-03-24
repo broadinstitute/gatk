@@ -199,7 +199,7 @@ task ExtractVariantAnnotations {
 		File extracted_training_vcf = "~{basename}.~{mode}.vcf.gz"
 		File extracted_training_vcf_index = "~{basename}.~{mode}.vcf.gz.tbi"
 		Array[File] outputs = glob("~{basename}.~{mode}.*")
-		File monitoring_log = "monitoring.log"
+		File? monitoring_log = "monitoring.log"
 	}
 	runtime {
 		docker: gatk_docker
@@ -248,7 +248,7 @@ task TrainVariantAnnotationModel {
 	>>>
 	output {
 		Array[File] outputs = glob("~{basename}.~{mode}.*")
-		File monitoring_log = "monitoring.log"
+		File? monitoring_log = "monitoring.log"
 	}
 	runtime {
 		docker: gatk_docker
@@ -319,7 +319,7 @@ task ScoreVariantAnnotations {
 		File? annots = "~{basename}.~{mode}.annot.hdf5"
 		File output_vcf = "~{basename}.~{mode}.vcf.gz"
 		File output_vcf_index = "~{basename}.~{mode}.vcf.gz.tbi"
-		File monitoring_log = "monitoring.log"
+		File? monitoring_log = "monitoring.log"
 	}
 	runtime {
 		docker: gatk_docker

@@ -674,7 +674,7 @@ task PopulateFilterSetTranches {
 
 task UberMonitor {
   input {
-    Array[File] inputs
+    Array[File?] inputs
   }
 
   command <<<
