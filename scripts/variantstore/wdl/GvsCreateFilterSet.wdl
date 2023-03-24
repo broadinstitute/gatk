@@ -140,6 +140,7 @@ workflow GvsCreateFilterSet {
         snp_annotations   = "-A AS_QD -A AS_MQRankSum -A AS_ReadPosRankSum -A AS_FS -A AS_MQ -A AS_SOR",
         indel_annotations = "-A AS_QD -A AS_MQRankSum -A AS_ReadPosRankSum -A AS_FS -A AS_MQ -A AS_SOR",
         use_allele_specific_annotations = true,
+        monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     }
 
     call Utils.MergeVCFs as MergeINDELScoredVCFs {
@@ -663,7 +664,7 @@ task UberMonitor {
   # ------------------------------------------------
   # Runtime settings:
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2023_03_24a"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2023_03_24"
     memory: "1 GB"
     preemptible: 3
     cpu: "1"

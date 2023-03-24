@@ -89,7 +89,7 @@ def parse_monitoring_log_file(mlog_file):
             if (type > 4):
                 type = 0
 
-        summary = f"{TotalMemory}\t{MaxMem}\t{MaxMemPct}%\t{TotalDisk}\t{MaxDisk}\t{MaxDiskPct}%\t{os.path.abspath(mlog_file)}"
+        summary = f"{TotalMemory}\t{MaxMem}\t{MaxMemPct}\t{TotalDisk}\t{MaxDisk}\t{MaxDiskPct}\t{os.path.abspath(mlog_file)}"
         print(summary)
 
 def parse_timestamp_line(line):
