@@ -207,10 +207,12 @@ workflow GvsCreateFilterSet {
 
     call UberMonitor {
       input:
-        inputs = [JointVcfFiltering.extract_variant_anotations_snps_monitoring_log,
+        inputs = flatten([JointVcfFiltering.extract_variant_anotations_snps_monitoring_log,
                   JointVcfFiltering.extract_variant_anotations_indels_monitoring_log,
                   JointVcfFiltering.train_variant_anotation_model_snps_monitoring_log,
-                  JointVcfFiltering.train_variant_anotation_model_indels_monitoring_log ]
+                  JointVcfFiltering.train_variant_anotation_model_indels_monitoring_log,
+                  JointVcfFiltering.score_variant_annotations_snps_monitoring_log,
+                  JointVcfFiltering.score_variant_annotations_indels_monitoring_log])
     }
   }
 
