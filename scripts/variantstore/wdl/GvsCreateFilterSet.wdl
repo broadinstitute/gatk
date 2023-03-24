@@ -373,18 +373,18 @@ workflow GvsCreateFilterSet {
         project_id = project_id
     }
 
-#    call UberMonitor as UberMonitorClassic {
-#      input:
-#        inputs = flatten([[IndelsVariantRecalibrator.monitoring_log],
-#                         [SNPsVariantRecalibratorCreateModel.monitoring_log],
-#                         SNPsVariantRecalibratorScattered.monitoring_log,
-#                         [SNPGatherTranches.monitoring_log],
-#                         [MergeRecalibrationFiles.monitoring_log],
-#                         [SNPsVariantRecalibratorClassic.monitoring_log],
-#                         [PopulateFilterSetInfoClassic.monitoring_log],
-#                         [PopulateFilterSetSitesClassic.monitoring_log],
-#                         [PopulateFilterSetTranches.monitoring_log]])
-#    }
+    call UberMonitor as UberMonitorClassic {
+      input:
+        inputs = flatten([[IndelsVariantRecalibrator.monitoring_log],
+                         [SNPsVariantRecalibratorCreateModel.monitoring_log],
+                         SNPsVariantRecalibratorScattered.monitoring_log,
+                         [SNPGatherTranches.monitoring_log],
+                         [MergeRecalibrationFiles.monitoring_log],
+                         [SNPsVariantRecalibratorClassic.monitoring_log],
+                         [PopulateFilterSetInfoClassic.monitoring_log],
+                         [PopulateFilterSetSitesClassic.monitoring_log],
+                         [PopulateFilterSetTranches.monitoring_log]])
+    }
   }
 
 
