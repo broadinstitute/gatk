@@ -180,6 +180,7 @@ task ExtractVariantAnnotations {
 
 		if [ -s ~{monitoring_script} ]; then
 			bash ~{monitoring_script} > monitoring.log &
+		fi
 
 		export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
@@ -229,6 +230,7 @@ task TrainVariantAnnotationModel {
 
 		if [ -s ~{monitoring_script} ]; then
 			bash ~{monitoring_script} > monitoring.log &
+		fi
 
 		export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
@@ -285,6 +287,7 @@ task ScoreVariantAnnotations {
 
 		if [ -s ~{monitoring_script} ]; then
 			bash ~{monitoring_script} > monitoring.log &
+		fi
 
 		if [ -s empty.txt ]; then
 			ln -s ~{sep=" . && ln -s " model_files} .
