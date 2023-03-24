@@ -145,12 +145,12 @@ workflow JointVcfFiltering {
 		Array[File] indels_variant_scored_vcf_index = ScoreVariantAnnotationsINDELs.output_vcf_index
 		Array[File] snps_variant_scored_vcf = ScoreVariantAnnotationsSNPs.output_vcf
 		Array[File] snps_variant_scored_vcf_index = ScoreVariantAnnotationsSNPs.output_vcf_index
-		File extract_variant_anotations_snps_monitoring_log = ExtractVariantAnnotationsSNPs.monitoring_log
-		File extract_variant_anotations_indels_monitoring_log = ExtractVariantAnnotationsINDELs.monitoring_log
-		File train_variant_anotation_model_snps_monitoring_log = TrainVariantAnnotationModelSNPs.monitoring_log
-		File train_variant_anotation_model_indels_monitoring_log = TrainVariantAnnotationModelINDELs.monitoring_log
-		Array[File] score_variant_annotations_snps_monitoring_log = ScoreVariantAnnotationsSNPs.monitoring_log
-		Array[File] score_variant_annotations_indels_monitoring_log = ScoreVariantAnnotationsINDELs.monitoring_log
+		File? extract_variant_anotations_snps_monitoring_log = ExtractVariantAnnotationsSNPs.monitoring_log
+		File? extract_variant_anotations_indels_monitoring_log = ExtractVariantAnnotationsINDELs.monitoring_log
+		File? train_variant_anotation_model_snps_monitoring_log = TrainVariantAnnotationModelSNPs.monitoring_log
+		File? train_variant_anotation_model_indels_monitoring_log = TrainVariantAnnotationModelINDELs.monitoring_log
+		Array[File?] score_variant_annotations_snps_monitoring_log = ScoreVariantAnnotationsSNPs.monitoring_log
+		Array[File?] score_variant_annotations_indels_monitoring_log = ScoreVariantAnnotationsINDELs.monitoring_log
 	}
 
 }
