@@ -103,17 +103,18 @@ public class AlleleLikelihoodWriter implements AutoCloseable {
         try {
             for (int s = 0 ; s < samples.size(); s++) {
                 if (writeHeader){
+                    output.write("Read");
                     for (int allele = 0; allele < likelihoods.sampleMatrix(s).numberOfAlleles(); allele++) {
-                        output.write(String.format("#Haplotype\t%08d\t%s\n", allele, haplotypeToNameMap.get(haplotypes.get(allele).toString())));
+                        output.write(String.format("\t%s", haplotypeToNameMap.get(haplotypes.get(allele).toString())));
                     }
+                    output.write("\n");
                 }
 
                 List<GATKRead> reads = likelihoods.sampleEvidence(0);
                 for (int read = 0; read < likelihoods.sampleMatrix(s).evidenceCount(); read++) {
-                    output.write(String.format("#Read\t%08d\t%s\n", readCount+read, reads.get(read).getName()));
+                    output.write(String.format("%s", reads.get(read).getName()));
                     for (int allele = 0; allele < likelihoods.sampleMatrix(s).numberOfAlleles(); allele++) {
-                        output.write(String.format("%08d\t%.3f\n",
-                                allele, likelihoods.sampleMatrix(s).get(allele, read)));
+                        output.write(String.format("\t%.3f",likelihoods.sampleMatrix(s).get(allele, read)));
                     }
                     output.write("\n");
                 }
