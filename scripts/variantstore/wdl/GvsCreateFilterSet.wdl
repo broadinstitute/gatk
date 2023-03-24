@@ -206,7 +206,7 @@ workflow GvsCreateFilterSet {
         project_id = project_id
     }
 
-    call UberMonitor {
+    call UberMonitor as UberMonitorLite {
       input:
         inputs = flatten([[JointVcfFiltering.extract_variant_anotations_snps_monitoring_log],
                   [JointVcfFiltering.extract_variant_anotations_indels_monitoring_log],
@@ -363,7 +363,7 @@ workflow GvsCreateFilterSet {
         project_id = project_id
     }
 
-    call PopulateFilterSetTranches as PopulateFilterSetTranchesClassic {
+    call PopulateFilterSetTranches {
       input:
         gatk_override = gatk_override,
         filter_set_name = filter_set_name,
@@ -372,6 +372,19 @@ workflow GvsCreateFilterSet {
         fq_tranches_destination_table = fq_tranches_destination_table,
         project_id = project_id
     }
+
+#    call UberMonitor as UberMonitorClassic {
+#      input:
+#        inputs = flatten([[IndelsVariantRecalibrator.monitoring_log],
+#                         [SNPsVariantRecalibratorCreateModel.monitoring_log],
+#                         SNPsVariantRecalibratorScattered.monitoring_log,
+#                         [SNPGatherTranches.monitoring_log],
+#                         [MergeRecalibrationFiles.monitoring_log],
+#                         [SNPsVariantRecalibratorClassic.monitoring_log],
+#                         [PopulateFilterSetInfoClassic.monitoring_log],
+#                         [PopulateFilterSetSitesClassic.monitoring_log],
+#                         [PopulateFilterSetTranches.monitoring_log]])
+#    }
   }
 
 

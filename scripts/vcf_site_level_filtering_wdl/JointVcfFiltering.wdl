@@ -178,7 +178,7 @@ task ExtractVariantAnnotations {
 	command {
 		set -e
 
-		if [ -e ~{monitoring_script} ]; then
+		if [ -s ~{monitoring_script} ]; then
 			bash ~{monitoring_script} > monitoring.log &
 
 		export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
@@ -227,7 +227,7 @@ task TrainVariantAnnotationModel {
 	command <<<
 		set -e
 
-		if [ -e ~{monitoring_script} ]; then
+		if [ -s ~{monitoring_script} ]; then
 			bash ~{monitoring_script} > monitoring.log &
 
 		export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
@@ -283,7 +283,7 @@ task ScoreVariantAnnotations {
 		zgrep -v '#' ~{vcf} > empty.txt
 		set -e
 
-		if [ -e ~{monitoring_script} ]; then
+		if [ -s ~{monitoring_script} ]; then
 			bash ~{monitoring_script} > monitoring.log &
 
 		if [ -s empty.txt ]; then
