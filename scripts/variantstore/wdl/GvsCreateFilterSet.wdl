@@ -4,7 +4,7 @@ import "GvsWarpTasks.wdl" as Tasks
 import "GvsUtils.wdl" as Utils
 import "../../vcf_site_level_filtering_wdl/JointVcfFiltering.wdl" as VQSRLite
 
-# A
+# B
 
 workflow GvsCreateFilterSet {
   input {
@@ -666,7 +666,7 @@ task PopulateFilterSetTranches {
 
 task UberMonitor {
   input {
-    Array[File?] inputs
+    Array[File] inputs
   }
 
   command <<<
