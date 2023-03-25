@@ -145,12 +145,12 @@ workflow JointVcfFiltering {
 		Array[File] indels_variant_scored_vcf_index = ScoreVariantAnnotationsINDELs.output_vcf_index
 		Array[File] snps_variant_scored_vcf = ScoreVariantAnnotationsSNPs.output_vcf
 		Array[File] snps_variant_scored_vcf_index = ScoreVariantAnnotationsSNPs.output_vcf_index
-		File? extract_variant_anotations_snps_monitoring_log = ExtractVariantAnnotationsSNPs.monitoring_log
-		File? extract_variant_anotations_indels_monitoring_log = ExtractVariantAnnotationsINDELs.monitoring_log
-		File? train_variant_anotation_model_snps_monitoring_log = TrainVariantAnnotationModelSNPs.monitoring_log
-		File? train_variant_anotation_model_indels_monitoring_log = TrainVariantAnnotationModelINDELs.monitoring_log
-		Array[File?] score_variant_annotations_snps_monitoring_log = ScoreVariantAnnotationsSNPs.monitoring_log
-		Array[File?] score_variant_annotations_indels_monitoring_log = ScoreVariantAnnotationsINDELs.monitoring_log
+		File extract_variant_anotations_snps_monitoring_log = ExtractVariantAnnotationsSNPs.monitoring_log
+		File extract_variant_anotations_indels_monitoring_log = ExtractVariantAnnotationsINDELs.monitoring_log
+		File train_variant_anotation_model_snps_monitoring_log = TrainVariantAnnotationModelSNPs.monitoring_log
+		File train_variant_anotation_model_indels_monitoring_log = TrainVariantAnnotationModelINDELs.monitoring_log
+		Array[File] score_variant_annotations_snps_monitoring_log = ScoreVariantAnnotationsSNPs.monitoring_log
+		Array[File] score_variant_annotations_indels_monitoring_log = ScoreVariantAnnotationsINDELs.monitoring_log
 	}
 
 }
@@ -178,6 +178,8 @@ task ExtractVariantAnnotations {
 	command {
 		set -e
 
+		# Create a zero-size monitoring log file so it exists even if we don't pass a monitoring script
+		touch monitoring.log
 		if [ -s ~{monitoring_script} ]; then
 			bash ~{monitoring_script} > monitoring.log &
 		fi
@@ -199,7 +201,7 @@ task ExtractVariantAnnotations {
 		File extracted_training_vcf = "~{basename}.~{mode}.vcf.gz"
 		File extracted_training_vcf_index = "~{basename}.~{mode}.vcf.gz.tbi"
 		Array[File] outputs = glob("~{basename}.~{mode}.*")
-		File? monitoring_log = "monitoring.log"
+		File monitoring_log = "monitoring.log"
 	}
 	runtime {
 		docker: gatk_docker
@@ -228,6 +230,8 @@ task TrainVariantAnnotationModel {
 	command <<<
 		set -e
 
+		# Create a zero-size monitoring log file so it exists even if we don't pass a monitoring script
+		touch monitoring.log
 		if [ -s ~{monitoring_script} ]; then
 			bash ~{monitoring_script} > monitoring.log &
 		fi
@@ -248,7 +252,7 @@ task TrainVariantAnnotationModel {
 	>>>
 	output {
 		Array[File] outputs = glob("~{basename}.~{mode}.*")
-		File? monitoring_log = "monitoring.log"
+		File monitoring_log = "monitoring.log"
 	}
 	runtime {
 		docker: gatk_docker
@@ -285,6 +289,8 @@ task ScoreVariantAnnotations {
 		zgrep -v '#' ~{vcf} > empty.txt
 		set -e
 
+		# Create a zero-size monitoring log file so it exists even if we don't pass a monitoring script
+		touch monitoring.log
 		if [ -s ~{monitoring_script} ]; then
 			bash ~{monitoring_script} > monitoring.log &
 		fi
@@ -319,7 +325,7 @@ task ScoreVariantAnnotations {
 		File? annots = "~{basename}.~{mode}.annot.hdf5"
 		File output_vcf = "~{basename}.~{mode}.vcf.gz"
 		File output_vcf_index = "~{basename}.~{mode}.vcf.gz.tbi"
-		File? monitoring_log = "monitoring.log"
+		File monitoring_log = "monitoring.log"
 	}
 	runtime {
 		docker: gatk_docker

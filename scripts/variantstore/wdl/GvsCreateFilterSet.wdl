@@ -4,6 +4,8 @@ import "GvsWarpTasks.wdl" as Tasks
 import "GvsUtils.wdl" as Utils
 import "../../vcf_site_level_filtering_wdl/JointVcfFiltering.wdl" as VQSRLite
 
+# A
+
 workflow GvsCreateFilterSet {
   input {
     Boolean go = true
@@ -687,7 +689,7 @@ task UberMonitor {
   # ------------------------------------------------
   # Runtime settings:
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2023_03_24"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2023_03_25"
     memory: "1 GB"
     preemptible: 3
     cpu: "1"
