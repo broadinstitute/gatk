@@ -85,7 +85,7 @@ task OutputPath {
         File out = stdout()
     }
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
         disks: "local-disk 500 HDD"
     }
 }
@@ -157,7 +157,7 @@ task ExtractFromNonSuperpartitionedTables {
     }
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-03-07-alpine-v2"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-03-27-alpine"
         disks: "local-disk 500 HDD"
     }
 }
@@ -225,7 +225,7 @@ task ExtractFromSuperpartitionedTables {
     }
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-03-07-alpine-v2"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-03-27-alpine"
         disks: "local-disk 500 HDD"
     }
 }
@@ -293,7 +293,7 @@ task GenerateHailScripts {
         File hail_create_vat_inputs_script = 'hail_create_vat_inputs.py'
     }
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-03-07-alpine-v2"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-03-27-alpine"
         disks: "local-disk 500 HDD"
     }
 }
