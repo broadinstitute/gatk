@@ -28,6 +28,7 @@ public final class GATKVCFConstants {
     public static final String AS_CULPRIT_KEY =                     "AS_culprit";
     public static final String AS_VQS_LOD_KEY =                     "AS_VQSLOD";
     public static final String AS_VQS_SENS_KEY =                    "AS_VQS_SENS";
+    public static final String AS_VQS_SCORE_KEY =                   "AS_VQS_SCORE";
     public static final String AS_YNG_STATUS_KEY =                  "AS_YNG";
     public static final String ORIGINAL_AC_KEY =                    "AC_Orig"; //SelectVariants
     public static final String ORIGINAL_AF_KEY =                    "AF_Orig"; //SelectVariants
