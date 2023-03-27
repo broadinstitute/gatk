@@ -55,8 +55,6 @@ workflow GvsImportGenomes {
                                        else if num_samples < max_scatter_for_user then 1
                                             else num_samples / max_scatter_for_user
 
-
-
   # Both preemptible and maxretries should be scaled up alongside import batch size since the likelihood of preemptions
   # and retryable random BQ import errors increases with import batch size / job run time.
 
@@ -65,10 +63,7 @@ workflow GvsImportGenomes {
                                         else if effective_load_data_batch_size < 12 then 3
                                              else effective_load_data_batch_size / 4
 
-  # At least 3, per limits above not more than 5.
-  Int effective_load_data_maxretries = if (defined(load_data_maxretries_override)) then select_first([load_data_maxretries_override])
-                                       else if (effective_load_data_batch_size < 12) then 6
-                                            else effective_load_data_batch_size / 2
+  Int effective_load_data_maxretries = select_first([load_data_maxretries_override, 5])
 
   # return an error if the lengths are not equal
   Int input_length = length(input_vcfs)
@@ -111,6 +106,7 @@ workflow GvsImportGenomes {
   scatter (i in range(length(CreateFOFNs.vcf_batch_vcf_fofns))) {
     call LoadData {
       input:
+        index = i,
         dataset_name = dataset_name,
         project_id = project_id,
         skip_loading_vqsr_fields = skip_loading_vqsr_fields,
@@ -176,6 +172,7 @@ task CreateFOFNs {
 
 task LoadData {
   input {
+    Int index
     String dataset_name
     String project_id
 
@@ -213,31 +210,83 @@ task LoadData {
     }
   }
 
+  Int samples_per_table = 4000
+  Int num_samples = length(sample_names)
+  String temp_table = "~{dataset_name}.sample_names_to_load_~{index}"
+  # add labels for DSP Cloud Cost Control Labeling and Reporting
+  String bq_labels = "--label service:gvs --label team:variants --label managedby:import_genomes"
+  String table_name = "sample_info"
+
   command <<<
     set -e
+    set -o errexit -o nounset -o xtrace -o pipefail
+
+    echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
     # workaround for https://github.com/broadinstitute/cromwell/issues/3647
     export TMPDIR=/tmp
 
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
-    # translate WDL arrays into BASH arrays
-    VCFS_ARRAY=(~{sep=" " input_vcfs})
-    VCF_INDEXES_ARRAY=(~{sep=" " input_vcf_indexes})
-    SAMPLE_NAMES_ARRAY=(~{sep=" " sample_names})
+    ## check which samples still need loading by looking in the BQ database for the loaded status of these samples
+
+    # Create temp table with the sample_names and load external sample names into temp table -- make sure it doesn't exist already
+    set +o errexit
+    bq show --project_id ~{project_id} ~{temp_table} > /dev/null
+    BQ_SHOW_RC=$?
+    set -o errexit
+
+    # If there is already a table of sample names or something else is wrong, burn it down to start fresh.
+    if [ $BQ_SHOW_RC -eq 0 ]; then
+      bq rm -t -f --project_id=~{project_id} ~{temp_table}
+    fi
+
+    echo "Creating the external sample name list table ~{temp_table}"
+    bq --project_id=~{project_id} mk ~{temp_table} "sample_name:STRING"
+    NAMES_FILE=~{write_lines(sample_names)}
+    bq load --project_id=~{project_id} ~{temp_table} $NAMES_FILE "sample_name:STRING"
+
+    # Get the current min/max id, or 0 if there are none. Withdrawn samples still have IDs so don't filter them out.
+    bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} '
+      SELECT IFNULL(MIN(sample_id),0) as min, IFNULL(MAX(sample_id),0) as max FROM `~{dataset_name}.~{table_name}`
+        AS samples JOIN `~{temp_table}` AS temp ON samples.sample_name = temp.sample_name' > results.csv
+
+    # get sample map of samples that haven't been loaded yet
+    bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} '
+      SELECT sample_id, samples.sample_name FROM `~{dataset_name}.~{table_name}` AS samples JOIN `~{temp_table}` AS temp ON
+            samples.sample_name = temp.sample_name WHERE
+            samples.sample_id NOT IN (SELECT sample_id FROM `~{dataset_name}.sample_load_status` WHERE status="FINISHED") AND
+            samples.withdrawn is NULL' > sample_map.csv
+
+    ## delete the table that was only needed for this ingest test
+    bq --project_id=~{project_id} rm -f=true ~{temp_table}
+
+    ## now we want to create a sub list of these samples (without the ones that have already been loaded)
+    curl https://raw.githubusercontent.com/broadinstitute/gatk/ah_var_store/scripts/variantstore/wdl/extract/curate_input_array_files.py -o curate_input_array_files.py
+
+
+    python3 curate_input_array_files.py --sample_map_to_be_loaded_file_name sample_map.csv \
+      --sample_name_list_file_name $NAMES_FILE \
+      --vcf_list_file_name ~{write_lines(input_vcfs)} \
+      --vcf_index_list_file_name  ~{write_lines(input_vcf_indexes)} \
+      --output_files True
+
+    # translate files created by the python script into BASH arrays---but only of the samples that aren't there already
+    VCFS_ARRAY=($(cat output_vcf_list_file |tr "\n" " "))
+    VCF_INDEXES_ARRAY=($(cat output_vcf_index_list_file |tr "\n" " "))
+    SAMPLE_NAMES_ARRAY=($(cat output_sample_name_list_file |tr "\n" " "))
+
 
     # loop over the BASH arrays (See https://stackoverflow.com/questions/6723426/looping-over-arrays-printing-both-index-and-value)
     for i in "${!VCFS_ARRAY[@]}"; do
-      input_vcf="${VCFS_ARRAY[$i]}"
-      input_vcf_basename=$(basename $input_vcf)
-      updated_input_vcf=$input_vcf
-      input_vcf_index="${VCF_INDEXES_ARRAY[$i]}"
+      gs_input_vcf="${VCFS_ARRAY[$i]}"
+      gs_input_vcf_index="${VCF_INDEXES_ARRAY[$i]}"
       sample_name="${SAMPLE_NAMES_ARRAY[$i]}"
 
       # we always do our own localization
-      gsutil cp $input_vcf .
-      gsutil cp $input_vcf_index .
-      updated_input_vcf=$input_vcf_basename
+      gsutil cp $gs_input_vcf input_vcf_$i.vcf.gz
+      gsutil cp $gs_input_vcf_index input_vcf_$i.vcf.gz.tbi
+      updated_input_vcf=input_vcf_$i.vcf.gz
 
       gatk --java-options "-Xmx2g" CreateVariantIngestFiles \
         -V ${updated_input_vcf} \
@@ -254,10 +303,15 @@ task LoadData {
         -SNM ~{sample_map} \
         --ref-version 38 \
         --skip-loading-vqsr-fields ~{skip_loading_vqsr_fields}
+
+      rm input_vcf_$i.vcf.gz
+      rm input_vcf_$i.vcf.gz.tbi
+
     done
   >>>
+
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_02_15"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2022_10_18_950122cadfbfec1ac3790f07edad4d6484a5a894"
     maxRetries: load_data_maxretries
     memory: "3.75 GB"
     disks: "local-disk 50 HDD"
@@ -435,7 +489,7 @@ task CurateInputLists {
                                              --output_files True
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2022-10-14"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-03-23-bulk-ingest"
     memory: "3 GB"
     disks: "local-disk 100 HDD"
     bootDiskSizeGb: 15
