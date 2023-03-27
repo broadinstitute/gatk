@@ -350,7 +350,8 @@ workflow GvsCreateFilterSet {
       }
       call UberMonitor as UberMonitorClassicFewSamples {
         input:
-          inputs = flatten([[SNPsVariantRecalibratorClassic.monitoring_log]])
+          inputs = flatten([[IndelsVariantRecalibrator.monitoring_log],
+                            [SNPsVariantRecalibratorClassic.monitoring_log]])
       }
     }
 
