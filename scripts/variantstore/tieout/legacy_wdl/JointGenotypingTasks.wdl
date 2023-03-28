@@ -506,7 +506,7 @@ task SNPsVariantRecalibrator {
 task GatherTranches {
 
   input {
-    Array[File] tranches
+    Array[File] input_tranches
     String output_filename
     String mode
     Int disk_size
@@ -522,7 +522,7 @@ task GatherTranches {
   command <<<
     set -euo pipefail
 
-    tranches_fofn=~{write_lines(tranches)}
+    tranches_fofn=~{write_lines(input_tranches)}
 
     # Jose says:
     # Cromwell will fall over if we have it try to localize tens of thousands of files,
