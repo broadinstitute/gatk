@@ -38,7 +38,7 @@ public class BigQueryUtilsUnitTest extends GATKBaseTest {
         final String query = String.format("SELECT * FROM `%s` WHERE name = 'Fred'", BIGQUERY_FULLY_QUALIFIED_TABLE);
         Map<String, String> labels = new HashMap<String, String>();
         labels.put("gatktestquery", "testwhereclause" + runUuid);
-        System.out.print("testwhereclause" + runUuid);
+        logger.info("testwhereclause" + runUuid);
         final BigQueryResultAndStatistics resultAndStatistics = BigQueryUtils.executeQuery(query, labels);
 
         checkQueryResults(resultAndStatistics, expectedNamesAndAges, query);
@@ -97,7 +97,7 @@ public class BigQueryUtilsUnitTest extends GATKBaseTest {
             rowCount++;
 
             Assert.assertTrue(expectedNamesAndAges.containsKey(name), "Unexpected name " + name + " returned from query " + query);
-            Assert.assertNull(row.get("age"), "Age was unexpectedly retrieved.");
+            Assert.expectThrows(org.apache.avro.AvroRuntimeException.class, () -> row.get("age"));
         }
 
         final Set<String> expectedNames = new HashSet<>();
