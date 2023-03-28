@@ -206,7 +206,7 @@ workflow GvsCreateFilterSet {
         project_id = project_id
     }
 
-    call Utils.UberMonitor as UberMonitorLite {
+    call Utils.UberMonitor as UberMonitorVQSRLite {
       input:
         inputs = flatten([[JointVcfFiltering.extract_variant_anotations_snps_monitoring_log],
                   [JointVcfFiltering.extract_variant_anotations_indels_monitoring_log],
@@ -314,7 +314,7 @@ workflow GvsCreateFilterSet {
           preemptible_tries = 3,
       }
 
-      call Utils.UberMonitor as UberMonitorClassicManySamples {
+      call Utils.UberMonitor as UberMonitorVQSRClassicManySamples {
         input:
           inputs = flatten([[IndelsVariantRecalibrator.monitoring_log],
                            [SNPsVariantRecalibratorCreateModel.monitoring_log],
@@ -346,7 +346,7 @@ workflow GvsCreateFilterSet {
           machine_mem_gb = SNP_VQSR_mem_gb_override,
           max_gaussians = SNP_VQSR_max_gaussians_override,
       }
-      call Utils.UberMonitor as UberMonitorClassicFewSamples {
+      call Utils.UberMonitor as UberMonitorVQSRClassicFewSamples {
         input:
           inputs = flatten([[IndelsVariantRecalibrator.monitoring_log],
                             [SNPsVariantRecalibratorClassic.monitoring_log]])
