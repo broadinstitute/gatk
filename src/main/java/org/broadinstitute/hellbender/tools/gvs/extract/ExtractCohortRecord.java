@@ -40,6 +40,16 @@ public class ExtractCohortRecord implements Locatable {
 //            SchemaUtils.AS_QUALapprox,
 //            SchemaUtils.CALL_PL);//, AS_VarDP);
 
+    // If the requested key is missing in an Avro record:
+    //
+    // Avro 1.11 throws: https://github.com/apache/avro/blob/release-1.11.0/lang/java/avro/src/main/java/org/apache/avro/generic/GenericData.java#L267-L269
+    // Avro 1.8 returns null: https://github.com/apache/avro/blob/release-1.8.0/lang/java/avro/src/main/java/org/apache/avro/generic/GenericData.java#L208
+    //
+    // Most of the code here was written for Avro 1.8 behavior; this function provides the equivalent for Avro 1.11.
+    private static Object getNoThrow(GenericRecord record, String key) {
+        return record.hasField(key) ? record.get(key) : null;
+    }
+
     public ExtractCohortRecord(GenericRecord genericRecord) {
         this.location = (Long) genericRecord.get(SchemaUtils.LOCATION_FIELD_NAME);
         this.sampleId = (Long) genericRecord.get(SchemaUtils.SAMPLE_ID_FIELD_NAME);
@@ -49,20 +59,20 @@ public class ExtractCohortRecord implements Locatable {
         this.end = start;
 
         // if this record is being constructed from the VET data, we won't have a state so we default it to 'v'
-        this.state = Objects.toString(genericRecord.get(SchemaUtils.STATE_FIELD_NAME), "v");
+        this.state = Objects.toString(getNoThrow(genericRecord, SchemaUtils.STATE_FIELD_NAME), "v");
 
         // the rest are nullable
         this.refAllele = Objects.toString(genericRecord.get(SchemaUtils.REF_ALLELE_FIELD_NAME), null);
         this.altAllele = Objects.toString(genericRecord.get(SchemaUtils.ALT_ALLELE_FIELD_NAME), null);
         this.callGT = Objects.toString(genericRecord.get(SchemaUtils.CALL_GT), null);
-        this.callAD = Objects.toString(genericRecord.get(SchemaUtils.CALL_AD), null);
+        this.callAD = Objects.toString(getNoThrow(genericRecord, SchemaUtils.CALL_AD), null);
         this.callGQ = Objects.toString(genericRecord.get(SchemaUtils.CALL_GQ), null);
         this.qualapprox = Objects.toString(genericRecord.get(SchemaUtils.QUALapprox), null);
         this.asQualapprox = Objects.toString(genericRecord.get(SchemaUtils.AS_QUALapprox), null);
         this.callPL = Objects.toString(genericRecord.get(SchemaUtils.CALL_PL), null);
 
         // to keep callRGQ final...
-        String tmpRGQ = Objects.toString(genericRecord.get(SchemaUtils.CALL_RGQ), null);
+        String tmpRGQ = Objects.toString(getNoThrow(genericRecord, SchemaUtils.CALL_RGQ), null);
 
         // if we don't get RGQ from the database, we can calculate it from the PLs
         if (tmpRGQ != null) {
