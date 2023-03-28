@@ -159,7 +159,6 @@ task ExtractVariantAnnotations {
 	}
 	Int disk_size = ceil(size(input_vcf, "GB") + size(input_vcf_index, "GB") + 100)
 
-
 	command {
 		set -e
 

@@ -171,6 +171,7 @@ task IndelsVariantRecalibrator {
     Int machine_mem = select_first([machine_mem_gb, 30])
     Int java_mem = machine_mem - 5
 
+
     command <<<
         set -euo pipefail
 
