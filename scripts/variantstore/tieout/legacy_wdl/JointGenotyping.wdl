@@ -261,7 +261,7 @@ workflow JointGenotyping {
 
     call Tasks.GatherTranches as SNPGatherTranches {
       input:
-        tranches = SNPsVariantRecalibratorScattered.tranches,
+        input_tranches = SNPsVariantRecalibratorScattered.tranches,
         output_filename = callset_name + ".snps.gathered.tranches",
         mode = "SNP",
         disk_size = small_disk
