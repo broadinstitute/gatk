@@ -4,8 +4,6 @@ import "GvsWarpTasks.wdl" as Tasks
 import "GvsUtils.wdl" as Utils
 import "../../vcf_site_level_filtering_wdl/JointVcfFiltering.wdl" as VQSRLite
 
-# B
-
 workflow GvsCreateFilterSet {
   input {
     Boolean go = true
@@ -207,22 +205,6 @@ workflow GvsCreateFilterSet {
         fq_filter_sites_destination_table = fq_filter_sites_destination_table,
         project_id = project_id
     }
-
-    call UberMonitor as UberMonitorLite {
-      input:
-        inputs = flatten([[JointVcfFiltering.extract_variant_anotations_snps_monitoring_log],
-                  [JointVcfFiltering.extract_variant_anotations_indels_monitoring_log],
-                  [JointVcfFiltering.train_variant_anotation_model_snps_monitoring_log],
-                  [JointVcfFiltering.train_variant_anotation_model_indels_monitoring_log],
-                  JointVcfFiltering.score_variant_annotations_snps_monitoring_log,
-                  JointVcfFiltering.score_variant_annotations_indels_monitoring_log,
-                  [MergeSNPScoredVCFs.monitoring_log],
-                  [MergeINDELScoredVCFs.monitoring_log],
-                  [CreateFilteredScoredSNPsVCF.monitoring_log],
-                  [CreateFilteredScoredINDELsVCF.monitoring_log],
-                  [PopulateFilterSetInfo.monitoring_log],
-                  [PopulateFilterSetSites.monitoring_log]])
-    }
   }
 
   if (use_classic_VQSR) {
@@ -315,15 +297,6 @@ workflow GvsCreateFilterSet {
           output_vcf_name = "${filter_set_name}.vrecalibration.gz",
           preemptible_tries = 3,
       }
-
-      call UberMonitor as UberMonitorClassicManySamples {
-        input:
-          inputs = flatten([[IndelsVariantRecalibrator.monitoring_log],
-                           [SNPsVariantRecalibratorCreateModel.monitoring_log],
-                           SNPsVariantRecalibratorScattered.monitoring_log,
-                           [SNPGatherTranches.monitoring_log],
-                           [MergeRecalibrationFiles.monitoring_log]])
-      }
     }
 
     if (GetNumSamplesLoaded.num_samples <= snps_variant_recalibration_threshold) {
@@ -347,11 +320,6 @@ workflow GvsCreateFilterSet {
           disk_size = "1000",
           machine_mem_gb = SNP_VQSR_mem_gb_override,
           max_gaussians = SNP_VQSR_max_gaussians_override,
-      }
-      call UberMonitor as UberMonitorClassicFewSamples {
-        input:
-          inputs = flatten([[IndelsVariantRecalibrator.monitoring_log],
-                            [SNPsVariantRecalibratorClassic.monitoring_log]])
       }
     }
 
@@ -569,12 +537,8 @@ task PopulateFilterSetSites {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
-  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
-
   command <<<
     set -eo pipefail
-
-    bash ~{monitoring_script} > monitoring.log &
 
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
@@ -609,7 +573,6 @@ task PopulateFilterSetSites {
 
   output {
     String status_load_filter_set_sites = read_string("status_load_filter_set_sites")
-    File monitoring_log = "monitoring.log"
   }
 }
 
@@ -629,12 +592,8 @@ task PopulateFilterSetTranches {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
-  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
-
   command <<<
     set -eo pipefail
-
-    bash ~{monitoring_script} > monitoring.log &
 
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
@@ -661,34 +620,5 @@ task PopulateFilterSetTranches {
 
   output {
     String status_load_filter_set_tranches = read_string("status_load_filter_set_tranches")
-    File monitoring_log = "monitoring.log"
-  }
-}
-
-task UberMonitor {
-  input {
-    Array[File] inputs
-  }
-
-  command <<<
-    set -e
-
-    python3 /app/uber_monitor.py \
-    --input ~{sep=" " inputs}
-  >>>
-
-  # ------------------------------------------------
-  # Runtime settings:
-  runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:ah_var_store_2023_03_25"
-    memory: "1 GB"
-    preemptible: 3
-    cpu: "1"
-    disks: "local-disk 100 HDD"
-  }
-  # ------------------------------------------------
-  # Outputs:
-  output {
-    File out = stdout()
   }
 }

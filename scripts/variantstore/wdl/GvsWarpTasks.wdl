@@ -28,12 +28,11 @@ task SNPsVariantRecalibratorCreateModel {
         Int? machine_mem_gb
 
         Int disk_size
+        File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     }
 
     Int machine_mem = select_first([machine_mem_gb, 100])
     Int java_mem = machine_mem - 5
-
-    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
     command <<<
         set -euo pipefail
@@ -54,10 +53,10 @@ task SNPsVariantRecalibratorCreateModel {
         --maximum-training-variants ~{maximum_training_variants} \
         --output-model ~{model_report_filename} \
         --max-gaussians ~{max_gaussians} \
-        -resource:hapmap,known=false,training=true,truth=true,prior=0 ~{hapmap_resource_vcf} \
-        -resource:omni,known=false,training=true,truth=true,prior=0 ~{omni_resource_vcf} \
-        -resource:1000G,known=false,training=true,truth=false,prior=0 ~{one_thousand_genomes_resource_vcf} \
-        -resource:dbsnp,known=true,training=false,truth=false,prior=0 ~{dbsnp_resource_vcf}
+        -resource:hapmap,known=false,training=true,truth=true,prior=15 ~{hapmap_resource_vcf} \
+        -resource:omni,known=false,training=true,truth=true,prior=12 ~{omni_resource_vcf} \
+        -resource:1000G,known=false,training=true,truth=false,prior=10 ~{one_thousand_genomes_resource_vcf} \
+        -resource:dbsnp,known=true,training=false,truth=false,prior=7 ~{dbsnp_resource_vcf}
     >>>
 
     runtime {
@@ -92,12 +91,8 @@ task GatherTranches {
         }
     }
 
-    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
-
     command <<<
         set -euo pipefail
-
-        bash ~{monitoring_script} > monitoring.log &
 
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
         tranches_fofn=~{write_lines(tranches)}
@@ -143,7 +138,6 @@ task GatherTranches {
 
     output {
         File tranches_file = "~{output_filename}"
-        File monitoring_log = "monitoring.log"
     }
 }
 
@@ -177,12 +171,8 @@ task IndelsVariantRecalibrator {
     Int machine_mem = select_first([machine_mem_gb, 30])
     Int java_mem = machine_mem - 5
 
-    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
-
     command <<<
         set -euo pipefail
-
-        bash ~{monitoring_script} > monitoring.log &
 
         gatk --java-options -Xmx~{java_mem}g \
         VariantRecalibrator \
@@ -198,9 +188,9 @@ task IndelsVariantRecalibrator {
         ~{"--input-model " + model_report} \
         --max-gaussians ~{max_gaussians} \
         --maximum-training-variants ~{maximum_training_variants} \
-        -resource:mills,known=false,training=true,truth=true,prior=0 ~{mills_resource_vcf} \
-        -resource:axiomPoly,known=false,training=true,truth=false,prior=0 ~{axiomPoly_resource_vcf} \
-        -resource:dbsnp,known=true,training=false,truth=false,prior=0 ~{dbsnp_resource_vcf}
+        -resource:mills,known=false,training=true,truth=true,prior=12 ~{mills_resource_vcf} \
+        -resource:axiomPoly,known=false,training=true,truth=false,prior=10 ~{axiomPoly_resource_vcf} \
+        -resource:dbsnp,known=true,training=false,truth=false,prior=2 ~{dbsnp_resource_vcf}
     >>>
 
     runtime {
@@ -216,7 +206,6 @@ task IndelsVariantRecalibrator {
         File recalibration_index = "~{recalibration_filename}.idx"
         File tranches = "~{tranches_filename}"
         File model = "indels.model"
-        File monitoring_log = "monitoring.log"
     }
 }
 
@@ -259,12 +248,8 @@ task SNPsVariantRecalibrator {
     Int java_mem = machine_mem - 5
     String model_report_arg = if defined(model_report) then "--input-model $MODEL_REPORT --output-tranches-for-scatter" else ""
 
-    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
-
     command <<<
         set -euo pipefail
-
-        bash ~{monitoring_script} > monitoring.log &
 
         MODEL_REPORT=~{model_report}
 
@@ -282,10 +267,10 @@ task SNPsVariantRecalibrator {
         --sample-every-Nth-variant 1 \
         ~{model_report_arg} \
         --max-gaussians ~{max_gaussians} \
-        -resource:hapmap,known=false,training=true,truth=true,prior=0 ~{hapmap_resource_vcf} \
-        -resource:omni,known=false,training=true,truth=true,prior=0 ~{omni_resource_vcf} \
-        -resource:1000G,known=false,training=true,truth=false,prior=0 ~{one_thousand_genomes_resource_vcf} \
-        -resource:dbsnp,known=true,training=false,truth=false,prior=0 ~{dbsnp_resource_vcf}
+        -resource:hapmap,known=false,training=true,truth=true,prior=15 ~{hapmap_resource_vcf} \
+        -resource:omni,known=false,training=true,truth=true,prior=12 ~{omni_resource_vcf} \
+        -resource:1000G,known=false,training=true,truth=false,prior=10 ~{one_thousand_genomes_resource_vcf} \
+        -resource:dbsnp,known=true,training=false,truth=false,prior=7 ~{dbsnp_resource_vcf}
     >>>
 
     runtime {
@@ -301,6 +286,5 @@ task SNPsVariantRecalibrator {
         File recalibration_index = "~{recalibration_filename}.idx"
         File tranches = "~{tranches_filename}"
         File model = "snps.model"
-        File monitoring_log = "monitoring.log"
     }
 }

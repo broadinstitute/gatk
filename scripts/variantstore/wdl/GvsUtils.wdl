@@ -11,7 +11,6 @@ task MergeVCFs {
   }
 
   Int disk_size = if (defined(merge_disk_override)) then merge_disk_override else 100
-  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   parameter_meta {
     input_vcfs: {
@@ -20,9 +19,6 @@ task MergeVCFs {
   }
 
   command {
-
-    bash ~{monitoring_script} > monitoring.log &
-
     gatk --java-options -Xmx3g GatherVcfsCloud \
     --ignore-safety-checks --gather-type ~{gather_type} \
     --create-output-variant-index false \
@@ -50,7 +46,6 @@ task MergeVCFs {
   output {
     File output_vcf = "~{output_vcf_name}"
     File output_vcf_index = "~{output_vcf_name}.tbi"
-    File monitoring_log = "monitoring.log"
   }
 }
 
