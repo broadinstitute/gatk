@@ -139,8 +139,7 @@ workflow GvsCreateFilterSet {
         score_interval_list = interval_list,
         snp_annotations   = "-A AS_QD -A AS_MQRankSum -A AS_ReadPosRankSum -A AS_FS -A AS_MQ -A AS_SOR",
         indel_annotations = "-A AS_QD -A AS_MQRankSum -A AS_ReadPosRankSum -A AS_FS -A AS_MQ -A AS_SOR",
-        use_allele_specific_annotations = true,
-        monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+        use_allele_specific_annotations = true
     }
 
     call Utils.MergeVCFs as MergeINDELScoredVCFs {
