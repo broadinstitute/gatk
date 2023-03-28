@@ -31,6 +31,8 @@ workflow JointVcfFiltering {
 
 		String snp_resource_args = "--resource:hapmap,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/hapmap_3.3.hg38.vcf.gz --resource:omni,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/1000G_omni2.5.hg38.vcf.gz --resource:1000G,training=true,calibration=false gs://gcp-public-data--broad-references/hg38/v0/1000G_phase1.snps.high_confidence.hg38.vcf.gz"
 		String indel_resource_args = "--resource:mills,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz --resource:axiom,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/Axiom_Exome_Plus.genotypes.all_populations.poly.hg38.vcf.gz"
+
+		File? monitoring_script
 	}
 
 	parameter_meta {
@@ -50,7 +52,8 @@ workflow JointVcfFiltering {
 			interval_list = extract_interval_list,
 			use_allele_specific_annotations = use_allele_specific_annotations,
 			gatk_override = gatk_override,
-			gatk_docker = gatk_docker
+			gatk_docker = gatk_docker,
+			monitoring_script = monitoring_script
 	}
 
 	call ExtractVariantAnnotations as ExtractVariantAnnotationsINDELs {
@@ -64,7 +67,8 @@ workflow JointVcfFiltering {
 			interval_list = extract_interval_list,
 			use_allele_specific_annotations = use_allele_specific_annotations,
 			gatk_override = gatk_override,
-			gatk_docker = gatk_docker
+			gatk_docker = gatk_docker,
+			monitoring_script = monitoring_script
 	}
 
 	call TrainVariantAnnotationModel as TrainVariantAnnotationModelSNPs {
@@ -76,7 +80,8 @@ workflow JointVcfFiltering {
 			python_script = training_python_script,
 			hyperparameters_json = hyperparameters_json,
 			gatk_override = gatk_override,
-			gatk_docker = gatk_docker
+			gatk_docker = gatk_docker,
+			monitoring_script = monitoring_script
 	}
 
 	call TrainVariantAnnotationModel as TrainVariantAnnotationModelINDELs {
@@ -88,7 +93,8 @@ workflow JointVcfFiltering {
 			python_script = training_python_script,
 			hyperparameters_json = hyperparameters_json,
 			gatk_override = gatk_override,
-			gatk_docker = gatk_docker
+			gatk_docker = gatk_docker,
+			monitoring_script = monitoring_script
 	}
 
 	scatter(idx in range(length(vcf))) {
@@ -108,7 +114,8 @@ workflow JointVcfFiltering {
 				resource_args = snp_resource_args,
 				use_allele_specific_annotations = use_allele_specific_annotations,
 				gatk_override = gatk_override,
-				gatk_docker = gatk_docker
+				gatk_docker = gatk_docker,
+				monitoring_script = monitoring_script
 		}
 
 		call ScoreVariantAnnotations as ScoreVariantAnnotationsINDELs {
@@ -127,7 +134,8 @@ workflow JointVcfFiltering {
 				resource_args = indel_resource_args,
 				use_allele_specific_annotations = use_allele_specific_annotations,
 				gatk_override = gatk_override,
-				gatk_docker = gatk_docker
+				gatk_docker = gatk_docker,
+				monitoring_script = monitoring_script
 		}
 
 	}
@@ -137,6 +145,12 @@ workflow JointVcfFiltering {
 		Array[File] indels_variant_scored_vcf_index = ScoreVariantAnnotationsINDELs.output_vcf_index
 		Array[File] snps_variant_scored_vcf = ScoreVariantAnnotationsSNPs.output_vcf
 		Array[File] snps_variant_scored_vcf_index = ScoreVariantAnnotationsSNPs.output_vcf_index
+		File extract_variant_anotations_snps_monitoring_log = ExtractVariantAnnotationsSNPs.monitoring_log
+		File extract_variant_anotations_indels_monitoring_log = ExtractVariantAnnotationsINDELs.monitoring_log
+		File train_variant_anotation_model_snps_monitoring_log = TrainVariantAnnotationModelSNPs.monitoring_log
+		File train_variant_anotation_model_indels_monitoring_log = TrainVariantAnnotationModelINDELs.monitoring_log
+		Array[File] score_variant_annotations_snps_monitoring_log = ScoreVariantAnnotationsSNPs.monitoring_log
+		Array[File] score_variant_annotations_indels_monitoring_log = ScoreVariantAnnotationsINDELs.monitoring_log
 	}
 
 }
@@ -156,11 +170,19 @@ task ExtractVariantAnnotations {
 
 		Int memory_mb = 28000
 		Int command_mem = memory_mb - 1000
+		File? monitoring_script
 	}
 	Int disk_size = ceil(size(input_vcf, "GB") + size(input_vcf_index, "GB") + 100)
 
+
 	command {
 		set -e
+
+		# Create a zero-size monitoring log file so it exists even if we don't pass a monitoring script
+		touch monitoring.log
+		if [ -s ~{monitoring_script} ]; then
+			bash ~{monitoring_script} > monitoring.log &
+		fi
 
 		export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
@@ -179,6 +201,7 @@ task ExtractVariantAnnotations {
 		File extracted_training_vcf = "~{basename}.~{mode}.vcf.gz"
 		File extracted_training_vcf_index = "~{basename}.~{mode}.vcf.gz.tbi"
 		Array[File] outputs = glob("~{basename}.~{mode}.*")
+		File monitoring_log = "monitoring.log"
 	}
 	runtime {
 		docker: gatk_docker
@@ -200,11 +223,18 @@ task TrainVariantAnnotationModel {
 
 		Int memory_mb = 28000
 		Int command_mem = memory_mb - 1000
+		File? monitoring_script
 	}
 	Int disk_size = ceil(size(annots, "GB") + 100)
 
 	command <<<
 		set -e
+
+		# Create a zero-size monitoring log file so it exists even if we don't pass a monitoring script
+		touch monitoring.log
+		if [ -s ~{monitoring_script} ]; then
+			bash ~{monitoring_script} > monitoring.log &
+		fi
 
 		export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
@@ -222,6 +252,7 @@ task TrainVariantAnnotationModel {
 	>>>
 	output {
 		Array[File] outputs = glob("~{basename}.~{mode}.*")
+		File monitoring_log = "monitoring.log"
 	}
 	runtime {
 		docker: gatk_docker
@@ -250,12 +281,19 @@ task ScoreVariantAnnotations {
 
 		Int memory_mb = 16000
 		Int command_mem = memory_mb - 1000
+		File? monitoring_script
 	}
 	Int disk_size = ceil(size(vcf, "GB") * 2 + 50)
 
 	command {
 		zgrep -v '#' ~{vcf} > empty.txt
 		set -e
+
+		# Create a zero-size monitoring log file so it exists even if we don't pass a monitoring script
+		touch monitoring.log
+		if [ -s ~{monitoring_script} ]; then
+			bash ~{monitoring_script} > monitoring.log &
+		fi
 
 		if [ -s empty.txt ]; then
 			ln -s ~{sep=" . && ln -s " model_files} .
@@ -287,6 +325,7 @@ task ScoreVariantAnnotations {
 		File? annots = "~{basename}.~{mode}.annot.hdf5"
 		File output_vcf = "~{basename}.~{mode}.vcf.gz"
 		File output_vcf_index = "~{basename}.~{mode}.vcf.gz.tbi"
+		File monitoring_log = "monitoring.log"
 	}
 	runtime {
 		docker: gatk_docker

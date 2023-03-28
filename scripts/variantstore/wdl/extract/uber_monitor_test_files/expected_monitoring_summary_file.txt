@@ -1,0 +1,4 @@
+Total Mem	Max Mem Used	Max Mem Used (%)	Total Disk	Max Disk Used	Max Disk Used (%)	Task	Shard	File
+15.38	1.88	12.2	51.0	0.085	1.0	ScoreVariantAnnotationsINDELs	34	/Users/ggrant/Documents/dev/gatk/scripts/variantstore/wdl/extract/uber_monitor_test_files/call-ScoreVariantAnnotationsINDELs/shard-34/monitoring.log
+15.38	1.82	11.8	51.0	0.089	1.0	ScoreVariantAnnotationsINDELs	35	/Users/ggrant/Documents/dev/gatk/scripts/variantstore/wdl/extract/uber_monitor_test_files/call-ScoreVariantAnnotationsINDELs/shard-35/monitoring.log
+29.39	17.25	58.7	985.0	19.0	2.0	IndelsVariantRecalibrator		/Users/ggrant/Documents/dev/gatk/scripts/variantstore/wdl/extract/uber_monitor_test_files/call-IndelsVariantRecalibrator/monitoring.log

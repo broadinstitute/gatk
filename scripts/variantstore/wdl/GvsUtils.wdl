@@ -11,6 +11,7 @@ task MergeVCFs {
   }
 
   Int disk_size = if (defined(merge_disk_override)) then merge_disk_override else 100
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   parameter_meta {
     input_vcfs: {
@@ -19,6 +20,9 @@ task MergeVCFs {
   }
 
   command {
+
+    bash ~{monitoring_script} > monitoring.log &
+
     gatk --java-options -Xmx3g GatherVcfsCloud \
     --ignore-safety-checks --gather-type ~{gather_type} \
     --create-output-variant-index false \
@@ -46,6 +50,7 @@ task MergeVCFs {
   output {
     File output_vcf = "~{output_vcf_name}"
     File output_vcf_index = "~{output_vcf_name}.tbi"
+    File monitoring_log = "monitoring.log"
   }
 }
 
@@ -391,7 +396,7 @@ task GetNumSamplesLoaded {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -419,7 +424,7 @@ task CountSuperpartitions {
         ' | sed 1d > num_superpartitions.txt
     >>>
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
         disks: "local-disk 500 HDD"
     }
     output {
@@ -463,7 +468,7 @@ task ValidateFilterSetName {
     }
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:409.0.0-alpine"
         memory: "3 GB"
         disks: "local-disk 500 HDD"
         preemptible: 3
@@ -596,4 +601,31 @@ task MergeTsvs {
       File output_file = output_file_name
     }
 
+}
+
+task UberMonitor {
+  input {
+    Array[File] inputs
+  }
+
+  command <<<
+    set -e
+
+    python3 /app/uber_monitor.py \
+      --input ~{sep=" " inputs} \
+      --output monitoring_summary.txt
+  >>>
+
+  # ------------------------------------------------
+  # Runtime settings:
+  runtime {
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-03-28-alpine"
+    memory: "1 GB"
+    preemptible: 3
+    cpu: "1"
+    disks: "local-disk 100 HDD"
+  }
+  output {
+    File monitoring_summary = "monitoring_summary.txt"
+  }
 }

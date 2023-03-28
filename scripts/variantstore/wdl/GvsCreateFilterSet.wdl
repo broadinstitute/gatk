@@ -140,6 +140,7 @@ workflow GvsCreateFilterSet {
         snp_annotations = "-A AS_QD -A AS_MQRankSum -A AS_ReadPosRankSum -A AS_FS -A AS_MQ -A AS_SOR",
         indel_annotations = "-A AS_FS -A AS_ReadPosRankSum -A AS_MQRankSum -A AS_QD -A AS_SOR",
         use_allele_specific_annotations = true,
+        monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     }
 
     call Utils.MergeVCFs as MergeINDELScoredVCFs {
@@ -203,6 +204,22 @@ workflow GvsCreateFilterSet {
         sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
         fq_filter_sites_destination_table = fq_filter_sites_destination_table,
         project_id = project_id
+    }
+
+    call Utils.UberMonitor as UberMonitorLite {
+      input:
+        inputs = flatten([[JointVcfFiltering.extract_variant_anotations_snps_monitoring_log],
+                  [JointVcfFiltering.extract_variant_anotations_indels_monitoring_log],
+                  [JointVcfFiltering.train_variant_anotation_model_snps_monitoring_log],
+                  [JointVcfFiltering.train_variant_anotation_model_indels_monitoring_log],
+                  JointVcfFiltering.score_variant_annotations_snps_monitoring_log,
+                  JointVcfFiltering.score_variant_annotations_indels_monitoring_log,
+                  [MergeSNPScoredVCFs.monitoring_log],
+                  [MergeINDELScoredVCFs.monitoring_log],
+                  [CreateFilteredScoredSNPsVCF.monitoring_log],
+                  [CreateFilteredScoredINDELsVCF.monitoring_log],
+                  [PopulateFilterSetInfo.monitoring_log],
+                  [PopulateFilterSetSites.monitoring_log]])
     }
   }
 
@@ -296,6 +313,15 @@ workflow GvsCreateFilterSet {
           output_vcf_name = "${filter_set_name}.vrecalibration.gz",
           preemptible_tries = 3,
       }
+
+      call Utils.UberMonitor as UberMonitorClassicManySamples {
+        input:
+          inputs = flatten([[IndelsVariantRecalibrator.monitoring_log],
+                           [SNPsVariantRecalibratorCreateModel.monitoring_log],
+                           SNPsVariantRecalibratorScattered.monitoring_log,
+                           [SNPGatherTranches.monitoring_log],
+                           [MergeRecalibrationFiles.monitoring_log]])
+      }
     }
 
     if (GetNumSamplesLoaded.num_samples <= snps_variant_recalibration_threshold) {
@@ -319,6 +345,11 @@ workflow GvsCreateFilterSet {
           disk_size = "1000",
           machine_mem_gb = SNP_VQSR_mem_gb_override,
           max_gaussians = SNP_VQSR_max_gaussians_override,
+      }
+      call Utils.UberMonitor as UberMonitorClassicFewSamples {
+        input:
+          inputs = flatten([[IndelsVariantRecalibrator.monitoring_log],
+                            [SNPsVariantRecalibratorClassic.monitoring_log]])
       }
     }
 
@@ -536,8 +567,12 @@ task PopulateFilterSetSites {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
   command <<<
     set -eo pipefail
+
+    bash ~{monitoring_script} > monitoring.log &
 
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
@@ -572,6 +607,7 @@ task PopulateFilterSetSites {
 
   output {
     String status_load_filter_set_sites = read_string("status_load_filter_set_sites")
+    File monitoring_log = "monitoring.log"
   }
 }
 
@@ -591,8 +627,12 @@ task PopulateFilterSetTranches {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
   command <<<
     set -eo pipefail
+
+    bash ~{monitoring_script} > monitoring.log &
 
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
@@ -619,5 +659,6 @@ task PopulateFilterSetTranches {
 
   output {
     String status_load_filter_set_tranches = read_string("status_load_filter_set_tranches")
+    File monitoring_log = "monitoring.log"
   }
 }
