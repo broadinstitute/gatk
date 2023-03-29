@@ -137,9 +137,10 @@ workflow GvsCreateFilterSet {
         gatk_docker = "us.gcr.io/broad-gatk/gatk:4.3.0.0",
         extract_interval_list = interval_list,
         score_interval_list = interval_list,
-        annotations = "-A AS_QD -A AS_MQRankSum -A AS_ReadPosRankSum -A AS_FS -A AS_MQ -A AS_SOR",
+        annotations = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"],
         resource_args = "--resource:hapmap,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/hapmap_3.3.hg38.vcf.gz --resource:omni,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/1000G_omni2.5.hg38.vcf.gz --resource:1000G,training=true,calibration=false gs://gcp-public-data--broad-references/hg38/v0/1000G_phase1.snps.high_confidence.hg38.vcf.gz --resource:mills,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz --resource:axiom,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/Axiom_Exome_Plus.genotypes.all_populations.poly.hg38.vcf.gz",
-        use_allele_specific_annotations = true,
+        extract_extra_args = "--use-allele-specific-annotations",
+        score_extra_args = "--use-allele-specific-annotations"
     }
 
     call Utils.MergeVCFs as MergeINDELScoredVCFs {

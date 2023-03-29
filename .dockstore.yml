@@ -96,6 +96,7 @@ workflows:
          - master
          - ah_var_store
          - gg_VS-695_RunPandSForVQSR_Lite
+         - gg_VS-776_UpdateToLatestVQSRLite
    - name: GvsPopulateAltAllele
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPopulateAltAllele.wdl
