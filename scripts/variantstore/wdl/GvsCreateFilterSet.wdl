@@ -337,7 +337,7 @@ workflow GvsCreateFilterSet {
         project_id = project_id
     }
 
-    call PopulateFilterSetTranches as PopulateFilterSetTranchesClassic {
+    call PopulateFilterSetTranches {
       input:
         gatk_override = gatk_override,
         filter_set_name = filter_set_name,
