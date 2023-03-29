@@ -96,6 +96,7 @@ workflows:
          - master
          - ah_var_store
          - gg_VS-695_RunPandSForVQSR_Lite
+         - gg_VS-849_Add_AS_MQ_IndelAnnot_To_VQSR_Lite
    - name: GvsPopulateAltAllele
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPopulateAltAllele.wdl
