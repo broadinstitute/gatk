@@ -4,16 +4,32 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
+import org.testng.annotations.AfterTest;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 
-class ExtractCohortTest extends CommandLineProgramTest {
+public class ExtractCohortTest extends CommandLineProgramTest {
   private final String prefix = getToolTestDataDir();
   private final String quickstart10mbRefRangesAvroFile = prefix + "quickstart_10mb_ref_ranges.avro";
   private final String quickstart10mbVetAvroFile = prefix + "quickstart_10mb_vet.avro";
   private final String quickstartSampleListFile = prefix + "quickstart.sample.list";
+
+  @AfterTest
+  public void afterTest() {
+    try {
+      String [] filesToCleanUp = {"anything", "anything.idx"};
+      for (String file : filesToCleanUp) {
+        Files.deleteIfExists(Paths.get(file));
+      }
+    } catch (IOException e) {
+      throw new RuntimeException("Failed cleaning up 'anything' outputs: ", e);
+    }
+  }
 
   @Test
   public void testFinalVCFfromRangesAvro() throws Exception {
