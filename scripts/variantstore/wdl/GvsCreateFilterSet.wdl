@@ -132,7 +132,7 @@ workflow GvsCreateFilterSet {
         input_vcfs = ExtractFilterTask.output_vcf,
         input_vcf_idxs = ExtractFilterTask.output_vcf_index,
         sites_only_vcf = MergeVCFs.output_vcf,
-        sites_only_vcf_index = MergeVCFs.output_vcf_index,
+        sites_only_vcf_idx = MergeVCFs.output_vcf_index,
         output_prefix = filter_set_name,
         gatk_docker = "us.gcr.io/broad-gatk/gatk:4.3.0.0",
         annotations = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"],
