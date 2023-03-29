@@ -145,9 +145,7 @@ public abstract class AssemblyBasedCallerArgumentCollection {
     @Hidden
     @Argument(fullName = ALLELE_LIKELIHOOD_MATRIX_INTERVAL, doc="Interval for which to write the alleleLikelihoodMatrix", optional=true)
     public String alleleLikelihoodMatrixInterval=null;
-
-    @Advanced
-    @Hidden
+    
     @Argument(fullName = DONT_USE_SOFT_CLIPPED_BASES_LONG_NAME, doc = "Do not analyze soft clipped bases in the reads", optional = true)
     public boolean dontUseSoftClippedBases = false;
 
