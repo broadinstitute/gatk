@@ -129,16 +129,16 @@ workflow GvsCreateFilterSet {
   if (!use_classic_VQSR) {
     call VQSRLite.JointVcfFiltering as JointVcfFiltering {
       input:
-        vcf = ExtractFilterTask.output_vcf,
-        vcf_index = ExtractFilterTask.output_vcf_index,
+        input_vcfs = ExtractFilterTask.output_vcf,
+        input_vcf_idxs = ExtractFilterTask.output_vcf_index,
         sites_only_vcf = MergeVCFs.output_vcf,
         sites_only_vcf_index = MergeVCFs.output_vcf_index,
-        basename = filter_set_name,
+        output_prefix = filter_set_name,
         gatk_docker = "us.gcr.io/broad-gatk/gatk:4.3.0.0",
         extract_interval_list = interval_list,
         score_interval_list = interval_list,
-        snp_annotations = "-A AS_QD -A AS_MQRankSum -A AS_ReadPosRankSum -A AS_FS -A AS_MQ -A AS_SOR",
-        indel_annotations = "-A AS_FS -A AS_ReadPosRankSum -A AS_MQRankSum -A AS_QD -A AS_SOR",
+        annotations = "-A AS_QD -A AS_MQRankSum -A AS_ReadPosRankSum -A AS_FS -A AS_MQ -A AS_SOR",
+        resource_args = "--resource:hapmap,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/hapmap_3.3.hg38.vcf.gz --resource:omni,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/1000G_omni2.5.hg38.vcf.gz --resource:1000G,training=true,calibration=false gs://gcp-public-data--broad-references/hg38/v0/1000G_phase1.snps.high_confidence.hg38.vcf.gz --resource:mills,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz --resource:axiom,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/Axiom_Exome_Plus.genotypes.all_populations.poly.hg38.vcf.gz",
         use_allele_specific_annotations = true,
     }
 
