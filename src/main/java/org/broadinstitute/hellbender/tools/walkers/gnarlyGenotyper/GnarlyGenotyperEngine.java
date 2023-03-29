@@ -257,7 +257,7 @@ public final class GnarlyGenotyperEngine {
                 }
             }
             catch (final Exception e) {
-                throw new IllegalStateException("Something went wrong: ", e);
+                throw new IllegalStateException("Unable to instantiate InfoFieldAnnotation: ", e);
             }
         }
         //since AS_FS and AS_SOR share the same raw key, we have to wait to remove raw keys until all the finalized values are added
