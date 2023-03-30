@@ -611,9 +611,16 @@ task UberMonitor {
   command <<<
     set -e
 
-    python3 /app/uber_monitor.py \
-      --input ~{sep=" " inputs} \
-      --output monitoring_summary.txt
+    # TODO is there a better way to do this? Determine (in bash) if the input array is empty?
+    INPUTS=~{sep=" " inputs}
+    if [ -z "$INPUTS" ] then
+      echo "No input monitoring log files found" > monitoring_summary.txt
+    else
+      python3 /app/uber_monitor.py \
+        --input ~{sep=" " inputs} \
+        --output monitoring_summary.txt
+    fi
+
   >>>
 
   # ------------------------------------------------
