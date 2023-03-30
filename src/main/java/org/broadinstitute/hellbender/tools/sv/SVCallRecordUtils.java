@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.sv;
 
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
@@ -99,13 +100,18 @@ public final class SVCallRecordUtils {
                 && record.getStrandA() != null && record.getStrandB() != null) {
             builder.attribute(GATKSVVCFConstants.STRANDS_ATTRIBUTE, getStrandString(record));
         }
-        final GenotypesContext genotypes = GenotypesContext.create(record.getGenotypes().size());
-        for (final Genotype g : record.getGenotypes()) {
-            genotypes.add(sanitizeEmptyGenotype(g));
-        }
         // htsjdk vcf encoder does not allow genotypes to have empty alleles
         builder.genotypes(record.getGenotypes().stream().map(SVCallRecordUtils::sanitizeEmptyGenotype).collect(Collectors.toList()));
+        sanitizeNullAttributes(builder);
         return builder;
+    }
+
+    /**
+     * Removes entries with null values. This can cause problems with vcf parsing, for example Integer fields
+     * set to "." cause exceptions.
+     */
+    private static void sanitizeNullAttributes(final VariantContextBuilder builder) {
+        builder.attributes(Maps.filterValues(builder.getAttributes(), o -> o != null));
     }
 
     /**

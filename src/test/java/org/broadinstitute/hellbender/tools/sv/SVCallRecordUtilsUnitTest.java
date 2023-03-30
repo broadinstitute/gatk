@@ -155,6 +155,18 @@ public class SVCallRecordUtilsUnitTest {
     }
 
     @Test
+    public void testGetVariantBuilderHasSanitizedNullAttributes() {
+        final SVCallRecord record = new SVCallRecord("var3", "chr1", 1000, false, "chr2", 1999, true, GATKSVVCFConstants.StructuralVariantAnnotationType.BND, null, null,
+                SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
+                ALLELES_BND,
+                Lists.newArrayList(GENOTYPE_BND_1),
+                Collections.emptyMap());
+        final VariantContext result = SVCallRecordUtils.getVariantBuilder(record).make();
+        // BNDs shouldn't have a length
+        Assert.assertFalse(result.hasAttribute(GATKSVVCFConstants.SVLEN));
+    }
+
+    @Test
     public void testFillMissingSamplesWithGenotypes() {
         final ArrayList<Genotype> genotypes = new ArrayList<>();
         genotypes.add(GENOTYPE_DEL_1);
