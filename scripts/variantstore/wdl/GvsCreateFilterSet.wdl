@@ -137,8 +137,8 @@ workflow GvsCreateFilterSet {
         gatk_docker = "us.gcr.io/broad-gatk/gatk:4.3.0.0",
         extract_interval_list = interval_list,
         score_interval_list = interval_list,
-        snp_annotations = "-A AS_QD -A AS_MQRankSum -A AS_ReadPosRankSum -A AS_FS -A AS_MQ -A AS_SOR",
-        indel_annotations = "-A AS_FS -A AS_ReadPosRankSum -A AS_MQRankSum -A AS_QD -A AS_SOR",
+        snp_annotations   = "-A AS_QD -A AS_MQRankSum -A AS_ReadPosRankSum -A AS_FS -A AS_MQ -A AS_SOR",
+        indel_annotations = "-A AS_QD -A AS_MQRankSum -A AS_ReadPosRankSum -A AS_FS -A AS_MQ -A AS_SOR",
         use_allele_specific_annotations = true,
         monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     }
@@ -377,7 +377,7 @@ workflow GvsCreateFilterSet {
         project_id = project_id
     }
 
-    call PopulateFilterSetTranches as PopulateFilterSetTranchesClassic {
+    call PopulateFilterSetTranches {
       input:
         gatk_override = gatk_override,
         filter_set_name = filter_set_name,

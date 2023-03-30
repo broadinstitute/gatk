@@ -95,7 +95,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_VS-695_RunPandSForVQSR_Lite
          - gg_VS-871_UberMonitor
    - name: GvsPopulateAltAllele
      subclass: WDL
@@ -120,7 +119,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_VS-695_RunPandSForVQSR_Lite
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
@@ -217,7 +215,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_VS-695_RunPandSForVQSR_Lite
    - name: GvsQuickstartVcfIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartVcfIntegration.wdl
