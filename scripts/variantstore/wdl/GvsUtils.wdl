@@ -78,6 +78,7 @@ task SplitIntervals {
   Int java_memory = disk_memory - 4
 
   String gatk_tool = if (defined(interval_weights_bed)) then 'WeightedSplitIntervals' else 'SplitIntervals'
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   parameter_meta {
     intervals: {
@@ -99,6 +100,8 @@ task SplitIntervals {
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
     set -e
+
+    bash ~{monitoring_script} > monitoring.log &
 
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
@@ -134,6 +137,7 @@ task SplitIntervals {
 
   output {
     Array[File] interval_files = glob("*.interval_list")
+    File monitoring_log = "monitoring.log"
   }
 }
 
@@ -148,12 +152,16 @@ task GetBQTableLastModifiedDatetime {
     volatile: true
   }
 
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
   # ------------------------------------------------
   # try to get the last modified date for the table in question; fail if something comes back from BigQuery
   # that isn't in the right format (e.g. an error)
   command <<<
     set -o xtrace
     set -o errexit
+
+    bash ~{monitoring_script} > monitoring.log &
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
@@ -170,6 +178,7 @@ task GetBQTableLastModifiedDatetime {
 
   output {
     String last_modified_timestamp = read_string(stdout())
+    File monitoring_log = "monitoring.log"
   }
 
   runtime {
@@ -193,10 +202,14 @@ task GetBQTablesMaxLastModifiedTimestamp {
     volatile: true
   }
 
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
   # ------------------------------------------------
   # try to get the latest last modified timestamp, in epoch microseconds, for all of the tables that match the provided prefixes
   command <<<
     set -e
+
+    bash ~{monitoring_script} > monitoring.log &
 
     echo "project_id = ~{query_project}" > ~/.bigqueryrc
 
@@ -208,6 +221,7 @@ task GetBQTablesMaxLastModifiedTimestamp {
 
   output {
     String max_last_modified_timestamp = read_string("max_last_modified_timestamp.txt")
+    File monitoring_log = "monitoring.log"
   }
 
   runtime {
@@ -230,11 +244,15 @@ task BuildGATKJarAndCreateDataset {
     volatile: true
   }
 
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
   command <<<
     # Much of this could/should be put into a Docker image.
     # Prepend date, time and pwd to xtrace log entries.
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
+
+    bash ~{monitoring_script} > monitoring.log &
 
     # git and git-lfs
     apt-get -qq update
@@ -290,6 +308,7 @@ task BuildGATKJarAndCreateDataset {
     Boolean done = true
     File jar = glob("gatk/build/libs/*-SNAPSHOT-local.jar")[0]
     String dataset_name = read_string("gatk/dataset.txt")
+    File monitoring_log = "monitoring.log"
   }
 
   runtime {
@@ -343,7 +362,11 @@ task ScaleXYBedValues {
     meta {
         # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
     }
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
     command <<<
+        bash ~{monitoring_script} > monitoring.log &
+
         python3 /app/scale_xy_bed_values.py \
             --input ~{interval_weights_bed} \
             --output "interval_weights_xy_scaled.bed" \
@@ -354,6 +377,7 @@ task ScaleXYBedValues {
     output {
         File xy_scaled_bed = "interval_weights_xy_scaled.bed"
         Boolean done = true
+        File monitoring_log = "monitoring.log"
     }
 
     runtime {
@@ -376,9 +400,12 @@ task GetNumSamplesLoaded {
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   command <<<
     set -o errexit -o nounset -o xtrace -o pipefail
+
+    bash ~{monitoring_script} > monitoring.log &
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
     bq query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
@@ -393,6 +420,7 @@ task GetNumSamplesLoaded {
 
   output {
     Int num_samples = read_int(stdout())
+    File monitoring_log = "monitoring.log"
   }
 
   runtime {
@@ -415,7 +443,10 @@ task CountSuperpartitions {
         String project_id
         String dataset_name
     }
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     command <<<
+        bash ~{monitoring_script} > monitoring.log &
+
         bq query --location=US --project_id='~{project_id}' --format=csv --use_legacy_sql=false '
 
             SELECT COUNT(*) FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES`
@@ -429,6 +460,7 @@ task CountSuperpartitions {
     }
     output {
         Int num_superpartitions = read_int('num_superpartitions.txt')
+        File monitoring_log = "monitoring.log"
     }
 }
 
@@ -446,9 +478,12 @@ task ValidateFilterSetName {
 
     # add labels for DSP Cloud Cost Control Labeling and Reporting
     String bq_labels = "--label service:gvs --label team:variants --label managedby:gvs_utils"
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
     command <<<
         set -o errexit -o nounset -o xtrace -o pipefail
+
+        bash ~{monitoring_script} > monitoring.log &
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
@@ -465,6 +500,7 @@ task ValidateFilterSetName {
     >>>
     output {
         Boolean done = true
+        File monitoring_log = "monitoring.log"
     }
 
     runtime {
@@ -585,7 +621,11 @@ task MergeTsvs {
         String output_file_name
     }
 
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
     command <<<
+      bash ~{monitoring_script} > monitoring.log &
+
       echo -n > ~{output_file_name}
       for f in ~{sep=' ' input_files}
       do
@@ -599,6 +639,7 @@ task MergeTsvs {
 
     output {
       File output_file = output_file_name
+      File monitoring_log = "monitoring.log"
     }
 
 }
@@ -613,8 +654,10 @@ task UberMonitor {
 
     # TODO is there a better way to do this? Determine (in bash) if the input array is empty?
     INPUTS=~{sep=" " inputs}
+    echo "These are the inputs
+    echo "$INPUTS"
     if [[ -z "$INPUTS" ]]; then
-      echo "No input monitoring log files found" > monitoring_summary.txt
+      echo "No monitoring log files found" > monitoring_summary.txt
     else
       python3 /app/uber_monitor.py \
         --input ~{sep=" " inputs} \
