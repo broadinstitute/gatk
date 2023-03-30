@@ -9,11 +9,18 @@ public final class HelpConstants {
 
     private HelpConstants() {};
 
-    public static final String GATK_FORUM_URL = "http://gatkforums.broadinstitute.org/";
+    public static final String LEGACY_GATK_FORUM_URL = "http://gatkforums.broadinstitute.org/";
+    public static final String GATK_FORUM_URL = "https://gatk.broadinstitute.org/hc/en-us/community/topics";
     public static final String GATK_MAIN_SITE = "https://software.broadinstitute.org/gatk/";
-    
+    public static final String GATK_DOCS_SITE = "https://gatk.broadinstitute.org/hc/";
+
+    //TODO anything using this is a dead link, we should move any remaining references to this into some technical docs for the future.
     public static String forumPost(String post) {
-        return GATK_FORUM_URL + post;
+        return LEGACY_GATK_FORUM_URL + post;
+    }
+
+    public static String forumArticle(String article) {
+        return GATK_DOCS_SITE + "articles/" + article;
     }
 
     /**
