@@ -139,9 +139,13 @@ task ExtractVariantAnnotations {
         input_vcf_idx: {localization_optional: true}
     }
 
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
     command {
         set -e
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+
+        bash ~{monitoring_script} > monitoring.log &
 
         gatk --java-options "-Xmx~{default=6 runtime_attributes.command_mem_gb}G" \
             ExtractVariantAnnotations \
@@ -167,6 +171,7 @@ task ExtractVariantAnnotations {
         File? unlabeled_annotations_hdf5 = "~{output_prefix}.extract.unlabeled.annot.hdf5"
         File extracted_vcf = "~{output_prefix}.extract.vcf.gz"          # this line will break if extra_args includes the do-not-gzip-vcf-output argument
         File extracted_vcf_idx = "~{output_prefix}.extract.vcf.gz.tbi"  # this line will break if extra_args includes the do-not-gzip-vcf-output argument
+        File monitoring_log = "monitoring.log"
     }
 }
 
