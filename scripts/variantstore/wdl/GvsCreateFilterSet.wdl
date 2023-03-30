@@ -119,8 +119,7 @@ workflow GvsCreateFilterSet {
 
   call Utils.UberMonitor as UberMonitorItFirst {
     input:
-      inputs = select_all(
-               flatten(
+      inputs = flatten(
                [
                [SamplesTableDatetimeCheck.monitoring_log],
                [GetNumSamplesLoaded.monitoring_log],
@@ -128,7 +127,6 @@ workflow GvsCreateFilterSet {
                [AltAlleleTableDatetimeCheck.monitoring_log],
                ExtractFilterTask.monitoring_log
                ]
-               )
                )
   }
 

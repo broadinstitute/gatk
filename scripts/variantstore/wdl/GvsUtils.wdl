@@ -654,7 +654,7 @@ task UberMonitor {
 
     # TODO is there a better way to do this? Determine (in bash) if the input array is empty?
     INPUTS=~{sep=" " inputs}
-    echo "These are the inputs
+    echo "These are the inputs:"
     echo "$INPUTS"
     if [[ -z "$INPUTS" ]]; then
       echo "No monitoring log files found" > monitoring_summary.txt
