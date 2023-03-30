@@ -10,7 +10,7 @@ task MergeVCFs {
     Int? preemptible_tries
   }
 
-  Int disk_size = if (defined(merge_disk_override)) then merge_disk_override else 100
+  Int disk_size = select_first([merge_disk_override, 100])
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   parameter_meta {
@@ -73,8 +73,8 @@ task SplitIntervals {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
-  Int disk_size = if (defined(split_intervals_disk_size_override)) then select_first([split_intervals_disk_size_override]) else 10
-  Int disk_memory = if (defined(split_intervals_mem_override)) then select_first([split_intervals_mem_override]) else 16
+  Int disk_size = select_first([split_intervals_disk_size_override, 10])
+  Int disk_memory = select_first([split_intervals_mem_override, 16])
   Int java_memory = disk_memory - 4
 
   String gatk_tool = if (defined(interval_weights_bed)) then 'WeightedSplitIntervals' else 'SplitIntervals'

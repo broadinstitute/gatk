@@ -208,18 +208,14 @@ workflow GvsCreateFilterSet {
 
     call Utils.UberMonitor as UberMonitorVQSRLite {
       input:
-        inputs = flatten([[JointVcfFiltering.extract_variant_anotations_snps_monitoring_log],
-                  [JointVcfFiltering.extract_variant_anotations_indels_monitoring_log],
-                  [JointVcfFiltering.train_variant_anotation_model_snps_monitoring_log],
-                  [JointVcfFiltering.train_variant_anotation_model_indels_monitoring_log],
-                  JointVcfFiltering.score_variant_annotations_snps_monitoring_log,
-                  JointVcfFiltering.score_variant_annotations_indels_monitoring_log,
+        inputs = select_all(flatten([
+                  JointVcfFiltering.monitoring_logs,
                   [MergeSNPScoredVCFs.monitoring_log],
                   [MergeINDELScoredVCFs.monitoring_log],
                   [CreateFilteredScoredSNPsVCF.monitoring_log],
                   [CreateFilteredScoredINDELsVCF.monitoring_log],
                   [PopulateFilterSetInfo.monitoring_log],
-                  [PopulateFilterSetSites.monitoring_log]])
+                  [PopulateFilterSetSites.monitoring_log]]))
     }
   }
 
@@ -314,14 +310,14 @@ workflow GvsCreateFilterSet {
           preemptible_tries = 3,
       }
 
-      call Utils.UberMonitor as UberMonitorVQSRClassicManySamples {
-        input:
-          inputs = flatten([[IndelsVariantRecalibrator.monitoring_log],
-                           [SNPsVariantRecalibratorCreateModel.monitoring_log],
-                           SNPsVariantRecalibratorScattered.monitoring_log,
-                           [SNPGatherTranches.monitoring_log],
-                           [MergeRecalibrationFiles.monitoring_log]])
-      }
+#      call Utils.UberMonitor as UberMonitorVQSRClassicManySamples {
+#        input:
+#          inputs = flatten([[IndelsVariantRecalibrator.monitoring_log],
+#                           [SNPsVariantRecalibratorCreateModel.monitoring_log],
+#                           SNPsVariantRecalibratorScattered.monitoring_log,
+#                           [SNPGatherTranches.monitoring_log],
+#                           [MergeRecalibrationFiles.monitoring_log]])
+#      }
     }
 
     if (GetNumSamplesLoaded.num_samples <= snps_variant_recalibration_threshold) {
@@ -346,11 +342,11 @@ workflow GvsCreateFilterSet {
           machine_mem_gb = SNP_VQSR_mem_gb_override,
           max_gaussians = SNP_VQSR_max_gaussians_override,
       }
-      call Utils.UberMonitor as UberMonitorVQSRClassicFewSamples {
-        input:
-          inputs = flatten([[IndelsVariantRecalibrator.monitoring_log],
-                            [SNPsVariantRecalibratorClassic.monitoring_log]])
-      }
+#      call Utils.UberMonitor as UberMonitorVQSRClassicFewSamples {
+#        input:
+#          inputs = flatten([[IndelsVariantRecalibrator.monitoring_log],
+#                            [SNPsVariantRecalibratorClassic.monitoring_log]])
+#      }
     }
 
     call PopulateFilterSetInfo as PopulateFilterSetInfoClassic {
@@ -388,10 +384,30 @@ workflow GvsCreateFilterSet {
     }
   }
 
+  call Utils.UberMonitor as UberMonitorVQSRClassic {
+    input:
+      inputs = select_all(
+               flatten(
+               [
+                                  [IndelsVariantRecalibrator.monitoring_log],
+                                  [SNPsVariantRecalibratorCreateModel.monitoring_log],
+                                   select_first([SNPsVariantRecalibratorScattered.monitoring_log, []]),
+                                  [SNPGatherTranches.monitoring_log],
+                                  [MergeRecalibrationFiles.monitoring_log],
+                                  [IndelsVariantRecalibrator.monitoring_log],
+                                  [SNPsVariantRecalibratorClassic.monitoring_log],
+                                  [PopulateFilterSetInfoClassic.monitoring_log],
+                                  [PopulateFilterSetSitesClassic.monitoring_log],
+                                  [PopulateFilterSetTranches.monitoring_log]
+                                  ]
+                          )
+               )
+  }
 
   output {
     File output_vcf = MergeVCFs.output_vcf
     File output_vcf_idx = MergeVCFs.output_vcf_index
+    Array[File] foo = select_first([SNPsVariantRecalibratorScattered.monitoring_log, []])
     Boolean done = true
   }
 }
