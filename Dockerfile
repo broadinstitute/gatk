@@ -1,5 +1,7 @@
+ARG BASE_DOCKER=lbergelson/gatk:gatkbase-3.0.7
+
 # stage 1 for constructing the GATK zip
-FROM lbergelson/gatk:gatkbase_3.0.5 AS gradleBuild
+FROM ${BASE_DOCKER} AS gradleBuild
 LABEL stage=gatkIntermediateBuildImage
 ARG RELEASE=false
 
@@ -27,7 +29,7 @@ RUN cp -r $( find /gatk/build -name "*bundle-files-collected" )/ /gatk/unzippedJ
 RUN unzip -o -j $( find /gatk/unzippedJar -name "gatkPython*.zip" ) -d /gatk/unzippedJar/scripts
 RUN chmod -R a+rw /gatk/unzippedJar
 
-FROM lbergelson/gatk:gatkbase_3.0.5
+FROM ${BASE_DOCKER}
 
 RUN rm /etc/apt/sources.list.d/google-cloud-sdk.list && \
     apt update && \
