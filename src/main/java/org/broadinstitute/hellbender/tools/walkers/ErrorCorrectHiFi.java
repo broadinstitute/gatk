@@ -13,7 +13,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.UnalignedRead;
-import org.broadinstitute.hellbender.utils.read.UnalignedRead.ByteSequence;
+import org.broadinstitute.hellbender.utils.read.ByteSequence;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
 import java.io.*;

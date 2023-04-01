@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.utils.assembly;
 import htsjdk.samtools.util.SequenceUtil;
 import org.broadinstitute.hellbender.utils.assembly.LocalAssembler.*;
 import org.broadinstitute.hellbender.utils.read.UnalignedRead;
-import org.broadinstitute.hellbender.utils.read.UnalignedRead.ByteSequence;
+import org.broadinstitute.hellbender.utils.read.ByteSequence;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 

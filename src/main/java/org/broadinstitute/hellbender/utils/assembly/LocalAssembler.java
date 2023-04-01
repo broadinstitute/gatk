@@ -5,8 +5,9 @@ import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.collections.HopscotchSet;
+import org.broadinstitute.hellbender.utils.read.SequenceRC;
 import org.broadinstitute.hellbender.utils.read.UnalignedRead;
-import org.broadinstitute.hellbender.utils.read.UnalignedRead.ByteSequence;
+import org.broadinstitute.hellbender.utils.read.ByteSequence;
 
 import java.io.*;
 import java.util.*;
@@ -1895,47 +1896,6 @@ public class LocalAssembler {
         @Override public boolean isCanonical() { return false; }
         @Override public ContigImpl canonical() { return rc; }
         @Override public String toString() { return rc.toString() + "RC"; }
-    }
-
-    /** A CharSequence that is a view of the reverse-complement of another sequence. */
-    public static final class SequenceRC implements CharSequence, Comparable<CharSequence> {
-        private final int lenLess1;
-        private final CharSequence sequence;
-
-        public SequenceRC( final CharSequence sequence ) {
-            this.lenLess1 = sequence.length() - 1;
-            this.sequence = sequence;
-        }
-
-        @Override public int length() { return sequence.length(); }
-        @Override public char charAt( final int index ) {
-            final char result;
-            switch ( Character.toUpperCase(sequence.charAt(lenLess1 - index)) ) {
-                case 'A': result = 'T'; break;
-                case 'C': result = 'G'; break;
-                case 'G': result = 'C'; break;
-                case 'T': result = 'A'; break;
-                default: result = 'N'; break;
-            }
-            return result;
-        }
-        @Override public CharSequence subSequence( final int start, final int end ) {
-            return new StringBuilder(end - start).append(this, start, end).toString();
-        }
-        @Override public String toString() { return new StringBuilder(this).toString(); }
-
-        @Override public int compareTo( final CharSequence charSequence ) {
-            final int len1 = length();
-            final int len2 = charSequence.length();
-            final int cmpLen = Math.min(len1, len2);
-            for ( int idx = 0; idx != cmpLen; ++idx ) {
-                final char char1 = charAt(idx);
-                final char char2 = Character.toUpperCase(charSequence.charAt(idx));
-                if ( char1 > char2 ) return 1;
-                if ( char1 < char2 ) return -1;
-            }
-            return Integer.compare(len1, len2);
-        }
     }
 
     /** A list of Contigs that presents a reverse-complemented view of a List of Contigs. */

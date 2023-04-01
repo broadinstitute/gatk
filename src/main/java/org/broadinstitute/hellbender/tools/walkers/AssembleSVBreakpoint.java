@@ -8,14 +8,12 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.assembly.LocalAssembler;
-import org.broadinstitute.hellbender.utils.assembly.LocalAssembler.Path;
-import org.broadinstitute.hellbender.utils.assembly.LocalAssembler.PathPart;
 import org.broadinstitute.hellbender.utils.assembly.LocalAssembler.Traversal;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.tools.walkers.ErrorCorrectHiFi.CallIterator;
 import org.broadinstitute.hellbender.utils.read.UnalignedRead;
-import org.broadinstitute.hellbender.utils.read.UnalignedRead.ByteSequence;
+import org.broadinstitute.hellbender.utils.read.ByteSequence;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
 import java.io.BufferedWriter;

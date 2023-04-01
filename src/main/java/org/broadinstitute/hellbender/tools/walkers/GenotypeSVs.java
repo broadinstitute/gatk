@@ -1,9 +1,10 @@
 package org.broadinstitute.hellbender.tools.walkers;
 
-import edu.mit.broad.tedsUtils.align.EndsFreeAligner;
+import edu.mit.broad.tedsUtils.align.Aligner;
+import edu.mit.broad.tedsUtils.align.Scorer;
+import edu.mit.broad.tedsUtils.align.SomewhatGlobalAligner;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
-import htsjdk.samtools.util.SequenceUtil;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -15,12 +16,12 @@ import org.broadinstitute.hellbender.engine.VariantWalker;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.read.ByteSequence;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
 import java.io.*;
-import java.util.Iterator;
-import java.util.regex.Matcher;
+import java.util.*;
 import java.util.regex.Pattern;
 
 @CommandLineProgramProperties(
@@ -30,7 +31,12 @@ import java.util.regex.Pattern;
 )
 public final class GenotypeSVs extends VariantWalker {
     public static final int MINIMUM_SV_SIZE = 50;
-    public static final int WINDOW_SIZE = 50;
+    public static final int WINDOW_SIZE = 100;
+    public static final int REF_LEADIN_LEN = 6;
+    public static final int MAX_READ_LEN = REF_LEADIN_LEN + WINDOW_SIZE;
+    public static final int MIN_READ_LEN = REF_LEADIN_LEN + 25;
+    public static final int MIN_CALLS_TO_GENOTYPE = 7;
+    public static final float MIN_FRACTION_FOR_ALLELE_CALL = .15f;
 
     // ]p]t -- the BND locus, p, is the end of the reference sequence that precedes t
     public static final Pattern BND_PRE_FWD = Pattern.compile("]([!-~]*):([1-9][0-9]*)]([acgtnACGTN]+)");
@@ -43,7 +49,6 @@ public final class GenotypeSVs extends VariantWalker {
 
     // t]p] -- the BND locus, p, is the end of the reference sequence the reverse complement of which follows t
     public static final Pattern BND_POST_REV = Pattern.compile("([acgtnACGTN]+)]([!-~]*):([1-9][0-9]*)]");
-
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -72,18 +77,18 @@ public final class GenotypeSVs extends VariantWalker {
     }
 
     @Override
-    public void apply( final VariantContext variant,
+    public void apply( final VariantContext vc,
                        final ReadsContext readsContext,
-                       final ReferenceContext referenceContext,
+                       final ReferenceContext refContext,
                        final FeatureContext featureContext) {
         final String svType;
         final int svLen;
-        if ( variant.hasAttribute(GATKSVVCFConstants.SVTYPE) ) {
-            svType = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, null);
-            svLen = Math.abs(variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0));
-        } else if ( variant.isIndel() ) {
-            final int refLen = variant.getReference().getBaseString().length();
-            final int altLen = variant.getAlternateAllele(0).getBaseString().length();
+        if ( vc.hasAttribute(GATKSVVCFConstants.SVTYPE) ) {
+            svType = vc.getAttributeAsString(GATKSVVCFConstants.SVTYPE, null);
+            svLen = Math.abs(vc.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0));
+        } else if ( vc.isIndel() ) {
+            final int refLen = vc.getReference().getBaseString().length();
+            final int altLen = vc.getAlternateAllele(0).getBaseString().length();
             if ( refLen >= altLen ) {
                 svType = GATKSVVCFConstants.SYMB_ALT_STRING_DEL;
                 svLen = refLen - altLen;
@@ -99,28 +104,22 @@ public final class GenotypeSVs extends VariantWalker {
             return;
         }
 
-        final String contig = variant.getContig();
-        final int start = variant.getStart();
-        final int end = variant.getEnd();
-
         switch ( svType ) {
-            case GATKSVVCFConstants.SYMB_ALT_STRING_DEL ->
-                    testDeletion(contig, start, end, referenceContext, readsContext);
+            case GATKSVVCFConstants.SYMB_ALT_STRING_DEL -> testDeletion(vc, refContext, readsContext);
+            case GATKSVVCFConstants.SYMB_ALT_STRING_INS -> testInsertion(vc, refContext, readsContext);
+            case GATKSVVCFConstants.SYMB_ALT_STRING_DUP -> testDuplication(vc, refContext, readsContext);
+            case GATKSVVCFConstants.SYMB_ALT_STRING_INV -> testInversion(vc, refContext, readsContext);
+            case GATKSVVCFConstants.BREAKEND_STR -> testBreakend(vc, refContext, readsContext);
 /*
-            case GATKSVVCFConstants.SYMB_ALT_STRING_INS -> {
-                final String altBases = variant.getAlternateAllele(0).getBaseString();
-                writeRef(seqName + "1", leadBases + altBases.substring(1, WINDOW_SIZE + 1));
-                writeRef(seqName + "2", altBases.substring(altBases.length() - WINDOW_SIZE) + lagBases);
-            }
             case GATKSVVCFConstants.SYMB_ALT_STRING_DUP -> {
                 final SimpleInterval dupInterval = new SimpleInterval(contig, start + 1, end);
-                final String altBases = new String(referenceContext.getBases(dupInterval));
+                final String altBases = new String(refContext.getBases(dupInterval));
                 writeRef(seqName + "1", leadBases + altBases.substring(1, WINDOW_SIZE + 1));
                 writeRef(seqName + "2", altBases.substring(altBases.length() - WINDOW_SIZE) + lagBases);
             }
             case GATKSVVCFConstants.SYMB_ALT_STRING_INV -> {
                 final SimpleInterval invInterval = new SimpleInterval(contig, start + 1, end);
-                final byte[] invBaseCalls = referenceContext.getBases(invInterval);
+                final byte[] invBaseCalls = refContext.getBases(invInterval);
                 SequenceUtil.reverseComplement(invBaseCalls);
                 final String altBases = new String(invBaseCalls);
                 writeRef(seqName + "1", leadBases + altBases.substring(1, WINDOW_SIZE + 1));
@@ -135,14 +134,14 @@ public final class GenotypeSVs extends VariantWalker {
                     final int bndPosBeg = Math.max(1, bndPosEnd - WINDOW_SIZE + 1);
                     final SimpleInterval bndInterval = new SimpleInterval(tig, bndPosBeg, bndPosEnd);
                     final String altBases =
-                            new String(referenceContext.getBases(bndInterval)) + matcher.group(3);
+                            new String(refContext.getBases(bndInterval)) + matcher.group(3);
                     writeRef(seqName, altBases.substring(altBases.length() - WINDOW_SIZE) + lagBases);
                 } else if ( (matcher = BND_PRE_REV.matcher(bndDescription)).matches() ) {
                     final String tig = matcher.group(1);
                     final int bndPosBeg = Integer.parseInt(matcher.group(2));
                     final int bndPosEnd = bndPosBeg + WINDOW_SIZE - 1;
                     final SimpleInterval bndInterval = new SimpleInterval(tig, bndPosBeg, bndPosEnd);
-                    final byte[] bndBaseCalls = referenceContext.getBases(bndInterval);
+                    final byte[] bndBaseCalls = refContext.getBases(bndInterval);
                     SequenceUtil.reverseComplement(bndBaseCalls);
                     final String altBases = new String(bndBaseCalls) + matcher.group(3);
                     writeRef(seqName, altBases.substring(altBases.length() - WINDOW_SIZE) + lagBases);
@@ -152,14 +151,14 @@ public final class GenotypeSVs extends VariantWalker {
                     final int bndPosEnd = bndPosBeg + WINDOW_SIZE - 1;
                     final SimpleInterval bndInterval = new SimpleInterval(tig, bndPosBeg, bndPosEnd);
                     final String altBases =
-                            matcher.group(1) + new String(referenceContext.getBases(bndInterval));
+                            matcher.group(1) + new String(refContext.getBases(bndInterval));
                     writeRef(seqName, leadBases + altBases.substring(0, WINDOW_SIZE));
                 } else if ( (matcher = BND_POST_REV.matcher(bndDescription)).matches() ) {
                     final String tig = matcher.group(2);
                     final int bndPosEnd = Integer.parseInt(matcher.group(3));
                     final int bndPosBeg = Math.max(1, bndPosEnd - WINDOW_SIZE + 1);
                     final SimpleInterval bndInterval = new SimpleInterval(tig, bndPosBeg, bndPosEnd);
-                    final byte[] bndBaseCalls = referenceContext.getBases(bndInterval);
+                    final byte[] bndBaseCalls = refContext.getBases(bndInterval);
                     SequenceUtil.reverseComplement(bndBaseCalls);
                     final String altBases = matcher.group(1) + new String(bndBaseCalls);
                     writeRef(seqName, leadBases + altBases.substring(0, WINDOW_SIZE));
@@ -168,57 +167,192 @@ public final class GenotypeSVs extends VariantWalker {
                 }
             }
 */
-            default -> logger.warn("Don't know how to handle SVTYPE=" + svType + " at " + contig + ":" + start);
+            default -> logger.warn("Don't know how to handle SVTYPE=" + svType +
+                                    " for variant " + vc.getID() +
+                                    " at " + vc.getContig() + ":" + vc.getStart());
         }
     }
 
-    private void testDeletion( final String contig, final int start, final int end,
-                               final ReferenceContext referenceContext,
+    private void testDeletion( final VariantContext vc,
+                               final ReferenceContext refContext,
                                final ReadsContext readsContext ) {
-        final int alignStart = Math.max(1, start - 5);
-        final int alignEnd = end + WINDOW_SIZE;
-        final String refCalls =
-            new String(referenceContext.getBases(new SimpleInterval(contig, alignStart, start))) +
-              new String(referenceContext.getBases(new SimpleInterval(contig, end + 1, alignEnd)));
-        final Iterator<GATKRead> readItr =
-                readsContext.iterator(new SimpleInterval(contig, alignStart, alignEnd));
-        while ( readItr.hasNext() ) {
-            final GATKRead read = readItr.next();
-            if ( read.getStart() > alignStart ) {
+        final int start = Math.max(1, vc.getStart() + 1 - REF_LEADIN_LEN);
+        final String contig = vc.getContig();
+        final ByteSequence refCalls = getRefCalls(contig, start, MAX_READ_LEN, refContext);
+
+        final int altStart = vc.getEnd() + 1;
+        final ByteSequence altWindow = getRefCalls(contig, altStart, WINDOW_SIZE, refContext);
+        final ByteSequence altCalls = refCalls.subSequence(0, REF_LEADIN_LEN).append(altWindow);
+
+        int minReadLen = getMinReadLen(refCalls, altCalls);
+
+        final ScoreSummary scoreSummary =
+                alignReads(refCalls, altCalls, contig, start, minReadLen, readsContext);
+        try {
+            scoreSummary.writeSummary(vc.getID(), writer);
+        } catch ( final IOException ioe ) {
+            throw new UserException("Can't write data for " + vc.getID() +
+                        " at " + vc.getContig() + ":" + vc.getStart() + " to " + outputFile, ioe);
+        }
+    }
+
+    private void testInsertion( final VariantContext variantContext,
+                                final ReferenceContext referenceContext,
+                                final ReadsContext readsContext ) {
+    }
+
+    private void testDuplication( final VariantContext variantContext,
+                                  final ReferenceContext referenceContext,
+                                  final ReadsContext readsContext ) {
+    }
+
+    private void testInversion( final VariantContext variantContext,
+                                  final ReferenceContext referenceContext,
+                                  final ReadsContext readsContext ) {
+    }
+
+    private void testBreakend( final VariantContext variantContext,
+                                final ReferenceContext referenceContext,
+                                final ReadsContext readsContext ) {
+    }
+
+    private ByteSequence getRefCalls( final String contig, final int start, final int length,
+                                      final ReferenceContext refContext ) {
+        final SimpleInterval refInterval = new SimpleInterval(contig, start, start + length - 1);
+        return new ByteSequence(refContext.getBases(refInterval));
+    }
+
+    private int getMinReadLen( final ByteSequence refCalls, final ByteSequence altCalls ) {
+        int minReadLen = 0;
+        while ( minReadLen < MAX_READ_LEN ) {
+            if ( refCalls.charAt(minReadLen) != altCalls.charAt(minReadLen) ) {
                 break;
             }
-            final int readStartPos = getReadPositionForRefPosition(read, alignStart);
+            minReadLen += 1;
+        }
+        minReadLen += 1; // bump index of 1st disagreement to make a length out of it
+        if ( minReadLen < MIN_READ_LEN ) {
+            minReadLen = MIN_READ_LEN;
+        }
+        return minReadLen;
+    }
+
+    private ScoreSummary alignReads( final ByteSequence refCalls,
+                                     final ByteSequence altCalls,
+                                     final String contig,
+                                     final int start,
+                                     final int minReadLen,
+                                     final ReadsContext readsContext ) {
+        final ScoreSummary scoreSummary = new ScoreSummary();
+        final Iterator<GATKRead> readItr =
+                readsContext.iterator(new SimpleInterval(contig, start, start + WINDOW_SIZE));
+        while ( readItr.hasNext() ) {
+            final GATKRead read = readItr.next();
+            if ( minReadLen > MAX_READ_LEN ) {
+                scoreSummary.score(0, 0);
+                continue;
+            }
+            final int readStartPos = getReadPositionForRefPosition(read, start);
             if ( readStartPos == -1 ) {
                 continue;
             }
-            final String allReadCalls = read.getBasesString();
-            final int readEndPos = Math.min(readStartPos + refCalls.length(), allReadCalls.length());
-            final String readCalls = allReadCalls.substring(readStartPos, readEndPos);
-            final EndsFreeAligner aligner = new EndsFreeAligner(readCalls, refCalls);
-            System.out.println(aligner.getAlignment());
+            final ByteSequence allReadCalls = new ByteSequence(read.getBasesNoCopy());
+            final int readLen = Math.min(allReadCalls.length() - readStartPos, MAX_READ_LEN);
+            if ( readLen >= minReadLen ) {
+                final ByteSequence readCalls = allReadCalls.subSequence(readStartPos, readLen);
+                final Scorer scorer = new Scorer();
+                final Aligner refAligner = new SomewhatGlobalAligner(readCalls, refCalls, scorer, minReadLen);
+                final int refScore = Math.round(refAligner.getScore().getScore());
+                final Aligner altAligner = new SomewhatGlobalAligner(readCalls, altCalls, scorer, minReadLen);
+                final int altScore = Math.round(altAligner.getScore().getScore());
+                scoreSummary.score(refScore, altScore);
+            }
         }
+        return scoreSummary;
     }
 
     private int getReadPositionForRefPosition( final GATKRead read, final int refPosition ) {
-        int refPos = read.getStart();
-        int readPos = 0;
-        for ( final CigarElement cigarElement : read.getCigarElements() ) {
+        int curRefPosition = read.getStart();
+        final List<CigarElement> cigarElements = read.getCigarElements();
+        if ( curRefPosition > refPosition ) {
+            final CigarElement firstElement = cigarElements.get(0);
+            if ( firstElement.getOperator() == CigarOperator.S ) {
+                final int virtualStart = firstElement.getLength() - (curRefPosition - refPosition);
+                if ( virtualStart >= 0 ) {
+                    return virtualStart;
+                }
+            }
+            return -1;
+        }
+        int curReadPosition = 0;
+        for ( final CigarElement cigarElement : cigarElements ) {
             final int opLen = cigarElement.getLength();
             final CigarOperator op = cigarElement.getOperator();
             if ( op.consumesReferenceBases() ) {
-                final int nextRefPos = refPos + opLen;
-                if ( nextRefPos > refPosition ) {
+                final int nextRefPosition = curRefPosition + opLen;
+                if ( nextRefPosition > refPosition ) {
                     if ( op.consumesReadBases() ) {
-                        readPos += opLen + nextRefPos - refPosition;
+                        curReadPosition += opLen - (nextRefPosition - refPosition);
                     }
-                    return readPos;
+                    return curReadPosition;
                 }
-                refPos += opLen;
+                curRefPosition = nextRefPosition;
             }
             if ( op.consumesReadBases() ) {
-                readPos += opLen;
+                curReadPosition += opLen;
             }
         }
         return -1;
+    }
+
+    public record ScorePair( int refScore, int altScore ) {}
+
+    public final static class ScoreSummary {
+        final Map<ScorePair, Integer> scores =
+                new TreeMap<>(Comparator.comparing(ScorePair::refScore).thenComparing(ScorePair::altScore));
+        int refBetter = 0;
+        int same = 0;
+        int altBetter = 0;
+
+        public void score( final int refScore, final int altScore ) {
+            scores.merge(new ScorePair(refScore, altScore), 1, Integer::sum);
+            if ( refScore > altScore ) {
+                refBetter += 1;
+            } else if ( altScore > refScore ) {
+                altBetter += 1;
+            } else {
+                same += 1;
+            }
+        }
+
+        public void writeSummary( final String eventID,
+                                  final BufferedWriter writer ) throws IOException {
+            writer.write('#');
+            writer.write(eventID);
+            writer.write('\t');
+            final int totalCounts = refBetter + same + altBetter;
+            if ( totalCounts < MIN_CALLS_TO_GENOTYPE ) {
+                writer.write("./.");
+            } else if ( 1.0f * refBetter / totalCounts > MIN_FRACTION_FOR_ALLELE_CALL ) {
+                if ( 1.0f * altBetter / totalCounts > MIN_FRACTION_FOR_ALLELE_CALL ) {
+                    writer.write("0/1");
+                } else {
+                    writer.write("0/0");
+                }
+            } else if ( 1.0f * altBetter / totalCounts > MIN_FRACTION_FOR_ALLELE_CALL ) {
+                writer.write("1/1");
+            } else {
+                writer.write("NA");
+            }
+            writer.newLine();
+            for ( final Map.Entry<ScorePair, Integer> entry : scores.entrySet() ) {
+                writer.write(Integer.toString(entry.getKey().refScore()));
+                writer.write('\t');
+                writer.write(Integer.toString(entry.getKey().altScore()));
+                writer.write('\t');
+                writer.write(entry.getValue().toString());
+                writer.newLine();
+            }
+        }
     }
 }
