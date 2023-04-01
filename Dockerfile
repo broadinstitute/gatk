@@ -1,4 +1,4 @@
-ARG BASE_DOCKER=lbergelson/gatk:gatkbase-3.0.7
+ARG BASE_DOCKER=lbergelson/gatk:gatkbase-3.0.8
 
 # stage 1 for constructing the GATK zip
 FROM ${BASE_DOCKER} AS gradleBuild
@@ -18,7 +18,8 @@ RUN rm /etc/apt/sources.list.d/google-cloud-sdk.list && \
     apt-get --assume-yes install git-lfs && \
     apt-get -y clean  && \
     apt-get -y autoclean  && \
-    apt-get -y autoremove
+    apt-get -y autoremove && \
+    rm -rf /var/lib/apt/lists/*
 RUN git lfs install --force
 
 #Download only resources required for the build, not for testing
@@ -36,7 +37,8 @@ RUN rm /etc/apt/sources.list.d/google-cloud-sdk.list && \
     apt-key list && \
     apt-get -y clean  && \
     apt-get -y autoclean  && \
-    apt-get -y autoremove
+    apt-get -y autoremove && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /gatk
 

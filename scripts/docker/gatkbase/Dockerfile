@@ -22,7 +22,8 @@ RUN apt-get update && \
     software-properties-common && \
     apt-get -y clean  && \
     apt-get -y autoclean  && \
-    apt-get -y autoremove
+    apt-get -y autoremove && \
+    rm -rf /var/lib/apt/lists/*
 
 RUN java -version
 
@@ -35,6 +36,7 @@ RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.c
     apt-get -y clean  && \
     apt-get -y autoclean  && \
     apt-get -y autoremove && \
+    rm -rf /var/lib/apt/lists/* && \
 #  Remove the anthos cli tool and related files since they are very large and we / anyone using the docker are unlikely to use them
 #  Remove the bundled python because we have python installed separately
     rm -rf /usr/lib/google-cloud-sdk/bin/anthoscli /usr/lib/google-cloud-sdk/platform/anthoscli_licenses /usr/lib/google-cloud-sdk/platform/bundledpythonunix && \
@@ -66,7 +68,3 @@ RUN mkdir $DOWNLOAD_DIR && \
     find /opt/miniconda/ -follow -type f -name '*.a' -delete && \
     find /opt/miniconda/ -follow -type f -name '*.pyc' -delete && \
     rm -rf /root/.cache/pip 
-    
-
-# Deleting unneeded caches
-RUN rm -rf /var/lib/apt/lists/*
