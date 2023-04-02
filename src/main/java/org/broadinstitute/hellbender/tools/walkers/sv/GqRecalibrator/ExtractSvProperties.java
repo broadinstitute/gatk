@@ -449,7 +449,7 @@ public class ExtractSvProperties extends VariantWalker {
         //////////////////////////////////////// Get or estimate allele frequency //////////////////////////////////////
         float alleleFrequency = (float)variantContext.getAttributeAsDouble(VCFConstants.ALLELE_FREQUENCY_KEY, -1.0);
         if(alleleFrequency <= 0) {
-            if(variantContext.getNSamples() <= minSamplesToEstimateAlleleFrequency) {
+            if(variantContext.getNSamples() <= minSamplesToEstimateAlleleFrequency && numCalledAlleles > 0) {
                 throw new GATKException("VCF does not have " + VCFConstants.ALLELE_FREQUENCY_KEY + " annotated or enough samples to estimate it ("
                                         + minSamplesToEstimateAlleleFrequencyKey + "=" + minSamplesToEstimateAlleleFrequency + " but there are "
                                         + variantContext.getNSamples() + " samples)");
