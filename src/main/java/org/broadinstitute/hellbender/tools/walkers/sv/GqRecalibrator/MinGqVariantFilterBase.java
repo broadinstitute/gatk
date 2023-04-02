@@ -8,6 +8,7 @@ import net.minidev.json.JSONArray;
 import net.minidev.json.JSONObject;
 import net.minidev.json.JSONValue;
 import net.minidev.json.parser.ParseException;
+import org.apache.commons.math3.util.FastMath;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.*;
@@ -18,17 +19,16 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.samples.PedigreeValidationType;
 import org.broadinstitute.hellbender.utils.samples.SampleDBBuilder;
 import org.broadinstitute.hellbender.utils.samples.Trio;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
 import java.nio.file.Files;
 import java.util.*;
 import java.util.stream.*;
 
-import org.apache.commons.math3.util.FastMath;
-import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
-import org.jetbrains.annotations.NotNull;
-
-import static org.apache.commons.math3.util.FastMath.*;
+import static org.apache.commons.math3.util.FastMath.max;
+import static org.apache.commons.math3.util.FastMath.round;
 
 
 /**
@@ -141,6 +141,11 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
             doc="If true, apply normal rules for mendelian inheritance; if false, allow confusion between HET and HOMVAR"
     )
     public static boolean strictMendelian = true;
+
+    @Argument(fullName="skip-genotype-filtering", optional=true,
+            doc="If true, annotate SL but skip genotype and variant filtering"
+    )
+    public static boolean skipGenotypeFiltering = true;
 
     @Argument(fullName="min-bin-weight", optional=true,
             doc="Minimum value of weight for a given SV category bin"
@@ -1092,8 +1097,9 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
                     originalGq;
                 scaledLogits = probToScaledLogits(1.0 - phredToProb(callQuality));
             }
-            final boolean needsFilter = sampleVariantFilterableForFilterVariantContext[sampleIndex] &&
-                                        scaledLogits < minScaledLogits;
+            final boolean needsFilter = (!skipGenotypeFiltering) &&
+                    sampleVariantFilterableForFilterVariantContext[sampleIndex] &&
+                    scaledLogits < minScaledLogits;
             final Genotype filteredGenotype = getFilteredGenotype(
                 genotype, originalGq, callQuality, scaledLogits, needsFilter
             );
