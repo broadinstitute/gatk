@@ -1,4 +1,4 @@
-ARG BASE_DOCKER=lbergelson/gatk:gatkbase-3.0.8
+ARG BASE_DOCKER=broadinsitute/gatk:gatkbase-3.1.0
 
 # stage 1 for constructing the GATK zip
 FROM ${BASE_DOCKER} AS gradleBuild
