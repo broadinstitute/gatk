@@ -1,7 +1,11 @@
 package org.broadinstitute.hellbender.tools.walkers.sv.GqRecalibrator;
 
-import htsjdk.variant.variantcontext.*;
-import htsjdk.variant.vcf.*;
+import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.Genotype;
+import htsjdk.variant.variantcontext.StructuralVariantType;
+import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFCompoundHeaderLine;
+import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.math3.util.FastMath;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -12,12 +16,16 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.stream.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 
 /**
@@ -449,7 +457,8 @@ public class ExtractSvProperties extends VariantWalker {
         //////////////////////////////////////// Get or estimate allele frequency //////////////////////////////////////
         float alleleFrequency = (float)variantContext.getAttributeAsDouble(VCFConstants.ALLELE_FREQUENCY_KEY, -1.0);
         if(alleleFrequency <= 0) {
-            if(variantContext.getNSamples() <= minSamplesToEstimateAlleleFrequency && numCalledAlleles > 0) {
+            if(variantContext.getNSamples() <= minSamplesToEstimateAlleleFrequency && numCalledAlleles > 0 &&
+                !variantContext.getAttributeAsString(VCFConstants.SVTYPE, "").equals(StructuralVariantType.CNV.toString())) {
                 throw new GATKException("VCF does not have " + VCFConstants.ALLELE_FREQUENCY_KEY + " annotated or enough samples to estimate it ("
                                         + minSamplesToEstimateAlleleFrequencyKey + "=" + minSamplesToEstimateAlleleFrequency + " but there are "
                                         + variantContext.getNSamples() + " samples)");
