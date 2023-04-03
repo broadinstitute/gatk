@@ -1,5 +1,7 @@
+ARG BASE_DOCKER=broadinstitute/gatk:gatkbase-3.1.0
+
 # stage 1 for constructing the GATK zip
-FROM broadinstitute/gatk:gatkbase-3.0.0 AS gradleBuild
+FROM ${BASE_DOCKER} AS gradleBuild
 LABEL stage=gatkIntermediateBuildImage
 ARG RELEASE=false
 
@@ -8,12 +10,16 @@ ADD . /gatk
 WORKDIR /gatk
 
 # Get an updated gcloud signing key, in case the one in the base image has expired
-RUN rm /etc/apt/sources.list.d/google-cloud-sdk.list
-RUN apt update
-RUN apt-key list
-RUN curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg add -
-RUN add-apt-repository universe && apt update
-RUN apt-get --assume-yes install git-lfs
+RUN rm /etc/apt/sources.list.d/google-cloud-sdk.list && \
+    apt update &&\
+    apt-key list && \
+    curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg add - && \
+    add-apt-repository universe && apt update && \
+    apt-get --assume-yes install git-lfs && \
+    apt-get -y clean  && \
+    apt-get -y autoclean  && \
+    apt-get -y autoremove && \
+    rm -rf /var/lib/apt/lists/*
 RUN git lfs install --force
 
 #Download only resources required for the build, not for testing
@@ -22,15 +28,21 @@ RUN git lfs pull --include src/main/resources/large
 RUN export GRADLE_OPTS="-Xmx4048m -Dorg.gradle.daemon=false" && /gatk/gradlew clean collectBundleIntoDir shadowTestClassJar shadowTestJar -Drelease=$RELEASE
 RUN cp -r $( find /gatk/build -name "*bundle-files-collected" )/ /gatk/unzippedJar/
 RUN unzip -o -j $( find /gatk/unzippedJar -name "gatkPython*.zip" ) -d /gatk/unzippedJar/scripts
+RUN chmod -R a+rw /gatk/unzippedJar
 
-FROM broadinstitute/gatk:gatkbase-3.0.0
+FROM ${BASE_DOCKER}
 
-RUN rm /etc/apt/sources.list.d/google-cloud-sdk.list
-RUN apt update
-RUN apt-key list
+RUN rm /etc/apt/sources.list.d/google-cloud-sdk.list && \
+    apt update && \
+    apt-key list && \
+    apt-get -y clean  && \
+    apt-get -y autoclean  && \
+    apt-get -y autoremove && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /gatk
 
+RUN chmod -R a+rw /gatk
 # Location of the unzipped gatk bundle files
 COPY --from=gradleBuild /gatk/unzippedJar .
 
@@ -76,7 +88,6 @@ ENV CLASSPATH /gatk/gatk.jar:$CLASSPATH
 # Start GATK Python environment
 
 WORKDIR /gatk
-RUN chmod -R a+rw /gatk
 ENV PATH $CONDA_PATH/envs/gatk/bin:$CONDA_PATH/bin:$PATH
 RUN conda env create -n gatk -f /gatk/gatkcondaenv.yml && \
     echo "source activate gatk" >> /gatk/gatkenv.rc && \
