@@ -117,19 +117,6 @@ workflow GvsCreateFilterSet {
     }
   }
 
-#  call Utils.UberMonitor as UberMonitorItFirst {
-#    input:
-#      inputs = flatten(
-#               [
-#               [SamplesTableDatetimeCheck.monitoring_log],
-#               [GetNumSamplesLoaded.monitoring_log],
-#               [SplitIntervals.monitoring_log],
-#               [AltAlleleTableDatetimeCheck.monitoring_log],
-#               ExtractFilterTask.monitoring_log
-#               ]
-#               )
-#  }
-
   call Utils.MergeVCFs as MergeVCFs {
     input:
       input_vcfs = ExtractFilterTask.output_vcf,
@@ -218,18 +205,6 @@ workflow GvsCreateFilterSet {
         fq_filter_sites_destination_table = fq_filter_sites_destination_table,
         project_id = project_id
     }
-#
-#    call Utils.UberMonitor as UberMonitorVQSRLite {
-#      input:
-#        inputs = select_all(flatten([
-#                  JointVcfFiltering.monitoring_logs,
-#                  [MergeSNPScoredVCFs.monitoring_log],
-#                  [MergeINDELScoredVCFs.monitoring_log],
-#                  [CreateFilteredScoredSNPsVCF.monitoring_log],
-#                  [CreateFilteredScoredINDELsVCF.monitoring_log],
-#                  [PopulateFilterSetInfo.monitoring_log],
-#                  [PopulateFilterSetSites.monitoring_log]]))
-#    }
   }
 
   if (use_classic_VQSR) {
@@ -322,15 +297,6 @@ workflow GvsCreateFilterSet {
           output_vcf_name = "${filter_set_name}.vrecalibration.gz",
           preemptible_tries = 3,
       }
-
-#      call Utils.UberMonitor as UberMonitorVQSRClassicManySamples {
-#        input:
-#          inputs = flatten([[IndelsVariantRecalibrator.monitoring_log],
-#                           [SNPsVariantRecalibratorCreateModel.monitoring_log],
-#                           SNPsVariantRecalibratorScattered.monitoring_log,
-#                           [SNPGatherTranches.monitoring_log],
-#                           [MergeRecalibrationFiles.monitoring_log]])
-#      }
     }
 
     if (GetNumSamplesLoaded.num_samples <= snps_variant_recalibration_threshold) {
@@ -355,11 +321,6 @@ workflow GvsCreateFilterSet {
           machine_mem_gb = SNP_VQSR_mem_gb_override,
           max_gaussians = SNP_VQSR_max_gaussians_override,
       }
-#      call Utils.UberMonitor as UberMonitorVQSRClassicFewSamples {
-#        input:
-#          inputs = flatten([[IndelsVariantRecalibrator.monitoring_log],
-#                            [SNPsVariantRecalibratorClassic.monitoring_log]])
-#      }
     }
 
     call PopulateFilterSetInfo as PopulateFilterSetInfoClassic {
@@ -396,26 +357,6 @@ workflow GvsCreateFilterSet {
         project_id = project_id
     }
   }
-
-#  call Utils.UberMonitor as UberMonitorVQSRClassic {
-#    input:
-#      inputs = select_all(
-#               flatten(
-#               [
-#                                  [IndelsVariantRecalibrator.monitoring_log],
-#                                  [SNPsVariantRecalibratorCreateModel.monitoring_log],
-#                                   select_first([SNPsVariantRecalibratorScattered.monitoring_log, []]),
-#                                  [SNPGatherTranches.monitoring_log],
-#                                  [MergeRecalibrationFiles.monitoring_log],
-#                                  [IndelsVariantRecalibrator.monitoring_log],
-#                                  [SNPsVariantRecalibratorClassic.monitoring_log],
-#                                  [PopulateFilterSetInfoClassic.monitoring_log],
-#                                  [PopulateFilterSetSitesClassic.monitoring_log],
-#                                  [PopulateFilterSetTranches.monitoring_log]
-#                                  ]
-#                          )
-#               )
-#  }
 
   call Utils.UberMonitor as UberMonitorItAll {
     input:
