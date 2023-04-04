@@ -96,12 +96,17 @@ def parse_monitoring_log_file(mlog_file, output):
         tokens = file_path.split("/")
         # Looks like '*/call-IndelsVariantRecalibrator/monitoring.log' for non-sharded
         # Looks like '*/call-ScoreVariantAnnotationsINDELs/shard-35/monitoring.log' for sharded
+        # Looks like '*/call-MergeVCFs/cacheCopy/monitoring.log' for cached, non-sharded
+        # Looks like '*/call-ExtractFilterTask/shard-0/cacheCopy/monitoring.log' for cached sharded
         shard = ""
-        if (tokens[-2].startswith("shard-")):
-            shard = tokens[-2][6:]
-            task = tokens[-3][5:]       # Strip off the 'call-'
+        index = -2
+        if (tokens[index] == "cacheCopy"):
+            index = -3
+        if (tokens[index].startswith("shard-")):
+            shard = tokens[index][6:]
+            task = tokens[index-1][5:]      # Strip off the 'call-' prefix
         else:
-            task = tokens[-2][5:]
+            task = tokens[index][5:]
 
         summary = f"{TotalMemory}\t{MaxMem}\t{MaxMemPct}\t{TotalDisk}\t{MaxDisk}\t{MaxDiskPct}\t{task}\t{shard}\t{os.path.abspath(mlog_file)}\n"
         output.write(summary)

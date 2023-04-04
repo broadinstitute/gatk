@@ -8,7 +8,9 @@ class TestUberMonitor(unittest.TestCase):
 
         input_files = ['uber_monitor_test_files/call-ScoreVariantAnnotationsINDELs/shard-34/monitoring.log',
                        'uber_monitor_test_files/call-ScoreVariantAnnotationsINDELs/shard-35/monitoring.log',
-                       'uber_monitor_test_files/call-IndelsVariantRecalibrator/monitoring.log']
+                       'uber_monitor_test_files/call-IndelsVariantRecalibrator/monitoring.log',
+                       'uber_monitor_test_files/call-ExtractFilterTask/shard-0/cacheCopy/monitoring.log',
+                       'uber_monitor_test_files/call-MergeVCFs/cacheCopy/monitoring.log']
         with tempfile.NamedTemporaryFile() as actual_output_file:
             parse_monitoring_log_files(input_files, actual_output_file.name)
 

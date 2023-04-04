@@ -652,10 +652,7 @@ task UberMonitor {
   command <<<
     set -e
 
-    # TODO is there a better way to do this? Determine (in bash) if the input array is empty?
     INPUTS="~{sep=" " inputs}"
-    echo "These are the inputs:"
-    echo "$INPUTS"
     if [[ -z "$INPUTS" ]]; then
       echo "No monitoring log files found" > monitoring_summary.txt
     else
@@ -669,7 +666,7 @@ task UberMonitor {
   # ------------------------------------------------
   # Runtime settings:
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-03-28-alpine"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-04-04-alpine"
     memory: "1 GB"
     preemptible: 3
     cpu: "1"

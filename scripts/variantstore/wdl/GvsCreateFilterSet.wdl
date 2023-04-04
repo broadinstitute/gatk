@@ -218,18 +218,18 @@ workflow GvsCreateFilterSet {
         fq_filter_sites_destination_table = fq_filter_sites_destination_table,
         project_id = project_id
     }
-
-    call Utils.UberMonitor as UberMonitorVQSRLite {
-      input:
-        inputs = select_all(flatten([
-                  JointVcfFiltering.monitoring_logs,
-                  [MergeSNPScoredVCFs.monitoring_log],
-                  [MergeINDELScoredVCFs.monitoring_log],
-                  [CreateFilteredScoredSNPsVCF.monitoring_log],
-                  [CreateFilteredScoredINDELsVCF.monitoring_log],
-                  [PopulateFilterSetInfo.monitoring_log],
-                  [PopulateFilterSetSites.monitoring_log]]))
-    }
+#
+#    call Utils.UberMonitor as UberMonitorVQSRLite {
+#      input:
+#        inputs = select_all(flatten([
+#                  JointVcfFiltering.monitoring_logs,
+#                  [MergeSNPScoredVCFs.monitoring_log],
+#                  [MergeINDELScoredVCFs.monitoring_log],
+#                  [CreateFilteredScoredSNPsVCF.monitoring_log],
+#                  [CreateFilteredScoredINDELsVCF.monitoring_log],
+#                  [PopulateFilterSetInfo.monitoring_log],
+#                  [PopulateFilterSetSites.monitoring_log]]))
+#    }
   }
 
   if (use_classic_VQSR) {
@@ -397,25 +397,25 @@ workflow GvsCreateFilterSet {
     }
   }
 
-  call Utils.UberMonitor as UberMonitorVQSRClassic {
-    input:
-      inputs = select_all(
-               flatten(
-               [
-                                  [IndelsVariantRecalibrator.monitoring_log],
-                                  [SNPsVariantRecalibratorCreateModel.monitoring_log],
-                                   select_first([SNPsVariantRecalibratorScattered.monitoring_log, []]),
-                                  [SNPGatherTranches.monitoring_log],
-                                  [MergeRecalibrationFiles.monitoring_log],
-                                  [IndelsVariantRecalibrator.monitoring_log],
-                                  [SNPsVariantRecalibratorClassic.monitoring_log],
-                                  [PopulateFilterSetInfoClassic.monitoring_log],
-                                  [PopulateFilterSetSitesClassic.monitoring_log],
-                                  [PopulateFilterSetTranches.monitoring_log]
-                                  ]
-                          )
-               )
-  }
+#  call Utils.UberMonitor as UberMonitorVQSRClassic {
+#    input:
+#      inputs = select_all(
+#               flatten(
+#               [
+#                                  [IndelsVariantRecalibrator.monitoring_log],
+#                                  [SNPsVariantRecalibratorCreateModel.monitoring_log],
+#                                   select_first([SNPsVariantRecalibratorScattered.monitoring_log, []]),
+#                                  [SNPGatherTranches.monitoring_log],
+#                                  [MergeRecalibrationFiles.monitoring_log],
+#                                  [IndelsVariantRecalibrator.monitoring_log],
+#                                  [SNPsVariantRecalibratorClassic.monitoring_log],
+#                                  [PopulateFilterSetInfoClassic.monitoring_log],
+#                                  [PopulateFilterSetSitesClassic.monitoring_log],
+#                                  [PopulateFilterSetTranches.monitoring_log]
+#                                  ]
+#                          )
+#               )
+#  }
 
   call Utils.UberMonitor as UberMonitorItAll {
     input:
@@ -428,7 +428,7 @@ workflow GvsCreateFilterSet {
                [AltAlleleTableDatetimeCheck.monitoring_log],
                ExtractFilterTask.monitoring_log,
                [MergeVCFs.monitoring_log],
-               select_first([JointVcfFiltering.monitoring_logs, []]),             # VQSR Lite Logging starts ehre
+               select_first([JointVcfFiltering.monitoring_logs, []]),             # VQSR Lite Logging starts here
                [MergeSNPScoredVCFs.monitoring_log],
                [MergeINDELScoredVCFs.monitoring_log],
                [CreateFilteredScoredSNPsVCF.monitoring_log],
