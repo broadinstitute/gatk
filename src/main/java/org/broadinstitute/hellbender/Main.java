@@ -79,6 +79,12 @@ public class Main {
      * exit value when any unrecoverable exception other than {@link UserException} occurs
      */
     private static final int ANY_OTHER_EXCEPTION_EXIT_VALUE = 3;
+
+    /**
+     * exit value when an out of memory error occurs
+     */
+    private static final int OUT_OF_MEMORY_EXIT_VALUE = 137;
+    
     private static final String STACK_TRACE_ON_USER_EXCEPTION_PROPERTY = "GATK_STACKTRACE_ON_USER_EXCEPTION";
 
     /**
@@ -219,6 +225,9 @@ public class Main {
         } catch (final StorageException e) {
             handleStorageException(e);
             System.exit(ANY_OTHER_EXCEPTION_EXIT_VALUE);
+        } catch (final OutOfMemoryError e) {
+            handleNonUserException(e);
+            System.exit(OUT_OF_MEMORY_EXIT_VALUE);
         } catch (final Exception e){
             handleNonUserException(e);
             System.exit(ANY_OTHER_EXCEPTION_EXIT_VALUE);
@@ -264,6 +273,14 @@ public class Main {
      */
     protected void handleNonUserException(final Exception exception) {
         exception.printStackTrace();
+    }
+
+    /**
+     * Handle any Error that does not come from the user. Default implementation prints the stack trace.
+     * @param error the Error to handle (never an {@link UserException}).
+     */
+    protected void handleNonUserException(final Error error) {
+        error.printStackTrace();
     }
 
     /**
