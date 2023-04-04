@@ -117,18 +117,18 @@ workflow GvsCreateFilterSet {
     }
   }
 
-  call Utils.UberMonitor as UberMonitorItFirst {
-    input:
-      inputs = flatten(
-               [
-               [SamplesTableDatetimeCheck.monitoring_log],
-               [GetNumSamplesLoaded.monitoring_log],
-               [SplitIntervals.monitoring_log],
-               [AltAlleleTableDatetimeCheck.monitoring_log],
-               ExtractFilterTask.monitoring_log
-               ]
-               )
-  }
+#  call Utils.UberMonitor as UberMonitorItFirst {
+#    input:
+#      inputs = flatten(
+#               [
+#               [SamplesTableDatetimeCheck.monitoring_log],
+#               [GetNumSamplesLoaded.monitoring_log],
+#               [SplitIntervals.monitoring_log],
+#               [AltAlleleTableDatetimeCheck.monitoring_log],
+#               ExtractFilterTask.monitoring_log
+#               ]
+#               )
+#  }
 
   call Utils.MergeVCFs as MergeVCFs {
     input:
@@ -454,6 +454,7 @@ workflow GvsCreateFilterSet {
     File output_vcf = MergeVCFs.output_vcf
     File output_vcf_idx = MergeVCFs.output_vcf_index
     Array[File] foo = select_first([SNPsVariantRecalibratorScattered.monitoring_log, []])
+    File monitoring_summary = UberMonitorItAll.monitoring_summary
     Boolean done = true
   }
 }
