@@ -10,7 +10,7 @@ task MergeVCFs {
     Int? preemptible_tries
   }
 
-  Int disk_size = if (defined(merge_disk_override)) then merge_disk_override else 100
+  Int disk_size = select_first([merge_disk_override, 100])
 
   parameter_meta {
     input_vcfs: {
