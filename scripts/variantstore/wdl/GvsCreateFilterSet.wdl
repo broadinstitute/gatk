@@ -127,6 +127,8 @@ workflow GvsCreateFilterSet {
   # From this point, the paths diverge depending on whether they're using classic VQSR or VQSR-Lite
   # The first branch here is VQSR-Lite, and the second is classic VQSR
   if (!use_classic_VQSR) {
+    # TODO - It probably makes sense to break up the input files into filtered SNP and INDEL input files before calling
+    # JointVcfFiltering - you're just moving (and processing) bigger files here.
     call VQSRLite.JointVcfFiltering as JointVcfFilteringSnps {
       input:
         input_vcfs = ExtractFilterTask.output_vcf,
@@ -168,7 +170,7 @@ workflow GvsCreateFilterSet {
       input:
         input_vcfs = JointVcfFilteringSnps.scored_vcfs,
         gather_type = "CONVENTIONAL",
-        output_vcf_name = "${filter_set_name}.snp.vrecalibration.gz",
+        output_vcf_name = "${filter_set_name}.snp.vrecalibration.vcf.gz",
         preemptible_tries = 3,
     }
 
@@ -176,12 +178,10 @@ workflow GvsCreateFilterSet {
       input:
         input_vcfs = JointVcfFilteringIndels.scored_vcfs,
         gather_type = "CONVENTIONAL",
-        output_vcf_name = "${filter_set_name}.indel.vrecalibration.gz",
+        output_vcf_name = "${filter_set_name}.indel.vrecalibration.vcf.gz",
         preemptible_tries = 3,
     }
 
-    # TODO - are these necessary???
-    # These calls to SelectVariants are being added for two reasons
     # 1) The snps_variant_scored_vcf and indels_variant_scored_vcf output by JointVcfFiltering contains ALL variants,
     #     but are currently ONLY annotating SNPs and INDELs respectively.
     # 2) Those output VCFs also contain filtered sites (sites at which the FILTER field set to anything other than '.' or 'PASS')
