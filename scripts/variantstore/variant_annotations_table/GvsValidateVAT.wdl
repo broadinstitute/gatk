@@ -841,15 +841,19 @@ task DuplicateAnnotations {
 
         echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
 
-        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT * from
-        (SELECT contig, position, gvs_all_an, COUNT(DISTINCT gvs_all_an) AS an_count FROM `~{fq_vat_table}`
-        group by contig, position, gvs_all_an)
-        where  an_count >1' > bq_an_output.csv
+        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv '
+        SELECT contig, position, gvs_all_an, COUNT(DISTINCT gvs_all_an) AS an_count
+        FROM `~{fq_vat_table}`
+        GROUP BY contig, position, gvs_all_an
+        HAVING an_count > 1
+        ' > bq_an_output.csv
 
-        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv 'SELECT * from
-        (SELECT contig, position, vid, gvs_all_ac, COUNT(DISTINCT gvs_all_ac) AS ac_count FROM `~{fq_vat_table}`
-        group by contig, position, vid, gvs_all_ac)
-        where  ac_count >1' > bq_ac_output.csv
+        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv '
+        SELECT contig, position, gvs_all_ac, COUNT(DISTINCT gvs_all_ac) AS ac_count
+        FROM `~{fq_vat_table}`
+        GROUP BY contig, position, gvs_all_ac
+        HAVING ac_count > 1
+        ' > bq_ac_output.csv
 
         # get number of lines in bq query output
         NUMANRESULTS=$(awk 'END{print NR}' bq_an_output.csv)
@@ -860,10 +864,10 @@ task DuplicateAnnotations {
         # if the results of the queries have any rows, that means there are sites with mis-matched gvs_all_an or gvs_all_ac
         if [[ $NUMANRESULTS != "0" ]]; then
           echo "The VAT table ~{fq_vat_table} has mis-matched calculations for AC, and AC of subpopulations" > ~{results_file}
-          cat bq_an_output.csv >> ~{results_file}
+          cp bq_an_output.csv ~{results_file}
         elif [[ $NUMACRESULTS != "0" ]]; then
           echo "The VAT table ~{fq_vat_table} has mis-matched calculations for AN, and AN of subpopulations" > ~{results_file}
-          cat bq_ac_output.csv >> ~{results_file}
+          cp bq_ac_output.csv ~{results_file}
         else
           echo "The VAT table ~{fq_vat_table} has correct calculations for AN, AC, AN of subpopulations and AC of subpopulations" > ~{results_file}
           echo "true" > ~{pf_file}
@@ -873,7 +877,7 @@ task DuplicateAnnotations {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:416.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
