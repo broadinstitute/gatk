@@ -9,15 +9,18 @@ global MaxMemPct
 global MaxDisk
 global MaxDiskPct
 
+
 def parse_monitoring_log_files(mlog_files, output_file):
     with open(output_file, 'w') as output:
-        header = f"Total Mem\tMax Mem Used\tMax Mem Used (%)\tTotal Disk\tMax Disk Used\tMax Disk Used (%)\tTask\tShard\tFile\n"
+        header = f"Total Mem\tMax Mem Used\tMax Mem Used (%)\tTotal Disk\tMax Disk Used\tMax Disk Used (" \
+                 f"%)\tTask\tShard\tFile\n"
         output.write(header)
 
         for mlog_file in mlog_files:
             if (not os.path.exists(mlog_file)):
                 eprint(f"ERROR: File {mlog_file} does not exist")
             parse_monitoring_log_file(mlog_file, output)
+
 
 def parse_monitoring_log_file(mlog_file, output):
     eprint(f"Parsing: {mlog_file}")
@@ -29,7 +32,7 @@ def parse_monitoring_log_file(mlog_file, output):
     with open(mlog_file) as ml:
         advance_to_section(ml, "--- General Information")
 
-        line = ml.readline().rstrip()       # #CPU: 16
+        line = ml.readline().rstrip()  # #CPU: 16
         tokens = line.split(": ")
         if (tokens[0] != '#CPU'):
             eprint(f"ERROR: Line '{line}' does not look as expected. Is this a monitoring_log file?")
@@ -37,7 +40,7 @@ def parse_monitoring_log_file(mlog_file, output):
         NumCPUS = tokens[1]
         eprint(f"Num CPUs: {NumCPUS}")
 
-        line = ml.readline().rstrip()       # Total Memory: 98.25 GiB
+        line = ml.readline().rstrip()  # Total Memory: 98.25 GiB
         tokens = line.split(": ")
         if (tokens[0] != 'Total Memory'):
             eprint(f"ERROR: Line '{line}' does not look as expected. Is this a monitoring_log file?")
@@ -50,7 +53,7 @@ def parse_monitoring_log_file(mlog_file, output):
         TotalMemoryUnits = subtokens[1]
         eprint(f"Total Memory: {TotalMemory} {TotalMemoryUnits}")
 
-        line = ml.readline().rstrip()       # Total Disk space: 985.000 GiB
+        line = ml.readline().rstrip()  # Total Disk space: 985.000 GiB
         tokens = line.split(": ")
         if (tokens[0] != 'Total Disk space'):
             eprint(f"ERROR: Line '{line}' does not look as expected. Is this a monitoring_log file?")
@@ -104,19 +107,21 @@ def parse_monitoring_log_file(mlog_file, output):
             index = -3
         if (tokens[index].startswith("shard-")):
             shard = tokens[index][6:]
-            task = tokens[index-1][5:]      # Strip off the 'call-' prefix
+            task = tokens[index - 1][5:]  # Strip off the 'call-' prefix
         else:
             task = tokens[index][5:]
 
         summary = f"{TotalMemory}\t{MaxMem}\t{MaxMemPct}\t{TotalDisk}\t{MaxDisk}\t{MaxDiskPct}\t{task}\t{shard}\t{os.path.abspath(mlog_file)}\n"
         output.write(summary)
 
+
 def parse_timestamp_line(line):
     line = ""
     # Do nothing for now.   # Looks Like: [Tue Mar 14 14:52:39 UTC 2023]
 
+
 def parse_cpu_usage_line(line):
-    p = "^\* CPU usage\: (\d+\.\d+)\%$"     # Looks Like: * CPU usage: 17.6%
+    p = "^\* CPU usage\: (\d+\.\d+)\%$"  # Looks Like: * CPU usage: 17.6%
     m = re.match(p, line)
     if (m != None):
         cpu = float(m.group(1))
@@ -125,14 +130,15 @@ def parse_cpu_usage_line(line):
             MaxCpu = cpu
     else:
         # Check if it's a nan (we see this sometimes at startup)
-        p2 = "^\* CPU usage\: -nan\%$"     #* CPU usage: -nan%
+        p2 = "^\* CPU usage\: -nan\%$"  # * CPU usage: -nan%
         m2 = re.match(p2, line)
         if (m2 == None):
             eprint(f"ERROR: Line '{line}' does not look like a CPU usage line. Is this a monitoring_log file?")
             sys.exit(1)
 
+
 def parse_memory_usage_line(line):
-    p = "^\* Memory usage\: (\d+\.\d+) \S+ (\d+(\.\d*)?)\%$"        # Looks Like: * Memory usage: 1.79 GiB 1.8%
+    p = "^\* Memory usage\: (\d+\.\d+) \S+ (\d+(\.\d*)?)\%$"  # Looks Like: * Memory usage: 1.79 GiB 1.8%
     m = re.match(p, line)
     if (m == None):
         eprint(f"ERROR: Line '{line}' does not look like a Memory usage line. Is this a monitoring_log file?")
@@ -145,8 +151,9 @@ def parse_memory_usage_line(line):
         MaxMem = mem
         MaxMemPct = memPct
 
+
 def parse_disk_usage_line(line):
-    p = "^\* Disk usage\: (\d+\.\d+) \S+ (\d+(\.\d*)?)\%$"      # Looks Like: * Disk usage: 22.000 GiB 3%
+    p = "^\* Disk usage\: (\d+\.\d+) \S+ (\d+(\.\d*)?)\%$"  # Looks Like: * Disk usage: 22.000 GiB 3%
     m = re.match(p, line)
     if (m == None):
         eprint(f"ERROR: Line '{line}' does not look like a Disk usage line. Is this a monitoring_log file?")
@@ -159,9 +166,11 @@ def parse_disk_usage_line(line):
         MaxDisk = disk
         MaxDiskPct = diskPct
 
+
 def parse_rwio_line(line):
     line = ""
     # Do nothing for now.       # Looks Like: * Read/Write IO: 0.000 MiB/s 127.114 MiB/s
+
 
 def advance_to_section(fp, section_header_start):
     """
@@ -173,11 +182,14 @@ def advance_to_section(fp, section_header_start):
         if line.startswith(section_header_start):
             return line
 
+
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
+
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(allow_abbrev=False, description='A tool to summarize the output of multiple monitoring logs')
+    parser = argparse.ArgumentParser(allow_abbrev=False,
+                                     description='A tool to summarize the output of multiple monitoring logs')
 
     parser.add_argument('--input', nargs='+', help='Monitoring log file(s)', required=True)
     parser.add_argument('--output', type=str, help='Output Monitoring log summary file', required=True)
