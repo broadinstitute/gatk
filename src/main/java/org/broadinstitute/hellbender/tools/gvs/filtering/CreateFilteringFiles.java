@@ -40,7 +40,7 @@ public final class CreateFilteringFiles extends VariantWalker {
         Arrays.asList("filter_set_name", "mode", "location", "ref", "alt", "vqslod", "culprit", "training_label", "yng");
     // TODO - not sure about culprit and training label.
     private List<String> HEADER_VQSR_LITE =
-        Arrays.asList("filter_set_name", "mode", "location", "ref", "alt", "calibration_sensitivity", "score", "training_label", "yng");
+        Arrays.asList("filter_set_name", "mode", "location", "ref", "alt", "calibration_sensitivity", "training_label", "yng");
 
     
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, 
@@ -132,7 +132,6 @@ public final class CreateFilteringFiles extends VariantWalker {
         } else {
             // New VQSR-Lite has CALIBRATION_SENSITIVITY instead of vqslod
             String calibration_sensitivity = variant.getAttributeAsString("CALIBRATION_SENSITIVITY","");
-            String score = variant.getAttributeAsString("SCORE","");
             String trainingLabel = variant.hasAttribute("training") ? "POSITIVE" : "";
             String yng = variant.hasAttribute("training") ? "Y" : "G";
             row = Arrays.asList(
@@ -142,7 +141,6 @@ public final class CreateFilteringFiles extends VariantWalker {
                     ref,
                     alt,
                     calibration_sensitivity,
-                    score,
                     trainingLabel,
                     yng
             );
