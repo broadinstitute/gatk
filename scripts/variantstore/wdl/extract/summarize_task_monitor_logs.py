@@ -121,9 +121,9 @@ def parse_timestamp_line(line):
 
 
 def parse_cpu_usage_line(line):
-    p = "^\* CPU usage\: (\d+\.\d+)\%$"  # Looks Like: * CPU usage: 17.6%
+    p = "^\* CPU usage\: (\d+\.\d+)%$"  # Looks Like: * CPU usage: 17.6%
     m = re.match(p, line)
-    if (m != None):
+    if (m is not None):
         cpu = float(m.group(1))
         global MaxCpu
         if (cpu > MaxCpu):

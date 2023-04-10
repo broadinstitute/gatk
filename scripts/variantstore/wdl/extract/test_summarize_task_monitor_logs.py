@@ -1,20 +1,20 @@
 import unittest
 
-from uber_monitor import parse_monitoring_log_files
+from summarize_task_monitor_logs import parse_monitoring_log_files
 
-class TestUberMonitor(unittest.TestCase):
+class TestSummarizeTaskMonitorLogs(unittest.TestCase):
     def test_parse_monitoring_log_files(self):
         import tempfile
 
-        input_files = ['uber_monitor_test_files/call-ScoreVariantAnnotationsINDELs/shard-34/monitoring.log',
-                       'uber_monitor_test_files/call-ScoreVariantAnnotationsINDELs/shard-35/monitoring.log',
-                       'uber_monitor_test_files/call-IndelsVariantRecalibrator/monitoring.log',
-                       'uber_monitor_test_files/call-ExtractFilterTask/shard-0/cacheCopy/monitoring.log',
-                       'uber_monitor_test_files/call-MergeVCFs/cacheCopy/monitoring.log']
+        input_files = ['summarize_task_monitor_logs_test_files/call-ScoreVariantAnnotationsINDELs/shard-34/monitoring.log',
+                       'summarize_task_monitor_logs_test_files/call-ScoreVariantAnnotationsINDELs/shard-35/monitoring.log',
+                       'summarize_task_monitor_logs_test_files/call-IndelsVariantRecalibrator/monitoring.log',
+                       'summarize_task_monitor_logs_test_files/call-ExtractFilterTask/shard-0/cacheCopy/monitoring.log',
+                       'summarize_task_monitor_logs_test_files/call-MergeVCFs/cacheCopy/monitoring.log']
         with tempfile.NamedTemporaryFile() as actual_output_file:
             parse_monitoring_log_files(input_files, actual_output_file.name)
 
-            expected_output_file = 'uber_monitor_test_files/expected_monitoring_summary_file.txt'
+            expected_output_file = 'summarize_task_monitor_logs_test_files/expected_monitoring_summary_file.txt'
             with open(actual_output_file.name, 'r') as actual, open(expected_output_file, 'r') as expected:
                 while (True):
                     actual_line = actual.readline().rstrip()

@@ -394,7 +394,6 @@ workflow GvsCreateFilterSet {
   output {
     File output_vcf = MergeVCFs.output_vcf
     File output_vcf_idx = MergeVCFs.output_vcf_index
-    Array[File] foo = select_first([SNPsVariantRecalibratorScattered.monitoring_log, []])
     File monitoring_summary = UberMonitorItAll.monitoring_summary
     Boolean done = true
   }
