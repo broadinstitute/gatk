@@ -3,13 +3,6 @@ import sys
 import re
 import os
 
-global MaxCpu
-global MaxMem
-global MaxMemPct
-global MaxDisk
-global MaxDiskPct
-
-
 def parse_monitoring_log_files(mlog_files, output_file):
     with open(output_file, 'w') as output:
         header = f"Total Mem\tMax Mem Used\tMax Mem Used (%)\tTotal Disk\tMax Disk Used\tMax Disk Used (" \
