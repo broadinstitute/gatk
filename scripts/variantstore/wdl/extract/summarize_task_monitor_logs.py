@@ -111,7 +111,8 @@ def parse_monitoring_log_file(mlog_file, output):
         else:
             task = tokens[index][5:]
 
-        summary = f"{TotalMemory}\t{MaxMem}\t{MaxMemPct}\t{TotalDisk}\t{MaxDisk}\t{MaxDiskPct}\t{task}\t{shard}\t{os.path.abspath(mlog_file)}\n"
+        summary = f"{TotalMemory}\t{MaxMem}\t{MaxMemPct}\t{TotalDisk}\t{MaxDisk}\t{MaxDiskPct}\t{task}\t{shard}\t" \
+                  f"{os.path.abspath(mlog_file)}\n"
         output.write(summary)
 
 
@@ -121,7 +122,7 @@ def parse_timestamp_line(line):
 
 
 def parse_cpu_usage_line(line):
-    p = "^\* CPU usage\: (\d+\.\d+)%$"  # Looks Like: * CPU usage: 17.6%
+    p = "^\\* CPU usage\\: (\\d+\\.\\d+)%$"  # Looks Like: * CPU usage: 17.6%
     m = re.match(p, line)
     if (m is not None):
         cpu = float(m.group(1))
@@ -130,17 +131,17 @@ def parse_cpu_usage_line(line):
             MaxCpu = cpu
     else:
         # Check if it's a nan (we see this sometimes at startup)
-        p2 = "^\* CPU usage\: -nan\%$"  # * CPU usage: -nan%
+        p2 = "^\\* CPU usage\\: -nan\\%$"  # * CPU usage: -nan%
         m2 = re.match(p2, line)
-        if (m2 == None):
+        if (m2 is None):
             eprint(f"ERROR: Line '{line}' does not look like a CPU usage line. Is this a monitoring_log file?")
             sys.exit(1)
 
 
 def parse_memory_usage_line(line):
-    p = "^\* Memory usage\: (\d+\.\d+) \S+ (\d+(\.\d*)?)\%$"  # Looks Like: * Memory usage: 1.79 GiB 1.8%
+    p = "^\\* Memory usage\\: (\\d+\\.\\d+) \\S+ (\\d+(\\.\\d*)?)\\%$"  # Looks Like: * Memory usage: 1.79 GiB 1.8%
     m = re.match(p, line)
-    if (m == None):
+    if (m is None):
         eprint(f"ERROR: Line '{line}' does not look like a Memory usage line. Is this a monitoring_log file?")
         sys.exit(1)
     mem = float(m.group(1))
@@ -153,9 +154,9 @@ def parse_memory_usage_line(line):
 
 
 def parse_disk_usage_line(line):
-    p = "^\* Disk usage\: (\d+\.\d+) \S+ (\d+(\.\d*)?)\%$"  # Looks Like: * Disk usage: 22.000 GiB 3%
+    p = "^\\* Disk usage\\: (\\d+\\.\\d+) \\S+ (\\d+(\\.\\d*)?)\\%$"  # Looks Like: * Disk usage: 22.000 GiB 3%
     m = re.match(p, line)
-    if (m == None):
+    if (m is None):
         eprint(f"ERROR: Line '{line}' does not look like a Disk usage line. Is this a monitoring_log file?")
         sys.exit(1)
     disk = float(m.group(1))

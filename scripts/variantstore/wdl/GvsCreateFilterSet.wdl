@@ -358,7 +358,7 @@ workflow GvsCreateFilterSet {
     }
   }
 
-  call Utils.UberMonitor as UberMonitorItAll {
+  call Utils.SummarizeTaskMonitorLogs as SummarizeItAll {
     input:
       inputs = select_all(
                flatten(
@@ -394,7 +394,7 @@ workflow GvsCreateFilterSet {
   output {
     File output_vcf = MergeVCFs.output_vcf
     File output_vcf_idx = MergeVCFs.output_vcf_index
-    File monitoring_summary = UberMonitorItAll.monitoring_summary
+    File monitoring_summary = SummarizeItAll.monitoring_summary
     Boolean done = true
   }
 }

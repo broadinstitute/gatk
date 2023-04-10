@@ -644,7 +644,7 @@ task MergeTsvs {
 
 }
 
-task UberMonitor {
+task SummarizeTaskMonitorLogs {
   input {
     Array[File] inputs
   }
@@ -656,7 +656,7 @@ task UberMonitor {
     if [[ -z "$INPUTS" ]]; then
       echo "No monitoring log files found" > monitoring_summary.txt
     else
-      python3 /app/uber_monitor.py \
+      python3 /app/summarize_task_monitor_logs.py \
         --input $INPUTS \
         --output monitoring_summary.txt
     fi
@@ -666,7 +666,7 @@ task UberMonitor {
   # ------------------------------------------------
   # Runtime settings:
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-04-04-alpine"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-04-10-alpine"
     memory: "1 GB"
     preemptible: 3
     cpu: "1"
