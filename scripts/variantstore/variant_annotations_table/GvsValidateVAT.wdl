@@ -897,6 +897,8 @@ task ClinvarSignificance {
         String fq_vat_table
         String last_modified_timestamp
     }
+    # this has been temporarily turned off so that we can discuss the test with Lee.
+    # Not all of these values end up being seen in small sample sets
     # check that all clinvar values are accounted for
 
     String pf_file = "pf.txt"
