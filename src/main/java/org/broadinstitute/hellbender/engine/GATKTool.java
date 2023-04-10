@@ -145,7 +145,7 @@ public abstract class GATKTool extends CommandLineProgram {
     /**
      * Our source of reference data (null if no reference was provided)
      */
-    protected ReferenceDataSource reference;
+    ReferenceDataSource reference;
 
     /**
      * Our source of reads data (null if no source of reads was provided)
