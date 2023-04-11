@@ -1,14 +1,12 @@
 package org.broadinstitute.hellbender.tools.gvs.common;
 
-import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.GATKTool;
+import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StandardAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_StandardAnnotation;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
 import java.util.Arrays;
@@ -18,6 +16,7 @@ import java.util.List;
 public abstract class ExtractTool extends GATKTool {
     public static final int DEFAULT_LOCAL_SORT_MAX_RECORDS_IN_RAM = 1000000;
     protected VariantAnnotatorEngine annotationEngine;
+    protected ReferenceDataSource reference;
 
     @Argument(
             fullName = "project-id",
@@ -109,5 +108,7 @@ public abstract class ExtractTool extends GATKTool {
         annotationEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), null, Collections.emptyList(), false, false);
 
         ChromosomeEnum.setRefVersion(refVersion);
+
+        reference = directlyAccessEngineReferenceDataSource();
     }
 }
