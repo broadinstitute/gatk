@@ -6,6 +6,7 @@ import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.GATKTool;
+import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StandardAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
@@ -22,6 +23,7 @@ public abstract class ExtractTool extends GATKTool {
     public static final int DEFAULT_LOCAL_SORT_MAX_RECORDS_IN_RAM = 1000000;
     protected VariantContextWriter vcfWriter = null;
     protected VariantAnnotatorEngine annotationEngine;
+    protected ReferenceDataSource reference;
 
     @Argument(
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -126,6 +128,7 @@ public abstract class ExtractTool extends GATKTool {
 
         ChromosomeEnum.setRefVersion(refVersion);
 
+        reference = directlyAccessEngineReferenceDataSource();
     }
 
 }
