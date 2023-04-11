@@ -163,7 +163,8 @@ public class ExtractCohortLiteEngine {
         this.filterSetName = filterSetName;
 
         this.annotationEngine = annotationEngine;
-        this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
+        this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(
+                annotationEngine, vcfHeader, false, false, true);
 
         this.inferredReferenceState = inferredReferenceState;
 
@@ -469,8 +470,7 @@ public class ExtractCohortLiteEngine {
                 new SimpleInterval(contig, (int) start, (int) start),
                 refAllele.getBases()[0],
                 true,
-                false,
-                true);
+                false);
 
 
         // Reference Sites -- first create a single VC Builder
