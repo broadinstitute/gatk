@@ -1,21 +1,16 @@
 package org.broadinstitute.hellbender.utils.bigquery;
 
 import com.google.cloud.bigquery.*;
-import com.google.cloud.bigquery.storage.v1.*;
-import com.google.common.base.Preconditions;
-import org.apache.avro.generic.GenericData;
-import org.apache.avro.generic.GenericDatumReader;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.io.BinaryDecoder;
-import org.apache.avro.io.DatumReader;
-import org.apache.avro.io.DecoderFactory;
+import io.grpc.StatusRuntimeException;
 import org.apache.ivy.util.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 
-import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
@@ -41,14 +36,24 @@ public final class BigQueryUtils {
     }
 
     /**
+     * @param executionProjectId The google project that should be used to execute this query
+     *
+     * @return A {@link BigQuery} object that can be used to interact with a BigQuery data set.
+     */
+    public static BigQuery getBigQueryEndPoint(String executionProjectId) {
+        return (executionProjectId != null) ? BigQueryOptions.newBuilder().setProjectId(executionProjectId).build().getService() : getBigQueryEndPoint();
+    }
+
+    /**
      * Executes the given {@code queryString} on the default instance of {@link BigQuery} as created by {@link #getBigQueryEndPoint()}.
      * Will block until results are returned.
      * For more information on querying BigQuery tables, see: https://cloud.google.com/bigquery/sql-reference/
      * @param queryString The {@link BigQuery} query string to execute.  Must use standard SQL syntax.  Must contain the project ID, data set, and table name in the `FROM` clause for the table from which to retrieve data.
-     * @return A {@link TableResult} object containing the results of the query executed.
+     * @param labels The {@link BigQuery} label to add the job run.  Must use Map<String, String>. Can be null to indicate no labels.
+     * @return A {@link BigQueryResultAndStatistics} object containing the results and the statistics for the query executed.
      */
-    public static TableResult executeQuery(final String queryString) {
-        return executeQuery(getBigQueryEndPoint(), queryString, false);
+    public static BigQueryResultAndStatistics executeQuery(final String queryString, final Map<String, String> labels) {
+        return executeQuery(getBigQueryEndPoint(), queryString, false, labels );
     }
 
     /**
@@ -57,10 +62,25 @@ public final class BigQueryUtils {
      * For more information on querying BigQuery tables, see: https://cloud.google.com/bigquery/sql-reference/
      * @param queryString The {@link BigQuery} query string to execute.  Must use standard SQL syntax.  Must contain the project ID, data set, and table name in the `FROM` clause for the table from which to retrieve data.
      * @param runQueryInBatchMode If true, run the query in batch mode, which is lower priority but has no limit on the number of concurrent queries
-     * @return A {@link TableResult} object containing the results of the query executed.
+     * @param labels The {@link BigQuery} label to add the job run.  Must use Map<String, String>. Can be null to indicate no labels.
+     * @return A {@link BigQueryResultAndStatistics} object containing the results and the statistics for the query executed.
      */
-    public static TableResult executeQuery(final String queryString, final boolean runQueryInBatchMode) {
-        return executeQuery(getBigQueryEndPoint(), queryString, runQueryInBatchMode);
+    public static BigQueryResultAndStatistics executeQuery(final String queryString, final boolean runQueryInBatchMode, final Map<String, String> labels) {
+        return executeQuery(getBigQueryEndPoint(), queryString, runQueryInBatchMode, labels);
+    }
+
+    /**
+     * Executes the given {@code queryString} on the default instance of {@link BigQuery} as created by {@link #getBigQueryEndPoint()}.
+     * Will block until results are returned.
+     * For more information on querying BigQuery tables, see: https://cloud.google.com/bigquery/sql-reference/
+     * @param projectID The {@link BigQuery} project id in which to execute the query
+     * @param queryString The {@link BigQuery} query string to execute.  Must use standard SQL syntax.  Must contain the project ID, data set, and table name in the `FROM` clause for the table from which to retrieve data.
+     * @param runQueryInBatchMode If true, run the query in batch mode, which is lower priority but has no limit on the number of concurrent queries
+     * @param labels The {@link BigQuery} label to add the job run.  Must use Map<String, String>. Can be null to indicate no labels.
+     * @return A {@link BigQueryResultAndStatistics} object containing the results and the statistics for the query executed.
+     */
+    public static BigQueryResultAndStatistics executeQuery(final String projectID, final String queryString, final boolean runQueryInBatchMode, final Map<String, String> labels) {
+        return executeQuery(getBigQueryEndPoint(projectID), queryString, runQueryInBatchMode, labels);
     }
 
     /**
@@ -70,21 +90,23 @@ public final class BigQueryUtils {
      * @param bigQuery The {@link BigQuery} instance against which to execute the given {@code queryString}.
      * @param queryString The {@link BigQuery} query string to execute.  Must use standard SQL syntax.  Must contain the project ID, data set, and table name in the `FROM` clause for the table from which to retrieve data.
      * @param runQueryInBatchMode If true, run the query in batch mode, which is lower priority but has no limit on the number of concurrent queries
-     * @return A {@link TableResult} object containing the results of the query executed.
+     * @param labels The {@link BigQuery} label to add the job run.  Must use Map<String, String>. Can be null to indicate no labels.
+     * @return A {@link BigQueryResultAndStatistics} object containing the results and statistics for the query executed.
      */
-    public static TableResult executeQuery(final BigQuery bigQuery, final String queryString, final boolean runQueryInBatchMode) {
+    public static BigQueryResultAndStatistics executeQuery(final BigQuery bigQuery, final String queryString, final boolean runQueryInBatchMode, final Map<String, String> labels) {
 
         // Create a query configuration we can run based on our query string:
         final QueryJobConfiguration queryConfig =
                 QueryJobConfiguration.newBuilder( queryString )
                         .setUseLegacySql(false)
                         .setPriority(runQueryInBatchMode ? QueryJobConfiguration.Priority.BATCH : QueryJobConfiguration.Priority.INTERACTIVE)
+                        .setLabels(labels)
                         .build();
 
         logger.info("Executing Query: \n\n" + queryString);
-        final TableResult result = submitQueryAndWaitForResults( bigQuery, queryConfig );
-        logger.info("Query returned " + result.getTotalRows() + " results.");
-        return result;
+        final BigQueryResultAndStatistics resultAndStatistics = submitQueryAndWaitForResults( bigQuery, queryConfig );
+        logger.info("Query returned " + resultAndStatistics.result.getTotalRows() + " results.");
+        return resultAndStatistics;
     }
 
     /**
@@ -95,21 +117,37 @@ public final class BigQueryUtils {
      * @param projectID The BigQuery {@code project ID} containing the {@code dataSet} and table from which to query data.
      * @param dataSet The BigQuery {@code dataSet} containing the table from which to query data.
      * @param queryString The {@link BigQuery} query string to execute.  Must use standard SQL syntax.  Must contain the project ID, data set, and table ID in the `FROM` clause for the table from which to retrieve data.
-     * @return A {@link TableResult} object containing the results of the query executed.
+     * @param labels The {@link BigQuery} label to add the job run.  Must use Map<String, String>. Can be null to indicate no labels.
+     * @return A {@link BigQueryResultAndStatistics} object containing the results and statistics for the query executed
      */
-    public static TableResult executeQuery(final BigQuery bigQuery,
-                                           final String projectID,
-                                           final String dataSet,
-                                           final String queryString) {
+    public static BigQueryResultAndStatistics executeQuery(final BigQuery bigQuery,
+                                                           final String projectID,
+                                                           final String dataSet,
+                                                           final String queryString,
+                                                           final Map<String, String> labels) {
 
         // Create a query configuration we can run based on our query string:
         final QueryJobConfiguration queryConfig =
                 QueryJobConfiguration.newBuilder( queryString )
                         .setUseLegacySql(false)
                         .setDefaultDataset(DatasetId.of(projectID, dataSet))
+                        .setLabels(labels)
                         .build();
 
         return submitQueryAndWaitForResults( bigQuery, queryConfig );
+    }
+
+    /**
+     * @return estimated number of rows in the BigQuery vortex streaming buffer
+     */
+    public static long getEstimatedRowsInStreamingBuffer(String projectID, String datasetName, String tableName ) {
+        BigQuery bigquery = BigQueryUtils.getBigQueryEndPoint(projectID);
+        Table table = bigquery.getTable(TableId.of(projectID, datasetName, tableName));
+
+        StandardTableDefinition tdd = table.getDefinition();
+        StandardTableDefinition.StreamingBuffer buffer = tdd.getStreamingBuffer();
+        Long rows = (buffer == null) ? 0 : buffer.getEstimatedRows();
+        return (rows == null) ? 0 : rows.longValue();
     }
 
     /**
@@ -300,10 +338,10 @@ public final class BigQueryUtils {
      * Executes the given {@code queryJobConfiguration} on the given {@code bigQuery} instance.
      * @param bigQuery The instance of {@link BigQuery} to use to connect to BigQuery.
      * @param queryJobConfiguration The {@link QueryJobConfiguration} object containing all required information to retrieve data from a BigQuery table.
-     * @return A {@link TableResult} object containing the results of the query executed.
+     * @return A {@link BigQueryResultAndStatistics} object containing the results of the query executed and corresponding statistics
      */
-    private static TableResult submitQueryAndWaitForResults( final BigQuery bigQuery,
-                                                             final QueryJobConfiguration queryJobConfiguration ) {
+    private static BigQueryResultAndStatistics submitQueryAndWaitForResults(final BigQuery bigQuery,
+                                                                            final QueryJobConfiguration queryJobConfiguration ) {
         // Create a job ID so that we can safely retry:
         final JobId jobId = JobId.of(UUID.randomUUID().toString());
 
@@ -312,7 +350,7 @@ public final class BigQueryUtils {
 
         // Wait for the query to complete.
         try {
-            logger.info("Waiting for query to complete...");
+            logger.info("Waiting for query " + queryJob.getJobId() + " to complete...");
             queryJob = queryJob.waitFor();
         }
         catch (final InterruptedException ex) {
@@ -335,23 +373,25 @@ public final class BigQueryUtils {
 
         // Get the results.
         logger.info("Retrieving query results...");
-        final QueryResponse response = bigQuery.getQueryResults(jobId);
+        final QueryResponse response = bigQuery.getQueryResults(queryJob.getJobId());
         final TableResult result;
+        final JobStatistics.QueryStatistics queryStatistics;
         try {
             result = queryJob.getQueryResults();
+            queryStatistics = queryJob.getStatistics();
 
             long bytesProcessed = ((JobStatistics.QueryStatistics) queryJob.getStatistics()).getTotalBytesProcessed();
-            logger.info(String.format("%.2f MB actually scanned", bytesProcessed / 1000000.0));
+            logger.info(String.format("%.2f MB actually scanned for job: %s", bytesProcessed / 1000000.0, queryJob.getJobId()));
 
         }
         catch (final InterruptedException ex) {
             throw new GATKException("Interrupted while waiting for query job to complete", ex);
         }
 
-        return result;
+        return new BigQueryResultAndStatistics(result, queryStatistics);
     }
 
-    private static long getQueryCostBytesProcessedEstimate(String queryString) {
+    private static long getQueryCostBytesProcessedEstimate(String queryString, String projectID, String datasetID) {
         final QueryJobConfiguration dryRunQueryConfig =
                 QueryJobConfiguration.newBuilder( queryString )
                         .setUseLegacySql(false)
@@ -360,37 +400,96 @@ public final class BigQueryUtils {
                         .setPriority(QueryJobConfiguration.Priority.INTERACTIVE)
                         .build();
 
-        Job dryRunJob = getBigQueryEndPoint().create(JobInfo.newBuilder(dryRunQueryConfig).build());
+        final BigQuery bigQuery = getBigQueryEndPoint(projectID);
+
+        // Get the location for the BQ dataset, because it isn't always able to be discerned by parsing the sql and will
+        // fail if a location was specified at the time of dataset creation
+        DatasetId datasetIDObject = DatasetId.of(projectID, datasetID);
+        Dataset dataset = bigQuery.getDataset(datasetIDObject);
+        String location = dataset.getLocation();
+        // By explicitly creating a JobId, we can set the location in which the job to run
+        final JobId jobId = JobId.newBuilder().setLocation(location).build();
+
+        Job dryRunJob = getBigQueryEndPoint(projectID).create(JobInfo.newBuilder(dryRunQueryConfig).setJobId(jobId).build());
         long bytesProcessed = ((JobStatistics.QueryStatistics) dryRunJob.getStatistics()).getTotalBytesProcessed();
         return bytesProcessed;
     }
+    public static StorageAPIAvroReaderAndBigQueryStatistics executeQueryWithStorageAPI(final String queryString,
+                                                                  final List<String> fieldsToRetrieve,
+                                                                  final String projectID,
+                                                                  final String datasetID,
+                                                                  final String userDefinedFunctions,
+                                                                  final boolean runQueryInBatchMode,
+                                                                  Map<String, String> labels) {
+        final String tempTableName = String.format("%s_%s", "temp_table", UUID.randomUUID().toString().replace('-', '_'));
+        final String tempTableFullyQualified = String.format("%s.%s.%s", projectID, datasetID, tempTableName);
 
-    public static StorageAPIAvroReader executeQueryWithStorageAPI(final String queryString, final List<String> fieldsToRetrieve, final String projectID) {
+        final String queryStringWithUDFs = userDefinedFunctions == null ? queryString : userDefinedFunctions + queryString;
 
-        return executeQueryWithStorageAPI(queryString, fieldsToRetrieve, projectID, false);
-    }
+        logger.info(queryStringWithUDFs);
 
-    public static StorageAPIAvroReader executeQueryWithStorageAPI(final String queryString, final List<String> fieldsToRetrieve, final String projectID, final boolean runQueryInBatchMode) {
-        final String tempTableDataset = "temp_tables";
-        final String tempTableName = UUID.randomUUID().toString().replace('-', '_');
-        final String tempTableFullyQualified = String.format("%s.%s.%s", projectID, tempTableDataset, tempTableName);
-
-        long bytesProcessed = getQueryCostBytesProcessedEstimate(queryString);
+        long bytesProcessed = getQueryCostBytesProcessedEstimate(queryStringWithUDFs, projectID, datasetID);
         logger.info(String.format("Estimated %s MB scanned", bytesProcessed/1000000));
 
-        final String queryStringIntoTempTable = "CREATE TABLE `" + tempTableFullyQualified + "`\n" +
+        // UDFs need to come before the CREATE TABLE clause
+        final String queryStringIntoTempTable =
+                (userDefinedFunctions == null ? "" : userDefinedFunctions) +
+                " CREATE TABLE `" + tempTableFullyQualified + "`\n" +
                 "OPTIONS(\n" +
                 "  expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 DAY)\n" +
                 ") AS\n" +
                 queryString;
 
-        executeQuery(queryStringIntoTempTable, runQueryInBatchMode);
+        BigQueryResultAndStatistics bigQueryResultAndStatistics = executeQuery(projectID, queryStringIntoTempTable, runQueryInBatchMode, labels);
 
-        final Table tableInfo = getBigQueryEndPoint().getTable( TableId.of(projectID, tempTableDataset, tempTableName) );
+        final Table tableInfo = getBigQueryEndPoint(projectID).getTable( TableId.of(projectID, datasetID, tempTableName) );
         logger.info(String.format("Query temp table created with %s rows and %s bytes in size", tableInfo.getNumRows(), tableInfo.getNumBytes()));
 
         TableReference tr = new TableReference(tempTableFullyQualified, fieldsToRetrieve);
 
-        return new StorageAPIAvroReader(tr);
+        return new StorageAPIAvroReaderAndBigQueryStatistics(new StorageAPIAvroReader(tr), bigQueryResultAndStatistics.queryStatistics);
+    }
+
+    public static boolean doRowsExistFor(String projectID, String datasetName, String tableName, String columnName, String value) {
+        String template = "SELECT COUNT(*) FROM `%s.%s.%s` WHERE %s = %s";
+        String query = String.format(template, projectID, datasetName, tableName, columnName, value);
+
+        BigQueryResultAndStatistics resultAndStatistics = BigQueryUtils.executeQuery(projectID, query, true, null);
+        for (final FieldValueList row : resultAndStatistics.result.iterateAll()) {
+            final long count = row.get(0).getLongValue();
+            return count != 0;
+        }
+        throw new GATKException(String.format("No rows returned from count of `%s.%s.%s` for %s = %s",
+                projectID, datasetName, tableName, columnName, value));
+    }
+
+    private static StatusRuntimeException extractCausalStatusRuntimeExceptionOrThrow(Throwable original, Throwable current) {
+        if (current == null) {
+            throw new GATKException("No causal StatusRuntimeException found", original);
+        }
+        if (current instanceof StatusRuntimeException) {
+            StatusRuntimeException se = (StatusRuntimeException) current;
+            if (se.getStatus() == null) {
+                throw new GATKException("StatusRuntimeException has null status", original);
+            }
+            if (se.getStatus().getCode() == null) {
+                throw new GATKException("StatusRuntimeException status has null code", original);
+            }
+            return (StatusRuntimeException) current;
+        }
+        return extractCausalStatusRuntimeExceptionOrThrow(original, current.getCause());
+    }
+
+    /**
+     * Extracts the `StatusRuntimeException` most closely nested in arbitrarily many layers of exceptions of other
+     * types.
+     *
+     * @param t The `Throwable` whose nested `getCause()`s will be searched for a `StatusRuntimeException`.
+     * @return a `StatusRuntimeException` with a non-null `getStatus().getCode()`.
+     * @throws GATKException If there is no nested `StatusRuntimeException` of there is a nested
+     * `StatusRuntimeException` but either `getStatus()` or `getStatus().getCode()` returns null.
+     */
+    public static StatusRuntimeException extractCausalStatusRuntimeExceptionOrThrow(Throwable t) throws GATKException {
+        return extractCausalStatusRuntimeExceptionOrThrow(t, t);
     }
 }
