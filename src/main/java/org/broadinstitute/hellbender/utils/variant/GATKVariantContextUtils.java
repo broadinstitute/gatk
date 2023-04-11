@@ -221,8 +221,10 @@ public final class GATKVariantContextUtils {
                 try {
                     ref = determineReferenceAllele(ref, myRef);
                 } catch (IllegalStateException e) {
+                    // Get the sample names, comma separated
+                    final String sampleNames = vc.getGenotypes().stream().map(Genotype::getSampleName).collect(Collectors.joining(","));
                     throw new IllegalStateException(String.format("The provided variant file(s) have inconsistent references " +
-                            "for the same position(s) at %s:%d, %s vs. %s", vc.getContig(), vc.getStart(), ref, myRef));
+                            "for the same position(s) at %s:%d with sample (%s), %s vs. %s", vc.getContig(), vc.getStart(), sampleNames, ref, myRef));
                 }
             }
         }

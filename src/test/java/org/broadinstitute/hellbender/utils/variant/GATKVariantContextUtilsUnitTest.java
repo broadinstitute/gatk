@@ -142,6 +142,17 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         return makeVC(Arrays.asList(ref, alt), start);
     }
 
+    private VariantContext makeVCWithSampleNames(final List<Allele> alleles, final int start, final List<String> sampleNames) {
+        int stop = start + alleles.get(0).length() - 1;
+        ArrayList<Genotype> genotypes = new ArrayList<>();
+        for(int i = 0; i < alleles.size(); i++) {
+            genotypes.add(GenotypeBuilder.create(sampleNames.get(i), Arrays.asList(alleles.get(i))));
+        }
+        return new VariantContextBuilder("source", "1", start, stop, alleles)
+                .genotypes(GenotypesContext.create(genotypes))
+                .make();
+    }
+
     @Test
     public void testHomozygousAlleleList() throws Exception {
         final List<Allele> alleles = GATKVariantContextUtils.homozygousAlleleList(T, 2);
@@ -182,6 +193,32 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
             Assert.assertTrue(ref.isReference());
             Assert.assertEquals(ref.getBaseString(), expectedRef.getBaseString());
         }
+    }
+
+    @Test(
+            expectedExceptions = { IllegalStateException.class },
+            expectedExceptionsMessageRegExp = "The provided variant file\\(s\\) have inconsistent references for the same" +
+                    " position\\(s\\) at 1:1 with sample \\(Sample2\\), A\\* vs. C\\*"
+    )
+    public void testDetermineReferenceAlleleNotMatch() {
+        final List<VariantContext> vcs = Arrays.asList(
+                makeVCWithSampleNames(Arrays.asList(Aref), 1, Arrays.asList("Sample1")),
+                makeVCWithSampleNames(Arrays.asList(Cref), 1, Arrays.asList("Sample2"))
+        );
+        GATKVariantContextUtils.determineReferenceAllele(vcs, START_AT_1);
+    }
+
+    @Test(
+            expectedExceptions = { IllegalStateException.class },
+            expectedExceptionsMessageRegExp = "The provided variant file\\(s\\) have inconsistent references for the same " +
+                    "position\\(s\\) at 1:1 with sample \\(not 1 sample name\\), A\\* vs. C\\*"
+    )
+    public void testDetermineReferenceAlleleNotMatchTooManyNames() {
+        final List<VariantContext> vcs = Arrays.asList(
+                makeVCWithSampleNames(Arrays.asList(Aref), 1, Arrays.asList("Sample1")),
+                makeVCWithSampleNames(Arrays.asList(Cref, ATCATC), 1, Arrays.asList("Sample2", "Sample3"))
+        );
+        GATKVariantContextUtils.determineReferenceAllele(vcs, START_AT_1);
     }
 
     @Test

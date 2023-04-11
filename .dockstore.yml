@@ -88,6 +88,14 @@ workflows:
              - master
          tags:
              - /.*/
+   - name: GvsExtractCallset
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
+     filters:
+         branches:
+             - master
+             - ah_var_store
+             - kl_gvs_walker_for_pgen
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
@@ -136,3 +144,33 @@ workflows:
              - master
          tags:
              - /.*/
+   - name: GvsExtractCallsetPgen
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallsetPgen.wdl
+     filters:
+         branches:
+             - kl_gvs_walker_for_pgen
+   - name: GvsExtractCallsetPgenMerged
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallsetPgenMerged.wdl
+     filters:
+         branches:
+             - kl_gvs_walker_for_pgen
+   - name: MergePgen
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/MergePgen.wdl
+     filters:
+         branches:
+             - kl_gvs_walker_for_pgen
+   - name: MergePgenHierarchicalWdl
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/MergePgenHierarchical.wdl
+     filters:
+         branches:
+             - kl_gvs_walker_for_pgen
+   - name: ComparePgenAndVcfScatter
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/pgen_validation/ComparePgenAndVcfScatter.wdl
+     filters:
+         branches:
+             - kl_gvs_walker_for_pgen
