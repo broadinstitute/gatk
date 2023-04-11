@@ -64,16 +64,16 @@ public final class GenotypeUtils {
 
             if (!g.hasLikelihoods()) {
                 if (!g.isHomRef() && !roundContributionFromEachGenotype) {
-                    throw new IllegalStateException("Genotype likelihoods cannot be determined from GQ for genotype: " + g.toString()) +
-                        "Genotypes with no PLs should have integer counts using roundContributionFromEachGenotype = true";
+                    throw new IllegalStateException("Genotype likelihoods cannot be determined from GQ for genotype: " + g +
+                        ".\nGenotypes with no PLs should have integer counts using roundContributionFromEachGenotype = true.");
                 }
                 if (roundContributionFromEachGenotype) {
                     if (g.isHomRef()) {
                         genotypeWithTwoRefsCount += 1;
                     } else if (g.isHet()) {
-                        genotypeWithOneRefCount += 1;
+                        genotypesWithOneRefCount += 1;
                     } else {
-                        genotypesWithNoRefsCount += 1;   
+                        genotypesWithNoRefsCount += 1;
                     }
                     continue;
                 } else if (g.getGQ() == 0) {
