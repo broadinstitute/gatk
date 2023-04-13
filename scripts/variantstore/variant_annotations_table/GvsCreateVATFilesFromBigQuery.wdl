@@ -180,7 +180,7 @@ task BigQueryExportVat {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
         memory: "2 GB"
         preemptible: 3
         cpu: "1"
@@ -251,7 +251,7 @@ task MergeVatTSVs {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-slim"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-slim"
         memory: "4 GB"
         preemptible: 3
         cpu: "2"

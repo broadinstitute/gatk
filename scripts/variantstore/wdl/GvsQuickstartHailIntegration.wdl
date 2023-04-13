@@ -136,7 +136,7 @@ task CreateAndTieOutVds {
     >>>
     runtime {
         # `slim` here to be able to use Java
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-slim"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-slim"
         disks: "local-disk 2000 HDD"
         memory: "30 GiB"
     }

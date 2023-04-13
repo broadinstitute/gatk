@@ -155,7 +155,7 @@ task CreateFOFNs {
     split -a 5 -l ~{batch_size} ~{sample_name_list} batched_sample_names.
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
     bootDiskSizeGb: 15
     memory: "3 GB"
     disks: "local-disk 10 HDD"
@@ -363,7 +363,7 @@ task SetIsLoadedColumn {
                      AND sls2.status = "FINISHED")'
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
     memory: "1 GB"
     disks: "local-disk 10 HDD"
     cpu: 1
@@ -452,7 +452,7 @@ task GetUningestedSampleIds {
     bq --project_id=~{project_id} rm -f=true ~{temp_table}
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
     memory: "1 GB"
     disks: "local-disk 10 HDD"
     preemptible: 5
@@ -489,7 +489,7 @@ task CurateInputLists {
                                              --output_files True
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-03-27-alpine"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-04-13-alpine"
     memory: "3 GB"
     disks: "local-disk 100 HDD"
     bootDiskSizeGb: 15
