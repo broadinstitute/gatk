@@ -432,7 +432,7 @@ task ExtractFilterTask {
   }
 
   String intervals_name = basename(intervals)
-  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
 
   command <<<
     set -e
