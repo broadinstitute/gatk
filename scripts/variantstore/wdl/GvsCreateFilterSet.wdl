@@ -140,7 +140,7 @@ workflow GvsCreateFilterSet {
         snp_annotations   = "-A AS_QD -A AS_MQRankSum -A AS_ReadPosRankSum -A AS_FS -A AS_MQ -A AS_SOR",
         indel_annotations = "-A AS_QD -A AS_MQRankSum -A AS_ReadPosRankSum -A AS_FS -A AS_MQ -A AS_SOR",
         use_allele_specific_annotations = true,
-        monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+        monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
     }
 
     call Utils.MergeVCFs as MergeINDELScoredVCFs {
@@ -497,7 +497,7 @@ task PopulateFilterSetInfo {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
-  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
 
   command <<<
     set -eo pipefail
@@ -573,7 +573,7 @@ task PopulateFilterSetSites {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
-  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
 
   command <<<
     set -eo pipefail
@@ -633,7 +633,7 @@ task PopulateFilterSetTranches {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
-  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
 
   command <<<
     set -eo pipefail

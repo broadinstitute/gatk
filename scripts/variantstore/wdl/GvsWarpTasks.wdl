@@ -33,7 +33,7 @@ task SNPsVariantRecalibratorCreateModel {
     Int machine_mem = select_first([machine_mem_gb, 100])
     Int java_mem = machine_mem - 5
 
-    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+    File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
 
     command <<<
         set -euo pipefail
@@ -92,7 +92,7 @@ task GatherTranches {
         }
     }
 
-    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+    File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
 
     command <<<
         set -euo pipefail
@@ -177,7 +177,7 @@ task IndelsVariantRecalibrator {
     Int machine_mem = select_first([machine_mem_gb, 30])
     Int java_mem = machine_mem - 5
 
-    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+    File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
 
     command <<<
         set -euo pipefail
@@ -259,7 +259,7 @@ task SNPsVariantRecalibrator {
     Int java_mem = machine_mem - 5
     String model_report_arg = if defined(model_report) then "--input-model $MODEL_REPORT --output-tranches-for-scatter" else ""
 
-    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+    File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
 
     command <<<
         set -euo pipefail

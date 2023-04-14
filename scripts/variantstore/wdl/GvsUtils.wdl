@@ -11,7 +11,7 @@ task MergeVCFs {
   }
 
   Int disk_size = select_first([merge_disk_override, 100])
-  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
 
   parameter_meta {
     input_vcfs: {
@@ -78,7 +78,7 @@ task SplitIntervals {
   Int java_memory = disk_memory - 4
 
   String gatk_tool = if (defined(interval_weights_bed)) then 'WeightedSplitIntervals' else 'SplitIntervals'
-  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
 
   parameter_meta {
     intervals: {
@@ -152,7 +152,7 @@ task GetBQTableLastModifiedDatetime {
     volatile: true
   }
 
-  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
 
   # ------------------------------------------------
   # try to get the last modified date for the table in question; fail if something comes back from BigQuery
@@ -202,7 +202,7 @@ task GetBQTablesMaxLastModifiedTimestamp {
     volatile: true
   }
 
-  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
 
   # ------------------------------------------------
   # try to get the latest last modified timestamp, in epoch microseconds, for all of the tables that match the provided prefixes
@@ -244,7 +244,7 @@ task BuildGATKJarAndCreateDataset {
     volatile: true
   }
 
-  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
 
   command <<<
     # Much of this could/should be put into a Docker image.
@@ -362,7 +362,7 @@ task ScaleXYBedValues {
     meta {
         # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
     }
-    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+    File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
 
     command <<<
         bash ~{monitoring_script} > monitoring.log &
@@ -400,7 +400,7 @@ task GetNumSamplesLoaded {
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
-  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
 
   command <<<
     set -o errexit -o nounset -o xtrace -o pipefail
@@ -443,7 +443,7 @@ task CountSuperpartitions {
         String project_id
         String dataset_name
     }
-    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+    File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
     command <<<
         bash ~{monitoring_script} > monitoring.log &
 
@@ -478,7 +478,7 @@ task ValidateFilterSetName {
 
     # add labels for DSP Cloud Cost Control Labeling and Reporting
     String bq_labels = "--label service:gvs --label team:variants --label managedby:gvs_utils"
-    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+    File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
 
     command <<<
         set -o errexit -o nounset -o xtrace -o pipefail
@@ -520,7 +520,7 @@ task IndexVcf {
         Int disk_size_gb = ceil(2 * size(input_vcf, "GiB")) + 200
     }
 
-    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+    File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
 
     Int command_mem = memory_mb - 1000
     Int max_heap = memory_mb - 500
@@ -572,7 +572,7 @@ task SelectVariants {
         Int disk_size_gb = ceil(2*size(input_vcf, "GiB")) + 200
     }
 
-    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+    File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
 
     Int command_mem = memory_mb - 1000
     Int max_heap = memory_mb - 500
@@ -621,7 +621,7 @@ task MergeTsvs {
         String output_file_name
     }
 
-    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+    File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
 
     command <<<
       bash ~{monitoring_script} > monitoring.log &
