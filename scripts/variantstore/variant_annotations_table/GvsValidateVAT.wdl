@@ -94,6 +94,13 @@ workflow GvsValidateVat {
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
     }
 
+    call DuplicateAnnotations {
+        input:
+            query_project_id = project_id,
+            fq_vat_table = fq_vat_table,
+            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
+    }
+
     call ClinvarSignificance {
         input:
             project_id = project_id,
@@ -129,7 +136,7 @@ workflow GvsValidateVat {
                        SubpopulationMax.pass,
                        SubpopulationAlleleCount.pass,
                        SubpopulationAlleleNumber.pass,
-                       ClinvarSignificance.pass,
+                       DuplicateAnnotations.pass,
                        SchemaAAChangeAndExonNumberConsistent.pass,
                        SpotCheckForAAChangeAndExonNumberConsistency.pass
                        ],
@@ -145,7 +152,7 @@ workflow GvsValidateVat {
                                SubpopulationMax.name,
                                SubpopulationAlleleCount.name,
                                SubpopulationAlleleNumber.name,
-                               ClinvarSignificance.name,
+                               DuplicateAnnotations.name,
                                SchemaAAChangeAndExonNumberConsistent.name,
                                SpotCheckForAAChangeAndExonNumberConsistency.name
                                ],
@@ -161,7 +168,7 @@ workflow GvsValidateVat {
                                  SubpopulationMax.result,
                                  SubpopulationAlleleCount.result,
                                  SubpopulationAlleleNumber.result,
-                                 ClinvarSignificance.result,
+                                 DuplicateAnnotations.result,
                                  SchemaAAChangeAndExonNumberConsistent.result,
                                  SpotCheckForAAChangeAndExonNumberConsistency.result
                                  ]
@@ -183,7 +190,10 @@ task EnsureVatTableHasVariants {
     String results_file = "results.txt"
 
     command <<<
-        set -e
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
         bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT COUNT (DISTINCT vid) AS count FROM `~{fq_vat_table}`' > bq_variant_count.csv
@@ -233,7 +243,9 @@ task SpotCheckForExpectedTranscripts {
     String results_file = "results.txt"
 
     command <<<
-        set -e
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
@@ -373,7 +385,9 @@ task SchemaOnlyOneRowPerNullTranscript {
     String results_file = "results.txt"
 
     command <<<
-        set -e
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
@@ -596,8 +610,9 @@ task SchemaNullTranscriptsExist {
     String results_file = "results.txt"
 
     command <<<
-        set -e
-
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
         bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
@@ -648,7 +663,9 @@ task SubpopulationMax {
     String results_file = "results.txt"
 
     command <<<
-        set -e
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
@@ -707,7 +724,9 @@ task SubpopulationAlleleCount {
     String results_file = "results.txt"
 
     command <<<
-        set -e
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
@@ -760,7 +779,9 @@ task SubpopulationAlleleNumber {
     String results_file = "results.txt"
 
     command <<<
-        set -e
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
@@ -801,19 +822,92 @@ task SubpopulationAlleleNumber {
     }
 }
 
+task DuplicateAnnotations {
+    input {
+        String query_project_id
+        String fq_vat_table
+        String last_modified_timestamp
+    }
+    # there are vids with duplicate annotations
+    # make sure there aren't matching sites with mis-matched ANs and matching variants with mis-matched ACs
+
+    String pf_file = "pf.txt"
+    String results_file = "results.txt"
+
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
+
+        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv '
+        SELECT contig, position, gvs_all_an, COUNT(DISTINCT gvs_all_an) AS an_count
+        FROM `~{fq_vat_table}`
+        GROUP BY contig, position, gvs_all_an
+        HAVING an_count > 1
+        ' > bq_an_output.csv
+
+        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv '
+        SELECT contig, position, gvs_all_ac, COUNT(DISTINCT gvs_all_ac) AS ac_count
+        FROM `~{fq_vat_table}`
+        GROUP BY contig, position, gvs_all_ac
+        HAVING ac_count > 1
+        ' > bq_ac_output.csv
+
+        # get number of lines in bq query output
+        NUMANRESULTS=$(awk 'END{print NR}' bq_an_output.csv)
+        NUMACRESULTS=$(awk 'END{print NR}' bq_ac_output.csv)
+
+
+        echo "false" > ~{pf_file}
+        # if the results of the queries have any rows, that means there are sites with mis-matched gvs_all_an or gvs_all_ac
+        if [[ $NUMANRESULTS != "0" ]]; then
+          echo "The VAT table ~{fq_vat_table} has mis-matched calculations for AC, and AC of subpopulations" > ~{results_file}
+          cp bq_an_output.csv ~{results_file}
+        elif [[ $NUMACRESULTS != "0" ]]; then
+          echo "The VAT table ~{fq_vat_table} has mis-matched calculations for AN, and AN of subpopulations" > ~{results_file}
+          cp bq_ac_output.csv ~{results_file}
+        else
+          echo "The VAT table ~{fq_vat_table} has correct calculations for AN, AC, AN of subpopulations and AC of subpopulations" > ~{results_file}
+          echo "true" > ~{pf_file}
+        fi
+
+    >>>
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
+        memory: "1 GB"
+        preemptible: 3
+        cpu: "1"
+        disks: "local-disk 100 HDD"
+    }
+    output {
+        Boolean pass = read_boolean(pf_file)
+        String name = "DuplicateAnnotations"
+        String result = read_string(results_file)
+    }
+}
+
+
 task ClinvarSignificance {
     input {
         String project_id
         String fq_vat_table
         String last_modified_timestamp
     }
+    # this has been temporarily turned off so that we can discuss the test with Lee.
+    # Not all of these values end up being seen in small sample sets
     # check that all clinvar values are accounted for
 
     String pf_file = "pf.txt"
     String results_file = "results.txt"
 
     command <<<
-        set -e
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
@@ -898,7 +992,9 @@ task SchemaAAChangeAndExonNumberConsistent {
     String results_file = "results.txt"
 
     command <<<
-        set -e
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
@@ -995,7 +1091,9 @@ task SpotCheckForAAChangeAndExonNumberConsistency {
     # we find cases which have a consequence of intron_variant AND they are insertions or deletionss
 
     command <<<
-        set -e
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
@@ -1094,7 +1192,9 @@ task GenerateFinalReport {
     String report_file = "report.txt"
 
     command <<<
-        set -e
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         declare -a PFS=(~{sep=' ' pf_flags})
         declare -a VNS=(~{sep=' ' validation_names})
