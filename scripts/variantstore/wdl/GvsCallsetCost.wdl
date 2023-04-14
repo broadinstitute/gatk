@@ -62,7 +62,7 @@ task WorkflowComputeCosts {
     >>>
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-03-27-alpine"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-04-13-alpine"
     }
 
     output {
@@ -97,7 +97,7 @@ task CoreStorageModelSizes {
         get_billable_bytes_in_gib "alt_allele"   alt_allele_gib.txt
     >>>
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
     }
     output {
         Float vet_gib = read_float("vet_gib.txt")
@@ -125,7 +125,7 @@ task ReadCostObservabilityTable {
             > cost_observability.json
     >>>
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
     }
     output {
         File cost_observability = "cost_observability.json"
