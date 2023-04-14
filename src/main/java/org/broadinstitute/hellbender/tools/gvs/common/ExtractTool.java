@@ -7,10 +7,8 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
-import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
-import org.broadinstitute.hellbender.tools.walkers.annotator.StandardAnnotation;
-import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
-import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_StandardAnnotation;
+import org.broadinstitute.hellbender.tools.walkers.annotator.*;
+import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.*;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
@@ -111,9 +109,42 @@ public abstract class ExtractTool extends GATKTool {
     }
 
     @Override
-    public List<Class<? extends Annotation>> getDefaultVariantAnnotationGroups() {
+    public List<Annotation> getDefaultVariantAnnotations() {
         return Arrays.asList(
-                StandardAnnotation.class, AS_StandardAnnotation.class
+                // All the `AS_StandardAnnotation` implementers minus `AS_InbreedingCoeff`.
+                //
+                // `AS_InbreedingCoeff` causes VCF Header issues:
+                // Key AS_InbreedingCoeff found in VariantContext field INFO at chr20:10000775 but this key isn't defined in the VCFHeader.  We require all VCFs to have complete VCF headers by default.
+
+                new AS_FisherStrand(),
+                new AS_StrandOddsRatio(),
+                new AS_BaseQualityRankSumTest(),
+                // new AS_InbreedingCoeff(),
+                new AS_MappingQualityRankSumTest(),
+                new AS_ReadPosRankSumTest(),
+                new AS_RMSMappingQuality(),
+                new AS_QualByDepth(),
+
+                // All the `StandardAnnotation` implementers minus `InbreedingCoeff` and `ExcessHet`.
+                //
+                // `InbreedingCoeff` blows up `GenotypeUtils`:
+                // Genotypes with no PLs should have integer counts using roundContributionFromEachGenotype = true.
+                //
+                // `ExcessHet` causes VCF Header issues:
+                // Key ExcessHet found in VariantContext field INFO at chr20:10000775 but this key isn't defined in the VCFHeader.  We require all VCFs to have complete VCF headers by default.
+
+                // new InbreedingCoeff(),
+                new BaseQualityRankSumTest(),
+                new ChromosomeCounts(),
+                new Coverage(),
+                new DepthPerAlleleBySample(),
+                // new ExcessHet(),
+                new FisherStrand(),
+                new MappingQualityRankSumTest(),
+                new QualByDepth(),
+                new RMSMappingQuality(),
+                new ReadPosRankSumTest(),
+                new StrandOddsRatio()
         );
     }
 
