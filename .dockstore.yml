@@ -241,6 +241,7 @@ workflows:
          - ah_var_store
          - vs_834_disentangle
          - vs_866_update_variants_base_image
+         - gg_VS-871_UberMonitor
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
