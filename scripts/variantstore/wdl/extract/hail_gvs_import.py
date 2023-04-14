@@ -19,6 +19,8 @@ import argparse
 import os
 import re
 
+import gvs_avros_to_vds
+
 gcs_re = re.compile("^gs://(?P<bucket_name>[^/]+)/(?P<object_prefix>.*)$")
 
 
@@ -33,7 +35,7 @@ def import_gvs(argsfn, vds_path, references_path, temp_path):
     ## Note that a full description of the import_gvs function written by Hail for this process can be found here:
     ## https://github.com/tpoterba/hail/blob/import-gvs/hail/python/hail/methods/impex.py
     ## Commented out parameters are ones where we are comfortable with the default, but want to make them easily accessible to users
-    hl.import_gvs(
+    gvs_avros_to_vds.import_gvs(
         vets=argsfn('vets'),
         refs=argsfn('refs'),
         sample_mapping=argsfn('sample_mapping'),
