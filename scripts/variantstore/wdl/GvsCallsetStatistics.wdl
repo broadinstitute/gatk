@@ -266,7 +266,7 @@ task CreateTables {
         fi
     >>>
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
         disks: "local-disk 500 HDD"
     }
     output {
@@ -400,7 +400,7 @@ task CollectMetricsForChromosome {
         Boolean done = true
     }
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
         disks: "local-disk 500 HDD"
     }
 }
@@ -471,7 +471,7 @@ task AggregateMetricsAcrossChromosomes {
         Boolean done = true
     }
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
         disks: "local-disk 500 HDD"
     }
 }
@@ -543,7 +543,7 @@ task CollectStatistics {
         Boolean done = true
     }
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
         disks: "local-disk 500 HDD"
     }
 }
@@ -572,7 +572,7 @@ task ExportToCSV {
         File callset_statistics = "~{statistics_table}.csv"
     }
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
         disks: "local-disk 500 HDD"
     }
 }

@@ -182,7 +182,7 @@ task GetBQTableLastModifiedDatetime {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -225,7 +225,7 @@ task GetBQTablesMaxLastModifiedTimestamp {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -312,7 +312,7 @@ task BuildGATKJarAndCreateDataset {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-slim"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-slim"
     disks: "local-disk 500 HDD"
   }
 }
@@ -381,7 +381,7 @@ task ScaleXYBedValues {
     }
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-03-27-alpine"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-04-13-alpine"
         maxRetries: 3
         memory: "7 GB"
         preemptible: 3
@@ -424,7 +424,7 @@ task GetNumSamplesLoaded {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -455,7 +455,7 @@ task CountSuperpartitions {
         ' | sed 1d > num_superpartitions.txt
     >>>
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
         disks: "local-disk 500 HDD"
     }
     output {
@@ -504,7 +504,7 @@ task ValidateFilterSetName {
     }
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
         memory: "3 GB"
         disks: "local-disk 500 HDD"
         preemptible: 3

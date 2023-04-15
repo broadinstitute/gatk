@@ -11,7 +11,7 @@
 # under ideal circumstances, potentially much longer on low memory and/or non-x86 build hosts). Since this image isn't
 # expected to change often it's broken out into a separate "build-base" image that can effectively be globally cached
 # and referenced from the main Dockerfile.
-FROM gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine
+FROM gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine
 
 RUN apk update && apk upgrade
 RUN python3 -m ensurepip --upgrade

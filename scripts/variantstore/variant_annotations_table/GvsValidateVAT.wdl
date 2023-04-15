@@ -218,7 +218,7 @@ task EnsureVatTableHasVariants {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -283,7 +283,7 @@ task SpotCheckForExpectedTranscripts {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -361,7 +361,7 @@ task SchemaNoNullRequiredFields {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -419,7 +419,7 @@ task SchemaOnlyOneRowPerNullTranscript {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -473,7 +473,7 @@ task SchemaPrimaryKey {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -528,7 +528,7 @@ task SchemaEnsemblTranscripts {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -586,7 +586,7 @@ task SchemaNonzeroAcAn {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -638,7 +638,7 @@ task SchemaNullTranscriptsExist {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -699,7 +699,7 @@ task SubpopulationMax {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -754,7 +754,7 @@ task SubpopulationAlleleCount {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -809,7 +809,7 @@ task SubpopulationAlleleNumber {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -877,7 +877,7 @@ task DuplicateAnnotations {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -962,7 +962,7 @@ task ClinvarSignificance {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -1056,7 +1056,7 @@ task SchemaAAChangeAndExonNumberConsistent {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -1168,7 +1168,7 @@ task SpotCheckForAAChangeAndExonNumberConsistency {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
