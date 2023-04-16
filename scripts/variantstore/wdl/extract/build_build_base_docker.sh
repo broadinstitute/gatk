@@ -2,7 +2,7 @@
 
 if [ $# -lt 1 ]; then
     echo "USAGE: ./build_build_base_docker.sh [DOCKER_TAG_STRING] [OPTIONAL:LATEST]"
-    echo " e.g.: ./build_build_base_docker.sh 2022-11-04-alpine-build-base"
+    echo " e.g.: ./build_build_base_docker.sh \$(date -I)-alpine-build-base"
     exit 1
 fi
 

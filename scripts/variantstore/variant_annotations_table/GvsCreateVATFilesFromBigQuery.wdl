@@ -180,7 +180,7 @@ task BigQueryExportVat {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
         memory: "2 GB"
         preemptible: 3
         cpu: "1"
@@ -202,7 +202,7 @@ task MergeVatTSVs {
         Int? merge_vcfs_disk_size_override
     }
 
-    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+    File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
 
     # going large with the default to make gsutil -m cp really zippy
     Int disk_size = if (defined(merge_vcfs_disk_size_override)) then select_first([merge_vcfs_disk_size_override]) else 500
@@ -252,7 +252,7 @@ task MergeVatTSVs {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-slim"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-slim"
         memory: "4 GB"
         preemptible: 3
         cpu: "2"

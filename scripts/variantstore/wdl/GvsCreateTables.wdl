@@ -103,7 +103,7 @@ task CreateTables {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     cpu: 1

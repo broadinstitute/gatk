@@ -71,7 +71,7 @@ workflow GvsExtractCohortFromSampleNames {
     call write_array_task {
       input:
         input_array = select_first([cohort_sample_names_array]),
-        docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0"
+        docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
     }
   }
 

@@ -273,7 +273,7 @@ task ExtractTask {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
-  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
 
   String intervals_name = basename(intervals)
   String cost_observability_line = if (write_cost_to_db == true) then "--cost-observability-tablename ~{cost_observability_tablename}" else ""
@@ -385,7 +385,7 @@ task SumBytes {
     print(total_mb);"
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 500 HDD"
     preemptible: 3
@@ -424,7 +424,7 @@ task CreateManifest {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 500 HDD"
     preemptible: 3
@@ -468,7 +468,7 @@ task GenerateSampleListFile {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 500 HDD"
     preemptible: 3
