@@ -139,7 +139,8 @@ workflow GvsCreateFilterSet {
         score_interval_list = interval_list,
         snp_annotations   = "-A AS_QD -A AS_MQRankSum -A AS_ReadPosRankSum -A AS_FS -A AS_MQ -A AS_SOR",
         indel_annotations = "-A AS_QD -A AS_MQRankSum -A AS_ReadPosRankSum -A AS_FS -A AS_MQ -A AS_SOR",
-        use_allele_specific_annotations = true
+        use_allele_specific_annotations = true,
+        monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
     }
 
     call Utils.MergeVCFs as MergeINDELScoredVCFs {
@@ -357,10 +358,43 @@ workflow GvsCreateFilterSet {
     }
   }
 
+  call Utils.SummarizeTaskMonitorLogs as SummarizeItAll {
+    input:
+      inputs = select_all(
+               flatten(
+               [
+               [SamplesTableDatetimeCheck.monitoring_log],
+               [GetNumSamplesLoaded.monitoring_log],
+               [SplitIntervals.monitoring_log],
+               [AltAlleleTableDatetimeCheck.monitoring_log],
+               ExtractFilterTask.monitoring_log,
+               [MergeVCFs.monitoring_log],
+               select_first([JointVcfFiltering.monitoring_logs, []]),             # VQSR Lite Logging starts here
+               [MergeSNPScoredVCFs.monitoring_log],
+               [MergeINDELScoredVCFs.monitoring_log],
+               [CreateFilteredScoredSNPsVCF.monitoring_log],
+               [CreateFilteredScoredINDELsVCF.monitoring_log],
+               [PopulateFilterSetInfo.monitoring_log],
+               [PopulateFilterSetSites.monitoring_log],
+               [IndelsVariantRecalibrator.monitoring_log],    # VQSR Classic Logging Starts here
+               [SNPsVariantRecalibratorCreateModel.monitoring_log],
+               select_first([SNPsVariantRecalibratorScattered.monitoring_log, []]),
+               [SNPGatherTranches.monitoring_log],
+               [MergeRecalibrationFiles.monitoring_log],
+               [IndelsVariantRecalibrator.monitoring_log],
+               [SNPsVariantRecalibratorClassic.monitoring_log],
+               [PopulateFilterSetInfoClassic.monitoring_log],
+               [PopulateFilterSetSitesClassic.monitoring_log],
+               [PopulateFilterSetTranches.monitoring_log]
+               ]
+               )
+               )
+  }
 
   output {
     File output_vcf = MergeVCFs.output_vcf
     File output_vcf_idx = MergeVCFs.output_vcf_index
+    File monitoring_summary = SummarizeItAll.monitoring_summary
     Boolean done = true
   }
 }
@@ -398,11 +432,13 @@ task ExtractFilterTask {
   }
 
   String intervals_name = basename(intervals)
-
+  File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
 
   command <<<
     set -e
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+
+    bash ~{monitoring_script} > monitoring.log &
 
     df -h
 
@@ -437,6 +473,7 @@ task ExtractFilterTask {
   output {
     File output_vcf = "~{output_file}"
     File output_vcf_index = "~{output_file}.tbi"
+    File monitoring_log = "monitoring.log"
   }
 }
 
@@ -460,7 +497,7 @@ task PopulateFilterSetInfo {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
-  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
 
   command <<<
     set -eo pipefail
@@ -536,8 +573,12 @@ task PopulateFilterSetSites {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
+  File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
+
   command <<<
     set -eo pipefail
+
+    bash ~{monitoring_script} > monitoring.log &
 
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
@@ -572,6 +613,7 @@ task PopulateFilterSetSites {
 
   output {
     String status_load_filter_set_sites = read_string("status_load_filter_set_sites")
+    File monitoring_log = "monitoring.log"
   }
 }
 
@@ -591,8 +633,12 @@ task PopulateFilterSetTranches {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
+  File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
+
   command <<<
     set -eo pipefail
+
+    bash ~{monitoring_script} > monitoring.log &
 
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
@@ -619,5 +665,6 @@ task PopulateFilterSetTranches {
 
   output {
     String status_load_filter_set_tranches = read_string("status_load_filter_set_tranches")
+    File monitoring_log = "monitoring.log"
   }
 }
