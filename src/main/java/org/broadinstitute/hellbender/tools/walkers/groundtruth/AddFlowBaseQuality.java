@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.groundtruth;
 import com.google.common.annotations.VisibleForTesting;
 import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.cmdline.programgroups.FlowBasedProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadWalker;
@@ -19,7 +20,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 /**
- * Write reads from SAM format file (SAM/BAM/CRAM) that pass criteria to a new file while adding a base-quality attribute
+ * Convert quality string that reports probability of indel errors (in flow chemistry) to the quality string that approximates probability of mismatch error.
  *
  * <p>
  * </p>
@@ -43,7 +44,7 @@ import java.util.List;
 @CommandLineProgramProperties(
         summary = "Prints reads from the input SAM/BAM/CRAM file to the SAM/BAM/CRAM file while adding a base quality attribute.",
         oneLineSummary = "Add base quality attribute to reads in in the SAM/BAM/CRAM file",
-        programGroup = ReadDataManipulationProgramGroup.class
+        programGroup = FlowBasedProgramGroup.class
 )
 @ExperimentalFeature
 @WorkflowProperties
@@ -68,13 +69,13 @@ public final class AddFlowBaseQuality extends ReadWalker {
     public GATKPath output;
     private SAMFileGATKReadWriter outputWriter;
 
-    @Argument(fullName = MINIMAL_ERROR_RATE_LONG_NAME)
+    @Argument(fullName = MINIMAL_ERROR_RATE_LONG_NAME, doc = "lower floor for flow error rate values")
     public double minErrorRate = 1e-3;
 
-    @Argument(fullName = MAXIMAL_QUALITY_SCORE_LONG_NAME)
+    @Argument(fullName = MAXIMAL_QUALITY_SCORE_LONG_NAME, doc = "clip quality score to the given value (phred)")
     public int maxQualityScore = 126;
 
-    @Argument(fullName = REPLACE_QUALITY_MODE_LONG_NAME)
+    @Argument(fullName = REPLACE_QUALITY_MODE_LONG_NAME, doc = "replace existing base qualities while saving previous qualities to OQ (when true) or simply write to BQ (when false) ")
     public boolean replaceQualityMode = false;
 
     @ArgumentCollection
@@ -84,7 +85,7 @@ public final class AddFlowBaseQuality extends ReadWalker {
     public void onTraversalStart() {
         outputWriter = createSAMWriter(output, true);
 
-        // work with original probabilities
+        // do not trim the boundary homopolymers as the default
         fbargs.keepBoundaryFlows = true;
     }
 
