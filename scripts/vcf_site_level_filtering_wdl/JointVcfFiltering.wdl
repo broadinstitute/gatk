@@ -116,6 +116,7 @@ workflow JointVcfFiltering {
         File extracted_vcf_idx = ExtractVariantAnnotations.extracted_vcf_idx
 
         Array[File] model_files = TrainVariantAnnotationsModel.model_files
+
         Array[File] scored_vcfs = ScoreVariantAnnotations.scored_vcf
         Array[File] scored_vcf_idxs = ScoreVariantAnnotations.scored_vcf_idx
         Array[File?] annotations_hdf5s = ScoreVariantAnnotations.annotations_hdf5
@@ -200,8 +201,9 @@ task TrainVariantAnnotationsModel {
 
         String gatk_docker
         File? gatk_override
-	}
-	Int disk_size = ceil(size(annots, "GB") + 100)
+
+        RuntimeAttributes runtime_attributes = {}
+    }
 
     command {
         set -e
@@ -254,6 +256,7 @@ task ScoreVariantAnnotations {
 
         String gatk_docker
         File? gatk_override
+
         RuntimeAttributes runtime_attributes = {}
     }
 
@@ -304,5 +307,4 @@ task ScoreVariantAnnotations {
         File? scores_hdf5 = "~{output_prefix}.score.scores.hdf5"        # this file will only be produced if the number of sites scored is nonzero
         File? monitoring_log = "monitoring.log"
     }
-  }
 }
