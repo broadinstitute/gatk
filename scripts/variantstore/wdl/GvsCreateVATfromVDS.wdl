@@ -167,7 +167,7 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-03-27-alpine"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-04-13-alpine"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -194,7 +194,7 @@ task StripCustomAnnotationsFromSitesOnlyVCF {
         String output_custom_annotations_filename
     }
 
-    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+    File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
     Int disk_size = ceil((size(input_vcf, "GB") + size(custom_annotations_header, "GB")) * 4) + 100
 
     command <<<
@@ -212,7 +212,7 @@ task StripCustomAnnotationsFromSitesOnlyVCF {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-03-27-alpine"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-04-13-alpine"
         memory: "7 GiB"
         cpu: "2"
         preemptible: 3
@@ -234,7 +234,7 @@ task RemoveDuplicatesFromSitesOnlyVCF {
         File ref
     }
 
-    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+    File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
     Int disk_size = ceil(size(sites_only_vcf, "GB") * 5) + 100
 
     # separate multi-allelic sites into their own lines, remove deletions and filtered sites and make a sites only vcf
@@ -297,7 +297,7 @@ task RemoveDuplicatesFromSitesOnlyVCF {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-03-27-alpine"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-04-13-alpine"
         maxRetries: 3
         memory: "16 GB"
         preemptible: 3
@@ -326,7 +326,7 @@ task AnnotateVCF {
             "gs://broad-public-datasets/gvs/vat-annotations/Nirvana/3.18.1/SupplementaryAnnotation/GRCh38/MITOMAP_20200819.nsa.idx"
     }
 
-    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+    File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
 
     String annotation_json_name = output_annotated_file_name + ".json.gz"
     String gene_annotation_json_name = output_annotated_file_name + ".genes.json.gz"
@@ -432,7 +432,7 @@ task PrepVtAnnotationJson {
         String output_path
     }
 
-    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+    File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
 
     String output_vt_json = "vat_vt_bq_load" + output_file_suffix
     String output_vt_gcp_path = output_path + 'vt/'
@@ -457,7 +457,7 @@ task PrepVtAnnotationJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-03-27-alpine"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-04-13-alpine"
         memory: "7 GB"
         preemptible: 3
         cpu: "1"
@@ -479,7 +479,7 @@ task PrepGenesAnnotationJson {
         String output_path
     }
 
-    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+    File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
 
     String output_genes_json = "vat_genes_bq_load" + output_file_suffix
     String output_genes_gcp_path = output_path + 'genes/'
@@ -503,7 +503,7 @@ task PrepGenesAnnotationJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-03-27-alpine"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-04-13-alpine"
         memory: "7 GB"
         preemptible: 3
         cpu: "1"

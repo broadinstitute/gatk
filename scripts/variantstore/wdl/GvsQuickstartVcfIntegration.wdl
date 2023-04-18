@@ -212,7 +212,7 @@ task AssertIdenticalOutputs {
     >>>
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
         disks: "local-disk 500 HDD"
     }
 
@@ -308,7 +308,7 @@ task AssertCostIsTrackedAndExpected {
     >>>
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
         disks: "local-disk 10 HDD"
     }
 
@@ -356,7 +356,7 @@ task AssertTableSizesAreExpected {
     >>>
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
         disks: "local-disk 10 HDD"
     }
 

@@ -10,7 +10,8 @@ task MergeVCFs {
     Int? preemptible_tries
   }
 
-  Int disk_size = if (defined(merge_disk_override)) then merge_disk_override else 100
+  Int disk_size = select_first([merge_disk_override, 100])
+  File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
 
   parameter_meta {
     input_vcfs: {
@@ -19,6 +20,9 @@ task MergeVCFs {
   }
 
   command {
+
+    bash ~{monitoring_script} > monitoring.log &
+
     gatk --java-options -Xmx3g GatherVcfsCloud \
     --ignore-safety-checks --gather-type ~{gather_type} \
     --create-output-variant-index false \
@@ -46,6 +50,7 @@ task MergeVCFs {
   output {
     File output_vcf = "~{output_vcf_name}"
     File output_vcf_index = "~{output_vcf_name}.tbi"
+    File monitoring_log = "monitoring.log"
   }
 }
 
@@ -68,11 +73,12 @@ task SplitIntervals {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
-  Int disk_size = if (defined(split_intervals_disk_size_override)) then select_first([split_intervals_disk_size_override]) else 10
-  Int disk_memory = if (defined(split_intervals_mem_override)) then select_first([split_intervals_mem_override]) else 16
+  Int disk_size = select_first([split_intervals_disk_size_override, 10])
+  Int disk_memory = select_first([split_intervals_mem_override, 16])
   Int java_memory = disk_memory - 4
 
   String gatk_tool = if (defined(interval_weights_bed)) then 'WeightedSplitIntervals' else 'SplitIntervals'
+  File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
 
   parameter_meta {
     intervals: {
@@ -94,6 +100,8 @@ task SplitIntervals {
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
     set -e
+
+    bash ~{monitoring_script} > monitoring.log &
 
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
@@ -129,6 +137,7 @@ task SplitIntervals {
 
   output {
     Array[File] interval_files = glob("*.interval_list")
+    File monitoring_log = "monitoring.log"
   }
 }
 
@@ -143,12 +152,16 @@ task GetBQTableLastModifiedDatetime {
     volatile: true
   }
 
+  File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
+
   # ------------------------------------------------
   # try to get the last modified date for the table in question; fail if something comes back from BigQuery
   # that isn't in the right format (e.g. an error)
   command <<<
     set -o xtrace
     set -o errexit
+
+    bash ~{monitoring_script} > monitoring.log &
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
@@ -165,10 +178,11 @@ task GetBQTableLastModifiedDatetime {
 
   output {
     String last_modified_timestamp = read_string(stdout())
+    File monitoring_log = "monitoring.log"
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -188,10 +202,14 @@ task GetBQTablesMaxLastModifiedTimestamp {
     volatile: true
   }
 
+  File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
+
   # ------------------------------------------------
   # try to get the latest last modified timestamp, in epoch microseconds, for all of the tables that match the provided prefixes
   command <<<
     set -e
+
+    bash ~{monitoring_script} > monitoring.log &
 
     echo "project_id = ~{query_project}" > ~/.bigqueryrc
 
@@ -203,10 +221,11 @@ task GetBQTablesMaxLastModifiedTimestamp {
 
   output {
     String max_last_modified_timestamp = read_string("max_last_modified_timestamp.txt")
+    File monitoring_log = "monitoring.log"
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -225,11 +244,15 @@ task BuildGATKJarAndCreateDataset {
     volatile: true
   }
 
+  File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
+
   command <<<
     # Much of this could/should be put into a Docker image.
     # Prepend date, time and pwd to xtrace log entries.
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
+
+    bash ~{monitoring_script} > monitoring.log &
 
     # git and git-lfs
     apt-get -qq update
@@ -285,10 +308,11 @@ task BuildGATKJarAndCreateDataset {
     Boolean done = true
     File jar = glob("gatk/build/libs/*-SNAPSHOT-local.jar")[0]
     String dataset_name = read_string("gatk/dataset.txt")
+    File monitoring_log = "monitoring.log"
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-slim"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-slim"
     disks: "local-disk 500 HDD"
   }
 }
@@ -338,7 +362,11 @@ task ScaleXYBedValues {
     meta {
         # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
     }
+    File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
+
     command <<<
+        bash ~{monitoring_script} > monitoring.log &
+
         python3 /app/scale_xy_bed_values.py \
             --input ~{interval_weights_bed} \
             --output "interval_weights_xy_scaled.bed" \
@@ -349,10 +377,11 @@ task ScaleXYBedValues {
     output {
         File xy_scaled_bed = "interval_weights_xy_scaled.bed"
         Boolean done = true
+        File monitoring_log = "monitoring.log"
     }
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-03-27-alpine"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-04-13-alpine"
         maxRetries: 3
         memory: "7 GB"
         preemptible: 3
@@ -371,9 +400,12 @@ task GetNumSamplesLoaded {
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
+  File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
 
   command <<<
     set -o errexit -o nounset -o xtrace -o pipefail
+
+    bash ~{monitoring_script} > monitoring.log &
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
     bq query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
@@ -388,10 +420,11 @@ task GetNumSamplesLoaded {
 
   output {
     Int num_samples = read_int(stdout())
+    File monitoring_log = "monitoring.log"
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -410,7 +443,10 @@ task CountSuperpartitions {
         String project_id
         String dataset_name
     }
+    File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
     command <<<
+        bash ~{monitoring_script} > monitoring.log &
+
         bq query --location=US --project_id='~{project_id}' --format=csv --use_legacy_sql=false '
 
             SELECT COUNT(*) FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES`
@@ -419,11 +455,12 @@ task CountSuperpartitions {
         ' | sed 1d > num_superpartitions.txt
     >>>
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
         disks: "local-disk 500 HDD"
     }
     output {
         Int num_superpartitions = read_int('num_superpartitions.txt')
+        File monitoring_log = "monitoring.log"
     }
 }
 
@@ -441,9 +478,12 @@ task ValidateFilterSetName {
 
     # add labels for DSP Cloud Cost Control Labeling and Reporting
     String bq_labels = "--label service:gvs --label team:variants --label managedby:gvs_utils"
+    File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
 
     command <<<
         set -o errexit -o nounset -o xtrace -o pipefail
+
+        bash ~{monitoring_script} > monitoring.log &
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
@@ -460,10 +500,11 @@ task ValidateFilterSetName {
     >>>
     output {
         Boolean done = true
+        File monitoring_log = "monitoring.log"
     }
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:423.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
         memory: "3 GB"
         disks: "local-disk 500 HDD"
         preemptible: 3
@@ -479,7 +520,7 @@ task IndexVcf {
         Int disk_size_gb = ceil(2 * size(input_vcf, "GiB")) + 200
     }
 
-    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+    File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
 
     Int command_mem = memory_mb - 1000
     Int max_heap = memory_mb - 500
@@ -531,7 +572,7 @@ task SelectVariants {
         Int disk_size_gb = ceil(2*size(input_vcf, "GiB")) + 200
     }
 
-    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+    File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
 
     Int command_mem = memory_mb - 1000
     Int max_heap = memory_mb - 500
@@ -580,7 +621,11 @@ task MergeTsvs {
         String output_file_name
     }
 
+    File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
+
     command <<<
+      bash ~{monitoring_script} > monitoring.log &
+
       echo -n > ~{output_file_name}
       for f in ~{sep=' ' input_files}
       do
@@ -594,6 +639,40 @@ task MergeTsvs {
 
     output {
       File output_file = output_file_name
+      File monitoring_log = "monitoring.log"
     }
 
+}
+
+task SummarizeTaskMonitorLogs {
+  input {
+    Array[File] inputs
+  }
+
+  command <<<
+    set -e
+
+    INPUTS="~{sep=" " inputs}"
+    if [[ -z "$INPUTS" ]]; then
+      echo "No monitoring log files found" > monitoring_summary.txt
+    else
+      python3 /app/summarize_task_monitor_logs.py \
+        --input $INPUTS \
+        --output monitoring_summary.txt
+    fi
+
+  >>>
+
+  # ------------------------------------------------
+  # Runtime settings:
+  runtime {
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-04-10-alpine"
+    memory: "1 GB"
+    preemptible: 3
+    cpu: "1"
+    disks: "local-disk 100 HDD"
+  }
+  output {
+    File monitoring_summary = "monitoring_summary.txt"
+  }
 }
