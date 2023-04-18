@@ -17,6 +17,14 @@ workflow GvsCreateFilterSet {
     File? gatk_override
 
     Boolean use_classic_VQSR = true
+
+    Array[String] indel_recalibration_annotation_values = ["AS_FS", "AS_ReadPosRankSum", "AS_MQRankSum", "AS_QD", "AS_SOR"]
+    Array[String] snp_recalibration_annotation_values = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"]
+
+    Int? INDEL_VQSR_max_gaussians_override = 4
+    Int? INDEL_VQSR_mem_gb_override
+    Int? SNP_VQSR_max_gaussians_override = 6
+    Int? SNP_VQSR_mem_gb_override
   }
 
   File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
@@ -181,6 +189,12 @@ workflow GvsCreateFilterSet {
         sites_only_variant_filtered_vcf_idx = MergeVCFs.output_vcf_index,
         sites_only_variant_filtered_vcfs = ExtractFilterTask.output_vcf,
         sites_only_variant_filtered_vcf_idxs = ExtractFilterTask.output_vcf_index,
+        snp_recalibration_annotation_values = snp_recalibration_annotation_values,
+        indel_recalibration_annotation_values = indel_recalibration_annotation_values,
+        INDEL_VQSR_max_gaussians_override = INDEL_VQSR_max_gaussians_override,
+        INDEL_VQSR_mem_gb_override = INDEL_VQSR_mem_gb_override,
+        SNP_VQSR_max_gaussians_override = SNP_VQSR_max_gaussians_override,
+        SNP_VQSR_mem_gb_override = SNP_VQSR_mem_gb_override
     }
 
     call PopulateFilterSetInfo as PopulateFilterSetInfoClassic {
