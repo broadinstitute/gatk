@@ -95,7 +95,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_VS-871_UberMonitor
    - name: GvsPopulateAltAllele
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPopulateAltAllele.wdl
