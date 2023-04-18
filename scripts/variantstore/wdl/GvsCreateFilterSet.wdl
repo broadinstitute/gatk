@@ -249,7 +249,7 @@ workflow GvsCreateFilterSet {
                [CreateFilteredScoredINDELsVCF.monitoring_log],
                [PopulateFilterSetInfo.monitoring_log],
                [PopulateFilterSetSites.monitoring_log],
-#               select_first([VQSRClassic.monitoring_logs, []]),
+               VQSRClassic.monitoring_logs,
                [PopulateFilterSetInfoClassic.monitoring_log],
                [PopulateFilterSetSitesClassic.monitoring_log],
                [PopulateFilterSetTranches.monitoring_log]
