@@ -238,20 +238,20 @@ workflow GvsCreateFilterSet {
                flatten(
                [
                [SamplesTableDatetimeCheck.monitoring_log],
-#               [GetNumSamplesLoaded.monitoring_log],
-#               [SplitIntervals.monitoring_log],
-#               [AltAlleleTableDatetimeCheck.monitoring_log],
+               [GetNumSamplesLoaded.monitoring_log],
+               [SplitIntervals.monitoring_log],
+               [AltAlleleTableDatetimeCheck.monitoring_log],
                ExtractFilterTask.monitoring_log,
-#               [MergeVCFs.monitoring_log],
+               [MergeVCFs.monitoring_log],
                select_first([JointVcfFiltering.monitoring_logs, []]),
-#               [MergeScoredVCFs.monitoring_log],
-#               [CreateFilteredScoredSNPsVCF.monitoring_log],
-#               [CreateFilteredScoredINDELsVCF.monitoring_log],
-#               [PopulateFilterSetInfo.monitoring_log],
-#               [PopulateFilterSetSites.monitoring_log],
+               [MergeScoredVCFs.monitoring_log],
+               [CreateFilteredScoredSNPsVCF.monitoring_log],
+               [CreateFilteredScoredINDELsVCF.monitoring_log],
+               [PopulateFilterSetInfo.monitoring_log],
+               [PopulateFilterSetSites.monitoring_log],
                select_first([VQSRClassic.monitoring_logs, []]),
-#               [PopulateFilterSetInfoClassic.monitoring_log],
-#               [PopulateFilterSetSitesClassic.monitoring_log],
+               [PopulateFilterSetInfoClassic.monitoring_log],
+               [PopulateFilterSetSitesClassic.monitoring_log],
                [PopulateFilterSetTranches.monitoring_log]
                ]
                )
