@@ -187,7 +187,8 @@ workflow JointVcfFiltering {
     File indels_variant_recalibration_file = IndelsVariantRecalibrator.recalibration
     File indels_variant_recalibration_file_index = IndelsVariantRecalibrator.recalibration_index
     File indels_variant_tranches_file = IndelsVariantRecalibrator.tranches
-    Array[File?] monitoring_logs = flatten(
+    Array[File] monitoring_logs = select_all(
+                                  flatten(
                                    [
                                    [IndelsVariantRecalibrator.monitoring_log],
                                    [SNPsVariantRecalibratorCreateModel.monitoring_log],
@@ -195,7 +196,7 @@ workflow JointVcfFiltering {
                                    [SNPGatherTranches.monitoring_log],
                                    [MergeRecalibrationFiles.monitoring_log],
                                    [SNPsVariantRecalibratorClassic.monitoring_log]
-                                   ])
+                                   ]))
   }
 
 }

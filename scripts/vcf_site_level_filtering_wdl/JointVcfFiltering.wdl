@@ -184,7 +184,7 @@ task ExtractVariantAnnotations {
         File? unlabeled_annotations_hdf5 = "~{output_prefix}.extract.unlabeled.annot.hdf5"
         File extracted_vcf = "~{output_prefix}.extract.vcf.gz"          # this line will break if extra_args includes the do-not-gzip-vcf-output argument
         File extracted_vcf_idx = "~{output_prefix}.extract.vcf.gz.tbi"  # this line will break if extra_args includes the do-not-gzip-vcf-output argument
-        File monitoring_log = "monitoring.log"
+        File? monitoring_log = "monitoring.log"
     }
 }
 
