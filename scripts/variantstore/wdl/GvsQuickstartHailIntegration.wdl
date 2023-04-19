@@ -7,7 +7,6 @@ import "GvsQuickstartVcfIntegration.wdl" as QuickstartVcfIntegration
 workflow GvsQuickstartHailIntegration {
     input {
         String branch_name
-        String hail_wheel = "gs://gvs-internal-scratch/hail-wheels/2022-10-18/0.2.102-964bee061eb0/hail-0.2.102-py3-none-any.whl"
     }
 
     String project_id = "gvs-internal"
@@ -33,7 +32,6 @@ workflow GvsQuickstartHailIntegration {
     call CreateAndTieOutVds {
         input:
             branch_name = branch_name,
-            hail_wheel = hail_wheel,
             avro_prefix = GvsExtractAvroFilesForHail.avro_prefix,
             vds_destination_path = GvsExtractAvroFilesForHail.vds_output_path,
             tieout_vcfs = GvsQuickstartVcfIntegration.output_vcfs,
@@ -53,7 +51,6 @@ workflow GvsQuickstartHailIntegration {
 
 task CreateAndTieOutVds {
     input {
-        File hail_wheel
         String branch_name
         String avro_prefix
         String vds_destination_path
@@ -109,7 +106,6 @@ task CreateAndTieOutVds {
         apt-get -qq update
         apt -qq install -y temurin-8-jdk
 
-        pip install ~{hail_wheel}
         export PYSPARK_SUBMIT_ARGS='--driver-memory 16g --executor-memory 16g pyspark-shell'
 
         export WORK=$PWD/work
