@@ -17,14 +17,17 @@ workflow GvsCreateFilterSet {
     File? gatk_override
 
     Boolean use_classic_VQSR = true
+    # These are the SNP and INDEL annotations used for VQSR Classic, the order matters for consistency between runs.
+    Array[String] vqsr_classic_indel_recalibration_annotations = ["AS_FS", "AS_ReadPosRankSum", "AS_MQRankSum", "AS_QD", "AS_SOR"]
+    Array[String] vqsr_classic_snp_recalibration_annotations   = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"]
 
-    Array[String] indel_recalibration_annotation_values = ["AS_FS", "AS_ReadPosRankSum", "AS_MQRankSum", "AS_QD", "AS_SOR"]
-    Array[String] snp_recalibration_annotation_values = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"]
+    Int? INDEL_VQSR_CLASSIC_max_gaussians_override = 4
+    Int? INDEL_VQSR_CLASSIC_mem_gb_override
+    Int? SNP_VQSR_CLASSIC_max_gaussians_override = 6
+    Int? SNP_VQSR_CLASSIC_mem_gb_override
 
-    Int? INDEL_VQSR_max_gaussians_override = 4
-    Int? INDEL_VQSR_mem_gb_override
-    Int? SNP_VQSR_max_gaussians_override = 6
-    Int? SNP_VQSR_mem_gb_override
+    # These are the (unified) annotations used for VQSR Lite. The order matters for consistency between runs.
+    Array[String] vqsr_lite_recalibration_annotations = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"]
   }
 
   File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
@@ -113,14 +116,15 @@ workflow GvsCreateFilterSet {
         sites_only_vcf = MergeVCFs.output_vcf,
         sites_only_vcf_idx = MergeVCFs.output_vcf_index,
         output_prefix = filter_set_name,
-        gatk_docker = "us.gcr.io/broad-gatk/gatk:4.4.0.0",
-        annotations = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"],
+        annotations = vqsr_lite_recalibration_annotations,
         resource_args = "--resource:hapmap,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/hapmap_3.3.hg38.vcf.gz --resource:omni,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/1000G_omni2.5.hg38.vcf.gz --resource:1000G,training=true,calibration=false gs://gcp-public-data--broad-references/hg38/v0/1000G_phase1.snps.high_confidence.hg38.vcf.gz --resource:mills,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz --resource:axiom,training=true,calibration=false gs://gcp-public-data--broad-references/hg38/v0/Axiom_Exome_Plus.genotypes.all_populations.poly.hg38.vcf.gz",
         extract_extra_args = "-L ${interval_list} --use-allele-specific-annotations",
         score_extra_args = "-L ${interval_list} --use-allele-specific-annotations",
         extract_runtime_attributes = {"command_mem_gb": 27},
         train_runtime_attributes = {"command_mem_gb": 27},
         score_runtime_attributes = {"command_mem_gb": 15},
+        gatk_docker = "us.gcr.io/broad-gatk/gatk:4.4.0.0",
+        gatk_override = gatk_override,
         monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
     }
 
@@ -189,12 +193,12 @@ workflow GvsCreateFilterSet {
         sites_only_variant_filtered_vcf_idx = MergeVCFs.output_vcf_index,
         sites_only_variant_filtered_vcfs = ExtractFilterTask.output_vcf,
         sites_only_variant_filtered_vcf_idxs = ExtractFilterTask.output_vcf_index,
-        snp_recalibration_annotation_values = snp_recalibration_annotation_values,
-        indel_recalibration_annotation_values = indel_recalibration_annotation_values,
-        INDEL_VQSR_max_gaussians_override = INDEL_VQSR_max_gaussians_override,
-        INDEL_VQSR_mem_gb_override = INDEL_VQSR_mem_gb_override,
-        SNP_VQSR_max_gaussians_override = SNP_VQSR_max_gaussians_override,
-        SNP_VQSR_mem_gb_override = SNP_VQSR_mem_gb_override
+        snp_recalibration_annotations = vqsr_classic_snp_recalibration_annotations,
+        indel_recalibration_annotations = vqsr_classic_indel_recalibration_annotations,
+        INDEL_VQSR_max_gaussians_override = INDEL_VQSR_CLASSIC_max_gaussians_override,
+        INDEL_VQSR_mem_gb_override = INDEL_VQSR_CLASSIC_mem_gb_override,
+        SNP_VQSR_max_gaussians_override = SNP_VQSR_CLASSIC_max_gaussians_override,
+        SNP_VQSR_mem_gb_override = SNP_VQSR_CLASSIC_mem_gb_override
     }
 
     call PopulateFilterSetInfo as PopulateFilterSetInfoClassic {

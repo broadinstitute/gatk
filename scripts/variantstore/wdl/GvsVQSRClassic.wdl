@@ -12,8 +12,8 @@ workflow JointVcfFiltering {
     Array[File] sites_only_variant_filtered_vcfs
     Array[File] sites_only_variant_filtered_vcf_idxs
 
-    Array[String] indel_recalibration_annotation_values = ["AS_FS", "AS_ReadPosRankSum", "AS_MQRankSum", "AS_QD", "AS_SOR"]
-    Array[String] snp_recalibration_annotation_values = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"]
+    Array[String] indel_recalibration_annotations = ["AS_FS", "AS_ReadPosRankSum", "AS_MQRankSum", "AS_QD", "AS_SOR"]
+    Array[String] snp_recalibration_annotations = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"]
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
     File? gatk_override
@@ -34,6 +34,7 @@ workflow JointVcfFiltering {
   }
 
   Array[String] snp_recalibration_tranche_values = ["100.0", "99.95", "99.9", "99.8", "99.6", "99.5", "99.4", "99.3", "99.0", "98.0", "97.0", "90.0" ]
+  Array[String] indel_recalibration_tranche_values = ["100.0", "99.95", "99.9", "99.5", "99.0", "97.0", "96.0", "95.0", "94.0", "93.5", "93.0", "92.0", "91.0", "90.0"]
 
   # reference files
   # Axiom - Used only for indels
@@ -72,8 +73,8 @@ workflow JointVcfFiltering {
       sites_only_variant_filtered_vcf_index = sites_only_variant_filtered_vcf_idx,
       recalibration_filename = base_name + ".indels.recal",
       tranches_filename = base_name + ".indels.tranches",
-      recalibration_tranche_values = ["100.0", "99.95", "99.9", "99.5", "99.0", "97.0", "96.0", "95.0", "94.0", "93.5", "93.0", "92.0", "91.0", "90.0"],
-      recalibration_annotation_values = indel_recalibration_annotation_values,
+      recalibration_tranche_values = indel_recalibration_tranche_values,
+      recalibration_annotation_values = indel_recalibration_annotations,
       mills_resource_vcf = mills_resource_vcf,
       mills_resource_vcf_index = mills_resource_vcf_index,
       axiomPoly_resource_vcf = axiomPoly_resource_vcf,
@@ -96,7 +97,7 @@ workflow JointVcfFiltering {
         tranches_filename = base_name + ".snps.tranches",
         model_report_filename = base_name + ".snps.model.report",
         recalibration_tranche_values = snp_recalibration_tranche_values,
-        recalibration_annotation_values = snp_recalibration_annotation_values,
+        recalibration_annotation_values = snp_recalibration_annotations,
         hapmap_resource_vcf = hapmap_resource_vcf,
         hapmap_resource_vcf_index = hapmap_resource_vcf_index,
         omni_resource_vcf = omni_resource_vcf,
@@ -122,7 +123,7 @@ workflow JointVcfFiltering {
           tranches_filename = base_name + ".snps." + idx + ".tranches",
           model_report = SNPsVariantRecalibratorCreateModel.model_report,
           recalibration_tranche_values = snp_recalibration_tranche_values,
-          recalibration_annotation_values = snp_recalibration_annotation_values,
+          recalibration_annotation_values = snp_recalibration_annotations,
           hapmap_resource_vcf = hapmap_resource_vcf,
           hapmap_resource_vcf_index = hapmap_resource_vcf_index,
           omni_resource_vcf = omni_resource_vcf,
@@ -164,7 +165,7 @@ workflow JointVcfFiltering {
         recalibration_filename = base_name + ".snps.recal",
         tranches_filename = base_name + ".snps.tranches",
         recalibration_tranche_values = snp_recalibration_tranche_values,
-        recalibration_annotation_values = snp_recalibration_annotation_values,
+        recalibration_annotation_values = snp_recalibration_annotations,
         hapmap_resource_vcf = hapmap_resource_vcf,
         hapmap_resource_vcf_index = hapmap_resource_vcf_index,
         omni_resource_vcf = omni_resource_vcf,

@@ -39,13 +39,18 @@ workflow GvsUnified {
 
         # Begin GvsCreateFilterSet
         String filter_set_name = call_set_identifier
-        Array[String] indel_recalibration_annotation_values = ["AS_FS", "AS_ReadPosRankSum", "AS_MQRankSum", "AS_QD", "AS_SOR"]
-        Array[String] snp_recalibration_annotation_values = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"]
 
-        Int? INDEL_VQSR_max_gaussians_override = 4
-        Int? INDEL_VQSR_mem_gb_override
-        Int? SNP_VQSR_max_gaussians_override = 6
-        Int? SNP_VQSR_mem_gb_override
+        # These are the SNP and INDEL annotations used for VQSR Classic, the order matters.
+        Array[String] vqsr_classic_indel_recalibration_annotations = ["AS_FS", "AS_ReadPosRankSum", "AS_MQRankSum", "AS_QD", "AS_SOR"]
+        Array[String] vqsr_classic_snp_recalibration_annotations   = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"]
+
+        # These are the (unified) annotations used for VQSR Lite. The order matters.
+        Array[String] vqsr_lite_recalibration_annotations = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"]
+
+        Int? INDEL_VQSR_CLASSIC_max_gaussians_override = 4
+        Int? INDEL_VQSR_CLASSIC_mem_gb_override
+        Int? SNP_VQSR_CLASSIC_max_gaussians_override = 6
+        Int? SNP_VQSR_CLASSIC_mem_gb_override
         # End GvsCreateFilterSet
 
         # Begin GvsPrepareRangesCallset
@@ -116,14 +121,14 @@ workflow GvsUnified {
             project_id = project_id,
             call_set_identifier = call_set_identifier,
             filter_set_name = filter_set_name,
-            indel_recalibration_annotation_values = indel_recalibration_annotation_values,
-            snp_recalibration_annotation_values = snp_recalibration_annotation_values,
+            vqsr_classic_indel_recalibration_annotations = vqsr_classic_indel_recalibration_annotations,
+            vqsr_classic_snp_recalibration_annotations = vqsr_classic_snp_recalibration_annotations,
             interval_list = interval_list,
             gatk_override = gatk_override,
-            INDEL_VQSR_max_gaussians_override = INDEL_VQSR_max_gaussians_override,
-            INDEL_VQSR_mem_gb_override = INDEL_VQSR_mem_gb_override,
-            SNP_VQSR_max_gaussians_override = SNP_VQSR_max_gaussians_override,
-            SNP_VQSR_mem_gb_override = SNP_VQSR_mem_gb_override
+            INDEL_VQSR_CLASSIC_max_gaussians_override = INDEL_VQSR_CLASSIC_max_gaussians_override,
+            INDEL_VQSR_CLASSIC_mem_gb_override = INDEL_VQSR_CLASSIC_mem_gb_override,
+            SNP_VQSR_CLASSIC_max_gaussians_override = SNP_VQSR_CLASSIC_max_gaussians_override,
+            SNP_VQSR_CLASSIC_mem_gb_override = SNP_VQSR_CLASSIC_mem_gb_override
     }
 
     call PrepareRangesCallset.GvsPrepareCallset {
