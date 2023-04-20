@@ -19,13 +19,12 @@ import argparse
 import os
 import re
 
-import gvs_avros_to_vds
-
 gcs_re = re.compile("^gs://(?P<bucket_name>[^/]+)/(?P<object_prefix>.*)$")
 
 
 def import_gvs(argsfn, vds_path, references_path, temp_path):
     import hail as hl
+    import gvs_avros_to_vds
     hl.init(tmp_dir=f'{temp_path}/hail_tmp_general')
 
     rg38 = hl.get_reference('GRCh38')
