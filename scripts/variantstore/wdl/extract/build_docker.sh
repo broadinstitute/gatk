@@ -1,6 +1,6 @@
 if [ $# -lt 1 ]; then
     echo "USAGE: ./build_docker.sh [DOCKER_TAG_STRING] [OPTIONAL:LATEST]"
-    echo " e.g.: ./build_docker.sh \$(date -I)-alpine"
+    echo " e.g.: ./build_docker.sh \$(date -Idate)-alpine"
     exit 1
 fi
 
