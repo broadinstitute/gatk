@@ -7,9 +7,6 @@ from hail.genetics.reference_genome import reference_genome_type
 from hail.typecheck import typecheck, nullable, oneof, dictof, anytype, sequenceof, enumeration, sized_tupleof, numeric, table_key_type, char
 
 
-
-
-
 @typecheck(refs=sequenceof(sequenceof(str)),
            vets=sequenceof(sequenceof(str)),
            sample_mapping=sequenceof(str),
