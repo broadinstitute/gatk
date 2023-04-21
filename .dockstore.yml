@@ -95,7 +95,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_VS-776_UpdateToLatestVQSRLite
    - name: GvsPopulateAltAllele
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPopulateAltAllele.wdl
@@ -240,7 +239,6 @@ workflows:
          - master
          - ah_var_store
          - vs_888_fix_broken_gsutil_docker
-         - gg_VS-776_UpdateToLatestVQSRLite
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
