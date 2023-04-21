@@ -24,6 +24,8 @@ workflow GvsCreateFilterSet {
     Int? SNP_VQSR_CLASSIC_mem_gb_override
 
     RuntimeAttributes? vqsr_lite_extract_runtime_attributes = {"command_mem_gb": 27}
+    RuntimeAttributes? vqsr_lite_train_runtime_attributes = {"command_mem_gb": 27}
+    RuntimeAttributes? vqsr_lite_score_runtime_attributes = {"command_mem_gb": 15}
   }
 
   File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
@@ -117,8 +119,8 @@ workflow GvsCreateFilterSet {
         extract_extra_args = "-L ${interval_list} --use-allele-specific-annotations",
         score_extra_args = "-L ${interval_list} --use-allele-specific-annotations",
         extract_runtime_attributes = vqsr_lite_extract_runtime_attributes,
-        train_runtime_attributes = {"command_mem_gb": 27},
-        score_runtime_attributes = {"command_mem_gb": 15},
+        train_runtime_attributes = vqsr_lite_train_runtime_attributes,
+        score_runtime_attributes = vqsr_lite_score_runtime_attributes,
         gatk_docker = "us.gcr.io/broad-gatk/gatk:4.4.0.0",
         gatk_override = gatk_override,
         monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
