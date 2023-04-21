@@ -39,10 +39,6 @@ workflow GvsJointVariantCalling {
     File gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-654-g4a1c203-SNAPSHOT-local.jar"
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
 
-    # These are the SNP and INDEL annotations used for VQSR Classic, the order matters.
-    Array[String] vqsr_classic_indel_recalibration_annotations = ["AS_FS", "AS_ReadPosRankSum", "AS_MQRankSum", "AS_QD", "AS_SOR"]
-    Array[String] vqsr_classic_snp_recalibration_annotations   = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"]
-
     File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
     # do we ever want non-beta customers to use this instead of using GvsUnified directly?  If so, we can make this an
     # argument that just defaults to true
@@ -68,7 +64,6 @@ workflow GvsJointVariantCalling {
             extract_table_prefix = extract_table_prefix,
             fq_temp_table_dataset = "~{project_id}.~{dataset_name}",
             gatk_override = gatk_override,
-            vqsr_classic_indel_recalibration_annotations = vqsr_classic_indel_recalibration_annotations,
             interval_list = interval_list,
             interval_weights_bed = interval_weights_bed,
             load_data_batch_size = load_data_batch_size,
@@ -77,7 +72,6 @@ workflow GvsJointVariantCalling {
             query_labels = query_labels,
             query_project = project_id,
             sample_names_to_extract = sample_names_to_extract,
-            vqsr_classic_snp_recalibration_annotations = vqsr_classic_snp_recalibration_annotations,
             split_intervals_disk_size_override = split_intervals_disk_size_override,
             split_intervals_mem_override = split_intervals_mem_override,
             INDEL_VQSR_CLASSIC_max_gaussians_override = INDEL_VQSR_CLASSIC_max_gaussians_override,
