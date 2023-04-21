@@ -1,333 +1,310 @@
 version 1.0
 
-# This is a workflow for filtering a joint callset VCF using INFO level annotations (so filtering is at the site level).
-# Note that the input VCFs here may be sharded by genomic position which may be helpful for large cohorts. The script
-# will output the same number of shards that are input.
-# This portion of the filtering pipeline will assign a SCORE INFO field annotation to each site, but does not yet apply
-# the filtering threshold to the final VCF.
+# Workflow for scoring and optionally filtering a VCF based on site-level annotations using the
+# ExtractVariationAnnotations-TrainVariantAnnotationsModel-ScoreVariantAnnotations toolchain,
+# which supersedes the corresponding VariantRecalibrator-ApplyVQSR toolchain.
+# See the parameter_meta section below for descriptions of the workflow inputs.
+# Also see the GATK documentation for these tools for descriptions of the corresponding methods and additional details.
+
+struct RuntimeAttributes {
+    Int? cpu
+    Int? command_mem_gb
+    Int? additional_mem_gb
+    Int? disk_size_gb
+    Int? boot_disk_size_gb
+    Boolean? use_ssd
+    Int? preemptible
+    Int? max_retries
+}
 
 workflow JointVcfFiltering {
-	input {
-		Array[File] vcf
-		Array[File] vcf_index
-		File sites_only_vcf
-		File sites_only_vcf_index
-		String basename
+    input {
+        Array[File] input_vcfs
+        Array[File] input_vcf_idxs
+        File sites_only_vcf
+        File sites_only_vcf_idx
+        String output_prefix
 
-		String? model_backend
-		File? training_python_script
-		File? scoring_python_script
-		File? hyperparameters_json
+        Array[String] annotations
+        String resource_args
 
-		String gatk_docker
-		File? extract_interval_list
-		File? score_interval_list
+        String? model_backend
+        File? python_script
+        File? hyperparameters_json
 
-		String snp_annotations
-		String indel_annotations
-		File? gatk_override
+        String? extract_extra_args
+        String? train_extra_args
+        String? score_extra_args
 
-		Boolean use_allele_specific_annotations
+        String gatk_docker
+        File? gatk_override
 
-		String snp_resource_args = "--resource:hapmap,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/hapmap_3.3.hg38.vcf.gz --resource:omni,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/1000G_omni2.5.hg38.vcf.gz --resource:1000G,training=true,calibration=false gs://gcp-public-data--broad-references/hg38/v0/1000G_phase1.snps.high_confidence.hg38.vcf.gz"
-		String indel_resource_args = "--resource:mills,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz --resource:axiom,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/Axiom_Exome_Plus.genotypes.all_populations.poly.hg38.vcf.gz"
+        RuntimeAttributes? extract_runtime_attributes
+        RuntimeAttributes? train_runtime_attributes
+        RuntimeAttributes? score_runtime_attributes
 
-		File? monitoring_script
-	}
+        File? monitoring_script
+    }
 
-	parameter_meta {
-		vcf: "An array of input VCFs that are one callset sharded by genomic region."
-		sites_only_vcf: "The full VCF callset without any genotype or sample level information."
-		basename: "Desired output file basename."
-	}
+    parameter_meta {
+        input_vcfs: "Sharded input VCFs to be scored and optionally filtered."
+        sites_only_vcf: "A concatenated, sites-only version of the sharded input VCFs; used for extracting training and calibration sets."
+        output_prefix: "Base prefix for output files. Sharded output VCFs will be named following the pattern \"{output_prefix}.{zero_based_shard_index}.score.vcf.gz\"."
+        annotations: "Annotations to be used for extraction, training, and scoring."
+        resource_args: "Resource arguments to be used for extraction and scoring. For example, \"--resource:training_and_calibration_set,training=true,calibration=true gs://path-to-training-and-calibration-set ...\".\n See GATK documentation for the ExtractVariantAnnotations and ScoreVariantAnnotations tools."
+        model_backend: "(Optional) Model backend to be used by TrainVariantAnnotationsModel. See GATK documentation for this tool."
+        python_script: "(Optional) Python script specifying custom model backend to be used by TrainVariantAnnotationsModel. See GATK documentation for this tool."
+        hyperparameters_json: "(Optional) JSON file specifying model hyperparameters to be used by TrainVariantAnnotationsModel. See GATK documentation for this tool."
+        extract_extra_args: "(Optional) Catch-all string to provide additional arguments for ExtractVariantAnnotations. This can include intervals (as string arguments or non-localized files), variant-type modes, arguments for enabling positive-negative training, etc. The \"do-not-gzip-vcf-output\" argument is not supported by this workflow. See GATK documentation for this tool."
+        train_extra_args: "(Optional) Catch-all string to provide additional arguments for TrainVariantAnnotationsModel. This can include variant-type modes, arguments for enabling positive-negative training, etc. See GATK documentation for this tool."
+        score_extra_args: "(Optional) Catch-all string to provide additional arguments for ScoreVariantAnnotations. This can include intervals (as string arguments or non-localized files), variant-type modes, arguments for enabling positive-negative training and hard filtering, etc. The \"do-not-gzip-vcf-output\" argument is not supported by this workflow. See GATK documentation for this tool."
+    }
 
-	call ExtractVariantAnnotations as ExtractVariantAnnotationsSNPs {
-		input:
-			input_vcf = sites_only_vcf,
-			input_vcf_index = sites_only_vcf_index,
-			mode = "SNP",
-			annotations = snp_annotations,
-			resource_args = snp_resource_args,
-			basename = basename,
-			interval_list = extract_interval_list,
-			use_allele_specific_annotations = use_allele_specific_annotations,
-			gatk_override = gatk_override,
-			gatk_docker = gatk_docker,
-			monitoring_script = monitoring_script
-	}
+    call ExtractVariantAnnotations {
+        input:
+            input_vcf = sites_only_vcf,
+            input_vcf_idx = sites_only_vcf_idx,
+            output_prefix = output_prefix,
+            annotations = annotations,
+            resource_args = resource_args,
+            extra_args = extract_extra_args,
+            gatk_docker = gatk_docker,
+            gatk_override = gatk_override,
+            runtime_attributes = extract_runtime_attributes,
+            monitoring_script = monitoring_script
+    }
 
-	call ExtractVariantAnnotations as ExtractVariantAnnotationsINDELs {
-		input:
-			input_vcf = sites_only_vcf,
-			input_vcf_index = sites_only_vcf_index,
-			mode = "INDEL",
-			annotations = indel_annotations,
-			resource_args = indel_resource_args,
-			basename = basename,
-			interval_list = extract_interval_list,
-			use_allele_specific_annotations = use_allele_specific_annotations,
-			gatk_override = gatk_override,
-			gatk_docker = gatk_docker,
-			monitoring_script = monitoring_script
-	}
+    call TrainVariantAnnotationsModel {
+        input:
+            annotations_hdf5 = ExtractVariantAnnotations.annotations_hdf5,
+            unlabeled_annotations_hdf5 = ExtractVariantAnnotations.unlabeled_annotations_hdf5,
+            model_backend = model_backend,
+            python_script = python_script,
+            hyperparameters_json = hyperparameters_json,
+            output_prefix = output_prefix,
+            extra_args = train_extra_args,
+            gatk_docker = gatk_docker,
+            gatk_override = gatk_override,
+            runtime_attributes = train_runtime_attributes,
+            monitoring_script = monitoring_script
+    }
 
-	call TrainVariantAnnotationModel as TrainVariantAnnotationModelSNPs {
-		input:
-			annots = ExtractVariantAnnotationsSNPs.annots,
-			basename = basename,
-			mode = "snp",
-			model_backend = model_backend,
-			python_script = training_python_script,
-			hyperparameters_json = hyperparameters_json,
-			gatk_override = gatk_override,
-			gatk_docker = gatk_docker,
-			monitoring_script = monitoring_script
-	}
+    scatter (i in range(length(input_vcfs))) {
+        call ScoreVariantAnnotations {
+            input:
+                input_vcf = input_vcfs[i],
+                input_vcf_idx = input_vcf_idxs[i],
+                output_prefix = "~{output_prefix}.~{i}",
+                annotations = annotations,
+                resource_args = resource_args,
+                extracted_vcf = ExtractVariantAnnotations.extracted_vcf,
+                extracted_vcf_idx = ExtractVariantAnnotations.extracted_vcf_idx,
+                model_prefix = output_prefix,
+                model_files = TrainVariantAnnotationsModel.model_files,
+                extra_args = score_extra_args,
+                gatk_docker = gatk_docker,
+                gatk_override = gatk_override,
+                runtime_attributes = score_runtime_attributes,
+                monitoring_script = monitoring_script
+        }
+    }
 
-	call TrainVariantAnnotationModel as TrainVariantAnnotationModelINDELs {
-		input:
-			annots = ExtractVariantAnnotationsINDELs.annots,
-			basename = basename,
-			mode = "indel",
-			model_backend = model_backend,
-			python_script = training_python_script,
-			hyperparameters_json = hyperparameters_json,
-			gatk_override = gatk_override,
-			gatk_docker = gatk_docker,
-			monitoring_script = monitoring_script
-	}
+    output {
+        File extracted_annotations_hdf5 = ExtractVariantAnnotations.annotations_hdf5
+        File? extracted_unlabeled_annotations_hdf5 = ExtractVariantAnnotations.unlabeled_annotations_hdf5
+        File extracted_vcf = ExtractVariantAnnotations.extracted_vcf
+        File extracted_vcf_idx = ExtractVariantAnnotations.extracted_vcf_idx
 
-	scatter(idx in range(length(vcf))) {
-		call ScoreVariantAnnotations as ScoreVariantAnnotationsSNPs {
-			input:
-				vcf = vcf[idx],
-				vcf_index = vcf_index[idx],
-				basename = basename,
-				mode = "SNP",
-				model_backend = model_backend,
-				python_script = scoring_python_script,
-				annotations = snp_annotations,
-				extracted_training_vcf = ExtractVariantAnnotationsSNPs.extracted_training_vcf,
-				extracted_training_vcf_index = ExtractVariantAnnotationsSNPs.extracted_training_vcf_index,
-				interval_list = score_interval_list,
-				model_files = TrainVariantAnnotationModelSNPs.outputs,
-				resource_args = snp_resource_args,
-				use_allele_specific_annotations = use_allele_specific_annotations,
-				gatk_override = gatk_override,
-				gatk_docker = gatk_docker,
-				monitoring_script = monitoring_script
-		}
+        Array[File] model_files = TrainVariantAnnotationsModel.model_files
 
-		call ScoreVariantAnnotations as ScoreVariantAnnotationsINDELs {
-			input:
-				vcf = vcf[idx],
-				vcf_index = vcf_index[idx],
-				basename = basename,
-				mode = "INDEL",
-				model_backend = model_backend,
-				python_script = scoring_python_script,
-				annotations = indel_annotations,
-				extracted_training_vcf = ExtractVariantAnnotationsINDELs.extracted_training_vcf,
-				extracted_training_vcf_index = ExtractVariantAnnotationsINDELs.extracted_training_vcf_index,
-				interval_list = score_interval_list,
-				model_files = TrainVariantAnnotationModelINDELs.outputs,
-				resource_args = indel_resource_args,
-				use_allele_specific_annotations = use_allele_specific_annotations,
-				gatk_override = gatk_override,
-				gatk_docker = gatk_docker,
-				monitoring_script = monitoring_script
-		}
+        Array[File] scored_vcfs = ScoreVariantAnnotations.scored_vcf
+        Array[File] scored_vcf_idxs = ScoreVariantAnnotations.scored_vcf_idx
+        Array[File?] annotations_hdf5s = ScoreVariantAnnotations.annotations_hdf5
+        Array[File?] scores_hdf5s = ScoreVariantAnnotations.scores_hdf5
 
-	}
-
-	output {
-		Array[File] indels_variant_scored_vcf = ScoreVariantAnnotationsINDELs.output_vcf
-		Array[File] indels_variant_scored_vcf_index = ScoreVariantAnnotationsINDELs.output_vcf_index
-		Array[File] snps_variant_scored_vcf = ScoreVariantAnnotationsSNPs.output_vcf
-		Array[File] snps_variant_scored_vcf_index = ScoreVariantAnnotationsSNPs.output_vcf_index
-		Array[File?] monitoring_logs = flatten(
-				[
-				[ExtractVariantAnnotationsSNPs.monitoring_log],
-				[ExtractVariantAnnotationsINDELs.monitoring_log],
-				[TrainVariantAnnotationModelSNPs.monitoring_log],
-				[TrainVariantAnnotationModelINDELs.monitoring_log],
-				ScoreVariantAnnotationsSNPs.monitoring_log,
-				ScoreVariantAnnotationsINDELs.monitoring_log
-				])
-	}
-
+        Array[File?] monitoring_logs = flatten(
+          [
+            [ExtractVariantAnnotations.monitoring_log],
+            [TrainVariantAnnotationsModel.monitoring_log],
+            ScoreVariantAnnotations.monitoring_log
+          ])
+    }
 }
 
 task ExtractVariantAnnotations {
-	input {
-		String gatk_docker
-		File? gatk_override
-		File input_vcf
-		File input_vcf_index
-		String basename
-		String mode
-		String annotations
-		String resource_args
-		File? interval_list
-		Boolean use_allele_specific_annotations
+    input {
+        File input_vcf
+        File input_vcf_idx
+        String output_prefix
+        Array[String] annotations
+        String resource_args
+        String? extra_args
+        File? monitoring_script
 
-		Int memory_mb = 28000
-		Int command_mem = memory_mb - 1000
-		File? monitoring_script
-	}
-	Int disk_size = ceil(size(input_vcf, "GB") + size(input_vcf_index, "GB") + 100)
+        String gatk_docker
+        File? gatk_override
 
+        RuntimeAttributes runtime_attributes = {}
+    }
 
-	command {
-		set -e
+    parameter_meta {
+        input_vcf: {localization_optional: true}
+        input_vcf_idx: {localization_optional: true}
+    }
 
-		if [ -s ~{monitoring_script} ]; then
-			bash ~{monitoring_script} > monitoring.log &
-		fi
+    command {
+        set -e
+        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
-		export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+        if [ -s ~{monitoring_script} ]; then
+          bash ~{monitoring_script} > monitoring.log &
+        fi
 
-		gatk --java-options "-Xmx~{command_mem}m" \
-			ExtractVariantAnnotations \
-			-V ~{input_vcf} \
-			-O ~{basename}.~{mode} \
-			~{annotations} \
-			~{if use_allele_specific_annotations then "--use-allele-specific-annotations" else ""} \
-			~{"-L " + interval_list} \
-			--mode ~{mode} \
-			~{resource_args}
-	}
-	output {
-		File annots = "~{basename}.~{mode}.annot.hdf5"
-		File extracted_training_vcf = "~{basename}.~{mode}.vcf.gz"
-		File extracted_training_vcf_index = "~{basename}.~{mode}.vcf.gz.tbi"
-		Array[File] outputs = glob("~{basename}.~{mode}.*")
-		File? monitoring_log = "monitoring.log"
-	}
-	runtime {
-		docker: gatk_docker
-		disks: "local-disk " + disk_size + " HDD"
-		memory: memory_mb + " MiB"
-	}
+        gatk --java-options "-Xmx~{default=6 runtime_attributes.command_mem_gb}G" \
+            ExtractVariantAnnotations \
+                -V ~{input_vcf} \
+                -O ~{output_prefix}.extract \
+                -A ~{sep=" -A " annotations} \
+                ~{resource_args} \
+                ~{extra_args}
+    }
+
+    runtime {
+        docker: gatk_docker
+        cpu: select_first([runtime_attributes.cpu, 1])
+        memory: select_first([runtime_attributes.command_mem_gb, 6]) + select_first([runtime_attributes.additional_mem_gb, 1]) + " GB"
+        disks: "local-disk " + select_first([runtime_attributes.disk_size_gb, 100]) + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"
+        bootDiskSizeGb: select_first([runtime_attributes.boot_disk_size_gb, 15])
+        preemptible: select_first([runtime_attributes.preemptible, 2])
+        maxRetries: select_first([runtime_attributes.max_retries, 1])
+    }
+
+    output {
+        File annotations_hdf5 = "~{output_prefix}.extract.annot.hdf5"
+        File? unlabeled_annotations_hdf5 = "~{output_prefix}.extract.unlabeled.annot.hdf5"
+        File extracted_vcf = "~{output_prefix}.extract.vcf.gz"          # this line will break if extra_args includes the do-not-gzip-vcf-output argument
+        File extracted_vcf_idx = "~{output_prefix}.extract.vcf.gz.tbi"  # this line will break if extra_args includes the do-not-gzip-vcf-output argument
+        File? monitoring_log = "monitoring.log"
+    }
 }
 
-task TrainVariantAnnotationModel {
-	input {
-		String gatk_docker
-		File? gatk_override
-		File annots
-		String basename
-		String mode
-		String? model_backend
-		File? python_script
-		File? hyperparameters_json
+task TrainVariantAnnotationsModel {
+    input {
+        File annotations_hdf5
+        File? unlabeled_annotations_hdf5
+        String? model_backend
+        File? python_script
+        File? hyperparameters_json
+        String output_prefix
+        String? extra_args
+        File? monitoring_script
 
-		Int memory_mb = 28000
-		Int command_mem = memory_mb - 1000
-		File? monitoring_script
-	}
-	Int disk_size = ceil(size(annots, "GB") + 100)
+        String gatk_docker
+        File? gatk_override
 
-	command <<<
-		set -e
+        RuntimeAttributes runtime_attributes = {}
+    }
 
-		if [ -s ~{monitoring_script} ]; then
-			bash ~{monitoring_script} > monitoring.log &
-		fi
+    command {
+        set -e
+        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
-		export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+        if [ -s ~{monitoring_script} ]; then
+          bash ~{monitoring_script} > monitoring.log &
+        fi
 
-		mode=$(echo "~{mode}" | awk '{print toupper($0)}')
+        gatk --java-options "-Xmx~{default=6 runtime_attributes.command_mem_gb}G" \
+            TrainVariantAnnotationsModel \
+                --annotations-hdf5 ~{annotations_hdf5} \
+                ~{"--unlabeled-annotations-hdf5 " + unlabeled_annotations_hdf5} \
+                ~{"--model-backend " + model_backend} \
+                ~{"--python-script " + python_script} \
+                ~{"--hyperparameters-json " + hyperparameters_json} \
+                -O ~{output_prefix}.train \
+                ~{extra_args}
+    }
 
-		gatk --java-options "-Xmx~{command_mem}m" \
-			TrainVariantAnnotationsModel \
-			--annotations-hdf5 ~{annots} \
-			-O ~{basename} \
-			~{"--model-backend " + model_backend} \
-			~{"--python-script " + python_script} \
-			~{"--hyperparameters-json " + hyperparameters_json} \
-			--mode $mode
+    runtime {
+        docker: gatk_docker
+        cpu: select_first([runtime_attributes.cpu, 1])
+        memory: select_first([runtime_attributes.command_mem_gb, 6]) + select_first([runtime_attributes.additional_mem_gb, 1]) + " GB"
+        disks: "local-disk " + select_first([runtime_attributes.disk_size_gb, 100]) + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"
+        bootDiskSizeGb: select_first([runtime_attributes.boot_disk_size_gb, 15])
+        preemptible: select_first([runtime_attributes.preemptible, 2])
+        maxRetries: select_first([runtime_attributes.max_retries, 1])
+    }
 
-	>>>
-	output {
-		Array[File] outputs = glob("~{basename}.~{mode}.*")
-		File? monitoring_log = "monitoring.log"
-	}
-	runtime {
-		docker: gatk_docker
-		disks: "local-disk " + disk_size + " HDD"
-		memory: memory_mb + " MiB"
-	}
+    output {
+        Array[File] model_files = glob("~{output_prefix}.train.*")
+        File? monitoring_log = "monitoring.log"
+    }
 }
 
 task ScoreVariantAnnotations {
-	input {
-		String gatk_docker
-		File? gatk_override
-		File vcf
-		File vcf_index
-		String basename
-		String mode
-		String? model_backend
-		File? python_script
-		String annotations
-		String resource_args
-		File extracted_training_vcf
-		File extracted_training_vcf_index
-		File? interval_list
-		Array[File] model_files
-		Boolean use_allele_specific_annotations
+    input {
+        File input_vcf
+        File input_vcf_idx
+        String output_prefix
+        Array[String] annotations
+        String resource_args
+        File extracted_vcf
+        File extracted_vcf_idx
+        String model_prefix
+        Array[File] model_files
+        String? extra_args
+        File? monitoring_script
 
-		Int memory_mb = 16000
-		Int command_mem = memory_mb - 1000
-		File? monitoring_script
-	}
-	Int disk_size = ceil(size(vcf, "GB") * 2 + 50)
+        String gatk_docker
+        File? gatk_override
 
-	command {
-		zgrep -v '#' ~{vcf} > empty.txt
-		set -e
+        RuntimeAttributes runtime_attributes = {}
+    }
 
-		if [ -s ~{monitoring_script} ]; then
-			bash ~{monitoring_script} > monitoring.log &
-		fi
+    parameter_meta {
+        input_vcf: {localization_optional: true}
+        input_vcf_idx: {localization_optional: true}
+        extracted_vcf: {localization_optional: true}
+        extracted_vcf_idx: {localization_optional: true}
+    }
 
-		if [ -s empty.txt ]; then
-			ln -s ~{sep=" . && ln -s " model_files} .
+    command {
+        set -e
 
-			export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+        if [ -s ~{monitoring_script} ]; then
+          bash ~{monitoring_script} > monitoring.log &
+        fi
 
-			gatk --java-options "-Xmx~{command_mem}m" \
-				ScoreVariantAnnotations \
-				~{"-L " + interval_list} \
-				-V ~{vcf} \
-				-O ~{basename}.~{mode} \
-				~{"--model-backend " + model_backend} \
-				~{"--python-script " + python_script} \
-				--model-prefix ~{basename} \
-				~{annotations} \
-				~{if use_allele_specific_annotations then "--use-allele-specific-annotations" else ""} \
-				-mode ~{mode} \
-				--resource:extracted,extracted=true ~{extracted_training_vcf} \
-				~{resource_args}
-		else
-			echo "Input VCF was empty so we'll return the same VCF that was input."
-			echo "Scores and annot hdf5 files will not be produced since the input was empty."
-			ln -s ~{vcf} ~{basename}.~{mode}.vcf.gz
-			ln -s ~{vcf_index} ~{basename}.~{mode}.vcf.gz.tbi
-		fi
-	}
-	output {
-		File? scores = "~{basename}.~{mode}.scores.hdf5"
-		File? annots = "~{basename}.~{mode}.annot.hdf5"
-		File output_vcf = "~{basename}.~{mode}.vcf.gz"
-		File output_vcf_index = "~{basename}.~{mode}.vcf.gz.tbi"
-		File? monitoring_log = "monitoring.log"
-	}
-	runtime {
-		docker: gatk_docker
-		disks: "local-disk " + disk_size + " HDD"
-		memory: memory_mb + " MiB"
-	}
+        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+
+        mkdir model-files
+        ln -s ~{sep=" model-files && ln -s " model_files} model-files
+
+        gatk --java-options "-Xmx~{default=2 runtime_attributes.command_mem_gb}G" \
+            ScoreVariantAnnotations \
+                -V ~{input_vcf} \
+                -O ~{output_prefix}.score \
+                -A ~{sep=" -A " annotations} \
+                ~{resource_args} \
+                --resource:extracted,extracted=true ~{extracted_vcf} \
+                --model-prefix model-files/~{model_prefix}.train \
+                ~{extra_args}
+    }
+
+    runtime {
+        docker: gatk_docker
+        cpu: select_first([runtime_attributes.cpu, 1])
+        memory: select_first([runtime_attributes.command_mem_gb, 2]) + select_first([runtime_attributes.additional_mem_gb, 1]) + " GB"
+        disks: "local-disk " + select_first([runtime_attributes.disk_size_gb, 100]) + if select_first([runtime_attributes.use_ssd, false]) then " SSD" else " HDD"
+        bootDiskSizeGb: select_first([runtime_attributes.boot_disk_size_gb, 15])
+        preemptible: select_first([runtime_attributes.preemptible, 2])
+        maxRetries: select_first([runtime_attributes.max_retries, 1])
+    }
+
+    output {
+        File scored_vcf = "~{output_prefix}.score.vcf.gz"               # this line will break if extra_args includes the do-not-gzip-vcf-output argument
+        File scored_vcf_idx = "~{output_prefix}.score.vcf.gz.tbi"       # this line will break if extra_args includes the do-not-gzip-vcf-output argument
+        File? annotations_hdf5 = "~{output_prefix}.score.annot.hdf5"    # this file will only be produced if the number of sites scored is nonzero
+        File? scores_hdf5 = "~{output_prefix}.score.scores.hdf5"        # this file will only be produced if the number of sites scored is nonzero
+        File? monitoring_log = "monitoring.log"
+    }
 }
-
