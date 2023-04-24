@@ -107,6 +107,8 @@ task CreateAndTieOutVds {
         apt -qq install -y temurin-8-jdk
 
         export PYSPARK_SUBMIT_ARGS='--driver-memory 16g --executor-memory 16g pyspark-shell'
+        pip install --upgrade pip
+        pip install hail
 
         export WORK=$PWD/work
         mkdir ${WORK}
