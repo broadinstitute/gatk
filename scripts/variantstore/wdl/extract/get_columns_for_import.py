@@ -1,62 +1,153 @@
-import os
-import argparse
+import json
+import requests
 
 from terra_notebook_utils import table
 from terra_notebook_utils import workspace
+import re
 
-import time
-
-# just keep these around as constants for now
-vcf_files_name = "vcf_files.txt"
-vcf_index_files_name = "vcf_index_files.txt"
-sample_names_file_name = "sample_names.txt"
-error_file_name = "errors.txt"
+# make a default, but allow a user to overwrite it
 
 
-# make a default, but allow a user to overwrite it just in case someone wants to tweak this while tuning
-attempts_between_pauses=500
+def get_google_project_id(workspace_id):
+    # grab the workspace information from rawls
+    response = requests.get('https://rawls.dsde-prod.broadinstitute.org/api/workspaces/id/{workspace_id}?fields=workspace.namespace,workspace.googleProject')
+    # then extract the googleProject info
+    proj_id=response.workspace.googleProject
+    workspace_name=response.workspace.namespace
+    return workspace_name
 
-def generate_FOFNs_from_data_table(data_table_name, sample_id_column_name, vcf_files_column_name, vcf_index_files_column_name):
-    with open(vcf_files_name, "w") as vcf_files, open(vcf_index_files_name, "w") as vcf_index_files, open(sample_names_file_name, "w") as sample_names_file, open(error_file_name, "w") as error_file:
-        count = 0
-        processed_entities = 0
-        for row in table.list_rows(data_table_name):
-            try:
-                # The table data model is weird, as each row has a "name" property followed by a hash of attributes.  But it
-                # is all displayed as though they are equivalent columns, and the name field is mapped to an imaginary
-                # column with the name table_name_id.  Map "name" to that imaginary attribute here so none of the lookups
-                # below fail if they reference that call.  This is safe, as this Row object is a read only copy of the actual
-                # table content, and it is disposed
-                row.attributes[f"{data_table_name}_id"] = row.name
 
-                current_sample_name = row.attributes[sample_id_column_name]
-                current_vcf_file = row.attributes[vcf_files_column_name]
-                current_vcf_index_file = row.attributes[vcf_index_files_column_name]
+def get_sample_sets(workspace_namespace, workspace_name):
+    response = requests.get('https://rawls.dsde-prod.broadinstitute.org/api/workspaces/{workspace_namespace}/{workspace_name}/entities?useCache=true')
+    sample_sets = response.sample_set
+    return sample_sets
 
-                sample_names_file.write(f'{current_sample_name}\n')
-                vcf_files.write(f'{current_vcf_file}\n')
-                vcf_index_files.write(f'{current_vcf_index_file}\n')
-            except KeyError:
-                error_file.write(f'Row "{row.name}" skipped: missing columns\n')
 
-            count += 1
-            processed_entities += 1
-            if count >= attempts_between_pauses:
-                print(f"sleeping between requests ({processed_entities} processed)...")
-                time.sleep(1)
-                count = 0
+def get_column_names(workspace_id, workspace_name):
+
+
+def get_column_values(workspace_id, workspace_name):
+    # We need to identify 3 things
+    # 1. Sample id field
+    # 2. vcf column name
+    # 3. vcf index column name
+
+    # We only sample a certain number of rows for each column
+    numSamples = 50
+    columnSamples = {}
+
+    table_name = "sample" ## TODO is this an assumption that we are making? If the name of the table is sample, then wont the id be sample_id unless override?
+    # list_rows is a generator and it uses paging behind the scenes to make
+    # this call much more efficient
+    for row in table.list_rows(table_name):
+        # the id field is special, so handle it like it is...
+        if f"{table_name}_id" in columnSamples:
+            existingList = columnSamples[f"{table_name}_id"]
+            existingList.append(row.name)
+        else:
+            newList = [row.name];
+            columnSamples[f"{table_name}_id"] = newList
+
+        # handle the more general attributes
+        for columnName in row.attributes:
+            if columnName in columnSamples:
+                existingList = columnSamples[columnName]
+                existingList.append(row.name)
+            else:
+                columnSamples[columnName] = [row.attributes[columnName]]
+
+        # done iterating columns
+        numSamples -= 1
+        if numSamples == 0:
+            break
+
+
+    # time to start gathering some potential rows.
+    # how many samples did we actually take?
+    numSampledRows = 50 - numSamples
+    cutoffPoint = numSampledRows * 0.95
+    print(f"Sampled {numSampledRows} rows total. Throwing away any under {cutoffPoint}")
+
+
+    # match column names that end with "vcf"
+    ends_in_vcf_pattern = "^.*vcf$"
+    ends_in_vcf = set()
+
+    # match column names that end with "vcf_index"
+    ends_in_vcf_index_pattern = "^.*vcf_index$"
+    ends_in_vcf_index = set()
+
+    # match column names that contain the word "reblocked"
+    contains_reblocked_pattern = ".*reblocked.*"
+    contains_reblocked = set()
+
+    # match path that end with ".vcf.gz"
+    path_ends_in_vcf_gz_pattern = "^.*\.vcf\.gz$"
+    path_ends_in_vcf_gz = set()
+
+    # match path that end with ".vcf.gz.tbi"
+    path_ends_in_vcf_gz_tbi_pattern = "^.*\.vcf\.gz\.tbi$"
+    path_ends_in_vcf_gz_tbi = set()
+
+
+    # start sorting the columns that we've seen into buckets to be compared later
+    for key in columnSamples:
+        print(f"Found key: {key} with {len(columnSamples[key])} entries")
+        samplesData = columnSamples[key]
+        if len(samplesData) < cutoffPoint:
+            # ignoring this completely
+            continue
+
+        # ends in vcf?
+        result = re.search(ends_in_vcf_pattern, key)
+        if result:
+            ends_in_vcf.add(key)
+
+        # ends in vcf_index?
+        result = re.search(ends_in_vcf_index_pattern, key)
+        if result:
+            ends_in_vcf_index.add(key)
+
+        # contains the word reblocked?
+        result = re.search(contains_reblocked_pattern, key)
+        if result:
+            contains_reblocked.add(key)
+
+        # has a path that ends in vcf.gz
+        result = re.search(path_ends_in_vcf_gz_pattern, samplesData[0])
+        if result:
+            path_ends_in_vcf_gz.add(key)
+
+        # has a path that ends in vcf.gz.tbi
+        result = re.search(path_ends_in_vcf_gz_tbi_pattern, samplesData[0])
+        if result:
+            path_ends_in_vcf_gz_tbi.add(key)
+
+
+
+    print(f"ends_in_vcf: {ends_in_vcf}")
+    print(f"ends_in_vcf_index: {ends_in_vcf_index}")
+    print(f"contains_reblocked: {contains_reblocked}")
+
+    print(f"path_ends_in_vcf_gz: {path_ends_in_vcf_gz}")
+    print(f"path_ends_in_vcf_gz_tbi: {path_ends_in_vcf_gz_tbi}")
+
+
+
+    # super simple heuristic: Is there a single entry that ends in vcf
+    #for col in ends_in_vcf:
+
+
+    # and has an analogue
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False,
-                                     description='Turn the data tables into 3 FOFNs, one for sample names, vcf paths, and vcf index paths')
+                                     description='Get workspace information')
 
-    parser.add_argument('--data_table_name', type=str,
-                        help='The name of the table in your workspace that holds your sample data', default='sample')
-    parser.add_argument('--sample_id_column_name', type=str, help='name of the column that holds the external sample names',
-                            required=True)
-    parser.add_argument('--vcf_files_column_name', type=str, help='name of the column that holds the paths to the vcf files',
+    parser.add_argument('--workspace_id', type=str,
+                        help='The ID of your workspace that holds your sample data',
                         required=True)
-    parser.add_argument('--vcf_index_files_column_name', type=str, help='name of the column that holds the paths to the vcf index files', required=True)
 
     parser.add_argument('--attempts_between_pauses', type=int,
                         help='The number of rows in the db that are processed before we pause', default=500)
@@ -68,7 +159,5 @@ if __name__ == '__main__':
         attempts_between_pauses = args.attempts_between_pauses
 
 
-    generate_FOFNs_from_data_table(args.data_table_name,
-                              args.sample_id_column_name,
-                              args.vcf_files_column_name,
-                              args.vcf_index_files_column_name)
+    workspace_name = get_google_project_id(args.workspace_id)
+    get_column_names(args.workspace_id, workspace_name)
