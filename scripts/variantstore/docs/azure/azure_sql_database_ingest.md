@@ -32,7 +32,7 @@ EXPORT DATA OPTIONS (
 ```
 
 
-## Transfer CSVs from Azure to GCP
+## Transfer CSVs from GCP to Azure
 
 Create a storage container in Azure, use `azcopy` to transfer files. Example below for vets, reference ranges are similar:
 
