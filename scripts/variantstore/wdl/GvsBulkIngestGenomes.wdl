@@ -39,14 +39,19 @@ workflow GvsBulkIngestGenomes {
         # End GvsImportGenomes
     }
 
-
     call GetWorkspaceId
 
+    call GetGoogleProject {
+        input:
+            workspace_id = GetWorkspaceId.workspace_bucket
+    }
+
+    call GetColumnNames
 
     call PrepareBulkImport.GvsPrepareBulkImport as PrepareBulkImport {
         input:
-            project_id = terra_project_id,
-            workspace_name = workspace_name,
+            project_id = GetGoogleProject.terra_project_id,
+            workspace_name = GetGoogleProject.workspace_name,
             workspace_bucket = GetWorkspaceId.workspace_bucket,
             samples_table_name = samples_table_name,
             sample_id_column_name = sample_id_column_name,
@@ -91,6 +96,79 @@ workflow GvsBulkIngestGenomes {
         Array[File] load_data_stderrs = ImportGenomes.load_data_stderrs
     }
 }
+
+    task GetColumnNames {
+        command <<<
+            # Get a list of all columns in the table
+
+            # First we will check for the default named columns and make sure that each row has a value
+
+            curl -X 'GET' \
+            'https://rawls.dsde-prod.broadinstitute.org/api/workspaces/{workspace_id}/{workspace_name}/entities?useCache=true' \
+            -H 'accept: application/json' \
+            -H 'Authorization: Bearer XXX
+
+            {
+            "participant": {
+            "attributeNames": [],
+            "count": 249045,
+            "idName": "participant_id"
+            },
+            "sample": {
+            "attributeNames": [
+            "blah blah these are the column names we want"
+            ],
+            "count": 249049,
+            "idName": "sample_id"
+            },
+            "sample_set": {
+            "attributeNames": [
+            "samples"
+            ],
+            "count": 12,
+            "idName": "sample_set_id"
+            }
+            }
+        >>>
+
+        runtime {
+            docker: "ubuntu:latest"
+        }
+
+        output {
+            Array[String] bag_of_column_names = []
+        }
+    }
+
+    task GetGoogleProject {
+        input {
+            String workspace_id
+        }
+        command <<<
+            # Hit rawls with the workspace ID
+
+
+            curl -X 'GET' \
+                'https://rawls.dsde-prod.broadinstitute.org/api/workspaces/id/{workspace_id}' \
+            -H 'accept: application/json' \
+            -H 'Authorization: Bearer XXX
+
+
+            then extract the googleProject
+            proj_id=obj.googleProject
+            ## what about the namespace too?
+    >>>
+
+    runtime {
+        docker: "ubuntu:latest"
+    }
+
+    output {
+        String terra_project_id = proj_id
+        String workspace_name = workspace_name
+    }
+}
+
 
 
     task GetWorkspaceId {
