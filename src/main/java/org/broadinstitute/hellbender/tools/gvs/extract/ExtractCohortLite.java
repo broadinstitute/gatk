@@ -29,7 +29,7 @@ public class ExtractCohortLite extends ExtractTool {
     private ExtractCohortLiteEngine engine;
     private SampleList sampleList;
 
-    public enum SensitivityFilteringType { GENOTYPE, SITES, NONE }
+    public enum VQScoreFilteringType { GENOTYPE, SITES, NONE }
 
     @Argument(
             fullName = "filter-set-info-table",
@@ -137,7 +137,7 @@ public class ExtractCohortLite extends ExtractTool {
             optional = true
     )
     private boolean performSiteSpecificSensitivityFiltering = false;
-    private SensitivityFilteringType sensitivityFilteringType = SensitivityFilteringType.NONE;
+    private VQScoreFilteringType vqScoreFilteringType = VQScoreFilteringType.NONE;
 
     @Argument(
             fullName ="snps-truth-sensitivity-filter-level",
@@ -266,20 +266,20 @@ public class ExtractCohortLite extends ExtractTool {
         Set<VCFHeaderLine> extraHeaderLines = new HashSet<>();
 
         if (filterSetInfoTableName != null) { // filter using sensitivity-- default to GENOTYPE unless SITES specifically selected
-            sensitivityFilteringType = performSiteSpecificSensitivityFiltering ? SensitivityFilteringType.SITES : SensitivityFilteringType.GENOTYPE;
+            vqScoreFilteringType = performSiteSpecificSensitivityFiltering ? VQScoreFilteringType.SITES : VQScoreFilteringType.GENOTYPE;
         }
 
         // filter at a site level (but not necesarily use VQS sensitivity)
         if ((filterSetSiteTableName != null && filterSetName == null) || (filterSetSiteTableName == null && filterSetName != null)) {
            throw new UserException("--filter-set-name and --filter-set-site-table are both necessary for any filtering related operations");
         }
-        if (!sensitivityFilteringType.equals(SensitivityFilteringType.NONE)) {
+        if (!vqScoreFilteringType.equals(VQScoreFilteringType.NONE)) {
           if (filterSetInfoTableName == null || filterSetSiteTableName == null || filterSetName == null) {
             throw new UserException(" --filter-set-site-table, --filter-set-name and --filter-set-site-table are all necessary for any vqs sensitivity filtering operations");
           }
         }
 
-        if (!sensitivityFilteringType.equals(SensitivityFilteringType.NONE)) {
+        if (!vqScoreFilteringType.equals(VQScoreFilteringType.NONE)) {
             logger.info("Passing all SNP variants with VQSLOD >= " + truthSensitivitySNPThreshold);
             logger.info("Passing all INDEL variants with VQSLOD >= " + truthSensitivityINDELThreshold);
 
@@ -289,7 +289,7 @@ public class ExtractCohortLite extends ExtractTool {
                     "Site failed INDEL model calibration sensitivity cutoff (" + truthSensitivityINDELThreshold.toString() + ")"));
         }
 
-        if (sensitivityFilteringType.equals(SensitivityFilteringType.GENOTYPE)) {
+        if (vqScoreFilteringType.equals(VQScoreFilteringType.GENOTYPE)) {
             extraHeaderLines.add(new VCFFormatHeaderLine("FT", 1, VCFHeaderLineType.String, "Genotype Filter Field"));
         }
 
@@ -364,7 +364,7 @@ public class ExtractCohortLite extends ExtractTool {
                 filterSetName,
                 emitPLs,
                 emitADs,
-                sensitivityFilteringType,
+                vqScoreFilteringType,
                 excludeFilteredSites,
                 inferredReferenceState,
                 presortedAvroFiles);

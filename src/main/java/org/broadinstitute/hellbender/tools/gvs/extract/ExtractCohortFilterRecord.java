@@ -24,7 +24,7 @@ public class ExtractCohortFilterRecord implements Locatable {
         this.end = start;
 
         this.vqslod = Double.parseDouble(genericRecord.get("vqslod").toString());
-        this.yng = genericRecord.get("yng_status").toString();
+        this.yng = genericRecord.get(SchemaUtils.YNG_STATUS).toString();
 
         this.refAllele = genericRecord.get(SchemaUtils.REF_ALLELE_FIELD_NAME).toString();
         this.altAllele = genericRecord.get(SchemaUtils.ALT_ALLELE_FIELD_NAME).toString();

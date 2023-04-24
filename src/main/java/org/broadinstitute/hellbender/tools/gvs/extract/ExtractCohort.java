@@ -36,7 +36,7 @@ public class ExtractCohort extends ExtractTool {
     private ExtractCohortEngine engine;
     private SampleList sampleList;
 
-    public enum VQSLODFilteringType { GENOTYPE, SITES, NONE }
+    public enum VQScoreFilteringType { GENOTYPE, SITES, NONE }
 
     @Argument(
             fullName = "filter-set-info-table",
@@ -151,7 +151,7 @@ public class ExtractCohort extends ExtractTool {
             optional = true
     )
     private boolean performSiteSpecificVQSLODFiltering = false;
-    private VQSLODFilteringType vqslodfilteringType = VQSLODFilteringType.NONE;
+    private VQScoreFilteringType vqScoreFilteringType = VQScoreFilteringType.NONE;
 
     @Argument(
             fullName ="snps-truth-sensitivity-filter-level",
@@ -292,20 +292,20 @@ public class ExtractCohort extends ExtractTool {
         Set<VCFHeaderLine> extraHeaderLines = new HashSet<>();
 
         if (filterSetInfoTableName != null) { // filter using vqslod-- default to GENOTYPE unless SITES specifically selected
-            vqslodfilteringType = performSiteSpecificVQSLODFiltering ? VQSLODFilteringType.SITES : VQSLODFilteringType.GENOTYPE;
+            vqScoreFilteringType = performSiteSpecificVQSLODFiltering ? VQScoreFilteringType.SITES : VQScoreFilteringType.GENOTYPE;
         }
 
         // filter at a site level (but not necesarily use vqslod)
         if ((filterSetSiteTableName != null && filterSetName == null) || (filterSetSiteTableName == null && filterSetName != null)) {
            throw new UserException("--filter-set-name and --filter-set-site-table are both necessary for any filtering related operations");
         }
-        if (!vqslodfilteringType.equals(VQSLODFilteringType.NONE)) {
+        if (!vqScoreFilteringType.equals(VQScoreFilteringType.NONE)) {
           if (filterSetInfoTableName == null || filterSetSiteTableName == null || filterSetName == null) {
             throw new UserException(" --filter-set-site-table, --filter-set-name and --filter-set-site-table are all necessary for any vqslod filtering operations");
           }
         }
 
-        if (!vqslodfilteringType.equals(VQSLODFilteringType.NONE)) {
+        if (!vqScoreFilteringType.equals(VQScoreFilteringType.NONE)) {
           FilterSensitivityTools.validateFilteringCutoffs(truthSensitivitySNPThreshold, truthSensitivityINDELThreshold, vqsLodSNPThreshold, vqsLodINDELThreshold, tranchesTableName);
           Map<String, Map<Double, Double>> trancheMaps = FilterSensitivityTools.getTrancheMaps(filterSetName, tranchesTableName, projectID);
 
@@ -321,7 +321,7 @@ public class ExtractCohort extends ExtractTool {
           }
         }
 
-        if (vqslodfilteringType.equals(VQSLODFilteringType.GENOTYPE)) {
+        if (vqScoreFilteringType.equals(VQScoreFilteringType.GENOTYPE)) {
             extraHeaderLines.add(new VCFFormatHeaderLine("FT", 1, VCFHeaderLineType.String, "Genotype Filter Field"));
         }
 
@@ -396,7 +396,7 @@ public class ExtractCohort extends ExtractTool {
                 filterSetName,
                 emitPLs,
                 emitADs,
-                vqslodfilteringType,
+                vqScoreFilteringType,
                 excludeFilteredSites,
                 inferredReferenceState,
                 presortedAvroFiles);
