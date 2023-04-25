@@ -38,8 +38,7 @@ workflow GvsExtractCohortFromSampleNames {
     Int? split_intervals_mem_override
     Boolean use_classic_VQSR = true
 
-    File gatk_override = "gs://gvs-internal-scratch/rsa/gatk-package-4.2.0.0-624-ga2bb04e-SNAPSHOT-local.jar"
-
+    File? gatk_override
   }
 
   Boolean write_cost_to_db = if ((gvs_project != destination_project_id) || (gvs_project != query_project)) then false else true
