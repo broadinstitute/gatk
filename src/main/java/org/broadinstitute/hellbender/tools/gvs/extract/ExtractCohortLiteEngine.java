@@ -40,9 +40,9 @@ public class ExtractCohortLiteEngine {
     private final TableReference filterSetInfoTableRef;
     private final TableReference filterSetSiteTableRef;
     private final ReferenceDataSource refSource;
-    private final Double sensitivitySNPThreshold;
-    private final Double sensitivityINDELThreshold;
-    private final ExtractCohortLite.VQScoreFilteringType vqScoreFilteringType;
+    private final Double vqScoreSNPThreshold;
+    private final Double vqScoreINDELThreshold;
+    private final ExtractCohort.VQScoreFilteringType vqScoreFilteringType;
     private final boolean excludeFilteredSites;
 
     private final ProgressMeter progressMeter;
@@ -102,13 +102,13 @@ public class ExtractCohortLiteEngine {
                                    final String filterSetSiteTableName,
                                    final int localSortMaxRecordsInRam,
                                    final boolean printDebugInformation,
-                                   final Double sensitivitySNPThreshold,
-                                   final Double sensitivityINDELThreshold,
+                                   final Double vqScoreSNPThreshold,
+                                   final Double vqScoreINDELThreshold,
                                    final ProgressMeter progressMeter,
                                    final String filterSetName,
                                    final boolean emitPLs,
                                    final boolean emitADs,
-                                   final ExtractCohortLite.VQScoreFilteringType vqScoreFilteringType,
+                                   final ExtractCohort.VQScoreFilteringType vqScoreFilteringType,
                                    final boolean excludeFilteredSites,
                                    final GQStateEnum inferredReferenceState,
                                    final boolean presortedAvroFiles
@@ -150,13 +150,13 @@ public class ExtractCohortLiteEngine {
         this.maxLocation = maxLocation;
 
         this.printDebugInformation = printDebugInformation;
-        this.sensitivitySNPThreshold = sensitivitySNPThreshold;
-        this.sensitivityINDELThreshold = sensitivityINDELThreshold;
+        this.vqScoreSNPThreshold = vqScoreSNPThreshold;
+        this.vqScoreINDELThreshold = vqScoreINDELThreshold;
         this.vqScoreFilteringType = vqScoreFilteringType;
         this.excludeFilteredSites = excludeFilteredSites;
 
-        this.filterSetInfoTableRef = vqScoreFilteringType.equals(ExtractCohortLite.VQScoreFilteringType.NONE) ? null : new TableReference(filterSetInfoTableName, SchemaUtils.VQSLITE_YNG_FIELDS);
-        this.filterSetSiteTableRef = vqScoreFilteringType.equals(ExtractCohortLite.VQScoreFilteringType.NONE) ? null : new TableReference(filterSetSiteTableName, SchemaUtils.FILTER_SET_SITE_FIELDS);
+        this.filterSetInfoTableRef = vqScoreFilteringType.equals(ExtractCohort.VQScoreFilteringType.NONE) ? null : new TableReference(filterSetInfoTableName, SchemaUtils.VQSLITE_YNG_FIELDS);
+        this.filterSetSiteTableRef = vqScoreFilteringType.equals(ExtractCohort.VQScoreFilteringType.NONE) ? null : new TableReference(filterSetSiteTableName, SchemaUtils.FILTER_SET_SITE_FIELDS);
 
         this.progressMeter = progressMeter;
 
@@ -194,10 +194,10 @@ public class ExtractCohortLiteEngine {
         }
         final String rowRestrictionWithFilterSetName = rowRestriction + " AND " + SchemaUtils.FILTER_SET_NAME + " = '" + filterSetName + "'";
 
-        boolean noVQScoreFilteringRequested = vqScoreFilteringType.equals(ExtractCohortLite.VQScoreFilteringType.NONE);
+        boolean noVQScoreFilteringRequested = vqScoreFilteringType.equals(ExtractCohort.VQScoreFilteringType.NONE);
         if (!noVQScoreFilteringRequested) {
             // ensure sensitivity filters are defined. this really shouldn't ever happen, said the engineer.
-            if (sensitivitySNPThreshold == null || sensitivityINDELThreshold == null) {
+            if (vqScoreSNPThreshold == null || vqScoreINDELThreshold == null) {
                 throw new UserException("Sensitivity filtering thresholds for SNPs and INDELs must be defined.");
             }
 
@@ -353,7 +353,7 @@ public class ExtractCohortLiteEngine {
                                                              final HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap,
                                                              final boolean noVQScoreFilteringRequested,
                                                              final HashMap<Long, List<String>> siteFilterMap,
-                                                             final ExtractCohortLite.VQScoreFilteringType vqScoreFilteringType) {
+                                                             final ExtractCohort.VQScoreFilteringType vqScoreFilteringType) {
 
         final List<VariantContext> unmergedCalls = new ArrayList<>();
         final List<ReferenceGenotypeInfo> refCalls = new ArrayList<>();
@@ -516,7 +516,7 @@ public class ExtractCohortLiteEngine {
 
         // apply Sensitivity-based filters
         VariantContext filteredVC =
-                noVQScoreFilteringRequested ? genotypedVC : filterSiteByAlleleSpecificSensitivity(genotypedVC, vqScoreMap, yngMap, vqScoreFilteringType);
+                noVQScoreFilteringRequested ? genotypedVC : filterSiteByAlleleSpecificVQScore(genotypedVC, vqScoreMap, yngMap, vqScoreFilteringType);
 
         // apply SiteQC-based filters, if they exist
         if ( siteFilterMap.containsKey(location) ) {
@@ -549,10 +549,10 @@ public class ExtractCohortLiteEngine {
         }
     }
 
-    private VariantContext filterSiteByAlleleSpecificSensitivity(VariantContext mergedVC,
-                                                                 HashMap<Allele, HashMap<Allele, Double>> vqScoreMap,
-                                                                 HashMap<Allele, HashMap<Allele, String>> yngMap,
-                                                                 ExtractCohortLite.VQScoreFilteringType vqScoreFilteringType) {
+    private VariantContext filterSiteByAlleleSpecificVQScore(VariantContext mergedVC,
+                                                             HashMap<Allele, HashMap<Allele, Double>> vqScoreMap,
+                                                             HashMap<Allele, HashMap<Allele, String>> yngMap,
+                                                             ExtractCohort.VQScoreFilteringType vqScoreFilteringType) {
         final LinkedHashMap<Allele, Double> remappedVQScoreMap = remapAllelesInMap(mergedVC, vqScoreMap, Double.NaN);
         final LinkedHashMap<Allele, String> remappedYngMap = remapAllelesInMap(mergedVC, yngMap, VCFConstants.EMPTY_INFO_FIELD);
 
@@ -566,7 +566,7 @@ public class ExtractCohortLiteEngine {
         builder.attribute(GATKVCFConstants.AS_VQS_SENS_KEY, relevantVQScoreMap.values().stream().map(val -> val.equals(Double.NaN) ? VCFConstants.EMPTY_INFO_FIELD : val.toString()).collect(Collectors.toList()));
         builder.attribute(GATKVCFConstants.AS_YNG_STATUS_KEY, new ArrayList<>(relevantYngMap.values()));
 
-        if (vqScoreFilteringType.equals(ExtractCohortLite.VQScoreFilteringType.SITES)) { // Note that these filters are not used with Genotype Sensitivity Filtering
+        if (vqScoreFilteringType.equals(ExtractCohort.VQScoreFilteringType.SITES)) { // Note that these filters are not used with Genotype Sensitivity Filtering
             int refLength = mergedVC.getReference().length();
 
             // if there are any Yays, the site is PASS
@@ -583,7 +583,7 @@ public class ExtractCohortLiteEngine {
                             .map(entry -> entry.getValue())
                             .filter(d -> !(d.isNaN()||d.isInfinite()))
                             .max(Double::compareTo);
-                    if (snpMax.isPresent() && snpMax.get() > sensitivitySNPThreshold) {
+                    if (snpMax.isPresent() && snpMax.get() > vqScoreSNPThreshold) {
                         builder.filter(GATKVCFConstants.VQS_SENS_FAILURE_SNP);
                     }
 
@@ -593,7 +593,7 @@ public class ExtractCohortLiteEngine {
                             .filter(d -> !(d.isNaN()||d.isInfinite()))
                             .max(Double::compareTo);
 
-                    if (indelMax.isPresent() && indelMax.get() > sensitivityINDELThreshold) {
+                    if (indelMax.isPresent() && indelMax.get() > vqScoreINDELThreshold) {
                         builder.filter(GATKVCFConstants.VQS_SENS_FAILURE_INDEL);
                     }
                 } else {
@@ -661,7 +661,7 @@ public class ExtractCohortLiteEngine {
     private VariantContext createVariantContextFromSampleRecord(final ExtractCohortRecord sampleRecord,
                                                                 HashMap<Allele, HashMap<Allele, Double>> vqScoreMap,
                                                                 HashMap<Allele, HashMap<Allele, String>> yngMap,
-                                                                ExtractCohortLite.VQScoreFilteringType vqScoreFilteringType) {
+                                                                ExtractCohort.VQScoreFilteringType vqScoreFilteringType) {
         final VariantContextBuilder builder = new VariantContextBuilder();
         final GenotypeBuilder genotypeBuilder = new GenotypeBuilder();
 
@@ -713,7 +713,7 @@ public class ExtractCohortLiteEngine {
                             .map(alleleIndex -> alleles.get(alleleIndex))
                             .collect(Collectors.toList());
 
-            if (vqScoreFilteringType.equals(ExtractCohortLite.VQScoreFilteringType.GENOTYPE)) {
+            if (vqScoreFilteringType.equals(ExtractCohort.VQScoreFilteringType.GENOTYPE)) {
                 final List<Allele> nonRefAlleles =
                         genotypeAlleles.stream()
                                 .filter(a -> a.isNonReference())
@@ -741,7 +741,7 @@ public class ExtractCohortLiteEngine {
                     Optional<Double> snpMax =
                             nonRefAlleles.stream().filter(a -> a.length() == ref.length()).map(a -> remappedVQScoreMap.get(a)).filter(Objects::nonNull).max(Double::compareTo);
 
-                    if (snpMax.isPresent() && snpMax.get() > sensitivitySNPThreshold) {
+                    if (snpMax.isPresent() && snpMax.get() > vqScoreSNPThreshold) {
                         genotypeBuilder.filter(GATKVCFConstants.VQS_SENS_FAILURE_SNP);
                     }
 
@@ -749,7 +749,7 @@ public class ExtractCohortLiteEngine {
                     Optional<Double> indelMax =
                             nonRefAlleles.stream().filter(a -> a.length() != ref.length()).map(a -> remappedVQScoreMap.get(a)).filter(Objects::nonNull).max(Double::compareTo);
 
-                    if (indelMax.isPresent() && indelMax.get() > sensitivityINDELThreshold) {
+                    if (indelMax.isPresent() && indelMax.get() > vqScoreINDELThreshold) {
                         genotypeBuilder.filter(GATKVCFConstants.VQS_SENS_FAILURE_INDEL);
                     }
 
