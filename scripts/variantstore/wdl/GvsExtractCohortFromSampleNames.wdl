@@ -36,6 +36,7 @@ workflow GvsExtractCohortFromSampleNames {
     Int? extract_maxretries_override
     Int? split_intervals_disk_size_override
     Int? split_intervals_mem_override
+    Boolean use_classic_VQSR = true
 
     File gatk_override = "gs://gvs-internal-scratch/rsa/gatk-package-4.2.0.0-624-ga2bb04e-SNAPSHOT-local.jar"
 
@@ -113,6 +114,7 @@ workflow GvsExtractCohortFromSampleNames {
       extract_maxretries_override = extract_maxretries_override,
       split_intervals_disk_size_override = split_intervals_disk_size_override,
       split_intervals_mem_override = split_intervals_mem_override,
+      use_classic_VQSR = use_classic_VQSR,
 
       gatk_override = gatk_override,
       write_cost_to_db = write_cost_to_db
