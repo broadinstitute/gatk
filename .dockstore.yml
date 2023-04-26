@@ -179,7 +179,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_VS-895_AddVQSRLiteSupportToExtractCohortBySampleNames
    - name: GvsWithdrawSamples
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsWithdrawSamples.wdl
