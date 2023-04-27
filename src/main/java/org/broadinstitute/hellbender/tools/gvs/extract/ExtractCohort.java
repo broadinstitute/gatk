@@ -141,11 +141,11 @@ public class ExtractCohort extends ExtractTool {
     // what if this was a flag input only?
 
     @Argument(
-            fullName = "vqslod-filter-by-site",
-            doc = "If VQSLOD filtering is applied, it should be at a site level. Default is false",
+            fullName = "vqsr-score-filter-by-site",
+            doc = "If VQSR Score filtering is applied, it should be at a site level. Default is false",
             optional = true
     )
-    private boolean performSiteSpecificVQSLODFiltering = false;
+    private boolean performSiteSpecificVQScoreFiltering = false;
     private VQScoreFilteringType vqScoreFilteringType = VQScoreFilteringType.NONE;
 
     @Argument(
@@ -286,8 +286,8 @@ public class ExtractCohort extends ExtractTool {
 
         Set<VCFHeaderLine> extraHeaderLines = new HashSet<>();
 
-        if (filterSetInfoTableName != null) { // filter using vqslod-- default to GENOTYPE unless SITES specifically selected
-            vqScoreFilteringType = performSiteSpecificVQSLODFiltering ? VQScoreFilteringType.SITES : VQScoreFilteringType.GENOTYPE;
+        if (filterSetInfoTableName != null) { // filter using VQScore (vqslod or calibration_sensitivity) -- default to GENOTYPE unless SITES specifically selected
+            vqScoreFilteringType = performSiteSpecificVQScoreFiltering ? VQScoreFilteringType.SITES : VQScoreFilteringType.GENOTYPE;
         }
 
         // filter at a site level (but not necesarily use vqslod)
@@ -296,7 +296,7 @@ public class ExtractCohort extends ExtractTool {
         }
         if (!vqScoreFilteringType.equals(VQScoreFilteringType.NONE)) {
           if (filterSetInfoTableName == null || filterSetSiteTableName == null || filterSetName == null) {
-            throw new UserException(" --filter-set-site-table, --filter-set-name and --filter-set-site-table are all necessary for any vqslod filtering operations");
+            throw new UserException(" --filter-set-info-table, --filter-set-name and --filter-set-site-table are all necessary for any VQSR filtering operations");
           }
         }
 

@@ -131,11 +131,11 @@ public class ExtractCohortLite extends ExtractTool {
     // what if this was a flag input only?
 
     @Argument(
-            fullName = "sensitivity-filter-by-site",
-            doc = "If VQS Sensitivity filtering is applied, it should be at a site level. Default is false",
+            fullName = "vqsr-score-filter-by-site",
+            doc = "If VQSR Score filtering is applied, it should be at a site level. Default is false",
             optional = true
     )
-    private boolean performSiteSpecificSensitivityFiltering = false;
+    private boolean performSiteSpecificVQScoreFiltering = false;
     private ExtractCohort.VQScoreFilteringType vqScoreFilteringType = ExtractCohort.VQScoreFilteringType.NONE;
 
     @Argument(
@@ -264,8 +264,8 @@ public class ExtractCohortLite extends ExtractTool {
 
         Set<VCFHeaderLine> extraHeaderLines = new HashSet<>();
 
-        if (filterSetInfoTableName != null) { // filter using sensitivity-- default to GENOTYPE unless SITES specifically selected
-            vqScoreFilteringType = performSiteSpecificSensitivityFiltering ? ExtractCohort.VQScoreFilteringType.SITES : ExtractCohort.VQScoreFilteringType.GENOTYPE;
+        if (filterSetInfoTableName != null) { // filter using VQScore (vqslod or calibration_sensitivity) -- default to GENOTYPE unless SITES specifically selected
+            vqScoreFilteringType = performSiteSpecificVQScoreFiltering ? ExtractCohort.VQScoreFilteringType.SITES : ExtractCohort.VQScoreFilteringType.GENOTYPE;
         }
 
         // filter at a site level (but not necesarily use VQS sensitivity)
@@ -274,13 +274,13 @@ public class ExtractCohortLite extends ExtractTool {
         }
         if (!vqScoreFilteringType.equals(ExtractCohort.VQScoreFilteringType.NONE)) {
           if (filterSetInfoTableName == null || filterSetSiteTableName == null || filterSetName == null) {
-            throw new UserException(" --filter-set-site-table, --filter-set-name and --filter-set-site-table are all necessary for any vqs sensitivity filtering operations");
+            throw new UserException(" --filter-set-info-table, --filter-set-name and --filter-set-site-table are all necessary for any VQSR filtering operations");
           }
         }
 
         if (!vqScoreFilteringType.equals(ExtractCohort.VQScoreFilteringType.NONE)) {
-            logger.info("Passing all SNP variants with VQSLOD >= " + truthSensitivitySNPThreshold);
-            logger.info("Passing all INDEL variants with VQSLOD >= " + truthSensitivityINDELThreshold);
+            logger.info("Passing all SNP variants with calibration_sensitivity >= " + truthSensitivitySNPThreshold);
+            logger.info("Passing all INDEL variants with calibration_sensitivity >= " + truthSensitivityINDELThreshold);
 
             extraHeaderLines.add(new VCFFilterHeaderLine(GATKVCFConstants.VQS_SENS_FAILURE_SNP,
                     "Site failed SNP model calibration sensitivity cutoff (" + truthSensitivitySNPThreshold.toString() + ")"));
