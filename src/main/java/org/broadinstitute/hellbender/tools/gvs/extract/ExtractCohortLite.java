@@ -356,6 +356,7 @@ public class ExtractCohortLite extends ExtractTool {
                 filterSetSiteTableName,
                 localSortMaxRecordsInRam,
                 printDebugInformation,
+                false,
                 truthSensitivitySNPThreshold,
                 truthSensitivityINDELThreshold,
                 progressMeter,

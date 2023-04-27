@@ -390,6 +390,7 @@ public class ExtractCohort extends ExtractTool {
                 filterSetSiteTableName,
                 localSortMaxRecordsInRam,
                 printDebugInformation,
+                true,
                 vqsLodSNPThreshold,
                 vqsLodINDELThreshold,
                 progressMeter,
