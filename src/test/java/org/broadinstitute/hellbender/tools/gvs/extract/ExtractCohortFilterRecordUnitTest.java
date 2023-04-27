@@ -26,6 +26,7 @@ public class ExtractCohortFilterRecordUnitTest extends GATKBaseTest {
         Assert.assertEquals(allDefinedRecord.getYng(), "G");
     }
 
+    @Test
     public void testExtractCohortFilterVQSRLiteRecord() {
         GenericRecord inputGenericRecord = new AvroFileReader(new GATKPath(getToolTestDataDir() + "test_input_vqsr_lite.avro")).next();
         ExtractCohortFilterRecord allDefinedRecord = new ExtractCohortFilterRecord(inputGenericRecord, SchemaUtils.CALIBRATION_SENSITIVITY);
