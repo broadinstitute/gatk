@@ -18,6 +18,7 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import java.util.*;
 
 
+
 @CommandLineProgramProperties(
         summary = "(\"ExtractCohortLite\") - Filter and extract variants out of big query.",
         oneLineSummary = "Tool to extract variants out of big query for a subset of samples",

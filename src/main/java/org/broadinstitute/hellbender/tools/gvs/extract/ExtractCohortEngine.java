@@ -775,7 +775,7 @@ public class ExtractCohortEngine {
                 } else if (anyYays) {
                     // the genotype is passed, nothing to do here as non-filtered is the default
                 } else {
-                    // get the max (best) vqslod for all SNP non-Yay sites, and apply the filter
+                    // get the max (best) vq score (vqslod/sensitivity) for all SNP non-Yay sites, and apply the filter
                     Optional<Double> snpMax =
                             nonRefAlleles.stream().filter(a -> a.length() == ref.length()).map(a -> remappedVQScoreMap.get(a)).filter(Objects::nonNull).max(Double::compareTo);
 
@@ -783,7 +783,7 @@ public class ExtractCohortEngine {
                         genotypeBuilder.filter(this.vqScoreSNPFailureFilterName);
                     }
 
-                    // get the max (best) vqslod for all INDEL non-Yay sites
+                    // get the max (best) vq score (vqslod/sensitivity) for all INDEL non-Yay sites
                     Optional<Double> indelMax =
                             nonRefAlleles.stream().filter(a -> a.length() != ref.length()).map(a -> remappedVQScoreMap.get(a)).filter(Objects::nonNull).max(Double::compareTo);
 

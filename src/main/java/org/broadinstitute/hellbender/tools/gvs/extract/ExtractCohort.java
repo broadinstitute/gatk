@@ -1,12 +1,7 @@
 package org.broadinstitute.hellbender.tools.gvs.extract;
 
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.variant.vcf.VCFConstants;
-import htsjdk.variant.vcf.VCFFormatHeaderLine;
-import htsjdk.variant.vcf.VCFHeader;
-import htsjdk.variant.vcf.VCFHeaderLine;
-import htsjdk.variant.vcf.VCFHeaderLineType;
-import htsjdk.variant.vcf.VCFStandardHeaderLines;
+import htsjdk.variant.vcf.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Advanced;
