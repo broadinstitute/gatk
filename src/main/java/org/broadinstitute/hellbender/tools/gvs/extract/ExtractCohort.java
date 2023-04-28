@@ -138,7 +138,12 @@ public class ExtractCohort extends ExtractTool {
     )
     private boolean emitADs = false;
 
-    // what if this was a flag input only?
+    @Argument(
+            fullName = "use-vqsr-classic-scoring",
+            doc = "If true, use VQSR 'Classic' scoring (vqs Lod score). Otherwise use VQSR 'Lite' scoring (calibration_sensitivity) ",
+            optional = true
+    )
+    private boolean isVQSRClassic = true;
 
     @Argument(
             fullName = "vqsr-score-filter-by-site",
@@ -154,7 +159,7 @@ public class ExtractCohort extends ExtractTool {
             doc = "The truth sensitivity level at which to start filtering SNPs",
             optional = true
     )
-    private Double truthSensitivitySNPThreshold = null;
+    private Double truthSensitivitySNPThreshold = FilterSensitivityTools.DEFAULT_TRUTH_SENSITIVITY_THRESHOLD_SNPS / 100;
 
     @Argument(
             fullName = "indels-truth-sensitivity-filter-level",
@@ -162,13 +167,13 @@ public class ExtractCohort extends ExtractTool {
             doc = "The truth sensitivity level at which to start filtering INDELs",
             optional = true
     )
-    private Double truthSensitivityINDELThreshold = null;
+    private Double truthSensitivityINDELThreshold = FilterSensitivityTools.DEFAULT_TRUTH_SENSITIVITY_THRESHOLD_INDELS / 100;
 
     @Advanced
     @Argument(
             fullName = "snps-lod-score-cutoff",
             mutex = {"snps-truth-sensitivity-filter-level"},
-            doc = "The VQSLOD score below which to start filtering SNPs",
+            doc = "The VQSLOD score below which to start filtering SNPs. For VQSR Classic Mode ONLY.",
             optional = true)
     private Double vqsLodSNPThreshold = null;
 
@@ -176,7 +181,7 @@ public class ExtractCohort extends ExtractTool {
     @Argument(
             fullName = "indels-lod-score-cutoff",
             mutex = {"indels-truth-sensitivity-filter-level"},
-            doc = "The VQSLOD score below which to start filtering INDELs",
+            doc = "The VQSLOD score below which to start filtering INDELs. For VQSR Classic Mode ONLY.",
             optional = true)
     private Double vqsLodINDELThreshold = null;
 
@@ -250,7 +255,6 @@ public class ExtractCohort extends ExtractTool {
                 VCFConstants.GENOTYPE_QUALITY_KEY
         );
         headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.REFERENCE_GENOTYPE_QUALITY));
-        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_VQS_LOD_KEY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_YNG_STATUS_KEY));
 
 
@@ -274,6 +278,14 @@ public class ExtractCohort extends ExtractTool {
                 errors.add("Parameters 'project-id', 'dataset-id', 'call-set-identifier', 'wdl-step', 'wdl-call', and 'shardIdentifier' must be set if 'cost-observability-tablename' is set.");
             }
         }
+        if (!isVQSRClassic) {
+            if (tranchesTableName != null) {
+                errors.add("Parameter 'tranches-table' is not allowed for VQSR Lite");
+            }
+            if ((vqsLodSNPThreshold != null) || (vqsLodINDELThreshold != null)) {
+                errors.add("Parameters 'snps-lod-score-cutoff' and 'indels-lod-score-cutoff' cannot be used in VQSR Lite mode");
+            }
+        }
         if (!errors.isEmpty()) {
             return errors.toArray(new String[0]);
         }
@@ -285,6 +297,12 @@ public class ExtractCohort extends ExtractTool {
         super.onStartup();
 
         Set<VCFHeaderLine> extraHeaderLines = new HashSet<>();
+
+        if (isVQSRClassic) {
+            extraHeaderLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_VQS_LOD_KEY));
+        } else {
+            extraHeaderLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_VQS_SENS_KEY));
+        }
 
         if (filterSetInfoTableName != null) { // filter using VQScore (vqslod or calibration_sensitivity) -- default to GENOTYPE unless SITES specifically selected
             vqScoreFilteringType = performSiteSpecificVQScoreFiltering ? VQScoreFilteringType.SITES : VQScoreFilteringType.GENOTYPE;
@@ -301,19 +319,30 @@ public class ExtractCohort extends ExtractTool {
         }
 
         if (!vqScoreFilteringType.equals(VQScoreFilteringType.NONE)) {
-          FilterSensitivityTools.validateFilteringCutoffs(truthSensitivitySNPThreshold, truthSensitivityINDELThreshold, vqsLodSNPThreshold, vqsLodINDELThreshold, tranchesTableName);
-          Map<String, Map<Double, Double>> trancheMaps = FilterSensitivityTools.getTrancheMaps(filterSetName, tranchesTableName, projectID);
+            if (isVQSRClassic) {
+                FilterSensitivityTools.validateFilteringCutoffs(truthSensitivitySNPThreshold, truthSensitivityINDELThreshold, vqsLodSNPThreshold, vqsLodINDELThreshold, tranchesTableName);
+                Map<String, Map<Double, Double>> trancheMaps = FilterSensitivityTools.getTrancheMaps(filterSetName, tranchesTableName, projectID);
 
-          if (vqsLodSNPThreshold != null) { // we already have vqslod thresholds directly
-            extraHeaderLines.add(FilterSensitivityTools.getVqsLodHeader(vqsLodSNPThreshold, GATKVCFConstants.SNP));
-            extraHeaderLines.add(FilterSensitivityTools.getVqsLodHeader(vqsLodINDELThreshold, GATKVCFConstants.INDEL));
-          } else { // using sensitivity threshold inputs; need to convert these to vqslod thresholds
-            vqsLodSNPThreshold = FilterSensitivityTools.getVqslodThreshold(trancheMaps.get(GATKVCFConstants.SNP), truthSensitivitySNPThreshold, GATKVCFConstants.SNP);
-            vqsLodINDELThreshold = FilterSensitivityTools.getVqslodThreshold(trancheMaps.get(GATKVCFConstants.INDEL), truthSensitivityINDELThreshold, GATKVCFConstants.INDEL);
-            // set headers
-            extraHeaderLines.add(FilterSensitivityTools.getTruthSensitivityHeader(truthSensitivitySNPThreshold, vqsLodSNPThreshold, GATKVCFConstants.SNP));
-            extraHeaderLines.add(FilterSensitivityTools.getTruthSensitivityHeader(truthSensitivityINDELThreshold, vqsLodINDELThreshold, GATKVCFConstants.INDEL));
-          }
+                if (vqsLodSNPThreshold != null) { // we already have vqslod thresholds directly
+                    extraHeaderLines.add(FilterSensitivityTools.getVqsLodHeader(vqsLodSNPThreshold, GATKVCFConstants.SNP));
+                    extraHeaderLines.add(FilterSensitivityTools.getVqsLodHeader(vqsLodINDELThreshold, GATKVCFConstants.INDEL));
+                } else { // using sensitivity threshold inputs; need to convert these to vqslod thresholds
+                    vqsLodSNPThreshold = FilterSensitivityTools.getVqslodThreshold(trancheMaps.get(GATKVCFConstants.SNP), truthSensitivitySNPThreshold, GATKVCFConstants.SNP);
+                    vqsLodINDELThreshold = FilterSensitivityTools.getVqslodThreshold(trancheMaps.get(GATKVCFConstants.INDEL), truthSensitivityINDELThreshold, GATKVCFConstants.INDEL);
+                    // set headers
+                    extraHeaderLines.add(FilterSensitivityTools.getTruthSensitivityHeader(truthSensitivitySNPThreshold, vqsLodSNPThreshold, GATKVCFConstants.SNP));
+                    extraHeaderLines.add(FilterSensitivityTools.getTruthSensitivityHeader(truthSensitivityINDELThreshold, vqsLodINDELThreshold, GATKVCFConstants.INDEL));
+                }
+            } else {
+                logger.info("Passing all SNP variants with calibration_sensitivity >= " + truthSensitivitySNPThreshold);
+                logger.info("Passing all INDEL variants with calibration_sensitivity >= " + truthSensitivityINDELThreshold);
+
+                extraHeaderLines.add(new VCFFilterHeaderLine(GATKVCFConstants.VQS_SENS_FAILURE_SNP,
+                        "Site failed SNP model calibration sensitivity cutoff (" + truthSensitivitySNPThreshold.toString() + ")"));
+                extraHeaderLines.add(new VCFFilterHeaderLine(GATKVCFConstants.VQS_SENS_FAILURE_INDEL,
+                        "Site failed INDEL model calibration sensitivity cutoff (" + truthSensitivityINDELThreshold.toString() + ")"));
+
+            }
         }
 
         if (vqScoreFilteringType.equals(VQScoreFilteringType.GENOTYPE)) {
@@ -385,9 +414,9 @@ public class ExtractCohort extends ExtractTool {
                 filterSetSiteTableName,
                 localSortMaxRecordsInRam,
                 printDebugInformation,
-                true,
-                vqsLodSNPThreshold,
-                vqsLodINDELThreshold,
+                isVQSRClassic,
+                isVQSRClassic ? vqsLodSNPThreshold : truthSensitivitySNPThreshold,
+                isVQSRClassic ? vqsLodINDELThreshold : truthSensitivityINDELThreshold,
                 progressMeter,
                 filterSetName,
                 emitPLs,

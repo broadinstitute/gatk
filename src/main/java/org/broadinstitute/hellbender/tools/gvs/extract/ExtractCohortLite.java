@@ -128,8 +128,12 @@ public class ExtractCohortLite extends ExtractTool {
     )
     private boolean emitADs = false;
 
-    // what if this was a flag input only?
-
+    @Argument(
+            fullName = "Use VQSR Classic scoring",
+            doc = "If true, use VQSR 'Classic' scoring (vqs Lod score). Otherwise use VQSR 'Lite' scoring (calibration_sensitivity) ",
+            optional = true
+    )
+    private boolean isVQSRClassic = true;
     @Argument(
             fullName = "vqsr-score-filter-by-site",
             doc = "If VQSR Score filtering is applied, it should be at a site level. Default is false",
@@ -140,14 +144,14 @@ public class ExtractCohortLite extends ExtractTool {
 
     @Argument(
             fullName ="snps-truth-sensitivity-filter-level",
-            doc = "The truth sensitivity level above which to start filtering SNPs",
+            doc = "The truth sensitivity level at which to start filtering SNPs",
             optional = true
     )
     private Double truthSensitivitySNPThreshold = FilterSensitivityTools.DEFAULT_TRUTH_SENSITIVITY_THRESHOLD_SNPS / 100;
 
     @Argument(
             fullName = "indels-truth-sensitivity-filter-level",
-            doc = "The truth sensitivity level above which to start filtering INDELs",
+            doc = "The truth sensitivity level at which to start filtering INDELs",
             optional = true
     )
     private Double truthSensitivityINDELThreshold = FilterSensitivityTools.DEFAULT_TRUTH_SENSITIVITY_THRESHOLD_INDELS / 100;
@@ -222,7 +226,6 @@ public class ExtractCohortLite extends ExtractTool {
                 VCFConstants.GENOTYPE_QUALITY_KEY
         );
         headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.REFERENCE_GENOTYPE_QUALITY));
-        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_VQS_SENS_KEY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_YNG_STATUS_KEY));
 
 
@@ -263,6 +266,12 @@ public class ExtractCohortLite extends ExtractTool {
         super.onStartup();
 
         Set<VCFHeaderLine> extraHeaderLines = new HashSet<>();
+
+        if (isVQSRClassic) {
+            extraHeaderLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_VQS_LOD_KEY));
+        } else {
+            extraHeaderLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_VQS_SENS_KEY));
+        }
 
         if (filterSetInfoTableName != null) { // filter using VQScore (vqslod or calibration_sensitivity) -- default to GENOTYPE unless SITES specifically selected
             vqScoreFilteringType = performSiteSpecificVQScoreFiltering ? ExtractCohort.VQScoreFilteringType.SITES : ExtractCohort.VQScoreFilteringType.GENOTYPE;
@@ -357,7 +366,7 @@ public class ExtractCohortLite extends ExtractTool {
                 filterSetSiteTableName,
                 localSortMaxRecordsInRam,
                 printDebugInformation,
-                false,
+                isVQSRClassic,
                 truthSensitivitySNPThreshold,
                 truthSensitivityINDELThreshold,
                 progressMeter,

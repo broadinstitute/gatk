@@ -96,7 +96,7 @@ public class ExtractCohortTest extends CommandLineProgramTest {
         .add("sample-file", quickstartSampleListFile)
         .add("emit-pls", false)
         .add("filter-set-info-table", "foo")
-        .add("vqslod-filter-by-site", true);
+        .add("vqsr-score-filter-by-site", true);
     runCommandLine(args);
   }
 
@@ -114,7 +114,7 @@ public class ExtractCohortTest extends CommandLineProgramTest {
         .add("sample-file", quickstartSampleListFile)
         .add("emit-pls", false)
         .add("filter-set-name", "foo")
-        .add("vqslod-filter-by-site", true);
+        .add("vqsr-score-filter-by-site", true);
     runCommandLine(args);
   }
 }

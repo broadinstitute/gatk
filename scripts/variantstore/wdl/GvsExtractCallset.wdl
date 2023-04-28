@@ -280,8 +280,6 @@ task ExtractTask {
 
   String inferred_reference_state = if (drop_state == "NONE") then "ZERO" else drop_state
 
-  String gatk_tool = if (use_classic_VQSR == true) then 'ExtractCohort' else 'ExtractCohortLite'
-
   command <<<
     set -e
 
@@ -303,7 +301,7 @@ task ExtractTask {
     fi
 
     gatk --java-options "-Xmx9g" \
-      ~{gatk_tool} \
+      ExtractCohort \
         --vet-ranges-extract-fq-table ~{fq_ranges_cohort_vet_extract_table} \
         --ref-ranges-extract-fq-table ~{fq_ranges_cohort_ref_extract_table} \
         --ref-version 38 \
@@ -316,6 +314,7 @@ task ExtractTask {
         --project-id ~{read_project_id} \
         ~{true='--emit-pls' false='' emit_pls} \
         ~{true='--emit-ads' false='' emit_ads} \
+        ~{true='--use-vqsr-classic-scoring' false='' use_classic_VQSR} \
         ${FILTERING_ARGS} \
         --dataset-id ~{dataset_name} \
         --call-set-identifier ~{call_set_identifier} \
