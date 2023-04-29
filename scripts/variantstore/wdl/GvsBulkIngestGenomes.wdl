@@ -10,7 +10,6 @@ workflow GvsBulkIngestGenomes {
     input {
         # Begin GvsPrepareBulkImport
         String terra_project_id # env vars
-        String workspace_name # env vars
         String samples_table_name
         String sample_id_column_name
         String vcf_files_column_name
@@ -41,7 +40,7 @@ workflow GvsBulkIngestGenomes {
 
     call GetWorkspaceId
 
-    call GetGoogleProject {
+    call GetWorkspaceName {
         input:
             workspace_id = GetWorkspaceId.workspace_bucket
     }
@@ -50,8 +49,8 @@ workflow GvsBulkIngestGenomes {
 
     call PrepareBulkImport.GvsPrepareBulkImport as PrepareBulkImport {
         input:
-            project_id = GetGoogleProject.terra_project_id,
-            workspace_name = GetGoogleProject.workspace_name,
+            project_id = terra_project_id,
+            workspace_name = GetWorkspaceName.workspace_name,
             workspace_bucket = GetWorkspaceId.workspace_bucket,
             samples_table_name = samples_table_name,
             sample_id_column_name = sample_id_column_name,
@@ -140,23 +139,16 @@ workflow GvsBulkIngestGenomes {
         }
     }
 
-    task GetGoogleProject {
+    task GetWorkspaceName {
         input {
             String workspace_id
         }
         command <<<
             # Hit rawls with the workspace ID
 
+            # python get_workspace_name()
+            python3 -c "import requests; response=requests.get('https://rawls.dsde-prod.broadinstitute.org/api/workspaces/id/~{workspace_id}?fields=workspace.namespace,workspace.googleProject'); print(response.workspace.namespace)" > workspace_name.txt
 
-            curl -X 'GET' \
-                'https://rawls.dsde-prod.broadinstitute.org/api/workspaces/id/{workspace_id}' \
-            -H 'accept: application/json' \
-            -H 'Authorization: Bearer XXX
-
-
-            then extract the googleProject
-            proj_id=obj.googleProject
-            ## what about the namespace too?
     >>>
 
     runtime {
@@ -164,8 +156,9 @@ workflow GvsBulkIngestGenomes {
     }
 
     output {
-        String terra_project_id = proj_id
-        String workspace_name = workspace_name
+        #String terra_project_id = proj_id
+        String workspace_name = read_string("workspace_name.txt")
+        #String workspace_name = workspace_name
     }
 }
 
