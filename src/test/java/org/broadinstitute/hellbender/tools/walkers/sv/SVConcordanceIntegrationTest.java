@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.AbstractConcordanceWalker;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
@@ -347,5 +348,20 @@ public class SVConcordanceIntegrationTest extends CommandLineProgramTest {
             // Concordance can't be calculated for sites-only
             Assert.assertTrue(variant.getAttributeAsString(GATKSVVCFConstants.GENOTYPE_CONCORDANCE_INFO, ".").equals("."));
         }
+    }
+
+    @Test(expectedExceptions = UserException.IncompatibleSequenceDictionaries.class)
+    public void testHeaderContigsOutOfOrder() {
+        final File output = createTempFile("concord_sites_only", ".vcf");
+        final String evalVcfPath = getToolTestDataDir() + "ref_panel_1kg.cleaned.gatk.chr22_chrY.vcf.gz";
+        final String truthVcfPath = getToolTestDataDir() + "ref_panel_1kg.cleaned.gatk.chr22_chrY.contigs_out_of_order.vcf.gz";
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addOutput(output)
+                .add(StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, GATKBaseTest.FULL_HG38_DICT)
+                .add(AbstractConcordanceWalker.TRUTH_VARIANTS_LONG_NAME, truthVcfPath)
+                .add(AbstractConcordanceWalker.EVAL_VARIANTS_SHORT_NAME, evalVcfPath);
+
+        runCommandLine(args, SVConcordance.class.getSimpleName());
     }
 }
