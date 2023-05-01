@@ -145,10 +145,11 @@ workflow GvsBulkIngestGenomes {
         }
         command <<<
             # Hit rawls with the workspace ID
+            curl https://github.com/broadinstitute/gatk/blob/94457ee1e5c8484897f4d682f50f8146f5b54110/scripts/variantstore/wdl/extract/get_columns_for_import.py -o get_columns_for_import.py
 
-            # python get_workspace_name()
-            python3 -c "import requests; response=requests.get('https://rawls.dsde-prod.broadinstitute.org/api/workspaces/id/~{workspace_id}?fields=workspace.namespace,workspace.googleProject'); print(response)" > workspace_name.txt
-            cat workspace_name.txt
+            python get_workspace_name(~{workspace_id})
+            # python3 -c "import requests; response=requests.get('https://rawls.dsde-prod.broadinstitute.org/api/workspaces/id/~{workspace_id}?fields=workspace.namespace,workspace.googleProject'); print(response)" > workspace_name.txt
+            #cat workspace_name.txt
 
         >>>
         runtime {
