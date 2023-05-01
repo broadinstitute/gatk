@@ -102,32 +102,32 @@ workflow GvsBulkIngestGenomes {
 
             # First we will check for the default named columns and make sure that each row has a value
 
-            curl -X 'GET' \
-            'https://rawls.dsde-prod.broadinstitute.org/api/workspaces/{workspace_id}/{workspace_name}/entities?useCache=true' \
-            -H 'accept: application/json' \
-            -H 'Authorization: Bearer XXX
+            #curl -X 'GET' \
+            #'https://rawls.dsde-prod.broadinstitute.org/api/workspaces/{workspace_id}/{workspace_name}/entities?useCache=true' \
+            #-H 'accept: application/json' \
+            #-H 'Authorization: Bearer XXX
 
-            {
-            "participant": {
-            "attributeNames": [],
-            "count": 249045,
-            "idName": "participant_id"
-            },
-            "sample": {
-            "attributeNames": [
-            "blah blah these are the column names we want"
-            ],
-            "count": 249049,
-            "idName": "sample_id"
-            },
-            "sample_set": {
-            "attributeNames": [
-            "samples"
-            ],
-            "count": 12,
-            "idName": "sample_set_id"
-            }
-            }
+            #{
+            #"participant": {
+            #"attributeNames": [],
+            #"count": 249045,
+            #"idName": "participant_id"
+            #},
+            #"sample": {
+            #"attributeNames": [
+            #"blah blah these are the column names we want"
+            #],
+            #"count": 249049,
+            #"idName": "sample_id"
+            #},
+            #"sample_set": {
+            #"attributeNames": [
+            #"samples"
+            #],
+            #"count": 12,
+            #"idName": "sample_set_id"
+            #}
+            #}
         >>>
 
         runtime {
