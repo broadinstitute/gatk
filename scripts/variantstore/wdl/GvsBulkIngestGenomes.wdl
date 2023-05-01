@@ -147,7 +147,8 @@ workflow GvsBulkIngestGenomes {
             # Hit rawls with the workspace ID
 
             # python get_workspace_name()
-            python3 -c "import requests; response=requests.get('https://rawls.dsde-prod.broadinstitute.org/api/workspaces/id/~{workspace_id}?fields=workspace.namespace,workspace.googleProject'); print(response.workspace.namespace)" > workspace_name.txt
+            python3 -c "import requests; response=requests.get('https://rawls.dsde-prod.broadinstitute.org/api/workspaces/id/~{workspace_id}?fields=workspace.namespace,workspace.googleProject'); print(response)" > workspace_name.txt
+            cat workspace_name.txt
 
         >>>
         runtime {
