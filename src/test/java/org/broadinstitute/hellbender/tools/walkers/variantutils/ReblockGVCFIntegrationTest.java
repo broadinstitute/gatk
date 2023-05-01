@@ -551,4 +551,28 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
             }
         }
     }
+
+    @Test
+    public void testFilters() throws IOException {
+        final File input = getTestFile("dragen.g.vcf");
+        final File output = createTempFile("reblockedgvcf", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(new File(hg38Reference))
+                .add("V", input)
+                .add("L", "chr1")
+                .addOutput(output);
+        runCommandLine(args);
+
+        final VariantContext filteredVC = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath()).getRight().get(3); // last site in the file
+        Assert.assertTrue(filteredVC.isFiltered());
+
+        final VariantContext unfilteredVC = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath()).getRight().get(1);
+        Assert.assertFalse(unfilteredVC.isFiltered());
+
+        final VariantContext filteredRefBlockVC = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath()).getRight().get(0);
+        Assert.assertFalse(filteredRefBlockVC.isFiltered());
+        Assert.assertTrue(filteredRefBlockVC.getGenotype(0).getGQ() < 3); // Ref block is combination of filtered variant with depth 22 and filtered ref block with depth 1
+        Assert.assertTrue(filteredRefBlockVC.getGenotype(0).getDP() < 22);
+    }
 }
