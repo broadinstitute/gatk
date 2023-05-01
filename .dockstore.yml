@@ -238,7 +238,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_888_fix_broken_gsutil_docker
+         - vs_908_monitoring_script_public
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
