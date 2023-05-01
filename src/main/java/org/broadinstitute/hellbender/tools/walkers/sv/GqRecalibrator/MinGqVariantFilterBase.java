@@ -446,8 +446,8 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
                 options.toArray(new Options[0]));
         final Set<VCFHeaderLine> hInfo = new LinkedHashSet<>(getHeaderForVariants().getMetaDataInInputOrder());
         final String filterableVariant = (keepMultiallelic ? "biallelic " : "") +
-                                         (keepHomref ? (keepHomvar ? "het" : "non-ref" ) :
-                                                       (keepHomvar ? "non-homvar" : "")) +
+                                         (keepHomref ? (keepHomvar ? "het " : "non-ref " ) :
+                                                       (keepHomvar ? "non-homvar " : "")) +
                                          "variant";
         hInfo.add(new VCFFormatHeaderLine(scaledLogitProperty, 1, VCFHeaderLineType.Integer,
                                LOGIT_SCALE + " times the logits that a genotype is correct"));
