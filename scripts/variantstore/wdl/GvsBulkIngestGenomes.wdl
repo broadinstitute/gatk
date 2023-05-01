@@ -149,11 +149,13 @@ workflow GvsBulkIngestGenomes {
             # python get_workspace_name()
             python3 -c "import requests; response=requests.get('https://rawls.dsde-prod.broadinstitute.org/api/workspaces/id/~{workspace_id}?fields=workspace.namespace,workspace.googleProject'); print(response.workspace.namespace)" > workspace_name.txt
 
-    >>>
-
-    runtime {
-        docker: "ubuntu:latest"
-    }
+        >>>
+        runtime {
+            docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-04-13-alpine"
+            memory: "3 GB"
+            disks: "local-disk 10 HDD"
+            cpu: 1
+        }
 
     output {
         #String terra_project_id = proj_id
