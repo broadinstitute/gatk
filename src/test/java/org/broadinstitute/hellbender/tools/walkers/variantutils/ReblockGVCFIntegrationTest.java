@@ -561,6 +561,7 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
         args.addReference(new File(hg38Reference))
                 .add("V", input)
                 .add("L", "chr1")
+                .add(ReblockGVCF.KEEP_SITE_FILTERS_LONG_NAME, true)
                 .addOutput(output);
         runCommandLine(args);
 
@@ -572,7 +573,7 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
 
         final VariantContext filteredRefBlockVC = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath()).getRight().get(0);
         Assert.assertFalse(filteredRefBlockVC.isFiltered());
-        Assert.assertTrue(filteredRefBlockVC.getGenotype(0).getGQ() < 3); // Ref block is combination of filtered variant with depth 22 and filtered ref block with depth 1
-        Assert.assertTrue(filteredRefBlockVC.getGenotype(0).getDP() < 22);
+        Assert.assertTrue(filteredRefBlockVC.getGenotype(0).getGQ() < 3);
+        Assert.assertEquals(filteredRefBlockVC.getGenotype(0).getDP(), 12); // Ref block is combination of filtered variant with depth 22 and filtered ref block with depth 1
     }
 }
