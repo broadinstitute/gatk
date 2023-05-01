@@ -11,7 +11,6 @@ import org.apache.commons.collections4.iterators.FilterIterator;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceState;
-import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
@@ -110,10 +109,6 @@ public abstract class AbstractConcordanceWalker extends WalkerBase {
         }
         dict = getBestAvailableSequenceDictionary();
         variantContextComparator = new VariantContextComparator(dict);
-
-        // Check that vcfs are sorted the same
-        SequenceDictionaryUtils.validateDictionaries("truth", getTruthHeader().getSequenceDictionary(),
-                "eval", getEvalHeader().getSequenceDictionary(), false, true);
     }
 
     // one can override onTraversalStart() for additional initialization

@@ -27,6 +27,7 @@ import org.broadinstitute.hellbender.tools.sv.concordance.ClosestSVFinder;
 import org.broadinstitute.hellbender.tools.sv.concordance.SVConcordanceAnnotator;
 import org.broadinstitute.hellbender.tools.sv.concordance.SVConcordanceLinkage;
 import org.broadinstitute.hellbender.tools.walkers.validation.Concordance;
+import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import picard.vcf.GenotypeConcordance;
 
 import java.util.HashSet;
@@ -119,6 +120,20 @@ public final class SVConcordance extends AbstractConcordanceWalker {
         dictionary = getMasterSequenceDictionary();
         if (dictionary == null) {
             throw new UserException("Reference sequence dictionary required");
+        }
+
+        // Check that vcfs are sorted the same
+        final SequenceDictionaryUtils.SequenceDictionaryCompatibility compatibility =  SequenceDictionaryUtils
+                .compareDictionaries(getTruthHeader().getSequenceDictionary(),
+                        getEvalHeader().getSequenceDictionary(), true);
+        if (compatibility == SequenceDictionaryUtils.SequenceDictionaryCompatibility.OUT_OF_ORDER) {
+            throw new UserException.IncompatibleSequenceDictionaries(
+                    "The relative ordering of the common contigs in eval and truth " +
+                            " is not the same; to fix this please see: "
+                            + "(https://www.broadinstitute.org/gatk/guide/article?id=1328), "
+                            + " which describes reordering contigs in BAM and VCF files.",
+                    "eval", getEvalHeader().getSequenceDictionary(),
+                    "truth", getTruthHeader().getSequenceDictionary());
         }
 
         linkage = new SVConcordanceLinkage(dictionary);
