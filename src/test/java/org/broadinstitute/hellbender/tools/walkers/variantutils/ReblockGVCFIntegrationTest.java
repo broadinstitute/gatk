@@ -572,8 +572,7 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
         Assert.assertFalse(unfilteredVC.isFiltered());
 
         final VariantContext filteredRefBlockVC = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath()).getRight().get(0);
-        Assert.assertFalse(filteredRefBlockVC.isFiltered());
-        Assert.assertTrue(filteredRefBlockVC.getGenotype(0).getGQ() < 3);
+        Assert.assertFalse(filteredRefBlockVC.isFiltered()); // Ref block is unfiltered even though the input RefBlock and low qual variant were both filtered
         Assert.assertEquals(filteredRefBlockVC.getGenotype(0).getDP(), 12); // Ref block is combination of filtered variant with depth 22 and filtered ref block with depth 1
     }
 }

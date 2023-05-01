@@ -167,7 +167,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
 
     @Advanced
     @Argument(fullName=KEEP_SITE_FILTERS_LONG_NAME, shortName = KEEP_SITE_FILTERS_SHORT_NAME, doc="Keep site level filters for variants (not ref blocks).")
-    private boolean keepfilters = false;
+    private boolean keepFilters = false;
 
     //TODO: this will be an argument when posteriors handling is fully implemented in AlleleSubsettingUtils
     protected String posteriorsKey = null;
@@ -654,7 +654,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
 
         composeUpdatedAnnotations(attrMap, doQualApprox, posteriorsKey, variant, annotationEngine, relevantIndices, updatedAllelesVC, annotationsToKeep);
 
-        return keepfilters ? builder.attributes(attrMap).make() : builder.attributes(attrMap).unfiltered().make();
+        return keepFilters ? builder.attributes(attrMap).make() : builder.attributes(attrMap).unfiltered().make();
     }
 
     /**
