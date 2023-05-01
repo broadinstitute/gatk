@@ -8,10 +8,11 @@ import re
 # make a default, but allow a user to overwrite it
 
 
-def get_google_project_id(workspace_id):
+def get_workspace_name(workspace_id):
     # grab the workspace information from rawls
     response = requests.get('https://rawls.dsde-prod.broadinstitute.org/api/workspaces/id/{workspace_id}?fields=workspace.namespace,workspace.googleProject')
     # then extract the googleProject info
+    print(response)
     proj_id=response.workspace.googleProject
     workspace_name=response.workspace.namespace
     return workspace_name
@@ -149,8 +150,8 @@ if __name__ == '__main__':
                         help='The ID of your workspace that holds your sample data',
                         required=True)
 
-    parser.add_argument('--attempts_between_pauses', type=int,
-                        help='The number of rows in the db that are processed before we pause', default=500)
+    #parser.add_argument('--attempts_between_pauses', type=int,
+     #                   help='The number of rows in the db that are processed before we pause', default=500)
 
     args = parser.parse_args()
 
@@ -159,5 +160,5 @@ if __name__ == '__main__':
         attempts_between_pauses = args.attempts_between_pauses
 
 
-    workspace_name = get_google_project_id(args.workspace_id)
-    get_column_names(args.workspace_id, workspace_name)
+    workspace_name = get_workspace_name(args.workspace_id)
+    # get_column_names(args.workspace_id, workspace_name)
