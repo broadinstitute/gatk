@@ -72,8 +72,8 @@ public final class AddFlowBaseQuality extends ReadWalker {
     @Argument(fullName = MINIMAL_ERROR_RATE_LONG_NAME, doc = "lower floor for flow error rate values")
     public double minErrorRate = 1e-3;
 
-    @Argument(fullName = MAXIMAL_QUALITY_SCORE_LONG_NAME, doc = "clip quality score to the given value (phred)")
-    public int maxQualityScore = 126;
+    @Argument(fullName = MAXIMAL_QUALITY_SCORE_LONG_NAME, doc = "clip quality score to the given value)")
+    public int maxQualityScore = 93;
 
     @Argument(fullName = REPLACE_QUALITY_MODE_LONG_NAME, doc = "replace existing base qualities while saving previous qualities to OQ (when true) or simply write to BQ (when false) ")
     public boolean replaceQualityMode = false;
@@ -132,9 +132,9 @@ public final class AddFlowBaseQuality extends ReadWalker {
         final byte[] phred = new byte[errorProb.length];
         for ( int i = 0 ; i < errorProb.length ; i++ ) {
             if ( errorProb[i] == 0 ) {
-                phred[i] = (byte)(maxQualityScore - PHRED_ASCII_BASE);
+                phred[i] = (byte)(maxQualityScore);
             } else {
-                phred[i] = (byte)Math.min((maxQualityScore - PHRED_ASCII_BASE), (int) (-10 * Math.log10(errorProb[i])));
+                phred[i] = (byte)Math.min((maxQualityScore), (int) (-10 * Math.log10(errorProb[i])));
             }
         }
         return phred;
