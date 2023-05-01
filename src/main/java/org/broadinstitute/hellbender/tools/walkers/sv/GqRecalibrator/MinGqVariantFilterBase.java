@@ -1322,7 +1322,7 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
         final int[] sortInds = IntStream.range(0, numPropertyBins)
             .boxed()
             .sorted(Comparator.comparing(i -> propertyBinLabels[i]))
-            .mapToInt(Integer::new)
+            .mapToInt(Integer::valueOf)
             .toArray();
         propertyBinLabels = IntStream.range(0, numPropertyBins)
             .mapToObj(i -> propertyBinLabels[sortInds[i]])
