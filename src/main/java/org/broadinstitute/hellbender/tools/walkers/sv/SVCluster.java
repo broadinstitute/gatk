@@ -411,8 +411,9 @@ public final class SVCluster extends MultiVariantWalker {
     }
 
     private VCFHeader createHeader() {
-        final VCFHeader header = new VCFHeader(getDefaultToolVCFHeaderLines(), samples);
-        header.setVCFHeaderVersion(VCFHeaderVersion.VCF4_2);
+        final Set<VCFHeaderLine> headerLines = getDefaultToolVCFHeaderLines();
+        headerLines.add(VCFHeader.makeHeaderVersionLine(VCFHeaderVersion.VCF4_2));
+        final VCFHeader header = new VCFHeader(headerLines, samples);
         header.setSequenceDictionary(dictionary);
 
         // Copy from inputs
