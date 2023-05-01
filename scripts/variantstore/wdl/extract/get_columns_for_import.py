@@ -2,6 +2,7 @@ import json
 import requests
 
 from terra_notebook_utils import table
+from terra_notebook_utils import terra_auth
 from terra_notebook_utils import workspace
 import re
 
@@ -9,8 +10,11 @@ import re
 
 
 def get_workspace_name(workspace_id):
+    token=terra_auth.get_terra_access_token()
     # grab the workspace information from rawls
-    response = requests.get('https://rawls.dsde-prod.broadinstitute.org/api/workspaces/id/{workspace_id}?fields=workspace.namespace,workspace.googleProject')
+    rawls = 'https://rawls.dsde-prod.broadinstitute.org/api/workspaces/id/{}?fields=workspace.namespace,workspace.googleProject'.format(workspace_id)
+    head = {'Authorization': 'token {}'.format(token)}
+    response = requests.get(rawls, headers=head)
     # then extract the googleProject info
     print(response)
     proj_id=response.workspace.googleProject
