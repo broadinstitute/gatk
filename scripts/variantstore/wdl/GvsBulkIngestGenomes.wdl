@@ -42,7 +42,8 @@ workflow GvsBulkIngestGenomes {
 
     call GetWorkspaceName {
         input:
-            workspace_id = GetWorkspaceId.workspace_bucket
+            workspace_id = GetWorkspaceId.workspace_bucket,
+            project_id = terra_project_id
     }
 
     call GetColumnNames
@@ -140,16 +141,24 @@ workflow GvsBulkIngestGenomes {
     }
 
     task GetWorkspaceName {
+
         input {
             String workspace_id
+            String project_id
         }
         command <<<
             # Hit rawls with the workspace ID
-            curl https://github.com/broadinstitute/gatk/blob/94457ee1e5c8484897f4d682f50f8146f5b54110/scripts/variantstore/wdl/extract/get_columns_for_import.py -o get_columns_for_import.py
 
-            python get_workspace_name(~{workspace_id})
-            # python3 -c "import requests; response=requests.get('https://rawls.dsde-prod.broadinstitute.org/api/workspaces/id/~{workspace_id}?fields=workspace.namespace,workspace.googleProject'); print(response)" > workspace_name.txt
-            #cat workspace_name.txt
+            # gcloud auth activate-service-account --key-file=${gcloud_service_account_key_file}
+            # export GOOGLE_APPLICATION_CREDENTIALS=${gcloud_service_account_key_file}
+
+            export GOOGLE_PROJECT='~{project_id}'
+            export WORKSPACE_BUCKET='~{workspace_id}'
+
+            gcloud auth list
+
+            gsutil cp gs://fc-d5e319d4-b044-4376-afde-22ef0afc4088/get_columns_for_import.py  get_columns_for_import.py
+            python get_columns_for_import.py --workspace_id ~{workspace_id}
 
         >>>
         runtime {
