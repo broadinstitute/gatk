@@ -135,7 +135,7 @@ public class SVTestUtils {
             genotypes.add(makeGenotypeWithRefAllele(builder, refAllele));
         }
         return new SVCallRecord(id, contigA, positionA, strandA, contigB, positionB, strandB, type, null, length, algorithms,
-                newAlleles, genotypes, Collections.emptyMap(), hg38Dict);
+                newAlleles, genotypes, Collections.emptyMap(), Collections.emptySet(), null, hg38Dict);
     }
 
     public static final Genotype makeGenotypeWithRefAllele(final GenotypeBuilder builder, final Allele refAllele) {
@@ -375,7 +375,7 @@ public class SVTestUtils {
                 svtype, null,  100, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 variantAlleles,
                 Collections.singletonList(builder.make()),
-                Collections.emptyMap());
+                Collections.emptyMap(), Collections.emptySet(), null);
     }
 
     public static SVCallRecord newNamedDeletionRecordWithAttributes(final String id, final Map<String, Object> attributes) {
@@ -384,7 +384,7 @@ public class SVTestUtils {
                 100, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 Collections.emptyList(),
                 Collections.emptyList(),
-                attributes);
+                attributes, Collections.emptySet(), null);
     }
 
     public static SVCallRecord newNamedDeletionRecordWithAttributesAndGenotypes(final String id,
@@ -395,7 +395,7 @@ public class SVTestUtils {
                 100, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
                 genotypes,
-                attributes);
+                attributes, Collections.emptySet(), null);
     }
 
     public static final Map<String, Object> keyValueArraysToMap(final String[] keys, final Object[] values) {
@@ -411,40 +411,40 @@ public class SVTestUtils {
         final int positionB = length == null ? 1 : CoordMath.getEnd(1, length);
         return new SVCallRecord("", "chr1", 1, getValidTestStrandA(svtype), "chr1", positionB, getValidTestStrandB(svtype),
                 svtype, null, length, PESR_ONLY_ALGORITHM_LIST, Collections.emptyList(), Collections.emptyList(),
-                Collections.emptyMap());
+                Collections.emptyMap(), Collections.emptySet(), null);
     }
 
     public static SVCallRecord newDeletionCallRecordWithIdAndAlgorithms(final String id, final List<String> algorithms) {
         return new SVCallRecord(id, "chr1", 1, true, "chr1", 100, false,
                 GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null, 100, algorithms, Collections.emptyList(),
-                Collections.emptyList(), Collections.emptyMap());
+                Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null);
     }
 
     // Note strands and length may not be set properly
     public static SVCallRecord newPESRCallRecordWithIntervalAndType(final int start, final int end, final GATKSVVCFConstants.StructuralVariantAnnotationType svtype) {
         return new SVCallRecord("", "chr1", start, getValidTestStrandA(svtype), "chr1", end, getValidTestStrandB(svtype),
                 svtype, null, getLength(start, end, svtype), PESR_ONLY_ALGORITHM_LIST, Collections.emptyList(),
-                Collections.emptyList(), Collections.emptyMap());
+                Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null);
     }
 
     // Note strands and length may not be set properly
     public static SVCallRecord newInsertionWithPositionAndLength(final int start, final int length) {
         return new SVCallRecord("", "chr1", start, true, "chr1", start + 1, false,
                 GATKSVVCFConstants.StructuralVariantAnnotationType.INS, null, length, PESR_ONLY_ALGORITHM_LIST, Collections.emptyList(),
-                Collections.emptyList(), Collections.emptyMap());
+                Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null);
     }
 
     public static SVCallRecord newDepthCallRecordWithIntervalAndType(final int start, final int end, final GATKSVVCFConstants.StructuralVariantAnnotationType svtype) {
         return new SVCallRecord("", "chr1", start, getValidTestStrandA(svtype), "chr1", end, getValidTestStrandB(svtype),
                 svtype, null, getLength(start, end, svtype), DEPTH_ONLY_ALGORITHM_LIST, Collections.emptyList(),
-                Collections.emptyList(), Collections.emptyMap());
+                Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null);
     }
 
     // Note strands and length may not be set properly
     public static SVCallRecord newCallRecordWithContigsIntervalAndType(final String startContig, final int start, final String endContig, final int end, final GATKSVVCFConstants.StructuralVariantAnnotationType svtype) {
         return new SVCallRecord("", startContig, start, getValidTestStrandA(svtype), endContig, end, getValidTestStrandB(svtype),
                 svtype, null, getLength(start, end, svtype), PESR_ONLY_ALGORITHM_LIST, Collections.emptyList(),
-                Collections.emptyList(), Collections.emptyMap());
+                Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null);
     }
 
     public static Integer getLength(final int start, final int end, final GATKSVVCFConstants.StructuralVariantAnnotationType type) {
@@ -461,7 +461,7 @@ public class SVTestUtils {
                 Collections.singletonList(PESR_ALGORITHM),
                 Collections.emptyList(),
                 Collections.emptyList(),
-                Collections.emptyMap());
+                Collections.emptyMap(), Collections.emptySet(), null);
     }
 
     public static SVCallRecord newCtxCallRecord() {
@@ -469,7 +469,7 @@ public class SVTestUtils {
                 Collections.singletonList(PESR_ALGORITHM),
                 Collections.emptyList(),
                 Collections.emptyList(),
-                Collections.emptyMap());
+                Collections.emptyMap(), Collections.emptySet(), null);
     }
 
     public static SVCallRecord newCpxCallRecordWithLength(final int length) {
@@ -477,7 +477,7 @@ public class SVTestUtils {
                 Collections.singletonList(PESR_ALGORITHM),
                 Collections.emptyList(),
                 Collections.emptyList(),
-                Collections.emptyMap());
+                Collections.emptyMap(), Collections.emptySet(), null);
     }
 
     public static SVCallRecord newCnvCallRecordWithStrands(final Boolean strandA, final Boolean strandB) {
@@ -485,7 +485,7 @@ public class SVTestUtils {
                 Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 Collections.emptyList(),
                 Collections.emptyList(),
-                Collections.emptyMap());
+                Collections.emptyMap(), Collections.emptySet(), null);
     }
 
     public static SVCallRecord newCallRecordWithCoordinates(final String id, final String chrA, final int posA, final String chrB, final int posB) {
@@ -493,7 +493,7 @@ public class SVTestUtils {
                 Collections.singletonList("peser"),
                 Collections.emptyList(),
                 Collections.emptyList(),
-                Collections.emptyMap());
+                Collections.emptyMap(), Collections.emptySet(), null);
     }
 
     public static SVCallRecord newCallRecordWithCoordinatesAndType(final String id, final String chrA, final int posA, final String chrB, final int posB, final GATKSVVCFConstants.StructuralVariantAnnotationType type) {
@@ -501,7 +501,7 @@ public class SVTestUtils {
                 Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                 Collections.emptyList(),
                 Collections.emptyList(),
-                Collections.emptyMap());
+                Collections.emptyMap(), Collections.emptySet(), null);
     }
 
     public static SVCallRecord newCallRecordWithAlgorithms(final List<String> algorithms) {
@@ -509,7 +509,7 @@ public class SVTestUtils {
                 algorithms,
                 Collections.emptyList(),
                 Collections.emptyList(),
-                Collections.emptyMap());
+                Collections.emptyMap(), Collections.emptySet(), null);
     }
 
     public static SVCallRecord newCallRecordInsertionWithLength(final Integer length) {
@@ -517,7 +517,7 @@ public class SVTestUtils {
                 PESR_ONLY_ALGORITHM_LIST,
                 Collections.emptyList(),
                 Collections.emptyList(),
-                Collections.emptyMap());
+                Collections.emptyMap(), Collections.emptySet(), null);
     }
 
     public static VariantContext newVariantContext(final String id, final String chrA, final int posA,

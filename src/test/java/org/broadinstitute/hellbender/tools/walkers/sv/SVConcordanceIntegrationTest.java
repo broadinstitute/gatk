@@ -122,6 +122,8 @@ public class SVConcordanceIntegrationTest extends CommandLineProgramTest {
             Assert.assertEquals(outputVariant.getStart(), expectedVariant.getStart());
             Assert.assertEquals(outputVariant.getEnd(), expectedVariant.getEnd());
             Assert.assertEquals(outputVariant.getAlleles(), expectedVariant.getAlleles());
+            Assert.assertEquals(outputVariant.getFilters(), expectedVariant.getFilters());
+            Assert.assertEquals(outputVariant.getPhredScaledQual(), expectedVariant.getPhredScaledQual());
             Assert.assertEquals(outputVariant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "test_default"), expectedVariant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "expected_default"));
             checkTruthVariantId(outputVariant, expectedVariant);
             Assert.assertEquals(outputVariant.getAttributeAsString(Concordance.TRUTH_STATUS_VCF_ATTRIBUTE, "test_default"), expectedVariant.getAttributeAsString(Concordance.TRUTH_STATUS_VCF_ATTRIBUTE, "expected_default"));
@@ -219,6 +221,8 @@ public class SVConcordanceIntegrationTest extends CommandLineProgramTest {
             Assert.assertEquals(outputVariant.getStart(), expectedVariant.getStart());
             Assert.assertEquals(outputVariant.getEnd(), expectedVariant.getEnd());
             Assert.assertEquals(outputVariant.getAlleles(), expectedVariant.getAlleles());
+            Assert.assertEquals(outputVariant.getFilters(), expectedVariant.getFilters());
+            Assert.assertEquals(outputVariant.getPhredScaledQual(), expectedVariant.getPhredScaledQual());
             final String svtype = outputVariant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "test_default");
             Assert.assertEquals(svtype, expectedVariant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "expected_default"));
             // check the variant matched itself with perfect concordance
@@ -300,6 +304,8 @@ public class SVConcordanceIntegrationTest extends CommandLineProgramTest {
             Assert.assertEquals(outputVariant.getStart(), expectedVariant.getStart());
             Assert.assertEquals(outputVariant.getEnd(), expectedVariant.getEnd());
             Assert.assertEquals(outputVariant.getAlleles(), expectedVariant.getAlleles());
+            Assert.assertEquals(outputVariant.getFilters(), expectedVariant.getFilters());
+            Assert.assertEquals(outputVariant.getPhredScaledQual(), expectedVariant.getPhredScaledQual());
             final String svtype = outputVariant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "test_default");
             Assert.assertEquals(svtype, expectedVariant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "expected_default"));
             // check the variant matched itself with perfect concordance

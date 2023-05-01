@@ -100,6 +100,13 @@ public final class SVCallRecordUtils {
                 && record.getStrandA() != null && record.getStrandB() != null) {
             builder.attribute(GATKSVVCFConstants.STRANDS_ATTRIBUTE, getStrandString(record));
         }
+        if (!record.getFilters().isEmpty()) {
+            builder.filters(record.getFilters());
+        }
+        if (record.getLog10PError() != null) {
+            builder.log10PError(record.getLog10PError());
+        }
+
         // htsjdk vcf encoder does not allow genotypes to have empty alleles
         builder.genotypes(record.getGenotypes().stream().map(SVCallRecordUtils::sanitizeEmptyGenotype).collect(Collectors.toList()));
         sanitizeNullAttributes(builder);
@@ -176,12 +183,12 @@ public final class SVCallRecordUtils {
     public static SVCallRecord copyCallWithNewGenotypes(final SVCallRecord record, final GenotypesContext genotypes) {
         return new SVCallRecord(record.getId(), record.getContigA(), record.getPositionA(), record.getStrandA(), record.getContigB(),
                 record.getPositionB(), record.getStrandB(), record.getType(), record.getComplexSubtype(), record.getLength(), record.getAlgorithms(), record.getAlleles(),
-                genotypes, record.getAttributes());
+                genotypes, record.getAttributes(), record.getFilters(), record.getLog10PError());
     }
     public static SVCallRecord copyCallWithNewAttributes(final SVCallRecord record, final Map<String, Object> attr) {
         return new SVCallRecord(record.getId(), record.getContigA(), record.getPositionA(), record.getStrandA(), record.getContigB(),
                 record.getPositionB(), record.getStrandB(), record.getType(), record.getComplexSubtype(), record.getLength(), record.getAlgorithms(), record.getAlleles(),
-                record.getGenotypes(), attr);
+                record.getGenotypes(), attr, record.getFilters(), record.getLog10PError());
     }
 
     /**
@@ -293,10 +300,10 @@ public final class SVCallRecordUtils {
         Utils.validateArg(record.isIntrachromosomal(), "Inversion " + record.getId() + " is not intrachromosomal");
         final SVCallRecord positiveBreakend = new SVCallRecord(record.getId(), record.getContigA(),
                 record.getPositionA(), true, record.getContigB(), record.getPositionB(), true, GATKSVVCFConstants.StructuralVariantAnnotationType.BND, null,null,
-                record.getAlgorithms(), record.getAlleles(), record.getGenotypes(), record.getAttributes(), dictionary);
+                record.getAlgorithms(), record.getAlleles(), record.getGenotypes(), record.getAttributes(), record.getFilters(), record.getLog10PError(), dictionary);
         final SVCallRecord negativeBreakend = new SVCallRecord(record.getId(), record.getContigA(),
                 record.getPositionA(), false, record.getContigB(), record.getPositionB(), false, GATKSVVCFConstants.StructuralVariantAnnotationType.BND, null,null,
-                record.getAlgorithms(), record.getAlleles(), record.getGenotypes(), record.getAttributes(), dictionary);
+                record.getAlgorithms(), record.getAlleles(), record.getGenotypes(), record.getAttributes(), record.getFilters(), record.getLog10PError(), dictionary);
         return Stream.of(positiveBreakend, negativeBreakend);
     }
 
@@ -385,10 +392,11 @@ public final class SVCallRecordUtils {
                 positionB = variant.getEnd();
             }
         }
+        final Double log10PError = variant.hasLog10PError() ? variant.getLog10PError() : null;
 
         final Map<String, Object> sanitizedAttributes = sanitizeAttributes(attributes);
         return new SVCallRecord(id, contigA, positionA, strand1, contigB, positionB, strand2, type, cpxSubtype, length, algorithms,
-                variant.getAlleles(), variant.getGenotypes(), sanitizedAttributes);
+                variant.getAlleles(), variant.getGenotypes(), sanitizedAttributes, variant.getFilters(), log10PError);
     }
 
     private static Map<String, Object> sanitizeAttributes(final Map<String, Object> attributes) {

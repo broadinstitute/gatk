@@ -1,6 +1,9 @@
 package org.broadinstitute.hellbender.tools.sv;
 
 import com.google.common.collect.Lists;
+import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.GenotypeBuilder;
+import htsjdk.variant.variantcontext.GenotypesContext;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -73,7 +76,7 @@ public class SVCallRecordUnitTest {
     public void testCreateInvalidCoordinates(final String contigA, final int posA, final String contigB, final int posB) {
         new SVCallRecord("var1", contigA, posA, true, contigB, posB, false, GATKSVVCFConstants.StructuralVariantAnnotationType.BND,
                 null, null, SVTestUtils.PESR_ONLY_ALGORITHM_LIST, Collections.emptyList(), Collections.emptyList(),
-                Collections.emptyMap(), SVTestUtils.hg38Dict);
+                Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
         Assert.fail("Expected exception not thrown");
     }
 
@@ -90,6 +93,26 @@ public class SVCallRecordUnitTest {
     public void testCreateValidCoordinates(final String contigA, final int posA, final String contigB, final int posB) {
         new SVCallRecord("var1", contigA, posA, true, contigB, posB, false, GATKSVVCFConstants.StructuralVariantAnnotationType.BND,
                 null, null, SVTestUtils.PESR_ONLY_ALGORITHM_LIST, Collections.emptyList(), Collections.emptyList(),
-                Collections.emptyMap(), SVTestUtils.hg38Dict);
+                Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
+    }
+
+    public void testGetters() {
+        final SVCallRecord record = new SVCallRecord("var1", "chr1", 100, true, "chr1", 200, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
+                GATKSVVCFConstants.ComplexVariantSubtype.dDUP, null, SVTestUtils.PESR_ONLY_ALGORITHM_LIST, Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
+                GenotypesContext.create(GenotypeBuilder.create("sample1", Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DEL))),
+                Collections.singletonMap("TEST_KEY", "TEST_VALUE"), Collections.singleton("TEST_FILTER"), Double.valueOf(30), SVTestUtils.hg38Dict);
+        Assert.assertEquals(record.getId(), "var1");
+        Assert.assertEquals(record.getContigA(), "chr1");
+        Assert.assertEquals(record.getPositionA(), 100);
+        Assert.assertEquals(record.getStrandA(), Boolean.TRUE);
+        Assert.assertEquals(record.getContigB(), "chr1");
+        Assert.assertEquals(record.getPositionB(), 200);
+        Assert.assertEquals(record.getStrandA(), Boolean.FALSE);
+        Assert.assertEquals(record.getAlgorithms(), SVTestUtils.PESR_ONLY_ALGORITHM_LIST);
+        Assert.assertEquals(record.getGenotypes().get("sample1").getAlleles(), Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DEL));
+        Assert.assertEquals(record.getAttributes(), Collections.singletonMap("TEST_KEY", "TEST_VALUE"));
+        Assert.assertEquals(record.getAlleles(), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL));
+        Assert.assertEquals(record.getFilters(), Collections.singleton("TEST_FILTER"));
+        Assert.assertEquals(record.getLog10PError(), Double.valueOf(30));
     }
 }

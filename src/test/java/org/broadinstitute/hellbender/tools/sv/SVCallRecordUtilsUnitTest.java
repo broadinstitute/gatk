@@ -66,15 +66,16 @@ public class SVCallRecordUtilsUnitTest {
                 {
                         new SVCallRecord("var1", "chr1", 1000, true, "chr1", 1999, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null, 1000,
                                 SVTestUtils.DEPTH_ONLY_ALGORITHM_LIST,
-                            ALLELES_DEL,
-                            Lists.newArrayList(GENOTYPE_DEL_1, GENOTYPE_DEL_2),
-                                Collections.emptyMap()),
+                                ALLELES_DEL,
+                                Lists.newArrayList(GENOTYPE_DEL_1, GENOTYPE_DEL_2), Collections.emptyMap(), Collections.singleton("TEST_FILTER"), Double.valueOf(-3)),
                         new VariantContextBuilder("", "chr1", 1000, 1999, ALLELES_DEL)
                                 .id("var1")
                                 .genotypes(GENOTYPE_DEL_1, GENOTYPE_DEL_2)
                                 .attribute(VCFConstants.END_KEY, 1999)
                                 .attribute(GATKSVVCFConstants.ALGORITHMS_ATTRIBUTE, SVTestUtils.DEPTH_ONLY_ALGORITHM_LIST)
                                 .attribute(GATKSVVCFConstants.SVTYPE, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL)
+                                .filter("TEST_FILTER")
+                                .log10PError(Double.valueOf(-3))
                                 .make(),
                         Collections.emptyList()
                 },
@@ -84,7 +85,7 @@ public class SVCallRecordUtilsUnitTest {
                                 SVTestUtils.DEPTH_ONLY_ALGORITHM_LIST,
                                 Collections.singletonList(Allele.SV_SIMPLE_DEL),
                                 Collections.singletonList(GENOTYPE_DEL_3),
-                                Collections.emptyMap()),
+                                Collections.emptyMap(), Collections.emptySet(), null),
                         new VariantContextBuilder("", "chr1", 1000, 1999, ALLELES_DEL)
                                 .id("var1")
                                 .genotypes(GENOTYPE_DEL_3)
@@ -100,7 +101,7 @@ public class SVCallRecordUtilsUnitTest {
                                 SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
                                 ALLELES_INS,
                                 Lists.newArrayList(GENOTYPE_INS_1),
-                                Collections.emptyMap()),
+                                Collections.emptyMap(), Collections.emptySet(), null),
                         new VariantContextBuilder("", "chr1", 1000, 1000, ALLELES_INS)
                                 .id("var2")
                                 .genotypes(GENOTYPE_INS_1)
@@ -116,7 +117,7 @@ public class SVCallRecordUtilsUnitTest {
                                 SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
                                 ALLELES_INS,
                                 Lists.newArrayList(GENOTYPE_INS_1),
-                                Collections.emptyMap()),
+                                Collections.emptyMap(), Collections.emptySet(), null),
                         new VariantContextBuilder("", "chr1", 1000, 1000, ALLELES_INS)
                                 .id("var2")
                                 .genotypes(GENOTYPE_INS_1)
@@ -132,7 +133,7 @@ public class SVCallRecordUtilsUnitTest {
                                 SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
                                 ALLELES_BND,
                                 Lists.newArrayList(GENOTYPE_BND_1),
-                                Collections.emptyMap()),
+                                Collections.emptyMap(), Collections.emptySet(), null),
                         new VariantContextBuilder("", "chr1", 1000, 1000, ALLELES_BND)
                                 .id("var3")
                                 .genotypes(GENOTYPE_BND_1)
@@ -160,7 +161,7 @@ public class SVCallRecordUtilsUnitTest {
                 SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
                 ALLELES_BND,
                 Lists.newArrayList(GENOTYPE_BND_1),
-                Collections.emptyMap());
+                Collections.emptyMap(), Collections.emptySet(), null);
         final VariantContext result = SVCallRecordUtils.getVariantBuilder(record).make();
         // BNDs shouldn't have a length
         Assert.assertFalse(result.hasAttribute(GATKSVVCFConstants.SVLEN));
@@ -237,14 +238,14 @@ public class SVCallRecordUtilsUnitTest {
                 SVTestUtils.DEPTH_ONLY_ALGORITHM_LIST,
                 ALLELES_DEL,
                 Lists.newArrayList(GENOTYPE_DEL_1, GENOTYPE_DEL_2),
-                Collections.singletonMap(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY, Collections.singletonList("sample")));
+                Collections.singletonMap(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY, Collections.singletonList("sample")), Collections.emptySet(), null);
         final GenotypesContext genotypes = GenotypesContext.copy(Collections.singletonList(GENOTYPE_DEL_3));
         final SVCallRecord result = SVCallRecordUtils.copyCallWithNewGenotypes(record, genotypes);
         final SVCallRecord expected = new SVCallRecord("var1", "chr1", 1000, true, "chr1", 1999, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null, 1000,
                 SVTestUtils.DEPTH_ONLY_ALGORITHM_LIST,
                 ALLELES_DEL,
                 genotypes,
-                Collections.singletonMap(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY, Collections.singletonList("sample")));
+                Collections.singletonMap(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY, Collections.singletonList("sample")), Collections.emptySet(), null);
         SVTestUtils.assertEqualsExceptMembership(result, expected);
     }
 
@@ -386,7 +387,7 @@ public class SVCallRecordUtilsUnitTest {
                 SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
                 Collections.emptyList(),
                 Collections.emptyList(),
-                Collections.emptyMap());
+                Collections.emptyMap(), Collections.emptySet(), null);
         final List<SVCallRecord> inversionResult = SVCallRecordUtils.convertInversionsToBreakends(inversion, SVTestUtils.hg38Dict).collect(Collectors.toList());
         Assert.assertEquals(inversionResult.size(), 2);
 
@@ -459,7 +460,7 @@ public class SVCallRecordUtilsUnitTest {
                             TEST_ATTRIBUTES),
                         new SVCallRecord("var1", "chr1", 1000, true, "chr1", 1999, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null, 1000,
                             Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM), ALLELES_DEL, Lists.newArrayList(GENOTYPE_DEL_1, GENOTYPE_DEL_2),
-                                TEST_ATTRIBUTES)
+                                TEST_ATTRIBUTES, Collections.emptySet(), null)
                 },
                 {
                         SVTestUtils.newVariantContext("var1", "chr1", 1000, 1999,
@@ -469,7 +470,7 @@ public class SVCallRecordUtilsUnitTest {
                                 TEST_ATTRIBUTES),
                         new SVCallRecord("var1", "chr1", 1000, true, "chr1", 1999, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null, 1000,
                                 Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM), ALLELES_DEL, Lists.newArrayList(GENOTYPE_DEL_1, GENOTYPE_DEL_2),
-                                TEST_ATTRIBUTES)
+                                TEST_ATTRIBUTES, Collections.emptySet(), null)
                 },
                 {
                         SVTestUtils.newVariantContext("var2", "chr1", 1000, 1000,
@@ -478,7 +479,7 @@ public class SVCallRecordUtilsUnitTest {
                                 null, null, TEST_ATTRIBUTES),
                         new SVCallRecord("var2", "chr1", 1000, true, "chr1", 1000, false, GATKSVVCFConstants.StructuralVariantAnnotationType.INS, null, 500,
                                 SVTestUtils.PESR_ONLY_ALGORITHM_LIST, ALLELES_INS, Lists.newArrayList(GENOTYPE_INS_1, GENOTYPE_INS_2),
-                                TEST_ATTRIBUTES)
+                                TEST_ATTRIBUTES, Collections.emptySet(), null)
                 },
                 {
                         SVTestUtils.newVariantContext("var3", "chr1", 1000, 1000,
@@ -487,7 +488,7 @@ public class SVCallRecordUtilsUnitTest {
                                 "chrX", 2000, TEST_ATTRIBUTES),
                         new SVCallRecord("var3", "chr1", 1000, true, "chrX", 2000, true, GATKSVVCFConstants.StructuralVariantAnnotationType.BND, null, null,
                                 SVTestUtils.PESR_ONLY_ALGORITHM_LIST, ALLELES_BND, Collections.singletonList(GENOTYPE_BND_1),
-                                TEST_ATTRIBUTES)
+                                TEST_ATTRIBUTES, Collections.emptySet(), null)
                 },
                 {
                         SVTestUtils.newVariantContext("var4", "chr1", 1000, 1000,
@@ -496,7 +497,7 @@ public class SVCallRecordUtilsUnitTest {
                                 "chrX", 2000, TEST_ATTRIBUTES),
                         new SVCallRecord("var4", "chr1", 1000, true, "chrX", 2000, true, GATKSVVCFConstants.StructuralVariantAnnotationType.BND, null, null,
                                 SVTestUtils.PESR_ONLY_ALGORITHM_LIST, ALLELES_BND, Collections.singletonList(GENOTYPE_BND_1),
-                                TEST_ATTRIBUTES)
+                                TEST_ATTRIBUTES, Collections.emptySet(), null)
                 },
                 {
                         SVTestUtils.newVariantContext("var4", "chr1", 1000, 1000,
@@ -505,7 +506,7 @@ public class SVCallRecordUtilsUnitTest {
                                 "chrX", 2000, TEST_ATTRIBUTES_CPX),
                         new SVCallRecord("var4", "chr1", 1000, null, "chrX", 2000, null, GATKSVVCFConstants.StructuralVariantAnnotationType.CPX, GATKSVVCFConstants.ComplexVariantSubtype.dDUP, 250,
                                 SVTestUtils.PESR_ONLY_ALGORITHM_LIST, ALLELES_CPX, Collections.singletonList(GENOTYPE_CPX_1),
-                                TEST_ATTRIBUTES)
+                                TEST_ATTRIBUTES, Collections.emptySet(), null)
                 },
         };
     }
