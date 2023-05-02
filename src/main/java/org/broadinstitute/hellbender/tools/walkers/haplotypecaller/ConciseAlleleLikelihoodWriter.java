@@ -10,9 +10,14 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
+/*
+A class for logging likelihood matrices, in a more consise way - we just show
+for read the best haplotype and the differences in the scores from the second best and the reference haplotype
+ */
+
 public class ConciseAlleleLikelihoodWriter extends AlleleLikelihoodWriter{
-    public ConciseAlleleLikelihoodWriter(final Path _outputPath, final SimpleInterval _interval) {
-        super(_outputPath, _interval);
+    public ConciseAlleleLikelihoodWriter(final Path _outputPath) {
+        super(_outputPath, null);
     }
     /**
      * Write read x haplotype likelihood matrix as a matrix of
@@ -64,5 +69,4 @@ public class ConciseAlleleLikelihoodWriter extends AlleleLikelihoodWriter{
             throw new RuntimeException(String.format("Unable to write matrix to file"));
         }
     }
-
 }

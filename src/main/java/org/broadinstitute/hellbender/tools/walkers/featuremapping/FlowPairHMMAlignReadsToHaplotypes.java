@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.tools.walkers.groundtruth;
+package org.broadinstitute.hellbender.tools.walkers.featuremapping;
 
 
 import htsjdk.samtools.SAMFileHeader;
@@ -117,7 +117,7 @@ public final class FlowPairHMMAlignReadsToHaplotypes extends ReadWalker {
         if (outputFormat.equals("expanded")) {
             outputWriter = new AlleleLikelihoodWriter(IOUtils.getPath(output), null);
         } else if (outputFormat.equals("concise")) {
-            outputWriter = new ConciseAlleleLikelihoodWriter(IOUtils.getPath(output), null);
+            outputWriter = new ConciseAlleleLikelihoodWriter(IOUtils.getPath(output));
         } else {
             throw new RuntimeException("Output format can be only expanded or concise");
         }
