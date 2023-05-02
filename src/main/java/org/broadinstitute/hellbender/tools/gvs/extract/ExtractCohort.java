@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscovery
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.*;
+import org.broadinstitute.hellbender.tools.walkers.annotator.InfoFieldAnnotation;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
@@ -231,9 +232,9 @@ public class ExtractCohort extends ExtractTool {
             optional = true)
     protected String shardIdentifier = null;
 
-    protected static VCFHeader generateVcfHeader(Set<String> sampleNames,
-                                                 final SAMSequenceDictionary sequenceDictionary,
-                                                 final Set<VCFHeaderLine> extraHeaders) {
+    protected VCFHeader generateVcfHeader(Set<String> sampleNames,
+                                          final SAMSequenceDictionary sequenceDictionary,
+                                          final Set<VCFHeaderLine> extraHeaders) {
         final Set<VCFHeaderLine> headerLines = new HashSet<>();
 
         // Filter fields
@@ -339,6 +340,9 @@ public class ExtractCohort extends ExtractTool {
 
         sampleList = new SampleList(sampleTableName, sampleFileName, projectID, printDebugInformation, "extract-cohort");
         Map<Long, String> sampleIdToName = sampleList.getSampleIdToNameMap();
+
+        //annotations
+        extraHeaderLines.addAll(annotationEngine.getVCFAnnotationDescriptions());
 
         VCFHeader header = generateVcfHeader(new HashSet<>(sampleIdToName.values()), reference.getSequenceDictionary(), extraHeaderLines);
 
