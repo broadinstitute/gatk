@@ -155,10 +155,8 @@ workflow GvsBulkIngestGenomes {
             export GOOGLE_PROJECT='~{project_id}'
             export WORKSPACE_BUCKET='~{workspace_id}'
 
-            gcloud auth list
-
             gsutil cp gs://fc-d5e319d4-b044-4376-afde-22ef0afc4088/get_columns_for_import.py  get_columns_for_import.py
-            python get_columns_for_import.py --workspace_id ~{workspace_id}
+            python get_columns_for_import.py --workspace_id ~{workspace_id} > workspace_name.txt
 
         >>>
         runtime {
