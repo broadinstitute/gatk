@@ -94,10 +94,10 @@ public class AlleleLikelihoodWriter implements AutoCloseable {
     }
 
     /**
-     * Add a likelihood matrix to the output. Only haplotypes falling within the output interval will be output
+     * Write read x haplotype likelihood matrix as a matrix
      * @param likelihoods - matrix to add
      */
-    public void writeAlleleLikelihoodsConcise(final AlleleLikelihoods<GATKRead, Haplotype> likelihoods, Map<String, String> haplotypeToNameMap, boolean writeHeader, int readCount){
+    public void writeAlleleLikelihoodsAsMatrix(final AlleleLikelihoods<GATKRead, Haplotype> likelihoods, Map<String, String> haplotypeToNameMap, boolean writeHeader, int readCount){
         final List<String> samples = likelihoods.samples();
         final List<Haplotype> haplotypes = likelihoods.alleles();
         try {
@@ -110,7 +110,7 @@ public class AlleleLikelihoodWriter implements AutoCloseable {
                     output.write("\n");
                 }
 
-                List<GATKRead> reads = likelihoods.sampleEvidence(0);
+                List<GATKRead> reads = likelihoods.sampleEvidence(s);
                 for (int read = 0; read < likelihoods.sampleMatrix(s).evidenceCount(); read++) {
                     output.write(String.format("%s", reads.get(read).getName()));
                     for (int allele = 0; allele < likelihoods.sampleMatrix(s).numberOfAlleles(); allele++) {
