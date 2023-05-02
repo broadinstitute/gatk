@@ -1,5 +1,8 @@
 import json
 import requests
+import argparse
+
+from google.cloud import gs
 
 from terra_notebook_utils import table
 from terra_notebook_utils import terra_auth
@@ -10,15 +13,17 @@ import re
 
 
 def get_workspace_name(workspace_id):
-    token=terra_auth.get_terra_access_token()
+    workspace_name=workspace.get_workspace().get('workspace').get('namespace')
+    #token = terra_auth.get_terra_access_token()
     # grab the workspace information from rawls
-    rawls = 'https://rawls.dsde-prod.broadinstitute.org/api/workspaces/id/{}?fields=workspace.namespace,workspace.googleProject'.format(workspace_id)
-    head = {'Authorization': 'token {}'.format(token)}
-    response = requests.get(rawls, headers=head)
+    #rawls = 'https://rawls.dsde-prod.broadinstitute.org/api/workspaces/id/{}?fields=workspace.namespace,workspace.googleProject'.format(workspace_id)
+    #head = {'Authorization': 'token {}'.format(token)}
+    #response = requests.get(rawls, headers=head)
     # then extract the googleProject info
-    print(response)
-    proj_id=response.workspace.googleProject
-    workspace_name=response.workspace.namespace
+    #print(response)
+    #proj_id=response.workspace.googleProject
+    #workspace_name=response.workspace.namespace
+    print(workspace_name)
     return workspace_name
 
 
@@ -28,7 +33,7 @@ def get_sample_sets(workspace_namespace, workspace_name):
     return sample_sets
 
 
-def get_column_names(workspace_id, workspace_name):
+#def get_column_names(workspace_id, workspace_name):
 
 
 def get_column_values(workspace_id, workspace_name):

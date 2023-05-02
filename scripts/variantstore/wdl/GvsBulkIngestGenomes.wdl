@@ -42,7 +42,7 @@ workflow GvsBulkIngestGenomes {
 
     call GetWorkspaceName {
         input:
-            workspace_id = GetWorkspaceId.workspace_bucket,
+            workspace_id = GetWorkspaceId.workspace_id,
             project_id = terra_project_id
     }
 
@@ -147,7 +147,7 @@ workflow GvsBulkIngestGenomes {
             String project_id
         }
         command <<<
-            # Hit rawls with the workspace ID
+            # Hit rawls with the workspace ID <-- this is the optimized version that we need to figure out the auth on
 
             # gcloud auth activate-service-account --key-file=${gcloud_service_account_key_file}
             # export GOOGLE_APPLICATION_CREDENTIALS=${gcloud_service_account_key_file}
