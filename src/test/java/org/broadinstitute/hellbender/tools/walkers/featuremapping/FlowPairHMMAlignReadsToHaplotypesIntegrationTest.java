@@ -10,7 +10,7 @@ import java.io.IOException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 
 public class FlowPairHMMAlignReadsToHaplotypesIntegrationTest extends CommandLineProgramTest{
-    public static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = true;
+    public static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = false;
 
     private static String testDir = publicTestDir + FlowTestConstants.FEATURE_MAPPING_DATA_DIR;
 
