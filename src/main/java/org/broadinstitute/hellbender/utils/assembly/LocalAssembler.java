@@ -60,13 +60,10 @@ public class LocalAssembler {
         for ( final Path path : readPaths ) {
             for ( final PathPart part : path.getParts() ) {
                 if ( part.isGap() ) {
-                    if ( !contigList.isEmpty() ) {
-                        pathedTraversals.add(new Traversal(contigList));
-                        contigList.clear();
-                    }
-                } else {
-                    contigList.add(part.getContig());
+                    contigList.clear();
+                    break;
                 }
+                contigList.add(part.getContig());
             }
             if ( !contigList.isEmpty() ) {
                 pathedTraversals.add(new Traversal(contigList));

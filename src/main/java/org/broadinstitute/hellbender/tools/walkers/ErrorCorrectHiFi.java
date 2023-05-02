@@ -32,9 +32,10 @@ public final class ErrorCorrectHiFi extends VariantWalker {
     public static final int WINDOW_SIZE = 2500;
     public static final int HUGE_EVENT_SIZE = 7500;
     public static final int MIN_ALIGNED_VALUES = 3;
+    public static final byte MIN_QUAL = (byte)20;
     public static final String SCRIPT_TEXT =
 "#!/bin/sh\n" +
-"    minimap2 -axmap-hifi %s reads.fq | samtools sort -OBAM - > align.bam &&\n" +
+"minimap2 -axmap-hifi %s reads.fq | samtools sort -OBAM - > align.bam &&\n" +
 "    samtools index align.bam &&\n" +
 "    igv -g hg38 -n corrected,%s -l %s align.bam %s\n";
 
@@ -139,13 +140,15 @@ public final class ErrorCorrectHiFi extends VariantWalker {
                             hopeless = true;
                         }
                     } else if ( len == 1 ) {
-                        if ( alignedValue == null ) {
-                            alignedValue = calls;
-                            alignedValueCount = 1;
-                        } else if ( alignedValue.equals(calls) ) {
-                            alignedValueCount += 1;
-                        } else {
-                            hopeless = true;
+                        if ( call.getQuals().byteAt(0) >= MIN_QUAL ) {
+                            if ( alignedValue == null ) {
+                                alignedValue = calls;
+                                alignedValueCount = 1;
+                            } else if ( alignedValue.equals(calls) ) {
+                                alignedValueCount += 1;
+                            } else {
+                                hopeless = true;
+                            }
                         }
                     } else if ( len == 2 ) {
                         if ( singletonIndel == null ) {
@@ -216,6 +219,11 @@ public final class ErrorCorrectHiFi extends VariantWalker {
         public ByteSequence getCalls() { return calls; }
         public ByteSequence getQuals() { return quals; }
         public CigarElement getCigarElement() { return cigarElement; }
+        @Override
+        public String toString() {
+            if ( calls.length() == 1 ) return calls + Integer.toString(quals.charAt(0));
+            return cigarElement.toString();
+        }
     }
 
     /**

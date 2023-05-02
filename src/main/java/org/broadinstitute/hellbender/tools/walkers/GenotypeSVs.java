@@ -18,6 +18,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.ByteSequence;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.SequenceRC;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
 import java.io.*;
@@ -31,8 +32,9 @@ import java.util.regex.Pattern;
 )
 public final class GenotypeSVs extends VariantWalker {
     public static final int MINIMUM_SV_SIZE = 50;
+    public static final int BIG_EVENT_LENGTH = 500;
     public static final int WINDOW_SIZE = 100;
-    public static final int REF_LEADIN_LEN = 6;
+    public static final int REF_LEADIN_LEN = 12;
     public static final int MAX_READ_LEN = REF_LEADIN_LEN + WINDOW_SIZE;
     public static final int MIN_READ_LEN = REF_LEADIN_LEN + 25;
     public static final int MIN_CALLS_TO_GENOTYPE = 7;
@@ -184,45 +186,76 @@ public final class GenotypeSVs extends VariantWalker {
         final ByteSequence altWindow = getRefCalls(contig, altStart, WINDOW_SIZE, refContext);
         final ByteSequence altCalls = refCalls.subSequence(0, REF_LEADIN_LEN).append(altWindow);
 
-        int minReadLen = getMinReadLen(refCalls, altCalls);
-
-        final ScoreSummary scoreSummary =
-                alignReads(refCalls, altCalls, contig, start, minReadLen, readsContext);
+        final SimpleInterval alignInterval = new SimpleInterval(contig, start, altStart);
+        final ScoreSummary scoreSummary = new ScoreSummary();
+        alignReads(scoreSummary, refCalls, altCalls, alignInterval, readsContext, false);
         try {
-            scoreSummary.writeSummary(vc.getID(), writer);
+            scoreSummary.writeSummary(String.format("%s:%09d", contig, vc.getStart()), writer);
         } catch ( final IOException ioe ) {
             throw new UserException("Can't write data for " + vc.getID() +
                         " at " + vc.getContig() + ":" + vc.getStart() + " to " + outputFile, ioe);
         }
     }
 
-    private void testInsertion( final VariantContext variantContext,
-                                final ReferenceContext referenceContext,
+    private void testInsertion( final VariantContext vc,
+                                final ReferenceContext refContext,
                                 final ReadsContext readsContext ) {
+        final int start = Math.max(1, vc.getStart() + 1 - REF_LEADIN_LEN);
+        final String contig = vc.getContig();
+        final SimpleInterval alignInterval = new SimpleInterval(contig, start, start);
+        final ScoreSummary scoreSummary = new ScoreSummary();
+
+        final ByteSequence refCalls = getRefCalls(contig, start, MAX_READ_LEN, refContext);
+
+        final ByteSequence altAlleleCalls = new ByteSequence(vc.getAlternateAllele(0).getBases());
+        final int altLength = altAlleleCalls.length() - 1;
+        if ( altLength >= WINDOW_SIZE ) {
+            final ByteSequence altCalls =
+                    refCalls.subSequence(0, REF_LEADIN_LEN)
+                            .append(altAlleleCalls.subSequence(1, WINDOW_SIZE));
+            alignReads(scoreSummary, refCalls, altCalls, alignInterval, readsContext, false);
+            final ByteSequence altCalls2 =
+                    altAlleleCalls.subSequence(altLength - WINDOW_SIZE + 1, WINDOW_SIZE)
+                            .append(refCalls.subSequence(REF_LEADIN_LEN, REF_LEADIN_LEN));
+            alignReads(scoreSummary, refCalls, altCalls2, alignInterval, readsContext, true);
+        } else {
+            final ByteSequence altCalls =
+                    refCalls.subSequence(0, REF_LEADIN_LEN)
+                            .append(altAlleleCalls.subSequence(1))
+                            .append(refCalls.subSequence(REF_LEADIN_LEN, WINDOW_SIZE - altLength));
+            alignReads(scoreSummary, refCalls, altCalls, alignInterval, readsContext, false);
+        }
+
+        try {
+            scoreSummary.writeSummary(String.format("%s:%09d", contig, vc.getStart()), writer);
+        } catch ( final IOException ioe ) {
+            throw new UserException("Can't write data for " + vc.getID() +
+                    " at " + vc.getContig() + ":" + vc.getStart() + " to " + outputFile, ioe);
+        }
     }
 
-    private void testDuplication( final VariantContext variantContext,
-                                  final ReferenceContext referenceContext,
+    private void testDuplication( final VariantContext vc,
+                                  final ReferenceContext refContext,
                                   final ReadsContext readsContext ) {
     }
 
-    private void testInversion( final VariantContext variantContext,
-                                  final ReferenceContext referenceContext,
-                                  final ReadsContext readsContext ) {
-    }
-
-    private void testBreakend( final VariantContext variantContext,
-                                final ReferenceContext referenceContext,
+    private void testInversion( final VariantContext vc,
+                                final ReferenceContext refContext,
                                 final ReadsContext readsContext ) {
     }
 
-    private ByteSequence getRefCalls( final String contig, final int start, final int length,
+    private void testBreakend( final VariantContext vc,
+                               final ReferenceContext refContext,
+                               final ReadsContext readsContext ) {
+    }
+
+    public static ByteSequence getRefCalls( final String contig, final int start, final int length,
                                       final ReferenceContext refContext ) {
         final SimpleInterval refInterval = new SimpleInterval(contig, start, start + length - 1);
         return new ByteSequence(refContext.getBases(refInterval));
     }
 
-    private int getMinReadLen( final ByteSequence refCalls, final ByteSequence altCalls ) {
+    private static int getMinReadLen( final ByteSequence refCalls, final ByteSequence altCalls ) {
         int minReadLen = 0;
         while ( minReadLen < MAX_READ_LEN ) {
             if ( refCalls.charAt(minReadLen) != altCalls.charAt(minReadLen) ) {
@@ -237,41 +270,61 @@ public final class GenotypeSVs extends VariantWalker {
         return minReadLen;
     }
 
-    private ScoreSummary alignReads( final ByteSequence refCalls,
-                                     final ByteSequence altCalls,
-                                     final String contig,
-                                     final int start,
-                                     final int minReadLen,
-                                     final ReadsContext readsContext ) {
-        final ScoreSummary scoreSummary = new ScoreSummary();
-        final Iterator<GATKRead> readItr =
-                readsContext.iterator(new SimpleInterval(contig, start, start + WINDOW_SIZE));
-        while ( readItr.hasNext() ) {
-            final GATKRead read = readItr.next();
-            if ( minReadLen > MAX_READ_LEN ) {
-                scoreSummary.score(0, 0);
-                continue;
-            }
-            final int readStartPos = getReadPositionForRefPosition(read, start);
-            if ( readStartPos == -1 ) {
-                continue;
-            }
-            final ByteSequence allReadCalls = new ByteSequence(read.getBasesNoCopy());
-            final int readLen = Math.min(allReadCalls.length() - readStartPos, MAX_READ_LEN);
-            if ( readLen >= minReadLen ) {
-                final ByteSequence readCalls = allReadCalls.subSequence(readStartPos, readLen);
-                final Scorer scorer = new Scorer();
-                final Aligner refAligner = new SomewhatGlobalAligner(readCalls, refCalls, scorer, minReadLen);
-                final int refScore = Math.round(refAligner.getScore().getScore());
-                final Aligner altAligner = new SomewhatGlobalAligner(readCalls, altCalls, scorer, minReadLen);
-                final int altScore = Math.round(altAligner.getScore().getScore());
-                scoreSummary.score(refScore, altScore);
+    private static void alignReads( final ScoreSummary scoreSummary,
+                                    final ByteSequence refCalls,
+                                    final ByteSequence altCalls,
+                                    final SimpleInterval alignInterval,
+                                    final ReadsContext readsContext,
+                                    final boolean alignRC ) {
+        final int start = alignInterval.getStart();
+        final int end = alignInterval.getEnd();
+        final List<SimpleInterval> intervalsToQuery;
+        if ( end - start < BIG_EVENT_LENGTH ) {
+            intervalsToQuery = Collections.singletonList(alignInterval);
+        } else {
+            intervalsToQuery = new ArrayList<>(2);
+            final String contig = alignInterval.getContig();
+            intervalsToQuery.add(new SimpleInterval(contig, start, start));
+            intervalsToQuery.add(new SimpleInterval(contig, end, end));
+        }
+        final int minReadLen = getMinReadLen(refCalls, altCalls);
+        for ( final SimpleInterval interval : intervalsToQuery ) {
+            final Iterator<GATKRead> readItr = readsContext.iterator(interval);
+            while ( readItr.hasNext() ) {
+                final GATKRead read = readItr.next();
+                if ( minReadLen > MAX_READ_LEN ) {
+                    scoreSummary.score(0, 0);
+                    continue;
+                }
+                int readStartPos = getReadPositionForRefPosition(read, start);
+                // TODO: evaluate validity of this condition for all event types
+                if ( readStartPos == -1 && start != end ) {
+                    readStartPos = getReadPositionForRefPosition(read, end) - REF_LEADIN_LEN;
+                }
+                if ( readStartPos < 0 ) {
+                    continue;
+                }
+                final ByteSequence allReadCalls = new ByteSequence(read.getBasesNoCopy());
+                final int readLen = Math.min(allReadCalls.length() - readStartPos, MAX_READ_LEN);
+                if ( readLen >= minReadLen ) {
+                    final ByteSequence readCalls = allReadCalls.subSequence(readStartPos, readLen);
+                    final Scorer scorer = new Scorer();
+                    if ( alignRC ) {
+                        final CharSequence readCallsRC = new SequenceRC(readCalls);
+                        scoreSummary.score(
+                                Math.round(new SomewhatGlobalAligner(readCallsRC, new SequenceRC(refCalls), scorer, minReadLen).getScore().getScore()),
+                                Math.round(new SomewhatGlobalAligner(readCallsRC, new SequenceRC(altCalls), scorer, minReadLen).getScore().getScore()));
+                    } else {
+                        scoreSummary.score(
+                                Math.round(new SomewhatGlobalAligner(readCalls, refCalls, scorer, minReadLen).getScore().getScore()),
+                                Math.round(new SomewhatGlobalAligner(readCalls, altCalls, scorer, minReadLen).getScore().getScore()));
+                    }
+                }
             }
         }
-        return scoreSummary;
     }
 
-    private int getReadPositionForRefPosition( final GATKRead read, final int refPosition ) {
+    public static int getReadPositionForRefPosition( final GATKRead read, final int refPosition ) {
         int curRefPosition = read.getStart();
         final List<CigarElement> cigarElements = read.getCigarElements();
         if ( curRefPosition > refPosition ) {
@@ -305,17 +358,17 @@ public final class GenotypeSVs extends VariantWalker {
         return -1;
     }
 
-    public record ScorePair( int refScore, int altScore ) {}
+//    public record ScorePair( int refScore, int altScore ) {}
 
     public final static class ScoreSummary {
-        final Map<ScorePair, Integer> scores =
-                new TreeMap<>(Comparator.comparing(ScorePair::refScore).thenComparing(ScorePair::altScore));
+//        final Map<ScorePair, Integer> scores =
+//                new TreeMap<>(Comparator.comparing(ScorePair::refScore).thenComparing(ScorePair::altScore));
         int refBetter = 0;
         int same = 0;
         int altBetter = 0;
 
         public void score( final int refScore, final int altScore ) {
-            scores.merge(new ScorePair(refScore, altScore), 1, Integer::sum);
+//            scores.merge(new ScorePair(refScore, altScore), 1, Integer::sum);
             if ( refScore > altScore ) {
                 refBetter += 1;
             } else if ( altScore > refScore ) {
@@ -327,7 +380,7 @@ public final class GenotypeSVs extends VariantWalker {
 
         public void writeSummary( final String eventID,
                                   final BufferedWriter writer ) throws IOException {
-            writer.write('#');
+//            writer.write('#');
             writer.write(eventID);
             writer.write('\t');
             final int totalCounts = refBetter + same + altBetter;
@@ -345,6 +398,7 @@ public final class GenotypeSVs extends VariantWalker {
                 writer.write("NA");
             }
             writer.newLine();
+/*
             for ( final Map.Entry<ScorePair, Integer> entry : scores.entrySet() ) {
                 writer.write(Integer.toString(entry.getKey().refScore()));
                 writer.write('\t');
@@ -353,6 +407,7 @@ public final class GenotypeSVs extends VariantWalker {
                 writer.write(entry.getValue().toString());
                 writer.newLine();
             }
+ */
         }
     }
 }
