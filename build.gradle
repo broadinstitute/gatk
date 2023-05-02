@@ -355,6 +355,9 @@ dependencies {
     implementation('net.grey-panther:natural-comparator:1.1')
     implementation('com.fasterxml.jackson.module:jackson-module-scala_2.12:2.9.8')
 
+    // TODO: This will need to be removed once the pgen jni work is complete (I think?)
+    implementation files('libs/pgen.jar')
+
     testUtilsImplementation sourceSets.main.output
     testUtilsImplementation 'org.testng:testng:' + testNGVersion
     testUtilsImplementation 'org.apache.hadoop:hadoop-minicluster:' + hadoopVersion

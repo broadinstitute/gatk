@@ -14,7 +14,7 @@ public class GvsPgenExtractorIntegrationTest extends CommandLineProgramTest {
         return new Object[][]{
             {
                 new ArgumentsBuilder()
-                        .addVCF(getToolTestDataDir() + "1kg_phase3_chr21_start.vcf.gz")
+                        .addVCF(getToolTestDataDir() + "CEUtrioTest.vcf")
             }
         };
     }
