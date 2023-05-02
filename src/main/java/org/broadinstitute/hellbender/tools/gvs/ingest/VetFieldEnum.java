@@ -421,7 +421,8 @@ public enum VetFieldEnum {
     }
 
     public static boolean isGenotypeAllNonRef(Genotype g) {
-        return g.getAllele(0).isNonReference() && g.getAllele(1).isNonReference();
+        // True iff all alleles are non-reference
+        return g.getAlleles().stream().allMatch(Allele::isNonReference);
     }
 
     static final Logger logger = LogManager.getLogger(CreateVariantIngestFiles.class);
