@@ -27,7 +27,6 @@ import java.util.*;
  * that the reads were generated from one of the haplotypes and only sequencing errors. Thus, the alignment score
  * is exactly the likelihood of the read given haplotype that is calculated in HaplotypeCaller.
  *
- *
  * <h3> Input </h3>
  * <ul>
  *     <li> BAM/CRAM file</li>

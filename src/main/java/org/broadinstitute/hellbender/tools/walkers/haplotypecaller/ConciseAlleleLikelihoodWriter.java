@@ -1,11 +1,9 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 import java.nio.file.Path;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -66,7 +64,7 @@ public class ConciseAlleleLikelihoodWriter extends AlleleLikelihoodWriter{
             }
             output.flush();
         } catch (IOException err) {
-            throw new RuntimeException(String.format("Unable to write matrix to file"));
+            throw new RuntimeException("Unable to write matrix to file");
         }
     }
 }
