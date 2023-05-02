@@ -9,11 +9,11 @@ import "GvsImportGenomes.wdl" as ImportGenomes
 workflow GvsBulkIngestGenomes {
     input {
         # Begin GvsPrepareBulkImport
-        String terra_project_id # env vars
-        String samples_table_name
-        String sample_id_column_name
-        String vcf_files_column_name
-        String vcf_index_files_column_name
+        String terra_project_id # TODO isn't this just the project namespace?!?!??!
+        String? samples_table_name
+        String? sample_id_column_name
+        String? vcf_files_column_name
+        String? vcf_index_files_column_name
         # End GvsPrepareBulkImport
 
         # Begin GvsAssignIds
@@ -40,18 +40,28 @@ workflow GvsBulkIngestGenomes {
 
     call GetWorkspaceId
 
-    call GetWorkspaceName {
+    #call GetWorkspaceName {
+    #    input:
+    #        workspace_id = GetWorkspaceId.workspace_id,
+    #        workspace_bucket = GetWorkspaceId.workspace_bucket,
+    #        project_id = terra_project_id
+    #}
+
+    call GetColumnNames { ## TODO should we even run this at all if we have values for all 4?
         input:
             workspace_id = GetWorkspaceId.workspace_id,
-            project_id = terra_project_id
+            workspace_name = "gvs-dev", ## TODO hard-coding for testing only --- GetWorkspaceName.workspace_name,
+            samples_table_name = samples_table_name,
+            sample_id_column_name = sample_id_column_name,
+            vcf_files_column_name = vcf_files_column_name,
+            vcf_index_files_column_name = vcf_index_files_column_name,
     }
-
-    call GetColumnNames
 
     call PrepareBulkImport.GvsPrepareBulkImport as PrepareBulkImport {
         input:
-            project_id = terra_project_id,
-            workspace_name = GetWorkspaceName.workspace_name,
+            project_id = bq_project_id, ## TODO hard-coding for testing only --- GetWorkspaceName.google_project_id, ## TODO do we really need this?~?~?~~??~?~
+            workspace_name = "GVS Quickstart v3 cremer", ## TODO hard-coding for testing only --- GetWorkspaceName.workspace_name,
+            workspace_namespace = "gvs-dev", ## TODO hard-coding for testing only --- GetWorkspaceName.workspace_namespace,
             workspace_bucket = GetWorkspaceId.workspace_bucket,
             samples_table_name = samples_table_name,
             sample_id_column_name = sample_id_column_name,
@@ -98,10 +108,22 @@ workflow GvsBulkIngestGenomes {
 }
 
     task GetColumnNames {
+        input {
+            String workspace_id
+            String workspace_name
+            String? samples_table_name
+            String? sample_id_column_name
+            String? vcf_files_column_name
+            String? vcf_index_files_column_name
+        }
         command <<<
             # Get a list of all columns in the table
 
             # First we will check for the default named columns and make sure that each row has a value
+
+            gsutil cp gs://fc-d5e319d4-b044-4376-afde-22ef0afc4088/get_columns_for_import.py  get_columns_for_import.py
+            python get_columns_for_import.py --workspace_id ~{workspace_id} --workspace_name ~{workspace_name}
+
 
             #curl -X 'GET' \
             #'https://rawls.dsde-prod.broadinstitute.org/api/workspaces/{workspace_id}/{workspace_name}/entities?useCache=true' \
@@ -144,16 +166,14 @@ workflow GvsBulkIngestGenomes {
 
         input {
             String workspace_id
+            String workspace_bucket
             String project_id
         }
         command <<<
             # Hit rawls with the workspace ID <-- this is the optimized version that we need to figure out the auth on
 
-            # gcloud auth activate-service-account --key-file=${gcloud_service_account_key_file}
-            # export GOOGLE_APPLICATION_CREDENTIALS=${gcloud_service_account_key_file}
-
             export GOOGLE_PROJECT='~{project_id}'
-            export WORKSPACE_BUCKET='~{workspace_id}'
+            export WORKSPACE_BUCKET='~{workspace_bucket}'
 
             gsutil cp gs://fc-d5e319d4-b044-4376-afde-22ef0afc4088/get_columns_for_import.py  get_columns_for_import.py
             python get_columns_for_import.py --workspace_id ~{workspace_id} > workspace_name.txt
@@ -167,15 +187,18 @@ workflow GvsBulkIngestGenomes {
         }
 
     output {
-        #String terra_project_id = proj_id
         String workspace_name = read_string("workspace_name.txt")
-        #String workspace_name = workspace_name
+        String workspace_namespace = read_string("workspace_name.txt")
+        String google_project_id = read_string("workspace_name.txt")
     }
 }
 
 
 
     task GetWorkspaceId {
+        meta {
+            volatile: true # always run this when asked otherwise you can get a previously run workspace!!!!
+        }
         command <<<
             # Prepend date, time and pwd to xtrace log entries.
             PS4='\D{+%F %T} \w $ '
