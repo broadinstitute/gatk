@@ -13,7 +13,6 @@ import org.broadinstitute.hellbender.utils.read.FlowBasedRead;
 import org.broadinstitute.hellbender.utils.read.FlowBasedReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
-import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -53,7 +52,7 @@ public final class AddFlowBaseQuality extends ReadWalker {
     public static final String MINIMAL_ERROR_RATE_LONG_NAME = "minimal-error-rate";
     public static final String MAXIMAL_QUALITY_SCORE_LONG_NAME = "maximal-quality-score";
     public static final String REPLACE_QUALITY_MODE_LONG_NAME = "replace-quality-mode";
-    public static final String BASE_QUALITY_ATTRIBUTE_NAME = "BQ";
+    public static final String BASE_QUALITY_ATTRIBUTE_NAME = "XQ";
     public static final String OLD_QUALITY_ATTRIBUTE_NAME = "OQ";
     public static final char PHRED_ASCII_BASE = '!';
 
@@ -158,7 +157,10 @@ public final class AddFlowBaseQuality extends ReadWalker {
 
     private double[] generateBaseErrorProbability(final FlowBasedRead fbRead, final int flowOrderLength) {
 
-        // access key and error probabilities
+        /**
+         * access key and error probabilities
+         * for a description of the flow probabilities see {@link FlowBasedRead#flowMatrix}
+         */
         final int[]       key = fbRead.getKey();
         final double[][]  errorProbBands = extractErrorProbBands(fbRead, minErrorRate);
         final double[]    result = new double[fbRead.getBasesNoCopy().length];
