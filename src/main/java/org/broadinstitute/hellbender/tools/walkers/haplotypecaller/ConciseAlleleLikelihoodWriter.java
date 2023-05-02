@@ -59,9 +59,9 @@ public class ConciseAlleleLikelihoodWriter extends AlleleLikelihoodWriter{
                         }
                     }
                     output.write(bestHap + "\t");
-                    output.write(bestScore + "\t");
-                    output.write(bestScore-secondBestScore + "\t");
-                    output.write(bestScore-refScore + "\n");
+                    output.write(String.format("%.03f", bestScore) + "\t");
+                    output.write(String.format("%.03f", bestScore-secondBestScore) + "\t");
+                    output.write(String.format("%.03f", bestScore-refScore) + "\n");
                 }
             }
             output.flush();

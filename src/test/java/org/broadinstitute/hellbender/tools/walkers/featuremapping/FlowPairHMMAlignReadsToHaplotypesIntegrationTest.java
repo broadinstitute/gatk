@@ -10,7 +10,7 @@ import java.io.IOException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 
 public class FlowPairHMMAlignReadsToHaplotypesIntegrationTest extends CommandLineProgramTest{
-    public static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = false;
+    public static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = true;
 
     private static String testDir = publicTestDir + FlowTestConstants.FEATURE_MAPPING_DATA_DIR;
 
@@ -49,6 +49,7 @@ public class FlowPairHMMAlignReadsToHaplotypesIntegrationTest extends CommandLin
         }
     }
 
+    @Test
     public void testConcise() throws IOException {
 
         final File outputDir = createTempDir("testFlowAlignReads");
@@ -59,7 +60,7 @@ public class FlowPairHMMAlignReadsToHaplotypesIntegrationTest extends CommandLin
                 "-O", outputFile.getAbsolutePath(),
                 "-I", testDir + "/alignReadsToHaplotypesTest.bam",
                 "-H", testDir + "/alignReadsToHaplotypesTest.fa",
-                "--ref-haplotype", "Hap2",
+                "--ref-haplotype", "Hap_2",
                 "--output-format", "concise",
                 "--flow-use-t0-tag",
                 "-E", "FBA",
