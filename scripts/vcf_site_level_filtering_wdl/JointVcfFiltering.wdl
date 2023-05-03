@@ -42,6 +42,8 @@ workflow JointVcfFiltering {
         RuntimeAttributes? extract_runtime_attributes
         RuntimeAttributes? train_runtime_attributes
         RuntimeAttributes? score_runtime_attributes
+
+        File? monitoring_script
     }
 
     parameter_meta {
@@ -68,7 +70,8 @@ workflow JointVcfFiltering {
             extra_args = extract_extra_args,
             gatk_docker = gatk_docker,
             gatk_override = gatk_override,
-            runtime_attributes = extract_runtime_attributes
+            runtime_attributes = extract_runtime_attributes,
+            monitoring_script = monitoring_script
     }
 
     call TrainVariantAnnotationsModel {
@@ -82,7 +85,8 @@ workflow JointVcfFiltering {
             extra_args = train_extra_args,
             gatk_docker = gatk_docker,
             gatk_override = gatk_override,
-            runtime_attributes = train_runtime_attributes
+            runtime_attributes = train_runtime_attributes,
+            monitoring_script = monitoring_script
     }
 
     scatter (i in range(length(input_vcfs))) {
@@ -100,7 +104,8 @@ workflow JointVcfFiltering {
                 extra_args = score_extra_args,
                 gatk_docker = gatk_docker,
                 gatk_override = gatk_override,
-                runtime_attributes = score_runtime_attributes
+                runtime_attributes = score_runtime_attributes,
+                monitoring_script = monitoring_script
         }
     }
 
@@ -116,6 +121,13 @@ workflow JointVcfFiltering {
         Array[File] scored_vcf_idxs = ScoreVariantAnnotations.scored_vcf_idx
         Array[File?] annotations_hdf5s = ScoreVariantAnnotations.annotations_hdf5
         Array[File?] scores_hdf5s = ScoreVariantAnnotations.scores_hdf5
+
+        Array[File?] monitoring_logs = flatten(
+          [
+            [ExtractVariantAnnotations.monitoring_log],
+            [TrainVariantAnnotationsModel.monitoring_log],
+            ScoreVariantAnnotations.monitoring_log
+          ])
     }
 }
 
@@ -127,6 +139,7 @@ task ExtractVariantAnnotations {
         Array[String] annotations
         String resource_args
         String? extra_args
+        File? monitoring_script
 
         String gatk_docker
         File? gatk_override
@@ -142,6 +155,10 @@ task ExtractVariantAnnotations {
     command {
         set -e
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+
+        if [ -s ~{monitoring_script} ]; then
+          bash ~{monitoring_script} > monitoring.log &
+        fi
 
         gatk --java-options "-Xmx~{default=6 runtime_attributes.command_mem_gb}G" \
             ExtractVariantAnnotations \
@@ -167,6 +184,7 @@ task ExtractVariantAnnotations {
         File? unlabeled_annotations_hdf5 = "~{output_prefix}.extract.unlabeled.annot.hdf5"
         File extracted_vcf = "~{output_prefix}.extract.vcf.gz"          # this line will break if extra_args includes the do-not-gzip-vcf-output argument
         File extracted_vcf_idx = "~{output_prefix}.extract.vcf.gz.tbi"  # this line will break if extra_args includes the do-not-gzip-vcf-output argument
+        File? monitoring_log = "monitoring.log"
     }
 }
 
@@ -179,6 +197,7 @@ task TrainVariantAnnotationsModel {
         File? hyperparameters_json
         String output_prefix
         String? extra_args
+        File? monitoring_script
 
         String gatk_docker
         File? gatk_override
@@ -189,6 +208,10 @@ task TrainVariantAnnotationsModel {
     command {
         set -e
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+
+        if [ -s ~{monitoring_script} ]; then
+          bash ~{monitoring_script} > monitoring.log &
+        fi
 
         gatk --java-options "-Xmx~{default=6 runtime_attributes.command_mem_gb}G" \
             TrainVariantAnnotationsModel \
@@ -213,6 +236,7 @@ task TrainVariantAnnotationsModel {
 
     output {
         Array[File] model_files = glob("~{output_prefix}.train.*")
+        File? monitoring_log = "monitoring.log"
     }
 }
 
@@ -228,6 +252,7 @@ task ScoreVariantAnnotations {
         String model_prefix
         Array[File] model_files
         String? extra_args
+        File? monitoring_script
 
         String gatk_docker
         File? gatk_override
@@ -244,6 +269,10 @@ task ScoreVariantAnnotations {
 
     command {
         set -e
+
+        if [ -s ~{monitoring_script} ]; then
+          bash ~{monitoring_script} > monitoring.log &
+        fi
 
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
@@ -276,5 +305,6 @@ task ScoreVariantAnnotations {
         File scored_vcf_idx = "~{output_prefix}.score.vcf.gz.tbi"       # this line will break if extra_args includes the do-not-gzip-vcf-output argument
         File? annotations_hdf5 = "~{output_prefix}.score.annot.hdf5"    # this file will only be produced if the number of sites scored is nonzero
         File? scores_hdf5 = "~{output_prefix}.score.scores.hdf5"        # this file will only be produced if the number of sites scored is nonzero
+        File? monitoring_log = "monitoring.log"
     }
 }
