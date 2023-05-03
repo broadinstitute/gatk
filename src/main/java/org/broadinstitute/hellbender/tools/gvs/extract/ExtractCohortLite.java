@@ -129,7 +129,7 @@ public class ExtractCohortLite extends ExtractTool {
     private boolean emitADs = false;
 
     @Argument(
-            fullName = "Use VQSR Classic scoring",
+            fullName = "use-vqsr-classic-scoring",
             doc = "If true, use VQSR 'Classic' scoring (vqs Lod score). Otherwise use VQSR 'Lite' scoring (calibration_sensitivity) ",
             optional = true
     )
