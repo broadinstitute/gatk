@@ -616,23 +616,17 @@ public class ExtractCohortEngine {
                 // if it doesn't trigger any of the filters below, we assume it passes.
                 builder.passFilters();
                 if (remappedYngMap.containsValue("G")) {
-                    Optional<Double> snpMax = relevantVQScoreMap.entrySet().stream()
+                    if (isFailingSite(relevantVQScoreMap.entrySet().stream()
                             .filter(entry -> entry.getKey().length() == refLength)
-                            .map(entry -> entry.getValue())
-                            .filter(d -> !(d.isNaN()||d.isInfinite()))
-                            .max(Double::compareTo);
-                    if (snpMax.isPresent() && snpMax.get() < vqScoreSNPThreshold) {
+                            .map(Map.Entry::getValue)
+                            .collect(Collectors.toList()), vqScoreSNPThreshold)) {
                         builder.filter(this.vqScoreSNPFailureFilterName);
                     }
-
-                    Optional<Double> indelMax = relevantVQScoreMap.entrySet().stream()
+                    if (isFailingSite(relevantVQScoreMap.entrySet().stream()
                             .filter(entry -> entry.getKey().length() != refLength)
-                            .map(entry -> entry.getValue())
-                            .filter(d -> !(d.isNaN()||d.isInfinite()))
-                            .max(Double::compareTo);
-
-                    if (indelMax.isPresent() && indelMax.get() < vqScoreINDELThreshold) {
-                        builder.filter(this.vqScoreINDELFailureFilterName);
+                            .map(Map.Entry::getValue)
+                            .collect(Collectors.toList()), vqScoreINDELThreshold)) {
+                        builder.filter(this.vqScoreSNPFailureFilterName);
                     }
                 } else {
                     // per-conversation with Laura, if there is no information we let the site pass (ie no data does not imply failure)
@@ -644,6 +638,14 @@ public class ExtractCohortEngine {
         final VariantContext filteredVC = builder.make();
         return filteredVC;
     }
+
+    protected boolean isFailingSite(final List<Double> vqScoreList, final Double vqScoreThreshold) {
+        Optional<Double> maxVal = vqScoreList.stream()
+                .filter(d -> !(d.isNaN()||d.isInfinite()))
+                .max(Double::compareTo);
+        return maxVal.isPresent() && maxVal.get() < vqScoreThreshold;
+    }
+
 
     protected static VariantContext removeAnnotations(VariantContext vc) {
 
@@ -775,22 +777,15 @@ public class ExtractCohortEngine {
                 } else if (anyYays) {
                     // the genotype is passed, nothing to do here as non-filtered is the default
                 } else {
-                    // get the max (best) vq score (vqslod/sensitivity) for all SNP non-Yay sites, and apply the filter
-                    Optional<Double> snpMax =
-                            nonRefAlleles.stream().filter(a -> a.length() == ref.length()).map(a -> remappedVQScoreMap.get(a)).filter(Objects::nonNull).max(Double::compareTo);
-
-                    if (snpMax.isPresent() && snpMax.get() < vqScoreSNPThreshold) {
+                    if (isFailingGenotype(nonRefAlleles.stream().filter(a -> a.length() == ref.length()).collect(Collectors.toList()),
+                            remappedVQScoreMap, vqScoreSNPThreshold)) {
                         genotypeBuilder.filter(this.vqScoreSNPFailureFilterName);
                     }
 
-                    // get the max (best) vq score (vqslod/sensitivity) for all INDEL non-Yay sites
-                    Optional<Double> indelMax =
-                            nonRefAlleles.stream().filter(a -> a.length() != ref.length()).map(a -> remappedVQScoreMap.get(a)).filter(Objects::nonNull).max(Double::compareTo);
-
-                    if (indelMax.isPresent() && indelMax.get() < vqScoreINDELThreshold) {
+                    if (isFailingGenotype(nonRefAlleles.stream().filter(a -> a.length() != ref.length()).collect(Collectors.toList()),
+                            remappedVQScoreMap, vqScoreINDELThreshold)) {
                         genotypeBuilder.filter(this.vqScoreINDELFailureFilterName);
                     }
-
                 }
             }
             genotypeBuilder.alleles(genotypeAlleles);
@@ -818,6 +813,19 @@ public class ExtractCohortEngine {
         builder.genotypes(genotypeBuilder.make());
 
         return builder.make();
+    }
+
+    private boolean isFailingGenotype(final List<Allele> nonRefAlleles,
+                                      final LinkedHashMap<Allele, Double> remappedVQScoreMap,
+                                      final Double vqScoreThreshold) {
+        // get the max (best) vq score (vqslod/sensitivity) for all non-Yay sites, and apply the filter
+        Optional<Double> snpMax =
+                nonRefAlleles.stream()
+                        .map(remappedVQScoreMap::get)
+                        .filter(Objects::nonNull)
+                        .max(Double::compareTo);
+
+        return snpMax.isPresent() && snpMax.get() < vqScoreThreshold;
     }
 
     private SortingCollection<GenericRecord> createSortedVetCollectionFromBigQuery(final String projectID,
