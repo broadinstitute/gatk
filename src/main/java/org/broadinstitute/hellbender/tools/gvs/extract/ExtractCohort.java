@@ -57,7 +57,6 @@ public class ExtractCohort extends ExtractTool {
     @Argument(
             fullName = "vet-ranges-fq-dataset",
             doc = "Fully qualified name for the dataset (<project>.<dataset>) that contains the VET and REF_RANGES data for extract",
-            mutex = {"cohort-extract-table"},
             optional = true
     )
     private String vetRangesFQDataSet = null;
@@ -80,7 +79,6 @@ public class ExtractCohort extends ExtractTool {
     @Argument(
             fullName = "vet-avro-file-name",
             doc = "Path to data from Vet table in Avro format",
-            mutex = {"cohort-extract-table"},
             optional = true
     )
     private GATKPath vetAvroFileName = null;
@@ -88,7 +86,6 @@ public class ExtractCohort extends ExtractTool {
     @Argument(
             fullName = "ref-ranges-avro-file-name",
             doc = "Path to data from Vet table in Avro format",
-            mutex = {"cohort-extract-table"},
             optional = true
     )
     private GATKPath refRangesAvroFileName = null;
@@ -96,7 +93,6 @@ public class ExtractCohort extends ExtractTool {
     @Argument(
             fullName = "presorted-avro-files",
             doc = "Indicates if Avro data is pre-sorted",
-            mutex = {"cohort-extract-table"},
             optional = true
     )
     private boolean presortedAvroFiles = false;
