@@ -1,14 +1,9 @@
 package org.broadinstitute.hellbender.tools.gvs.common;
 
-import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.GATKTool;
-import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
-import org.broadinstitute.hellbender.tools.walkers.annotator.StandardAnnotation;
-import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
-import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_StandardAnnotation;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.tools.walkers.annotator.*;
+import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.*;
 
 import java.io.File;
 import java.util.Arrays;
@@ -95,9 +90,28 @@ public abstract class ExtractTool extends GATKTool {
     }
 
     @Override
-    public List<Class<? extends Annotation>> getDefaultVariantAnnotationGroups() {
+    public List<Annotation> getDefaultVariantAnnotations() {
         return Arrays.asList(
-                StandardAnnotation.class, AS_StandardAnnotation.class
+                // All the `AS_StandardAnnotation` implementers minus `AS_InbreedingCoeff`.
+                new AS_FisherStrand(),
+                new AS_StrandOddsRatio(),
+                new AS_BaseQualityRankSumTest(),
+                new AS_MappingQualityRankSumTest(),
+                new AS_ReadPosRankSumTest(),
+                new AS_RMSMappingQuality(),
+                new AS_QualByDepth(),
+
+                // All the `StandardAnnotation` implementers minus `InbreedingCoeff` and `ExcessHet`.
+                new BaseQualityRankSumTest(),
+                new ChromosomeCounts(),
+                new Coverage(),
+                new DepthPerAlleleBySample(),
+                new FisherStrand(),
+                new MappingQualityRankSumTest(),
+                new QualByDepth(),
+                new RMSMappingQuality(),
+                new ReadPosRankSumTest(),
+                new StrandOddsRatio()
         );
     }
 
