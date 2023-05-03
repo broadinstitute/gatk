@@ -1,0 +1,6 @@
+14.0
+4
+1  SQLCHAR  0  40 ","        1  sample_id          SQL_Latin1_General_Cp437_BIN
+2  SQLCHAR  0  40 ","        2  location           SQL_Latin1_General_Cp437_BIN
+3  SQLCHAR  0  40 ","        3  length             SQL_Latin1_General_Cp437_BIN
+4  SQLCHAR  0  40 "\n"       4  state              SQL_Latin1_General_Cp437_BIN

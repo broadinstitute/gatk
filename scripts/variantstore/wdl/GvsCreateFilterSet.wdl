@@ -123,7 +123,7 @@ workflow GvsCreateFilterSet {
         score_runtime_attributes = vqsr_lite_score_runtime_attributes,
         gatk_docker = "us.gcr.io/broad-gatk/gatk:4.4.0.0",
         gatk_override = gatk_override,
-        monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
+        monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     }
 
     call Utils.MergeVCFs as MergeScoredVCFs {
@@ -299,7 +299,7 @@ task ExtractFilterTask {
   }
 
   String intervals_name = basename(intervals)
-  File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   command <<<
     set -e
@@ -364,7 +364,7 @@ task PopulateFilterSetInfo {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
-  File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   command <<<
     set -eo pipefail
@@ -440,7 +440,7 @@ task PopulateFilterSetSites {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
-  File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   command <<<
     set -eo pipefail
@@ -500,7 +500,7 @@ task PopulateFilterSetTranches {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
-  File monitoring_script = "gs://gvs-internal/cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   command <<<
     set -eo pipefail
