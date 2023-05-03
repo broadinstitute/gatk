@@ -110,7 +110,7 @@ workflow GvsBulkIngestGenomes {
         >>>
 
         runtime {
-            docker: "ubuntu:latest"
+            docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-03-23-bulk-ingest"
         }
 
         output {
