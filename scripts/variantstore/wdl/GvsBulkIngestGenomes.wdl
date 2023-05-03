@@ -56,55 +56,6 @@ workflow GvsBulkIngestGenomes {
             vcf_files_column_name = vcf_files_column_name,
             vcf_index_files_column_name = vcf_index_files_column_name,
     }
-
-    call PrepareBulkImport.GvsPrepareBulkImport as PrepareBulkImport {
-        input:
-            project_id = bq_project_id, ## TODO hard-coding for testing only --- GetWorkspaceName.google_project_id, ## TODO do we really need this?~?~?~~??~?~
-            workspace_name = "GVS Quickstart v3 cremer", ## TODO hard-coding for testing only --- GetWorkspaceName.workspace_name,
-            workspace_namespace = "gvs-dev", ## TODO hard-coding for testing only --- GetWorkspaceName.workspace_namespace,
-            workspace_bucket = GetWorkspaceId.workspace_bucket,
-            samples_table_name = samples_table_name,
-            sample_id_column_name = sample_id_column_name,
-            vcf_files_column_name = vcf_files_column_name,
-            vcf_index_files_column_name = vcf_index_files_column_name
-    }
-
-    call AssignIds.GvsAssignIds as AssignIds {
-        input:
-            dataset_name = dataset_name,
-            project_id = bq_project_id,
-            external_sample_names = read_lines(PrepareBulkImport.sampleFOFN),
-            samples_are_controls = false
-    }
-
-    call ImportGenomes.GvsImportGenomes as ImportGenomes {
-        input:
-            go = AssignIds.done,
-            dataset_name = dataset_name,
-            project_id = bq_project_id,
-
-            external_sample_names = read_lines(PrepareBulkImport.sampleFOFN),
-            input_vcfs = read_lines(PrepareBulkImport.vcfFOFN),
-            input_vcf_indexes = read_lines(PrepareBulkImport.vcfIndexFOFN),
-
-            ## TODO the following will be kept short term for testing
-            ## is_rate_limited_beta_customer = true,
-            ## beta_customer_max_scatter = 25,
-
-            interval_list = interval_list,
-
-            # The larger the `load_data_batch_size` the greater the probability of preemptions and non-retryable
-            # BigQuery errors so if specifying this adjust preemptible and maxretries accordingly. Or just take the defaults,
-            # those should work fine in most cases.
-            load_data_batch_size = load_data_batch_size,
-            load_data_maxretries_override = load_data_maxretries_override,
-            load_data_preemptible_override = load_data_preemptible_override,
-            load_data_gatk_override = gatk_override,
-    }
-
-    output {
-        Array[File] load_data_stderrs = ImportGenomes.load_data_stderrs
-    }
 }
 
     task GetColumnNames {
@@ -123,6 +74,11 @@ workflow GvsBulkIngestGenomes {
 
             gsutil cp gs://fc-d5e319d4-b044-4376-afde-22ef0afc4088/get_columns_for_import.py  get_columns_for_import.py
             python get_columns_for_import.py --workspace_id ~{workspace_id} --workspace_name ~{workspace_name}
+            ##s set some default vals
+            # String samples_table_name = "sample"
+            # String sample_id_column_name = "sample_id"
+            # String vcf_files_column_name = "hg38_reblocked_v2_vcf"
+            # String vcf_index_files_column_name = "hg38_reblocked_v2_vcf_index"
 
 
             #curl -X 'GET' \
