@@ -1,0 +1,26 @@
+[
+  {
+    "description": "gene name",
+    "name": "gene_symbol",
+    "type": "String",
+    "mode": "Nullable"
+  },
+  {
+    "description": "OMIM ID",
+    "name": "gene_omim_id",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "OMIM Disease ID",
+    "name": "omim_phenotypes_id",
+    "type": "Integer",
+    "mode": "Repeated"
+  },
+  {
+    "description": "OMIM Disease Name",
+    "name": "omim_phenotypes_name",
+    "type": "String",
+    "mode": "Repeated"
+  }
+]

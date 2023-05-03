@@ -1,0 +1,11 @@
+azure-cosmos
+azure-identity
+azure-keyvault-secrets
+azure-mgmt-resource
+azure-mgmt-sql
+azure-mgmt-storage
+azure-mgmt-subscription
+azure-storage-blob
+inflection
+pandas
+pyodbc
