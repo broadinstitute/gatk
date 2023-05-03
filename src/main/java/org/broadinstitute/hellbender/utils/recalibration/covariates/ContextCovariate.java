@@ -88,7 +88,16 @@ public class ContextCovariate implements Covariate {
 
         // store the original bases and then write Ns over low quality ones
         final byte[] strandedClippedBases = getStrandedClippedBytes(read, lowQualTail);  //Note: this makes a copy of the read
-        final byte[] refBases = isExtended() ? getReadReferenceBases(read) : null;
+
+
+        byte[] refBases = null;
+        if (isExtended()){
+            if (read.isUnmapped()) {
+                refBases = Arrays.copyOf(read.getBases(),read.getLength());
+            } else {
+                refBases = getReadReferenceBases(read);
+            }
+        }
 
         //Note: we're using a non-standard library here because boxing came up on profiling as taking 20% of time in applyBQSR.
         //IntList avoids boxing
@@ -331,7 +340,6 @@ public class ContextCovariate implements Covariate {
         if ( bases.length == 0 ) {
             return new IntArrayList(0);
         }
-
         Utils.validate(bases.length == refBases.length, "read and references bases array not same length");
 
         final int readLength = bases.length;
