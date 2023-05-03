@@ -70,47 +70,25 @@ workflow GvsBulkIngestGenomes {
         command <<<
             # Get a list of all columns in the table
 
+            # update pip?!?-- is there something wrong with this docker image?
+
             # First we will check for the default named columns and make sure that each row has a value
 
             gsutil cp gs://fc-d5e319d4-b044-4376-afde-22ef0afc4088/get_columns_for_import.py  get_columns_for_import.py
             python get_columns_for_import.py --workspace_id ~{workspace_id} --workspace_name ~{workspace_name}
-            ##s set some default vals
+            ## set some default vals
             # String samples_table_name = "sample"
             # String sample_id_column_name = "sample_id"
             # String vcf_files_column_name = "hg38_reblocked_v2_vcf"
             # String vcf_index_files_column_name = "hg38_reblocked_v2_vcf_index"
 
-
-            #curl -X 'GET' \
-            #'https://rawls.dsde-prod.broadinstitute.org/api/workspaces/{workspace_id}/{workspace_name}/entities?useCache=true' \
-            #-H 'accept: application/json' \
-            #-H 'Authorization: Bearer XXX
-
-            #{
-            #"participant": {
-            #"attributeNames": [],
-            #"count": 249045,
-            #"idName": "participant_id"
-            #},
-            #"sample": {
-            #"attributeNames": [
-            #"blah blah these are the column names we want"
-            #],
-            #"count": 249049,
-            #"idName": "sample_id"
-            #},
-            #"sample_set": {
-            #"attributeNames": [
-            #"samples"
-            #],
-            #"count": 12,
-            #"idName": "sample_set_id"
-            #}
-            #}
         >>>
 
         runtime {
-            docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-03-23-bulk-ingest"
+            docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-04-13-alpine"
+            memory: "3 GB"
+            disks: "local-disk 10 HDD"
+            cpu: 1
         }
 
         output {
