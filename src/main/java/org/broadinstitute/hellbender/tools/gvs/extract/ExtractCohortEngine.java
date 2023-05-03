@@ -16,7 +16,8 @@ import org.broadinstitute.hellbender.tools.gvs.common.*;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.bigquery.*;
+import org.broadinstitute.hellbender.utils.bigquery.StorageAPIAvroReader;
+import org.broadinstitute.hellbender.utils.bigquery.TableReference;
 import org.broadinstitute.hellbender.utils.gvs.bigquery.AvroFileReader;
 import org.broadinstitute.hellbender.utils.gvs.localsort.AvroSortingCollectionCodec;
 import org.broadinstitute.hellbender.utils.gvs.localsort.SortingCollection;
@@ -28,7 +29,7 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class ExtractCohortEngine {
-    private static final Logger logger = LogManager.getLogger(ExtractCohortEngine.class);
+    final Logger logger;
 
     private final VariantContextWriter vcfWriter;
 
@@ -37,7 +38,7 @@ public class ExtractCohortEngine {
     private final List<SimpleInterval> traversalIntervals;
     private final Long minLocation;
     private final Long maxLocation;
-    private final TableReference filterSetInfoTableRef;
+    final TableReference filterSetInfoTableRef;
     private final TableReference filterSetSiteTableRef;
     private final ReferenceDataSource refSource;
     private final Double vqScoreSNPThreshold;
@@ -65,8 +66,6 @@ public class ExtractCohortEngine {
     private int totalIrrelevantRangeRecords = 0;
     private long totalEstimatedBytesScanned = 0;
 
-    private final GATKPath cohortAvroFileName;
-
     private final String vetRangesFQDataSet;
 
     private final String fqRangesExtractVetTable;
@@ -81,10 +80,24 @@ public class ExtractCohortEngine {
 
     private final boolean presortedAvroFiles;
 
-    private final String vqScoreFieldName;
-    private final String alleleSpecificVQSScoreKey;
-    private final String vqScoreSNPFailureFilterName;
-    private final String vqScoreINDELFailureFilterName;
+    List<String> getFilterSetInfoTableFields() {
+        return SchemaUtils.YNG_FIELDS;
+    }
+    String getVQScoreFieldName() {
+        return SchemaUtils.VQSLOD;
+    }
+
+    String getAlleleSpecificVQSScoreKey() {
+        return GATKVCFConstants.AS_VQS_LOD_KEY;
+    }
+
+    String getVqScoreSNPFailureFilterName() {
+        return GATKVCFConstants.VQSR_FAILURE_SNP;
+    }
+
+    String getVqScoreINDELFailureFilterName() {
+        return GATKVCFConstants.VQSR_FAILURE_INDEL;
+    }
 
     public ExtractCohortEngine(final String projectID,
                                final VariantContextWriter vcfWriter,
@@ -92,8 +105,6 @@ public class ExtractCohortEngine {
                                final VariantAnnotatorEngine annotationEngine,
                                final ReferenceDataSource refSource,
                                final Map<Long, String> sampleIdToName,
-                               final String cohortTableName,
-                               final GATKPath cohortAvroFileName,
                                final String vetRangesFQDataSet,
                                final String fqRangesExtractVetTable,
                                final String fqRangesExtractRefTable,
@@ -106,7 +117,6 @@ public class ExtractCohortEngine {
                                final String filterSetSiteTableName,
                                final int localSortMaxRecordsInRam,
                                final boolean printDebugInformation,
-                               final boolean isVQSRClassic,
                                final Double vqScoreSNPThreshold,
                                final Double vqScoreINDELThreshold,
                                final ProgressMeter progressMeter,
@@ -146,7 +156,6 @@ public class ExtractCohortEngine {
         this.fqRangesExtractVetTable = fqRangesExtractVetTable;
         this.fqRangesExtractRefTable = fqRangesExtractRefTable;
 
-        this.cohortAvroFileName = cohortAvroFileName;
         this.vetAvroFileName = vetAvroFileName;
         this.refRangesAvroFileName = refRangesAvroFileName;
 
@@ -161,19 +170,7 @@ public class ExtractCohortEngine {
         this.excludeFilteredSites = excludeFilteredSites;
 
         this.filterSetSiteTableRef = vqScoreFilteringType.equals(ExtractCohort.VQScoreFilteringType.NONE) ? null : new TableReference(filterSetSiteTableName, SchemaUtils.FILTER_SET_SITE_FIELDS);
-        if (isVQSRClassic) {
-            this.filterSetInfoTableRef = vqScoreFilteringType.equals(ExtractCohort.VQScoreFilteringType.NONE) ? null : new TableReference(filterSetInfoTableName, SchemaUtils.YNG_FIELDS);
-            this.vqScoreFieldName = SchemaUtils.VQSLOD;
-            this.alleleSpecificVQSScoreKey = GATKVCFConstants.AS_VQS_LOD_KEY;
-            this.vqScoreSNPFailureFilterName = GATKVCFConstants.VQSR_FAILURE_SNP;
-            this.vqScoreINDELFailureFilterName = GATKVCFConstants.VQSR_FAILURE_INDEL;
-        } else {
-            this.filterSetInfoTableRef = vqScoreFilteringType.equals(ExtractCohort.VQScoreFilteringType.NONE) ? null : new TableReference(filterSetInfoTableName, SchemaUtils.VQSLITE_YNG_FIELDS);
-            this.vqScoreFieldName = SchemaUtils.CALIBRATION_SENSITIVITY;
-            this.alleleSpecificVQSScoreKey = GATKVCFConstants.AS_VQS_SENS_KEY;
-            this.vqScoreSNPFailureFilterName = GATKVCFConstants.VQS_SENS_FAILURE_SNP;
-            this.vqScoreINDELFailureFilterName = GATKVCFConstants.VQS_SENS_FAILURE_INDEL;
-        }
+        this.filterSetInfoTableRef = vqScoreFilteringType.equals(ExtractCohort.VQScoreFilteringType.NONE) ? null : new TableReference(filterSetInfoTableName, getFilterSetInfoTableFields());
 
         this.progressMeter = progressMeter;
 
@@ -187,7 +184,7 @@ public class ExtractCohortEngine {
         this.presortedAvroFiles = presortedAvroFiles;
 
         this.inferredReferenceRecord = new InferredReferenceRecord(inferredReferenceState);
-
+        logger = LogManager.getLogger(ExtractCohortEngine.class);
     }
 
     int getTotalNumberOfVariants() { return totalNumberOfVariants; }
@@ -215,14 +212,14 @@ public class ExtractCohortEngine {
         if (!noVQScoreFilteringRequested) {
             // ensure vqScore filters (vqsLod or Sensitivity) are defined. this really shouldn't ever happen, said the engineer.
             if (vqScoreSNPThreshold == null || vqScoreINDELThreshold == null) {
-                throw new UserException(vqScoreFieldName + "filtering thresholds for SNPs and INDELs must be defined.");
+                throw new UserException(getVQScoreFieldName() + "filtering thresholds for SNPs and INDELs must be defined.");
             }
 
             // get filter info (vqslod/sensitivity & yng values)
             try (StorageAPIAvroReader reader = new StorageAPIAvroReader(filterSetInfoTableRef, rowRestrictionWithFilterSetName, projectID)) {
 
                 for ( final GenericRecord queryRow : reader ) {
-                    final ExtractCohortFilterRecord filterRow = new ExtractCohortFilterRecord( queryRow, vqScoreFieldName );
+                    final ExtractCohortFilterRecord filterRow = new ExtractCohortFilterRecord( queryRow, getVQScoreFieldName() );
 
                     final long location = filterRow.getLocation();
                     final Double vqsScore = filterRow.getVqScore();
@@ -601,7 +598,7 @@ public class ExtractCohortEngine {
 
         final VariantContextBuilder builder = new VariantContextBuilder(mergedVC);
 
-        builder.attribute(alleleSpecificVQSScoreKey, relevantVQScoreMap.values().stream().map(val -> val.equals(Double.NaN) ? VCFConstants.EMPTY_INFO_FIELD : val.toString()).collect(Collectors.toList()));
+        builder.attribute(getAlleleSpecificVQSScoreKey(), relevantVQScoreMap.values().stream().map(val -> val.equals(Double.NaN) ? VCFConstants.EMPTY_INFO_FIELD : val.toString()).collect(Collectors.toList()));
         builder.attribute(GATKVCFConstants.AS_YNG_STATUS_KEY, new ArrayList<>(relevantYngMap.values()));
 
         if (vqScoreFilteringType.equals(ExtractCohort.VQScoreFilteringType.SITES)) { // Note that these filters are not used with Genotype VQSLOD/Sensitivity Filtering
@@ -620,13 +617,13 @@ public class ExtractCohortEngine {
                             .filter(entry -> entry.getKey().length() == refLength)
                             .map(Map.Entry::getValue)
                             .collect(Collectors.toList()), vqScoreSNPThreshold)) {
-                        builder.filter(this.vqScoreSNPFailureFilterName);
+                        builder.filter(getVqScoreSNPFailureFilterName());
                     }
                     if (isFailingSite(relevantVQScoreMap.entrySet().stream()
                             .filter(entry -> entry.getKey().length() != refLength)
                             .map(Map.Entry::getValue)
                             .collect(Collectors.toList()), vqScoreINDELThreshold)) {
-                        builder.filter(this.vqScoreSNPFailureFilterName);
+                        builder.filter(getVqScoreINDELFailureFilterName());
                     }
                 } else {
                     // per-conversation with Laura, if there is no information we let the site pass (ie no data does not imply failure)
@@ -639,7 +636,7 @@ public class ExtractCohortEngine {
         return filteredVC;
     }
 
-    protected boolean isFailingSite(final List<Double> vqScoreList, final Double vqScoreThreshold) {
+    boolean isFailingSite(final List<Double> vqScoreList, final Double vqScoreThreshold) {
         Optional<Double> maxVal = vqScoreList.stream()
                 .filter(d -> !(d.isNaN()||d.isInfinite()))
                 .max(Double::compareTo);
@@ -779,12 +776,12 @@ public class ExtractCohortEngine {
                 } else {
                     if (isFailingGenotype(nonRefAlleles.stream().filter(a -> a.length() == ref.length()).collect(Collectors.toList()),
                             remappedVQScoreMap, vqScoreSNPThreshold)) {
-                        genotypeBuilder.filter(this.vqScoreSNPFailureFilterName);
+                        genotypeBuilder.filter(getVqScoreSNPFailureFilterName());
                     }
 
                     if (isFailingGenotype(nonRefAlleles.stream().filter(a -> a.length() != ref.length()).collect(Collectors.toList()),
                             remappedVQScoreMap, vqScoreINDELThreshold)) {
-                        genotypeBuilder.filter(this.vqScoreINDELFailureFilterName);
+                        genotypeBuilder.filter(getVqScoreINDELFailureFilterName());
                     }
                 }
             }
@@ -815,7 +812,7 @@ public class ExtractCohortEngine {
         return builder.make();
     }
 
-    private boolean isFailingGenotype(final List<Allele> nonRefAlleles,
+    boolean isFailingGenotype(final List<Allele> nonRefAlleles,
                                       final LinkedHashMap<Allele, Double> remappedVQScoreMap,
                                       final Double vqScoreThreshold) {
         // get the max (best) vq score (vqslod/sensitivity) for all non-Yay sites, and apply the filter

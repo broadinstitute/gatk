@@ -55,22 +55,6 @@ public class ExtractCohort extends ExtractTool {
     private String tranchesTableName = null;
 
     @Argument(
-            fullName = "cohort-extract-table",
-            doc = "Fully qualified name of the table where the cohort data exists (already subsetted)",
-            mutex = {"cohort-avro-file-name"},
-            optional = true
-    )
-    private String cohortTable = null;
-
-    @Argument(
-            fullName = "cohort-avro-file-name",
-            doc = "Path of the cohort avro file",
-            mutex = {"cohort-extract-table"},
-            optional = true
-    )
-    private GATKPath cohortAvroFileName = null;
-
-    @Argument(
             fullName = "vet-ranges-fq-dataset",
             doc = "Fully qualified name for the dataset (<project>.<dataset>) that contains the VET and REF_RANGES data for extract",
             mutex = {"cohort-extract-table"},
@@ -393,38 +377,66 @@ public class ExtractCohort extends ExtractTool {
                 "if no sample file (--sample-file) is provided.");
         }
 
-        engine = new ExtractCohortEngine(
-                projectID,
-                vcfWriter,
-                header,
-                annotationEngine,
-                reference,
-                sampleIdToName,
-                cohortTable,
-                cohortAvroFileName,
-                vetRangesFQDataSet,
-                fqRangesExtractVetTable,
-                fqRangesExtractRefTable,
-                vetAvroFileName,
-                refRangesAvroFileName,
-                traversalIntervals,
-                minLocation,
-                maxLocation,
-                filterSetInfoTableName,
-                filterSetSiteTableName,
-                localSortMaxRecordsInRam,
-                printDebugInformation,
-                isVQSRClassic,
-                isVQSRClassic ? vqsLodSNPThreshold : truthSensitivitySNPThreshold,
-                isVQSRClassic ? vqsLodINDELThreshold : truthSensitivityINDELThreshold,
-                progressMeter,
-                filterSetName,
-                emitPLs,
-                emitADs,
-                vqScoreFilteringType,
-                excludeFilteredSites,
-                inferredReferenceState,
-                presortedAvroFiles);
+        engine = isVQSRClassic ?
+                new ExtractCohortEngine(
+                    projectID,
+                    vcfWriter,
+                    header,
+                    annotationEngine,
+                    reference,
+                    sampleIdToName,
+                    vetRangesFQDataSet,
+                    fqRangesExtractVetTable,
+                    fqRangesExtractRefTable,
+                    vetAvroFileName,
+                    refRangesAvroFileName,
+                    traversalIntervals,
+                    minLocation,
+                    maxLocation,
+                    filterSetInfoTableName,
+                    filterSetSiteTableName,
+                    localSortMaxRecordsInRam,
+                    printDebugInformation,
+                    vqsLodSNPThreshold,
+                    vqsLodINDELThreshold,
+                    progressMeter,
+                    filterSetName,
+                    emitPLs,
+                    emitADs,
+                    vqScoreFilteringType,
+                    excludeFilteredSites,
+                    inferredReferenceState,
+                    presortedAvroFiles)
+                :
+                new ExtractCohortLiteEngine(
+                        projectID,
+                        vcfWriter,
+                        header,
+                        annotationEngine,
+                        reference,
+                        sampleIdToName,
+                        vetRangesFQDataSet,
+                        fqRangesExtractVetTable,
+                        fqRangesExtractRefTable,
+                        vetAvroFileName,
+                        refRangesAvroFileName,
+                        traversalIntervals,
+                        minLocation,
+                        maxLocation,
+                        filterSetInfoTableName,
+                        filterSetSiteTableName,
+                        localSortMaxRecordsInRam,
+                        printDebugInformation,
+                        truthSensitivitySNPThreshold,
+                        truthSensitivityINDELThreshold,
+                        progressMeter,
+                        filterSetName,
+                        emitPLs,
+                        emitADs,
+                        vqScoreFilteringType,
+                        excludeFilteredSites,
+                        inferredReferenceState,
+                        presortedAvroFiles);
 
         vcfWriter.writeHeader(header);
     }

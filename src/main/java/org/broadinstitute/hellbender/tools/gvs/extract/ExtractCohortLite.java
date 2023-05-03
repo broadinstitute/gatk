@@ -45,22 +45,6 @@ public class ExtractCohortLite extends ExtractTool {
     private String filterSetSiteTableName = null;
 
     @Argument(
-            fullName = "cohort-extract-table",
-            doc = "Fully qualified name of the table where the cohort data exists (already subsetted)",
-            mutex = {"cohort-avro-file-name"},
-            optional = true
-    )
-    private String cohortTable = null;
-
-    @Argument(
-            fullName = "cohort-avro-file-name",
-            doc = "Path of the cohort avro file",
-            mutex = {"cohort-extract-table"},
-            optional = true
-    )
-    private GATKPath cohortAvroFileName = null;
-
-    @Argument(
             fullName = "vet-ranges-fq-dataset",
             doc = "Fully qualified name for the dataset (<project>.<dataset>) that contains the VET and REF_RANGES data for extract",
             mutex = {"cohort-extract-table"},
@@ -352,8 +336,6 @@ public class ExtractCohortLite extends ExtractTool {
                 annotationEngine,
                 reference,
                 sampleIdToName,
-                cohortTable,
-                cohortAvroFileName,
                 vetRangesFQDataSet,
                 fqRangesExtractVetTable,
                 fqRangesExtractRefTable,
@@ -366,7 +348,6 @@ public class ExtractCohortLite extends ExtractTool {
                 filterSetSiteTableName,
                 localSortMaxRecordsInRam,
                 printDebugInformation,
-                isVQSRClassic,
                 truthSensitivitySNPThreshold,
                 truthSensitivityINDELThreshold,
                 progressMeter,

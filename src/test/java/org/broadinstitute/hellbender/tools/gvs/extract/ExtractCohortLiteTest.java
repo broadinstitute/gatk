@@ -53,6 +53,7 @@ public class ExtractCohortLiteTest extends CommandLineProgramTest {
 
     final ArgumentsBuilder args = new ArgumentsBuilder();
     args
+        .add("use-vqsr-classic-scoring", false)
         .add("ref-version", 38)
         .add("R", hg38Reference)
         .add("O", outputVCF.getAbsolutePath())
@@ -70,6 +71,7 @@ public class ExtractCohortLiteTest extends CommandLineProgramTest {
   public void testThrowFilterError() throws Exception {
     final ArgumentsBuilder args = new ArgumentsBuilder();
     args
+        .add("use-vqsr-classic-scoring", false)
         .add("ref-version", 38)
         .add("R", hg38Reference)
         .add("O", "anything")
@@ -87,6 +89,7 @@ public class ExtractCohortLiteTest extends CommandLineProgramTest {
   public void testNoFilteringThresholdsError() throws Exception {
     final ArgumentsBuilder args = new ArgumentsBuilder();
     args
+        .add("use-vqsr-classic-scoring", false)
         .add("ref-version", 38)
         .add("R", hg38Reference)
         .add("O", "anything")
@@ -105,6 +108,7 @@ public class ExtractCohortLiteTest extends CommandLineProgramTest {
     final ArgumentsBuilder args = new ArgumentsBuilder();
     // No filterSetInfoTableName included, so should throw a user error with the performSiteSpecificVQSLODFiltering flag
     args
+        .add("use-vqsr-classic-scoring", false)
         .add("ref-version", 38)
         .add("R", hg38Reference)
         .add("O", "anything")
