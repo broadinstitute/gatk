@@ -40,18 +40,18 @@ workflow GvsBulkIngestGenomes {
 
     call GetWorkspaceId
 
-    #call GetWorkspaceName {
-    #    input:
-    #        workspace_id = GetWorkspaceId.workspace_id,
-    #        workspace_bucket = GetWorkspaceId.workspace_bucket,
-    #        project_id = terra_project_id
-    #}
+    call GetWorkspaceName {
+        input:
+            workspace_id = GetWorkspaceId.workspace_id,
+            workspace_bucket = GetWorkspaceId.workspace_bucket,
+            project_id = terra_project_id
+    }
 
     call GetColumnNames { ## TODO should we even run this at all if we have values for all 4?
         input:
             workspace_id = GetWorkspaceId.workspace_id,
-            workspace_name = "GVS Quickstart v3 cremer", ## TODO hard-coding for testing only --- GetWorkspaceName.workspace_name,
-            workspace_namespace = "gvs-dev", ## TODO hard-coding for testing only --- GetWorkspaceName.workspace_name,
+            workspace_name = GetWorkspaceName.workspace_name,
+            workspace_namespace = GetWorkspaceName.workspace_namespace,
             samples_table_name = samples_table_name,
             sample_id_column_name = sample_id_column_name,
             vcf_files_column_name = vcf_files_column_name,
@@ -79,7 +79,7 @@ workflow GvsBulkIngestGenomes {
 
             gsutil cp gs://fc-d5e319d4-b044-4376-afde-22ef0afc4088/get_columns_for_import.py  get_columns_for_import.py
             python get_columns_for_import.py --workspace_id ~{workspace_id}
-            
+
             ## set some default vals
             # String samples_table_name = "sample"
             # String sample_id_column_name = "sample_id"
@@ -118,10 +118,10 @@ workflow GvsBulkIngestGenomes {
             export GOOGLE_PROJECT='~{project_id}'
             export WORKSPACE_BUCKET='~{workspace_bucket}'
 
-            gsutil cp gs://fc-d5e319d4-b044-4376-afde-22ef0afc4088/get_columns_for_import.py  get_columns_for_import.py
+            gsutil cp gs://fc-d5e319d4-b044-4376-afde-22ef0afc4088/get_workspace_name_for_import.py  get_workspace_name_for_import.py
 
             # python3 /app/get_columns_for_import.py \
-            python3 get_columns_for_import.py \
+            python3 get_workspace_name_for_import.py \
             --workspace_id ~{workspace_id} \
             --workspace_name_output ~{workspace_name_output} \
             --workspace_namespace_output ~{workspace_namespace_output} \
