@@ -7,39 +7,39 @@ usage() {
   exit 1
 }
 
-VALID_ARGS=$(getopt --long group:,server:,database:,account:,container:,sas:,password: -- "$@")
+VALID_ARGS=$(getopt --options g:s:d:a:c:t:p: --long group:,server:,database:,account:,container:,sas-token:,password: -- "$@")
 if [[ $? -ne 0 ]]; then
     usage
 fi
 
 eval set -- "$VALID_ARGS"
-while [ : ]; do
+while true ; do
   case "$1" in
-    --group)
+    -g|--group)
       RESOURCE_GROUP="${OPTARG}"
       shift 2
       ;;
-    --server)
+    -s|--server)
       SQL_SERVER="${OPTARG}"
       shift 2
       ;;
-    --database)
+    -d|--database)
       SQL_DATABASE="${OPTARG}"
       shift 2
       ;;
-    --account)
+    -a|--account)
       STORAGE_ACCOUNT_NAME="${OPTARG}"
       shift 2
       ;;
-    --container)
+    -c|--container)
       STORAGE_CONTAINER_NAME="${OPTARG}"
       shift 2
       ;;
-    --sas)
+    -t|--sas-token)
       CSV_CONTAINER_SAS_TOKEN="${OPTARG}"
       shift 2
       ;;
-    --password)
+    -p|--password)
       MASTER_KEY_PASSWORD="${OPTARG}"
       shift 2
       ;;
