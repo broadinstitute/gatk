@@ -7,7 +7,7 @@ usage() {
   exit 1
 }
 
-VALID_ARGS=$(getopt --long server:,database:,account:,container:,sas:,password: -- "$@")
+VALID_ARGS=$(getopt --long group:,server:,database:,account:,container:,sas:,password: -- "$@")
 if [[ $? -ne 0 ]]; then
     usage
 fi
