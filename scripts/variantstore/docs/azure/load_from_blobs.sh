@@ -4,6 +4,7 @@ set -o errexit -o nounset -o pipefail -o xtrace
 
 usage() {
   echo "Usage: $(basename "$0") --group <Resource group name> --server <SQL Server> --database <SQL Database> --account <Storage account name> --container <Storage container name> --sas <Storage container SAS token> --password <Master key password>" 1>&2
+  echo "All parameters are mandatory." 1>&2
   exit 1
 }
 
@@ -11,6 +12,8 @@ VALID_ARGS=$(getopt --options g:s:d:a:c:t:p: --long group:,server:,database:,acc
 if [[ $? -ne 0 ]]; then
     usage
 fi
+
+unset -v RESOURCE_GROUP SQL_SERVER SQL_DATABASE STORAGE_ACCOUNT_NAME STORAGE_CONTAINER_NAME CSV_CONTAINER_SAS_TOKEN MASTER_KEY_PASSWORD
 
 eval set -- "$VALID_ARGS"
 while true ; do
@@ -49,6 +52,12 @@ while true ; do
   esac
 done
 
+if [[ -z "${RESOURCE_GROUP}" ]] || [[ -z "${SQL_SERVER}" ]] || [[ -z "${SQL_DATABASE}" ]] || \
+   [[ -z "${STORAGE_ACCOUNT_NAME}" ]] || [[ -z "${STORAGE_CONTAINER_NAME}" ]] || \
+   [[ -z "${CSV_CONTAINER_SAS_TOKEN}" ]] || [[ -z "${MASTER_KEY_PASSWORD}" ]]
+then
+  usage
+fi
 
 az group create --location eastus --resource-group "${RESOURCE_GROUP}"
 
