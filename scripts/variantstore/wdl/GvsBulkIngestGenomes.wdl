@@ -50,7 +50,8 @@ workflow GvsBulkIngestGenomes {
     call GetColumnNames { ## TODO should we even run this at all if we have values for all 4?
         input:
             workspace_id = GetWorkspaceId.workspace_id,
-            workspace_name = "gvs-dev", ## TODO hard-coding for testing only --- GetWorkspaceName.workspace_name,
+            workspace_name = "GVS Quickstart v3 cremer", ## TODO hard-coding for testing only --- GetWorkspaceName.workspace_name,
+            workspace_namespace = "gvs-dev", ## TODO hard-coding for testing only --- GetWorkspaceName.workspace_name,
             samples_table_name = samples_table_name,
             sample_id_column_name = sample_id_column_name,
             vcf_files_column_name = vcf_files_column_name,
@@ -62,6 +63,7 @@ workflow GvsBulkIngestGenomes {
         input {
             String workspace_id
             String workspace_name
+            String workspace_namespace
             String? samples_table_name
             String? sample_id_column_name
             String? vcf_files_column_name
@@ -70,12 +72,14 @@ workflow GvsBulkIngestGenomes {
         command <<<
             # Get a list of all columns in the table
 
-            # update pip?!?-- is there something wrong with this docker image?
+            export WORKSPACE_NAMESPACE='~{workspace_namespace}'
+            export WORKSPACE_NAME='~{workspace_name}'
 
             # First we will check for the default named columns and make sure that each row has a value
 
             gsutil cp gs://fc-d5e319d4-b044-4376-afde-22ef0afc4088/get_columns_for_import.py  get_columns_for_import.py
-            python get_columns_for_import.py --workspace_id ~{workspace_id} --workspace_name ~{workspace_name}
+            python get_columns_for_import.py --workspace_id ~{workspace_id}
+            
             ## set some default vals
             # String samples_table_name = "sample"
             # String sample_id_column_name = "sample_id"
@@ -103,6 +107,11 @@ workflow GvsBulkIngestGenomes {
             String workspace_bucket
             String project_id
         }
+
+        String workspace_name_output = "workspace_name.txt"
+        String workspace_namespace_output = "workspace_namespace.txt"
+        String google_project_id_output = "google_project_id.txt"
+
         command <<<
             # Hit rawls with the workspace ID <-- this is the optimized version that we need to figure out the auth on
 
@@ -110,7 +119,12 @@ workflow GvsBulkIngestGenomes {
             export WORKSPACE_BUCKET='~{workspace_bucket}'
 
             gsutil cp gs://fc-d5e319d4-b044-4376-afde-22ef0afc4088/get_columns_for_import.py  get_columns_for_import.py
-            python get_columns_for_import.py --workspace_id ~{workspace_id} > workspace_name.txt
+
+            # python3 /app/get_columns_for_import.py \
+            python3 get_columns_for_import.py \
+            --workspace_id ~{workspace_id} \
+            --workspace_name_output ~{workspace_name_output} \
+            --workspace_namespace_output ~{workspace_namespace_output} \
 
         >>>
         runtime {
@@ -121,9 +135,9 @@ workflow GvsBulkIngestGenomes {
         }
 
     output {
-        String workspace_name = read_string("workspace_name.txt")
-        String workspace_namespace = read_string("workspace_name.txt")
-        String google_project_id = read_string("workspace_name.txt")
+        String workspace_name = read_string(workspace_name_output)
+        String workspace_namespace = read_string(workspace_namespace_output)
+        # String google_project_id = read_string("google_project_id.txt")
     }
 }
 
