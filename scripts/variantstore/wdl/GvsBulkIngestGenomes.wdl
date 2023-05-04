@@ -9,7 +9,7 @@ import "GvsImportGenomes.wdl" as ImportGenomes
 workflow GvsBulkIngestGenomes {
     input {
         # Begin GvsPrepareBulkImport
-        String terra_project_id # TODO isn't this just the project namespace?!?!??!
+        String terra_project_id # TODO isn't this also the google project id? ist hat true?
         String? samples_table_name
         String? sample_id_column_name
         String? vcf_files_column_name
@@ -69,6 +69,23 @@ workflow GvsBulkIngestGenomes {
             String? vcf_files_column_name
             String? vcf_index_files_column_name
         }
+        ## set some default vals
+        # String samples_table_name = "sample"
+        # String sample_id_column_name = "sample_id"
+
+        String samples_table = if (defined(samples_table_name)) then select_first([samples_table_name]) else "sample"
+        String sample_id_col = if (defined(sample_id_column_name)) then select_first([sample_id_column_name]) else "sample_id"
+        # String vcf_files_col = if (defined(vcf_files_column_name)) then select_first([vcf_files_column_name]) else "figure it out!"
+        # String vcf_index_files_col = if (defined(vcf_index_files_column_name)) then select_first([vcf_index_files_column_name]) else "figure it out!"
+
+
+        #sample_id_column_name, samples_table_name, vcf_files_column_name, vcf_files_column_name, vcf_files_column_name_output, vcf_index_files_column_name, vcf_index_files_column_name, vcf_index_files_column_name_output, workspace_id, workspace_name, workspace_namespace",
+
+        ## set some output files
+        String vcf_files_column_name_output = "vcf_files_column_name.txt"
+        String vcf_index_files_column_name_output = "vcf_index_files_column_name.txt"
+
+
         command <<<
             # Get a list of all columns in the table
 
@@ -80,11 +97,12 @@ workflow GvsBulkIngestGenomes {
             gsutil cp gs://fc-d5e319d4-b044-4376-afde-22ef0afc4088/get_columns_for_import.py  get_columns_for_import.py
             python get_columns_for_import.py --workspace_id ~{workspace_id}
 
-            ## set some default vals
-            # String samples_table_name = "sample"
-            # String sample_id_column_name = "sample_id"
-            # String vcf_files_column_name = "hg38_reblocked_v2_vcf"
-            # String vcf_index_files_column_name = "hg38_reblocked_v2_vcf_index"
+            # python3 /app/get_columns_for_import.py \
+            python3 get_columns_for_import.py \
+            --workspace_id ~{workspace_id} \
+            --vcf_output ~{vcf_files_column_name_output} \
+            --vcf_index_output ~{vcf_index_files_column_name_output} \
+
 
         >>>
 
@@ -96,7 +114,11 @@ workflow GvsBulkIngestGenomes {
         }
 
         output {
-            Array[String] bag_of_column_names = []
+            # Array[String] bag_of_column_names = []
+            String samples_table_name = "sample" ## TODO fix these top two
+            String sample_id_col_name = "sample_id"
+            String vcf_files_column_name = read_string(vcf_files_column_name_output)
+            String vcf_index_files_column_name = read_string(vcf_index_files_column_name_output)
         }
     }
 
