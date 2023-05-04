@@ -3,38 +3,58 @@ PS4='\D{+%F %T} \w $ '
 set -o errexit -o nounset -o pipefail -o xtrace
 
 usage() {
-  echo "Usage: $(basename "$0") -s <SQL Server> -d <SQL Database> -a <Storage account name> -c <Storage container name> -t <Storage container SAS token> -p <Master key password>" 1>&2
+  echo "Usage: $(basename "$0") --group <Resource group name> --server <SQL Server> --database <SQL Database> --account <Storage account name> --container <Storage container name> --sas <Storage container SAS token> --password <Master key password>" 1>&2
   exit 1
 }
 
-while getopts 's:d:a:c:t:p:' opt; do
-  case $opt in
-    s)
+VALID_ARGS=$(getopt --long server:,database:,account:,container:,sas:,password: -- "$@")
+if [[ $? -ne 0 ]]; then
+    usage
+fi
+
+eval set -- "$VALID_ARGS"
+while [ : ]; do
+  case "$1" in
+    --group)
+      RESOURCE_GROUP="${OPTARG}"
+      shift 2
+      ;;
+    --server)
       SQL_SERVER="${OPTARG}"
+      shift 2
       ;;
-    d)
+    --database)
       SQL_DATABASE="${OPTARG}"
+      shift 2
       ;;
-    a)
+    --account)
       STORAGE_ACCOUNT_NAME="${OPTARG}"
+      shift 2
       ;;
-    c)
+    --container)
       STORAGE_CONTAINER_NAME="${OPTARG}"
+      shift 2
       ;;
-    t)
+    --sas)
       CSV_CONTAINER_SAS_TOKEN="${OPTARG}"
+      shift 2
       ;;
-    p)
+    --password)
       MASTER_KEY_PASSWORD="${OPTARG}"
+      shift 2
       ;;
-    *)
-      usage
+    --) shift;
+      break
       ;;
   esac
 done
 
+
+az group create --location eastus --resource-group "${RESOURCE_GROUP}"
+
 # Create the server (yes serverless Azure SQL Database requires a server).
 az sql server create \
+    --resource-group "${RESOURCE_GROUP}" \
     --enable-ad-only-auth \
     --enable-public-network \
     --location eastus \
@@ -47,6 +67,7 @@ az sql server create \
 # https://dev.to/0xbf/get-your-public-ip-address-from-command-line-57l4
 EXTERNAL_IP="$(curl --silent ifconfig.me)"
 az sql server firewall-rule create \
+    --resource-group "${RESOURCE_GROUP}" \
     --server "${SQL_SERVER}" \
     --name AllowYourIp \
     --start-ip-address "${EXTERNAL_IP}" \
@@ -54,6 +75,8 @@ az sql server firewall-rule create \
 
 # Note the database is specified as 'Serverless', not the server.
 az sql db create \
+    --resource-group "${RESOURCE_GROUP}" \
+    --server "${SQL_SERVER}" \
     --name "${SQL_DATABASE}" \
     -e GeneralPurpose \
     -f Gen5 \
