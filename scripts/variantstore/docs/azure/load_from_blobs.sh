@@ -1,3 +1,6 @@
+# Prepend date, time and pwd to xtrace log entries.
+PS4='\D{+%F %T} \w $ '
+set -o errexit -o nounset -o pipefail -o xtrace
 
 usage() {
   echo "Usage: $(basename "$0") -s <SQL Server> -d <SQL Database> -a <Storage account name> -c <Storage container name> -t <Storage container SAS token> -p <Master key password>" 1>&2
@@ -29,6 +32,35 @@ while getopts 's:d:a:c:t:p:' opt; do
       ;;
   esac
 done
+
+# Create the server (yes serverless Azure SQL Database requires a server).
+az sql server create \
+    --enable-ad-only-auth \
+    --enable-public-network \
+    --location eastus \
+    --external-admin-principal-type User \
+    --external-admin-sid "$(az ad signed-in-user show | jq -r .id)" \
+    --external-admin-name "$(az ad signed-in-user show | jq -r .mail)" \
+    --name "${SQL_SERVER}"
+
+# Get the external IP of this machine and create a firewall rule that allows it to connect to the Azure SQL Database.
+# https://dev.to/0xbf/get-your-public-ip-address-from-command-line-57l4
+EXTERNAL_IP="$(curl --silent ifconfig.me)"
+az sql server firewall-rule create \
+    --server "${SQL_SERVER}" \
+    --name AllowYourIp \
+    --start-ip-address "${EXTERNAL_IP}" \
+    --end-ip-address "${EXTERNAL_IP}"
+
+# Note the database is specified as 'Serverless', not the server.
+az sql db create \
+    --name "${SQL_DATABASE}" \
+    -e GeneralPurpose \
+    -f Gen5 \
+    -c 2 \
+    --auto-pause-delay 10 \
+    --compute-model Serverless
+
 
 LOADER_SCRIPT="loader_script.sql"
 
