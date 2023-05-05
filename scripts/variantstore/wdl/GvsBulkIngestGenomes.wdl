@@ -57,6 +57,26 @@ workflow GvsBulkIngestGenomes {
             vcf_files_column_name = vcf_files_column_name,
             vcf_index_files_column_name = vcf_index_files_column_name,
     }
+
+    call PrepareBulkImport.GvsPrepareBulkImport as PrepareBulkImport {
+        input:
+            promject_id = terra_project_id,
+            workspace_name = GetWorkspaceName.workspace_name,
+            workspace_namespace = GetWorkspaceName.workspace_namespace,
+            workspace_bucket = GetWorkspaceId.workspace_bucket,
+            samples_table_name = GetColumnNames.samples_table_name,
+            sample_id_column_name = GetColumnNames.sample_id_col_name,
+            vcf_files_column_name = GetColumnNames.vcf_files_column_name,
+            vcf_index_files_column_name = GetColumnNames.vcf_index_files_column_name
+    }
+
+    call AssignIds.GvsAssignIds as AssignIds {
+        input:
+            dataset_name = dataset_name,
+            project_id = bq_project_id,
+            external_sample_names = read_lines(PrepareBulkImport.sampleFOFN),
+            samples_are_controls = false
+    }
 }
 
     task GetColumnNames {

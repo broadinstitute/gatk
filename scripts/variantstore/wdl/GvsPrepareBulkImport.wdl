@@ -4,7 +4,7 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsPrepareBulkImport {
     input {
-        String google_project_id
+        String promject_id
         String workspace_name
         String workspace_namespace
         String workspace_bucket
@@ -16,7 +16,7 @@ workflow GvsPrepareBulkImport {
 
     call GenerateFOFNsFromDataTables {
         input:
-            google_project_id = google_project_id,
+            google_project_id = promject_id,
             workspace_name = workspace_name,
             workspace_namespace = workspace_namespace,
             workspace_bucket  = workspace_bucket,
@@ -47,6 +47,7 @@ task GenerateFOFNsFromDataTables {
         String? vcf_index_files_column_name
     }
 
+    ## TODO I dont love that we are hardcoding them here and in the python--they need to be params!
     String sample_names_file_name = "sample_names.txt"
     String vcf_files_name = "vcf_files.txt"
     String vcf_index_files_name = "vcf_index_files.txt"
