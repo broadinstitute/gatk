@@ -2,51 +2,29 @@ import json
 import requests
 import argparse
 
-from google.cloud import gs
-
 from terra_notebook_utils import table
-from terra_notebook_utils import terra_auth
-from terra_notebook_utils import workspace
 import re
-
-# make a default, but allow a user to overwrite it
-
-
-def get_workspace_name(workspace_id):
-    workspace_name=workspace.get_workspace().get('workspace').get('namespace')
-    #token = terra_auth.get_terra_access_token()
-    # grab the workspace information from rawls
-    #rawls = 'https://rawls.dsde-prod.broadinstitute.org/api/workspaces/id/{}?fields=workspace.namespace,workspace.googleProject'.format(workspace_id)
-    #head = {'Authorization': 'token {}'.format(token)}
-    #response = requests.get(rawls, headers=head)
-    # then extract the googleProject info
-    #print(response)
-    #proj_id=response.workspace.googleProject
-    #workspace_name=response.workspace.namespace
-    print(workspace_name)
-    return workspace_name
-
 
 def get_sample_sets(workspace_namespace, workspace_name):
     response = requests.get('https://rawls.dsde-prod.broadinstitute.org/api/workspaces/{workspace_namespace}/{workspace_name}/entities?useCache=true')
     sample_sets = response.sample_set
     return sample_sets
 
-
+# do we want to start and just check for defaults first?
 #def get_column_names(workspace_id, workspace_name):
 
 
-def get_column_values(workspace_id, workspace_name):
+def get_column_values(workspace_id, vcf_output, vcf_index_output):
     # We need to identify 3 things
     # 1. Sample id field
     # 2. vcf column name
-    # 3. vcf index column name
+        # 3. vcf index column name
 
-    # We only sample a certain number of rows for each column
+    # We only sample a certain number of columns
     numSamples = 50
     columnSamples = {}
 
-    table_name = "sample" ## TODO is this an assumption that we are making? If the name of the table is sample, then wont the id be sample_id unless override?
+    table_name = "sample"
     # list_rows is a generator and it uses paging behind the scenes to make
     # this call much more efficient
     for row in table.list_rows(table_name):
@@ -134,13 +112,88 @@ def get_column_values(workspace_id, workspace_name):
             path_ends_in_vcf_gz_tbi.add(key)
 
 
+    final_vcf_column = ""
+    final_vcf_index_column = ""
 
+    found_vcf_column = False
+
+    # this is for returning debug info to the user, showing the multiple columns that matched?
+    matching_vcf_columns = set()
+
+    # super simple heuristic: Are there columns that end in vcf?
+    for col in ends_in_vcf:
+        # ...and have an analogue that ends in vcf_index?
+        index_column = f"{col}_index"
+        if index_column in ends_in_vcf_index:
+            # woohoo!
+            final_vcf_column = col
+            final_vcf_index_column = index_column
+            found_vcf_column = True
+
+            matching_vcf_columns.add(col)
+
+    # check the contents of the columns if we haven't found a single one yet
+    if len(matching_vcf_columns) > 1:
+        # reset instead of creating yet another boolean to track this
+        found_vcf_column = False
+
+        # We have multiple potential columns to go with.  Two ways to trim them down
+        # 1: See if any specifically have "reblocked" in their names.  If that gets us down to 1, go with it
+        also_contains_reblocked = matching_vcf_columns.intersect(contains_reblocked)
+        if len(also_contains_reblocked) == 1:
+            # They likely just had a raw AND reblocked columns in the data. Pick the reblocked one
+            found_vcf_column = True
+            final_vcf_column = also_contains_reblocked.pop()
+            final_vcf_index_column = f"{final_vcf_column}_index"
+
+    content_matching_vcfs = set()
+    # We STILL weren't able to uniquely determine the correct columns for the vcf and index files going by column names?
+    if not found_vcf_column:
+        # Check the contents of the columns: the duck algorithm.  If its contents LOOK like like vcfs and indexes, go from there
+        for col in path_ends_in_vcf_gz:
+            # ...and has an analogue that looks like an index file?
+            index_column = f"{column}_index"
+            # is this the correct logic?  Or do we just want to look for ANY singular column that has contents that
+            # look liks a vcf and ANY other singular column with contents that look like an index file?  Stick with
+            # enforcing a naming convention for now...
+            if index_column in path_ends_in_vcf_gz_tbi:
+                # woohoo!
+                final_vcf_column = column
+                final_vcf_index_column = index_column
+                found_vcf_column = True
+
+                content_matching_vcfs.add(col)
+
+    if len(content_matching_vcfs) > 1:
+        # This means we went through the second loop above and still weren't able to uniquely identify vcf and index columns
+        # Try further heuristics or throw our hands up at this point
+        found_vcf_column = False
+
+
+    if not found_vcf_column:
+        print("Unable to uniquely identify columns for the vcf and vcf index files")
+        if len(matching_vcf_columns) > 1:
+            print(f"Multiple columns that look like the right naming convention: {matching_vcf_columns}")
+        if len(content_matching_vcfs) > 1:
+            print(f"Multiple columns that look like have contents that look like zipped vcfs: {content_matching_vcfs}")
+    else:
+        print("\nDerived values:");
+        print(f"final_vcf_column: {final_vcf_column}")
+        print(f"final_vcf_index_column: {final_vcf_index_column}")
+
+    # debug vomit
+    print("\n\nDebug info:")
     print(f"ends_in_vcf: {ends_in_vcf}")
     print(f"ends_in_vcf_index: {ends_in_vcf_index}")
     print(f"contains_reblocked: {contains_reblocked}")
 
     print(f"path_ends_in_vcf_gz: {path_ends_in_vcf_gz}")
     print(f"path_ends_in_vcf_gz_tbi: {path_ends_in_vcf_gz_tbi}")
+
+
+    with open(vcf_output, "w") as vcf_output, open(vcf_index_output, "w") as vcf_index_output:
+        vcf_output.write(f'{final_vcf_column}\n')
+        vcf_index_output.write(f'{final_vcf_index_column}\n')
 
 
 
@@ -151,6 +204,8 @@ def get_column_values(workspace_id, workspace_name):
     # and has an analogue
 
 
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False,
                                      description='Get workspace information')
@@ -159,8 +214,20 @@ if __name__ == '__main__':
                         help='The ID of your workspace that holds your sample data',
                         required=True)
 
-    #parser.add_argument('--attempts_between_pauses', type=int,
-     #                   help='The number of rows in the db that are processed before we pause', default=500)
+    parser.add_argument('--workspace_name', type=str,
+                        help='The name of your workspace that holds your sample data',
+                        required=False)
+
+    parser.add_argument('--vcf_output', type=str,
+                        help='The location to write the suggested vcf col name',
+                        required=False)
+
+    parser.add_argument('--vcf_index_output', type=str,
+                        help='The location to write the suggested index col name',
+                        required=False)
+
+    parser.add_argument('--attempts_between_pauses', type=int,
+                        help='The number of rows in the db that are processed before we pause', default=500)
 
     args = parser.parse_args()
 
@@ -169,5 +236,4 @@ if __name__ == '__main__':
         attempts_between_pauses = args.attempts_between_pauses
 
 
-    workspace_name = get_workspace_name(args.workspace_id)
-    # get_column_names(args.workspace_id, workspace_name)
+    column_names = get_column_values(args.workspace_id, args.vcf_output, args.vcf_index_output)
