@@ -119,7 +119,6 @@ workflow GvsBulkIngestGenomes {
         String samples_table = if (defined(samples_table_name)) then select_first([samples_table_name]) else samples_table_default_name
         String sample_id_col = if (defined(sample_id_column_name)) then select_first([sample_id_column_name]) else sample_id_column_default_name
 
-
         String vcf_files_col = if (defined(vcf_files_column_name)) then select_first([vcf_files_column_name]) else ""
         String vcf_index_files_col = if (defined(vcf_index_files_column_name)) then select_first([vcf_index_files_column_name]) else ""
 
@@ -155,8 +154,8 @@ workflow GvsBulkIngestGenomes {
 
         output {
             # Array[String] bag_of_column_names = []
-            String samples_table_name = "sample" ## TODO fix these top two
-            String sample_id_col_name = "sample_id"
+            String samples_table_name = samples_table
+            String sample_id_col_name = sample_id_col
             String vcf_files_column_name = read_string(vcf_files_column_name_output)
             String vcf_index_files_column_name = read_string(vcf_index_files_column_name_output)
         }
