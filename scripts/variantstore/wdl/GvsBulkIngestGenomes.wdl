@@ -153,7 +153,6 @@ workflow GvsBulkIngestGenomes {
         }
 
         output {
-            # Array[String] bag_of_column_names = []
             String samples_table_name = samples_table
             String sample_id_col_name = sample_id_col
             String vcf_files_column_name = read_string(vcf_files_column_name_output)
@@ -166,12 +165,10 @@ workflow GvsBulkIngestGenomes {
         input {
             String workspace_id
             String workspace_bucket
-            # String project_id
         }
 
         String workspace_name_output = "workspace_name.txt"
         String workspace_namespace_output = "workspace_namespace.txt"
-        String google_project_id_output = "google_project_id.txt"
 
         command <<<
             # Hit rawls with the workspace ID <-- this is the optimized version that we need to figure out the auth on
@@ -197,7 +194,6 @@ workflow GvsBulkIngestGenomes {
     output {
         String workspace_name = read_string(workspace_name_output)
         String workspace_namespace = read_string(workspace_namespace_output)
-        # String google_project_id = read_string("google_project_id.txt")
     }
 }
 
