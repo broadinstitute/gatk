@@ -74,6 +74,7 @@ final testNGVersion = '7.0.0'
 // and that of Hadoop/Spark (either the one we reference explicitly, or the one
 // provided by dataproc).
 final googleCloudNioDependency = 'com.google.cloud:google-cloud-nio:0.107.0-alpha:shaded'
+final log4j2Version = System.getProperty('log4j2Version', '2.17.1')
 
 final baseJarName = 'gatk'
 final secondaryBaseJarName = 'hellbender'
@@ -276,12 +277,12 @@ dependencies {
     // should we want to)
     compile 'com.google.cloud.bigdataoss:gcs-connector:1.6.3-hadoop2'
 
-    compile 'org.apache.logging.log4j:log4j-api:2.3'
-    compile 'org.apache.logging.log4j:log4j-core:2.3'
+    compile 'org.apache.logging.log4j:log4j-api:' + log4j2Version
+    compile 'org.apache.logging.log4j:log4j-core:' + log4j2Version
     // include the apache commons-logging bridge that matches the log4j version we use so
     // messages that originate with dependencies that use commons-logging (such as jexl)
     // are routed to log4j
-    compile 'org.apache.logging.log4j:log4j-jcl:2.3'
+    compile 'org.apache.logging.log4j:log4j-jcl:' + log4j2Version
 
     compile 'org.apache.commons:commons-lang3:3.5'
     compile 'org.apache.commons:commons-math3:3.5'
