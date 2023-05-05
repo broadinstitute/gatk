@@ -9,7 +9,6 @@ import "GvsImportGenomes.wdl" as ImportGenomes
 workflow GvsBulkIngestGenomes {
     input {
         # Begin GvsPrepareBulkImport
-        String terra_project_id # TODO isn't this also the google project id? ist hat true?
         String? samples_table_name
         String? sample_id_column_name
         String? vcf_files_column_name
@@ -44,7 +43,6 @@ workflow GvsBulkIngestGenomes {
         input:
             workspace_id = GetWorkspaceId.workspace_id,
             workspace_bucket = GetWorkspaceId.workspace_bucket,
-            project_id = terra_project_id
     }
 
     call GetColumnNames { ## TODO should we even run this at all if we have values for all 4?
@@ -60,7 +58,7 @@ workflow GvsBulkIngestGenomes {
 
     call PrepareBulkImport.GvsPrepareBulkImport as PrepareBulkImport {
         input:
-            promject_id = terra_project_id,
+            promject_id = GetWorkspaceName.workspace_namespace,
             workspace_name = GetWorkspaceName.workspace_name,
             workspace_namespace = GetWorkspaceName.workspace_namespace,
             workspace_bucket = GetWorkspaceId.workspace_bucket,
@@ -113,16 +111,18 @@ workflow GvsBulkIngestGenomes {
             String? vcf_index_files_column_name
         }
         ## set some default vals
-        # String samples_table_name = "sample"
-        # String sample_id_column_name = "sample_id"
+        String samples_table_default_name = "sample"
+        String sample_id_column_default_name = "sample_id"
 
-        String samples_table = if (defined(samples_table_name)) then select_first([samples_table_name]) else "sample"
-        String sample_id_col = if (defined(sample_id_column_name)) then select_first([sample_id_column_name]) else "sample_id"
-        # String vcf_files_col = if (defined(vcf_files_column_name)) then select_first([vcf_files_column_name]) else "figure it out!"
-        # String vcf_index_files_col = if (defined(vcf_index_files_column_name)) then select_first([vcf_index_files_column_name]) else "figure it out!"
+        # First we will check for the default named columns and make sure that each row has a value
+
+        String samples_table = if (defined(samples_table_name)) then select_first([samples_table_name]) else samples_table_default_name
+        String sample_id_col = if (defined(sample_id_column_name)) then select_first([sample_id_column_name]) else sample_id_column_default_name
 
 
-        #sample_id_column_name, samples_table_name, vcf_files_column_name, vcf_files_column_name, vcf_files_column_name_output, vcf_index_files_column_name, vcf_index_files_column_name, vcf_index_files_column_name_output, workspace_id, workspace_name, workspace_namespace",
+        String vcf_files_col = if (defined(vcf_files_column_name)) then select_first([vcf_files_column_name]) else ""
+        String vcf_index_files_col = if (defined(vcf_index_files_column_name)) then select_first([vcf_index_files_column_name]) else ""
+
 
         ## set some output files
         String vcf_files_column_name_output = "vcf_files_column_name.txt"
@@ -135,16 +135,13 @@ workflow GvsBulkIngestGenomes {
             export WORKSPACE_NAMESPACE='~{workspace_namespace}'
             export WORKSPACE_NAME='~{workspace_name}'
 
-            # First we will check for the default named columns and make sure that each row has a value
-
             gsutil cp gs://fc-d5e319d4-b044-4376-afde-22ef0afc4088/get_columns_for_import.py  get_columns_for_import.py
-            python get_columns_for_import.py --workspace_id ~{workspace_id}
 
             # python3 /app/get_columns_for_import.py \
             python3 get_columns_for_import.py \
-            --workspace_id ~{workspace_id} \
-            --vcf_output ~{vcf_files_column_name_output} \
-            --vcf_index_output ~{vcf_index_files_column_name_output} \
+              --workspace_id ~{workspace_id} \
+              --vcf_output ~{vcf_files_column_name_output} \
+              --vcf_index_output ~{vcf_index_files_column_name_output} \
 
 
         >>>
@@ -170,7 +167,7 @@ workflow GvsBulkIngestGenomes {
         input {
             String workspace_id
             String workspace_bucket
-            String project_id
+            # String project_id
         }
 
         String workspace_name_output = "workspace_name.txt"
@@ -180,7 +177,6 @@ workflow GvsBulkIngestGenomes {
         command <<<
             # Hit rawls with the workspace ID <-- this is the optimized version that we need to figure out the auth on
 
-            export GOOGLE_PROJECT='~{project_id}'
             export WORKSPACE_BUCKET='~{workspace_bucket}'
 
             gsutil cp gs://fc-d5e319d4-b044-4376-afde-22ef0afc4088/get_workspace_name_for_import.py  get_workspace_name_for_import.py
