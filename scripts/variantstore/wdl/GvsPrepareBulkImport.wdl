@@ -4,7 +4,7 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsPrepareBulkImport {
     input {
-        String promject_id
+        String project_id
         String workspace_name
         String workspace_namespace
         String workspace_bucket
@@ -16,7 +16,7 @@ workflow GvsPrepareBulkImport {
 
     call GenerateFOFNsFromDataTables {
         input:
-            google_project_id = promject_id,
+            google_project_id = project_id,
             workspace_name = workspace_name,
             workspace_namespace = workspace_namespace,
             workspace_bucket  = workspace_bucket,
