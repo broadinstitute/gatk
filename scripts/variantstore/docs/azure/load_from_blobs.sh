@@ -215,7 +215,6 @@ FIN
     done < "${list_file}"
 done
 
-chmod +x "${LOADER_SCRIPT}"
 
 get_db_token() {
     # Fetches a database access token with ~1 hour TTL, ASCII / UTF-8 encoded and newline terminated
