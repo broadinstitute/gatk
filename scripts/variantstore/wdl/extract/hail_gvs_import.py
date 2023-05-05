@@ -22,7 +22,7 @@ import re
 gcs_re = re.compile("^gs://(?P<bucket_name>[^/]+)/(?P<object_prefix>.*)$")
 
 
-def import_gvs(argsfn, vds_path, references_path, temp_path):
+def create_vds(argsfn, vds_path, references_path, temp_path):
     import hail as hl
     import gvs_avros_to_vds
     hl.init(tmp_dir=f'{temp_path}/hail_tmp_general')
@@ -31,10 +31,10 @@ def import_gvs(argsfn, vds_path, references_path, temp_path):
     rg38.add_sequence(f'{references_path}/Homo_sapiens_assembly38.fasta.gz',
                       f'{references_path}/Homo_sapiens_assembly38.fasta.fai')
 
-    ## Note that a full description of the import_gvs function written by Hail for this process can be found here:
+    ## Note that a full description of the create_vds function written by Hail for this process can be found here:
     ## https://github.com/tpoterba/hail/blob/import-gvs/hail/python/hail/methods/impex.py
     ## Commented out parameters are ones where we are comfortable with the default, but want to make them easily accessible to users
-    gvs_avros_to_vds.import_gvs(
+    gvs_avros_to_vds.create_vds(
         vets=argsfn('vets'),
         refs=argsfn('refs'),
         sample_mapping=argsfn('sample_mapping'),
@@ -43,7 +43,7 @@ def import_gvs(argsfn, vds_path, references_path, temp_path):
         vqsr_tranche_data=argsfn('vqsr_tranche_data'),
         reference_genome=rg38,
         final_path=vds_path,
-        tmp_dir=f'{temp_path}/hail_tmp_import_gvs',
+        tmp_dir=f'{temp_path}/hail_tmp_create_vds',
         # truth_sensitivity_snp_threshold: 'float' = 0.997,
         # truth_sensitivity_indel_threshold: 'float' = 0.990,
         # partitions_per_sample=0.35, # check with Hail about how to tune this for your large callset
@@ -55,8 +55,8 @@ def import_gvs(argsfn, vds_path, references_path, temp_path):
 
 def gcs_generate_avro_args(bucket, blob_prefix, key):
     """
-    Generate a list of the Avro arguments for the `hl.import_gvs` invocation for the specified key. The datatype should
-    match the parameters of the `hl.import_gvs` function:
+    Generate a list of the Avro arguments for the `create_vds` invocation for the specified key. The datatype should
+    match these parameters:
 
     * vets (list of lists, one outer list per GVS superpartition of 4000 samples max)
     * refs (list of lists, one outer list per GVS superpartition of 4000 samples max)
@@ -154,7 +154,7 @@ if __name__ == '__main__':
         def args(key):
             return gcs_generate_avro_args(avro_bucket, avro_object_prefix, key)
 
-        import_gvs(args, vds_path, 'gs://hail-common/references', temp_path)
+        create_vds(args, vds_path, 'gs://hail-common/references', temp_path)
 
     elif all(is_not_gcs):
         references_path = args.references_path
@@ -166,6 +166,6 @@ if __name__ == '__main__':
         def args(key):
             return local_generate_avro_args(avro_path, key)
 
-        import_gvs(args, vds_path, references_path, temp_path)
+        create_vds(args, vds_path, references_path, temp_path)
     else:
         raise ValueError("Arguments appear to be some unsavory mix of GCS and local paths, all or nothing please.")

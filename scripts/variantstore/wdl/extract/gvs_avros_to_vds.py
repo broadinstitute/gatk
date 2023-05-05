@@ -25,7 +25,7 @@ from hail.typecheck import typecheck, nullable, oneof, dictof, anytype, sequence
            )
 
 
-def import_gvs(refs: 'List[List[str]]',
+def create_vds(refs: 'List[List[str]]',
                vets: 'List[List[str]]',
                sample_mapping: 'List[str]',
                site_filtering_data: 'List[str]',
@@ -68,7 +68,7 @@ def import_gvs(refs: 'List[List[str]]',
         an empty set for loci with no record in the input site filtering table.
       - `vqsr_filtering_data` -- The VQSR data records information specific to a
         (locus, alternate allele) pair. This data is read in as a dictionary in the row
-        scope of the resulting variant table, where ys keof the dictionary are an alternate
+        scope of the resulting variant table, where keys of the dictionary are an alternate
         allele string, where the dictionary values are the full records from the input VQSR
         filtering table, minus the `ref` and `alt` fields.
       - `vqsr_tranche_data` -- The VQSR tranche data is recorded as an array of records in the
@@ -77,7 +77,7 @@ def import_gvs(refs: 'List[List[str]]',
 
     Execution notes
     ---------------
-    Currently this method executes a three queries per sample block -- one to collect sample IDs,
+    Currently this method executes three queries per sample block -- one to collect sample IDs,
     one to analyze sortedness of the reference table, and one to analyze sortedness of the variant
     table. These three queries are in addition to:
       - 3 queries executed to import the filtering/tranche data
@@ -162,7 +162,7 @@ def import_gvs(refs: 'List[List[str]]',
         mt = mt.annotate_rows(ref_allele=mt.locus.sequence_context())
         return mt
 
-    info('import_gvs: Importing and collecting sample mapping lookup table')
+    info('create_vds: Importing and collecting sample mapping lookup table')
 
     samp = hl.import_avro(sample_mapping)
     sample_mapping_dict = samp.aggregate(hl.dict(hl.agg.collect((samp.sample_id, samp.sample_name))))
@@ -171,9 +171,9 @@ def import_gvs(refs: 'List[List[str]]',
     vqsr_path = os.path.join(tmp_dir, 'vqsr.ht')
 
     if intermediate_resume_point > 0:
-        info('import_gvs: skipping site and VQSR filter import')
+        info('create_vds: skipping site and VQSR filter import')
     else:
-        info('import_gvs: Importing and writing site filters to temporary storage')
+        info('create_vds: Importing and writing site filters to temporary storage')
         site = hl.import_avro(site_filtering_data)
         site = site.transmute(
             locus=translate_locus(site.location),
@@ -182,7 +182,7 @@ def import_gvs(refs: 'List[List[str]]',
         site = site.key_by('locus')
         site.write(site_path, overwrite=True)
 
-        info('import_gvs: Importing and writing VQSR filter data to temporary storage')
+        info('create_vds: Importing and writing VQSR filter data to temporary storage')
         vqsr = hl.import_avro(vqsr_filtering_data)
         vqsr = vqsr.transmute(
             locus=translate_locus(vqsr.location)
@@ -203,14 +203,14 @@ def import_gvs(refs: 'List[List[str]]',
 
             if idx < intermediate_resume_point:
                 n_samples += hl.vds.read_vds(path).n_samples()
-                info(f'import_gvs: skipping group {idx+1}/{len(refs)}...')
+                info(f'create_vds: skipping group {idx+1}/{len(refs)}...')
                 continue
 
-            info(f'import_gvs: scanning group {idx+1}/{len(refs)}...')
+            info(f'create_vds: scanning group {idx+1}/{len(refs)}...')
             ref_ht = hl.import_avro(ref_group)
 
             # Note -- availability of sample IDs statically would make import more efficient
-            info(f'import_gvs: collecting sample IDs...')
+            info(f'create_vds: collecting sample IDs...')
             sample_ids = sorted(list(ref_ht.aggregate(hl.agg.collect_as_set(ref_ht.sample_id))))
             samples = [sample_mapping_dict[s] for s in sample_ids]
             samples_lit = hl.literal(samples, hl.tarray(hl.tstr))
@@ -269,26 +269,26 @@ def import_gvs(refs: 'List[List[str]]',
             var_mt = var_mt.drop('local_allele_lookup')
             var_mt = var_mt._key_rows_by_assert_sorted('locus', 'alleles')
 
-            info(f'import_gvs: writing intermediate VDS for sample group {idx+1} with {n_new_samples} samples...')
+            info(f'create_vds: writing intermediate VDS for sample group {idx+1} with {n_new_samples} samples...')
             vds = hl.vds.VariantDataset(ref_mt, var_mt)
             vds.write(path, overwrite=True)
 
     if skip_final_merge:
-        info("import_gvs: skipping final merge")
+        info("create_vds: skipping final merge")
         return
 
     total_partitions = int(partitions_per_sample * n_samples)
     first_ref_mt = hl.read_matrix_table(hl.vds.VariantDataset._reference_path(vds_paths[0]))
-    info(f'import_gvs: computing partition intervals for final partitioning ({total_partitions} partitions)')
+    info(f'create_vds: computing partition intervals for final partitioning ({total_partitions} partitions)')
     partition_intervals = first_ref_mt._calculate_new_partitions(n_partitions=total_partitions)
 
     with hl._with_flags(no_whole_stage_codegen='1'):
         from hail.utils.java import Env
-        refs = Env.spark_backend("import_gvs")\
+        refs = Env.spark_backend("create_vds")\
             .read_multiple_matrix_tables([hl.vds.VariantDataset._reference_path(path) for path in vds_paths],
                                          partition_intervals,
                                          hl.tarray(hl.tinterval(hl.tstruct(locus=hl.tlocus(reference_genome)))))
-        vars = Env.spark_backend("import_gvs") \
+        vars = Env.spark_backend("create_vds") \
             .read_multiple_matrix_tables([hl.vds.VariantDataset._variants_path(path) for path in vds_paths],
                                          partition_intervals,
                                          hl.tarray(hl.tinterval(hl.tstruct(locus=hl.tlocus(reference_genome)))))
@@ -296,7 +296,7 @@ def import_gvs(refs: 'List[List[str]]',
 
         combined = hl.vds.combiner.combine_variant_datasets(vdses)
 
-        info(f'import_gvs: merging {len(vdses)} intermediates and writing final VDS')
+        info(f'create_vds: merging {len(vdses)} intermediates and writing final VDS')
 
         rd = combined.reference_data
         vd = combined.variant_data
