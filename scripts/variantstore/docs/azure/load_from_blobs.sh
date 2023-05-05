@@ -16,7 +16,8 @@ fi
 unset -v RESOURCE_GROUP SQL_SERVER SQL_DATABASE STORAGE_ACCOUNT_NAME STORAGE_CONTAINER_NAME CSV_CONTAINER_SAS_TOKEN MASTER_KEY_PASSWORD
 
 eval set -- "$VALID_ARGS"
-while true ; do
+while true
+do
   case "$1" in
     -g|--group)
       RESOURCE_GROUP="$2"
@@ -96,9 +97,10 @@ az sql db create \
     --compute-model Serverless
 
 
-LOADER_SCRIPT="loader_script.sql"
+SQL_SETUP_SCRIPT="/tmp/sql_setup_script.sql"
+SQL_LOADER_SCRIPT="/tmp/sql_loader_script.sql"
 
-cat > "${LOADER_SCRIPT}" <<FIN
+cat > "${SQL_SETUP_SCRIPT}" <<FIN
 
 
 CREATE MASTER KEY ENCRYPTION BY PASSWORD = '${MASTER_KEY_PASSWORD}';
@@ -148,6 +150,9 @@ CREATE TABLE vets (
 
 FIN
 
+# Zero the loader script if it exists, otherwise create it.
+truncate --size 0 "${SQL_LOADER_SCRIPT}"
+
 for kind in vet ref_ranges
 do
     list_file="${kind}_list.txt"
@@ -163,7 +168,7 @@ do
     do
         if [[ "${kind}" == "vet" ]]
         then
-            cat >> "${LOADER_SCRIPT}" <<FIN
+            cat >> "${SQL_LOADER_SCRIPT}" <<FIN
 INSERT INTO vets with (TABLOCK)
   SELECT
       CONVERT(BIGINT, location) AS location,
@@ -194,7 +199,7 @@ INSERT INTO vets with (TABLOCK)
 
 FIN
         else
-            cat >> "${LOADER_SCRIPT}" <<FIN
+            cat >> "${SQL_LOADER_SCRIPT}" <<FIN
   INSERT INTO ref_ranges with (TABLOCK)
   SELECT
       CONVERT(BIGINT, location) AS location,
@@ -224,4 +229,7 @@ get_db_token() {
 
 get_db_token | tr -d '\n' | iconv -f ascii -t UTF-16LE > token.txt
 
-sqlcmd -S "tcp:${SQL_SERVER}.database.windows.net,1433" -d "${SQL_DATABASE}" -G -P token.txt -Q "$(cat "${LOADER_SCRIPT}")"
+sqlcmd -S "tcp:${SQL_SERVER}.database.windows.net,1433" -d "${SQL_DATABASE}" -G -P token.txt -Q "$(cat "${SQL_SETUP_SCRIPT}")"
+# There may be a gross race condition here, split the setup with the actual loading
+sleep 10
+sqlcmd -S "tcp:${SQL_SERVER}.database.windows.net,1433" -d "${SQL_DATABASE}" -G -P token.txt -Q "$(cat "${SQL_LOADER_SCRIPT}")"
