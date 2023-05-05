@@ -77,6 +77,29 @@ workflow GvsBulkIngestGenomes {
             external_sample_names = read_lines(PrepareBulkImport.sampleFOFN),
             samples_are_controls = false
     }
+
+    call ImportGenomes.GvsImportGenomes as ImportGenomes {
+        input:
+            go = AssignIds.done,
+            dataset_name = dataset_name,
+            project_id = bq_project_id,
+            external_sample_names = read_lines(PrepareBulkImport.sampleFOFN),
+            input_vcfs = read_lines(PrepareBulkImport.vcfFOFN),
+            input_vcf_indexes = read_lines(PrepareBulkImport.vcfIndexFOFN),
+
+            ## TODO the following will be kept short term for testing
+            ## is_rate_limited_beta_customer = true,
+            ## beta_customer_max_scatter = 25,
+            interval_list = interval_list,
+
+            # The larger the `load_data_batch_size` the greater the probability of preemptions and non-retryable
+            # BigQuery errors so if specifying this adjust preemptible and maxretries accordingly. Or just take the defaults,
+            # those should work fine in most cases.
+            load_data_batch_size = load_data_batch_size,
+            load_data_maxretries_override = load_data_maxretries_override,
+            load_data_preemptible_override = load_data_preemptible_override,
+            load_data_gatk_override = gatk_override,
+    }
 }
 
     task GetColumnNames {
