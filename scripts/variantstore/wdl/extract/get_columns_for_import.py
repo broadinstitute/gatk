@@ -1,9 +1,12 @@
-import json
 import requests
 import argparse
 
 from terra_notebook_utils import table
 import re
+
+
+maxNumSamples = 50
+
 
 def get_sample_sets(workspace_namespace, workspace_name):
     response = requests.get('https://rawls.dsde-prod.broadinstitute.org/api/workspaces/{workspace_namespace}/{workspace_name}/entities?useCache=true')
@@ -14,14 +17,14 @@ def get_sample_sets(workspace_namespace, workspace_name):
 #def get_column_names(workspace_id, workspace_name):
 
 
-def get_column_values(workspace_id, vcf_output, vcf_index_output):
+def get_column_data(workspace_id, vcf_output, vcf_index_output):
     # We need to identify 3 things
     # 1. Sample id field
     # 2. vcf column name
         # 3. vcf index column name
 
     # We only sample a certain number of columns
-    numSamples = 50
+    numSamples = 0
     columnSamples = {}
 
     table_name = "sample"
@@ -45,14 +48,15 @@ def get_column_values(workspace_id, vcf_output, vcf_index_output):
                 columnSamples[columnName] = [row.attributes[columnName]]
 
         # done iterating columns
-        numSamples -= 1
-        if numSamples == 0:
+        numSamples += 1
+        if numSamples == maxNumSamples:
             break
+    return (columnSamples, numSamples)
 
-
+def get_column_values(columnSamples, numSamples):
     # time to start gathering some potential rows.
     # how many samples did we actually take?
-    numSampledRows = 50 - numSamples
+    numSampledRows = numSamples
     cutoffPoint = numSampledRows * 0.95
     print(f"Sampled {numSampledRows} rows total. Throwing away any under {cutoffPoint}")
 
@@ -236,4 +240,5 @@ if __name__ == '__main__':
         attempts_between_pauses = args.attempts_between_pauses
 
 
-    column_names = get_column_values(args.workspace_id, args.vcf_output, args.vcf_index_output)
+    (columnSamples, numSamples) = get_column_data(args.workspace_id, args.vcf_output, args.vcf_index_output)
+    column_names = get_column_values(columnSamples, numSamples)
