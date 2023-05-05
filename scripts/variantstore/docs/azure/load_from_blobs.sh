@@ -92,7 +92,7 @@ az sql db create \
     -e GeneralPurpose \
     -f Gen5 \
     -c 2 \
-    --auto-pause-delay 10 \
+    --auto-pause-delay 60 \
     --compute-model Serverless
 
 
