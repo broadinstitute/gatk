@@ -58,7 +58,7 @@ workflow GvsBulkIngestGenomes {
 
     call PrepareBulkImport.GvsPrepareBulkImport as PrepareBulkImport {
         input:
-            promject_id = GetWorkspaceName.workspace_namespace,
+            project_id = GetWorkspaceName.workspace_namespace,
             workspace_name = GetWorkspaceName.workspace_name,
             workspace_namespace = GetWorkspaceName.workspace_namespace,
             workspace_bucket = GetWorkspaceId.workspace_bucket,
