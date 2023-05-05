@@ -3,7 +3,7 @@ PS4='\D{+%F %T} \w $ '
 set -o errexit -o pipefail -o xtrace
 
 usage() {
-  echo "Usage: $(basename "$0") --group <Resource group name> --server <SQL Server> --database <SQL Database> --account <Storage account name> --container <Storage container name> --sas <Storage container SAS token> --password <Master key password>" 1>&2
+  echo "Usage: $(basename "$0") --group <Resource group name> --server <SQL Server> --database <SQL Database> --account <Storage account name> --container <Storage container name> --sas-token <Storage container SAS token> --password <Master key password>" 1>&2
   echo "All parameters are mandatory." 1>&2
   exit 1
 }
@@ -19,31 +19,31 @@ eval set -- "$VALID_ARGS"
 while true ; do
   case "$1" in
     -g|--group)
-      RESOURCE_GROUP="${OPTARG}"
+      RESOURCE_GROUP="$2"
       shift 2
       ;;
     -s|--server)
-      SQL_SERVER="${OPTARG}"
+      SQL_SERVER="$2"
       shift 2
       ;;
     -d|--database)
-      SQL_DATABASE="${OPTARG}"
+      SQL_DATABASE="$2"
       shift 2
       ;;
     -a|--account)
-      STORAGE_ACCOUNT_NAME="${OPTARG}"
+      STORAGE_ACCOUNT_NAME="$2"
       shift 2
       ;;
     -c|--container)
-      STORAGE_CONTAINER_NAME="${OPTARG}"
+      STORAGE_CONTAINER_NAME="$2"
       shift 2
       ;;
     -t|--sas-token)
-      CSV_CONTAINER_SAS_TOKEN="${OPTARG}"
+      CSV_CONTAINER_SAS_TOKEN="$2"
       shift 2
       ;;
     -p|--password)
-      MASTER_KEY_PASSWORD="${OPTARG}"
+      MASTER_KEY_PASSWORD="$2"
       shift 2
       ;;
     --) shift;
