@@ -1,6 +1,6 @@
 # Prepend date, time and pwd to xtrace log entries.
 PS4='\D{+%F %T} \w $ '
-set -o errexit -o nounset -o pipefail -o xtrace
+set -o errexit -o pipefail -o xtrace
 
 usage() {
   echo "Usage: $(basename "$0") --group <Resource group name> --server <SQL Server> --database <SQL Database> --account <Storage account name> --container <Storage container name> --sas <Storage container SAS token> --password <Master key password>" 1>&2
@@ -58,6 +58,8 @@ if [[ -z "${RESOURCE_GROUP}" ]] || [[ -z "${SQL_SERVER}" ]] || [[ -z "${SQL_DATA
 then
   usage
 fi
+
+set -o nounset
 
 az group create --location eastus --resource-group "${RESOURCE_GROUP}"
 
