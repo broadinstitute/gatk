@@ -136,18 +136,18 @@ public class ExtractCohort extends ExtractTool {
     @Argument(
             fullName ="snps-truth-sensitivity-filter-level",
             mutex = {"snps-lod-score-cutoff"},
-            doc = "The truth sensitivity level at which to start filtering SNPs",
+            doc = "The truth sensitivity level at which to start filtering SNPs (0-100)",
             optional = true
     )
-    private Double truthSensitivitySNPThreshold = FilterSensitivityTools.DEFAULT_TRUTH_SENSITIVITY_THRESHOLD_SNPS / 100;
+    private Double truthSensitivitySNPThreshold = null;
 
     @Argument(
             fullName = "indels-truth-sensitivity-filter-level",
             mutex = {"indels-lod-score-cutoff"},
-            doc = "The truth sensitivity level at which to start filtering INDELs",
+            doc = "The truth sensitivity level at which to start filtering INDELs (0-100)",
             optional = true
     )
-    private Double truthSensitivityINDELThreshold = FilterSensitivityTools.DEFAULT_TRUTH_SENSITIVITY_THRESHOLD_INDELS / 100;
+    private Double truthSensitivityINDELThreshold = null;
 
     @Advanced
     @Argument(
@@ -258,6 +258,16 @@ public class ExtractCohort extends ExtractTool {
                 errors.add("Parameters 'project-id', 'dataset-id', 'call-set-identifier', 'wdl-step', 'wdl-call', and 'shardIdentifier' must be set if 'cost-observability-tablename' is set.");
             }
         }
+        if (truthSensitivitySNPThreshold != null) {
+            if ((truthSensitivitySNPThreshold <= 0.0) || (truthSensitivityINDELThreshold >= 100.0)) {
+                errors.add("Parameter 'snps-truth-sensitivity-filter-level' must be between > 0.0 and < 100.0");
+            }
+        }
+        if (truthSensitivityINDELThreshold != null) {
+            if ((truthSensitivityINDELThreshold <= 0.0) || (truthSensitivityINDELThreshold >= 100.0)) {
+                errors.add("Parameter 'indels-truth-sensitivity-filter-level' must be between > 0.0 and < 100.0");
+            }
+        }
         if (!isVQSRClassic) {
             if (tranchesTableName != null) {
                 errors.add("Parameter 'tranches-table' is not allowed for VQSR Lite");
@@ -314,14 +324,22 @@ public class ExtractCohort extends ExtractTool {
                     extraHeaderLines.add(FilterSensitivityTools.getTruthSensitivityHeader(truthSensitivityINDELThreshold, vqsLodINDELThreshold, GATKVCFConstants.INDEL));
                 }
             } else {
-                logger.info("Passing all SNP variants with calibration_sensitivity >= " + truthSensitivitySNPThreshold);
-                logger.info("Passing all INDEL variants with calibration_sensitivity >= " + truthSensitivityINDELThreshold);
+                if (truthSensitivitySNPThreshold == null) {
+                    truthSensitivitySNPThreshold = FilterSensitivityTools.DEFAULT_TRUTH_SENSITIVITY_THRESHOLD_SNPS;
+                }
+                truthSensitivitySNPThreshold /= 100.0;
+                logger.info("Passing all SNP variants with calibration_sensitivity < " + truthSensitivitySNPThreshold);
+
+                if (truthSensitivityINDELThreshold == null) {
+                    truthSensitivityINDELThreshold = FilterSensitivityTools.DEFAULT_TRUTH_SENSITIVITY_THRESHOLD_INDELS;
+                }
+                truthSensitivityINDELThreshold /= 100.0;
+                logger.info("Passing all INDEL variants with calibration_sensitivity < " + truthSensitivityINDELThreshold);
 
                 extraHeaderLines.add(new VCFFilterHeaderLine(GATKVCFConstants.VQS_SENS_FAILURE_SNP,
                         "Site failed SNP model calibration sensitivity cutoff (" + truthSensitivitySNPThreshold.toString() + ")"));
                 extraHeaderLines.add(new VCFFilterHeaderLine(GATKVCFConstants.VQS_SENS_FAILURE_INDEL,
                         "Site failed INDEL model calibration sensitivity cutoff (" + truthSensitivityINDELThreshold.toString() + ")"));
-
             }
         }
 
