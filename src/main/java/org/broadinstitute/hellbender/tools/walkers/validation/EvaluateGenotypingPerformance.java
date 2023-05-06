@@ -121,6 +121,17 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
     private FeatureInput<VariantContext> af_resource;
 
     /**
+     * A resource file from which to extract alt allele counts in the reference panel.
+     */
+    @Argument(fullName = "ac-resource", doc="External resource VCF file containing alt allele counts from reference panel.", optional=true)
+    private FeatureInput<VariantContext> ac_resource;
+
+    /**
+     * max ac for accuracy stratification
+     */
+    @Argument(fullName = "max-ac-bin", optional = true)
+    private int maxACBin = 20;
+    /**
      * List of IDs (or a .list file containing ids) to select. The tool will only select variants whose ID
      * field is present in this list of IDs. The matching is done by exact string matching. If a file, the file
      * name must end in ".list", and the expected file format is simply plain text with one ID per line.
@@ -149,6 +160,19 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
             shortName = "OA"
     )
     private GATKPath outputAccuracyFile = null;
+
+    @Argument(
+            doc = "Output file for accuracy by AF",
+            fullName = "output-accuracy-af"
+    )
+    private GATKPath outputAccuracyAFFile = null;
+
+    @Argument(
+            doc = "Output file for accuracy by AC",
+            fullName = "output-accuracy-ac",
+            optional = true
+    )
+    private GATKPath outputAccuracyACFile = null;
 
     /**
      * List of strings specifying the annotations from which alt allele frequencies for each sample should be read.  Each string should be the sample name, and corresponding annotation, separated by a colon.
@@ -219,6 +243,10 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
     final List<List<AFCorrelationAggregator>> aggregators = new ArrayList<>();
     final List<AccuracyMetrics> snpMetrics = new ArrayList<>();
     final List<AccuracyMetrics> indelMetrics = new ArrayList<>();
+    final List<List<AFAccuracyMetrics>> afSnpMetrics = new ArrayList<>();
+    final List<List<AFAccuracyMetrics>> afIndelMetrics = new ArrayList<>();
+    final List<List<ACAccuracyMetrics>> acSnpMetrics = new ArrayList<>();
+    final List<List<ACAccuracyMetrics>> acIndelMetrics = new ArrayList<>();
     final Map<String, String> afAnnotationsMap = new HashMap<>();
     final Set<String> afAnnotationSet = new HashSet<>();
     final Map<String, String> sampleMap = new HashMap<>();
@@ -263,19 +291,35 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
                 logger.warn("Sample " + sample + " maps to " + mappedSample + ", but " + mappedSample + " is not found in truth vcf.  " + sample + " will not be included in results.");
                 continue;
             }
-            //each sample has a list of correlation aggregators, one for each af bin
+            //each sample has a list of correlation, snp & indel accuracy aggregators, one for each af bin
             final List<AFCorrelationAggregator> theseAggregators = new ArrayList<>();
+            final List<AFAccuracyMetrics> theseSnpMetrics = new ArrayList<>();
+            final List<AFAccuracyMetrics> theseIndelMetrics = new ArrayList<>();
             theseAggregators.add(new AFCorrelationAggregator(firstBinRightEdge / 2, sample));
+            theseSnpMetrics.add(new AFAccuracyMetrics(firstBinRightEdge / 2, VariantContext.Type.SNP, sample));
+            theseIndelMetrics.add(new AFAccuracyMetrics(firstBinRightEdge / 2, VariantContext.Type.INDEL, sample));
             for (int i = 1; i < nBins; i++) {
                 //bins are spaced evenly in log space
                 final double log10_bin_width = (-Math.log10(firstBinRightEdge)) / (double) (nBins - 1);
                 final double logBinCenter = Math.log10(firstBinRightEdge) + (i - 0.5) * log10_bin_width;
                 final double binCenter = Math.pow(10, logBinCenter);
                 theseAggregators.add(new AFCorrelationAggregator(binCenter, sample));
+                theseSnpMetrics.add(new AFAccuracyMetrics(binCenter, VariantContext.Type.SNP, sample));
+                theseIndelMetrics.add(new AFAccuracyMetrics(binCenter, VariantContext.Type.INDEL, sample));
+            }
+            final List<ACAccuracyMetrics> theseACSnpMetrics = new ArrayList<>();
+            final List<ACAccuracyMetrics> theseACIndelMetrics = new ArrayList<>();
+            for (int i = 0; i < maxACBin; i++) {
+                theseACSnpMetrics.add(new ACAccuracyMetrics(i+1, VariantContext.Type.SNP, sample));
+                theseACIndelMetrics.add(new ACAccuracyMetrics(i+1, VariantContext.Type.INDEL, sample));
             }
             aggregators.add(theseAggregators);
             snpMetrics.add(new AccuracyMetrics(VariantContext.Type.SNP, sample));
             indelMetrics.add(new AccuracyMetrics(VariantContext.Type.INDEL, sample));
+            afSnpMetrics.add(theseSnpMetrics);
+            afIndelMetrics.add(theseIndelMetrics);
+            acSnpMetrics.add(theseACSnpMetrics);
+            acIndelMetrics.add(theseACIndelMetrics);
         }
 
         if (aggregators.size() == 0) {
@@ -350,6 +394,7 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
 
         //since multiple samples are likely to share the same afAnnotation, we build a map to store the values for each afAnnotation, instead of extracting the value for each sample
         final Map<String, Double> afMap = buildAFMap(evalVC);
+        final Integer ac = getRefPanelAC(evalVC);
 
         for (int i=0; i<aggregators.size(); i++) {
             //loop through samples
@@ -357,11 +402,11 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
             final String mappedSample = getMappedSample(sample);
             final String afAnnotation = getAfAnnotation(sample);
             final Double af = afMap.get(afAnnotation);
-            if (af == null) {
+            if (af == null && ac == null) {
                 // if we don't have alt allele frac information for this site, skip it
                 continue;
             }
-            final int bin = getBin(af);
+            final Integer bin = af!=null? getBin(af) : null;
             final Genotype evalGenotype = evalVC.getGenotype(sample);
             final Genotype truthGenotype = truthVC != null? truthVC.getGenotype(mappedSample) : null;
             if ((truthGenotype != null && truthGenotype.isNoCall()) || (evalGenotype != null && evalGenotype.isNoCall())) {
@@ -372,14 +417,30 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
             final double truthDosageFrac = getDosageFrac(truthGenotype, truthVC != null ? truthVC.getReference() : null, dosageField);
             final ConcordanceState concordanceState = getConcordanceState(truthGenotype, evalGenotype, evalVC.isFiltered());
             if (evalVC.isSNP()) {
-                aggregators.get(i).get(bin).snp_pearsonCorrelationAggregator.addEntry(evalDosageFrac, truthDosageFrac);
-                if (af >= minAfForAccuracyMetrics) {
-                    snpMetrics.get(i).incrementMetrics(concordanceState);
+                if (bin != null) {
+                    aggregators.get(i).get(bin).snp_pearsonCorrelationAggregator.addEntry(evalDosageFrac, truthDosageFrac);
+                    afSnpMetrics.get(i).get(bin).incrementMetrics(concordanceState);
+                    if (af >= minAfForAccuracyMetrics) {
+                        snpMetrics.get(i).incrementMetrics(concordanceState);
+                    }
+                }
+
+                if (ac != null) {
+                    final Integer acBin = ac < maxACBin ? ac - 1 : maxACBin -1;
+                    acSnpMetrics.get(i).get(acBin).incrementMetrics(concordanceState);
                 }
             } else if (evalVC.isIndel()) {
-                aggregators.get(i).get(bin).indel_pearsonCorrelationAggregator.addEntry(evalDosageFrac, truthDosageFrac);
-                if (af >= minAfForAccuracyMetrics) {
-                    indelMetrics.get(i).incrementMetrics(concordanceState);
+                if (bin != null) {
+                    aggregators.get(i).get(bin).indel_pearsonCorrelationAggregator.addEntry(evalDosageFrac, truthDosageFrac);
+                    afIndelMetrics.get(i).get(bin).incrementMetrics(concordanceState);
+                    if (af >= minAfForAccuracyMetrics) {
+                        indelMetrics.get(i).incrementMetrics(concordanceState);
+                    }
+                }
+
+                if (ac != null) {
+                    final Integer acBin = ac < maxACBin ? ac - 1 : maxACBin -1;
+                    acIndelMetrics.get(i).get(acBin).incrementMetrics(concordanceState);
                 }
             }
         }
@@ -391,7 +452,7 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
      * @return map from annotation to extracted alt allele context
      */
     private Map<String, Double> buildAFMap(final VariantContext vc) {
-        if (features != null) {
+        if (af_resource != null) {
             final FeatureContext featureContext = new FeatureContext(features, new SimpleInterval(vc));
             final List<VariantContext> resourceFeatures = featureContext.getValues(af_resource, vc.getStart());
             for (final VariantContext feature : resourceFeatures) {
@@ -410,6 +471,23 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
             //if no allele frequency resource has been passed, annotations should be stored in eval vc
             return buildAFMapForIndex(vc, afAnnotationSet, 0);
         }
+    }
+
+    private Integer getRefPanelAC(final VariantContext vc) {
+        if (ac_resource != null) {
+            final FeatureContext featureContext = new FeatureContext(features, new SimpleInterval(vc));
+            final List<VariantContext> resourceFeatures = featureContext.getValues(ac_resource, vc.getStart());
+            for (final VariantContext feature : resourceFeatures) {
+                if (feature.getReference().equals(vc.getReference())) {
+                    final int altAlleleIndex = feature.getAlleleIndex(vc.getAlternateAllele(0));
+                    if (altAlleleIndex > 0) {
+                        final List<Integer> ac_list = feature.getAttributeAsIntList("AC", 0);
+                        return ac_list.get(altAlleleIndex - 1);
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     /**
@@ -486,7 +564,6 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
         final MetricsFile<AFCorrelationMetric, Integer> correlationWriter = getMetricsFile();
         for (final List<AFCorrelationAggregator> theseAggregators : aggregators ) {
             for (final AFCorrelationAggregator aggregator : theseAggregators) {
-                new AFCorrelationMetric(aggregator);
                 correlationWriter.addMetric(new AFCorrelationMetric(aggregator));
             }
         }
@@ -499,6 +576,30 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
         accuracyWriter.addAllMetrics(snpMetrics);
         accuracyWriter.addAllMetrics(indelMetrics);
         accuracyWriter.write(outputAccuracyFile.toPath().toFile());
+
+        final MetricsFile<AFAccuracyMetrics, Integer> afAccuracryWriter = getMetricsFile();
+        for (final List<AFAccuracyMetrics> metrics : afSnpMetrics) {
+            metrics.forEach(AccuracyMetrics::calculateDerivedMetrics);
+            afAccuracryWriter.addAllMetrics(metrics);
+        }
+        for (final List<AFAccuracyMetrics> metrics : afIndelMetrics) {
+            metrics.forEach(AccuracyMetrics::calculateDerivedMetrics);
+            afAccuracryWriter.addAllMetrics(metrics);
+        }
+        afAccuracryWriter.write(outputAccuracyAFFile.toPath().toFile());
+
+        if (outputAccuracyACFile != null) {
+            final MetricsFile<ACAccuracyMetrics, Integer> acAccuracyMetricsWriter = getMetricsFile();
+            for (final List<ACAccuracyMetrics> metrics : acSnpMetrics) {
+                metrics.forEach(AccuracyMetrics::calculateDerivedMetrics);
+                acAccuracyMetricsWriter.addAllMetrics(metrics);
+            }
+            for (final List<ACAccuracyMetrics> metrics : acIndelMetrics) {
+                metrics.forEach(AccuracyMetrics::calculateDerivedMetrics);
+                acAccuracyMetricsWriter.addAllMetrics(metrics);
+            }
+            acAccuracyMetricsWriter.write(outputAccuracyACFile.toPath().toFile());
+        }
         return null;
     }
 
@@ -595,7 +696,7 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
     /**
      * A class to store accuracy metrics
      */
-    public static final class AccuracyMetrics extends MetricBase {
+    public static class AccuracyMetrics extends MetricBase {
         public String SAMPLE;
         public VariantContext.Type TYPE;
         public int TRUE_POSITIVES;
@@ -642,4 +743,29 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
             ACCURACY = (TRUE_POSITIVES + TRUE_NEGATIVES)/(double)(TRUE_POSITIVES + FALSE_POSITIVES + TRUE_NEGATIVES + FALSE_NEGATIVES);
         }
     }
+
+    /**
+     * A class to store accuracy metrics for a particular frequency bin
+     */
+    public static final class AFAccuracyMetrics extends AccuracyMetrics {
+        public double BIN_CENTER;
+
+        AFAccuracyMetrics(final double binCenter, final VariantContext.Type type, final String sampleName) {
+            super(type, sampleName);
+            BIN_CENTER = binCenter;
+        }
+    }
+
+    /**
+     * A class to store accuracy metrics for a particular AC bin
+     */
+    public static final class ACAccuracyMetrics extends AccuracyMetrics {
+        public double AC;
+
+        ACAccuracyMetrics(final double ac, final VariantContext.Type type, final String sampleName) {
+            super(type, sampleName);
+            AC = ac;
+        }
+    }
+
 }
