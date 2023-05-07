@@ -50,7 +50,8 @@ workflow GvsQuickstartVcfIntegration {
 
         Int? extract_scatter_count
         String drop_state = "FORTY"
-        Boolean extract_do_not_filter_override = true
+        Boolean extract_do_not_filter_override = false
+        Boolean use_classic_VQSR = false
         String dataset_suffix = "vcf"
     }
     String project_id = "gvs-internal"
@@ -72,6 +73,7 @@ workflow GvsQuickstartVcfIntegration {
             input_vcfs = input_vcfs,
             input_vcf_indexes = input_vcf_indexes,
             filter_set_name = "quickit",
+            use_classic_VQSR = use_classic_VQSR,
             extract_table_prefix = "quickit",
             extract_scatter_count = extract_scatter_count,
             # Force filtering off as it is not deterministic and the initial version of this integration test does not
@@ -80,8 +82,8 @@ workflow GvsQuickstartVcfIntegration {
             drop_state = drop_state
     }
 
-    # Only assert identical outputs if we did not filter (filtering is not deterministic)
-    if (extract_do_not_filter_override) {
+    # Only assert identical outputs if we did not filter (filtering is not deterministic) OR if we are using VQSR Lite (which is deterministic)
+    if (extract_do_not_filter_override || !use_classic_VQSR) {
         call AssertIdenticalOutputs {
             input:
                 expected_output_prefix = expected_output_prefix,

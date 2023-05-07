@@ -39,6 +39,7 @@ workflow GvsUnified {
 
         # Begin GvsCreateFilterSet
         String filter_set_name = call_set_identifier
+        Boolean use_classic_VQSR = true
 
         Int? INDEL_VQSR_CLASSIC_max_gaussians_override = 4
         Int? INDEL_VQSR_CLASSIC_mem_gb_override
@@ -114,6 +115,7 @@ workflow GvsUnified {
             project_id = project_id,
             call_set_identifier = call_set_identifier,
             filter_set_name = filter_set_name,
+            use_classic_VQSR = use_classic_VQSR,
             interval_list = interval_list,
             gatk_override = gatk_override,
             INDEL_VQSR_CLASSIC_max_gaussians_override = INDEL_VQSR_CLASSIC_max_gaussians_override,
@@ -149,6 +151,7 @@ workflow GvsUnified {
             scatter_count = extract_scatter_count,
             interval_list = interval_list,
             interval_weights_bed = interval_weights_bed,
+            use_classic_VQSR = use_classic_VQSR,
             gatk_override = gatk_override,
             output_file_base_name = extract_output_file_base_name,
             extract_maxretries_override = extract_maxretries_override,
