@@ -224,7 +224,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_866_update_variants_base_image
+         - rc-vs-853-adopt-hail-python-code
    - name: GvsQuickstartIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartIntegration.wdl
