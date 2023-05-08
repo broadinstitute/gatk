@@ -151,15 +151,17 @@ public enum VetFieldEnum {
                     return "";
                 }
 
-                if (variant.getAlleles().size() == 3) { // GT 0/1 1/1 2/2
-                    out = "|" + outNotAlleleSpecific + ",1|";
+                // indexing at 0 earlier guarantees that this should not have an indexing error
+                int numVariants = variant.getAlleles().size() - 2;
 
-                } else if (variant.getAlleles().size() == 4) { // GT 1/2
-                    // TODO: just replicate rather than distribute, is this right?
-                    out = "|" + outNotAlleleSpecific + ",1|" + outNotAlleleSpecific + ",1|";
-                } else {
-                    throw new UserException("Expected diploid sample to either have 3 alleles (ref, alt, non-ref) or 4 alleles (ref, alt 1, alt 2, non-ref)");
+                // Moving this TODO note up here as an open question for how we want to handle this quantity
+                // with more than one allele
+                // TODO: just replicate rather than distribute, is this right?
+                out = "|";
+                for (int i = 0; i < numVariants; ++i) {
+                    out += outNotAlleleSpecific + ",1|";
                 }
+                // As of VS-910, we aren't going to consider any number of alleles to necessarily be a UserException
             }
 
             if ( out == null || out.contentEquals("||") || out.contentEquals("|||") ) {
@@ -253,15 +255,16 @@ public enum VetFieldEnum {
                     return "";
                 }
 
-                if (variant.getAlleles().size() == 3) { // GT 0/1 1/1
-                    out = "|" + outNotAlleleSpecific + ",1|";
-
-                } else if (variant.getAlleles().size() == 4) { // GT 1/2
-                    // TODO: just replicate rather than distribute, is this right?
-                    out = "|" + outNotAlleleSpecific + ",1|" + outNotAlleleSpecific + ",1|";
-                } else {
-                    throw new UserException("Expected diploid sample to either have 3 alleles (ref, alt, non-ref) or 4 alleles (ref, alt 1, alt 2, non-ref)");
+                // indexing at 0 earlier guarantees that this should not have an indexing error
+                int numVariants = variant.getAlleles().size() - 2;
+                // Moving this TODO note up here as an open question for how we want to handle this quantity
+                // with more than one allele
+                // TODO: just replicate rather than distribute, is this right?
+                out = "|";
+                for (int i = 0; i < numVariants; ++i) {
+                    out += outNotAlleleSpecific + ",1|";
                 }
+                // As of VS-910, we aren't going to consider any number of alleles to necessarily be a UserException
             }
 
             if (out == null || out.contentEquals("||") || out.contentEquals("|||") ) {
@@ -294,16 +297,16 @@ public enum VetFieldEnum {
             if (forceLoadingFromNonAlleleSpecific || out == null) {
                 String outNotAlleleSpecific = variant.getGenotype(0).getExtendedAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY, null).toString();
                 String[] outValues = outNotAlleleSpecific.split(",");
-                if (variant.getAlleles().size() == 3) {
-                    outNotAlleleSpecific = outValues[0] + "," + outValues[1] + "|" + outValues[2] + "," + outValues[3];
-                } else if (variant.getAlleles().size() == 4) {
-                    int sbPosSpread = Integer.parseInt(outValues[2]) / 2;
-                    int sbNegSpread = Integer.parseInt(outValues[3]) / 2;
-                    outNotAlleleSpecific = outValues[0] + "," + outValues[1] + "|" + sbPosSpread + "," + sbNegSpread + "|" + sbPosSpread + "," + sbNegSpread;
-                } else {
-                    throw new UserException("Expected diploid sample to either have 3 alleles (ref, alt, non-ref) or 4 alleles (ref, alt 1, alt 2, non-ref)");
+
+                // indexing at 0 earlier guarantees that this should not have an indexing error
+                int numVariants = variant.getAlleles().size() - 2;
+                out = outValues[0] + "," + outValues[1];
+                for (int i = 0; i < numVariants; ++i) {
+                    out += "|" + Integer.parseInt(outValues[2])/numVariants + "," + Integer.parseInt(outValues[3])/numVariants;
                 }
-                return outNotAlleleSpecific;
+                // As of VS-910, we aren't going to consider any number of alleles to necessarily be a UserException
+
+                return out;
             }
             if (out.endsWith("|0,0")) {
                 out = out.substring(0, out.length() - 4);
