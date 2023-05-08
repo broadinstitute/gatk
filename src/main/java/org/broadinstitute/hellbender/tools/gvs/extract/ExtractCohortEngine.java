@@ -777,7 +777,7 @@ public class ExtractCohortEngine {
                         genotypeBuilder.filter(getVqScoreSNPFailureFilterName());
                     }
 
-                    if (isFailingGenotype(nonRefAlleles.stream().filter(a -> a.length() != ref.length()).collect(Collectors.toList()),
+                    if (isFailingGenotype(nonRefAlleles.stream().filter(a -> a.length() != ref.length()),
                             remappedVQScoreMap, vqScoreINDELThreshold)) {
                         genotypeBuilder.filter(getVqScoreINDELFailureFilterName());
                     }
