@@ -815,13 +815,13 @@ public class ExtractCohortEngine {
                                       final LinkedHashMap<Allele, Double> remappedVQScoreMap,
                                       final Double vqScoreThreshold) {
         // get the max (best) vq score (vqslod/sensitivity) for all non-Yay sites, and apply the filter
-        Optional<Double> snpMax =
+        Optional<Double> maxVal =
                 nonRefAlleles
                         .map(remappedVQScoreMap::get)
                         .filter(Objects::nonNull)
                         .max(Double::compareTo);
 
-        return snpMax.isPresent() && snpMax.get() < vqScoreThreshold;
+        return maxVal.isPresent() && maxVal.get() < vqScoreThreshold;
     }
 
     private SortingCollection<GenericRecord> createSortedVetCollectionFromBigQuery(final String projectID,

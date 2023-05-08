@@ -15,6 +15,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.*;
+import java.util.stream.Stream;
 
 public class ExtractCohortLiteEngine extends ExtractCohortEngine {
     final Logger logger;
@@ -98,9 +99,8 @@ public class ExtractCohortLiteEngine extends ExtractCohortEngine {
         logger = LogManager.getLogger(ExtractCohortLiteEngine.class);
     }
 
-
-    boolean isFailingSite(final List<Double> vqScoreList, final Double vqScoreThreshold) {
-        Optional<Double> maxVal = vqScoreList.stream()
+    boolean isFailingSite(final Stream<Double> vqScores, final Double vqScoreThreshold) {
+        Optional<Double> maxVal = vqScores
                 .filter(d -> !(d.isNaN()||d.isInfinite()))
                 .max(Double::compareTo);
         return maxVal.isPresent() && maxVal.get() > vqScoreThreshold;
@@ -108,16 +108,16 @@ public class ExtractCohortLiteEngine extends ExtractCohortEngine {
 
 
 
-    boolean isFailingGenotype(final List<Allele> nonRefAlleles,
+    boolean isFailingGenotype(final Stream<Allele> nonRefAlleles,
                               final LinkedHashMap<Allele, Double> remappedVQScoreMap,
                               final Double vqScoreThreshold) {
         // get the max (best) vq score (vqslod/sensitivity) for all non-Yay sites, and apply the filter
-        Optional<Double> snpMax =
-                nonRefAlleles.stream()
+        Optional<Double> maxVal =
+                nonRefAlleles
                         .map(remappedVQScoreMap::get)
                         .filter(Objects::nonNull)
                         .max(Double::compareTo);
 
-        return snpMax.isPresent() && snpMax.get() > vqScoreThreshold;
+        return maxVal.isPresent() && maxVal.get() > vqScoreThreshold;
     }
 }
