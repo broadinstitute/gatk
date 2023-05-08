@@ -815,7 +815,7 @@ public class ExtractCohortEngine {
                                       final Double vqScoreThreshold) {
         // get the max (best) vq score (vqslod/sensitivity) for all non-Yay sites, and apply the filter
         Optional<Double> snpMax =
-                nonRefAlleles.stream()
+                nonRefAlleles
                         .map(remappedVQScoreMap::get)
                         .filter(Objects::nonNull)
                         .max(Double::compareTo);
