@@ -810,7 +810,7 @@ public class ExtractCohortEngine {
         return builder.make();
     }
 
-    boolean isFailingGenotype(final List<Allele> nonRefAlleles,
+    boolean isFailingGenotype(final Stream<Allele> nonRefAlleles,
                                       final LinkedHashMap<Allele, Double> remappedVQScoreMap,
                                       final Double vqScoreThreshold) {
         // get the max (best) vq score (vqslod/sensitivity) for all non-Yay sites, and apply the filter
