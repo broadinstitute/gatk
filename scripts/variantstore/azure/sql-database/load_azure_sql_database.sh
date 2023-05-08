@@ -8,7 +8,7 @@ usage() {
   exit 1
 }
 
-VALID_ARGS=$(getopt --options g:s:d:a:c:t:p:e:f:y --long group:,server:,database:,account:,container:,sas-token:,password:edition:family:capacity: -- "$@")
+VALID_ARGS=$(getopt --options g:s:d:a:c:t:p:e:f:y --long group:,server:,database:,account:,container:,sas-token:,password:,edition:,family:,capacity: -- "$@")
 if [[ $? -ne 0 ]]; then
     usage
 fi
