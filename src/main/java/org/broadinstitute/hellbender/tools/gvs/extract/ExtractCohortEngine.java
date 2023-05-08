@@ -620,8 +620,7 @@ public class ExtractCohortEngine {
                     }
                     if (isFailingSite(relevantVQScoreMap.entrySet().stream()
                             .filter(entry -> entry.getKey().length() != refLength)
-                            .map(Map.Entry::getValue)
-                            .collect(Collectors.toList()), vqScoreINDELThreshold)) {
+                            .map(Map.Entry::getValue), vqScoreINDELThreshold)) {
                         builder.filter(getVqScoreINDELFailureFilterName());
                     }
                 } else {
