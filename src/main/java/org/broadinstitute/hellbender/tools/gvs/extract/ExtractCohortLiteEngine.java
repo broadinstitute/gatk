@@ -100,10 +100,10 @@ public class ExtractCohortLiteEngine extends ExtractCohortEngine {
     }
 
     boolean isFailingSite(final Stream<Double> vqScores, final Double vqScoreThreshold) {
-        Optional<Double> maxVal = vqScores
+        Optional<Double> minVal = vqScores
                 .filter(d -> !(d.isNaN()||d.isInfinite()))
-                .max(Double::compareTo);
-        return maxVal.isPresent() && maxVal.get() > vqScoreThreshold;
+                .min(Double::compareTo);
+        return minVal.isPresent() && minVal.get() > vqScoreThreshold;
     }
 
 
@@ -111,13 +111,13 @@ public class ExtractCohortLiteEngine extends ExtractCohortEngine {
     boolean isFailingGenotype(final Stream<Allele> nonRefAlleles,
                               final LinkedHashMap<Allele, Double> remappedVQScoreMap,
                               final Double vqScoreThreshold) {
-        // get the max (best) vq score (vqslod/sensitivity) for all non-Yay sites, and apply the filter
-        Optional<Double> maxVal =
+        // get the minimum (best) calibration sensitivity for all non-Yay sites, and apply the filter
+        Optional<Double> minVal =
                 nonRefAlleles
                         .map(remappedVQScoreMap::get)
                         .filter(Objects::nonNull)
-                        .max(Double::compareTo);
+                        .min(Double::compareTo);
 
-        return maxVal.isPresent() && maxVal.get() > vqScoreThreshold;
+        return minVal.isPresent() && minVal.get() > vqScoreThreshold;
     }
 }
