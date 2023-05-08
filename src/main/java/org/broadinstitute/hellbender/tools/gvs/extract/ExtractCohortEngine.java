@@ -772,7 +772,7 @@ public class ExtractCohortEngine {
                 } else if (anyYays) {
                     // the genotype is passed, nothing to do here as non-filtered is the default
                 } else {
-                    if (isFailingGenotype(nonRefAlleles.stream().filter(a -> a.length() == ref.length()).collect(Collectors.toList()),
+                    if (isFailingGenotype(nonRefAlleles.stream().filter(a -> a.length() == ref.length()),
                             remappedVQScoreMap, vqScoreSNPThreshold)) {
                         genotypeBuilder.filter(getVqScoreSNPFailureFilterName());
                     }
