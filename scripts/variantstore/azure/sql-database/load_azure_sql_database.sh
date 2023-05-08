@@ -8,12 +8,16 @@ usage() {
   exit 1
 }
 
-VALID_ARGS=$(getopt --options g:s:d:a:c:t:p: --long group:,server:,database:,account:,container:,sas-token:,password: -- "$@")
+VALID_ARGS=$(getopt --options g:s:d:a:c:t:p:e:f:y --long group:,server:,database:,account:,container:,sas-token:,password:edition:family:capacity: -- "$@")
 if [[ $? -ne 0 ]]; then
     usage
 fi
 
 unset -v RESOURCE_GROUP SQL_SERVER SQL_DATABASE STORAGE_ACCOUNT_NAME STORAGE_CONTAINER_NAME CSV_CONTAINER_SAS_TOKEN MASTER_KEY_PASSWORD
+
+SQL_SERVER_EDITION=GeneralPurpose
+SQL_SERVER_FAMILY=Gen5
+SQL_SERVER_CAPACITY=2
 
 eval set -- "$VALID_ARGS"
 while true
@@ -45,6 +49,18 @@ do
       ;;
     -p|--password)
       MASTER_KEY_PASSWORD="$2"
+      shift 2
+      ;;
+    -e|--edition)
+      SQL_SERVER_EDITION="$2"
+      shift 2
+      ;;
+    -f|--family)
+      SQL_SERVER_FAMILY="$2"
+      shift 2
+      ;;
+    -y|--capacity)
+      SQL_SERVER_CAPACITY="$2"
       shift 2
       ;;
     --) shift;
@@ -85,14 +101,14 @@ az sql server firewall-rule create \
     --start-ip-address "${EXTERNAL_IP}" \
     --end-ip-address "${EXTERNAL_IP}"
 
-# Note the database is specified as 'Serverless', not the server.
+# Note it is the database that is specified as 'Serverless', not the server.
 az sql db create \
     --resource-group "${RESOURCE_GROUP}" \
     --server "${SQL_SERVER}" \
     --name "${SQL_DATABASE}" \
-    -e GeneralPurpose \
-    -f Gen5 \
-    -c 2 \
+    -e "${SQL_SERVER_EDITION}" \
+    -f "${SQL_SERVER_FAMILY}" \
+    -c "${SQL_SERVER_CAPACITY}" \
     --auto-pause-delay 60 \
     --compute-model Serverless
 
@@ -155,7 +171,7 @@ truncate --size 0 "${SQL_LOADER_SCRIPT}"
 
 for kind in vet ref_ranges
 do
-    list_file="${kind}_list.txt"
+    list_file="/tmp/${kind}_list.txt"
     az storage blob list \
         --account-name "${STORAGE_ACCOUNT_NAME}" \
         --container-name "${STORAGE_CONTAINER_NAME}" \
@@ -230,6 +246,6 @@ get_db_token() {
 get_db_token | tr -d '\n' | iconv -f ascii -t UTF-16LE > token.txt
 
 sqlcmd -S "tcp:${SQL_SERVER}.database.windows.net,1433" -d "${SQL_DATABASE}" -G -P token.txt -Q "$(cat "${SQL_SETUP_SCRIPT}")"
-# There may be a gross race condition here, split the setup with the actual loading
+# There seems to be a race condition here, split the DDL setup from the DML table loading to let the DDL soak in.
 sleep 10
 sqlcmd -S "tcp:${SQL_SERVER}.database.windows.net,1433" -d "${SQL_DATABASE}" -G -P token.txt -Q "$(cat "${SQL_LOADER_SCRIPT}")"
