@@ -347,7 +347,7 @@ task ExtractTask {
     echo ~{interval_index},${OUTPUT_FILE_DEST},${OUTPUT_FILE_BYTES},${OUTPUT_FILE_INDEX_DEST},${OUTPUT_FILE_INDEX_BYTES} >> manifest.txt
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_05_05_d0ba72a4df3bd19f166e6d5fc0eef58f9bd662e7"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_05_08_e3965f123c47936fbce8214345f0f6bc389930e3"
     memory: "12 GB"
     disks: "local-disk 150 HDD"
     bootDiskSizeGb: 15
