@@ -615,8 +615,7 @@ public class ExtractCohortEngine {
                 if (remappedYngMap.containsValue("G")) {
                     if (isFailingSite(relevantVQScoreMap.entrySet().stream()
                             .filter(entry -> entry.getKey().length() == refLength)
-                            .map(Map.Entry::getValue)
-                            .collect(Collectors.toList()), vqScoreSNPThreshold)) {
+                            .map(Map.Entry::getValue), vqScoreSNPThreshold)) {
                         builder.filter(getVqScoreSNPFailureFilterName());
                     }
                     if (isFailingSite(relevantVQScoreMap.entrySet().stream()
