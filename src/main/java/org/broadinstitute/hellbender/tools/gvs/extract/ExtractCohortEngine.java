@@ -636,8 +636,8 @@ public class ExtractCohortEngine {
         return filteredVC;
     }
 
-    boolean isFailingSite(final List<Double> vqScoreList, final Double vqScoreThreshold) {
-        Optional<Double> maxVal = vqScoreList.stream()
+    boolean isFailingSite(final Stream<Double> vqScores, final Double vqScoreThreshold) {
+        Optional<Double> maxVal = vqScores
                 .filter(d -> !(d.isNaN()||d.isInfinite()))
                 .max(Double::compareTo);
         return maxVal.isPresent() && maxVal.get() < vqScoreThreshold;
