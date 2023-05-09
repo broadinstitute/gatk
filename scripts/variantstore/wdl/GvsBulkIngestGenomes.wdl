@@ -9,6 +9,7 @@ import "GvsImportGenomes.wdl" as ImportGenomes
 workflow GvsBulkIngestGenomes {
     input {
         # Begin GvsPrepareBulkImport
+        # for now set the entity tupe names with a default
         String samples_table_name = "sample"
         String sample_id_column_name = "sample_id"
         String? vcf_files_column_name
@@ -161,10 +162,10 @@ workflow GvsBulkIngestGenomes {
 
             export WORKSPACE_BUCKET='~{workspace_bucket}'
 
-            python3 /app/get_columns_for_import.py \
-            --workspace_id ~{workspace_id} \
-            --workspace_name_output ~{workspace_name_output} \
-            --workspace_namespace_output ~{workspace_namespace_output} \
+            python3 /app/get_workspace_name_for_import.py \
+              --workspace_id ~{workspace_id} \
+              --workspace_name_output ~{workspace_name_output} \
+              --workspace_namespace_output ~{workspace_namespace_output} \
 
         >>>
         runtime {
