@@ -17,7 +17,7 @@ def get_sample_sets(workspace_namespace, workspace_name):
 #def get_column_names(workspace_id, workspace_name):
 
 
-def get_column_data(workspace_id, vcf_output, vcf_index_output):
+def get_column_data(workspace_id):
     # We need to identify 3 things
     # 1. Sample id field
     # 2. vcf column name
@@ -60,7 +60,6 @@ def get_column_values(columnSamples, numSamples):
     cutoffPoint = numSampledRows * 0.95
     print(f"Sampled {numSampledRows} rows total. Throwing away any under {cutoffPoint}")
 
-
     # match column names that end with "vcf"
     ends_in_vcf_pattern = "^.*vcf$"
     ends_in_vcf = set()
@@ -81,11 +80,11 @@ def get_column_values(columnSamples, numSamples):
     path_ends_in_vcf_gz_tbi_pattern = "^.*\.vcf\.gz\.tbi$"
     path_ends_in_vcf_gz_tbi = set()
 
-
     # start sorting the columns that we've seen into buckets to be compared later
     for key in columnSamples:
         print(f"Found key: {key} with {len(columnSamples[key])} entries")
         samplesData = columnSamples[key]
+        print(samplesData)
         if len(samplesData) < cutoffPoint:
             # ignoring this completely
             continue
@@ -194,19 +193,20 @@ def get_column_values(columnSamples, numSamples):
     print(f"path_ends_in_vcf_gz: {path_ends_in_vcf_gz}")
     print(f"path_ends_in_vcf_gz_tbi: {path_ends_in_vcf_gz_tbi}")
 
+    column_names = {
+        'vcf_column' : final_vcf_column,
+        'vcf_column_index': final_vcf_index_column
+    }
 
+    return column_names
+
+
+def write_column_names(column_names, vcf_output, vcf_index_output):
+    final_vcf_column = column_names['vcf_column']
+    final_vcf_index_column = column_names['vcf_column_index']
     with open(vcf_output, "w") as vcf_output, open(vcf_index_output, "w") as vcf_index_output:
         vcf_output.write(f'{final_vcf_column}\n')
         vcf_index_output.write(f'{final_vcf_index_column}\n')
-
-
-
-    # super simple heuristic: Is there a single entry that ends in vcf
-    #for col in ends_in_vcf:
-
-
-    # and has an analogue
-
 
 
 
@@ -240,5 +240,6 @@ if __name__ == '__main__':
         attempts_between_pauses = args.attempts_between_pauses
 
 
-    (columnSamples, numSamples) = get_column_data(args.workspace_id, args.vcf_output, args.vcf_index_output)
+    (columnSamples, numSamples) = get_column_data(args.workspace_id)
     column_names = get_column_values(columnSamples, numSamples)
+    write_column_names(column_names, args.vcf_output, args.vcf_index_output)
