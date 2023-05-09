@@ -110,7 +110,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
     public static final String QUAL_APPROX_SHORT_NAME = "do-qual-approx";
     public static final String ALLOW_MISSING_LONG_NAME = "allow-missing-hom-ref-data";
     public static final String KEEP_SITE_FILTERS_LONG_NAME = "keep-site-filters";
-    public static final String KEEP_SITE_FILTERS_SHORT_NAME = "keep_filters";
+    public static final String KEEP_SITE_FILTERS_SHORT_NAME = "keep-filters";
 
     private static final GenotypeLikelihoodCalculators GL_CALCS = new GenotypeLikelihoodCalculators();
 
