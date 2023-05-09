@@ -9,8 +9,8 @@ import "GvsImportGenomes.wdl" as ImportGenomes
 workflow GvsBulkIngestGenomes {
     input {
         # Begin GvsPrepareBulkImport
-        String? samples_table_name
-        String? sample_id_column_name
+        String samples_table_name = "sample"
+        String sample_id_column_name = "sample_id"
         String? vcf_files_column_name
         String? vcf_index_files_column_name
         # End GvsPrepareBulkImport
@@ -62,8 +62,8 @@ workflow GvsBulkIngestGenomes {
             workspace_name = GetWorkspaceName.workspace_name,
             workspace_namespace = GetWorkspaceName.workspace_namespace,
             workspace_bucket = GetWorkspaceId.workspace_bucket,
-            samples_table_name = GetColumnNames.samples_table,
-            sample_id_column_name = GetColumnNames.sample_id_column,
+            samples_table_name = samples_table_name,
+            sample_id_column_name = sample_id_column_name,
             vcf_files_column_name = GetColumnNames.vcf_files_column_name,
             vcf_index_files_column_name = GetColumnNames.vcf_index_files_column_name
     }
@@ -102,20 +102,14 @@ workflow GvsBulkIngestGenomes {
             String workspace_id
             String workspace_name
             String workspace_namespace
-            String? samples_table_name
-            String? sample_id_column_name
+            String samples_table_name
+            String sample_id_column_name
             String? vcf_files_column_name
             String? vcf_index_files_column_name
         }
         ## set some default vals
-        String samples_table_default_name = "sample"
-        String sample_id_column_default_name = "sample_id"
 
         # First we will check for the default named columns and make sure that each row has a value
-
-        String hard_coded_samples_table_name = if (defined(samples_table_name)) then select_first([samples_table_name]) else samples_table_default_name
-        String hard_coded_sample_id_column = if (defined(sample_id_column_name)) then select_first([sample_id_column_name]) else sample_id_column_default_name
-
         String vcf_files_col = if (defined(vcf_files_column_name)) then select_first([vcf_files_column_name]) else ""
         String vcf_index_files_col = if (defined(vcf_index_files_column_name)) then select_first([vcf_index_files_column_name]) else ""
 
@@ -147,8 +141,6 @@ workflow GvsBulkIngestGenomes {
         }
 
         output {
-            String samples_table = hard_coded_samples_table_name
-            String sample_id_column = hard_coded_sample_id_column
             String vcf_files_column_name = read_string(vcf_files_column_name_output)
             String vcf_index_files_column_name = read_string(vcf_index_files_column_name_output)
         }
