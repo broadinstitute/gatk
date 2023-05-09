@@ -120,10 +120,10 @@ public class ExtractCohort extends ExtractTool {
 
     @Argument(
             fullName = "use-vqsr-classic-scoring",
-            doc = "If true, use VQSR 'Classic' scoring (vqs Lod score). Otherwise use VQSR 'Lite' scoring (calibration_sensitivity) ",
+            doc = "If true, use VQSR 'Classic' scoring (vqs Lod score). Otherwise use VQSR 'Lite' scoring (calibration_sensitivity)",
             optional = true
     )
-    private boolean isVQSRClassic = true;
+    private boolean isVQSRClassic = false;
 
     @Argument(
             fullName = "vqsr-score-filter-by-site",
@@ -391,7 +391,37 @@ public class ExtractCohort extends ExtractTool {
                 "if no sample file (--sample-file) is provided.");
         }
 
-        engine = isVQSRClassic ?
+        engine = !isVQSRClassic ?
+                new ExtractCohortLiteEngine(
+                    projectID,
+                    vcfWriter,
+                    header,
+                    annotationEngine,
+                    reference,
+                    sampleIdToName,
+                    vetRangesFQDataSet,
+                    fqRangesExtractVetTable,
+                    fqRangesExtractRefTable,
+                    vetAvroFileName,
+                    refRangesAvroFileName,
+                    traversalIntervals,
+                    minLocation,
+                    maxLocation,
+                    filterSetInfoTableName,
+                    filterSetSiteTableName,
+                    localSortMaxRecordsInRam,
+                    printDebugInformation,
+                    truthSensitivitySNPThreshold,
+                    truthSensitivityINDELThreshold,
+                    progressMeter,
+                    filterSetName,
+                    emitPLs,
+                    emitADs,
+                    vqScoreFilteringType,
+                    excludeFilteredSites,
+                    inferredReferenceState,
+                    presortedAvroFiles)
+                :
                 new ExtractCohortEngine(
                     projectID,
                     vcfWriter,
@@ -420,37 +450,7 @@ public class ExtractCohort extends ExtractTool {
                     vqScoreFilteringType,
                     excludeFilteredSites,
                     inferredReferenceState,
-                    presortedAvroFiles)
-                :
-                new ExtractCohortLiteEngine(
-                        projectID,
-                        vcfWriter,
-                        header,
-                        annotationEngine,
-                        reference,
-                        sampleIdToName,
-                        vetRangesFQDataSet,
-                        fqRangesExtractVetTable,
-                        fqRangesExtractRefTable,
-                        vetAvroFileName,
-                        refRangesAvroFileName,
-                        traversalIntervals,
-                        minLocation,
-                        maxLocation,
-                        filterSetInfoTableName,
-                        filterSetSiteTableName,
-                        localSortMaxRecordsInRam,
-                        printDebugInformation,
-                        truthSensitivitySNPThreshold,
-                        truthSensitivityINDELThreshold,
-                        progressMeter,
-                        filterSetName,
-                        emitPLs,
-                        emitADs,
-                        vqScoreFilteringType,
-                        excludeFilteredSites,
-                        inferredReferenceState,
-                        presortedAvroFiles);
+                    presortedAvroFiles);
 
         vcfWriter.writeHeader(header);
     }
