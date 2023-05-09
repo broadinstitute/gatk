@@ -3,8 +3,8 @@ PS4='\D{+%F %T} \w $ '
 set -o errexit -o pipefail -o xtrace
 
 usage() {
-  echo "Usage: $(basename "$0") --group <Resource group name> --server <SQL Server> --database <SQL Database> --account <Storage account name> --container <Storage container name> --sas-token <Storage container SAS token> --password <Master key password>" 1>&2
-  echo "All parameters are mandatory." 1>&2
+  echo "Usage: $(basename "$0") --group <Resource group name> --server <SQL Server> --database <SQL Database> --account <Storage account name> --container <Storage container name> --sas-token <Storage container SAS token> --password <Master key password> [--edition <SQL Server Edition>, defauilt Gen5] [--family <SQL Server Family>, default Gen5] [--capacity <SQL Server capacity>, default 2]" 1>&2
+  echo "All parameters except --edition, --family, and --capacity are mandatory." 1>&2
   exit 1
 }
 
