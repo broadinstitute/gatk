@@ -63,7 +63,7 @@ workflow GvsBulkIngestGenomes {
             workspace_namespace = GetWorkspaceName.workspace_namespace,
             workspace_bucket = GetWorkspaceId.workspace_bucket,
             samples_table_name = GetColumnNames.samples_table,
-            sample_id_column_name = GetColumnNames.sample_id_col,
+            sample_id_column_name = GetColumnNames.sample_id_column,
             vcf_files_column_name = GetColumnNames.vcf_files_column_name,
             vcf_index_files_column_name = GetColumnNames.vcf_index_files_column_name
     }
@@ -148,7 +148,7 @@ workflow GvsBulkIngestGenomes {
 
         output {
             String samples_table = samples_table
-            String sample_id_col = sample_id_col
+            String sample_id_column = sample_id_col
             String vcf_files_column_name = read_string(vcf_files_column_name_output)
             String vcf_index_files_column_name = read_string(vcf_index_files_column_name_output)
         }
