@@ -65,13 +65,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-   - name: GvsAoUReblockGvcf
-     subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsAoUReblockGvcf.wdl
-     filters:
-       branches:
-         - master
-         - ah_var_store
    - name: GvsBenchmarkExtractTask
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsBenchmarkExtractTask.wdl
@@ -231,7 +224,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_866_update_variants_base_image
+         - rc-vs-853-adopt-hail-python-code
    - name: GvsQuickstartIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartIntegration.wdl
@@ -239,7 +232,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_888_fix_broken_gsutil_docker
+         - vs_908_monitoring_script_public
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl

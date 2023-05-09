@@ -7,7 +7,6 @@ import "GvsQuickstartVcfIntegration.wdl" as QuickstartVcfIntegration
 workflow GvsQuickstartHailIntegration {
     input {
         String branch_name
-        String hail_wheel = "gs://gvs-internal-scratch/hail-wheels/2022-10-18/0.2.102-964bee061eb0/hail-0.2.102-py3-none-any.whl"
     }
 
     String project_id = "gvs-internal"
@@ -33,7 +32,6 @@ workflow GvsQuickstartHailIntegration {
     call CreateAndTieOutVds {
         input:
             branch_name = branch_name,
-            hail_wheel = hail_wheel,
             avro_prefix = GvsExtractAvroFilesForHail.avro_prefix,
             vds_destination_path = GvsExtractAvroFilesForHail.vds_output_path,
             tieout_vcfs = GvsQuickstartVcfIntegration.output_vcfs,
@@ -53,7 +51,6 @@ workflow GvsQuickstartHailIntegration {
 
 task CreateAndTieOutVds {
     input {
-        File hail_wheel
         String branch_name
         String avro_prefix
         String vds_destination_path
@@ -75,7 +72,7 @@ task CreateAndTieOutVds {
 
         # Copy the versions of the Hail import and tieout scripts for this branch from GitHub.
         script_url_prefix="https://raw.githubusercontent.com/broadinstitute/gatk/~{branch_name}/scripts/variantstore/wdl/extract"
-        for script in hail_gvs_import.py hail_join_vds_vcfs.py gvs_vds_tie_out.py
+        for script in hail_gvs_import.py hail_join_vds_vcfs.py gvs_vds_tie_out.py gvs_avros_to_vds.py
         do
             curl --silent --location --remote-name "${script_url_prefix}/${script}"
         done
@@ -109,8 +106,9 @@ task CreateAndTieOutVds {
         apt-get -qq update
         apt -qq install -y temurin-8-jdk
 
-        pip install ~{hail_wheel}
         export PYSPARK_SUBMIT_ARGS='--driver-memory 16g --executor-memory 16g pyspark-shell'
+        pip install --upgrade pip
+        pip install hail
 
         export WORK=$PWD/work
         mkdir ${WORK}
