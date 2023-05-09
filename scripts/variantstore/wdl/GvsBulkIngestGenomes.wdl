@@ -134,10 +134,7 @@ workflow GvsBulkIngestGenomes {
             export WORKSPACE_NAMESPACE='~{workspace_namespace}'
             export WORKSPACE_NAME='~{workspace_name}'
 
-            gsutil cp gs://fc-d5e319d4-b044-4376-afde-22ef0afc4088/get_columns_for_import.py  get_columns_for_import.py
-
-            # python3 /app/get_columns_for_import.py \
-            python3 get_columns_for_import.py \
+            python3 /app/get_columns_for_import.py \
               --workspace_id ~{workspace_id} \
               --vcf_output ~{vcf_files_column_name_output} \
               --vcf_index_output ~{vcf_index_files_column_name_output} \
@@ -146,7 +143,7 @@ workflow GvsBulkIngestGenomes {
         >>>
 
         runtime {
-            docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-04-13-alpine"
+            docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-08-alpine"
             memory: "3 GB"
             disks: "local-disk 10 HDD"
             cpu: 1
@@ -175,17 +172,14 @@ workflow GvsBulkIngestGenomes {
 
             export WORKSPACE_BUCKET='~{workspace_bucket}'
 
-            gsutil cp gs://fc-d5e319d4-b044-4376-afde-22ef0afc4088/get_workspace_name_for_import.py  get_workspace_name_for_import.py
-
-            # python3 /app/get_columns_for_import.py \
-            python3 get_workspace_name_for_import.py \
+            python3 /app/get_columns_for_import.py \
             --workspace_id ~{workspace_id} \
             --workspace_name_output ~{workspace_name_output} \
             --workspace_namespace_output ~{workspace_namespace_output} \
 
         >>>
         runtime {
-            docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-04-13-alpine"
+            docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-08-alpine"
             memory: "3 GB"
             disks: "local-disk 10 HDD"
             cpu: 1
