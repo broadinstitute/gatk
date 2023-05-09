@@ -150,7 +150,7 @@ workflow GvsBulkIngestGenomes {
         }
 
         output {
-            String samples_table_name = samples_table
+            String samples_table_name1 = samples_table
             String sample_id_col_name = sample_id_col
             String vcf_files_column_name = read_string(vcf_files_column_name_output)
             String vcf_index_files_column_name = read_string(vcf_index_files_column_name_output)
