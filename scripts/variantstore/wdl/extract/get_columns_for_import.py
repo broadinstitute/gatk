@@ -60,6 +60,9 @@ def get_column_values(columnSamples, numSamples):
     cutoffPoint = numSampledRows * 0.95
     print(f"Sampled {numSampledRows} rows total. Throwing away any under {cutoffPoint}")
 
+    # does the col has strings only
+
+
     # match column names that end with "vcf"
     ends_in_vcf_pattern = "^.*vcf$"
     ends_in_vcf = set()
@@ -81,12 +84,17 @@ def get_column_values(columnSamples, numSamples):
     path_ends_in_vcf_gz_tbi = set()
 
     # start sorting the columns that we've seen into buckets to be compared later
+
     for key in columnSamples:
         print(f"Found key: {key} with {len(columnSamples[key])} entries")
         samplesData = columnSamples[key]
-        print(samplesData)
         if len(samplesData) < cutoffPoint:
             # ignoring this completely
+            continue
+
+        if type(samplesData[0]) != str:
+            # ignoring non-strings completely.
+            # We can grab the 0th index because the way that the values come in, there are no missing vals
             continue
 
         # ends in vcf?
