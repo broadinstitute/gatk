@@ -21,7 +21,23 @@ See `load_azure_sql_database.sh` elsewhere in this repo. This script automates t
 Described [here](https://learn.microsoft.com/en-au/azure/azure-sql/database/serverless-tier-overview?view=azuresql&tabs=general-purpose#billing).
 
 All trials below with Family = General, Edition = Gen5 resulting in compute priced at $0.000145 per vCore second in all
-cases.
+cases. Cost per vCore second is visible at
+
+```
+Portal -> SQL Database -> <specific server> -> Compute + storage
+```
+
+![Cost per vCore second](./cost%20per%20vCore%20second.png)
+
+Actual vCore * second usage is visible at
+```
+Portal -> SQL Database -> <specific server> -> Metrics
+```
+
+![Actual vCore * second usage](./App%20CPU%20billed.png)
+
+using the metric "App CPU billed".
+
 
 ## Trial 1: Capacity = 2
 
@@ -64,7 +80,6 @@ if we can get the benefits of improved log rates with a lower minimum vCore.
 ```
 
 So $1.77 per sample. Not as good as the default.
-
 
 ## Trial 4: Capacity = 1
 
