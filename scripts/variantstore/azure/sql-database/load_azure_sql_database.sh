@@ -1,5 +1,3 @@
-
-
 usage() {
   echo "
 
@@ -12,7 +10,7 @@ Usage: $(basename "$0") --group <Resource group name> --server <SQL Server> --da
                         [--family <SQL Server Family>, default Gen5]
                         [--capacity <SQL Server Capacity>, default 2]
 
-All parameters except --edition, --family, and --capacity are mandatory.
+All parameters except --edition, --family, and --capacity are required.
 
 The specified resource group will be created and all resources will be created within that group.
 
