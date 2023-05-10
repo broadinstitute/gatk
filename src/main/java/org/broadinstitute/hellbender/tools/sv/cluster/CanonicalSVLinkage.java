@@ -155,12 +155,8 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
         // Check bypassed if both are inter-chromosomal
         final Boolean hasReciprocalOverlapAndSizeSimilarity;
         if (a.isIntrachromosomal()) {
-            final SimpleInterval intervalA = new SimpleInterval(a.getContigA(), a.getPositionA(), a.getPositionA() + getLength(a, INSERTION_ASSUMED_LENGTH_FOR_OVERLAP) - 1);
-            final SimpleInterval intervalB = new SimpleInterval(b.getContigA(), b.getPositionA(), b.getPositionA() + getLength(b, INSERTION_ASSUMED_LENGTH_FOR_OVERLAP) - 1);
-            final boolean hasReciprocalOverlap = IntervalUtils.isReciprocalOverlap(intervalA, intervalB, params.getReciprocalOverlap());
-            final int sizeSimilarityLengthA = getLength(a, INSERTION_ASSUMED_LENGTH_FOR_SIZE_SIMILARITY);
-            final int sizeSimilarityLengthB = getLength(b, INSERTION_ASSUMED_LENGTH_FOR_SIZE_SIMILARITY);
-            final boolean hasSizeSimilarity = Math.min(sizeSimilarityLengthA, sizeSimilarityLengthB) / (double) Math.max(sizeSimilarityLengthA, sizeSimilarityLengthB) >= params.getSizeSimilarity();
+            final boolean hasReciprocalOverlap = testReciprocalOverlap(a, b, params.getReciprocalOverlap());
+            final boolean hasSizeSimilarity = testSizeSimilarity(a, b, params.getSizeSimilarity());
             hasReciprocalOverlapAndSizeSimilarity = hasReciprocalOverlap && hasSizeSimilarity;
             if (params.requiresOverlapAndProximity() && !hasReciprocalOverlapAndSizeSimilarity) {
                 return false;
@@ -170,8 +166,35 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
         }
 
         // Breakend proximity
-        final SimpleInterval intervalA1 = a.getPositionAInterval().expandWithinContig(params.getWindow(), dictionary);
-        final SimpleInterval intervalA2 = a.getPositionBInterval().expandWithinContig(params.getWindow(), dictionary);
+        final boolean hasBreakendProximity = testBreakendProximity(a, b, params.getWindow(), dictionary);
+        // Use short-circuiting statements since sample overlap is the least scalable / slowest check
+        if (hasReciprocalOverlapAndSizeSimilarity == null) {
+            return hasBreakendProximity && hasSampleOverlap(a, b, params.getSampleOverlap());
+        } else {
+            if (params.requiresOverlapAndProximity()) {
+                return hasReciprocalOverlapAndSizeSimilarity && hasBreakendProximity && hasSampleOverlap(a, b, params.getSampleOverlap());
+            } else {
+                return (hasReciprocalOverlapAndSizeSimilarity || hasBreakendProximity) && hasSampleOverlap(a, b, params.getSampleOverlap());
+            }
+        }
+    }
+
+    private static boolean testReciprocalOverlap(final SVCallRecord a, final SVCallRecord b, final double threshold) {
+        final SimpleInterval intervalA = new SimpleInterval(a.getContigA(), a.getPositionA(), a.getPositionA() + getLength(a, INSERTION_ASSUMED_LENGTH_FOR_OVERLAP) - 1);
+        final SimpleInterval intervalB = new SimpleInterval(b.getContigA(), b.getPositionA(), b.getPositionA() + getLength(b, INSERTION_ASSUMED_LENGTH_FOR_OVERLAP) - 1);
+        return IntervalUtils.isReciprocalOverlap(intervalA, intervalB, threshold);
+    }
+
+    private static boolean testSizeSimilarity(final SVCallRecord a, final SVCallRecord b, final double threshold) {
+        final int sizeSimilarityLengthA = getLength(a, INSERTION_ASSUMED_LENGTH_FOR_SIZE_SIMILARITY);
+        final int sizeSimilarityLengthB = getLength(b, INSERTION_ASSUMED_LENGTH_FOR_SIZE_SIMILARITY);
+        return Math.min(sizeSimilarityLengthA, sizeSimilarityLengthB) / (double) Math.max(sizeSimilarityLengthA, sizeSimilarityLengthB) >= threshold;
+    }
+
+    private static boolean testBreakendProximity(final SVCallRecord a, final SVCallRecord b, final int window,
+                                                 final SAMSequenceDictionary dictionary) {
+        final SimpleInterval intervalA1 = a.getPositionAInterval().expandWithinContig(window, dictionary);
+        final SimpleInterval intervalA2 = a.getPositionBInterval().expandWithinContig(window, dictionary);
         if (intervalA1 == null) {
             logger.warn("Invalid start position " + a.getPositionA() + " in record " + a.getId() +
                     " - record will not be matched");
@@ -184,17 +207,7 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
         }
         final SimpleInterval intervalB1 = b.getPositionAInterval();
         final SimpleInterval intervalB2 = b.getPositionBInterval();
-        final boolean hasBreakendProximity = intervalA1.overlaps(intervalB1) && intervalA2.overlaps(intervalB2);
-        // Use short-circuiting statements since sample overlap is the least scalable / slowest check
-        if (hasReciprocalOverlapAndSizeSimilarity == null) {
-            return hasBreakendProximity && hasSampleOverlap(a, b, params.getSampleOverlap());
-        } else {
-            if (params.requiresOverlapAndProximity()) {
-                return hasReciprocalOverlapAndSizeSimilarity && hasBreakendProximity && hasSampleOverlap(a, b, params.getSampleOverlap());
-            } else {
-                return (hasReciprocalOverlapAndSizeSimilarity || hasBreakendProximity) && hasSampleOverlap(a, b, params.getSampleOverlap());
-            }
-        }
+        return intervalA1.overlaps(intervalB1) && intervalA2.overlaps(intervalB2);
     }
 
     /**

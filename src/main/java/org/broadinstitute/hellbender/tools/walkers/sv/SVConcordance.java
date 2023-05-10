@@ -123,18 +123,8 @@ public final class SVConcordance extends AbstractConcordanceWalker {
         }
 
         // Check that vcfs are sorted the same
-        final SequenceDictionaryUtils.SequenceDictionaryCompatibility compatibility =  SequenceDictionaryUtils
-                .compareDictionaries(getTruthHeader().getSequenceDictionary(),
-                        getEvalHeader().getSequenceDictionary(), true);
-        if (compatibility == SequenceDictionaryUtils.SequenceDictionaryCompatibility.OUT_OF_ORDER) {
-            throw new UserException.IncompatibleSequenceDictionaries(
-                    "The relative ordering of the common contigs in eval and truth " +
-                            " is not the same; to fix this please see: "
-                            + "(https://www.broadinstitute.org/gatk/guide/article?id=1328), "
-                            + " which describes reordering contigs in BAM and VCF files.",
-                    "eval", getEvalHeader().getSequenceDictionary(),
-                    "truth", getTruthHeader().getSequenceDictionary());
-        }
+        SequenceDictionaryUtils.validateDictionaries("eval", getEvalHeader().getSequenceDictionary(),
+                "truth", getTruthHeader().getSequenceDictionary(), false, true);
 
         linkage = new SVConcordanceLinkage(dictionary);
         linkage.setDepthOnlyParams(clusterParameterArgs.getDepthParameters());
