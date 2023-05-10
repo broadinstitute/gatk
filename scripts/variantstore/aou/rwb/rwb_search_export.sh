@@ -115,14 +115,14 @@ then
   END_CHROMOSOME_NUMBER=$((${START_CHROMOSOME_NUMBER} + 1))
   # 'read' apparently returns non-zero
   set +o errexit
-  read -r -d '' EXPORT_WHERE_CLAUSE <<FIN
+  read -r -d '' CHROMOSOME_FILTER_WHERE_CLAUSE <<FIN
       WHERE aa.location > $((${START_CHROMOSOME_NUMBER} * ${CHROMOSOME_MULTIPLIER}))
         AND aa.location < $((${END_CHROMOSOME_NUMBER} * ${CHROMOSOME_MULTIPLIER}))
 FIN
   set -o errexit
 else
   # No specified chromosome means we should export everything
-  EXPORT_WHERE_CLAUSE=""
+  CHROMOSOME_FILTER_WHERE_CLAUSE=""
 fi
 
 BIGQUERY_EXPORT_SHARDS_PATH="${BIGQUERY_EXPORT_PATH}raw_bigquery_shards/rwb_export_*.tsv"
@@ -153,7 +153,7 @@ EXPORT DATA OPTIONS (
           FROM \`${BIGQUERY_PROJECT_ID}.${BIGQUERY_DATASET}.${VAT_TABLE}\`)
              AS vat
          ON vat.ref = aa.ref AND vat.alt = aa.allele AND vat.location = aa.location
-${EXPORT_WHERE_CLAUSE}
+${CHROMOSOME_FILTER_WHERE_CLAUSE}
     ORDER BY chromosome, position, ref, allele, sample_name
 
 FIN
