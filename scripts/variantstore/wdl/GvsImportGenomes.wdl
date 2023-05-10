@@ -28,7 +28,8 @@ workflow GvsImportGenomes {
     Int? load_data_batch_size
     Int? load_data_preemptible_override
     Int? load_data_maxretries_override
-    File? load_data_gatk_override
+    File? load_data_gatk_override = "gs://gvs-internal-scratch/rsa/jars/gatk-package-4.2.0.0-686-g782af7f-SNAPSHOT-local.jar"
+
   }
 
   Int num_samples = length(external_sample_names)
@@ -120,6 +121,11 @@ workflow GvsImportGenomes {
         load_data_maxretries = effective_load_data_maxretries,
         sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
         sample_map = GetUningestedSampleIds.sample_map
+    }
+    call ProcessVCFHeaders {
+      input:
+        dataset_name = dataset_name,
+        project_id = project_id,
     }
   }
 
@@ -324,6 +330,27 @@ task LoadData {
   }
 }
 
+task ProcessVCFHeaders {
+  input {
+    String dataset_name
+    String project_id
+  }
+
+  command <<<
+    set -o errexit -o nounset -o xtrace -o pipefail
+
+    python3 /app/process_sample_vcf_headers.py \
+      --project_id ~{project_id} \
+      --dataset_name ~{dataset_name} \
+  >>>
+
+  runtime {
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-10-alpine"
+    disks: "local-disk 500 HDD"
+  }
+}
+
+
 task SetIsLoadedColumn {
   input {
     String dataset_name
@@ -489,7 +516,7 @@ task CurateInputLists {
                                              --output_files True
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-04-13-alpine"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-10-alpine"
     memory: "3 GB"
     disks: "local-disk 100 HDD"
     bootDiskSizeGb: 15
