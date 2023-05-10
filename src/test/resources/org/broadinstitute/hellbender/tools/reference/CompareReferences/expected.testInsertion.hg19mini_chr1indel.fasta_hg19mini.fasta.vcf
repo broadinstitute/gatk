@@ -1,7 +1,7 @@
 ##fileformat=VCFv4.2
-##contig=<ID=1,length=15920>
-##contig=<ID=2,length=16000>
-##contig=<ID=3,length=16000>
-##contig=<ID=4,length=16000>
+##contig=<ID=1,length=15920,md5=dfbdb1a2666f8be18b140f07fd80df3a,URL=file:/Users/ocohen/workingcode/gatk/src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini_chr1indel.fasta>
+##contig=<ID=2,length=16000,md5=5f8388fe3fb34aa38375ae6cf5e45b89,URL=file:/Users/ocohen/workingcode/gatk/src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini_chr1indel.fasta>
+##contig=<ID=3,length=16000,md5=94de808a3a2203dbb02434a47bd8184f,URL=file:/Users/ocohen/workingcode/gatk/src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini_chr1indel.fasta>
+##contig=<ID=4,length=16000,md5=7d397ee919e379328d8f52c57a54c778,URL=file:/Users/ocohen/workingcode/gatk/src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini_chr1indel.fasta>
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
 1	13999	.	T	TACCTGCCCCACAGCCTTGCCTGGATTTCTATCTCCCTGGCTTGGTGCCAGTTCCTCCAAGTCGATGGCACCTCCCTCCCT	.	.	.

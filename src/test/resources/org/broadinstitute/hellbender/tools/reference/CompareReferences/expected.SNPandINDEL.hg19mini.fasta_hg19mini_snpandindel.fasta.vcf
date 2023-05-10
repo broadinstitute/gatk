@@ -1,8 +1,8 @@
 ##fileformat=VCFv4.2
-##contig=<ID=1,length=16000>
-##contig=<ID=2,length=16000>
-##contig=<ID=3,length=16000>
-##contig=<ID=4,length=16000>
+##contig=<ID=1,length=16000,md5=8c0c38e352d8f3309eabe4845456f274,URL=file:/Users/louisb/Workspace/hellbender/hg19mini.fasta>
+##contig=<ID=2,length=16000,md5=5f8388fe3fb34aa38375ae6cf5e45b89,URL=file:/Users/louisb/Workspace/hellbender/hg19mini.fasta>
+##contig=<ID=3,length=16000,md5=94de808a3a2203dbb02434a47bd8184f,URL=file:/Users/louisb/Workspace/hellbender/hg19mini.fasta>
+##contig=<ID=4,length=16000,md5=7d397ee919e379328d8f52c57a54c778,URL=file:/Users/louisb/Workspace/hellbender/hg19mini.fasta>
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
 1	12881	.	G	C	.	.	.
 2	10400	.	AACCCCGAACCCCGAACCCCAACCCCAACCCCAACCCCAACCCTAACCCCTCACCCTCACCCTCGACCCCCGACCCCCGAC	A	.	.	.
