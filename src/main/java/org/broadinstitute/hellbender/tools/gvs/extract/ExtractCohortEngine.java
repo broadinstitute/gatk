@@ -468,7 +468,7 @@ public class ExtractCohortEngine {
                 case "*":   // Spanning Deletion - do nothing. just mark the sample as seen
                     break;
                 case "m":   // Missing
-                    // Nothing to do here -- just needed to mark the sample as seen so it doesn't get put in the high confidence ref band
+                    // Nothing to do here -- just needed to mark the sample as seen, so it doesn't get put in the high confidence ref band
                     break;
                 default:
                     throw new GATKException("Unrecognized state: " + sampleRecord.getState());
