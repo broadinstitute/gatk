@@ -6,6 +6,7 @@ import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFHeaderLine;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -25,6 +26,9 @@ import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.sql.Array;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 /**
@@ -41,7 +45,10 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     private RefCreator refCreator;
     private VetCreator vetCreator;
+    private VcfHeaderLineTempCreator vcfHeaderLineTempCreater;
     private LoadStatus loadStatus;
+
+    private List<String> allLineHeaders = new ArrayList<String>();
 
     private GenomeLocSortedSet intervalArgumentGenomeLocSortedSet;
 
@@ -178,6 +185,22 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         // TODO if you change here, also change in CreateArrayIngestFiles
         // Get sample name
         final VCFHeader inputVCFHeader = getHeaderForVariants();
+
+        // get an array of header "lines" (command line INFO lines, chunks of non-command-line INFO lines)
+        // to put into the header line temp table
+        HashMap<String, String> nonCommandLineHeaders = new HashMap<>();
+        for ( VCFHeaderLine line :  inputVCFHeader.getMetaDataInInputOrder()) {
+            if (line.getKey().contains("CommandLine")) {
+                HashMap<String, String> commandLine = new HashMap<>();
+                commandLine.put(line.getKey(), line.getValue());
+                allLineHeaders.add(commandLine.toString());
+            }
+            else {
+                nonCommandLineHeaders.put(line.getKey(), line.getValue());
+            }
+        }
+        allLineHeaders.add(nonCommandLineHeaders.toString());
+
         String sampleName = sampleNameParam == null ? IngestUtils.getSampleName(inputVCFHeader) : sampleNameParam;
         if (sampleIdParam == null && sampleMap == null) {
             throw new IllegalArgumentException("One of sample-id or sample-name-mapping must be specified");
@@ -208,6 +231,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             }
 
             LoadStatus.LoadState state = loadStatus.getSampleLoadState(Long.parseLong(sampleId));
+//            LoadStatus.LoadState state = LoadStatus.LoadState.NONE;
             if (state == LoadStatus.LoadState.COMPLETE) {
                 logger.info("Sample id " + sampleId + " was detected as already loaded, exiting successfully.");
                 System.exit(0);
@@ -257,6 +281,8 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         if (enableVet && !vetRowsExist) {
             vetCreator = new VetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, forceLoadingFromNonAlleleSpecific, skipLoadingVqsrFields);
         }
+        vcfHeaderLineTempCreater = new VcfHeaderLineTempCreator(sampleId, projectID, datasetName);
+
     }
 
     @Override
@@ -307,6 +333,16 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             loadStatus.writeLoadStatusStarted(Long.parseLong(sampleId));
         }
 
+        if (vcfHeaderLineTempCreater != null) {
+            try {
+                vcfHeaderLineTempCreater.apply(allLineHeaders);
+            }catch (IOException ioe) {
+                throw new GATKException("Error writing missing intervals", ioe);
+            }
+            // Wait until all data has been submitted and in pending state to commit
+            vcfHeaderLineTempCreater.commitData();
+        }
+
         if (refCreator != null) {
             try {
                 refCreator.writeMissingIntervals(intervalArgumentGenomeLocSortedSet);
@@ -335,6 +371,9 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             refCreator.closeTool();
         }
         if (vetCreator != null) {
+            vetCreator.closeTool();
+        }
+        if (vcfHeaderLineTempCreater != null) {
             vetCreator.closeTool();
         }
     }

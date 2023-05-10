@@ -119,7 +119,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rc-VS-778-spike-import-limit
+         - rsa_vs_836_v2
    - name: GvsPrepareBulkImport
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareBulkImport.wdl

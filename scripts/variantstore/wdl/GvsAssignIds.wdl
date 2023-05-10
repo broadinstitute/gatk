@@ -17,7 +17,7 @@ workflow GvsAssignIds {
 
   String sample_info_table = "sample_info"
   String sample_info_schema_json = '[{"name": "sample_name","type": "STRING","mode": "REQUIRED"},{"name": "sample_id","type": "INTEGER","mode": "NULLABLE"},{"name":"is_loaded","type":"BOOLEAN","mode":"NULLABLE"},{"name":"is_control","type":"BOOLEAN","mode":"REQUIRED"},{"name":"withdrawn","type":"TIMESTAMP","mode":"NULLABLE"},{"name":"vcf_header_lines_id","type":"STRING","mode":"REPEATED"}]'
-  String vcf_header_lines_temp_schema_json = '[{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name":"vcf_header_lines","type":"STRING","mode":"REQUIRED"},{"name":"vcf_header_lines_hash","type":"STRING","mode":"REQUIRED"}]'
+  String vcf_header_lines_temp_schema_json = '[{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name":"vcf_header_lines","type":"STRING","mode":"NULLABLE"},{"name":"vcf_header_lines_hash","type":"STRING","mode":"REQUIRED"}]'
   String vcf_header_lines_schema_json = '[{"name": "vcf_header_lines_id","type": "INTEGER","mode": "REQUIRED"},{"name":"vcf_header_lines","type":"STRING","mode":"REQUIRED"},{"name":"vcf_header_lines_hash","type":"STRING","mode":"REQUIRED"}]'
   String sample_load_status_json = '[{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name":"status","type":"STRING","mode":"REQUIRED"}, {"name":"event_timestamp","type":"TIMESTAMP","mode":"REQUIRED"}]'
 
@@ -43,7 +43,7 @@ workflow GvsAssignIds {
       partitioned = "false"
   }
 
-  call GvsCreateTables.CreateTables as CreateTempVCFHeaderLinestable {
+  call GvsCreateTables.CreateTables as CreateTempVCFHeaderLinesTable {
     input:
       project_id = project_id,
       dataset_name = dataset_name,
@@ -54,7 +54,7 @@ workflow GvsAssignIds {
       partitioned = "false"
   }
 
-  call GvsCreateTables.CreateTables as CreateVCFHeaderLinestable {
+  call GvsCreateTables.CreateTables as CreateVCFHeaderLinesTable {
     input:
       project_id = project_id,
       dataset_name = dataset_name,
