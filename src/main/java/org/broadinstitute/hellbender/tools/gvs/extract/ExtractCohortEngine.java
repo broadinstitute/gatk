@@ -443,26 +443,26 @@ public class ExtractCohortEngine {
 
                     currentPositionHasVariant = true;
                     break;
-                case "0":   // Non Variant Block with GQ < 10
+                case "0":   // Non-Variant Block with GQ < 10
                     // Reference calls with GQ 0 should be rendered as no-call (#271)
                     // Nothing to do here -- just needed to mark the sample as seen so it doesn't get put in the high confidence ref band
                     break;
-                case "1":  // Non Variant Block with 10 <=  GQ < 20
+                case "1":  // Non-Variant Block with 10 <=  GQ < 20
                     refCalls.add(new ReferenceGenotypeInfo(sampleName, 10));
                     break;
-                case "2":  // Non Variant Block with 20 <= GQ < 30
+                case "2":  // Non-Variant Block with 20 <= GQ < 30
                     refCalls.add(new ReferenceGenotypeInfo(sampleName, 20));
                     break;
-                case "3":  // Non Variant Block with 30 <= GQ < 40
+                case "3":  // Non-Variant Block with 30 <= GQ < 40
                     refCalls.add(new ReferenceGenotypeInfo(sampleName, 30));
                     break;
-                case "4":  // Non Variant Block with 40 <= GQ < 50
+                case "4":  // Non-Variant Block with 40 <= GQ < 50
                     refCalls.add(new ReferenceGenotypeInfo(sampleName, 40));
                     break;
-                case "5":  // Non Variant Block with 50 <= GQ < 60
+                case "5":  // Non-Variant Block with 50 <= GQ < 60
                     refCalls.add(new ReferenceGenotypeInfo(sampleName, 50));
                     break;
-                case "6":  // Non Variant Block with 60 <= GQ (usually omitted from tables)
+                case "6":  // Non-Variant Block with 60 <= GQ (usually omitted from tables)
                     refCalls.add(new ReferenceGenotypeInfo(sampleName, 60));
                     break;
                 case "*":   // Spanning Deletion - do nothing. just mark the sample as seen
@@ -637,8 +637,9 @@ public class ExtractCohortEngine {
 
     boolean isFailingSite(final Stream<Double> vqScores, final Double vqScoreThreshold) {
         Optional<Double> maxVal = vqScores
-                .filter(d -> !(d.isNaN()||d.isInfinite()))
+                .filter(d -> !(d.isNaN() || d.isInfinite()))
                 .max(Double::compareTo);
+        // It's a failing site if the maximum vqlod (if found) is less than the threshold
         return maxVal.isPresent() && maxVal.get() < vqScoreThreshold;
     }
 
@@ -814,13 +815,13 @@ public class ExtractCohortEngine {
     boolean isFailingGenotype(final Stream<Allele> nonRefAlleles,
                                       final LinkedHashMap<Allele, Double> remappedVQScoreMap,
                                       final Double vqScoreThreshold) {
-        // get the max (best) vq score (vqslod/sensitivity) for all non-Yay sites, and apply the filter
+        // get the max (best) vqslod of the alleles in this genotype
         Optional<Double> maxVal =
                 nonRefAlleles
                         .map(remappedVQScoreMap::get)
                         .filter(Objects::nonNull)
                         .max(Double::compareTo);
-
+        // It's a failing site if the maximum vqlod (if found) is less than the threshold
         return maxVal.isPresent() && maxVal.get() < vqScoreThreshold;
     }
 
