@@ -1,12 +1,29 @@
+
+
+usage() {
+  echo "
+
+Script to load Quickstart data from TSV files in the specified storage container into a serverless Azure SQL Database.
+
+Usage: $(basename "$0") --group <Resource group name> --server <SQL Server> --database <SQL Database>
+                        --account <Storage account name> --container <Storage container name>
+                        --sas-token <Storage container SAS token> --password <Master key password>
+                        [--edition <SQL Server Edition>, default GeneralPurpose]
+                        [--family <SQL Server Family>, default Gen5]
+                        [--capacity <SQL Server Capacity>, default 2]
+
+All parameters except --edition, --family, and --capacity are mandatory.
+
+The specified resource group will be created and all resources will be created within that group.
+
+" 1>&2
+  exit 1
+}
+
 # Prepend date, time and pwd to xtrace log entries.
 PS4='\D{+%F %T} \w $ '
 set -o errexit -o pipefail -o xtrace
 
-usage() {
-  echo "Usage: $(basename "$0") --group <Resource group name> --server <SQL Server> --database <SQL Database> --account <Storage account name> --container <Storage container name> --sas-token <Storage container SAS token> --password <Master key password> [--edition <SQL Server Edition>, defauilt Gen5] [--family <SQL Server Family>, default Gen5] [--capacity <SQL Server capacity>, default 2]" 1>&2
-  echo "All parameters except --edition, --family, and --capacity are mandatory." 1>&2
-  exit 1
-}
 
 VALID_ARGS=$(getopt --options g:s:d:a:c:t:p:e:f:y --long group:,server:,database:,account:,container:,sas-token:,password:,edition:,family:,capacity: -- "$@")
 if [[ $? -ne 0 ]]; then
