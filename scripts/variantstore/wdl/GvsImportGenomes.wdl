@@ -122,11 +122,13 @@ workflow GvsImportGenomes {
         sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
         sample_map = GetUningestedSampleIds.sample_map
     }
-    call ProcessVCFHeaders {
-      input:
-        dataset_name = dataset_name,
-        project_id = project_id,
-    }
+  }
+
+  call ProcessVCFHeaders {
+    input:
+      load_done = LoadData.done,
+      dataset_name = dataset_name,
+      project_id = project_id,
   }
 
   call SetIsLoadedColumn {
@@ -334,6 +336,7 @@ task ProcessVCFHeaders {
   input {
     String dataset_name
     String project_id
+    Array[String] load_done
   }
 
   command <<<
