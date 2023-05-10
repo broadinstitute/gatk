@@ -1,12 +1,26 @@
+
+usage() {
+
+  echo "
+Script to extract CSV files from a BigQuery GVS dataset to support search for Researcher Workbench.
+
+Usage: $(basename "$0") --project-id <BigQuery project id> --dataset <BigQuery dataset>
+                        --export-path <GCS export path> --vat-table <VAT table name>
+                        [--chromosome <1-22, X or Y>] [--overwrite] [--xtrace]
+
+All parameters except --chromosome, --overwrite, and --xtrace are required.
+
+If --chromosome is not specified, data will be extracted for all chromosomes.
+If --overwrite is not specified and data exists at the specified --export-path, export will fail.
+--xtrace optionally turns on debug logging.
+
+" 1>&2
+  exit 1
+}
+
 # Prepend date, time and pwd to xtrace log entries.
 PS4='\D{+%F %T} \w $ '
 set -o pipefail -o errexit
-
-usage() {
-  echo "Usage: $(basename "$0") --project-id <BigQuery project id> --dataset <BigQuery dataset> --export-path <GCS export path> --vat-table <VAT table name> [--chromosome <1-22, X or Y>] [--overwrite] [--xtrace]" 1>&2
-  echo "All parameters except --chromosome, --overwrite, and --xtrace are mandatory." 1>&2
-  exit 1
-}
 
 VALID_ARGS=$(getopt --options p:d:e:v:c:ox --longoptions project-id:,dataset:,export-path:,vat-table:,chromosome:,overwrite,xtrace -- "$@")
 if [[ $? -ne 0 ]]
@@ -66,7 +80,7 @@ then
   usage
 elif ! [[ "${BIGQUERY_EXPORT_PATH}" =~ /$ ]]
 then
-  echo "--extport-path must be a GCS path ending with a slash." 1>&2
+  echo "--export-path must be a GCS path ending with a slash." 1>&2
   usage
 fi
 
@@ -117,7 +131,7 @@ cat > "${BIGQUERY_EXTRACT_SCRIPT}" <<FIN
 
 EXPORT DATA OPTIONS (
     uri ='${BIGQUERY_EXPORT_SHARDS_PATH}', format = 'CSV', header = true, field_delimiter = "\t", overwrite = ${BIGQUERY_EXPORT_OVERWRITE}) AS
-    SELECT (CASE CAST(aa.location / ${CHROMOSOME_MULTIPLIER} AS int64)
+    SELECT distinct (CASE CAST(aa.location / ${CHROMOSOME_MULTIPLIER} AS int64)
                 WHEN 23 THEN 'X'
                 WHEN 24 THEN 'Y'
                 ELSE CAST(CAST(aa.location / ${CHROMOSOME_MULTIPLIER} AS int64) AS string) END) AS chromosome,
@@ -140,7 +154,7 @@ EXPORT DATA OPTIONS (
              AS vat
          ON vat.ref = aa.ref AND vat.alt = aa.allele AND vat.location = aa.location
 ${EXPORT_WHERE_CLAUSE}
-    ORDER BY aa.location, ref, allele, sample_name
+    ORDER BY chromosome, position, ref, allele, sample_name
 
 FIN
 
