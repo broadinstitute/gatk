@@ -284,8 +284,7 @@ public final class FlowFeatureMapper extends ReadWalker {
     }
 
     public VCFHeader makeVCFHeader(final SAMSequenceDictionary sequenceDictionary, final Set<VCFHeaderLine>  defaultToolHeaderLines ) {
-        final Set<VCFHeaderLine> headerInfo = new HashSet<>();
-        headerInfo.addAll(defaultToolHeaderLines);
+        final Set<VCFHeaderLine> headerInfo = new HashSet<>(VCFHeader.makeHeaderVersionLineSet(VCFHeader.DEFAULT_VCF_VERSION));
 
         // all callers need to add these standard annotation header lines
         headerInfo.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.MLE_ALLELE_COUNT_KEY));
