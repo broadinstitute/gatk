@@ -79,6 +79,30 @@ public final class ReferenceConfidenceVariantContextMerger {
      * Merges VariantContexts from gVCFs into a single hybrid.
      * Assumes that none of the input records are filtered.
      *
+     * This version applies allele remapping prior to genotyping.
+     *
+     * TODO: THIS BEHAVIOR SHOULD BE MADE THE DEFAULT, AND THIS METHOD RETIRED IN FAVOR OF MERGE() BELOW
+     * TODO: SEE https://github.com/broadinstitute/gatk/issues/8317
+     *
+     * @param vcs     collection of unsorted genomic vcs
+     * @param loc     the current location
+     * @param refBase the reference allele to use if all contexts in the VC are spanning (i.e. don't start at the location in loc); if null, we'll return null in this case
+     * @param removeNonRefSymbolicAllele if true, remove the <NON_REF> allele from the merged VC
+     * @param samplesAreUniquified  if true, sample names have been uniquified
+     * @return new VariantContext representing the merge of all vcs or null if it not relevant
+     */
+    public VariantContext mergeWithRemapping(final List<VariantContext> vcs, final Locatable loc, final Byte refBase,
+                                             final boolean removeNonRefSymbolicAllele, final boolean samplesAreUniquified) {
+        // Call merge() with useRemappedAllelesForGenotyping == true
+        return merge(vcs, loc, refBase, removeNonRefSymbolicAllele, samplesAreUniquified, true);
+    }
+
+    /**
+     * Merges VariantContexts from gVCFs into a single hybrid.
+     * Assumes that none of the input records are filtered.
+     *
+     * This overload does not apply allele remapping prior to genotyping.
+     *
      * @param vcs     collection of unsorted genomic vcs
      * @param loc     the current location
      * @param refBase the reference allele to use if all contexts in the VC are spanning (i.e. don't start at the location in loc); if null, we'll return null in this case
@@ -88,6 +112,25 @@ public final class ReferenceConfidenceVariantContextMerger {
      */
     public VariantContext merge(final List<VariantContext> vcs, final Locatable loc, final Byte refBase,
                                 final boolean removeNonRefSymbolicAllele, final boolean samplesAreUniquified) {
+        // Call merge() with useRemappedAllelesForGenotyping == false
+        return merge(vcs, loc, refBase, removeNonRefSymbolicAllele, samplesAreUniquified, false);
+    }
+
+    /**
+     * Merges VariantContexts from gVCFs into a single hybrid.
+     * Assumes that none of the input records are filtered.
+     *
+     * @param vcs     collection of unsorted genomic vcs
+     * @param loc     the current location
+     * @param refBase the reference allele to use if all contexts in the VC are spanning (i.e. don't start at the location in loc); if null, we'll return null in this case
+     * @param removeNonRefSymbolicAllele if true, remove the <NON_REF> allele from the merged VC
+     * @param samplesAreUniquified  if true, sample names have been uniquified
+     * @param useRemappedAllelesForGenotyping  if true, remap alleles prior to making the genotype call
+     * @return new VariantContext representing the merge of all vcs or null if it not relevant
+     */
+    public VariantContext merge(final List<VariantContext> vcs, final Locatable loc, final Byte refBase,
+                                final boolean removeNonRefSymbolicAllele, final boolean samplesAreUniquified,
+                                final boolean useRemappedAllelesForGenotyping) {
         Utils.nonEmpty(vcs);
 
         // establish the baseline info (sometimes from the first VC)
@@ -131,7 +174,7 @@ public final class ReferenceConfidenceVariantContextMerger {
             final VariantContext vc = vcWithNewAlleles.getVc();
             final List<Allele> remappedAlleles = vcWithNewAlleles.getNewAlleles();
 
-            genotypes.addAll(mergeRefConfidenceGenotypes(vc, remappedAlleles, allelesList, samplesAreUniquified));
+            genotypes.addAll(mergeRefConfidenceGenotypes(vc, remappedAlleles, allelesList, samplesAreUniquified, useRemappedAllelesForGenotyping));
             depth += calculateVCDepth(vc);
 
             if ( loc.getStart() != vc.getStart() ) {
@@ -516,11 +559,13 @@ public final class ReferenceConfidenceVariantContextMerger {
      * @param remappedAlleles       the list of remapped alleles for the sample
      * @param targetAlleles         the list of target alleles
      * @param samplesAreUniquified  true if sample names have been uniquified
+     * @param useRemappedAllelesForGenotyping  if true, remap alleles prior to making the genotype call
      */
     private GenotypesContext mergeRefConfidenceGenotypes(final VariantContext vc,
                                                            final List<Allele> remappedAlleles,
                                                            final List<Allele> targetAlleles,
-                                                           final boolean samplesAreUniquified) {
+                                                           final boolean samplesAreUniquified,
+                                                           final boolean useRemappedAllelesForGenotyping) {
         final GenotypesContext mergedGenotypes = GenotypesContext.create();
         final int maximumPloidy = vc.getMaxPloidy(GATKVariantContextUtils.DEFAULT_PLOIDY);
         // the map is different depending on the ploidy, so in order to keep this method flexible (mixed ploidies)
@@ -607,6 +652,10 @@ public final class ReferenceConfidenceVariantContextMerger {
                 }
             }
             genotypeBuilder.name(name);
+            final List<Allele> originalGTAlleles = useRemappedAllelesForGenotyping ?
+                    g.getAlleles().stream().map(a -> (vc.getAlleleIndex(a) > -1 ? remappedAlleles.get(vc.getAlleleIndex(a)) : Allele.NO_CALL)).collect(Collectors.toList()) :
+                    g.getAlleles();
+
             final GenotypeAssignmentMethod assignmentMethod;
             if (callGTAlleles && GenotypeUtils.shouldBeCalled(g)) {
                 assignmentMethod = GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL;
@@ -616,7 +665,7 @@ public final class ReferenceConfidenceVariantContextMerger {
             GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(),
                     genotypeBuilder, assignmentMethod,
                     g.hasLikelihoods() ? g.getLikelihoods().getAsVector() : null,
-                    targetAlleles, g.getAlleles(), null);
+                    targetAlleles, originalGTAlleles, null);
             mergedGenotypes.add(genotypeBuilder.make());
         }
 
