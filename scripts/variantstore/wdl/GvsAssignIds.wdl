@@ -66,6 +66,17 @@ workflow GvsAssignIds {
       partitioned = "false"
   }
 
+  call GvsCreateTables.CreateTables as CreateSampleVCFHeaderTable {
+    input:
+      project_id = project_id,
+      dataset_name = dataset_name,
+      datatype = "sample_vcf_header",
+      schema_json = sample_vcf_header_schema_json,
+      max_table_id = 1,
+      superpartitioned = "false",
+      partitioned = "false"
+  }
+
   call CreateCostObservabilityTable {
     input:
       project_id = project_id,
