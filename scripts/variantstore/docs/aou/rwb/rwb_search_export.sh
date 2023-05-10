@@ -1,21 +1,21 @@
-#!/usr/bin/env bash
-
 # Prepend date, time and pwd to xtrace log entries.
 PS4='\D{+%F %T} \w $ '
-set -o errexit -o pipefail -o xtrace
+set -o pipefail -o errexit
 
 usage() {
-  echo "Usage: $(basename "$0") --project-id <BigQuery project id> --dataset <BigQuery dataset> --extract-path <GCS extract path> --vat-table <VAT table name> [--chromosome <1-22, X or Y>]" 1>&2
-  echo "All parameters except --chromosome are mandatory." 1>&2
+  echo "Usage: $(basename "$0") --project-id <BigQuery project id> --dataset <BigQuery dataset> --export-path <GCS export path> --vat-table <VAT table name> [--chromosome <1-22, X or Y>] [--overwrite] [--xtrace]" 1>&2
+  echo "All parameters except --chromosome, --overwrite, and --xtrace are mandatory." 1>&2
   exit 1
 }
 
-VALID_ARGS=$(getopt --options p:d:e:v:c: --long project-id:dataset:extract-path:vat-table:chromosome: -- "$@")
-if [[ $? -ne 0 ]]; then
+VALID_ARGS=$(getopt --options p:d:e:v:c:ox --longoptions project-id:,dataset:,export-path:,vat-table:,chromosome:,overwrite,xtrace -- "$@")
+if [[ $? -ne 0 ]]
+then
   usage
 fi
 
-unset -v BIGQUERY_PROJECT_ID BIGQUERY_DATASET GCS_EXTRACT_PATH CHROMOSOME
+unset -v BIGQUERY_PROJECT_ID BIGQUERY_DATASET BIGQUERY_EXPORT_PATH CHROMOSOME
+BIGQUERY_EXPORT_OVERWRITE=false
 
 eval set -- "$VALID_ARGS"
 while true
@@ -29,8 +29,8 @@ do
       BIGQUERY_DATASET="$2"
       shift 2
       ;;
-    -e|--extract-path)
-      GCS_EXTRACT_PATH="$2"
+    -e|--export-path)
+      BIGQUERY_EXPORT_PATH="$2"
       shift 2
       ;;
     -v|--vat-table)
@@ -41,24 +41,32 @@ do
       CHROMOSOME="$2"
       shift 2
       ;;
+    -o|--overwrite)
+      BIGQUERY_EXPORT_OVERWRITE=true
+      shift
+      ;;
+    -x|--xtrace)
+      set -o xtrace
+      shift
+      ;;
     --) shift;
       break
       ;;
   esac
 done
 
-if [[ -z "${BIGQUERY_PROJECT_ID}" ]] || [[ -z "${BIGQUERY_DATASET}" ]] || [[ -z "${GCS_EXTRACT_PATH}" ]] || [[ -z "${VAT_TABLE}" ]]
+if [[ -z "${BIGQUERY_PROJECT_ID}" ]] || [[ -z "${BIGQUERY_DATASET}" ]] || [[ -z "${BIGQUERY_EXPORT_PATH}" ]] || [[ -z "${VAT_TABLE}" ]]
 then
   usage
 fi
 
-if ! [[ "${GCS_EXTRACT_PATH}" =~ "^gs://" ]]
+if ! [[ "${BIGQUERY_EXPORT_PATH}" =~ ^gs:// ]]
 then
-  echo "--extract-path must be a GCS path beginning with 'gs://'." 1>&2
+  echo "--export-path must be a GCS path beginning with 'gs://'." 1>&2
   usage
-elif ! [[ "${GCS_EXTRACT_PATH}" =~ "/$" ]]
+elif ! [[ "${BIGQUERY_EXPORT_PATH}" =~ /$ ]]
 then
-  echo "--extract-path must be a GCS path ending with a slash." 1>&2
+  echo "--extport-path must be a GCS path ending with a slash." 1>&2
   usage
 fi
 
@@ -90,44 +98,52 @@ CHROMOSOME_MULTIPLIER=1000000000000
 
 if [[ -n "${START_CHROMOSOME_NUMBER}" ]]
 then
-  END_CHROMOSOME_NUMBER=$(("${START_CHROMOSOME_NUMBER}" + 1))
+  END_CHROMOSOME_NUMBER=$((${START_CHROMOSOME_NUMBER} + 1))
+  # 'read' apparently returns non-zero
+  set +o errexit
   read -r -d '' EXPORT_WHERE_CLAUSE <<FIN
-      where aa.location > $((START_CHROMOSOME_NUMBER * CHROMOSOME_MULTIPLIER))
-        and aa.location < $((END_CHROMOSOME_NUMBER * CHROMOSOME_MULTIPLIER))
+      WHERE aa.location > $((${START_CHROMOSOME_NUMBER} * ${CHROMOSOME_MULTIPLIER}))
+        AND aa.location < $((${END_CHROMOSOME_NUMBER} * ${CHROMOSOME_MULTIPLIER}))
 FIN
+  set -o errexit
 else
   # No specified chromosome means we should export everything
   EXPORT_WHERE_CLAUSE=""
 fi
 
+BIGQUERY_EXPORT_SHARDS_PATH="${BIGQUERY_EXPORT_PATH}raw_bigquery_shards/rwb_export_*.tsv"
 
 cat > "${BIGQUERY_EXTRACT_SCRIPT}" <<FIN
 
 EXPORT DATA OPTIONS (
-    uri ='${GCS_EXTRACT_PATH}rwb_export_*.tsv', format ='CSV', header = false, field_delimiter ="\t") as
-    SELECT (case cast(aa.location / ${CHROMOSOME_MULTIPLIER} as int64)
-                when 23 then 'X'
-                when 24 then 'Y'
-                else cast(cast(aa.location / ${CHROMOSOME_MULTIPLIER} as int64) as string) end) as chromosome,
-           MOD(aa.location, ${CHROMOSOME_MULTIPLIER})                                           as position,
-           aa.ref,
-           aa.allele,
-           si.sample_name
-    FROM \`${BIGQUERY_PROJECT_ID}.${BIGQUERY_DATASET}.alt_allele\` as aa
-             join \`${BIGQUERY_PROJECT_ID}.${BIGQUERY_DATASET}.sample_info\` as si
-                  on aa.sample_id = si.sample_id
-             join
-         (SELECT ((case SPLIT(vid, '-')[OFFSET(0)]
-                       when 'X' then 23
-                       when 'Y' then 24
-                       else cast(SPLIT(vid, '-')[OFFSET(0)] AS int64) end) * ${CHROMOSOME_MULTIPLIER} +
-                  CAST(SPLIT(vid, '-')[OFFSET(1)] AS int64)) as location,
-                 SPLIT(vid, '-')[OFFSET(2)]                  as ref,
-                 SPLIT(vid, '-')[OFFSET(3)]                  as alt
+    uri ='${BIGQUERY_EXPORT_SHARDS_PATH}', format = 'CSV', header = true, field_delimiter = "\t", overwrite = ${BIGQUERY_EXPORT_OVERWRITE}) AS
+    SELECT (CASE CAST(aa.location / ${CHROMOSOME_MULTIPLIER} AS int64)
+                WHEN 23 THEN 'X'
+                WHEN 24 THEN 'Y'
+                ELSE CAST(CAST(aa.location / ${CHROMOSOME_MULTIPLIER} AS int64) AS string) END) AS chromosome,
+           MOD(aa.location, ${CHROMOSOME_MULTIPLIER})                                           AS position,
+           aa.ref AS ref,
+           aa.allele AS allele,
+           si.sample_name AS sample_name
+    FROM \`${BIGQUERY_PROJECT_ID}.${BIGQUERY_DATASET}.alt_allele\` AS aa
+             JOIN \`${BIGQUERY_PROJECT_ID}.${BIGQUERY_DATASET}.sample_info\` AS si
+                  ON aa.sample_id = si.sample_id
+             JOIN
+         (SELECT ((CASE SPLIT(vid, '-')[OFFSET(0)]
+                       WHEN 'X' THEN 23
+                       WHEN 'Y' THEN 24
+                       ELSE CAST(SPLIT(vid, '-')[OFFSET(0)] AS int64) END) * ${CHROMOSOME_MULTIPLIER} +
+                 CAST(SPLIT(vid, '-')[OFFSET(1)] AS int64))  AS location,
+                 SPLIT(vid, '-')[OFFSET(2)]                  AS ref,
+                 SPLIT(vid, '-')[OFFSET(3)]                  AS alt
           FROM \`${BIGQUERY_PROJECT_ID}.${BIGQUERY_DATASET}.${VAT_TABLE}\`)
-             as vat
-         on vat.ref = aa.ref and vat.alt = aa.allele and vat.location = aa.location
+             AS vat
+         ON vat.ref = aa.ref AND vat.alt = aa.allele AND vat.location = aa.location
 ${EXPORT_WHERE_CLAUSE}
-    order by aa.location
+    ORDER BY aa.location, ref, allele, sample_name
 
 FIN
+
+bq query --nouse_legacy_sql --project_id "${BIGQUERY_PROJECT_ID}" < "${BIGQUERY_EXTRACT_SCRIPT}"
+
+echo "Files exported to '${BIGQUERY_EXPORT_SHARDS_PATH}'." 1>&2
