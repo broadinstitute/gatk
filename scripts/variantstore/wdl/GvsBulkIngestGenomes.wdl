@@ -14,6 +14,7 @@ workflow GvsBulkIngestGenomes {
         String sample_id_column_name = "sample_id"
         String? vcf_files_column_name
         String? vcf_index_files_column_name
+        String? sample_set_name ## currently we only allow for one sample set at a time
         # End GvsPrepareBulkImport
 
         # Begin GvsAssignIds
@@ -66,7 +67,8 @@ workflow GvsBulkIngestGenomes {
             samples_table_name = samples_table_name,
             sample_id_column_name = sample_id_column_name,
             vcf_files_column_name = GetColumnNames.vcf_files_column_name,
-            vcf_index_files_column_name = GetColumnNames.vcf_index_files_column_name
+            vcf_index_files_column_name = GetColumnNames.vcf_index_files_column_name,
+            sample_set_name = sample_set_name
     }
 
     call AssignIds.GvsAssignIds as AssignIds {
