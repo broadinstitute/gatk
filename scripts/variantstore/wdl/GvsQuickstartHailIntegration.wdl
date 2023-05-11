@@ -113,6 +113,7 @@ task CreateAndTieOutVds {
 
         gcloud storage cp 'gs://hail-common/references/Homo_sapiens_assembly38.fasta*' ${REFERENCES_PATH}
 
+        # Current version of Hail (0.2.117) demands Java 8 or Java 11, refuses to run on Java 17.
         # Temurin Java 8
         apt-get -qq install wget apt-transport-https gnupg
         wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | apt-key add -
