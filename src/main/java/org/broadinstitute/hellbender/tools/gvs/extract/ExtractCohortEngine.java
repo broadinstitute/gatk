@@ -1,11 +1,7 @@
 package org.broadinstitute.hellbender.tools.gvs.extract;
 
 import htsjdk.samtools.util.OverlapDetector;
-import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.GenotypeBuilder;
-import htsjdk.variant.variantcontext.GenotypesContext;
-import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
@@ -13,22 +9,15 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.GATKPath;
-import org.broadinstitute.hellbender.engine.ProgressMeter;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
-import org.broadinstitute.hellbender.engine.ReferenceDataSource;
+import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.gvs.common.GQStateEnum;
-import org.broadinstitute.hellbender.tools.gvs.common.IngestConstants;
-import org.broadinstitute.hellbender.tools.gvs.common.SampleList;
-import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
-import org.broadinstitute.hellbender.tools.gvs.common.VariantBitSet;
+import org.broadinstitute.hellbender.tools.gvs.common.*;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.bigquery.*;
+import org.broadinstitute.hellbender.utils.bigquery.StorageAPIAvroReader;
+import org.broadinstitute.hellbender.utils.bigquery.TableReference;
 import org.broadinstitute.hellbender.utils.gvs.bigquery.AvroFileReader;
 import org.broadinstitute.hellbender.utils.gvs.localsort.AvroSortingCollectionCodec;
 import org.broadinstitute.hellbender.utils.gvs.localsort.SortingCollection;
@@ -38,9 +27,10 @@ import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class ExtractCohortEngine {
-    private static final Logger logger = LogManager.getLogger(ExtractCohortEngine.class);
+    final Logger logger;
 
     private final VariantContextWriter vcfWriter;
 
@@ -49,12 +39,12 @@ public class ExtractCohortEngine {
     private final List<SimpleInterval> traversalIntervals;
     private final Long minLocation;
     private final Long maxLocation;
-    private final TableReference filterSetInfoTableRef;
+    final TableReference filterSetInfoTableRef;
     private final TableReference filterSetSiteTableRef;
     private final ReferenceDataSource refSource;
-    private final Double vqsLodSNPThreshold;
-    private final Double vqsLodINDELThreshold;
-    private final ExtractCohort.VQSLODFilteringType VQSLODFilteringType;
+    private final Double vqScoreSNPThreshold;
+    private final Double vqScoreINDELThreshold;
+    private final ExtractCohort.VQScoreFilteringType vqScoreFilteringType;
     private final boolean excludeFilteredSites;
 
     private final ProgressMeter progressMeter;
@@ -63,7 +53,6 @@ public class ExtractCohortEngine {
     private final boolean emitADs;
 
     /** List of sample names seen in the variant data from BigQuery. */
-    private final Set<String> sampleNames;
     private final SortedSet<Long> sampleIdsToExtract;
     private final BitSet sampleIdsToExtractBitSet;
 
@@ -77,8 +66,6 @@ public class ExtractCohortEngine {
     private int totalRangeRecords = 0;
     private int totalIrrelevantRangeRecords = 0;
     private long totalEstimatedBytesScanned = 0;
-
-    private final GATKPath cohortAvroFileName;
 
     private final String vetRangesFQDataSet;
 
@@ -94,6 +81,24 @@ public class ExtractCohortEngine {
 
     private final boolean presortedAvroFiles;
 
+    List<String> getFilterSetInfoTableFields() {
+        return SchemaUtils.YNG_FIELDS;
+    }
+    String getVQScoreFieldName() {
+        return SchemaUtils.VQSLOD;
+    }
+
+    String getAlleleSpecificVQSScoreKey() {
+        return GATKVCFConstants.AS_VQS_LOD_KEY;
+    }
+
+    String getVqScoreSNPFailureFilterName() {
+        return GATKVCFConstants.VQSR_FAILURE_SNP;
+    }
+
+    String getVqScoreINDELFailureFilterName() {
+        return GATKVCFConstants.VQSR_FAILURE_INDEL;
+    }
 
     public ExtractCohortEngine(final String projectID,
                                final VariantContextWriter vcfWriter,
@@ -101,8 +106,6 @@ public class ExtractCohortEngine {
                                final VariantAnnotatorEngine annotationEngine,
                                final ReferenceDataSource refSource,
                                final Map<Long, String> sampleIdToName,
-                               final String cohortTableName,
-                               final GATKPath cohortAvroFileName,
                                final String vetRangesFQDataSet,
                                final String fqRangesExtractVetTable,
                                final String fqRangesExtractRefTable,
@@ -115,13 +118,13 @@ public class ExtractCohortEngine {
                                final String filterSetSiteTableName,
                                final int localSortMaxRecordsInRam,
                                final boolean printDebugInformation,
-                               final Double vqsLodSNPThreshold,
-                               final Double vqsLodINDELThreshold,
+                               final Double vqScoreSNPThreshold,
+                               final Double vqScoreINDELThreshold,
                                final ProgressMeter progressMeter,
                                final String filterSetName,
                                final boolean emitPLs,
                                final boolean emitADs,
-                               final ExtractCohort.VQSLODFilteringType VQSLODFilteringType,
+                               final ExtractCohort.VQScoreFilteringType vqScoreFilteringType,
                                final boolean excludeFilteredSites,
                                final GQStateEnum inferredReferenceState,
                                final boolean presortedAvroFiles
@@ -132,7 +135,6 @@ public class ExtractCohortEngine {
         this.vcfWriter = vcfWriter;
         this.refSource = refSource;
         this.sampleIdToName = sampleIdToName;
-        this.sampleNames = new HashSet<>(sampleIdToName.values());
         this.sampleIdsToExtract = new TreeSet<>(this.sampleIdToName.keySet());
 
         long maxSampleId = sampleIdsToExtract.last();
@@ -155,7 +157,6 @@ public class ExtractCohortEngine {
         this.fqRangesExtractVetTable = fqRangesExtractVetTable;
         this.fqRangesExtractRefTable = fqRangesExtractRefTable;
 
-        this.cohortAvroFileName = cohortAvroFileName;
         this.vetAvroFileName = vetAvroFileName;
         this.refRangesAvroFileName = refRangesAvroFileName;
 
@@ -164,13 +165,13 @@ public class ExtractCohortEngine {
         this.maxLocation = maxLocation;
 
         this.printDebugInformation = printDebugInformation;
-        this.vqsLodSNPThreshold = vqsLodSNPThreshold;
-        this.vqsLodINDELThreshold = vqsLodINDELThreshold;
-        this.VQSLODFilteringType = VQSLODFilteringType;
+        this.vqScoreSNPThreshold = vqScoreSNPThreshold;
+        this.vqScoreINDELThreshold = vqScoreINDELThreshold;
+        this.vqScoreFilteringType = vqScoreFilteringType;
         this.excludeFilteredSites = excludeFilteredSites;
 
-        this.filterSetInfoTableRef = VQSLODFilteringType.equals(ExtractCohort.VQSLODFilteringType.NONE) ? null : new TableReference(filterSetInfoTableName, SchemaUtils.YNG_FIELDS);
-        this.filterSetSiteTableRef = VQSLODFilteringType.equals(ExtractCohort.VQSLODFilteringType.NONE) ? null : new TableReference(filterSetSiteTableName, SchemaUtils.FILTER_SET_SITE_FIELDS);
+        this.filterSetSiteTableRef = vqScoreFilteringType.equals(ExtractCohort.VQScoreFilteringType.NONE) ? null : new TableReference(filterSetSiteTableName, SchemaUtils.FILTER_SET_SITE_FIELDS);
+        this.filterSetInfoTableRef = vqScoreFilteringType.equals(ExtractCohort.VQScoreFilteringType.NONE) ? null : new TableReference(filterSetInfoTableName, getFilterSetInfoTableFields());
 
         this.progressMeter = progressMeter;
 
@@ -184,7 +185,7 @@ public class ExtractCohortEngine {
         this.presortedAvroFiles = presortedAvroFiles;
 
         this.inferredReferenceRecord = new InferredReferenceRecord(inferredReferenceState);
-
+        logger = LogManager.getLogger(ExtractCohortEngine.class);
     }
 
     int getTotalNumberOfVariants() { return totalNumberOfVariants; }
@@ -198,7 +199,7 @@ public class ExtractCohortEngine {
 
     public void traverse() {
         //First allele here is the ref, followed by the alts associated with that ref. We need this because at this point the alleles haven't been joined and remapped to one reference allele.
-        final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap = new HashMap<>();
+        final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVQScoreMap = new HashMap<>();
         final HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap = new HashMap<>();
         final HashMap<Long, List<String>> siteFilterMap = new HashMap<>();
 
@@ -208,27 +209,27 @@ public class ExtractCohortEngine {
         }
         final String rowRestrictionWithFilterSetName = rowRestriction + " AND " + SchemaUtils.FILTER_SET_NAME + " = '" + filterSetName + "'";
 
-        boolean noVqslodFilteringRequested = VQSLODFilteringType.equals(ExtractCohort.VQSLODFilteringType.NONE);
-        if (!noVqslodFilteringRequested) {
-            // ensure vqslod filters are defined. this really shouldn't ever happen, said the engineer.
-            if (vqsLodSNPThreshold == null || vqsLodINDELThreshold == null) {
-                throw new UserException("Vqslod filtering thresholds for SNPs and INDELs must be defined.");
+        boolean noVQScoreFilteringRequested = vqScoreFilteringType.equals(ExtractCohort.VQScoreFilteringType.NONE);
+        if (!noVQScoreFilteringRequested) {
+            // ensure vqScore filters (vqsLod or Sensitivity) are defined. this really shouldn't ever happen, said the engineer.
+            if (vqScoreSNPThreshold == null || vqScoreINDELThreshold == null) {
+                throw new UserException(getVQScoreFieldName() + "filtering thresholds for SNPs and INDELs must be defined.");
             }
 
-            // get filter info (vqslod & yng values)
+            // get filter info (vqslod/sensitivity & yng values)
             try (StorageAPIAvroReader reader = new StorageAPIAvroReader(filterSetInfoTableRef, rowRestrictionWithFilterSetName, projectID)) {
 
                 for ( final GenericRecord queryRow : reader ) {
-                    final ExtractCohortFilterRecord filterRow = new ExtractCohortFilterRecord( queryRow );
+                    final ExtractCohortFilterRecord filterRow = new ExtractCohortFilterRecord( queryRow, getVQScoreFieldName() );
 
                     final long location = filterRow.getLocation();
-                    final Double vqslod = filterRow.getVqslod();
+                    final Double vqsScore = filterRow.getVqScore();
                     final String yng = filterRow.getYng();
                     final Allele ref = Allele.create(filterRow.getRefAllele(), true);
                     final Allele alt = Allele.create(filterRow.getAltAllele(), false);
-                    fullVqsLodMap.putIfAbsent(location, new HashMap<>());
-                    fullVqsLodMap.get(location).putIfAbsent(ref, new HashMap<>());
-                    fullVqsLodMap.get(location).get(ref).put(alt, vqslod);
+                    fullVQScoreMap.putIfAbsent(location, new HashMap<>());
+                    fullVQScoreMap.get(location).putIfAbsent(ref, new HashMap<>());
+                    fullVQScoreMap.get(location).get(ref).put(alt, vqsScore);
                     fullYngMap.putIfAbsent(location, new HashMap<>());
                     fullYngMap.get(location).putIfAbsent(ref, new HashMap<>());
                     fullYngMap.get(location).get(ref).put(alt, yng);
@@ -260,11 +261,11 @@ public class ExtractCohortEngine {
 
         SortedSet<Long> sampleIdsToExtract = new TreeSet<>(this.sampleIdToName.keySet());
         if (fqRangesExtractVetTable != null) {
-            createVariantsFromUnsortedExtractTableBigQueryRanges(fqRangesExtractVetTable, fqRangesExtractRefTable, sampleIdsToExtract, minLocation, maxLocation, fullVqsLodMap, fullYngMap, siteFilterMap, noVqslodFilteringRequested);
+            createVariantsFromUnsortedExtractTableBigQueryRanges(fqRangesExtractVetTable, fqRangesExtractRefTable, sampleIdsToExtract, minLocation, maxLocation, fullVQScoreMap, fullYngMap, siteFilterMap, noVQScoreFilteringRequested);
         } else if (vetRangesFQDataSet != null) {
-            createVariantsFromUnsortedBigQueryRanges(vetRangesFQDataSet, sampleIdsToExtract, minLocation, maxLocation, fullVqsLodMap, fullYngMap, siteFilterMap, noVqslodFilteringRequested);
+            createVariantsFromUnsortedBigQueryRanges(vetRangesFQDataSet, sampleIdsToExtract, minLocation, maxLocation, fullVQScoreMap, fullYngMap, siteFilterMap, noVQScoreFilteringRequested);
         } else {
-            createVariantsFromUnsortedAvroRanges(vetAvroFileName, refRangesAvroFileName, sampleIdsToExtract, minLocation, maxLocation, fullVqsLodMap, fullYngMap, siteFilterMap, noVqslodFilteringRequested, presortedAvroFiles);
+            createVariantsFromUnsortedAvroRanges(vetAvroFileName, refRangesAvroFileName, sampleIdsToExtract, minLocation, maxLocation, fullVQScoreMap, fullYngMap, siteFilterMap, noVQScoreFilteringRequested, presortedAvroFiles);
         }
 
         logger.debug("Finished Initializing Reader");
@@ -384,11 +385,11 @@ public class ExtractCohortEngine {
 
     protected VariantContext processSampleRecordsForLocation(final long location,
                                                              final Iterable<ExtractCohortRecord> sampleRecordsAtPosition,
-                                                             final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap,
+                                                             final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVQScoreMap,
                                                              final HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap,
-                                                             final boolean noVqslodFilteringRequested,
+                                                             final boolean noVQScoreFilteringRequested,
                                                              final HashMap<Long, List<String>> siteFilterMap,
-                                                             final ExtractCohort.VQSLODFilteringType VQSLODFilteringType) {
+                                                             final ExtractCohort.VQScoreFilteringType vqScoreFilteringType) {
 
         final List<VariantContext> unmergedCalls = new ArrayList<>();
         final List<ReferenceGenotypeInfo> refCalls = new ArrayList<>();
@@ -402,19 +403,19 @@ public class ExtractCohortEngine {
         final Allele refAllele = getReferenceAllele(refSource, location, 1);
         int numRecordsAtPosition = 0;
 
-        final HashMap<Allele, HashMap<Allele, Double>> vqsLodMap;
+        final HashMap<Allele, HashMap<Allele, Double>> vqScoreMap;
         final HashMap<Allele, HashMap<Allele, String>> yngMap;
 
-        // TODO: optimize in the case where noFilteringRequested == true, no need to populate this
+        // TODO: optimize in the case where noVQScoreFilteringRequested == true, no need to populate this
 
-        // If there's no yng/vqslod for this site, then we'll treat these as NAYs because VQSR dropped them (they have no alt reads).
-        if (fullVqsLodMap.get(SchemaUtils.encodeLocation(contig, currentPosition)) == null) {
-            vqsLodMap = new HashMap<>();
-            vqsLodMap.put(refAllele, new HashMap<>());
+        // If there's no yng/score(vqslod/sensitivity) for this site, then we'll treat these as NAYs because VQSR-Lite dropped them (they have no alt reads).
+        if (fullVQScoreMap.get(SchemaUtils.encodeLocation(contig, currentPosition)) == null) {
+            vqScoreMap = new HashMap<>();
+            vqScoreMap.put(refAllele, new HashMap<>());
             yngMap = new HashMap<>();
             yngMap.put(refAllele, new HashMap<>());
         } else {
-            vqsLodMap = fullVqsLodMap.get(SchemaUtils.encodeLocation(contig, currentPosition));
+            vqScoreMap = fullVQScoreMap.get(SchemaUtils.encodeLocation(contig, currentPosition));
             yngMap = fullYngMap.get(SchemaUtils.encodeLocation(contig, currentPosition));
         }
 
@@ -437,37 +438,37 @@ public class ExtractCohortEngine {
             switch (sampleRecord.getState()) {
                 case "v":   // Variant
                     ++totalNumberOfVariants;
-                    VariantContext vc = createVariantContextFromSampleRecord(sampleRecord, vqsLodMap, yngMap, VQSLODFilteringType);
+                    VariantContext vc = createVariantContextFromSampleRecord(sampleRecord, vqScoreMap, yngMap, vqScoreFilteringType);
                     unmergedCalls.add(vc);
 
                     currentPositionHasVariant = true;
                     break;
-                case "0":   // Non Variant Block with GQ < 10
+                case "0":   // Non-Variant Block with GQ < 10
                     // Reference calls with GQ 0 should be rendered as no-call (#271)
                     // Nothing to do here -- just needed to mark the sample as seen so it doesn't get put in the high confidence ref band
                     break;
-                case "1":  // Non Variant Block with 10 <=  GQ < 20
+                case "1":  // Non-Variant Block with 10 <=  GQ < 20
                     refCalls.add(new ReferenceGenotypeInfo(sampleName, 10));
                     break;
-                case "2":  // Non Variant Block with 20 <= GQ < 30
+                case "2":  // Non-Variant Block with 20 <= GQ < 30
                     refCalls.add(new ReferenceGenotypeInfo(sampleName, 20));
                     break;
-                case "3":  // Non Variant Block with 30 <= GQ < 40
+                case "3":  // Non-Variant Block with 30 <= GQ < 40
                     refCalls.add(new ReferenceGenotypeInfo(sampleName, 30));
                     break;
-                case "4":  // Non Variant Block with 40 <= GQ < 50
+                case "4":  // Non-Variant Block with 40 <= GQ < 50
                     refCalls.add(new ReferenceGenotypeInfo(sampleName, 40));
                     break;
-                case "5":  // Non Variant Block with 50 <= GQ < 60
+                case "5":  // Non-Variant Block with 50 <= GQ < 60
                     refCalls.add(new ReferenceGenotypeInfo(sampleName, 50));
                     break;
-                case "6":  // Non Variant Block with 60 <= GQ (usually omitted from tables)
+                case "6":  // Non-Variant Block with 60 <= GQ (usually omitted from tables)
                     refCalls.add(new ReferenceGenotypeInfo(sampleName, 60));
                     break;
                 case "*":   // Spanning Deletion - do nothing. just mark the sample as seen
                     break;
                 case "m":   // Missing
-                    // Nothing to do here -- just needed to mark the sample as seen so it doesn't get put in the high confidence ref band
+                    // Nothing to do here -- just needed to mark the sample as seen, so that it doesn't get put in the high confidence ref band
                     break;
                 default:
                     throw new GATKException("Unrecognized state: " + sampleRecord.getState());
@@ -479,7 +480,7 @@ public class ExtractCohortEngine {
             logger.info(contig + ":" + currentPosition + ": processed " + numRecordsAtPosition + " total sample records");
         }
 
-        return finalizeCurrentVariant(unmergedCalls, refCalls, samplesSeen, currentPositionHasVariant, location, contig, currentPosition, refAllele, vqsLodMap, yngMap, noVqslodFilteringRequested, siteFilterMap);
+        return finalizeCurrentVariant(unmergedCalls, refCalls, samplesSeen, currentPositionHasVariant, location, contig, currentPosition, refAllele, vqScoreMap, yngMap, noVQScoreFilteringRequested, siteFilterMap);
     }
 
     VariantContext finalizeCurrentVariant(final List<VariantContext> unmergedVariantCalls,
@@ -490,9 +491,9 @@ public class ExtractCohortEngine {
                                         final String contig,
                                         final long start,
                                         final Allele refAllele,
-                                        final HashMap<Allele, HashMap<Allele, Double>> vqsLodMap,
+                                        final HashMap<Allele, HashMap<Allele, Double>> vqScoreMap,
                                         final HashMap<Allele, HashMap<Allele, String>> yngMap,
-                                        final boolean noVqslodFilteringRequested,
+                                        final boolean noVQScoreFilteringRequested,
                                         final HashMap<Long, List<String>> siteFilterMap) {
         // If there were no variants at this site, we don't emit a record and there's nothing to do here
         if ( ! currentPositionHasVariant ) {
@@ -549,9 +550,9 @@ public class ExtractCohortEngine {
 
         VariantContext genotypedVC = annotationEngine.annotateContext(mergedVC, new FeatureContext(), referenceContext, null, a -> true);
 
-        // apply VQSLod-based filters
+        // apply VQScore (vqslod/calibration sensitivity)-based filters
         VariantContext filteredVC =
-                noVqslodFilteringRequested ? genotypedVC : filterSiteByAlleleSpecificVQSLOD(genotypedVC, vqsLodMap, yngMap, VQSLODFilteringType);
+                noVQScoreFilteringRequested ? genotypedVC : filterSiteByAlleleSpecificVQScore(genotypedVC, vqScoreMap, yngMap, vqScoreFilteringType);
 
         // apply SiteQC-based filters, if they exist
         if ( siteFilterMap.containsKey(location) ) {
@@ -584,21 +585,24 @@ public class ExtractCohortEngine {
         }
     }
 
-    private VariantContext filterSiteByAlleleSpecificVQSLOD(VariantContext mergedVC, HashMap<Allele, HashMap<Allele, Double>> vqsLodMap, HashMap<Allele, HashMap<Allele, String>> yngMap, ExtractCohort.VQSLODFilteringType VQSLODFilteringType) {
-        final LinkedHashMap<Allele, Double> remappedVqsLodMap = remapAllelesInMap(mergedVC, vqsLodMap, Double.NaN);
+    private VariantContext filterSiteByAlleleSpecificVQScore(VariantContext mergedVC,
+                                                            HashMap<Allele, HashMap<Allele, Double>> vqScoreMap,
+                                                            HashMap<Allele, HashMap<Allele, String>> yngMap,
+                                                            ExtractCohort.VQScoreFilteringType vqScoreFilteringType) {
+        final LinkedHashMap<Allele, Double> remappedVQScoreMap = remapAllelesInMap(mergedVC, vqScoreMap, Double.NaN);
         final LinkedHashMap<Allele, String> remappedYngMap = remapAllelesInMap(mergedVC, yngMap, VCFConstants.EMPTY_INFO_FIELD);
 
-        final LinkedHashMap<Allele, Double> relevantVqsLodMap = new LinkedHashMap<>();
-        mergedVC.getAlternateAlleles().forEach(key -> Optional.ofNullable(remappedVqsLodMap.get(key)).ifPresent(value -> relevantVqsLodMap.put(key, value)));
+        final LinkedHashMap<Allele, Double> relevantVQScoreMap = new LinkedHashMap<>();
+        mergedVC.getAlternateAlleles().forEach(key -> Optional.ofNullable(remappedVQScoreMap.get(key)).ifPresent(value -> relevantVQScoreMap.put(key, value)));
         final LinkedHashMap<Allele, String> relevantYngMap = new LinkedHashMap<>();
         mergedVC.getAlternateAlleles().forEach(key -> Optional.ofNullable(remappedYngMap.get(key)).ifPresent(value -> relevantYngMap.put(key, value)));
 
         final VariantContextBuilder builder = new VariantContextBuilder(mergedVC);
 
-        builder.attribute(GATKVCFConstants.AS_VQS_LOD_KEY, relevantVqsLodMap.values().stream().map(val -> val.equals(Double.NaN) ? VCFConstants.EMPTY_INFO_FIELD : val.toString()).collect(Collectors.toList()));
+        builder.attribute(getAlleleSpecificVQSScoreKey(), relevantVQScoreMap.values().stream().map(val -> val.equals(Double.NaN) ? VCFConstants.EMPTY_INFO_FIELD : val.toString()).collect(Collectors.toList()));
         builder.attribute(GATKVCFConstants.AS_YNG_STATUS_KEY, new ArrayList<>(relevantYngMap.values()));
 
-        if (VQSLODFilteringType.equals(ExtractCohort.VQSLODFilteringType.SITES)) { // Note that these filters are not used with Genotype VQSLOD Filtering
+        if (vqScoreFilteringType.equals(ExtractCohort.VQScoreFilteringType.SITES)) { // Note that these filters are not used with Genotype VQSLOD/Sensitivity Filtering
             int refLength = mergedVC.getReference().length();
 
             // if there are any Yays, the site is PASS
@@ -610,23 +614,15 @@ public class ExtractCohortEngine {
                 // if it doesn't trigger any of the filters below, we assume it passes.
                 builder.passFilters();
                 if (remappedYngMap.containsValue("G")) {
-                    Optional<Double> snpMax = relevantVqsLodMap.entrySet().stream()
+                    if (isFailingSite(relevantVQScoreMap.entrySet().stream()
                             .filter(entry -> entry.getKey().length() == refLength)
-                            .map(entry -> entry.getValue())
-                            .filter(d -> !(d.isNaN()||d.isInfinite()))
-                            .max(Double::compareTo);
-                    if (snpMax.isPresent() && snpMax.get() < vqsLodSNPThreshold) {
-                        builder.filter(GATKVCFConstants.VQSR_FAILURE_SNP);
+                            .map(Map.Entry::getValue), vqScoreSNPThreshold)) {
+                        builder.filter(getVqScoreSNPFailureFilterName());
                     }
-
-                    Optional<Double> indelMax = relevantVqsLodMap.entrySet().stream()
+                    if (isFailingSite(relevantVQScoreMap.entrySet().stream()
                             .filter(entry -> entry.getKey().length() != refLength)
-                            .map(entry -> entry.getValue())
-                            .filter(d -> !(d.isNaN()||d.isInfinite()))
-                            .max(Double::compareTo);
-
-                    if (indelMax.isPresent() && indelMax.get() < vqsLodINDELThreshold) {
-                        builder.filter(GATKVCFConstants.VQSR_FAILURE_INDEL);
+                            .map(Map.Entry::getValue), vqScoreINDELThreshold)) {
+                        builder.filter(getVqScoreINDELFailureFilterName());
                     }
                 } else {
                     // per-conversation with Laura, if there is no information we let the site pass (ie no data does not imply failure)
@@ -638,6 +634,15 @@ public class ExtractCohortEngine {
         final VariantContext filteredVC = builder.make();
         return filteredVC;
     }
+
+    boolean isFailingSite(final Stream<Double> vqScores, final Double vqScoreThreshold) {
+        Optional<Double> maxVal = vqScores
+                .filter(d -> !(d.isNaN() || d.isInfinite()))
+                .max(Double::compareTo);
+        // It's a failing site if the maximum vqlod (if found) is less than the threshold
+        return maxVal.isPresent() && maxVal.get() < vqScoreThreshold;
+    }
+
 
     protected static VariantContext removeAnnotations(VariantContext vc) {
 
@@ -654,7 +659,7 @@ public class ExtractCohortEngine {
     private <T> LinkedHashMap<Allele, T> remapAllelesInMap(VariantContext vc, HashMap<Allele, HashMap<Allele, T>> datamap, T emptyVal) {
         return remapAllelesInMap(vc.getReference(), vc.getAlternateAlleles(), vc.getContig(), vc.getStart(), datamap, emptyVal);
     }
-        /*
+     /*
      * Alleles from the filtering table need to be remapped to use the same ref allele that the will exist in the joined variant context.
      * This method changes the alleles in the datamap to match the representation that's in the vc.
      */
@@ -677,7 +682,7 @@ public class ExtractCohortEngine {
                 VariantContextBuilder vcb = new VariantContextBuilder("unused", contig, start, start+refLength-1, allAlleles);
                 VariantContext newvc = vcb.make();
 
-                //If the length of the reference from the filtering table is longer than the reference in the variantContext, then that allele is not present in the extracted samples and we don't need the data
+                // If the length of the reference from the filtering table is longer than the reference in the variantContext, then that allele is not present in the extracted samples and we don't need the data
                 if (refLength < ref.length()) {
                     Map<Allele, Allele> alleleMapping = GATKVariantContextUtils.createAlleleMapping(ref, newvc);
                     alleleMapping.entrySet().stream().forEach(mapped -> results.put(mapped.getValue(), entry.getValue().get(mapped.getKey())));
@@ -689,8 +694,11 @@ public class ExtractCohortEngine {
     }
 
 
-    // vqsLogMap and yngMap are in/out parameters for this method. i.e. they are modified by this method
-    private VariantContext createVariantContextFromSampleRecord(final ExtractCohortRecord sampleRecord, HashMap<Allele, HashMap<Allele, Double>> vqsLodMap, HashMap<Allele, HashMap<Allele, String>> yngMap, ExtractCohort.VQSLODFilteringType VQSLODFilteringType) {
+    // vqScoreMap (vqsLod / calibration sensitivity), and yngMap are in/out parameters for this method. i.e. they are modified by this method
+    private VariantContext createVariantContextFromSampleRecord(final ExtractCohortRecord sampleRecord,
+                                                                HashMap<Allele, HashMap<Allele, Double>> vqScoreMap,
+                                                                HashMap<Allele, HashMap<Allele, String>> yngMap,
+                                                                ExtractCohort.VQScoreFilteringType vqScoreFilteringType) {
         final VariantContextBuilder builder = new VariantContextBuilder();
         final GenotypeBuilder genotypeBuilder = new GenotypeBuilder();
 
@@ -720,7 +728,7 @@ public class ExtractCohortEngine {
         builder.stop(startPosition + alleles.get(0).length() - 1);
 
         genotypeBuilder.name(sampleName);
-        vqsLodMap.putIfAbsent(ref, new HashMap<>());
+        vqScoreMap.putIfAbsent(ref, new HashMap<>());
         yngMap.putIfAbsent(ref, new HashMap<>());
 
         // need to re-prepend the leading "|" to AS_QUALapprox for use in gnarly
@@ -742,21 +750,21 @@ public class ExtractCohortEngine {
                             .map(alleleIndex -> alleles.get(alleleIndex))
                             .collect(Collectors.toList());
 
-            if (VQSLODFilteringType.equals(ExtractCohort.VQSLODFilteringType.GENOTYPE)) {
+            if (vqScoreFilteringType.equals(ExtractCohort.VQScoreFilteringType.GENOTYPE)) {
                 final List<Allele> nonRefAlleles =
                         genotypeAlleles.stream()
                                 .filter(a -> a.isNonReference())
                                 .distinct()
                                 .collect(Collectors.toList());
 
-                final LinkedHashMap<Allele, Double> remappedVqsLodMap = remapAllelesInMap(ref, nonRefAlleles, contig, (int) startPosition, vqsLodMap, Double.NaN);
+                final LinkedHashMap<Allele, Double> remappedVQScoreMap = remapAllelesInMap(ref, nonRefAlleles, contig, (int) startPosition, vqScoreMap, Double.NaN);
                 final LinkedHashMap<Allele, String> remappedYngMap = remapAllelesInMap(ref, nonRefAlleles, contig, (int) startPosition, yngMap, VCFConstants.EMPTY_INFO_FIELD);
 
                 // see https://github.com/broadinstitute/dsp-spec-ops/issues/291 for rationale
-                // take "worst" outcome for yng/vqslod, evaluate each allele separately
+                // take "worst" outcome for yng/vqsScore (vqslod/sensitivity), evaluate each allele separately
                 // if any allele is "N"ay, the genotype is filtered
                 // if any allele is "Y"ay and the rest are "G"rey, the genotype is passed
-                // if all alleles are "G"ray, the VQSLod is evaluated
+                // if all alleles are "G"ray, the vqScore (VQSLod / calibration_sensitivity) is evaluated
                 boolean anyNays = nonRefAlleles.stream().map(a -> remappedYngMap.get(a)).anyMatch(v -> "N".equals(v));
                 boolean anyYays = nonRefAlleles.stream().map(a -> remappedYngMap.get(a)).anyMatch(v -> "Y".equals(v));
 
@@ -766,22 +774,15 @@ public class ExtractCohortEngine {
                 } else if (anyYays) {
                     // the genotype is passed, nothing to do here as non-filtered is the default
                 } else {
-                    // get the max (best) vqslod for all SNP non-Yay sites, and apply the filter
-                    Optional<Double> snpMax =
-                            nonRefAlleles.stream().filter(a -> a.length() == ref.length()).map(a -> remappedVqsLodMap.get(a)).filter(Objects::nonNull).max(Double::compareTo);
-
-                    if (snpMax.isPresent() && snpMax.get() < vqsLodSNPThreshold) {
-                        genotypeBuilder.filter(GATKVCFConstants.VQSR_FAILURE_SNP);
+                    if (isFailingGenotype(nonRefAlleles.stream().filter(a -> a.length() == ref.length()),
+                            remappedVQScoreMap, vqScoreSNPThreshold)) {
+                        genotypeBuilder.filter(getVqScoreSNPFailureFilterName());
                     }
 
-                    // get the max (best) vqslod for all INDEL non-Yay sites
-                    Optional<Double> indelMax =
-                            nonRefAlleles.stream().filter(a -> a.length() != ref.length()).map(a -> remappedVqsLodMap.get(a)).filter(Objects::nonNull).max(Double::compareTo);
-
-                    if (indelMax.isPresent() && indelMax.get() < vqsLodINDELThreshold) {
-                        genotypeBuilder.filter(GATKVCFConstants.VQSR_FAILURE_INDEL);
+                    if (isFailingGenotype(nonRefAlleles.stream().filter(a -> a.length() != ref.length()),
+                            remappedVQScoreMap, vqScoreINDELThreshold)) {
+                        genotypeBuilder.filter(getVqScoreINDELFailureFilterName());
                     }
-
                 }
             }
             genotypeBuilder.alleles(genotypeAlleles);
@@ -809,6 +810,19 @@ public class ExtractCohortEngine {
         builder.genotypes(genotypeBuilder.make());
 
         return builder.make();
+    }
+
+    boolean isFailingGenotype(final Stream<Allele> nonRefAlleles,
+                                      final LinkedHashMap<Allele, Double> remappedVQScoreMap,
+                                      final Double vqScoreThreshold) {
+        // get the max (best) vqslod of the alleles in this genotype
+        Optional<Double> maxVal =
+                nonRefAlleles
+                        .map(remappedVQScoreMap::get)
+                        .filter(Objects::nonNull)
+                        .max(Double::compareTo);
+        // It's a failing site if the maximum vqlod (if found) is less than the threshold
+        return maxVal.isPresent() && maxVal.get() < vqScoreThreshold;
     }
 
     private SortingCollection<GenericRecord> createSortedVetCollectionFromBigQuery(final String projectID,
@@ -898,10 +912,10 @@ public class ExtractCohortEngine {
             final SortedSet<Long> sampleIdsToExtract,
             final Long minLocation,
             final Long maxLocation,
-            final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap,
+            final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVQScoreMap,
             final HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap,
             final HashMap<Long, List<String>> siteFilterMap,
-            final boolean noVqslodFilteringRequested) {
+            final boolean noVQScoreFilteringRequested) {
 
         // We could handle this by making a map of BitSets or something, but it seems unnecessary to support this
         if (!SchemaUtils.decodeContig(minLocation).equals(SchemaUtils.decodeContig(maxLocation))) {
@@ -927,7 +941,7 @@ public class ExtractCohortEngine {
                 localSortMaxRecordsInRam,
                 vbs);
 
-        createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullVqsLodMap, fullYngMap, siteFilterMap, noVqslodFilteringRequested);
+        createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullVQScoreMap, fullYngMap, siteFilterMap, noVQScoreFilteringRequested);
     }
 
     //
@@ -939,10 +953,10 @@ public class ExtractCohortEngine {
             final SortedSet<Long> sampleIdsToExtract,
             final Long minLocation,
             final Long maxLocation,
-            final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap,
+            final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVQScoreMap,
             final HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap,
             final HashMap<Long, List<String>> siteFilterMap,
-            final boolean noVqslodFilteringRequested) {
+            final boolean noVQScoreFilteringRequested) {
 
         // We could handle this by making a map of BitSets or something, but it seems unnecessary to support this
         if (!SchemaUtils.decodeContig(minLocation).equals(SchemaUtils.decodeContig(maxLocation))) {
@@ -966,7 +980,7 @@ public class ExtractCohortEngine {
                 localSortMaxRecordsInRam,
                 vbs);
 
-        createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullVqsLodMap, fullYngMap, siteFilterMap, noVqslodFilteringRequested);
+        createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullVQScoreMap, fullYngMap, siteFilterMap, noVQScoreFilteringRequested);
     }
 
     private SortingCollection<GenericRecord> createSortedVetCollectionFromExtractTableBigQuery(final String projectID,
@@ -1032,10 +1046,10 @@ public class ExtractCohortEngine {
             final SortedSet<Long> sampleIdsToExtract,
             final Long minLocation,
             final Long maxLocation,
-            final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap,
+            final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVQScoreMap,
             final HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap,
             final HashMap<Long, List<String>> siteFilterMap,
-            final boolean noVqslodFilteringRequested,
+            final boolean noVQScoreFilteringRequested,
             final boolean presortedAvroFiles) {
 
         final AvroFileReader vetReader = new AvroFileReader(vetAvroFileName);
@@ -1060,7 +1074,7 @@ public class ExtractCohortEngine {
             sortedReferenceRange = localSortedReferenceRange;
         }
 
-        createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullVqsLodMap, fullYngMap, siteFilterMap, noVqslodFilteringRequested);
+        createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullVQScoreMap, fullYngMap, siteFilterMap, noVQScoreFilteringRequested);
 
     }
 
@@ -1068,20 +1082,20 @@ public class ExtractCohortEngine {
     void createVariantsFromSortedRanges(final SortedSet<Long> sampleIdsToExtract,
                                         final Iterable<GenericRecord> sortedVet,
                                         Iterable<GenericRecord> sortedReferenceRange,
-                                        final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap,
+                                        final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVQScoreMap,
                                         final HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap,
                                         final HashMap<Long, List<String>> siteFilterMap,
-                                        final boolean noVqslodFilteringRequested) {
-        createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullVqsLodMap, fullYngMap, siteFilterMap, noVqslodFilteringRequested, (vc) -> writeToVcf(vc));
+                                        final boolean noVQScoreFilteringRequested) {
+        createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullVQScoreMap, fullYngMap, siteFilterMap, noVQScoreFilteringRequested, (vc) -> writeToVcf(vc));
     }
 
     void createVariantsFromSortedRanges(final SortedSet<Long> sampleIdsToExtract,
                                         final Iterable<GenericRecord> sortedVet,
                                         Iterable<GenericRecord> sortedReferenceRange,
-                                        final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVqsLodMap,
+                                        final HashMap<Long, HashMap<Allele, HashMap<Allele, Double>>> fullVQScoreMap,
                                         final HashMap<Long, HashMap<Allele, HashMap<Allele, String>>> fullYngMap,
                                         final HashMap<Long, List<String>> siteFilterMap,
-                                        final boolean noVqslodFilteringRequested,
+                                        final boolean noVQScoreFilteringRequested,
                                         Consumer<VariantContext> variantContextConsumer
     ) {
 
@@ -1103,9 +1117,6 @@ public class ExtractCohortEngine {
         for ( Long sampleId: sampleIdsToExtract) {
             referenceCache.put(sampleId, new TreeSet<>());
         }
-
-        // NOTE: if OverlapDetector takes too long, try using RegionChecker from tws_sv_local_assembler
-        final OverlapDetector<SimpleInterval> intervalsOverlapDetector = OverlapDetector.create(traversalIntervals);
 
         Iterator<GenericRecord> sortedReferenceRangeIterator = sortedReferenceRange.iterator();
 
@@ -1132,7 +1143,7 @@ public class ExtractCohortEngine {
                 }
 
                 ++totalNumberOfSites;
-                VariantContext vc = processSampleRecordsForLocation(lastPosition, currentPositionRecords.values(), fullVqsLodMap, fullYngMap, noVqslodFilteringRequested, siteFilterMap, VQSLODFilteringType);
+                VariantContext vc = processSampleRecordsForLocation(lastPosition, currentPositionRecords.values(), fullVQScoreMap, fullYngMap, noVQScoreFilteringRequested, siteFilterMap, vqScoreFilteringType);
                 variantContextConsumer.accept(vc);
                 currentPositionRecords.clear();
 
@@ -1163,7 +1174,7 @@ public class ExtractCohortEngine {
 
         if (!currentPositionRecords.isEmpty()) {
             ++totalNumberOfSites;
-            VariantContext vc = processSampleRecordsForLocation(lastPosition, currentPositionRecords.values(), fullVqsLodMap, fullYngMap, noVqslodFilteringRequested, siteFilterMap, VQSLODFilteringType);
+            VariantContext vc = processSampleRecordsForLocation(lastPosition, currentPositionRecords.values(), fullVQScoreMap, fullYngMap, noVQScoreFilteringRequested, siteFilterMap, vqScoreFilteringType);
             variantContextConsumer.accept(vc);
         }
     }
