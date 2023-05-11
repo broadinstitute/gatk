@@ -88,6 +88,205 @@ workflows:
              - master
          tags:
              - /.*/
+   - name: GvsAssignIds
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsAssignIds.wdl
+     testParameterFiles:
+          - /scripts/variantstore/wdl/GvsAssignIds.example.inputs.json
+     filters:
+         branches:
+             - master
+             - ah_var_store
+   - name: GvsBenchmarkExtractTask
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsBenchmarkExtractTask.wdl
+     filters:
+         branches:
+             - master
+             - ah_var_store
+   - name: GvsRescatterCallsetInterval
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsRescatterCallsetInterval.wdl
+     filters:
+         branches:
+             - master
+             - ah_var_store
+   - name: GvsCreateFilterSet
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateFilterSet.wdl
+     testParameterFiles:
+          - /scripts/variantstore/wdl/GvsCreateFilterSet.example.inputs.json
+     filters:
+         branches:
+             - master
+             - ah_var_store
+   - name: GvsPopulateAltAllele
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsPopulateAltAllele.wdl
+     filters:
+         branches:
+             - master
+             - ah_var_store
+   - name: GvsCreateTables
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateTables.wdl
+     testParameterFiles:
+          - /scripts/variantstore/wdl/GvsCreateTables.example.inputs.json
+     filters:
+         branches:
+             - master
+             - ah_var_store
+   - name: GvsExtractCallset
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
+     filters:
+         branches:
+             - master
+             - ah_var_store
+   - name: GvsImportGenomes
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
+     filters:
+         branches:
+             - master
+             - ah_var_store
+   - name: GvsPrepareBulkImport
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareBulkImport.wdl
+     filters:
+         branches:
+             - ah_var_store
+   - name: GvsBulkIngestGenomes
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsBulkIngestGenomes.wdl
+     filters:
+         branches:
+             - ah_var_store
+   - name: GvsPrepareRangesCallset
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
+     testParameterFiles:
+         - /scripts/variantstore/wdl/GvsPrepareRangesCallset.example.inputs.json
+     filters:
+         branches:
+             - master
+             - ah_var_store
+   - name: GvsCreateVATfromVDS
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVATfromVDS.wdl
+     filters:
+         branches:
+             - master
+             - ah_var_store
+   - name: GvsCreateVATFilesFromBigQuery
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/variant_annotations_table/GvsCreateVATFilesFromBigQuery.wdl
+     filters:
+         branches:
+             - master
+             - ah_var_store
+   - name: GvsValidateVat
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/variant_annotations_table/GvsValidateVAT.wdl
+     testParameterFiles:
+          - /scripts/variantstore/variant_annotations_table/GvsValidateVat.example.inputs.json
+     filters:
+         branches:
+             - master
+             - ah_var_store
+   - name: GvsExtractCohortFromSampleNames
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCohortFromSampleNames.wdl
+     filters:
+         branches:
+             - master
+             - ah_var_store
+   - name: GvsWithdrawSamples
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsWithdrawSamples.wdl
+     filters:
+         branches:
+             - master
+             - ah_var_store
+   - name: GvsUnified
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsUnified.wdl
+     filters:
+         branches:
+             - master
+             - ah_var_store
+   - name: GvsJointVariantCalling
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCalling.wdl
+     filters:
+         branches:
+             - master
+             - ah_var_store
+             - merge_master_to_ah_var_store_2023_07_21
+   - name: GvsJointVariantCallsetCost
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCallsetCost.wdl
+     filters:
+         branches:
+             - master
+             - ah_var_store
+   - name: GvsCalculatePrecisionAndSensitivity
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsCalculatePrecisionAndSensitivity.wdl
+     filters:
+         branches:
+             - master
+             - ah_var_store
+   - name: GvsQuickstartVcfIntegration
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartVcfIntegration.wdl
+     filters:
+         branches:
+             - master
+             - ah_var_store
+   - name: GvsQuickstartHailIntegration
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartHailIntegration.wdl
+     filters:
+         branches:
+             - master
+             - ah_var_store
+   - name: GvsQuickstartIntegration
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartIntegration.wdl
+     filters:
+         branches:
+             - master
+             - ah_var_store
+             - merge_master_to_ah_var_store_2023_07_21
+   - name: GvsIngestTieout
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
+     filters:
+         branches:
+             - master
+             - ah_var_store
+   - name: GvsCallsetCost
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsCallsetCost.wdl
+     filters:
+         branches:
+             - master
+             - ah_var_store
+   - name: GvsExtractAvroFilesForHail
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractAvroFilesForHail.wdl
+     filters:
+         branches:
+             - master
+             - ah_var_store
+   - name: GvsCallsetStatistics
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsCallsetStatistics.wdl
+     filters:
+         branches:
+             - master
+             - ah_var_store
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
