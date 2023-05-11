@@ -127,7 +127,7 @@ then
 FIN
   set -o errexit
 else
-  # No specified chromosome means we should export everything
+  # No specified chromosome means we should export everything.
   CHROMOSOME_FILTER_WHERE_CLAUSE=""
 fi
 
@@ -149,16 +149,16 @@ EXPORT DATA OPTIONS (
              JOIN \`${BIGQUERY_PROJECT_ID}.${BIGQUERY_DATASET}.sample_info\` AS si
                   ON aa.sample_id = si.sample_id
              JOIN
-         (SELECT ((CASE SPLIT(vid, '-')[OFFSET(0)]
-                       WHEN 'X' THEN 23
-                       WHEN 'Y' THEN 24
-                       ELSE CAST(SPLIT(vid, '-')[OFFSET(0)] AS int64) END) * ${CHROMOSOME_MULTIPLIER} +
-                 CAST(SPLIT(vid, '-')[OFFSET(1)] AS int64))  AS location,
-                 SPLIT(vid, '-')[OFFSET(2)]                  AS ref,
-                 SPLIT(vid, '-')[OFFSET(3)]                  AS alt
+         (SELECT (CASE contig
+                       WHEN 'chrX' THEN 23
+                       WHEN 'chrY' THEN 24
+                       ELSE CAST(SUBSTRING(contig, 4) AS int64) END) * ${CHROMOSOME_MULTIPLIER} +
+                 CAST(position AS int64)  AS location,
+                 ref_allele,
+                 alt_allele
           FROM \`${BIGQUERY_PROJECT_ID}.${BIGQUERY_DATASET}.${VAT_TABLE}\`)
              AS vat
-         ON vat.ref = aa.ref AND vat.alt = aa.allele AND vat.location = aa.location
+         ON vat.ref_allele = aa.ref AND vat.alt_allele = aa.allele AND vat.location = aa.location
 ${CHROMOSOME_FILTER_WHERE_CLAUSE}
     ORDER BY chromosome, position, ref, allele, sample_name
 
