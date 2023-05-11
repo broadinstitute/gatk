@@ -195,7 +195,6 @@ workflows:
          - master
          - ah_var_store
          - rsa_vs_831
-         - gg_UpdateJointCallingOverrideJar
    - name: GvsJointVariantCallsetCost
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCallsetCost.wdl

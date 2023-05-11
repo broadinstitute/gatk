@@ -147,6 +147,9 @@ task AssertIdenticalOutputs {
         gcloud storage cp -r "${expected_prefix}"'/*.vcf.gz' .
         gzip -d *.gz
         cd ..
+        echo "Contents of Expected Dir:"
+        ls -altrh
+        echo "Done"
 
         mkdir actual
         cd actual
@@ -163,12 +166,18 @@ task AssertIdenticalOutputs {
         # Unzip actual result data.
         ls -1 | grep -E '\.vcf\.gz$' | xargs gzip -d
         cd ..
+        echo "Contents of Actual Dir:"
+        ls -altrh
+        echo "Done"
 
+        echo "Header Check"
         # Headers first, these can yield useful diagnostics when there are mismatches.
         for vcf in $(ls -1 actual | grep -E '\.vcf$')
         do
           actual="actual/$vcf"
+          echo "actual is: ${actual}"
           expected="expected/$vcf"
+          echo "expected is: ${expected}"
           set +o errexit
           cmp <(grep '^#' $actual) <(grep '^#' $expected)
           rc=$?
@@ -179,6 +188,7 @@ task AssertIdenticalOutputs {
           fi
         done
 
+        echo "Header Failure Check"
         if [[ ${#failures[@]} -ne 0 ]]; then
           echo "Error: headers for the following files do not match:"
           for failure in ${failures[@]}; do
@@ -190,6 +200,7 @@ task AssertIdenticalOutputs {
           exit 1
         fi
 
+        echo "Overall Check"
         # If the headers all matched look for any mismatches in overall file content.
         fail=0
         for vcf in $(ls -1 | grep -E '\.vcf$')
