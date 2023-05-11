@@ -1,0 +1,54 @@
+==================================
+=========== MONITORING ===========
+==================================
+--- General Information ---
+#CPU: 2
+Total Memory: 6.78 GiB
+Total Disk space: 9.900 GiB
+
+--- Runtime Information ---
+[Thu Mar 30 20:19:18 UTC 2023]
+* CPU usage: 100.0%
+* Memory usage: 0.60 GiB 8.9%
+* Disk usage: 3.100 GiB 31%
+* Read/Write IO: 0.000 MiB/s 0.002 MiB/s
+[Thu Mar 30 20:19:28 UTC 2023]
+* CPU usage: 77.2%
+* Memory usage: 0.77 GiB 11.4%
+* Disk usage: 3.100 GiB 31%
+* Read/Write IO: 0.000 MiB/s 0.007 MiB/s
+[Thu Mar 30 20:19:38 UTC 2023]
+* CPU usage: 44.3%
+* Memory usage: 0.98 GiB 14.4%
+* Disk usage: 3.100 GiB 31%
+* Read/Write IO: 0.071 MiB/s 0.064 MiB/s
+[Thu Mar 30 20:19:48 UTC 2023]
+* CPU usage: 0.8%
+* Memory usage: 0.98 GiB 14.4%
+* Disk usage: 3.100 GiB 31%
+* Read/Write IO: 0.000 MiB/s 0.001 MiB/s
+[Thu Mar 30 20:19:58 UTC 2023]
+* CPU usage: 46.8%
+* Memory usage: 1.23 GiB 18.1%
+* Disk usage: 3.100 GiB 31%
+* Read/Write IO: 0.000 MiB/s 0.261 MiB/s
+[Thu Mar 30 20:20:09 UTC 2023]
+* CPU usage: 92.5%
+* Memory usage: 1.50 GiB 22.1%
+* Disk usage: 3.100 GiB 31%
+* Read/Write IO: 0.000 MiB/s 0.009 MiB/s
+[Thu Mar 30 20:20:19 UTC 2023]
+* CPU usage: 92.6%
+* Memory usage: 1.69 GiB 24.9%
+* Disk usage: 3.100 GiB 32%
+* Read/Write IO: 0.000 MiB/s 0.001 MiB/s
+[Thu Mar 30 20:20:29 UTC 2023]
+* CPU usage: 74.0%
+* Memory usage: 1.94 GiB 28.5%
+* Disk usage: 3.100 GiB 32%
+* Read/Write IO: 0.001 MiB/s 0.001 MiB/s
+[Thu Mar 30 20:20:39 UTC 2023]
+* CPU usage: 57.2%
+* Memory usage: 2.12 GiB 31.3%
+* Disk usage: 3.100 GiB 32%
+* Read/Write IO: 0.000 MiB/s 0.004 MiB/s

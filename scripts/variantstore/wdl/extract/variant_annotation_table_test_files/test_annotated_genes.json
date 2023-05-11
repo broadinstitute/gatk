@@ -1,0 +1,99 @@
+[
+{
+  "name": "AL139327.1",
+  "gnomAD": {
+    "pLi": 0.0853,
+    "pRec": 0.573,
+    "pNull": 0.341,
+    "synZ": -0.166,
+    "misZ": 0.378,
+    "loeuf": 1.9
+  }
+},
+{
+  "name": "MPHOSPH8",
+  "omim": [
+    {
+      "mimNumber": 611626,
+      "geneName": "M-phase phosphoprotein 8"
+    }
+  ],
+  "gnomAD": {
+    "pLi": 0.00147,
+    "pRec": 0.999,
+    "pNull": 1.04E-05,
+    "synZ": -0.843,
+    "misZ": 1.08,
+    "loeuf": 0.525
+  }
+},
+{
+  "name": "PSPC1",
+  "omim": [
+    {
+      "mimNumber": 612408,
+      "geneName": "Paraspeckle component 1"
+    }
+  ],
+  "gnomAD": {
+    "pLi": 0.99,
+    "pRec": 0.00987,
+    "pNull": 1.03E-07,
+    "synZ": -0.934,
+    "misZ": 2.53,
+    "loeuf": 0.277
+  }
+},
+{
+  "name": "TPTE2",
+  "omim": [
+    {
+      "mimNumber": 606791,
+      "geneName": "Transmembrane phosphoinositide 3-phosphatase and tensin homolog 2",
+      "description": "TPTE2 encodes a phosphoinositide-5-phosphatase whose primary substrate is PI(4,5)P2 (Halaszovich et al., 2012)."
+    }
+  ],
+  "gnomAD": {
+    "pLi": 1.88E-12,
+    "pRec": 0.82,
+    "pNull": 0.18,
+    "synZ": -0.0128,
+    "misZ": 0.0509,
+    "loeuf": 0.945
+  }
+},
+{
+  "name": "TUBA3C",
+  "omim": [
+    {
+      "mimNumber": 602528,
+      "geneName": "Tubulin, alpha 2"
+    }
+  ],
+  "gnomAD": {
+    "pLi": 0.00457,
+    "pRec": 0.968,
+    "pNull": 0.0277,
+    "synZ": -2.78,
+    "misZ": 1.78,
+    "loeuf": 0.865
+  }
+},
+{
+  "name": "ZMYM5",
+  "omim": [
+    {
+      "mimNumber": 616443,
+      "geneName": "Zinc finger, MYM-type 5",
+      "description": "ZMYM5 belongs to the MYM (myeloproliferative and mental retardation motif) protein family and functions as a transcriptional regulator (Pastorcic and Das, 2007)."
+    }
+  ],
+  "gnomAD": {
+    "pLi": 0.000167,
+    "pRec": 0.892,
+    "pNull": 0.108,
+    "synZ": -0.628,
+    "misZ": -0.0553,
+    "loeuf": 1.04
+  }
+}]

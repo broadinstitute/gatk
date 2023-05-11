@@ -1,0 +1,19 @@
+14.0
+17
+1  SQLCHAR  0  40   ","        1      sample_id                 SQL_Latin1_General_Cp437_BIN
+2  SQLCHAR  0  40   ","        2      location                  SQL_Latin1_General_Cp437_BIN
+3  SQLCHAR  0  1024 ","        3      ref                       SQL_Latin1_General_Cp437_BIN
+4  SQLCHAR  0  4096 ","        4      alt                       SQL_Latin1_General_Cp437_BIN
+5  SQLCHAR  0  255  ","        5      AS_RAW_MQ                 SQL_Latin1_General_Cp437_BIN
+6  SQLCHAR  0  255  ","        6      AS_RAW_MQRankSum          SQL_Latin1_General_Cp437_BIN
+7  SQLCHAR  0  255  ","        7      QUALapprox                SQL_Latin1_General_Cp437_BIN
+8  SQLCHAR  0  255  ","        8      AS_QUALapprox             SQL_Latin1_General_Cp437_BIN
+9  SQLCHAR  0  255  ","        9      AS_RAW_ReadPosRankSum     SQL_Latin1_General_Cp437_BIN
+10 SQLCHAR  0  255  ","        10     AS_SB_TABLE               SQL_Latin1_General_Cp437_BIN
+11 SQLCHAR  0  255  ","        11     AS_VarDP                  SQL_Latin1_General_Cp437_BIN
+12 SQLCHAR  0  255  ","        12     call_GT                   SQL_Latin1_General_Cp437_BIN
+13 SQLCHAR  0  255  ","        13     call_AD                   SQL_Latin1_General_Cp437_BIN
+14 SQLCHAR  0  255  ","        14     call_GQ                   SQL_Latin1_General_Cp437_BIN
+15 SQLCHAR  0  255  ","        15     call_PGT                  SQL_Latin1_General_Cp437_BIN
+16 SQLCHAR  0  1024 ","        16     call_PID                  SQL_Latin1_General_Cp437_BIN
+17 SQLCHAR  0  255  "\n"       17     call_PL                   SQL_Latin1_General_Cp437_BIN
