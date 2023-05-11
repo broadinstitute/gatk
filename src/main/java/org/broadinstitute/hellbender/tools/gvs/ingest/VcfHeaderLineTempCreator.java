@@ -1,11 +1,7 @@
 package org.broadinstitute.hellbender.tools.gvs.ingest;
 
 import com.google.protobuf.Descriptors;
-import htsjdk.variant.variantcontext.VariantContext;
-import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
-import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
 import org.broadinstitute.hellbender.utils.gvs.bigquery.PendingBQWriter;
@@ -21,11 +17,16 @@ public class VcfHeaderLineTempCreator {
     private final String datasetName;
 
     private PendingBQWriter vcfHeaderBQJsonWriter = null;
+    private static final String NON_TEMP_TABLE_NAME = "vcf_header_lines";
     private static final String TEMP_TABLE_NAME = "vcf_header_lines_temp";
 
     // TODO: fix BigQueryUtils.doRowsExistFor to support both string and int values
-    private static boolean doRowsExistFor(String projectId, String datasetName, String headerLineHash) {
+    private static boolean doTempRowsExistFor(String projectId, String datasetName, String headerLineHash) {
         return BigQueryUtils.doRowsExistFor(projectId, datasetName,  TEMP_TABLE_NAME,"vcf_header_lines_hash", "'" + headerLineHash + "'");
+    }
+
+    private static boolean doNonTempRowsExistFor(String projectId, String datasetName, String headerLineHash) {
+        return BigQueryUtils.doRowsExistFor(projectId, datasetName,  NON_TEMP_TABLE_NAME,"vcf_header_lines_hash", "'" + headerLineHash + "'");
     }
 
     public VcfHeaderLineTempCreator(String sampleId, String projectId, String datasetName) {
@@ -51,12 +52,13 @@ public class VcfHeaderLineTempCreator {
                 // if this header chunk has already been added to the temp table, only add an association between the
                 // sample_id and the hash, no need to rewrite the header chunk to the DB
                 String chunkHash = Utils.calcMD5(headerChunk);
-                boolean refRangesRowsExist = doRowsExistFor(this.projectId, this.datasetName, chunkHash);
-                if (!refRangesRowsExist) {
-                    vcfHeaderBQJsonWriter.addJsonRow(createJson(this.sampleId, headerChunk, chunkHash));
+                boolean vcfTempHeaderRowsExist = doTempRowsExistFor(this.projectId, this.datasetName, chunkHash);
+                boolean vcfNonTempHeaderRowsExist = doNonTempRowsExistFor(this.projectId, this.datasetName, chunkHash);
+                if (vcfTempHeaderRowsExist || vcfNonTempHeaderRowsExist) {
+                    vcfHeaderBQJsonWriter.addJsonRow(createJson(this.sampleId, null, chunkHash));
                 }
                 else {
-                    vcfHeaderBQJsonWriter.addJsonRow(createJson(this.sampleId, null, chunkHash));
+                    vcfHeaderBQJsonWriter.addJsonRow(createJson(this.sampleId, headerChunk, chunkHash));
                 }
             } catch (Descriptors.DescriptorValidationException | ExecutionException | InterruptedException ex) {
                 throw new IOException("BQ exception", ex);
