@@ -90,8 +90,6 @@ then
   usage
 fi
 
-set -o nounset
-
 unset -v START_CHROMOSOME END_CHROMOSOME CHROMOSOME_WHERE_CLAUSE
 
 if [[ -n "${CHROMOSOME}" ]]
@@ -130,6 +128,8 @@ else
   # No specified chromosome means we should export everything.
   CHROMOSOME_FILTER_WHERE_CLAUSE=""
 fi
+
+set -o nounset
 
 BIGQUERY_EXPORT_SHARDS_PATH="${BIGQUERY_EXPORT_PATH}raw_bigquery_shards/rwb_export_*.tsv"
 
