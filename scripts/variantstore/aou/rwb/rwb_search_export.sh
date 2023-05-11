@@ -1,3 +1,4 @@
+BIGQUERY_EXTRACT_SCRIPT="/tmp/rwb_export.sql"
 
 usage() {
 
@@ -6,12 +7,13 @@ Script to extract CSV files from a BigQuery GVS dataset to support search for Re
 
 Usage: $(basename "$0") --project-id <BigQuery project id> --dataset <BigQuery dataset>
                         --export-path <GCS export path> --vat-table <VAT table name>
-                        [--chromosome <1-22, X or Y>] [--overwrite] [--xtrace]
+                        [--chromosome <1-22, X or Y>] [--overwrite] [--dry-run] [--xtrace]
 
 All parameters except --chromosome, --overwrite, and --xtrace are required.
 
 If --chromosome is not specified, data will be extracted for all chromosomes.
 If --overwrite is not specified and data exists at the specified --export-path, export will fail.
+--dry-run will write a file containing the BigQuery query to '${BIGQUERY_EXTRACT_SCRIPT}' but will not actually run it.
 --xtrace optionally turns on debug logging.
 
 " 1>&2
@@ -22,7 +24,7 @@ If --overwrite is not specified and data exists at the specified --export-path, 
 PS4='\D{+%F %T} \w $ '
 set -o pipefail -o errexit
 
-VALID_ARGS=$(getopt --options p:d:e:v:c:ox --longoptions project-id:,dataset:,export-path:,vat-table:,chromosome:,overwrite,xtrace -- "$@")
+VALID_ARGS=$(getopt --options p:d:e:v:c:oxy --longoptions project-id:,dataset:,export-path:,vat-table:,chromosome:,overwrite,xtrace,dry-run -- "$@")
 if [[ $? -ne 0 ]]
 then
   usage
@@ -63,6 +65,10 @@ do
       set -o xtrace
       shift
       ;;
+    -y|--dry-run)
+      DRY_RUN=true
+      shift
+      ;;
     --) shift;
       break
       ;;
@@ -85,8 +91,6 @@ then
 fi
 
 set -o nounset
-
-BIGQUERY_EXTRACT_SCRIPT="/tmp/rwb_export.sql"
 
 unset -v START_CHROMOSOME END_CHROMOSOME CHROMOSOME_WHERE_CLAUSE
 
@@ -113,7 +117,9 @@ CHROMOSOME_MULTIPLIER=1000000000000
 if [[ -n "${START_CHROMOSOME_NUMBER}" ]]
 then
   END_CHROMOSOME_NUMBER=$((${START_CHROMOSOME_NUMBER} + 1))
-  # 'read' apparently returns non-zero
+  # 'read' returns non-zero on EOF, so turn off errexit temporarily
+  # https://stackoverflow.com/q/4165135
+  # http://www.linuxcommand.org/lc3_man_pages/readh.html#:~:text=The%20return%20code%20is%20zero%2C%20unless%20end%2Dof%2Dfile%20is%20encountered
   set +o errexit
   read -r -d '' CHROMOSOME_FILTER_WHERE_CLAUSE <<FIN
       WHERE aa.location > $((${START_CHROMOSOME_NUMBER} * ${CHROMOSOME_MULTIPLIER}))
@@ -158,6 +164,11 @@ ${CHROMOSOME_FILTER_WHERE_CLAUSE}
 
 FIN
 
-bq query --nouse_legacy_sql --project_id "${BIGQUERY_PROJECT_ID}" < "${BIGQUERY_EXTRACT_SCRIPT}"
-
-echo "Files exported to '${BIGQUERY_EXPORT_SHARDS_PATH}'." 1>&2
+set +o nounset
+if [[ -z "${DRY_RUN}" ]]
+then
+  bq query --nouse_legacy_sql --project_id "${BIGQUERY_PROJECT_ID}" < "${BIGQUERY_EXTRACT_SCRIPT}"
+  echo "Files exported to '${BIGQUERY_EXPORT_SHARDS_PATH}'." 1>&2
+else
+  echo "Query file written to '${BIGQUERY_EXTRACT_SCRIPT}'." 1>&2
+fi
