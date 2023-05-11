@@ -89,6 +89,7 @@ WITH ( TYPE = BLOB_STORAGE,
 LOCATION = '<Storage Container URL>',
 CREDENTIAL= MyAzureBlobStorageCredential
 );
+go
 ```
 
 ## Create `ref_ranges` and `vets` tables
@@ -100,9 +101,8 @@ CREATE TABLE ref_ranges (
     length SMALLINT,
     state TINYINT
 );
-```
+go
 
-```
 CREATE TABLE vets (
     location BIGINT,
     sample_id INT,
@@ -122,6 +122,7 @@ CREATE TABLE vets (
     call_PID VARCHAR(1024),
     call_PL VARCHAR(255)
 );
+go
 ```
 
 ## Upload vets and ref_ranges format files
@@ -152,7 +153,7 @@ $ read -r -d '' TEMPLATE << FIN
 FIN
 
 # 52 is the magic number for the last ref_ranges CSV for a Quickstart integration run.
-for i in $(seq 0 52)
+$ for i in $(seq 0 52)
 do
   printf "${TEMPLATE}\n\n" $i >> insert_ref_ranges.sql
 done
