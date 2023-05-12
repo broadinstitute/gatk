@@ -218,6 +218,7 @@ workflows:
          - master
          - ah_var_store
          - vs_866_update_variants_base_image
+         - gg_VS-919_BugInIntegrationTest
    - name: GvsQuickstartHailIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartHailIntegration.wdl
@@ -226,6 +227,7 @@ workflows:
          - master
          - ah_var_store
          - rc-vs-853-adopt-hail-python-code
+         - gg_VS-919_BugInIntegrationTest
    - name: GvsQuickstartIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartIntegration.wdl
@@ -234,6 +236,7 @@ workflows:
          - master
          - ah_var_store
          - vs_908_monitoring_script_public
+         - gg_VS-919_BugInIntegrationTest
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
