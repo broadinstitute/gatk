@@ -314,7 +314,7 @@ task LoadData {
         -SN ${sample_name} \
         -SNM ~{sample_map} \
         --ref-version 38 \
-        --skip-loading-vqsr-fields ~{skip_loading_vqsr_fields}
+        --skip-loading-vqsr-fields ~{skip_loading_vqsr_fields} \
         --enable-vcf-header-parsing ~{parse_vcf_headers}
 
       rm input_vcf_$i.vcf.gz
