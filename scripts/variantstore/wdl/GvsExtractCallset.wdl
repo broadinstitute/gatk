@@ -280,8 +280,6 @@ task ExtractTask {
 
   String inferred_reference_state = if (drop_state == "NONE") then "ZERO" else drop_state
 
-  String gatk_tool = if (use_classic_VQSR == true) then 'ExtractCohort' else 'ExtractCohortLite'
-
   command <<<
     set -e
 
@@ -303,7 +301,7 @@ task ExtractTask {
     fi
 
     gatk --java-options "-Xmx9g" \
-      ~{gatk_tool} \
+      ExtractCohort \
         --vet-ranges-extract-fq-table ~{fq_ranges_cohort_vet_extract_table} \
         --ref-ranges-extract-fq-table ~{fq_ranges_cohort_ref_extract_table} \
         --ref-version 38 \
@@ -316,6 +314,7 @@ task ExtractTask {
         --project-id ~{read_project_id} \
         ~{true='--emit-pls' false='' emit_pls} \
         ~{true='--emit-ads' false='' emit_ads} \
+        ~{true='--use-vqsr-classic-scoring' false='' use_classic_VQSR} \
         ${FILTERING_ARGS} \
         --dataset-id ~{dataset_name} \
         --call-set-identifier ~{call_set_identifier} \
@@ -348,7 +347,7 @@ task ExtractTask {
     echo ~{interval_index},${OUTPUT_FILE_DEST},${OUTPUT_FILE_BYTES},${OUTPUT_FILE_INDEX_DEST},${OUTPUT_FILE_INDEX_BYTES} >> manifest.txt
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_04_04_2a148d7c7de8c6e15b6b705342261ce85d5db5d5"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_05_09_50d636f20702992988b3fc5cf852e8fcb99a4f69"
     memory: "12 GB"
     disks: "local-disk 150 HDD"
     bootDiskSizeGb: 15
