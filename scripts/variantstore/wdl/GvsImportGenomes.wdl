@@ -29,7 +29,7 @@ workflow GvsImportGenomes {
     Int? load_data_preemptible_override
     Int? load_data_maxretries_override
     Boolean parse_vcf_headers = false
-    File? load_data_gatk_override = "gs://gvs-internal-scratch/rsa/jars/gatk-package-4.2.0.0-698-g1f040fc-SNAPSHOT-local.jar"
+    File? load_data_gatk_override = "gs://gvs-internal-scratch/rsa/jars/gatk-package-4.2.0.0-699-g882980b-SNAPSHOT-local.jar"
 
   }
 
@@ -121,7 +121,8 @@ workflow GvsImportGenomes {
         load_data_preemptible = effective_load_data_preemptible,
         load_data_maxretries = effective_load_data_maxretries,
         sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
-        sample_map = GetUningestedSampleIds.sample_map
+        sample_map = GetUningestedSampleIds.sample_map,
+        parse_vcf_headers = parse_vcf_headers
     }
   }
  if (parse_vcf_headers) {
@@ -196,6 +197,7 @@ task LoadData {
     Boolean? drop_state_includes_greater_than = false
     Boolean force_loading_from_non_allele_specific = false
     Boolean skip_loading_vqsr_fields = false
+    Boolean parse_vcf_headers
 
     File? gatk_override
     Int load_data_preemptible
@@ -313,6 +315,7 @@ task LoadData {
         -SNM ~{sample_map} \
         --ref-version 38 \
         --skip-loading-vqsr-fields ~{skip_loading_vqsr_fields}
+        --enable-vcf-header-parsing ~{parse_vcf_headers}
 
       rm input_vcf_$i.vcf.gz
       rm input_vcf_$i.vcf.gz.tbi

@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 public class VcfHeaderLineTempCreator {
-    private final Integer sampleId;
+    private final Long sampleId;
     private final String projectId;
     private final String datasetName;
 
@@ -22,16 +22,16 @@ public class VcfHeaderLineTempCreator {
 
     // TODO: fix BigQueryUtils.doRowsExistFor to support both string and int values
     private static boolean doTempRowsExistFor(String projectId, String datasetName, String headerLineHash) {
-        return BigQueryUtils.doRowsExistFor(projectId, datasetName,  TEMP_TABLE_NAME,"vcf_header_lines_hash", "'" + headerLineHash + "'");
+        return BigQueryUtils.doRowsExistFor(projectId, datasetName,  TEMP_TABLE_NAME,"vcf_header_lines_hash", headerLineHash);
     }
 
     private static boolean doNonTempRowsExistFor(String projectId, String datasetName, String headerLineHash) {
-        return BigQueryUtils.doRowsExistFor(projectId, datasetName,  NON_TEMP_TABLE_NAME,"vcf_header_lines_hash", "'" + headerLineHash + "'");
+        return BigQueryUtils.doRowsExistFor(projectId, datasetName,  NON_TEMP_TABLE_NAME,"vcf_header_lines_hash", headerLineHash);
     }
 
-    public VcfHeaderLineTempCreator(String sampleId, String projectId, String datasetName) {
+    public VcfHeaderLineTempCreator(Long sampleId, String projectId, String datasetName) {
         try {
-            this.sampleId = Integer.parseInt(sampleId);
+            this.sampleId = sampleId;
             this.projectId = projectId;
             this.datasetName = datasetName;
 
@@ -66,7 +66,7 @@ public class VcfHeaderLineTempCreator {
         }
     }
 
-    public JSONObject createJson(Integer sampleId, String headerChunk, String headerHash) {
+    public JSONObject createJson(Long sampleId, String headerChunk, String headerHash) {
         JSONObject record = new JSONObject();
         record.put("sample_id", sampleId);
 

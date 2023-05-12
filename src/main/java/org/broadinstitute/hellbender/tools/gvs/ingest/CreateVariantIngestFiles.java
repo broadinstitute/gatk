@@ -52,7 +52,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     private GenomeLocSortedSet intervalArgumentGenomeLocSortedSet;
 
-    private String sampleId;
+    private Long sampleId;
 
     // Inside the parent directory, a directory for each chromosome will be created, with a vet directory in each one.
     // Each vet directory will hold all the vet TSVs for each sample.
@@ -152,6 +152,13 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     )
     public boolean skipLoadingVqsrFields = false;
 
+    @Argument(
+            fullName = "enable-vcf-header-parsing",
+            doc = "Parse out sample VCF header lines and store in BigQuery dataset",
+            optional = true
+    )
+    public boolean enableVCFHeaderParsing = false;
+
     private boolean shouldWriteLoadStatusStarted = true;
 
     // getGenotypes() returns list of lists for all samples at variant
@@ -185,28 +192,30 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         // TODO if you change here, also change in CreateArrayIngestFiles
         // Get sample name
         final VCFHeader inputVCFHeader = getHeaderForVariants();
+        if (enableVCFHeaderParsing) {
+            HashMap<String, String> nonCommandLineHeaders = new HashMap<>();
+            for ( VCFHeaderLine line :  inputVCFHeader.getMetaDataInInputOrder()) {
+                if (line.getKey().contains("CommandLine")) {
+                    HashMap<String, String> commandLine = new HashMap<>();
+                    commandLine.put(line.getKey(), line.getValue());
+                    allLineHeaders.add(commandLine.toString());
+                }
+                else {
+                    nonCommandLineHeaders.put(line.getKey(), line.getValue());
+                }
+            }
+            allLineHeaders.add(nonCommandLineHeaders.toString());
+        }
 
         // get an array of header "lines" (command line INFO lines, chunks of non-command-line INFO lines)
         // to put into the header line temp table
-        HashMap<String, String> nonCommandLineHeaders = new HashMap<>();
-        for ( VCFHeaderLine line :  inputVCFHeader.getMetaDataInInputOrder()) {
-            if (line.getKey().contains("CommandLine")) {
-                HashMap<String, String> commandLine = new HashMap<>();
-                commandLine.put(line.getKey(), line.getValue());
-                allLineHeaders.add(commandLine.toString());
-            }
-            else {
-                nonCommandLineHeaders.put(line.getKey(), line.getValue());
-            }
-        }
-        allLineHeaders.add(nonCommandLineHeaders.toString());
 
         String sampleName = sampleNameParam == null ? IngestUtils.getSampleName(inputVCFHeader) : sampleNameParam;
         if (sampleIdParam == null && sampleMap == null) {
             throw new IllegalArgumentException("One of sample-id or sample-name-mapping must be specified");
         }
         if (sampleIdParam != null) {
-            sampleId = String.valueOf(sampleIdParam);
+            sampleId = sampleIdParam;
         } else {
             sampleId = IngestUtils.getSampleId(sampleName, sampleMap);
         }
@@ -230,7 +239,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                 logger.info("Found estimated rows in streaming buffer!!! " + streamingBufferRows);
             }
 
-            LoadStatus.LoadState state = loadStatus.getSampleLoadState(Long.parseLong(sampleId));
+            LoadStatus.LoadState state = loadStatus.getSampleLoadState(sampleId);
 //            LoadStatus.LoadState state = LoadStatus.LoadState.NONE;
             if (state == LoadStatus.LoadState.COMPLETE) {
                 logger.info("Sample id " + sampleId + " was detected as already loaded, exiting successfully.");
@@ -256,7 +265,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                     // Write the status finished row and exit 0.
                     logger.warn("Found load status started row with vet and ref written as needed, writing load status finished row for sample name = {}, id = {}",
                             sampleName, sampleId);
-                    loadStatus.writeLoadStatusFinished(Long.parseLong(sampleId));
+                    loadStatus.writeLoadStatusFinished(sampleId);
                     System.exit(0);
                 }
 
@@ -281,7 +290,9 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         if (enableVet && !vetRowsExist) {
             vetCreator = new VetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, forceLoadingFromNonAlleleSpecific, skipLoadingVqsrFields);
         }
-        vcfHeaderLineTempCreater = new VcfHeaderLineTempCreator(sampleId, projectID, datasetName);
+        if (enableVCFHeaderParsing) {
+            vcfHeaderLineTempCreater = new VcfHeaderLineTempCreator(sampleId, projectID, datasetName);
+        }
 
     }
 
@@ -330,7 +341,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     @Override
     public Object onTraversalSuccess() {
         if (outputType == CommonCode.OutputType.BQ && shouldWriteLoadStatusStarted) {
-            loadStatus.writeLoadStatusStarted(Long.parseLong(sampleId));
+            loadStatus.writeLoadStatusStarted(sampleId);
         }
 
         if (vcfHeaderLineTempCreater != null) {
@@ -359,7 +370,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
         // upload the load status table
         if (outputType == CommonCode.OutputType.BQ) {
-            loadStatus.writeLoadStatusFinished(Long.parseLong(sampleId));
+            loadStatus.writeLoadStatusFinished(sampleId);
         }
 
         return 0;
