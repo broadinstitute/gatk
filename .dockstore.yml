@@ -217,7 +217,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_866_update_variants_base_image
+         - rsa_vs_836_v2
    - name: GvsQuickstartHailIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartHailIntegration.wdl
