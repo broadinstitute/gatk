@@ -12,4 +12,4 @@ RETURNS STRING
       }
   }
   return ref + ',' + allele
-    """;
+  """;
