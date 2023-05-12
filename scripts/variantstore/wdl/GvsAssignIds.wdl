@@ -13,6 +13,7 @@ workflow GvsAssignIds {
     Boolean samples_are_controls = false
 
     File? assign_ids_gatk_override
+    Boolean parse_vcf_headers = false
   }
 
   String sample_info_table = "sample_info"
@@ -43,38 +44,39 @@ workflow GvsAssignIds {
       superpartitioned = "false",
       partitioned = "false"
   }
+  if (parse_vcf_headers) {
+    call GvsCreateTables.CreateTables as CreateTempVCFHeaderLinesTable {
+      input:
+        project_id = project_id,
+        dataset_name = dataset_name,
+        datatype = "vcf_header_lines_temp",
+        schema_json = vcf_header_lines_temp_schema_json,
+        max_table_id = 1,
+        superpartitioned = "false",
+        partitioned = "false"
+    }
 
-  call GvsCreateTables.CreateTables as CreateTempVCFHeaderLinesTable {
-    input:
-      project_id = project_id,
-      dataset_name = dataset_name,
-      datatype = "vcf_header_lines_temp",
-      schema_json = vcf_header_lines_temp_schema_json,
-      max_table_id = 1,
-      superpartitioned = "false",
-      partitioned = "false"
-  }
+    call GvsCreateTables.CreateTables as CreateVCFHeaderLinesTable {
+      input:
+        project_id = project_id,
+        dataset_name = dataset_name,
+        datatype = "vcf_header_lines",
+        schema_json = vcf_header_lines_schema_json,
+        max_table_id = 1,
+        superpartitioned = "false",
+        partitioned = "false"
+    }
 
-  call GvsCreateTables.CreateTables as CreateVCFHeaderLinesTable {
-    input:
-      project_id = project_id,
-      dataset_name = dataset_name,
-      datatype = "vcf_header_lines",
-      schema_json = vcf_header_lines_schema_json,
-      max_table_id = 1,
-      superpartitioned = "false",
-      partitioned = "false"
-  }
-
-  call GvsCreateTables.CreateTables as CreateSampleVCFHeaderTable {
-    input:
-      project_id = project_id,
-      dataset_name = dataset_name,
-      datatype = "sample_vcf_header",
-      schema_json = sample_vcf_header_schema_json,
-      max_table_id = 1,
-      superpartitioned = "false",
-      partitioned = "false"
+    call GvsCreateTables.CreateTables as CreateSampleVCFHeaderTable {
+      input:
+        project_id = project_id,
+        dataset_name = dataset_name,
+        datatype = "sample_vcf_header",
+        schema_json = sample_vcf_header_schema_json,
+        max_table_id = 1,
+        superpartitioned = "false",
+        partitioned = "false"
+    }
   }
 
   call CreateCostObservabilityTable {

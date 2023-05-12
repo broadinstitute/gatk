@@ -28,7 +28,8 @@ workflow GvsImportGenomes {
     Int? load_data_batch_size
     Int? load_data_preemptible_override
     Int? load_data_maxretries_override
-    File? load_data_gatk_override = "gs://gvs-internal-scratch/rsa/jars/gatk-package-4.2.0.0-692-gd89f92e-SNAPSHOT-local.jar"
+    Boolean parse_vcf_headers = false
+    File? load_data_gatk_override = "gs://gvs-internal-scratch/rsa/jars/gatk-package-4.2.0.0-698-g1f040fc-SNAPSHOT-local.jar"
 
   }
 
@@ -123,13 +124,14 @@ workflow GvsImportGenomes {
         sample_map = GetUningestedSampleIds.sample_map
     }
   }
-
-  call ProcessVCFHeaders {
-    input:
-      load_done = LoadData.done,
-      dataset_name = dataset_name,
-      project_id = project_id,
-  }
+ if (parse_vcf_headers) {
+   call ProcessVCFHeaders {
+     input:
+       load_done = LoadData.done,
+       dataset_name = dataset_name,
+       project_id = project_id,
+   }
+ }
 
   call SetIsLoadedColumn {
     input:
