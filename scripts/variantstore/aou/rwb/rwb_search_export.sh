@@ -137,30 +137,33 @@ cat > "${BIGQUERY_EXTRACT_SCRIPT}" <<FIN
 
 EXPORT DATA OPTIONS (
     uri ='${BIGQUERY_EXPORT_SHARDS_PATH}', format = 'CSV', header = true, field_delimiter = "\t", overwrite = ${BIGQUERY_EXPORT_OVERWRITE}) AS
-    SELECT distinct (CASE CAST(aa.location / ${CHROMOSOME_MULTIPLIER} AS int64)
-                WHEN 23 THEN 'X'
-                WHEN 24 THEN 'Y'
-                ELSE CAST(CAST(aa.location / ${CHROMOSOME_MULTIPLIER} AS int64) AS string) END) AS chromosome,
-           MOD(aa.location, ${CHROMOSOME_MULTIPLIER})                                           AS position,
-           aa.ref AS ref,
-           aa.allele AS allele,
-           si.sample_name AS sample_name
+    SELECT DISTINCT vat.vid as vid, si.sample_name AS sample_name
     FROM \`${BIGQUERY_PROJECT_ID}.${BIGQUERY_DATASET}.alt_allele\` AS aa
              JOIN \`${BIGQUERY_PROJECT_ID}.${BIGQUERY_DATASET}.sample_info\` AS si
                   ON aa.sample_id = si.sample_id
              JOIN
-         (SELECT (CASE contig
-                       WHEN 'chrX' THEN 23
-                       WHEN 'chrY' THEN 24
-                       ELSE CAST(SUBSTRING(contig, 4) AS int64) END) * ${CHROMOSOME_MULTIPLIER} +
-                 CAST(position AS int64)  AS location,
-                 ref_allele,
-                 alt_allele
-          FROM \`${BIGQUERY_PROJECT_ID}.${BIGQUERY_DATASET}.${VAT_TABLE}\`)
-             AS vat
-         ON vat.ref_allele = aa.ref AND vat.alt_allele = aa.allele AND vat.location = aa.location
+         (SELECT vid, (CASE SPLIT(vid, '-')[OFFSET(0)]
+                         WHEN 'X' THEN 23
+                         WHEN 'Y' THEN 24
+                         ELSE CAST(SPLIT(vid, '-')[OFFSET(0)] AS int64) END) * ${CHROMOSOME_MULTIPLIER} +
+                 CAST(SPLIT(vid, '-')[OFFSET(1)] AS int64) AS location,
+                 SPLIT(vid, '-')[OFFSET(2)] AS ref_allele,
+                 SPLIT(vid, '-')[OFFSET(3)] AS alt_allele
+          FROM \`${BIGQUERY_PROJECT_ID}.${BIGQUERY_DATASET}.${VAT_TABLE}\`) AS vat
+          ON
+            vat.ref_allele = aa.ref AND
+            vat.alt_allele = aa.allele AND
+            vat.location = aa.location
 ${CHROMOSOME_FILTER_WHERE_CLAUSE}
-    ORDER BY chromosome, position, ref, allele, sample_name
+    ORDER BY
+      CAST((CASE SPLIT(vat.vid, '-')[OFFSET(0)]
+        WHEN 'X' THEN '23'
+        WHEN 'Y' THEN '24'
+        ELSE SPLIT(vat.vid, '-')[OFFSET(0)] END) AS int64),
+      CAST(SPLIT(vat.vid, '-')[OFFSET(1)] AS int64),
+      SPLIT(vat.vid, '-')[OFFSET(2)],
+      SPLIT(vat.vid, '-')[OFFSET(3)],
+      sample_name
 
 FIN
 
