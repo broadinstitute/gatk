@@ -226,7 +226,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             -
    - name: GvsQuickstartHailIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartHailIntegration.wdl
@@ -241,6 +240,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_860_2023-05-11_01
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
