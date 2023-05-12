@@ -99,8 +99,7 @@ task OutputPath {
 
 task ExtractFromNonSuperpartitionedTables {
     meta {
-        description: "Extracts from the non-superpartitioned tables: sample_info, filter_set_sites,
-                     filter_set_info/filter_set_info_vqsr_lite, and filter_set_tranches (if using VQSR Classic)"
+        description: "Extracts from the non-superpartitioned tables: sample_info, filter_set_sites, filter_set_info/filter_set_info_vqsr_lite, and filter_set_tranches (if using VQSR Classic)"
         # Not dealing with caching for now as that would introduce a lot of complexity.
         volatile: true
     }
