@@ -141,7 +141,7 @@ task ExtractFromNonSuperpartitionedTables {
             EXPORT DATA OPTIONS(
             uri='${avro_prefix}/vqsr_filtering_data/vqsr_filtering_data_*.avro', format='AVRO', compression='SNAPPY') AS
             SELECT location, type as model, ref, alt, ${vqs_score_field_name}, yng_status
-            FROM \`~{project_id}.~{dataset_name}.{filter_set_info_tablename}\`
+            FROM \`~{project_id}.~{dataset_name}.~{filter_set_info_tablename}\`
             WHERE filter_set_name = '~{filter_set_name}'
             ORDER BY location
         " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name ~{filter_set_info_tablename} --project_id ~{project_id}
