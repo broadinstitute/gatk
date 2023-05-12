@@ -1,0 +1,323 @@
+{"header":{"annotator":"Nirvana 3.18.1"},"positions":[
+{
+  "chromosome": "chr13",
+  "position": 18171383,
+  "refAllele": "A",
+  "altAlleles": [
+    "G"
+  ],
+  "cytogeneticBand": "13q11",
+  "variants": [
+    {
+      "vid": "13-18171383-A-G",
+      "chromosome": "chr13",
+      "begin": 18171383,
+      "end": 18171383,
+      "refAllele": "A",
+      "altAllele": "G",
+      "variantType": "SNV",
+      "hgvsg": "NC_000013.11:g.18171383A>G",
+      "dbsnp": [
+        "rs1385624081"
+      ],
+      "gnomad": {
+        "coverage": 0,
+        "failedFilter": true,
+        "allAf": 0.001473,
+        "allAn": 142548,
+        "allAc": 210,
+        "allHc": 0,
+        "afrAf": 0.000258,
+        "afrAn": 38796,
+        "afrAc": 10,
+        "afrHc": 0,
+        "amrAf": 0.000705,
+        "amrAn": 14178,
+        "amrAc": 10,
+        "amrHc": 0,
+        "easAf": 0.015639,
+        "easAn": 4348,
+        "easAc": 68,
+        "easHc": 0,
+        "finAf": 0.000727,
+        "finAn": 9632,
+        "finAc": 7,
+        "finHc": 0,
+        "nfeAf": 0.000953,
+        "nfeAn": 65040,
+        "nfeAc": 62,
+        "nfeHc": 0,
+        "asjAf": 0.002752,
+        "asjAn": 3270,
+        "asjAc": 9,
+        "asjHc": 0,
+        "sasAf": 0.009725,
+        "sasAn": 4216,
+        "sasAc": 41,
+        "sasHc": 0,
+        "othAf": 0.001059,
+        "othAn": 1888,
+        "othAc": 2,
+        "othHc": 0,
+        "maleAf": 0.001632,
+        "maleAn": 69242,
+        "maleAc": 113,
+        "maleHc": 0,
+        "femaleAf": 0.001323,
+        "femaleAn": 73306,
+        "femaleAc": 97,
+        "femaleHc": 0,
+        "controlsAllAf": 0.002771,
+        "controlsAllAn": 29952,
+        "controlsAllAc": 83
+      },
+      "gvsAnnotations": {
+        "refAllele": "A",
+        "altAllele": "G",
+        "AC": 2,
+        "AN": 18,
+        "AF": 0.111111,
+        "Hom": 0,
+        "AC_eas": 2,
+        "AN_eas": 18,
+        "AF_eas": 0.111111,
+        "Hom_eas": 0
+      },
+      "topmed": {
+        "allAf": 0.003281,
+        "allAn": 125568,
+        "allAc": 412,
+        "allHc": 0,
+        "failedFilter": true
+      },
+      "transcripts": [
+        {
+          "transcript": "ENST00000623078.1",
+          "source": "Ensembl",
+          "bioType": "unprocessed_pseudogene",
+          "geneId": "ENSG00000279924",
+          "hgnc": "AL356585.4",
+          "consequence": [
+            "downstream_gene_variant"
+          ],
+          "isCanonical": true
+        }
+      ]
+    }
+  ]
+},
+{
+  "chromosome": "chr13",
+  "position": 18171393,
+  "refAllele": "T",
+  "altAlleles": [
+    "C"
+  ],
+  "cytogeneticBand": "13q11",
+  "variants": [
+    {
+      "vid": "13-18171393-T-C",
+      "chromosome": "chr13",
+      "begin": 18171393,
+      "end": 18171393,
+      "refAllele": "T",
+      "altAllele": "C",
+      "variantType": "SNV",
+      "hgvsg": "NC_000013.11:g.18171393T>C",
+      "dbsnp": [
+        "rs76065716"
+      ],
+      "gnomad": {
+        "coverage": 28,
+        "failedFilter": true,
+        "allAf": 0.464421,
+        "allAn": 105258,
+        "allAc": 48884,
+        "allHc": 110,
+        "afrAf": 0.45111,
+        "afrAn": 25588,
+        "afrAc": 11543,
+        "afrHc": 12,
+        "amrAf": 0.470733,
+        "amrAn": 10592,
+        "amrAc": 4986,
+        "amrHc": 6,
+        "easAf": 0.425197,
+        "easAn": 3048,
+        "easAc": 1296,
+        "easHc": 0,
+        "finAf": 0.465,
+        "finAn": 7200,
+        "finAc": 3348,
+        "finHc": 7,
+        "nfeAf": 0.473681,
+        "nfeAn": 51294,
+        "nfeAc": 24297,
+        "nfeHc": 80,
+        "asjAf": 0.460163,
+        "asjAn": 2460,
+        "asjAc": 1132,
+        "asjHc": 2,
+        "sasAf": 0.438776,
+        "sasAn": 2842,
+        "sasAc": 1247,
+        "sasHc": 0,
+        "othAf": 0.45122,
+        "othAn": 1312,
+        "othAc": 592,
+        "othHc": 3,
+        "maleAf": 0.46083,
+        "maleAn": 51110,
+        "maleAc": 23553,
+        "maleHc": 56,
+        "femaleAf": 0.46781,
+        "femaleAn": 54148,
+        "femaleAc": 25331,
+        "femaleHc": 54,
+        "controlsAllAf": 0.446923,
+        "controlsAllAn": 21158,
+        "controlsAllAc": 9456
+      },
+      "gvsAnnotations": {
+        "refAllele": "T",
+        "altAllele": "C",
+        "AC": 5,
+        "AN": 14,
+        "AF": 0.357143,
+        "Hom": 0,
+        "AC_eas": 5,
+        "AN_eas": 14,
+        "AF_eas": 0.357143,
+        "Hom_eas": 0
+      },
+      "topmed": {
+        "allAf": 0.47763,
+        "allAn": 125568,
+        "allAc": 59975,
+        "allHc": 411,
+        "failedFilter": true
+      },
+      "transcripts": [
+        {
+          "transcript": "ENST00000623078.1",
+          "source": "Ensembl",
+          "bioType": "unprocessed_pseudogene",
+          "geneId": "ENSG00000279924",
+          "hgnc": "AL356585.4",
+          "consequence": [
+            "downstream_gene_variant"
+          ],
+          "isCanonical": true
+        }
+      ]
+    }
+  ]
+},
+{
+  "chromosome": "chr13",
+  "position": 18171453,
+  "refAllele": "G",
+  "altAlleles": [
+    "A"
+  ],
+  "cytogeneticBand": "13q11",
+  "variants": [
+    {
+      "vid": "13-18171453-G-A",
+      "chromosome": "chr13",
+      "begin": 18171453,
+      "end": 18171453,
+      "refAllele": "G",
+      "altAllele": "A",
+      "variantType": "SNV",
+      "hgvsg": "NC_000013.11:g.18171453G>A",
+      "dbsnp": [
+        "rs9740229"
+      ],
+      "gnomad": {
+        "coverage": 27,
+        "failedFilter": true,
+        "allAf": 0.388854,
+        "allAn": 77088,
+        "allAc": 29976,
+        "allHc": 57,
+        "afrAf": 0.340256,
+        "afrAn": 17672,
+        "afrAc": 6013,
+        "afrHc": 7,
+        "amrAf": 0.384892,
+        "amrAn": 7784,
+        "amrAc": 2996,
+        "amrHc": 3,
+        "easAf": 0.346854,
+        "easAn": 2416,
+        "easAc": 838,
+        "easHc": 0,
+        "finAf": 0.357143,
+        "finAn": 5628,
+        "finAc": 2010,
+        "finHc": 0,
+        "nfeAf": 0.422176,
+        "nfeAn": 37842,
+        "nfeAc": 15976,
+        "nfeHc": 44,
+        "asjAf": 0.403384,
+        "asjAn": 1832,
+        "asjAc": 739,
+        "asjHc": 2,
+        "sasAf": 0.34319,
+        "sasAn": 2232,
+        "sasAc": 766,
+        "sasHc": 0,
+        "othAf": 0.365347,
+        "othAn": 1010,
+        "othAc": 369,
+        "othHc": 1,
+        "maleAf": 0.384395,
+        "maleAn": 38078,
+        "maleAc": 14637,
+        "maleHc": 20,
+        "femaleAf": 0.393207,
+        "femaleAn": 39010,
+        "femaleAc": 15339,
+        "femaleHc": 37,
+        "controlsAllAf": 0.321835,
+        "controlsAllAn": 15626,
+        "controlsAllAc": 5029
+      },
+      "gvsAnnotations": {
+        "refAllele": "G",
+        "altAllele": "A",
+        "AC": 3,
+        "AN": 12,
+        "AF": 0.25,
+        "Hom": 0,
+        "AC_eas": 3,
+        "AN_eas": 12,
+        "AF_eas": 0.25,
+        "Hom_eas": 0
+      },
+      "topmed": {
+        "allAf": 0.442645,
+        "allAn": 125568,
+        "allAc": 55582,
+        "allHc": 554,
+        "failedFilter": true
+      },
+      "transcripts": [
+        {
+          "transcript": "ENST00000623078.1",
+          "source": "Ensembl",
+          "bioType": "unprocessed_pseudogene",
+          "geneId": "ENSG00000279924",
+          "hgnc": "AL356585.4",
+          "consequence": [
+            "downstream_gene_variant"
+          ],
+          "isCanonical": true
+        }
+      ]
+    }
+  ]
+}
+]}
