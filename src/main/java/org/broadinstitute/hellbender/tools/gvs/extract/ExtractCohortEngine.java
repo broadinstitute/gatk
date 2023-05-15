@@ -741,7 +741,11 @@ public class ExtractCohortEngine {
         }
 
         final String callGT = sampleRecord.getCallGT();
-        if ("./.".equals(callGT)) {
+
+        // we need to generalize this
+//        if ("./.".equals(callGT)) {
+        // This should match against anything like ".", "./.", ".|.", "././.", ".|.|.", etc
+        if (callGT.matches("\\.([/|]\\.)*")) {
             genotypeBuilder.alleles(Arrays.asList(Allele.NO_CALL, Allele.NO_CALL));
         } else {
             final List<Allele> genotypeAlleles =
