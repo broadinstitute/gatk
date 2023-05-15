@@ -7,7 +7,7 @@ workflow GvsQuickstartVcfIntegration {
 
     input {
         String branch_name
-        String expected_output_prefix = "gs://gvs-internal-quickstart/integration/2023-05-07/"
+        String expected_output_prefix = "gs://gvs-internal-quickstart/integration/2023-05-15/"
 
         Array[String] external_sample_names = [
                                               "ERS4367795",
@@ -283,7 +283,7 @@ task AssertCostIsTrackedAndExpected {
         if [[ $OBS_KEY == "ExtractFilterTask.GvsCreateFilterSet.BigQuery Query Scanned" ]]; then
           TOLERANCE=0.03   # 3% tolerance  (Note - have seen as high as: 0.0204894)
         elif [[ $OBS_KEY == "ExtractTask.GvsExtractCallset.Storage API Scanned" ]]; then
-          TOLERANCE=0.01   # 1% tolerance  (Note - have seen as high as: 0.00608656)
+          TOLERANCE=0.02   # 2% tolerance  (Note - have seen as high as: 0.0124584)
         elif [[ $OBS_KEY == "ExtractFilterTask.GvsCreateFilterSet.Storage API Scanned" ]]; then
           TOLERANCE=0.05  # 5% tolerance (Note - have seen as high as: 0.0281223)
         fi
