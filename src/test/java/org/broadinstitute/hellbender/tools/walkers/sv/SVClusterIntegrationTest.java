@@ -278,9 +278,9 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
         final Pair<VCFHeader, List<VariantContext>> testVcf = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
 
         final ReferenceSequenceFile referenceSequenceFile = ReferenceUtils.createReferenceReader(new GATKPath(REFERENCE_PATH));
-        final ClusteringParameters depthParameters = ClusteringParameters.createDepthParameters(0.5, 2000, 0);
-        final ClusteringParameters mixedParameters = ClusteringParameters.createMixedParameters(0.1, 2000, 0);
-        final ClusteringParameters pesrParameters = ClusteringParameters.createPesrParameters(0.1, 500, 0);
+        final ClusteringParameters depthParameters = ClusteringParameters.createDepthParameters(0.5, 0, 2000, 0);
+        final ClusteringParameters mixedParameters = ClusteringParameters.createMixedParameters(0.1, 0, 2000, 0);
+        final ClusteringParameters pesrParameters = ClusteringParameters.createPesrParameters(0.1, 0, 500, 0);
         final SVClusterEngine engine = SVClusterEngineFactory.createCanonical(
                 SVClusterEngine.CLUSTERING_TYPE.SINGLE_LINKAGE,
                 CanonicalSVCollapser.BreakpointSummaryStrategy.MEDIAN_START_MEDIAN_END,
@@ -429,7 +429,7 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
 
         Assert.assertEquals(header.getSampleNamesInOrder().size(), 156);
 
-        Assert.assertEquals(records.size(), 1731);
+        Assert.assertEquals(records.size(), 1703);
 
         // Check for one record
         int expectedRecordsFound = 0;

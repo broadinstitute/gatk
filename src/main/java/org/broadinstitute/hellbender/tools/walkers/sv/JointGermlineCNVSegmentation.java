@@ -128,6 +128,7 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
     public static final String DEFRAGMENTATION_PADDING_LONG_NAME = "defragmentation-padding-fraction";
     public static final String CLUSTERING_INTERVAL_OVERLAP_LONG_NAME = "clustering-interval-overlap";
     public static final String CLUSTERING_BREAKEND_WINDOW_LONG_NAME = "clustering-breakend-window";
+    public static final String CLUSTERING_SIZE_SIMILARITY_LONG_NAME = "clustering-size-similarity";
     public static final String MODEL_CALL_INTERVALS_LONG_NAME = "model-call-intervals";
     public static final String BREAKPOINT_SUMMARY_STRATEGY_LONG_NAME = "breakpoint-summary-strategy";
     public static final String ALT_ALLELE_SUMMARY_STRATEGY_LONG_NAME = "alt-allele-summary-strategy";
@@ -148,6 +149,10 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
     @Argument(fullName = CLUSTERING_BREAKEND_WINDOW_LONG_NAME,
             doc="Cluster events whose endpoints are within this distance of each other", optional=true)
     public int clusterWindow = CanonicalSVLinkage.DEFAULT_DEPTH_ONLY_PARAMS.getWindow();
+
+    @Argument(fullName = CLUSTERING_SIZE_SIMILARITY_LONG_NAME,
+            doc="Minimum size similarity for clustering", optional=true)
+    public double clusterSizeSimilarity = CanonicalSVLinkage.DEFAULT_DEPTH_ONLY_PARAMS.getSizeSimilarity();
 
     @Argument(fullName = MODEL_CALL_INTERVALS_LONG_NAME, doc = "gCNV model intervals created with the FilterIntervals tool.", optional=true)
     private GATKPath modelCallIntervalList = null;
@@ -209,7 +214,7 @@ public class JointGermlineCNVSegmentation extends MultiVariantWalkerGroupedOnSta
 
         setIntervals(parser);
 
-        final ClusteringParameters clusterArgs = ClusteringParameters.createDepthParameters(clusterIntervalOverlap, clusterWindow, CLUSTER_SAMPLE_OVERLAP_FRACTION);
+        final ClusteringParameters clusterArgs = ClusteringParameters.createDepthParameters(clusterIntervalOverlap, clusterSizeSimilarity, clusterWindow, CLUSTER_SAMPLE_OVERLAP_FRACTION);
         if (callIntervals == null) {
             defragmenter = SVClusterEngineFactory.createCNVDefragmenter(dictionary, altAlleleSummaryStrategy, reference, defragmentationPadding, minSampleSetOverlap);
         } else {

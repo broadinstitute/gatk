@@ -1,9 +1,6 @@
 package org.broadinstitute.hellbender.tools.sv.cluster;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.BoundType;
-import com.google.common.collect.SortedMultiset;
-import com.google.common.collect.TreeMultiset;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
@@ -436,11 +433,11 @@ public class SVClusterEngine {
     }
 
     private final class ItemSortingBuffer {
-        private SortedMultiset<SVCallRecord> buffer;
+        private PriorityQueue<SVCallRecord> buffer;
 
         public ItemSortingBuffer() {
             Utils.nonNull(itemComparator);
-            this.buffer = TreeMultiset.create(itemComparator);
+            this.buffer = new PriorityQueue<>(itemComparator);
         }
 
         public void add(final SVCallRecord record) {
@@ -459,11 +456,11 @@ public class SVClusterEngine {
             if (minActiveStartItem == null) {
                 forceFlush();
             }
-            final SortedMultiset<SVCallRecord> finalizedRecordView = buffer.headMultiset(minActiveStartItem, BoundType.CLOSED);
-            final ArrayList<SVCallRecord> finalizedRecords = new ArrayList<>(finalizedRecordView);
-            // Clearing a view of the buffer also clears the items from the buffer itself
-            finalizedRecordView.clear();
-            return finalizedRecords;
+            final List<SVCallRecord> out = new ArrayList<>();
+            while (!buffer.isEmpty() && buffer.comparator().compare(buffer.peek(), minActiveStartItem) < 0) {
+                out.add(buffer.poll());
+            }
+            return out;
         }
 
         /**
@@ -471,8 +468,10 @@ public class SVClusterEngine {
          * active clusters can be clustered with any future inputs.
          */
         public List<SVCallRecord> forceFlush() {
-            final List<SVCallRecord> result = new ArrayList<>(buffer);
-            buffer.clear();
+            final List<SVCallRecord> result = new ArrayList<>(buffer.size());
+            while (!buffer.isEmpty()) {
+                result.add(buffer.poll());
+            }
             return result;
         }
 

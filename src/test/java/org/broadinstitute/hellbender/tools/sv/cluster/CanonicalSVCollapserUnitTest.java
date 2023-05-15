@@ -1325,7 +1325,7 @@ public class CanonicalSVCollapserUnitTest {
 
     @Test(dataProvider= "collapseTypesTestData")
     public void collapseTypesTest(final List<GATKSVVCFConstants.StructuralVariantAnnotationType> types, final GATKSVVCFConstants.StructuralVariantAnnotationType expectedResult) {
-        final List<SVCallRecord> records = types.stream().map(t -> SVTestUtils.newCallRecordWithIntervalAndType(1, 100, t)).collect(Collectors.toList());
+        final List<SVCallRecord> records = types.stream().map(t -> SVTestUtils.newPESRCallRecordWithIntervalAndType(1, 100, t)).collect(Collectors.toList());
         Assert.assertEquals(collapser.collapseTypes(records), expectedResult);
     }
 

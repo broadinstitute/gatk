@@ -182,8 +182,12 @@ public class CanonicalSVCollapser {
         final Boolean strandA = type == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV ? null : representative.getStrandA();
         final Boolean strandB = type == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV ? null : representative.getStrandB();
 
+        final Set<String> filters = collapseFilters(items);
+        final Double quality = collapseQuality(items);
+
         return new SVCallRecord(representative.getId(), representative.getContigA(), start, strandA, representative.getContigB(),
-                end, strandB, type, representative.getComplexSubtype(), length, algorithms, alleles, genotypes, attributes, dictionary);
+                end, strandB, type, representative.getComplexSubtype(), length, algorithms, alleles, genotypes, attributes,
+                filters, quality, dictionary);
     }
 
     protected List<Allele> collapseAlleles(final List<Allele> altAlleles, final Allele refAllele) {
@@ -191,6 +195,21 @@ public class CanonicalSVCollapser {
         alleles.add(refAllele);
         alleles.addAll(altAlleles);
         return alleles;
+    }
+
+    protected Set<String> collapseFilters(final List<SVCallRecord> items) {
+        return items.stream()
+                .map(SVCallRecord::getFilters)
+                .flatMap(Collection::stream)
+                .collect(Collectors.toSet());
+    }
+
+    protected Double collapseQuality(final List<SVCallRecord> items) {
+        if (items.size() == 1) {
+            return items.get(0).getLog10PError();
+        } else {
+            return null;
+        }
     }
 
     /**

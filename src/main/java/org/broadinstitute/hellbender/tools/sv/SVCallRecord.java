@@ -52,6 +52,8 @@ public class SVCallRecord implements SVLocatable {
     private final List<Allele> altAlleles;
     private final GenotypesContext genotypes;
     private final Map<String,Object> attributes;
+    private final Set<String> filters;
+    private final Double log10PError;
 
     // CPX related fields
     private final GATKSVVCFConstants.ComplexVariantSubtype cpxSubtype;
@@ -70,8 +72,10 @@ public class SVCallRecord implements SVLocatable {
                         final List<Allele> alleles,
                         final List<Genotype> genotypes,
                         final Map<String,Object> attributes,
+                        final Set<String> filters,
+                        final Double log10PError,
                         final SAMSequenceDictionary dictionary) {
-        this(id, contigA, positionA, strandA, contigB, positionB, strandB, type, cpxSubtype, length, algorithms, alleles, genotypes, attributes);
+        this(id, contigA, positionA, strandA, contigB, positionB, strandB, type, cpxSubtype, length, algorithms, alleles, genotypes, attributes, filters, log10PError);
         validateCoordinates(dictionary);
     }
 
@@ -88,11 +92,14 @@ public class SVCallRecord implements SVLocatable {
                            final List<String> algorithms,
                            final List<Allele> alleles,
                            final List<Genotype> genotypes,
-                           final Map<String, Object> attributes) {
+                           final Map<String, Object> attributes,
+                           final Set<String> filters,
+                           final Double log10PError) {
         Utils.nonNull(algorithms);
         Utils.nonNull(alleles);
         Utils.nonNull(genotypes);
         Utils.nonNull(attributes);
+        Utils.nonNull(filters);
         this.id = Utils.nonNull(id);
         this.contigA = contigA;
         this.positionA = positionA;
@@ -112,6 +119,8 @@ public class SVCallRecord implements SVLocatable {
         final Pair<Boolean, Boolean> strands = inferStrands(type, strandA, strandB);
         this.strandA = strands.getLeft();
         this.strandB = strands.getRight();
+        this.filters = filters;
+        this.log10PError = log10PError;
     }
 
     /**
@@ -365,5 +374,17 @@ public class SVCallRecord implements SVLocatable {
 
     public SimpleInterval getPositionBInterval() {
         return new SimpleInterval(contigB, positionB, positionB);
+    }
+
+    public Set<String> getFilters() {
+        return filters;
+    }
+
+    public Double getLog10PError() {
+        return log10PError;
+    }
+
+    public GATKSVVCFConstants.ComplexVariantSubtype getCpxSubtype() {
+        return cpxSubtype;
     }
 }

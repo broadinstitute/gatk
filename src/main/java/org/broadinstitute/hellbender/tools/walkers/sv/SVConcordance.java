@@ -27,6 +27,7 @@ import org.broadinstitute.hellbender.tools.sv.concordance.ClosestSVFinder;
 import org.broadinstitute.hellbender.tools.sv.concordance.SVConcordanceAnnotator;
 import org.broadinstitute.hellbender.tools.sv.concordance.SVConcordanceLinkage;
 import org.broadinstitute.hellbender.tools.walkers.validation.Concordance;
+import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import picard.vcf.GenotypeConcordance;
 
 import java.util.HashSet;
@@ -120,6 +121,10 @@ public final class SVConcordance extends AbstractConcordanceWalker {
         if (dictionary == null) {
             throw new UserException("Reference sequence dictionary required");
         }
+
+        // Check that vcfs are sorted the same
+        SequenceDictionaryUtils.validateDictionaries("eval", getEvalHeader().getSequenceDictionary(),
+                "truth", getTruthHeader().getSequenceDictionary(), false, true);
 
         linkage = new SVConcordanceLinkage(dictionary);
         linkage.setDepthOnlyParams(clusterParameterArgs.getDepthParameters());

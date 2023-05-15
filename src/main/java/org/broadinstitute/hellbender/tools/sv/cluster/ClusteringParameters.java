@@ -11,6 +11,7 @@ import java.util.function.BiPredicate;
 public class ClusteringParameters {
 
     private final double reciprocalOverlap;  // minimum fractional reciprocal overlap of event intervals
+    private final double sizeSimilarity; // minimum min(size1, size2) / max(size1, size)
     private final int window;  // maximum distance between variant end-points
     private final double sampleOverlap; // minimum fractional carrier sample overlap
 
@@ -21,9 +22,10 @@ public class ClusteringParameters {
     // returns true if two given records are the correct type of pair for this parameter set
     private final BiPredicate<SVCallRecord, SVCallRecord> validRecordsPredicate;
 
-    public ClusteringParameters(final double reciprocalOverlap, final int window, final double sampleOverlap,
+    public ClusteringParameters(final double reciprocalOverlap, final double sizeSimilarity, final int window, final double sampleOverlap,
                                 final boolean overlapAndProximity, final BiPredicate<SVCallRecord, SVCallRecord> validRecordsPredicate) {
         this.reciprocalOverlap = reciprocalOverlap;
+        this.sizeSimilarity = sizeSimilarity;
         this.window = window;
         this.sampleOverlap = sampleOverlap;
         this.requiresOverlapAndProximity = overlapAndProximity;
@@ -32,6 +34,10 @@ public class ClusteringParameters {
 
     public double getReciprocalOverlap() {
         return reciprocalOverlap;
+    }
+
+    public double getSizeSimilarity() {
+        return sizeSimilarity;
     }
 
     public int getWindow() {
@@ -50,15 +56,15 @@ public class ClusteringParameters {
         return validRecordsPredicate.test(a, b);
     }
 
-    public static ClusteringParameters createDepthParameters(final double reciprocalOverlap, final int window, final double sampleOverlap) {
-        return new ClusteringParameters(reciprocalOverlap, window, sampleOverlap, false, (a,b) -> a.isDepthOnly() && b.isDepthOnly());
+    public static ClusteringParameters createDepthParameters(final double reciprocalOverlap, final double sizeSimilarity, final int window, final double sampleOverlap) {
+        return new ClusteringParameters(reciprocalOverlap, sizeSimilarity, window, sampleOverlap, false, (a,b) -> a.isDepthOnly() && b.isDepthOnly());
     }
 
-    public static ClusteringParameters createMixedParameters(final double reciprocalOverlap, final int window, final double sampleOverlap) {
-        return new ClusteringParameters(reciprocalOverlap, window, sampleOverlap, true, (a,b) -> a.isDepthOnly() != b.isDepthOnly());
+    public static ClusteringParameters createMixedParameters(final double reciprocalOverlap, final double sizeSimilarity, final int window, final double sampleOverlap) {
+        return new ClusteringParameters(reciprocalOverlap, sizeSimilarity, window, sampleOverlap, true, (a,b) -> a.isDepthOnly() != b.isDepthOnly());
     }
 
-    public static ClusteringParameters createPesrParameters(final double reciprocalOverlap, final int window, final double sampleOverlap) {
-        return new ClusteringParameters(reciprocalOverlap, window, sampleOverlap, true, (a,b) -> !a.isDepthOnly() && !b.isDepthOnly());
+    public static ClusteringParameters createPesrParameters(final double reciprocalOverlap, final double sizeSimilarity, final int window, final double sampleOverlap) {
+        return new ClusteringParameters(reciprocalOverlap, sizeSimilarity, window, sampleOverlap, true, (a,b) -> !a.isDepthOnly() && !b.isDepthOnly());
     }
 }
