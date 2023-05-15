@@ -240,7 +240,6 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             }
 
             LoadStatus.LoadState state = loadStatus.getSampleLoadState(sampleId);
-//            LoadStatus.LoadState state = LoadStatus.LoadState.NONE;
             if (state == LoadStatus.LoadState.COMPLETE) {
                 logger.info("Sample id " + sampleId + " was detected as already loaded, exiting successfully.");
                 System.exit(0);
@@ -348,7 +347,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             try {
                 vcfHeaderLineTempCreater.apply(allLineHeaders);
             }catch (IOException ioe) {
-                throw new GATKException("Error writing missing intervals", ioe);
+                throw new GATKException("Error writing temporary header data", ioe);
             }
             // Wait until all data has been submitted and in pending state to commit
             vcfHeaderLineTempCreater.commitData();
