@@ -22,6 +22,7 @@ from hail.typecheck import typecheck, nullable, oneof, dictof, anytype, sequence
            intermediate_resume_point=int,
            skip_final_merge=bool,
            unphase=bool,
+           ref_block_max_length=int,
            use_classic_vqsr=bool
            )
 
@@ -41,6 +42,7 @@ def create_vds(refs: 'List[List[str]]',
                intermediate_resume_point=0,
                skip_final_merge=False,
                unphase=False,
+               ref_block_max_length: 'int' = 1000,
                use_classic_vqsr=True
                ):
 
@@ -130,6 +132,8 @@ def create_vds(refs: 'List[List[str]]',
         Skip final merge if true.
     unphase : :class:`bool`
         Unphase VET genotypes on final merge.
+    ref_block_max_length : :class:`int`
+        Maximum reference block length.
     use_classic_vqsr : :class:'bool'
         Expect input Avro files to have been generated from VQSR 'Classic' data
 
@@ -236,7 +240,8 @@ def create_vds(refs: 'List[List[str]]',
             ref_ht = ref_ht.transmute(entries=convert_array_with_id_keys_to_dense_array(ref_ht.data_per_sample, sample_ids_lit))
 
             # vds column keys assume string sample IDs
-            ref_ht = ref_ht.annotate_globals(col_data=samples_lit.map(lambda s: hl.struct(s=s)))
+            ref_ht = ref_ht.annotate_globals(col_data=samples_lit.map(lambda s: hl.struct(s=s)),
+                                             ref_block_max_length=ref_block_max_length)
             ref_mt = ref_ht._unlocalize_entries('entries', 'col_data', col_key=['s'])
 
             # workaround to maintain valid VDS schema, is added from FASTA at the end
