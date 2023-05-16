@@ -607,6 +607,8 @@ public final class ReferenceConfidenceVariantContextMerger {
                 }
             }
             genotypeBuilder.name(name);
+            final List<Allele> remappedGTAlleles = g.getAlleles().stream().map(a -> (vc.getAlleleIndex(a) > -1 ? remappedAlleles.get(vc.getAlleleIndex(a)) : Allele.NO_CALL)).collect(Collectors.toList());
+
             final GenotypeAssignmentMethod assignmentMethod;
             if (callGTAlleles && GenotypeUtils.shouldBeCalled(g)) {
                 assignmentMethod = GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL;
@@ -616,7 +618,7 @@ public final class ReferenceConfidenceVariantContextMerger {
             GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(),
                     genotypeBuilder, assignmentMethod,
                     g.hasLikelihoods() ? g.getLikelihoods().getAsVector() : null,
-                    targetAlleles, g.getAlleles(), null);
+                    targetAlleles, remappedGTAlleles, null);
             mergedGenotypes.add(genotypeBuilder.make());
         }
 
