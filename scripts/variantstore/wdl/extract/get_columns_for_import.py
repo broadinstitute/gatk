@@ -7,21 +7,11 @@ import re
 
 maxNumSamples = 50
 
-
-def get_sample_sets(workspace_namespace, workspace_name):
-    response = requests.get('https://rawls.dsde-prod.broadinstitute.org/api/workspaces/{workspace_namespace}/{workspace_name}/entities?useCache=true')
-    sample_sets = response.sample_set
-    return sample_sets
-
-# do we want to start and just check for defaults first?
-#def get_column_names(workspace_id, workspace_name):
-
-
 def get_column_data(workspace_id):
     # We need to identify 3 things
     # 1. Sample id field
     # 2. vcf column name
-        # 3. vcf index column name
+    # 3. vcf index column name
 
     # We only sample a certain number of columns
     numSamples = 0
@@ -59,9 +49,6 @@ def get_column_values(columnSamples, numSamples):
     numSampledRows = numSamples
     cutoffPoint = numSampledRows * 0.95
     print(f"Sampled {numSampledRows} rows total. Throwing away any under {cutoffPoint}")
-
-    # does the col has strings only
-
 
     # match column names that end with "vcf"
     ends_in_vcf_pattern = "^.*vcf$"
