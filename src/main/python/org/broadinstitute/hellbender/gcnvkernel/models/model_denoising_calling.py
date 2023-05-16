@@ -36,10 +36,10 @@ class DenoisingModelConfig:
     _q_c_expectation_modes = ['map', 'exact', 'hybrid']
 
     def __init__(self,
-                 max_bias_factors: int = 5,
+                 max_bias_factors: int = 6,
                  mapping_error_rate: float = 0.01,
-                 psi_t_scale: float = 0.001,
-                 psi_s_scale: float = 0.0001,
+                 psi_t_scale: float = 0.01,
+                 psi_s_scale: float = 0.01,
                  depth_correction_tau: float = 10000.0,
                  log_mean_bias_std: float = 0.1,
                  init_ard_rel_unexplained_variance: float = 0.1,
@@ -202,8 +202,8 @@ class DenoisingModelConfig:
 class CopyNumberCallingConfig:
     """Configuration of the copy number caller."""
     def __init__(self,
-                 p_alt: float = 1e-6,
-                 p_active: float = 1e-3,
+                 p_alt: float = 5e-4,
+                 p_active: float = 0.1,
                  cnv_coherence_length: float = 10000.0,
                  class_coherence_length: float = 10000.0,
                  max_copy_number: int = 5,
