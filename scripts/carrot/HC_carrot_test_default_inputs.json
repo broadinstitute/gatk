@@ -28,5 +28,5 @@
   "VariantCallingCarrotOrchestrated.use_gatk3_haplotype_caller": true,
   "VariantCallingCarrotOrchestrated.monitoring_script": "gs://dsp-methods-carrot-data/test_data/haplotypecaller_tests/cromwell_monitoring_script.sh",
 
-  "VariantCallingCarrotOrchestrated.gatk_control_docker":  "broadinstitute/gatk-nightly:2022-03-04-4.2.5.0-9-gb097f75c5-NIGHTLY-SNAPSHOT"
+  "VariantCallingCarrotOrchestrated.gatk_control_docker":  "broadinstitute/gatk-nightly:latest"
 }
