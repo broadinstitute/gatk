@@ -29,7 +29,7 @@ workflow GvsImportGenomes {
     Int? load_data_preemptible_override
     Int? load_data_maxretries_override
     Boolean process_vcf_headers = false
-    File? load_data_gatk_override = "gs://gvs-internal-scratch/rsa/jars/gatk-package-4.2.0.0-699-g882980b-SNAPSHOT-local.jar"
+    File? load_data_gatk_override = "gs://gvs-internal-scratch/rsa/jars/gatk-package-4.2.0.0-706-g2d656f8-SNAPSHOT-local.jar"
 
   }
 
