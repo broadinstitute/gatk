@@ -134,7 +134,7 @@ def create_vds(refs: 'List[List[str]]',
         Unphase VET genotypes on final merge.
     ref_block_max_length : :class:`int`
         Maximum reference block length.
-    use_classic_vqsr : :class:'bool'
+    use_classic_vqsr : :class:`bool`
         Expect input Avro files to have been generated from VQSR 'Classic' data
 
     Returns
