@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.gvs.common;
 
 import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.util.Utf8;
 
 import java.util.Arrays;
 import java.util.Comparator;
@@ -89,10 +90,21 @@ public class SchemaUtils {
         return (int)(location % chromAdjustment);
     }
 
-    public final static Comparator<GenericRecord> LOCATION_COMPARATOR = (o1, o2) -> {
+    public final static Comparator<GenericRecord> LOCATION_AND_ALLELES_COMPARATOR = (o1, o2) -> {
         final long firstLocation = (Long) o1.get(SchemaUtils.LOCATION_FIELD_NAME);
         final long secondLocation = (Long) o2.get(SchemaUtils.LOCATION_FIELD_NAME);
-        return Long.compare(firstLocation, secondLocation);
+        int retVal = Long.compare(firstLocation, secondLocation);
+        if (retVal == 0) {
+            final Utf8 firstAllele = (Utf8) o1.get("allele");
+            final Utf8 secondAllele = (Utf8) o2.get("allele");
+            retVal = firstAllele.compareTo(secondAllele);
+            if (retVal == 0) {
+                final Utf8 firstRef = (Utf8) o1.get(SchemaUtils.REF_ALLELE_FIELD_NAME);
+                final Utf8 secondRef = (Utf8) o2.get(SchemaUtils.REF_ALLELE_FIELD_NAME);
+                retVal = firstRef.compareTo(secondRef);
+            }
+        }
+        return retVal;
     };
 
 }
