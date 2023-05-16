@@ -13,7 +13,7 @@ workflow GvsAssignIds {
     Boolean samples_are_controls = false
 
     File? assign_ids_gatk_override
-    Boolean parse_vcf_headers = false
+    Boolean process_vcf_headers = false
   }
 
   String sample_info_table = "sample_info"
@@ -44,7 +44,7 @@ workflow GvsAssignIds {
       superpartitioned = "false",
       partitioned = "false"
   }
-  if (parse_vcf_headers) {
+  if (process_vcf_headers) {
     call GvsCreateTables.CreateTables as CreateTempVCFHeaderLinesTable {
       input:
         project_id = project_id,
