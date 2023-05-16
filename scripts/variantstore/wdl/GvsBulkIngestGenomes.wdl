@@ -9,7 +9,7 @@ import "GvsImportGenomes.wdl" as ImportGenomes
 workflow GvsBulkIngestGenomes {
     input {
         # Begin GvsPrepareBulkImport
-        # for now set the entity tupe names with a default
+        # for now set the entity type names with a default
         String samples_table_name = "sample"
         String sample_id_column_name = "sample_id"
         String? vcf_files_column_name
@@ -108,13 +108,6 @@ workflow GvsBulkIngestGenomes {
             String? vcf_files_column_name
             String? vcf_index_files_column_name
         }
-        ## set some default vals
-
-        # First we will check for the default named columns and make sure that each row has a value
-        String vcf_files_col = if (defined(vcf_files_column_name)) then select_first([vcf_files_column_name]) else ""
-        String vcf_index_files_col = if (defined(vcf_index_files_column_name)) then select_first([vcf_index_files_column_name]) else ""
-
-
         ## set some output files
         String vcf_files_column_name_output = "vcf_files_column_name.txt"
         String vcf_index_files_column_name_output = "vcf_index_files_column_name.txt"
@@ -142,8 +135,8 @@ workflow GvsBulkIngestGenomes {
         }
 
         output {
-            String vcf_files_column_name = read_string(vcf_files_column_name_output)
-            String vcf_index_files_column_name = read_string(vcf_index_files_column_name_output)
+            String vcf_files_column_name = if (defined(vcf_files_column_name)) then select_first([vcf_files_column_name]) else read_string(vcf_files_column_name_output)
+            String vcf_index_files_column_name = if (defined(vcf_index_files_column_name)) then select_first([vcf_index_files_column_name]) else read_string(vcf_index_files_column_name_output)
         }
     }
 
@@ -158,7 +151,7 @@ workflow GvsBulkIngestGenomes {
         String workspace_namespace_output = "workspace_namespace.txt"
 
         command <<<
-            # Hit rawls with the workspace ID <-- this is the optimized version that we need to figure out the auth on
+            # Hit rawls with the workspace ID
 
             export WORKSPACE_BUCKET='~{workspace_bucket}'
 
