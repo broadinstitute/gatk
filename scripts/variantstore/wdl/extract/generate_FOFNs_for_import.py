@@ -16,6 +16,48 @@ error_file_name = "errors.txt"
 # make a default, but allow a user to overwrite it just in case someone wants to tweak this while tuning
 attempts_between_pauses=500
 
+
+def get_entities_in_set(data_table_name, sample_set_name):
+    list_of_entities = list()
+    sample_set_list = list(table.list_rows(f"{data_table_name}_set"))
+    for sample_set in sample_set_list:
+        if sample_set.name == sample_set_name: ## else it's some other sample set and we dont care about it
+            for sample in sample_set.attributes['samples']: ## TODO why is this samples in Terra? Is this some Terra hardcoding?!?!
+                list_of_entities.append(sample['entityName'])
+
+    return list_of_entities
+
+def generate_FOFNs_from_data_table_with_sample_set(data_table_name, sample_id_column_name, vcf_files_column_name, vcf_index_files_column_name, list_of_entities):
+    with open(vcf_files_name, "w") as vcf_files, open(vcf_index_files_name, "w") as vcf_index_files, open(sample_names_file_name, "w") as sample_names_file, open(error_file_name, "w") as error_file:
+        count = 0
+        processed_entities = 0
+        for row in table.list_rows(data_table_name):
+            try:
+                # The table data model is weird, as each row has a "name" property followed by a hash of attributes.  But it
+                # is all displayed as though they are equivalent columns, and the name field is mapped to an imaginary
+                # column with the name table_name_id.  Map "name" to that imaginary attribute here so none of the lookups
+                # below fail if they reference that call.  This is safe, as this Row object is a read only copy of the actual
+                # table content, and it is disposed
+                row.attributes[f"{data_table_name}_id"] = row.name
+
+                current_sample_name = row.attributes[sample_id_column_name]
+                if list_of_entities.contains(current_sample_name):
+                    current_vcf_file = row.attributes[vcf_files_column_name]
+                    current_vcf_index_file = row.attributes[vcf_index_files_column_name]
+                    sample_names_file.write(f'{current_sample_name}\n')
+                    vcf_files.write(f'{current_vcf_file}\n')
+                    vcf_index_files.write(f'{current_vcf_index_file}\n')
+
+            except KeyError:
+                error_file.write(f'Row "{row.name}" skipped: missing columns\n')
+
+            count += 1
+            processed_entities += 1 ## TODO is this just for the sample set we are looking at!??!!
+            if count >= attempts_between_pauses:
+                print(f"sleeping between requests ({processed_entities} processed)...")
+                time.sleep(1)
+                count = 0
+
 def generate_FOFNs_from_data_table(data_table_name, sample_id_column_name, vcf_files_column_name, vcf_index_files_column_name):
     with open(vcf_files_name, "w") as vcf_files, open(vcf_index_files_name, "w") as vcf_index_files, open(sample_names_file_name, "w") as sample_names_file, open(error_file_name, "w") as error_file:
         count = 0
@@ -61,14 +103,32 @@ if __name__ == '__main__':
     parser.add_argument('--attempts_between_pauses', type=int,
                         help='The number of rows in the db that are processed before we pause', default=500)
 
+    parser.add_argument('--sample_set_name', type=str,
+                        help='The name of the sample set to use', default=None)
+
     args = parser.parse_args()
 
     # allow this to be overridden, but default it to 500
     if "attempts_between_pauses" in args:
         attempts_between_pauses = args.attempts_between_pauses
 
+    # check for selected sample sets
+    if "sample_set_name" in args:
+        sample_set_name = args.sample_set_name
 
-    generate_FOFNs_from_data_table(args.data_table_name,
-                              args.sample_id_column_name,
-                              args.vcf_files_column_name,
-                              args.vcf_index_files_column_name)
+    if sample_set_name:
+        list_of_entities = get_entities_in_set(
+            args.data_table_name,
+            sample_set_name)
+        generate_FOFNs_from_data_table_with_sample_set(
+            args.data_table_name,
+            args.sample_id_column_name,
+            args.vcf_files_column_name,
+            args.vcf_index_files_column_name,
+            list_of_entities)
+    else:
+        generate_FOFNs_from_data_table(
+            args.data_table_name,
+            args.sample_id_column_name,
+            args.vcf_files_column_name,
+            args.vcf_index_files_column_name)
