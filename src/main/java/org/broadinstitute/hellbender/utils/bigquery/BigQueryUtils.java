@@ -451,7 +451,7 @@ public final class BigQueryUtils {
     }
 
     public static boolean doRowsExistFor(String projectID, String datasetName, String tableName, String columnName, String value) {
-        String template = "SELECT COUNT(*) FROM `%s.%s.%s` WHERE %s = %s";
+        String template = "SELECT COUNT(*) FROM `%s.%s.%s` WHERE %s = '%s'";
         String query = String.format(template, projectID, datasetName, tableName, columnName, value);
 
         BigQueryResultAndStatistics resultAndStatistics = BigQueryUtils.executeQuery(projectID, query, true, null);
