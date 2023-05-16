@@ -20,13 +20,12 @@ public class VcfHeaderLineTempCreator {
     private static final String NON_TEMP_TABLE_NAME = "vcf_header_lines";
     private static final String TEMP_TABLE_NAME = "vcf_header_lines_scratch";
 
-    // TODO: fix BigQueryUtils.doRowsExistFor to support both string and int values
     private static boolean doTempRowsExistFor(String projectId, String datasetName, String headerLineHash) {
-        return BigQueryUtils.doRowsExistFor(projectId, datasetName,  TEMP_TABLE_NAME,"vcf_header_lines_hash", headerLineHash);
+        return BigQueryUtils.doRowsExistFor(projectId, datasetName, TEMP_TABLE_NAME, "vcf_header_lines_hash", headerLineHash);
     }
 
     private static boolean doNonTempRowsExistFor(String projectId, String datasetName, String headerLineHash) {
-        return BigQueryUtils.doRowsExistFor(projectId, datasetName,  NON_TEMP_TABLE_NAME,"vcf_header_lines_hash", headerLineHash);
+        return BigQueryUtils.doRowsExistFor(projectId, datasetName, NON_TEMP_TABLE_NAME, "vcf_header_lines_hash", headerLineHash);
     }
 
     public VcfHeaderLineTempCreator(Long sampleId, String projectId, String datasetName) {
@@ -47,7 +46,7 @@ public class VcfHeaderLineTempCreator {
     }
 
     public void apply(List<String> allLineHeaders) throws IOException {
-        for ( final String headerChunk : allLineHeaders) {
+        for (final String headerChunk : allLineHeaders) {
             try {
                 // if this header chunk has already been added to the temp table, only add an association between the
                 // sample_id and the hash, no need to rewrite the header chunk to the DB
