@@ -16,11 +16,6 @@ workflow GvsPrepareBulkImport {
         ## TODO we are hard coding this as a sample_set, but it's possible that it could be a different <entity>_set
     }
 
-    call GetSampleSetSamples {
-        input:
-            sample_set_name = sample_set_name
-    }
-
     call GenerateFOFNsFromDataTables {
         input:
             google_project_id = project_id,
@@ -30,7 +25,8 @@ workflow GvsPrepareBulkImport {
             samples_table_name = samples_table_name,
             sample_id_column_name = sample_id_column_name,
             vcf_files_column_name = vcf_files_column_name,
-            vcf_index_files_column_name = vcf_index_files_column_name
+            vcf_index_files_column_name = vcf_index_files_column_name,
+            sample_set_name = sample_set_name
     }
 
     output {
@@ -52,6 +48,7 @@ task GenerateFOFNsFromDataTables {
         String? sample_id_column_name
         String? vcf_files_column_name
         String? vcf_index_files_column_name
+        String? sample_set_name
     }
 
     ## TODO I dont love that we are hardcoding them here and in the python--they need to be params!
@@ -72,7 +69,8 @@ task GenerateFOFNsFromDataTables {
             --data_table_name ~{samples_table_name} \
             --sample_id_column_name ~{sample_id_column_name} \
             --vcf_files_column_name ~{vcf_files_column_name} \
-            --vcf_index_files_column_name ~{vcf_index_files_column_name}
+            --vcf_index_files_column_name ~{vcf_index_files_column_name} \
+            ${"--sample_set_name " + sample_set_name}
 
     >>>
     runtime {
@@ -82,48 +80,6 @@ task GenerateFOFNsFromDataTables {
         cpu: 1
     }
 
-    output {
-        File sampleFOFN = sample_names_file_name
-        File vcfFOFN = vcf_files_name
-        File vcfIndexFOFN = vcf_index_files_name
-        File errors = error_file_name
-    }
-}
-# This task makes FOFNs for just a sample set
-task GetSampleSetSamples {
-    input {
-        String? sample_set_name
-    }
-    ## TODO I dont love that we are hardcoding them here and in the python--they need to be params!
-    String sample_names_file_name = "sample_names.txt"
-    String vcf_files_name = "vcf_files.txt"
-    String vcf_index_files_name = "vcf_index_files.txt"
-    String error_file_name = "errors.txt"
-
-    command <<<
-        set -o errexit -o nounset -o xtrace -o pipefail
-
-        export GOOGLE_PROJECT='~{google_project_id}'
-        export WORKSPACE_NAMESPACE='~{workspace_namespace}'
-        export WORKSPACE_NAME='~{workspace_name}'
-        export WORKSPACE_BUCKET='~{workspace_bucket}'
-
-        python3 /app/generate_FOFNs_for_import.py \
-        --data_table_name ~{samples_table_name} \
-        --sample_id_column_name ~{sample_id_column_name} \
-        --vcf_files_column_name ~{vcf_files_column_name} \
-        --vcf_index_files_column_name ~{vcf_index_files_column_name}
-
-    >>>
-
-
-
-    runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-03-23-bulk-ingest"
-        memory: "3 GB"
-        disks: "local-disk 200 HDD"
-        cpu: 1
-    }
     output {
         File sampleFOFN = sample_names_file_name
         File vcfFOFN = vcf_files_name
