@@ -18,17 +18,17 @@ def populate_tables_from_temp(project_id, dataset_name):
     client = bigquery.Client(project=project_id,
                              default_query_job_config=default_config)
 
-    sql = f"INSERT INTO {project_id}.{dataset_name}.vcf_header_lines (vcf_header_lines_hash, vcf_header_lines) SELECT vcf_header_lines_hash, vcf_header_lines FROM {project_id}.{dataset_name}.vcf_header_lines_temp WHERE vcf_header_lines IS NOT NULL"
+    sql = f"INSERT INTO {project_id}.{dataset_name}.vcf_header_lines (vcf_header_lines_hash, vcf_header_lines) SELECT vcf_header_lines_hash, vcf_header_lines FROM {project_id}.{dataset_name}.vcf_header_lines_scratch WHERE vcf_header_lines IS NOT NULL"
     utils.execute_with_retry(client, "vcf_header_lines", sql)
 
-    sql = f"INSERT INTO {project_id}.{dataset_name}.sample_vcf_header (sample_id, vcf_header_lines_hash) SELECT sample_id, vcf_header_lines_hash FROM {project_id}.{dataset_name}.vcf_header_lines_temp"
+    sql = f"INSERT INTO {project_id}.{dataset_name}.sample_vcf_header (sample_id, vcf_header_lines_hash) SELECT sample_id, vcf_header_lines_hash FROM {project_id}.{dataset_name}.vcf_header_lines_scratch"
     utils.execute_with_retry(client, "sample_vcf_header", sql)
 
 
 def clean_up_temp_table(project_id, dataset_name):
     global client
-    sql = f"DELETE FROM {project_id}.{dataset_name}.vcf_header_lines_temp WHERE vcf_header_lines_hash IS NOT NULL"
-    utils.execute_with_retry(client, "vcf_header_lines_temp", sql)
+    sql = f"DELETE FROM {project_id}.{dataset_name}.vcf_header_lines_scratch WHERE vcf_header_lines_hash IS NOT NULL"
+    utils.execute_with_retry(client, "vcf_header_lines_scratch", sql)
 
 
 if __name__ == '__main__':

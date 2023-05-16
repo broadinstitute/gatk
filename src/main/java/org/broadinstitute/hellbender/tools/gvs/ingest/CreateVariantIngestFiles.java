@@ -45,7 +45,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     private RefCreator refCreator;
     private VetCreator vetCreator;
-    private VcfHeaderLineTempCreator vcfHeaderLineTempCreater;
+    private VcfHeaderLineTempCreator vcfHeaderLineTempCreator;
     private LoadStatus loadStatus;
 
     private List<String> allLineHeaders = new ArrayList<String>();
@@ -153,11 +153,11 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     public boolean skipLoadingVqsrFields = false;
 
     @Argument(
-            fullName = "enable-vcf-header-parsing",
-            doc = "Parse out sample VCF header lines and store in BigQuery dataset",
+            fullName = "enable-vcf-header-processing",
+            doc = "Ingest some sample VCF header lines and store in BigQuery dataset",
             optional = true
     )
-    public boolean enableVCFHeaderParsing = false;
+    public boolean enableVCFHeaderProcessing = false;
 
     private boolean shouldWriteLoadStatusStarted = true;
 
@@ -192,7 +192,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         // TODO if you change here, also change in CreateArrayIngestFiles
         // Get sample name
         final VCFHeader inputVCFHeader = getHeaderForVariants();
-        if (enableVCFHeaderParsing) {
+        if (enableVCFHeaderProcessing) {
             HashMap<String, String> nonCommandLineHeaders = new HashMap<>();
             for ( VCFHeaderLine line :  inputVCFHeader.getMetaDataInInputOrder()) {
                 if (line.getKey().contains("CommandLine")) {
@@ -289,8 +289,8 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         if (enableVet && !vetRowsExist) {
             vetCreator = new VetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, forceLoadingFromNonAlleleSpecific, skipLoadingVqsrFields);
         }
-        if (enableVCFHeaderParsing) {
-            vcfHeaderLineTempCreater = new VcfHeaderLineTempCreator(sampleId, projectID, datasetName);
+        if (enableVCFHeaderProcessing) {
+            vcfHeaderLineTempCreator = new VcfHeaderLineTempCreator(sampleId, projectID, datasetName);
         }
 
     }
@@ -343,14 +343,14 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             loadStatus.writeLoadStatusStarted(sampleId);
         }
 
-        if (vcfHeaderLineTempCreater != null) {
+        if (vcfHeaderLineTempCreator != null) {
             try {
-                vcfHeaderLineTempCreater.apply(allLineHeaders);
+                vcfHeaderLineTempCreator.apply(allLineHeaders);
             }catch (IOException ioe) {
                 throw new GATKException("Error writing temporary header data", ioe);
             }
             // Wait until all data has been submitted and in pending state to commit
-            vcfHeaderLineTempCreater.commitData();
+            vcfHeaderLineTempCreator.commitData();
         }
 
         if (refCreator != null) {
@@ -383,7 +383,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         if (vetCreator != null) {
             vetCreator.closeTool();
         }
-        if (vcfHeaderLineTempCreater != null) {
+        if (vcfHeaderLineTempCreator != null) {
             vetCreator.closeTool();
         }
     }

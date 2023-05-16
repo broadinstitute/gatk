@@ -18,7 +18,7 @@ public class VcfHeaderLineTempCreator {
 
     private PendingBQWriter vcfHeaderBQJsonWriter = null;
     private static final String NON_TEMP_TABLE_NAME = "vcf_header_lines";
-    private static final String TEMP_TABLE_NAME = "vcf_header_lines_temp";
+    private static final String TEMP_TABLE_NAME = "vcf_header_lines_scratch";
 
     // TODO: fix BigQueryUtils.doRowsExistFor to support both string and int values
     private static boolean doTempRowsExistFor(String projectId, String datasetName, String headerLineHash) {
