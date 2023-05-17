@@ -501,7 +501,7 @@ public class ExtractCohortEngine {
             return null;
         }
 
-        VariantContext mergedVC = variantContextMerger.merge(
+        VariantContext mergedVC = variantContextMerger.mergeWithRemapping(
                 unmergedVariantCalls,
                 new SimpleInterval(contig, (int) start, (int) start),
                 refAllele.getBases()[0],
