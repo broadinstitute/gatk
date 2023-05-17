@@ -47,7 +47,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     private VcfHeaderLineScratchCreator vcfHeaderLineScratchCreator;
     private LoadStatus loadStatus;
 
-    private List<String> allLineHeaders = new ArrayList<String>();
+    private List<String> allLineHeaders = new ArrayList<>();
 
     private GenomeLocSortedSet intervalArgumentGenomeLocSortedSet;
 
@@ -193,7 +193,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         final VCFHeader inputVCFHeader = getHeaderForVariants();
         if (enableVCFHeaderProcessing) {
             HashMap<String, String> nonCommandLineHeaders = new HashMap<>();
-            for ( VCFHeaderLine line :  inputVCFHeader.getMetaDataInInputOrder()) {
+            for (VCFHeaderLine line :  inputVCFHeader.getMetaDataInInputOrder()) {
                 if (line.getKey().contains("CommandLine")) {
                     HashMap<String, String> commandLine = new HashMap<>();
                     commandLine.put(line.getKey(), line.getValue());
@@ -345,7 +345,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         if (vcfHeaderLineScratchCreator != null) {
             try {
                 vcfHeaderLineScratchCreator.apply(allLineHeaders);
-            }catch (IOException ioe) {
+            } catch (IOException ioe) {
                 throw new GATKException("Error writing scratch header data", ioe);
             }
             // Wait until all data has been submitted and in pending state to commit

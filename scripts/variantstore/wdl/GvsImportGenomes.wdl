@@ -349,7 +349,7 @@ task ProcessVCFHeaders {
 
     python3 /app/process_sample_vcf_headers.py \
       --project_id ~{project_id} \
-      --dataset_name ~{dataset_name} \
+      --dataset_name ~{dataset_name}
   >>>
 
   runtime {
