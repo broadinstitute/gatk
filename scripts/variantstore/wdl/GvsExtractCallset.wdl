@@ -139,7 +139,7 @@ workflow GvsExtractCallset {
     }
   }
 
-  Boolean use_classic_VQSR = if (!do_not_filter_override) then false else IsVQSRLite.is_vqsr_lite
+  Boolean use_classic_VQSR = if (!do_not_filter_override) then false else select_first([IsVQSRLite.is_vqsr_lite])
 
   call Utils.GetBQTablesMaxLastModifiedTimestamp {
     input:

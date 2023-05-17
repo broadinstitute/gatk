@@ -526,6 +526,8 @@ task IsVQSRLite {
   String bq_labels = "--label service:gvs --label team:variants --label managedby:gvs_utils"
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
+  String is_vqsr_lite_file = "is_vqsr_lite_file.txt"
+
   command <<<
     set -o errexit -o nounset -o xtrace -o pipefail
 
@@ -533,16 +535,26 @@ task IsVQSRLite {
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-    OUTPUT=$(bq --project_id=~{project_id} --format=csv query --use_legacy_sql=false ~{bq_labels} "SELECT filter_set_name as available_filter_set_names FROM \`~{fq_filter_set_info_table}\` GROUP BY filter_set_name")
-    FILTERSETS=${OUTPUT#"available_filter_set_names"}
+    LITE_COUNT=$(bq --project_id=~{project_id} --format=csv query --use_legacy_sql=false ~{bq_labels} "SELECT COUNT(1) FROM \`~{fq_filter_set_info_table}\` WHERE filter_set_name = ~{filter_set_name} AND calibration_sensitivity IS NOT NULL")
+    CLASSIC_COUNT=$(bq --project_id=~{project_id} --format=csv query --use_legacy_sql=false ~{bq_labels} "SELECT COUNT(1) FROM \`~{fq_filter_set_info_table}\` WHERE filter_set_name = ~{filter_set_name} AND vqslod IS NOT NULL")
 
-    if [[ $FILTERSETS =~ "~{filter_set_name}" ]]; then
-    echo "Filter set name '~{filter_set_name}' found."
+    if [[ $LITE_COUNT != "0" ]]; then
+      echo "Found $LITE_COUNT rows with calibration_sensitivity defined"
+      echo "Found $CLASSIC_COUNT rows with vqslod defined"
+      if [[ $CLASSIC_COUNT != "0" ]]; then
+        echo "Found $CLASSIC_COUNT rows with vqslod defined"
+        echo "ERROR - can't have both defined for a filter_set"
+        exit 1
+      fi
+      echo "true" > ~{is_vqsr_lite_file}
+    elif [[ $CLASSIC_COUNT != "0" ]]; then
+      echo "Found $CLASSIC_COUNT rows with vqslod defined"
+      echo "false" > ~{is_vqsr_lite_file}
     else
-    echo "ERROR: '~{filter_set_name}' is not an existing filter_set_name. Available in ~{fq_filter_set_info_table} are"
-    echo $FILTERSETS
-    exit 1
+      echo "Found NO rows with either calibration_sensitivity or vqslod defined"
+      exit 1
     fi
+
   >>>
   output {
     Boolean is_vqsr_lite = read_boolean("is_vqsr_lite_file")
