@@ -25,7 +25,7 @@ When the script is done running it will print out the path to where it has writt
 
 ### Run GvsCreateVATfromVDS
 
-Note: in order for this workflow to run successfully the 'Use reference disks' option must be selected in Terra workflow
+**Note:** in order for this workflow to run successfully the 'Use reference disks' option must be selected in Terra workflow
 configuration. If this option is not selected the `AnnotateVCF` tasks will refuse to run.
 
 Most of the inputs are specific to where the VAT will live or will be the same for the VDS creation, like the `project_id`, `dataset_name`, `filter_set_name`, and `output_path`. This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option. For the specific data being put in the VAT, two inputs need to be copied into a GCP bucket that this pipeline will have access to and passed to the WDL:
