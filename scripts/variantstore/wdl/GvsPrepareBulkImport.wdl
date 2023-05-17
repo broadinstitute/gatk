@@ -70,7 +70,7 @@ task GenerateFOFNsFromDataTables {
             --sample_id_column_name ~{sample_id_column_name} \
             --vcf_files_column_name ~{vcf_files_column_name} \
             --vcf_index_files_column_name ~{vcf_index_files_column_name} \
-            ${"--sample_set_name " + sample_set_name}
+            ~{"--sample_set_name " + sample_set_name}
 
     >>>
     runtime {
