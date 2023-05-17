@@ -535,8 +535,8 @@ task IsVQSRLite {
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-    LITE_COUNT=$(bq --project_id=~{project_id} --format=csv query --use_legacy_sql=false ~{bq_labels} "SELECT COUNT(1) FROM \`~{fq_filter_set_info_table}\` WHERE filter_set_name = ~{filter_set_name} AND calibration_sensitivity IS NOT NULL")
-    CLASSIC_COUNT=$(bq --project_id=~{project_id} --format=csv query --use_legacy_sql=false ~{bq_labels} "SELECT COUNT(1) FROM \`~{fq_filter_set_info_table}\` WHERE filter_set_name = ~{filter_set_name} AND vqslod IS NOT NULL")
+    LITE_COUNT=$(bq --project_id=~{project_id} --format=csv query --use_legacy_sql=false ~{bq_labels} "SELECT COUNT(1) FROM \`~{fq_filter_set_info_table}\` WHERE filter_set_name = "~{filter_set_name}" AND calibration_sensitivity IS NOT NULL")
+    CLASSIC_COUNT=$(bq --project_id=~{project_id} --format=csv query --use_legacy_sql=false ~{bq_labels} "SELECT COUNT(1) FROM \`~{fq_filter_set_info_table}\` WHERE filter_set_name = "~{filter_set_name}" AND vqslod IS NOT NULL")
 
     if [[ $LITE_COUNT != "0" ]]; then
       echo "Found $LITE_COUNT rows with calibration_sensitivity defined"
