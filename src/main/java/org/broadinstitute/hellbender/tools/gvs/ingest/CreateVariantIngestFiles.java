@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Ingest variant walker
@@ -192,10 +193,10 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         // Get sample name
         final VCFHeader inputVCFHeader = getHeaderForVariants();
         if (enableVCFHeaderProcessing) {
-            HashMap<String, String> nonCommandLineHeaders = new HashMap<>();
+            Map<String, String> nonCommandLineHeaders = new HashMap<>();
             for (VCFHeaderLine line :  inputVCFHeader.getMetaDataInInputOrder()) {
                 if (line.getKey().contains("CommandLine")) {
-                    HashMap<String, String> commandLine = new HashMap<>();
+                    Map<String, String> commandLine = new HashMap<>();
                     commandLine.put(line.getKey(), line.getValue());
                     allLineHeaders.add(commandLine.toString());
                 }
