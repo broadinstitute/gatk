@@ -8,6 +8,8 @@ workflows:
      filters:
          branches: 
              - master
+         tags:
+             - /.*/
    - name: cnv_germline_case_workflow
      subclass: WDL
      primaryDescriptorPath: /scripts/cnv_wdl/germline/cnv_germline_case_workflow.wdl
@@ -16,6 +18,8 @@ workflows:
      filters:
          branches:
              - master
+         tags:
+             - /.*/
    - name: cnv_germline_cohort_workflow
      subclass: WDL
      primaryDescriptorPath: /scripts/cnv_wdl/germline/cnv_germline_cohort_workflow.wdl
@@ -24,6 +28,8 @@ workflows:
      filters:
          branches:
              - master
+         tags:
+             - /.*/
    - name: cnv_somatic_pair_workflow
      subclass: WDL
      primaryDescriptorPath: /scripts/cnv_wdl/somatic/cnv_somatic_pair_workflow.wdl
@@ -32,6 +38,8 @@ workflows:
      filters:
          branches:
              - master
+         tags:
+             - /.*/
    - name: cnv_somatic_panel_workflow
      subclass: WDL
      primaryDescriptorPath: /scripts/cnv_wdl/somatic/cnv_somatic_panel_workflow.wdl
@@ -40,12 +48,16 @@ workflows:
      filters:
          branches:
              - master
+         tags:
+             - /.*/
    - name: cnv_joint_call_exomes
      subclass: WDL
      primaryDescriptorPath: /scripts/cnv_wdl/germline/joint_call_exome_cnvs.wdl
      filters:
          branches:
              - master
+         tags:
+             - /.*/
    - name: cram2filtered
      subclass: WDL
      primaryDescriptorPath: /scripts/cnn_variant_wdl/cram2filtered.wdl
@@ -54,6 +66,8 @@ workflows:
      filters:
          branches:
              - master
+         tags:
+             - /.*/
    - name: cram2model
      subclass: WDL
      primaryDescriptorPath: /scripts/cnn_variant_wdl/cram2model.wdl
@@ -62,6 +76,8 @@ workflows:
      filters:
          branches:
              - master
+         tags:
+             - /.*/
    - name: Funcotator
      subclass: WDL
      primaryDescriptorPath: /scripts/funcotator_wdl/funcotator.wdl
@@ -70,6 +86,8 @@ workflows:
      filters:
          branches:
              - master
+         tags:
+             - /.*/
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl
@@ -78,6 +96,8 @@ workflows:
      filters:
          branches:
              - master
+         tags:
+             - /.*/
    - name: mutect2
      subclass: WDL
      primaryDescriptorPath: /scripts/mutect2_wdl/mutect2.wdl
@@ -86,12 +106,16 @@ workflows:
      filters:
          branches:
              - master
+         tags:
+             - /.*/
    - name: mutect2_pon
      subclass: WDL
      primaryDescriptorPath: /scripts/mutect2_wdl/mutect2_pon.wdl
      filters:
          branches:
              - master
+         tags:
+             - /.*/
    - name: run_happy
      subclass: WDL
      primaryDescriptorPath: /scripts/cnn_variant_wdl/run_happy.wdl
@@ -100,6 +124,8 @@ workflows:
      filters:
          branches:
              - master
+         tags:
+             - /.*/
    - name: pathseq_pipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/pathseq/wdl/pathseq_pipeline.wdl
@@ -108,3 +134,5 @@ workflows:
      filters:
          branches:
              - master
+         tags:
+             - /.*/
