@@ -9,12 +9,11 @@ import "GvsImportGenomes.wdl" as ImportGenomes
 workflow GvsBulkIngestGenomes {
     input {
         # Begin GvsPrepareBulkImport
-        String terra_project_id # env vars
-        String workspace_name # env vars
-        String samples_table_name
-        String sample_id_column_name
-        String vcf_files_column_name
-        String vcf_index_files_column_name
+        # for now set the entity type names with a default
+        String samples_table_name = "sample"
+        String sample_id_column_name = "sample_id"
+        String? vcf_files_column_name
+        String? vcf_index_files_column_name
         # End GvsPrepareBulkImport
 
         # Begin GvsAssignIds
@@ -39,19 +38,35 @@ workflow GvsBulkIngestGenomes {
         # End GvsImportGenomes
     }
 
-
     call GetWorkspaceId
 
-
-    call PrepareBulkImport.GvsPrepareBulkImport as PrepareBulkImport {
+    call GetWorkspaceName {
         input:
-            project_id = terra_project_id,
-            workspace_name = workspace_name,
+            workspace_id = GetWorkspaceId.workspace_id,
             workspace_bucket = GetWorkspaceId.workspace_bucket,
+    }
+
+    call GetColumnNames { ## TODO should we even run this at all if we have values for all 4?
+        input:
+            workspace_id = GetWorkspaceId.workspace_id,
+            workspace_name = GetWorkspaceName.workspace_name,
+            workspace_namespace = GetWorkspaceName.workspace_namespace,
             samples_table_name = samples_table_name,
             sample_id_column_name = sample_id_column_name,
             vcf_files_column_name = vcf_files_column_name,
-            vcf_index_files_column_name = vcf_index_files_column_name
+            vcf_index_files_column_name = vcf_index_files_column_name,
+    }
+
+    call PrepareBulkImport.GvsPrepareBulkImport as PrepareBulkImport {
+        input:
+            project_id = GetWorkspaceName.workspace_namespace,
+            workspace_name = GetWorkspaceName.workspace_name,
+            workspace_namespace = GetWorkspaceName.workspace_namespace,
+            workspace_bucket = GetWorkspaceId.workspace_bucket,
+            samples_table_name = samples_table_name,
+            sample_id_column_name = sample_id_column_name,
+            vcf_files_column_name = GetColumnNames.vcf_files_column_name,
+            vcf_index_files_column_name = GetColumnNames.vcf_index_files_column_name
     }
 
     call AssignIds.GvsAssignIds as AssignIds {
@@ -67,14 +82,9 @@ workflow GvsBulkIngestGenomes {
             go = AssignIds.done,
             dataset_name = dataset_name,
             project_id = bq_project_id,
-
             external_sample_names = read_lines(PrepareBulkImport.sampleFOFN),
             input_vcfs = read_lines(PrepareBulkImport.vcfFOFN),
             input_vcf_indexes = read_lines(PrepareBulkImport.vcfIndexFOFN),
-
-            ## TODO the following will be kept short term for testing
-            ## is_rate_limited_beta_customer = true,
-            ## beta_customer_max_scatter = 25,
 
             interval_list = interval_list,
 
@@ -86,14 +96,90 @@ workflow GvsBulkIngestGenomes {
             load_data_preemptible_override = load_data_preemptible_override,
             load_data_gatk_override = gatk_override,
     }
+}
+
+    task GetColumnNames {
+        input {
+            String workspace_id
+            String workspace_name
+            String workspace_namespace
+            String samples_table_name
+            String sample_id_column_name
+            String? vcf_files_column_name
+            String? vcf_index_files_column_name
+        }
+        ## set some output files
+        String vcf_files_column_name_output = "vcf_files_column_name.txt"
+        String vcf_index_files_column_name_output = "vcf_index_files_column_name.txt"
+
+
+        command <<<
+            # Get a list of all columns in the table
+
+            export WORKSPACE_NAMESPACE='~{workspace_namespace}'
+            export WORKSPACE_NAME='~{workspace_name}'
+
+            python3 /app/get_columns_for_import.py \
+              --workspace_id ~{workspace_id} \
+              --vcf_output ~{vcf_files_column_name_output} \
+              --vcf_index_output ~{vcf_index_files_column_name_output} \
+
+
+        >>>
+
+        runtime {
+            docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-08-alpine"
+            memory: "3 GB"
+            disks: "local-disk 10 HDD"
+            cpu: 1
+        }
+
+        output {
+            String vcf_files_column_name = if (defined(vcf_files_column_name)) then select_first([vcf_files_column_name]) else read_string(vcf_files_column_name_output)
+            String vcf_index_files_column_name = if (defined(vcf_index_files_column_name)) then select_first([vcf_index_files_column_name]) else read_string(vcf_index_files_column_name_output)
+        }
+    }
+
+    task GetWorkspaceName {
+
+        input {
+            String workspace_id
+            String workspace_bucket
+        }
+
+        String workspace_name_output = "workspace_name.txt"
+        String workspace_namespace_output = "workspace_namespace.txt"
+
+        command <<<
+            # Hit rawls with the workspace ID
+
+            export WORKSPACE_BUCKET='~{workspace_bucket}'
+
+            python3 /app/get_workspace_name_for_import.py \
+              --workspace_id ~{workspace_id} \
+              --workspace_name_output ~{workspace_name_output} \
+              --workspace_namespace_output ~{workspace_namespace_output} \
+
+        >>>
+        runtime {
+            docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-08-alpine"
+            memory: "3 GB"
+            disks: "local-disk 10 HDD"
+            cpu: 1
+        }
 
     output {
-        Array[File] load_data_stderrs = ImportGenomes.load_data_stderrs
+        String workspace_name = read_string(workspace_name_output)
+        String workspace_namespace = read_string(workspace_namespace_output)
     }
 }
 
 
+
     task GetWorkspaceId {
+        meta {
+            volatile: true # always run this when asked otherwise you can get a previously run workspace!!!!
+        }
         command <<<
             # Prepend date, time and pwd to xtrace log entries.
             PS4='\D{+%F %T} \w $ '
