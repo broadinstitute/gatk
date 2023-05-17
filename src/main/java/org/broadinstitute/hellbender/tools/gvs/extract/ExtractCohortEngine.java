@@ -173,7 +173,8 @@ public class ExtractCohortEngine {
         this.filterSetName = filterSetName;
 
         this.annotationEngine = annotationEngine;
-        this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(annotationEngine, vcfHeader);
+        this.variantContextMerger = new ReferenceConfidenceVariantContextMerger(
+                annotationEngine, vcfHeader, false, false, true);
 
         this.inferredReferenceState = inferredReferenceState;
 
@@ -502,13 +503,12 @@ public class ExtractCohortEngine {
             return null;
         }
 
-        VariantContext mergedVC = variantContextMerger.merge(
+        VariantContext mergedVC = variantContextMerger.mergeWithRemapping(
                 unmergedVariantCalls,
                 new SimpleInterval(contig, (int) start, (int) start),
                 refAllele.getBases()[0],
                 true,
-                false,
-                true);
+                false);
 
 
         // Reference Sites -- first create a single VC Builder
