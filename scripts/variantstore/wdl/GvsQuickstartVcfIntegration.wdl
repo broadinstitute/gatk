@@ -60,7 +60,7 @@ workflow GvsQuickstartVcfIntegration {
         input:
             branch_name = branch_name,
             dataset_prefix = "quickit",
-            dataset_suffix = dataset_suffix,
+            dataset_suffix = dataset_suffix
     }
 
     call Unified.GvsUnified {
@@ -95,7 +95,7 @@ workflow GvsQuickstartVcfIntegration {
                 go = GvsUnified.done,
                 dataset_name = BuildGATKJarAndCreateDataset.dataset_name,
                 project_id = project_id,
-                expected_output_csv = expected_output_prefix + "cost_observability_expected.csv"
+                expected_output_csv = expected_output_prefix + dataset_suffix + ".cost_observability_expected.csv"
         }
 
         call AssertTableSizesAreExpected {
@@ -103,7 +103,7 @@ workflow GvsQuickstartVcfIntegration {
                 go = GvsUnified.done,
                 dataset_name = BuildGATKJarAndCreateDataset.dataset_name,
                 project_id = project_id,
-                expected_output_csv = expected_output_prefix + "table_sizes_expected.csv"
+                expected_output_csv = expected_output_prefix + dataset_suffix + ".table_sizes_expected.csv"
         }
     }
 
@@ -281,9 +281,9 @@ task AssertCostIsTrackedAndExpected {
 
         # For these two costs, there is non-determinism in the pipeline - we allow a % difference
         if [[ $OBS_KEY == "ExtractFilterTask.GvsCreateFilterSet.BigQuery Query Scanned" ]]; then
-          TOLERANCE=0.03   # 3% tolerance  (Note - have seen as high as: 0.0204894)
+          TOLERANCE=0.02   # 2% tolerance  (Note - have seen as high as: 0.0157154)
         elif [[ $OBS_KEY == "ExtractTask.GvsExtractCallset.Storage API Scanned" ]]; then
-          TOLERANCE=0.02   # 2% tolerance  (Note - have seen as high as: 0.0124584)
+          TOLERANCE=0.01   # 1% tolerance  (Note - have seen as high as: 0.00608656)
         elif [[ $OBS_KEY == "ExtractFilterTask.GvsCreateFilterSet.Storage API Scanned" ]]; then
           TOLERANCE=0.05  # 5% tolerance (Note - have seen as high as: 0.0281223)
         fi
