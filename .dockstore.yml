@@ -88,6 +88,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - gg_VS-924_BetterLiteVsClassic
    - name: GvsPopulateAltAllele
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPopulateAltAllele.wdl
