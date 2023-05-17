@@ -512,6 +512,52 @@ task ValidateFilterSetName {
     }
 }
 
+task IsVQSRLite {
+  input {
+    String project_id
+    String fq_filter_set_info_table
+    String filter_set_name
+  }
+  meta {
+    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
+  }
+
+  # add labels for DSP Cloud Cost Control Labeling and Reporting
+  String bq_labels = "--label service:gvs --label team:variants --label managedby:gvs_utils"
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
+  command <<<
+    set -o errexit -o nounset -o xtrace -o pipefail
+
+    bash ~{monitoring_script} > monitoring.log &
+
+    echo "project_id = ~{project_id}" > ~/.bigqueryrc
+
+    OUTPUT=$(bq --project_id=~{project_id} --format=csv query --use_legacy_sql=false ~{bq_labels} "SELECT filter_set_name as available_filter_set_names FROM \`~{fq_filter_set_info_table}\` GROUP BY filter_set_name")
+    FILTERSETS=${OUTPUT#"available_filter_set_names"}
+
+    if [[ $FILTERSETS =~ "~{filter_set_name}" ]]; then
+    echo "Filter set name '~{filter_set_name}' found."
+    else
+    echo "ERROR: '~{filter_set_name}' is not an existing filter_set_name. Available in ~{fq_filter_set_info_table} are"
+    echo $FILTERSETS
+    exit 1
+    fi
+  >>>
+  output {
+    Boolean is_vqsr_lite = read_boolean("is_vqsr_lite_file")
+    File monitoring_log = "monitoring.log"
+  }
+
+  runtime {
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
+    memory: "3 GB"
+    disks: "local-disk 500 HDD"
+    preemptible: 3
+    cpu: 1
+  }
+}
+
 task IndexVcf {
     input {
         File input_vcf

@@ -36,7 +36,6 @@ workflow GvsExtractCohortFromSampleNames {
     Int? extract_maxretries_override
     Int? split_intervals_disk_size_override
     Int? split_intervals_mem_override
-    Boolean use_classic_VQSR = true
 
     File? gatk_override
   }
@@ -113,7 +112,6 @@ workflow GvsExtractCohortFromSampleNames {
       extract_maxretries_override = extract_maxretries_override,
       split_intervals_disk_size_override = split_intervals_disk_size_override,
       split_intervals_mem_override = split_intervals_mem_override,
-      use_classic_VQSR = use_classic_VQSR,
 
       gatk_override = gatk_override,
       write_cost_to_db = write_cost_to_db

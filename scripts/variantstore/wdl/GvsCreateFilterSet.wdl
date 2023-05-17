@@ -15,7 +15,7 @@ workflow GvsCreateFilterSet {
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
     # TODO - rebuild the docker and use that and then remove this override when done testing.
-    File gatk_override = "gs://gvs-internal-scratch/ggrant/jars/gg_VS-924_BetterLiteVsClassic_20230517/gatk-package-4.2.0.0-690-gdeadfc8-SNAPSHOT-local.jar"
+    File gatk_override = "gs://gvs-internal-scratch/ggrant/jars/gg_VS-924_BetterLiteVsClassic_20230517/gatk-package-4.2.0.0-691-gba134dd-SNAPSHOT-local.jar"
 
     Boolean use_classic_VQSR = true
 
@@ -364,6 +364,7 @@ task PopulateFilterSetInfo {
     echo "Creating SNPs recalibration file"
     gatk --java-options "-Xmx1g" \
       CreateFilteringFiles \
+      --ref-version 38 \
       --filter-set-name ~{filter_set_name} \
       -mode SNP \
       --classic ~{useClassic} \
@@ -373,6 +374,7 @@ task PopulateFilterSetInfo {
     echo "Creating INDELs racalibration file"
     gatk --java-options "-Xmx1g" \
       CreateFilteringFiles \
+      --ref-version 38 \
       --filter-set-name ~{filter_set_name} \
       -mode INDEL \
       --classic ~{useClassic} \
@@ -438,6 +440,7 @@ task PopulateFilterSetSites {
     echo "Generating filter set sites TSV"
     gatk --java-options "-Xmx1g" \
     CreateSiteFilteringFiles \
+    --ref-version 38 \
     --filter-set-name ~{filter_set_name} \
     -V ~{sites_only_variant_filtered_vcf} \
     -O ~{filter_set_name}.filter_sites_load.tsv

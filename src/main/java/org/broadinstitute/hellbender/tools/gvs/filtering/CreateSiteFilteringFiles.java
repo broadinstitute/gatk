@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantWalker;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.gvs.common.ChromosomeEnum;
 import org.broadinstitute.hellbender.tools.gvs.common.IngestConstants;
 import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
 import org.broadinstitute.hellbender.utils.tsv.SimpleXSVWriter;
@@ -47,6 +48,12 @@ public final class CreateSiteFilteringFiles extends VariantWalker {
         optional = false)
     private String filterSetName;
 
+    @Argument(
+            fullName = "ref-version",
+            doc = "Remove this option!!!! only for ease of testing. Valid options are 37 or 38",
+            optional = true)
+    private String refVersion = "37";
+
     @Override
     public boolean requiresIntervals() {
         return false;
@@ -60,6 +67,9 @@ public final class CreateSiteFilteringFiles extends VariantWalker {
             throw new GATKException("Unable to initialize writer", ioe);
         }
         writer.setHeaderLine(SchemaUtils.FILTER_SET_SITE_FIELDS);
+
+        // Set reference version -- TODO remove this in the future, also, can we get ref version from the header?
+        ChromosomeEnum.setRefVersion(refVersion);
     }
 
     @Override
