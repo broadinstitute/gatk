@@ -10,10 +10,10 @@ default_config = QueryJobConfig(labels=query_labels_map, priority="INTERACTIVE",
 client = ''
 
 def process_sample_vcf_headers(project_id, dataset_name):
-    populate_tables_from_temp(project_id, dataset_name)
-    clean_up_temp_table(project_id, dataset_name)
+    populate_tables_from_scratch(project_id, dataset_name)
+    clean_up_scratch_table(project_id, dataset_name)
 
-def populate_tables_from_temp(project_id, dataset_name):
+def populate_tables_from_scratch(project_id, dataset_name):
     global client
     client = bigquery.Client(project=project_id,
                              default_query_job_config=default_config)
@@ -25,7 +25,7 @@ def populate_tables_from_temp(project_id, dataset_name):
     utils.execute_with_retry(client, "sample_vcf_header", sql)
 
 
-def clean_up_temp_table(project_id, dataset_name):
+def clean_up_scratch_table(project_id, dataset_name):
     global client
     sql = f"DELETE FROM {project_id}.{dataset_name}.vcf_header_lines_scratch WHERE vcf_header_lines_hash IS NOT NULL"
     utils.execute_with_retry(client, "vcf_header_lines_scratch", sql)

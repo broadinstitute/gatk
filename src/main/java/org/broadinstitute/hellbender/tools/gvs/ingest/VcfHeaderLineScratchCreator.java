@@ -11,24 +11,24 @@ import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
-public class VcfHeaderLineTempCreator {
+public class VcfHeaderLineScratchCreator {
     private final Long sampleId;
     private final String projectId;
     private final String datasetName;
 
     private PendingBQWriter vcfHeaderBQJsonWriter = null;
-    private static final String NON_TEMP_TABLE_NAME = "vcf_header_lines";
-    private static final String TEMP_TABLE_NAME = "vcf_header_lines_scratch";
+    private static final String NON_SCRATCH_TABLE_NAME = "vcf_header_lines";
+    private static final String SCRATCH_TABLE_NAME = "vcf_header_lines_scratch";
 
-    private static boolean doTempRowsExistFor(String projectId, String datasetName, String headerLineHash) {
-        return BigQueryUtils.doRowsExistFor(projectId, datasetName, TEMP_TABLE_NAME, "vcf_header_lines_hash", headerLineHash);
+    private static boolean doScratchRowsExistFor(String projectId, String datasetName, String headerLineHash) {
+        return BigQueryUtils.doRowsExistFor(projectId, datasetName, SCRATCH_TABLE_NAME, "vcf_header_lines_hash", headerLineHash);
     }
 
-    private static boolean doNonTempRowsExistFor(String projectId, String datasetName, String headerLineHash) {
-        return BigQueryUtils.doRowsExistFor(projectId, datasetName, NON_TEMP_TABLE_NAME, "vcf_header_lines_hash", headerLineHash);
+    private static boolean doNonScratchRowsExistFor(String projectId, String datasetName, String headerLineHash) {
+        return BigQueryUtils.doRowsExistFor(projectId, datasetName, NON_SCRATCH_TABLE_NAME, "vcf_header_lines_hash", headerLineHash);
     }
 
-    public VcfHeaderLineTempCreator(Long sampleId, String projectId, String datasetName) {
+    public VcfHeaderLineScratchCreator(Long sampleId, String projectId, String datasetName) {
         try {
             this.sampleId = sampleId;
             this.projectId = projectId;
@@ -37,10 +37,10 @@ public class VcfHeaderLineTempCreator {
             if (projectId == null || datasetName == null) {
                 throw new UserException("Must specify project-id and dataset-name.");
             }
-            vcfHeaderBQJsonWriter = new PendingBQWriter(projectId, datasetName, TEMP_TABLE_NAME);
+            vcfHeaderBQJsonWriter = new PendingBQWriter(projectId, datasetName, SCRATCH_TABLE_NAME);
         }
         catch (Exception e) {
-            throw new UserException("Could not create VCF Header Temp Table Writer", e);
+            throw new UserException("Could not create VCF Header Scratch Table Writer", e);
         }
 
     }
@@ -48,12 +48,12 @@ public class VcfHeaderLineTempCreator {
     public void apply(List<String> allLineHeaders) throws IOException {
         for (final String headerChunk : allLineHeaders) {
             try {
-                // if this header chunk has already been added to the temp table, only add an association between the
+                // if this header chunk has already been added to the scratch table, only add an association between the
                 // sample_id and the hash, no need to rewrite the header chunk to the DB
                 String chunkHash = Utils.calcMD5(headerChunk);
-                boolean vcfTempHeaderRowsExist = doTempRowsExistFor(this.projectId, this.datasetName, chunkHash);
-                boolean vcfNonTempHeaderRowsExist = doNonTempRowsExistFor(this.projectId, this.datasetName, chunkHash);
-                if (vcfTempHeaderRowsExist || vcfNonTempHeaderRowsExist) {
+                boolean vcfScratchHeaderRowsExist = doScratchRowsExistFor(this.projectId, this.datasetName, chunkHash);
+                boolean vcfNonScratchHeaderRowsExist = doNonScratchRowsExistFor(this.projectId, this.datasetName, chunkHash);
+                if (vcfScratchHeaderRowsExist || vcfNonScratchHeaderRowsExist) {
                     vcfHeaderBQJsonWriter.addJsonRow(createJson(this.sampleId, null, chunkHash));
                 }
                 else {

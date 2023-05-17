@@ -45,7 +45,7 @@ workflow GvsAssignIds {
       partitioned = "false"
   }
   if (process_vcf_headers) {
-    call GvsCreateTables.CreateTables as CreateTempVCFHeaderLinesTable {
+    call GvsCreateTables.CreateTables as CreateScratchVCFHeaderLinesTable {
       input:
         project_id = project_id,
         dataset_name = dataset_name,

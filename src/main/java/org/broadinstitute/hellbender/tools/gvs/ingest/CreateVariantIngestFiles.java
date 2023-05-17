@@ -26,7 +26,6 @@ import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
 
 import java.io.File;
 import java.io.IOException;
-import java.sql.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -45,7 +44,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     private RefCreator refCreator;
     private VetCreator vetCreator;
-    private VcfHeaderLineTempCreator vcfHeaderLineTempCreator;
+    private VcfHeaderLineScratchCreator vcfHeaderLineScratchCreator;
     private LoadStatus loadStatus;
 
     private List<String> allLineHeaders = new ArrayList<String>();
@@ -208,7 +207,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         }
 
         // get an array of header "lines" (command line INFO lines, chunks of non-command-line INFO lines)
-        // to put into the header line temp table
+        // to put into the header line scratch table
 
         String sampleName = sampleNameParam == null ? IngestUtils.getSampleName(inputVCFHeader) : sampleNameParam;
         if (sampleIdParam == null && sampleMap == null) {
@@ -290,7 +289,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             vetCreator = new VetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, forceLoadingFromNonAlleleSpecific, skipLoadingVqsrFields);
         }
         if (enableVCFHeaderProcessing) {
-            vcfHeaderLineTempCreator = new VcfHeaderLineTempCreator(sampleId, projectID, datasetName);
+            vcfHeaderLineScratchCreator = new VcfHeaderLineScratchCreator(sampleId, projectID, datasetName);
         }
 
     }
@@ -343,14 +342,14 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             loadStatus.writeLoadStatusStarted(sampleId);
         }
 
-        if (vcfHeaderLineTempCreator != null) {
+        if (vcfHeaderLineScratchCreator != null) {
             try {
-                vcfHeaderLineTempCreator.apply(allLineHeaders);
+                vcfHeaderLineScratchCreator.apply(allLineHeaders);
             }catch (IOException ioe) {
-                throw new GATKException("Error writing temporary header data", ioe);
+                throw new GATKException("Error writing scratch header data", ioe);
             }
             // Wait until all data has been submitted and in pending state to commit
-            vcfHeaderLineTempCreator.commitData();
+            vcfHeaderLineScratchCreator.commitData();
         }
 
         if (refCreator != null) {
@@ -383,7 +382,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         if (vetCreator != null) {
             vetCreator.closeTool();
         }
-        if (vcfHeaderLineTempCreator != null) {
+        if (vcfHeaderLineScratchCreator != null) {
             vetCreator.closeTool();
         }
     }
