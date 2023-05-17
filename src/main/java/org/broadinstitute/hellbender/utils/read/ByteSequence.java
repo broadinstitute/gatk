@@ -19,7 +19,7 @@ public final class ByteSequence implements CharSequence {
         this.length = bytes.length;
     }
 
-    private ByteSequence( final ByteSequence bSeq, final int start, final int length ) {
+    public ByteSequence( final ByteSequence bSeq, final int start, final int length ) {
         if ( start < 0 || length < 0 || start + length > bSeq.length ) {
             throw new IndexOutOfBoundsException();
         }
@@ -28,8 +28,16 @@ public final class ByteSequence implements CharSequence {
         this.length = length;
     }
 
+    public ByteSequence( final byte val ) {
+        this.bytes = new byte[1];
+        bytes[0] = val;
+        this.start = 0;
+        this.length = 1;
+    }
+
     public int getStart() { return start; }
 
+    @Override
     public int length() { return length; }
 
     public byte byteAt( final int idx ) {
@@ -39,6 +47,7 @@ public final class ByteSequence implements CharSequence {
         return bytes[start + idx];
     }
 
+    @Override
     public char charAt( final int idx ) {
         return (char)byteAt(idx);
     }
@@ -49,10 +58,10 @@ public final class ByteSequence implements CharSequence {
 
     /**
      * Note: args are start+length, not start+end
-     */
     public @NotNull ByteSequence subSequence( final int start, final int len ) {
         return new ByteSequence(this, start, len);
     }
+     */
 
     public ByteSequence append( final ByteSequence bytesToAppend ) {
         final byte[] newBytes = new byte[length + bytesToAppend.length];

@@ -35,21 +35,16 @@ public final class AssembleSVHaplotypes extends VariantWalker {
                        final ReadsContext readsContext,
                        final ReferenceContext refContext,
                        final FeatureContext featureContext ) {
-        if ( GATKSVVCFConstants.SYMB_ALT_STRING_DEL.equals(variant.getAttribute(GATKSVVCFConstants.SVTYPE)) ) {
-            if ( variant.getLengthOnReference() < 50 ) {
-                return;
-            }
-            final int paddedStart = Math.max(1, variant.getStart() + 1 - PADDING);
-            final String contig = variant.getContig();
-            final List<UnalignedRead> correctedReads = errorCorrect(contig, paddedStart, readsContext);
-            final List<UnalignedRead> assembledReads = assemble(correctedReads);
+        final int paddedStart = Math.max(1, variant.getStart() + 1 - PADDING);
+        final String contig = variant.getContig();
+        final List<UnalignedRead> correctedReads = errorCorrect(contig, paddedStart, readsContext);
+        final List<UnalignedRead> assembledReads = assemble(correctedReads);
+        final ByteSequence refCalls = GenotypeSVs.getRefCalls(contig, paddedStart, WINDOW_SIZE, refContext);
 
-            final ByteSequence refCalls = GenotypeSVs.getRefCalls(contig, paddedStart, WINDOW_SIZE, refContext);
-            final int altStart = variant.getEnd() + 1;
-            final ByteSequence altPiece = GenotypeSVs.getRefCalls(contig, altStart, PADDING, refContext);
-            final ByteSequence altCalls = refCalls.subSequence(0, PADDING).append(altPiece);
-
-            System.out.println(variant.getID() + ": DEL " + variant.getLengthOnReference());
+        if ( GATKSVVCFConstants.SYMB_ALT_STRING_INS.equals(variant.getAttribute(GATKSVVCFConstants.SVTYPE)) ) {
+            final ByteSequence altPiece = new ByteSequence(variant.getAlternateAllele(0).getBases()).subSequence(1);
+            final ByteSequence altCalls = refCalls.subSequence(0, PADDING).append(altPiece).append(refCalls.subSequence(PADDING, PADDING));
+            System.out.println(variant.getID() + ": INS " + altPiece.length());
             for ( final UnalignedRead path : assembledReads ) {
                 final ByteSequence pathCalls = path.getCalls();
                 int refScore = Math.round(new GlobalAligner(pathCalls, refCalls).getScore().getScore());
@@ -57,6 +52,22 @@ public final class AssembleSVHaplotypes extends VariantWalker {
                 System.out.println(path.getName() + "\t" + refScore + "\t" + altScore);
             }
             System.out.println();
+//        } else if ( GATKSVVCFConstants.SYMB_ALT_STRING_DEL.equals(variant.getAttribute(GATKSVVCFConstants.SVTYPE)) ) {
+//            if ( variant.getLengthOnReference() < 50 ) {
+//                return;
+//            }
+//            final int altStart = variant.getEnd() + 1;
+//            final ByteSequence altPiece = GenotypeSVs.getRefCalls(contig, altStart, PADDING, refContext);
+//            final ByteSequence altCalls = refCalls.subSequence(0, PADDING).append(altPiece);
+//
+//            System.out.println(variant.getID() + ": DEL " + variant.getLengthOnReference());
+//            for ( final UnalignedRead path : assembledReads ) {
+//                final ByteSequence pathCalls = path.getCalls();
+//                int refScore = Math.round(new GlobalAligner(pathCalls, refCalls).getScore().getScore());
+//                int altScore = Math.round(new GlobalAligner(pathCalls, altCalls).getScore().getScore());
+//                System.out.println(path.getName() + "\t" + refScore + "\t" + altScore);
+//            }
+//            System.out.println();
         }
     }
 
@@ -66,10 +77,13 @@ public final class AssembleSVHaplotypes extends VariantWalker {
         final SimpleInterval window = new SimpleInterval(contig, windowStart, windowStart);
         final Iterator<GATKRead> readsIterator = readsContext.iterator(window);
         final List<GATKRead> reads = new ArrayList<>();
+        final int windowEnd = windowStart + 2 * PADDING - 1;
         while ( readsIterator.hasNext() ) {
-            reads.add(readsIterator.next());
+            final GATKRead read = readsIterator.next();
+            if ( read.getStart() <= windowStart && read.getEnd() >= windowEnd ) {
+                reads.add(read);
+            }
         }
-        final int windowEnd = windowStart + 2 * PADDING;
         final List<CallIterator> callIteratorList =
                 ErrorCorrectHiFi.errorCorrectWindow(reads, windowStart, windowEnd);
         final List<UnalignedRead> correctedReads = new ArrayList<>(callIteratorList.size());
@@ -80,8 +94,9 @@ public final class AssembleSVHaplotypes extends VariantWalker {
     }
 
     private List<UnalignedRead> assemble( final List<UnalignedRead> reads ) {
-        final LocalAssembler assembler = new LocalAssembler(2*PADDING, reads);
+        final LocalAssembler assembler = new LocalAssembler(2*PADDING, (byte)0, 4, 3, reads);
         final List<Traversal> traversals = assembler.getPathedTraversals();
+        assembler.writeGFA(new GATKPath("/tmp/assembly.gfa"), traversals);
         final List<UnalignedRead> assembledSequences = new ArrayList<>();
         int idx = 0;
         for ( final Traversal trav : traversals ) {

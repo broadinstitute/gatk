@@ -31,8 +31,7 @@ import java.util.NoSuchElementException;
 public final class ErrorCorrectHiFi extends VariantWalker {
     public static final int WINDOW_SIZE = 2500;
     public static final int HUGE_EVENT_SIZE = 7500;
-    public static final int MIN_ALIGNED_VALUES = 3;
-    public static final byte MIN_QUAL = (byte)20;
+    public static final ByteSequence BYTE_SEQUENCE_A = new ByteSequence((byte)'A');
     public static final String SCRIPT_TEXT =
 "#!/bin/sh\n" +
 "minimap2 -axmap-hifi %s reads.fq | samtools sort -OBAM - > align.bam &&\n" +
@@ -114,56 +113,22 @@ public final class ErrorCorrectHiFi extends VariantWalker {
                                                          final int windowEndPos ) {
         final List<CallIterator> callIteratorList = new ArrayList<>(reads.size());
         for ( final GATKRead read : reads ) {
-            callIteratorList.add(new CallIterator(read, windowStartPos));
+                callIteratorList.add(new CallIterator(read, windowStartPos));
         }
         for ( int refPos = windowStartPos; refPos <= windowEndPos && !callIteratorList.isEmpty(); ++refPos ) {
-            final Iterator<CallIterator> callIteratorIterator = callIteratorList.iterator();
-            Call singletonIndel = null;
-            CallIterator singletonIndelIterator = null;
-            ByteSequence alignedValue = null;
-            int alignedValueCount = 0;
-            boolean hopeless = false;
-            while ( callIteratorIterator.hasNext() ) {
-                final CallIterator callIterator = callIteratorIterator.next();
+            for ( CallIterator callIterator : callIteratorList ) {
                 if ( !callIterator.hasNext() ) {
                     continue;
                 }
                 final Call call = callIterator.next();
-                if ( call != null && !hopeless ) {
-                    final ByteSequence calls = call.getCalls();
-                    final int len = calls.length();
-                    if ( len == 0 ) {
-                        if ( call.getCigarElement().getLength() == 1 && singletonIndel == null ) {
-                            singletonIndel = call;
-                            singletonIndelIterator = callIterator;
-                        } else {
-                            hopeless = true;
-                        }
-                    } else if ( len == 1 ) {
-                        if ( call.getQuals().byteAt(0) >= MIN_QUAL ) {
-                            if ( alignedValue == null ) {
-                                alignedValue = calls;
-                                alignedValueCount = 1;
-                            } else if ( alignedValue.equals(calls) ) {
-                                alignedValueCount += 1;
-                            } else {
-                                hopeless = true;
-                            }
-                        }
-                    } else if ( len == 2 ) {
-                        if ( singletonIndel == null ) {
-                            singletonIndel = call;
-                            singletonIndelIterator = callIterator;
-                        } else {
-                            hopeless = true;
-                        }
-                    } else {
-                        hopeless = true;
-                    }
+                if ( call == null ) {
+                    continue;
                 }
-            }
-            if ( !hopeless && singletonIndel != null && alignedValueCount >= MIN_ALIGNED_VALUES ) {
-                singletonIndelIterator.fixup(singletonIndel, alignedValue);
+                final ByteSequence calls = call.getCalls();
+                final int len = calls.length();
+                if ( len == 0 && call.getCigarElement().getLength() == 1 || len == 2 ) {
+                    callIterator.fixup(call, BYTE_SEQUENCE_A);
+                }
             }
         }
         return callIteratorList;
@@ -205,23 +170,27 @@ public final class ErrorCorrectHiFi extends VariantWalker {
      */
     public static final class Call {
         private final ByteSequence calls;
-        private final ByteSequence quals;
+        private final int meanQual;
         private final CigarElement cigarElement;
 
         public Call( final ByteSequence calls,
                      final ByteSequence quals,
                      final CigarElement cigarElement ) {
             this.calls = calls;
-            this.quals = quals;
+            int qSum = 0;
+            final int qLen = quals.length();
+            for ( int idx = 0; idx != qLen; ++idx ) qSum += quals.byteAt(idx);
+            this.meanQual = Math.round(1.F*qSum/qLen);
             this.cigarElement = cigarElement;
         }
 
         public ByteSequence getCalls() { return calls; }
-        public ByteSequence getQuals() { return quals; }
+        public int getMeanQual() { return meanQual; }
         public CigarElement getCigarElement() { return cigarElement; }
+
         @Override
         public String toString() {
-            if ( calls.length() == 1 ) return calls + Integer.toString(quals.charAt(0));
+            if ( calls.length() == 1 ) return calls.toString() + meanQual;
             return cigarElement.toString();
         }
     }
@@ -290,7 +259,7 @@ public final class ErrorCorrectHiFi extends VariantWalker {
                 readIndex += 1;
             } else if ( op == CigarOperator.DELETION ) {
                 call = new Call(calls.subSequence(readIndex, 0),
-                                calls.subSequence(readIndex, 0),
+                                calls.subSequence(readIndex - 1, 2),
                                 element);
             } else if ( op == CigarOperator.INSERTION ) {
                 final int len = element.getLength() + 1;
