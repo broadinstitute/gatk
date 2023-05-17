@@ -6,15 +6,6 @@ from terra_notebook_utils import workspace
 
 import time
 
-# just keep these around as constants for now
-vcf_files_name = "vcf_files.txt"
-vcf_index_files_name = "vcf_index_files.txt"
-sample_names_file_name = "sample_names.txt"
-error_file_name = "errors.txt"
-
-
-# make a default, but allow a user to overwrite it just in case someone wants to tweak this while tuning
-attempts_between_pauses=500
 
 
 def get_entities_in_set(data_table_name, sample_set_name):
@@ -103,12 +94,17 @@ if __name__ == '__main__':
     parser.add_argument('--attempts_between_pauses', type=int,
                         help='The number of rows in the db that are processed before we pause', default=500)
 
-    parser.add_argument('--sample_set_name', type=str,
-                        help='The name of the sample set to use', default=None)
+    parser.add_argument('--sample_set_name', type=str, help='The name of the sample set to use', default=None)
+
+    parser.add_argument('--sample_names_file_name', type=str, help='The name of the sample set to use', default="sample_names.txt")
+    parser.add_argument('--vcf_files_name', type=str, help='The name of the sample set to use', default="vcf_files.txt")
+    parser.add_argument('--vcf_index_files_name', type=str, help='The name of the sample set to use', default="vcf_index_files.txt")
+    parser.add_argument('--error_file_name', type=str, help='The name of the sample set to use', default="errors.txt")
 
     args = parser.parse_args()
 
-    # allow this to be overridden, but default it to 500
+
+# allow this to be overridden, but default it to 500
     if "attempts_between_pauses" in args:
         attempts_between_pauses = args.attempts_between_pauses
 
