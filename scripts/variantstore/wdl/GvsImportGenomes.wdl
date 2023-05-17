@@ -29,7 +29,7 @@ workflow GvsImportGenomes {
     Int? load_data_preemptible_override
     Int? load_data_maxretries_override
     Boolean process_vcf_headers = false
-    File? load_data_gatk_override = "gs://gvs-internal-scratch/rsa/jars/gatk-package-4.2.0.0-706-g2d656f8-SNAPSHOT-local.jar"
+    File? load_data_gatk_override = "gs://gvs-internal-scratch/rsa/jars/gatk-package-4.2.0.0-710-ga6497f3-SNAPSHOT-local.jar"
 
   }
 
@@ -353,7 +353,7 @@ task ProcessVCFHeaders {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-16-alpine"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-17-alpine"
     disks: "local-disk 500 HDD"
   }
 }
@@ -524,7 +524,7 @@ task CurateInputLists {
                                              --output_files True
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-16-alpine"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-17-alpine"
     memory: "3 GB"
     disks: "local-disk 100 HDD"
     bootDiskSizeGb: 15
