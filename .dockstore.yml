@@ -150,7 +150,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rc-VS-778-spike-import-limit
    - name: GvsPrepareBulkImport
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareBulkImport.wdl
@@ -162,7 +161,7 @@ workflows:
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsBulkIngestGenomes.wdl
      filters:
          branches:
-             - rc-VS-778-spike-import-limit
+             - ah_var_store
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
