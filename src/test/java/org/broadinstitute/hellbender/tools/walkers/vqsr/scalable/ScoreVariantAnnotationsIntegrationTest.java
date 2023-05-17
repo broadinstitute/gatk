@@ -163,7 +163,7 @@ public final class ScoreVariantAnnotationsIntegrationTest extends CommandLinePro
     private static void assertExpectedOutputs(final String tag,
                                               final String outputPrefix) {
         // vcf.idx files are not reproducible
-        SystemCommandUtilsTest.runSystemCommand(String.format("diff %s/%s.vcf %s.vcf",
+        SystemCommandUtilsTest.runSystemCommand(String.format("diff -c %s/%s.vcf %s.vcf",
                 EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
         SystemCommandUtilsTest.runSystemCommand(String.format("h5diff %s/%s.annot.hdf5 %s.annot.hdf5",
                 EXPECTED_TEST_FILES_DIR, tag, outputPrefix));
