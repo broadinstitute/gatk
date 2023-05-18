@@ -254,6 +254,6 @@ public final class NaiveHeterozygousPileupGenotypingUtils {
         final double betaOneMinusError = Beta.regularizedBeta(1 - genotypingBaseErrorRate, r + 1, n - r + 1);
         final double betaHom = betaError + betaAll - betaOneMinusError;
         final double betaHet = betaOneMinusError - betaError;
-        return FastMath.log(betaHom) - FastMath.log(betaHet);
+        return Math.log(betaHom) - Math.log(betaHet);
     }
 }

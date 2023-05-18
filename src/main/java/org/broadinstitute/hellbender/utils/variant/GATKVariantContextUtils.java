@@ -19,10 +19,12 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.StrandBiasUtils;
-import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.genotyper.GenotypePriorCalculator;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUtils;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAlleleCounts;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypesCache;
 import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.utils.genotyper.GenotypePriorCalculator;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
@@ -44,8 +46,6 @@ public final class GATKVariantContextUtils {
     public static final String MERGE_INTERSECTION = "Intersection";
 
     public static final int DEFAULT_PLOIDY = HomoSapiensConstants.DEFAULT_PLOIDY;
-
-    private static final GenotypeLikelihoodCalculators GL_CALCS = new GenotypeLikelihoodCalculators();
 
     public static final double SUM_GL_THRESH_NOCALL = -0.1; // if sum(gl) is bigger than this threshold, we treat GL's as non-informative and will force a no-call.
 
@@ -326,9 +326,7 @@ public final class GATKVariantContextUtils {
                 }
             } else {
                 final int maxLikelihoodIndex = MathUtils.maxElementIndex(genotypeLikelihoods);
-                final GenotypeLikelihoodCalculator glCalc = GL_CALCS.getInstance(ploidy, allelesToUse.size());
-                final GenotypeAlleleCounts alleleCounts = glCalc.genotypeAlleleCountsAt(maxLikelihoodIndex);
-
+                final GenotypeAlleleCounts alleleCounts = GenotypesCache.get(ploidy, maxLikelihoodIndex);
                 final List<Allele> finalAlleles = alleleCounts.asAlleleList(allelesToUse);
                 if (finalAlleles.contains(Allele.NON_REF_ALLELE)) {
                     final Allele ref = allelesToUse.stream().filter(Allele::isReference).collect(Collectors.toList()).get(0);
@@ -351,8 +349,7 @@ public final class GATKVariantContextUtils {
                 throw new GATKException("cannot uses posteriors without an genotype prior calculator present");
             } else {
                 // Calculate posteriors.
-                final GenotypeLikelihoodCalculator glCalc = GL_CALCS.getInstance(ploidy, allelesToUse.size());
-                final double[] log10Priors = gpc.getLog10Priors(glCalc, allelesToUse);
+                final double[] log10Priors = gpc.getLog10Priors(ploidy, allelesToUse);
                 final double[] log10Posteriors = MathUtils.ebeAdd(log10Priors, genotypeLikelihoods);
                 final double[] normalizedLog10Posteriors = MathUtils.scaleLogSpaceArrayForNumericalStability(log10Posteriors);
                 // Update GP and PG annotations:
@@ -368,7 +365,7 @@ public final class GATKVariantContextUtils {
                     gb.log10PError(getGQLog10FromPosteriors(maxPosteriorIndex, normalizedLog10Posteriors));
                 }
                 // Finally we update the genotype alleles.
-                gb.alleles(glCalc.genotypeAlleleCountsAt(maxPosteriorIndex).asAlleleList(allelesToUse));
+                gb.alleles(GenotypesCache.get(ploidy, maxPosteriorIndex).asAlleleList(allelesToUse));
             }
         }
     }

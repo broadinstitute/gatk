@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.genotyper;
 
 import com.google.common.base.Strings;
 import htsjdk.variant.variantcontext.Allele;
+import org.apache.commons.math3.util.CombinatoricsUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -24,6 +25,9 @@ import static org.testng.Assert.assertEquals;
  */
 public final class GenotypeAlleleCountsUnitTest {
 
+    // tolerate a tiny error in case of different logarithmic math implementations
+    private static final double EPSILON = 1.0e-15;
+
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testFirstError() {
         GenotypeAlleleCounts.first(-1);
@@ -45,24 +49,6 @@ public final class GenotypeAlleleCountsUnitTest {
     public void testAlleleCountAtError() {
         final GenotypeAlleleCounts first = GenotypeAlleleCounts.first(2);
         first.alleleCountAt(-1);
-    }
-
-    @Test(expectedExceptions = IllegalArgumentException.class)
-    public void testAlleleCountsByIndexError() {
-        final GenotypeAlleleCounts first = GenotypeAlleleCounts.first(2);
-        first.alleleCountsByIndex(-1);
-    }
-
-    @Test(expectedExceptions = IllegalArgumentException.class)
-    public void testCopyAlleleCountsIndexError() {
-        final GenotypeAlleleCounts first = GenotypeAlleleCounts.first(2);
-        first.copyAlleleCounts(new int[3], -1);
-    }
-
-    @Test(expectedExceptions = IllegalArgumentException.class)
-    public void testCopyAlleleCountsOffsetError() {
-        final GenotypeAlleleCounts first = GenotypeAlleleCounts.first(2);
-        first.copyAlleleCounts(new int[3], 4);
     }
 
     @Test(dataProvider = "ploidyData")
@@ -88,7 +74,6 @@ public final class GenotypeAlleleCountsUnitTest {
         for (int maximumAlleleIndex = 0; maximumAlleleIndex <= MAXIMUM_ALLELE_INDEX; maximumAlleleIndex++) {
             final int[] expected = new int[maximumAlleleIndex + 1];
             expected[0] = ploidy;
-            assertEquals(subject.alleleCountsByIndex(maximumAlleleIndex), expected);
         }
 
         Assert.assertNotNull(subject.toString());
@@ -127,10 +112,6 @@ public final class GenotypeAlleleCountsUnitTest {
         assertEquals(next.ploidy(), 0);
         assertEquals(next.index(), 0);
         assertEquals(next.asAlleleList(testAlleles), Collections.EMPTY_LIST);
-        for (int maximumAlleleIndex = 0; maximumAlleleIndex <= 10; maximumAlleleIndex++) {
-            final int[] expected = new int[maximumAlleleIndex + 1];
-            assertEquals(next.alleleCountsByIndex(maximumAlleleIndex), expected);
-        }
 
         first.increase();
         assertEquals(first, next);
@@ -153,10 +134,6 @@ public final class GenotypeAlleleCountsUnitTest {
             assertEquals(next.alleleCountFor(next.minimumAlleleIndex() + 1), 0);
             assertEquals(next.ploidy(), 1);
 
-            final int[] dest = new int[next.distinctAlleleCount() * 2];
-            next.copyAlleleCounts(dest, 0);
-            assertEquals(dest, new int[]{next.index(), 1});
-
             Assert.assertTrue(next.compareTo(current) > 0);
             Assert.assertTrue(current.compareTo(next) < 0);
             assertEquals(next.compareTo(next), 0);
@@ -174,13 +151,6 @@ public final class GenotypeAlleleCountsUnitTest {
 
             assertEquals(next.asAlleleList(testAlleles), Collections.singletonList(testAlleles.get(next.maximumAlleleIndex())));
 
-            for (int maximumAlleleIndex = 0; maximumAlleleIndex <= MAXIMUM_ALLELE_INDEX; maximumAlleleIndex++) {
-                final int[] expected = new int[maximumAlleleIndex + 1];
-                if (maximumAlleleIndex >= current.minimumAlleleIndex() + 1) {
-                    expected[current.minimumAlleleIndex() + 1] = 1;
-                }
-                assertEquals(next.alleleCountsByIndex(maximumAlleleIndex), expected);
-            }
             current = next;
         }
     }
@@ -200,15 +170,15 @@ public final class GenotypeAlleleCountsUnitTest {
 
             // test log10CombinationCount
             if (ploidy == 2) {
-                assertEquals(next.log10CombinationCount(), next.distinctAlleleCount() == 2 ? Math.log10(2) : 0.0);
+                assertEquals(next.log10CombinationCount(), next.distinctAlleleCount() == 2 ? Math.log10(2) : 0.0, EPSILON);
             } else if (ploidy == 3) {
                 assertEquals(next.log10CombinationCount(),
-                        next.distinctAlleleCount() == 3 ? Math.log10(6) : (next.distinctAlleleCount() == 2 ? Math.log10(6) - Math.log10(2) : 0.0));
+                        next.distinctAlleleCount() == 3 ? Math.log10(6) : (next.distinctAlleleCount() == 2 ? Math.log10(6) - Math.log10(2) : 0.0), EPSILON);
             } else {
                 if (next.distinctAlleleCount() == 1) {
-                    assertEquals(next.log10CombinationCount(), 0.0);
+                    assertEquals(next.log10CombinationCount(), 0.0, EPSILON);
                 } else if (next.distinctAlleleCount() == ploidy) {
-                    assertEquals(next.log10CombinationCount(), MathUtils.log10Factorial(ploidy));
+                    assertEquals(next.log10CombinationCount(), MathUtils.logToLog10(CombinatoricsUtils.factorialLog(ploidy)), EPSILON);
                 }
             }
 
@@ -220,10 +190,6 @@ public final class GenotypeAlleleCountsUnitTest {
                 alleleCountsAsList.add(alleleCount);
             });
             next.forEachAbsentAlleleIndex(absentAlleles::add, MAXIMUM_ALLELE_INDEX + 1);
-            final int[] actualAlleleCounts = new int[next.distinctAlleleCount() * 2];
-            next.copyAlleleCounts(actualAlleleCounts, 0);
-
-            assertEquals(alleleCountsAsList.stream().mapToInt(n -> n).toArray(), actualAlleleCounts);
 
             assertEquals(absentAlleles.size(), MAXIMUM_ALLELE_INDEX + 1 - next.distinctAlleleCount());
             next.forEachAlleleIndexAndCount((index, count) -> Assert.assertFalse(absentAlleles.contains(index)));
@@ -261,7 +227,6 @@ public final class GenotypeAlleleCountsUnitTest {
                     assertEquals(next.alleleCountFor(index), current.alleleCountFor(index));
                 }
             }
-            Assert.assertTrue(Arrays.equals(next.alleleCountsByIndex(Math.max(MAXIMUM_ALLELE_INDEX, next.maximumAlleleIndex())), expectedAlleleCountsByIndex));
             assertEquals(totalCountSum, ploidy);
 
             Assert.assertTrue(next.compareTo(current) > 0);
@@ -296,10 +261,6 @@ public final class GenotypeAlleleCountsUnitTest {
         assertEquals(next.distinctAlleleCount(), 0);
         assertEquals(next.ploidy(), 0);
         assertEquals(next.index(), 0);
-        for (int maximumAlleleIndex = 0; maximumAlleleIndex <= 10; maximumAlleleIndex++) {
-            final int[] expected = new int[maximumAlleleIndex + 1];
-            assertEquals(next.alleleCountsByIndex(maximumAlleleIndex), expected);
-        }
     }
 
     private void testNextOnePloidyIncrease() {
@@ -307,7 +268,7 @@ public final class GenotypeAlleleCountsUnitTest {
 
         while (!next.containsAllele(MAXIMUM_ALLELE_INDEX + 1)) {
             final GenotypeAlleleCounts current = next.copy();
-            next.increase(1);
+            next.increase();
             assertEquals(next.minimumAlleleIndex(), next.maximumAlleleIndex());
             assertEquals(next.minimumAlleleIndex(), current.minimumAlleleIndex() + 1);
             assertEquals(next.alleleCountAt(0), 1);
@@ -327,14 +288,6 @@ public final class GenotypeAlleleCountsUnitTest {
 
             assertEquals(next.index(), current.index() + 1);
             assertEquals(next.ploidy(), current.ploidy());
-
-            for (int maximumAlleleIndex = 0; maximumAlleleIndex <= MAXIMUM_ALLELE_INDEX; maximumAlleleIndex++) {
-                final int[] expected = new int[maximumAlleleIndex + 1];
-                if (maximumAlleleIndex >= current.minimumAlleleIndex() + 1) {
-                    expected[current.minimumAlleleIndex() + 1] = 1;
-                }
-                assertEquals(next.alleleCountsByIndex(maximumAlleleIndex), expected);
-            }
         }
     }
 
@@ -381,7 +334,6 @@ public final class GenotypeAlleleCountsUnitTest {
                     assertEquals(next.alleleCountFor(index), current.alleleCountFor(index));
                 }
             }
-            Assert.assertTrue(Arrays.equals(next.alleleCountsByIndex(Math.max(MAXIMUM_ALLELE_INDEX, next.maximumAlleleIndex())), expectedAlleleCountsByIndex));
             assertEquals(totalCountSum, ploidy);
 
             Assert.assertTrue(next.compareTo(current) > 0);

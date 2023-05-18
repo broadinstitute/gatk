@@ -367,7 +367,7 @@ public class ReferenceConfidenceModel {
             return indelPLCache[ploidy];
         }
 
-        final double denominator =  - MathUtils.log10(ploidy);
+        final double denominator =  - Math.log10(ploidy);
         final GenotypeLikelihoods[] result = new GenotypeLikelihoods[MAX_N_INDEL_INFORMATIVE_READS + 1];
 
         //Note: an array of zeros is the right answer for result[0].
@@ -376,8 +376,8 @@ public class ReferenceConfidenceModel {
             final double[] PLs = new double[ploidy + 1];
             PLs[0] = nInformativeReads * NO_INDEL_LIKELIHOOD;
             for (int altCount = 1; altCount <= ploidy; altCount++) {
-                final double refLikelihoodAccum = NO_INDEL_LIKELIHOOD + MathUtils.log10(ploidy - altCount);
-                final double altLikelihoodAccum = INDEL_LIKELIHOOD + MathUtils.log10(altCount);
+                final double refLikelihoodAccum = NO_INDEL_LIKELIHOOD + Math.log10(ploidy - altCount);
+                final double altLikelihoodAccum = INDEL_LIKELIHOOD + Math.log10(altCount);
                 PLs[altCount] = nInformativeReads * (MathUtils.approximateLog10SumLog10(refLikelihoodAccum ,altLikelihoodAccum) + denominator);
             }
             result[nInformativeReads] = GenotypeLikelihoods.fromLog10Likelihoods(PLs);
@@ -404,7 +404,7 @@ public class ReferenceConfidenceModel {
                                                                        final boolean readsWereRealigned) {
 
         final int likelihoodCount = ploidy + 1;
-        final double log10Ploidy = MathUtils.log10(ploidy);
+        final double log10Ploidy = Math.log10(ploidy);
 
         final RefVsAnyResult result = new RefVsAnyResult(likelihoodCount);
         int readCount = 0;
@@ -491,8 +491,8 @@ public class ReferenceConfidenceModel {
         for (int i = 1, j = likelihoodCount - 2; i < likelihoodCount - 1; i++, j--) {
             result.genotypeLikelihoods[i] +=
                     MathUtils.approximateLog10SumLog10(
-                            referenceLikelihood + MathUtils.log10(j),
-                            nonRefLikelihood + MathUtils.log10(i));
+                            referenceLikelihood + Math.log10(j),
+                            nonRefLikelihood + Math.log10(i));
         }
         if (isAlt && hqSoftClips != null && element.isNextToSoftClip()) {
             hqSoftClips.add(AlignmentUtils.countHighQualitySoftClips(element.getRead(), HQ_BASE_QUALITY_SOFTCLIP_THRESHOLD));

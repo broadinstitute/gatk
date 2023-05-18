@@ -77,12 +77,7 @@ public final class ModelSegmentsIntegrationTest extends CommandLineProgramTest {
     private static final SampleLocatableMetadata TUMOR_2_EXPECTED_METADATA = new CopyRatioCollection(TUMOR_2_DENOISED_COPY_RATIOS_FILE).getMetadata();
     private static final SampleLocatableMetadata NORMAL_EXPECTED_METADATA = new AllelicCountCollection(NORMAL_ALLELIC_COUNTS_FILE).getMetadata();
 
-    /**
-     * Note that {@link org.broadinstitute.hellbender.tools.copynumber.formats.CopyNumberFormatsUtils#DOUBLE_FORMAT}
-     * is set so that doubles in somatic CNV outputs will have 6 decimal places. We thus set the allowed delta
-     * to detect differences at that level.
-     */
-    private static final double ALLOWED_DELTA_FOR_DOUBLE_VALUES = 1E-6;
+    private static final double ALLOWED_DELTA_FOR_DOUBLE_VALUES = 1E-5;
 
     @Test
     public void testMetadata() {

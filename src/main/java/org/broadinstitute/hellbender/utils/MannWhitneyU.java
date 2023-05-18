@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils;
 
 import htsjdk.samtools.util.Histogram;
 import org.apache.commons.math3.distribution.NormalDistribution;
+import org.apache.commons.math3.util.CombinatoricsUtils;
 import org.apache.commons.math3.util.FastMath;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -176,21 +177,14 @@ public class MannWhitneyU {
     /**
      * A map of an Integer[] of the labels to the set of all possible permutations of those labels.
      */
-    private static Map<Key, Set<List<Integer>>> PERMUTATIONS = new ConcurrentHashMap<Key, Set<List<Integer>>>();
+    private static final Map<Key, Set<List<Integer>>> PERMUTATIONS = new ConcurrentHashMap<Key, Set<List<Integer>>>();
 
     /**
      * The minimum length for both data series in order to use a normal distribution
      * to calculate Z and p. If both series are shorter than this value then a permutation test
      * will be used.
      */
-    private int minimumNormalN = 10;
-
-    /**
-     * Sets the minimum number of values in each data series to use the normal distribution approximation.
-     */
-    public void setMinimumSeriesLengthForNormalApproximation(final int n) {
-        this.minimumNormalN = n;
-    }
+    private static final int MINIMUM_NORMAL_N = 10;
 
     /**
      * A variable that indicates if the test is one sided or two sided and if it's one sided
@@ -397,7 +391,7 @@ public class MannWhitneyU {
         double z;
         double p;
 
-        if (n1 >= this.minimumNormalN || n2 >= this.minimumNormalN) {
+        if (n1 >= MINIMUM_NORMAL_N || n2 >= MINIMUM_NORMAL_N) {
             z = calculateZ(u, n1, n2, nties, whichSide);
             p = 2 * NORMAL.cumulativeProbability(NORMAL_MEAN + z * NORMAL_SD);
             if (whichSide != TestType.TWO_SIDED) {
@@ -485,7 +479,7 @@ public class MannWhitneyU {
      * @param testStatU Test statistic U from observed data
      * @return P-value based on histogram with u calculated for every possible permutation of group tag.
      */
-    public double permutationTest(final double[] series1, final double[] series2, final double testStatU) {
+    private double permutationTest(final double[] series1, final double[] series2, final double testStatU) {
 
         // note that Mann-Whitney U stats are always integer or half-integer (this is true even in the case of ties)
         // thus for safety we store a histogram of twice the Mann-Whitney values
@@ -506,7 +500,7 @@ public class MannWhitneyU {
             }
         }
 
-        final int numOfPerms = (int) MathUtils.binomialCoefficient(n1 + n2, n2);
+        final int numOfPerms = (int) CombinatoricsUtils.binomialCoefficient(n1 + n2, n2);
         Set<List<Integer>> allPermutations = getPermutations(firstPermutation, numOfPerms);
 
         double[] newSeries1 = new double[n1];

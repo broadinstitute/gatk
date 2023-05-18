@@ -2,8 +2,10 @@ package org.broadinstitute.hellbender.utils.help;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.testng.Assert;
+import org.testng.SkipException;
 import org.testng.annotations.Test;
 
+import java.util.spi.ToolProvider;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -11,7 +13,6 @@ import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.spi.ToolProvider;
 
 /**
  * Smoke test to run doc gen on a subset of classes to make sure it doesn't regress.
