@@ -212,7 +212,11 @@ task StripCustomAnnotationsFromSitesOnlyVCF {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
+<<<<<<< HEAD
         docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-19-alpine"
+=======
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-18-alpine"
+>>>>>>> 8b2a17508 (update docker image)
         memory: "7 GiB"
         cpu: "2"
         preemptible: 3
@@ -297,7 +301,11 @@ task RemoveDuplicatesFromSitesOnlyVCF {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
+<<<<<<< HEAD
         docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-19-alpine"
+=======
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-18-alpine"
+>>>>>>> 8b2a17508 (update docker image)
         maxRetries: 3
         memory: "16 GB"
         preemptible: 3
@@ -457,7 +465,11 @@ task PrepVtAnnotationJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
+<<<<<<< HEAD
         docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-19-alpine"
+=======
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-18-alpine"
+>>>>>>> 8b2a17508 (update docker image)
         memory: "7 GB"
         preemptible: 3
         cpu: "1"
@@ -503,7 +515,11 @@ task PrepGenesAnnotationJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
+<<<<<<< HEAD
         docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-19-alpine"
+=======
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-18-alpine"
+>>>>>>> 8b2a17508 (update docker image)
         memory: "7 GB"
         preemptible: 3
         cpu: "1"
