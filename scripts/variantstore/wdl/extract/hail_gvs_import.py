@@ -24,7 +24,7 @@ gcs_re = re.compile("^gs://(?P<bucket_name>[^/]+)/(?P<object_prefix>.*)$")
 
 def create_vds(argsfn, vds_path, references_path, temp_path):
     import hail as hl
-    import gvs_avros_to_vds
+    import import_gvs
     hl.init(tmp_dir=f'{temp_path}/hail_tmp_general')
 
     rg38 = hl.get_reference('GRCh38')
@@ -34,7 +34,7 @@ def create_vds(argsfn, vds_path, references_path, temp_path):
     ## Note that a full description of the create_vds function written by Hail for this process can be found here:
     ## https://github.com/tpoterba/hail/blob/import-gvs/hail/python/hail/methods/impex.py
     ## Commented out parameters are ones where we are comfortable with the default, but want to make them easily accessible to users
-    gvs_avros_to_vds.create_vds(
+    import_gvs.import_gvs(
         vets=argsfn('vets'),
         refs=argsfn('refs'),
         sample_mapping=argsfn('sample_mapping'),
