@@ -342,31 +342,26 @@ def create_vds(refs: 'List[List[str]]',
                                      .head().min_vqslod
                                      )
 
-            vd = vd.annotate_rows(
-                allele_NO=vd.alleles[1:].map(
-                    lambda allele: hl.coalesce(vd.as_vqsr.get(allele).yng_status == 'N', False)),
-                allele_YES=vd.alleles[1:].map(
-                    lambda allele: hl.coalesce(vd.as_vqsr.get(allele).yng_status == 'Y', True)),
-                allele_is_snp=is_snp,
-                allele_OK=hl._zip_func(is_snp, vd.alleles[1:],
-                                       f=lambda is_snp, alt:
-                                       hl.coalesce(vd.as_vqsr.get(alt).vqslod >=
-                                                   hl.if_else(is_snp, vd.snp_vqslod_threshold, vd.indel_vqslod_threshold),
-                                                   True))
-            )
+
+            allele_OK_zfn = hl._zip_func(is_snp, vd.alleles[1:],
+                              f=lambda is_snp, alt:
+                              hl.coalesce(vd.as_vqsr.get(alt).vqslod >=
+                                          hl.if_else(is_snp, vd.snp_vqslod_threshold, vd.indel_vqslod_threshold),
+                                          True))
         else:
-            vd = vd.annotate_rows(
-                allele_NO=vd.alleles[1:].map(
-                    lambda allele: hl.coalesce(vd.as_vqsr.get(allele).yng_status == 'N', False)),
-                allele_YES=vd.alleles[1:].map(
-                    lambda allele: hl.coalesce(vd.as_vqsr.get(allele).yng_status == 'Y', True)),
-                allele_is_snp=is_snp,
-                allele_OK=hl._zip_func(is_snp, vd.alleles[1:],
-                                       f=lambda is_snp, alt:
-                                       hl.coalesce(vd.as_vqsr.get(alt).calibration_sensitivity <=
-                                                   hl.if_else(is_snp, vd.truth_sensitivity_snp_threshold, vd.truth_sensitivity_indel_threshold),
-                                                   True))
-            )
+            allele_OK_zfn = hl._zip_func(is_snp, vd.alleles[1:],
+                              f=lambda is_snp, alt:
+                              hl.coalesce(vd.as_vqsr.get(alt).calibration_sensitivity <=
+                                          hl.if_else(is_snp, vd.truth_sensitivity_snp_threshold, vd.truth_sensitivity_indel_threshold),
+                                          True))
+        vd = vd.annotate_rows(
+            allele_NO=vd.alleles[1:].map(
+                lambda allele: hl.coalesce(vd.as_vqsr.get(allele).yng_status == 'N', False)),
+            allele_YES=vd.alleles[1:].map(
+                lambda allele: hl.coalesce(vd.as_vqsr.get(allele).yng_status == 'Y', True)),
+            allele_is_snp=is_snp,
+            allele_OK=allele_OK_zfn
+        )
 
         lgt = vd.LGT
         la = vd.LA
