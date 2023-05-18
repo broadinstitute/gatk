@@ -223,6 +223,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rc-fix-hail-python
    - name: GvsQuickstartIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartIntegration.wdl
@@ -230,7 +231,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_vs_836_v2
+         - rc-fix-hail-python
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl

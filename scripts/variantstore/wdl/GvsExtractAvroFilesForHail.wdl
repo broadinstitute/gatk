@@ -157,11 +157,7 @@ task ExtractFromNonSuperpartitionedTables {
     }
 
     runtime {
-<<<<<<< HEAD
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-19-alpine"
-=======
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-18-alpine"
->>>>>>> 8b2a17508 (update docker image)
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-22-alpine"
         disks: "local-disk 500 HDD"
     }
 }
@@ -229,11 +225,7 @@ task ExtractFromSuperpartitionedTables {
     }
 
     runtime {
-<<<<<<< HEAD
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-19-alpine"
-=======
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-18-alpine"
->>>>>>> 8b2a17508 (update docker image)
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-22-alpine"
         disks: "local-disk 500 HDD"
     }
 }
@@ -301,7 +293,7 @@ task GenerateHailScripts {
         File hail_create_vat_inputs_script = 'hail_create_vat_inputs.py'
     }
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-19-alpine"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-22-alpine"
         disks: "local-disk 500 HDD"
     }
 }

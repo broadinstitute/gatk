@@ -128,11 +128,7 @@ workflow GvsBulkIngestGenomes {
         >>>
 
         runtime {
-<<<<<<< HEAD
-            docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-19-alpine"
-=======
-            docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-18-alpine"
->>>>>>> 8b2a17508 (update docker image)
+            docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-22-alpine"
             memory: "3 GB"
             disks: "local-disk 10 HDD"
             cpu: 1
@@ -166,7 +162,7 @@ workflow GvsBulkIngestGenomes {
 
         >>>
         runtime {
-            docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-19-alpine"
+            docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-22-alpine"
             memory: "3 GB"
             disks: "local-disk 10 HDD"
             cpu: 1
