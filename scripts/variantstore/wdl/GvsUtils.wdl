@@ -535,8 +535,20 @@ task IsVQSRLite {
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-    LITE_COUNT=$(bq --project_id=~{project_id} --format=csv query --use_legacy_sql=false ~{bq_labels} 'SELECT COUNT(1) FROM \`~{fq_filter_set_info_table}\` WHERE filter_set_name = "~{filter_set_name}" AND calibration_sensitivity IS NOT NULL')
-    CLASSIC_COUNT=$(bq --project_id=~{project_id} --format=csv query --use_legacy_sql=false ~{bq_labels} 'SELECT COUNT(1) FROM \`~{fq_filter_set_info_table}\` WHERE filter_set_name = "~{filter_set_name}" AND vqslod IS NOT NULL')
+    bq query --project_id='~{project_id}' --format=csv --use_legacy_sql=false ~{bq_labels} \
+    "SELECT COUNT(1) FROM \`~{fq_filter_set_info_table}\` WHERE filter_set_name = '~{filter_set_name}' \
+    AND calibration_sensitivity IS NOT NULL" | tail -1 > lite_count_file.txt
+    LITE_COUNT=`lite_count_file.txt`
+    echo $LITE_COUNT
+
+    bq query --project_id='~{project_id}' --format=csv --use_legacy_sql=false ~{bq_labels} \
+    "SELECT COUNT(1) FROM \`~{fq_filter_set_info_table}\` WHERE filter_set_name = '~{filter_set_name}' \
+    AND vqslod IS NOT NULL" | tail -1 > classic_count_file.txt
+    CLASSIC_COUNT=`classic_count_file.txt`
+    echo $CLASSIC_COUNT
+
+#    LITE_COUNT=$(bq --project_id=~{project_id} --format=csv query --use_legacy_sql=false ~{bq_labels} 'SELECT COUNT(1) FROM \`~{fq_filter_set_info_table}\` WHERE filter_set_name = "~{filter_set_name}" AND calibration_sensitivity IS NOT NULL')
+#    CLASSIC_COUNT=$(bq --project_id=~{project_id} --format=csv query --use_legacy_sql=false ~{bq_labels} 'SELECT COUNT(1) FROM \`~{fq_filter_set_info_table}\` WHERE filter_set_name = "~{filter_set_name}" AND vqslod IS NOT NULL')
 
     if [[ $LITE_COUNT != "0" ]]; then
       echo "Found $LITE_COUNT rows with calibration_sensitivity defined"
