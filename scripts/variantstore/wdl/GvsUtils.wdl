@@ -536,23 +536,17 @@ task IsVQSRLite {
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
     bq query --project_id='~{project_id}' --format=csv --use_legacy_sql=false ~{bq_labels} \
-    "SELECT COUNT(1) FROM \`~{fq_filter_set_info_table}\` WHERE filter_set_name = '~{filter_set_name}' \
-    AND calibration_sensitivity IS NOT NULL" | tail -1 > lite_count_file.txt
+      "SELECT COUNT(1) FROM \`~{fq_filter_set_info_table}\` WHERE filter_set_name = '~{filter_set_name}' \
+      AND calibration_sensitivity IS NOT NULL" | tail -1 > lite_count_file.txt
     LITE_COUNT=`cat lite_count_file.txt`
-    echo $LITE_COUNT
 
     bq query --project_id='~{project_id}' --format=csv --use_legacy_sql=false ~{bq_labels} \
-    "SELECT COUNT(1) FROM \`~{fq_filter_set_info_table}\` WHERE filter_set_name = '~{filter_set_name}' \
-    AND vqslod IS NOT NULL" | tail -1 > classic_count_file.txt
+      "SELECT COUNT(1) FROM \`~{fq_filter_set_info_table}\` WHERE filter_set_name = '~{filter_set_name}' \
+      AND vqslod IS NOT NULL" | tail -1 > classic_count_file.txt
     CLASSIC_COUNT=`cat classic_count_file.txt`
-    echo $CLASSIC_COUNT
-
-#    LITE_COUNT=$(bq --project_id=~{project_id} --format=csv query --use_legacy_sql=false ~{bq_labels} 'SELECT COUNT(1) FROM \`~{fq_filter_set_info_table}\` WHERE filter_set_name = "~{filter_set_name}" AND calibration_sensitivity IS NOT NULL')
-#    CLASSIC_COUNT=$(bq --project_id=~{project_id} --format=csv query --use_legacy_sql=false ~{bq_labels} 'SELECT COUNT(1) FROM \`~{fq_filter_set_info_table}\` WHERE filter_set_name = "~{filter_set_name}" AND vqslod IS NOT NULL')
 
     if [[ $LITE_COUNT != "0" ]]; then
       echo "Found $LITE_COUNT rows with calibration_sensitivity defined"
-      echo "Found $CLASSIC_COUNT rows with vqslod defined"
       if [[ $CLASSIC_COUNT != "0" ]]; then
         echo "Found $CLASSIC_COUNT rows with vqslod defined"
         echo "ERROR - can't have both defined for a filter_set"
@@ -569,7 +563,7 @@ task IsVQSRLite {
 
   >>>
   output {
-    Boolean is_vqsr_lite = read_boolean("is_vqsr_lite_file")
+    Boolean is_vqsr_lite = read_boolean(is_vqsr_lite_file)
     File monitoring_log = "monitoring.log"
   }
 
