@@ -489,7 +489,7 @@ task CurateInputLists {
                                              --output_files True
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-04-13-alpine"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-17-alpine"
     memory: "3 GB"
     disks: "local-disk 100 HDD"
     bootDiskSizeGb: 15
