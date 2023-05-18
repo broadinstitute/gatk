@@ -51,7 +51,7 @@ task GenerateFOFNsFromDataTables {
         String? sample_set_name
     }
 
-    ## TODO I dont love that we are hardcoding them here and in the python--they need to be params!
+    ## TODO these are now in the python script, but should they no longer be here?
     String sample_names_file_name = "sample_names.txt"
     String vcf_files_name = "vcf_files.txt"
     String vcf_index_files_name = "vcf_index_files.txt"
@@ -70,7 +70,12 @@ task GenerateFOFNsFromDataTables {
             --sample_id_column_name ~{sample_id_column_name} \
             --vcf_files_column_name ~{vcf_files_column_name} \
             --vcf_index_files_column_name ~{vcf_index_files_column_name} \
-            ~{"--sample_set_name " + sample_set_name}
+            ~{"--sample_set_name " + sample_set_name} \
+            --sample_names_file_name ~{sample_names_file_name} \
+            --vcf_files_name ~{vcf_files_name} \
+            --vcf_index_files_name ~{vcf_index_files_name} \
+            --error_file_name ~{error_file_name} \
+
 
     >>>
     runtime {
