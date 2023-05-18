@@ -22,7 +22,7 @@ import re
 gcs_re = re.compile("^gs://(?P<bucket_name>[^/]+)/(?P<object_prefix>.*)$")
 
 
-def create_vds(argsfn, vds_path, references_path, temp_path):
+def create_vds(argsfn, vds_path, references_path, temp_path, use_classic_vqsr):
     import hail as hl
     import gvs_avros_to_vds
     hl.init(tmp_dir=f'{temp_path}/hail_tmp_general')
@@ -50,6 +50,7 @@ def create_vds(argsfn, vds_path, references_path, temp_path):
         # intermediate_resume_point=0, # if your first run fails, and you want to use the intermediate files that already exist, check in with Hail to find out what stage to resume on
         # skip_final_merge=false, # if you want to create your VDS in two steps (because of mem issues) this can be skipped until the final run
         unphase=True, # the default in Hail is to keep phasing information, but it's not necessary for AoU, so it can be dropped
+        use_classic_vqsr=use_classic_vqsr
     )
 
 
@@ -137,13 +138,16 @@ if __name__ == '__main__':
                         required=True)
     parser.add_argument('--references-path', type=str, help='Path to references, only required for local files',
                         required=False)
+    parser.add_argument('--use-classic-vqsr', type=bool,
+                        help='If true, expect that the input GVS Avro files were generated using VQSR Classic',
+                        default=False, required=False)
 
     args = parser.parse_args()
 
     # Remove trailing slashes if present.
     avro_path, temp_path, vds_path = [p if not p.endswith('/') else p[:-1] for p in
                                       [args.avro_path, args.temp_path, args.vds_path]]
-
+    use_classic_vqsr = args.use_classic_vqsr
     is_gcs = [gcs_re.match(p) for p in [avro_path, temp_path, vds_path]]
     is_not_gcs = [not g for g in is_gcs]
 
@@ -154,7 +158,7 @@ if __name__ == '__main__':
         def args(key):
             return gcs_generate_avro_args(avro_bucket, avro_object_prefix, key)
 
-        create_vds(args, vds_path, 'gs://hail-common/references', temp_path)
+        create_vds(args, vds_path, 'gs://hail-common/references', temp_path, use_classic_vqsr)
 
     elif all(is_not_gcs):
         references_path = args.references_path
@@ -166,6 +170,6 @@ if __name__ == '__main__':
         def args(key):
             return local_generate_avro_args(avro_path, key)
 
-        create_vds(args, vds_path, references_path, temp_path)
+        create_vds(args, vds_path, references_path, temp_path, use_classic_vqsr)
     else:
         raise ValueError("Arguments appear to be some unsavory mix of GCS and local paths, all or nothing please.")
