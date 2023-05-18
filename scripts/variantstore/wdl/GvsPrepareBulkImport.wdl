@@ -66,7 +66,7 @@ task GenerateFOFNsFromDataTables {
         export WORKSPACE_BUCKET='~{workspace_bucket}'
 
         gsutil cp gs://fc-d5e319d4-b044-4376-afde-22ef0afc4088/generate_FOFNs_for_import.py generate_FOFNs_for_import.py
-        python3 generate_FOFNs_for_import.py \
+        python generate_FOFNs_for_import.py \
         # python3 /app/generate_FOFNs_for_import.py \
             --data_table_name ~{samples_table_name} \
             --sample_id_column_name ~{sample_id_column_name} \
