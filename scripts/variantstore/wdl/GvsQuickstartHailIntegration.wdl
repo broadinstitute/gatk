@@ -123,11 +123,11 @@ task CreateAndTieOutVds {
         export VDS_PATH=$WORK/gvs_import.vds
         export AVRO_PATH=$PWD/avro
 
-        python3 ./hail_gvs_import.py
-            --avro-path ${AVRO_PATH}
-            --vds-path ${VDS_PATH}
-            --temp-path ${TEMP_PATH}
-            --references-path ${REFERENCES_PATH}
+        python3 ./hail_gvs_import.py \
+            --avro-path ${AVRO_PATH} \
+            --vds-path ${VDS_PATH} \
+            --temp-path ${TEMP_PATH} \
+            --references-path ${REFERENCES_PATH} \
             ~{true='--use-classic-vqsr' false='' use_classic_VQSR}
 
         export JOINED_MATRIX_TABLE_PATH=${WORK}/joined.mt
