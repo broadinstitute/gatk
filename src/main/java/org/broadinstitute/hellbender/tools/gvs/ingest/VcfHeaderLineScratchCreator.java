@@ -9,6 +9,7 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 public class VcfHeaderLineScratchCreator {
@@ -45,19 +46,20 @@ public class VcfHeaderLineScratchCreator {
 
     }
 
-    public void apply(List<String> allLineHeaders) throws IOException {
-        for (final String headerChunk : allLineHeaders) {
+    public void apply(Map<String, Boolean>  allLineHeaders) throws IOException {
+        for (final Map.Entry<String, Boolean> headerChunk : allLineHeaders.entrySet()) {
             try {
                 // if this header chunk has already been added to the scratch table, only add an association between the
                 // sample_id and the hash, no need to rewrite the header chunk to the DB
-                String chunkHash = Utils.calcMD5(headerChunk);
+                String chunkHash = Utils.calcMD5(headerChunk.getKey());
+                Boolean isExpectedUnique = headerChunk.getValue();
                 boolean vcfScratchHeaderRowsExist = doScratchRowsExistFor(this.projectId, this.datasetName, chunkHash);
                 boolean vcfNonScratchHeaderRowsExist = doNonScratchRowsExistFor(this.projectId, this.datasetName, chunkHash);
                 if (vcfScratchHeaderRowsExist || vcfNonScratchHeaderRowsExist) {
-                    vcfHeaderBQJsonWriter.addJsonRow(createJson(this.sampleId, null, chunkHash));
+                    vcfHeaderBQJsonWriter.addJsonRow(createJson(this.sampleId, null, chunkHash, isExpectedUnique));
                 }
                 else {
-                    vcfHeaderBQJsonWriter.addJsonRow(createJson(this.sampleId, headerChunk, chunkHash));
+                    vcfHeaderBQJsonWriter.addJsonRow(createJson(this.sampleId, headerChunk.getKey(), chunkHash, isExpectedUnique));
                 }
             } catch (Descriptors.DescriptorValidationException | ExecutionException | InterruptedException ex) {
                 throw new IOException("BQ exception", ex);
@@ -65,7 +67,7 @@ public class VcfHeaderLineScratchCreator {
         }
     }
 
-    public JSONObject createJson(Long sampleId, String headerChunk, String headerHash) {
+    public JSONObject createJson(Long sampleId, String headerChunk, String headerHash, Boolean isExpectedUnique) {
         JSONObject record = new JSONObject();
         record.put("sample_id", sampleId);
 
@@ -73,6 +75,7 @@ public class VcfHeaderLineScratchCreator {
             record.put("vcf_header_lines", headerChunk);
         }
         record.put("vcf_header_lines_hash", headerHash);
+        record.put("is_expected_unique", isExpectedUnique);
         return record;
     }
 

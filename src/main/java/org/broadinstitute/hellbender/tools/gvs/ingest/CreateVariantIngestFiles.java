@@ -26,7 +26,6 @@ import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -48,7 +47,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     private VcfHeaderLineScratchCreator vcfHeaderLineScratchCreator;
     private LoadStatus loadStatus;
 
-    private List<String> allLineHeaders = new ArrayList<>();
+    private Map<String, Boolean> allLineHeaders = new HashMap<>();
 
     private GenomeLocSortedSet intervalArgumentGenomeLocSortedSet;
 
@@ -198,13 +197,13 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                 if (line.getKey().contains("CommandLine")) {
                     Map<String, String> commandLine = new HashMap<>();
                     commandLine.put(line.getKey(), line.getValue());
-                    allLineHeaders.add(commandLine.toString());
+                    allLineHeaders.put(commandLine.toString(), true);
                 }
                 else {
                     nonCommandLineHeaders.put(line.getKey(), line.getValue());
                 }
             }
-            allLineHeaders.add(nonCommandLineHeaders.toString());
+            allLineHeaders.put(nonCommandLineHeaders.toString(), false);
         }
 
         // get an array of header "lines" (command line INFO lines, chunks of non-command-line INFO lines)
