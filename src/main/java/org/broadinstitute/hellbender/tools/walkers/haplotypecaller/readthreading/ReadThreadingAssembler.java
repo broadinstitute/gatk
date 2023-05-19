@@ -21,6 +21,7 @@ import org.broadinstitute.hellbender.utils.Histogram;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
+import org.broadinstitute.hellbender.utils.haplotype.Event;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
@@ -917,7 +918,7 @@ public final class ReadThreadingAssembler {
                     if (queue.size() >= 300) {
                         queue.stream().limit(200).forEachOrdered(vc -> assembledEventMapVcfOutputWriter.get().add(vc));
                     }
-                    queue.add(event);}));
+                    queue.add(event.asVariantContext());}));
     }
 
     public AssemblyResultSet generateEmptyLLocalAssemblyResult(final AssemblyRegion assemblyRegion,

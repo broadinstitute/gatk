@@ -8,6 +8,7 @@ import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.CommandLineException;
@@ -26,6 +27,7 @@ import org.broadinstitute.hellbender.tools.walkers.genotyper.OutputMode;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.StandardCallerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
+import org.broadinstitute.hellbender.utils.haplotype.Event;
 import org.broadinstitute.hellbender.utils.pileup.PileupBasedAlleles;
 import org.broadinstitute.hellbender.transformers.IUPACReadTransformer;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
@@ -627,8 +629,10 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             return referenceModelForNoVariation(region, true, VCpriors);
         }
 
-        final List<VariantContext> givenAlleles = features.getValues(hcArgs.alleles).stream()
-                .filter(vc -> hcArgs.forceCallFiltered || vc.isNotFiltered()).collect(Collectors.toList());
+        final List<Event> givenAlleles = features.getValues(hcArgs.alleles).stream()
+                .filter(vc -> hcArgs.forceCallFiltered || vc.isNotFiltered())
+                .flatMap(vc -> GATKVariantContextUtils.splitVariantContextToEvents(vc, false, GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL, false).stream())
+                .collect(Collectors.toList());
 
         if( givenAlleles.isEmpty() && region.size() == 0 ) {
             // No reads here so nothing to do!
@@ -644,11 +648,6 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             } catch (IOException e) {
                 throw new UserException("Error writing to debug output stream", e);
             }
-        }
-
-        List<VariantContext> forcedPileupAlleles = Collections.emptyList();
-        if(hcArgs.pileupDetectionArgs.usePileupDetection){
-            forcedPileupAlleles = PileupBasedAlleles.getPileupVariantContexts(region.getAlignmentData(), hcArgs.pileupDetectionArgs, readsHeader, hcArgs.minBaseQualityScore);
         }
 
         // run the local assembler, getting back a collection of information on how we should proceed
@@ -667,38 +666,18 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
             }
         }
 
-        // PileupCaller events if we need them
-        List<VariantContext> pileupAllelesFoundShouldFilter = forcedPileupAlleles.stream()
-                .filter(v -> PileupBasedAlleles.shouldFilterAssemblyVariant(hcArgs.pileupDetectionArgs, v))
-                .collect(Collectors.toList());
-        List<VariantContext> pileupAllelesPassingFilters = forcedPileupAlleles.stream()
-                .filter(v -> PileupBasedAlleles.passesFilters(hcArgs.pileupDetectionArgs, v))
-                .collect(Collectors.toList());
+        Pair<Set<Event>, Set<Event>> goodAndBadPileupEvents =
+                PileupBasedAlleles.goodAndBadPileupEvents(region.getAlignmentData(), hcArgs.pileupDetectionArgs, readsHeader, hcArgs.minBaseQualityScore);
+        final Set<Event> goodPileupEvents = goodAndBadPileupEvents.getLeft();
+        final Set<Event> badPileupEvents = goodAndBadPileupEvents.getRight();
 
         // Regenerate the list of AllVariationEvents, filtering out assembled variants that must be filtered according to the pileupcaller code.
-        final SortedSet<VariantContext> allVariationEvents = new TreeSet<>(
-                AssemblyResultSet.HAPLOTYPE_VARIANT_CONTEXT_COMPARATOR);
-        allVariationEvents.addAll(untrimmedAssemblyResult.getVariationEvents(hcArgs.maxMnpDistance).stream()
-                .filter(outerVC -> { return pileupAllelesFoundShouldFilter.stream() // Stream over the PileupAllelesThatMustBeFiltered
-                        // Does the variant match?
-                        .noneMatch(filterAllle -> filterAllle.getStart() == outerVC.getStart()
-                        && filterAllle.getReference().equals(outerVC.getReference())
-                        && filterAllle.getAlternateAllele(0).equals(outerVC.getAlternateAllele(0)));
-                }).collect(Collectors.toList()));
-        // Add any new pileupcaller alleles to the variation events
-        for (final VariantContext pileupAllele : pileupAllelesPassingFilters) {
-            //these are events from single haplotypes, so we can do a simple comparison without trimming
-            if (allVariationEvents.stream().noneMatch(vc -> vc.getStart() == pileupAllele.getStart() && vc.getReference().basesMatch(pileupAllele.getReference()) && vc.getAlternateAllele(0).basesMatch(pileupAllele.getAlternateAllele(0)))) {
-                allVariationEvents.add(pileupAllele);
-            }
-        }
-        // Add given alleles to the variation events
-        for (final VariantContext given : givenAlleles) {
-            //these are events from single haplotypes, so we can do a simple comparison without trimming
-            if (allVariationEvents.stream().noneMatch(vc -> vc.getStart() == given.getStart() && vc.getReference().basesMatch(given.getReference()) && vc.getAlternateAllele(0).basesMatch(given.getAlternateAllele(0)))) {
-                allVariationEvents.add(given);
-            }
-        }
+        final SortedSet<Event> allVariationEvents = untrimmedAssemblyResult.getVariationEvents(hcArgs.maxMnpDistance).stream()
+                .filter(event -> !badPileupEvents.contains(event))
+                .collect(Collectors.toCollection(() -> new TreeSet<>(AssemblyResultSet.HAPLOTYPE_EVENT_COMPARATOR)));
+
+        goodPileupEvents.forEach(allVariationEvents::add);
+        givenAlleles.forEach(allVariationEvents::add);
 
         final AssemblyRegionTrimmer.Result trimmingResult = trimmer.trim(region, allVariationEvents, referenceContext);
 
@@ -707,18 +686,20 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         }
 
         AssemblyResultSet assemblyResult = untrimmedAssemblyResult.trimTo(trimmingResult.getVariantRegion());
-        AssemblyBasedCallerUtils.addGivenAlleles(givenAlleles, hcArgs.maxMnpDistance, aligner, hcArgs.getHaplotypeToReferenceSWParameters(), assemblyResult);
+        assemblyResult.addGivenAlleles(givenAlleles, hcArgs.maxMnpDistance, aligner, hcArgs.getHaplotypeToReferenceSWParameters());
 
         // Pre-work for the PDHMM, if we are in PDHMM mode then here is where we re-compute the haplotypes as PD haplotypes.
         if (hcArgs.pileupDetectionArgs.generatePDHaplotypes) {
             // Note: we ignore maxMNPDistance here because the PartiallyDeterminedHaplotypeComputationEngine does not currently handle MNPs
-            SortedSet<VariantContext> assemblyVariants = assemblyResult.getVariationEvents(0);
+            SortedSet<Event> assemblyVariants = assemblyResult.getVariationEvents(0);
             if (hcArgs.pileupDetectionArgs.debugPileupStdout) {
                 System.out.println("Generating PDHaplotypes for PDHMM");
                 System.out.println("Assembled Variants to use:");
                 assemblyVariants.forEach(System.out::println);
-                System.out.println("Pileup Variants to use:");
-                forcedPileupAlleles.forEach(System.out::println);
+                System.out.println("Good Pileup Variants to use:");
+                goodPileupEvents.forEach(System.out::println);
+                System.out.println("Bad Pileup Variants to filter:");
+                badPileupEvents.forEach(System.out::println);
                 System.out.println("Adding Variants To Reference Haplotype:");
                 System.out.println(assemblyResult.getReferenceHaplotype());
                 System.out.println("FinalSpan: " + assemblyResult.getReferenceHaplotype().getGenomeLocation());
@@ -728,9 +709,9 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                     region.getSpan(),
                     assemblyResult.getReferenceHaplotype(),
                     assemblyVariants,
-                    pileupAllelesFoundShouldFilter,
-                    pileupAllelesPassingFilters,
-                    hcArgs.pileupDetectionArgs.snpAdajacentToAssemblyIndel,
+                    badPileupEvents,
+                    goodPileupEvents,
+                    hcArgs.pileupDetectionArgs.snpAdjacentToAssemblyIndel,
                     aligner,
                     hcArgs.getHaplotypeToReferenceSWParameters(),
                     hcArgs.pileupDetectionArgs.determinePDHaps,
@@ -742,11 +723,10 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         // NOTE: We might also call this if hcArgs.pileupDetectionArgs.useGGAFallback is set and we are making PD haplotypes. This
         //       fallback handles edge cases where the PartiallyDeterminedHaplotypeComputationEngine generates too-many haplotypes
         //       from a very complex assebmly region and we want to fall back to assembly.
-        if ((!pileupAllelesFoundShouldFilter.isEmpty() || !pileupAllelesPassingFilters.isEmpty()) &&  // Assert that we did find pileup events to process before calling this code
-                (!hcArgs.pileupDetectionArgs.generatePDHaplotypes ||
-                        (hcArgs.pileupDetectionArgs.useGGAFallback && !assemblyResult.hasOverwrittenHaps()))) { // If we are generating PDHaps assert that it failed before calling this
-            if (hcArgs.pileupDetectionArgs.debugPileupStdout) { System.out.println("Falling back to GGA based Pileup Allele mode!"); }
-            assemblyResult = AssemblyBasedCallerUtils.applyPileupEventsAsForcedAlleles(region, hcArgs, aligner, assemblyResult.getReferenceHaplotype(), assemblyResult, pileupAllelesFoundShouldFilter, pileupAllelesPassingFilters, hcArgs.pileupDetectionArgs.debugPileupStdout);
+        if (!hcArgs.pileupDetectionArgs.generatePDHaplotypes ||
+                        (hcArgs.pileupDetectionArgs.useGGAFallback && !assemblyResult.hasOverwrittenHaps())) { // If we are generating PDHaps assert that it failed before calling this
+            assemblyResult.removeHaplotypesWithBadAlleles(hcArgs, badPileupEvents);
+            assemblyResult.injectPileupEvents(region, hcArgs, aligner, goodPileupEvents);
         }
         final AssemblyRegion regionForGenotyping = assemblyResult.getRegionForGenotyping();
         final List<GATKRead> readStubs = regionForGenotyping.getReads().stream()
@@ -1008,7 +988,7 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         if (pdhmmLikelihoodCalculationEngine != null) pdhmmLikelihoodCalculationEngine.close();
         aligner.close();
         haplotypeBAMWriter.ifPresent(HaplotypeBAMWriter::close);
-        assembledEventMapVcfOutputWriter.ifPresent(writer -> {assembledEventMapVariants.get().forEach(writer::add); writer.close();});
+        assembledEventMapVcfOutputWriter.ifPresent(writer -> {assembledEventMapVariants.get().forEach(event -> writer.add(event)); writer.close();});
         if ( referenceReader != null) {
             try {
                 referenceReader.close();

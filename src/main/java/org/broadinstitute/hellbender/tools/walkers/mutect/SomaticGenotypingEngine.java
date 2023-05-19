@@ -23,6 +23,7 @@ import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.LikelihoodMatrix;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
+import org.broadinstitute.hellbender.utils.haplotype.Event;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.Fragment;
@@ -81,7 +82,7 @@ public class SomaticGenotypingEngine implements AutoCloseable {
             final ReferenceContext referenceContext,
             final SimpleInterval activeRegionWindow,
             final FeatureContext featureContext,
-            final List<VariantContext> givenAlleles,
+            final List<Event> givenAlleles,
             final SAMFileHeader header,
             final boolean withBamOut,
             final boolean emitRefConf,
@@ -92,8 +93,10 @@ public class SomaticGenotypingEngine implements AutoCloseable {
 
         final List<Haplotype> haplotypes = logReadLikelihoods.alleles();
 
-        final List<Integer> startPosKeySet = EventMap.buildEventMapsForHaplotypes(haplotypes, assemblyResultSet.getFullReferenceWithPadding(),
-                assemblyResultSet.getPaddedReferenceLoc(), MTAC.assemblerArgs.debugAssembly, MTAC.maxMnpDistance).stream()
+        EventMap.buildEventMapsForHaplotypes(haplotypes, assemblyResultSet.getFullReferenceWithPadding(),
+                assemblyResultSet.getPaddedReferenceLoc(), MTAC.assemblerArgs.debugAssembly, MTAC.maxMnpDistance);
+
+        final List<Integer> eventStarts = EventMap.getEventStartPositions(haplotypes).stream()
                 .filter(loc -> activeRegionWindow.getStart() <= loc && loc <= activeRegionWindow.getEnd())
                 .collect(Collectors.toList());
 
@@ -110,8 +113,8 @@ public class SomaticGenotypingEngine implements AutoCloseable {
         }
         final AlleleLikelihoods<Fragment, Haplotype> logFragmentLikelihoods = logReadLikelihoods.groupEvidence(MTAC.independentMates ? read -> read : GATKRead::getName, Fragment::createAndAvoidFailure);
 
-        for( final int loc : startPosKeySet ) {
-            final List<VariantContext> eventsAtThisLoc = AssemblyBasedCallerUtils.getVariantContextsFromActiveHaplotypes(loc, haplotypes, false);
+        for( final int loc : eventStarts ) {
+            final List<VariantContext> eventsAtThisLoc = AssemblyBasedCallerUtils.getEventsFromActiveHaplotypes(loc, haplotypes, false);
             VariantContext mergedVC = AssemblyBasedCallerUtils.makeMergedVariantContext(eventsAtThisLoc);
             if( mergedVC == null ) {
                 continue;
@@ -144,7 +147,7 @@ public class SomaticGenotypingEngine implements AutoCloseable {
             final PerAlleleCollection<Double> normalArtifactLogOdds = somaticLogOdds(logNormalMatrix);
 
 
-            final Set<Allele> forcedAlleles = AssemblyBasedCallerUtils.getAllelesConsistentWithGivenAlleles(givenAlleles, mergedVC);
+            final Set<Allele> forcedAlleles = AssemblyBasedCallerUtils.allelesConsistentWithGivenAlleles(givenAlleles, mergedVC);
             final List<Allele> tumorAltAlleles = mergedVC.getAlternateAlleles().stream()
                     .filter(allele -> forcedAlleles.contains(allele) || tumorLogOdds.getAlt(allele) > MTAC.getEmissionLogOdds())
                     .collect(Collectors.toList());

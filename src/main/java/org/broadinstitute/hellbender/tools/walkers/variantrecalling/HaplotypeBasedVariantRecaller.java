@@ -212,12 +212,13 @@ public final class HaplotypeBasedVariantRecaller extends GATKTool {
         Map<Integer,AlleleLikelihoods<GATKRead, Allele>>    result = new LinkedHashMap<>();
 
         // walk on starting locations for haplotypes
-        for( final int loc : EventMap.buildEventMapsForHaplotypes(haplotypes, ref, refLoc, hcArgs.assemblerArgs.debugAssembly, hcArgs.maxMnpDistance) ) {
+        EventMap.buildEventMapsForHaplotypes(haplotypes, ref, refLoc, hcArgs.assemblerArgs.debugAssembly, hcArgs.maxMnpDistance);
+        for( final int loc : EventMap.getEventStartPositions(haplotypes) ) {
 
             if ( activeRegionWindow.contains(new SimpleInterval(activeRegionWindow.getContig(), loc, loc)) ) {
 
                 // collect events
-                final List<VariantContext> eventsAtThisLoc = AssemblyBasedCallerUtils.getVariantContextsFromActiveHaplotypes(loc,
+                final List<VariantContext> eventsAtThisLoc = AssemblyBasedCallerUtils.getEventsFromActiveHaplotypes(loc,
                         haplotypes, true);
                 final List<VariantContext> eventsAtThisLocWithSpanDelsReplaced = HaplotypeCallerGenotypingEngine.replaceSpanDels(eventsAtThisLoc,
                         Allele.create(ref[loc - refLoc.getStart()], true), loc);

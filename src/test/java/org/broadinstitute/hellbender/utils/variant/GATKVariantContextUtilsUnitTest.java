@@ -722,9 +722,9 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         // biallelic -> biallelic
         tests.add(new Object[]{root.make(), Collections.singletonList(root.make())});
 
-        // monos -> monos
+        // monos -> empty
         root.alleles(Collections.singletonList(Aref));
-        tests.add(new Object[]{root.make(), Collections.singletonList(root.make())});
+        tests.add(new Object[]{root.make(), Collections.emptyList()});
 
         root.alleles(Arrays.asList(Aref, C, T));
         tests.add(new Object[]{root.make(),
@@ -1073,56 +1073,6 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         for ( int i = 0; i < unclipped.getAlleles().size(); i++ ) {
             final Allele trimmed = clipped.getAlleles().get(i);
             Assert.assertEquals(trimmed.getDisplayString(), expected.get(i));  //note that getBaseString doesn't work for <NON_REF>
-        }
-    }
-
-    // --------------------------------------------------------------------------------
-    //
-    // test primitive allele splitting
-    //
-    // --------------------------------------------------------------------------------
-
-    @DataProvider(name = "PrimitiveAlleleSplittingData")
-    public Object[][] makePrimitiveAlleleSplittingData() {
-        List<Object[]> tests = new ArrayList<>();
-
-        // no split
-        tests.add(new Object[]{"A", "C", 0, null});
-        tests.add(new Object[]{"A", "AC", 0, null});
-        tests.add(new Object[]{"AC", "A", 0, null});
-
-        // one split
-        tests.add(new Object[]{"ACA", "GCA", 1, Collections.singletonList(0)});
-        tests.add(new Object[]{"ACA", "AGA", 1, Collections.singletonList(1)});
-        tests.add(new Object[]{"ACA", "ACG", 1, Collections.singletonList(2)});
-
-        // two splits
-        tests.add(new Object[]{"ACA", "GGA", 2, Arrays.asList(0, 1)});
-        tests.add(new Object[]{"ACA", "GCG", 2, Arrays.asList(0, 2)});
-        tests.add(new Object[]{"ACA", "AGG", 2, Arrays.asList(1, 2)});
-
-        // three splits
-        tests.add(new Object[]{"ACA", "GGG", 3, Arrays.asList(0, 1, 2)});
-
-        return tests.toArray(new Object[][]{});
-    }
-
-    @Test(dataProvider = "PrimitiveAlleleSplittingData")
-    public void testPrimitiveAlleleSplitting(final String ref, final String alt, final int expectedSplit, final List<Integer> variantPositions) {
-
-        final int start = 10;
-        final VariantContext vc = GATKVariantContextUtils.makeFromAlleles("test", "20", start, Arrays.asList(ref, alt));
-
-        final List<VariantContext> result = GATKVariantContextUtils.splitIntoPrimitiveAlleles(vc);
-
-        if ( expectedSplit > 0 ) {
-            Assert.assertEquals(result.size(), expectedSplit);
-            for ( int i = 0; i < variantPositions.size(); i++ ) {
-                Assert.assertEquals(result.get(i).getStart(), start + variantPositions.get(i));
-            }
-        } else {
-            Assert.assertEquals(result.size(), 1);
-            Assert.assertEquals(vc, result.get(0));
         }
     }
 
@@ -2248,13 +2198,13 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
                         new SimpleInterval("3", 69521, 69521), Arrays.asList("T", "A", "C"),
                         new int[]{1, 0, -1}},
                 {new SimpleInterval("3", 69552, 69552), Arrays.asList("G", "A"),
-                        new SimpleInterval("3", 69521, 69521), Arrays.asList("G", "T", "A", "C"),
+                        new SimpleInterval("3", 69552, 69552), Arrays.asList("G", "T", "A", "C"),
                         new int[]{1}},
-                {new SimpleInterval("3", 69552, 69552), Arrays.asList("G", "T"),
+                {new SimpleInterval("3", 69521, 69521), Arrays.asList("G", "T"),
                         new SimpleInterval("3", 69521, 69521), Arrays.asList("G", "T", "A", "C"),
                         new int[]{0}},
-                {new SimpleInterval("3", 69552, 69552), Arrays.asList("G", "C"),
-                        new SimpleInterval("3", 69521, 69521), Arrays.asList("G", "T", "A", "C"),
+                {new SimpleInterval("3", 69550, 69550), Arrays.asList("G", "C"),
+                        new SimpleInterval("3", 69550, 69550), Arrays.asList("G", "T", "A", "C"),
                         new int[]{2}},
                 {new SimpleInterval("3", 324682, 324714), Arrays.asList("ACCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT", "A"),
                         new SimpleInterval("3", 324682, 324714), Arrays.asList("ACCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT", "TCCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT", "A"),
@@ -2346,11 +2296,11 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
     }
 
     @Test(dataProvider = "multiAllelic")
-    public void testSplitMultiAllelic(final VariantContext vcToSplit, final List<VariantContext> expectedVcs, Boolean keepOriginalChrCounts) {
+    public void testSplitMultiAllelic(final VariantContext vcToSplit, final List<VariantContext> expectedVariants, Boolean keepOriginalChrCounts) {
         final List<VariantContext> outVcs = GATKVariantContextUtils.splitVariantContextToBiallelics(vcToSplit, true, GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL, keepOriginalChrCounts);
-        Assert.assertEquals(outVcs.size(), expectedVcs.size());
+        Assert.assertEquals(outVcs.size(), expectedVariants.size());
         for (int i = 0; i < outVcs.size(); i++) {
-            VariantContextTestUtils.assertVariantContextsAreEqual(outVcs.get(i), expectedVcs.get(i), new ArrayList<String>(), Collections.emptyList());
+            VariantContextTestUtils.assertVariantContextsAreEqual(outVcs.get(i), expectedVariants.get(i), new ArrayList<String>(), Collections.emptyList());
         }
     }
 

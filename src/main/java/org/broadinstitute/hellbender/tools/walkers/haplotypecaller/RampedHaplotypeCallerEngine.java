@@ -1,9 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.reference.ReferenceSequenceFile;
-import htsjdk.samtools.util.Tuple;
-import htsjdk.samtools.util.Tuple;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -13,14 +10,16 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ramps.*;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.downsampling.ReservoirDownsampler;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
+import org.broadinstitute.hellbender.utils.haplotype.Event;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.IOException;
 import java.util.*;
@@ -155,7 +154,7 @@ public class RampedHaplotypeCallerEngine extends HaplotypeCallerEngine {
 
         // prepared fields or fields we're able to regenerate
         List<VariantContext> VCpriors;
-        List<VariantContext> givenAlleles;
+        List<Event> givenAlleles;
         LongHomopolymerHaplotypeCollapsingEngine haplotypeCollapsing;
 
         // assembly results
@@ -247,7 +246,9 @@ public class RampedHaplotypeCallerEngine extends HaplotypeCallerEngine {
         }
 
         context.givenAlleles = context.features.getValues(hcArgs.alleles).stream()
-                .filter(vc -> hcArgs.forceCallFiltered || vc.isNotFiltered()).collect(Collectors.toList());
+                .filter(vc -> hcArgs.forceCallFiltered || vc.isNotFiltered())
+                .flatMap(vc -> GATKVariantContextUtils.splitVariantContextToEvents(vc, false, GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL, false).stream())
+                .collect(Collectors.toList());
 
         if (context.givenAlleles.isEmpty() && context.region.size() == 0) {
             // No reads here so nothing to do!
@@ -300,7 +301,7 @@ public class RampedHaplotypeCallerEngine extends HaplotypeCallerEngine {
 
 
                 // restore trimmed reads
-                final SortedSet<VariantContext> allVariationEvents = context.assemblyResult.getVariationEvents(hcArgs.maxMnpDistance);
+                final SortedSet<Event> allVariationEvents = context.assemblyResult.getVariationEvents(hcArgs.maxMnpDistance);
                 final AssemblyRegionTrimmer.Result trimmingResult = trimmer.trim(context.region, allVariationEvents, context.referenceContext);
                 try {
                     context.assemblyResult = context.assemblyResult.trimTo(trimmingResult.getVariantRegion());
@@ -346,7 +347,7 @@ public class RampedHaplotypeCallerEngine extends HaplotypeCallerEngine {
                 }
             }
 
-            final SortedSet<VariantContext> allVariationEvents = untrimmedAssemblyResult.getVariationEvents(hcArgs.maxMnpDistance);
+            final SortedSet<Event> allVariationEvents = untrimmedAssemblyResult.getVariationEvents(hcArgs.maxMnpDistance);
 
             AssemblyRegionTrimmer.Result trimmingResult = trimmer.trim(context.region, allVariationEvents, context.referenceContext);
 

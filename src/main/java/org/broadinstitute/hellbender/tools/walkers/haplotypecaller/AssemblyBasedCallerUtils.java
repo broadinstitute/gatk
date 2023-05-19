@@ -9,16 +9,16 @@ import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
-import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
+import org.broadinstitute.hellbender.tools.FlowBasedArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
+import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -29,12 +29,13 @@ import org.broadinstitute.hellbender.utils.fragments.FragmentUtils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
+import org.broadinstitute.hellbender.utils.haplotype.Event;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
 import org.broadinstitute.hellbender.utils.haplotype.PartiallyDeterminedHaplotype;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState;
-import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
+
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.*;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
@@ -61,6 +62,7 @@ public final class AssemblyBasedCallerUtils {
     public static final String ALIGNMENT_REGION_TAG = "AR";
     public static final String EXT_COLLAPSED_TAG = "XC";
     public static final String EXT_SPECIAL_TAG = "XS"; // added to haplotype to assist in reading them back in with all fields restored.
+
     public static final Function<Haplotype, Double> HAPLOTYPE_ALIGNMENT_TIEBREAKING_PRIORITY = h -> {
         final Cigar cigar = h.getCigar();
         final int referenceTerm = (h.isReference() ? 1 : 0);
@@ -72,8 +74,6 @@ public final class AssemblyBasedCallerUtils {
     // if we don't, the several bases left of reads that end just within the assembly window can
     // get realigned incorrectly.  See https://github.com/broadinstitute/gatk/issues/5060
     public static final int MINIMUM_READ_LENGTH_AFTER_TRIMMING = 10;
-
-    public static final OneShotLogger haplotypeDeletionWarningLogger = new OneShotLogger(AssemblyBasedCallerUtils.class);
 
     // Phase group notation can be interpreted as a representation of the alleles present on the two phased haplotypes at the site:
     // "0": REF or '*'; "1": site-specific alt allele
@@ -429,214 +429,20 @@ public final class AssemblyBasedCallerUtils {
     }
 
     /**
-     * Helper method that handles the actual "GGA-like" Merging of haplotype alleles into an assembly result set.
-     *
-     * First this method will filter out haplotypes that contain alleles that have failed the pileup calling filtering steps,
-     * Then the list will attempt to poke into the haplotype list artificial haplotypes that have the found alleles present.
-     *
-     * @param region
-     * @param argumentCollection
-     * @param aligner
-     * @param refHaplotype
-     * @param assemblyResultSet
-     * @param pileupAllelesFoundShouldFilter
-     * @param pileupAllelesPassingFilters
-     * @return
-     */
-    public static AssemblyResultSet applyPileupEventsAsForcedAlleles(final AssemblyRegion region, final AssemblyBasedCallerArgumentCollection argumentCollection,
-                                                                      final SmithWatermanAligner aligner, final Haplotype refHaplotype,
-                                                                      final AssemblyResultSet assemblyResultSet, final List<VariantContext> pileupAllelesFoundShouldFilter,
-                                                                      final List<VariantContext> pileupAllelesPassingFilters, final boolean debug) {
-        List<Haplotype> haplotypesWithFilterAlleles = new ArrayList<>();
-        // IF we find pileup alleles that we want to filter... AND we are not generating the partially determined haplotypes,
-        // we resort to a messy approach where we filter alleles by throwing away every haplotype supporting an allele. This is
-        // very dangerous since this could easily destroy phased variants with the haplotype.
-        if (!pileupAllelesFoundShouldFilter.isEmpty() && !argumentCollection.pileupDetectionArgs.generatePDHaplotypes) {
-            // TODO this is a bad algorithm for bad people
-            for(VariantContext delVariant : pileupAllelesFoundShouldFilter) {
-                for (Haplotype hap : assemblyResultSet.getHaplotypeList()) {
-                    if (hap.getEventMap()==null) {
-                        // NOTE: This check should be a reasonable sanity check on the inputs. However, there edge cases in the assembly engine + SW realignment that can cause
-                        //       haplotypes to re-merge into the reference and end up with an empty event map. (Also the event map code explicitly expects to fail in some instances)
-                        //       thus we can't enforce that the haplotypes no variants.
-//                        if (!hap.isReference()) {
-//                            //throw new RuntimeException("empty event map for haplotype" + hap);
-//                        }
-                    } else {
-                        if (hap.getEventMap().getVariantContexts().stream().anyMatch(v -> v.getStart() == delVariant.getStart()
-                                && delVariant.getReference().equals(v.getReference())
-                                && delVariant.getAlternateAllele(0).equals(v.getAlternateAllele(0)))) {
-                            if (argumentCollection.pileupDetectionArgs.debugPileupStdout) System.err.println("Flagging hap " + hap + " for containing variant " + delVariant);
-                            haplotypesWithFilterAlleles.add(hap);
-                        }
-                    }
-                }
-            }
-        }
-        // TODO removing haplotypes whole-cloth is messy and will likely lead to errors and dropped variants in this code
-        if (!haplotypesWithFilterAlleles.isEmpty()) {
-            if (debug) System.out.println("Found Assembly Haps with filtered Variants:\n"+haplotypesWithFilterAlleles.stream().map(Haplotype::toString).collect(Collectors.joining("\n")));
-
-            haplotypeDeletionWarningLogger.warn(() -> "Haplotypes from Assembly are being filtered by heuristics from the PileupCaller. This can lead to missing variants. See --"+PileupDetectionArgumentCollection.PILEUP_DETECTION_FILTER_ASSEMBLY_HAPS_THRESHOLD+" for more details");
-
-            for (Haplotype hap : haplotypesWithFilterAlleles) {
-                assemblyResultSet.removeHapltotype(hap);
-            }
-        }
-        if (!pileupAllelesPassingFilters.isEmpty()) {
-            processPileupAlleles(region, pileupAllelesPassingFilters, argumentCollection.maxMnpDistance, argumentCollection.pileupDetectionArgs.snpAdajacentToAssemblyIndel, aligner, refHaplotype, assemblyResultSet, argumentCollection.pileupDetectionArgs.numHaplotypesToIterate, argumentCollection.pileupDetectionArgs.filteringKmerSize, argumentCollection.getHaplotypeToReferenceSWParameters(), debug);
-        }
-        return assemblyResultSet;
-    }
-
-    /**
-     * Handle pileup detected alternate alleles.
-     */
-    @VisibleForTesting
-    @SuppressWarnings("deprecation")
-    static void processPileupAlleles(final AssemblyRegion region, final List<VariantContext> pileupVC, final int maxMnpDistance,
-                                     final int snpAdjacentToIndelLimit, final SmithWatermanAligner aligner, final Haplotype refHaplotype,
-                                     final AssemblyResultSet assemblyResultSet, final int numHaplotypesPerIteration, final int hapFilteringKmerSize,
-                                     final SWParameters haplotypeToReferenceSWParameters, final boolean debug) {
-        final int activeRegionStart = refHaplotype.getAlignmentStartHapwrtRef();
-        final Map<Integer, VariantContext> assembledVariants = assemblyResultSet.getVariationEvents(maxMnpDistance).stream()
-                .collect(Collectors.groupingBy(VariantContext::getStart, Collectors.collectingAndThen(Collectors.toList(), AssemblyBasedCallerUtils::makeMergedVariantContext)));
-        final Collection<VariantContext> assembledIndels = assemblyResultSet.getVariationEvents(maxMnpDistance).stream().filter(VariantContext::isIndel)
-                .collect(Collectors.groupingBy(VariantContext::getStart, Collectors.collectingAndThen(Collectors.toList(), AssemblyBasedCallerUtils::makeMergedVariantContext))).values();
-
-        Set<Haplotype> baseHaplotypes = new TreeSet<>();
-        baseHaplotypes.addAll(assemblyResultSet.getHaplotypeList().stream()
-                .sorted(Comparator.comparingInt((Haplotype hap) -> hap.isReference() ? 1 : 0).thenComparingDouble(hap -> hap.getScore()).reversed())
-                .limit(NUM_HAPLOTYPES_TO_INJECT_FORCE_CALLING_ALLELES_INTO)
-                .collect(Collectors.toList()));
-
-        //TODO its unclear whether the correct answer here is to use the hardclipped pileup reads (which we used in generating the pileup alleles for specificty reasons)
-        //TODO or if it would be more accurate to use the softclipped bases here in filtering down the haplotypes. I suspect the latter but I will evaluate later.
-        Map<Kmer, Integer> kmerReadCounts = getKmerReadCounts(region.getHardClippedPileupReads(), hapFilteringKmerSize);
-
-        // Remove SNPs that are too close to assembled indels.
-        final List<VariantContext> givenAllelesFiltered = pileupVC.stream().filter(vc -> vc.isIndel() || assembledIndels.stream().noneMatch(indel -> vc.withinDistanceOf(indel, snpAdjacentToIndelLimit))).collect(Collectors.toList());
-
-        for (final VariantContext givenVC : givenAllelesFiltered) {
-            final VariantContext assembledVC = assembledVariants.get(givenVC.getStart());
-            final int givenVCRefLength = givenVC.getReference().length();
-            final Allele longerRef = (assembledVC == null || givenVCRefLength > assembledVC.getReference().length()) ? givenVC.getReference() : assembledVC.getReference();
-            final List<Allele> unassembledGivenAlleles = getAllelesNotPresentInAssembly(givenVC, assembledVC, givenVCRefLength, longerRef);
-
-            final List<Allele> unassembledNonSymbolicAlleles = unassembledGivenAlleles.stream().filter(a -> {
-                final byte[] bases = a.getBases();
-                return !(Allele.wouldBeNoCallAllele(bases) || Allele.wouldBeNullAllele(bases) || Allele.wouldBeStarAllele(bases) || Allele.wouldBeSymbolicAllele(bases));
-            }).collect(Collectors.toList());
-
-            final List<Haplotype> newPileupHaplotypes = new ArrayList<>();
-            for (final Allele givenAllele : unassembledNonSymbolicAlleles) {
-                if (debug) System.out.println("Processing new Haplotypes for Pileup Allele that was not in the assembly: "+givenVC);
-                for (final Haplotype baseHaplotype : baseHaplotypes) {
-                    // make sure this allele doesn't collide with a variant on the haplotype
-                    if (baseHaplotype.getEventMap() == null || baseHaplotype.getEventMap().getVariantContexts().stream().noneMatch(vc -> vc.overlaps(givenVC))) {
-                        // BG & AH this is the right way to insert a new haplotype
-                        final Haplotype insertedHaplotype = baseHaplotype.insertAllele(longerRef, givenAllele, givenVC.getStart());
-                        if (insertedHaplotype != null) { // can be null if the requested allele can't be inserted into the haplotype
-                            final Cigar cigar = CigarUtils.calculateCigar(refHaplotype.getBases(), insertedHaplotype.getBases(), aligner, haplotypeToReferenceSWParameters, SWOverhangStrategy.INDEL);
-                            insertedHaplotype.setCigar(cigar);
-                            insertedHaplotype.setGenomeLocation(refHaplotype.getGenomeLocation());
-                            insertedHaplotype.setAlignmentStartHapwrtRef(activeRegionStart);
-
-                            // and add to our internal list so we get haplotypes that contain all given alleles
-                            // do we want a flag to control this behavior
-                            newPileupHaplotypes.add(insertedHaplotype);
-                        }
-                    }
-
-                }
-            }
-
-            Set<Haplotype> refactoredHaps = filterPileupHaplotypes(newPileupHaplotypes, kmerReadCounts, numHaplotypesPerIteration, hapFilteringKmerSize);
-            baseHaplotypes.addAll(refactoredHaps);
-            if (debug) System.out.println("Constructed the following new Pileup Haplotypes after filtering:\n"+refactoredHaps.stream().map(Haplotype::toString).collect(Collectors.joining("\n")));
-
-        }
-        baseHaplotypes.forEach(assemblyResultSet::add);
-        assemblyResultSet.regenerateVariationEvents(maxMnpDistance);
-    }
-
-    @VisibleForTesting
-   public static void addGivenAlleles(final List<VariantContext> givenAlleles, final int maxMnpDistance, final SmithWatermanAligner aligner,
-                                       final SWParameters haplotypeToReferenceSWParameters, final AssemblyResultSet assemblyResultSet) {
-        if (givenAlleles.isEmpty()) {
-            return;
-        }
-        final Haplotype refHaplotype = assemblyResultSet.getReferenceHaplotype();
-        final Map<Integer, VariantContext> assembledVariants = assemblyResultSet.getVariationEvents(maxMnpDistance).stream()
-                .collect(Collectors.groupingBy(VariantContext::getStart, Collectors.collectingAndThen(Collectors.toList(), AssemblyBasedCallerUtils::makeMergedVariantContext)));
-
-        final List<Haplotype> assembledHaplotypes = assemblyResultSet.getHaplotypeList();
-        for (final VariantContext givenVC : givenAlleles) {
-            final VariantContext assembledVC = assembledVariants.get(givenVC.getStart());
-            final int givenVCRefLength = givenVC.getReference().length();
-            final Allele longerRef = (assembledVC == null || givenVCRefLength > assembledVC.getReference().length()) ? givenVC.getReference() : assembledVC.getReference();
-            final List<Allele> unassembledGivenAlleles = getAllelesNotPresentInAssembly(givenVC, assembledVC, givenVCRefLength, longerRef);
-
-            final List<Allele> unassembledNonSymbolicAlleles = unassembledGivenAlleles.stream()
-                    //TODO, update the null allele check when htsjdk adds a NULL_ALLELE constant to Allele
-                    .filter(a -> !(a.equals(Allele.NO_CALL) || a.getDisplayString().equals(String.valueOf(VCFConstants.NULL_ALLELE)) || a.equals(Allele.SPAN_DEL) || a.isSymbolic()))
-                    .collect(Collectors.toList());
-
-            // choose the highest-scoring haplotypes along with the reference for building force-calling haplotypes
-            final List<Haplotype> baseHaplotypes = unassembledNonSymbolicAlleles.isEmpty() ? Collections.emptyList() : assembledHaplotypes.stream()
-                    .sorted(Comparator.comparingInt((Haplotype hap) -> hap.isReference() ? 1 : 0).thenComparingDouble(hap -> hap.getScore()).reversed())
-                    .limit(NUM_HAPLOTYPES_TO_INJECT_FORCE_CALLING_ALLELES_INTO)
-                    .collect(Collectors.toList());
-
-            for (final Allele givenAllele : unassembledNonSymbolicAlleles) {
-                for (final Haplotype baseHaplotype : baseHaplotypes) {
-                    // make sure this allele doesn't collide with a variant on the haplotype
-                    if (baseHaplotype.getEventMap()!= null && baseHaplotype.getEventMap().getVariantContexts().stream().anyMatch(vc -> vc.overlaps(givenVC))) {
-                        continue;
-                    }
-
-                    final Haplotype insertedHaplotype = baseHaplotype.insertAllele(longerRef, givenAllele, givenVC.getStart());
-                    if (insertedHaplotype != null) { // can be null if the requested allele can't be inserted into the haplotype
-                        final Cigar cigar = CigarUtils.calculateCigar(refHaplotype.getBases(), insertedHaplotype.getBases(), aligner, haplotypeToReferenceSWParameters, SWOverhangStrategy.INDEL);
-                        insertedHaplotype.setCigar(cigar);
-                        insertedHaplotype.setGenomeLocation(refHaplotype.getGenomeLocation());
-                        insertedHaplotype.setAlignmentStartHapwrtRef(refHaplotype.getAlignmentStartHapwrtRef());
-                        assemblyResultSet.add(insertedHaplotype);
-                    }
-                }
-            }
-        }
-        assemblyResultSet.regenerateVariationEvents(maxMnpDistance);
-    }
-
-    private static List<Allele> getAllelesNotPresentInAssembly(VariantContext givenVC, VariantContext assembledVC, int givenVCRefLength, Allele longerRef) {
-        List<Allele> unassembledGivenAlleles;
-        if (assembledVC == null) {
-            unassembledGivenAlleles = givenVC.getAlternateAlleles();
-        } else {
-            // map all alleles to the longest common reference
-            final Set<Allele> assembledAlleleSet = new HashSet<>(longerRef.length() == assembledVC.getReference().length() ? assembledVC.getAlternateAlleles() :
-                    ReferenceConfidenceVariantContextMerger.remapAlleles(assembledVC, longerRef));
-            final Set<Allele> givenAlleleSet = new HashSet<>(longerRef.length() == givenVCRefLength ? givenVC.getAlternateAlleles() :
-                    ReferenceConfidenceVariantContextMerger.remapAlleles(givenVC, longerRef));
-            //We must filter out the Ref alleles here to protect against edge cases and undexpected behavior from the pileupcalling code
-            unassembledGivenAlleles = givenAlleleSet.stream().filter(a -> !assembledAlleleSet.contains(a)).filter(a -> !a.isReference()).collect(Collectors.toList());
-        }
-        return unassembledGivenAlleles;
-    }
-
-    /**
      * Returns a map of kmer -> count of total unique occurrences across all of the provided reads. This is a necessary step
-     * in the {@link AssemblyBasedCallerUtils#processPileupAlleles} pileup
-     * haplotype filtering.
+     * in the {@link AssemblyResultSet#injectPileupEvents} pileup haplotype filtering.
      *
      * @param hardClippedPileupReads  Reads to scan to genreate kmer counts from
      * @param kmerSize                kmer size to use in kmerizing the reads
      * @return a map of kmer to the number of occurences in the data.
      */
-    static Map<Kmer, Integer>  getKmerReadCounts(final List<GATKRead> hardClippedPileupReads, int kmerSize) {
-        Map<Kmer, Integer> kmerReadCounts = new HashMap<>();
-        hardClippedPileupReads.forEach(read -> kmerizeAndCountOccurences(read.getBases(), kmerSize, kmerReadCounts));
+    static Map<Kmer, MutableInt>  getKmerReadCounts(final List<GATKRead> hardClippedPileupReads, int kmerSize) {
+        Map<Kmer, MutableInt> kmerReadCounts = new HashMap<>();
+        for (final GATKRead read : hardClippedPileupReads) {
+            final byte[] bases = read.getBasesNoCopy();
+            new IndexRange(0, Math.max(bases.length - kmerSize + 1, 0))
+                    .forEach(i -> kmerReadCounts.computeIfAbsent(new Kmer(bases, i, kmerSize), k -> new MutableInt(0)).increment());
+        }
         return kmerReadCounts;
     }
 
@@ -650,63 +456,28 @@ public final class AssemblyBasedCallerUtils {
      * @return A set of artificial haplotypes limited to at most numPileupHaplotypes
      */
     @VisibleForTesting
-    static Set<Haplotype> filterPileupHaplotypes(final List<Haplotype> onlyNewHaplotypes,
-                                                 final Map<Kmer, Integer> kmerReadCounts,
+    static Set<Haplotype> filterPileupHaplotypes(final Set<Haplotype> onlyNewHaplotypes,
+                                                 final Map<Kmer, MutableInt> kmerReadCounts,
                                                  final int numPileupHaplotypes,
                                                  final int kmerSize ) {
-
-        // Get haplotypes from assemblyResultSet and kmerize. for each haplotype create a set of kmers.
-        // for each haplotype, look up the kmers in the read-map and sum the counts fo the haplotype score
-        // create a Map<Haplytope, Score>
-        LinkedHashMap<Haplotype, Integer> haplotypeScores = new LinkedHashMap<>();
-        for (Haplotype haplotype : onlyNewHaplotypes) {
-            // TODO this code might use some normalizing based on haplotype length in the future
-            Set<Kmer> hapKmers = kmerizeBytes(haplotype.getBases(), kmerSize);
-            int hapKmerCount = 0;
-            for(Kmer kmer : hapKmers) {
-                hapKmerCount += kmerReadCounts.containsKey(kmer) ? 1 : 0;
-            }
-
-            haplotypeScores.put(haplotype, hapKmerCount);
+        if (onlyNewHaplotypes.size() <= numPileupHaplotypes) {
+            return onlyNewHaplotypes;   // if the limiting haplotype count is more haplotypes than we have, everything passes
         }
 
-        // Select the top haplotypes in order of how many of their kmers have supports in the underlying reads
-        Map<Haplotype,Integer> topScoringHaplotypes =
-                haplotypeScores.entrySet().stream()
-                        .sorted(Collections.reverseOrder(Map.Entry.comparingByValue()))
-                        .limit(numPileupHaplotypes)
-                        .collect(Collectors.toMap(
-                                Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
+        // sort by score = # of kmers in haplotype that appear in any read
+        // TODO this code might use some normalizing based on haplotype length in the future
+        final Map<Haplotype, Long> scores =  onlyNewHaplotypes.stream()
+                .collect(Collectors.toMap(h -> h, h -> kmerizeSequence(h.getBases(), kmerSize).stream()
+                                .filter(kmer -> kmerReadCounts.getOrDefault(kmer, new MutableInt(0)).intValue() > 0)
+                                .count()));
 
-        return topScoringHaplotypes.keySet();
-    }
-
-    /** A utility method that increments a counter-map
-     * or sets the counter to 1 if the key is missing.
-     *
-     * @param map a Map<Type,Integer>
-     * @param key The Key to increment
-     * @param <Type> the type that Maps to an Integer
-     *
-     */
-    synchronized private static <Type> void increment(Map<Type,Integer> map, Type key){
-        if (!map.containsKey(key)) {
-            map.put(key, 1);
-        } else {
-            map.put(key, map.get(key) + 1);
-        }
-    }
-
-    static void kmerizeAndCountOccurences(byte[] sequence, int kmerSize, Map<Kmer, Integer> results){
-        final int stopPosition = sequence.length - kmerSize;
-        for (int i = 0; i <= stopPosition; i++) {
-            final Kmer kmer = new Kmer(sequence, i, kmerSize);
-            increment(results, kmer);
-        }
+        // if there are ties, we pass any haplotype with a score as good as the numPileupHaplotypes-th best
+        final long minimumPassingScore = scores.values().stream().sorted(Comparator.reverseOrder()).skip(numPileupHaplotypes - 1).findFirst().get();
+        return onlyNewHaplotypes.stream().filter(h -> scores.get(h) >= minimumPassingScore).collect(Collectors.toSet());
     }
 
 
-    static Set<Kmer> kmerizeBytes(byte[] sequence, int kmerSize){
+    private static Set<Kmer> kmerizeSequence(byte[] sequence, int kmerSize){
         final Set<Kmer> allKmers = new LinkedHashSet<>();
         final int stopPosition = sequence.length - kmerSize;
         for (int i = 0; i <= stopPosition; i++) {
@@ -821,51 +592,6 @@ public final class AssemblyBasedCallerUtils {
         return pileups;
     }
 
-    /**
-     * Returns the list of given alleles active at this location. This method will include events that span the current
-     * location if includeSpanningEvents is set to true; otherwise it will only include events that have loc as their \
-     * start position.
-     * @param loc The start position we are genotyping
-     * @param activeAllelesToGenotype The list of given alleles for the current active region, empty unless we are in GGA mode
-     * @param includeSpanningEvents If true, will also return events that span loc
-     */
-    public static List<VariantContext> getVariantContextsFromGivenAlleles(final int loc,
-                                                                          final List<VariantContext> activeAllelesToGenotype,
-                                                                          final boolean includeSpanningEvents) {
-        final Set<LocationAndAlleles> uniqueLocationsAndAlleles = new HashSet<>();
-        final List<VariantContext> results = new ArrayList<>();
-
-        int givenAlleleSourceCount = 0;
-        for( final VariantContext givenAlleleVC : activeAllelesToGenotype ) {
-            if( givenAlleleVC.getStart() <= loc && givenAlleleVC.getEnd() >= loc) {
-                if (! (includeSpanningEvents || givenAlleleVC.getStart() == loc)) {
-                    continue;
-                }
-                int alleleCount = 0;
-                for( final Allele givenAltAllele : givenAlleleVC.getAlternateAlleles() ) {
-                    final List<Allele> alleleSet = Arrays.asList(givenAlleleVC.getReference(), givenAltAllele);
-
-                    //TODO: this source name seems arbitrary and probably just has to be unique
-                    //TODO: how about replace it by vcSourceName = String.parseInt(nameCounter++)?
-                    final String vcSourceName = "Comp" + givenAlleleSourceCount + "Allele" + alleleCount;
-                    // check if this event is already in the list of events due to a repeat in the input alleles track
-                    final VariantContext candidateEventToAdd = new VariantContextBuilder(givenAlleleVC).alleles(alleleSet)
-                            .genotypes(GenotypesContext.NO_GENOTYPES).source(vcSourceName).make();
-
-                    final LocationAndAlleles locationAndAlleles = new LocationAndAlleles(candidateEventToAdd.getStart(), candidateEventToAdd.getAlleles());
-                    if (! uniqueLocationsAndAlleles.contains(locationAndAlleles)) {
-                        uniqueLocationsAndAlleles.add(locationAndAlleles);
-                        results.add(candidateEventToAdd);
-                    }
-
-                    alleleCount++;
-                }
-            }
-            givenAlleleSourceCount++;
-        }
-        return results;
-    }
-
 
     /**
      * Returns the list of events discovered in assembled haplotypes that are active at this location. The results will
@@ -875,24 +601,23 @@ public final class AssemblyBasedCallerUtils {
      * @param haplotypes list of active haplotypes at the current location
      * @param includeSpanningEvents If true, will also return events that span loc
      */
-    public static List<VariantContext> getVariantContextsFromActiveHaplotypes(final int loc,
-                                                                                 final List<Haplotype> haplotypes,
-                                                                                 final boolean includeSpanningEvents) {
-        final List<VariantContext> results = new ArrayList<>();
-        final Set<LocationAndAlleles> uniqueLocationsAndAlleles = new HashSet<>();
+    public static List<VariantContext> getEventsFromActiveHaplotypes(final int loc, final List<Haplotype> haplotypes, final boolean includeSpanningEvents) {
+        final Set<Event> events = new HashSet<>();
+        final List<VariantContext> result = new ArrayList<>();
 
-        haplotypes.stream()
-                .flatMap(h -> Utils.stream(h.getEventMap().getOverlappingEvents(loc)))
-                .filter(Objects::nonNull)
-                .filter(v -> (includeSpanningEvents || v.getStart() == loc))
-                .forEach(v -> {
-                    final LocationAndAlleles locationAndAlleles = new LocationAndAlleles(v.getStart(), v.getAlleles());
-                    if (! uniqueLocationsAndAlleles.contains(locationAndAlleles)) {
-                        uniqueLocationsAndAlleles.add(locationAndAlleles);
-                        results.add(v);
-                    }
-                });
-        return results;
+        int hapNumber = 0;
+        for (final Haplotype haplotype : haplotypes) {
+            final String sourceName = "HC" + hapNumber++;
+            for (final Event event : haplotype.getEventMap().getOverlappingEvents(loc)) {
+                if (event == null || (!includeSpanningEvents && event.getStart() != loc)) {
+                    continue;
+                } else if (events.add(event)) {
+                    result.add(event.asVariantContext(sourceName));
+                }
+            }
+        }
+
+        return result;
     }
 
     /**
@@ -924,30 +649,30 @@ public final class AssemblyBasedCallerUtils {
             if (h.isPartiallyDetermined() && ((PartiallyDeterminedHaplotype) h).getDeterminedPosition() != loc) {
                 continue;
             }
-            final List<VariantContext> spanningEvents = h.getEventMap().getOverlappingEvents(loc);
+            final List<Event> overlappingEvents = h.getEventMap().getOverlappingEvents(loc);
 
-            if (spanningEvents.isEmpty()) {    //no events --> this haplotype supports the reference at this locus
+            if (overlappingEvents.isEmpty()) {    //no events --> this haplotype supports the reference at this locus
                 result.get(ref).add(h);
                 continue;
             }
 
-            for (VariantContext spanningEvent : spanningEvents) {
-                if (spanningEvent.getStart() == loc) {
+            for (Event overlappingEvent : overlappingEvents) {
+                if (overlappingEvent.getStart() == loc) {
                     // the event starts at the current location
 
-                    if (spanningEvent.getReference().length() == mergedVC.getReference().length()) {
+                    if (overlappingEvent.refAllele().length() == mergedVC.getReference().length()) {
                         // reference allele lengths are equal; we can just use the spanning event's alt allele
                         // in the case of GGA mode the spanning event might not match an allele in the mergedVC
-                        if (result.containsKey(spanningEvent.getAlternateAllele(0))) {
+                        if (result.containsKey(overlappingEvent.altAllele())) {
                             // variant contexts derived from the event map have only one alt allele each, so we can just
                             // grab the first one (we're not assuming that the sample is biallelic)
-                            result.get(spanningEvent.getAlternateAllele(0)).add(h);
+                            result.get(overlappingEvent.altAllele()).add(h);
                         }
-                    } else if (spanningEvent.getReference().length() < mergedVC.getReference().length()) {
+                    } else if (overlappingEvent.refAllele().length() < mergedVC.getReference().length()) {
                         // spanning event has shorter ref allele than merged VC; we need to pad out its alt allele
                         final Map<Allele, Allele> spanningEventAlleleMappingToMergedVc
-                                = GATKVariantContextUtils.createAlleleMapping(mergedVC.getReference(), spanningEvent);
-                        final Allele remappedSpanningEventAltAllele = spanningEventAlleleMappingToMergedVc.get(spanningEvent.getAlternateAllele(0));
+                                = GATKVariantContextUtils.createAlleleMapping(mergedVC.getReference(), overlappingEvent.refAllele(), Collections.singletonList(overlappingEvent.altAllele()));
+                        final Allele remappedSpanningEventAltAllele = spanningEventAlleleMappingToMergedVc.get(overlappingEvent.altAllele());
                         // in the case of GGA mode the spanning event might not match an allele in the mergedVC
                         if (result.containsKey(remappedSpanningEventAltAllele)) {
                             result.get(remappedSpanningEventAltAllele).add(h);
@@ -1021,9 +746,9 @@ public final class AssemblyBasedCallerUtils {
 
             // keep track of the haplotypes that contain this particular alternate allele
             final Allele alt = getSiteSpecificAlternateAllele(call);
-            final Predicate<VariantContext> hasThisAlt = vc -> (vc.getStart() == call.getStart() && vc.getAlternateAlleles().contains(alt));
+            final Predicate<Event> hasThisAlt = vc -> (vc.getStart() == call.getStart() && vc.altAllele().equals(alt));
             final Set<Haplotype> hapsWithAllele = calledHaplotypes.stream()
-                    .filter(h -> h.getEventMap().getVariantContexts().stream().anyMatch(hasThisAlt))
+                    .filter(h -> h.getEventMap().getEvents().stream().anyMatch(hasThisAlt))
                     .collect(Collectors.toCollection(HashSet<Haplotype>::new));
 
             haplotypeMap.put(call, hapsWithAllele);
@@ -1263,31 +988,21 @@ public final class AssemblyBasedCallerUtils {
         return new VariantContextBuilder(vc).genotypes(phasedGenotypes).make();
     }
 
-    public static Set<Allele> getAllelesConsistentWithGivenAlleles(final List<VariantContext> givenAlleles, final VariantContext mergedVC) {
-        if (givenAlleles.isEmpty()) {
-            return Collections.emptySet();
-        }
-
-        final List<Pair<Allele, Allele>> givenAltAndRefAllelesInOriginalContext =  getVariantContextsFromGivenAlleles(mergedVC.getStart(), givenAlleles, false).stream()
-                .flatMap(vc -> vc.getAlternateAlleles().stream().map(allele -> ImmutablePair.of(allele, vc.getReference()))).collect(Collectors.toList());
-
-        return mergedVC.getAlternateAlleles().stream()
-                .map(allele -> ImmutablePair.of(allele, mergedVC.getReference()))
-                .filter(altAndRef -> givenAltAndRefAllelesInOriginalContext.stream().anyMatch(givenAltAndRef -> allelesAreConsistent(givenAltAndRef, altAndRef)))
-                .map(altAndRefPair -> altAndRefPair.getLeft())
+    // find all alleles in a VariantContext that encode an equivalent ref -> alt as at least one given event
+    public static Set<Allele> allelesConsistentWithGivenAlleles(final Collection<Event> givenAlleles, final VariantContext mergedVC) {
+        return givenAlleles.isEmpty() ? Collections.emptySet() : mergedVC.getAlternateAlleles().stream()
+                .filter(allele -> givenAlleles.stream().anyMatch(ga -> allelesAreConsistent(ga.refAllele(), ga.altAllele(), mergedVC.getReference(), allele)))
                 .collect(Collectors.toSet());
     }
 
     // check whether two alleles coming from different variant contexts and with possibly different reference alleles
     // could in fact be the same.  The condition is that one is a prefix of the other
-    private static boolean allelesAreConsistent(final Pair<Allele,Allele> altAndRef1, final Pair<Allele,Allele> altAndRef2) {
-        final Allele alt1 = altAndRef1.getLeft();
-        final Allele alt2 = altAndRef2.getLeft();
+    private static boolean allelesAreConsistent(final Allele ref1, final Allele alt1, final Allele ref2, final Allele alt2) {
         if (alt1.isSymbolic() || alt2.isSymbolic()) {
             return false;
         } else {
-            final int sizeDiff1 = alt1.length() - altAndRef1.getRight().length();
-            final int sizeDiff2 = alt2.length() - altAndRef2.getRight().length();
+            final int sizeDiff1 = alt1.length() - ref1.length();
+            final int sizeDiff2 = alt2.length() - ref2.length();
             return (sizeDiff1 == sizeDiff2) && (alt1.length() < alt2.length() ?
                     alt1.basesMatch(Arrays.copyOf(alt2.getBases(), alt1.length())) :
                     alt2.basesMatch(Arrays.copyOf(alt1.getBases(), alt2.length())));
