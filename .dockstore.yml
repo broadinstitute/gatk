@@ -120,19 +120,19 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rc-VS-778-spike-import-limit
+         - rc-vs-835-add-defaults-to-ingest
    - name: GvsPrepareBulkImport
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareBulkImport.wdl
      filters:
        branches:
-         - rc-VS-778-spike-import-limit
+         - rc-vs-835-add-defaults-to-ingest
    - name: GvsBulkIngestGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsBulkIngestGenomes.wdl
      filters:
        branches:
-         - rc-VS-778-spike-import-limit
+         - rc-vs-835-add-defaults-to-ingest
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
@@ -166,7 +166,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rc-vs-774-vat-validation-shards
    - name: GvsExtractCohortFromSampleNames
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCohortFromSampleNames.wdl
@@ -218,7 +217,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_866_update_variants_base_image
    - name: GvsQuickstartHailIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartHailIntegration.wdl
@@ -226,7 +224,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rc-vs-853-adopt-hail-python-code
    - name: GvsQuickstartIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartIntegration.wdl
@@ -234,7 +231,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_908_monitoring_script_public
+         - vs_918_vat_alt_allele_feud
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
