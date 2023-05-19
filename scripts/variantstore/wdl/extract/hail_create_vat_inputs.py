@@ -181,15 +181,14 @@ def write_tie_out_vcf(vds, vcf_output_path):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False, description='Create VAT inputs TSV')
-    parser.add_argument('--ancestry_file', type=str, help='Input ancestry file', required=True)
-    parser.add_argument('--vds_path', type=str, help='Input VDS Path', default="@VDS_INPUT_PATH@") #TODO: names feel confusing to me that this is an input and the next two are outputs?
-    parser.add_argument('--sites_only_vcf', type=str, help='Output sites-only VCF file',
+    parser.add_argument('--ancestry_input_path', type=str, help='Input ancestry file path', required=True)
+    parser.add_argument('--vds_input_path', type=str, help='Input VDS path', default="@VDS_INPUT_PATH@")
+    parser.add_argument('--sites_only_output_path', type=str, help='Output sites-only VCF path',
                         default="@SITES_ONLY_VCF_OUTPUT_PATH@")
 
     args = parser.parse_args()
 
     vds = hl.vds.read_vds(args.vds_path)
-    # write_sites_only_vcf(vds, args.sites_only_vcf)
     local_ancestry_file = create_vat_inputs.download_ancestry_file(args.ancestry_file)
 
     main(vds, local_ancestry_file, args.sites_only_vcf)
