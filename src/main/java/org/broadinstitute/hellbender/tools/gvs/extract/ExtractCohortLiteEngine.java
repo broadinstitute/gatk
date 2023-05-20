@@ -23,6 +23,7 @@ public class ExtractCohortLiteEngine extends ExtractCohortEngine {
     List<String> getFilterSetInfoTableFields() {
         return SchemaUtils.VQSLITE_YNG_FIELDS;
     }
+
     String getVQScoreFieldName() {
         return SchemaUtils.CALIBRATION_SENSITIVITY;
     }
@@ -99,17 +100,18 @@ public class ExtractCohortLiteEngine extends ExtractCohortEngine {
         logger = LogManager.getLogger(ExtractCohortLiteEngine.class);
     }
 
+    @Override
     boolean isFailingSite(final Stream<Double> vqScores, final Double vqScoreThreshold) {
         Optional<Double> minVal = vqScores
-                .filter(d -> !(d.isNaN()||d.isInfinite()))
+                .filter(d -> !(d.isNaN() || d.isInfinite()))
                 .min(Double::compareTo);
         return minVal.isPresent() && minVal.get() > vqScoreThreshold;
     }
 
 
-
+    @Override
     boolean isFailingGenotype(final Stream<Allele> nonRefAlleles,
-                              final LinkedHashMap<Allele, Double> remappedVQScoreMap,
+                              final Map<Allele, Double> remappedVQScoreMap,
                               final Double vqScoreThreshold) {
         // get the minimum (best) calibration sensitivity for all non-Yay sites, and apply the filter
         Optional<Double> minVal =

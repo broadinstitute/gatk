@@ -2,8 +2,6 @@ package org.broadinstitute.hellbender.tools.gvs.filtering;
 
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -17,58 +15,57 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.util.*;
 
+@SuppressWarnings("unused")
 @CommandLineProgramProperties(
-        summary = "(\"ExtractFeatures\") - Extract features data from BQ to train filtering model.",
-        oneLineSummary = "Tool to extract variants out of big query to train filtering model",
+        summary = "(\"ExtractFeatures\") - Extract features data from BigQuery to train a filtering model.",
+        oneLineSummary = "Tool to extract variants out of BigQuery to train a filtering model.",
         programGroup = ShortVariantDiscoveryProgramGroup.class
 )
 @DocumentedFeature
 public class ExtractFeatures extends ExtractTool {
-    private static final Logger logger = LogManager.getLogger(ExtractFeatures.class);
     private ExtractFeaturesEngine engine;
     private SampleList sampleList;
 
     @Argument(
             fullName = "alt-allele-table",
-            doc = "Fully qualified name of the table where the alternate allele info is",
-            optional = false
+            doc = "Fully qualified name of the table where the alternate allele info is"
     )
     protected String fqAltAlleleTable = null;
 
     @Argument(
-        fullName = "use-batch-queries",
-        doc = "If true, use batch (rather than interactive) priority queries in BigQuery",
-        optional = true)
+            fullName = "use-batch-queries",
+            doc = "If true, use batch (rather than interactive) priority queries in BigQuery",
+            optional = true)
     protected boolean useBatchQueries = true;
 
     @Argument(
-        fullName = "hq-genotype-gq-threshold",
-        doc = "GQ threshold defining a high quality genotype",
-        optional = true)
+            fullName = "hq-genotype-gq-threshold",
+            doc = "GQ threshold defining a high quality genotype",
+            optional = true)
     protected int hqGenotypeGQThreshold = 20;
 
     @Argument(
-        fullName = "hq-genotype-depth-threshold",
-        doc = "Depth threshold defining a high quality genotype",
-        optional = true)
+            fullName = "hq-genotype-depth-threshold",
+            doc = "Depth threshold defining a high quality genotype",
+            optional = true)
     protected int hqGenotypeDepthThreshold = 10;
 
     @Argument(
-        fullName = "hq-genotype-ab-threshold",
-        doc = "Ab threshold defining a high quality genotype",
-        optional = true)
+            fullName = "hq-genotype-ab-threshold",
+            doc = "Ab threshold defining a high quality genotype",
+            optional = true)
     protected double hqGenotypeABThreshold = 0.2;
 
     @Argument(
-        fullName = "excess-alleles-threshold",
-        doc = "Non-reference alleles threshold above which a site will be filtered out",
-        optional = true)
+            fullName = "excess-alleles-threshold",
+            doc = "Non-reference alleles threshold above which a site will be filtered out",
+            optional = true)
     protected int excessAllelesThreshold = CommonCode.EXCESS_ALLELES_THRESHOLD;
 
     @Argument(
-        fullName = "query-labels",
-        doc = "Key-value pairs to be added to the extraction BQ query. Ex: --query-labels key1=value1 --query-labels key2=value2",
-        optional = true)
+            fullName = "query-labels",
+            doc = "Key-value pairs to be added to the extraction BQ query. Ex: --query-labels key1=value1 --query-labels key2=value2",
+            optional = true)
     protected List<String> queryLabels = new ArrayList<>();
 
     @Argument(
@@ -101,11 +98,6 @@ public class ExtractFeatures extends ExtractTool {
             optional = true)
     protected String shardIdentifier = null;
 
-    @Override
-    public boolean requiresIntervals() {
-        return false;
-    }
-
     /**
      * Enforce that if cost information is being recorded to the cost-observability-tablename then *all* recorded
      * parameters are set
@@ -133,12 +125,12 @@ public class ExtractFeatures extends ExtractTool {
 
         Set<VCFHeaderLine> extraHeaderLines = new HashSet<>();
         extraHeaderLines.add(
-            FilterSensitivityTools.getExcessAllelesHeader(excessAllelesThreshold, GATKVCFConstants.EXCESS_ALLELES));
+                FilterSensitivityTools.getExcessAllelesHeader(excessAllelesThreshold, GATKVCFConstants.EXCESS_ALLELES));
 
         extraHeaderLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.LOW_QUAL_FILTER_NAME));
 
         VCFHeader header = CommonCode.generateVcfHeader(
-            new HashSet<>(), reference.getSequenceDictionary(), extraHeaderLines);
+                new HashSet<>(), reference.getSequenceDictionary(), extraHeaderLines);
 
         final List<SimpleInterval> traversalIntervals = getTraversalIntervals();
 
@@ -153,30 +145,30 @@ public class ExtractFeatures extends ExtractTool {
         }
 
         engine = new ExtractFeaturesEngine(
-            projectID,
-            datasetID,
-            vcfWriter,
-            header,
-            annotationEngine,
-            reference,
-            fqAltAlleleTable,
-            sampleTableRef,
-            traversalIntervals,
-            minLocation,
-            maxLocation,
-            localSortMaxRecordsInRam,
-            printDebugInformation,
-            useBatchQueries,
-            progressMeter,
-            sampleList.size(),
-            hqGenotypeGQThreshold,
-            hqGenotypeDepthThreshold,
-            hqGenotypeABThreshold,
-            excessAllelesThreshold,
-            queryLabels);
+                projectID,
+                datasetID,
+                vcfWriter,
+                header,
+                annotationEngine,
+                reference,
+                fqAltAlleleTable,
+                sampleTableRef,
+                traversalIntervals,
+                minLocation,
+                maxLocation,
+                localSortMaxRecordsInRam,
+                printDebugInformation,
+                useBatchQueries,
+                progressMeter,
+                sampleList.size(),
+                hqGenotypeGQThreshold,
+                hqGenotypeDepthThreshold,
+                hqGenotypeABThreshold,
+                excessAllelesThreshold,
+                queryLabels);
 
         vcfWriter.writeHeader(header);
-}
+    }
 
     @Override
     // maybe think about creating a BigQuery Row walker?
@@ -205,7 +197,7 @@ public class ExtractFeatures extends ExtractTool {
         super.onShutdown();
 
         // Close up our writer if we have to:
-        if ( vcfWriter != null ) {
+        if (vcfWriter != null) {
             vcfWriter.close();
         }
     }

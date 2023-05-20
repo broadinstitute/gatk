@@ -149,7 +149,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - mc_nirvana_reference_disk
    - name: GvsCreateVATFilesFromBigQuery
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/variant_annotations_table/GvsCreateVATFilesFromBigQuery.wdl

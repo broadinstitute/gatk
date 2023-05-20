@@ -19,10 +19,9 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import java.util.*;
 
 
-
 @CommandLineProgramProperties(
-        summary = "(\"ExtractCohort\") - Filter and extract variants out of big query.",
-        oneLineSummary = "Tool to extract variants out of big query for a subset of samples",
+        summary = "(\"ExtractCohort\") - Filter and extract variants out of BigQuery.",
+        oneLineSummary = "Tool to extract variants out of BigQuery for a subset of samples.",
         programGroup = ShortVariantDiscoveryProgramGroup.class
 )
 @DocumentedFeature
@@ -31,19 +30,19 @@ public class ExtractCohort extends ExtractTool {
     private ExtractCohortEngine engine;
     private SampleList sampleList;
 
-    public enum VQScoreFilteringType { GENOTYPE, SITES, NONE }
+    public enum VQScoreFilteringType {GENOTYPE, SITES, NONE}
 
     @Argument(
             fullName = "filter-set-info-table",
-            doc = "Fully qualified name of the filtering set info table to use for cohort extraction",
+            doc = "Fully qualified name of the filter set info table to use for cohort extraction",
             optional = true
     )
     private String filterSetInfoTableName = null;
 
     @Argument(
-        fullName = "filter-set-site-table",
-        doc = "Fully qualified name of the site filtering table to use for cohort extraction",
-        optional = true
+            fullName = "filter-set-site-table",
+            doc = "Fully qualified name of the site filtering table to use for cohort extraction",
+            optional = true
     )
     private String filterSetSiteTableName = null;
 
@@ -134,7 +133,7 @@ public class ExtractCohort extends ExtractTool {
     private VQScoreFilteringType vqScoreFilteringType = VQScoreFilteringType.NONE;
 
     @Argument(
-            fullName ="snps-truth-sensitivity-filter-level",
+            fullName = "snps-truth-sensitivity-filter-level",
             mutex = {"snps-lod-score-cutoff"},
             doc = "The truth sensitivity level at which to start filtering SNPs (0-100)",
             optional = true
@@ -166,13 +165,13 @@ public class ExtractCohort extends ExtractTool {
     private Double vqsLodINDELThreshold = null;
 
     /**
-    * If this flag is enabled, sites that have been marked as filtered (i.e. have anything other than '.' or 'PASS'
-    * in the FILTER field) will be excluded from the output.
-    */
+     * If this flag is enabled, sites that have been marked as filtered (i.e. have anything other than '.' or 'PASS'
+     * in the FILTER field) will be excluded from the output.
+     */
     @Argument(
-            fullName="exclude-filtered",
-            doc="Don't include filtered sites in the final jointVCF",
-            optional=true)
+            fullName = "exclude-filtered",
+            doc = "Don't include filtered sites in the final jointVCF",
+            optional = true)
     private boolean excludeFilteredSites = false;
 
     @Argument(fullName = "inferred-reference-state",
@@ -222,7 +221,7 @@ public class ExtractCohort extends ExtractTool {
         headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.NO_HQ_GENOTYPES));
 
         // Info fields
-        VCFStandardHeaderLines.addStandardInfoLines( headerLines, true,
+        VCFStandardHeaderLines.addStandardInfoLines(headerLines, true,
                 VCFConstants.ALLELE_COUNT_KEY,
                 VCFConstants.ALLELE_FREQUENCY_KEY,
                 VCFConstants.ALLELE_NUMBER_KEY
@@ -238,7 +237,7 @@ public class ExtractCohort extends ExtractTool {
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_YNG_STATUS_KEY));
 
 
-        headerLines.addAll( extraHeaders );
+        headerLines.addAll(extraHeaders);
 
         final VCFHeader header = new VCFHeader(headerLines, sampleNames);
         header.setSequenceDictionary(sequenceDictionary);
@@ -290,14 +289,15 @@ public class ExtractCohort extends ExtractTool {
             vqScoreFilteringType = performSiteSpecificVQScoreFiltering ? VQScoreFilteringType.SITES : VQScoreFilteringType.GENOTYPE;
         }
 
-        // filter at a site level (but not necesarily use vqslod)
+        // filter at a site level (but not necessarily use vqslod)
         if ((filterSetSiteTableName != null && filterSetName == null) || (filterSetSiteTableName == null && filterSetName != null)) {
-           throw new UserException("--filter-set-name and --filter-set-site-table are both necessary for any filtering related operations");
+            throw new UserException("--filter-set-name and --filter-set-site-table are both necessary for any filtering related operations");
         }
         if (!vqScoreFilteringType.equals(VQScoreFilteringType.NONE)) {
-          if (filterSetInfoTableName == null || filterSetSiteTableName == null || filterSetName == null) {
-            throw new UserException(" --filter-set-info-table, --filter-set-name and --filter-set-site-table are all necessary for any VQSR filtering operations");
-          }
+            //noinspection ConstantValue
+            if (filterSetInfoTableName == null || filterSetSiteTableName == null || filterSetName == null) {
+                throw new UserException(" --filter-set-info-table, --filter-set-name and --filter-set-site-table are all necessary for any VQSR filtering operations");
+            }
         }
 
         Set<VCFHeaderLine> extraHeaderLines = new HashSet<>();
@@ -383,69 +383,69 @@ public class ExtractCohort extends ExtractTool {
         // but without a sample file, both a sample-table and a project-id are needed
         if (sampleFileName == null && (projectID == null || sampleTableName == null)) {
             throw new UserException("Project id (--project-id) and sample table (--sample-table) are required " +
-                "if no sample file (--sample-file) is provided.");
+                    "if no sample file (--sample-file) is provided.");
         }
 
         engine = !isVQSRClassic ?
                 new ExtractCohortLiteEngine(
-                    projectID,
-                    vcfWriter,
-                    header,
-                    annotationEngine,
-                    reference,
-                    sampleIdToName,
-                    vetRangesFQDataSet,
-                    fqRangesExtractVetTable,
-                    fqRangesExtractRefTable,
-                    vetAvroFileName,
-                    refRangesAvroFileName,
-                    traversalIntervals,
-                    minLocation,
-                    maxLocation,
-                    filterSetInfoTableName,
-                    filterSetSiteTableName,
-                    localSortMaxRecordsInRam,
-                    printDebugInformation,
-                    truthSensitivitySNPThreshold,
-                    truthSensitivityINDELThreshold,
-                    progressMeter,
-                    filterSetName,
-                    emitPLs,
-                    emitADs,
-                    vqScoreFilteringType,
-                    excludeFilteredSites,
-                    inferredReferenceState,
-                    presortedAvroFiles)
+                        projectID,
+                        vcfWriter,
+                        header,
+                        annotationEngine,
+                        reference,
+                        sampleIdToName,
+                        vetRangesFQDataSet,
+                        fqRangesExtractVetTable,
+                        fqRangesExtractRefTable,
+                        vetAvroFileName,
+                        refRangesAvroFileName,
+                        traversalIntervals,
+                        minLocation,
+                        maxLocation,
+                        filterSetInfoTableName,
+                        filterSetSiteTableName,
+                        localSortMaxRecordsInRam,
+                        printDebugInformation,
+                        truthSensitivitySNPThreshold,
+                        truthSensitivityINDELThreshold,
+                        progressMeter,
+                        filterSetName,
+                        emitPLs,
+                        emitADs,
+                        vqScoreFilteringType,
+                        excludeFilteredSites,
+                        inferredReferenceState,
+                        presortedAvroFiles)
                 :
                 new ExtractCohortEngine(
-                    projectID,
-                    vcfWriter,
-                    header,
-                    annotationEngine,
-                    reference,
-                    sampleIdToName,
-                    vetRangesFQDataSet,
-                    fqRangesExtractVetTable,
-                    fqRangesExtractRefTable,
-                    vetAvroFileName,
-                    refRangesAvroFileName,
-                    traversalIntervals,
-                    minLocation,
-                    maxLocation,
-                    filterSetInfoTableName,
-                    filterSetSiteTableName,
-                    localSortMaxRecordsInRam,
-                    printDebugInformation,
-                    vqsLodSNPThreshold,
-                    vqsLodINDELThreshold,
-                    progressMeter,
-                    filterSetName,
-                    emitPLs,
-                    emitADs,
-                    vqScoreFilteringType,
-                    excludeFilteredSites,
-                    inferredReferenceState,
-                    presortedAvroFiles);
+                        projectID,
+                        vcfWriter,
+                        header,
+                        annotationEngine,
+                        reference,
+                        sampleIdToName,
+                        vetRangesFQDataSet,
+                        fqRangesExtractVetTable,
+                        fqRangesExtractRefTable,
+                        vetAvroFileName,
+                        refRangesAvroFileName,
+                        traversalIntervals,
+                        minLocation,
+                        maxLocation,
+                        filterSetInfoTableName,
+                        filterSetSiteTableName,
+                        localSortMaxRecordsInRam,
+                        printDebugInformation,
+                        vqsLodSNPThreshold,
+                        vqsLodINDELThreshold,
+                        progressMeter,
+                        filterSetName,
+                        emitPLs,
+                        emitADs,
+                        vqScoreFilteringType,
+                        excludeFilteredSites,
+                        inferredReferenceState,
+                        presortedAvroFiles);
 
         vcfWriter.writeHeader(header);
     }
@@ -455,12 +455,12 @@ public class ExtractCohort extends ExtractTool {
     public void traverse() {
         progressMeter.setRecordsBetweenTimeChecks(100L);
 
-        if ( filterSetInfoTableName == null || filterSetInfoTableName.equals("") ) {
+        if (filterSetInfoTableName == null || filterSetInfoTableName.equals("")) {
             logger.warn("--filter-set-info-table is not specified, no filtering of cohort! ");
         }
 
         engine.traverse();
-     }
+    }
 
     @Override
     public Object onTraversalSuccess() {
@@ -481,14 +481,14 @@ public class ExtractCohort extends ExtractTool {
     protected void onShutdown() {
         super.onShutdown();
 
-        if ( engine != null ) {
+        if (engine != null) {
             logger.info(String.format("***Processed %d total sites", engine.getTotalNumberOfSites()));
             logger.info(String.format("***Processed %d total variants", engine.getTotalNumberOfVariants()));
             logger.info(String.format("***Read API scanned %d bytes", engine.getTotalEstimatedBytesScanned()));
         }
 
         // Close up our writer if we have to:
-        if ( vcfWriter != null ) {
+        if (vcfWriter != null) {
             vcfWriter.close();
         }
     }
