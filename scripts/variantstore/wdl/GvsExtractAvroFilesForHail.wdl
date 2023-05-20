@@ -123,7 +123,7 @@ task ExtractFromNonSuperpartitionedTables {
 
         vqs_score_field_name=calibration_sensitivity
         if [ ~{use_classic_VQSR} = true ]; then
-        vqs_score_field_name=vqslod
+            vqs_score_field_name=vqslod
         fi
 
         python3 /app/run_avro_query.py --sql "
