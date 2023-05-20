@@ -212,9 +212,6 @@ public class FlowBasedAlignmentLikelihoodEngine implements ReadLikelihoodCalcula
                 }
             } else {
                 for (int j = 0; j < likelihoods.evidenceCount(); j++) {
-                    //System.out.print(j);
-                    //System.out.print(" ");
-
                     final double likelihood = fbargs.exactMatching ? haplotypeReadMatchingExactLength(fbh, processedReads.get(j)) : haplotypeReadMatching(fbh, processedReads.get(j));
                     likelihoods.set(i, j, likelihood);
                 }
