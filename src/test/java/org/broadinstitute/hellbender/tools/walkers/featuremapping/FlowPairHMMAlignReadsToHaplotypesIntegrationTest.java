@@ -31,7 +31,7 @@ public class FlowPairHMMAlignReadsToHaplotypesIntegrationTest extends CommandLin
                 "-I", testDir + "/alignReadsToHaplotypesTest.bam",
                 "-H", testDir + "/alignReadsToHaplotypesTest.fa",
                 "--flow-use-t0-tag",
-                "-E", "FBA",
+                "-E", "FlowBased",
                 "--flow-fill-empty-bins-value", "0.00001",
                 "--flow-probability-threshold", "0.00001",
                 "--flow-likelihood-optimized-comp"
@@ -61,9 +61,9 @@ public class FlowPairHMMAlignReadsToHaplotypesIntegrationTest extends CommandLin
                 "-I", testDir + "/alignReadsToHaplotypesTest.bam",
                 "-H", testDir + "/alignReadsToHaplotypesTest.fa",
                 "--ref-haplotype", "Hap_2",
-                "--output-format", "concise",
+                "--concise-output-format",
                 "--flow-use-t0-tag",
-                "-E", "FBA",
+                "-E", "FlowBased",
                 "--flow-fill-empty-bins-value", "0.00001",
                 "--flow-probability-threshold", "0.00001",
                 "--flow-likelihood-optimized-comp"

@@ -257,19 +257,6 @@ public class FlowBasedHMMEngine implements ReadLikelihoodCalculationEngine {
             processedHaplotypes.add(fbh);
         }
 
-        //NOTE: we assume all haplotypes start and end on the same place!
-//        final int haplotypeStart = processedHaplotypes.get(0).getStart();
-//        final int haplotypeEnd = processedHaplotypes.get(0).getEnd();
-//        for (int i = 0 ; i < processedReads.size(); i++) {
-//            final FlowBasedRead fbr=processedReads.get(i);
-//            final int readStart = fbr.getStart();
-//            final int readEnd = fbr.getEnd();
-//            final int diffLeft = haplotypeStart - readStart;
-//            final int diffRight = readEnd - haplotypeEnd;
-//            //It is rare that this function is applied, maybe just some boundary cases
-//            //in general reads are already trimmed to the haplotype starts and ends so diff_left <= 0 and diff_right <= 0
-//            fbr.applyBaseClipping(Math.max(0, diffLeft), Math.max(diffRight, 0), false);
-//        }
         initializeFlowPairHMM(processedHaplotypes, processedReads);
 
 

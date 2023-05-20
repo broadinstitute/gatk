@@ -44,18 +44,18 @@ import java.util.*;
  *    FlowPairHMM and FlowBasedAlignment (FBA), but can be easily extended.
  *    At present, there are two output formats that can be specified using parameter --output-format: extended and concise.
  *    The extended format contains a readxhaplotype matrix that shows alignment score of each read versus each haplotype.
- *    Condensed format will following columns (not nessarily in this order) for each processed read:
+ *    Condensed format will contain the following columns for each processed read:
  *    likelihood score, the best haplotype, the second best haplotype and the difference of alignment scores
  *    between the best and the second best haplotype. In addition, as in many cases most of the reads are
  *    coming from the "reference" haplotype we can also output the distance from the (marked) reference haplotype
  *
  * <h3>Usage examples</h3>
  * <pre>
-*             java -Xms3000m -jar ~{gitc_path}/GATK_ultima.jar FlowPairHMMAlignReadsToHaplotypes \
+*             gatk FlowPairHMMAlignReadsToHaplotypes \
  *            -H ~{haplotype_list} -O ~{base_file_name}.matches.tsv \
- *            -I ~{input_bam} "--flow-use-t0-tag -E FBA \
+ *            -I ~{input_bam} --flow-use-t0-tag -E FBA \
  *            --flow-fill-empty-bins-value 0.00001 --flow-probability-threshold 0.00001 \
- *            --flow-likelihood-optimized-comp"
+ *            --flow-likelihood-optimized-comp
  * </pre>
  *
  * {@GATK.walkertype ReadWalker}
@@ -82,21 +82,19 @@ public final class FlowPairHMMAlignReadsToHaplotypes extends ReadWalker {
     @Argument(fullName = "output", shortName = "O", doc="Read x haplotype log-likelihood matrix")
     public String output;
 
-    @Argument(fullName = "output-format", doc="concise or expanded output format: " +
+    @Argument(fullName = "concise-output-format", doc="concise or expanded output format: " +
             "expanded - output full read x haplotype, concise - output for each read best haplotype and " +
-            "score differences from the next best and the reference haplotype", optional=true)
-    public String outputFormat = "expanded";
+            "score differences from the next best and the reference haplotype, default: false (expanded format)", optional=true)
+    public boolean conciseOutputFormat = false;
 
-    @Argument(fullName = "aligner", shortName = "E", doc="Aligner: PairHMM or FlowBasedAligner (FBA)")
-    public String alignmentEngineName;
-
+    @Argument(fullName = "aligner", shortName = "E", doc="Aligner: FlowBasedHMM or FlowBasedAligner (FlowBased)")
+    public ReadLikelihoodCalculationEngine.Implementation alignerName = ReadLikelihoodCalculationEngine.Implementation.FlowBased;
 
     @ArgumentCollection
     public FlowBasedAlignmentArgumentCollection fbargs = new FlowBasedAlignmentArgumentCollection();
 
-
-
-    LikelihoodEngineArgumentCollection likelihoodArgs = new LikelihoodEngineArgumentCollection();
+    @ArgumentCollection
+    private static final LikelihoodEngineArgumentCollection likelihoodArgs = new LikelihoodEngineArgumentCollection();
     SAMFileHeader sequenceHeader;
 
     ReadLikelihoodCalculationEngine aligner;
@@ -113,12 +111,10 @@ public final class FlowPairHMMAlignReadsToHaplotypes extends ReadWalker {
     public void onTraversalStart() {
         super.onTraversalStart();
         sequenceHeader = getHeaderForReads();
-        if (outputFormat.equals("expanded")) {
+        if (!conciseOutputFormat) {
             outputWriter = new AlleleLikelihoodWriter(IOUtils.getPath(output), null);
-        } else if (outputFormat.equals("concise")) {
-            outputWriter = new ConciseAlleleLikelihoodWriter(IOUtils.getPath(output));
         } else {
-            throw new RuntimeException("Output format can be only expanded or concise");
+            outputWriter = new ConciseAlleleLikelihoodWriter(IOUtils.getPath(output));
         }
         haplotypeList = new ArrayList<>();
         fbargs.keepBoundaryFlows = true;
@@ -135,19 +131,19 @@ public final class FlowPairHMMAlignReadsToHaplotypes extends ReadWalker {
             seq = haplotypeFile.nextSequence();
         }
 
-        if (alignmentEngineName.equals("PairHMM")) {
+        if (alignerName == ReadLikelihoodCalculationEngine.Implementation.FlowBasedHMM) {
             aligner = new FlowBasedHMMEngine(fbargs, (byte) likelihoodArgs.gcpHMM,
                     10000, likelihoodArgs.expectedErrorRatePerBase, likelihoodArgs.pcrErrorModel,
                     null,
                     likelihoodArgs.enableDynamicReadDisqualification, likelihoodArgs.readDisqualificationThresholdConstant,
                     likelihoodArgs.minUsableIndelScoreToUse, (byte) likelihoodArgs.flatDeletionPenalty,
                     (byte) likelihoodArgs.flatInsertionPenatly);
-        } else if (alignmentEngineName.equals("FBA")) {
+        } else if (alignerName == ReadLikelihoodCalculationEngine.Implementation.FlowBased) {
             aligner = new FlowBasedAlignmentLikelihoodEngine(fbargs,
                     10000, 1,
                     false, 0);
         } else {
-            throw new RuntimeException("Accepted engines are PairHMM or FBA");
+            throw new RuntimeException("Accepted engines are FlowBasedHMM or FlowBased");
         }
     }
     @Override
@@ -176,9 +172,9 @@ public final class FlowPairHMMAlignReadsToHaplotypes extends ReadWalker {
         SampleList samples = new IndexedSampleList(Arrays.asList("sm1"));
         Map<String, List<GATKRead>> tmpMap = new HashMap<>();
         tmpMap.put("sm1", reads);
-        if (alignmentEngineName.equals("PairHMM")) {
+        if (alignerName == ReadLikelihoodCalculationEngine.Implementation.FlowBasedHMM) {
             return ((FlowBasedHMMEngine)aligner).computeReadLikelihoods(haplotypeList, sequenceHeader, samples, tmpMap, false, false);
-        } else if (alignmentEngineName.equals("FBA")){
+        } else if (alignerName == ReadLikelihoodCalculationEngine.Implementation.FlowBased){
             return ((FlowBasedAlignmentLikelihoodEngine)aligner).computeReadLikelihoods(haplotypeList, sequenceHeader, samples, tmpMap, false, false);
         } else {
             return null;
