@@ -305,7 +305,7 @@ task IsVQSRLite {
     set -e -o pipefail
 
     grep -v '^#' ~{input_vcf} | grep AS_VQS_SENS > /dev/null
-    if [[ $rc -ne 0 ]]; then
+    if [[ $rc -eq 0 ]]; then
       echo "true" > ~{is_vqsr_lite_file}
     else
       echo "false" > ~{is_vqsr_lite_file}
