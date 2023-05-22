@@ -14,12 +14,13 @@ def get_entities_in_set(data_table_name, sample_set_name):
     for sample_set in sample_set_list:
         if sample_set.name == sample_set_name: ## else it's some other sample set and we dont care about it
             for sample in sample_set.attributes['samples']: ## TODO why is this samples in Terra? Is this some Terra hardcoding?!?!
-                set_of_entities.append(sample['entityName'])
+                set_of_entities.add(sample['entityName'])
 
+    print(set_of_entities)
     return set_of_entities
 
 
-def generate_FOFNs_from_data_table_with_sample_set(data_table_name, sample_id_column_name, vcf_files_column_name, vcf_index_files_column_name, list_of_entities):
+def generate_FOFNs_from_data_table_with_sample_set(data_table_name, sample_id_column_name, vcf_files_column_name, vcf_index_files_column_name, set_of_entities):
     with open(args.vcf_files_name, "w") as vcf_files, open(args.vcf_index_files_name, "w") as vcf_index_files, open(args.sample_names_file_name, "w") as sample_names_file, open(args.error_file_name, "w") as error_file:
         count = 0
         processed_entities = 0
@@ -33,7 +34,9 @@ def generate_FOFNs_from_data_table_with_sample_set(data_table_name, sample_id_co
                 row.attributes[f"{data_table_name}_id"] = row.name
 
                 current_sample_name = row.attributes[sample_id_column_name]
-                if list_of_entities.contains(current_sample_name):
+                if set_of_entities[current_sample_name]:
+                    print(current_sample_name)
+                    print(set_of_entities[current_sample_name])
                     current_vcf_file = row.attributes[vcf_files_column_name]
                     current_vcf_index_file = row.attributes[vcf_index_files_column_name]
                     sample_names_file.write(f'{current_sample_name}\n')
@@ -114,7 +117,7 @@ if __name__ == '__main__':
         sample_set_name = args.sample_set_name
 
     if sample_set_name:
-        list_of_entities = get_entities_in_set(
+        set_of_entities = get_entities_in_set(
             args.data_table_name,
             sample_set_name)
         generate_FOFNs_from_data_table_with_sample_set(
@@ -122,7 +125,7 @@ if __name__ == '__main__':
             args.sample_id_column_name,
             args.vcf_files_column_name,
             args.vcf_index_files_column_name,
-            list_of_entities)
+            set_of_entities)
     else:
         generate_FOFNs_from_data_table(
             args.data_table_name,
