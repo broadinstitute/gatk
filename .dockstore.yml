@@ -65,6 +65,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_vs_836_v2
    - name: GvsBenchmarkExtractTask
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsBenchmarkExtractTask.wdl
@@ -119,7 +120,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rc-vs-835-add-defaults-to-ingest
+         - rsa_vs_836_v2
    - name: GvsPrepareBulkImport
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareBulkImport.wdl
@@ -193,8 +194,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_vs_831
-         - gg_UpdateJointCallingOverrideJar
+         - rsa_vs_836_v2
    - name: GvsJointVariantCallsetCost
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCallsetCost.wdl
@@ -230,7 +230,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_918_vat_alt_allele_feud
+         - rsa_vs_836_v2
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
