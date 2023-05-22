@@ -13,8 +13,6 @@ workflow GvsCalculatePrecisionAndSensitivity {
     Array[File] truth_beds
 
     File ref_fasta
-
-    Boolean use_classic_VQSR = true
   }
 
   parameter_meta {
@@ -26,7 +24,6 @@ workflow GvsCalculatePrecisionAndSensitivity {
     truth_vcf_indices: "A list of the VCF indices for the truth data VCFs supplied above."
     truth_beds: "A list of the bed files for the truth data used for analyzing the samples in `sample_names`."
     ref_fasta: "The cloud path for the reference fasta sequence."
-    use_classic_VQSR: "Flag to indicate whether the input VCFs were generated using classic (standard) VQSR or 'VQSR Lite'."
   }
 
   # WDL 1.0 trick to set a variable ('none') to be undefined.
@@ -78,16 +75,20 @@ workflow GvsCalculatePrecisionAndSensitivity {
         output_basename = output_sample_basename
     }
 
-    call Add_AS_MAX_VQS_FIELD_ToVcf {
+    call Add_AS_MAX_VQS_SCORE_ToVcf {
       input:
         input_vcf = SelectVariants.output_vcf,
-        output_basename = output_sample_basename + ".maxas",
-        use_classic_VQSR = use_classic_VQSR
+        output_basename = output_sample_basename + ".maxas"
+    }
+
+    call IsVQSRLite {
+      input:
+        input_vcf = Add_AS_MAX_VQS_SCORE_ToVcf.output_vcf
     }
 
     call BgzipAndTabix {
       input:
-        input_vcf = Add_AS_MAX_VQS_FIELD_ToVcf.output_vcf,
+        input_vcf = Add_AS_MAX_VQS_SCORE_ToVcf.output_vcf,
         output_basename = output_sample_basename + ".maxas"
     }
 
@@ -100,7 +101,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
         truth_bed = truth_beds[i],
         contig = contig,
         output_basename = sample_name + "-bq_roc_filtered",
-        use_classic_VQSR = use_classic_VQSR,
+        is_vqsr_lite = IsVQSRLite.is_vqsr_lite,
         ref_fasta = ref_fasta
     }
 
@@ -114,7 +115,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
         contig = contig,
         all_records = true,
         output_basename = sample_name + "-bq_all",
-        use_classic_VQSR = use_classic_VQSR,
+        is_vqsr_lite = IsVQSRLite.is_vqsr_lite,
         ref_fasta = ref_fasta
     }
   }
@@ -265,25 +266,21 @@ task SelectVariants {
   }
 }
 
-task Add_AS_MAX_VQS_FIELD_ToVcf {
+task Add_AS_MAX_VQS_SCORE_ToVcf {
   input {
     File input_vcf
     String output_basename
-    Boolean use_classic_VQSR
 
-    String docker = "us.gcr.io/broad-dsde-methods/variantstore:2023-04-13-alpine"
+    String docker = "us.gcr.io/broad-dsde-methods/variantstore:2023-05-21-alpine"
     Int cpu = 1
     Int memory_mb = 3500
     Int disk_size_gb = ceil(2*size(input_vcf, "GiB")) + 50
   }
 
-  String score_tool = if (use_classic_VQSR == true) then 'add_max_as_vqslod.py' else 'add_max_as_vqs_sens.py'
-
-
   command <<<
     set -e
 
-    python3 /app/~{score_tool} ~{input_vcf} > ~{output_basename}.vcf
+    python3 /app/add_max_as_vqs_score ~{input_vcf} > ~{output_basename}.vcf
   >>>
   runtime {
     docker: docker
@@ -294,6 +291,35 @@ task Add_AS_MAX_VQS_FIELD_ToVcf {
 
   output {
     File output_vcf = "~{output_basename}.vcf"
+  }
+}
+
+task IsVQSRLite {
+  input {
+    File input_vcf
+  }
+
+  String is_vqsr_lite_file = "is_vqsr_lite_file.txt"
+
+  command {
+    set -e -o pipefail
+
+    grep -v '^#' foo.vcf | grep AS_VQS_SENS > /dev/null
+    if [[ $rc -ne 0 ]]; then
+      echo "true" > ~{is_vqsr_lite_file}
+    else
+      echo "false" > ~{is_vqsr_lite_file}
+    fi
+  }
+
+  runtime {
+    docker: "gcr.io/gcp-runtimes/ubuntu_16_0_4:latest"
+    disks: "local-disk 10 HDD"
+    memory: "2 GiB"
+    preemptible: 3
+  }
+  output {
+    Boolean is_vqsr_lite = read_boolean(is_vqsr_lite_file)
   }
 }
 
@@ -343,7 +369,7 @@ task EvaluateVcf {
 
     String output_basename
 
-    Boolean use_classic_VQSR = true
+    Boolean is_vqsr_lite
 
     String docker = "docker.io/realtimegenomics/rtg-tools:latest"
     Int cpu = 1
@@ -351,7 +377,7 @@ task EvaluateVcf {
     Int disk_size_gb = ceil(2 * size(ref_fasta, "GiB")) + 50
   }
 
-  String max_score_field_tag = if (use_classic_VQSR == true) then 'MAX_AS_VQSLOD' else 'MAX_AS_VQS_SENS'
+  String max_score_field_tag = if (is_vqsr_lite == true) then 'MAX_AS_VQS_SENS' else 'MAX_AS_VQSLOD'
 
   command <<<
     set -e -o pipefail
@@ -363,7 +389,7 @@ task EvaluateVcf {
       ~{if all_records then "--all-records" else ""} \
       --roc-subset snp,indel \
       --vcf-score-field=INFO.~{max_score_field_tag} \
-      ~{if use_classic_VQSR then "--sort-order descending" else "--sort-order ascending"} \
+      ~{if is_vqsr_lite then "--sort-order ascending" else "--sort-order descending"} \
       -t human_REF_SDF \
       -b ~{truth_vcf} \
       -e ~{truth_bed}\
