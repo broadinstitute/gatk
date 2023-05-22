@@ -1,6 +1,5 @@
 import sys
 import gzip
-import itertools
 
 # Add new header for MAX_AS_VQS_SENS and MAX_AS_VQSLOD
 
@@ -60,6 +59,7 @@ with gzip.open(sys.argv[1], 'rt') as file1:
                     m = max([float(x) for x in pieces])
             else:
                 m = d['AS_VQS_SENS']
+            parts[7] = f"{info};MAX_AS_VQS_SENS={m}"
         elif "AS_VQSLOD" in d:
             if "," in d['AS_VQSLOD']:
                 pieces = [x for x in d['AS_VQSLOD'].split(",") if (x != "." and x != "NaN") ]
@@ -72,8 +72,8 @@ with gzip.open(sys.argv[1], 'rt') as file1:
                     m = max([float(x) for x in pieces])
             else:
                 m = d['AS_VQSLOD']
+            parts[7] = f"{info};MAX_AS_VQSLOD={m}"
         else:
             sys.exit(f"Can find neither AS_VQS_SENS nor AS_VQSLOD in {line}")
 
-        parts[7] = f"{info};MAX_AS_VQS_SENS={m}"
         print("\t".join(parts))
