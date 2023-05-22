@@ -280,7 +280,7 @@ task Add_AS_MAX_VQS_SCORE_ToVcf {
   command <<<
     set -e
 
-    python3 /app/add_max_as_vqs_score ~{input_vcf} > ~{output_basename}.vcf
+    python3 /app/add_max_as_vqs_score.py ~{input_vcf} > ~{output_basename}.vcf
   >>>
   runtime {
     docker: docker
