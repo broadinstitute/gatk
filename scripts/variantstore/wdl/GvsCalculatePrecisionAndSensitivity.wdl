@@ -302,7 +302,7 @@ task IsVQSRLite {
   String is_vqsr_lite_file = "is_vqsr_lite_file.txt"
 
   command {
-    set -e -o pipefail
+    set +e
 
     grep -v '^#' ~{input_vcf} | grep AS_VQS_SENS > /dev/null
     if [[ $rc -eq 0 ]]; then
