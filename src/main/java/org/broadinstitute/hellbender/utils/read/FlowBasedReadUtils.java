@@ -32,7 +32,11 @@ public class FlowBasedReadUtils {
         private String  reversedFlowOrder = null;
 
         public ReadGroupInfo(final SAMReadGroupRecord readGroup) {
-            isFlowPlatform = NGSPlatform.valueOf(readGroup.getPlatform()).getSequencerType()== SequencerFlowClass.FLOW;
+            if (readGroup.getPlatform()==null){
+                isFlowPlatform = false;
+            } else {
+                isFlowPlatform = NGSPlatform.valueOf(readGroup.getPlatform()).getSequencerType() == SequencerFlowClass.FLOW;
+            }
             if (isFlowPlatform) {
                 Utils.nonNull(readGroup);
                 this.flowOrder = readGroup.getFlowOrder();

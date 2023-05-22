@@ -1,8 +1,5 @@
 package org.broadinstitute.hellbender.utils.read;
-import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMReadGroupRecord;
-import htsjdk.samtools.SamReader;
-import htsjdk.samtools.SamReaderFactory;
+import htsjdk.samtools.*;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.annotations.Test;
 
@@ -36,5 +33,21 @@ public class FlowBasedReadUtilsUnitTest extends GATKBaseTest{
         FlowBasedReadUtils.ReadGroupInfo frg3 = new FlowBasedReadUtils.ReadGroupInfo(rg3);
         assert(!frg3.isFlowPlatform);
 
+    }
+
+    @Test
+    void testNonFlowReadGroupParsing(){
+        final String    testResourceDir = publicTestDir + "org/broadinstitute/hellbender/utils/read/flow/reads/";
+        final String inputDir = testResourceDir + "/input/";
+
+        final Path inputFile = FileSystems.getDefault().getPath(inputDir, "non_flow_reads_with_tp.bam");
+        final SamReader reader = SamReaderFactory.makeDefault().open(new File(inputFile.toString()));
+        SAMFileHeader header = reader.getFileHeader();
+        SAMReadGroupRecord rg1 = header.getReadGroup("test");
+        SAMRecord read = reader.iterator().next();
+        GATKRead gread = new SAMRecordToGATKReadAdapter(read);
+        assert(FlowBasedReadUtils.hasFlowTags(gread));
+        FlowBasedReadUtils.ReadGroupInfo frg1 = FlowBasedReadUtils.getReadGroupInfo(header, gread);
+        assert(!frg1.isFlowPlatform);
     }
 }
