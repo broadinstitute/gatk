@@ -132,7 +132,6 @@ public final class AssemblyBasedCallerUtils {
         if ( region.isFinalized() ) {
             return;
         }
-
         final byte minTailQualityToUse = errorCorrectReads ? HaplotypeCallerEngine.MIN_TAIL_QUALITY_WITH_ERROR_CORRECTION : minTailQuality;
 
         final List<GATKRead> readsToUse = new ArrayList<>();

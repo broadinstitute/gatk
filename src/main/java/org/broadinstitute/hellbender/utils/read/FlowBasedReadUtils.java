@@ -7,6 +7,8 @@ import htsjdk.samtools.util.SequenceUtil;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.MarkDuplicatesSparkArgumentCollection;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.FlowBasedArgumentCollection;
+import org.broadinstitute.hellbender.utils.NGSPlatform;
+import org.broadinstitute.hellbender.utils.SequencerFlowClass;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.LinkedHashMap;
@@ -26,17 +28,22 @@ public class FlowBasedReadUtils {
     static public class ReadGroupInfo {
         final public String  flowOrder;
         final public int     maxClass;
-
+        final public boolean isFlowPlatform;
         private String  reversedFlowOrder = null;
 
         public ReadGroupInfo(final SAMReadGroupRecord readGroup) {
+            isFlowPlatform = NGSPlatform.valueOf(readGroup.getPlatform()).getSequencerType()== SequencerFlowClass.FLOW;
+            if (isFlowPlatform) {
+                Utils.nonNull(readGroup);
+                this.flowOrder = readGroup.getFlowOrder();
+                Utils.nonNull(this.flowOrder);
 
-            Utils.nonNull(readGroup);
-            this.flowOrder = readGroup.getFlowOrder();
-            Utils.nonNull(this.flowOrder);
-
-            String mc = readGroup.getAttribute(FlowBasedRead.MAX_CLASS_READ_GROUP_TAG);
-            this.maxClass = (mc == null) ? FlowBasedRead.MAX_CLASS : Integer.parseInt(mc);
+                String mc = readGroup.getAttribute(FlowBasedRead.MAX_CLASS_READ_GROUP_TAG);
+                this.maxClass = (mc == null) ? FlowBasedRead.MAX_CLASS : Integer.parseInt(mc);
+            } else { // not a flow platform
+                this.flowOrder = null;
+                this.maxClass = 0;
+            }
         }
 
         public synchronized String getReversedFlowOrder() {
@@ -45,6 +52,7 @@ public class FlowBasedReadUtils {
             }
             return reversedFlowOrder;
         }
+
     }
 
     public static boolean readEndMarkedUncertain(final GATKRead rec) {
@@ -118,13 +126,13 @@ public class FlowBasedReadUtils {
         }
     }
 
-    public static boolean isFlow(final GATKRead rec) {
+    public static boolean hasFlowTags(final GATKRead rec) {
         return rec.hasAttribute(FlowBasedRead.FLOW_MATRIX_TAG_NAME)
                 || rec.hasAttribute(FlowBasedRead.FLOW_MATRiX_OLD_TAG_KR)
                 || rec.hasAttribute(FlowBasedRead.FLOW_MATRiX_OLD_TAG_TI);
     }
 
-    public static boolean isFlow(final SAMRecord rec) {
+    public static boolean hasFlowTags(final SAMRecord rec) {
         return rec.hasAttribute(FlowBasedRead.FLOW_MATRIX_TAG_NAME)
                 || rec.hasAttribute(FlowBasedRead.FLOW_MATRiX_OLD_TAG_KR)
                 || rec.hasAttribute(FlowBasedRead.FLOW_MATRiX_OLD_TAG_TI);
@@ -133,7 +141,7 @@ public class FlowBasedReadUtils {
 
     public static synchronized ReadGroupInfo getReadGroupInfo(final SAMFileHeader hdr, final GATKRead read) {
 
-        if ( !isFlow(read) ) {
+        if ( !hasFlowTags(read) ) {
             throw new IllegalArgumentException("read must be flow based: " + read);
         }
 

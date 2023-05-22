@@ -45,7 +45,7 @@ public class FlowModeFragment extends TransientFieldPhysicalLocation {
                 headerLibraryMap.get(MarkDuplicatesSparkUtils.getLibraryForRead(first, header, LibraryIdGenerator.UNKNOWN_LIBRARY)));
 
         this.score = (this.end != FlowBasedReadUtils.FLOW_BASED_INSIGNIFICANT_END)
-                ? ((mdArgs.FLOW_QUALITY_SUM_STRATEGY && FlowBasedReadUtils.isFlow(first)) ? computeFlowDuplicateScore(first, start, end) : scoringStrategy.score(first))
+                ? ((mdArgs.FLOW_QUALITY_SUM_STRATEGY && FlowBasedReadUtils.hasFlowTags(first)) ? computeFlowDuplicateScore(first, start, end) : scoringStrategy.score(first))
                 : -1;
     }
 

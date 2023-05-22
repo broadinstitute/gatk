@@ -201,7 +201,7 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
     public FlowBasedRead(final SAMRecord samRecord, final String flowOrder, final int maxHmer, final FlowBasedArgumentCollection fbargs) {
         super(samRecord);
         Utils.nonNull(fbargs);
-        Utils.validate(FlowBasedReadUtils.isFlow(samRecord), "FlowBasedRead can only be used on flow reads. failing read: " + samRecord);
+        Utils.validate(FlowBasedReadUtils.hasFlowTags(samRecord), "FlowBasedRead can only be used on flow reads. failing read: " + samRecord);
         this.fbargs = fbargs;
         this.maxHmer = maxHmer;
         this.samRecord = samRecord;
@@ -352,7 +352,7 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
                 if (flowMatrix[loc][flowIdx] == fbargs.fillingValue) {
                     flowMatrix[loc][flowIdx] = probs[i];
                 } else {
-                    flowMatrix[loc][flowIdx] += probs[i];
+                    flowMatrix[loc][flowIdx]    += probs[i];
                 }
             }
         }
