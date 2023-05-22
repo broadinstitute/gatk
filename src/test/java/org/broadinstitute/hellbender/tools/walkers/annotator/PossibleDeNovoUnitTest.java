@@ -37,6 +37,7 @@ public final class PossibleDeNovoUnitTest extends GATKBaseTest {
         final Genotype gNo = new GenotypeBuilder("4", notCall).make();
 
         tests.add(new Object[]{g00gq30, g00gq30, g00gq30, false, false});
+        //test case where there is a possible DeNovo, but depth and parent GQs are lower than set thresholds (20 and 40 respectively)
         tests.add(new Object[]{g00gq30, g00gq30, g01gq30, true, false});
         tests.add(new Object[]{g00gq30, g00gq30, g11gq30, false, false});
         tests.add(new Object[]{g00gq30, g00gq30, gNo, false, false});
@@ -127,12 +128,9 @@ public final class PossibleDeNovoUnitTest extends GATKBaseTest {
 
         final Genotype g00gq45 = new GenotypeBuilder("2", homRef).DP(50).PL(new int[]{0,100,100}).AD(new int[]{10, 0}).GQ(GQ45).make();
         final Genotype g01gq45 = new GenotypeBuilder("1", het).DP(50).PL(new int[]{100, 0, 100}).AD(new int[]{5, 5}).GQ(GQ45).make();
-        final Genotype g11gq45 = new GenotypeBuilder("3", homVar).DP(50).PL(new int[]{100, 100, 0}).AD(new int[]{0, 10}).GQ(GQ45).make();
 
-        tests.add(new Object[]{g00gq45, g00gq45, g00gq45, false, false});
-        tests.add(new Object[]{g00gq45, g00gq45, g01gq45, false, true});
-        tests.add(new Object[]{g00gq45, g00gq45, g11gq45, false, false});
-        tests.add(new Object[]{g00gq45, g00gq45, gNo, false, false});
+        //test case when there is a possible deNovo (het child with hom ref parents) and GQ is high enough to pass parent GQ threshold of 40 and depth threshold of 20
+        tests.add(new Object[]{g00gq45, g00gq45, g01gq45, true, true});
 
         return tests.toArray(new Object[][]{});
     }
@@ -173,9 +171,12 @@ public final class PossibleDeNovoUnitTest extends GATKBaseTest {
         if (expectedDeNovo) {
             Assert.assertEquals(result.get(GATKVCFConstants.HI_CONF_DENOVO_KEY), Collections.singletonList(sChild.getID()));
             Assert.assertFalse(result.containsKey(GATKVCFConstants.LO_CONF_DENOVO_KEY));
-        } else if (expectedDeNovoWithExtraThresholds) {
+        }
+        if (expectedDeNovoWithExtraThresholds) {
             Assert.assertEquals(hiQualResult.get(GATKVCFConstants.HI_CONF_DENOVO_KEY), Collections.singletonList(sChild.getID()));
-        } else {
+            Assert.assertFalse(result.containsKey(GATKVCFConstants.LO_CONF_DENOVO_KEY));
+        }
+        if (!expectedDeNovo && !expectedDeNovoWithExtraThresholds) {
             Assert.assertTrue(result.isEmpty());
         }
 

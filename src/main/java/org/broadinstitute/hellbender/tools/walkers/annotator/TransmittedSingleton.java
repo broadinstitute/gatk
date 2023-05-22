@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
+import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.samples.Trio;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -31,7 +32,7 @@ import java.util.*;
  * <ul>
  *     <li>The calculation assumes that the organism is diploid.</li>
  *     <li>This annotation requires a valid pedigree file.</li>
- *     <li>Non transmitted singletons are only valid for trios, not quads or other more complicated family structures.</li>
+ *     <li>This annotation is only valid for trios, not quads or other more complicated family structures.</li>
  *     <li>Only reports possible singletons for families where each of the three samples has high GQ (>20) and high depth (>20)</li>
  *     <li>Only reports possible singletons at sites with a Call Rate greater than 90% (meaning less than 10% of the samples at the given site were no-calls)</li>
  * </ul>
@@ -39,6 +40,7 @@ import java.util.*;
 @DocumentedFeature(groupName= HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Existence of a transmitted (or non-transmitted) singleton in at least one of the given families (transmittedSingleton, nonTransmittedSingleton)")
 public final class TransmittedSingleton extends PedigreeAnnotation implements InfoFieldAnnotation {
     protected final Logger warning = LogManager.getLogger(this.getClass());
+    private final OneShotLogger oneShotLogger = new OneShotLogger(this.getClass());
     private Set<Trio> trios;
     private final int HI_GQ_THRESHOLD = 20;
     private final int HI_DP_THRESHOLD = 20;
@@ -62,7 +64,21 @@ public final class TransmittedSingleton extends PedigreeAnnotation implements In
         if (trios == null) {
             trios = getTrios();
         }
+        final long numOfTrios = trios.stream().map(trio -> trio.getMother().getFamilyID()).count();
+        if (numOfTrios == 0) {
+            oneShotLogger.warn("Submitted pedigree has no trios. TransmittedSingleton annotation will not be calculated.");
+        } else if (numOfTrios != trios.stream().map(trio -> trio.getMother().getFamilyID()).distinct().count()) {
+            oneShotLogger.warn("Submitted pedigree has non-trio families. TransmittedSingleton annotation is only valid for trios. Non-trio families (such as quads) will be ignored.");
+        }
         return trios;
+    }
+
+    @Override
+    void validateArguments(Collection<String> founderIds, GATKPath pedigreeFile) {
+        String warningString = validateArgumentsWhenPedigreeRequired(founderIds, pedigreeFile);
+        if (warningString != null) {
+            warning.warn(warningString);
+        }
     }
 
     @Override
@@ -101,12 +117,13 @@ public final class TransmittedSingleton extends PedigreeAnnotation implements In
                 final boolean momIsHighDepth = vc.getGenotype(trio.getChildID()).getDP() >= HI_DP_THRESHOLD;
                 final boolean dadIsHighDepth = vc.getGenotype(trio.getChildID()).getDP() >= HI_DP_THRESHOLD;
 
+                //TODO: This only works for trios (not quads or other more complicated family structures that would make the AC>2)
                 if (childIsHighDepth && momIsHighDepth && dadIsHighDepth &&
                         vc.getAttributeAsInt(VCFConstants.ALLELE_COUNT_KEY, 0) == 2 &&
                         childIsHighGQHet && oneParentHasAllele && momIsHighGQ && dadIsHighGQ) {
                         transmittedSingletonParent.add(matchingParentId);
                 }
-                //TODO: This only works for trios (not quads or other more complicated family structures that would effect number of singletons for parents or transmission to multiple kids)
+                //TODO: This only works for trios (not quads or other more complicated family structures that would make the AC>1)
                 if (childIsHighDepth && momIsHighDepth && dadIsHighDepth &&
                         vc.getAttributeAsInt(VCFConstants.ALLELE_COUNT_KEY, 0) == 1 &&
                         childIsHighGQHomRef && momIsHighGQ && dadIsHighGQ) {

@@ -36,14 +36,16 @@ import java.util.*;
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Existence of a de novo mutation in at least one of the given families (hiConfDeNovo, loConfDeNovo)")
 public final class PossibleDeNovo extends PedigreeAnnotation implements InfoFieldAnnotation {
+    public static final String DENOVO_PARENT_GQ_THRESHOLD = "denovo-parent-gq-threshold";
+    public static final String DENOVO_DEPTH_THRESHOLD = "denovo-depth-threshold";
     protected final Logger warning = LogManager.getLogger(this.getClass());
     private final MendelianViolation mendelianViolation;
     private Set<Trio> trios;
 
-    @Argument(fullName = "denovo-parent-gq-threshold", doc = "Minimum genotype quality for parents to be considered for de novo calculation (separate from GQ thershold for full trio).", optional = true)
+    @Argument(fullName = DENOVO_PARENT_GQ_THRESHOLD, doc = "Minimum genotype quality for parents to be considered for de novo calculation (separate from GQ thershold for full trio).", optional = true)
     public int parentGQThreshold = hi_GQ_threshold;
 
-    @Argument(fullName = "denovo-depth-threshold", doc = "Minimum depth (DP) for all trio members to be considered for de novo calculation.", optional = true)
+    @Argument(fullName = DENOVO_DEPTH_THRESHOLD, doc = "Minimum depth (DP) for all trio members to be considered for de novo calculation.", optional = true)
     public int depthThreshold = 0;
 
     @VisibleForTesting
@@ -72,18 +74,12 @@ public final class PossibleDeNovo extends PedigreeAnnotation implements InfoFiel
 
     @Override
     void validateArguments(Collection<String> founderIds, GATKPath pedigreeFile) {
-        if (pedigreeFile == null) {
-            if ((founderIds != null && !founderIds.isEmpty())) {
-                warning.warn("PossibleDenovo annotation will not be calculated, must provide a valid PED file (-ped). Founder-id arguments cannot be used for this annotation");
-            } else {
-                warning.warn("PossibleDenovo Annotation will not be calculated, must provide a valid PED file (-ped) from the command line.");
-            }
-        } else {
-            if ((founderIds != null && !founderIds.isEmpty())) {
-                warning.warn("PossibleDenovo annotation does not take founder-id arguments, trio information will be extracted only from the provided PED file");
-            }
+        String warningString = validateArgumentsWhenPedigreeRequired(founderIds, pedigreeFile);
+        if (warningString != null) {
+            warning.warn(warningString);
         }
     }
+
 
     // Static thresholds for the denovo calculation
     public final static double DEFAULT_MIN_GENOTYPE_QUALITY_P = 0; // TODO should this be exposed as a command line argument?
