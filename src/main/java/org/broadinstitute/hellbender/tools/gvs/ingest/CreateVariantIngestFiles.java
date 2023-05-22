@@ -5,8 +5,8 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFHeader;
-import htsjdk.variant.vcf.VCFHeaderLine;
+import htsjdk.variant.vcf.*;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -27,8 +27,10 @@ import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Ingest variant walker
@@ -192,7 +194,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         // Get sample name
         final VCFHeader inputVCFHeader = getHeaderForVariants();
         if (enableVCFHeaderProcessing) {
-            Map<String, String> nonCommandLineHeaders = new HashMap<>();
+            Set<String> nonCommandLineHeaders = new HashSet<>();
             for (VCFHeaderLine line :  inputVCFHeader.getMetaDataInInputOrder()) {
                 if (line.getKey().contains("CommandLine")) {
                     Map<String, String> commandLine = new HashMap<>();
@@ -200,10 +202,12 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                     allLineHeaders.put(commandLine.toString(), true);
                 }
                 else {
-                    nonCommandLineHeaders.put(line.getKey(), line.getValue());
+                    String lineAsString = line.toString();
+                    nonCommandLineHeaders.add(line.toString());
                 }
             }
-            allLineHeaders.put(nonCommandLineHeaders.toString(), false);
+            String allNonCommandLines = StringUtils.join(nonCommandLineHeaders);
+            allLineHeaders.put(allNonCommandLines, false);
         }
 
         // get an array of header "lines" (command line INFO lines, chunks of non-command-line INFO lines)
@@ -239,6 +243,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             }
 
             LoadStatus.LoadState state = loadStatus.getSampleLoadState(sampleId);
+//            LoadStatus.LoadState state = LoadStatus.LoadState.NONE;
             if (state == LoadStatus.LoadState.COMPLETE) {
                 logger.info("Sample id " + sampleId + " was detected as already loaded, exiting successfully.");
                 System.exit(0);
