@@ -197,17 +197,13 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             Set<String> nonCommandLineHeaders = new HashSet<>();
             for (VCFHeaderLine line :  inputVCFHeader.getMetaDataInInputOrder()) {
                 if (line.getKey().contains("CommandLine")) {
-                    Map<String, String> commandLine = new HashMap<>();
-                    commandLine.put(line.getKey(), line.getValue());
-                    allLineHeaders.put(commandLine.toString(), true);
+                    allLineHeaders.put(line.toString(), true);
                 }
                 else {
-                    String lineAsString = line.toString();
                     nonCommandLineHeaders.add(line.toString());
                 }
             }
-            String allNonCommandLines = StringUtils.join(nonCommandLineHeaders);
-            allLineHeaders.put(allNonCommandLines, false);
+            allLineHeaders.put(StringUtils.join(nonCommandLineHeaders), false);
         }
 
         // get an array of header "lines" (command line INFO lines, chunks of non-command-line INFO lines)
