@@ -44,7 +44,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
     }
   }
 
-  String output_chr_basename = if defined(contig) then output_basename + "." + contig else output_basename
+  String output_chr_basename = if defined(contig) then output_basename + "." + select_first([contig]) else output_basename
 
   if (defined(contig)) {
     scatter(i in range(length(input_vcfs))) {
