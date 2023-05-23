@@ -252,7 +252,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_VS-802_AddVQSRLiteToVDS
    - name: GvsCallsetStatistics
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCallsetStatistics.wdl
