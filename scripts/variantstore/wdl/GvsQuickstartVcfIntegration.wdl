@@ -190,7 +190,7 @@ task AssertIdenticalOutputs {
 
         # If the headers all matched look for any mismatches in overall file content.
         fail=0
-        for vcf in $(ls -1 | grep -E '\.vcf$')
+        for vcf in $(ls -1 actual | grep -E '\.vcf$')
         do
           expected="expected/$vcf"
           actual="actual/$vcf"

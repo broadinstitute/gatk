@@ -13,11 +13,15 @@ workflow GvsAssignIds {
     Boolean samples_are_controls = false
 
     File? assign_ids_gatk_override
+    Boolean process_vcf_headers = false
   }
 
   String sample_info_table = "sample_info"
   String sample_info_schema_json = '[{"name": "sample_name","type": "STRING","mode": "REQUIRED"},{"name": "sample_id","type": "INTEGER","mode": "NULLABLE"},{"name":"is_loaded","type":"BOOLEAN","mode":"NULLABLE"},{"name":"is_control","type":"BOOLEAN","mode":"REQUIRED"},{"name":"withdrawn","type":"TIMESTAMP","mode":"NULLABLE"}]'
-  String sample_load_status_json = '[{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name":"status","type":"STRING","mode":"REQUIRED"}, {"name":"event_timestamp","type":"TIMESTAMP","mode":"REQUIRED"}]'
+  String vcf_header_lines_scratch_schema_json = '[{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name":"vcf_header_lines","type":"STRING","mode":"NULLABLE"},{"name":"vcf_header_lines_hash","type":"STRING","mode":"REQUIRED"},{"name":"is_expected_unique","type":"BOOLEAN","mode":"REQUIRED"}]'
+  String vcf_header_lines_schema_json = '[{"name":"vcf_header_lines_hash","type":"STRING","mode":"REQUIRED"}, {"name":"vcf_header_lines","type":"STRING","mode":"REQUIRED"},{"name":"is_expected_unique","type":"BOOLEAN","mode":"REQUIRED"}]'
+  String sample_vcf_header_schema_json = '[{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"}, {"name":"vcf_header_lines_hash","type":"STRING","mode":"REQUIRED"}]'
+  String sample_load_status_schema_json = '[{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name":"status","type":"STRING","mode":"REQUIRED"}, {"name":"event_timestamp","type":"TIMESTAMP","mode":"REQUIRED"}]'
 
   call GvsCreateTables.CreateTables as CreateSampleInfoTable {
   	input:
@@ -35,10 +39,44 @@ workflow GvsAssignIds {
       project_id = project_id,
       dataset_name = dataset_name,
       datatype = "sample_load_status",
-      schema_json = sample_load_status_json,
+      schema_json = sample_load_status_schema_json,
       max_table_id = 1,
       superpartitioned = "false",
       partitioned = "false"
+  }
+  if (process_vcf_headers) {
+    call GvsCreateTables.CreateTables as CreateScratchVCFHeaderLinesTable {
+      input:
+        project_id = project_id,
+        dataset_name = dataset_name,
+        datatype = "vcf_header_lines_scratch",
+        schema_json = vcf_header_lines_scratch_schema_json,
+        max_table_id = 1,
+        superpartitioned = "false",
+        partitioned = "false"
+    }
+
+    call GvsCreateTables.CreateTables as CreateVCFHeaderLinesTable {
+      input:
+        project_id = project_id,
+        dataset_name = dataset_name,
+        datatype = "vcf_header_lines",
+        schema_json = vcf_header_lines_schema_json,
+        max_table_id = 1,
+        superpartitioned = "false",
+        partitioned = "false"
+    }
+
+    call GvsCreateTables.CreateTables as CreateSampleVCFHeaderTable {
+      input:
+        project_id = project_id,
+        dataset_name = dataset_name,
+        datatype = "sample_vcf_header",
+        schema_json = sample_vcf_header_schema_json,
+        max_table_id = 1,
+        superpartitioned = "false",
+        partitioned = "false"
+    }
   }
 
   call CreateCostObservabilityTable {

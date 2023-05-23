@@ -2,8 +2,8 @@
 
 ### The VAT pipeline is a python script and a set of WDLs
 
-- hail_create_vat_inputs.py is a script to be run in a notebook terminal to generate a sites-only VCF.
-- [GvsCreateVATfromVDS.wdl](/scripts/variantstore/wdl/GvsCreateVATfromVDS.wdl) creates the variant annotations table from a sites only VCF and an acestry file TSV.
+- [hail_create_vat_inputs.py](https://raw.githubusercontent.com/broadinstitute/gatk/ah_var_store/scripts/variantstore/wdl/extract/hail_create_vat_inputs.py) is a script to be run in a notebook terminal to generate a sites-only VCF.
+- [GvsCreateVATfromVDS.wdl](/scripts/variantstore/wdl/GvsCreateVATfromVDS.wdl) creates the variant annotations table from a sites only VCF and an ancestry file TSV.
 - [GvsValidateVAT.wdl](/scripts/variantstore/variant_annotations_table/GvsValidateVAT.wdl) checks and validates the created VAT and prints a report of any failing validation.
 
 The pipeline takes in a Hail Variant Dataset (VDS), creates a queryable table in BigQuery, and outputs a bgzipped TSV file containing the contents of that table. That TSV file is the sole AoU deliverable.
@@ -12,18 +12,21 @@ The pipeline takes in a Hail Variant Dataset (VDS), creates a queryable table in
 
 You will want to set up a [notebook in a similar configuration](../docs/aou/vds/cluster/AoU%20Delta%20VDS%20Cluster%20Configuration.md) as you did for creating the VAT (minus the custom wheel) and then copy two python scripts for running locally in the notebook. The two scripts are:
 
-* create_vat_inputs.py which you can get via `curl https://raw.githubusercontent.com/broadinstitute/gatk/ah_var_store/scripts/variantstore/wdl/extract/create_vat_inputs.py -o create_vat_inputs.py`
-* the `hail_create_vat_inputs_script` output from the task `GenerateHailScripts`from the run of`GvsExtractAvroFilesForHail` workflow that was used to generate the VDS.
+* `create_vat_inputs.py` which you can get via `curl -O https://raw.githubusercontent.com/broadinstitute/gatk/ah_var_store/scripts/variantstore/wdl/extract/create_vat_inputs.py`
+* The `hail_create_vat_inputs.py` output from the task `GenerateHailScripts` from the run of `GvsExtractAvroFilesForHail` workflow that was used to generate the VDS.
 
-Once you have copied them, run `python3 hail_create_vat_inputs.py` with the following input(s)
+Once you have copied them, run `python3 hail_create_vat_inputs.py` with the following input(s):
 
-* `--ancestry_file` GCS pointer to the TSV file that maps `sample_name`s to sub-populations
-* `--vds_path` GCS pointer to the top-level directory of the VDS
-* `--sites_only_vcf` (optional, should be pre-populated by the `GvsExtractAvroFilesForHail` workflow) the location to write the sites-only VCF to; save this for the `GvsCreateVATfromVDS` workflow
+* `--ancestry_input_path` Required, GCS path of the TSV file that maps `sample_name`s to subpopulations.
+* `--vds_input_path` Optional, should be pre-populated by the `GvsExtractAvroFilesForHail` workflow. GCS path of the top-level directory of the VDS.
+* `--sites_only_output_path` Optional, should be pre-populated by the `GvsExtractAvroFilesForHail` workflow. GCS path to write the sites-only VCF to; save this for the `GvsCreateVATfromVDS` workflow.
 
-When the script is done running, it will spit out the path to where it has written the sites-only VCF.
+When the script is done running it will print out the path to where it has written the sites-only VCF.
 
 ### Run GvsCreateVATfromVDS
+
+**Note:** in order for this workflow to run successfully the 'Use reference disks' option must be selected in Terra workflow
+configuration. If this option is not selected the `AnnotateVCF` tasks will refuse to run.
 
 Most of the inputs are specific to where the VAT will live or will be the same for the VDS creation, like the `project_id`, `dataset_name`, `filter_set_name`, and `output_path`. This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option. For the specific data being put in the VAT, two inputs need to be copied into a GCP bucket that this pipeline will have access to and passed to the WDL:
 

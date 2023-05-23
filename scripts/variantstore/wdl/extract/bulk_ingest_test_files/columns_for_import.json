@@ -1,0 +1,9 @@
+{
+"sample": ["sample_1", "sample_2", "sample_3", "sample_4", "sample_5"],
+"sample_id": ["sample_1", "sample_2", "sample_3", "sample_4", "sample_5"],
+"control_vcf": ["control_1.vcf", "control_2.vcf"],
+"control_vcf_index":["control_1.vcf", "control_2.vcf"],
+"random_vcf":["sample_1.vcf", "sample_2.vcf", "sample_3.vcf", "sample_4.vcf", "sample_5.vcf"],
+"hg38_reblocked_v2_vcf": ["sample_1.vcf", "sample_2.vcf", "sample_3.vcf", "sample_4.vcf", "sample_5.vcf"],
+"hg38_reblocked_v2_vcf_index":["sample_1", "sample_2", "sample_3", "sample_4", "sample_5"]
+}
