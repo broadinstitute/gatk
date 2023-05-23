@@ -34,8 +34,12 @@ public class FlowBasedReadUtils {
         public ReadGroupInfo(final SAMReadGroupRecord readGroup) {
             if (readGroup.getPlatform()==null){
                 isFlowPlatform = false;
+            } else if (NGSPlatform.fromReadGroupPL(readGroup.getPlatform())==NGSPlatform.UNKNOWN){
+                isFlowPlatform = false;
             } else {
-                isFlowPlatform = NGSPlatform.valueOf(readGroup.getPlatform()).getSequencerType() == SequencerFlowClass.FLOW;
+                //old Ultima data can have PLATFORM==LS454
+                isFlowPlatform = (NGSPlatform.fromReadGroupPL(readGroup.getPlatform()) == NGSPlatform.LS454) ||
+                        (NGSPlatform.fromReadGroupPL(readGroup.getPlatform()) == NGSPlatform.ULTIMA);
             }
             if (isFlowPlatform) {
                 Utils.nonNull(readGroup);
