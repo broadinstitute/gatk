@@ -38,14 +38,15 @@ public class FlowBasedReadUtils {
                 isFlowPlatform = false;
             } else {
                 //old Ultima data can have PLATFORM==LS454
-                isFlowPlatform = (NGSPlatform.fromReadGroupPL(readGroup.getPlatform()) == NGSPlatform.LS454) ||
+                // we require also FO field to consider ReadGroup to come from the flow
+                boolean tmp = (NGSPlatform.fromReadGroupPL(readGroup.getPlatform()) == NGSPlatform.LS454) ||
                         (NGSPlatform.fromReadGroupPL(readGroup.getPlatform()) == NGSPlatform.ULTIMA);
+                tmp = tmp & (readGroup!=null);
+                tmp = tmp  & (readGroup.getFlowOrder()!=null);
+                isFlowPlatform = tmp;
             }
             if (isFlowPlatform) {
-                Utils.nonNull(readGroup);
                 this.flowOrder = readGroup.getFlowOrder();
-                Utils.nonNull(this.flowOrder);
-
                 String mc = readGroup.getAttribute(FlowBasedRead.MAX_CLASS_READ_GROUP_TAG);
                 this.maxClass = (mc == null) ? FlowBasedRead.MAX_CLASS : Integer.parseInt(mc);
             } else { // not a flow platform
@@ -147,6 +148,12 @@ public class FlowBasedReadUtils {
 
     }
 
+    public static boolean isFlowPlatform(final SAMFileHeader hdr, final GATKRead read) {
+        if (!hasFlowTags(read)){
+            return false;
+        }
+        return getReadGroupInfo(hdr, read).isFlowPlatform;
+    }
     public static synchronized ReadGroupInfo getReadGroupInfo(final SAMFileHeader hdr, final GATKRead read) {
 
         if ( !hasFlowTags(read) ) {
