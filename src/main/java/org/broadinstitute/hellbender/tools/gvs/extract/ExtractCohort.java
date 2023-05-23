@@ -286,14 +286,6 @@ public class ExtractCohort extends ExtractTool {
     protected void onStartup() {
         super.onStartup();
 
-        Set<VCFHeaderLine> extraHeaderLines = new HashSet<>();
-
-        if (isVQSRClassic) {
-            extraHeaderLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_VQS_LOD_KEY));
-        } else {
-            extraHeaderLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_VQS_SENS_KEY));
-        }
-
         if (filterSetInfoTableName != null) { // filter using VQScore (vqslod or calibration_sensitivity) -- default to GENOTYPE unless SITES specifically selected
             vqScoreFilteringType = performSiteSpecificVQScoreFiltering ? VQScoreFilteringType.SITES : VQScoreFilteringType.GENOTYPE;
         }
@@ -308,8 +300,10 @@ public class ExtractCohort extends ExtractTool {
           }
         }
 
+        Set<VCFHeaderLine> extraHeaderLines = new HashSet<>();
         if (!vqScoreFilteringType.equals(VQScoreFilteringType.NONE)) {
             if (isVQSRClassic) {
+                extraHeaderLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_VQS_LOD_KEY));
                 FilterSensitivityTools.validateFilteringCutoffs(truthSensitivitySNPThreshold, truthSensitivityINDELThreshold, vqsLodSNPThreshold, vqsLodINDELThreshold, tranchesTableName);
                 Map<String, Map<Double, Double>> trancheMaps = FilterSensitivityTools.getTrancheMaps(filterSetName, tranchesTableName, projectID);
 
@@ -324,6 +318,7 @@ public class ExtractCohort extends ExtractTool {
                     extraHeaderLines.add(FilterSensitivityTools.getTruthSensitivityHeader(truthSensitivityINDELThreshold, vqsLodINDELThreshold, GATKVCFConstants.INDEL));
                 }
             } else {
+                extraHeaderLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_VQS_SENS_KEY));
                 if (truthSensitivitySNPThreshold == null) {
                     truthSensitivitySNPThreshold = FilterSensitivityTools.DEFAULT_TRUTH_SENSITIVITY_THRESHOLD_SNPS;
                 }
