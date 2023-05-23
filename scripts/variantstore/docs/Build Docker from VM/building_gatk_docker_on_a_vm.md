@@ -9,7 +9,7 @@ Azure virtual machine, though much of this would likely apply to Google Cloud (o
 Through the [Azure portal](https://portal.azure.com/) allocate a VM in the Variants subscription. I used a Standard
 E4-2ads v5 (2 vcpus, 32 GiB memory) for this purpose:
 
-![Azure VM for building Docker image](./Azure VM for building Docker image.png)
+![Azure VM for building Docker image](./Azure%20VM%20for%20building%20Docker%20image.png)
 
 Generate a new SSH key when prompted and save this to a safe location as you will need it soon. 
 
