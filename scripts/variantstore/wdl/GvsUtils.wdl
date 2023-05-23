@@ -524,14 +524,11 @@ task IsVQSRLite {
 
   # add labels for DSP Cloud Cost Control Labeling and Reporting
   String bq_labels = "--label service:gvs --label team:variants --label managedby:gvs_utils"
-  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
   String is_vqsr_lite_file = "is_vqsr_lite_file.txt"
 
   command <<<
     set -o errexit -o nounset -o xtrace -o pipefail
-
-    bash ~{monitoring_script} > monitoring.log &
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
@@ -564,7 +561,6 @@ task IsVQSRLite {
   >>>
   output {
     Boolean is_vqsr_lite = read_boolean(is_vqsr_lite_file)
-    File monitoring_log = "monitoring.log"
   }
 
   runtime {
