@@ -30,19 +30,19 @@ public final class RefCreator {
     private RefRangesWriter refRangesWriter = null;
 
     private final boolean writeReferenceRanges;
-    private final String sampleId;
+    private final Long sampleId;
     private SimpleInterval previousInterval;
     private final Set<GQStateEnum> gqStatesToIgnore = new HashSet<>();
     private final GenomeLocSortedSet coverageLocSortedSet;
     private static final String PREFIX_SEPARATOR = "_";
     private final static String REF_RANGES_FILETYPE_PREFIX = "ref_ranges_";
 
-    public static boolean doRowsExistFor(CommonCode.OutputType outputType, String projectId, String datasetName, String tableNumber, String sampleId) {
+    public static boolean doRowsExistFor(CommonCode.OutputType outputType, String projectId, String datasetName, String tableNumber, Long sampleId) {
         if (outputType != CommonCode.OutputType.BQ) return false;
         return BigQueryUtils.doRowsExistFor(projectId, datasetName, REF_RANGES_FILETYPE_PREFIX + tableNumber, SchemaUtils.SAMPLE_ID_FIELD_NAME, sampleId);
     }
 
-    public RefCreator(String sampleIdentifierForOutputFileName, String sampleId, String tableNumber, SAMSequenceDictionary seqDictionary, GQStateEnum gqStateToIgnore, final boolean dropAboveGqThreshold, final File outputDirectory, final CommonCode.OutputType outputType, final boolean writeReferenceRanges, final String projectId, final String datasetName) {
+    public RefCreator(String sampleIdentifierForOutputFileName, Long sampleId, String tableNumber, SAMSequenceDictionary seqDictionary, GQStateEnum gqStateToIgnore, final boolean dropAboveGqThreshold, final File outputDirectory, final CommonCode.OutputType outputType, final boolean writeReferenceRanges, final String projectId, final String datasetName) {
         this.sampleId = sampleId;
         this.outputType = outputType;
         this.writeReferenceRanges = writeReferenceRanges;
@@ -107,7 +107,7 @@ public final class RefCreator {
                         while ( localStart <= end ) {
                             int length = Math.min(end - localStart + 1, IngestConstants.MAX_REFERENCE_BLOCK_BASES);
                             refRangesWriter.write(SchemaUtils.encodeLocation(variantChr, localStart),
-                                    Long.parseLong(sampleId),
+                                    sampleId,
                                     length,
                                     getGQStateEnum(variant.getGenotype(0).getGQ()).getValue()
                             );
@@ -117,7 +117,7 @@ public final class RefCreator {
                     // Write out no-calls as a single-base GQ0 reference.
                     } else if (CreateVariantIngestFiles.isNoCall(variant)) {
                         refRangesWriter.write(SchemaUtils.encodeLocation(variantChr, start),
-                                Long.parseLong(sampleId),
+                                sampleId,
                                 1,
                                 GQStateEnum.ZERO.getValue()
                         );
@@ -165,7 +165,7 @@ public final class RefCreator {
             while ( localStart <= end ) {
                 int length = (int) Math.min(end - localStart + 1, IngestConstants.MAX_REFERENCE_BLOCK_BASES);
                 refRangesWriter.write(localStart,
-                        Long.parseLong(sampleId),
+                        sampleId,
                         length,
                         GQStateEnum.MISSING.getValue()
                 );
