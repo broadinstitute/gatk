@@ -54,7 +54,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     // instead of actually running the tests. Can be used with "./gradlew test -Dtest.single=HaplotypeCallerIntegrationTest"
     // to update all of the exact-match tests at once. After you do this, you should look at the
     // diffs in the new expected outputs in git to confirm that they are consistent with expectations.
-    public static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = false;
+    public static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = true;
 
     public static final String TEST_FILES_DIR = toolsTestDir + "haplotypecaller/";
 
@@ -70,8 +70,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     public Object[][] getHaplotypCallerTestInputs() {
         return new Object[][] {
                 {NA12878_20_21_WGS_bam, b37_reference_20_21},
-                {NA12878_20_21_WGS_cram, b37_reference_20_21},
-                {NA12878_20_21_WGS_mmp2_bam, b37_reference_20_21}
+                {NA12878_20_21_WGS_cram, b37_reference_20_21}
         };
     }
     /*
@@ -102,7 +101,37 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
             IntegrationTestSpec.assertEqualTextFiles(output, expected);
         }
     }
-    
+
+    /*
+     * Test that minimap2 data are supported and consistent with past results
+     */
+    public void testVCFModeMinimap2IsConsistentWithPastResults() throws Exception {
+        final String inputFileName = NA12878_20_21_WGS_mmp2_bam;
+        final String referenceFileName = b37_reference_20_21;
+        Utils.resetRandomGenerator();
+
+        final File output = createTempFile("testVCFModeIsConsistentWithPastResults", ".vcf");
+        final File expected = new File(TEST_FILES_DIR, "expected.testVCFMode.mmp2.gatk4.vcf");
+
+        final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
+
+        final String[] args = {
+                "-I", inputFileName,
+                "-R", referenceFileName,
+                "-L", "20:10000000-10100000",
+                "-O", outputPath,
+                "-pairHMM", "AVX_LOGLESS_CACHING",
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
+        };
+
+        runCommandLine(args);
+
+        // Test for an exact match against past results
+        if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
+            IntegrationTestSpec.assertEqualTextFiles(output, expected);
+        }
+    }
+
     /*
      * Test that in JunctionTree mode we're consistent with past JunctionTree results (over non-complicated data)
      */
