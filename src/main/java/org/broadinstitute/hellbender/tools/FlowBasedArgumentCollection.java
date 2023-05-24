@@ -1,14 +1,8 @@
 package org.broadinstitute.hellbender.tools;
 
-import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.Hidden;
-import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.*;
-import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.cmdline.ModeArgumentUtils;
-import org.broadinstitute.hellbender.utils.read.FlowBasedRead;
 
 import java.io.Serializable;
 
@@ -28,8 +22,6 @@ public class FlowBasedArgumentCollection implements Serializable {
     public static final String PROB_SF_LONG_NAME = "flow-probability-scaling-factor";
     public static final String RETAIN_MAX_N_PROBS_BASE_LONG_NAME = "flow-retain-max-n-probs-base-format";
     public static final String FLOW_ORDER_CYCLE_LENGTH_LONG_NAME = "flow-order-cycle-length";
-    public static final String NUM_UNCERTAIN_FLOWS_LONG_NAME = "flow-number-of-uncertain-flows-to-clip";
-    public static final String FIRST_UNCERTAIN_FLOW_LONG_NAME = "flow-nucleotide-of-first-uncertain-flow";
     public static final String FLOW_MATRIX_MODS_LONG_NAME = "flow-matrix-mods";
     public static final String FLOW_KEEP_BOUNDARY_FLOWS_LONG_NAME = "keep-boundary-flows";
 
@@ -47,8 +39,6 @@ public class FlowBasedArgumentCollection implements Serializable {
     private static final boolean DEFAULT_RETAIN_MAX_N_PROBS = false;
     private static final int DEFAULT_PROB_SCALING_FACTOR = 10;
     private static final int DEFAULT_FLOW_ORDER_CYCLE_LENGTH = 4;
-    private static final int DEFAULT_NUM_UNCERTAIN_FLOWS = 0;
-    private static final String DEFAULT_FIRST_UNCERTAIN_FLOW = "T";
     private static final boolean DEFAULT_FLOW_USE_T0_TAG = false;
 
     @Advanced
@@ -103,16 +93,6 @@ public class FlowBasedArgumentCollection implements Serializable {
     @Hidden
     @Argument(fullName = FLOW_ORDER_CYCLE_LENGTH_LONG_NAME, doc = "Length of flow order cycle", optional=true)
     public int flowOrderCycleLength = DEFAULT_FLOW_ORDER_CYCLE_LENGTH;
-
-    @Advanced
-    @Hidden
-    @Argument(fullName = NUM_UNCERTAIN_FLOWS_LONG_NAME, doc = "Number of uncertain flows to trim on the 5' end of the read", optional=true)
-    public int flowNumUncertainFlows = DEFAULT_NUM_UNCERTAIN_FLOWS;
-
-    @Advanced
-    @Hidden
-    @Argument(fullName = FIRST_UNCERTAIN_FLOW_LONG_NAME, doc = "Nucleotide that is being read in the first uncertain (5') flow", optional=true)
-    public String flowFirstUncertainFlowBase = DEFAULT_FIRST_UNCERTAIN_FLOW;
 
     @Advanced
     @Argument(fullName=FLOW_MATRIX_MODS_LONG_NAME, doc="Modifications instructions to the read flow matrix. " +

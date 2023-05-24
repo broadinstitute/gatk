@@ -35,13 +35,11 @@ import org.broadinstitute.hellbender.utils.haplotype.PartiallyDeterminedHaplotyp
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState;
 import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
-import org.broadinstitute.hellbender.utils.pileup.PileupBasedAlleles;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.*;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
-import org.broadinstitute.hellbender.utils.read.FlowBasedRead;
 import org.broadinstitute.hellbender.tools.FlowBasedArgumentCollection;
 
 import java.io.File;
@@ -130,7 +128,6 @@ public final class AssemblyBasedCallerUtils {
                                       final boolean correctOverlappingBaseQualities,
                                       final boolean softClipLowQualityEnds,
                                       final boolean overrideSoftclipFragmentCheck,
-                                      final FlowBasedArgumentCollection fbargs,
                                       final boolean trackHardclippedReads) {
         if ( region.isFinalized() ) {
             return;
@@ -142,12 +139,9 @@ public final class AssemblyBasedCallerUtils {
         final List<GATKRead> hardClippedReadsToUse = new ArrayList<>();
 
         for (final GATKRead originalRead : region.getReads()) {
-            // TODO unclipping soft clips may introduce bases that aren't in the extended region if the unclipped bases
             // TODO include a deletion w.r.t. the reference.  We must remove kmers that occur before the reference haplotype start
-            GATKRead readTemp = FlowBasedReadUtils.isFlow(originalRead) ? FlowBasedRead.hardClipUncertainBases(originalRead, readsHeader, fbargs):originalRead;
-            readTemp =  dontUseSoftClippedBases || ! ( overrideSoftclipFragmentCheck || ReadUtils.hasWellDefinedFragmentSize(readTemp)) ?
-                    ReadClipper.hardClipSoftClippedBases(readTemp) : revertSoftClippedBases(readTemp);
-
+            GATKRead readTemp =  dontUseSoftClippedBases || ! ( overrideSoftclipFragmentCheck || ReadUtils.hasWellDefinedFragmentSize(originalRead)) ?
+                    ReadClipper.hardClipSoftClippedBases(originalRead) : revertSoftClippedBases(originalRead);
 
             final GATKRead read = (softClipLowQualityEnds ? ReadClipper.softClipLowQualEnds(readTemp, minTailQualityToUse) :
                     ReadClipper.hardClipLowQualEnds(readTemp, minTailQualityToUse));
@@ -351,7 +345,6 @@ public final class AssemblyBasedCallerUtils {
                 correctOverlappingBaseQualities,
                 argumentCollection.softClipLowQualityEnds,
                 argumentCollection.overrideSoftclipFragmentCheck,
-                fbargs,
                 true);
 
 

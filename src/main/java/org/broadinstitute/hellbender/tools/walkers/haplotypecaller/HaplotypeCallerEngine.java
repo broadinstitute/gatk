@@ -4,7 +4,6 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.RuntimeIOException;
-import htsjdk.samtools.util.Tuple;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
@@ -60,7 +59,6 @@ import java.util.stream.Collectors;
 
 /**
  * The core engine for the HaplotypeCaller that does all of the actual work of the tool.
- *
  * Usage:
  * -Pass the HaplotypeCaller args into the constructor, which will initialize the HC engine completely.
  * -Get the appropriate VCF or GVCF writer (depending on our arguments) from {@link #makeVCFWriter}
@@ -985,7 +983,6 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                         ! hcArgs.doNotCorrectOverlappingBaseQualities,
                         hcArgs.softClipLowQualityEnds,
                         hcArgs.overrideSoftclipFragmentCheck,
-                        hcArgs.fbargs,
                         hcArgs.pileupDetectionArgs.usePileupDetection);
             }
 
@@ -1043,7 +1040,7 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                     !ReadFilterLibrary.MATE_ON_SAME_CONTIG_OR_NO_MAPPED_MATE.test(rec) ||
                     (hcArgs.keepRG != null && !rec.getReadGroup().equals(hcArgs.keepRG)) ) {
                 if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
-                    HaplotypeCallerGenotypingDebugger.println("Filtered before assembly the read: " + rec.toString());
+                    HaplotypeCallerGenotypingDebugger.println("Filtered before assembly the read: " + rec);
                 }
                 readsToRemove.add(rec);
             }

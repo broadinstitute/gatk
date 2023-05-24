@@ -6,7 +6,6 @@ import htsjdk.samtools.SamReaderFactory;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.testng.Assert;
-import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import org.broadinstitute.hellbender.tools.FlowBasedArgumentCollection;
 
@@ -14,9 +13,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
 
 public class FlowBasedReadUnitTest extends GATKBaseTest {
 
@@ -122,16 +119,6 @@ public class FlowBasedReadUnitTest extends GATKBaseTest {
     }
 
 
-    @Test (dataProvider = "makeReads")
-    public void testUncertainFlowTrimming(final GATKRead read, int nTrim, String uncertainFlowBase, final byte[] output, final int start, final int end) {
-        FlowBasedArgumentCollection fbargs = new FlowBasedArgumentCollection();
-        fbargs.flowNumUncertainFlows = nTrim;
-        fbargs.flowFirstUncertainFlowBase = uncertainFlowBase;
-        GATKRead trimmedRead = FlowBasedRead.hardClipUncertainBases(read, "TAGC", fbargs);
-        Assert.assertEquals(trimmedRead.getBases(), output);
-        Assert.assertEquals(trimmedRead.getStart(), start);
-        Assert.assertEquals(trimmedRead.getEnd(), end);
-    }
 
     private GATKRead makeRead(final byte[] bases, final boolean isReverse) {
 
@@ -143,26 +130,6 @@ public class FlowBasedReadUnitTest extends GATKBaseTest {
         read.setIsReverseStrand(isReverse);
 
         return read;
-    }
-
-    @DataProvider(name="makeReads")
-    public Object[][] makeMultipleReads(){
-        List<Object[]> tests = new ArrayList<>();
-        tests.add(new Object[]{makeRead(new byte[]{'T','A','G','C','G','A'}, false), 4, "T", new byte[] {'G','A'}, 104, 105});
-        tests.add(new Object[]{makeRead(new byte[]{'A','C','C','G','A','T'}, false), 4, "T", new byte[] {'G','A','T'}, 103, 105});
-        tests.add(new Object[]{makeRead(new byte[]{'T','A','G','C','G','A'}, true), 4, "T", new byte[] {'T','A','G','C'},100,103});
-        tests.add(new Object[]{makeRead(new byte[]{'T','A','G','C','G','A'}, false), 1, "T", new byte[] {'A','G','C','G','A'}, 101, 105});
-        tests.add(new Object[]{makeRead(new byte[]{'A','C','C','G','A','T'}, false), 2, "T", new byte[] {'C','C','G','A','T'}, 101, 105});
-        tests.add(new Object[]{makeRead(new byte[]{'T','A','G','C','G','A'}, true), 10, "T", new byte[] {},0,0});
-
-        tests.add(new Object[]{makeRead(new byte[]{'T','A','G','C','G','A'}, false), 4, "A", new byte[] {'A','G','C','G','A'}, 101, 105});
-        tests.add(new Object[]{makeRead(new byte[]{'A','C','C','G','A','T'}, false), 4, "A", new byte[] {'G','A','T'}, 103, 105});
-        tests.add(new Object[]{makeRead(new byte[]{'T','A','G','C','G','A'}, true), 4, "A", new byte[] {'T','A','G','C','G'},100,104});
-        tests.add(new Object[]{makeRead(new byte[]{'T','A','G','C','G','A'}, false), 1, "A", new byte[] {'T','A','G','C','G','A'}, 100, 105});
-        tests.add(new Object[]{makeRead(new byte[]{'A','C','C','G','A','T'}, false), 2, "A", new byte[] {'C','C','G','A','T'}, 101, 105});
-        tests.add(new Object[]{makeRead(new byte[]{'T','A','G','C','G','A'}, true), 10, "A", new byte[] {'T','A','G'},100,102});
-
-        return tests.toArray(new Object[][]{});
     }
 
     @Test
