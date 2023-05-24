@@ -97,7 +97,7 @@ public class FlowBasedReadUtilsUnitTest extends GATKBaseTest{
         rg3.setPlatform("LS454");
         read3.setReadGroup("rg3");
         hdr.addReadGroup(rg3);
-        tests.add(new Object[]{hdr, read3, false});
+        tests.add(new Object[]{hdr, read3, true});
 
         GATKRead read4 = makeRead(new byte[]{'T','A','G','C','G','A'}, false);
         read4.setAttribute("tp",new byte[6]);
@@ -107,6 +107,16 @@ public class FlowBasedReadUtilsUnitTest extends GATKBaseTest{
         read4.setReadGroup("rg4");
         hdr.addReadGroup(rg4);
         tests.add(new Object[]{hdr, read4, true});
+
+        GATKRead read5 = makeRead(new byte[]{'T','A','G','C','G','A'}, false);
+        read5.setAttribute("tp",new byte[6]);
+        SAMReadGroupRecord rg5 = new SAMReadGroupRecord("rg5");
+        rg5.setPlatform("LS454");
+        rg5.setAttribute("FO","TGCATGCA");
+        read5.setReadGroup("rg5");
+        hdr.addReadGroup(rg5);
+        tests.add(new Object[]{hdr, read5, true});
+
 
         return tests.toArray(new Object[][]{});
     }

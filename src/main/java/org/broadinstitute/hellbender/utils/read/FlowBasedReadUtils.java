@@ -15,8 +15,15 @@ import org.broadinstitute.hellbender.utils.Utils;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+
 /**
- * utility class for flow based read
+ * Utility class for working with flow-based reads
+ *
+ * The main member static class is {@code ReadGroupInfo} that contains methods that allow
+ * working with headers of flow based reads and extracting the flow order and the maximal hmer class called.
+ * It also contains methods to check how the read was clipped ({@code readEndMarkedUnclipped}, {@code readEndMarkedUncertain})
+ * Lastly, {@code FlowBasedReadUtils.isFlowPlatform} is **the** function to determine if the data are flow-based
+ *
  */
 public class FlowBasedReadUtils {
 
@@ -37,20 +44,19 @@ public class FlowBasedReadUtils {
                 isFlowPlatform = false;
             } else if (NGSPlatform.fromReadGroupPL(readGroup.getPlatform())==NGSPlatform.UNKNOWN){
                 isFlowPlatform = false;
-            } else {
-                //old Ultima data can have PLATFORM==LS454
-                // we require also FO field to consider ReadGroup to come from the flow
-                boolean tmp = (NGSPlatform.fromReadGroupPL(readGroup.getPlatform()) == NGSPlatform.LS454) ||
-                        (NGSPlatform.fromReadGroupPL(readGroup.getPlatform()) == NGSPlatform.ULTIMA);
-                tmp = tmp & (readGroup!=null);
-                tmp = tmp  & (readGroup.getFlowOrder()!=null);
-                isFlowPlatform = tmp;
-
-                //in addition validate that the ultima data has FO tag, otherwise break
-                if ((NGSPlatform.fromReadGroupPL(readGroup.getPlatform()) == NGSPlatform.ULTIMA) & (!isFlowPlatform)){
+            } else if (NGSPlatform.fromReadGroupPL(readGroup.getPlatform()) == NGSPlatform.LS454) {
+                //old Ultima data can have PLATFORM==LS454 and not have FO tag
+                isFlowPlatform = true;
+            } else if (NGSPlatform.fromReadGroupPL(readGroup.getPlatform()) == NGSPlatform.ULTIMA){
+                if (readGroup.getFlowOrder()!=null) {
+                    isFlowPlatform = true;
+                } else {
                     throw new RuntimeException("Malformed Ultima read group identified, aborting: " + readGroup);
                 }
+            } else {
+                isFlowPlatform = false;
             }
+
             if (isFlowPlatform) {
                 this.flowOrder = readGroup.getFlowOrder();
                 String mc = readGroup.getAttribute(FlowBasedRead.MAX_CLASS_READ_GROUP_TAG);
@@ -154,6 +160,14 @@ public class FlowBasedReadUtils {
 
     }
 
+    /**
+     *
+     * This is the function to run if you want to ask if the data are flow-based
+     *
+     * @param hdr - file header
+     * @param read - the read
+     * @return true if the read is flow-based
+     */
     public static boolean isFlowPlatform(final SAMFileHeader hdr, final GATKRead read) {
         if (!hasFlowTags(read)){
             return false;
