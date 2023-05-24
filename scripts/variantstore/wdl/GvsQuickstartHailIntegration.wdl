@@ -10,7 +10,7 @@ workflow GvsQuickstartHailIntegration {
     }
 
     String project_id = "gvs-internal"
-    Boolean use_classic_VQSR = false
+    Boolean use_classic_VQSR = true
 
     call QuickstartVcfIntegration.GvsQuickstartVcfIntegration {
         input:
