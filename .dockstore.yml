@@ -222,6 +222,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rc-hail-integration_split-vs-855
    - name: GvsQuickstartIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartIntegration.wdl
