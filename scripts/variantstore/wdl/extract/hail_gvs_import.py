@@ -140,7 +140,7 @@ if __name__ == '__main__':
                         required=False)
     parser.add_argument('--use-classic-vqsr', type=bool,
                         help='If true, expect that the input GVS Avro files were generated using VQSR Classic',
-                        default=False, required=False)
+                        default=True, required=False)
 
     args = parser.parse_args()
 
