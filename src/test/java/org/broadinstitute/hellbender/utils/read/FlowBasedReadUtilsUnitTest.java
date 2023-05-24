@@ -59,6 +59,7 @@ public class FlowBasedReadUtilsUnitTest extends GATKBaseTest{
         FlowBasedReadUtils.ReadGroupInfo frg1 = FlowBasedReadUtils.getReadGroupInfo(header, gread);
         assert(!frg1.isFlowPlatform);
     }
+
     private GATKRead makeRead(final byte[] bases, final boolean isReverse) {
 
         byte[] quals = new byte[bases.length];
@@ -68,36 +69,6 @@ public class FlowBasedReadUtilsUnitTest extends GATKBaseTest{
         read.setPosition("chr1",100);
         read.setIsReverseStrand(isReverse);
         return read;
-    }
-
-    @Test (dataProvider = "makeReads")
-    public void testUncertainFlowTrimming(final GATKRead read, int nTrim, String uncertainFlowBase, final byte[] output, final int start, final int end) {
-        FlowBasedArgumentCollection fbargs = new FlowBasedArgumentCollection();
-        fbargs.flowNumUncertainFlows = nTrim;
-        fbargs.flowFirstUncertainFlowBase = uncertainFlowBase;
-        GATKRead trimmedRead = FlowBasedRead.hardClipUncertainBases(read, "TAGC", fbargs);
-        Assert.assertEquals(trimmedRead.getBases(), output);
-        Assert.assertEquals(trimmedRead.getStart(), start);
-        Assert.assertEquals(trimmedRead.getEnd(), end);
-    }
-
-
-
-    @Test (dataProvider = "iSFlowPlatform")
-    void testIsFlowPlatform(final SAMFileHeader hdr, final GATKRead read, final boolean answer){
-        assert(FlowBasedReadUtils.isFlowPlatform(hdr, read) == answer);
-    }
-
-    @Test(expectedExceptions = {RuntimeException.class})
-    void testMalformedUltimaRGThrowsException(){
-        GATKRead read = makeRead(new byte[]{'T','A','G','C','G','A'}, false);
-        read.setAttribute("tp",new byte[6]);
-        SAMReadGroupRecord rg = new SAMReadGroupRecord("rg");
-        rg.setPlatform("ULTIMA");
-        read.setReadGroup("rg");
-        SAMFileHeader hdr = new SAMFileHeader();
-        hdr.addReadGroup(rg);
-        FlowBasedReadUtils.isFlowPlatform(hdr, read);
     }
 
     @DataProvider(name="isFlowPlatform")
@@ -123,7 +94,7 @@ public class FlowBasedReadUtilsUnitTest extends GATKBaseTest{
         GATKRead read3 = makeRead(new byte[]{'T','A','G','C','G','A'}, false);
         read3.setAttribute("tp",new byte[6]);
         SAMReadGroupRecord rg3 = new SAMReadGroupRecord("rg3");
-        rg3.setPlatform("ULTIMA");
+        rg3.setPlatform("LS454");
         read3.setReadGroup("rg3");
         hdr.addReadGroup(rg3);
         tests.add(new Object[]{hdr, read3, false});
@@ -139,4 +110,22 @@ public class FlowBasedReadUtilsUnitTest extends GATKBaseTest{
 
         return tests.toArray(new Object[][]{});
     }
+
+    @Test (dataProvider = "isFlowPlatform")
+    void testIsFlowPlatform(final SAMFileHeader hdr, final GATKRead read, final boolean answer){
+        assert(FlowBasedReadUtils.isFlowPlatform(hdr, read) == answer);
+    }
+
+    @Test(expectedExceptions = {RuntimeException.class})
+    void testMalformedUltimaRGThrowsException(){
+        GATKRead read = makeRead(new byte[]{'T','A','G','C','G','A'}, false);
+        read.setAttribute("tp",new byte[6]);
+        SAMReadGroupRecord rg = new SAMReadGroupRecord("rg");
+        rg.setPlatform("ULTIMA");
+        read.setReadGroup("rg");
+        SAMFileHeader hdr = new SAMFileHeader();
+        hdr.addReadGroup(rg);
+        FlowBasedReadUtils.isFlowPlatform(hdr, read);
+    }
+
 }

@@ -105,6 +105,7 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     /*
      * Test that minimap2 data are supported and consistent with past results
      */
+    @Test
     public void testVCFModeMinimap2IsConsistentWithPastResults() throws Exception {
         final String inputFileName = NA12878_20_21_WGS_mmp2_bam;
         final String referenceFileName = b37_reference_20_21;
