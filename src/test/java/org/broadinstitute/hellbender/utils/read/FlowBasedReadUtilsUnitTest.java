@@ -40,6 +40,11 @@ public class FlowBasedReadUtilsUnitTest extends GATKBaseTest{
 
     }
 
+    //testing that an occasional read with tp (but not ULTIMA) does not get identified as flow-based.
+    // Here the read group is:
+    // @RG	ID:test	SM:HG001	PL:ILLUMINA
+    // but the reads have tp because they were aligned with minimap2:
+    // 20FUKAAXX100202:5:43:9081:11499/2	272	chr14_GL000009v2_random	156269	...	tp:A:S	cm:i:12	s1:i:87	de:f:0.0099	rl:i:0
     @Test
     void testNonFlowReadGroupParsing(){
         final String    testResourceDir = publicTestDir + "org/broadinstitute/hellbender/utils/read/flow/reads/";
@@ -48,7 +53,6 @@ public class FlowBasedReadUtilsUnitTest extends GATKBaseTest{
         final Path inputFile = FileSystems.getDefault().getPath(inputDir, "non_flow_reads_with_tp.bam");
         final SamReader reader = SamReaderFactory.makeDefault().open(new File(inputFile.toString()));
         SAMFileHeader header = reader.getFileHeader();
-        SAMReadGroupRecord rg1 = header.getReadGroup("test");
         SAMRecord read = reader.iterator().next();
         GATKRead gread = new SAMRecordToGATKReadAdapter(read);
         assert(FlowBasedReadUtils.hasFlowTags(gread));
@@ -78,34 +82,26 @@ public class FlowBasedReadUtilsUnitTest extends GATKBaseTest{
     }
 
 
-    @DataProvider(name="makeReads")
-    public Object[][] makeMultipleReads(){
-        List<Object[]> tests = new ArrayList<>();
-        tests.add(new Object[]{makeRead(new byte[]{'T','A','G','C','G','A'}, false), 4, "T", new byte[] {'G','A'}, 104, 105});
-        tests.add(new Object[]{makeRead(new byte[]{'A','C','C','G','A','T'}, false), 4, "T", new byte[] {'G','A','T'}, 103, 105});
-        tests.add(new Object[]{makeRead(new byte[]{'T','A','G','C','G','A'}, true), 4, "T", new byte[] {'T','A','G','C'},100,103});
-        tests.add(new Object[]{makeRead(new byte[]{'T','A','G','C','G','A'}, false), 1, "T", new byte[] {'A','G','C','G','A'}, 101, 105});
-        tests.add(new Object[]{makeRead(new byte[]{'A','C','C','G','A','T'}, false), 2, "T", new byte[] {'C','C','G','A','T'}, 101, 105});
-        tests.add(new Object[]{makeRead(new byte[]{'T','A','G','C','G','A'}, true), 10, "T", new byte[] {},0,0});
 
-        tests.add(new Object[]{makeRead(new byte[]{'T','A','G','C','G','A'}, false), 4, "A", new byte[] {'A','G','C','G','A'}, 101, 105});
-        tests.add(new Object[]{makeRead(new byte[]{'A','C','C','G','A','T'}, false), 4, "A", new byte[] {'G','A','T'}, 103, 105});
-        tests.add(new Object[]{makeRead(new byte[]{'T','A','G','C','G','A'}, true), 4, "A", new byte[] {'T','A','G','C','G'},100,104});
-        tests.add(new Object[]{makeRead(new byte[]{'T','A','G','C','G','A'}, false), 1, "A", new byte[] {'T','A','G','C','G','A'}, 100, 105});
-        tests.add(new Object[]{makeRead(new byte[]{'A','C','C','G','A','T'}, false), 2, "A", new byte[] {'C','C','G','A','T'}, 101, 105});
-        tests.add(new Object[]{makeRead(new byte[]{'T','A','G','C','G','A'}, true), 10, "A", new byte[] {'T','A','G'},100,102});
-
-        return tests.toArray(new Object[][]{});
-    }
-
-
-    @Test (dataProvider = "makeReads1")
+    @Test (dataProvider = "iSFlowPlatform")
     void testIsFlowPlatform(final SAMFileHeader hdr, final GATKRead read, final boolean answer){
         assert(FlowBasedReadUtils.isFlowPlatform(hdr, read) == answer);
     }
 
-    @DataProvider(name="makeReads1")
-    Object[][] makeReads1() {
+    @Test(expectedExceptions = {RuntimeException.class})
+    void testMalformedUltimaRGThrowsException(){
+        GATKRead read = makeRead(new byte[]{'T','A','G','C','G','A'}, false);
+        read.setAttribute("tp",new byte[6]);
+        SAMReadGroupRecord rg = new SAMReadGroupRecord("rg");
+        rg.setPlatform("ULTIMA");
+        read.setReadGroup("rg");
+        SAMFileHeader hdr = new SAMFileHeader();
+        hdr.addReadGroup(rg);
+        FlowBasedReadUtils.isFlowPlatform(hdr, read);
+    }
+
+    @DataProvider(name="isFlowPlatform")
+    Object[][] getIsFlowPlatformInputs() {
         List<Object[]> tests = new ArrayList<>();
         SAMFileHeader hdr = new SAMFileHeader();
 
@@ -140,8 +136,6 @@ public class FlowBasedReadUtilsUnitTest extends GATKBaseTest{
         read4.setReadGroup("rg4");
         hdr.addReadGroup(rg4);
         tests.add(new Object[]{hdr, read4, true});
-
-
 
         return tests.toArray(new Object[][]{});
     }

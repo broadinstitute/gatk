@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.read;
 
+import gov.nih.nlm.ncbi.ngs.NGS;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SAMRecord;
@@ -44,6 +45,11 @@ public class FlowBasedReadUtils {
                 tmp = tmp & (readGroup!=null);
                 tmp = tmp  & (readGroup.getFlowOrder()!=null);
                 isFlowPlatform = tmp;
+
+                //in addition validate that the ultima data has FO tag, otherwise break
+                if ((NGSPlatform.fromReadGroupPL(readGroup.getPlatform()) == NGSPlatform.ULTIMA) & (!isFlowPlatform)){
+                    throw new RuntimeException("Malformed Ultima read group identified, aborting: " + readGroup);
+                }
             }
             if (isFlowPlatform) {
                 this.flowOrder = readGroup.getFlowOrder();
