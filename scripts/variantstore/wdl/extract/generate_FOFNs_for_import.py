@@ -9,14 +9,13 @@ import time
 
 
 def get_entities_in_set(data_table_name, sample_set_name):
-    set_of_entities = {}
+    set_of_entities = set()
     sample_set_list = list(table.list_rows(f"{data_table_name}_set"))
     for sample_set in sample_set_list:
         if sample_set.name == sample_set_name: ## else it's some other sample set and we dont care about it
             for sample in sample_set.attributes['samples']: ## TODO why is this samples in Terra? Is this some Terra hardcoding?!?!
                 set_of_entities.add(sample['entityName'])
 
-    print(set_of_entities)
     return set_of_entities
 
 
@@ -34,9 +33,7 @@ def generate_FOFNs_from_data_table_with_sample_set(data_table_name, sample_id_co
                 row.attributes[f"{data_table_name}_id"] = row.name
 
                 current_sample_name = row.attributes[sample_id_column_name]
-                if set_of_entities[current_sample_name]:
-                    print(current_sample_name)
-                    print(set_of_entities[current_sample_name])
+                if current_sample_name in set_of_entities:
                     current_vcf_file = row.attributes[vcf_files_column_name]
                     current_vcf_index_file = row.attributes[vcf_index_files_column_name]
                     sample_names_file.write(f'{current_sample_name}\n')
