@@ -138,10 +138,7 @@ if __name__ == '__main__':
                         required=True)
     parser.add_argument('--references-path', type=str, help='Path to references, only required for local files',
                         required=False)
-    parser.add_argument('--use-classic-vqsr', type=bool,
-                        help='If true, expect that the input GVS Avro files were generated using VQSR Classic',
-                        default=True, required=False)
-
+    parser.add_argument("--use-classic-vqsr", action="store_true", help="If set, expect that the input GVS Avro files were generated using VQSR Classic")
     args = parser.parse_args()
 
     # Remove trailing slashes if present.
