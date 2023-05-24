@@ -304,6 +304,7 @@ task IsVQSRLite {
   command {
     set +e
 
+    # See if there are any non-header lines that contain the string 'AS_VQS_SENS'. If so, grep will return 0 else 1
     grep -v '^#' ~{input_vcf} | grep AS_VQS_SENS > /dev/null
     if [[ $? -eq 0 ]]; then
       echo "true" > ~{is_vqsr_lite_file}
