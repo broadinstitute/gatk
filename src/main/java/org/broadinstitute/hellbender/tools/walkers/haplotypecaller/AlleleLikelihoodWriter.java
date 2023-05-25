@@ -12,6 +12,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 
 /*
 A class for logging likelihood matrics, possibly constrained by an (include-only) output interval
@@ -92,6 +93,37 @@ public class AlleleLikelihoodWriter implements AutoCloseable {
         }
     }
 
+    /**
+     * Write read x haplotype likelihood matrix as a matrix
+     * @param likelihoods - matrix to add
+     */
+    public void writeAlleleLikelihoodsAsMatrix(final AlleleLikelihoods<GATKRead, Haplotype> likelihoods, Map<String, String> haplotypeToNameMap, boolean writeHeader, int readCount){
+        final List<String> samples = likelihoods.samples();
+        final List<Haplotype> haplotypes = likelihoods.alleles();
+        try {
+            for (int s = 0 ; s < samples.size(); s++) {
+                if (writeHeader){
+                    output.write("Read");
+                    for (int allele = 0; allele < likelihoods.sampleMatrix(s).numberOfAlleles(); allele++) {
+                        output.write(String.format("\t%s", haplotypeToNameMap.get(haplotypes.get(allele).toString())));
+                    }
+                    output.write("\n");
+                }
+
+                List<GATKRead> reads = likelihoods.sampleEvidence(s);
+                for (int read = 0; read < likelihoods.sampleMatrix(s).evidenceCount(); read++) {
+                    output.write(String.format("%s", reads.get(read).getName()));
+                    for (int allele = 0; allele < likelihoods.sampleMatrix(s).numberOfAlleles(); allele++) {
+                        output.write(String.format("\t%.3f",likelihoods.sampleMatrix(s).get(allele, read)));
+                    }
+                    output.write("\n");
+                }
+            }
+            output.flush();
+        } catch (IOException err) {
+            throw new RuntimeException(String.format("Unable to write matrix to file"));
+        }
+    }
 
 
     @Override
