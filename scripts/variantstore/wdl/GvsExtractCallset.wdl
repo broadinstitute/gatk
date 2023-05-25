@@ -245,7 +245,7 @@ task ExtractTask {
 
     Int interval_index
     File intervals
-    String? drop_state
+    String drop_state
 
     String fq_cohort_extract_table
     String fq_ranges_cohort_ref_extract_table
