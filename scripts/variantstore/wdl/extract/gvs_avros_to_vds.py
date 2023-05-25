@@ -325,11 +325,10 @@ def create_vds(refs: 'List[List[str]]',
         vd = vd.annotate_rows(as_vqsr = hl.dict(vqsr.index(vd.locus, all_matches=True)
                                                 .map(lambda record: (record.alt + vd.alleles[0][hl.len(record.ref):], record.drop('ref', 'alt')))))
 
-        vd = vd.annotate_globals(truth_sensitivity_snp_threshold=truth_sensitivity_snp_threshold,
-                                 truth_sensitivity_indel_threshold=truth_sensitivity_indel_threshold)
-        is_snp = vd.alleles[1:].map(lambda alt: hl.is_snp(vd.alleles[0], alt))
         if use_classic_vqsr:
-            vd = vd.annotate_globals(tranche_data=tranche.collect(_localize=False))
+            vd = vd.annotate_globals(tranche_data=tranche.collect(_localize=False),
+                                     truth_sensitivity_snp_threshold=truth_sensitivity_snp_threshold,
+                                     truth_sensitivity_indel_threshold=truth_sensitivity_indel_threshold)
 
             sorted_tranche_data = hl.sorted(vd.tranche_data, key=lambda x: x.truth_sensitivity)
             vd = vd.annotate_globals(snp_vqslod_threshold=
@@ -342,6 +341,7 @@ def create_vds(refs: 'List[List[str]]',
                                      .head().min_vqslod
                                      )
 
+            is_snp = vd.alleles[1:].map(lambda alt: hl.is_snp(vd.alleles[0], alt))
             vd = vd.annotate_rows(
                 allele_NO=vd.alleles[1:].map(
                     lambda allele: hl.coalesce(vd.as_vqsr.get(allele).yng_status == 'N', False)),
@@ -355,6 +355,9 @@ def create_vds(refs: 'List[List[str]]',
                                                     True))
             )
         else:
+            vd = vd.annotate_globals(truth_sensitivity_snp_threshold=truth_sensitivity_snp_threshold,
+                                     truth_sensitivity_indel_threshold=truth_sensitivity_indel_threshold)
+            is_snp = vd.alleles[1:].map(lambda alt: hl.is_snp(vd.alleles[0], alt))
             vd = vd.annotate_rows(
                 allele_NO=vd.alleles[1:].map(
                     lambda allele: hl.coalesce(vd.as_vqsr.get(allele).yng_status == 'N', False)),
