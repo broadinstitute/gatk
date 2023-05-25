@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscovery
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 
+@SuppressWarnings("unused")
 @CommandLineProgramProperties(
         summary = "(\"ExtractCohortToVcf\") - Filter and extract variants from BigQuery to a VCF output file.",
         oneLineSummary = "Tool to extract variants from BigQuery to a VCF output file for a subset of samples.",

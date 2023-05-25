@@ -29,86 +29,86 @@ public class ExtractFeatures extends ExtractTool {
     private ExtractFeaturesEngine engine;
     private SampleList sampleList;
 
-    protected VariantContextWriter vcfWriter = null;
+    private VariantContextWriter vcfWriter = null;
 
     @Argument(
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             doc = "Output VCF file to which annotated variants should be written."
     )
-    protected String outputVcfPathString = null;
+    private String outputVcfPathString = null;
 
     @Argument(
             fullName = "alt-allele-table",
             doc = "Fully qualified name of the table where the alternate allele info is"
     )
-    protected String fqAltAlleleTable = null;
+    private String fqAltAlleleTable = null;
 
     @Argument(
             fullName = "use-batch-queries",
             doc = "If true, use batch (rather than interactive) priority queries in BigQuery",
             optional = true)
-    protected boolean useBatchQueries = true;
+    private boolean useBatchQueries = true;
 
     @Argument(
             fullName = "hq-genotype-gq-threshold",
             doc = "GQ threshold defining a high quality genotype",
             optional = true)
-    protected int hqGenotypeGQThreshold = 20;
+    private int hqGenotypeGQThreshold = 20;
 
     @Argument(
             fullName = "hq-genotype-depth-threshold",
             doc = "Depth threshold defining a high quality genotype",
             optional = true)
-    protected int hqGenotypeDepthThreshold = 10;
+    private int hqGenotypeDepthThreshold = 10;
 
     @Argument(
             fullName = "hq-genotype-ab-threshold",
             doc = "Ab threshold defining a high quality genotype",
             optional = true)
-    protected double hqGenotypeABThreshold = 0.2;
+    private double hqGenotypeABThreshold = 0.2;
 
     @Argument(
             fullName = "excess-alleles-threshold",
             doc = "Non-reference alleles threshold above which a site will be filtered out",
             optional = true)
-    protected int excessAllelesThreshold = CommonCode.EXCESS_ALLELES_THRESHOLD;
+    private int excessAllelesThreshold = CommonCode.EXCESS_ALLELES_THRESHOLD;
 
     @Argument(
             fullName = "query-labels",
             doc = "Key-value pairs to be added to the extraction BQ query. Ex: --query-labels key1=value1 --query-labels key2=value2",
             optional = true)
-    protected List<String> queryLabels = new ArrayList<>();
+    private List<String> queryLabels = new ArrayList<>();
 
     @Argument(
             fullName = "cost-observability-tablename",
             doc = "Name of the bigquery table in which to store cost observability metadata",
             optional = true)
-    protected String costObservabilityTableName = null;
+    private String costObservabilityTableName = null;
 
     @Argument(
             fullName = "call-set-identifier",
             doc = "Name of callset identifier, which is used to track costs in cost_observability table",
             optional = true)
-    protected String callSetIdentifier = null;
+    private String callSetIdentifier = null;
 
     @Argument(
             fullName = "wdl-step",
             doc = "Name of the WDL step/task (used for cost observability)",
             optional = true)
-    protected String wdlStep = null;
+    private String wdlStep = null;
 
     @Argument(
             fullName = "wdl-call",
             doc = "Name of the call in the WDL step/task (used for cost observability)",
             optional = true)
-    protected String wdlCall = null;
+    private String wdlCall = null;
 
     @Argument(
             fullName = "shard-identifier",
             doc = "Identifier for which shard was used in the WDL (used for cost observability)",
             optional = true)
-    protected String shardIdentifier = null;
+    private String shardIdentifier = null;
 
     /**
      * Enforce that if cost information is being recorded to the cost-observability-tablename then *all* recorded
