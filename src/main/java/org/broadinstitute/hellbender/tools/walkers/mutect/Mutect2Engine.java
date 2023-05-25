@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.mutect;
 
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Locatable;
-import htsjdk.samtools.util.Tuple;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -93,7 +92,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
     public static final int HUGE_FRAGMENT_LENGTH = 1_000_000;
     public static final int MIN_TAIL_QUALITY = 9;
 
-    private M2ArgumentCollection MTAC;
+    final private M2ArgumentCollection MTAC;
     private SAMFileHeader header;
     private final int minCallableDepth;
     public static final String CALLABLE_SITES_NAME = "callable";
@@ -588,7 +587,6 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
                 false,
                 false,
                 false,
-                MTAC.fbargs,
                 MTAC.pileupDetectionArgs.usePileupDetection);  //take off soft clips and low Q tails before we calculate likelihoods
 
 

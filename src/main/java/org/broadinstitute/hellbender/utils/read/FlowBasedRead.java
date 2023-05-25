@@ -998,76 +998,6 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
         return result;
     }
 
-    /**
-     * Hard clips uncertain flows (currently four first flows read that often generate noisy base calls
-     * @param inputRead GATKREad
-     * @param flowOrder flow order string from the SAM header
-     * @param fbargs arguments
-     * @return read with flowNumUncertainFlows trimmed
-     */
-    public static GATKRead hardClipUncertainBases(final GATKRead inputRead, final String flowOrder,
-                                                  final FlowBasedArgumentCollection fbargs ){
-        Utils.nonNull(fbargs);
-        Utils.validateArg(fbargs.flowFirstUncertainFlowBase.length()==1, "First uncertain flow base should be of length 1");
-        ReadClipper clipper = new ReadClipper(inputRead);
-        final String adjustedFlowOrder = adjustFlowOrderToUncertainFlow(flowOrder, fbargs.flowFirstUncertainFlowBase.charAt(0), fbargs.flowOrderCycleLength);
-        if (inputRead.isReverseStrand()) {
-            final int nUncertain = nUncertainBases(inputRead, adjustedFlowOrder, fbargs.flowNumUncertainFlows, false);
-            clipper.addOp(new ClippingOp(inputRead.getLength()-nUncertain, inputRead.getLength()-1));
-        }
-        else  {
-            final int nUncertain = nUncertainBases(inputRead, adjustedFlowOrder, fbargs.flowNumUncertainFlows, true);
-            clipper.addOp(new ClippingOp(0, nUncertain-1));
-        }
-
-        return clipper.clipRead(ClippingRepresentation.HARDCLIP_BASES);
-
-    }
-
-    /**
-     * Hard clips uncertain flows (currently four first flows read that often generate noisy base calls
-     * @param inputRead GATKREad
-     * @param samHeader  sam file header (to extract to flow order from
-     * @param fbargs arguments
-     * @return read with flowNumUncertainFlows trimmed
-     */
-    public static GATKRead hardClipUncertainBases(final GATKRead inputRead, final SAMFileHeader samHeader,
-                                                  final FlowBasedArgumentCollection fbargs ){
-        Utils.nonNull(fbargs);
-        String flowOrder = samHeader.getReadGroup(inputRead.getReadGroup()).getFlowOrder();
-        if (flowOrder==null){
-            throw new GATKException("Unable to trim uncertain bases without flow order information");
-        }
-        flowOrder = flowOrder.substring(0,fbargs.flowOrderCycleLength);
-        return hardClipUncertainBases(inputRead, flowOrder, fbargs);
-    }
-
-    private static String adjustFlowOrderToUncertainFlow(final String flowOrder,
-                                                         final char firstUncertainFlowBase,
-                                                         final int flowOrderLength){
-        String result = flowOrder + flowOrder;
-        final int adjustedStartPos = result.indexOf(firstUncertainFlowBase);
-        return result.substring(adjustedStartPos, adjustedStartPos+flowOrderLength);
-    }
-
-    //find how many bases are output from uncertain flows
-    private static int nUncertainBases(final GATKRead inputRead, final String flowOrder,
-                                       final int nUncertainFlows, final boolean isForward){
-        byte [] bases;
-        if (isForward){
-            bases = inputRead.getBases();
-        } else {
-            bases = ReadUtils.getBasesReverseComplement(inputRead).getBytes();
-        }
-
-        final int[] key = FlowBasedKeyCodec.baseArrayToKey(bases, flowOrder);
-        final int nTrimFlows = Math.min(nUncertainFlows, key.length);
-        int result = 0;
-        for (int i = 0 ; i < nTrimFlows; i++){
-            result += key[i];
-        }
-        return result;
-    }
 
     public static void setMinimalReadLength(int minimalReadLength) {
         FlowBasedRead.minimalReadLength = minimalReadLength;
@@ -1088,7 +1018,7 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
         flowMatrix = new double[maxHmer+1][key.length];
         for (int i = 0 ; i < maxHmer+1; i++) {
             for (int j = 0 ; j < key.length; j++ ){
-                flowMatrix[i][j] = fbargs.fillingValue;;
+                flowMatrix[i][j] = fbargs.fillingValue;
             }
         }
 
