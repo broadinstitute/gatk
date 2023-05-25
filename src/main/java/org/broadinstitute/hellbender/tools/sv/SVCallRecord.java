@@ -195,12 +195,12 @@ public class SVCallRecord implements SVLocatable {
         if (type.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.CNV)) {
             Utils.validateArg(inputStrandA == null && inputStrandB == null, "Attempted to create CNV with non-null strands");
             return Pair.of(null, null);
-        } else if (type.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL) || type.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.INS)) {
+        } else if (type.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL)) {
             if (inputStrandA != null) {
-                Utils.validateArg(inputStrandA.booleanValue() == true, "Attempted to create DEL/INS with negative first strand");
+                Utils.validateArg(inputStrandA.booleanValue() == true, "Attempted to create DEL with negative first strand");
             }
             if (inputStrandB != null) {
-                Utils.validateArg(inputStrandB.booleanValue() == false, "Attempted to create DEL/INS with positive second strand");
+                Utils.validateArg(inputStrandB.booleanValue() == false, "Attempted to create DEL with positive second strand");
             }
             return Pair.of(Boolean.TRUE, Boolean.FALSE);
         } else if (type.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.DUP)) {
@@ -212,10 +212,6 @@ public class SVCallRecord implements SVLocatable {
             }
             return Pair.of(Boolean.FALSE, Boolean.TRUE);
         } else {
-            if (type.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.INV)) {
-                Utils.validateArg(Objects.equals(inputStrandA, inputStrandB), "Inversions must have matching strands but found " +
-                        inputStrandA + " / " + inputStrandB);
-            }
             return Pair.of(inputStrandA, inputStrandB);
         }
     }

@@ -96,7 +96,8 @@ public final class SVCallRecordUtils {
 
         builder.attribute(GATKSVVCFConstants.SVLEN, record.getLength());
         if ((svtype.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.BND)
-                || svtype.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.INV))
+                || svtype.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.INV)
+                || svtype.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.INS))
                 && record.getStrandA() != null && record.getStrandB() != null) {
             builder.attribute(GATKSVVCFConstants.STRANDS_ATTRIBUTE, getStrandString(record));
         }
@@ -334,7 +335,6 @@ public final class SVCallRecordUtils {
 
         final String strands;
         if (type.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL)
-                || type.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.INS)
                 || type.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.CNV)
                 || type.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.DUP)) {
             // SVCallRecord class can resolve these
@@ -386,8 +386,8 @@ public final class SVCallRecordUtils {
         } else {
             contigB = contigA;
             // Force reset of END coordinate
-            if (type.equals(StructuralVariantType.INS)) {
-                positionB = positionA + 1;
+            if (type == GATKSVVCFConstants.StructuralVariantAnnotationType.INS) {
+                positionB = positionA;
             } else {
                 positionB = variant.getEnd();
             }
