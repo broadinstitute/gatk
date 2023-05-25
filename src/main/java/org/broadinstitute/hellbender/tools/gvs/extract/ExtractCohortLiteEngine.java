@@ -1,12 +1,11 @@
 package org.broadinstitute.hellbender.tools.gvs.extract;
 
 import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.writer.VariantContextWriter;
+import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.GATKPath;
-import org.broadinstitute.hellbender.engine.ProgressMeter;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.tools.gvs.common.GQStateEnum;
 import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
@@ -14,7 +13,11 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEng
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 public class ExtractCohortLiteEngine extends ExtractCohortEngine {
@@ -41,7 +44,6 @@ public class ExtractCohortLiteEngine extends ExtractCohortEngine {
     }
 
     public ExtractCohortLiteEngine(final String projectID,
-                                   final VariantContextWriter vcfWriter,
                                    final VCFHeader vcfHeader,
                                    final VariantAnnotatorEngine annotationEngine,
                                    final ReferenceDataSource refSource,
@@ -60,17 +62,16 @@ public class ExtractCohortLiteEngine extends ExtractCohortEngine {
                                    final boolean printDebugInformation,
                                    final Double vqScoreSNPThreshold,
                                    final Double vqScoreINDELThreshold,
-                                   final ProgressMeter progressMeter,
                                    final String filterSetName,
                                    final boolean emitPLs,
                                    final boolean emitADs,
                                    final ExtractCohort.VQScoreFilteringType vqScoreFilteringType,
-                                   final boolean excludeFilteredSites,
                                    final GQStateEnum inferredReferenceState,
-                                   final boolean presortedAvroFiles
+                                   final boolean presortedAvroFiles,
+                                   final Consumer<VariantContext> variantContextConsumer
+
     ) {
         super(projectID,
-                vcfWriter,
                 vcfHeader,
                 annotationEngine,
                 refSource,
@@ -89,14 +90,13 @@ public class ExtractCohortLiteEngine extends ExtractCohortEngine {
                 printDebugInformation,
                 vqScoreSNPThreshold,
                 vqScoreINDELThreshold,
-                progressMeter,
                 filterSetName,
                 emitPLs,
                 emitADs,
                 vqScoreFilteringType,
-                excludeFilteredSites,
                 inferredReferenceState,
-                presortedAvroFiles);
+                presortedAvroFiles,
+                variantContextConsumer);
         logger = LogManager.getLogger(ExtractCohortLiteEngine.class);
     }
 

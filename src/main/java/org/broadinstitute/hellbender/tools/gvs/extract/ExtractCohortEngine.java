@@ -2,14 +2,16 @@ package org.broadinstitute.hellbender.tools.gvs.extract;
 
 import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.*;
-import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.GATKPath;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.*;
@@ -32,8 +34,6 @@ import java.util.stream.Stream;
 public class ExtractCohortEngine {
     private final Logger logger;
 
-    private final VariantContextWriter vcfWriter;
-
     private final boolean printDebugInformation;
     private final int localSortMaxRecordsInRam;
     private final List<SimpleInterval> traversalIntervals;
@@ -45,9 +45,7 @@ public class ExtractCohortEngine {
     private final Double vqScoreSNPThreshold;
     private final Double vqScoreINDELThreshold;
     private final ExtractCohort.VQScoreFilteringType vqScoreFilteringType;
-    private final boolean excludeFilteredSites;
 
-    private final ProgressMeter progressMeter;
     private final String projectID;
     private final boolean emitPLs;
     private final boolean emitADs;
@@ -81,6 +79,8 @@ public class ExtractCohortEngine {
 
     private final boolean presortedAvroFiles;
 
+    private final Consumer<VariantContext> variantContextConsumer;
+
     List<String> getFilterSetInfoTableFields() {
         return SchemaUtils.YNG_FIELDS;
     }
@@ -102,7 +102,6 @@ public class ExtractCohortEngine {
     }
 
     public ExtractCohortEngine(final String projectID,
-                               final VariantContextWriter vcfWriter,
                                final VCFHeader vcfHeader,
                                final VariantAnnotatorEngine annotationEngine,
                                final ReferenceDataSource refSource,
@@ -121,19 +120,17 @@ public class ExtractCohortEngine {
                                final boolean printDebugInformation,
                                final Double vqScoreSNPThreshold,
                                final Double vqScoreINDELThreshold,
-                               final ProgressMeter progressMeter,
                                final String filterSetName,
                                final boolean emitPLs,
                                final boolean emitADs,
                                final ExtractCohort.VQScoreFilteringType vqScoreFilteringType,
-                               final boolean excludeFilteredSites,
                                final GQStateEnum inferredReferenceState,
-                               final boolean presortedAvroFiles
+                               final boolean presortedAvroFiles,
+                               final Consumer<VariantContext> variantContextConsumer
     ) {
         this.localSortMaxRecordsInRam = localSortMaxRecordsInRam;
 
         this.projectID = projectID;
-        this.vcfWriter = vcfWriter;
         this.refSource = refSource;
         this.sampleIdToName = sampleIdToName;
         this.sampleIdsToExtract = new TreeSet<>(this.sampleIdToName.keySet());
@@ -169,12 +166,9 @@ public class ExtractCohortEngine {
         this.vqScoreSNPThreshold = vqScoreSNPThreshold;
         this.vqScoreINDELThreshold = vqScoreINDELThreshold;
         this.vqScoreFilteringType = vqScoreFilteringType;
-        this.excludeFilteredSites = excludeFilteredSites;
 
         this.filterSetSiteTableRef = vqScoreFilteringType.equals(ExtractCohort.VQScoreFilteringType.NONE) ? null : new TableReference(filterSetSiteTableName, SchemaUtils.FILTER_SET_SITE_FIELDS);
         this.filterSetInfoTableRef = vqScoreFilteringType.equals(ExtractCohort.VQScoreFilteringType.NONE) ? null : new TableReference(filterSetInfoTableName, getFilterSetInfoTableFields());
-
-        this.progressMeter = progressMeter;
 
         this.filterSetName = filterSetName;
 
@@ -186,6 +180,7 @@ public class ExtractCohortEngine {
         this.presortedAvroFiles = presortedAvroFiles;
 
         this.inferredReferenceRecord = new InferredReferenceRecord(inferredReferenceState);
+        this.variantContextConsumer = variantContextConsumer;
         logger = LogManager.getLogger(ExtractCohortEngine.class);
     }
 
@@ -578,16 +573,6 @@ public class ExtractCohortEngine {
 
         // clean up extra annotations
         return removeAnnotations(filteredVC);
-    }
-
-    private void writeToVcf(VariantContext vc) {
-        if (vc != null) {
-            // Add the variant contexts that aren't filtered or add everything if we aren't excluding anything
-            if (vc.isNotFiltered() || !excludeFilteredSites) {
-                vcfWriter.add(vc);
-            }
-            progressMeter.update(vc);
-        }
     }
 
     private VariantContext filterSiteByAlleleSpecificVQScore(VariantContext mergedVC,
@@ -1089,27 +1074,13 @@ public class ExtractCohortEngine {
 
     }
 
-
     void createVariantsFromSortedRanges(final SortedSet<Long> sampleIdsToExtract,
                                         final Iterable<GenericRecord> sortedVet,
                                         Iterable<GenericRecord> sortedReferenceRange,
                                         final Map<Long, Map<Allele, Map<Allele, Double>>> fullVQScoreMap,
                                         final Map<Long, Map<Allele, Map<Allele, String>>> fullYngMap,
                                         final Map<Long, List<String>> siteFilterMap,
-                                        final boolean noVQScoreFilteringRequested) {
-
-        createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullVQScoreMap, fullYngMap,
-                siteFilterMap, noVQScoreFilteringRequested, this::writeToVcf);
-    }
-
-    void createVariantsFromSortedRanges(final SortedSet<Long> sampleIdsToExtract,
-                                        final Iterable<GenericRecord> sortedVet,
-                                        Iterable<GenericRecord> sortedReferenceRange,
-                                        final Map<Long, Map<Allele, Map<Allele, Double>>> fullVQScoreMap,
-                                        final Map<Long, Map<Allele, Map<Allele, String>>> fullYngMap,
-                                        final Map<Long, List<String>> siteFilterMap,
-                                        final boolean noVQScoreFilteringRequested,
-                                        Consumer<VariantContext> variantContextConsumer
+                                        final boolean noVQScoreFilteringRequested
     ) {
 
         long maxSampleId = sampleIdsToExtract.stream().max(Long::compare).orElseThrow(

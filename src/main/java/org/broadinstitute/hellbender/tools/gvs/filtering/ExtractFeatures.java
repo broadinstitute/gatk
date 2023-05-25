@@ -1,15 +1,18 @@
 package org.broadinstitute.hellbender.tools.gvs.filtering;
 
+import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.*;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bigquery.TableReference;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
@@ -25,6 +28,15 @@ import java.util.*;
 public class ExtractFeatures extends ExtractTool {
     private ExtractFeaturesEngine engine;
     private SampleList sampleList;
+
+    protected VariantContextWriter vcfWriter = null;
+
+    @Argument(
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            doc = "Output VCF file to which annotated variants should be written."
+    )
+    protected String outputVcfPathString = null;
 
     @Argument(
             fullName = "alt-allele-table",
@@ -131,6 +143,8 @@ public class ExtractFeatures extends ExtractTool {
 
         VCFHeader header = CommonCode.generateVcfHeader(
                 new HashSet<>(), reference.getSequenceDictionary(), extraHeaderLines);
+
+        vcfWriter = createVCFWriter(IOUtils.getPath(outputVcfPathString));
 
         final List<SimpleInterval> traversalIntervals = getTraversalIntervals();
 

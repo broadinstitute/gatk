@@ -13,7 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 
 
-public class ExtractCohortTest extends CommandLineProgramTest {
+public class ExtractCohortToVcfTest extends CommandLineProgramTest {
   private final String prefix = getToolTestDataDir();
   private final String quickstart10mbRefRangesAvroFile = prefix + "quickstart_10mb_ref_ranges.avro";
   private final String quickstart10mbVetAvroFile = prefix + "quickstart_10mb_vet.avro";

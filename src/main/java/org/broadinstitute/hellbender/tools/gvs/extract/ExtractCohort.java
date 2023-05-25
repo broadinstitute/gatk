@@ -1,14 +1,13 @@
 package org.broadinstitute.hellbender.tools.gvs.extract;
 
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.*;
@@ -19,18 +18,15 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 import java.util.*;
 
 
-@CommandLineProgramProperties(
-        summary = "(\"ExtractCohort\") - Filter and extract variants out of BigQuery.",
-        oneLineSummary = "Tool to extract variants out of BigQuery for a subset of samples.",
-        programGroup = ShortVariantDiscoveryProgramGroup.class
-)
 @DocumentedFeature
-public class ExtractCohort extends ExtractTool {
+public abstract class ExtractCohort extends ExtractTool {
     private static final Logger logger = LogManager.getLogger(ExtractCohort.class);
     private ExtractCohortEngine engine;
     private SampleList sampleList;
 
     public enum VQScoreFilteringType {GENOTYPE, SITES, NONE}
+
+    protected VCFHeader header;
 
     @Argument(
             fullName = "filter-set-info-table",
@@ -172,45 +168,45 @@ public class ExtractCohort extends ExtractTool {
             fullName = "exclude-filtered",
             doc = "Don't include filtered sites in the final jointVCF",
             optional = true)
-    private boolean excludeFilteredSites = false;
+    protected boolean excludeFilteredSites = false;
 
     @Argument(fullName = "inferred-reference-state",
             shortName = "irs",
             doc = "Reference state to be inferred from GVS, must match what was used during loading",
             optional = true)
-    public GQStateEnum inferredReferenceState = GQStateEnum.SIXTY;
+    private GQStateEnum inferredReferenceState = GQStateEnum.SIXTY;
 
     @Argument(
             fullName = "cost-observability-tablename",
             doc = "Name of the bigquery table in which to store cost observability metadata",
             optional = true)
-    protected String costObservabilityTableName = null;
+    private String costObservabilityTableName = null;
 
     @Argument(
             fullName = "call-set-identifier",
             doc = "Name of callset identifier, which is used to track costs in cost_observability table",
             optional = true)
-    protected String callSetIdentifier = null;
+    private String callSetIdentifier = null;
 
     @Argument(
             fullName = "wdl-step",
             doc = "Name of the WDL step/task (used for cost observability)",
             optional = true)
-    protected String wdlStep = null;
+    private String wdlStep = null;
 
     @Argument(
             fullName = "wdl-call",
             doc = "Name of the call in the WDL step/task (used for cost observability)",
             optional = true)
-    protected String wdlCall = null;
+    private String wdlCall = null;
 
     @Argument(
             fullName = "shard-identifier",
             doc = "Identifier for which shard was used in the WDL (used for cost observability)",
             optional = true)
-    protected String shardIdentifier = null;
+    private String shardIdentifier = null;
 
-    protected static VCFHeader generateVcfHeader(Set<String> sampleNames,
+    private static VCFHeader generateVcfHeader(Set<String> sampleNames,
                                                  final SAMSequenceDictionary sequenceDictionary,
                                                  final Set<VCFHeaderLine> extraHeaders) {
         final Set<VCFHeaderLine> headerLines = new HashSet<>();
@@ -280,6 +276,8 @@ public class ExtractCohort extends ExtractTool {
         }
         return null;
     }
+
+    protected abstract void apply(VariantContext variantContext);
 
     @Override
     protected void onStartup() {
@@ -357,7 +355,7 @@ public class ExtractCohort extends ExtractTool {
         sampleList = new SampleList(sampleTableName, sampleFileName, projectID, printDebugInformation, "extract-cohort");
         Map<Long, String> sampleIdToName = sampleList.getSampleIdToNameMap();
 
-        VCFHeader header = generateVcfHeader(new HashSet<>(sampleIdToName.values()), reference.getSequenceDictionary(), extraHeaderLines);
+        header = generateVcfHeader(new HashSet<>(sampleIdToName.values()), reference.getSequenceDictionary(), extraHeaderLines);
 
         final List<SimpleInterval> traversalIntervals = getTraversalIntervals();
 
@@ -389,7 +387,6 @@ public class ExtractCohort extends ExtractTool {
         engine = !isVQSRClassic ?
                 new ExtractCohortLiteEngine(
                         projectID,
-                        vcfWriter,
                         header,
                         annotationEngine,
                         reference,
@@ -408,18 +405,16 @@ public class ExtractCohort extends ExtractTool {
                         printDebugInformation,
                         truthSensitivitySNPThreshold,
                         truthSensitivityINDELThreshold,
-                        progressMeter,
                         filterSetName,
                         emitPLs,
                         emitADs,
                         vqScoreFilteringType,
-                        excludeFilteredSites,
                         inferredReferenceState,
-                        presortedAvroFiles)
+                        presortedAvroFiles,
+                        this::apply)
                 :
                 new ExtractCohortEngine(
                         projectID,
-                        vcfWriter,
                         header,
                         annotationEngine,
                         reference,
@@ -438,16 +433,13 @@ public class ExtractCohort extends ExtractTool {
                         printDebugInformation,
                         vqsLodSNPThreshold,
                         vqsLodINDELThreshold,
-                        progressMeter,
                         filterSetName,
                         emitPLs,
                         emitADs,
                         vqScoreFilteringType,
-                        excludeFilteredSites,
                         inferredReferenceState,
-                        presortedAvroFiles);
-
-        vcfWriter.writeHeader(header);
+                        presortedAvroFiles,
+                        this::apply);
     }
 
     @Override
@@ -486,11 +478,5 @@ public class ExtractCohort extends ExtractTool {
             logger.info(String.format("***Processed %d total variants", engine.getTotalNumberOfVariants()));
             logger.info(String.format("***Read API scanned %d bytes", engine.getTotalEstimatedBytesScanned()));
         }
-
-        // Close up our writer if we have to:
-        if (vcfWriter != null) {
-            vcfWriter.close();
-        }
     }
-
 }

@@ -17,15 +17,7 @@ import java.util.List;
 
 public abstract class ExtractTool extends GATKTool {
     public static final int DEFAULT_LOCAL_SORT_MAX_RECORDS_IN_RAM = 1000000;
-    protected VariantContextWriter vcfWriter = null;
     protected VariantAnnotatorEngine annotationEngine;
-
-    @Argument(
-            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-            doc = "Output VCF file to which annotated variants should be written."
-    )
-    protected String outputVcfPathString = null;
 
     @Argument(
             fullName = "project-id",
@@ -34,14 +26,12 @@ public abstract class ExtractTool extends GATKTool {
     )
     protected String projectID = null;
 
-
     @Argument(
             fullName = "dataset-id",
             doc = "ID of the Google Cloud dataset to use when executing queries",
             optional = true // I guess, but won't it break otherwise or require that a dataset be created with the name temp_tables?
     )
     protected String datasetID = null;
-
 
     @Argument(
             fullName = "sample-table",
@@ -118,10 +108,6 @@ public abstract class ExtractTool extends GATKTool {
         //TODO verify what we really need here
         annotationEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), null, Collections.emptyList(), false, false);
 
-        vcfWriter = createVCFWriter(IOUtils.getPath(outputVcfPathString));
-
         ChromosomeEnum.setRefVersion(refVersion);
-
     }
-
 }
