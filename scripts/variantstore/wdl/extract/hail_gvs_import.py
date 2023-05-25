@@ -138,13 +138,14 @@ if __name__ == '__main__':
                         required=True)
     parser.add_argument('--references-path', type=str, help='Path to references, only required for local files',
                         required=False)
-    parser.add_argument("--use-classic-vqsr", action="store_true", help="If set, expect that the input GVS Avro files were generated using VQSR Classic")
+    # TODO - When we change to make VQSR Lite, change this line to '--use-classic-vqsr' and remove the not from 'use_classic_vqsr = not args.use_vqsr_lite' below
+    parser.add_argument("--use-vqsr-lite", action="store_true", help="If set, expect that the input GVS Avro files were generated using VQSR Lite")
     args = parser.parse_args()
 
     # Remove trailing slashes if present.
     avro_path, temp_path, vds_path = [p if not p.endswith('/') else p[:-1] for p in
                                       [args.avro_path, args.temp_path, args.vds_path]]
-    use_classic_vqsr = args.use_classic_vqsr
+    use_classic_vqsr = not args.use_vqsr_lite
     is_gcs = [gcs_re.match(p) for p in [avro_path, temp_path, vds_path]]
     is_not_gcs = [not g for g in is_gcs]
 

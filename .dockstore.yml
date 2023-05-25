@@ -89,7 +89,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_VS-924_BetterLiteVsClassic
    - name: GvsPopulateAltAllele
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPopulateAltAllele.wdl
@@ -113,7 +112,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_VS-924_BetterLiteVsClassic
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
@@ -210,7 +208,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_VS-924_BetterLiteVsClassic
    - name: GvsQuickstartVcfIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartVcfIntegration.wdl
@@ -257,7 +254,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_VS-924_BetterLiteVsClassic
    - name: GvsCallsetStatistics
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCallsetStatistics.wdl
