@@ -7,6 +7,7 @@ workflow GvsQuickstartVcfIntegration {
 
     input {
         String branch_name
+        Boolean use_classic_VQSR = true
         String expected_output_prefix = "gs://gvs-internal-quickstart/integration/2023-05-23/"
 
         Array[String] external_sample_names = [
@@ -51,7 +52,6 @@ workflow GvsQuickstartVcfIntegration {
         Int? extract_scatter_count
         String drop_state = "FORTY"
         Boolean extract_do_not_filter_override = false
-        Boolean use_classic_VQSR = false
         String dataset_suffix = "vcf"
     }
     String project_id = "gvs-internal"
@@ -76,9 +76,9 @@ workflow GvsQuickstartVcfIntegration {
             use_classic_VQSR = use_classic_VQSR,
             extract_table_prefix = "quickit",
             extract_scatter_count = extract_scatter_count,
-            # Force filtering off as it is not deterministic and the initial version of this integration test does not
-            # allow for inexact matching of actual and expected results.
-            extract_do_not_filter_override = extract_do_not_filter_override,
+            # If we are using VQSR Classic, we turn off filtering as VQSR Classic is not deterministic
+            # (and the initial version of this integration test does not allow for inexact matching of actual and expected results.)
+            extract_do_not_filter_override = extract_do_not_filter_override || use_classic_VQSR,
             drop_state = drop_state
     }
 

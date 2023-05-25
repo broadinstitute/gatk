@@ -7,10 +7,10 @@ import "GvsQuickstartVcfIntegration.wdl" as QuickstartVcfIntegration
 workflow GvsQuickstartHailIntegration {
     input {
         String branch_name
+        Boolean use_classic_VQSR = true
     }
 
     String project_id = "gvs-internal"
-    Boolean use_classic_VQSR = true
 
     call QuickstartVcfIntegration.GvsQuickstartVcfIntegration {
         input:
