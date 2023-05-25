@@ -53,6 +53,7 @@ workflow GvsJointVariantCalling {
             input_vcf_indexes = input_vcf_indexes,
             input_vcfs = input_vcfs,
             filter_set_name = filter_set_name,
+            use_classic_VQSR = true,
             extract_output_gcs_dir = extract_output_gcs_dir,
             destination_dataset = dataset_name,
             destination_project = project_id,

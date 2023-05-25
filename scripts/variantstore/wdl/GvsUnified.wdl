@@ -151,7 +151,6 @@ workflow GvsUnified {
             scatter_count = extract_scatter_count,
             interval_list = interval_list,
             interval_weights_bed = interval_weights_bed,
-            use_classic_VQSR = use_classic_VQSR,
             gatk_override = gatk_override,
             output_file_base_name = extract_output_file_base_name,
             extract_maxretries_override = extract_maxretries_override,

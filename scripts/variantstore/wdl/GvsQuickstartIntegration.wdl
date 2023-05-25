@@ -13,12 +13,12 @@ workflow GvsQuickstartIntegration {
     String project_id = "gvs-internal"
 
     if (run_hail_integration) {
-        call QuickstartHailIntegration.GvsQuickstartHailVQSRLiteIntegration {
+        call QuickstartHailIntegration.GvsQuickstartHailIntegration as GvsQuickstartHailVQSRLiteIntegration {
             input:
                 branch_name = branch_name,
                 use_classic_VQSR = false
         }
-        call QuickstartHailIntegration.GvsQuickstartHailVQSRClassicIntegration {
+        call QuickstartHailIntegration.GvsQuickstartHailIntegration as GvsQuickstartHailVQSRClassicIntegration{
             input:
                 branch_name = branch_name,
                 use_classic_VQSR = true
