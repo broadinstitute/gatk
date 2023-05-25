@@ -10,7 +10,7 @@ workflow GvsQuickstartHailIntegration {
     }
 
     String project_id = "gvs-internal"
-    Boolean use_classic_VQSR = false
+    Boolean use_classic_VQSR = true
 
     call QuickstartVcfIntegration.GvsQuickstartVcfIntegration {
         input:
@@ -128,7 +128,7 @@ task CreateAndTieOutVds {
             --vds-path ${VDS_PATH} \
             --temp-path ${TEMP_PATH} \
             --references-path ${REFERENCES_PATH} \
-            ~{true='--use-classic-vqsr' false='' use_classic_VQSR}
+            ~{true='' false='--use-vqsr-lite' use_classic_VQSR}
 
         export JOINED_MATRIX_TABLE_PATH=${WORK}/joined.mt
 

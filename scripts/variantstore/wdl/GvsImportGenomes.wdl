@@ -28,6 +28,7 @@ workflow GvsImportGenomes {
     Int? load_data_batch_size
     Int? load_data_preemptible_override
     Int? load_data_maxretries_override
+    Boolean process_vcf_headers = false
     File? load_data_gatk_override
   }
 
@@ -119,9 +120,18 @@ workflow GvsImportGenomes {
         load_data_preemptible = effective_load_data_preemptible,
         load_data_maxretries = effective_load_data_maxretries,
         sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
-        sample_map = GetUningestedSampleIds.sample_map
+        sample_map = GetUningestedSampleIds.sample_map,
+        process_vcf_headers = process_vcf_headers
     }
   }
+ if (process_vcf_headers) {
+   call ProcessVCFHeaders {
+     input:
+       load_done = LoadData.done,
+       dataset_name = dataset_name,
+       project_id = project_id,
+   }
+ }
 
   call SetIsLoadedColumn {
     input:
@@ -186,6 +196,7 @@ task LoadData {
     Boolean? drop_state_includes_greater_than = false
     Boolean force_loading_from_non_allele_specific = false
     Boolean skip_loading_vqsr_fields = false
+    Boolean process_vcf_headers
 
     File? gatk_override
     Int load_data_preemptible
@@ -302,7 +313,8 @@ task LoadData {
         -SN ${sample_name} \
         -SNM ~{sample_map} \
         --ref-version 38 \
-        --skip-loading-vqsr-fields ~{skip_loading_vqsr_fields}
+        --skip-loading-vqsr-fields ~{skip_loading_vqsr_fields} \
+        --enable-vcf-header-processing ~{process_vcf_headers}
 
       rm input_vcf_$i.vcf.gz
       rm input_vcf_$i.vcf.gz.tbi
@@ -311,7 +323,7 @@ task LoadData {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_05_19_50331e2f469f9e276840fbb2c47f2f6ec282dc0c"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_05_23"
     maxRetries: load_data_maxretries
     memory: "3.75 GB"
     disks: "local-disk 50 HDD"
@@ -323,6 +335,28 @@ task LoadData {
     File stderr = stderr()
   }
 }
+
+task ProcessVCFHeaders {
+  input {
+    String dataset_name
+    String project_id
+    Array[String] load_done
+  }
+
+  command <<<
+    set -o errexit -o nounset -o xtrace -o pipefail
+
+    python3 /app/process_sample_vcf_headers.py \
+      --project_id ~{project_id} \
+      --dataset_name ~{dataset_name}
+  >>>
+
+  runtime {
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-19-alpine"
+    disks: "local-disk 500 HDD"
+  }
+}
+
 
 task SetIsLoadedColumn {
   input {
@@ -489,7 +523,7 @@ task CurateInputLists {
                                              --output_files True
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-17-alpine"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-19-alpine"
     memory: "3 GB"
     disks: "local-disk 100 HDD"
     bootDiskSizeGb: 15

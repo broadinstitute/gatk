@@ -7,7 +7,7 @@ workflow GvsQuickstartVcfIntegration {
 
     input {
         String branch_name
-        String expected_output_prefix = "gs://gvs-internal-quickstart/integration/2023-05-21/"
+        String expected_output_prefix = "gs://gvs-internal-quickstart/integration/2023-05-23/"
 
         Array[String] external_sample_names = [
                                               "ERS4367795",
@@ -281,13 +281,13 @@ task AssertCostIsTrackedAndExpected {
 
         # For these two costs, there is non-determinism in the pipeline - we allow a % difference
         if [[ $OBS_KEY == "ExtractFilterTask.GvsCreateFilterSet.BigQuery Query Scanned" ]]; then
-          TOLERANCE=0.03   # 3% tolerance  (Note - have seen as high as: 0.0224388)
+          TOLERANCE=0.02   # 2% tolerance  (Note - have seen as high as: 0.0157154)
         elif [[ $OBS_KEY == "ExtractFilterTask.GvsCreateFilterSet.Storage API Scanned" ]]; then
           TOLERANCE=0.05  # 5% tolerance (Note - have seen as high as: 0.0281223)
         elif [[ $OBS_KEY == "ExtractTask.GvsExtractCallset.BigQuery Query Scanned" ]]; then
           TOLERANCE=0.6   # 60% tolerance (Note - have seen as high as: 0.5) - but it's 210 vs 420.
         elif [[ $OBS_KEY == "ExtractTask.GvsExtractCallset.Storage API Scanned" ]]; then
-          TOLERANCE=0.02   # 2% tolerance  (Note - have seen as high as: 0.0105648)
+          TOLERANCE=0.01   # 1% tolerance  (Note - have seen as high as: 0.00608656)
         fi
 
         if [[ $OBS_BYTES -ne $EXP_BYTES ]]; then

@@ -5,7 +5,8 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.*;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -25,7 +26,11 @@ import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Ingest variant walker
@@ -41,11 +46,14 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     private RefCreator refCreator;
     private VetCreator vetCreator;
+    private VcfHeaderLineScratchCreator vcfHeaderLineScratchCreator;
     private LoadStatus loadStatus;
+
+    private Map<String, Boolean> allLineHeaders = new HashMap<>();
 
     private GenomeLocSortedSet intervalArgumentGenomeLocSortedSet;
 
-    private String sampleId;
+    private Long sampleId;
 
     // Inside the parent directory, a directory for each chromosome will be created, with a vet directory in each one.
     // Each vet directory will hold all the vet TSVs for each sample.
@@ -145,6 +153,13 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     )
     public boolean skipLoadingVqsrFields = false;
 
+    @Argument(
+            fullName = "enable-vcf-header-processing",
+            doc = "Ingest some sample VCF header lines and store in BigQuery dataset",
+            optional = true
+    )
+    public boolean enableVCFHeaderProcessing = false;
+
     private boolean shouldWriteLoadStatusStarted = true;
 
     // getGenotypes() returns list of lists for all samples at variant
@@ -178,12 +193,28 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         // TODO if you change here, also change in CreateArrayIngestFiles
         // Get sample name
         final VCFHeader inputVCFHeader = getHeaderForVariants();
+        if (enableVCFHeaderProcessing) {
+            Set<String> nonCommandLineHeaders = new HashSet<>();
+            for (VCFHeaderLine line :  inputVCFHeader.getMetaDataInInputOrder()) {
+                if (line.getKey().contains("CommandLine")) {
+                    allLineHeaders.put(line.toString(), true);
+                }
+                else {
+                    nonCommandLineHeaders.add(line.toString());
+                }
+            }
+            allLineHeaders.put(StringUtils.join(nonCommandLineHeaders), false);
+        }
+
+        // get an array of header "lines" (command line INFO lines, chunks of non-command-line INFO lines)
+        // to put into the header line scratch table
+
         String sampleName = sampleNameParam == null ? IngestUtils.getSampleName(inputVCFHeader) : sampleNameParam;
         if (sampleIdParam == null && sampleMap == null) {
             throw new IllegalArgumentException("One of sample-id or sample-name-mapping must be specified");
         }
         if (sampleIdParam != null) {
-            sampleId = String.valueOf(sampleIdParam);
+            sampleId = sampleIdParam;
         } else {
             sampleId = IngestUtils.getSampleId(sampleName, sampleMap);
         }
@@ -207,7 +238,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                 logger.info("Found estimated rows in streaming buffer!!! " + streamingBufferRows);
             }
 
-            LoadStatus.LoadState state = loadStatus.getSampleLoadState(Long.parseLong(sampleId));
+            LoadStatus.LoadState state = loadStatus.getSampleLoadState(sampleId);
             if (state == LoadStatus.LoadState.COMPLETE) {
                 logger.info("Sample id " + sampleId + " was detected as already loaded, exiting successfully.");
                 System.exit(0);
@@ -232,7 +263,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                     // Write the status finished row and exit 0.
                     logger.warn("Found load status started row with vet and ref written as needed, writing load status finished row for sample name = {}, id = {}",
                             sampleName, sampleId);
-                    loadStatus.writeLoadStatusFinished(Long.parseLong(sampleId));
+                    loadStatus.writeLoadStatusFinished(sampleId);
                     System.exit(0);
                 }
 
@@ -257,6 +288,10 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         if (enableVet && !vetRowsExist) {
             vetCreator = new VetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, forceLoadingFromNonAlleleSpecific, skipLoadingVqsrFields);
         }
+        if (enableVCFHeaderProcessing) {
+            vcfHeaderLineScratchCreator = new VcfHeaderLineScratchCreator(sampleId, projectID, datasetName);
+        }
+
     }
 
     @Override
@@ -304,7 +339,17 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     @Override
     public Object onTraversalSuccess() {
         if (outputType == CommonCode.OutputType.BQ && shouldWriteLoadStatusStarted) {
-            loadStatus.writeLoadStatusStarted(Long.parseLong(sampleId));
+            loadStatus.writeLoadStatusStarted(sampleId);
+        }
+
+        if (vcfHeaderLineScratchCreator != null) {
+            try {
+                vcfHeaderLineScratchCreator.apply(allLineHeaders);
+            } catch (IOException ioe) {
+                throw new GATKException("Error writing scratch header data", ioe);
+            }
+            // Wait until all data has been submitted and in pending state to commit
+            vcfHeaderLineScratchCreator.commitData();
         }
 
         if (refCreator != null) {
@@ -323,7 +368,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
         // upload the load status table
         if (outputType == CommonCode.OutputType.BQ) {
-            loadStatus.writeLoadStatusFinished(Long.parseLong(sampleId));
+            loadStatus.writeLoadStatusFinished(sampleId);
         }
 
         return 0;
@@ -335,6 +380,9 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             refCreator.closeTool();
         }
         if (vetCreator != null) {
+            vetCreator.closeTool();
+        }
+        if (vcfHeaderLineScratchCreator != null) {
             vetCreator.closeTool();
         }
     }

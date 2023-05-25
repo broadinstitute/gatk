@@ -24,19 +24,19 @@ public class VetCreator {
     private final CommonCode.OutputType outputType;
 
     private SimpleXSVWriter vetWriter = null;
-    private final String sampleId;
+    private final Long sampleId;
     private PendingBQWriter vetBQJsonWriter = null;
     private final boolean forceLoadingFromNonAlleleSpecific;
     private final boolean skipLoadingVqsrFields;
 
     private static final String VET_FILETYPE_PREFIX = "vet_";
 
-    public static boolean doRowsExistFor(CommonCode.OutputType outputType, String projectId, String datasetName, String tableNumber, String sampleId) {
+    public static boolean doRowsExistFor(CommonCode.OutputType outputType, String projectId, String datasetName, String tableNumber, Long sampleId) {
         if (outputType != CommonCode.OutputType.BQ) return false;
         return BigQueryUtils.doRowsExistFor(projectId, datasetName, VET_FILETYPE_PREFIX + tableNumber, SchemaUtils.SAMPLE_ID_FIELD_NAME, sampleId);
     }
 
-    public VetCreator(String sampleIdentifierForOutputFileName, String sampleId, String tableNumber, final File outputDirectory, final CommonCode.OutputType outputType, final String projectId, final String datasetName, final boolean forceLoadingFromNonAlleleSpecific, final boolean skipLoadingVqsrFields) {
+    public VetCreator(String sampleIdentifierForOutputFileName, Long sampleId, String tableNumber, final File outputDirectory, final CommonCode.OutputType outputType, final String projectId, final String datasetName, final boolean forceLoadingFromNonAlleleSpecific, final boolean skipLoadingVqsrFields) {
         this.sampleId = sampleId;
         this.outputType = outputType;
         this.forceLoadingFromNonAlleleSpecific = forceLoadingFromNonAlleleSpecific;
@@ -70,7 +70,7 @@ public class VetCreator {
         switch(outputType) {
             case BQ:
                 try {
-                    vetBQJsonWriter.addJsonRow(createJson(location, variant, Long.parseLong(sampleId)));
+                    vetBQJsonWriter.addJsonRow(createJson(location, variant, sampleId));
                 } catch (Descriptors.DescriptorValidationException | ExecutionException | InterruptedException ex) {
                     throw new IOException("BQ exception", ex);
                 }
@@ -80,7 +80,7 @@ public class VetCreator {
                 final List<String> row = createRow(
                         location,
                         variant,
-                        sampleId
+                        String.valueOf(sampleId)
                 );
                 vetWriter.getNewLineBuilder().setRow(row).write();
                 break;

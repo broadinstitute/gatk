@@ -23,8 +23,8 @@ public class IngestUtils {
         return samples.getSample(0);
     }
 
-    public static String getSampleId(final String sampleName, final File sampleMap) {
-        String sampleId = null;
+    public static Long getSampleId(final String sampleName, final File sampleMap) {
+        Long sampleId = null;
         //  Because BigQuery only supports partitioning based on timestamp or integer,
         // sample names will be remapped into sample_id integers
         try {
@@ -35,7 +35,7 @@ public class IngestUtils {
                 String[] fields = line.split(",");
                 String name = fields[1];
                 if (sampleName.equals(name)) {
-                    sampleId = fields[0];
+                    sampleId = Long.valueOf(fields[0]);
                     break;
                 }
             }
