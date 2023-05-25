@@ -112,7 +112,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_VS-892_MergeExtractCohortLiteIntoExtractCohort
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl

@@ -41,7 +41,7 @@ task MergeVCFs {
   }
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_05_22"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_05_23"
     preemptible: select_first([preemptible_tries, 3])
     memory: "3 GiB"
     disks: "local-disk ~{disk_size} HDD"
@@ -127,7 +127,7 @@ task SplitIntervals {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_05_22"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_05_23"
     bootDiskSizeGb: 15
     memory: "~{disk_memory} GB"
     disks: "local-disk ~{disk_size} HDD"
@@ -510,6 +510,66 @@ task ValidateFilterSetName {
         preemptible: 3
         cpu: 1
     }
+}
+
+task IsVQSRLite {
+  input {
+    String project_id
+    String fq_filter_set_info_table
+    String filter_set_name
+  }
+  meta {
+    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
+  }
+
+  # add labels for DSP Cloud Cost Control Labeling and Reporting
+  String bq_labels = "--label service:gvs --label team:variants --label managedby:gvs_utils"
+
+  String is_vqsr_lite_file = "is_vqsr_lite_file.txt"
+
+  command <<<
+    set -o errexit -o nounset -o xtrace -o pipefail
+
+    echo "project_id = ~{project_id}" > ~/.bigqueryrc
+
+    bq query --project_id='~{project_id}' --format=csv --use_legacy_sql=false ~{bq_labels} \
+      "SELECT COUNT(1) FROM \`~{fq_filter_set_info_table}\` WHERE filter_set_name = '~{filter_set_name}' \
+      AND calibration_sensitivity IS NOT NULL" | tail -1 > lite_count_file.txt
+    LITE_COUNT=`cat lite_count_file.txt`
+
+    bq query --project_id='~{project_id}' --format=csv --use_legacy_sql=false ~{bq_labels} \
+      "SELECT COUNT(1) FROM \`~{fq_filter_set_info_table}\` WHERE filter_set_name = '~{filter_set_name}' \
+      AND vqslod IS NOT NULL" | tail -1 > classic_count_file.txt
+    CLASSIC_COUNT=`cat classic_count_file.txt`
+
+    if [[ $LITE_COUNT != "0" ]]; then
+      echo "Found $LITE_COUNT rows with calibration_sensitivity defined"
+      if [[ $CLASSIC_COUNT != "0" ]]; then
+        echo "Found $CLASSIC_COUNT rows with vqslod defined"
+        echo "ERROR - can't have both defined for a filter_set"
+        exit 1
+      fi
+      echo "true" > ~{is_vqsr_lite_file}
+    elif [[ $CLASSIC_COUNT != "0" ]]; then
+      echo "Found $CLASSIC_COUNT rows with vqslod defined"
+      echo "false" > ~{is_vqsr_lite_file}
+    else
+      echo "Found NO rows with either calibration_sensitivity or vqslod defined"
+      exit 1
+    fi
+
+  >>>
+  output {
+    Boolean is_vqsr_lite = read_boolean(is_vqsr_lite_file)
+  }
+
+  runtime {
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
+    memory: "3 GB"
+    disks: "local-disk 500 HDD"
+    preemptible: 3
+    cpu: 1
+  }
 }
 
 task IndexVcf {

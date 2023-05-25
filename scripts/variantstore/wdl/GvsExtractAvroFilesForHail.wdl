@@ -25,6 +25,13 @@ workflow GvsExtractAvroFilesForHail {
             filter_set_name = filter_set_name
     }
 
+    call Utils.IsVQSRLite {
+        input:
+            project_id = project_id,
+            fq_filter_set_info_table = "~{project_id}.~{dataset_name}.filter_set_info",
+            filter_set_name = filter_set_name
+    }
+
     call OutputPath {
         input: go = ValidateFilterSetName.done
     }
@@ -37,7 +44,7 @@ workflow GvsExtractAvroFilesForHail {
             filter_set_name = filter_set_name,
             avro_sibling = OutputPath.out,
             call_set_identifier = call_set_identifier,
-            use_classic_VQSR = use_classic_VQSR
+            is_vqsr_lite = IsVQSRLite.is_vqsr_lite
     }
 
     call Utils.CountSuperpartitions {
@@ -110,8 +117,11 @@ task ExtractFromNonSuperpartitionedTables {
         String filter_set_name
         String avro_sibling
         String call_set_identifier
-        Boolean use_classic_VQSR
+        Boolean is_vqsr_lite = true
     }
+
+    String vqs_score_field = if (is_vqsr_lite == true) then 'calibration_sensitivity' else 'vqslod'
+
     parameter_meta {
         avro_sibling: "Cloud path to a file that will be the sibling to the 'avro' 'directory' under which output Avro files will be written."
     }
@@ -120,11 +130,6 @@ task ExtractFromNonSuperpartitionedTables {
 
         avro_prefix="$(dirname ~{avro_sibling})/avro"
         echo $avro_prefix > "avro_prefix.out"
-
-        vqs_score_field_name=calibration_sensitivity
-        if [ ~{use_classic_VQSR} = true ]; then
-            vqs_score_field_name=vqslod
-        fi
 
         python3 /app/run_avro_query.py --sql "
             EXPORT DATA OPTIONS(
@@ -140,8 +145,8 @@ task ExtractFromNonSuperpartitionedTables {
         python3 /app/run_avro_query.py --sql "
             EXPORT DATA OPTIONS(
             uri='${avro_prefix}/vqsr_filtering_data/vqsr_filtering_data_*.avro', format='AVRO', compression='SNAPPY') AS
-            SELECT location, type as model, ref, alt, ${vqs_score_field_name}, yng_status
-            FROM \`~{project_id}.~{dataset_name}.~{filter_set_info_tablename}\`
+            SELECT location, type as model, ref, alt, ~{vqs_score_field}, yng_status
+            FROM \`~{project_id}.~{dataset_name}.filter_set_info\`
             WHERE filter_set_name = '~{filter_set_name}'
             ORDER BY location
         " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name ~{filter_set_info_tablename} --project_id ~{project_id}
@@ -155,7 +160,7 @@ task ExtractFromNonSuperpartitionedTables {
             ORDER BY location
         " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name filter_set_sites --project_id ~{project_id}
 
-        if [ ~{use_classic_VQSR} = true ]; then
+        if [ ~{is_vqsr_lite} = false ]; then
             python3 /app/run_avro_query.py --sql "
                 EXPORT DATA OPTIONS(
                 uri='${avro_prefix}/vqsr_tranche_data/vqsr_tranche_data_*.avro', format='AVRO', compression='SNAPPY') AS

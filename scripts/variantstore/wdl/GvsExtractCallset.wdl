@@ -26,7 +26,6 @@ workflow GvsExtractCallset {
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
     Boolean use_interval_weights = true
     File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
-    Boolean use_classic_VQSR = true
 
     File? gatk_override
 
@@ -51,10 +50,7 @@ workflow GvsExtractCallset {
 
   String full_extract_prefix = if (control_samples) then "~{extract_table_prefix}_controls" else extract_table_prefix
 
-  String filter_set_info_table_name = "filter_set_info"
-  String filter_set_info_vqsr_lite_table_name = "filter_set_info_vqsr_lite"
-  String fq_filter_set_info_table = if (use_classic_VQSR) then "~{fq_gvs_dataset}.~{filter_set_info_table_name}" else "~{fq_gvs_dataset}.~{filter_set_info_vqsr_lite_table_name}"
-
+  String fq_filter_set_info_table = "~{fq_gvs_dataset}.filter_set_info"
   String fq_filter_set_site_table = "~{fq_gvs_dataset}.filter_set_sites"
   String fq_filter_set_tranches_table = "~{fq_gvs_dataset}.filter_set_tranches"
   String fq_sample_table = "~{fq_gvs_dataset}.sample_info"
@@ -134,7 +130,18 @@ workflow GvsExtractCallset {
         filter_set_name = filter_set_name,
         filter_set_info_timestamp = FilterSetInfoTimestamp.last_modified_timestamp
       }
+
+    call Utils.IsVQSRLite {
+      input:
+        project_id = query_project,
+        fq_filter_set_info_table = "~{fq_filter_set_info_table}",
+        filter_set_name = filter_set_name
+    }
   }
+
+  # If we're not using the VQSR filters, set it to classic (really shouldn't matter one way or the other)
+  # Otherwise use the auto-derived flag.
+  Boolean use_classic_VQSR = !select_first([IsVQSRLite.is_vqsr_lite, true])
 
   call Utils.GetBQTablesMaxLastModifiedTimestamp {
     input:
@@ -347,7 +354,7 @@ task ExtractTask {
     echo ~{interval_index},${OUTPUT_FILE_DEST},${OUTPUT_FILE_BYTES},${OUTPUT_FILE_INDEX_DEST},${OUTPUT_FILE_INDEX_BYTES} >> manifest.txt
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_05_22"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_05_23"
     memory: "12 GB"
     disks: "local-disk 150 HDD"
     bootDiskSizeGb: 15
