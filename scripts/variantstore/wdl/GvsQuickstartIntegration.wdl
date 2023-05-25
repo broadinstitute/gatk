@@ -12,6 +12,7 @@ workflow GvsQuickstartIntegration {
     }
 
     String project_id = "gvs-internal"
+    File interval_list = "gs://gvs-internal-scratch/mcovarr/scratch/quicker/chr20_chrX_chrY_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
 
     call Utils.BuildGATKJar {
         input:
@@ -25,7 +26,8 @@ workflow GvsQuickstartIntegration {
                 use_classic_VQSR = false,
                 extract_do_not_filter_override = false,
                 dataset_suffix = "lite_hail",
-                gatk_override = BuildGATKJar.jar
+                gatk_override = BuildGATKJar.jar,
+                interval_list = interval_list,
         }
         call QuickstartHailIntegration.GvsQuickstartHailIntegration as GvsQuickstartHailVQSRClassicIntegration{
             input:
@@ -33,7 +35,8 @@ workflow GvsQuickstartIntegration {
                 use_classic_VQSR = true,
                 extract_do_not_filter_override = false,
                 dataset_suffix = "classic_hail",
-                gatk_override = BuildGATKJar.jar
+                gatk_override = BuildGATKJar.jar,
+                interval_list = interval_list,
         }
     }
 
@@ -44,7 +47,8 @@ workflow GvsQuickstartIntegration {
                 use_classic_VQSR = false,
                 extract_do_not_filter_override = false,
                 dataset_suffix = "lite_vcf",
-                gatk_override = BuildGATKJar.jar
+                gatk_override = BuildGATKJar.jar,
+                interval_list = interval_list,
         }
         call QuickstartVcfIntegration.GvsQuickstartVcfIntegration as QuickstartVcfVQSRClassicIntegration {
             input:
@@ -52,7 +56,8 @@ workflow GvsQuickstartIntegration {
                 use_classic_VQSR = true,
                 extract_do_not_filter_override = true,
                 dataset_suffix = "classic_vcf",
-                gatk_override = BuildGATKJar.jar
+                gatk_override = BuildGATKJar.jar,
+                interval_list = interval_list,
         }
     }
 }
