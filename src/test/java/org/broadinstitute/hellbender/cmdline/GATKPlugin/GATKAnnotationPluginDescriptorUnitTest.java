@@ -693,4 +693,17 @@ public class GATKAnnotationPluginDescriptorUnitTest extends GATKBaseTest {
         runToolInNewJVM("TestAnnotationsTool", args);
         Assert.assertEquals(Files.readAllLines(output.toPath()), Collections.singletonList(TestAnnotation.class.getSimpleName()));
     }
+
+    @Test
+    public void testPossibleDeNovoAnnotationArguments() {
+        CommandLineParser clp = new CommandLineArgumentParser(
+                new Object(),
+                Collections.singletonList(new GATKAnnotationPluginDescriptor( Collections.singletonList(new PossibleDeNovo()), null)),
+                Collections.emptySet());
+        String[] args = {"--" + PossibleDeNovo.DENOVO_DEPTH_THRESHOLD,"20","--" + PossibleDeNovo.DENOVO_PARENT_GQ_THRESHOLD,"40"};
+        clp.parseArguments(nullMessageStream, args);
+        PossibleDeNovo annot = (PossibleDeNovo) instantiateAnnotations(clp).get(0);
+        Assert.assertEquals(annot.parentGQThreshold, 40);
+        Assert.assertEquals(annot.depthThreshold, 20);
+    }
 }

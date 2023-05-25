@@ -5,6 +5,7 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -35,15 +36,30 @@ import java.util.*;
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Existence of a de novo mutation in at least one of the given families (hiConfDeNovo, loConfDeNovo)")
 public final class PossibleDeNovo extends PedigreeAnnotation implements InfoFieldAnnotation {
+    public static final String DENOVO_PARENT_GQ_THRESHOLD = "denovo-parent-gq-threshold";
+    public static final String DENOVO_DEPTH_THRESHOLD = "denovo-depth-threshold";
     protected final Logger warning = LogManager.getLogger(this.getClass());
     private final MendelianViolation mendelianViolation;
     private Set<Trio> trios;
 
+    @Argument(fullName = DENOVO_PARENT_GQ_THRESHOLD, doc = "Minimum genotype quality for parents to be considered for de novo calculation (separate from GQ thershold for full trio).", optional = true)
+    public int parentGQThreshold = hi_GQ_threshold;
+
+    @Argument(fullName = DENOVO_DEPTH_THRESHOLD, doc = "Minimum depth (DP) for all trio members to be considered for de novo calculation.", optional = true)
+    public int depthThreshold = 0;
+
     @VisibleForTesting
-    public PossibleDeNovo(final Set<Trio> trios, final double minGenotypeQualityP) {
+    public PossibleDeNovo(final Set<Trio> trios, final double minGenotypeQualityP, final int parentGQThreshold, final int depthThreshold) {
         super((Set<String>) null);
         this.trios = Collections.unmodifiableSet(new LinkedHashSet<>(trios));
         mendelianViolation = new MendelianViolation(minGenotypeQualityP);
+        this.parentGQThreshold = parentGQThreshold;
+        this.depthThreshold = depthThreshold;
+    }
+
+    @VisibleForTesting
+    public PossibleDeNovo(final Set<Trio> trios, final double minGenotypeQualityP) {
+        this(trios, minGenotypeQualityP, hi_GQ_threshold, 0);
     }
 
     public PossibleDeNovo(final GATKPath pedigreeFile){
@@ -58,18 +74,12 @@ public final class PossibleDeNovo extends PedigreeAnnotation implements InfoFiel
 
     @Override
     void validateArguments(Collection<String> founderIds, GATKPath pedigreeFile) {
-        if (pedigreeFile == null) {
-            if ((founderIds != null && !founderIds.isEmpty())) {
-                warning.warn("PossibleDenovo annotation will not be calculated, must provide a valid PED file (-ped). Founder-id arguments cannot be used for this annotation");
-            } else {
-                warning.warn("PossibleDenovo Annotation will not be calculated, must provide a valid PED file (-ped) from the command line.");
-            }
-        } else {
-            if ((founderIds != null && !founderIds.isEmpty())) {
-                warning.warn("PossibleDenovo annotation does not take founder-id arguments, trio information will be extracted only from the provided PED file");
-            }
+        String warningString = validateArgumentsWhenPedigreeRequired(founderIds, pedigreeFile);
+        if (warningString != null) {
+            warning.warn(warningString);
         }
     }
+
 
     // Static thresholds for the denovo calculation
     public final static double DEFAULT_MIN_GENOTYPE_QUALITY_P = 0; // TODO should this be exposed as a command line argument?
@@ -105,7 +115,7 @@ public final class PossibleDeNovo extends PedigreeAnnotation implements InfoFiel
         final List<String> lowConfDeNovoChildren = new ArrayList<>();
         for (final Trio trio : trioSet) {
             if (vc.isBiallelic() &&
-                PossibleDeNovo.contextHasTrioGQs(vc, trio) &&
+                contextHasTrioGQs(vc, trio) &&
                 mendelianViolation.isViolation(trio.getMother(), trio.getFather(), trio.getChild(), vc) &&
                 mendelianViolation.getParentsRefRefChildHet() > 0) {
 
@@ -113,7 +123,12 @@ public final class PossibleDeNovo extends PedigreeAnnotation implements InfoFiel
                 final int momGQ   = vc.getGenotype(trio.getMaternalID()).getGQ();
                 final int dadGQ   = vc.getGenotype(trio.getPaternalID()).getGQ();
 
-                if (childGQ >= hi_GQ_threshold && momGQ >= hi_GQ_threshold && dadGQ >= hi_GQ_threshold) {
+                final int childDP = vc.getGenotype(trio.getChildID()).getDP();
+                final int momDP   = vc.getGenotype(trio.getMaternalID()).getDP();
+                final int dadDP   = vc.getGenotype(trio.getPaternalID()).getDP();
+
+                if (childGQ >= hi_GQ_threshold && momGQ >= parentGQThreshold && dadGQ >= parentGQThreshold &&
+                    childDP >= depthThreshold && momDP >= depthThreshold && dadDP >= depthThreshold) {
                     highConfDeNovoChildren.add(trio.getChildID());
                 } else if (childGQ >= lo_GQ_threshold && momGQ > 0 && dadGQ > 0) {
                     lowConfDeNovoChildren.add(trio.getChildID());
@@ -133,16 +148,6 @@ public final class PossibleDeNovo extends PedigreeAnnotation implements InfoFiel
             attributeMap.put(GATKVCFConstants.LO_CONF_DENOVO_KEY, lowConfDeNovoChildren);
         }
         return attributeMap;
-    }
-
-    private static boolean contextHasTrioGQs(final VariantContext vc, final Trio trio) {
-        final String mom = trio.getMaternalID();
-        final String dad = trio.getPaternalID();
-        final String kid = trio.getChildID();
-
-        return   (!mom.isEmpty() && vc.hasGenotype(mom) && vc.getGenotype(mom).hasGQ())
-              && (!dad.isEmpty() && vc.hasGenotype(dad) && vc.getGenotype(dad).hasGQ())
-              && (!kid.isEmpty() && vc.hasGenotype(kid) && vc.getGenotype(kid).hasGQ());
     }
 
 }

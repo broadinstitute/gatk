@@ -180,6 +180,8 @@ public class GATKVCFHeaderLines {
         addInfoLine(new VCFInfoHeaderLine(AS_VQS_SENS_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.String, "For each alt allele, the calibration sensitivity threshold of being a true variant versus being false under the trained gaussian mixture model"));
         addInfoLine(new VCFInfoHeaderLine(AS_YNG_STATUS_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.String, "For each alt allele, the yay/nay/grey status (yay are known good alleles, nay are known false positives, grey are unknown)"));
 
+        addInfoLine(new VCFInfoHeaderLine(TRANSMITTED_SINGLETON, 1, VCFHeaderLineType.String, "Possible transmitted singleton (site with AC=2 from parent and child). Parent ID is listed."));
+        addInfoLine(new VCFInfoHeaderLine(NON_TRANSMITTED_SINGLETON, 1, VCFHeaderLineType.String, "Possible non transmitted singleton (site with AC=1 in just one parent). Parent ID is listed."));
         addInfoLine(new VCFInfoHeaderLine(HI_CONF_DENOVO_KEY, 1, VCFHeaderLineType.String, "High confidence possible de novo mutation (GQ >= 20 for all trio members)=[comma-delimited list of child samples]"));
         addInfoLine(new VCFInfoHeaderLine(LO_CONF_DENOVO_KEY, 1, VCFHeaderLineType.String, "Low confidence possible de novo mutation (GQ >= 10 for child, GQ > 0 for parents)=[comma-delimited list of child samples]"));
         addInfoLine(new VCFInfoHeaderLine(QUAL_BY_DEPTH_KEY, 1, VCFHeaderLineType.Float, "Variant Confidence/Quality by Depth"));

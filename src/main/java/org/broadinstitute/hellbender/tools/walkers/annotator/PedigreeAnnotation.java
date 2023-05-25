@@ -16,7 +16,7 @@ import java.util.*;
  * A common interface for handling annotations that require pedigree file information either in the form of explicitly
  * selected founderIDs or in the form of an imported pedigreeFile.
  *
- * In order to use the the behavior, simply extend Pedigree annotation and access its constructors, then call
+ * In order to use the behavior, simply extend Pedigree annotation and access its constructors, then call
  * getFounderGenotypes() to extract only the genotypes corresponding to requested founder samples or that appear as founders
  * in the provided pedigree file. If no founderIDs or pedigreeFiles are present, then it defaults to returning all genotypes.
  *
@@ -104,11 +104,46 @@ public abstract class PedigreeAnnotation implements VariantAnnotation {
     }
 
     /**
+     * Warning generator for when a pedigree file is required and founderIDs cannot be used for this annotation.
+     * @param founderIds
+     * @param pedigreeFile
+     */
+    protected String validateArgumentsWhenPedigreeRequired(Collection<String> founderIds, GATKPath pedigreeFile) {
+        if (pedigreeFile == null) {
+            if ((founderIds != null && !founderIds.isEmpty())) {
+                return "PossibleDenovo annotation will not be calculated, must provide a valid PED file (-ped). Founder-id arguments cannot be used for this annotation";
+            } else {
+                return "PossibleDenovo Annotation will not be calculated, must provide a valid PED file (-ped) from the command line.";
+            }
+        } else {
+            if ((founderIds != null && !founderIds.isEmpty())) {
+                return "PossibleDenovo annotation does not take founder-id arguments, trio information will be extracted only from the provided PED file";
+            }
+        }
+        return null;
+    }
+
+    /**
      * This is a getter for the pedigree file, which could be null.
      *
      * @return The pedigree file
      */
     public @Nullable GATKPath getPedigreeFile() {
         return pedigreeFile;
+    }
+
+    /**
+     * Helper function to check if the variant context has GQs for the trio
+     * @param vc variant context
+     * @param trio trio to check for GQs in the variant context
+     */
+    protected static boolean contextHasTrioGQs(final VariantContext vc, final Trio trio) {
+        final String mom = trio.getMaternalID();
+        final String dad = trio.getPaternalID();
+        final String kid = trio.getChildID();
+
+        return   (!mom.isEmpty() && vc.hasGenotype(mom) && vc.getGenotype(mom).hasGQ())
+                && (!dad.isEmpty() && vc.hasGenotype(dad) && vc.getGenotype(dad).hasGQ())
+                && (!kid.isEmpty() && vc.hasGenotype(kid) && vc.getGenotype(kid).hasGQ());
     }
 }
