@@ -1,0 +1,14 @@
+==================================
+=========== MONITORING ===========
+==================================
+--- General Information ---
+#CPU: 1
+Total Memory: 2.92 GiB
+Total Disk space: 9.800 GiB
+
+--- Runtime Information ---
+[Mon May 8 03:56:52 UTC 2023]
+* CPU usage:
+* Memory usage: 0.45 GiB 15.3%
+* Disk usage: 0.000 GiB 0%
+* Read/Write IO: 0.000 MiB/s 0.002 MiB/s
