@@ -18,14 +18,6 @@ workflow GvsQuickstartIntegration {
             branch_name = branch_name,
     }
 
-    # TODO - Delete me - just here for testing.
-    call Utils.CreateDataset {
-        input:
-            branch_name = branch_name,
-            dataset_prefix = "testoooo",
-            dataset_suffix = ".test"
-    }
-
     if (run_hail_integration) {
         call QuickstartHailIntegration.GvsQuickstartHailIntegration as GvsQuickstartHailVQSRLiteIntegration {
             input:
