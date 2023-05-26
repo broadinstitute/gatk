@@ -8,7 +8,7 @@ workflow GvsQuickstartVcfIntegration {
     input {
         String branch_name
         Boolean use_classic_VQSR = true
-        String expected_output_prefix = "gs://gvs-internal-quickstart/integration/2023-05-23/"
+        String expected_output_prefix = "gs://gvs-internal-quickstart/integration/2023-05-25/"
 
         Array[String] external_sample_names = [
                                               "ERS4367795",
@@ -53,10 +53,18 @@ workflow GvsQuickstartVcfIntegration {
         String drop_state = "FORTY"
         Boolean extract_do_not_filter_override = false
         String dataset_suffix = "vcf"
+        File? gatk_override
     }
     String project_id = "gvs-internal"
 
-    call Utils.BuildGATKJarAndCreateDataset {
+    if (!defined(gatk_override)) {
+      call Utils.BuildGATKJar {
+        input:
+          branch_name = branch_name,
+      }
+    }
+
+    call Utils.CreateDataset {
         input:
             branch_name = branch_name,
             dataset_prefix = "quickit",
@@ -66,10 +74,10 @@ workflow GvsQuickstartVcfIntegration {
     call Unified.GvsUnified {
         input:
             call_set_identifier = branch_name,
-            dataset_name = BuildGATKJarAndCreateDataset.dataset_name,
+            dataset_name = CreateDataset.dataset_name,
             project_id = project_id,
             external_sample_names = external_sample_names,
-            gatk_override = BuildGATKJarAndCreateDataset.jar,
+            gatk_override = select_first([gatk_override, BuildGATKJar.jar]),
             input_vcfs = input_vcfs,
             input_vcf_indexes = input_vcf_indexes,
             filter_set_name = "quickit",
@@ -93,7 +101,7 @@ workflow GvsQuickstartVcfIntegration {
         call AssertCostIsTrackedAndExpected {
             input:
                 go = GvsUnified.done,
-                dataset_name = BuildGATKJarAndCreateDataset.dataset_name,
+                dataset_name = CreateDataset.dataset_name,
                 project_id = project_id,
                 expected_output_csv = expected_output_prefix + dataset_suffix + ".cost_observability_expected.csv"
         }
@@ -101,7 +109,7 @@ workflow GvsQuickstartVcfIntegration {
         call AssertTableSizesAreExpected {
             input:
                 go = GvsUnified.done,
-                dataset_name = BuildGATKJarAndCreateDataset.dataset_name,
+                dataset_name = CreateDataset.dataset_name,
                 project_id = project_id,
                 expected_output_csv = expected_output_prefix + dataset_suffix + ".table_sizes_expected.csv"
         }
@@ -112,7 +120,7 @@ workflow GvsQuickstartVcfIntegration {
         Array[File] output_vcf_indexes = GvsUnified.output_vcf_indexes
         Float total_vcfs_size_mb = GvsUnified.total_vcfs_size_mb
         File manifest = GvsUnified.manifest
-        String dataset_name = BuildGATKJarAndCreateDataset.dataset_name
+        String dataset_name = CreateDataset.dataset_name
         String filter_set_name = "quickit"
         Boolean done = true
     }

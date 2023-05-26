@@ -2,6 +2,7 @@ version 1.0
 
 import "GvsQuickstartVcfIntegration.wdl" as QuickstartVcfIntegration
 import "GvsQuickstartHailIntegration.wdl" as QuickstartHailIntegration
+import "GvsUtils.wdl" as Utils
 
 workflow GvsQuickstartIntegration {
     input {
@@ -12,18 +13,33 @@ workflow GvsQuickstartIntegration {
 
     String project_id = "gvs-internal"
 
+    call Utils.BuildGATKJar {
+        input:
+            branch_name = branch_name,
+    }
+
+    # TODO - Delete me - just here for testing.
+    call Utils.CreateDataset {
+        input:
+            branch_name = branch_name,
+            dataset_prefix = "testoooo",
+            dataset_suffix = ".test"
+    }
+
     if (run_hail_integration) {
         call QuickstartHailIntegration.GvsQuickstartHailIntegration as GvsQuickstartHailVQSRLiteIntegration {
             input:
                 branch_name = branch_name,
                 use_classic_VQSR = false,
-                dataset_suffix = "lite.hail"
+                dataset_suffix = "lite_hail",
+                gatk_override = BuildGATKJar.jar
         }
         call QuickstartHailIntegration.GvsQuickstartHailIntegration as GvsQuickstartHailVQSRClassicIntegration{
             input:
                 branch_name = branch_name,
                 use_classic_VQSR = true,
-                dataset_suffix = "classic.hail"
+                dataset_suffix = "classic_hail",
+                gatk_override = BuildGATKJar.jar
         }
     }
 
@@ -32,13 +48,15 @@ workflow GvsQuickstartIntegration {
             input:
                 branch_name = branch_name,
                 use_classic_VQSR = false,
-                dataset_suffix = "lite.vcf"
+                dataset_suffix = "lite_vcf",
+                gatk_override = BuildGATKJar.jar
         }
         call QuickstartVcfIntegration.GvsQuickstartVcfIntegration as QuickstartVcfVQSRClassicIntegration {
             input:
                 branch_name = branch_name,
                 use_classic_VQSR = true,
-                dataset_suffix = "classic.vcf"
+                dataset_suffix = "classic_vcf",
+                gatk_override = BuildGATKJar.jar
         }
     }
 }

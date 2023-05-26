@@ -233,6 +233,133 @@ task GetBQTablesMaxLastModifiedTimestamp {
   }
 }
 
+task BuildGATKJar {
+  input {
+    String branch_name
+  }
+  meta {
+    # Branch may be updated so do not call cache!
+    volatile: true
+  }
+
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
+  command <<<
+    # Much of this could/should be put into a Docker image.
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    bash ~{monitoring_script} > monitoring.log &
+
+    # git and git-lfs
+    apt-get -qq update
+    apt-get -qq install git git-lfs
+
+    # The Terra microservices are currently aligned on Temurin as their JDK distribution which is why we use it here.
+    # However at least once Temurin unexpectedly became unavailable for download for several hours which broke this
+    # task and its dependents. The following block switched the JDK distribution to Amazon Corretto 11 which appeared to
+    # work just fine for our purposes during Temurin's brief absence.
+    #
+    # Corretto Java 11
+    # apt-get -qq install wget apt-transport-https gnupg software-properties-common
+    # wget -O- https://apt.corretto.aws/corretto.key | apt-key add -
+    # add-apt-repository 'deb https://apt.corretto.aws stable main'
+
+    # Temurin Java 11
+    apt-get -qq install wget apt-transport-https gnupg
+    wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | apt-key add -
+    echo "deb https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | tee /etc/apt/sources.list.d/adoptium.list
+    apt-get -qq update
+    apt -qq install -y temurin-11-jdk
+
+    # GATK
+    git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{branch_name} --single-branch
+    cd gatk
+    ./gradlew shadowJar
+
+    branch=$(git symbolic-ref HEAD 2>/dev/null)
+    branch=${branch#refs/heads/}
+
+    hash=$(git rev-parse --short HEAD)
+
+    # Rename the GATK jar to embed the branch and hash of the most recent commit on the branch.
+    mv build/libs/gatk-package-unspecified-SNAPSHOT-local.jar "build/libs/gatk-${branch}-${hash}-SNAPSHOT-local.jar"
+  >>>
+
+  output {
+    Boolean done = true
+    File jar = glob("gatk/build/libs/*-SNAPSHOT-local.jar")[0]
+    File monitoring_log = "monitoring.log"
+  }
+
+  runtime {
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-slim"
+    disks: "local-disk 500 HDD"
+  }
+}
+
+task CreateDataset {
+  input {
+    String branch_name
+    String dataset_prefix
+    String dataset_suffix
+  }
+  meta {
+    # Branch may be updated so do not call cache!
+    volatile: true
+  }
+
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
+  command <<<
+    # Much of this could/should be put into a Docker image.
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    bash ~{monitoring_script} > monitoring.log &
+
+    # git and git-lfs
+    apt-get -qq update
+    apt-get -qq install git git-lfs
+
+    # GATK
+    git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{branch_name} --single-branch
+
+    branch=$(git symbolic-ref HEAD 2>/dev/null)
+    branch=${branch#refs/heads/}
+
+    hash=$(git rev-parse --short HEAD)
+
+    # Build a dataset name based on the branch name and the git hash of the most recent commit on this branch.
+    # Dataset names must be alphanumeric and underscores only. Convert any dashes to underscores, then delete
+    # any remaining characters that are not alphanumeric or underscores.
+    dataset="$(echo ~{dataset_prefix}_${branch}_${hash}_~{dataset_suffix} | tr '-' '_' | tr -c -d '[:alnum:]_')"
+
+    bq mk --project_id="gvs-internal" "$dataset"
+
+    # add labels for DSP Cloud Cost Control Labeling and Reporting
+    bq update --set_label service:gvs gvs-internal:$dataset
+    bq update --set_label team:variants gvs-internal:$dataset
+    bq update --set_label environment:dev gvs-internal:$dataset
+    bq update --set_label managedby:build_gatk_jar_and_create_dataset gvs-internal:$dataset
+
+    echo -n "$dataset" > dataset.txt
+  >>>
+
+  output {
+    Boolean done = true
+    String dataset_name = read_string("gatk/dataset.txt")
+    File monitoring_log = "monitoring.log"
+  }
+
+  runtime {
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-slim"
+    disks: "local-disk 500 HDD"
+  }
+}
+
 task BuildGATKJarAndCreateDataset {
   input {
     String branch_name
