@@ -111,9 +111,6 @@ workflow GvsBulkIngestGenomes {
             String? vcf_index_files_column_name
         }
 
-        ## TODO should the sample_set be acknowledge much earlier like here? This could allow for a better understanding of which cols we care about if
-        ## different sample sets have different col statistics
-
         ## set some output files
         String vcf_files_column_name_output = "vcf_files_column_name.txt"
         String vcf_index_files_column_name_output = "vcf_index_files_column_name.txt"
