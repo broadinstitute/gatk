@@ -326,6 +326,7 @@ task CreateDataset {
 
     # GATK
     git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{branch_name} --single-branch
+    cd gatk
 
     branch=$(git symbolic-ref HEAD 2>/dev/null)
     branch=${branch#refs/heads/}
