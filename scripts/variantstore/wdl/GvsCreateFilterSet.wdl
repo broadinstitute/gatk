@@ -388,7 +388,7 @@ task PopulateFilterSetInfo {
     bq_table=$(echo ~{fq_filter_set_info_destination_table} | sed s/\\./:/)
 
     echo "Loading combined TSV into ~{fq_filter_set_info_destination_table}"
-    bq load --project_id=~{project_id} --skip_leading_rows 0 -F "tab" \
+    bq --apilog=stderr load --project_id=~{project_id} --skip_leading_rows 0 -F "tab" \
       --range_partitioning=location,0,26000000000000,6500000000 \
       --clustering_fields=location \
       --schema "~{filter_schema}" \
@@ -448,7 +448,7 @@ task PopulateFilterSetSites {
     bq_table=$(echo ~{fq_filter_sites_destination_table} | sed s/\\./:/)
 
     echo "Loading filter set sites TSV into ~{fq_filter_sites_destination_table}"
-    bq load --project_id=~{project_id} --skip_leading_rows 1 -F "tab" \
+    bq --apilog=stderr load --project_id=~{project_id} --skip_leading_rows 1 -F "tab" \
     --range_partitioning=location,0,26000000000000,6500000000 \
     --clustering_fields=location \
     --schema "filter_set_name:string,location:integer,filters:string" \
@@ -502,7 +502,7 @@ task PopulateFilterSetTranches {
     bq_table=$(echo ~{fq_tranches_destination_table} | sed s/\\./:/)
 
     echo "Loading combined tranches CSV into ~{fq_tranches_destination_table}"
-    bq load --project_id=~{project_id} --skip_leading_rows 0 -F "," \
+    bq --apilog=stderr load --project_id=~{project_id} --skip_leading_rows 0 -F "," \
     --schema "filter_set_name:string,target_truth_sensitivity:float,num_known:integer,num_novel:integer,known_ti_tv:float,novel_ti_tv:float,min_vqslod:float,filter_name:string,model:string,accessible_truth_sites:integer,calls_at_truth_sites:integer,truth_sensitivity:float" \
     ${bq_table} \
     ~{filter_set_name}.tranches_load.csv > status_load_filter_set_tranches

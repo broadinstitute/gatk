@@ -75,7 +75,7 @@ task IngestTieout {
         check_table() {
             local table_name=$1
 
-            bq query --project_id=~{project} --format=csv --use_legacy_sql=false \
+            bq --apilog=stderr query --project_id=~{project} --format=csv --use_legacy_sql=false \
                 "select actual.sample_id, expected.sample_id from
                 (select sample_id, count(*) as count from \`gvs-internal.~{dataset_name}.${table_name}\` group by sample_id) actual full outer join
                 (select sample_id, count(*) as count from \`gvs-internal.~{reference_dataset_name}.${table_name}\` group by sample_id) expected on actual.sample_id = expected.sample_id
