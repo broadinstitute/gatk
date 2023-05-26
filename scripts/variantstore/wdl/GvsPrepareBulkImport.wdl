@@ -13,7 +13,6 @@ workflow GvsPrepareBulkImport {
         String vcf_files_column_name
         String vcf_index_files_column_name
         String? sample_set_name ## currently we only allow for one sample set at a time
-        ## TODO we are hard coding this as a sample_set, but it's possible that it could be a different <entity>_set
     }
 
     call GenerateFOFNsFromDataTables {
@@ -51,7 +50,6 @@ task GenerateFOFNsFromDataTables {
         String? sample_set_name
     }
 
-    ## TODO these are now in the python script, but should they no longer be here?
     String sample_names_file_name = "sample_names.txt"
     String vcf_files_name = "vcf_files.txt"
     String vcf_index_files_name = "vcf_index_files.txt"
@@ -65,10 +63,7 @@ task GenerateFOFNsFromDataTables {
         export WORKSPACE_NAME='~{workspace_name}'
         export WORKSPACE_BUCKET='~{workspace_bucket}'
 
-        gsutil cp gs://fc-d5e319d4-b044-4376-afde-22ef0afc4088/generate_FOFNs_for_import.py generate_FOFNs_for_import.py
-        # python3 /app/generate_FOFNs_for_import.py \
-
-        python3 generate_FOFNs_for_import.py \
+        python3 /app/generate_FOFNs_for_import.py \
             --data_table_name ~{samples_table_name} \
             --sample_id_column_name ~{sample_id_column_name} \
             --vcf_files_column_name ~{vcf_files_column_name} \
