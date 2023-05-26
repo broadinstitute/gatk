@@ -51,7 +51,7 @@ workflow GvsQuickstartVcfIntegration {
 
         Int? extract_scatter_count
         String drop_state = "FORTY"
-        Boolean extract_do_not_filter_override = false
+        Boolean extract_do_not_filter_override = true
         String dataset_suffix = "vcf"
         File? gatk_override
     }
@@ -84,9 +84,9 @@ workflow GvsQuickstartVcfIntegration {
             use_classic_VQSR = use_classic_VQSR,
             extract_table_prefix = "quickit",
             extract_scatter_count = extract_scatter_count,
-            # If we are using VQSR Classic, we turn off filtering as VQSR Classic is not deterministic
+            # optionally turn off filtering (VQSR Classic is not deterministic)
             # (and the initial version of this integration test does not allow for inexact matching of actual and expected results.)
-            extract_do_not_filter_override = extract_do_not_filter_override || use_classic_VQSR,
+            extract_do_not_filter_override = extract_do_not_filter_override,
             drop_state = drop_state
     }
 
@@ -289,7 +289,7 @@ task AssertCostIsTrackedAndExpected {
 
         # For these two costs, there is non-determinism in the pipeline - we allow a % difference
         if [[ $OBS_KEY == "ExtractFilterTask.GvsCreateFilterSet.BigQuery Query Scanned" ]]; then
-          TOLERANCE=0.02   # 2% tolerance  (Note - have seen as high as: 0.0157154)
+          TOLERANCE=0.03   # 3% tolerance  (Note - have seen as high as: 0.0249278)
         elif [[ $OBS_KEY == "ExtractFilterTask.GvsCreateFilterSet.Storage API Scanned" ]]; then
           TOLERANCE=0.05  # 5% tolerance (Note - have seen as high as: 0.0281223)
         elif [[ $OBS_KEY == "ExtractTask.GvsExtractCallset.BigQuery Query Scanned" ]]; then

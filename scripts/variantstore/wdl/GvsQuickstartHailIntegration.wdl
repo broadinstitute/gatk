@@ -18,8 +18,8 @@ workflow GvsQuickstartHailIntegration {
         input:
             branch_name = branch_name,
             drop_state = "NONE",
-            extract_do_not_filter_override = false,
             use_classic_VQSR = use_classic_VQSR,
+            extract_do_not_filter_override = false,
             dataset_suffix = dataset_suffix,
             gatk_override = gatk_override
     }

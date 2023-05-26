@@ -30,6 +30,7 @@ workflow GvsQuickstartIntegration {
             input:
                 branch_name = branch_name,
                 use_classic_VQSR = true,
+                extract_do_not_filter_override = false,
                 dataset_suffix = "classic_hail",
                 gatk_override = BuildGATKJar.jar
         }
@@ -47,6 +48,7 @@ workflow GvsQuickstartIntegration {
             input:
                 branch_name = branch_name,
                 use_classic_VQSR = true,
+                extract_do_not_filter_override = false,
                 dataset_suffix = "classic_vcf",
                 gatk_override = BuildGATKJar.jar
         }
