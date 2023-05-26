@@ -285,7 +285,6 @@ task BuildGATKJar {
 
     # Rename the GATK jar to embed the branch and hash of the most recent commit on the branch.
     mv build/libs/gatk-package-unspecified-SNAPSHOT-local.jar "build/libs/gatk-${branch}-${hash}-SNAPSHOT-local.jar"
-    exit 1
   >>>
 
   output {
@@ -321,10 +320,8 @@ task CreateDataset {
 
     bash ~{monitoring_script} > monitoring.log &
 
-    # git and git-lfs
+    # git
     apt-get -qq update
-    # TODO - Do I really need git-lfs for this?
-#    apt-get -qq install git git-lfs
     apt-get -qq install git
 
     # GATK
