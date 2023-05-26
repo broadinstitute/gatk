@@ -39,20 +39,44 @@ workflow GvsBulkIngestGenomes {
         # End GvsImportGenomes
     }
 
+    ## Start off by getting the Workspace ID to query for more information
     call GetWorkspaceId
 
+    ## Next, use the workspace ID to get the Workspace Name
     call GetWorkspaceName {
         input:
             workspace_id = GetWorkspaceId.workspace_id,
             workspace_bucket = GetWorkspaceId.workspace_bucket,
     }
 
-    call GetColumnNames { ## TODO should we even run this at all if we have values for all 4?
+    ## Iff there is a named <entity>_set (often referred to as simply a sample_set), the entity type, and <entity>_id col can be derived
+    ## Make sure any user input agrees with derived vals
+    ## If there is no <entity>_set, the <entity>_id is irrelevant and the following logic can be used:
+    ## If the user has given us the entity_table_name / samples_table_name, then we know the entity type and maybe dont need to validate?
+    ## If there is only one entity type in the workspace, the entity type can be assumed
+
+    ## If there is more than one entity type in the workspace, verify that "sample" is one of them -- throw an error if not
+    ## (print that "sample" has been choosen as the default)
+
+    ## TODO make sure python code all has trap doors for cases where params are already defined
+
+    ## TODO add tests for sample_sets!!!
+
+
+    call GetEntityInclusionSet {
+        input:
+            entity_set_name = sample_set_name,
+            entity_table_name = samples_table_name,
+            user_defined_entity_id_column_name = sample_id_column_name, ## not necessarily the same as the <entity>_id col
+    }
+
+
+    call GetColumnNames {
         input:
             workspace_id = GetWorkspaceId.workspace_id,
             workspace_name = GetWorkspaceName.workspace_name,
             workspace_namespace = GetWorkspaceName.workspace_namespace,
-            samples_table_name = samples_table_name,
+            samples_table_name = GetEntityInclusionSet.entity_table_name,
             sample_id_column_name = sample_id_column_name,
             vcf_files_column_name = vcf_files_column_name,
             vcf_index_files_column_name = vcf_index_files_column_name,
@@ -64,7 +88,7 @@ workflow GvsBulkIngestGenomes {
             workspace_name = GetWorkspaceName.workspace_name,
             workspace_namespace = GetWorkspaceName.workspace_namespace,
             workspace_bucket = GetWorkspaceId.workspace_bucket,
-            samples_table_name = samples_table_name,
+            samples_table_name = GetEntityInclusionSet.entity_table_name,
             sample_id_column_name = sample_id_column_name,
             vcf_files_column_name = GetColumnNames.vcf_files_column_name,
             vcf_index_files_column_name = GetColumnNames.vcf_index_files_column_name,
@@ -181,7 +205,7 @@ workflow GvsBulkIngestGenomes {
 
     task GetWorkspaceId {
         meta {
-            volatile: true # always run this when asked otherwise you can get a previously run workspace!!!!
+            volatile: true # always run this when asked otherwise you can get a previously run workspace
         }
         command <<<
             # Prepend date, time and pwd to xtrace log entries.
