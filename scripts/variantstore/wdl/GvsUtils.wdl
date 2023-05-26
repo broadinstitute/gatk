@@ -285,6 +285,7 @@ task BuildGATKJar {
 
     # Rename the GATK jar to embed the branch and hash of the most recent commit on the branch.
     mv build/libs/gatk-package-unspecified-SNAPSHOT-local.jar "build/libs/gatk-${branch}-${hash}-SNAPSHOT-local.jar"
+    exit 1
   >>>
 
   output {
@@ -322,7 +323,9 @@ task CreateDataset {
 
     # git and git-lfs
     apt-get -qq update
-    apt-get -qq install git git-lfs
+    # TODO - Do I really need git-lfs for this?
+#    apt-get -qq install git git-lfs
+    apt-get -qq install git
 
     # GATK
     git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{branch_name} --single-branch
