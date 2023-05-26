@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.read;
 
+import gov.nih.nlm.ncbi.ngs.NGS;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SAMRecord;
@@ -7,13 +8,22 @@ import htsjdk.samtools.util.SequenceUtil;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.MarkDuplicatesSparkArgumentCollection;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.FlowBasedArgumentCollection;
+import org.broadinstitute.hellbender.utils.NGSPlatform;
+import org.broadinstitute.hellbender.utils.SequencerFlowClass;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+
 /**
- * utility class for flow based read
+ * Utility class for working with flow-based reads
+ *
+ * The main member static class is {@code ReadGroupInfo} that contains methods that allow
+ * working with headers of flow based reads and extracting the flow order and the maximal hmer class called.
+ * It also contains methods to check how the read was clipped ({@code readEndMarkedUnclipped}, {@code readEndMarkedUncertain})
+ * Lastly, {@code FlowBasedReadUtils.isFlowPlatform} is **the** function to determine if the data are flow-based
+ *
  */
 public class FlowBasedReadUtils {
 
@@ -26,17 +36,35 @@ public class FlowBasedReadUtils {
     static public class ReadGroupInfo {
         final public String  flowOrder;
         final public int     maxClass;
-
+        final public boolean isFlowPlatform;
         private String  reversedFlowOrder = null;
 
         public ReadGroupInfo(final SAMReadGroupRecord readGroup) {
+            if (readGroup.getPlatform()==null){
+                isFlowPlatform = false;
+            } else if (NGSPlatform.fromReadGroupPL(readGroup.getPlatform())==NGSPlatform.UNKNOWN){
+                isFlowPlatform = false;
+            } else if (NGSPlatform.fromReadGroupPL(readGroup.getPlatform()) == NGSPlatform.LS454) {
+                //old Ultima data can have PLATFORM==LS454 and not have FO tag
+                isFlowPlatform = true;
+            } else if (NGSPlatform.fromReadGroupPL(readGroup.getPlatform()) == NGSPlatform.ULTIMA){
+                if (readGroup.getFlowOrder()!=null) {
+                    isFlowPlatform = true;
+                } else {
+                    throw new RuntimeException("Malformed Ultima read group identified, aborting: " + readGroup);
+                }
+            } else {
+                isFlowPlatform = false;
+            }
 
-            Utils.nonNull(readGroup);
-            this.flowOrder = readGroup.getFlowOrder();
-            Utils.nonNull(this.flowOrder);
-
-            String mc = readGroup.getAttribute(FlowBasedRead.MAX_CLASS_READ_GROUP_TAG);
-            this.maxClass = (mc == null) ? FlowBasedRead.MAX_CLASS : Integer.parseInt(mc);
+            if (isFlowPlatform) {
+                this.flowOrder = readGroup.getFlowOrder();
+                String mc = readGroup.getAttribute(FlowBasedRead.MAX_CLASS_READ_GROUP_TAG);
+                this.maxClass = (mc == null) ? FlowBasedRead.MAX_CLASS : Integer.parseInt(mc);
+            } else { // not a flow platform
+                this.flowOrder = null;
+                this.maxClass = 0;
+            }
         }
 
         public synchronized String getReversedFlowOrder() {
@@ -45,6 +73,7 @@ public class FlowBasedReadUtils {
             }
             return reversedFlowOrder;
         }
+
     }
 
     public static boolean readEndMarkedUncertain(final GATKRead rec) {
@@ -118,22 +147,36 @@ public class FlowBasedReadUtils {
         }
     }
 
-    public static boolean isFlow(final GATKRead rec) {
+    public static boolean hasFlowTags(final GATKRead rec) {
         return rec.hasAttribute(FlowBasedRead.FLOW_MATRIX_TAG_NAME)
                 || rec.hasAttribute(FlowBasedRead.FLOW_MATRiX_OLD_TAG_KR)
                 || rec.hasAttribute(FlowBasedRead.FLOW_MATRiX_OLD_TAG_TI);
     }
 
-    public static boolean isFlow(final SAMRecord rec) {
+    public static boolean hasFlowTags(final SAMRecord rec) {
         return rec.hasAttribute(FlowBasedRead.FLOW_MATRIX_TAG_NAME)
                 || rec.hasAttribute(FlowBasedRead.FLOW_MATRiX_OLD_TAG_KR)
                 || rec.hasAttribute(FlowBasedRead.FLOW_MATRiX_OLD_TAG_TI);
 
     }
 
+    /**
+     *
+     * This is the function to run if you want to ask if the data are flow-based
+     *
+     * @param hdr - file header
+     * @param read - the read
+     * @return true if the read is flow-based
+     */
+    public static boolean isFlowPlatform(final SAMFileHeader hdr, final GATKRead read) {
+        if (!hasFlowTags(read)){
+            return false;
+        }
+        return getReadGroupInfo(hdr, read).isFlowPlatform;
+    }
     public static synchronized ReadGroupInfo getReadGroupInfo(final SAMFileHeader hdr, final GATKRead read) {
 
-        if ( !isFlow(read) ) {
+        if ( !hasFlowTags(read) ) {
             throw new IllegalArgumentException("read must be flow based: " + read);
         }
 
