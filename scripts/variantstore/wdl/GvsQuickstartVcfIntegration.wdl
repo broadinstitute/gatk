@@ -8,6 +8,7 @@ workflow GvsQuickstartVcfIntegration {
     input {
         String branch_name
         Boolean use_classic_VQSR = true
+        Boolean extract_do_not_filter_override = true
         String expected_output_prefix = "gs://gvs-internal-quickstart/integration/2023-05-25/"
 
         Array[String] external_sample_names = [
@@ -51,7 +52,6 @@ workflow GvsQuickstartVcfIntegration {
 
         Int? extract_scatter_count
         String drop_state = "FORTY"
-        Boolean extract_do_not_filter_override = true
         String dataset_suffix = "vcf"
         File? gatk_override
     }
