@@ -23,6 +23,7 @@ from hail.typecheck import typecheck, sequenceof, numeric
            skip_final_merge=bool,
            unphase=bool,
            ref_block_max_length=int,
+           use_classic_vqsr=bool
            )
 def import_gvs(refs: 'List[List[str]]',
                vets: 'List[List[str]]',
@@ -40,6 +41,7 @@ def import_gvs(refs: 'List[List[str]]',
                skip_final_merge=False,
                unphase=False,
                ref_block_max_length: 'int' = 1000,
+               use_classic_vqsr=True
                ):
     """Import a collection of Avro files exported from GVS.
 
@@ -72,7 +74,7 @@ def import_gvs(refs: 'List[List[str]]',
         an empty set for loci with no record in the input site filtering table.
       - `vqsr_filtering_data` -- The VQSR data records information specific to a
         (locus, alternate allele) pair. This data is read in as a dictionary in the row
-        scope of the resulting variant table, where ys keof the dictionary are an alternate
+        scope of the resulting variant table, where keys of the dictionary are an alternate
         allele string, where the dictionary values are the full records from the input VQSR
         filtering table, minus the `ref` and `alt` fields.
       - `vqsr_tranche_data` -- The VQSR tranche data is recorded as an array of records in the
@@ -80,7 +82,7 @@ def import_gvs(refs: 'List[List[str]]',
 
     Execution notes
     ---------------
-    Currently this method executes a three queries per sample block -- one to collect sample IDs,
+    Currently this method executes three queries per sample block -- one to collect sample IDs,
     one to analyze sortedness of the reference table, and one to analyze sortedness of the variant
     table. These three queries are in addition to:
       - 3 queries executed to import the filtering/tranche data
@@ -134,6 +136,9 @@ def import_gvs(refs: 'List[List[str]]',
         Unphase VET genotypes on final merge.
     ref_block_max_length : :class:`int`
         Maximum reference block length.
+    use_classic_vqsr : :class:`bool`
+        Expect input Avro files to have been generated from VQSR 'Classic' data
+
     Returns
     -------
     :class:`.VariantDataset`
@@ -141,6 +146,10 @@ def import_gvs(refs: 'List[List[str]]',
     from hail.utils.java import info
     vds_paths = []
     assert len(refs) == len(vets)
+
+    if not reference_genome.has_sequence():
+        raise ValueError(f"reference genome {reference_genome.name!r} has no sequence file."
+                         f"\n  Add the sequence with `<rg>.add_sequence(...)`")
 
     def translate_locus(location):
         """Translates an int64-encoded locus into a locus object."""
@@ -191,7 +200,9 @@ def import_gvs(refs: 'List[List[str]]',
         vqsr = vqsr.key_by('locus')
         vqsr.write(vqsr_path, overwrite=True)
 
-    tranche = hl.import_avro(vqsr_tranche_data)
+    if use_classic_vqsr:
+        info('vqsr_classic: Loading tranche data')
+        tranche = hl.import_avro(vqsr_tranche_data)
 
     n_samples = 0
 
@@ -308,34 +319,52 @@ def import_gvs(refs: 'List[List[str]]',
         # vqsr ref/alt come in normalized individually, so need to renormalize to the dataset ref allele
         vd = vd.annotate_rows(as_vqsr = hl.dict(vqsr.index(vd.locus, all_matches=True)
                                                 .map(lambda record: (record.alt + vd.alleles[0][hl.len(record.ref):], record.drop('ref', 'alt')))))
-        vd = vd.annotate_globals(tranche_data=tranche.collect(_localize=False),
-                                 truth_sensitivity_snp_threshold=truth_sensitivity_snp_threshold,
-                                 truth_sensitivity_indel_threshold=truth_sensitivity_indel_threshold)
 
-        sorted_tranche_data = hl.sorted(vd.tranche_data, key=lambda x: x.truth_sensitivity)
-        vd = vd.annotate_globals(snp_vqslod_threshold=
-                                 sorted_tranche_data.filter(lambda x: (x.model == 'SNP') & (
-                                         x.truth_sensitivity >= truth_sensitivity_snp_threshold))
-                                 .head().min_vqslod
-                                 ,
-                                 indel_vqslod_threshold=sorted_tranche_data.filter(lambda x: (x.model == 'INDEL') & (
-                                         x.truth_sensitivity >= truth_sensitivity_indel_threshold))
-                                 .head().min_vqslod
-                                 )
+        if use_classic_vqsr:
+            vd = vd.annotate_globals(tranche_data=tranche.collect(_localize=False),
+                                     truth_sensitivity_snp_threshold=truth_sensitivity_snp_threshold,
+                                     truth_sensitivity_indel_threshold=truth_sensitivity_indel_threshold)
 
-        is_snp = vd.alleles[1:].map(lambda alt: hl.is_snp(vd.alleles[0], alt))
-        vd = vd.annotate_rows(
-            allele_NO=vd.alleles[1:].map(
-                lambda allele: hl.coalesce(vd.as_vqsr.get(allele).yng_status == 'N', False)),
-            allele_YES=vd.alleles[1:].map(
-                lambda allele: hl.coalesce(vd.as_vqsr.get(allele).yng_status == 'Y', True)),
-            allele_is_snp=is_snp,
-            allele_OK=hl._zip_func(is_snp, vd.alleles[1:],
-                                   f=lambda is_snp, alt:
-                                   hl.coalesce(vd.as_vqsr.get(alt).vqslod >=
-                                               hl.if_else(is_snp, vd.snp_vqslod_threshold, vd.indel_vqslod_threshold),
-                                               True))
-        )
+            sorted_tranche_data = hl.sorted(vd.tranche_data, key=lambda x: x.truth_sensitivity)
+            vd = vd.annotate_globals(snp_vqslod_threshold=
+                                     sorted_tranche_data.filter(lambda x: (x.model == 'SNP') & (
+                                             x.truth_sensitivity >= truth_sensitivity_snp_threshold))
+                                     .head().min_vqslod
+                                     ,
+                                     indel_vqslod_threshold=sorted_tranche_data.filter(lambda x: (x.model == 'INDEL') & (
+                                             x.truth_sensitivity >= truth_sensitivity_indel_threshold))
+                                     .head().min_vqslod
+                                     )
+
+            is_snp = vd.alleles[1:].map(lambda alt: hl.is_snp(vd.alleles[0], alt))
+            vd = vd.annotate_rows(
+                allele_NO=vd.alleles[1:].map(
+                    lambda allele: hl.coalesce(vd.as_vqsr.get(allele).yng_status == 'N', False)),
+                allele_YES=vd.alleles[1:].map(
+                    lambda allele: hl.coalesce(vd.as_vqsr.get(allele).yng_status == 'Y', True)),
+                allele_is_snp=is_snp,
+                allele_OK=hl._zip_func(is_snp, vd.alleles[1:],
+                                        f=lambda is_snp, alt:
+                                        hl.coalesce(vd.as_vqsr.get(alt).vqslod >=
+                                                    hl.if_else(is_snp, vd.snp_vqslod_threshold, vd.indel_vqslod_threshold),
+                                                    True))
+            )
+        else:
+            vd = vd.annotate_globals(truth_sensitivity_snp_threshold=truth_sensitivity_snp_threshold,
+                                     truth_sensitivity_indel_threshold=truth_sensitivity_indel_threshold)
+            is_snp = vd.alleles[1:].map(lambda alt: hl.is_snp(vd.alleles[0], alt))
+            vd = vd.annotate_rows(
+                allele_NO=vd.alleles[1:].map(
+                    lambda allele: hl.coalesce(vd.as_vqsr.get(allele).yng_status == 'N', False)),
+                allele_YES=vd.alleles[1:].map(
+                    lambda allele: hl.coalesce(vd.as_vqsr.get(allele).yng_status == 'Y', True)),
+                allele_is_snp=is_snp,
+                allele_OK=hl._zip_func(is_snp, vd.alleles[1:],
+                                      f=lambda is_snp, alt:
+                                      hl.coalesce(vd.as_vqsr.get(alt).calibration_sensitivity <=
+                                                  hl.if_else(is_snp, vd.truth_sensitivity_snp_threshold, vd.truth_sensitivity_indel_threshold),
+                                                  True))
+            )
 
         lgt = vd.LGT
         la = vd.LA
