@@ -195,7 +195,7 @@ task AssertIdenticalOutputs {
             echo $failure
             expected="expected/$failure"
             actual="actual/$failure"
-            diff $actual $expected
+            diff <(grep '^#' $actual) <(grep '^#' $expected)
           done
           exit 1
         fi
