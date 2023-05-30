@@ -7,9 +7,81 @@ import re
 
 maxNumSamples = 50
 
-def get_column_data(workspace_id):
+
+def get_entity_data(user_defined_entity, entity_set):
+    ## When the user has supplied a defined entity
+    if user_defined_entity:
+        # validate that the user defined entity is present in the workspace
+        if user_defined_entity in list(table.list_tables()):
+            entity = user_defined_entity
+            # if there is a user specified <entity>_set, validate that it is of the expected entity type
+            if entity_set:
+                entity_set_list=[]
+                [entity_set_list.append(row.name) for row in table.list_rows(entity+"_set")]
+                if entity_set not in entity_set_list:
+                    print("error in user defined set")
+
+        else:
+            print("error in user defined entity type")
+
+    # In the case that there is only one or two possible entities, they can easily be derived
+    elif len(list(table.list_tables())) == 1:
+        entity = list(table.list_tables())[0]
+    elif len(list(table.list_tables())) == 2:
+        if list(table.list_tables())[0]+"_set" ==list(table.list_tables())[1]:
+            entity = list(table.list_tables())[0]
+        elif list(table.list_tables())[1]+"_set" ==list(table.list_tables())[0]:
+            entity = list(table.list_tables())[1]
+
+
+    ## If the user has selected an entity_set name (but not defined an entity), grab all tables that end in "_set"
+    # and validate that the named <entity>_set is present in at least one entity type, and if it's in only one, set that as the entity type
+    elif entity_set:
+        entity_table_that_ends_in_set=[]
+        for entity_table in list(table.list_tables()):
+            if entity_table[-4:]=="_set":
+                entity_table_that_ends_in_set.append(entity_table)
+
+        #check that the named <entity>_set is present as at least one set
+        presence=[]
+        for set_table in entity_table_that_ends_in_set:
+            for row in table.list_rows(set_table):
+                if row.name == entity_set:
+                    presence.append(set_table[0:-4])
+            if len(presence) > 1:
+                break
+        if len(presence) == 1:
+            entity = presence[0]
+
+    elif len(list(table.list_tables())) == 1:
+        entity = list(table.list_tables())[0]
+    elif len(list(table.list_tables())) == 2:
+        if list(table.list_tables())[0]+"_set" ==list(table.list_tables())[1]:
+            entity = list(table.list_tables())[0]
+        elif list(table.list_tables())[1]+"_set" ==list(table.list_tables())[0]:
+            entity = list(table.list_tables())[1]
+    else:
+        ## TODO: move this to the top or do it throughout the gates--not sure which is better
+        print("default set to entity type sample")
+        entity = default_entity
+
+
+    entity_id=entity + "_id"
+    if user_defined_entity_id != entity_id:
+        user_entity_id = user_defined_entity_id
+    else:
+        user_entity_id = entity_id
+
+    if entity not in list(table.list_tables()):
+        print("error in possible entities")
+
+    print(entity)
+    print(user_entity_id)
+
+
+def get_column_data(entity_type):
     # We need to identify 3 things
-    # 1. Sample id field
+    # 1. entity id field (just <entity_type>_id)
     # 2. vcf column name
     # 3. vcf index column name
 
@@ -17,7 +89,7 @@ def get_column_data(workspace_id):
     numSamples = 0
     columnSamples = {}
 
-    table_name = "sample"
+    table_name = entity_type # e.g.: "sample"
     # list_rows is a generator and it uses paging behind the scenes to make
     # this call much more efficient
     for row in table.list_rows(table_name):
@@ -209,13 +281,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False,
                                      description='Get workspace information')
 
-    parser.add_argument('--workspace_id', type=str,
-                        help='The ID of your workspace that holds your sample data',
-                        required=True)
-
     parser.add_argument('--workspace_name', type=str,
                         help='The name of your workspace that holds your sample data',
                         required=False)
+
+    parser.add_argument('--entity_type', type=str,
+                        help='The name of the entity being ingested--we default to sample', default="sample")
 
     parser.add_argument('--vcf_output', type=str,
                         help='The location to write the suggested vcf col name',
@@ -235,6 +306,10 @@ if __name__ == '__main__':
         attempts_between_pauses = args.attempts_between_pauses
 
 
-    (columnSamples, numSamples) = get_column_data(args.workspace_id)
+    get_entity_data(user_defined_entity, entity_set_name)
+
+
+
+    (columnSamples, numSamples) = get_column_data(args.entity_type)
     column_names = get_column_values(columnSamples, numSamples)
     write_column_names(column_names, args.vcf_output, args.vcf_index_output)
