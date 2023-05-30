@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.reference;
 
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceDictionaryUtils;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
@@ -15,7 +16,6 @@ import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
@@ -226,11 +226,11 @@ public class CheckReferenceCompatibility extends GATKTool {
      */
     private CompatibilityRecord evaluateCompatibilityWithoutMD5(SAMSequenceDictionary referenceDict, GATKPath referenceDictPath){
         String referenceDictName = referenceDictPath.toPath().getFileName().toString();
-        SequenceDictionaryUtils.SequenceDictionaryCompatibility compatibilityStatus = SequenceDictionaryUtils.compareDictionaries(referenceDict, queryDictionary, false);
-        if(compatibilityStatus.equals(SequenceDictionaryUtils.SequenceDictionaryCompatibility.IDENTICAL)){
+        SAMSequenceDictionaryUtils.SequenceDictionaryCompatibility compatibilityStatus = SAMSequenceDictionaryUtils.compareDictionaries(referenceDict, queryDictionary, false);
+        if(compatibilityStatus.equals(SAMSequenceDictionaryUtils.SequenceDictionaryCompatibility.IDENTICAL)){
             return new CompatibilityRecord(referenceDictPath, CompatibilityRecord.Compatibility.COMPATIBLE, "All sequence names and lengths match in the sequence dictionaries. Since the MD5s are lacking, we can't confirm there aren't mismatching bases in the references.");
         }
-        else if(compatibilityStatus.equals(SequenceDictionaryUtils.SequenceDictionaryCompatibility.SUPERSET)){
+        else if(compatibilityStatus.equals(SAMSequenceDictionaryUtils.SequenceDictionaryCompatibility.SUPERSET)){
             return new CompatibilityRecord(referenceDictPath, CompatibilityRecord.Compatibility.COMPATIBLE_SUBSET, String.format("All sequence names and lengths present in the sequence dictionaries match, but %s is a subset of %s. Missing sequence(s): %s. Since the MD5s are lacking, we can't confirm there aren't mismatching bases in the references.", queryDictionaryName, referenceDictName, getMissingSequencesIfSubset(referenceDict)));
         }
         else{
@@ -239,8 +239,8 @@ public class CheckReferenceCompatibility extends GATKTool {
     }
 
     private List<String> getMissingSequencesIfSubset(SAMSequenceDictionary referenceDict){
-        Set<String> commonSequences = SequenceDictionaryUtils.getCommonContigsByName(queryDictionary, referenceDict);
-        List<String> missingSequences = SequenceDictionaryUtils.getContigNamesList(referenceDict);
+        Set<String> commonSequences = SAMSequenceDictionaryUtils.getCommonContigsByName(queryDictionary, referenceDict);
+        List<String> missingSequences = SAMSequenceDictionaryUtils.getContigNamesList(referenceDict);
         missingSequences.removeAll(commonSequences);
 
         return missingSequences;

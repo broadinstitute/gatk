@@ -1,18 +1,17 @@
 package org.broadinstitute.hellbender.engine;
 
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceDictionaryUtils;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.CloseableIterator;
 import htsjdk.samtools.util.MergingIterator;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextComparator;
-import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
@@ -330,7 +329,7 @@ public final class MultiVariantDataSource implements GATKDataSource<VariantConte
             final SAMSequenceDictionary targetDictionary,
             final SAMSequenceRecord targetSequence)
     {
-        if (!SequenceDictionaryUtils.sequenceRecordsAreEquivalent(sourceSequence, targetSequence)) {
+        if (!SAMSequenceDictionaryUtils.sequenceRecordsAreEquivalent(sourceSequence, targetSequence)) {
             final String msg = String.format("Incompatible sequences found (%s: %d) and (%s: %d)",
                     sourceSequence.getSequenceName(),
                     sourceSequence.getSequenceLength(),

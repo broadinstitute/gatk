@@ -70,7 +70,8 @@ public class MergeMutect2CallsWithMC3 extends AbstractConcordanceWalker {
 
         headerLines.addAll(getDefaultToolVCFHeaderLines());
         headerLines.add(M2_FILTERS_HEADER_LINE);
-        tumorSample = getEvalHeader().getMetaDataLine(Mutect2Engine.TUMOR_SAMPLE_KEY_IN_VCF_HEADER).getValue();
+        //TODO: where is this set on the header? those call sites need to call addMetaDataLineUnique
+        tumorSample = getEvalHeader().getOtherHeaderLineUnique(Mutect2Engine.TUMOR_SAMPLE_KEY_IN_VCF_HEADER).getValue();
         final VCFHeader mergedHeader = new VCFHeader(headerLines, Collections.singletonList(tumorSample));
         vcfWriter = createVCFWriter(outputVcf);
         vcfWriter.writeHeader(mergedHeader);

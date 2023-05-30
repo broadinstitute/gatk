@@ -62,7 +62,7 @@ public class AlleleFrequencyQC extends VariantEval {
         // have to set the output file for variant eval; if not given a debug file to return the variant eval results
         // from, this will just be a temporary file that will be deleted after the tool runs
         outFile = debugFile == null ? IOUtils.createTempFile("variant_eval" ,".txt") : debugFile;
-        sample = getHeaderForVariants().getOtherHeaderLine("sampleAlias").getValue();
+        sample = getHeaderForVariants().getOtherHeaderLineUnique("sampleAlias").getValue();
         super.onTraversalStart();
     }
 

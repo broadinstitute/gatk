@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.engine;
 
+import htsjdk.tribble.TribbleException;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFFileReader;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -20,6 +21,7 @@ public final class MultiVariantDataSourceUnitTest extends GATKBaseTest {
     private static final File QUERY_TEST_GVCF = new File(ENGINE_TEST_DIRECTORY + "feature_data_source_test_gvcf.vcf");
 
     private static final File baseVariants = new File(MULTI_VARIANT_TEST_DIRECTORY, "baseVariants.vcf");
+    private static final File baseVariantsCompatibleDictionary = new File(MULTI_VARIANT_TEST_DIRECTORY, "baseVariantsCompatibleDictionary.vcf");
     private static final File baseVariantsAlternateDictionary = new File(MULTI_VARIANT_TEST_DIRECTORY, "baseVariantsAlternateDictionary.vcf");
     private static final File baseVariantsConflictingDictionary = new File(MULTI_VARIANT_TEST_DIRECTORY, "baseVariantsConflictingDictionary.vcf");
 
@@ -56,20 +58,23 @@ public final class MultiVariantDataSourceUnitTest extends GATKBaseTest {
 
     @Test
     public void testGetName() {
+        final String SOURCE1 = "baseVariants";
+        final String SOURCE2 = "compatibleVariants";
+
         List<FeatureInput<VariantContext>> featureInputs = new ArrayList<>();
-        featureInputs.add(new FeatureInput<>(baseVariants.getAbsolutePath(), "sourceName1"));
+        featureInputs.add(new FeatureInput<>(baseVariants.getAbsolutePath(), SOURCE1));
 
         try (final MultiVariantDataSource multiVariantSource =
                 new MultiVariantDataSource(featureInputs, FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES)) {
-            Assert.assertTrue(multiVariantSource.getName().contains("sourceName1"));
+            Assert.assertTrue(multiVariantSource.getName().contains(SOURCE1));
         }
 
-        featureInputs.add(new FeatureInput<>(baseVariantsAlternateDictionary.getAbsolutePath(), "sourceName2"));
+        featureInputs.add(new FeatureInput<>(baseVariantsCompatibleDictionary.getAbsolutePath(), SOURCE2));
         try (final MultiVariantDataSource multiVariantSource =
                      new MultiVariantDataSource(featureInputs, FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES)) {
-            String name = multiVariantSource.getName();
-            Assert.assertTrue(name.contains("sourceName1"));
-            Assert.assertTrue(name.contains("sourceName2"));
+            final String name = multiVariantSource.getName();
+            Assert.assertTrue(name.contains(SOURCE1));
+            Assert.assertTrue(name.contains(SOURCE2));
         }
     }
 
@@ -88,7 +93,7 @@ public final class MultiVariantDataSourceUnitTest extends GATKBaseTest {
         }
     }
 
-    @Test
+    @Test(expectedExceptions = TribbleException.class)
     public void testGetSequenceDictionaryAlternate() {
         // tests the case where the files have alternate/disjoint contig sets
         List<FeatureInput<VariantContext>> featureInputs = new ArrayList<>();

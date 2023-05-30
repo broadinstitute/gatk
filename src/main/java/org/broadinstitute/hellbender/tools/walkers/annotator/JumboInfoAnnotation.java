@@ -18,7 +18,7 @@ import java.util.Map;
  */
 public interface JumboInfoAnnotation extends VariantAnnotation{
 
-    default VCFCompoundHeaderLine.SupportedHeaderLineType annotationType() { return VCFCompoundHeaderLine.SupportedHeaderLineType.INFO; }
+    default AnnotationType annotationType() { return AnnotationType.INFO; }
 
     // TODO: fix ? extends Locatable - that actually is not needed, just pass the allele parts of the likelihoods
     Map<String, Object> annotate(final ReferenceContext ref,

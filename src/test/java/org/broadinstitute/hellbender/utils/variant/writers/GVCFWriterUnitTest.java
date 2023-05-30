@@ -467,6 +467,7 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
 
     private static VCFHeader getMinimalVCFHeader() {
         final Set<VCFHeaderLine> headerlines = new LinkedHashSet<>();
+        headerlines.add(VCFHeader.makeHeaderVersionLine(VCFHeader.DEFAULT_VCF_VERSION));
         VCFStandardHeaderLines.addStandardFormatLines(headerlines, true,
                 VCFConstants.GENOTYPE_KEY, VCFConstants.DEPTH_KEY,
                 VCFConstants.GENOTYPE_QUALITY_KEY, VCFConstants.GENOTYPE_PL_KEY,

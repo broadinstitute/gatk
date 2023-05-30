@@ -153,7 +153,7 @@ public final class GermlineCNVSegmentVariantComposer extends GermlineCNVVariantC
     @Override
     public void composeVariantContextHeader(final SAMSequenceDictionary sequenceDictionary,
                                             final Set<VCFHeaderLine> vcfDefaultToolHeaderLines) {
-        final VCFHeader result = new VCFHeader(Collections.emptySet(), Collections.singletonList(sampleName));
+        final VCFHeader result = new VCFHeader(VCFHeader.makeHeaderVersionLineSet(VCFHeaderVersion.VCF4_2), Collections.singletonList(sampleName));
 
         /* add VCF version */
         result.addMetaDataLine(new VCFHeaderLine(VCFHeaderVersion.VCF4_2.getFormatString(),

@@ -64,6 +64,8 @@ public class MethylationTypeCaller extends LocusWalker {
             throw new UserException.BadInput("Error writing header, getHeaderForReads() returns null");
         }
 
+        headerLines.add(VCFHeader.makeHeaderVersionLine(VCFHeader.DEFAULT_VCF_VERSION));
+
         final VCFInfoHeaderLine unconvertedCoverageLine = new VCFInfoHeaderLine(GATKVCFConstants.UNCONVERTED_BASE_COVERAGE_KEY, 1, VCFHeaderLineType.Integer, "Count of reads supporting methylation that are unconverted ");
         final VCFInfoHeaderLine coverageLine = new VCFInfoHeaderLine(GATKVCFConstants.CONVERTED_BASE_COVERAGE_KEY, 1, VCFHeaderLineType.Integer, "Count of reads supporting methylation that are converted ");
         final VCFInfoHeaderLine contextLine = new VCFInfoHeaderLine(GATKVCFConstants.METHYLATION_REFERENCE_CONTEXT_KEY, 1, VCFHeaderLineType.String, "Forward Strand Reference context");
@@ -83,6 +85,7 @@ public class MethylationTypeCaller extends LocusWalker {
                 .distinct()
                 .collect(Collectors.toList());
 
+        //TODO: this should propagate the SAM sequence dictionary to the VCF
         return new VCFHeader(headerLines, samples);
     }
 

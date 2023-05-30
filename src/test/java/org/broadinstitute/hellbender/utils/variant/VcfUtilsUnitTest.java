@@ -69,12 +69,10 @@ public class VcfUtilsUnitTest extends GATKBaseTest {
         headerLines.add(new VCFContigHeaderLine(
                 "##contig=<ID=1,length=249250621,assembly=b37>",
                 vcfHeaderVersion,
-                "",
                 0));
         headerLines.add(new VCFContigHeaderLine(
                 "##contig=<ID=2,length=249250622,assembly=b37>",
                 vcfHeaderVersion,
-                "",
                 0));
         return headerLines;
     }

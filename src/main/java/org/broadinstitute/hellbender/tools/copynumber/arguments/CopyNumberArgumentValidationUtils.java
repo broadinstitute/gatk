@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.copynumber.arguments;
 
 import com.google.common.collect.Ordering;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceDictionaryUtils;
 import htsjdk.samtools.util.Locatable;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -21,7 +22,6 @@ import org.broadinstitute.hellbender.tools.copynumber.formats.records.AnnotatedI
 import org.broadinstitute.hellbender.utils.IntervalMergingRule;
 import org.broadinstitute.hellbender.utils.IntervalSetRule;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
-import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
@@ -97,8 +97,8 @@ public final class CopyNumberArgumentValidationUtils {
             return true;
         }
         final boolean checkContigOrdering = true;
-        return SequenceDictionaryUtils.compareDictionaries(dictionary1, dictionary2, checkContigOrdering) ==
-                SequenceDictionaryUtils.SequenceDictionaryCompatibility.IDENTICAL;
+        return SAMSequenceDictionaryUtils.compareDictionaries(dictionary1, dictionary2, checkContigOrdering) ==
+                SAMSequenceDictionaryUtils.SequenceDictionaryCompatibility.IDENTICAL;
     }
 
     /**

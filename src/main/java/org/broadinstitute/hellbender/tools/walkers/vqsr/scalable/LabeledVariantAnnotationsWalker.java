@@ -307,9 +307,10 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
     // modified from VQSR code
     // TODO we're just writing a standard sites-only VCF here, maybe there's a nicer way to do this?
     VCFHeader constructVCFHeader(final List<String> sortedLabels) {
-        Set<VCFHeaderLine> hInfo = sortedLabels.stream()
+        Set<VCFHeaderLine> hInfo = new TreeSet<>(VCFHeader.makeHeaderVersionLineSet(VCFHeader.DEFAULT_VCF_VERSION));
+        hInfo.addAll(sortedLabels.stream()
                 .map(l -> new VCFInfoHeaderLine(l, 1, VCFHeaderLineType.Flag, String.format(RESOURCE_LABEL_INFO_HEADER_LINE_FORMAT_STRING, l)))
-                .collect(Collectors.toCollection(TreeSet::new));
+                .collect(Collectors.toCollection(TreeSet::new)));
         hInfo.add(GATKVCFHeaderLines.getFilterLine(VCFConstants.PASSES_FILTERS_v4));
         final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
         if (sequenceDictionary != null) {

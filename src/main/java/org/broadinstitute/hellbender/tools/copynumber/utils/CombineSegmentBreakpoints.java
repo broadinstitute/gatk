@@ -4,6 +4,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceDictionaryUtils;
 import htsjdk.samtools.SamFileHeaderMerger;
 import htsjdk.samtools.util.Locatable;
 import org.apache.commons.lang3.StringUtils;
@@ -20,7 +21,6 @@ import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStanda
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedInterval;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedIntervalCollection;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
-import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -176,7 +176,7 @@ public class CombineSegmentBreakpoints extends GATKTool {
     }
 
     private static void assertSequenceDictionaryCompatibility(SAMFileHeader samFileHeader1, SAMFileHeader samFileHeader2) {
-        final SequenceDictionaryUtils.SequenceDictionaryCompatibility compatibilityResult = SequenceDictionaryUtils.compareDictionaries(samFileHeader1.getSequenceDictionary(), samFileHeader2.getSequenceDictionary(), true);
+        final SAMSequenceDictionaryUtils.SequenceDictionaryCompatibility compatibilityResult = SAMSequenceDictionaryUtils.compareDictionaries(samFileHeader1.getSequenceDictionary(), samFileHeader2.getSequenceDictionary(), true);
         switch ( compatibilityResult ) {
             case UNEQUAL_COMMON_CONTIGS:
                 throw new UserException.BadInput("Input files had common contigs with different lengths in the sequence dictionaries.  Were these segment files generated with the same reference?");
