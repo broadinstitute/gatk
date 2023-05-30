@@ -35,13 +35,11 @@ workflow GvsCreateFilterSet {
   # fully-qualified table names
   String fq_sample_table = "~{project_id}.~{dataset_name}.sample_info"
   String fq_alt_allele_table = "~{project_id}.~{dataset_name}.alt_allele"
-  String fq_info_destination_table = "~{project_id}.~{dataset_name}.filter_set_info"
-  String fq_info_destination_table_vqsr_lite = "~{project_id}.~{dataset_name}.filter_set_info_vqsr_lite"
-  String fq_tranches_destination_table = "~{project_id}.~{dataset_name}.filter_set_tranches"
-  String fq_filter_sites_destination_table = "~{project_id}.~{dataset_name}.filter_set_sites"
+  String fq_filter_sites_destination_table =    "~{project_id}.~{dataset_name}.filter_set_sites"
+  String fq_filter_set_info_destination_table = "~{project_id}.~{dataset_name}.filter_set_info"
+  String fq_tranches_destination_table =        "~{project_id}.~{dataset_name}.filter_set_tranches"
 
-  String fq_info_destination_table_schema =           "filter_set_name:string,type:string,location:integer,ref:string,alt:string,vqslod:float,culprit:string,training_label:string,yng_status:string"
-  String fq_info_destination_table_vqsr_lite_schema = "filter_set_name:string,type:string,location:integer,ref:string,alt:string,calibration_sensitivity:float,training_label:string,yng_status:string"
+  String filter_set_info_destination_table_schema = "filter_set_name:string,type:string,location:integer,ref:string,alt:string,calibration_sensitivity:float,vqslod:float,culprit:string,training_label:string,yng_status:string"
 
   call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
     input:
@@ -138,7 +136,7 @@ workflow GvsCreateFilterSet {
     # 1) The snps_variant_scored_vcf and indels_variant_scored_vcf output by JointVcfFiltering contains ALL variants,
     #     but are currently ONLY annotating SNPs and INDELs respectively.
     # 2) Those output VCFs also contain filtered sites (sites at which the FILTER field set to anything other than '.' or 'PASS')
-    #     which we don't want to put into the filter_set_info_vqsr_lite table.
+    #     which we don't want to put into the filter_set_info table.
     call Utils.SelectVariants as CreateFilteredScoredSNPsVCF {
       input:
         input_vcf = MergeScoredVCFs.output_vcf,
@@ -161,24 +159,14 @@ workflow GvsCreateFilterSet {
       input:
         gatk_override = gatk_override,
         filter_set_name = filter_set_name,
+        fq_filter_set_info_destination_table = fq_filter_set_info_destination_table,
+        filter_schema = filter_set_info_destination_table_schema,
         snp_recal_file = CreateFilteredScoredSNPsVCF.output_vcf,
         snp_recal_file_index = CreateFilteredScoredSNPsVCF.output_vcf_index,
         indel_recal_file = CreateFilteredScoredINDELsVCF.output_vcf,
         indel_recal_file_index = CreateFilteredScoredINDELsVCF.output_vcf_index,
-        fq_info_destination_table = fq_info_destination_table_vqsr_lite,
-        filter_schema = fq_info_destination_table_vqsr_lite_schema,
         project_id = project_id,
         useClassic = false
-    }
-
-    call PopulateFilterSetSites {
-      input:
-        gatk_override = gatk_override,
-        filter_set_name = filter_set_name,
-        sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
-        sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
-        fq_filter_sites_destination_table = fq_filter_sites_destination_table,
-        project_id = project_id
     }
   }
 
@@ -201,24 +189,14 @@ workflow GvsCreateFilterSet {
       input:
         gatk_override = gatk_override,
         filter_set_name = filter_set_name,
+        fq_filter_set_info_destination_table = fq_filter_set_info_destination_table,
+        filter_schema = filter_set_info_destination_table_schema,
         snp_recal_file = VQSRClassic.snps_variant_recalibration_file,
         snp_recal_file_index = VQSRClassic.snps_variant_recalibration_file_index,
         indel_recal_file = VQSRClassic.indels_variant_recalibration_file,
         indel_recal_file_index = VQSRClassic.indels_variant_recalibration_file_index,
-        fq_info_destination_table = fq_info_destination_table,
-        filter_schema = fq_info_destination_table_schema,
         project_id = project_id,
         useClassic = true
-    }
-
-    call PopulateFilterSetSites as PopulateFilterSetSitesClassic {
-      input:
-        gatk_override = gatk_override,
-        filter_set_name = filter_set_name,
-        sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
-        sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
-        fq_filter_sites_destination_table = fq_filter_sites_destination_table,
-        project_id = project_id
     }
 
     call PopulateFilterSetTranches {
@@ -230,6 +208,16 @@ workflow GvsCreateFilterSet {
         fq_tranches_destination_table = fq_tranches_destination_table,
         project_id = project_id
     }
+  }
+
+  call PopulateFilterSetSites {
+    input:
+      gatk_override = gatk_override,
+      filter_set_name = filter_set_name,
+      sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
+      sites_only_variant_filtered_vcf_index = MergeVCFs.output_vcf_index,
+      fq_filter_sites_destination_table = fq_filter_sites_destination_table,
+      project_id = project_id
   }
 
   call Utils.SummarizeTaskMonitorLogs as SummarizeItAll {
@@ -248,11 +236,10 @@ workflow GvsCreateFilterSet {
                [CreateFilteredScoredSNPsVCF.monitoring_log],
                [CreateFilteredScoredINDELsVCF.monitoring_log],
                [PopulateFilterSetInfo.monitoring_log],
-               [PopulateFilterSetSites.monitoring_log],
                select_first([VQSRClassic.monitoring_logs, []]),
                [PopulateFilterSetInfoClassic.monitoring_log],
-               [PopulateFilterSetSitesClassic.monitoring_log],
-               [PopulateFilterSetTranches.monitoring_log]
+               [PopulateFilterSetTranches.monitoring_log],
+               [PopulateFilterSetSites.monitoring_log]
                ]
                )
                )
@@ -328,7 +315,7 @@ task ExtractFilterTask {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_05_22"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_05_23"
     memory: "7 GB"
     disks: "local-disk 10 HDD"
     bootDiskSizeGb: 15
@@ -348,7 +335,7 @@ task PopulateFilterSetInfo {
   input {
     String filter_set_name
     String filter_schema
-    String fq_info_destination_table
+    String fq_filter_set_info_destination_table
     Boolean useClassic = true
 
     File snp_recal_file
@@ -398,9 +385,9 @@ task PopulateFilterSetInfo {
     cat ~{filter_set_name}.snps.recal.tsv ~{filter_set_name}.indels.recal.tsv | grep -v filter_set_name | grep -v "#"  > ~{filter_set_name}.filter_set_load.tsv
 
     # BQ load likes a : instead of a . after the project
-    bq_table=$(echo ~{fq_info_destination_table} | sed s/\\./:/)
+    bq_table=$(echo ~{fq_filter_set_info_destination_table} | sed s/\\./:/)
 
-    echo "Loading combined TSV into ~{fq_info_destination_table}"
+    echo "Loading combined TSV into ~{fq_filter_set_info_destination_table}"
     bq load --project_id=~{project_id} --skip_leading_rows 0 -F "tab" \
       --range_partitioning=location,0,26000000000000,6500000000 \
       --clustering_fields=location \
@@ -410,7 +397,7 @@ task PopulateFilterSetInfo {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_05_22"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_05_23"
     memory: "3500 MB"
     disks: "local-disk 250 HDD"
     bootDiskSizeGb: 15
@@ -470,7 +457,7 @@ task PopulateFilterSetSites {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_05_22"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_05_23"
     memory: "3500 MB"
     disks: "local-disk 200 HDD"
     bootDiskSizeGb: 15
@@ -522,7 +509,7 @@ task PopulateFilterSetTranches {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_05_22"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_05_23"
     memory: "3500 MB"
     disks: "local-disk 200 HDD"
     bootDiskSizeGb: 15

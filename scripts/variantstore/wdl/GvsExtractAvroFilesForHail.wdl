@@ -10,10 +10,22 @@ workflow GvsExtractAvroFilesForHail {
         String dataset_name
         String filter_set_name
         String call_set_identifier
+        Boolean use_classic_VQSR = true
         Int scatter_width = 10
     }
 
+    String fq_gvs_dataset = "~{project_id}.~{dataset_name}"
+    String filter_set_info_tablename = if (use_classic_VQSR) then "filter_set_info" else "filter_set_info_vqsr_lite"
+    String fq_filter_set_info_table = "~{fq_gvs_dataset}.~{filter_set_info_tablename}"
+
     call Utils.ValidateFilterSetName {
+        input:
+            project_id = project_id,
+            fq_filter_set_info_table = "~{fq_filter_set_info_table}",
+            filter_set_name = filter_set_name
+    }
+
+    call Utils.IsVQSRLite {
         input:
             project_id = project_id,
             fq_filter_set_info_table = "~{project_id}.~{dataset_name}.filter_set_info",
@@ -28,9 +40,11 @@ workflow GvsExtractAvroFilesForHail {
         input:
             project_id = project_id,
             dataset_name = dataset_name,
+            filter_set_info_tablename = filter_set_info_tablename,
             filter_set_name = filter_set_name,
             avro_sibling = OutputPath.out,
-            call_set_identifier = call_set_identifier
+            call_set_identifier = call_set_identifier,
+            is_vqsr_lite = IsVQSRLite.is_vqsr_lite
     }
 
     call Utils.CountSuperpartitions {
@@ -44,7 +58,6 @@ workflow GvsExtractAvroFilesForHail {
             input:
                 project_id = project_id,
                 dataset_name = dataset_name,
-                filter_set_name = filter_set_name,
                 call_set_identifier = call_set_identifier,
                 avro_sibling = OutputPath.out,
                 num_superpartitions = CountSuperpartitions.num_superpartitions,
@@ -93,17 +106,22 @@ task OutputPath {
 
 task ExtractFromNonSuperpartitionedTables {
     meta {
-        description: "Extracts from the non-superpartitioned tables: sample_info, filter_set_info, filter_set_sites"
+        description: "Extracts from the non-superpartitioned tables: sample_info, filter_set_sites, filter_set_info/filter_set_info_vqsr_lite, and filter_set_tranches (if using VQSR Classic)"
         # Not dealing with caching for now as that would introduce a lot of complexity.
         volatile: true
     }
     input {
         String project_id
         String dataset_name
+        String filter_set_info_tablename
         String filter_set_name
         String avro_sibling
         String call_set_identifier
+        Boolean is_vqsr_lite = true
     }
+
+    String vqs_score_field = if (is_vqsr_lite == true) then 'calibration_sensitivity' else 'vqslod'
+
     parameter_meta {
         avro_sibling: "Cloud path to a file that will be the sibling to the 'avro' 'directory' under which output Avro files will be written."
     }
@@ -127,11 +145,11 @@ task ExtractFromNonSuperpartitionedTables {
         python3 /app/run_avro_query.py --sql "
             EXPORT DATA OPTIONS(
             uri='${avro_prefix}/vqsr_filtering_data/vqsr_filtering_data_*.avro', format='AVRO', compression='SNAPPY') AS
-            SELECT location, type as model, ref, alt, vqslod, yng_status
+            SELECT location, type as model, ref, alt, ~{vqs_score_field}, yng_status
             FROM \`~{project_id}.~{dataset_name}.filter_set_info\`
             WHERE filter_set_name = '~{filter_set_name}'
             ORDER BY location
-        " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name filter_set_info --project_id ~{project_id}
+        " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name ~{filter_set_info_tablename} --project_id ~{project_id}
 
         python3 /app/run_avro_query.py --sql "
             EXPORT DATA OPTIONS(
@@ -142,13 +160,15 @@ task ExtractFromNonSuperpartitionedTables {
             ORDER BY location
         " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name filter_set_sites --project_id ~{project_id}
 
-        python3 /app/run_avro_query.py --sql "
-            EXPORT DATA OPTIONS(
-            uri='${avro_prefix}/vqsr_tranche_data/vqsr_tranche_data_*.avro', format='AVRO', compression='SNAPPY') AS
-            SELECT model, truth_sensitivity, min_vqslod, filter_name
-            FROM \`~{project_id}.~{dataset_name}.filter_set_tranches\`
-            WHERE filter_set_name = '~{filter_set_name}'
-        " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name filter_set_tranches --project_id ~{project_id}
+        if [ ~{is_vqsr_lite} = false ]; then
+            python3 /app/run_avro_query.py --sql "
+                EXPORT DATA OPTIONS(
+                uri='${avro_prefix}/vqsr_tranche_data/vqsr_tranche_data_*.avro', format='AVRO', compression='SNAPPY') AS
+                SELECT model, truth_sensitivity, min_vqslod, filter_name
+                FROM \`~{project_id}.~{dataset_name}.filter_set_tranches\`
+                WHERE filter_set_name = '~{filter_set_name}'
+            " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name filter_set_tranches --project_id ~{project_id}
+        fi
     >>>
 
     output {
@@ -157,7 +177,7 @@ task ExtractFromNonSuperpartitionedTables {
     }
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-19-alpine"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-22-alpine"
         disks: "local-disk 500 HDD"
     }
 }
@@ -172,7 +192,6 @@ task ExtractFromSuperpartitionedTables {
     input {
         String project_id
         String dataset_name
-        String filter_set_name
         String avro_sibling
         String call_set_identifier
         Int num_superpartitions
@@ -225,7 +244,7 @@ task ExtractFromSuperpartitionedTables {
     }
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-19-alpine"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-22-alpine"
         disks: "local-disk 500 HDD"
     }
 }
@@ -293,7 +312,7 @@ task GenerateHailScripts {
         File hail_create_vat_inputs_script = 'hail_create_vat_inputs.py'
     }
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-19-alpine"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-22-alpine"
         disks: "local-disk 500 HDD"
     }
 }

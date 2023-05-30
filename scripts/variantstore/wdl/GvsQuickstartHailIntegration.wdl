@@ -10,6 +10,7 @@ workflow GvsQuickstartHailIntegration {
     }
 
     String project_id = "gvs-internal"
+    Boolean use_classic_VQSR = true
 
     call QuickstartVcfIntegration.GvsQuickstartVcfIntegration {
         input:
@@ -32,6 +33,7 @@ workflow GvsQuickstartHailIntegration {
     call CreateAndTieOutVds {
         input:
             branch_name = branch_name,
+            use_classic_VQSR = use_classic_VQSR,
             avro_prefix = GvsExtractAvroFilesForHail.avro_prefix,
             vds_destination_path = GvsExtractAvroFilesForHail.vds_output_path,
             tieout_vcfs = GvsQuickstartVcfIntegration.output_vcfs,
@@ -52,6 +54,7 @@ workflow GvsQuickstartHailIntegration {
 task CreateAndTieOutVds {
     input {
         String branch_name
+        Boolean use_classic_VQSR
         String avro_prefix
         String vds_destination_path
         Array[File] tieout_vcfs
@@ -72,7 +75,7 @@ task CreateAndTieOutVds {
 
         # Copy the versions of the Hail import and tieout scripts for this branch from GitHub.
         script_url_prefix="https://raw.githubusercontent.com/broadinstitute/gatk/~{branch_name}/scripts/variantstore/wdl/extract"
-        for script in hail_gvs_import.py hail_join_vds_vcfs.py gvs_vds_tie_out.py gvs_avros_to_vds.py
+        for script in hail_gvs_import.py hail_join_vds_vcfs.py gvs_vds_tie_out.py import_gvs.py
         do
             curl --silent --location --remote-name "${script_url_prefix}/${script}"
         done
@@ -119,7 +122,12 @@ task CreateAndTieOutVds {
         export VDS_PATH=$WORK/gvs_import.vds
         export AVRO_PATH=$PWD/avro
 
-        python3 ./hail_gvs_import.py --avro-path ${AVRO_PATH} --vds-path ${VDS_PATH} --temp-path ${TEMP_PATH} --references-path ${REFERENCES_PATH}
+        python3 ./hail_gvs_import.py \
+            --avro-path ${AVRO_PATH} \
+            --vds-path ${VDS_PATH} \
+            --temp-path ${TEMP_PATH} \
+            --references-path ${REFERENCES_PATH} \
+            ~{true='' false='--use-vqsr-lite' use_classic_VQSR}
 
         export JOINED_MATRIX_TABLE_PATH=${WORK}/joined.mt
 

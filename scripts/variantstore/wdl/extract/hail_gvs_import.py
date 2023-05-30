@@ -22,9 +22,9 @@ import re
 gcs_re = re.compile("^gs://(?P<bucket_name>[^/]+)/(?P<object_prefix>.*)$")
 
 
-def create_vds(argsfn, vds_path, references_path, temp_path):
+def create_vds(argsfn, vds_path, references_path, temp_path, use_classic_vqsr):
     import hail as hl
-    import gvs_avros_to_vds
+    import import_gvs
     hl.init(tmp_dir=f'{temp_path}/hail_tmp_general')
 
     rg38 = hl.get_reference('GRCh38')
@@ -34,7 +34,7 @@ def create_vds(argsfn, vds_path, references_path, temp_path):
     ## Note that a full description of the create_vds function written by Hail for this process can be found here:
     ## https://github.com/tpoterba/hail/blob/import-gvs/hail/python/hail/methods/impex.py
     ## Commented out parameters are ones where we are comfortable with the default, but want to make them easily accessible to users
-    gvs_avros_to_vds.create_vds(
+    import_gvs.import_gvs(
         vets=argsfn('vets'),
         refs=argsfn('refs'),
         sample_mapping=argsfn('sample_mapping'),
@@ -50,6 +50,7 @@ def create_vds(argsfn, vds_path, references_path, temp_path):
         # intermediate_resume_point=0, # if your first run fails, and you want to use the intermediate files that already exist, check in with Hail to find out what stage to resume on
         # skip_final_merge=false, # if you want to create your VDS in two steps (because of mem issues) this can be skipped until the final run
         unphase=True, # the default in Hail is to keep phasing information, but it's not necessary for AoU, so it can be dropped
+        use_classic_vqsr=use_classic_vqsr
     )
 
 
@@ -137,13 +138,14 @@ if __name__ == '__main__':
                         required=True)
     parser.add_argument('--references-path', type=str, help='Path to references, only required for local files',
                         required=False)
-
+    # TODO - When we change to make VQSR Lite, change this line to '--use-classic-vqsr' and remove the not from 'use_classic_vqsr = not args.use_vqsr_lite' below
+    parser.add_argument("--use-vqsr-lite", action="store_true", help="If set, expect that the input GVS Avro files were generated using VQSR Lite")
     args = parser.parse_args()
 
     # Remove trailing slashes if present.
     avro_path, temp_path, vds_path = [p if not p.endswith('/') else p[:-1] for p in
                                       [args.avro_path, args.temp_path, args.vds_path]]
-
+    use_classic_vqsr = not args.use_vqsr_lite
     is_gcs = [gcs_re.match(p) for p in [avro_path, temp_path, vds_path]]
     is_not_gcs = [not g for g in is_gcs]
 
@@ -154,7 +156,7 @@ if __name__ == '__main__':
         def args(key):
             return gcs_generate_avro_args(avro_bucket, avro_object_prefix, key)
 
-        create_vds(args, vds_path, 'gs://hail-common/references', temp_path)
+        create_vds(args, vds_path, 'gs://hail-common/references', temp_path, use_classic_vqsr)
 
     elif all(is_not_gcs):
         references_path = args.references_path
@@ -166,6 +168,6 @@ if __name__ == '__main__':
         def args(key):
             return local_generate_avro_args(avro_path, key)
 
-        create_vds(args, vds_path, references_path, temp_path)
+        create_vds(args, vds_path, references_path, temp_path, use_classic_vqsr)
     else:
         raise ValueError("Arguments appear to be some unsavory mix of GCS and local paths, all or nothing please.")
