@@ -161,7 +161,7 @@ public final class FlowFeatureMapper extends ReadWalker {
         byte[]      readBases;
         byte[]      refBases;
         int         readBasesOffset; // offset of read bases array
-        int         start;      // location (on rerence)
+        int         start;      // location (on reference)
         int         offsetDelta;
         double      score;
         int         readCount;
@@ -405,7 +405,7 @@ public final class FlowFeatureMapper extends ReadWalker {
         for ( ReadContext rc : readQueue ) {
             if ( rc.read.contains(loc) ) {
                 fr.readCount++;
-                if ( mapper.noFeatureButFilterAt(rc.read, rc.referenceContext, fr.start) ) {
+                if ( mapper.noFeatureButFilterAt(rc.read, rc.referenceContext, fr.start) == FeatureMapper.FilterStatus.Filtered ) {
                     fr.filteredCount++;
                 }
             }

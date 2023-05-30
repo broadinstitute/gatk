@@ -222,7 +222,7 @@ public class SNVMapper implements FeatureMapper {
         }
     }
 
-    public boolean noFeatureButFilterAt(GATKRead read, ReferenceContext referenceContext, int start) {
+    public FilterStatus noFeatureButFilterAt(GATKRead read, ReferenceContext referenceContext, int start) {
 
         // access bases
         final byte[]      bases = read.getBasesNoCopy();
@@ -245,7 +245,7 @@ public class SNVMapper implements FeatureMapper {
                 // break out if not enough clearing
                 if ( (start < referenceContext.getStart() + refOfs + identBefore) ||
                         (start >= referenceContext.getStart() + refOfs + length - identAfter) )
-                    return false;
+                    return FilterStatus.Filtered;
 
                 int         delta = start - (referenceContext.getStart() + refOfs);
                 readOfs += delta;
@@ -269,10 +269,10 @@ public class SNVMapper implements FeatureMapper {
                         continue;
                     }
 
-                    // this is it! no feature but filtred in
-                    return true;
+                    // this is it! no feature but filtered in
+                    return FilterStatus.NoFeatureAndFiltered;
                 } else
-                    return false;
+                    return FilterStatus.Filtered;
 
             } else {
 
@@ -287,7 +287,7 @@ public class SNVMapper implements FeatureMapper {
         };
 
         // if here, false
-        return false;
+        return FilterStatus.None;
     }
 
 }
