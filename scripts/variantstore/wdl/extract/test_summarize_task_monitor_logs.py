@@ -13,7 +13,8 @@ class TestSummarizeTaskMonitorLogs(unittest.TestCase):
                        '.log',
                        'summarize_task_monitor_logs_test_files/call-IndelsVariantRecalibrator/monitoring.log',
                        'summarize_task_monitor_logs_test_files/call-ExtractFilterTask/shard-0/cacheCopy/monitoring.log',
-                       'summarize_task_monitor_logs_test_files/call-MergeVCFs/cacheCopy/monitoring.log']
+                       'summarize_task_monitor_logs_test_files/call-MergeVCFs/cacheCopy/monitoring.log',
+                       'summarize_task_monitor_logs_test_files/call-SamplesTableDatetimeCheck/monitoring.log']
         with tempfile.NamedTemporaryFile() as actual_output_file:
             parse_monitoring_log_files(input_files, actual_output_file.name)
 
