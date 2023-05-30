@@ -126,7 +126,7 @@ def parse_cpu_usage_line(line):
         m2 = re.match(p2, line)
         if m2 is None:
             # Check if it's just empty
-            p3 = "^\\* CPU usage\\:$"  # * CPU usage:
+            p3 = "^\\* CPU usage\\: *$"  # * CPU usage:
             m3 = re.match(p3, line)
             if m3 is None:
                 eprint(f"ERROR: Line '{line}' does not look like a CPU usage line. Is this a monitoring_log file?")
