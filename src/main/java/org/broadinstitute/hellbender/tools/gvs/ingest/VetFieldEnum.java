@@ -151,9 +151,9 @@ public enum VetFieldEnum {
                     return "";
                 }
 
-                // indexing at 0 earlier guarantees that this should not have an indexing error
                 int numVariants = variant.getAlleles().size() - 2;
 
+                // As of VS-910, we aren't going to consider any number of alleles to necessarily be a UserException
                 // Moving this TODO note up here as an open question for how we want to handle this quantity
                 // with more than one allele
                 // TODO: just replicate rather than distribute, is this right?
@@ -161,7 +161,6 @@ public enum VetFieldEnum {
                 for (int i = 0; i < numVariants; ++i) {
                     out += outNotAlleleSpecific + ",1|";
                 }
-                // As of VS-910, we aren't going to consider any number of alleles to necessarily be a UserException
             }
 
             if ( out == null || out.contentEquals("||") || out.contentEquals("|||") ) {
@@ -255,7 +254,6 @@ public enum VetFieldEnum {
                     return "";
                 }
 
-                // indexing at 0 earlier guarantees that this should not have an indexing error
                 int numVariants = variant.getAlleles().size() - 2;
                 // Moving this TODO note up here as an open question for how we want to handle this quantity
                 // with more than one allele
@@ -298,7 +296,6 @@ public enum VetFieldEnum {
                 String outNotAlleleSpecific = variant.getGenotype(0).getExtendedAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY, null).toString();
                 String[] outValues = outNotAlleleSpecific.split(",");
 
-                // indexing at 0 earlier guarantees that this should not have an indexing error
                 int numVariants = variant.getAlleles().size() - 2;
                 out = outValues[0] + "," + outValues[1];
                 for (int i = 0; i < numVariants; ++i) {
