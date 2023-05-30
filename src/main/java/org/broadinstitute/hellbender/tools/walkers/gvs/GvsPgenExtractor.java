@@ -51,8 +51,7 @@ public final class GvsPgenExtractor extends TwoPassVariantWalker {
     @Override
     protected void afterFirstPass() {
         final VCFHeader inputHeader = getHeaderForVariants();
-        final int numberOfSamples = inputHeader.getNGenotypeSamples();
-        pgenWriter = new PgenWriter(outputFile, writeMode, maxAltAlleles, numberOfVariants, numberOfSamples);
+        pgenWriter = new PgenWriter(outputFile, inputHeader, writeMode, numberOfVariants, maxAltAlleles);
     }
 
     @Override
