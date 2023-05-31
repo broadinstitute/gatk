@@ -9,7 +9,7 @@ workflow GvsQuickstartVcfIntegration {
         String branch_name
         Boolean use_classic_VQSR = true
         Boolean extract_do_not_filter_override = true
-        String expected_output_prefix = "gs://gvs-internal-quickstart/integration/2023-05-25/"
+        String expected_output_prefix = "gs://gvs-internal-quickstart/integration/2023-05-31/"
 
         Array[String] external_sample_names = [
                                               "ERS4367795",
@@ -92,9 +92,10 @@ workflow GvsQuickstartVcfIntegration {
 
     # Only assert identical outputs if we did not filter (filtering is not deterministic) OR if we are using VQSR Lite (which is deterministic)
     if (extract_do_not_filter_override || !use_classic_VQSR) {
+        String expected_prefix = expected_output_prefix + dataset_suffix + "/"
         call AssertIdenticalOutputs {
             input:
-                expected_output_prefix = expected_output_prefix,
+                expected_output_prefix = expected_prefix,
                 actual_vcfs = GvsUnified.output_vcfs
         }
 
@@ -103,7 +104,7 @@ workflow GvsQuickstartVcfIntegration {
                 go = GvsUnified.done,
                 dataset_name = CreateDataset.dataset_name,
                 project_id = project_id,
-                expected_output_csv = expected_output_prefix + dataset_suffix + ".cost_observability_expected.csv"
+                expected_output_csv = expected_prefix + "cost_observability_expected.csv"
         }
 
         call AssertTableSizesAreExpected {
@@ -111,7 +112,7 @@ workflow GvsQuickstartVcfIntegration {
                 go = GvsUnified.done,
                 dataset_name = CreateDataset.dataset_name,
                 project_id = project_id,
-                expected_output_csv = expected_output_prefix + dataset_suffix + ".table_sizes_expected.csv"
+                expected_output_csv = expected_prefix + "table_sizes_expected.csv"
         }
     }
 
