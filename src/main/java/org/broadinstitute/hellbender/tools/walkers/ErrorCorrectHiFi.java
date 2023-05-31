@@ -170,28 +170,53 @@ public final class ErrorCorrectHiFi extends VariantWalker {
      */
     public static final class Call {
         private final ByteSequence calls;
-        private final int meanQual;
+        private final ByteSequence quals;
         private final CigarElement cigarElement;
 
         public Call( final ByteSequence calls,
                      final ByteSequence quals,
                      final CigarElement cigarElement ) {
             this.calls = calls;
-            int qSum = 0;
-            final int qLen = quals.length();
-            for ( int idx = 0; idx != qLen; ++idx ) qSum += quals.byteAt(idx);
-            this.meanQual = Math.round(1.F*qSum/qLen);
+            this.quals = quals;
             this.cigarElement = cigarElement;
         }
 
         public ByteSequence getCalls() { return calls; }
-        public int getMeanQual() { return meanQual; }
+        public ByteSequence getQuals() { return quals; }
+
+        public int getMeanQual() {
+            int qSum = 0;
+            final int qLen = quals.length();
+            for ( int idx = 0; idx != qLen; ++idx ) {
+                qSum += quals.byteAt(idx);
+            }
+            return Math.round(1.F*qSum/qLen);
+        }
         public CigarElement getCigarElement() { return cigarElement; }
 
         @Override
+        public int hashCode() {
+            if ( calls.length() != 0 ) {
+                return calls.hashCode();
+            }
+            return 47 * cigarElement.getLength();
+        }
+
+        @Override
+        public boolean equals( final Object obj ) {
+            if ( !(obj instanceof final Call that) ) {
+                return false;
+            }
+            if ( calls.length() != 0 ) {
+                return calls.equals(that.calls);
+            }
+            return that.calls.length() == 0 && cigarElement.getLength() == that.cigarElement.getLength();
+        }
+
+        @Override
         public String toString() {
-            if ( calls.length() == 1 ) return calls.toString() + meanQual;
-            return cigarElement.toString();
+            if ( calls.length() == 1 ) return calls.toString() + getMeanQual();
+            return cigarElement.toString() + getMeanQual();
         }
     }
 
@@ -252,22 +277,26 @@ public final class ErrorCorrectHiFi extends VariantWalker {
             final CigarElement element = cigarElements.get(cigarElementsIndex);
             final CigarOperator op = element.getOperator();
             final Call call;
-            if ( op == CigarOperator.MATCH_OR_MISMATCH ) {
-                call = new Call(calls.subSequence(readIndex, 1),
-                                quals.subSequence(readIndex, 1),
+            if ( op == CigarOperator.M ) {
+                call = new Call(calls.subSequence(readIndex, readIndex + 1),
+                                quals.subSequence(readIndex, readIndex + 1),
                                 element);
                 readIndex += 1;
-            } else if ( op == CigarOperator.DELETION ) {
-                call = new Call(calls.subSequence(readIndex, 0),
-                                calls.subSequence(readIndex - 1, 2),
-                                element);
-            } else if ( op == CigarOperator.INSERTION ) {
-                final int len = element.getLength() + 1;
-                call = new Call(calls.subSequence(readIndex, len),
-                                quals.subSequence(readIndex, len),
+            } else if ( op == CigarOperator.D ) {
+                if ( cigarElementIndex != 0 ) {
+                    call = null;
+                } else {
+                    call = new Call(calls.subSequence(readIndex, readIndex),
+                            quals.subSequence(readIndex - 1, readIndex + 1),
+                            element);
+                }
+            } else if ( op == CigarOperator.I ) {
+                final int len = element.getLength();
+                call = new Call(calls.subSequence(readIndex, readIndex + len),
+                                quals.subSequence(readIndex, readIndex + len),
                                 element);
                 readIndex += len;
-                cigarElementIndex = len - 2;
+                cigarElementIndex = len - 1;
             } else if ( op == CigarOperator.SKIPPED_REGION ) {
                 call = null;
             } else {
@@ -281,6 +310,9 @@ public final class ErrorCorrectHiFi extends VariantWalker {
         }
 
         public UnalignedRead getUnalignedRead() {
+            if ( fixups.isEmpty() ) {
+                return new UnalignedRead(readName, calls, quals);
+            }
             final int newLength = readIndex - initialReadIndex + fixupLengthDelta;
             final byte[] callBytes = new byte[newLength];
             final byte[] qualBytes = new byte[newLength];
@@ -323,7 +355,6 @@ public final class ErrorCorrectHiFi extends VariantWalker {
             }
         }
 
-        @SuppressWarnings("fallthrough")
         private void advance( final List<CigarElement> elements,
                               final int curRefPos,
                               final int initialRefPos ) {
@@ -352,7 +383,8 @@ public final class ErrorCorrectHiFi extends VariantWalker {
                 if ( distanceToTarget < 0 ) { // not else!  previous if may have made distanceToTarget < 0.
                     switch ( op ) {
                         case I:
-                            fixupPreviousElement(); // NO BREAK! flows through to next case.
+                            cigarElements.add(handleInsertion(element));
+                            break;
                         case M: case D:
                             cigarElements.add(element);
                             break;
@@ -370,18 +402,27 @@ public final class ErrorCorrectHiFi extends VariantWalker {
         }
 
         // include final aligned base from previous call with the insertion that follows
-        private void fixupPreviousElement() {
+        private CigarElement handleInsertion( final CigarElement cigarElement ) {
             final int lastIdx = cigarElements.size() - 1;
             final CigarElement previousElement = cigarElements.get(lastIdx);
-            if ( previousElement.getOperator() != CigarOperator.M ) {
-                throw new UserException("Found I in cigar with no preceding M");
-            }
             final int len = previousElement.getLength();
-            if ( len == 1 ) {
-                cigarElements.remove(lastIdx);
-            } else {
-                cigarElements.set(lastIdx, new CigarElement(len - 1, CigarOperator.M));
+            if ( previousElement.getOperator() == CigarOperator.M ) {
+                if ( len == 1 ) {
+                    cigarElements.remove(lastIdx);
+                } else {
+                    cigarElements.set(lastIdx, new CigarElement(len - 1, CigarOperator.M));
+                }
+                return new CigarElement(cigarElement.getLength() + 1, CigarOperator.I);
             }
+            if ( previousElement.getOperator() == CigarOperator.D ) {
+                if ( len == 1 ) {
+                    cigarElements.remove(lastIdx);
+                } else {
+                    cigarElements.set(lastIdx, new CigarElement(len - 1, CigarOperator.D));
+                }
+                return cigarElement;
+            }
+            throw new UserException("Found I in cigar with no preceding D or M");
         }
     }
 }

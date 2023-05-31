@@ -212,17 +212,17 @@ public final class GenotypeSVs extends VariantWalker {
         if ( altLength >= WINDOW_SIZE ) {
             final ByteSequence altCalls =
                     refCalls.subSequence(0, REF_LEADIN_LEN)
-                            .append(altAlleleCalls.subSequence(1, WINDOW_SIZE));
+                            .append(altAlleleCalls.subSequence(1, WINDOW_SIZE + 1));
             alignReads(scoreSummary, refCalls, altCalls, alignInterval, readsContext, false);
             final ByteSequence altCalls2 =
-                    altAlleleCalls.subSequence(altLength - WINDOW_SIZE + 1, WINDOW_SIZE)
-                            .append(refCalls.subSequence(REF_LEADIN_LEN, REF_LEADIN_LEN));
+                    altAlleleCalls.subSequence(altLength - WINDOW_SIZE + 1, altLength + 1)
+                            .append(refCalls.subSequence(REF_LEADIN_LEN, REF_LEADIN_LEN + REF_LEADIN_LEN));
             alignReads(scoreSummary, refCalls, altCalls2, alignInterval, readsContext, true);
         } else {
             final ByteSequence altCalls =
                     refCalls.subSequence(0, REF_LEADIN_LEN)
                             .append(altAlleleCalls.subSequence(1))
-                            .append(refCalls.subSequence(REF_LEADIN_LEN, WINDOW_SIZE - altLength));
+                            .append(refCalls.subSequence(REF_LEADIN_LEN, REF_LEADIN_LEN + WINDOW_SIZE - altLength));
             alignReads(scoreSummary, refCalls, altCalls, alignInterval, readsContext, false);
         }
 
@@ -307,7 +307,7 @@ public final class GenotypeSVs extends VariantWalker {
                 final ByteSequence allReadCalls = new ByteSequence(read.getBasesNoCopy());
                 final int readLen = Math.min(allReadCalls.length() - readStartPos, MAX_READ_LEN);
                 if ( readLen >= minReadLen ) {
-                    final ByteSequence readCalls = allReadCalls.subSequence(readStartPos, readLen);
+                    final ByteSequence readCalls = allReadCalls.subSequence(readStartPos, readStartPos + readLen);
                     final Scorer scorer = new Scorer();
                     if ( alignRC ) {
                         final CharSequence readCallsRC = new SequenceRC(readCalls);

@@ -6,7 +6,7 @@ import org.jetbrains.annotations.NotNull;
  * Immutable sequence of bytes (assuming you don't change the array externally).
  * Subsequences reference the parent array.
  */
-public final class ByteSequence implements CharSequence {
+public final class ByteSequence implements CharSequence, Comparable<ByteSequence> {
     public static final ByteSequence EMPTY = new ByteSequence(new byte[0]);
 
     private final byte[] bytes;
@@ -19,13 +19,13 @@ public final class ByteSequence implements CharSequence {
         this.length = bytes.length;
     }
 
-    public ByteSequence( final ByteSequence bSeq, final int start, final int length ) {
-        if ( start < 0 || length < 0 || start + length > bSeq.length ) {
+    public ByteSequence( final ByteSequence bSeq, final int start, final int end ) {
+        if ( start < 0 || end > bSeq.length || end < start ) {
             throw new IndexOutOfBoundsException();
         }
         this.bytes = bSeq.bytes;
         this.start = bSeq.start + start;
-        this.length = length;
+        this.length = end - start;
     }
 
     public ByteSequence( final byte val ) {
@@ -37,7 +37,6 @@ public final class ByteSequence implements CharSequence {
 
     public int getStart() { return start; }
 
-    @Override
     public int length() { return length; }
 
     public byte byteAt( final int idx ) {
@@ -53,15 +52,13 @@ public final class ByteSequence implements CharSequence {
     }
 
     public ByteSequence subSequence( final int start ) {
-        return new ByteSequence(this, start, length() - start);
+        return new ByteSequence(this, start, length());
     }
 
-    /**
-     * Note: args are start+length, not start+end
-    public @NotNull ByteSequence subSequence( final int start, final int len ) {
-        return new ByteSequence(this, start, len);
+    @Override
+    public @NotNull ByteSequence subSequence( final int start, final int end ) {
+        return new ByteSequence(this, start, end);
     }
-     */
 
     public ByteSequence append( final ByteSequence bytesToAppend ) {
         final byte[] newBytes = new byte[length + bytesToAppend.length];
@@ -89,7 +86,8 @@ public final class ByteSequence implements CharSequence {
     @Override
     public int hashCode() {
         int hash = 83;
-        for ( int idx = 0; idx != length; ++idx ) {
+        final int end = start + length;
+        for ( int idx = start; idx != end; ++idx ) {
             hash = (47 * hash) + bytes[idx];
         }
         return 41 * hash;
@@ -98,5 +96,17 @@ public final class ByteSequence implements CharSequence {
     @Override
     public @NotNull String toString() {
         return new String(bytes, start, length);
+    }
+
+    @Override
+    public int compareTo( @NotNull ByteSequence that ) {
+        final int len = Math.min(this.length, that.length);
+        for ( int idx = 0; idx != len; ++idx ) {
+            final int cmp = Byte.compare(this.byteAt(idx), that.byteAt(idx));
+            if ( cmp != 0 ) {
+                return cmp;
+            }
+        }
+        return Integer.compare(this.length, that.length);
     }
 }

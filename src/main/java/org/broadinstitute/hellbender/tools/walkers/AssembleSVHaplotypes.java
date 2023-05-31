@@ -43,7 +43,7 @@ public final class AssembleSVHaplotypes extends VariantWalker {
 
         if ( GATKSVVCFConstants.SYMB_ALT_STRING_INS.equals(variant.getAttribute(GATKSVVCFConstants.SVTYPE)) ) {
             final ByteSequence altPiece = new ByteSequence(variant.getAlternateAllele(0).getBases()).subSequence(1);
-            final ByteSequence altCalls = refCalls.subSequence(0, PADDING).append(altPiece).append(refCalls.subSequence(PADDING, PADDING));
+            final ByteSequence altCalls = refCalls.subSequence(0, PADDING).append(altPiece).append(refCalls.subSequence(PADDING));
             System.out.println(variant.getID() + ": INS " + altPiece.length());
             for ( final UnalignedRead path : assembledReads ) {
                 final ByteSequence pathCalls = path.getCalls();
