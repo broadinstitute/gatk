@@ -44,9 +44,10 @@ public class CommonCode {
 
     public static String getGTString(final VariantContext variant) {
         List<Integer> allele_indices = getGTAlleleIndexes(variant);
-        if (allele_indices.size() != 2){
-            throw new IllegalArgumentException("GT doesnt have two alleles");
-        }
+
+        // As of VS-910, we aren't going to consider any number of alleles to necessarily be a UserException
+        // This code used to throw an error if allele_indices.size() != 2
+
         List<String> gsStrings = allele_indices.stream().map(index -> index == -1 ? "." : index.toString()).collect(Collectors.toList());
         String separator = variant.getGenotype(0).isPhased() ? VCFConstants.PHASED : VCFConstants.UNPHASED;
         return StringUtils.join(gsStrings, separator);

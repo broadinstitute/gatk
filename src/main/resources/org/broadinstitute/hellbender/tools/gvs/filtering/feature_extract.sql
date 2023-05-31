@@ -28,7 +28,7 @@ WITH
    aa_site_info AS (
         SELECT location,
                IFNULL(sum(SAFE_CAST(qualapprox as FLOAT64)),0) as sum_qualapprox,
-               COUNTIF(call_GT IN ('0/1', '0|1', '1/0', '1|0', '0/2', '0|2', '2/0', '2|0')) num_het_samples,
+               COUNTIF(call_GT IN ('0/1', '0|1', '1/0', '1|0', '0/2', '0|2', '2/0', '2|0', '1', '2')) num_het_samples,
                COUNTIF(call_GT IN ('1/1', '1|1', '1/2', '1|2', '2/1', '2|1')) num_homvar_samples
         FROM (
                SELECT DISTINCT location, sample_id, qualapprox, call_GT

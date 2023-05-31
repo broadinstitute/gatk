@@ -96,6 +96,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - VS-910
    - name: GvsCreateTables
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateTables.wdl
@@ -231,6 +232,7 @@ workflows:
          - master
          - ah_var_store
          - rc-fix-hail-python
+         - VS-910
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
