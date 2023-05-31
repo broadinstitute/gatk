@@ -37,7 +37,7 @@ public abstract class ExtractCohort extends ExtractTool {
 
     @Argument(
             fullName = "filter-set-site-table",
-            doc = "Fully qualified name of the site filtering table to use for cohort extraction",
+            doc = "Fully qualified name of the filter set site table to use for cohort extraction",
             optional = true
     )
     private String filterSetSiteTableName = null;
