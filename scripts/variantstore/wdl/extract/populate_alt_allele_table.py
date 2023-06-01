@@ -31,7 +31,7 @@ def populate_alt_allele_table(call_set_identifier, query_project, vet_table_name
     WITH
         position1 AS (
             SELECT * FROM `{fq_vet_table}` WHERE
-                call_GT IN ('0/1', '1/0', '1/1', '0|1', '1|0', '1|1', '0/2', '0|2','2/0', '2|0') AND
+                call_GT IN ('0/1', '1/0', '1/1', '0|1', '1|0', '1|1', '0/2', '0|2','2/0', '2|0', '1', '2') AND
                 sample_id > {max_sample_id} AND
                 sample_id IN (SELECT sample_id from {fq_sample_info} WHERE withdrawn is NULL)
         ),
