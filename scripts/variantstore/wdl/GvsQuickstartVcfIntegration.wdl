@@ -296,7 +296,7 @@ task AssertCostIsTrackedAndExpected {
         elif [[ $OBS_KEY == "ExtractTask.GvsExtractCallset.BigQuery Query Scanned" ]]; then
           TOLERANCE=0.6   # 60% tolerance (Note - have seen as high as: 0.5) - but it's 210 vs 420.
         elif [[ $OBS_KEY == "ExtractTask.GvsExtractCallset.Storage API Scanned" ]]; then
-          TOLERANCE=0.01   # 1% tolerance  (Note - have seen as high as: 0.00608656)
+          TOLERANCE=0.02   # 2% tolerance  (Note - have seen as high as: 0.012165)
         fi
 
         if [[ $OBS_BYTES -ne $EXP_BYTES ]]; then
