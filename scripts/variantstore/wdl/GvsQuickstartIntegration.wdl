@@ -30,7 +30,7 @@ workflow GvsQuickstartIntegration {
     input {
         String branch_name
         Boolean run_vcf_integration = true
-        Boolean run_hail_integration = true
+        Boolean run_hail_integration = false
     }
 
     File full_interval_list = "gs://gvs-internal-scratch/mcovarr/scratch/quicker/chr20_chrX_chrY_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
