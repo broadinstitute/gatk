@@ -142,7 +142,7 @@ task AssignIds {
 
     # Check that lock table has not been created yet
     set +e
-    bq --apilog=stderr --project_id=~{project_id} show ~{dataset_name}.sample_id_assignment_lock > /dev/null
+    bq --apilog=false --project_id=~{project_id} show ~{dataset_name}.sample_id_assignment_lock > /dev/null
     BQ_SHOW_RC=$?
     set -e
     if [ $BQ_SHOW_RC -eq 0 ]; then
@@ -151,28 +151,28 @@ task AssignIds {
     fi
 
     # create the lock table
-    bq --apilog=stderr --project_id=~{project_id} mk ~{dataset_name}.sample_id_assignment_lock "sample_name:STRING"
+    bq --apilog=false --project_id=~{project_id} mk ~{dataset_name}.sample_id_assignment_lock "sample_name:STRING"
 
     NAMES_FILE=~{write_lines(sample_names)}
 
     # first load name into the lock table - will check for dupes when adding to sample_info table
-    bq --apilog=stderr load --project_id=~{project_id} ~{dataset_name}.sample_id_assignment_lock $NAMES_FILE "sample_name:STRING"
+    bq --apilog=false load --project_id=~{project_id} ~{dataset_name}.sample_id_assignment_lock $NAMES_FILE "sample_name:STRING"
 
     # add sample_name to sample_info_table
-    bq --apilog=stderr --project_id=~{project_id} query --use_legacy_sql=false ~{bq_labels} \
+    bq --apilog=false --project_id=~{project_id} query --use_legacy_sql=false ~{bq_labels} \
       'INSERT into `~{dataset_name}.~{sample_info_table}` (sample_name, is_control) select sample_name, ~{samples_are_controls} from `~{dataset_name}.sample_id_assignment_lock` m where m.sample_name not in (SELECT sample_name FROM `~{dataset_name}.~{sample_info_table}`)'
 
     # get the current maximum id, or 0 if there are none
-    bq --apilog=stderr --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} 'SELECT IFNULL(MAX(sample_id),0) FROM `~{dataset_name}.~{sample_info_table}`' > maxid
+    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} 'SELECT IFNULL(MAX(sample_id),0) FROM `~{dataset_name}.~{sample_info_table}`' > maxid
     offset=$(tail -1 maxid)
 
     # perform actual id assignment
-    bq --apilog=stderr --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} --parameter=offset:INTEGER:$offset \
+    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} --parameter=offset:INTEGER:$offset \
       'UPDATE `~{dataset_name}.~{sample_info_table}` m SET m.sample_id = id_assign.id FROM (SELECT sample_name, @offset + ROW_NUMBER() OVER(order by sample_name) as id FROM `~{dataset_name}.~{sample_info_table}` WHERE sample_id IS NULL) id_assign WHERE m.sample_name = id_assign.sample_name;'
 
     # retrieve the list of assigned ids and samples to update the datamodel
     echo "entity:sample_id,gvs_id" > update.tsv
-    bq --apilog=stderr --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n $num_samples --parameter=offset:INTEGER:$offset \
+    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n $num_samples --parameter=offset:INTEGER:$offset \
       'SELECT sample_name, sample_id from `~{dataset_name}.~{sample_info_table}` WHERE sample_id >= @offset' > update.tsv
     cat update.tsv | sed -e 's/sample_id/gvs_id/' -e 's/sample_name/entity:sample_id/' -e 's/,/\t/g' > gvs_ids.tsv
 
@@ -181,7 +181,7 @@ task AssignIds {
     python3 -c "from math import ceil; print(ceil($max_sample_id/~{samples_per_table}))" > max_table_id
 
     # remove the lock table
-    bq --apilog=stderr --project_id=~{project_id} rm -f -t ~{dataset_name}.sample_id_assignment_lock
+    bq --apilog=false --project_id=~{project_id} rm -f -t ~{dataset_name}.sample_id_assignment_lock
   >>>
   runtime {
     docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
@@ -222,7 +222,7 @@ task CreateCostObservabilityTable {
 
     # Check that the table has not been created yet
     set +o errexit
-    bq --apilog=stderr show --project_id ~{project_id} $TABLE > /dev/null
+    bq --apilog=false show --project_id ~{project_id} $TABLE > /dev/null
     BQ_SHOW_RC=$?
     set -o errexit
 
@@ -230,7 +230,7 @@ task CreateCostObservabilityTable {
       PARTITION_STRING="--time_partitioning_field call_start_timestamp --time_partitioning_type DAY"
       echo "making table $TABLE"
       echo '~{cost_observability_json}' > schema.json
-      bq --apilog=stderr mk ${PARTITION_STRING} --project_id=~{project_id} $TABLE schema.json
+      bq --apilog=false mk ${PARTITION_STRING} --project_id=~{project_id} $TABLE schema.json
     fi
   >>>
   runtime {

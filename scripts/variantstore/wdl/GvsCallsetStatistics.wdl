@@ -99,17 +99,17 @@ task CreateTables {
         apk add jq
 
         set +o errexit
-        bq --apilog=stderr --project_id=~{project_id} show ~{dataset_name}.~{metrics_table}
+        bq --apilog=false --project_id=~{project_id} show ~{dataset_name}.~{metrics_table}
         BQ_SHOW_METRICS=$?
         set -o errexit
 
         set +o errexit
-        bq --apilog=stderr --project_id=~{project_id} show ~{dataset_name}.~{aggregate_metrics_table}
+        bq --apilog=false --project_id=~{project_id} show ~{dataset_name}.~{aggregate_metrics_table}
         BQ_SHOW_METRICS_AGG=$?
         set -o errexit
 
         set +o errexit
-        bq --apilog=stderr --project_id=~{project_id} show ~{dataset_name}.~{statistics_table}
+        bq --apilog=false --project_id=~{project_id} show ~{dataset_name}.~{statistics_table}
         BQ_SHOW_STATISTICS=$?
         set -o errexit
 
@@ -254,15 +254,15 @@ task CreateTables {
 
         # Make any tables that need making
         if [ $BQ_SHOW_METRICS -ne 0 ]; then
-            bq --apilog=stderr mk --table ~{project_id}:~{dataset_name}.~{metrics_table} metrics_schema.json
+            bq --apilog=false mk --table ~{project_id}:~{dataset_name}.~{metrics_table} metrics_schema.json
         fi
 
         if [ $BQ_SHOW_METRICS_AGG -ne 0 ]; then
-            bq --apilog=stderr mk --table ~{project_id}:~{dataset_name}.~{aggregate_metrics_table} metrics_aggregate_schema.json
+            bq --apilog=false mk --table ~{project_id}:~{dataset_name}.~{aggregate_metrics_table} metrics_aggregate_schema.json
         fi
 
         if [ $BQ_SHOW_STATISTICS -ne 0 ]; then
-            bq --apilog=stderr mk --table ~{project_id}:~{dataset_name}.~{statistics_table} statistics_schema.json
+            bq --apilog=false mk --table ~{project_id}:~{dataset_name}.~{statistics_table} statistics_schema.json
         fi
     >>>
     runtime {
@@ -294,7 +294,7 @@ task CollectMetricsForChromosome {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-        bq --apilog=stderr query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false '
+        bq --apilog=false query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false '
             SELECT COUNT(*) from `~{project_id}.~{dataset_name}.~{metrics_table}` WHERE chromosome = ~{chromosome}
         ' | sed 1d > existing_row_count.txt
 
@@ -305,7 +305,7 @@ task CollectMetricsForChromosome {
             exit 1
         fi
 
-        bq --apilog=stderr query --location=US --project_id=~{project_id} --use_legacy_sql=false '
+        bq --apilog=false query --location=US --project_id=~{project_id} --use_legacy_sql=false '
         CREATE TEMPORARY FUNCTION titv(ref STRING, allele STRING)
         RETURNS STRING
             LANGUAGE js AS """
@@ -423,7 +423,7 @@ task AggregateMetricsAcrossChromosomes {
     command <<<
         set -o errexit -o nounset -o xtrace -o pipefail
 
-        bq --apilog=stderr query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false '
+        bq --apilog=false query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false '
             SELECT COUNT(*) from `~{project_id}.~{dataset_name}.~{aggregate_metrics_table}`
         ' | sed 1d > existing_row_count.txt
 
@@ -434,7 +434,7 @@ task AggregateMetricsAcrossChromosomes {
             exit 1
         fi
 
-        bq --apilog=stderr query --location=US --project_id=~{project_id} --use_legacy_sql=false '
+        bq --apilog=false query --location=US --project_id=~{project_id} --use_legacy_sql=false '
         INSERT `~{project_id}.~{dataset_name}.~{aggregate_metrics_table}` (
             filter_set_name,
             sample_id,
@@ -495,7 +495,7 @@ task CollectStatistics {
     command <<<
         set -o errexit -o nounset -o xtrace -o pipefail
 
-        bq --apilog=stderr query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false '
+        bq --apilog=false query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false '
             SELECT COUNT(*) from `~{project_id}.~{dataset_name}.~{statistics_table}`
         ' | sed 1d > existing_row_count.txt
 
@@ -506,7 +506,7 @@ task CollectStatistics {
             exit 1
         fi
 
-        bq --apilog=stderr query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false '
+        bq --apilog=false query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false '
         INSERT `~{project_id}.~{dataset_name}.~{statistics_table}` (
             sample_id,
             sample_name,
@@ -562,7 +562,7 @@ task ExportToCSV {
     command <<<
         set -o errexit -o nounset -o xtrace -o pipefail
 
-        bq --apilog=stderr query --nouse_legacy_sql --project_id=~{project_id} --format=csv --max_rows 1000000000 '
+        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv --max_rows 1000000000 '
 
           SELECT * FROM `~{project_id}.~{dataset_name}.~{statistics_table}` ORDER BY SAMPLE_NAME
 

@@ -243,34 +243,34 @@ task LoadData {
 
     # Create temp table with the sample_names and load external sample names into temp table -- make sure it doesn't exist already
     set +o errexit
-    bq --apilog=stderr show --project_id ~{project_id} ~{temp_table} > /dev/null
+    bq --apilog=false show --project_id ~{project_id} ~{temp_table} > /dev/null
     BQ_SHOW_RC=$?
     set -o errexit
 
     # If there is already a table of sample names or something else is wrong, burn it down to start fresh.
     if [ $BQ_SHOW_RC -eq 0 ]; then
-      bq --apilog=stderr rm -t -f --project_id=~{project_id} ~{temp_table}
+      bq --apilog=false rm -t -f --project_id=~{project_id} ~{temp_table}
     fi
 
     echo "Creating the external sample name list table ~{temp_table}"
-    bq --apilog=stderr --project_id=~{project_id} mk ~{temp_table} "sample_name:STRING"
+    bq --apilog=false --project_id=~{project_id} mk ~{temp_table} "sample_name:STRING"
     NAMES_FILE=~{write_lines(sample_names)}
-    bq --apilog=stderr load --project_id=~{project_id} ~{temp_table} $NAMES_FILE "sample_name:STRING"
+    bq --apilog=false load --project_id=~{project_id} ~{temp_table} $NAMES_FILE "sample_name:STRING"
 
     # Get the current min/max id, or 0 if there are none. Withdrawn samples still have IDs so don't filter them out.
-    bq --apilog=stderr --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} '
+    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} '
       SELECT IFNULL(MIN(sample_id),0) as min, IFNULL(MAX(sample_id),0) as max FROM `~{dataset_name}.~{table_name}`
         AS samples JOIN `~{temp_table}` AS temp ON samples.sample_name = temp.sample_name' > results.csv
 
     # get sample map of samples that haven't been loaded yet
-    bq --apilog=stderr --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} '
+    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} '
       SELECT sample_id, samples.sample_name FROM `~{dataset_name}.~{table_name}` AS samples JOIN `~{temp_table}` AS temp ON
             samples.sample_name = temp.sample_name WHERE
             samples.sample_id NOT IN (SELECT sample_id FROM `~{dataset_name}.sample_load_status` WHERE status="FINISHED") AND
             samples.withdrawn is NULL' > sample_map.csv
 
     ## delete the table that was only needed for this ingest test
-    bq --apilog=stderr --project_id=~{project_id} rm -f=true ~{temp_table}
+    bq --apilog=false --project_id=~{project_id} rm -f=true ~{temp_table}
 
     ## now we want to create a sub list of these samples (without the ones that have already been loaded)
     curl https://raw.githubusercontent.com/broadinstitute/gatk/ah_var_store/scripts/variantstore/wdl/extract/curate_input_array_files.py -o curate_input_array_files.py
@@ -385,7 +385,7 @@ task SetIsLoadedColumn {
     # an exponential backoff, but at the number of samples that are being loaded this would introduce significant delays
     # in workflow processing. So this method is used to set *all* of the saple_info.is_loaded flags at one time.
 
-    bq --apilog=stderr --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
+    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
     'UPDATE `~{dataset_name}.sample_info` SET is_loaded = true
     WHERE sample_id IN (SELECT CAST(partition_id AS INT64)
     from `~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
@@ -434,7 +434,7 @@ task GetUningestedSampleIds {
 
     # Create temp table with the sample_names and load external sample names into temp table -- make sure it doesn't exist already
     set +o errexit
-    bq --apilog=stderr show --project_id ~{project_id} ~{temp_table} > /dev/null
+    bq --apilog=false show --project_id ~{project_id} ~{temp_table} > /dev/null
     BQ_SHOW_RC=$?
     set -o errexit
 
@@ -445,12 +445,12 @@ task GetUningestedSampleIds {
     fi
 
     echo "Creating the external sample name list table ~{temp_table}"
-    bq --apilog=stderr --project_id=~{project_id} mk ~{temp_table} "sample_name:STRING"
+    bq --apilog=false --project_id=~{project_id} mk ~{temp_table} "sample_name:STRING"
     NAMES_FILE=~{write_lines(external_sample_names)}
-    bq --apilog=stderr load --project_id=~{project_id} ~{temp_table} $NAMES_FILE "sample_name:STRING"
+    bq --apilog=false load --project_id=~{project_id} ~{temp_table} $NAMES_FILE "sample_name:STRING"
 
     # Get the current min/max id, or 0 if there are none. Withdrawn samples still have IDs so don't filter them out.
-    bq --apilog=stderr --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} '
+    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} '
 
       SELECT IFNULL(MIN(sample_id),0) as min, IFNULL(MAX(sample_id),0) as max FROM `~{dataset_name}.~{table_name}`
         AS samples JOIN `~{temp_table}` AS temp ON samples.sample_name = temp.sample_name
@@ -471,7 +471,7 @@ task GetUningestedSampleIds {
     python3 -c "from math import ceil; print(ceil($min_sample_id/~{samples_per_table}))" > min_sample_id
 
     # get sample map of samples that haven't been loaded yet
-    bq --apilog=stderr --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} '
+    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} '
 
       SELECT sample_id, samples.sample_name FROM `~{dataset_name}.~{table_name}` AS samples JOIN `~{temp_table}` AS temp ON
         samples.sample_name = temp.sample_name WHERE
@@ -483,7 +483,7 @@ task GetUningestedSampleIds {
     cut -d, -f1 sample_map.csv > gvs_ids.csv
 
     ## delete the table that was only needed for this ingest
-    bq --apilog=stderr --project_id=~{project_id} rm -f=true ~{temp_table}
+    bq --apilog=false --project_id=~{project_id} rm -f=true ~{temp_table}
   >>>
   runtime {
     docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"

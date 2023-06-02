@@ -86,7 +86,7 @@ task CoreStorageModelSizes {
             local table_pattern="$1"
             local output_file_name="$2"
 
-            bq --apilog=stderr query --project_id='~{project_id}' --format=csv --use_legacy_sql=false \
+            bq --apilog=false query --project_id='~{project_id}' --format=csv --use_legacy_sql=false \
                 "SELECT round(sum(total_billable_bytes) / (1024*1024*1024),2) \
                     FROM \`~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS\` \
                     WHERE table_name LIKE '${table_pattern}'" | tail -1 > ${output_file_name}
@@ -118,7 +118,7 @@ task ReadCostObservabilityTable {
         String call_set_identifier
     }
     command <<<
-        bq --apilog=stderr query --project_id='~{project_id}' --format=prettyjson --use_legacy_sql=false \
+        bq --apilog=false query --project_id='~{project_id}' --format=prettyjson --use_legacy_sql=false \
             "SELECT step, event_key, round(sum(event_bytes) / (1024*1024*1024), 2) AS sum_event_gibibytes \
                 FROM \`~{project_id}.~{dataset_name}.cost_observability\` \
                 WHERE call_set_identifier = '~{call_set_identifier}' GROUP BY step, event_key ORDER BY step" \
