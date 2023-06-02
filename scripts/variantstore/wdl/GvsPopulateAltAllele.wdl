@@ -74,7 +74,7 @@ task GetMaxSampleId {
     set -o errexit -o nounset -o xtrace -o pipefail
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
-    bq query --project_id=~{project_id} --format=csv --use_legacy_sql=false \
+    bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false \
     'SELECT IFNULL(MAX(sample_id), 0) AS max_sample_id FROM `~{dataset_name}.alt_allele`' > num_rows.csv
 
     # remove the header row from the CSV file
@@ -122,7 +122,7 @@ task GetVetTableNames {
     fi
 
     # use the number calculated from the above math to get the vet_* table names to grab data from
-    bq query --project_id=~{project_id} --format=csv --use_legacy_sql=false ~{bq_labels} \
+    bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false ~{bq_labels} \
     "SELECT table_name FROM \`~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES\` WHERE table_name LIKE 'vet_%' AND CAST(SUBSTRING(table_name, length('vet_') + 1) AS INT64) >= ${min_vat_table_num}" > vet_tables.csv
 
     # remove the header row from the CSV file, count the number of tables and divide them up into
@@ -168,7 +168,7 @@ task CreateAltAlleleTable {
     set -e
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
-    bq query --project_id=~{project_id} --format=csv --use_legacy_sql=false ~{bq_labels} \
+    bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false ~{bq_labels} \
     'CREATE TABLE IF NOT EXISTS `~{project_id}.~{dataset_name}.alt_allele` (
       location INT64,
       sample_id INT64,

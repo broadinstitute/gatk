@@ -166,24 +166,24 @@ task LoadArrays {
     SAMPLE_LIST_TABLE="~{dataset_name}.~{uuid + "_"}sample_list"
     if [ $NUM_METADATA_FILES -gt 0 ]; then
       set +e
-      bq ls --project_id ~{project_id} ~{dataset_name} > /dev/null
+      bq --apilog=false ls --project_id ~{project_id} ~{dataset_name} > /dev/null
       set -e
       if [ $? -ne 0 ]; then
         echo "making dataset ~{dataset_name}"
-        bq mk --project_id=~{project_id} ~{dataset_name}
+        bq --apilog=false mk --project_id=~{project_id} ~{dataset_name}
       fi
       set +e
-      bq show --project_id ~{project_id} $SAMPLE_LIST_TABLE > /dev/null
+      bq --apilog=false show --project_id ~{project_id} $SAMPLE_LIST_TABLE > /dev/null
       BQ_SHOW_RC=$?
       set -e
       if [ $BQ_SHOW_RC -ne 0 ]; then
         echo "making table $SAMPLE_LIST_TABLE"
-        bq --location=US mk --project_id=~{project_id} $SAMPLE_LIST_TABLE ~{sample_list_schema}
+        bq --apilog=false --location=US mk --project_id=~{project_id} $SAMPLE_LIST_TABLE ~{sample_list_schema}
         #TODO: add a Google Storage Transfer for the table when we make it.
       fi
       #load should be false if using Google Storage Transfer so that the tables will be created by this script, but no data will be uploaded.
       if [ ~{load} = true ]; then
-        bq load --location=US --project_id=~{project_id} --skip_leading_rows=1 --null_marker="null" --source_format=CSV -F "\t" $SAMPLE_LIST_TABLE $SAMPLE_DIR$METADATA_FILES ~{sample_list_schema}
+        bq --apilog=false load --location=US --project_id=~{project_id} --skip_leading_rows=1 --null_marker="null" --source_format=CSV -F "\t" $SAMPLE_LIST_TABLE $SAMPLE_DIR$METADATA_FILES ~{sample_list_schema}
         echo "ingested ${METADATA_FILES} file from $SAMPLE_DIR into table $SAMPLE_LIST_TABLE"
       else
         echo "${METADATA_FILES} will be ingested from $SAMPLE_DIR by Google Storage Transfer"
@@ -196,16 +196,16 @@ task LoadArrays {
     TABLE="~{dataset_name}.~{uuid + "_"}arrays_${PADDED_TABLE_ID}"
     if [ $NUM_RAW_FILES -gt 0 ]; then
       set +e
-      bq show --project_id ~{project_id} $TABLE > /dev/null
+      bq --apilog=false show --project_id ~{project_id} $TABLE > /dev/null
       set -e
       if [ $? -ne 0 ]; then
         echo "making table $TABLE"
-        bq --location=US mk --range_partitioning=$PARTITION_FIELD,$PARTITION_START,$PARTITION_END,$PARTITION_STEP \
+        bq --apilog=false --location=US mk --range_partitioning=$PARTITION_FIELD,$PARTITION_START,$PARTITION_END,$PARTITION_STEP \
           --project_id=~{project_id} $TABLE ~{raw_schema}
         #TODO: add a Google Storage Transfer for the table when we make it.
       fi
       if [ ~{load} = true ]; then
-        bq load --location=US --project_id=~{project_id} --skip_leading_rows=1 --null_marker="null" --source_format=CSV -F "\t" $TABLE $RAW_DIR$RAW_FILES ~{raw_schema}
+        bq --apilog=false load --location=US --project_id=~{project_id} --skip_leading_rows=1 --null_marker="null" --source_format=CSV -F "\t" $TABLE $RAW_DIR$RAW_FILES ~{raw_schema}
         echo "ingested ${RAW_FILES} files from $RAW_DIR into table $TABLE"
       else
         echo "${RAW_FILES} will be ingested from $RAW_DIR

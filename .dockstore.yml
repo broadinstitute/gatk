@@ -187,7 +187,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_AddVQSRLiteToIntegrationTest
    - name: GvsJointVariantCalling
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCalling.wdl
@@ -217,7 +216,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_AddVQSRLiteToIntegrationTest
    - name: GvsQuickstartHailIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartHailIntegration.wdl
@@ -225,7 +223,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_AddVQSRLiteToIntegrationTest
          - rc-fix-hail-python
    - name: GvsQuickstartIntegration
      subclass: WDL
@@ -234,9 +231,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_AddVQSRLiteToIntegrationTest
-         - rc-fix-hail-python
-         - VS-910
+         - vs_944_bq_apilog
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl

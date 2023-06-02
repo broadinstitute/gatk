@@ -555,44 +555,44 @@ task BigQueryLoadJson {
         DATE=86400 ## 24 hours in seconds
 
         set +e
-        bq show --project_id ~{project_id} ~{dataset_name}.~{variant_transcript_table} > /dev/null
+        bq --apilog=false show --project_id ~{project_id} ~{dataset_name}.~{variant_transcript_table} > /dev/null
         BQ_SHOW_RC=$?
         set -e
 
         if [ $BQ_SHOW_RC -ne 0 ]; then
             echo "Creating a pre-vat table ~{dataset_name}.~{variant_transcript_table}"
-            bq --location=US mk --expiration=$DATE --project_id=~{project_id}  ~{dataset_name}.~{variant_transcript_table} ~{vt_schema}
+            bq --apilog=false --location=US mk --expiration=$DATE --project_id=~{project_id}  ~{dataset_name}.~{variant_transcript_table} ~{vt_schema}
         fi
 
         echo "Loading data into a pre-vat table ~{dataset_name}.~{variant_transcript_table}"
         echo ~{vt_path}
         echo ~{genes_path}
-        bq --location=US load --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON ~{dataset_name}.~{variant_transcript_table} ~{vt_path}
+        bq --apilog=false --location=US load --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON ~{dataset_name}.~{variant_transcript_table} ~{vt_path}
 
         set +e
-        bq show --project_id ~{project_id} ~{dataset_name}.~{genes_table} > /dev/null
+        bq --apilog=false show --project_id ~{project_id} ~{dataset_name}.~{genes_table} > /dev/null
         BQ_SHOW_RC=$?
         set -e
 
         if [ $BQ_SHOW_RC -ne 0 ]; then
             echo "Creating a pre-vat table ~{dataset_name}.~{genes_table}"
-            bq --location=US mk --expiration=$DATE --project_id=~{project_id}  ~{dataset_name}.~{genes_table} ~{genes_schema}
+            bq --apilog=false --location=US mk --expiration=$DATE --project_id=~{project_id}  ~{dataset_name}.~{genes_table} ~{genes_schema}
         fi
 
         echo "Loading data into a pre-vat table ~{dataset_name}.~{genes_table}"
-        bq --location=US load  --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON  ~{dataset_name}.~{genes_table} ~{genes_path}
+        bq --apilog=false --location=US load  --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON  ~{dataset_name}.~{genes_table} ~{genes_path}
 
         set +e
-        bq show --project_id ~{project_id} ~{dataset_name}.~{vat_table} > /dev/null
+        bq --apilog=false show --project_id ~{project_id} ~{dataset_name}.~{vat_table} > /dev/null
         BQ_SHOW_RC=$?
         set -e
 
         if [ $BQ_SHOW_RC -ne 0 ]; then
             echo "Creating the vat table ~{dataset_name}.~{vat_table}"
-            bq --location=US mk --project_id=~{project_id} ~{dataset_name}.~{vat_table} ~{nirvana_schema}
+            bq --apilog=false --location=US mk --project_id=~{project_id} ~{dataset_name}.~{vat_table} ~{nirvana_schema}
         else
-            bq rm -t -f --project_id=~{project_id} ~{dataset_name}.~{vat_table}
-            bq --location=US mk --project_id=~{project_id} ~{dataset_name}.~{vat_table} ~{nirvana_schema}
+            bq --apilog=false rm -t -f --project_id=~{project_id} ~{dataset_name}.~{vat_table}
+            bq --apilog=false --location=US mk --project_id=~{project_id} ~{dataset_name}.~{vat_table} ~{nirvana_schema}
         fi
         echo "And putting data into it"
 
@@ -602,7 +602,7 @@ task BigQueryLoadJson {
         # We want the vat creation query to overwrite the destination table because if new data has been put into the pre-vat tables
         # and this workflow has been run an additional time, we dont want duplicates being appended from the original run
 
-        bq query --nouse_legacy_sql --destination_table=~{dataset_name}.~{vat_table} --replace --project_id=~{project_id} \
+        bq --apilog=false query --nouse_legacy_sql --destination_table=~{dataset_name}.~{vat_table} --replace --project_id=~{project_id} \
         'SELECT
             v.vid,
             v.transcript,

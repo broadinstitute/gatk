@@ -87,13 +87,13 @@ task CreateTables {
 
       # Check that the table has not been created yet
       set +e
-      bq show --project_id ~{project_id} $TABLE > /dev/null
+      bq --apilog=false show --project_id ~{project_id} $TABLE > /dev/null
       BQ_SHOW_RC=$?
       set -e
       if [ $BQ_SHOW_RC -ne 0 ]; then
         echo "making table $TABLE"
         echo '~{schema_json}' > schema.json
-        bq mk ${PARTITION_STRING} ${CLUSTERING_STRING} --project_id=~{project_id} $TABLE schema.json
+        bq --apilog=false mk ${PARTITION_STRING} ${CLUSTERING_STRING} --project_id=~{project_id} $TABLE schema.json
       fi
     done
   >>>

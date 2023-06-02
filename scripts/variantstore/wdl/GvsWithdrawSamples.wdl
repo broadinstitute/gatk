@@ -60,12 +60,12 @@ task WithdrawSamples {
     fi
 
     # create the temp table (expires in 1 day)
-    bq --project_id=~{project_id} mk --expiration=86400 ~{dataset_name}.current_callset_samples "sample_name:STRING"
+    bq --apilog=false --project_id=~{project_id} mk --expiration=86400 ~{dataset_name}.current_callset_samples "sample_name:STRING"
     # populate the temp table
-    bq load --project_id=~{project_id} -F "tab" ~{dataset_name}.current_callset_samples sample_names.tsv
+    bq --apilog=false load --project_id=~{project_id} -F "tab" ~{dataset_name}.current_callset_samples sample_names.tsv
 
     # join on the temp table to figure out which samples should be marked as withdrawn
-    bq --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
+    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
       "UPDATE \`~{dataset_name}.sample_info\` AS samples SET withdrawn = '~{withdrawn_timestamp}' \
         WHERE NOT EXISTS \
         (SELECT * \
