@@ -213,7 +213,7 @@ task GetBQTablesMaxLastModifiedTimestamp {
 
     echo "project_id = ~{query_project}" > ~/.bigqueryrc
 
-    bq --project_id=~{query_project} query --format=csv --use_legacy_sql=false \
+    bq --apilog=false --project_id=~{query_project} query --format=csv --use_legacy_sql=false \
     "SELECT UNIX_MICROS(MAX(last_modified_time)) last_modified_time FROM \`~{data_project}\`.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS WHERE table_name like '~{sep="' OR table_name like '" table_patterns}'" > results.txt
 
     tail -1 results.txt | cut -d, -f1 > max_last_modified_timestamp.txt
@@ -293,13 +293,13 @@ task BuildGATKJarAndCreateDataset {
     # any remaining characters that are not alphanumeric or underscores.
     dataset="$(echo ~{dataset_prefix}_${branch}_${hash}_~{dataset_suffix} | tr '-' '_' | tr -c -d '[:alnum:]_')"
 
-    bq mk --project_id="gvs-internal" "$dataset"
+    bq --apilog=false mk --project_id="gvs-internal" "$dataset"
 
     # add labels for DSP Cloud Cost Control Labeling and Reporting
-    bq update --set_label service:gvs gvs-internal:$dataset
-    bq update --set_label team:variants gvs-internal:$dataset
-    bq update --set_label environment:dev gvs-internal:$dataset
-    bq update --set_label managedby:build_gatk_jar_and_create_dataset gvs-internal:$dataset
+    bq --apilog=false update --set_label service:gvs gvs-internal:$dataset
+    bq --apilog=false update --set_label team:variants gvs-internal:$dataset
+    bq --apilog=false update --set_label environment:dev gvs-internal:$dataset
+    bq --apilog=false update --set_label managedby:build_gatk_jar_and_create_dataset gvs-internal:$dataset
 
     echo -n "$dataset" > dataset.txt
   >>>
@@ -408,7 +408,7 @@ task GetNumSamplesLoaded {
     bash ~{monitoring_script} > monitoring.log &
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
-    bq query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
+    bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
 
       SELECT COUNT(*) FROM `~{fq_sample_table}` WHERE
         is_loaded = true AND
@@ -447,7 +447,7 @@ task CountSuperpartitions {
     command <<<
         bash ~{monitoring_script} > monitoring.log &
 
-        bq query --location=US --project_id='~{project_id}' --format=csv --use_legacy_sql=false '
+        bq --apilog=false query --location=US --project_id='~{project_id}' --format=csv --use_legacy_sql=false '
 
             SELECT COUNT(*) FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES`
                 WHERE table_name LIKE "vet_%"
@@ -532,12 +532,12 @@ task IsVQSRLite {
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-    bq query --project_id='~{project_id}' --format=csv --use_legacy_sql=false ~{bq_labels} \
+    bq --apilog=false query --project_id='~{project_id}' --format=csv --use_legacy_sql=false ~{bq_labels} \
       "SELECT COUNT(1) FROM \`~{fq_filter_set_info_table}\` WHERE filter_set_name = '~{filter_set_name}' \
       AND calibration_sensitivity IS NOT NULL" | tail -1 > lite_count_file.txt
     LITE_COUNT=`cat lite_count_file.txt`
 
-    bq query --project_id='~{project_id}' --format=csv --use_legacy_sql=false ~{bq_labels} \
+    bq --apilog=false query --project_id='~{project_id}' --format=csv --use_legacy_sql=false ~{bq_labels} \
       "SELECT COUNT(1) FROM \`~{fq_filter_set_info_table}\` WHERE filter_set_name = '~{filter_set_name}' \
       AND vqslod IS NOT NULL" | tail -1 > classic_count_file.txt
     CLASSIC_COUNT=`cat classic_count_file.txt`

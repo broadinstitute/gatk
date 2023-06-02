@@ -240,7 +240,7 @@ task AssertCostIsTrackedAndExpected {
         set -o pipefail
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
-        bq query --project_id=~{project_id} --format=csv --use_legacy_sql=false \
+        bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false \
             "SELECT call, step, event_key, sum(event_bytes) \
               FROM \`~{dataset_name}.cost_observability\` \
               GROUP BY call, step, event_key \
@@ -338,7 +338,7 @@ task AssertTableSizesAreExpected {
         set -o pipefail
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
-        bq query --project_id=~{project_id} --format=csv --use_legacy_sql=false \
+        bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false \
             "SELECT 'vet_total' AS total_name, sum(total_billable_bytes) AS total_bytes FROM \
             \`~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS\` WHERE table_name LIKE 'vet_%' \
             UNION ALL \

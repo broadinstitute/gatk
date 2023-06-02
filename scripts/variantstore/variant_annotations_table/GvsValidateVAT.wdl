@@ -196,7 +196,7 @@ task EnsureVatTableHasVariants {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-        bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT COUNT (DISTINCT vid) AS count FROM `~{fq_vat_table}`' > bq_variant_count.csv
+        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT COUNT (DISTINCT vid) AS count FROM `~{fq_vat_table}`' > bq_variant_count.csv
 
         NUMVARS=$(python3 -c "csvObj=open('bq_variant_count.csv','r');csvContents=csvObj.read();print(csvContents.split('\n')[1]);")
 
@@ -249,7 +249,7 @@ task SpotCheckForExpectedTranscripts {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-        bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
+        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
             contig,
             position,
             vid,
@@ -313,7 +313,7 @@ task SchemaNoNullRequiredFields {
 
         # non-nullable fields: vid, contig, position, ref_allele, alt_allele, gvs_all_ac, gvs_all_an, gvs_all_af, variant_type, genomic_location
 
-        bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv
+        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv
         'SELECT
             contig,
             position,
@@ -391,7 +391,7 @@ task SchemaOnlyOneRowPerNullTranscript {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-        bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
+        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
             vid,
             COUNT(vid) AS num_rows
         FROM
@@ -446,7 +446,7 @@ task SchemaPrimaryKey {
     command <<<
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-        bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv
+        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv
         'SELECT
             vid,
             transcript,
@@ -500,7 +500,7 @@ task SchemaEnsemblTranscripts {
     command <<<
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-        bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
+        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
             contig,
             position,
             vid,
@@ -555,7 +555,7 @@ task SchemaNonzeroAcAn {
     command <<<
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-        bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
+        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
             contig,
             position,
             vid,
@@ -615,7 +615,7 @@ task SchemaNullTranscriptsExist {
         set -o errexit -o nounset -o pipefail -o xtrace
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-        bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
+        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
             vid
         FROM
             `~{fq_vat_table}`
@@ -671,7 +671,7 @@ task SubpopulationMax {
 
         # gvs subpopulations:  [ "afr", "amr", "eas", "eur", "mid", "oth", "sas"]
 
-        bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
+        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
             vid
         FROM
             `~{fq_vat_table}`
@@ -732,7 +732,7 @@ task SubpopulationAlleleCount {
 
         # gvs subpopulations:  [ "afr", "amr", "eas", "eur", "mid", "oth", "sas"]
 
-        bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
+        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
             vid
         FROM
             `~{fq_vat_table}`
@@ -787,7 +787,7 @@ task SubpopulationAlleleNumber {
 
         # gvs subpopulations:  [ "afr", "amr", "eas", "eur", "mid", "oth", "sas"]
 
-        bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
+        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
         vid
         FROM
         `~{fq_vat_table}`
@@ -841,14 +841,14 @@ task DuplicateAnnotations {
 
         echo "project_id = ~{query_project_id}" > ~/.bigqueryrc
 
-        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv '
+        bq --apilog=false query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv '
         SELECT contig, position, gvs_all_an, COUNT(DISTINCT gvs_all_an) AS an_count
         FROM `~{fq_vat_table}`
         GROUP BY contig, position, gvs_all_an
         HAVING an_count > 1
         ' > bq_an_output.csv
 
-        bq query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv '
+        bq --apilog=false query --nouse_legacy_sql --project_id=~{query_project_id} --format=csv '
         SELECT contig, position, gvs_all_ac, COUNT(DISTINCT gvs_all_ac) AS ac_count
         FROM `~{fq_vat_table}`
         GROUP BY contig, position, gvs_all_ac
@@ -925,7 +925,7 @@ task ClinvarSignificance {
         #                                 "other",
         #                                 "not provided"]
 
-        bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
+        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
           distinct(unnested_clinvar_classification)
           FROM
         `~{fq_vat_table}`, UNNEST(clinvar_classification) AS unnested_clinvar_classification'| sed "2 d" > bq_clinvar_classes.csv
@@ -998,7 +998,7 @@ task SchemaAAChangeAndExonNumberConsistent {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-        bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
+        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
         COUNT (DISTINCT vid) AS count FROM
         (
             SELECT vid
@@ -1097,7 +1097,7 @@ task SpotCheckForAAChangeAndExonNumberConsistency {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-        bq query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
+        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
         COUNT (DISTINCT vid) FROM
         (
             SELECT vid, transcript, exon_number, aa_change, consequence, variant_type
