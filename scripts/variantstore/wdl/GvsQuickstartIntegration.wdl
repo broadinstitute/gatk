@@ -4,6 +4,28 @@ import "GvsQuickstartVcfIntegration.wdl" as QuickstartVcfIntegration
 import "GvsQuickstartHailIntegration.wdl" as QuickstartHailIntegration
 import "GvsUtils.wdl" as Utils
 
+
+task FilterIntervalListChromosomes {
+    input {
+        File full_interval_list
+        Array[String]+ chromosomes
+    }
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        python3 /app/filter_interval_list_chromosomes.py --full-interval-list ~{full_interval_list} \
+            --chromosome ~{sep='--chromosome ' chromosomes}
+    >>>
+    runtime {
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-30-alpine"
+    }
+    output {
+        File out = "filtered.interval_list"
+    }
+}
+
 workflow GvsQuickstartIntegration {
     input {
         String branch_name
@@ -11,8 +33,13 @@ workflow GvsQuickstartIntegration {
         Boolean run_hail_integration = true
     }
 
-    String project_id = "gvs-internal"
-    File interval_list = "gs://gvs-internal-scratch/mcovarr/scratch/quicker/chr20_chrX_chrY_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
+    File full_interval_list = "gs://gvs-internal-scratch/mcovarr/scratch/quicker/chr20_chrX_chrY_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
+
+    call FilterIntervalListChromosomes {
+        input:
+            full_interval_list = full_interval_list,
+            chromosomes = ["chrX", "chrY", "chr20"],
+    }
 
     call Utils.BuildGATKJar {
         input:
@@ -27,7 +54,7 @@ workflow GvsQuickstartIntegration {
                 extract_do_not_filter_override = false,
                 dataset_suffix = "lite_hail",
                 gatk_override = BuildGATKJar.jar,
-                interval_list = interval_list,
+                interval_list = FilterIntervalListChromosomes.out,
         }
         call QuickstartHailIntegration.GvsQuickstartHailIntegration as GvsQuickstartHailVQSRClassicIntegration{
             input:
@@ -36,7 +63,7 @@ workflow GvsQuickstartIntegration {
                 extract_do_not_filter_override = false,
                 dataset_suffix = "classic_hail",
                 gatk_override = BuildGATKJar.jar,
-                interval_list = interval_list,
+                interval_list = FilterIntervalListChromosomes.out,
         }
     }
 
@@ -48,7 +75,7 @@ workflow GvsQuickstartIntegration {
                 extract_do_not_filter_override = false,
                 dataset_suffix = "lite_vcf",
                 gatk_override = BuildGATKJar.jar,
-                interval_list = interval_list,
+                interval_list = FilterIntervalListChromosomes.out,
         }
         call QuickstartVcfIntegration.GvsQuickstartVcfIntegration as QuickstartVcfVQSRClassicIntegration {
             input:
@@ -57,7 +84,7 @@ workflow GvsQuickstartIntegration {
                 extract_do_not_filter_override = true,
                 dataset_suffix = "classic_vcf",
                 gatk_override = BuildGATKJar.jar,
-                interval_list = interval_list,
+                interval_list = FilterIntervalListChromosomes.out,
         }
     }
 }
