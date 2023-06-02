@@ -33,7 +33,7 @@ import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 
 import java.util.*;
 
-import static org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils.LOCATION_FIELD_NAME;
+import static org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils.*;
 
 public class ExtractFeaturesEngine {
 
@@ -201,15 +201,15 @@ public class ExtractFeaturesEngine {
 
     private void createVQSRInputFromTableResult(final GATKAvroReader avroReader) {
         final org.apache.avro.Schema schema = avroReader.getSchema();
-        if ( schema.getField(LOCATION_FIELD_NAME) == null ) {
-            throw new UserException("Records must contain a location column");
+        if ((schema.getField(LOCATION_FIELD_NAME) == null) || (schema.getField(REF_ALLELE_FIELD_NAME) == null) || (schema.getField("allele") == null)) {
+            throw new UserException("Records must contain a " + LOCATION_FIELD_NAME + ", " + REF_ALLELE_FIELD_NAME + " and an allele column");
         }
 
         // TODO: this hardcodes a list of required fields... which this case doesn't require!
         // should genericize/parameterize so we can also validate the schema here
         // validateSchema(columnNames);
 
-        SortingCollection<GenericRecord> sortingCollection = AvroSortingCollection.getAvroSortingCollection(schema, localSortMaxRecordsInRam, SchemaUtils.LOCATION_COMPARATOR);
+        SortingCollection<GenericRecord> sortingCollection = AvroSortingCollection.getAvroSortingCollection(schema, localSortMaxRecordsInRam, SchemaUtils.LOCATION_AND_ALLELES_COMPARATOR);
         for ( final GenericRecord queryRow : avroReader ) {
             sortingCollection.add(queryRow);
         }

@@ -7,17 +7,22 @@ import "GvsQuickstartVcfIntegration.wdl" as QuickstartVcfIntegration
 workflow GvsQuickstartHailIntegration {
     input {
         String branch_name
+        Boolean use_classic_VQSR = true
+        Boolean extract_do_not_filter_override
+        String dataset_suffix = "hail"
+        String? gatk_override
     }
 
     String project_id = "gvs-internal"
-    Boolean use_classic_VQSR = true
 
     call QuickstartVcfIntegration.GvsQuickstartVcfIntegration {
         input:
             branch_name = branch_name,
             drop_state = "NONE",
-            extract_do_not_filter_override = false,
-            dataset_suffix = "hail",
+            use_classic_VQSR = use_classic_VQSR,
+            extract_do_not_filter_override = extract_do_not_filter_override,
+            dataset_suffix = dataset_suffix,
+            gatk_override = gatk_override
     }
 
     call ExtractAvroFilesForHail.GvsExtractAvroFilesForHail {

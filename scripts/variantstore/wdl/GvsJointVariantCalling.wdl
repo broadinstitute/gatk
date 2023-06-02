@@ -35,8 +35,8 @@ workflow GvsJointVariantCalling {
       Int SNP_VQSR_CLASSIC_max_gaussians_override = 6
       Int SNP_VQSR_CLASSIC_mem_gb_override = ""
     }
-    # This is the most updated snapshot of the code as of June 1, 2023
-    File gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-699-gb24b508-SNAPSHOT-local.jar"
+    # This is the most updated snapshot of the code as of June 2, 2023
+    File gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-747-gbb08d81-SNAPSHOT-local.jar"
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
 
     File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
@@ -53,6 +53,7 @@ workflow GvsJointVariantCalling {
             input_vcf_indexes = input_vcf_indexes,
             input_vcfs = input_vcfs,
             filter_set_name = filter_set_name,
+            use_classic_VQSR = true,
             extract_output_gcs_dir = extract_output_gcs_dir,
             destination_dataset = dataset_name,
             destination_project = project_id,

@@ -7,7 +7,9 @@ workflow GvsQuickstartVcfIntegration {
 
     input {
         String branch_name
-        String expected_output_prefix = "gs://gvs-internal-quickstart/integration/2023-05-23/"
+        Boolean use_classic_VQSR = true
+        Boolean extract_do_not_filter_override = true
+        String expected_output_prefix = "gs://gvs-internal-quickstart/integration/2023-05-31/"
 
         Array[String] external_sample_names = [
                                               "ERS4367795",
@@ -50,58 +52,67 @@ workflow GvsQuickstartVcfIntegration {
 
         Int? extract_scatter_count
         String drop_state = "FORTY"
-        Boolean extract_do_not_filter_override = true
         String dataset_suffix = "vcf"
+        File? gatk_override
     }
     String project_id = "gvs-internal"
 
-    call Utils.BuildGATKJarAndCreateDataset {
+    if (!defined(gatk_override)) {
+      call Utils.BuildGATKJar {
+        input:
+          branch_name = branch_name,
+      }
+    }
+
+    call Utils.CreateDataset {
         input:
             branch_name = branch_name,
             dataset_prefix = "quickit",
-            dataset_suffix = dataset_suffix,
+            dataset_suffix = dataset_suffix
     }
 
     call Unified.GvsUnified {
         input:
             call_set_identifier = branch_name,
-            dataset_name = BuildGATKJarAndCreateDataset.dataset_name,
+            dataset_name = CreateDataset.dataset_name,
             project_id = project_id,
             external_sample_names = external_sample_names,
-            gatk_override = BuildGATKJarAndCreateDataset.jar,
+            gatk_override = select_first([gatk_override, BuildGATKJar.jar]),
             input_vcfs = input_vcfs,
             input_vcf_indexes = input_vcf_indexes,
             filter_set_name = "quickit",
+            use_classic_VQSR = use_classic_VQSR,
             extract_table_prefix = "quickit",
             extract_scatter_count = extract_scatter_count,
-            # Force filtering off as it is not deterministic and the initial version of this integration test does not
-            # allow for inexact matching of actual and expected results.
+            # optionally turn off filtering (VQSR Classic is not deterministic)
+            # (and the initial version of this integration test does not allow for inexact matching of actual and expected results.)
             extract_do_not_filter_override = extract_do_not_filter_override,
             drop_state = drop_state
     }
 
-    # Only assert identical outputs if we did not filter (filtering is not deterministic)
-    if (extract_do_not_filter_override) {
+    # Only assert identical outputs if we did not filter (filtering is not deterministic) OR if we are using VQSR Lite (which is deterministic)
+    if (extract_do_not_filter_override || !use_classic_VQSR) {
+        String expected_prefix = expected_output_prefix + dataset_suffix + "/"
         call AssertIdenticalOutputs {
             input:
-                expected_output_prefix = expected_output_prefix,
+                expected_output_prefix = expected_prefix,
                 actual_vcfs = GvsUnified.output_vcfs
         }
 
         call AssertCostIsTrackedAndExpected {
             input:
                 go = GvsUnified.done,
-                dataset_name = BuildGATKJarAndCreateDataset.dataset_name,
+                dataset_name = CreateDataset.dataset_name,
                 project_id = project_id,
-                expected_output_csv = expected_output_prefix + "cost_observability_expected.csv"
+                expected_output_csv = expected_prefix + "cost_observability_expected.csv"
         }
 
         call AssertTableSizesAreExpected {
             input:
                 go = GvsUnified.done,
-                dataset_name = BuildGATKJarAndCreateDataset.dataset_name,
+                dataset_name = CreateDataset.dataset_name,
                 project_id = project_id,
-                expected_output_csv = expected_output_prefix + "table_sizes_expected.csv"
+                expected_output_csv = expected_prefix + "table_sizes_expected.csv"
         }
     }
 
@@ -110,7 +121,7 @@ workflow GvsQuickstartVcfIntegration {
         Array[File] output_vcf_indexes = GvsUnified.output_vcf_indexes
         Float total_vcfs_size_mb = GvsUnified.total_vcfs_size_mb
         File manifest = GvsUnified.manifest
-        String dataset_name = BuildGATKJarAndCreateDataset.dataset_name
+        String dataset_name = CreateDataset.dataset_name
         String filter_set_name = "quickit"
         Boolean done = true
     }
@@ -162,6 +173,7 @@ task AssertIdenticalOutputs {
         ls -1 | grep -E '\.vcf\.gz$' | xargs gzip -d
         cd ..
 
+        echo "Header Check"
         # Headers first, these can yield useful diagnostics when there are mismatches.
         for vcf in $(ls -1 actual | grep -E '\.vcf$')
         do
@@ -177,17 +189,19 @@ task AssertIdenticalOutputs {
           fi
         done
 
+        echo "Header Failure Check"
         if [[ ${#failures[@]} -ne 0 ]]; then
           echo "Error: headers for the following files do not match:"
           for failure in ${failures[@]}; do
             echo $failure
             expected="expected/$failure"
             actual="actual/$failure"
-            diff $actual $expected
+            diff <(grep '^#' $actual) <(grep '^#' $expected)
           done
           exit 1
         fi
 
+        echo "Overall Check"
         # If the headers all matched look for any mismatches in overall file content.
         fail=0
         for vcf in $(ls -1 actual | grep -E '\.vcf$')
@@ -276,13 +290,13 @@ task AssertCostIsTrackedAndExpected {
 
         # For these two costs, there is non-determinism in the pipeline - we allow a % difference
         if [[ $OBS_KEY == "ExtractFilterTask.GvsCreateFilterSet.BigQuery Query Scanned" ]]; then
-          TOLERANCE=0.02   # 2% tolerance  (Note - have seen as high as: 0.0157154)
+          TOLERANCE=0.05   # 5% tolerance  (Note - have seen as high as: 0.0371646)
         elif [[ $OBS_KEY == "ExtractFilterTask.GvsCreateFilterSet.Storage API Scanned" ]]; then
           TOLERANCE=0.05  # 5% tolerance (Note - have seen as high as: 0.0281223)
         elif [[ $OBS_KEY == "ExtractTask.GvsExtractCallset.BigQuery Query Scanned" ]]; then
           TOLERANCE=0.6   # 60% tolerance (Note - have seen as high as: 0.5) - but it's 210 vs 420.
         elif [[ $OBS_KEY == "ExtractTask.GvsExtractCallset.Storage API Scanned" ]]; then
-          TOLERANCE=0.01   # 1% tolerance  (Note - have seen as high as: 0.00608656)
+          TOLERANCE=0.05   # 5% tolerance  (Note - have seen as high as: 0.012165)
         fi
 
         if [[ $OBS_BYTES -ne $EXP_BYTES ]]; then

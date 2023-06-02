@@ -323,7 +323,7 @@ task LoadData {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_05_30"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_06_01"
     maxRetries: load_data_maxretries
     memory: "3.75 GB"
     disks: "local-disk 50 HDD"
@@ -352,7 +352,7 @@ task ProcessVCFHeaders {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-30-alpine"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-01-alpine"
     disks: "local-disk 500 HDD"
   }
 }
@@ -523,7 +523,7 @@ task CurateInputLists {
                                              --output_files True
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-30-alpine"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-01-alpine"
     memory: "3 GB"
     disks: "local-disk 100 HDD"
     bootDiskSizeGb: 15
