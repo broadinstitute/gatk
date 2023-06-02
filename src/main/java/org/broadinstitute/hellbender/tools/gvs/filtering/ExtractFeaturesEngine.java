@@ -201,7 +201,7 @@ public class ExtractFeaturesEngine {
 
     private void createVQSRInputFromTableResult(final GATKAvroReader avroReader) {
         final org.apache.avro.Schema schema = avroReader.getSchema();
-        if (( schema.getField(LOCATION_FIELD_NAME) == null ) || ( schema.getField(REF_ALLELE_FIELD_NAME) == null) || ( schema.getField("allele") == null)) {
+        if ((schema.getField(LOCATION_FIELD_NAME) == null) || (schema.getField(REF_ALLELE_FIELD_NAME) == null) || (schema.getField("allele") == null)) {
             throw new UserException("Records must contain a " + LOCATION_FIELD_NAME + ", " + REF_ALLELE_FIELD_NAME + " and an allele column");
         }
 
