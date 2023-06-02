@@ -16,7 +16,7 @@ task FilterIntervalListChromosomes {
         set -o errexit -o nounset -o pipefail -o xtrace
 
         python3 /app/filter_interval_list_chromosomes.py --full-interval-list ~{full_interval_list} \
-            --chromosome ~{sep='--chromosome ' chromosomes}
+            --chromosome ~{sep=' --chromosome ' chromosomes}
     >>>
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-02-alpine-0772bbec9"
