@@ -18,8 +18,7 @@ def filter_chromosomes(output_path: str, full_interval_list_path: str, *chromoso
 
 
 def main(full_interval_list: str, chromosomes: List[str]):
-    with open(full_interval_list, 'r') as interval_list:
-        filter_chromosomes(interval_list, *chromosomes)
+    filter_chromosomes(full_interval_list, *chromosomes)
 
 
 if __name__ == '__main__':
