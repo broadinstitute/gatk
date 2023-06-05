@@ -19,6 +19,11 @@ def get_entities_in_set(data_table_name, sample_set_name):
     return set_of_entities
 
 
+## Note that there are two different possible <entity>_id options:
+## There is the id col that is used by the <entity>_set to differntiate what is and isn't in the set / inclusion list
+## The user may want to use a _different_ column other than the <entity>_id col for sample level info. E.g. the "research_id" col
+
+
 def generate_FOFNs_from_data_table_with_sample_set(data_table_name, sample_id_column_name, vcf_files_column_name, vcf_index_files_column_name, set_of_entities):
     with open(args.vcf_files_name, "w") as vcf_files, open(args.vcf_index_files_name, "w") as vcf_index_files, open(args.sample_names_file_name, "w") as sample_names_file, open(args.error_file_name, "w") as error_file:
         count = 0
@@ -95,7 +100,8 @@ if __name__ == '__main__':
     parser.add_argument('--attempts_between_pauses', type=int,
                         help='The number of rows in the db that are processed before we pause', default=500)
 
-    parser.add_argument('--sample_set_name', type=str, help='The name of the sample set to use', default=None)
+    parser.add_argument('--entity_set_name', type=str, help='The name of the entity / sample set to use', default=None)
+    parser.add_argument('--user_defined_sample_id_col_name', type=str, help='The name of the sample set to use', default=None)
 
     parser.add_argument('--sample_names_file_name', type=str, help='The name of the sample set to use', default="sample_names.txt")
     parser.add_argument('--vcf_files_name', type=str, help='The name of the sample set to use', default="vcf_files.txt")
@@ -105,21 +111,28 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
 
-# allow this to be overridden, but default it to 500
+    # allow this to be overridden, but default it to 500
     if "attempts_between_pauses" in args:
         attempts_between_pauses = args.attempts_between_pauses
 
     # check for selected sample sets
     if "sample_set_name" in args:
-        sample_set_name = args.sample_set_name
+        sample_set_name = args.entity_set_name
+
 
     if sample_set_name:
+        ## Note: check to see if there is a suer defined id column
+        if "user_defined_sample_id_col_name" in args:
+            sample_id_column_name = args.user_defined_sample_id_col_name
+        else:
+            sample_id_column_name = args.sample_id_column_name
+
         set_of_entities = get_entities_in_set(
             args.data_table_name,
             sample_set_name)
         generate_FOFNs_from_data_table_with_sample_set(
             args.data_table_name,
-            args.sample_id_column_name,
+            sample_id_column_name,
             args.vcf_files_column_name,
             args.vcf_index_files_column_name,
             set_of_entities)
