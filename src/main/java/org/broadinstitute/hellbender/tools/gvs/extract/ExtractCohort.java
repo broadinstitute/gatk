@@ -20,8 +20,8 @@ import java.util.*;
 
 @DocumentedFeature
 public abstract class ExtractCohort extends ExtractTool {
-    private static final Logger logger = LogManager.getLogger(ExtractCohort.class);
-    private ExtractCohortEngine engine;
+    protected static final Logger logger = LogManager.getLogger(ExtractCohort.class);
+    protected ExtractCohortEngine engine;
     private SampleList sampleList;
 
     public enum VQScoreFilteringType {GENOTYPE, SITES, NONE}
