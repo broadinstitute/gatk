@@ -139,6 +139,16 @@ task CreateAndTieOutVds {
         pip install pytest
         ln -s ${WORK}/joined.mt .
         pytest ./gvs_vds_tie_out.py
+
+
+        # Copy down our VDS validation script -- it should stay constant so we dont need it to be branch specific
+        script_url="https://raw.githubusercontent.com/broadinstitute/gatk/ah_var_store/scripts/variantstore/docs/aou/vds/vds_validation.py"
+        curl --silent --location --remote-name "${script_url}"
+
+        # Now run our in house VDS validation script
+        python3 ./vds_validation.py --vds-path ${VDS_PATH} --temp-path ${TEMP_PATH}
+
+        # If the VDS is not valid, this should yell at us-- TODO: Rori to verify as part of this pr
     >>>
     runtime {
         # `slim` here to be able to use Java
