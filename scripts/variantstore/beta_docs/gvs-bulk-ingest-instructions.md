@@ -1,4 +1,52 @@
-# Genomic Variant Store workflow overview
+# Bulk Ingest Instructions
+
+
+The bulk ingest workflow has one distinct difference from it's non-bulk counterpart and required several more input parameters
+It can load in more than 10k samples at a time
+We do this by directly mapping the sample ids and their gcp storage path locations and loading them that way.
+In order to do this, we need some additional information from you the user.
+
+Since we ask for so many additional inputs, we have tried to streamline the process in two ways.
+The first is that we have defaults of the most common values that are input automatically. They are listed below. 
+The second is that we use the information we have to the best of our abilities to make educated guesses about what columns you may want to use
+
+The logic for these guesses is also below.
+
+Since you are planning to use a bulk ingest workflow, we recommend that you use a sample set to load your data
+
+## TODO, fellow variant team members, should this be required?!?!? Why would they bulk ingest and NOT use a sample set?
+
+
+step 1:
+What is our entity type?
+This is how we determine the table name, the entity_set and the entity_id info
+
+A user can easily pass this information as the param "sample_table_name"
+The default value for this is "sample"
+
+If we have a user defined entity type, we check that it exists as a table. 
+
+
+If we have a user defined entity_set name, we check that it exists as a table
+
+We check all entities in the table:
+
+if len(list(table.list_tables())) == 1:
+print(list(table.list_tables())[0])
+elif len(list(table.list_tables())) == 2:
+if list(table.list_tables())[0]+"_set" ==list(table.list_tables())[1]:
+print(list(table.list_tables())[0])
+elif list(table.list_tables())[1]+"_set" ==list(table.list_tables())[0]:
+print(list(table.list_tables())[1])
+else:
+print("default set to entity type sample")
+
+
+
+
+
+
+
  
 | Workflow Version | Date Updated | Documentation Authors | Questions or Feedback |
 | :----: | :---: | :----: | :--------------: |
