@@ -78,6 +78,8 @@ def get_entity_data(user_defined_entity, entity_set):
     print(entity)
     print(user_entity_id)
 
+    return entity
+
 
 def get_column_data(entity_type):
     # We need to identify 3 things
@@ -288,6 +290,9 @@ if __name__ == '__main__':
     parser.add_argument('--entity_type', type=str,
                         help='The name of the entity being ingested--we default to sample', default="sample")
 
+    parser.add_argument('--entity_set_name', type=str,
+                        help='Optional set of entities--often called a sample_set. Having a sample_set is recommended for loading large amounts of data')
+
     parser.add_argument('--vcf_output', type=str,
                         help='The location to write the suggested vcf col name',
                         required=False)
@@ -306,7 +311,10 @@ if __name__ == '__main__':
         attempts_between_pauses = args.attempts_between_pauses
 
 
-    get_entity_data(user_defined_entity, entity_set_name)
+    user_defined_entity = args.entity_type
+
+
+    entity_type = get_entity_data(user_defined_entity, entity_set_name)
 
 
 
