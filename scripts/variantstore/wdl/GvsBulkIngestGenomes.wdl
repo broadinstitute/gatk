@@ -10,10 +10,11 @@ workflow GvsBulkIngestGenomes {
     input {
         # Begin GvsPrepareBulkImport
         # for now set the entity type names with a default
-        String samples_table_name = "sample"
-        String sample_id_column_name = "sample_id"
+        String data_table_name = "sample" ## Note that it is possible an advanced user has a different name for the table
+        String sample_id_column_name = "sample_id" ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an additional column for the sample_name during ingest
         String? vcf_files_column_name
         String? vcf_index_files_column_name
+        ## TODO: should this be called the entity_set_name?!?!?
         String? sample_set_name ## currently we only allow for one sample set at a time
         # End GvsPrepareBulkImport
 
@@ -39,6 +40,14 @@ workflow GvsBulkIngestGenomes {
         # End GvsImportGenomes
     }
 
+    parameter_meta {
+        data_table_name: "The name of the data table; This table hold the GVCFS to be ingested; `sample` is the default."
+        sample_id_column_name: "The column that will be used for the sample name / id in GVS; `sample_id` is the default."
+        vcf_files_column_name: "The column that supplies the path for the GVCFs to be ingested--when not specified, the workflow will attempt to derive the column"
+        vcf_index_files_column_name: "The column that supplies the path for the GVCF index files to be ingested--when not specified, the workflow will attempt to derive the column"
+        sample_set_name: "The recommended way to load samples; Sample sets must be created by the user"
+    }
+
     ## Start off by getting the Workspace ID to query for more information
     call GetWorkspaceId
 
@@ -52,7 +61,7 @@ workflow GvsBulkIngestGenomes {
     ## Iff there is a named <entity>_set (often referred to as simply a sample_set), the entity type, and <entity>_id col may be able to be derived as long as there are mot multiple sets with the same name that span different entity types
     ## Make sure any user input agrees with amy derived vals
     ## If there is no <entity>_set, the <entity>_id is irrelevant and the following logic can be used:
-    ## If the user has given us the entity_table_name / samples_table_name, then we know the entity type and maybe dont need to validate?
+    ## If the user has given us the entity_table_name / data_table_name, then we know the entity type and maybe dont need to validate?
     ## If there is only one entity type in the workspace, the entity type can be assumed
 
     ## If there is more than one entity type in the workspace, verify that "sample" is one of them -- throw an error if not
@@ -64,8 +73,8 @@ workflow GvsBulkIngestGenomes {
     call GetEntityInclusionSet {
         input:
             entity_set_name = sample_set_name,
-            entity_table_name = samples_table_name,
-            user_defined_entity_id_column_name = sample_id_column_name, ## NOTE: this is not necessarily the same as the <entity>_id col
+            data_table_name = data_table_name,
+            user_defined_sample_id_column_name = sample_id_column_name, ## NOTE: this is not necessarily the same as the <entity>_id col
     }
 
 
@@ -86,7 +95,7 @@ workflow GvsBulkIngestGenomes {
             workspace_name = GetWorkspaceName.workspace_name,
             workspace_namespace = GetWorkspaceName.workspace_namespace,
             workspace_bucket = GetWorkspaceId.workspace_bucket,
-            samples_table_name = GetEntityInclusionSet.entity_table_name,
+            samples_table_name = GetEntityInclusionSet.data_table_name,
             sample_id_column_name = sample_id_column_name,
             vcf_files_column_name = GetColumnNames.vcf_files_column_name,
             vcf_index_files_column_name = GetColumnNames.vcf_index_files_column_name,
@@ -128,8 +137,8 @@ workflow GvsBulkIngestGenomes {
             String workspace_name
             String workspace_namespace
             String entity_set_name
-            String entity_table_name
-            String? user_defined_entity_id_column_name
+            String data_table_name
+            String? user_defined_sample_id_column_name
         }
         command <<<
             # Get a list of all entity types and based on the entity_set and the entity_table_name,
@@ -228,11 +237,11 @@ workflow GvsBulkIngestGenomes {
             cpu: 1
         }
 
-    output {
-        String workspace_name = read_string(workspace_name_output)
-        String workspace_namespace = read_string(workspace_namespace_output)
+        output {
+            String workspace_name = read_string(workspace_name_output)
+            String workspace_namespace = read_string(workspace_namespace_output)
+        }
     }
-}
 
 
 
