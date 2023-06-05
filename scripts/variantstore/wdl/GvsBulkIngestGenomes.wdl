@@ -72,6 +72,9 @@ workflow GvsBulkIngestGenomes {
 
     call GetEntityInclusionSet {
         input:
+            workspace_id = GetWorkspaceId.workspace_id,
+            workspace_name = GetWorkspaceName.workspace_name,
+            workspace_namespace = GetWorkspaceName.workspace_namespace,
             entity_set_name = sample_set_name,
             data_table_name = data_table_name,
             user_defined_sample_id_column_name = sample_id_column_name, ## NOTE: this is not necessarily the same as the <entity>_id col
@@ -149,8 +152,8 @@ workflow GvsBulkIngestGenomes {
 
             python3 /app/get_columns_for_import.py \
             --workspace_id ~{workspace_id} \
-            --vcf_output ~{vcf_files_column_name_output} \
-            --vcf_index_output ~{vcf_index_files_column_name_output} \
+            --entity_set_name ~{entity_set_name} \
+            --entity_type ~{data_table_name} \
 
 
         >>>
@@ -162,7 +165,7 @@ workflow GvsBulkIngestGenomes {
         }
 
         output {
-            String entity_table_name
+            String entity_table_name = data_table_name
         }
     }
 
