@@ -49,16 +49,14 @@ workflow GvsBulkIngestGenomes {
             workspace_bucket = GetWorkspaceId.workspace_bucket,
     }
 
-    ## Iff there is a named <entity>_set (often referred to as simply a sample_set), the entity type, and <entity>_id col can be derived
-    ## Make sure any user input agrees with derived vals
+    ## Iff there is a named <entity>_set (often referred to as simply a sample_set), the entity type, and <entity>_id col may be able to be derived as long as there are mot multiple sets with the same name that span different entity types
+    ## Make sure any user input agrees with amy derived vals
     ## If there is no <entity>_set, the <entity>_id is irrelevant and the following logic can be used:
     ## If the user has given us the entity_table_name / samples_table_name, then we know the entity type and maybe dont need to validate?
     ## If there is only one entity type in the workspace, the entity type can be assumed
 
     ## If there is more than one entity type in the workspace, verify that "sample" is one of them -- throw an error if not
     ## (print that "sample" has been choosen as the default)
-
-    ## TODO make sure python code all has trap doors for cases where params are already defined
 
     ## TODO add tests for sample_sets!!!
 
@@ -67,7 +65,7 @@ workflow GvsBulkIngestGenomes {
         input:
             entity_set_name = sample_set_name,
             entity_table_name = samples_table_name,
-            user_defined_entity_id_column_name = sample_id_column_name, ## not necessarily the same as the <entity>_id col
+            user_defined_entity_id_column_name = sample_id_column_name, ## NOTE: this is not necessarily the same as the <entity>_id col
     }
 
 
@@ -76,7 +74,7 @@ workflow GvsBulkIngestGenomes {
             workspace_id = GetWorkspaceId.workspace_id,
             workspace_name = GetWorkspaceName.workspace_name,
             workspace_namespace = GetWorkspaceName.workspace_namespace,
-            samples_table_name = GetEntityInclusionSet.entity_table_name,
+            entity_table_name = GetEntityInclusionSet.entity_table_name,
             sample_id_column_name = sample_id_column_name,
             vcf_files_column_name = vcf_files_column_name,
             vcf_index_files_column_name = vcf_index_files_column_name,
@@ -124,12 +122,47 @@ workflow GvsBulkIngestGenomes {
     }
 }
 
+    task GetEntityInclusionSet {
+        input {
+            String workspace_id
+            String workspace_name
+            String workspace_namespace
+            String entity_set_name
+            String entity_table_name
+            String? user_defined_entity_id_column_name
+        }
+        command <<<
+            # Get a list of all entity types and based on the entity_set and the entity_table_name,
+            # decide on the entity, validate inputs and create an inclusion list
+
+            export WORKSPACE_NAMESPACE='~{workspace_namespace}'
+            export WORKSPACE_NAME='~{workspace_name}'
+
+            python3 /app/get_columns_for_import.py \
+            --workspace_id ~{workspace_id} \
+            --vcf_output ~{vcf_files_column_name_output} \
+            --vcf_index_output ~{vcf_index_files_column_name_output} \
+
+
+        >>>
+        runtime {
+            docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-05-08-alpine"
+            memory: "3 GB"
+            disks: "local-disk 10 HDD"
+            cpu: 1
+        }
+
+        output {
+            String entity_table_name
+        }
+    }
+
     task GetColumnNames {
         input {
             String workspace_id
             String workspace_name
             String workspace_namespace
-            String samples_table_name
+            String entity_table_name
             String sample_id_column_name
             String? vcf_files_column_name
             String? vcf_index_files_column_name
@@ -141,13 +174,13 @@ workflow GvsBulkIngestGenomes {
 
 
         command <<<
-            # Get a list of all columns in the table
+            # Get a list of all columns in the table --use basic heuristics to write the resulting vcf_files_column_name and vcf_index_files_column_name
 
             export WORKSPACE_NAMESPACE='~{workspace_namespace}'
             export WORKSPACE_NAME='~{workspace_name}'
 
             python3 /app/get_columns_for_import.py \
-              --workspace_id ~{workspace_id} \
+              --entity_type ~{entity_table_name} \
               --vcf_output ~{vcf_files_column_name_output} \
               --vcf_index_output ~{vcf_index_files_column_name_output} \
 
