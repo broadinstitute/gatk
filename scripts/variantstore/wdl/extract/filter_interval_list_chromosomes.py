@@ -17,16 +17,13 @@ def filter_chromosomes(output_path: str, full_interval_list_path: str, *chromoso
                     output.write(line)
 
 
-def main(full_interval_list: str, chromosomes: List[str]):
-    filter_chromosomes(full_interval_list, *chromosomes)
-
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False,
                                      description='Filters interval list for the specified chromosomes')
 
-    parser.add_argument('--full-interval-list', help='Full interval list', required=True)
+    parser.add_argument('--input-interval-list', help='Input full interval list', required=True)
+    parser.add_argument('--output-interval-list', help='Output filtered interval list', required=True)
     parser.add_argument('--chromosome', nargs='+', required=True)
 
     args = parser.parse_args()
-    main(args.full_interval_list, args.chromosome)
+    filter_chromosomes(args.output_interval_list, args.input_interval_list, *args.chromosome)
