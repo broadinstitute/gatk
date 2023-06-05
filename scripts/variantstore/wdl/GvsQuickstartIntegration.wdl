@@ -33,7 +33,7 @@ workflow GvsQuickstartIntegration {
         Boolean run_hail_integration = true
     }
 
-    File full_interval_list = "gs://gvs-internal-scratch/mcovarr/scratch/quicker/chr20_chrX_chrY_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
+    File full_interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
 
     call FilterIntervalListChromosomes {
         input:

@@ -23,7 +23,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--input-interval-list', help='Input full interval list', required=True)
     parser.add_argument('--output-interval-list', help='Output filtered interval list', required=True)
-    parser.add_argument('--chromosome', nargs='+', required=True)
+    parser.add_argument('--chromosome', action='append', required=True)
 
     args = parser.parse_args()
     filter_chromosomes(args.output_interval_list, args.input_interval_list, *args.chromosome)
