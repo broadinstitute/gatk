@@ -149,7 +149,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - mc_nirvana_reference_disk
    - name: GvsCreateVATFilesFromBigQuery
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/variant_annotations_table/GvsCreateVATFilesFromBigQuery.wdl
@@ -231,7 +230,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_944_bq_apilog
+         - vs_927_gvs_bq_traversal_artifact
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl

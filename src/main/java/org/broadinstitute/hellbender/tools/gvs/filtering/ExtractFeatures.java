@@ -1,110 +1,114 @@
 package org.broadinstitute.hellbender.tools.gvs.filtering;
 
+import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.*;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.bigquery.TableReference;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.util.*;
 
+@SuppressWarnings("unused")
 @CommandLineProgramProperties(
-        summary = "(\"ExtractFeatures\") - Extract features data from BQ to train filtering model.",
-        oneLineSummary = "Tool to extract variants out of big query to train filtering model",
+        summary = "(\"ExtractFeatures\") - Extract features data from BigQuery to train a filtering model.",
+        oneLineSummary = "Tool to extract variants out of BigQuery to train a filtering model.",
         programGroup = ShortVariantDiscoveryProgramGroup.class
 )
 @DocumentedFeature
 public class ExtractFeatures extends ExtractTool {
-    private static final Logger logger = LogManager.getLogger(ExtractFeatures.class);
     private ExtractFeaturesEngine engine;
     private SampleList sampleList;
 
+    private VariantContextWriter vcfWriter = null;
+
+    @Argument(
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            doc = "Output VCF file to which annotated variants should be written."
+    )
+    private String outputVcfPathString = null;
+
     @Argument(
             fullName = "alt-allele-table",
-            doc = "Fully qualified name of the table where the alternate allele info is",
-            optional = false
+            doc = "Fully qualified name of the table where the alternate allele info is"
     )
-    protected String fqAltAlleleTable = null;
+    private String fqAltAlleleTable = null;
 
     @Argument(
-        fullName = "use-batch-queries",
-        doc = "If true, use batch (rather than interactive) priority queries in BigQuery",
-        optional = true)
-    protected boolean useBatchQueries = true;
+            fullName = "use-batch-queries",
+            doc = "If true, use batch (rather than interactive) priority queries in BigQuery",
+            optional = true)
+    private boolean useBatchQueries = true;
 
     @Argument(
-        fullName = "hq-genotype-gq-threshold",
-        doc = "GQ threshold defining a high quality genotype",
-        optional = true)
-    protected int hqGenotypeGQThreshold = 20;
+            fullName = "hq-genotype-gq-threshold",
+            doc = "GQ threshold defining a high quality genotype",
+            optional = true)
+    private int hqGenotypeGQThreshold = 20;
 
     @Argument(
-        fullName = "hq-genotype-depth-threshold",
-        doc = "Depth threshold defining a high quality genotype",
-        optional = true)
-    protected int hqGenotypeDepthThreshold = 10;
+            fullName = "hq-genotype-depth-threshold",
+            doc = "Depth threshold defining a high quality genotype",
+            optional = true)
+    private int hqGenotypeDepthThreshold = 10;
 
     @Argument(
-        fullName = "hq-genotype-ab-threshold",
-        doc = "Ab threshold defining a high quality genotype",
-        optional = true)
-    protected double hqGenotypeABThreshold = 0.2;
+            fullName = "hq-genotype-ab-threshold",
+            doc = "Ab threshold defining a high quality genotype",
+            optional = true)
+    private double hqGenotypeABThreshold = 0.2;
 
     @Argument(
-        fullName = "excess-alleles-threshold",
-        doc = "Non-reference alleles threshold above which a site will be filtered out",
-        optional = true)
-    protected int excessAllelesThreshold = CommonCode.EXCESS_ALLELES_THRESHOLD;
+            fullName = "excess-alleles-threshold",
+            doc = "Non-reference alleles threshold above which a site will be filtered out",
+            optional = true)
+    private int excessAllelesThreshold = CommonCode.EXCESS_ALLELES_THRESHOLD;
 
     @Argument(
-        fullName = "query-labels",
-        doc = "Key-value pairs to be added to the extraction BQ query. Ex: --query-labels key1=value1 --query-labels key2=value2",
-        optional = true)
-    protected List<String> queryLabels = new ArrayList<>();
+            fullName = "query-labels",
+            doc = "Key-value pairs to be added to the extraction BQ query. Ex: --query-labels key1=value1 --query-labels key2=value2",
+            optional = true)
+    private List<String> queryLabels = new ArrayList<>();
 
     @Argument(
             fullName = "cost-observability-tablename",
             doc = "Name of the bigquery table in which to store cost observability metadata",
             optional = true)
-    protected String costObservabilityTableName = null;
+    private String costObservabilityTableName = null;
 
     @Argument(
             fullName = "call-set-identifier",
             doc = "Name of callset identifier, which is used to track costs in cost_observability table",
             optional = true)
-    protected String callSetIdentifier = null;
+    private String callSetIdentifier = null;
 
     @Argument(
             fullName = "wdl-step",
             doc = "Name of the WDL step/task (used for cost observability)",
             optional = true)
-    protected String wdlStep = null;
+    private String wdlStep = null;
 
     @Argument(
             fullName = "wdl-call",
             doc = "Name of the call in the WDL step/task (used for cost observability)",
             optional = true)
-    protected String wdlCall = null;
+    private String wdlCall = null;
 
     @Argument(
             fullName = "shard-identifier",
             doc = "Identifier for which shard was used in the WDL (used for cost observability)",
             optional = true)
-    protected String shardIdentifier = null;
-
-    @Override
-    public boolean requiresIntervals() {
-        return false;
-    }
+    private String shardIdentifier = null;
 
     /**
      * Enforce that if cost information is being recorded to the cost-observability-tablename then *all* recorded
@@ -133,12 +137,14 @@ public class ExtractFeatures extends ExtractTool {
 
         Set<VCFHeaderLine> extraHeaderLines = new HashSet<>();
         extraHeaderLines.add(
-            FilterSensitivityTools.getExcessAllelesHeader(excessAllelesThreshold, GATKVCFConstants.EXCESS_ALLELES));
+                FilterSensitivityTools.getExcessAllelesHeader(excessAllelesThreshold, GATKVCFConstants.EXCESS_ALLELES));
 
         extraHeaderLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.LOW_QUAL_FILTER_NAME));
 
         VCFHeader header = CommonCode.generateVcfHeader(
-            new HashSet<>(), reference.getSequenceDictionary(), extraHeaderLines);
+                new HashSet<>(), reference.getSequenceDictionary(), extraHeaderLines);
+
+        vcfWriter = createVCFWriter(IOUtils.getPath(outputVcfPathString));
 
         final List<SimpleInterval> traversalIntervals = getTraversalIntervals();
 
@@ -153,30 +159,30 @@ public class ExtractFeatures extends ExtractTool {
         }
 
         engine = new ExtractFeaturesEngine(
-            projectID,
-            datasetID,
-            vcfWriter,
-            header,
-            annotationEngine,
-            reference,
-            fqAltAlleleTable,
-            sampleTableRef,
-            traversalIntervals,
-            minLocation,
-            maxLocation,
-            localSortMaxRecordsInRam,
-            printDebugInformation,
-            useBatchQueries,
-            progressMeter,
-            sampleList.size(),
-            hqGenotypeGQThreshold,
-            hqGenotypeDepthThreshold,
-            hqGenotypeABThreshold,
-            excessAllelesThreshold,
-            queryLabels);
+                projectID,
+                datasetID,
+                vcfWriter,
+                header,
+                annotationEngine,
+                reference,
+                fqAltAlleleTable,
+                sampleTableRef,
+                traversalIntervals,
+                minLocation,
+                maxLocation,
+                localSortMaxRecordsInRam,
+                printDebugInformation,
+                useBatchQueries,
+                progressMeter,
+                sampleList.size(),
+                hqGenotypeGQThreshold,
+                hqGenotypeDepthThreshold,
+                hqGenotypeABThreshold,
+                excessAllelesThreshold,
+                queryLabels);
 
         vcfWriter.writeHeader(header);
-}
+    }
 
     @Override
     // maybe think about creating a BigQuery Row walker?
@@ -205,7 +211,7 @@ public class ExtractFeatures extends ExtractTool {
         super.onShutdown();
 
         // Close up our writer if we have to:
-        if ( vcfWriter != null ) {
+        if (vcfWriter != null) {
             vcfWriter.close();
         }
     }

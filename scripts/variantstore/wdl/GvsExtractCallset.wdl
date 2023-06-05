@@ -308,7 +308,7 @@ task ExtractTask {
     fi
 
     gatk --java-options "-Xmx9g" \
-      ExtractCohort \
+      ExtractCohortToVcf \
         --vet-ranges-extract-fq-table ~{fq_ranges_cohort_vet_extract_table} \
         --ref-ranges-extract-fq-table ~{fq_ranges_cohort_ref_extract_table} \
         --ref-version 38 \

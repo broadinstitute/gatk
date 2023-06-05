@@ -9,7 +9,7 @@ import org.broadinstitute.hellbender.utils.gvs.bigquery.AvroFileReader;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-public class ExtractCohortFilterRecordUnitTest extends GATKBaseTest {
+public class ExtractCohortToVcfFilterRecordUnitTest extends GATKBaseTest {
 
     @Test
     public void testExtractCohortFilterVQSRClassicRecord() {

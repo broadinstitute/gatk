@@ -27,7 +27,7 @@ public class StorageAPIAvroReader implements GATKAvroReader {
 
     private static final Logger logger = LogManager.getLogger(StorageAPIAvroReader.class);
 
-    private BigQueryReadClient client;
+    private final BigQueryReadClient client;
 
     private Iterator<ReadRowsResponse> serverStream;
 
@@ -39,8 +39,6 @@ public class StorageAPIAvroReader implements GATKAvroReader {
     // collection.
     private BinaryDecoder decoder = null;
 
-    private AvroRows currentAvroRows;
-
     // GenericRecord object will be reused.
     private GenericRecord nextRow = null;
 
@@ -48,10 +46,6 @@ public class StorageAPIAvroReader implements GATKAvroReader {
 
     public StorageAPIAvroReader(final TableReference tableRef) {
         this(tableRef, null, null);
-    }
-
-    public StorageAPIAvroReader(final TableReference tableRef, String parentProjectId) {
-        this(tableRef, null, parentProjectId);
     }
 
     public StorageAPIAvroReader(final TableReference tableRef, final String rowRestriction, String parentProjectId) {
@@ -113,7 +107,7 @@ public class StorageAPIAvroReader implements GATKAvroReader {
 
                 loadNextRow();
             }
-        } catch ( IOException e ) {
+        } catch (IOException e) {
             throw new GATKException("I/O Error", e);
         }
     }
@@ -124,29 +118,29 @@ public class StorageAPIAvroReader implements GATKAvroReader {
 
     private void loadNextRow() {
         try {
-            if ( decoder != null && ! decoder.isEnd() ) {
+            if (decoder != null && !decoder.isEnd()) {
                 nextRow = datumReader.read(null, decoder);
             } else {
                 fetchNextAvroRows();
 
-                if ( decoder != null && ! decoder.isEnd() ) {
+                if (decoder != null && !decoder.isEnd()) {
                     nextRow = datumReader.read(null, decoder);
                 } else {
                     nextRow = null; // end of traversal
                 }
             }
-        } catch ( IOException e ) {
+        } catch (IOException e) {
             throw new GATKException("I/O error", e);
         }
     }
 
     private void fetchNextAvroRows() {
-        if ( serverStream.hasNext() ) {
+        AvroRows currentAvroRows;
+        if (serverStream.hasNext()) {
             currentAvroRows = serverStream.next().getAvroRows();
             decoder = DecoderFactory.get()
                     .binaryDecoder(currentAvroRows.getSerializedBinaryRows().toByteArray(), decoder);
         } else {
-            currentAvroRows = null;
             decoder = null;
         }
     }
@@ -168,7 +162,7 @@ public class StorageAPIAvroReader implements GATKAvroReader {
 
     @Override
     public GenericRecord next() {
-        if ( ! hasNext() ) {
+        if (!hasNext()) {
             throw new NoSuchElementException("next() called when ! hasNext()");
         }
 
@@ -180,16 +174,7 @@ public class StorageAPIAvroReader implements GATKAvroReader {
     @Override
     public void close() {
         client.shutdownNow();
-        /* TODO: do we need to wait for termination here?
-        boolean terminated = false;
-        while ( ! terminated ) {
-            try {
-                terminated = client.awaitTermination(100, TimeUnit.MILLISECONDS);
-            }
-            catch ( InterruptedException e ) {
-                throw new GATKException("Interrupted during shutdown", e);
-            }
-        } */
+        // TODO: do we need to wait for termination here?
         client.close();
     }
 }

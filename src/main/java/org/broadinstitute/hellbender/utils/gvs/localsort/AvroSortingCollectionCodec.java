@@ -14,7 +14,7 @@ import java.io.OutputStream;
 
 public class AvroSortingCollectionCodec implements SortingCollection.Codec<GenericRecord> {
 
-    private Schema schema;
+    private final Schema schema;
     private DataFileWriter<GenericRecord> outputWriter;
     private DataFileStream<GenericRecord> inputStream;
 
@@ -23,55 +23,54 @@ public class AvroSortingCollectionCodec implements SortingCollection.Codec<Gener
     }
 
     @Override
-    public void setOutputStream( OutputStream os ) {
+    public void setOutputStream(OutputStream os) {
         this.outputWriter = new DataFileWriter<>(new GenericDatumWriter<>(schema));
         try {
             outputWriter.create(schema, os);
-        } catch ( IOException e ) {
+        } catch (IOException e) {
             throw new GATKException("Error initializing Avro output stream in SortingCollection", e);
         }
     }
 
     @Override
     public void flushOutput() {
-        if ( outputWriter == null ) {
+        if (outputWriter == null) {
             throw new IllegalStateException("flushOutput() called when there is no OutputWriter");
         }
 
         try {
             outputWriter.close(); // This does a flush()
             outputWriter = null;
-        } catch ( IOException e ) {
+        } catch (IOException e) {
             throw new GATKException("Error closing Avro output writer in SortingCollection", e);
         }
     }
 
     @Override
-    public void setInputStream( InputStream is ) {
+    public void setInputStream(InputStream is) {
         try {
             this.inputStream = new DataFileStream<>(is, new GenericDatumReader<>(schema));
-        }
-        catch ( IOException e ) {
+        } catch (IOException e) {
             throw new GATKException("Error initializing Avro input stream in SortingCollection", e);
         }
     }
 
     @Override
-    public void encode( GenericRecord val ) {
+    public void encode(GenericRecord val) {
         try {
             outputWriter.append(val);
-        } catch ( IOException e ) {
+        } catch (IOException e) {
             throw new GATKException("Error writing to Avro output stream in SortingCollection", e);
         }
     }
 
     @Override
     public GenericRecord decode() {
-        if ( inputStream == null ) {
+        if (inputStream == null) {
             throw new IllegalStateException("decode() called without an inputStream");
         }
 
-        if ( ! inputStream.hasNext() ) {
+        if (!inputStream.hasNext()) {
             return null;
         }
 
