@@ -40,6 +40,11 @@ workflow ExtractPgen {
         }
     }
 
+    call MergePgen {
+        input:
+            pgen_files =
+    }
+
 
 
 }
@@ -134,5 +139,27 @@ task GatkGvsPgenExtract {
         File pgen_file = "output.pgen"
         File pvar_file = "output.pvar"
         File psam_file = "output.psam"
+    }
+}
+
+task MergePgen {
+    input {
+        Array[File] pgen_files
+        Array[File] pvar_files
+        Array[File] psam_files
+    }
+
+    command {
+        set -e
+
+        ${sep = '\n' pgen_files}
+
+        ./plink2 --pmerge-list mergelist.txt --out merged
+    }
+
+    output {
+        File pgen_file = "merged.pgen"
+        File pvar_file = "merged.pvar"
+        File psam_file = "merged.psam"
     }
 }
