@@ -352,7 +352,7 @@ task ProcessVCFHeaders {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-05-alpine-e2bfbae3a"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-05-alpine-bc1f7a5a2"
     disks: "local-disk 500 HDD"
   }
 }
@@ -523,7 +523,7 @@ task CurateInputLists {
                                              --output_files True
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-05-alpine-e2bfbae3a"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-05-alpine-bc1f7a5a2"
     memory: "3 GB"
     disks: "local-disk 100 HDD"
     bootDiskSizeGb: 15
