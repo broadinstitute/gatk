@@ -4,6 +4,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.primitives.Ints;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
+import htsjdk.variant.vcf.VCFHeaderLineCount;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.UserException;
