@@ -24,8 +24,7 @@ The table below describes the GVS bulk ingest variables:
 
 | Input variable name         | Description                                                                                                                                                                | Type |
 |-----------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------| --- |
-| samples_table_name          | (Optional) The entity that is used for the data table; `sample` is most likely the name of the data table in Terra.                                                        | String |
-| sample_id_column_name       | (Optional) TODO: okay this is probably just based on the above value if there's no value below; `sample_id` in the sample data table in Terra.                             | String |
+| data_table_name             | (Optional) The name of the data table; This table hold the GVCFS to be ingested; `sample` is most likely the name of the data table in Terra.                              | String |
 | entity_id_column_name       | (Optional) User defined column id name; `sample_id` is the recommended name--`research_id` is also commonly used.                                                          | String |
 | vcf_files_column_name       | (Optional) Column that contains the cloud paths to the sample GVCF files                                                                                                   | String |
 | vcf_index_files_column_name | (Optional) Column that contains the cloud paths to the sample GVCF index files                                                                                             | String |
