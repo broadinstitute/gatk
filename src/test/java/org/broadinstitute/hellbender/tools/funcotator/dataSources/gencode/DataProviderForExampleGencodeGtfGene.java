@@ -24,14 +24,14 @@ public class DataProviderForExampleGencodeGtfGene {
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 1, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.GENE,
                 1, 3000, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", null, GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, "TEST_GENE", null, null, null, -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED, null, null);
+                null, "TEST_GENE", null, null, null, -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(), null, null);
         final GencodeGtfGeneFeature gene = (GencodeGtfGeneFeature)GencodeGtfFeature.create(data);
 
         // ======================
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 2, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.TRANSCRIPT,
                 1, 1000, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -39,7 +39,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 3, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 1, 200, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", 1, "TEST_EXON1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", 1, "TEST_EXON1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -47,7 +47,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 4, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.START_CODON,
                 99, 101, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", 1, "TEST_EXON1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", 1, "TEST_EXON1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -55,7 +55,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 5, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 201, 400, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", 2, "TEST_EXON2", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", 2, "TEST_EXON2", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -63,7 +63,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 6, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 201, 400, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", 2, "TEST_EXON2", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", 2, "TEST_EXON2", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -71,7 +71,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 7, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 401, 600, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", 3, "TEST_EXON3", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", 3, "TEST_EXON3", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -79,7 +79,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 8, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 401, 600, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", 3, "TEST_EXON3", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", 3, "TEST_EXON3", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -87,7 +87,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 9, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 601, 800, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", 4, "TEST_EXON4", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", 4, "TEST_EXON4", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -95,7 +95,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 10, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 601, 800, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", 4, "TEST_EXON4", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", 4, "TEST_EXON4", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -104,7 +104,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 11, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 801, 1000, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", 5, "TEST_EXON5", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", 5, "TEST_EXON5", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -112,7 +112,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 12, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.STOP_CODON,
                 900, 902, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", 5, "TEST_EXON5", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", 5, "TEST_EXON5", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -120,7 +120,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 13, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.UTR,
                 1, 98, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", 1, "TEST_EXON1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", 1, "TEST_EXON1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -128,7 +128,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 14, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.UTR,
                 903, 1000, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", 5, "TEST_EXON5", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", 5, "TEST_EXON5", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -138,7 +138,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 15, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.TRANSCRIPT,
                 1001, 2000, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT2", -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT2", -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -146,7 +146,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 16, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 1001, 1200, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT2", 1, "TEST_EXON1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT2", 1, "TEST_EXON1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -154,7 +154,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 17, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.START_CODON,
                 1099, 1101, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT2", 1, "TEST_EXON1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT2", 1, "TEST_EXON1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -162,7 +162,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 18, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 1099, 1200, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT2", 1, "TEST_EXON1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT2", 1, "TEST_EXON1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -170,7 +170,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 19, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 1201, 1400, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT2", 2, "TEST_EXON2", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT2", 2, "TEST_EXON2", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -178,7 +178,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 20, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 1201, 1400, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT2", 2, "TEST_EXON2", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT2", 2, "TEST_EXON2", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -186,7 +186,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 21, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 1401, 1600, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT2", 3, "TEST_EXON3", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT2", 3, "TEST_EXON3", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -194,7 +194,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 22, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 1401, 1600, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT2", 3, "TEST_EXON3", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT2", 3, "TEST_EXON3", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -202,7 +202,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 23, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 1601, 1800, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT2", 4, "TEST_EXON4", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT2", 4, "TEST_EXON4", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -210,7 +210,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 24, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 1601, 1800, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT2", 4, "TEST_EXON4", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT2", 4, "TEST_EXON4", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -219,7 +219,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 25, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 1801, 2000, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT2", 5, "TEST_EXON5", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT2", 5, "TEST_EXON5", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -227,7 +227,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 26, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 1801, 1899, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT2", 5, "TEST_EXON5", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT2", 5, "TEST_EXON5", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -235,7 +235,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 27, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.STOP_CODON,
                 1900, 1902, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT2", 5, "TEST_EXON5", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT2", 5, "TEST_EXON5", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -243,7 +243,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 28, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.UTR,
                 1001, 1098, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT2", 1, "TEST_EXON1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT2", 1, "TEST_EXON1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -251,7 +251,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 29, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.UTR,
                 1903, 2000, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT2", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT2", 5, "TEST_EXON5", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT2", 5, "TEST_EXON5", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -261,7 +261,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 30, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.TRANSCRIPT,
                 2001, 3000, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT3", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT3", -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT3", -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -269,7 +269,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 31, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 2001, 2200, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT3", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT3", 1, "TEST_EXON1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT3", 1, "TEST_EXON1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -277,7 +277,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 32, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 2201, 2400, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT3", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT3", 2, "TEST_EXON2", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT3", 2, "TEST_EXON2", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -285,7 +285,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 33, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 2401, 2600, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT3", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT3", 3, "TEST_EXON3", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT3", 3, "TEST_EXON3", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -293,7 +293,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 34, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 2601, 2800, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT3", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT3", 4, "TEST_EXON4", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT3", 4, "TEST_EXON4", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -301,7 +301,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 35, "chr1", GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 2801, 3000, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT3", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT3", 5, "TEST_EXON5", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT3", 5, "TEST_EXON5", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -454,12 +454,12 @@ public class DataProviderForExampleGencodeGtfGene {
 
         final GencodeGtfFeatureBaseData tmpGene = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, featureOrderNum.getAndIncrement(), contig, GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.GENE,
                 start, start + totalLength - 1, codingDirection, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", null, GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, geneName, null, null, null, -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED, null, null);
+                null, geneName, null, null, null, -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(), null, null);
         final GencodeGtfGeneFeature gene = (GencodeGtfGeneFeature)GencodeGtfFeature.create(tmpGene);
 
         final GencodeGtfFeatureBaseData tmpTranscript = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, featureOrderNum.getAndIncrement(), contig, GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.TRANSCRIPT,
                 gene.getGenomicStartLocation(), gene.getGenomicEndLocation(), codingDirection, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, geneName, GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, geneName, GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -530,7 +530,7 @@ public class DataProviderForExampleGencodeGtfGene {
         // Exon is created with room
         final GencodeGtfFeatureBaseData data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, featureOrderNum.getAndIncrement(), contig, GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 exonStart, exonStart + lengthExons + length3pUtr - 1, codingDirection, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, geneName, GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", exonNum, "TEST_EXON_" + exonNum, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, geneName, GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", exonNum, "TEST_EXON_" + exonNum, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -541,7 +541,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
         final GencodeGtfFeatureBaseData tmpCdsMinusStop = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, featureOrderNum.getAndIncrement(), contig, GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 cdsStart, cdsEnd, codingDirection, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, geneName, GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", exon.getExonNumber(), exon.getExonId(), GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, geneName, GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", exon.getExonNumber(), exon.getExonId(), GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -552,7 +552,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
         final GencodeGtfFeatureBaseData tmpStopCodon = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, featureOrderNum.getAndIncrement(), contig, GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.STOP_CODON,
                 stopCodonStart, stopCodonEnd, codingDirection, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, geneName, GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", exon.getExonNumber(), exon.getExonId(), GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, geneName, GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", exon.getExonNumber(), exon.getExonId(), GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -571,7 +571,7 @@ public class DataProviderForExampleGencodeGtfGene {
         final int end = codingDirection == Strand.FORWARD ? exon.getGenomicEndLocation() : exon.getGenomicStartLocation() + length3Utr - 1;
         final GencodeGtfFeatureBaseData tmp3pUtr = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, featureOrderNum.getAndIncrement(), contig, GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.UTR,
                 start, end, codingDirection, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, geneName, GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", exon.getExonNumber(), exon.getExonId(), GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, geneName, GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", exon.getExonNumber(), exon.getExonId(), GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -586,7 +586,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
         final GencodeGtfFeatureBaseData tmp5pUtr = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, featureOrderNum.getAndIncrement(), contig, GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.UTR,
                 start, end, codingDirection, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, geneName, GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", exon.getExonNumber(), exon.getExonId(), GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, geneName, GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", exon.getExonNumber(), exon.getExonId(), GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -600,7 +600,7 @@ public class DataProviderForExampleGencodeGtfGene {
                                                               final Strand codingDirection) {
         final GencodeGtfFeatureBaseData tmpExon = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, featureOrderNum.getAndIncrement(), contig, GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 exonStart, exonStart + length5pUtr + lengthExons - 1, codingDirection, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, geneName, GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", exonNum, "TEST_EXON_" + exonNum, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, geneName, GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", exonNum, "TEST_EXON_" + exonNum, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -609,7 +609,7 @@ public class DataProviderForExampleGencodeGtfGene {
         if (codingDirection == Strand.POSITIVE) {
             final GencodeGtfFeatureBaseData tmpStartCodon = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, featureOrderNum.getAndIncrement(), contig, GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.START_CODON,
                     exon.getGenomicStartLocation() + length5pUtr - 1, exon.getGenomicStartLocation() + length5pUtr + 1, codingDirection, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                    null, geneName, GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", 1, "TEST_EXON1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                    null, geneName, GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", 1, "TEST_EXON1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                     Collections.emptyList(),
                     null
             );
@@ -617,7 +617,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
             final GencodeGtfFeatureBaseData tmpCdsMinusStart = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, featureOrderNum.getAndIncrement(), contig, GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                     startCodon1.getGenomicEndLocation() + 1, exon.getGenomicEndLocation(), codingDirection, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                    null, geneName, GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", exon.getExonNumber(), exon.getExonId(), GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                    null, geneName, GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", exon.getExonNumber(), exon.getExonId(), GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                     Collections.emptyList(),
                     null
             );
@@ -630,7 +630,7 @@ public class DataProviderForExampleGencodeGtfGene {
         if (codingDirection == Strand.NEGATIVE) {
             final GencodeGtfFeatureBaseData tmpStartCodon2 = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, featureOrderNum.getAndIncrement(), contig, GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.START_CODON,
                     exon.getGenomicEndLocation() - length5pUtr - 2, exon.getGenomicStartLocation() + length5pUtr, codingDirection, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                    null, geneName, GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", 1, "TEST_EXON1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                    null, geneName, GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", 1, "TEST_EXON1", GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                     Collections.emptyList(),
                     null
             );
@@ -638,7 +638,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
             final GencodeGtfFeatureBaseData tmpCdsMinusStart2 = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, featureOrderNum.getAndIncrement(), contig, GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                     exon.getGenomicStartLocation(), startCodon2.getGenomicStartLocation() - 1, codingDirection, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                    null, geneName, GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", exon.getExonNumber(), exon.getExonId(), GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                    null, geneName, GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", exon.getExonNumber(), exon.getExonId(), GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                     Collections.emptyList(),
                     null
             );
@@ -657,7 +657,7 @@ public class DataProviderForExampleGencodeGtfGene {
         // Create exon and a CDS that encompasses the entire exon.
         final GencodeGtfFeatureBaseData tmpExon = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, featureOrderNum.getAndIncrement(), contig, GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.EXON,
                 exonStart, exonStart + lengthExons - 1, codingDirection, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, geneName, GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", exonNum, "TEST_EXON_" + exonNum, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, geneName, GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", exonNum, "TEST_EXON_" + exonNum, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );
@@ -665,7 +665,7 @@ public class DataProviderForExampleGencodeGtfGene {
 
         final GencodeGtfFeatureBaseData tmpCds = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, featureOrderNum.getAndIncrement(), contig, GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.CDS,
                 exon.getGenomicStartLocation(), exon.getGenomicEndLocation(), codingDirection, GencodeGtfFeature.GenomicPhase.DOT, exon.getGeneId(), "TEST_TRANSCRIPT1", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, exon.getGeneName(), GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", exon.getExonNumber(), exon.getExonId(), GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, exon.getGeneName(), GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", exon.getExonNumber(), exon.getExonId(), GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );

@@ -301,7 +301,7 @@ public class FuncotatorTestUtils {
                         "FakeTranscriptName",
                         -1,
                         null,
-                        GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                        GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                         Collections.emptyList(),
                         null)
         );

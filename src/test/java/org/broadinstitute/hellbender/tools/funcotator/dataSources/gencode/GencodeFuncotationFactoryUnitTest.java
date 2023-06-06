@@ -272,14 +272,14 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                 "TEST-GENE-ID",
                 "TEST-TX-ID",
                 GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                GencodeGtfFeature.GeneTranscriptStatus.PUTATIVE,
+                GencodeGtfFeature.GeneTranscriptStatus.PUTATIVE.toString(),
                 "TEST-GENE",
                 GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                GencodeGtfFeature.GeneTranscriptStatus.PUTATIVE,
+                GencodeGtfFeature.GeneTranscriptStatus.PUTATIVE.toString(),
                 "TEST-TX",
                 1,
                 "",
-                GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 null,
                 "");
     }
@@ -701,14 +701,14 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 1, variantInterval.getContig(), GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.GENE,
                 variantInterval.getStart()-2000, variantInterval.getEnd()+2000, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", null, GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, "TEST_GENE", null, null, null, -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED, null, null);
+                null, "TEST_GENE", null, null, null, -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(), null, null);
         final GencodeGtfGeneFeature gene = (GencodeGtfGeneFeature)GencodeGtfFeature.create(data);
 
         // ======================
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 2, variantInterval.getContig(), GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.TRANSCRIPT,
                 variantInterval.getStart()-1000, variantInterval.getEnd()+1000, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
+                null, "TEST_GENE", GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", -1, null, GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
                 Collections.emptyList(),
                 null
         );

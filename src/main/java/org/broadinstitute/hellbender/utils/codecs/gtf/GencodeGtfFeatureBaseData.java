@@ -63,7 +63,7 @@ final public class GencodeGtfFeatureBaseData {
     // "Required" GENCODE GTF Fields:
     public String                                   geneId                  = null;
     public String                                   transcriptId            = null;
-    public GencodeGtfFeature.GeneTranscriptStatus   geneStatus              = null;
+    public String                                   geneStatus              = null;
     /**
      * There are no formal definitions for what can be a valid geneType and the
      * number of possible values seem to increase as new versions of Gencode are released.
@@ -75,11 +75,11 @@ final public class GencodeGtfFeatureBaseData {
      * number of possible values seem to increase as new versions of Gencode are released.
      */
     public String                                   transcriptType          = null;
-    public GencodeGtfFeature.GeneTranscriptStatus   transcriptStatus        = null;
+    public String                                   transcriptStatus        = null;
     public String                                   transcriptName          = null;
     public int                                      exonNumber              = GencodeGtfFeature.NO_EXON_NUMBER;
     public String                                   exonId                  = null;
-    public GencodeGtfFeature.LocusLevel             locusLevel              = null;
+    public String                                   locusLevel              = null;
 
     /**
      * Optional GENCODE GTF Fields.
@@ -109,14 +109,14 @@ final public class GencodeGtfFeatureBaseData {
             final String geneId,
             final String transcriptId,
             final String geneType,
-            final GencodeGtfFeature.GeneTranscriptStatus geneStatus,
+            final String geneStatus,
             final String geneName,
             final String transcriptType,
-            final GencodeGtfFeature.GeneTranscriptStatus transcriptStatus,
+            final String transcriptStatus,
             final String transcriptName,
             final int exonNumber,
             final String exonId,
-            final GencodeGtfFeature.LocusLevel locusLevel,
+            final String locusLevel,
             final List<GencodeGtfFeature.OptionalField<?>> optionalFields,
             final String anonymousOptionalFields
     ) {

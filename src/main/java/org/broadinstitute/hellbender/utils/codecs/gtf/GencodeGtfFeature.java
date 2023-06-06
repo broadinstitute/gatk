@@ -162,7 +162,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
                     baseData.geneType = fieldValue;
                     break;
                 case "gene_status":
-                    baseData.geneStatus = GeneTranscriptStatus.valueOf(fieldValue);
+                    baseData.geneStatus = fieldValue;
                     break;
                 case "gene_name":
                     baseData.geneName = fieldValue;
@@ -174,7 +174,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
                     baseData.transcriptType = fieldValue;
                     break;
                 case "transcript_status":
-                    baseData.transcriptStatus = GeneTranscriptStatus.valueOf(fieldValue);
+                    baseData.transcriptStatus = fieldValue;
                     break;
                 case "transcript_name":
                     baseData.transcriptName = fieldValue;
@@ -191,10 +191,10 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
                     baseData.exonId = fieldValue;
                     break;
                 case "level":
-                    baseData.locusLevel = LocusLevel.getEnum(fieldValue);
+                    baseData.locusLevel = fieldValue;
                     break;
                 case "tag":
-                    optionalField = new OptionalField<>(fieldName, FeatureTag.getEnum(fieldValue));
+                    optionalField = new OptionalField<>(fieldName, fieldValue);
                     break;
                 case "ccdsid":
                     optionalField = new OptionalField<>(fieldName, fieldValue);
@@ -212,10 +212,10 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
                     optionalField = new OptionalField<>(fieldName, fieldValue);
                     break;
                 case "transcript_support_level":
-                    optionalField = new OptionalField<>(fieldName, TranscriptSupportLevel.getEnum(fieldValue));
+                    optionalField = new OptionalField<>(fieldName, fieldValue);
                     break;
                 case "remap_status":
-                    optionalField = new OptionalField<>(fieldName, RemapStatus.getEnum(fieldValue));
+                    optionalField = new OptionalField<>(fieldName, fieldValue);
                     break;
                 case "remap_original_id":
                     optionalField = new OptionalField<>(fieldName, fieldValue);
@@ -234,7 +234,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
                     optionalField = new OptionalField<>(fieldName, Long.valueOf(fieldValue));
                     break;
                 case "remap_target_status":
-                    optionalField = new OptionalField<>(fieldName, RemapTargetStatus.getEnum(fieldValue));
+                    optionalField = new OptionalField<>(fieldName, fieldValue);
                     break;
                 case "remap_substituted_missing_target":
                     optionalField = new OptionalField<>(fieldName, fieldValue);
@@ -356,6 +356,20 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         final List<GencodeGtfFeature> list = new ArrayList<>();
         list.add(this);
         return list;
+    }
+
+
+    /**
+     * Get all the {@link GencodeGtfFeatureBaseData} objects from this {@link GencodeGtfFeature} itself.
+     * This is useful to get any subfeatures included in this {@link GencodeGtfFeature}.
+     * @return A {@link List} of the {@link GencodeGtfFeatureBaseData} objects represented in this {@link GencodeGtfFeature}.
+     */
+    @VisibleForTesting
+    List<GencodeGtfFeatureBaseData> GencodeGtfFeatureBaseData() {
+        final List<GencodeGtfFeatureBaseData> baseDataParts = new ArrayList<>();
+        baseDataParts.add(this.baseData);
+        getAllFeatures().forEach(feature -> baseDataParts.add(feature.baseData));
+        return baseDataParts;
     }
 
     /**
@@ -543,11 +557,11 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         return baseData.transcriptName;
     }
 
-    public GeneTranscriptStatus getGeneStatus() {
+    public String getGeneStatus() {
         return baseData.geneStatus;
     }
 
-    public GeneTranscriptStatus getTranscriptStatus() {
+    public String getTranscriptStatus() {
         return baseData.transcriptStatus;
     }
 
@@ -559,7 +573,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         return baseData.exonId;
     }
 
-    public LocusLevel getLocusLevel() {
+    public String getLocusLevel() {
         return baseData.locusLevel;
     }
 
@@ -571,13 +585,15 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         return baseData.anonymousOptionalFields;
     }
 
-    public OptionalField<?> getOptionalField(final String key) {
+    // Certian optional fields support multiple values, so we need to return a list of them.
+    public List<OptionalField<?>> getOptionalField(final String key) {
+        final List<OptionalField<?>> optionalFields = new ArrayList<>();
         for (final OptionalField<?> optionalField : baseData.optionalFields) {
             if ( optionalField.getName().equals(key) ) {
-                return optionalField;
+                optionalFields.add(optionalField);
             }
         }
-        return null;
+        return optionalFields;
     }
 
     /**
@@ -1579,4 +1595,5 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
             throw new IllegalArgumentException("Unexpected value: " + s);
         }
     }
+
 }
