@@ -45,10 +45,10 @@ task GenerateFOFNsFromDataTables {
         String workspace_name
         String workspace_namespace
         String workspace_bucket
-        String? samples_table_name
-        String? sample_id_column_name ## NOTE: if the user has specified a different sample name column for GVS, it needs to be used independently of the sample_set info
-        String? vcf_files_column_name
-        String? vcf_index_files_column_name
+        String samples_table_name
+        String sample_id_column_name ## NOTE: if the user has specified a different sample name column for GVS, it needs to be used independently of the sample_set info
+        String vcf_files_column_name
+        String vcf_index_files_column_name
         String? sample_set_name
     }
 
@@ -80,7 +80,7 @@ task GenerateFOFNsFromDataTables {
         sample_count=$(wc -l < sample_names_file_name)
         vcf_count=$(wc -l < vcf_files_name)
         index_count=$(wc -l < vcf_index_files_name)
-        
+
         if [[ $sample_count -eq $vcf_count && $sample_count -eq $index_count ]]; then
         echo $sample_count
         else
