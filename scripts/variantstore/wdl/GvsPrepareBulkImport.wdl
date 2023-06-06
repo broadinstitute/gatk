@@ -9,7 +9,7 @@ workflow GvsPrepareBulkImport {
         String workspace_namespace
         String workspace_bucket
         String samples_table_name
-        String sample_id_column_name
+        String user_defined_sample_id_column_name
         String vcf_files_column_name
         String vcf_index_files_column_name
         String? sample_set_name ## currently we only allow for one sample set at a time
@@ -22,7 +22,7 @@ workflow GvsPrepareBulkImport {
             workspace_namespace = workspace_namespace,
             workspace_bucket  = workspace_bucket,
             samples_table_name = samples_table_name,
-            sample_id_column_name = sample_id_column_name,
+            sample_id_column_name = user_defined_sample_id_column_name,
             vcf_files_column_name = vcf_files_column_name,
             vcf_index_files_column_name = vcf_index_files_column_name,
             sample_set_name = sample_set_name
@@ -36,15 +36,17 @@ workflow GvsPrepareBulkImport {
     }
 }
 
-# This copies the entirety of the data tables over.  We'll want a different task to make FOFNs for just a sample set
+# NOTE: If no sample_set_name is specified, this copies the entirety of the data tables over and into GVS
 task GenerateFOFNsFromDataTables {
+    ## In order to get the <entity>_ids in the sample_set for an inclusion list, we use Terra Notebook Utils
+    ## This also allows us to validate that the requested sample_set exists
     input {
         String google_project_id
         String workspace_name
         String workspace_namespace
         String workspace_bucket
         String? samples_table_name
-        String? sample_id_column_name
+        String? sample_id_column_name ## NOTE: if the user has specified a different sample name column for GVS, it needs to be used independently of the sample_set info
         String? vcf_files_column_name
         String? vcf_index_files_column_name
         String? sample_set_name
@@ -72,8 +74,21 @@ task GenerateFOFNsFromDataTables {
             --sample_names_file_name ~{sample_names_file_name} \
             --vcf_files_name ~{vcf_files_name} \
             --vcf_index_files_name ~{vcf_index_files_name} \
-            --error_file_name ~{error_file_name} \
+            --error_file_name ~{error_file_name}
 
+        ## Validate by testing file lengths and failing if they are not all the same
+        sample_count=$(wc -l < sample_names_file_name)
+        vcf_count=$(wc -l < vcf_files_name)
+        index_count=$(wc -l < vcf_index_files_name)
+        
+        if [[ $sample_count -eq $vcf_count && $sample_count -eq $index_count ]]; then
+        echo $sample_count
+        else
+        echo $sample_count
+        echo $vcf_count
+        echo $index_count
+        exit 1
+        fi
 
     >>>
     runtime {
