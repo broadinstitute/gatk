@@ -75,7 +75,7 @@ workflow GvsBulkIngestGenomes {
             workspace_name = GetWorkspaceName.workspace_name,
             workspace_namespace = GetWorkspaceName.workspace_namespace,
             workspace_bucket = GetWorkspaceId.workspace_bucket,
-            samples_table_name = GetColumnNames.data_table_name, ## NOTE: this is not an output, but this task does validate it
+            samples_table_name = GetColumnNames.data_table,
             user_defined_sample_id_column_name = GetColumnNames.sample_name_column,  ## NOTE: if no sample_id_column_name has been specified, this is now the <entity>_id col
             vcf_files_column_name = GetColumnNames.vcf_files_column_name,
             vcf_index_files_column_name = GetColumnNames.vcf_index_files_column_name,
@@ -214,6 +214,6 @@ task GetColumnNames {
         String vcf_files_column_name = if (defined(vcf_files_column_name)) then select_first([vcf_files_column_name]) else read_string(vcf_files_column_name_output)
         String vcf_index_files_column_name = if (defined(vcf_index_files_column_name)) then select_first([vcf_index_files_column_name]) else read_string(vcf_index_files_column_name_output)
         String sample_name_column = if (defined(user_defined_sample_id_column_name)) then select_first([user_defined_sample_id_column_name]) else entity_id
-        String data_table_name = data_table_name
+        String data_table = data_table_name
     }
 }
