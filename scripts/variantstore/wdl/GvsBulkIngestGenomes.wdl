@@ -225,5 +225,6 @@ task GetColumnNames {
         String vcf_files_column_name = if (defined(vcf_files_column_name)) then select_first([vcf_files_column_name]) else read_string(vcf_files_column_name_output)
         String vcf_index_files_column_name = if (defined(vcf_index_files_column_name)) then select_first([vcf_index_files_column_name]) else read_string(vcf_index_files_column_name_output)
         String sample_name_column = if (defined(user_defined_sample_id_column_name)) then select_first([user_defined_sample_id_column_name]) else entity_id
+        String data_table_name = data_table_name
     }
 }
