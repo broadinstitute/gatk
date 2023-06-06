@@ -42,11 +42,16 @@ workflow ExtractPgen {
 
     call MergePgen {
         input:
-            pgen_files =
+            pgen_files = GatkGvsPgenExtract.pgen_file,
+            pvar_files = GatkGvsPgenExtract.pvar_file,
+            psam_files = GatkGvsPgenExtract.psam_file
     }
 
-
-
+    output {
+        File pgen_file = MergePgen.pgen_file
+        File pvar_file = MergePgen.pvar_file
+        File psam_file = MergePgen.psam_file
+    }
 }
 
 task SplitIntervals {
@@ -149,13 +154,17 @@ task MergePgen {
         Array[File] psam_files
     }
 
-    command {
+    command <<<
         set -e
-
-        ${sep = '\n' pgen_files}
+        PGEN_ARRAY=(~{sep=" " pgen_files})
+        touch mergelist.txt
+        for pgen in PGEN_ARRAY
+        do
+            echo ${pgen%.pgen} >> mergelist.txt
+        done
 
         ./plink2 --pmerge-list mergelist.txt --out merged
-    }
+    >>>
 
     output {
         File pgen_file = "merged.pgen"
