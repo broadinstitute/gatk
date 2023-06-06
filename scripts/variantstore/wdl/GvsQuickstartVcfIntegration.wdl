@@ -32,7 +32,7 @@ workflow GvsQuickstartVcfIntegration {
 
         Int? extract_scatter_count
         String drop_state = "FORTY"
-        String dataset_suffix = "vcf"
+        String dataset_suffix
         File? gatk_override
     }
     String project_id = "gvs-internal"
