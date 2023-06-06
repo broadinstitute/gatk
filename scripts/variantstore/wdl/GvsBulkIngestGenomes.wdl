@@ -57,17 +57,6 @@ workflow GvsBulkIngestGenomes {
             workspace_bucket = GetWorkspaceId.workspace_bucket,
     }
 
-    ## Iff there is a named <entity>_set (often referred to as simply a sample_set), the entity type, and <entity>_id col may be able to be derived as long as there are mot multiple sets with the same name that span different entity types
-    ## Make sure any user input agrees with amy derived vals
-    ## If there is no <entity>_set, the <entity>_id is irrelevant and the following logic can be used:
-    ## If the user has given us the entity_table_name / data_table_name, then we know the entity type and maybe dont need to validate?
-    ## If there is only one entity type in the workspace, the entity type can be assumed
-
-    ## If there is more than one entity type in the workspace, verify that "sample" is one of them -- throw an error if not
-    ## (print that "sample" has been choosen as the default)
-
-    ## TODO add tests for sample_sets!!!
-
 
     call GetColumnNames {
         input:
