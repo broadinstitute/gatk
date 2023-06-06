@@ -1,4 +1,3 @@
-import requests
 import argparse
 
 from terra_notebook_utils import table
@@ -61,7 +60,7 @@ def get_entity_data(user_defined_entity, entity_set):
         elif list(table.list_tables())[1]+"_set" ==list(table.list_tables())[0]:
             entity = list(table.list_tables())[1]
     else:
-        ## TODO: move this to the top or do it throughout the gates--not sure which is better
+        ## TODO: move this to the top or do it throughout the gates--not sure which is better. Currently it is set immediately by the default value in the argparse arg
         print("default set to entity type sample")
         entity = default_entity
 
@@ -283,15 +282,14 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False,
                                      description='Get workspace information')
 
-    parser.add_argument('--workspace_name', type=str,
-                        help='The name of your workspace that holds your sample data',
-                        required=False)
-
     parser.add_argument('--entity_type', type=str,
-                        help='The name of the entity being ingested--we default to sample', default="sample")
+                        help='The name of the entity being ingested--we default to sample')
 
     parser.add_argument('--entity_set_name', type=str,
                         help='Optional set of entities--often called a sample_set. Having a sample_set is recommended for loading large amounts of data')
+
+    parser.add_argument('--user_defined_sample_id', type=str,
+                        help='The column that the user would like to use as the sample name in GVS and in the final extract')
 
     parser.add_argument('--vcf_output', type=str,
                         help='The location to write the suggested vcf col name',
@@ -301,9 +299,6 @@ if __name__ == '__main__':
                         help='The location to write the suggested index col name',
                         required=False)
 
-    parser.add_argument('--attempts_between_pauses', type=int,
-                        help='The number of rows in the db that are processed before we pause', default=500)
-
     args = parser.parse_args()
 
     # allow this to be overridden, but default it to 500
@@ -311,13 +306,33 @@ if __name__ == '__main__':
         attempts_between_pauses = args.attempts_between_pauses
 
 
-    user_defined_entity = args.entity_type
+
+    # The goal of this code is to validate and determine the 5 values for:
+    # 1. The entity type (default: sample)
+    # 2. The entity type id column name. This is never anything but #1 + _id (default: sample_id)
+    # 3. The sample name column name (default: sample_id if it exists, otherwise <entity>_id)
+    # 4. The input GVCFs path column name. This has no explicit default, but uses heuristics above to be determined
+    # 5. The input GVCF index files path column name. This has no explicit default, but uses heuristics above to be determined
+
+    # The method get_entity_data returns the values for the first two
+    # The method get_column_data tells us how much data we want to survey
+    # The method get_column_values looks in the columns and gives us the best guess for the fourth and fifth values
 
 
-    entity_type = get_entity_data(user_defined_entity, entity_set_name)
 
+    ### NOTE: FOR NOW WE JUST ALLOW "SAMPLE" TO BE THE DEFAULT ENTITY TYPE AND THIS CODE JUST VALIDATES THAT
 
+    # if the user is using sample_sets, then that will potentially help us get the first (and thus also the second) or validate a user defined entity_type
+    sample_set_name = args.entity_set_name
+    if "entity_set_name" in args:
+        entity_type = get_entity_data(args.entity_type, args.entity_set_name)
+    # if there is no sample_set, we must rely on the user defining the entity type
+    elif "entity_type" in args:
+        entity_type = args.entity_type
+    # or let it default to "sample"
+    else:
+        entity_type = "sample"
 
-    (columnSamples, numSamples) = get_column_data(args.entity_type)
+    (columnSamples, numSamples) = get_column_data(entity_type)
     column_names = get_column_values(columnSamples, numSamples)
     write_column_names(column_names, args.vcf_output, args.vcf_index_output)
