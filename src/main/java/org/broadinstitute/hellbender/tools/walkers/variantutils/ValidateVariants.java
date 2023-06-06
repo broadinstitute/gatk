@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.variantutils;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
+import htsjdk.variant.variantcontext.GenotypeLikelihoods;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.logging.log4j.LogManager;
@@ -147,6 +148,11 @@ public final class ValidateVariants extends VariantWalker {
          * Check that allele-specific annotations have the right number of values based on the listed ALTs
          */
         AS_ANNOTATIONS,
+
+        /**
+         * FORMAT annotation lengths (AD and PL)
+         */
+        FORMAT_ANNOTATION_LENGTHS,
 
         /**
          * Includes reference checking (if reference is supplied), dbSNP (if dbSNP is supplied), alt alleles and chromosome counts
@@ -544,6 +550,12 @@ public final class ValidateVariants extends VariantWalker {
                currentType = ValidationType.CHR_COUNTS;
                vc.validateChromosomeCounts();
            }
+
+           if (validationsToPerform[ValidationType.FORMAT_ANNOTATION_LENGTHS.ordinal()]) {
+               currentType = ValidationType.FORMAT_ANNOTATION_LENGTHS;
+               validateFormatAnnotationLengths(vc);
+           }
+
            if (validationsToPerform[ValidationType.GNARLY_INPUT.ordinal()]) {
                currentType = ValidationType.GNARLY_INPUT;
                validateGnarlyInputs(vc);
@@ -612,6 +624,19 @@ public final class ValidateVariants extends VariantWalker {
     private void validateGnarlyOutputs(final VariantContext vc) {
         validateGnarlyAnnotations(vc);
         validateGnarlyGenotypes(vc);
+    }
+
+    private void validateFormatAnnotationLengths(final VariantContext vc) {
+        final int nAlleles = vc.getNAlleles();
+        for (final Genotype g : vc.getGenotypes()) {
+            if (!g.hasPL()) {
+                break;
+            }
+            if (g.getPL().length != GenotypeLikelihoods.numLikelihoods(nAlleles, g.getPloidy())) {
+                final UserException e = new UserException.BadInput("Genotype for sample " + g.getSampleName() + " has incorrect PL length at " + vc.getContig() + ":" + vc.getStart() + " : " + g);
+                throwOrWarn(e);
+            }
+        }
     }
 
     private void validateGnarlyGenotypes(final VariantContext vc) {
