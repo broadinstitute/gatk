@@ -8,9 +8,9 @@ workflow GvsQuickstartVcfIntegration {
     input {
         String branch_name
         File interval_list
+        String expected_output_prefix
         Boolean use_classic_VQSR = true
         Boolean extract_do_not_filter_override = true
-        String expected_output_prefix = "gs://gvs-internal-quickstart/integration/2023-05-31/"
 
         Array[String] external_sample_names = [
                                               "ERS4367795",
@@ -77,7 +77,7 @@ workflow GvsQuickstartVcfIntegration {
         call AssertIdenticalOutputs {
             input:
                 expected_output_prefix = expected_prefix,
-                actual_vcfs = GvsUnified.output_vcfs
+                actual_vcfs = GvsUnified.output_vcfs,
         }
 
         call AssertCostIsTrackedAndExpected {
@@ -85,7 +85,7 @@ workflow GvsQuickstartVcfIntegration {
                 go = GvsUnified.done,
                 dataset_name = CreateDataset.dataset_name,
                 project_id = project_id,
-                expected_output_csv = expected_prefix + "cost_observability_expected.csv"
+                expected_output_csv = expected_prefix + "cost_observability_expected.csv",
         }
 
         call AssertTableSizesAreExpected {
@@ -93,7 +93,7 @@ workflow GvsQuickstartVcfIntegration {
                 go = GvsUnified.done,
                 dataset_name = CreateDataset.dataset_name,
                 project_id = project_id,
-                expected_output_csv = expected_prefix + "table_sizes_expected.csv"
+                expected_output_csv = expected_prefix + "table_sizes_expected.csv",
         }
     }
 

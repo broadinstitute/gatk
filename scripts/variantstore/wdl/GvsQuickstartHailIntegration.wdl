@@ -12,6 +12,7 @@ workflow GvsQuickstartHailIntegration {
         Boolean extract_do_not_filter_override
         String dataset_suffix = "hail"
         String? gatk_override
+        String expected_output_prefix
     }
 
     String project_id = "gvs-internal"
@@ -25,6 +26,7 @@ workflow GvsQuickstartHailIntegration {
             dataset_suffix = dataset_suffix,
             gatk_override = gatk_override,
             interval_list = interval_list,
+            expected_output_prefix = expected_output_prefix,
     }
 
     call ExtractAvroFilesForHail.GvsExtractAvroFilesForHail {
@@ -34,7 +36,7 @@ workflow GvsQuickstartHailIntegration {
             dataset_name = GvsQuickstartVcfIntegration.dataset_name,
             filter_set_name = GvsQuickstartVcfIntegration.filter_set_name,
             scatter_width = 10,
-            call_set_identifier = branch_name
+            call_set_identifier = branch_name,
     }
 
     call CreateAndTieOutVds {

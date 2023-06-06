@@ -34,6 +34,7 @@ workflow GvsQuickstartIntegration {
     }
 
     File full_interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
+    File expected_output_prefix = "gs://gvs-internal-quickstart/integration/2023-05-31/"
 
     call FilterIntervalListChromosomes {
         input:
@@ -55,8 +56,9 @@ workflow GvsQuickstartIntegration {
                 dataset_suffix = "lite_hail",
                 gatk_override = BuildGATKJar.jar,
                 interval_list = FilterIntervalListChromosomes.out,
+                expected_output_prefix = expected_output_prefix,
         }
-        call QuickstartHailIntegration.GvsQuickstartHailIntegration as GvsQuickstartHailVQSRClassicIntegration{
+        call QuickstartHailIntegration.GvsQuickstartHailIntegration as GvsQuickstartHailVQSRClassicIntegration {
             input:
                 branch_name = branch_name,
                 use_classic_VQSR = true,
@@ -64,6 +66,7 @@ workflow GvsQuickstartIntegration {
                 dataset_suffix = "classic_hail",
                 gatk_override = BuildGATKJar.jar,
                 interval_list = FilterIntervalListChromosomes.out,
+                expected_output_prefix = expected_output_prefix,
         }
     }
 
@@ -76,6 +79,7 @@ workflow GvsQuickstartIntegration {
                 dataset_suffix = "lite_vcf",
                 gatk_override = BuildGATKJar.jar,
                 interval_list = FilterIntervalListChromosomes.out,
+                expected_output_prefix = expected_output_prefix,
         }
         call QuickstartVcfIntegration.GvsQuickstartVcfIntegration as QuickstartVcfVQSRClassicIntegration {
             input:
@@ -85,6 +89,7 @@ workflow GvsQuickstartIntegration {
                 dataset_suffix = "classic_vcf",
                 gatk_override = BuildGATKJar.jar,
                 interval_list = FilterIntervalListChromosomes.out,
+                expected_output_prefix = expected_output_prefix,
         }
     }
 }
