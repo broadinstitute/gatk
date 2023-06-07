@@ -1,3 +1,6 @@
+PS4='\D{+%F %T} \w $ '
+set -o xtrace
+
 # Install Docker
 # https://docs.docker.com/engine/install/ubuntu/
 apt-get install --assume-yes ca-certificates curl gnupg lsb-release
