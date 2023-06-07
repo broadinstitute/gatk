@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadata;
 import org.broadinstitute.hellbender.tools.funcotator.vcfOutput.VcfOutputRenderer;
+import org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGTFFieldConstants;
 import org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfGeneFeature;
 
 import java.util.Arrays;
@@ -74,7 +75,7 @@ public class GencodeFuncotation implements Funcotation {
 
     // These are included because they help determine the transcript selection
     private Integer                              locusLevel;
-    private GencodeGtfGeneFeature.FeatureTag     apprisRank;
+    private GencodeGTFFieldConstants.FeatureTag apprisRank;
     private Integer                              transcriptLength;
     private String                               version;
     private String                               geneTranscriptType;
@@ -378,7 +379,7 @@ public class GencodeFuncotation implements Funcotation {
         if (transcriptLength != null ? !transcriptLength.equals(that.transcriptLength) : that.transcriptLength != null)
             return false;
         if (version != null ? !version.equals(that.version) : that.version != null) return false;
-        if (geneTranscriptType != that.geneTranscriptType) return false;
+        if (geneTranscriptType != that.geneTranscriptType) return false; //TODO this is a problem string equality comparison.... it breaks tests to fix it though...
         if (hugoSymbolSerializedOverride != null ? !hugoSymbolSerializedOverride.equals(that.hugoSymbolSerializedOverride) : that.hugoSymbolSerializedOverride != null)
             return false;
         if (ncbiBuildSerializedOverride != null ? !ncbiBuildSerializedOverride.equals(that.ncbiBuildSerializedOverride) : that.ncbiBuildSerializedOverride != null)
@@ -660,11 +661,11 @@ public class GencodeFuncotation implements Funcotation {
         this.locusLevel = locusLevel;
     }
 
-    public GencodeGtfGeneFeature.FeatureTag getApprisRank() {
+    public GencodeGTFFieldConstants.FeatureTag getApprisRank() {
         return apprisRank;
     }
 
-    public void setApprisRank(final GencodeGtfGeneFeature.FeatureTag apprisRank) {
+    public void setApprisRank(final GencodeGTFFieldConstants.FeatureTag apprisRank) {
         this.apprisRank = apprisRank;
     }
 
