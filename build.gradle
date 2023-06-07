@@ -350,7 +350,7 @@ dependencies {
     implementation 'org.broadinstitute:http-nio:0.1.0-rc1'
 
     // Required for COSMIC Funcotator data source:
-    implementation 'org.xerial:sqlite-jdbc:3.36.0.3'
+    implementation 'org.xerial:sqlite-jdbc:3.42.0.0'
 
     // natural sort
     implementation('net.grey-panther:natural-comparator:1.1')
@@ -980,10 +980,14 @@ task gatkValidateGeneratedWdl(dependsOn: [gatkWDLGen, shadowJar]) {
 
 // scan-gradle-plugin security vulnerability scan
 ossIndexAudit {
-    // username = 'email' // if not provided, an anonymous query will be made
-    // password = 'pass'
     allConfigurations = false // if true includes the dependencies in all resolvable configurations. By default is false, meaning only 'compileClasspath', 'runtimeClasspath', 'releaseCompileClasspath' and 'releaseRuntimeClasspath' are considered
     useCache = true // true by default
+    outputFormat = 'DEFAULT' // Optional, other values are: 'DEPENDENCY_GRAPH' prints dependency graph showing direct/transitive dependencies, 'JSON_CYCLONE_DX_1_4' prints a CycloneDX 1.4 SBOM in JSON format.
+    showAll = false // if true prints all dependencies. By default is false, meaning only dependencies with vulnerabilities will be printed.
+    printBanner = true // if true will print ASCII text banner. By default is true.
+
+    // username = 'email' // if not provided, an anonymous query will be made
+    // password = 'pass'
     // cacheDirectory = 'some/path' // by default it uses the user data directory (according to OS)
     // cacheExpiration = 'PT12H' // 12 hours if omitted. It must follow the Joda Time specification at https://www.javadoc.io/doc/joda-time/joda-time/2.10.4/org/joda/time/Duration.html#parse-java.lang.String-
     //proxyConfiguration { // extra configuration when running behind a proxy without direct internet access
@@ -1002,13 +1006,9 @@ ossIndexAudit {
     // ossIndexAudit can be configured to exclude vulnerabilities from matching
     // excludeVulnerabilityIds = ['39d74cc8-457a-4e57-89ef-a258420138c5'] // list containing ids of vulnerabilities to be ignored
     // excludeCoordinates = ['commons-fileupload:commons-fileupload:1.3'] // list containing coordinate of components which if vulnerable should be ignored
-
+    // cycloneDxComponentType = 'LIBRARY' // Optional, only used when outputFormat = 'JSON_CYCLONE_DX_1_4' to define the type of component this project is for the BOM metadata with possible values: 'LIBRARY' (default), 'APPLICATION', 'FRAMEWORK', 'CONTAINER', 'OPERATING_SYSTEM', 'DEVICE', 'FIRMWARE' and 'FILE'.
     // Output options
-    outputFormat = 'DEFAULT' // Optional, other values are: 'DEPENDENCY_GRAPH' prints dependency graph showing direct/transitive dependencies, 'JSON_CYCLONE_DX_1_4' prints a CycloneDX 1.4 SBOM in JSON format.
-    cycloneDxComponentType = 'LIBRARY' // Optional, only used when outputFormat = 'JSON_CYCLONE_DX_1_4' to define the type of component this project is for the BOM metadata with possible values: 'LIBRARY' (default), 'APPLICATION', 'FRAMEWORK', 'CONTAINER', 'OPERATING_SYSTEM', 'DEVICE', 'FIRMWARE' and 'FILE'.
-    //isColorEnabled = true // if true (and outputFormat = "DEFAULT") prints vulnerability description in color. By default is true.
-    showAll = false // if true prints all dependencies. By default is false, meaning only dependencies with vulnerabilities will be printed.
-    printBanner = true // if true will print ASCII text banner. By default is true.
+    // isColorEnabled = true // if true (and outputFormat = "DEFAULT") prints vulnerability description in color. By default is true.
 }
 
 /**
