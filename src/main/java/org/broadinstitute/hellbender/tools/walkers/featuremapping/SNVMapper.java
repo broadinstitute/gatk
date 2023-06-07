@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.featuremapping;
 
 import htsjdk.samtools.CigarElement;
-import org.apache.commons.lang.ArrayUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
