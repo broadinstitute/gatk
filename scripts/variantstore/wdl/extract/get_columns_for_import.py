@@ -289,7 +289,8 @@ if __name__ == '__main__':
                         help='Optional set of entities--often called a sample_set. Having a sample_set is recommended for loading large amounts of data')
 
     parser.add_argument('--user_defined_sample_id', type=str,
-                        help='The column that the user would like to use as the sample name in GVS and in the final extract')
+                        help='The column that the user would like to use as the sample name in GVS and in the final extract',
+                        required=False)
 
     parser.add_argument('--vcf_output', type=str,
                         help='The location to write the suggested vcf col name',
