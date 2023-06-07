@@ -233,6 +233,7 @@ task ExtractFromSuperpartitionedTables {
                 FROM \`~{project_id}.~{dataset_name}.ref_ranges_${str_table_index}\` r
                 INNER JOIN \`~{project_id}.~{dataset_name}.sample_info\` s ON s.sample_id = r.sample_id
                 WHERE withdrawn IS NULL AND
+                state != '0' AND
                 is_control = false
                 ORDER BY location
             " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name ref_ranges_${str_table_index} --project_id ~{project_id}
