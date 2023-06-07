@@ -77,6 +77,7 @@ task GenerateFOFNsFromDataTables {
             --error_file_name ~{error_file_name}
 
         ## Validate by testing file lengths and failing if they are not all the same
+        wc -l ~{sample_names_file_name}
         sample_count=$(wc -l < ~{sample_names_file_name})
         vcf_count=$(wc -l < ~{vcf_files_name})
         index_count=$(wc -l < ~{vcf_index_files_name})
