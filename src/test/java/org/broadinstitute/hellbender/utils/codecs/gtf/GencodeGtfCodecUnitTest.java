@@ -3362,14 +3362,6 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
         };
     }
 
-//    private Object[] createTestData_gencode_v43_valid_gencode() {
-//        return new Object[] {
-//                "gencode.v19.and.this.is.a.valid.one.too.gtf",
-//                new ArrayList<>( Collections.singletonList( createGencodeGtfGene_gencode_v19_and_this_is_a_valid_one_too() ) ),
-//                "hg19"
-//        };
-//    }
-
     // ============================================================================================================
     // ============================================================================================================
     // ============================================================================================================
@@ -3400,7 +3392,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 { gencodeHG38V43TestFile, "chr1", 35001, 35500, 1, },          // region fits in gene
                 { gencodeHG38V43TestFile, "chr1", 35500, 37000, 1, },          // region start in gene
                 { gencodeHG38V43TestFile, "chr1", 32198, 35500, 1, },          // region end in gene
-                { gencodeHG38V43TestFile, "chr1", 1, 200000000, 1982, },       // Many genes in region
+                { gencodeHG38V43TestFile, "chr1", 1, 200000000, 677, },        // Many genes in region
                 { gencodeHG38V43TestFile, "chr1", 33001, 34091, 0, },          // no genes in region
 
 
@@ -3455,7 +3447,7 @@ public class GencodeGtfCodecUnitTest extends GATKBaseTest {
                 { "gencode.valid_gencode_file2.gtf"              , testResourceDir, true},   // Valid file
                 { "gencode.and.this.is.a.valid.one.too.table.gtf", testResourceDir, true},   // Valid file
 
-                //{ "gencode.v43.LargeFile.gtf"                    , largeFileTestDir, true},   // Valid file - v43 (with previously disallowed tags)
+                { "gencode.v43.LargeFile.gtf"                    , largeFileTestDir, true},   // Valid file - v43 (with previously disallowed tags)
 
                 { "Escherichia_coli_str_k_12_substr_mg1655.ASM584v2.44.gtf", eColiTestDir, false},   // Not valid GENCODE GTF
         };
