@@ -61,16 +61,16 @@ final htsjdkVersion = System.getProperty('htsjdk.version','3.0.5')
 final picardVersion = System.getProperty('picard.version','3.0.0')
 final barclayVersion = System.getProperty('barclay.version','5.0.0')
 final sparkVersion = System.getProperty('spark.version', '3.3.1')
-final hadoopVersion = System.getProperty('hadoop.version', '3.3.1')
-final disqVersion = System.getProperty('disq.version','0.3.6')
+final hadoopVersion = System.getProperty('hadoop.version', '3.3.5')
+final disqVersion = System.getProperty('disq.version','0.3.8')
 final genomicsdbVersion = System.getProperty('genomicsdb.version','1.4.4')
-final bigQueryVersion = System.getProperty('bigQuery.version', '2.9.0')
-final bigQueryStorageVersion = System.getProperty('bigQueryStorage.version', '2.9.1')
-final guavaVersion = System.getProperty('guava.version', '31.0.1-jre')
-final log4j2Version = System.getProperty('log4j2Version', '2.17.1')
+final bigQueryVersion = System.getProperty('bigQuery.version', '2.27.0')
+final bigQueryStorageVersion = System.getProperty('bigQueryStorage.version', '2.37.2')
+final guavaVersion = System.getProperty('guava.version', '32.0.0-jre')
+final log4j2Version = System.getProperty('log4j2Version', '2.20.0')
 final testNGVersion = '7.0.0'
 
-final googleCloudNioDependency = 'com.google.cloud:google-cloud-nio:0.123.25'
+final googleCloudNioDependency = 'com.google.cloud:google-cloud-nio:0.126.16'
 
 final baseJarName = 'gatk'
 final secondaryBaseJarName = 'hellbender'
@@ -169,7 +169,7 @@ configurations.all {
         force 'com.google.guava:guava:' + guavaVersion
         // force the htsjdk version so we don't get a different one transitively
         force 'com.github.samtools:htsjdk:' + htsjdkVersion
-        force 'com.google.protobuf:protobuf-java:3.21.6'
+        force 'com.google.protobuf:protobuf-java:4.0.0-rc-2'
         // force testng dependency so we don't pick up a different version via GenomicsDB
         force 'org.testng:testng:' + testNGVersion
         force 'org.broadinstitute:barclay:' + barclayVersion
@@ -270,12 +270,12 @@ dependencies {
     // are routed to log4j
     implementation 'org.apache.logging.log4j:log4j-jcl:' + log4j2Version
 
-    implementation 'org.apache.commons:commons-lang3:3.5'
-    implementation 'org.apache.commons:commons-math3:3.5'
+    implementation 'org.apache.commons:commons-lang3:3.12.0'
+    implementation 'org.apache.commons:commons-math3:3.6.1'
     implementation 'org.hipparchus:hipparchus-stat:2.0'
-    implementation 'org.apache.commons:commons-collections4:4.1'
-    implementation 'org.apache.commons:commons-vfs2:2.0'
-    implementation 'org.apache.commons:commons-configuration2:2.4'
+    implementation 'org.apache.commons:commons-collections4:4.4'
+    implementation 'org.apache.commons:commons-vfs2:2.9.0'
+    implementation 'org.apache.commons:commons-configuration2:2.9.0'
     constraints {
         implementation('org.apache.commons:commons-text') {
             version {
@@ -300,8 +300,8 @@ dependencies {
         exclude group: 'org.apache.commons'
     }
 
-    //there is no mllib_2.12.15:3.3.0, so stay use 2.12:3.3.0
-    implementation ('org.apache.spark:spark-mllib_2.12:3.3.0') {
+    //there is no mllib_2.12.15:3.4.0, so stay use 2.12:3.4.0
+    implementation ('org.apache.spark:spark-mllib_2.12:3.4.0') {
         // JUL is used by Google Dataflow as the backend logger, so exclude jul-to-slf4j to avoid a loop
         exclude module: 'jul-to-slf4j'
         exclude module: 'javax.servlet'
