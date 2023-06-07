@@ -186,6 +186,7 @@ task ExtractFromNonSuperpartitionedTables {
 task ExtractFromSuperpartitionedTables {
     meta {
         description: "Extracts from the superpartitioned tables: vet_<table index>, ref_ranges_<table index>"
+        # NOTE: We are explicitly choosing to not extract ref GQ0 because our current set up with HAIL and VDS creation, does not allow for an interpolated GQ band
         # Not dealing with caching for now as that would introduce a lot of complexity.
         volatile: true
     }
