@@ -27,11 +27,6 @@ workflow GvsCalculatePrecisionAndSensitivity {
     exclude_sex_chromosomes: "If analyzing all chromosomes, whether or not to exclude the sex chromosomes; default is `false`. If `chromosomes` is not set to `[]`, this will be ignored."
   }
 
-  # WDL 1.0 trick to set a variable ('none') to be undefined.
-  if (false) {
-    String? none = "None"
-  }
-
   if ((length(sample_names) != length(truth_vcfs)) || (length(sample_names) != length(truth_vcf_indices)) || (length(sample_names) != length(truth_beds))) {
     call ErrorWithMessage {
       input:
