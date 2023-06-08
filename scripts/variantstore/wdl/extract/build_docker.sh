@@ -15,7 +15,7 @@ e.g. 2023-06-06-alpine or 2023-06-06-alpine-ed338e48e
 VALID_ARGS=$(getopt --options r,b --longoptions release,branch -- "$@")
 if [[ $? -ne 0 ]]
 then
-  usage
+    usage
 fi
 
 
@@ -23,24 +23,24 @@ TAG=""
 eval set -- "$VALID_ARGS"
 while true
 do
-  case "$1" in
-    -r|--release)
-      TAG="$(date -Idate)-alpine"
-      shift
-      ;;
-    -b|--branch)
-      TAG="$(date -Idate)-alpine-$(git rev-parse --short HEAD)"
-      shift
-      ;;
-    --) shift;
-      break
-      ;;
-  esac
+    case "$1" in
+        -r|--release)
+            TAG="$(date -Idate)-alpine"
+            shift
+            ;;
+        -b|--branch)
+            TAG="$(date -Idate)-alpine-$(git rev-parse --short HEAD)"
+            shift
+            ;;
+        --) shift;
+            break
+            ;;
+    esac
 done
 
 if [[ -z "$TAG" ]]
 then
-  usage
+    usage
 fi
 
 BASE_REPO="broad-dsde-methods/variantstore"
