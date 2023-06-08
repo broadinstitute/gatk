@@ -82,8 +82,8 @@ RUN echo "source activate gatk" > /root/run_unit_tests.sh && \
 
 # TODO: Remove this when we switch to a better way of loading the pgen dependency
 RUN mkdir /gatk/lib
-COPY --from=gradleBuild /gatk/lib/libpgen.dylib /gatk/lib/libpgen.dylib
-ENV CLASSPATH /gatk/lib/libpgen.dylib:$CLASSPATH
+COPY --from=gradleBuild /gatk/lib/linux/libpgen.so /gatk/lib/libpgen.so
+ENV CLASSPATH /gatk/lib/libpgen.so:$CLASSPATH
 
 WORKDIR /root
 RUN cp -r /root/run_unit_tests.sh /gatk
