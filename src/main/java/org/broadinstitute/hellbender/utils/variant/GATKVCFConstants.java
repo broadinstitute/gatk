@@ -208,7 +208,7 @@ public final class GATKVCFConstants {
     public static final String VQSR_FAILURE_PREFIX = "low_VQSLOD_";
     public static final String VQSR_FAILURE_SNP = VQSR_FAILURE_PREFIX + SNP;
     public static final String VQSR_FAILURE_INDEL = VQSR_FAILURE_PREFIX + INDEL;
-    public static final String VQS_SENS_FAILURE_PREFIX = "low_VQS_SENS_";
+    public static final String VQS_SENS_FAILURE_PREFIX = "high_VQS_SENS_";
     public static final String VQS_SENS_FAILURE_SNP = VQS_SENS_FAILURE_PREFIX + SNP;
     public static final String VQS_SENS_FAILURE_INDEL = VQS_SENS_FAILURE_PREFIX + INDEL;
 
