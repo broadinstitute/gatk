@@ -111,14 +111,13 @@ task CreateAndTieOutVds {
 
         gcloud storage cp 'gs://hail-common/references/Homo_sapiens_assembly38.fasta*' ${REFERENCES_PATH}
 
-        # Temurin Java 17
-        # https://adoptium.net/installation/linux/
-        apt install -y wget apt-transport-https
-        mkdir -p /etc/apt/keyrings
-        wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | tee /etc/apt/keyrings/adoptium.asc
-        echo "deb [signed-by=/etc/apt/keyrings/adoptium.asc] https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | tee /etc/apt/sources.list.d/adoptium.list
+        # Current version of Hail (0.2.117) demands Java 8 or Java 11, refuses to run on Java 17.
+        # Temurin Java 8
+        apt-get -qq install wget apt-transport-https gnupg
+        wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | apt-key add -
+        echo "deb https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | tee /etc/apt/sources.list.d/adoptium.list
         apt-get -qq update
-        apt-get -qq install temurin-17-jdk
+        apt -qq install -y temurin-8-jdk
 
         export PYSPARK_SUBMIT_ARGS='--driver-memory 16g --executor-memory 16g pyspark-shell'
         pip install --upgrade pip
