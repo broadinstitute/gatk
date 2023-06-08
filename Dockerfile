@@ -46,10 +46,6 @@ RUN chmod -R a+rw /gatk
 # Location of the unzipped gatk bundle files
 COPY --from=gradleBuild /gatk/unzippedJar .
 
-# TODO: Remove this when we switch to a better way of loading the pgen dependency
-RUN mkdir /usr/lib/jvm/java-17-openjdk-amd64/lib/ext
-COPY --from=gradleBuild /gatk/lib/libpgen.dylib /usr/lib/jvm/java-17-openjdk-amd64/lib/ext/libpgen.dylib
-
 #Setup linked jars that may be needed for running gatk
 RUN ln -s $( find /gatk -name "gatk*local.jar" ) gatk.jar
 RUN ln -s $( find /gatk -name "gatk*local.jar" ) /root/gatk.jar
@@ -83,6 +79,11 @@ RUN echo "source activate gatk" > /root/run_unit_tests.sh && \
     echo "ln -s /gatkCloneMountPoint/src/ /gatkCloneMountPoint/scripts/docker/src" >> /root/run_unit_tests.sh && \
     echo "ln -s /gatkCloneMountPoint/build/ /gatkCloneMountPoint/scripts/docker/build" >> /root/run_unit_tests.sh && \
     echo "cd /gatk/ && /gatkCloneMountPoint/gradlew -Dfile.encoding=UTF-8 -b /gatkCloneMountPoint/dockertest.gradle testOnPackagedReleaseJar jacocoTestReportOnPackagedReleaseJar -a -p /gatkCloneMountPoint" >> /root/run_unit_tests.sh
+
+# TODO: Remove this when we switch to a better way of loading the pgen dependency
+RUN mkdir /gatk/lib
+COPY --from=gradleBuild /gatk/lib/libpgen.dylib /gatk/lib/libpgen.dylib
+ENV CLASSPATH /gatk/lib/libpgen.dylib:$CLASSPATH
 
 WORKDIR /root
 RUN cp -r /root/run_unit_tests.sh /gatk
