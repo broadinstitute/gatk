@@ -1,5 +1,5 @@
 usage() {
-     echo "
+    echo "
 
 USAGE: ./build_docker.sh [--release|--branch]
 
@@ -8,33 +8,31 @@ Release tags look like <ISO 8601 Date>-alpine, branch tags look like <ISO 8601 D
 
 e.g. 2023-06-06-alpine or 2023-06-06-alpine-ed338e48e
 "
-     exit 1
+    exit 1
 }
 
-
 VALID_ARGS=$(getopt --options r,b --longoptions release,branch -- "$@")
-if [[ $? -ne 0 ]]
-then
+if [[ $? -ne 0 ]]; then
     usage
 fi
-
 
 TAG=""
 eval set -- "$VALID_ARGS"
 while true
 do
     case "$1" in
-        -r|--release)
-            TAG="$(date -Idate)-alpine"
-            shift
-            ;;
-        -b|--branch)
-            TAG="$(date -Idate)-alpine-$(git rev-parse --short HEAD)"
-            shift
-            ;;
-        --) shift;
-            break
-            ;;
+    -r | --release)
+        TAG="$(date -Idate)-alpine"
+        shift
+        ;;
+    -b | --branch)
+        TAG="$(date -Idate)-alpine-$(git rev-parse --short HEAD)"
+        shift
+        ;;
+    --)
+        shift
+        break
+        ;;
     esac
 done
 
