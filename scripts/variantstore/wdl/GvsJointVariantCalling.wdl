@@ -14,7 +14,7 @@ workflow GvsJointVariantCalling {
         String drop_state = "FORTY"
         Boolean use_classic_VQSR = true
         # Beta users have accounts with tighter quotas, and we must work around that
-        Boolean tigher_gcp_quotas = true
+        Boolean tighter_gcp_quotas = true
     }
 
     # the call_set_identifier string is used to name many different things throughout this workflow (BQ tables, vcfs etc),
@@ -80,7 +80,7 @@ workflow GvsJointVariantCalling {
             SNP_VQSR_CLASSIC_max_gaussians_override = SNP_VQSR_CLASSIC_max_gaussians_override,
             SNP_VQSR_CLASSIC_mem_gb_override = SNP_VQSR_CLASSIC_mem_gb_override,
             drop_state = drop_state,
-            is_beta_user = tigher_gcp_quotas,
+            is_beta_user = tighter_gcp_quotas,
     }
 
     output {
