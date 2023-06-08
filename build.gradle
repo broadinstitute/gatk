@@ -356,7 +356,8 @@ dependencies {
     implementation('com.fasterxml.jackson.module:jackson-module-scala_2.12:2.9.8')
 
     // TODO: This will need to be removed once the pgen jni work is complete (I think?)
-    implementation('org.broadinstitute:pgen:1.0')
+    //implementation('org.broadinstitute:pgen:1.0')
+    implementation files('lib/pgen.jar')
 
     testUtilsImplementation sourceSets.main.output
     testUtilsImplementation 'org.testng:testng:' + testNGVersion

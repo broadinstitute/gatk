@@ -46,6 +46,10 @@ RUN chmod -R a+rw /gatk
 # Location of the unzipped gatk bundle files
 COPY --from=gradleBuild /gatk/unzippedJar .
 
+# TODO: Remove this when we switch to a better way of loading the pgen dependency
+RUN mkdir /usr/lib/jvm/java-17-openjdk-amd64/lib/ext
+COPY --from=gradleBuild /gatk/lib/libpgen.dylib /usr/lib/jvm/java-17-openjdk-amd64/lib/ext/libpgen.dylib
+
 #Setup linked jars that may be needed for running gatk
 RUN ln -s $( find /gatk -name "gatk*local.jar" ) gatk.jar
 RUN ln -s $( find /gatk -name "gatk*local.jar" ) /root/gatk.jar
