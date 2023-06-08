@@ -1264,6 +1264,132 @@ public final class IntervalUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(sorted, expected);
     }
 
+    @DataProvider(name = "testSortAndMergeSimpleIntervalsData")
+    public Object[][] testSortAndMergeSimpleIntervalsData() {
+        return new Object[][] {
+                // All overlapping
+                { Arrays.asList(new SimpleInterval("1", 1, 5),
+                        new SimpleInterval("1", 3, 7),
+                        new SimpleInterval("1", 5, 10)),
+                        IntervalMergingRule.ALL,
+                        Arrays.asList(new SimpleInterval("1", 1, 10))
+                },
+
+                // Some overlapping
+                { Arrays.asList(new SimpleInterval("1", 1, 5),
+                        new SimpleInterval("1", 3, 7),
+                        new SimpleInterval("1", 9, 10)),
+                        IntervalMergingRule.ALL,
+                        Arrays.asList(new SimpleInterval("1", 1, 7),
+                                new SimpleInterval("1", 9, 10))
+                },
+
+                // Out of order
+                { Arrays.asList(new SimpleInterval("1", 100, 110),
+                        new SimpleInterval("1", 105, 115),
+                        new SimpleInterval("1", 1, 5),
+                        new SimpleInterval("1", 3, 7),
+                        new SimpleInterval("1", 5, 10)),
+                        IntervalMergingRule.ALL,
+                        Arrays.asList(new SimpleInterval("1", 1, 10),
+                                new SimpleInterval("1", 100, 115))
+                },
+
+                // Adjacent, IntervalMergingRule.ALL
+                { Arrays.asList(new SimpleInterval("1", 1, 5),
+                        new SimpleInterval("1", 6, 10),
+                        new SimpleInterval("1", 11, 15)),
+                        IntervalMergingRule.ALL,
+                        Arrays.asList(new SimpleInterval("1", 1, 15))
+                },
+
+                // Adjacent, IntervalMergingRule.OVERLAPPING_ONLY
+                { Arrays.asList(new SimpleInterval("1", 1, 5),
+                        new SimpleInterval("1", 6, 10),
+                        new SimpleInterval("1", 11, 15)),
+                        IntervalMergingRule.OVERLAPPING_ONLY,
+                        Arrays.asList(new SimpleInterval("1", 1, 5),
+                                new SimpleInterval("1", 6, 10),
+                                new SimpleInterval("1", 11, 15)),
+                },
+
+                // Mix of overlapping and adjacent, IntervalMergingRule.ALL
+                { Arrays.asList(new SimpleInterval("1", 1, 5),
+                        new SimpleInterval("1", 6, 10),
+                        new SimpleInterval("1", 8, 15),
+                        new SimpleInterval("1", 100, 200),
+                        new SimpleInterval("1", 150, 250),
+                        new SimpleInterval("1", 175, 275),
+                        new SimpleInterval("1", 276, 300)),
+                        IntervalMergingRule.ALL,
+                        Arrays.asList(new SimpleInterval("1", 1, 15),
+                                new SimpleInterval("1", 100, 300))
+                },
+
+                // Mix of overlapping and adjacent, IntervalMergingRule.OVERLAPPING_ONLY
+                { Arrays.asList(new SimpleInterval("1", 1, 5),
+                        new SimpleInterval("1", 6, 10),
+                        new SimpleInterval("1", 8, 15),
+                        new SimpleInterval("1", 100, 200),
+                        new SimpleInterval("1", 150, 250),
+                        new SimpleInterval("1", 175, 275),
+                        new SimpleInterval("1", 276, 300)),
+                        IntervalMergingRule.OVERLAPPING_ONLY,
+                        Arrays.asList(new SimpleInterval("1", 1, 5),
+                                new SimpleInterval("1", 6, 15),
+                                new SimpleInterval("1", 100, 275),
+                                new SimpleInterval("1", 276, 300))
+                },
+
+                // Mix of overlapping and adjacent, IntervalMergingRule.ALL, out of order
+                { Arrays.asList(new SimpleInterval("1", 100, 200),
+                        new SimpleInterval("1", 8, 15),
+                        new SimpleInterval("1", 175, 275),
+                        new SimpleInterval("1", 1, 5),
+                        new SimpleInterval("1", 6, 10),
+                        new SimpleInterval("1", 276, 300),
+                        new SimpleInterval("1", 150, 250)),
+                        IntervalMergingRule.ALL,
+                        Arrays.asList(new SimpleInterval("1", 1, 15),
+                                new SimpleInterval("1", 100, 300))
+                },
+
+                // Mix of overlapping and adjacent, IntervalMergingRule.ALL, out of order, multiple contigs
+                { Arrays.asList(new SimpleInterval("1", 100, 200),
+                        new SimpleInterval("1", 8, 15),
+                        new SimpleInterval("1", 175, 275),
+                        new SimpleInterval("2", 50, 60),
+                        new SimpleInterval("1", 1, 5),
+                        new SimpleInterval("1", 6, 10),
+                        new SimpleInterval("2", 40, 50),
+                        new SimpleInterval("1", 276, 300),
+                        new SimpleInterval("1", 150, 250)),
+                        IntervalMergingRule.ALL,
+                        Arrays.asList(new SimpleInterval("1", 1, 15),
+                                new SimpleInterval("1", 100, 300),
+                                new SimpleInterval("2", 40, 60))
+                },
+
+                // Empty list
+                { Collections.emptyList(), IntervalMergingRule.ALL, Collections.emptyList() },
+
+                // List of size 1
+                { Arrays.asList(new SimpleInterval("1", 1, 5)),
+                        IntervalMergingRule.ALL,
+                        Arrays.asList(new SimpleInterval("1", 1, 5))
+                }
+        };
+    }
+
+    @Test(dataProvider = "testSortAndMergeSimpleIntervalsData")
+    public void testSortAndMergeSimpleIntervals(final List<SimpleInterval> unmergedIntervals,
+                                                final IntervalMergingRule mergingRule,
+                                                final List<SimpleInterval> expectedMergedIntervals) {
+
+        final List<SimpleInterval> actualMergedIntervals = IntervalUtils.sortAndMergeIntervals(unmergedIntervals, mergingRule);
+        Assert.assertEquals(actualMergedIntervals, expectedMergedIntervals, "Wrong intervals after sortAndMergeIntervals()");
+    }
+
     @DataProvider(name="loadIntervalsNonMerge")
     public Object[][] getloadIntervalsNonMerge(){
         final String severalIntervals = "src/test/resources/org/broadinstitute/hellbender/utils/interval/example_intervals.list";

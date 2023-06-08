@@ -473,6 +473,43 @@ public final class IntervalUtils {
     }
 
     /**
+     * Merges a list of potentially-overlapping SimpleIntervals into a new sorted list of intervals covering
+     * the same genomic territory but with all overlapping (and, if specified, adjacent) intervals merged.
+     *
+     * WARNING: Since this method does not take a sequence dictionary, it uses lexicographical ordering for the contig
+     * names. If this is not desirable, use the overload that takes GenomeLocs instead.
+     *
+     * @param raw List of intervals to merge. Does not need to be sorted.
+     * @param rule Whether to merge adjacent intervals, or just overlapping intervals
+     * @return A new list of merged disjoint intervals, sorted by start position
+     */
+    public static List<SimpleInterval> sortAndMergeIntervals(final List<SimpleInterval> raw, final IntervalMergingRule rule) {
+        if (raw.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        final List<SimpleInterval> rawSorted = new ArrayList<>(raw);
+        Collections.sort(rawSorted, Comparator.comparing(SimpleInterval::getContig).thenComparing(SimpleInterval::getStart));
+
+        final List<SimpleInterval> merged = new ArrayList<>();
+        final Iterator<SimpleInterval> it = rawSorted.iterator();
+        SimpleInterval prev = it.next();
+        while (it.hasNext()) {
+            final SimpleInterval curr = it.next();
+            if (prev.overlaps(curr)) {
+                prev = prev.mergeWithContiguous(curr);
+            } else if (prev.contiguous(curr) && (rule == null || rule == IntervalMergingRule.ALL)) {
+                prev = prev.mergeWithContiguous(curr);
+            } else {
+                merged.add(prev);
+                prev = curr;
+            }
+        }
+        merged.add(prev);
+        return merged;
+    }
+
+    /**
      * computes whether the test interval list is equivalent to master.  To be equivalent, test must
      * contain GenomeLocs covering every base in master, exactly once.  Note that this algorithm
      * assumes that master genomelocs are all discontiguous (i.e., we don't have locs like 1-3 and 4-6 but

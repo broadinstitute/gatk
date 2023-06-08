@@ -306,15 +306,6 @@ dependencies {
     }
     implementation 'com.thoughtworks.paranamer:paranamer:2.8'
 
-    implementation 'org.bdgenomics.bdg-formats:bdg-formats:0.5.0'
-    implementation('org.bdgenomics.adam:adam-core-spark2_2.12:0.28.0') {
-        exclude group: 'org.slf4j'
-        exclude group: 'org.apache.hadoop'
-        exclude group: 'org.scala-lang'
-        exclude module: 'kryo'
-        exclude module: 'hadoop-bam'
-    }
-
     implementation 'org.jgrapht:jgrapht-core:1.1.0'
     implementation 'org.jgrapht:jgrapht-io:1.1.0'
 

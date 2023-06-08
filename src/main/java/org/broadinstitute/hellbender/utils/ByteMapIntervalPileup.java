@@ -344,10 +344,11 @@ class ByteMapIntervalPileup implements IntervalPileup {
             inserts = consolidateInserts(pileup.insertsBuffer, pileup.insertsBufferOffsets);
         }
 
+        @SuppressWarnings("unchecked")
         private static Int2ObjectMap<Insert> consolidateInserts(final List<Insert> inserts, final IntList offsets) {
             final int size = inserts.size();
             if (size == 0) {
-                return Int2ObjectMaps.emptyMap();
+                return (Int2ObjectMap<Insert>)Int2ObjectMaps.EMPTY_MAP;
             } else if (size == 1) {
                 return Int2ObjectMaps.singleton(offsets.get(0) , inserts.get(0));
             } else {
