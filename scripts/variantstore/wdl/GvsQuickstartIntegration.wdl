@@ -51,7 +51,7 @@ workflow GvsQuickstartIntegration {
         call QuickstartHailIntegration.GvsQuickstartHailIntegration as GvsQuickstartHailVQSRLiteIntegration {
             input:
                 branch_name = branch_name,
-                use_classic_VQSR = false,
+                use_VQSR_lite = true,
                 extract_do_not_filter_override = false,
                 dataset_suffix = "lite_hail",
                 gatk_override = BuildGATKJar.jar,
@@ -61,9 +61,10 @@ workflow GvsQuickstartIntegration {
         call QuickstartHailIntegration.GvsQuickstartHailIntegration as GvsQuickstartHailVQSRClassicIntegration {
             input:
                 branch_name = branch_name,
-                use_classic_VQSR = true,
+                use_VQSR_lite = false,
                 extract_do_not_filter_override = false,
                 dataset_suffix = "classic_hail",
+                gatk_override = BuildGATKJar.jar,
                 gatk_override = BuildGATKJar.jar,
                 interval_list = FilterIntervalListChromosomes.out,
                 expected_output_prefix = expected_output_prefix,
@@ -74,7 +75,7 @@ workflow GvsQuickstartIntegration {
         call QuickstartVcfIntegration.GvsQuickstartVcfIntegration as QuickstartVcfVQSRLiteIntegration {
             input:
                 branch_name = branch_name,
-                use_classic_VQSR = false,
+                use_VQSR_lite = true,
                 extract_do_not_filter_override = false,
                 dataset_suffix = "lite_vcf",
                 gatk_override = BuildGATKJar.jar,
@@ -84,7 +85,7 @@ workflow GvsQuickstartIntegration {
         call QuickstartVcfIntegration.GvsQuickstartVcfIntegration as QuickstartVcfVQSRClassicIntegration {
             input:
                 branch_name = branch_name,
-                use_classic_VQSR = true,
+                use_VQSR_lite = false,
                 extract_do_not_filter_override = true,
                 dataset_suffix = "classic_vcf",
                 gatk_override = BuildGATKJar.jar,

@@ -9,7 +9,7 @@ workflow GvsQuickstartVcfIntegration {
         String branch_name
         File interval_list
         String expected_output_prefix
-        Boolean use_classic_VQSR = true
+        Boolean use_VQSR_lite = true
         Boolean extract_do_not_filter_override = true
 
         Array[String] external_sample_names = [
@@ -61,7 +61,7 @@ workflow GvsQuickstartVcfIntegration {
             input_vcfs = input_vcfs,
             input_vcf_indexes = input_vcf_indexes,
             filter_set_name = "quickit",
-            use_classic_VQSR = use_classic_VQSR,
+            use_VQSR_lite = use_VQSR_lite,
             extract_table_prefix = "quickit",
             extract_scatter_count = extract_scatter_count,
             # optionally turn off filtering (VQSR Classic is not deterministic)
@@ -72,7 +72,7 @@ workflow GvsQuickstartVcfIntegration {
     }
 
     # Only assert identical outputs if we did not filter (filtering is not deterministic) OR if we are using VQSR Lite (which is deterministic)
-    if (extract_do_not_filter_override || !use_classic_VQSR) {
+    if (extract_do_not_filter_override || use_VQSR_lite) {
         String expected_prefix = expected_output_prefix + dataset_suffix + "/"
         call AssertIdenticalOutputs {
             input:
