@@ -122,7 +122,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
         if (debugSite) {
             System.out.println("Variants to PDHapDetermination:\n"+
-                    eventsInOrder.stream().map(Event::asVariantContext).map(PartiallyDeterminedHaplotype.getDRAGENDebugVariantContextString((int) referenceHaplotype.getStartPosition())).collect(Collectors.joining("\n")));
+                    eventsInOrder.stream().map(PartiallyDeterminedHaplotype.getDRAGENDebugEventString((int) referenceHaplotype.getStartPosition())).collect(Collectors.joining("\n")));
         }
 
         // TODO this is where we filter out if indels > 32 (a heuristic known from DRAGEN that is not implemented here)
@@ -153,8 +153,8 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         }
         //Print the event groups
         if (debugSite) eventsByDRAGENCoordinates.entrySet().stream().map(e -> {
-            return String.format("%.1f", e.getKey()) + " -> " + e.getValue().stream().map(Event::asVariantContext)
-                    .map(PartiallyDeterminedHaplotype.getDRAGENDebugVariantContextString((int) referenceHaplotype.getStartPosition()))
+            return String.format("%.1f", e.getKey()) + " -> " + e.getValue().stream()
+                    .map(PartiallyDeterminedHaplotype.getDRAGENDebugEventString((int) referenceHaplotype.getStartPosition()))
                     .collect(Collectors.joining(","));
         }).forEach(System.out::println);
 
@@ -163,7 +163,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         List<List<Event>> disallowedPairs = smithWatermanRealignPairsOfVariantsForEquivalentEvents(referenceHaplotype, aligner, swParameters, debugSite, eventsInOrder, vcsAsList);
         if (debugSite) {
             System.out.println("disallowed Variant pairs:");
-            disallowedPairs.stream().map(l -> l.stream().map(Event::asVariantContext).map(PartiallyDeterminedHaplotype.getDRAGENDebugVariantContextString((int) referenceHaplotype.getStartPosition())).collect(Collectors.joining("->"))).forEach(System.out::println);
+            disallowedPairs.stream().map(l -> l.stream().map(PartiallyDeterminedHaplotype.getDRAGENDebugEventString((int) referenceHaplotype.getStartPosition())).collect(Collectors.joining("->"))).forEach(System.out::println);
         }
 
         if (debugSite) {
@@ -227,7 +227,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
              * NOTE: we skip the reference allele in the event that we are making determined haplotypes instead of undetermined haplotypes
              */
             for (int IndexOfAllele = (makeDeterminedHapsInstead?0:-1); IndexOfAllele < determinedVariants.size(); IndexOfAllele++) { //note -1 for I here corresponds to the reference allele at this site
-                if (debugSite) System.out.println("Working with allele at site: "+(IndexOfAllele ==-1? "[ref:"+(variantSiteGroup.getKey()-referenceHaplotype.getStartPosition())+"]" : PartiallyDeterminedHaplotype.getDRAGENDebugVariantContextString((int)referenceHaplotype.getStartPosition()).apply(determinedVariants.get(IndexOfAllele).asVariantContext())));
+                if (debugSite) System.out.println("Working with allele at site: "+(IndexOfAllele ==-1? "[ref:"+(variantSiteGroup.getKey()-referenceHaplotype.getStartPosition())+"]" : PartiallyDeterminedHaplotype.getDRAGENDebugEventString((int)referenceHaplotype.getStartPosition()).apply(determinedVariants.get(IndexOfAllele))));
                 // This corresponds to the DRAGEN code for
                 // 0 0
                 // 0 1
@@ -286,9 +286,9 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                     for (int i = 0; i < branchExcludeAlleles.size(); i++) {
                         final int ifinal = i;
                         System.out.println("Branch "+i+" VCs:");
-                        System.out.println("exclude:"+branchExcludeAlleles.get(i).stream().map(Event::asVariantContext).map(PartiallyDeterminedHaplotype.getDRAGENDebugVariantContextString((int)referenceHaplotype.getStartPosition())).collect(Collectors.joining("->")));
+                        System.out.println("exclude:"+branchExcludeAlleles.get(i).stream().map(PartiallyDeterminedHaplotype.getDRAGENDebugEventString((int)referenceHaplotype.getStartPosition())).collect(Collectors.joining("->")));
                         //to match dragen debug output for personal sanity
-                        System.out.println("include:"+eventsInOrder.stream().filter(variantContext -> !branchExcludeAlleles.get(ifinal).contains(variantContext)).map(Event::asVariantContext).map(PartiallyDeterminedHaplotype.getDRAGENDebugVariantContextString((int)referenceHaplotype.getStartPosition())).collect(Collectors.joining("->")));
+                        System.out.println("include:"+eventsInOrder.stream().filter(variantContext -> !branchExcludeAlleles.get(ifinal).contains(variantContext)).map(PartiallyDeterminedHaplotype.getDRAGENDebugEventString((int)referenceHaplotype.getStartPosition())).collect(Collectors.joining("->")));
                     }
                 }
 
@@ -355,13 +355,13 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
                         for (List<Event> subset : variantGroupsCombinatorialExpansion) {
                             subset.sort(HAPLOTYPE_SNP_FIRST_COMPARATOR);
-                            if (debugSite) System.out.println("Construcing Hap From Events:"+ subset.stream().map(Event::asVariantContext).map(PartiallyDeterminedHaplotype.getDRAGENDebugVariantContextString((int) referenceHaplotype.getStartPosition())).collect(Collectors.joining("->")));
+                            if (debugSite) System.out.println("Construcing Hap From Events:"+ subset.stream().map(PartiallyDeterminedHaplotype.getDRAGENDebugEventString((int) referenceHaplotype.getStartPosition())).collect(Collectors.joining("->")));
                             branchHaps.add(constructHaplotypeFromVariants(referenceHaplotype, subset, true));
                         }
                     }
                     // Add the branch haps to the results:
                     if (debugSite) {
-                        System.out.println("Constructed Haps for Branch"+excludeEvents.stream().map(Event::asVariantContext).map(PartiallyDeterminedHaplotype.getDRAGENDebugVariantContextString((int) referenceHaplotype.getStartPosition())).collect(Collectors.joining(",")) + ":");
+                        System.out.println("Constructed Haps for Branch"+excludeEvents.stream().map(PartiallyDeterminedHaplotype.getDRAGENDebugEventString((int) referenceHaplotype.getStartPosition())).collect(Collectors.joining(",")) + ":");
                         System.out.println(branchHaps.stream().map(h -> h.getCigar() + " " + h.toString()).collect(Collectors.joining("\n")));
                     }
 
@@ -429,7 +429,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                     if (j != i && !eventsOverlapForPDHapsCode(firstEvent, secondEvent, true) && ((!secondEvent.isIndel()) || j > i)) {
                         final List<Event> events = new ArrayList<>(Arrays.asList(firstEvent, secondEvent));
                         events.sort(HAPLOTYPE_SNP_FIRST_COMPARATOR);
-                        if (debugSite) System.out.println("Testing events: "+ events.stream().map(Event::asVariantContext).map(PartiallyDeterminedHaplotype.getDRAGENDebugVariantContextString((int) referenceHaplotype.getStartPosition())).collect(Collectors.joining("->")));
+                        if (debugSite) System.out.println("Testing events: "+ events.stream().map(PartiallyDeterminedHaplotype.getDRAGENDebugEventString((int) referenceHaplotype.getStartPosition())).collect(Collectors.joining("->")));
                         if (constructArtificialHaplotypeAndTestEquivalentEvents(referenceHaplotype, aligner, swParameters, eventsInOrder, events, debugSite)) {
                             disallowedPairs.add(events);
                         }
@@ -465,7 +465,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                                 List<Event> subList = new ArrayList<>(events);
                                 subList.add(thirdEvent);
                                 subList.sort(HAPLOTYPE_SNP_FIRST_COMPARATOR);
-                                if (debugSite) System.out.println("Testing events: " + subList.stream().map(Event::asVariantContext).map(PartiallyDeterminedHaplotype.getDRAGENDebugVariantContextString((int) referenceHaplotype.getStartPosition())).collect(Collectors.joining("->")));
+                                if (debugSite) System.out.println("Testing events: " + subList.stream().map(PartiallyDeterminedHaplotype.getDRAGENDebugEventString((int) referenceHaplotype.getStartPosition())).collect(Collectors.joining("->")));
                                 if (constructArtificialHaplotypeAndTestEquivalentEvents(referenceHaplotype, aligner, swParameters, eventsInOrder, subList, debugSite)) {
                                     disallowedPairs.add(subList);
                                 }
@@ -542,8 +542,8 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                 // Do any of variants (that were not in our set of 2-3 targets) appear in our overall list of alleles
                 .anyMatch(event -> events.stream().anyMatch(event::equals));
         if (debugSite) System.out.println(
-                realignHap.getEventMap().getEvents().stream().map(Event::asVariantContext)
-                .map(PartiallyDeterminedHaplotype.getDRAGENDebugVariantContextString((int) referenceHaplotype.getStartPosition()))
+                realignHap.getEventMap().getEvents().stream()
+                .map(PartiallyDeterminedHaplotype.getDRAGENDebugEventString((int) referenceHaplotype.getStartPosition()))
                 .collect(Collectors.joining("\n")));
         if (wasEquivalentEvent) {
             if (debugSite) System.out.println("Events mismatched!");
@@ -942,7 +942,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
         //Print The event group in Illumina indexed ordering:
         public String toDisplayString(int startPos) {
-            return "EventGroup: " + variantsInBitmapOrder.stream().map(Event::asVariantContext).map(vc -> PartiallyDeterminedHaplotype.getDRAGENDebugVariantContextString(startPos).apply(vc)).collect(Collectors.joining("->"));
+            return "EventGroup: " + variantsInBitmapOrder.stream().map(vc -> PartiallyDeterminedHaplotype.getDRAGENDebugEventString(startPos).apply(vc)).collect(Collectors.joining("->"));
         }
 
         public boolean contains(final Event event) {

@@ -4,7 +4,6 @@ import com.google.common.annotations.VisibleForTesting;
 import com.netflix.servo.util.Objects;
 import htsjdk.samtools.Cigar;
 import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.util.Arrays;
@@ -135,15 +134,15 @@ public final class  PartiallyDeterminedHaplotype extends Haplotype {
         String output = "HapLen:"+length() +", "+new String(getDisplayBases());
         output = output + "\nUnresolved Bases["+alternateBases.length+"] "+Arrays.toString(alternateBases);
         return output + "\n"+getCigar().toString()+" "+ constituentBuiltEvents.stream()
-                .map(v ->(v==this.alleleBearingEvent ?"*":"")+getDRAGENDebugVariantContextString((int)getStartPosition()).apply(v.asVariantContext()) )
+                .map(v ->(v==this.alleleBearingEvent ?"*":"")+ getDRAGENDebugEventString((int)getStartPosition()).apply(v) )
                 .collect(Collectors.joining("->"));
     }
 
     /**
      * A printout of the PD haplotype meant to be readable and easily comparable to the DRAGEN debug mode output for the same haplotype.
      */
-    public static Function<VariantContext, String> getDRAGENDebugVariantContextString(final int offset) {
-        return v -> "(" + Integer.toString(v.getStart() - offset + (v.isSimpleDeletion()? 1 : 0))+ (v.isSimpleInsertion()?".5":"") + ",Rlen=" + v.getLengthOnReference()+"," + v.getAlternateAlleles() + ")";
+    public static Function<Event, String> getDRAGENDebugEventString(final int offset) {
+        return e -> "(" + Integer.toString(e.getStart() - offset + (e.isSimpleDeletion()? 1 : 0))+ (e.isSimpleInsertion()?".5":"") + ",Rlen=" + e.getLengthOnReference()+"," + e.altAllele() + ")";
     }
 
     @Override
