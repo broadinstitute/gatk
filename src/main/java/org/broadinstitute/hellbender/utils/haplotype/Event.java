@@ -1,14 +1,15 @@
 package org.broadinstitute.hellbender.utils.haplotype;
 
 import htsjdk.samtools.util.Locatable;
+import htsjdk.tribble.util.ParsingUtils;
 import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.LazyGenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -52,7 +53,7 @@ public class Event implements Locatable {
     public VariantContext asVariantContext(final String source) {
         final VariantContext result = new VariantContextBuilder(source, contig, start, stop, Arrays.asList(refAllele, altAllele)).make();
         if (attributesForVariantContext != null) {
-            attributesForVariantContext.entrySet().forEach(entry -> result.getCommonInfo().putAttribute(entry.getKey(), entry.getValue()));
+            attributesForVariantContext.forEach((key, value) -> result.getCommonInfo().putAttribute(key, value));
         }
         return result;
     }
@@ -113,5 +114,12 @@ public class Event implements Locatable {
         final byte[] refBases = ref.getBases();
         final byte[] altBases = alt.getBases();
         return refBases.length == 0 || altBases.length == 0 || refBases[refBases.length-1] != altBases[altBases.length-1];
+    }
+
+    @Override
+    public String toString() {
+        return String.format("[Event @ %s, %s->%s, %s",
+                contig + ":" + (start - stop == 0 ? start : start + "-" + stop),
+                refAllele, altAllele, attributesForVariantContext);
     }
 }

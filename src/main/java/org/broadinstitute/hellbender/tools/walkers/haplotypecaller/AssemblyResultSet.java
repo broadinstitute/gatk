@@ -694,7 +694,7 @@ public final class AssemblyResultSet {
 
         for (final Event event : goodPileupEvents.stream().sorted(Comparator.comparingInt(Event::getStart)).collect(Collectors.toList())) {
 
-            if (argumentCollection.pileupDetectionArgs.debugPileupStdout) System.out.println("Processing new Haplotypes for Pileup Allele that was not in the assembly: " + event.asVariantContext());
+            if (argumentCollection.pileupDetectionArgs.debugPileupStdout) System.out.println("Processing new Haplotypes for Pileup Allele that was not in the assembly: " + event);
 
             // skip SNPs that are too close to assembled indels.
             if (!event.isIndel() && assembledIndels.stream().anyMatch(indel -> event.withinDistanceOf(indel, argumentCollection.pileupDetectionArgs.snpAdjacentToAssemblyIndel))) {
