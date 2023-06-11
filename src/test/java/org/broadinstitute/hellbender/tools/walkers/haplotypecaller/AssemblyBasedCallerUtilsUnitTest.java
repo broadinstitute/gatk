@@ -425,7 +425,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         final List<VariantContext> vcsAtThisPosition = getEventsFromActiveHaplotypes(loc, haplotypes, true);
         Assert.assertEquals(vcsAtThisPosition.size(), expectedEventsAtThisLocation.size());
         for (int i = 0; i < expectedEventsAtThisLocation.size(); i++) {
-            VariantContextTestUtils.assertVariantContextsAreEqual(vcsAtThisPosition.get(i), expectedEventsAtThisLocation.get(i).asVariantContext(), new ArrayList<>(), Collections.emptyList());
+            VariantContextTestUtils.assertVariantContextsAreEqual(vcsAtThisPosition.get(i), expectedEventsAtThisLocation.get(i).convertToVariantContext("SRC"), new ArrayList<>(), Collections.emptyList());
         }
     }
 
@@ -482,7 +482,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
 
         final List<Object[]> tests = new ArrayList<>();
         tests.add(new Object[]{
-                snpEvent.asVariantContext(),
+                snpEvent.convertToVariantContext("SRC"),
                 snpEvent.getStart(),
                 Arrays.asList(snpHaplotype, refHaplotype),
                 Maps.asMap(new HashSet<>(snpAlleles),
@@ -504,7 +504,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         });
         // includes a SNP haplotype not present in events at this loc (which might happen in GGA mode)
         tests.add(new Object[]{
-                snpEvent.asVariantContext(),
+                snpEvent.convertToVariantContext("SRC"),
                 snpEvent.getStart(),
                 Arrays.asList(snpHaplotype, refHaplotype, snpHaplotypeNotPresentInEventsAtThisLoc),
                 Maps.asMap(new HashSet<>(Arrays.asList(snpEvent.refAllele(), snpEvent.altAllele())),
@@ -542,7 +542,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
 
         // A deletion starting at the loc in the given alleles, the snp not in the given alleles
         tests.add(new Object[]{
-                deletionStartingAtLocEvent.asVariantContext(),
+                deletionStartingAtLocEvent.convertToVariantContext("SRC"),
                 deletionStartingAtLocEvent.getStart(),
                 Arrays.asList(snpHaplotype, refHaplotype, deletionStartingAtLocHaplotype),
                 Maps.asMap(new HashSet<>(Arrays.asList(deletionStartingAtLocEvent.refAllele(), deletionStartingAtLocEvent.altAllele())),
@@ -554,7 +554,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
 
         // A deletion starting at the loc not in the given alleles, the snp in the given alleles
         tests.add(new Object[]{
-                snpEvent.asVariantContext(),
+                snpEvent.convertToVariantContext("SRC"),
                 snpEvent.getStart(),
                 Arrays.asList(snpHaplotype, refHaplotype, deletionStartingAtLocHaplotype),
                 Maps.asMap(new HashSet<>(Arrays.asList(snpEvent.refAllele(), snpEvent.altAllele())),
@@ -582,7 +582,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         HashSet<Allele>         deletionLocationAfterAlleles = new HashSet<>(Arrays.asList(deletionStartingAtLocEvent.refAllele(), deletionStartingAtLocEvent.altAllele()));
         deletionLocationAfterAlleles.add(Allele.SPAN_DEL);
         tests.add(new Object[]{
-                deletionStartingAtLocEvent.asVariantContext(),
+                deletionStartingAtLocEvent.convertToVariantContext("SRC"),
                 deletionStartingAtLocEvent.getStart() + 1,
                 Arrays.asList(snpHaplotype, refHaplotype, deletionStartingAtLocHaplotype),
                 Maps.asMap(new HashSet<>(deletionLocationAfterAlleles),

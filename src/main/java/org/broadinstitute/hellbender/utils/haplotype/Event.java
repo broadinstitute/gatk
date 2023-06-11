@@ -1,9 +1,7 @@
 package org.broadinstitute.hellbender.utils.haplotype;
 
 import htsjdk.samtools.util.Locatable;
-import htsjdk.tribble.util.ParsingUtils;
 import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.LazyGenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
@@ -43,14 +41,9 @@ public class Event implements Locatable {
         Utils.validateArg(vc.isBiallelic(), "variant must be biallelic");
         return new Event(vc.getContig(), vc.getStart(), vc.getReference(), vc.getAlternateAllele(0));
     }
-
-    // only use this for debugging, file output etc -- creating a full VariantContext is slow and defeats the purpose of this slim class
-    public VariantContext asVariantContext() {
-        return asVariantContext("source");
-    }
-
+    
     // This should only be used once in the lifecycle of an event: when we make the jump from discovered event to variant context for output
-    public VariantContext asVariantContext(final String source) {
+    public VariantContext convertToVariantContext(final String source) {
         final VariantContext result = new VariantContextBuilder(source, contig, start, stop, Arrays.asList(refAllele, altAllele)).make();
         if (attributesForVariantContext != null) {
             attributesForVariantContext.forEach((key, value) -> result.getCommonInfo().putAttribute(key, value));

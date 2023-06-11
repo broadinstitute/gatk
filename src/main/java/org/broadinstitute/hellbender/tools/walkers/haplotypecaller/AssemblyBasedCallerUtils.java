@@ -41,7 +41,6 @@ import org.broadinstitute.hellbender.utils.read.*;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
-import org.broadinstitute.hellbender.tools.FlowBasedArgumentCollection;
 
 import java.io.File;
 import java.util.*;
@@ -612,7 +611,7 @@ public final class AssemblyBasedCallerUtils {
                 if (event == null || (!includeSpanningEvents && event.getStart() != loc)) {
                     continue;
                 } else if (events.add(event)) {
-                    result.add(event.asVariantContext(sourceName));
+                    result.add(event.convertToVariantContext(sourceName));
                 }
             }
         }
