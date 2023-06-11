@@ -806,7 +806,6 @@ public final class GATKVariantContextUtils {
 
     /**
      *
-     * @param vc
      * @param refBasesStartingAtVCWithoutPad    Ref bases excluding the initial base of the variant context where the alt matches the ref.
      *                                          For example, if the reference sequence is GATCCACCACCAGTCGA and we have a deletion
      *                                          of one STR unit CCA, it is represented as a variant context TCCA -> T, where the 'T' is
@@ -1721,7 +1720,7 @@ public final class GATKVariantContextUtils {
                                                           final boolean keepOriginalChrCounts) {
 
             return splitVariantContextToBiallelics(vc, trimLeft, genotypeAssignmentMethod, keepOriginalChrCounts).stream()
-                    .map(Event::of).collect(Collectors.toList());
+                    .map(Event::ofWithoutAttributes).collect(Collectors.toList());
     }
 
     /**
@@ -2095,14 +2094,14 @@ public final class GATKVariantContextUtils {
         final List<Event> result = new ArrayList<>();
 
         if (vc.isBiallelic()) {
-            return Collections.singletonList(Event.of(vc));
+            return Collections.singletonList(Event.ofWithoutAttributes(vc));
         } else {
             // Since variant context builders are slow to keep re-creating.  Just create one and spew variant contexts from it, since
             //  the only difference will be the alternate allele.  Initialize the VCB with a dummy alternate allele,
             //  since it will be overwritten in all cases.
             final VariantContextBuilder vcb = new VariantContextBuilder("SimpleSplit", vc.getContig(), vc.getStart(), vc.getEnd(),
                     Arrays.asList(vc.getReference(), Allele.NO_CALL));
-            vc.getAlternateAlleles().forEach(allele -> result.add(Event.of(GATKVariantContextUtils.trimAlleles(
+            vc.getAlternateAlleles().forEach(allele -> result.add(Event.ofWithoutAttributes(GATKVariantContextUtils.trimAlleles(
                     vcb.alleles(Arrays.asList(vc.getReference(), allele)).make(true), true, true))));
         }
 

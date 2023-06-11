@@ -37,11 +37,11 @@ public class Event implements Locatable {
         altAllele = alt;
     }
 
-    public static Event of(final VariantContext vc) {
+    public static Event ofWithoutAttributes(final VariantContext vc) {
         Utils.validateArg(vc.isBiallelic(), "variant must be biallelic");
         return new Event(vc.getContig(), vc.getStart(), vc.getReference(), vc.getAlternateAllele(0));
     }
-    
+
     // This should only be used once in the lifecycle of an event: when we make the jump from discovered event to variant context for output
     public VariantContext convertToVariantContext(final String source) {
         final VariantContext result = new VariantContextBuilder(source, contig, start, stop, Arrays.asList(refAllele, altAllele)).make();
