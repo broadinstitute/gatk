@@ -62,11 +62,11 @@ public class RampUtils {
             int         delta = (o1.isReference() ? 1 : 0) - (o2.isReference() ? 1 : 0);
 
             if ( delta == 0 ) {
-                delta = o1.getLocation().getContig().compareTo(o2.getLocation().getContig());
+                delta = o1.getContig().compareTo(o2.getContig());
                 if ( delta == 0 ) {
-                    delta = o1.getLocation().getStart() - o2.getLocation().getStart();
+                    delta = o1.getStart() - o2.getStart();
                     if ( delta == 0 ) {
-                        delta = o1.getLocation().getEnd() - o2.getLocation().getEnd();
+                        delta = o1.getEnd() - o2.getEnd();
                         if ( delta == 0 ) {
                             double      ddelta = o1.getScore() - o2.getScore();
                             if ( ddelta < 0 )

@@ -36,7 +36,7 @@ public final class EventMap extends TreeMap<Integer, Event> {
     }
 
     public static EventMap fromHaplotype(final Haplotype haplotype, final byte[] ref, final int maxMnpDistance) {
-        return new EventMap(getEvents(haplotype, ref, haplotype.getLocation(), maxMnpDistance));
+        return new EventMap(getEvents(haplotype, ref, haplotype, maxMnpDistance));
     }
 
     // this is really just a convenient way to make EventMap objects in unit tests
