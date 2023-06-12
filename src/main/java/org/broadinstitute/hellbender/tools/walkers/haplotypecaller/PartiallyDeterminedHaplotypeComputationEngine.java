@@ -224,32 +224,33 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                  * An assembly region could potentially have any number of (within some limitations) of event groups. When we are constructing
                  * haplotypes out of the assembled variants we want to take the dot product of the branches for each set of event groups that
                  * we find. I.E. if an event group with mutex variants (B,C) requires two branches for Variant A and Variant A also leads to two branches in
-                 * another event group with mutex variants (D,E). Then we would want to ultimately generate the branches A,B,D -> A,B,E -> A,C,D -> A,C,E.
+                 * anothe!r event group with mutex variants (D,E). Then we would want to ultimately generate the branches A,B,D -> A,B,E -> A,C,D -> A,C,E.
                  * This is why we iterate over branchExcludeAlleles internally here.
                  */
                 for(EventGroup group : eventGroups ) {
-                    if (group.causesBranching()) {
-                        List<List<Tuple<Event, Boolean>>> groupVCs = group.getVariantGroupsForEvent(determinedPairs, true);
-                        // Combinatorially expand the branches as necessary
-                        List<Set<Event>> newBranchesToAdd = new ArrayList<>();
-                        for (Set<Event> excludedVars : branchExcludeAlleles) {
-                            //For every exclude group, fork it by each subset we have:
-                            for (int i = 1; i < groupVCs.size(); i++) { //NOTE: iterate starting at 1 here because we special case that branch at the end
-                                Set<Event> newSet = new HashSet<>(excludedVars);
-                                groupVCs.get(i).stream().filter(t -> !t.b).forEach(t -> newSet.add(t.a));
-                                newBranchesToAdd.add(newSet);
-                            }
-                            // Be careful since this event group might have returned nothing
-                            if (!groupVCs.isEmpty()) {
-                                groupVCs.get(0).stream().filter(t -> !t.b).forEach(t -> excludedVars.add(t.a));
-                            }
+                    if (!group.causesBranching()) {
+                        continue;
+                    }
+                    List<List<Tuple<Event, Boolean>>> groupVCs = group.getVariantGroupsForEvent(determinedPairs, true);
+                    // Combinatorially expand the branches as necessary
+                    List<Set<Event>> newBranchesToAdd = new ArrayList<>();
+                    for (Set<Event> excludedVars : branchExcludeAlleles) {
+                        //For every exclude group, fork it by each subset we have:
+                        for (int i = 1; i < groupVCs.size(); i++) { //NOTE: iterate starting at 1 here because we special case that branch at the end
+                            Set<Event> newSet = new HashSet<>(excludedVars);
+                            groupVCs.get(i).stream().filter(t -> !t.b).forEach(t -> newSet.add(t.a));
+                            newBranchesToAdd.add(newSet);
                         }
-                        branchExcludeAlleles.addAll(newBranchesToAdd);
+                        // Be careful since this event group might have returned nothing
+                        if (!groupVCs.isEmpty()) {
+                            groupVCs.get(0).stream().filter(t -> !t.b).forEach(t -> excludedVars.add(t.a));
+                        }
+                    }
+                    branchExcludeAlleles.addAll(newBranchesToAdd);
 
-                        if (branchExcludeAlleles.size() > MAX_BRANCH_PD_HAPS) {
-                            if (debug ) System.out.println("Found too many branches for variants at: "+determinedEventToTest.getStart()+" aborting and falling back to Assembly Varinats!");
-                            return sourceSet;
-                        }
+                    if (branchExcludeAlleles.size() > MAX_BRANCH_PD_HAPS) {
+                        if (debug ) System.out.println("Found too many branches for variants at: "+determinedEventToTest.getStart()+" aborting and falling back to Assembly Varinats!");
+                        return sourceSet;
                     }
                 }
 
