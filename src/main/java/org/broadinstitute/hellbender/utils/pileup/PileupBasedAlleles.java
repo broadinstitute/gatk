@@ -35,19 +35,19 @@ public final class PileupBasedAlleles {
     private final static int ASSEMBLY_BAD_COUNT_IDX = 2;
 
     /**
-     * Accepts the raw per-base pileups stored from the active region detection code and parses them for potential variants
-     * that are visible in the pileups but might be dropped from assembly for any number of reasons. The basic algorithm works
+     * Searches a list of pileups for potential variants that are visible in the pileups but might be dropped from assembly.
+     * Additionally, determine which events found in the pileups are "good" (the supporting reads pass several criteria) or
+     * "bad" (the supporting reads fail a different set of conditions). Returns the set of "good" and "bad" reads for later
+     * use in augmenting and pruning the set of assembled haplotypes and variants.The basic algorithm works
      * as follows:
-     *  - iterate over every pileup and count alt bases
-     *      - (beta) detect insertions overlapping this site (CURRENTLY ONLY WORKS FOR INSERTIONS)
-     *  - count "bad" reads as defined by Illumina filtering for pileup detection of variants {@Link #evaluateBadRead}
-     *  - For each detected alt, evaluate if the number of alternate bases are sufficient to make the call and make a VariantContext.
+     *  - iterate over every pileup and count indel and substitution events, recording which reads are "bad" according to various heuristics
+     *  - Assign each detected event as "good", "bad", or nothing based on the number of "good" and "bad" supporting reads
      *
      * @param alignmentAndReferenceContextList  List of stored pileups and reference context information where every element is a base from the active region.
      *                                          NOTE: the expectation is that the stored pileups are based off of the ORIGINAL (un-clipped) reads from active region determination.
      * @param args                              Configuration arguments to use for filtering/annotations
      * @param headerForReads                    Header for the reads (only necessary for SAM file conversion)
-     * @return A list of variant context objects corresponding to potential variants that pass our heuristics.
+     * @return Two sets of Events, those passing and those failing heuristic filters, respectively.
      */
     public static Pair<Set<Event>, Set<Event>> goodAndBadPileupEvents(final List<AlignmentAndReferenceContext> alignmentAndReferenceContextList, final PileupDetectionArgumentCollection args, final SAMFileHeader headerForReads, final int minBaseQualityScore) {
         if (!args.usePileupDetection) {
@@ -100,8 +100,8 @@ public final class PileupBasedAlleles {
                 final boolean deletionFound = args.detectIndels && element.isBeforeDeletionStart();
 
                 if (SNPFound || insertionFound || deletionFound) {
-                    final boolean badPileup = badPileupRead(element.getRead(), args, headerForReads);
-                    final boolean badAssembly = badAssemblyRead(element.getRead(), args);
+                    final boolean badPileup = isBadPileupRead(element.getRead(), args, headerForReads);
+                    final boolean badAssembly = isBadAssemblyRead(element.getRead(), args);
 
                     if (SNPFound) {
                         incrementCounts(eachBase, SNPCounts, badPileup, badAssembly);
@@ -173,7 +173,7 @@ public final class PileupBasedAlleles {
      * @return true if any of the "badness" heuristics suggest we should consider the read suspect, false otherwise.
      */
     @VisibleForTesting
-    static boolean badPileupRead(final GATKRead read, final PileupDetectionArgumentCollection args, final SAMFileHeader headerForRead) {
+    static boolean isBadPileupRead(final GATKRead read, final PileupDetectionArgumentCollection args, final SAMFileHeader headerForRead) {
         if (args.badReadThreshold <= 0.0) {
             return false;
         }
@@ -206,7 +206,7 @@ public final class PileupBasedAlleles {
     }
 
     @VisibleForTesting
-    static boolean badAssemblyRead(final GATKRead read, final PileupDetectionArgumentCollection args) {
+    static boolean isBadAssemblyRead(final GATKRead read, final PileupDetectionArgumentCollection args) {
         if (args.assemblyBadReadThreshold <= 0.0) {
             return false;
         }
