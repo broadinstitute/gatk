@@ -68,29 +68,22 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
      *      5d. For each branch, build a PDHaplotype with the determined allele and the allowed variants for that branch.
      *
      * @param sourceSet AssemblyResultSet to be modified with the new haplotypes
-     * @param callingSpan Calling span to subset determined events to (to handle padding)
-     * @param referenceHaplotype Reference haplotype against which to build artifical haps
-     * @param assemblyEvents Assembly variants.
      * @param badPileupEvents Pileup alleles that should be filtered if they are part of the assembly
      * @param goodPileupEvents Pileup alleles that pass the heuristics to be included in genotyping
-     * @param snpAdjacentToIndelLimit If pileup allele snps are too close to assembled indels we thorw them out.
      * @param aligner SmithWatermanAligner to use for filtering out equivalent event sets
-     * @param swParameters Parameters for hap-hap comparisons
-     * @param makeDeterminedHapsInstead If true, generate regular haplotypes to be handed to the PairHMM (note this will result in a lot more failures due to combinitorial expansion)
-     * @param debugSite If true, print out all the details of how this code is functioning for debugging.
      * @return unchanged assembly result set if failed, updated haplotyeps otherwise
      */
     public static AssemblyResultSet generatePDHaplotypes(final AssemblyResultSet sourceSet,
-                                                         final Locatable callingSpan,
-                                                         final Haplotype referenceHaplotype,
-                                                         final SortedSet<Event> assemblyEvents,
                                                          final Collection<Event> badPileupEvents,
                                                          final Collection<Event> goodPileupEvents,
-                                                         final int snpAdjacentToIndelLimit,
                                                          final SmithWatermanAligner aligner,
-                                                         final SWParameters swParameters,
-                                                         final boolean makeDeterminedHapsInstead,
-                                                         final boolean debugSite) {
+                                                         final AssemblyBasedCallerArgumentCollection args) {
+        final SortedSet<Event> assemblyEvents = sourceSet.getVariationEvents(0);
+        final Haplotype referenceHaplotype = sourceSet.getReferenceHaplotype();
+        final Locatable callingSpan = sourceSet.getRegionForGenotyping().getSpan();
+
+        final PileupDetectionArgumentCollection pileupArgs = args.pileupDetectionArgs;
+        final boolean debugSite = pileupArgs.debugPileupStdout;
 
         //We currently don't support MNPs in here, assert nothing coming in IS a MNP
         if (assemblyEvents.stream().anyMatch(Event::isMNP) || goodPileupEvents.stream().anyMatch(Event::isMNP)) {
@@ -113,7 +106,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         // Ignore any snps from pileups that were close to indels
         final List<Event> givenAllelesFiltered = goodPileupEvents.stream()
                 .filter(event -> event.isIndel() ||
-                        assemblyEvents.stream().filter(Event::isIndel).noneMatch(indel -> event.withinDistanceOf(indel, snpAdjacentToIndelLimit)))
+                        assemblyEvents.stream().filter(Event::isIndel).noneMatch(indel -> event.withinDistanceOf(indel, pileupArgs.snpAdjacentToAssemblyIndel)))
                 .collect(Collectors.toList());
 
         // TODO make sure this TREE-SET is properly comparing the VCs
@@ -160,7 +153,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
         // Iterate over all events starting with all indels
 
-        List<List<Event>> disallowedPairs = smithWatermanRealignPairsOfVariantsForEquivalentEvents(referenceHaplotype, aligner, swParameters, debugSite, eventsInOrder, vcsAsList);
+        List<List<Event>> disallowedPairs = smithWatermanRealignPairsOfVariantsForEquivalentEvents(referenceHaplotype, aligner, args.getHaplotypeToReferenceSWParameters(), debugSite, eventsInOrder, vcsAsList);
         if (debugSite) {
             System.out.println("disallowed Variant pairs:");
             disallowedPairs.stream().map(l -> l.stream().map(PartiallyDeterminedHaplotype.getDRAGENDebugEventString((int) referenceHaplotype.getStartPosition())).collect(Collectors.joining("->"))).forEach(System.out::println);
@@ -198,7 +191,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         }
 
         Set<Haplotype> outputHaplotypes = new LinkedHashSet<>();
-        if (makeDeterminedHapsInstead) {
+        if (pileupArgs.determinePDHaps) {
             // only add the reference haplotype if we are producing regular haplotype objects (not PD haplotypes for the haplotype alleles)
             outputHaplotypes.add(referenceHaplotype);
         }
@@ -226,7 +219,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
              *
              * NOTE: we skip the reference allele in the event that we are making determined haplotypes instead of undetermined haplotypes
              */
-            for (int IndexOfAllele = (makeDeterminedHapsInstead?0:-1); IndexOfAllele < determinedVariants.size(); IndexOfAllele++) { //note -1 for I here corresponds to the reference allele at this site
+            for (int IndexOfAllele = (pileupArgs.determinePDHaps?0:-1); IndexOfAllele < determinedVariants.size(); IndexOfAllele++) { //note -1 for I here corresponds to the reference allele at this site
                 if (debugSite) System.out.println("Working with allele at site: "+(IndexOfAllele ==-1? "[ref:"+(variantSiteGroup.getKey()-referenceHaplotype.getStartPosition())+"]" : PartiallyDeterminedHaplotype.getDRAGENDebugEventString((int)referenceHaplotype.getStartPosition()).apply(determinedVariants.get(IndexOfAllele))));
                 // This corresponds to the DRAGEN code for
                 // 0 0
@@ -302,7 +295,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                     List<Event> newBranch = new ArrayList<>();
 
                     // Handle the simple case of making PD haplotypes
-                    if (!makeDeterminedHapsInstead) {
+                    if (!pileupArgs.determinePDHaps) {
                         for (int secondRIndex = 0; secondRIndex < entriesRInOrder.size(); secondRIndex++) {
                             if (secondRIndex != indexOfDeterminedInR) {
                                 // We know here that nothing illegally overlaps because there are no groups.
@@ -389,7 +382,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         }).forEach(h -> result.add(h));
         sourceSet.replaceAllHaplotypes(result);
         if (debugSite) System.out.println("Constructed Haps for Branch"+sourceSet.getHaplotypeList().stream().map(Haplotype::toString).collect(Collectors.joining("\n")));
-        if (!makeDeterminedHapsInstead) {
+        if (!pileupArgs.determinePDHaps) {
             // Setting a boolean on the source-set to indicate to downstream code that we have PD haplotypes
             sourceSet.setPartiallyDeterminedMode();
         }
