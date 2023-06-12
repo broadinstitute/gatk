@@ -111,8 +111,7 @@ public class Event implements Locatable {
 
     @Override
     public String toString() {
-        return String.format("[Event @ %s, %s->%s, %s",
-                contig + ":" + (start - stop == 0 ? start : start + "-" + stop),
-                refAllele, altAllele, attributesForVariantContext);
+        return "[Event @ " + contig + ":" + (start - stop == 0 ? start : start + "-" + stop) + ", " +
+                refAllele + "->" + altAllele + ", " + attributesForVariantContext + "]";
     }
 }
