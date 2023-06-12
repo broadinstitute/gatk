@@ -57,6 +57,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
       input:
         input_vcf = GatherVcfs.output_vcf,
         input_vcf_index = GatherVcfs.output_vcf_index,
+        contigs = chromosomes,
         sample_name = sample_name,
         output_basename = output_sample_basename
     }
@@ -124,7 +125,7 @@ task IsVcfOnChromosomes {
 
   String output_vcf_name = basename(input_vcf)
   command <<<
-    set -e -o pipefail
+    set -eou pipefail
 
     cat ~{input_vcf} | gunzip | grep -v '^#' | cut -f 1 | sort | uniq > chrom.txt
     NL=$(cat chrom.txt | wc -l)
@@ -215,6 +216,7 @@ task SelectVariants {
   input {
     File input_vcf
     File input_vcf_index
+    Array[String] contigs
     String sample_name
 
     String output_basename
@@ -230,6 +232,7 @@ task SelectVariants {
   command <<<
     gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
       SelectVariants \
+        -L ~{sep=' -L ' contigs} \
         -V ~{input_vcf} \
         --sample-name ~{sample_name} \
         --select-type-to-exclude NO_VARIATION \
