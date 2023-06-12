@@ -44,16 +44,11 @@ def generate_FOFNs_from_data_table_with_sample_set(
 
                 if set_of_entities:
                     if current_sample_id in set_of_entities:
-                        print("start here")
                         current_vcf_file = row.attributes[vcf_files_column_name]
                         current_vcf_index_file = row.attributes[vcf_index_files_column_name]
-                        print("did I get here?")
-                        print(current_sample_name)
-                        print(sample_names_file)
                         sample_names_file.write(f'{current_sample_name}\n')
                         vcf_files.write(f'{current_vcf_file}\n')
                         vcf_index_files.write(f'{current_vcf_index_file}\n')
-                        print("set FOFN made")
                 else:
                     current_vcf_file = row.attributes[vcf_files_column_name]
                     current_vcf_index_file = row.attributes[vcf_index_files_column_name]
