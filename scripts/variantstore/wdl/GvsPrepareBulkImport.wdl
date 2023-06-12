@@ -82,12 +82,13 @@ task GenerateFOFNsFromDataTables {
         index_count=$(wc -l < ~{vcf_index_files_name})
 
         if [[ $sample_count -eq $vcf_count && $sample_count -eq $index_count ]]; then
-        echo $sample_count
+            echo $sample_count
         else
-        echo $sample_count
-        echo $vcf_count
-        echo $index_count
-        exit 1
+            echo "Error: mismatched sample / VCF / index counts"
+            echo "sample count: $sample_count"
+            echo "vcf count: $vcf_count"
+            echo "index count: $index_count"
+            exit 1
         fi
 
     >>>
