@@ -1,20 +1,17 @@
 # Bulk Ingest Instructions
 
 
-The bulk ingest workflow has one distinct difference from it's non-bulk counterpart and required several more input parameters
-It can load in more than 10k samples at a time
-We do this by directly mapping the sample ids and their gcp storage path locations and loading them that way.
-In order to do this, we need some additional information from you the user.
+The bulk ingest workflow has one distinct difference from its non-bulk counterpart and requires several more input parameters.
+It can load in more than 10k samples at a time by directly mapping sample ids to their GCS storage path locations.
+In order to do this, the bulk ingest workflow needs to collect some additional information from the user.
 
 Since we ask for so many additional inputs, we have tried to streamline the process in two ways.
-The first is that we have defaults of the most common values that are input automatically. They are listed below. 
+The first is that we have defaults of the most common values that are input automatically. These are listed below. 
 The second is that we use the information we have to the best of our abilities to make educated guesses about what columns you may want to use
 
 The logic for these guesses is also below.
 
 Since you are planning to use a bulk ingest workflow, we recommend that you use a sample set to load your data
-
-## TODO: fellow variant team members, should this be required?!?!? Why would they bulk ingest and NOT use a sample set?
 
 ---
 
@@ -24,28 +21,15 @@ The table below describes the GVS bulk ingest variables:
 
 | Input variable name         | Description                                                                                                                                                                | Type |
 |-----------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------| --- |
-| data_table_name             | (Optional) The name of the data table; This table hold the GVCFS to be ingested; `sample` is most likely the name of the data table in Terra.                              | String |
-| entity_id_column_name       | (Optional) User defined column id name; `sample_id` is the recommended name--`research_id` is also commonly used.                                                          | String |
-| vcf_files_column_name       | (Optional) Column that contains the cloud paths to the sample GVCF files                                                                                                   | String |
-| vcf_index_files_column_name | (Optional) Column that contains the cloud paths to the sample GVCF index files                                                                                             | String |
-| sample_set_name             | (Optional) TODO: should this be optional!??!      The name of the set of entities                                                                                          | String |
+| data_table_name             | (Optional) The name of the data table; This table hold the GVCFs to be ingested; `sample` is most likely the name of the data table in Terra.                              | String |
+| entity_id_column_name       | (Optional) User defined column id name; `sample_id` is the recommended name;`research_id` is also commonly used.                                                           | String |                                                         | String |
+| vcf_files_column_name       | (Optional) Column that contains the GCS paths to the sample GVCF files.                                                                                                    | String |
+| vcf_index_files_column_name | (Optional) Column that contains the GCS paths to the sample GVCF index files                                                                                               | String |
+| sample_set_name             | (Optional) The name of the set of samples / entities                                                                                                                       | String |
 | dataset_name                | Name of the BigQuery dataset used to hold input samples, filtering model data, and other tables created during the workflow.                                               | String |
 | bq_project_id               | Name of the Google project that contains the BigQuery dataset.                                                                                                             | String |
-| call_set_identifier         | Used to name the filter model, BigQuery extract tables, and final joint VCF shards; should begin with a letter; valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”. | String |
+| call_set_identifier         | Used to name the filter model, BigQuery extract tables, and final joint VCF shards. Should begin with a letter, valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”. | String |
 
-## TODO: do we care about documenting the additional optional input values?
-
-        # File? gatk_override
-
-        # File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
-
-        # String drop_state = "NONE"
-
-        # The larger the `load_data_batch_size` the greater the probability of preemptions and non-retryable BigQuery errors,
-        # so if specifying `load_data_batch_size`, adjust preemptible and maxretries accordingly. Or just take the defaults, as those should work fine in most cases.
-        Int? load_data_batch_size
-        Int? load_data_preemptible_override
-        Int? load_data_maxretries_override
 
 
 ## Setup
@@ -67,8 +51,6 @@ The workflow is configured to use hg38 (aka GRCh38) as the reference genome.
 #### Sample data
 
 The [GVS beta workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta) has been configured with example reblocked GVCF files that you can use to test the workflow.
-
-(TODO: as an example, should I choose quickstart instead, since the Beta workspace doesn't even has this as an option?)
 
 The GVS workflow takes in reblocked single sample GVCF files and their corresponding index files as `input_vcfs` and `input_vcf_indexes`, respectively. 
 
