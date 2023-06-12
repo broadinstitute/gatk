@@ -767,13 +767,13 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
             HaplotypeCallerGenotypingDebugger.println("\nUnclipped Haplotypes("+haplotypes.size()+"):");
             for (Haplotype haplotype : untrimmedAssemblyResult.getHaplotypeList()) {
-                HaplotypeCallerGenotypingDebugger.println("["+haplotype.getStartPosition()+"-"+haplotype.getStopPosition()+"] k="+haplotype.getKmerSize()+" len: "+haplotype.length()+" "+haplotype.getCigar()+(haplotype.isReference()?"ref":""));
+                HaplotypeCallerGenotypingDebugger.println("["+haplotype.getStart()+"-"+haplotype.getEnd()+"] k="+haplotype.getKmerSize()+" len: "+haplotype.length()+" "+haplotype.getCigar()+(haplotype.isReference()?"ref":""));
                 HaplotypeCallerGenotypingDebugger.println(haplotype.toString());
             }
 
             HaplotypeCallerGenotypingDebugger.println("\nClipped Haplotyes("+haplotypes.size()+"):");
             for (Haplotype haplotype : haplotypes) {
-                HaplotypeCallerGenotypingDebugger.println("["+haplotype.getStartPosition()+"-"+haplotype.getStopPosition()+"] k="+haplotype.getKmerSize()+" len: "+haplotype.length()+" "+haplotype.getCigar()+(haplotype.isReference()?"ref":""));
+                HaplotypeCallerGenotypingDebugger.println("["+haplotype.getStart()+"-"+haplotype.getEnd()+"] k="+haplotype.getKmerSize()+" len: "+haplotype.length()+" "+haplotype.getCigar()+(haplotype.isReference()?"ref":""));
                 HaplotypeCallerGenotypingDebugger.println(haplotype.toString());
             }
             HaplotypeCallerGenotypingDebugger.println("");

@@ -206,8 +206,8 @@ public final class HaplotypeUnitTest extends GATKBaseTest {
         final Haplotype actual = full.trim(trimTo);
         if ( expected != null ) {
             Assert.assertEquals(actual.getBases(), expected.getBases());
-            Assert.assertEquals(actual.getStartPosition(), trimTo.getStart());
-            Assert.assertEquals(actual.getStopPosition(), trimTo.getStop());
+            Assert.assertEquals(actual.getStart(), trimTo.getStart());
+            Assert.assertEquals(actual.getEnd(), trimTo.getStop());
             Assert.assertEquals(actual.getCigar(), expected.getCigar());
             Assert.assertEquals(actual.getAlignmentStartHapwrtRef(), expected.getAlignmentStartHapwrtRef());
         } else {
