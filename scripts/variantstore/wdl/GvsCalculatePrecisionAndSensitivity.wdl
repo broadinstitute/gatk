@@ -100,6 +100,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
         truth_vcf_index = truth_vcf_indices[i],
         truth_bed = truth_beds[i],
         contigs = chromosomes,
+        all_records = true,
         output_basename = sample_name + "-bq_all",
         is_vqsr_lite = IsVQSRLite.is_vqsr_lite,
         ref_fasta = ref_fasta
@@ -352,6 +353,8 @@ task EvaluateVcf {
     File truth_vcf
     File truth_vcf_index
     File truth_bed
+
+    Boolean all_records = false
     Array[String] contigs
 
     File ref_fasta
@@ -377,7 +380,7 @@ task EvaluateVcf {
 
     rtg vcfeval \
       ~{"--region " + contigs_string} \
-      --all-records \
+      ~{if all_records then "--all-records" else ""} \
       --roc-subset snp,indel \
       --vcf-score-field=INFO.~{max_score_field_tag} \
       ~{if is_vqsr_lite then "--sort-order ascending" else "--sort-order descending"} \
