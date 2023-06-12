@@ -15,6 +15,7 @@ workflow ExtractPgen {
         File reference_fasta_index
 
         String gatk_docker
+        String plink_docker
 
         Int scatter_count
     }
@@ -44,7 +45,8 @@ workflow ExtractPgen {
         input:
             pgen_files = GatkGvsPgenExtract.pgen_file,
             pvar_files = GatkGvsPgenExtract.pvar_file,
-            psam_files = GatkGvsPgenExtract.psam_file
+            psam_files = GatkGvsPgenExtract.psam_file,
+            plink_docker = plink_docker
     }
 
     output {
@@ -152,6 +154,7 @@ task MergePgen {
         Array[File] pgen_files
         Array[File] pvar_files
         Array[File] psam_files
+        String plink_docker
     }
 
     command <<<
@@ -170,5 +173,9 @@ task MergePgen {
         File pgen_file = "merged.pgen"
         File pvar_file = "merged.pvar"
         File psam_file = "merged.psam"
+    }
+
+    runtime {
+        docker: "${plink_docker}"
     }
 }
