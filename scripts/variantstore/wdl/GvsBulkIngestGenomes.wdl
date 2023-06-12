@@ -40,7 +40,7 @@ workflow GvsBulkIngestGenomes {
     }
 
     parameter_meta {
-        data_table_name: "The name of the data table; This table hold the GVCFS to be ingested; `sample` is the default."
+        data_table_name: "The name of the data table; This table holds the GVCFs to be ingested; `sample` is the default."
         sample_id_column_name: "The column that will be used for the sample name / id in GVS; the <data_table_name>_id will be used as the default"
         vcf_files_column_name: "The column that supplies the path for the GVCFs to be ingested--when not specified, the workflow will attempt to derive the column"
         vcf_index_files_column_name: "The column that supplies the path for the GVCF index files to be ingested--when not specified, the workflow will attempt to derive the column"
