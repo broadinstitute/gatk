@@ -210,11 +210,6 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                 /*
                  * Here we handle any of the necessary work to deal with the event groups and maybe forming compund branches out of the groups
                  */
-                //Set Determined pairs:
-                List<Tuple<Event, Boolean>> determinedPairs = new ArrayList<>();
-                for(int j = 0; j < allEventsHere.size(); j++) {
-                    determinedPairs.add(new Tuple<>(allEventsHere.get(j), determinedAlleleIndex == j));
-                }
 
                 // Loop over eventGroups, have each of them return a list of VariantContexts
                 List<Set<Event>> branchExcludeAlleles = new ArrayList<>();
@@ -231,7 +226,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                     if (!group.causesBranching()) {
                         continue;
                     }
-                    List<List<Tuple<Event, Boolean>>> groupVCs = group.getVariantGroupsForEvent(determinedPairs, true);
+                    List<List<Tuple<Event, Boolean>>> groupVCs = group.getVariantGroupsForEvent(allEventsHere, determinedAlleleIndex, true);
                     // Combinatorially expand the branches as necessary
                     List<Set<Event>> newBranchesToAdd = new ArrayList<>();
                     for (Set<Event> excludedVars : branchExcludeAlleles) {
@@ -833,15 +828,15 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
          * @param disallowSubsets
          * @return
          */
-        public List<List<Tuple<Event,Boolean>>> getVariantGroupsForEvent(final List<Tuple<Event, Boolean>> eventsForMask, final boolean disallowSubsets) {
+        public List<List<Tuple<Event,Boolean>>> getVariantGroupsForEvent(final List<Event> allEventsHere, final int determinedAlleleIndex, final boolean disallowSubsets) {
             // If we are dealing with an external to this list event
             int eventMask = 0;
             int maskValues = 0;
-            for(Tuple<Event, Boolean> event : eventsForMask) {
-                if (variantContextSet.contains(event.a)) {
-                    int index = variantsInBitmapOrder.indexOf(event.a);
+            for(int i = 0; i < allEventsHere.size(); i++) {
+                if (variantContextSet.contains(allEventsHere.get(i))) {
+                    int index = variantsInBitmapOrder.indexOf(allEventsHere.get(i));
                     eventMask = eventMask | (1 << index);
-                    maskValues = maskValues | ((event.b ? 1 : 0) << index);
+                    maskValues = maskValues | ((i == determinedAlleleIndex ? 1 : 0) << index);
                 }
             }
             // Special case (if we are determining bases outside of this mutex cluster we can reuse the work from previous iterations)
