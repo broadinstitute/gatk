@@ -113,8 +113,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         // TODO make sure this TREE-SET is properly comparing the VCs
         eventsInOrder.addAll(assemblyEvents);
         eventsInOrder.addAll(givenAllelesFiltered);
-
-        Utils.printIf(debug,() -> "Variants to PDHapDetermination:\n"+ dragenString(eventsInOrder,  referenceHaplotype.getStart()));
+        finalEventsListMessage(referenceHaplotype.getStart(), debug, eventsInOrder);
 
         // TODO this is where we filter out if indels > 32 (a heuristic known from DRAGEN that is not implemented here)
         List<Event> vcsAsList = new ArrayList<>(eventsInOrder);
@@ -128,8 +127,6 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             // Break everything into independent groups (don't worry about transitivitiy right now)
             Double eventKey = dragenStart(vc) - referenceHaplotype.getStart();
             eventsByDRAGENCoordinates.putIfAbsent(eventKey, new ArrayList<>()).add(vc);
-            Utils.printIf(debug, () -> "testing:" + vc);
-            Utils.printIf(debug,() -> "EventKey:" + eventKey);
             if (eventKey <= lastEventEnd + 0.5) {
                 eventGroups.get(eventGroups.size()-1).addEvent(vc);
             } else {
@@ -138,15 +135,12 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             int newEnd =  (vc.getEnd() - referenceHaplotype.getStart());
             lastEventEnd = Math.max(newEnd, lastEventEnd);
         }
-        //Print the event groups
-        if (debug) eventsByDRAGENCoordinates.entrySet().stream()
-                .map(e -> String.format("%.1f", e.getKey()) + " -> " + dragenString(e.getValue(),  referenceHaplotype.getStart(),","))
-                .forEach(System.out::println);
+        eventGroupsMessage(referenceHaplotype, debug, eventsByDRAGENCoordinates);
 
         // Iterate over all events starting with all indels
 
         List<List<Event>> disallowedPairs = smithWatermanRealignPairsOfVariantsForEquivalentEvents(referenceHaplotype, aligner, args.getHaplotypeToReferenceSWParameters(), debug, eventsInOrder, vcsAsList);
-        Utils.printIf(debug, () ->"disallowed Variant pairs:" + disallowedPairs.stream().map(l -> dragenString(l,  referenceHaplotype.getStart())).collect(Collectors.joining("\n")));
+        dragenDisallowedGroupsMessage(referenceHaplotype.getStart(), debug, disallowedPairs);
         Utils.printIf(debug, () -> "Event groups before merging:\n"+eventGroups.stream().map(eg -> eg.toDisplayString(referenceHaplotype.getStart())).collect(Collectors.joining("\n")));
 
         //Now that we have the disallowed groups, lets merge any of them from seperate groups:
@@ -259,17 +253,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                     }
                 }
 
-                if (debug) {
-                    System.out.println("Branches:");
-                    for (int i = 0; i < branchExcludeAlleles.size(); i++) {
-                        final int ifinal = i;
-                        System.out.println("Branch "+i+" VCs:");
-                        System.out.println("exclude:" + dragenString(branchExcludeAlleles.get(i), referenceHaplotype.getStart()));
-                        //to match dragen debug output for personal sanity
-                        final Collection<Event> included = eventsInOrder.stream().filter(variantContext -> !branchExcludeAlleles.get(ifinal).contains(variantContext)).collect(Collectors.toList());
-                        System.out.println("include:" + dragenString(included, referenceHaplotype.getStart()));
-                    }
-                }
+                branchExcludeAllelesMessage(referenceHaplotype, debug, eventsInOrder, branchExcludeAlleles);
 
 
                 /**
@@ -338,11 +322,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                             branchHaps.add(constructHaplotypeFromVariants(referenceHaplotype, subset, true));
                         }
                     }
-                    // Add the branch haps to the results:
-                    if (debug) {
-                        System.out.println("Constructed Haps for Branch" + dragenString(excludeEvents,  referenceHaplotype.getStart(), ",") + ":");
-                        System.out.println(branchHaps.stream().map(h -> h.getCigar() + " " + h.toString()).collect(Collectors.joining("\n")));
-                    }
+                    branchHaplotypesDebugMessage(referenceHaplotype, debug, excludeEvents, branchHaps);
 
                     outputHaplotypes.addAll(branchHaps);
                     if (outputHaplotypes.size() > MAX_PD_HAPS_TO_GENERATE) {
@@ -949,6 +929,39 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
     private static double dragenStart(final Event event) {
         return event.getStart() + (event.isSimpleInsertion() ? 0.5 : 0) + (event.isSimpleDeletion() ? 1 : 0);
+    }
+
+    private static void eventGroupsMessage(final Haplotype referenceHaplotype, final boolean debug, final Map<Double, List<Event>> eventsByDRAGENCoordinates) {
+        Utils.printIf(debug, () -> eventsByDRAGENCoordinates.entrySet().stream()
+                .map(e -> String.format("%.1f", e.getKey()) + " -> " + dragenString(e.getValue(),  referenceHaplotype.getStart(),","))
+                .collect(Collectors.joining("\n")));
+    }
+
+    private static void finalEventsListMessage(final int refStart, final boolean debug, final Collection<Event> eventsInOrder) {
+        Utils.printIf(debug, () -> "Variants to PDHapDetermination:\n" + dragenString(eventsInOrder, refStart));
+    }
+
+    private static void dragenDisallowedGroupsMessage(int refStart, boolean debug, List<List<Event>> disallowedPairs) {
+        Utils.printIf(debug, () -> "disallowed groups:" + disallowedPairs.stream().map(group -> dragenString(group, refStart)).collect(Collectors.joining("\n")));
+    }
+
+    private static void branchExcludeAllelesMessage(Haplotype referenceHaplotype, boolean debug, TreeSet<Event> eventsInOrder, List<Set<Event>> branchExcludeAlleles) {
+        if (debug) {
+            System.out.println("Branches:");
+            for (int i = 0; i < branchExcludeAlleles.size(); i++) {
+                final int ifinal = i;
+                System.out.println("Branch "+i+" VCs:");
+                System.out.println("exclude:" + dragenString(branchExcludeAlleles.get(i), referenceHaplotype.getStart()));
+                //to match dragen debug output for personal sanity
+                final Collection<Event> included = eventsInOrder.stream().filter(variantContext -> !branchExcludeAlleles.get(ifinal).contains(variantContext)).collect(Collectors.toList());
+                System.out.println("include:" + dragenString(included, referenceHaplotype.getStart()));
+            }
+        }
+    }
+
+    private static void branchHaplotypesDebugMessage(final Haplotype referenceHaplotype, final boolean debug, final Set<Event> excludeEvents, final List<Haplotype> branchHaps) {
+            Utils.printIf(debug, () -> "Constructed Haps for Branch" + dragenString(excludeEvents,  referenceHaplotype.getStart(), ",") + ":");
+            Utils.printIf(debug, () -> branchHaps.stream().map(h -> h.getCigar() + " " + h.toString()).collect(Collectors.joining("\n")));
     }
 
 }
