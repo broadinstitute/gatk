@@ -31,6 +31,20 @@ The table below describes the GVS bulk ingest variables:
 | call_set_identifier         | Used to name the filter model, BigQuery extract tables, and final joint VCF shards. Should begin with a letter, valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”. | String |
 
 
+The first four parameters are labelled as optional, but the pipeline needs a value for each of them to process the data. This is because the system can likely determine the four values it needs.
+if you know the values that you want for these 4, feel free to fill them in, but it is not necessary.
+If the user does not supply all 4 values, the system uses a mix of default values and heuristics to determine these parameters.
+The first parameter, `data_table_name`, is the name of the data entity and is overwhelmingly labelled "sample". This is the default that is used in the system. User documentation likewise suggests this term as does the Beta workspace.
+The second parameter, `entity_id_column_name`, dictates the sames of the samples as they will show up in GVS and GVS outputs. Some advanced users prefer to use a custom column. This defaults to the value of `data_table_name` + "_id" which is most likely "sample_id"
+
+The next two parameters, `vcf_files_column_name` and `vcf_index_files_column_name`, are used to understand the GCP locations of the GVCFs. 
+If they are not input by the user, the system will look at all the possible columns and a subset of the data in each to predict which columns have the sample paths. The system looks for paths ending in `vcf` or similar.
+
+The system will also validate that any user input for these parameters fit with the expected relationships between them. 
+
+The fifth parameter (`sample_set_name`) is required if a sample set is being used for ingest, which we do recommend for large batches. 
+You can create a sample set from the data tab of your workspace, by selecting the samples that you desire to include, clicking edit and selecting "Save selection as set". 
+You will then be given the option to name your sample set. That name is what you will use as the `sample_set_name` parameter
 
 ## Setup
 
@@ -54,35 +68,13 @@ The [GVS beta workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Vari
 
 The GVS workflow takes in reblocked single sample GVCF files and their corresponding index files as `input_vcfs` and `input_vcf_indexes`, respectively. 
 
-Note:
-the samples_table_name value is `samples`
-the sample_id_column_name value is `sample_id`
-the entity_id_column_name value does not need to be specified as it is `sample_id`
+In the Beta user workflow, the value examples are as follows:
+the samples_table_name value is `sample`
+the entity_id_column_name value is `sample_id`
 the vcf_files_column_name value is `gvcf`
 the vcf_index_files_column_name value is `gvcf_index`
 the sample_set_name value is `sample_set_name`
 
-
-
-
-### Parameter estimates and hueristics
-
-step 1:
-What is our entity type?
-This is how we determine the table name, the entity_set and the entity_id info
-
-A user can easily pass this information as the param "sample_table_name"
-The default value for this is "sample"
-
-If we have a user defined entity type, we check that it exists as a table.
-
-If we have a user defined entity_set name, we check that it exists as a table and that the entity that is used has a corresponding id column
-
-step 2:
-What columns do you care about?
-The ingest needs to know about the GVCF locations in GCP
-The GVCF paths and their index files can be discerned based on the limited logic that they will likely have files named appropriately
-The workflow looks for paths ending in vcf as well as columns with familiar names such as "vcf" or "reblocked"
 
 ### Import sample GVCF files
 
