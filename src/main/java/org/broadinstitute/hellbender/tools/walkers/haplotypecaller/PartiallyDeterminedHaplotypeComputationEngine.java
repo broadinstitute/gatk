@@ -190,7 +190,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                 continue;
             }
 
-            final List<Event> determinedVariants = variantSiteGroup.getValue();
+            final List<Event> allEventsHere = variantSiteGroup.getValue();
 
             /**
              * Determined Event Loop:
@@ -198,22 +198,22 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
              *
              * NOTE: we skip the reference allele in the event that we are making determined haplotypes instead of undetermined haplotypes
              */
-            for (int IndexOfAllele = (pileupArgs.determinePDHaps?0:-1); IndexOfAllele < determinedVariants.size(); IndexOfAllele++) { //note -1 for I here corresponds to the reference allele at this site
-                if (debug) System.out.println("Working with allele at site: "+(IndexOfAllele ==-1? "[ref:"+(variantSiteGroup.getKey()-referenceHaplotype.getStart())+"]" : PartiallyDeterminedHaplotype.getDRAGENDebugEventString(referenceHaplotype.getStart()).apply(determinedVariants.get(IndexOfAllele))));
+            for (int determinedAlleleIndex = (pileupArgs.determinePDHaps?0:-1); determinedAlleleIndex < allEventsHere.size(); determinedAlleleIndex++) { //note -1 for I here corresponds to the reference allele at this site
+                if (debug) System.out.println("Working with allele at site: "+(determinedAlleleIndex ==-1? "[ref:"+(variantSiteGroup.getKey()-referenceHaplotype.getStart())+"]" : PartiallyDeterminedHaplotype.getDRAGENDebugEventString(referenceHaplotype.getStart()).apply(allEventsHere.get(determinedAlleleIndex))));
                 // This corresponds to the DRAGEN code for
                 // 0 0
                 // 0 1
                 // 1 0
-                final boolean isRef = IndexOfAllele == -1;
-                final Event determinedEventToTest = determinedVariants.get(isRef ? 0 : IndexOfAllele);
+                final boolean isRef = determinedAlleleIndex == -1;
+                final Event determinedEventToTest = allEventsHere.get(isRef ? 0 : determinedAlleleIndex);
 
                 /*
                  * Here we handle any of the necessary work to deal with the event groups and maybe forming compund branches out of the groups
                  */
                 //Set Determined pairs:
                 List<Tuple<Event, Boolean>> determinedPairs = new ArrayList<>();
-                for(int j = 0; j < determinedVariants.size(); j++) {
-                    determinedPairs.add(new Tuple<>(determinedVariants.get(j), IndexOfAllele == j));
+                for(int j = 0; j < allEventsHere.size(); j++) {
+                    determinedPairs.add(new Tuple<>(allEventsHere.get(j), determinedAlleleIndex == j));
                 }
 
                 // Loop over eventGroups, have each of them return a list of VariantContexts
@@ -281,7 +281,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                         }
                         newBranch.sort(HAPLOTYPE_SNP_FIRST_COMPARATOR);
                         PartiallyDeterminedHaplotype newPDHaplotypeFromEvents = createNewPDHaplotypeFromEvents(referenceHaplotype, determinedEventToTest, isRef, newBranch);
-                        newPDHaplotypeFromEvents.setAllDeterminedEventsAtThisSite(determinedVariants); // accounting for determined variants for later in case we are in optimization mode
+                        newPDHaplotypeFromEvents.setAllDeterminedEventsAtThisSite(allEventsHere); // accounting for determined variants for later in case we are in optimization mode
                         branchHaps.add(newPDHaplotypeFromEvents);
 
                     } else {
