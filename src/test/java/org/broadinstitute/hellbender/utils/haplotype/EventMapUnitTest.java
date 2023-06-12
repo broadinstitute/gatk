@@ -3,20 +3,18 @@ package org.broadinstitute.hellbender.utils.haplotype;
 
 import htsjdk.samtools.TextCigarCodec;
 import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.apache.commons.lang3.StringUtils;
-import org.broadinstitute.hellbender.utils.GenomeLoc;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.UnvalidatingGenomeLoc;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+import org.broadinstitute.hellbender.utils.GenomeLoc;
+import org.broadinstitute.hellbender.utils.UnvalidatingGenomeLoc;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 public final class EventMapUnitTest extends GATKBaseTest {
     private final static String CHR = "20";
@@ -55,13 +53,13 @@ public final class EventMapUnitTest extends GATKBaseTest {
         final Haplotype hap = new Haplotype(haplotypeBases.getBytes(), false, 0, TextCigarCodec.decode(cigar));
         final GenomeLoc loc = new UnvalidatingGenomeLoc(CHR, 0, 1, refBases.length());
         for (final int maxDist : maxMnpDistance) {
-            final EventMap events = new EventMap(hap, refBases.getBytes(), loc, NAME, maxDist);
+            final EventMap events = EventMap.fromHaplotype(hap, refBases.getBytes(), loc, maxDist);
             Assert.assertEquals(events.getNumberOfEvents(), expectedAlleles.size());
-            final List<VariantContext> foundAlleles = new ArrayList<>(events.getVariantContexts());
+            final List<Event> foundAlleles = new ArrayList<>(events.getEvents());
             for (int i = 0; i < events.getNumberOfEvents(); i++) {
-                final VariantContext actual = foundAlleles.get(i);
-                Assert.assertEquals(actual.getReference().getDisplayString(), expectedAlleles.get(i).get(0));
-                Assert.assertEquals(actual.getAlternateAllele(0).getDisplayString(), expectedAlleles.get(i).get(1));
+                final Event actual = foundAlleles.get(i);
+                Assert.assertEquals(actual.refAllele().getDisplayString(), expectedAlleles.get(i).get(0));
+                Assert.assertEquals(actual.altAllele().getDisplayString(), expectedAlleles.get(i).get(1));
             }
         }
     }
@@ -122,16 +120,16 @@ public final class EventMapUnitTest extends GATKBaseTest {
         final GenomeLoc refLoc = new UnvalidatingGenomeLoc(CHR, 0, 1, refBases.length());
 
         final Haplotype hap = new Haplotype(haplotypeBases.getBytes(), false, hapStartWrtRef, TextCigarCodec.decode(cigar));
-        final EventMap eventMap = new EventMap(hap, refBases.getBytes(), refLoc, NAME, 1);
+        final EventMap eventMap = EventMap.fromHaplotype(hap, refBases.getBytes(), refLoc, 1);
 
-        final List<VariantContext> overlappingEvents = eventMap.getOverlappingEvents(queryLoc);
+        final List<Event> overlappingEvents = eventMap.getOverlappingEvents(queryLoc);
 
         final boolean eventsExpected = expectedAlt != null || expectedRef != null;
         Assert.assertEquals(overlappingEvents.size(), eventsExpected ? 1 : 0);
 
         if (eventsExpected) {
-            Assert.assertEquals(overlappingEvents.get(0).getReference(), expectedRef);
-            Assert.assertEquals(overlappingEvents.get(0).getAlternateAllele(0), expectedAlt);
+            Assert.assertEquals(overlappingEvents.get(0).refAllele(), expectedRef);
+            Assert.assertEquals(overlappingEvents.get(0).altAllele(), expectedAlt);
         }
     }
 
@@ -156,14 +154,12 @@ public final class EventMapUnitTest extends GATKBaseTest {
      */
     @Test(dataProvider = "MakeBlockData")
     public void testGetNeighborhood(final List<String> firstAlleles, final List<String> secondAlleles, final List<String> expectedAlleles) {
-        final VariantContext vc1 = GATKVariantContextUtils.makeFromAlleles("x", "20", 10, firstAlleles);
-        final VariantContext vc2 = GATKVariantContextUtils.makeFromAlleles("x", "20", 10, secondAlleles);
-        final VariantContext expected = GATKVariantContextUtils.makeFromAlleles("x", "20", 10, expectedAlleles);
+        final Event e1 = new Event("20", 10, Allele.create(firstAlleles.get(0), true), Allele.create(firstAlleles.get(1)));
+        final Event e2 = new Event("20", 10, Allele.create(secondAlleles.get(0), true), Allele.create(secondAlleles.get(1)));
+        final Event expected = new Event("20", 10, Allele.create(expectedAlleles.get(0), true), Allele.create(expectedAlleles.get(1)));
 
-        final EventMap eventMap = new EventMap(Collections.<VariantContext>emptyList());
-        final VariantContext block = eventMap.makeBlock(vc1, vc2);
+        final Event block = EventMap.makeCompoundEvents(e1, e2);
 
-        Assert.assertEquals(block.getStart(), expected.getStart());
-        Assert.assertEquals(block.getAlleles(), expected.getAlleles());
+        Assert.assertEquals(block, expected);
     }
 }

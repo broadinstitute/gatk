@@ -29,6 +29,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StandardMutectAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.HomogeneousPloidyModel;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
@@ -43,6 +44,7 @@ import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedSampleList;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
+import org.broadinstitute.hellbender.utils.haplotype.Event;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
@@ -56,8 +58,6 @@ import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AlleleFilteringMutect;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.LongHomopolymerHaplotypeCollapsingEngine;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.io.File;
@@ -253,48 +253,34 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
 
         removeUnmarkedDuplicates(originalAssemblyRegion);
 
-        final List<VariantContext> givenAlleles = featureContext.getValues(MTAC.alleles).stream()
-                .filter(vc -> MTAC.forceCallFiltered || vc.isNotFiltered()).collect(Collectors.toList());
-
-        final List<VariantContext> forcedPileupAlleles= MTAC.pileupDetectionArgs.usePileupDetection ?
-                PileupBasedAlleles.getPileupVariantContexts(originalAssemblyRegion.getAlignmentData(), MTAC.pileupDetectionArgs, header, MTAC.minBaseQualityScore) :
-                Collections.emptyList();
-
+        final List<Event> givenAlleles = featureContext.getValues(MTAC.alleles).stream()
+                .filter(vc -> MTAC.forceCallFiltered || vc.isNotFiltered())
+                .flatMap(vc -> GATKVariantContextUtils.splitVariantContextToEvents(vc, false, GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL, false).stream())
+                .collect(Collectors.toList());
 
         final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(originalAssemblyRegion, MTAC, header, samplesList, logger, referenceReader, assemblyEngine, aligner, false, MTAC.fbargs, false);
         ReadThreadingAssembler.addAssembledVariantsToEventMapOutput(untrimmedAssemblyResult, assembledEventMapVariants, MTAC.maxMnpDistance, assembledEventMapVcfOutputWriter);
         final LongHomopolymerHaplotypeCollapsingEngine haplotypeCollapsing = untrimmedAssemblyResult.getHaplotypeCollapsingEngine();
 
-        final SortedSet<VariantContext> allVariationEvents = untrimmedAssemblyResult.getVariationEvents(MTAC.maxMnpDistance);
-        // PileupCaller events if we need to apply them
-        final List<VariantContext> pileupAllelesFoundShouldFilter = forcedPileupAlleles.stream()
-                .filter(v -> PileupBasedAlleles.shouldFilterAssemblyVariant(MTAC.pileupDetectionArgs, v))
-                .collect(Collectors.toList());
-        final List<VariantContext> pileupAllelesPassingFilters = forcedPileupAlleles.stream()
-                .filter(v -> PileupBasedAlleles.passesFilters(MTAC.pileupDetectionArgs, v))
-                .collect(Collectors.toList());
-        for (final VariantContext given : givenAlleles) {
-            if (allVariationEvents.stream().noneMatch(vc -> vc.getStart() == given.getStart() && vc.getReference().basesMatch(given.getReference()) && vc.getAlternateAllele(0).basesMatch(given.getAlternateAllele(0)) )) {
-                allVariationEvents.add(given);
-            }
-        }
-        for (final VariantContext pileupAllele : pileupAllelesPassingFilters) {
-            if (allVariationEvents.stream().noneMatch(vc -> vc.getStart() == pileupAllele.getStart() && vc.getReference().basesMatch(pileupAllele.getReference()) && vc.getAlternateAllele(0).basesMatch(pileupAllele.getAlternateAllele(0)))) {
-                allVariationEvents.add(pileupAllele);
-            }
-        }
+        final SortedSet<Event> allVariationEvents = untrimmedAssemblyResult.getVariationEvents(MTAC.maxMnpDistance);
+
+        Pair<Set<Event>, Set<Event>> goodAndBadPileupEvents =
+                PileupBasedAlleles.goodAndBadPileupEvents(originalAssemblyRegion.getAlignmentData(), MTAC.pileupDetectionArgs, header, MTAC.minBaseQualityScore);
+        final Set<Event> goodPileupEvents = goodAndBadPileupEvents.getLeft();
+        final Set<Event> badPileupEvents = goodAndBadPileupEvents.getRight();
+
+        goodPileupEvents.forEach(allVariationEvents::add);
+        givenAlleles.forEach(allVariationEvents::add);
 
         final AssemblyRegionTrimmer.Result trimmingResult = trimmer.trim(originalAssemblyRegion, allVariationEvents, referenceContext);
         if (!trimmingResult.isVariationPresent()) {
             return emitReferenceConfidence() ? referenceModelForNoVariation(originalAssemblyRegion) : NO_CALLS;
         }
-        AssemblyResultSet assemblyResult = untrimmedAssemblyResult.trimTo(trimmingResult.getVariantRegion());
-        AssemblyBasedCallerUtils.addGivenAlleles(givenAlleles, MTAC.maxMnpDistance, aligner, MTAC.getHaplotypeToReferenceSWParameters(), assemblyResult);
 
-        // Apply the forced pileup calling alleles if there are any that we must filter
-        if ((!pileupAllelesFoundShouldFilter.isEmpty() || !pileupAllelesPassingFilters.isEmpty())) {
-            AssemblyBasedCallerUtils.applyPileupEventsAsForcedAlleles(originalAssemblyRegion, MTAC, aligner, assemblyResult.getReferenceHaplotype(), assemblyResult, pileupAllelesFoundShouldFilter, pileupAllelesPassingFilters, MTAC.pileupDetectionArgs.debugPileupStdout);
-        }
+        AssemblyResultSet assemblyResult = untrimmedAssemblyResult.trimTo(trimmingResult.getVariantRegion());
+        assemblyResult.removeHaplotypesWithBadAlleles(MTAC, badPileupEvents);
+        assemblyResult.addGivenAlleles(givenAlleles, MTAC.maxMnpDistance, aligner, MTAC.getHaplotypeToReferenceSWParameters());
+        assemblyResult.injectPileupEvents(originalAssemblyRegion, MTAC, aligner, goodPileupEvents);
 
         // we might find out after assembly that the "active" region actually has no variants
         if( ! assemblyResult.isVariationPresent() ) {

@@ -22,6 +22,7 @@ import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
+import org.broadinstitute.hellbender.utils.haplotype.Event;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
@@ -123,7 +124,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
                                                       final SimpleInterval refLoc,
                                                       final SimpleInterval activeRegionWindow,
                                                       final FeatureContext tracker,
-                                                      final List<VariantContext> givenAlleles,
+                                                      final List<Event> givenAlleles,
                                                       final boolean emitReferenceConfidence,
                                                       final int maxMnpDistance,
                                                       final SAMFileHeader header,
@@ -143,7 +144,8 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
 
         // update the haplotypes so we're ready to call, getting the ordered list of positions on the reference
         // that carry events among the haplotypes
-        final SortedSet<Integer> startPosKeySet = EventMap.buildEventMapsForHaplotypes(haplotypes, ref, refLoc, hcArgs.assemblerArgs.debugAssembly, maxMnpDistance);
+        EventMap.buildEventMapsForHaplotypes(haplotypes, ref, refLoc, hcArgs.assemblerArgs.debugAssembly, maxMnpDistance);
+        final SortedSet<Integer> eventStarts = EventMap.getEventStartPositions(haplotypes);
 
         // Walk along each position in the key set and create each event to be outputted
         final Set<Haplotype> calledHaplotypes = new HashSet<>();
@@ -157,16 +159,16 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
         }
 
         // null if there is no potential uses of DRAGstr in this region.
-        final DragstrReferenceAnalyzer dragstrs = constructDragstrReferenceSTRAnalyzerIfNecessary(haplotypes, ref, refLoc, startPosKeySet);
+        final DragstrReferenceAnalyzer dragstrs = constructDragstrReferenceSTRAnalyzerIfNecessary(haplotypes, ref, refLoc, eventStarts);
 
         final BiPredicate<GATKRead, SimpleInterval> readQualifiesForGenotypingPredicate = composeReadQualifiesForGenotypingPredicate(hcArgs);
 
-        for( final int loc : startPosKeySet ) {
+        for( final int loc : eventStarts ) {
             if( loc < activeRegionWindow.getStart() || loc > activeRegionWindow.getEnd() ) {
                 continue;
             }
 
-            final List<VariantContext> eventsAtThisLoc = AssemblyBasedCallerUtils.getVariantContextsFromActiveHaplotypes(loc,
+            final List<VariantContext> eventsAtThisLoc = AssemblyBasedCallerUtils.getVariantsFromActiveHaplotypes(loc,
                     haplotypes, !hcArgs.disableSpanningEventGenotyping);
 
             final List<VariantContext> eventsAtThisLocWithSpanDelsReplaced = replaceSpanDels(eventsAtThisLoc,
@@ -326,8 +328,8 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
         return !startPosKeySet.isEmpty() && dragstrParams != null
                 && !hcArgs.standardArgs.genotypeArgs.dontUseDragstrPriors &&
                 haplotypes.stream()
-                        .anyMatch(h -> h.getEventMap().getVariantContexts().stream()
-                                .anyMatch(GATKVariantContextUtils::containsInlineIndel));
+                        .anyMatch(h -> h.getEventMap().getEvents().stream()
+                                .anyMatch(e -> GATKVariantContextUtils.containsInlineIndel(e.refAllele(), Collections.singletonList(e.altAllele()))));
     }
 
 
@@ -468,7 +470,7 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
      * supportive haplotype, its second best score is set as {@link Double#NEGATIVE_INFINITY}.
      * In the extremely unlikely cases that two alleles, having the same best haplotype score, neither have a second
      * best haplotype score, or the same second best haplotype score, the order is exactly the same as determined by
-     * {@link Allele#compareTo(Allele)}.
+     * the Allele class's comparison
      */
     private static final class AlleleScoredByHaplotypeScores implements Comparable<AlleleScoredByHaplotypeScores>{
         private final Allele allele;

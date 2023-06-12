@@ -917,7 +917,7 @@ public final class ReadThreadingAssembler {
                     if (queue.size() >= 300) {
                         queue.stream().limit(200).forEachOrdered(vc -> assembledEventMapVcfOutputWriter.get().add(vc));
                     }
-                    queue.add(event);}));
+                    queue.add(event.convertToVariantContext("assembly"));}));
     }
 
     public AssemblyResultSet generateEmptyLLocalAssemblyResult(final AssemblyRegion assemblyRegion,

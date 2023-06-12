@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
+import org.broadinstitute.hellbender.utils.haplotype.Event;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
@@ -64,9 +65,9 @@ public class AssemblyComplexity implements JumboInfoAnnotation {
         // encode each haplotype as a string of variant starts and alt allele strings, excluding the locus of vc (to avoid reference/germline bias)
         // note that VariantContexts in an EventMap are always biallelic, so var.getAlternateAllele(0) is valid
         final Map<String, List<Haplotype>> haplotypeGroups = haplotypeLikelihoods.alleles().stream()
-                .collect(Collectors.groupingBy(hap -> hap.getEventMap().getVariantContexts().stream()
-                        .filter(var -> var.getStart() != vc.getStart())
-                        .map(var -> var.getStart() + var.getAlternateAllele(0).getBaseString())
+                .collect(Collectors.groupingBy(hap -> hap.getEventMap().getEvents().stream()
+                        .filter(event -> event.getStart() != vc.getStart())
+                        .map(event -> event.getStart() + event.altAllele().getBaseString())
                         .collect(Collectors.joining())));
 
         // sum the read support counts for all haplotypes within each group
@@ -143,16 +144,16 @@ public class AssemblyComplexity implements JumboInfoAnnotation {
     // k bases longer we simply check that the event map alt allele matches the variant context alt allele excluding the
     // latter's last k bases
     private static boolean containsAltAllele(final EventMap eventMap, final VariantContext vc, final int altAlleleIndex) {
-        final List<VariantContext> overlapping =  eventMap.getOverlappingEvents(vc.getStart());
+        final List<Event> overlapping =  eventMap.getOverlappingEvents(vc.getStart());
         if (overlapping.isEmpty()) {
             return false;
         } else if (overlapping.get(0).getStart() != vc.getStart()) {
             return false;
         } else {
-            final VariantContext eventMapVC = overlapping.get(0);
-            final int excessBases = vc.getReference().length() - eventMapVC.getReference().length();
+            final Event overlappingEvent = overlapping.get(0);
+            final int excessBases = vc.getReference().length() - overlappingEvent.refAllele().length();
 
-            return equalBasesExcludingSuffix(eventMapVC.getAlternateAllele(0).getBases(),
+            return equalBasesExcludingSuffix(overlappingEvent.altAllele().getBases(),
                     vc.getAlternateAllele(altAlleleIndex).getBases(), excessBases);
         }
     }
@@ -177,12 +178,11 @@ public class AssemblyComplexity implements JumboInfoAnnotation {
     }
 
     // count variants in one haplotype but not the other
-    // note that we use the fact that EventMap VariantContexts are biallelic
     private static int uniqueVariants(final Haplotype hap1, final Haplotype hap2, final int excludedPosition) {
         final EventMap eventMap2 = hap2.getEventMap();
-        return (int) hap1.getEventMap().getVariantContexts().stream()
-                .filter(vc -> vc.getStart() != excludedPosition)
-                .filter(vc -> !containsAltAllele(eventMap2, vc, 0))
+        return (int) hap1.getEventMap().getEvents().stream()
+                .filter(event -> event.getStart() != excludedPosition)
+                .filter(event -> !event.equals(eventMap2.get(event.getStart())))
                 .count();
     }
 

@@ -25,6 +25,7 @@ import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentM
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypesCache;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.genotyper.GenotypePriorCalculator;
+import org.broadinstitute.hellbender.utils.haplotype.Event;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
@@ -715,10 +716,12 @@ public final class GATKVariantContextUtils {
     }
 
     public static boolean containsInlineIndel(final VariantContext vc) {
-        final List<Allele> alleles = vc.getAlleles();
-        final int refLength = alleles.get(0).length();
-        for (int i = 1; i < alleles.size(); i++) {
-            final Allele alt = alleles.get(i);
+        return containsInlineIndel(vc.getReference(), vc.getAlternateAlleles());
+    }
+
+    public static boolean containsInlineIndel(final Allele ref, final Collection<Allele> altAlleles) {
+        final int refLength = ref.length();
+        for (final Allele alt : altAlleles) {
             if (!alt.isSymbolic() && alt != Allele.SPAN_DEL && alt.length() != refLength) {
                 return true;
             }
@@ -803,28 +806,27 @@ public final class GATKVariantContextUtils {
 
     /**
      *
-     * @param vc
      * @param refBasesStartingAtVCWithoutPad    Ref bases excluding the initial base of the variant context where the alt matches the ref.
      *                                          For example, if the reference sequence is GATCCACCACCAGTCGA and we have a deletion
      *                                          of one STR unit CCA, it is represented as a variant context TCCA -> T, where the 'T' is
      *                                          the padding base.  In this case, {@code refBasesStartingAtVCWithoutPad} is CCACCACCAGTCGA.
      * @return
      */
-    public static Pair<List<Integer>, byte[]> getNumTandemRepeatUnits(final VariantContext vc, final byte[] refBasesStartingAtVCWithoutPad) {
-        Utils.nonNull(vc);
+    public static Pair<List<Integer>, byte[]> getNumTandemRepeatUnits(final Allele refAllele, final List<Allele> altAlleles, final byte[] refBasesStartingAtVCWithoutPad) {
+        Utils.nonNull(refAllele);
+        Utils.nonNull(altAlleles);
         Utils.nonNull(refBasesStartingAtVCWithoutPad);
 
-        if ( ! vc.isIndel() ){ // only indels are tandem repeats
+        if ( altAlleles.stream().allMatch(a -> a.length() == refAllele.length()) ){ // only indels are tandem repeats
             return null;
         }
 
-        final Allele refAllele = vc.getReference();
         final byte[] refAlleleBases = Arrays.copyOfRange(refAllele.getBases(), 1, refAllele.length());
 
         byte[] repeatUnit = null;
         final List<Integer> lengths = new ArrayList<>();
 
-        for ( final Allele allele : vc.getAlternateAlleles() ) {
+        for ( final Allele allele : altAlleles ) {
             Pair<int[],byte[]> result = getNumTandemRepeatUnits(refAlleleBases, Arrays.copyOfRange(allele.getBases(), 1, allele.length()), refBasesStartingAtVCWithoutPad);
 
             final int[] repetitionCount = result.getLeft();
@@ -841,6 +843,10 @@ public final class GATKVariantContextUtils {
         }
 
         return new MutablePair<>(lengths,repeatUnit);
+    }
+
+    public static Pair<List<Integer>, byte[]> getNumTandemRepeatUnits(final VariantContext vc, final byte[] refBasesStartingAtVCWithoutPad) {
+        return getNumTandemRepeatUnits(vc.getReference(), vc.getAlternateAlleles(), refBasesStartingAtVCWithoutPad);
     }
 
     public static Pair<int[],byte[]> getNumTandemRepeatUnits(final byte[] refBases, final byte[] altBases, final byte[] remainingRefContext) {
@@ -1250,8 +1256,7 @@ public final class GATKVariantContextUtils {
         }
     }
 
-    public static Map<Allele, Allele> createAlleleMapping(final Allele refAllele,
-                                                          final VariantContext oneVC) {
+    public static Map<Allele, Allele> createAlleleMapping(final Allele refAllele, final VariantContext oneVC) {
         return createAlleleMapping(refAllele, oneVC.getReference(), oneVC.getAlternateAlleles());
     }
 
@@ -1273,8 +1278,7 @@ public final class GATKVariantContextUtils {
      * @param inputAlts          the alternate alleles that may need to be extended
      * @return a non-null mapping of original alleles to new (extended) ones
      */
-    public static Map<Allele, Allele> createAlleleMapping(final Allele refAllele,
-                                                           final Allele inputRef, final List<Allele> inputAlts) {
+    public static Map<Allele, Allele> createAlleleMapping(final Allele refAllele, final Allele inputRef, final List<Allele> inputAlts) {
         Utils.validate( refAllele.length() >= inputRef.length(), () -> "BUG: inputRef="+inputRef+" is longer than refAllele="+refAllele);
 
         // frequent simple case where there is already a common reference
@@ -1654,10 +1658,11 @@ public final class GATKVariantContextUtils {
      * @return a list of bi-allelic (or monomorphic) variant context
      */
     public static List<VariantContext> splitVariantContextToBiallelics(final VariantContext vc, final boolean trimLeft, final GenotypeAssignmentMethod genotypeAssignmentMethod,
-                                                                       final boolean keepOriginalChrCounts) {
+                                                          final boolean keepOriginalChrCounts) {
         Utils.nonNull(vc);
-
-        if (!vc.isVariant() || vc.isBiallelic())
+        if (!vc.isVariant()) {
+            return Collections.emptyList();
+        } else if (vc.isBiallelic())
             // non variant or biallelics already satisfy the contract
             return Collections.singletonList(vc);
         else {
@@ -1696,6 +1701,29 @@ public final class GATKVariantContextUtils {
     }
 
     /**
+     * Split variant context into its biallelic components if there are more than 2 alleles
+     * <p>
+     * For VC has A/B/C alleles, returns A/B and A/C contexts.
+     * Alleles are right trimmed to satisfy VCF conventions
+     * <p>
+     * If vc is biallelic or non-variant it is just returned
+     * <p>
+     * Chromosome counts are updated (but they are by definition 0)
+     *
+     * @param vc                       a potentially multi-allelic variant context
+     * @param trimLeft                 if true, we will also left trim alleles, potentially moving the resulting vcs forward on the genome
+     * @param genotypeAssignmentMethod assignment strategy for the (subsetted) PLs
+     * @param keepOriginalChrCounts    keep the orignal chromosome counts before subsetting
+     * @return a list of bi-allelic (or monomorphic) variant context
+     */
+    public static List<Event> splitVariantContextToEvents(final VariantContext vc, final boolean trimLeft, final GenotypeAssignmentMethod genotypeAssignmentMethod,
+                                                          final boolean keepOriginalChrCounts) {
+
+            return splitVariantContextToBiallelics(vc, trimLeft, genotypeAssignmentMethod, keepOriginalChrCounts).stream()
+                    .map(Event::ofWithoutAttributes).collect(Collectors.toList());
+    }
+
+    /**
      * Check if any of the genotypes is heterozygous, non-reference (i.e. 1/2)
      *
      * @param genotypesContext genotype information
@@ -1707,59 +1735,6 @@ public final class GATKVariantContextUtils {
                 return true;
         }
         return false;
-    }
-
-    /**
-     * Splits the alleles for the provided variant context into its primitive parts.
-     * Requires that the input VC be bi-allelic, so calling methods should first call splitVariantContextToBiallelics() if needed.
-     * Currently works only for MNPs.
-     *
-     * @param vc  the non-null VC to split
-     * @return a non-empty list of VCs split into primitive parts or the original VC otherwise
-     */
-    public static List<VariantContext> splitIntoPrimitiveAlleles(final VariantContext vc) {
-        Utils.nonNull(vc);
-        if ( !vc.isBiallelic() ) {
-            throw new IllegalArgumentException("Trying to break a multi-allelic Variant Context into primitive parts");
-        }
-
-        // currently only works for MNPs
-        if ( !vc.isMNP() )
-            return Arrays.asList(vc);
-
-        final byte[] ref = vc.getReference().getBases();
-        final byte[] alt = vc.getAlternateAllele(0).getBases();
-
-        Utils.validate(ref.length == alt.length, "ref and alt alleles for MNP have different lengths");
-
-        final List<VariantContext> result = new ArrayList<>(ref.length);
-
-        for ( int i = 0; i < ref.length; i++ ) {
-
-            // if the ref and alt bases are different at a given position, create a new SNP record (otherwise do nothing)
-            if ( ref[i] != alt[i] ) {
-
-                // create the ref and alt SNP alleles
-                final Allele newRefAllele = Allele.create(ref[i], true);
-                final Allele newAltAllele = Allele.create(alt[i], false);
-
-                // create a new VariantContext with the new SNP alleles
-                final VariantContextBuilder newVC = new VariantContextBuilder(vc).start(vc.getStart() + i).stop(vc.getStart() + i).alleles(Arrays.asList(newRefAllele, newAltAllele));
-
-                // create new genotypes with updated alleles
-                final Map<Allele, Allele> alleleMap = new LinkedHashMap<>();
-                alleleMap.put(vc.getReference(), newRefAllele);
-                alleleMap.put(vc.getAlternateAllele(0), newAltAllele);
-                final GenotypesContext newGenotypes = updateGenotypesWithMappedAlleles(vc.getGenotypes(), new AlleleMapper(alleleMap));
-
-                result.add(newVC.genotypes(newGenotypes).make());
-            }
-        }
-
-        if ( result.isEmpty() )
-            result.add(vc);
-
-        return result;
     }
 
     /**
@@ -2087,41 +2062,18 @@ public final class GATKVariantContextUtils {
      *  indicates no match in variant2.  If the reference alleles do not match, the output array will be populated
      *  exclusively with -1.
      */
-    public static int[] matchAllelesOnly(final VariantContext variant1, final VariantContext variant2) {
+    public static int[] matchAllelesAndStart(final VariantContext variant1, final VariantContext variant2) {
         Utils.nonNull(variant1);
         Utils.nonNull(variant2);
 
-        // Grab the trivial case:
-        if (variant1.isBiallelic() && variant2.isBiallelic()) {
-            if (variant1.getAlternateAllele(0).equals(variant2.getAlternateAllele(0)) &&
-                    (variant1.getReference().equals(variant2.getReference()))) {
-                return new int[]{0};
-            } else {
-                return new int[]{-1};
-            }
-        }
+        // First split and trim all variant contexts into events
+        final List<Event> events1 = simpleSplitIntoBiallelics(variant1);
+        final List<Event> events2 = simpleSplitIntoBiallelics(variant2);
 
-        // Handle the case where one or both of the input VCs are not biallelic.
-        final int[] result = new int[variant1.getAlternateAlleles().size()];
-
-        // First split (and trim) all variant contexts into biallelics.  We are only going ot be interested in the alleles.
-        final List<VariantContext> splitVariants1 = simpleSplitIntoBiallelics(variant1);
-        final List<VariantContext> splitVariants2 = simpleSplitIntoBiallelics(variant2);
-
-        // Second, match on ref and alt.  If match occurs add it to the output list.
-        for (int i = 0; i < splitVariants1.size(); i++) {
-            result[i] = -1;
-            for (int j = 0; j < splitVariants2.size(); j++) {
-                final VariantContext splitVariant1 = splitVariants1.get(i);
-                final VariantContext splitVariant2 = splitVariants2.get(j);
-                if (splitVariant1.getAlternateAllele(0).equals(splitVariant2.getAlternateAllele(0))
-                        && splitVariant1.getReference().equals(splitVariant2.getReference())) {
-                    result[i] = j;
-                }
-            }
-        }
-
-        return result;
+        // result[i] = j such that variant1's ith alt and variant2's jth alt are equivalent, or -1 if no such j exists
+        return IntStream.range(0, events1.size())
+                .map(i -> IntStream.range(0, events2.size()).filter(j -> events1.get(i).equals(events2.get(j))).findFirst().orElse(-1))
+                .toArray();
     }
 
     /**
@@ -2137,22 +2089,20 @@ public final class GATKVariantContextUtils {
      * Note that the variant contexts are usually stripped of attributes and genotypes.  Never {@code null}.  Empty list
      * if variant context has no alt alleles.
      */
-    private static List<VariantContext> simpleSplitIntoBiallelics(final VariantContext vc) {
+    private static List<Event> simpleSplitIntoBiallelics(final VariantContext vc) {
         Utils.nonNull(vc);
-        final List<VariantContext> result = new ArrayList<>();
+        final List<Event> result = new ArrayList<>();
 
         if (vc.isBiallelic()) {
-            return Collections.singletonList(vc);
+            return Collections.singletonList(Event.ofWithoutAttributes(vc));
         } else {
             // Since variant context builders are slow to keep re-creating.  Just create one and spew variant contexts from it, since
             //  the only difference will be the alternate allele.  Initialize the VCB with a dummy alternate allele,
             //  since it will be overwritten in all cases.
             final VariantContextBuilder vcb = new VariantContextBuilder("SimpleSplit", vc.getContig(), vc.getStart(), vc.getEnd(),
                     Arrays.asList(vc.getReference(), Allele.NO_CALL));
-            vc.getAlternateAlleles().forEach(allele -> result.add(GATKVariantContextUtils.trimAlleles(
-                    vcb.alleles(Arrays.asList(vc.getReference(), allele)).make(true), true, true)
-                    )
-            );
+            vc.getAlternateAlleles().forEach(allele -> result.add(Event.ofWithoutAttributes(GATKVariantContextUtils.trimAlleles(
+                    vcb.alleles(Arrays.asList(vc.getReference(), allele)).make(true), true, true))));
         }
 
         return result;

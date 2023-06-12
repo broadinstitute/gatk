@@ -24,8 +24,7 @@ public class AlleleFilteringUnitTest {
         final byte[] fullReferenceWithPadding = "CATGCATG".getBytes();
         Haplotype haplotype = new Haplotype(fullReferenceWithPadding, true, 0, TextCigarCodec.decode("8M"));
         haplotype.setGenomeLocation(new SimpleInterval("chr", 100, 108));
-        haplotype.setEventMap(new EventMap(haplotype, fullReferenceWithPadding,
-                new SimpleInterval("chr", (int)haplotype.getStartPosition(),(int)haplotype.getStopPosition()), "test", 0));
+        haplotype.setEventMap(EventMap.fromHaplotype(haplotype, fullReferenceWithPadding, 0));
 
 
         haplotypeList.add(haplotype);
@@ -33,8 +32,7 @@ public class AlleleFilteringUnitTest {
         haplotype.setGenomeLocation(new SimpleInterval("chr", 100, 108));
 
         haplotypeList.add(haplotype);
-        haplotype.setEventMap(new EventMap(haplotype, fullReferenceWithPadding,
-                new SimpleInterval("chr", (int)haplotype.getStartPosition(), (int)haplotype.getStopPosition()), "test", 0));
+        haplotype.setEventMap(EventMap.fromHaplotype(haplotype, fullReferenceWithPadding, 0));
 
         AlleleList<Haplotype> haplotypes = new IndexedAlleleList<>(haplotypeList);
         SampleList samples = new IndexedSampleList(Arrays.asList("sm1"));
@@ -75,22 +73,19 @@ public class AlleleFilteringUnitTest {
         final byte[] fullReferenceWithPadding = "CATGCATG".getBytes();
         Haplotype haplotype = new Haplotype(fullReferenceWithPadding, true, 0, TextCigarCodec.decode("8M"));
         haplotype.setGenomeLocation(new SimpleInterval("chr", 100, 108));
-        haplotype.setEventMap(new EventMap(haplotype, fullReferenceWithPadding,
-                new SimpleInterval("chr", (int)haplotype.getStartPosition(),(int)haplotype.getStopPosition()), "test", 0));
+        haplotype.setEventMap(EventMap.fromHaplotype(haplotype, fullReferenceWithPadding, 0));
         haplotypeList.add(haplotype);
 
         haplotype = new Haplotype("CAGGCATG".getBytes(), false, 0, TextCigarCodec.decode("8M"));
         haplotype.setGenomeLocation(new SimpleInterval("chr", 100, 108));
 
-        haplotype.setEventMap(new EventMap(haplotype, fullReferenceWithPadding,
-                new SimpleInterval("chr", (int)haplotype.getStartPosition(), (int)haplotype.getStopPosition()), "test", 0));
+        haplotype.setEventMap(EventMap.fromHaplotype(haplotype, fullReferenceWithPadding, 0));
         haplotypeList.add(haplotype);
 
         haplotype = new Haplotype("CAGTCATG".getBytes(), false, 0, TextCigarCodec.decode("8M"));
         haplotype.setGenomeLocation(new SimpleInterval("chr", 100, 108));
 
-        haplotype.setEventMap(new EventMap(haplotype, fullReferenceWithPadding,
-                new SimpleInterval("chr", (int)haplotype.getStartPosition(), (int)haplotype.getStopPosition()), "test", 0));
+        haplotype.setEventMap(EventMap.fromHaplotype(haplotype, fullReferenceWithPadding, 0));
         haplotypeList.add(haplotype);
 
         AlleleList<Haplotype> haplotypes = new IndexedAlleleList<>(haplotypeList);
@@ -136,22 +131,19 @@ public class AlleleFilteringUnitTest {
         final byte[] fullReferenceWithPadding = "CATGCATG".getBytes();
         Haplotype haplotype = new Haplotype(fullReferenceWithPadding, true, 0, TextCigarCodec.decode("8M"));
         haplotype.setGenomeLocation(new SimpleInterval("chr", 100, 108));
-        haplotype.setEventMap(new EventMap(haplotype, fullReferenceWithPadding,
-                new SimpleInterval("chr", (int)haplotype.getStartPosition(),(int)haplotype.getStopPosition()), "test", 0));
+        haplotype.setEventMap(EventMap.fromHaplotype(haplotype, fullReferenceWithPadding, 0));
         haplotypeList.add(haplotype);
 
         haplotype = new Haplotype("CAGGCATG".getBytes(), false, 0, TextCigarCodec.decode("8M"));
         haplotype.setGenomeLocation(new SimpleInterval("chr", 100, 108));
 
-        haplotype.setEventMap(new EventMap(haplotype, fullReferenceWithPadding,
-                new SimpleInterval("chr", (int)haplotype.getStartPosition(), (int)haplotype.getStopPosition()), "test", 0));
+        haplotype.setEventMap(EventMap.fromHaplotype(haplotype, fullReferenceWithPadding, 0));
         haplotypeList.add(haplotype);
 
         haplotype = new Haplotype("CAGGCATTG".getBytes(), false, 0, TextCigarCodec.decode("7M1I1M"));
         haplotype.setGenomeLocation(new SimpleInterval("chr", 100, 109));
 
-        haplotype.setEventMap(new EventMap(haplotype, fullReferenceWithPadding,
-                new SimpleInterval("chr", (int)haplotype.getStartPosition(), (int)haplotype.getStopPosition()), "test", 0));
+        haplotype.setEventMap(EventMap.fromHaplotype(haplotype, fullReferenceWithPadding, 0));
         haplotypeList.add(haplotype);
 
         AlleleList<Haplotype> haplotypes = new IndexedAlleleList<>(haplotypeList);
@@ -197,22 +189,19 @@ public class AlleleFilteringUnitTest {
         final byte[] fullReferenceWithPadding = "CATGCATG".getBytes();
         Haplotype haplotype = new Haplotype(fullReferenceWithPadding, true, 0, TextCigarCodec.decode("8M"));
         haplotype.setGenomeLocation(new SimpleInterval("chr", 100, 108));
-        haplotype.setEventMap(new EventMap(haplotype, fullReferenceWithPadding,
-                new SimpleInterval("chr", (int)haplotype.getStartPosition(),(int)haplotype.getStopPosition()), "test", 0));
+        haplotype.setEventMap(EventMap.fromHaplotype(haplotype, fullReferenceWithPadding, 0));
         haplotypeList.add(haplotype);
 
         haplotype = new Haplotype("CAGGCATG".getBytes(), false, 0, TextCigarCodec.decode("8M"));
         haplotype.setGenomeLocation(new SimpleInterval("chr", 100, 108));
 
-        haplotype.setEventMap(new EventMap(haplotype, fullReferenceWithPadding,
-                new SimpleInterval("chr", (int)haplotype.getStartPosition(), (int)haplotype.getStopPosition()), "test", 0));
+        haplotype.setEventMap(EventMap.fromHaplotype(haplotype, fullReferenceWithPadding, 0));
         haplotypeList.add(haplotype);
 
         haplotype = new Haplotype("CATGCATC".getBytes(), false, 0, TextCigarCodec.decode("8M"));
         haplotype.setGenomeLocation(new SimpleInterval("chr", 100, 108));
 
-        haplotype.setEventMap(new EventMap(haplotype, fullReferenceWithPadding,
-                new SimpleInterval("chr", (int)haplotype.getStartPosition(), (int)haplotype.getStopPosition()), "test", 0));
+        haplotype.setEventMap(EventMap.fromHaplotype(haplotype, fullReferenceWithPadding, 0));
         haplotypeList.add(haplotype);
 
         AlleleList<Haplotype> haplotypes = new IndexedAlleleList<>(haplotypeList);
@@ -259,15 +248,13 @@ public class AlleleFilteringUnitTest {
         final byte[] fullReferenceWithPadding = "CATGCATG".getBytes();
         Haplotype haplotype = new Haplotype(fullReferenceWithPadding, true, 0, TextCigarCodec.decode("8M"));
         haplotype.setGenomeLocation(new SimpleInterval("chr", 100, 108));
-        haplotype.setEventMap(new EventMap(haplotype, fullReferenceWithPadding,
-                new SimpleInterval("chr", (int)haplotype.getStartPosition(),(int)haplotype.getStopPosition()), "test", 0));
+        haplotype.setEventMap(EventMap.fromHaplotype(haplotype, fullReferenceWithPadding, 0));
         haplotypeList.add(haplotype);
 
         haplotype = new Haplotype("CAGGCATG".getBytes(), false, 0, TextCigarCodec.decode("8M"));
         haplotype.setGenomeLocation(new SimpleInterval("chr", 100, 108));
 
-        haplotype.setEventMap(new EventMap(haplotype, fullReferenceWithPadding,
-                new SimpleInterval("chr", (int)haplotype.getStartPosition(), (int)haplotype.getStopPosition()), "test", 0));
+        haplotype.setEventMap(EventMap.fromHaplotype(haplotype, fullReferenceWithPadding, 0));
         haplotypeList.add(haplotype);
 
         AlleleList<Haplotype> haplotypes = new IndexedAlleleList<>(haplotypeList);

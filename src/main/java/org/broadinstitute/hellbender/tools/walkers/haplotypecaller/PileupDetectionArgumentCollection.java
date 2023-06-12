@@ -122,7 +122,8 @@ public final class PileupDetectionArgumentCollection {
     public double pileupAbsoluteDepth = 0;
     @Hidden
     @Argument(fullName= PILEUP_DETECTION_INDEL_SNP_BLOCKING_RANGE, doc = "Pileup Detection: Filters out pileup snps within this many bases of an assembled indel. (Requires '--"+PILEUP_DETECTION_LONG_NAME+"' argument)", optional = true, minValue = 0D)
-    public int snpAdajacentToAssemblyIndel = 5;
+    public int snpAdjacentToAssemblyIndel = 5;
+
     @Hidden
     @Argument(fullName= PILEUP_DETECTION_SNP_BASEQUALITY_THRESHOLD, doc = "Pileup Detection: Filters out reads from pileup SNPs with base quality lower than this threshold. (Requires '--"+PILEUP_DETECTION_LONG_NAME+"' argument)", optional = true)
     public int qualityForSnpsInPileupDetection = 12; //WHY is this two different than the regular active region determination limit (10)? Ask DRAGEN engineers.

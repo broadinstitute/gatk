@@ -1,6 +1,9 @@
 package org.broadinstitute.hellbender.tools.walkers.genotyper.afcalc;
 
-import htsjdk.variant.variantcontext.*;
+import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.Genotype;
+import htsjdk.variant.variantcontext.GenotypeBuilder;
+import htsjdk.variant.variantcontext.VariantContext;
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import org.apache.commons.math3.special.Gamma;
@@ -10,11 +13,9 @@ import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAlleleCount
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeIndexCalculator;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypingLikelihoods;
-import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AlleleAndContext;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.dragstr.DragstrParams;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -154,21 +155,12 @@ public final class AlleleFrequencyCalculator {
         final int numAlleles = gls.numberOfAlleles();
         final List<Allele> alleles = gls.asListOfAlleles();
 
-        final List<Integer> alleleLengths = new ArrayList<>();
-        for (Allele al : gls.asListOfAlleles()) {
-            if (al instanceof AlleleAndContext) {
-                alleleLengths.add(((AlleleAndContext) al).maxAlleleLength());
-            } else {
-                alleleLengths.add(al.length());
-            }
-        }
-        final int alleleLength = alleleLengths.stream().max(Integer::compare).get();
+        final int alleleLength = gls.asListOfAlleles().stream().map(Allele::length).max(Integer::compare).get();
 
         final List<String> samples = gls.asListOfSamples();
         final List<Genotype> genotypes = IntStream.range(0, samples.size()).mapToObj(idx -> new GenotypeBuilder(samples.get(idx)).alleles(alleles).PL(gls.sampleLikelihoods(idx).getAsPLs()).make()).collect(Collectors.toList());
         return calculate(numAlleles, alleles, genotypes, defaultPloidy, alleleLength);
     }
-
 
     /**
      * Private function that actually calculates allele frequencies etc.

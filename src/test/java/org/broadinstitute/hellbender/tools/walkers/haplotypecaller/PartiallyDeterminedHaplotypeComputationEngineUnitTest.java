@@ -2,11 +2,10 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import htsjdk.samtools.TextCigarCodec;
 import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.haplotype.Event;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.haplotype.PartiallyDeterminedHaplotype;
@@ -14,44 +13,39 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import static org.testng.Assert.*;
-
 public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKBaseTest {
 
-    VariantContext SNP_C_90 = new VariantContextBuilder("a","20",90, 90, Arrays.asList(Allele.REF_A,Allele.ALT_C)).make();
-    VariantContext DEL_AAAAAAA_98 = new VariantContextBuilder("a","20",98, 104, Arrays.asList(Allele.create("AAAAAAA", true),Allele.ALT_A)).make();
-    VariantContext SNP_C_100 = new VariantContextBuilder("a","20",100, 100, Arrays.asList(Allele.REF_A,Allele.ALT_C)).make();
-    VariantContext SNP_G_101 = new VariantContextBuilder("a","20",101, 101, Arrays.asList(Allele.REF_A,Allele.ALT_G)).make();
-    VariantContext SNP_G_102 = new VariantContextBuilder("a","20",102, 102, Arrays.asList(Allele.REF_A,Allele.ALT_G)).make();
-    VariantContext SNP_C_104 = new VariantContextBuilder("a","20",104, 104, Arrays.asList(Allele.REF_A,Allele.ALT_C)).make();
-    VariantContext SNP_C_105 = new VariantContextBuilder("a","20",105, 105, Arrays.asList(Allele.REF_A,Allele.ALT_C)).make();
-    VariantContext SNP_G_105 = new VariantContextBuilder("a","20",105, 105, Arrays.asList(Allele.REF_A,Allele.ALT_G)).make();
-    VariantContext SNP_C_106 = new VariantContextBuilder("a","20",106, 106, Arrays.asList(Allele.REF_A,Allele.ALT_C)).make();
-    VariantContext SNP_T_106 = new VariantContextBuilder("a","20",106, 106, Arrays.asList(Allele.REF_A,Allele.ALT_T)).make();
-    VariantContext SNP_C_109 = new VariantContextBuilder("a","20",109, 109, Arrays.asList(Allele.REF_A,Allele.ALT_C)).make();
-    VariantContext SNP_C_107 = new VariantContextBuilder("a","20",107, 107, Arrays.asList(Allele.REF_A,Allele.ALT_C)).make();
+    Event SNP_C_90 = new Event("20",90, Allele.REF_A,Allele.ALT_C);
+    Event DEL_AAAAAAA_98 = new Event("20",98, Allele.create("AAAAAAA", true),Allele.ALT_A);
+    Event SNP_C_100 = new Event("20",100, Allele.REF_A,Allele.ALT_C);
+    Event SNP_G_101 = new Event("20",101, Allele.REF_A,Allele.ALT_G);
+    Event SNP_G_102 = new Event("20",102, Allele.REF_A,Allele.ALT_G);
+    Event SNP_C_104 = new Event("20",104, Allele.REF_A,Allele.ALT_C);
+    Event SNP_C_105 = new Event("20",105, Allele.REF_A,Allele.ALT_C);
+    Event SNP_G_105 = new Event("20",105, Allele.REF_A,Allele.ALT_G);
+    Event SNP_C_106 = new Event("20",106, Allele.REF_A,Allele.ALT_C);
+    Event SNP_T_106 = new Event("20",106, Allele.REF_A,Allele.ALT_T);
+    Event SNP_C_109 = new Event("20",109, Allele.REF_A,Allele.ALT_C);
+    Event SNP_C_107 = new Event("20",107, Allele.REF_A,Allele.ALT_C);
 
-    VariantContext DEL_AA_105 = new VariantContextBuilder("a","20",105, 106, Arrays.asList(Allele.create("AA", true),Allele.ALT_A)).make();
-    VariantContext DEL_AA_100 = new VariantContextBuilder("a","20",100, 101, Arrays.asList(Allele.create("AA", true),Allele.ALT_A)).make();
-    VariantContext DEL_AAA_102 = new VariantContextBuilder("a","20",102, 104, Arrays.asList(Allele.create("AAA", true),Allele.ALT_A)).make();
-    VariantContext DEL_AAAAAAA_102 = new VariantContextBuilder("a","20",102, 108, Arrays.asList(Allele.create("AAAAAAA", true),Allele.ALT_A)).make();
+    Event DEL_AA_105 = new Event("20",105, Allele.create("AA", true),Allele.ALT_A);
+    Event DEL_AA_100 = new Event("20",100, Allele.create("AA", true),Allele.ALT_A);
+    Event DEL_AAA_102 = new Event("20",102, Allele.create("AAA", true),Allele.ALT_A);
+    Event DEL_AAAAAAA_102 = new Event("20",102, Allele.create("AAAAAAA", true),Allele.ALT_A);
 
 
-    VariantContext INS_TT_105 = new VariantContextBuilder("a","20",105, 105, Arrays.asList(Allele.REF_A, Allele.create("AT"))).make();
-    VariantContext INS_TT_103 = new VariantContextBuilder("a","20",103, 103, Arrays.asList(Allele.REF_A, Allele.create("AT"))).make();
-    VariantContext INS_TT_100 = new VariantContextBuilder("a","20",100, 100, Arrays.asList(Allele.REF_A, Allele.create("AT"))).make();
-    VariantContext INS_GGG_106 = new VariantContextBuilder("a","20",106, 106, Arrays.asList(Allele.REF_A, Allele.create("AGG"))).make();
+    Event INS_TT_105 = new Event("20",105, Allele.REF_A, Allele.create("AT"));
+    Event INS_TT_103 = new Event("20",103, Allele.REF_A, Allele.create("AT"));
+    Event INS_TT_100 = new Event("20",100, Allele.REF_A, Allele.create("AT"));
+    Event INS_GGG_106 = new Event("20",106, Allele.REF_A, Allele.create("AGG"));
 
     // TODO THESE ARE FOR INVALID TEST CASES
-    VariantContext SNP_C_99 = new VariantContextBuilder("a","20",99, 99, Arrays.asList(Allele.REF_A,Allele.ALT_C)).make();
-    VariantContext SNP_C_120 = new VariantContextBuilder("a","20",120, 120, Arrays.asList(Allele.REF_A,Allele.ALT_C)).make();
-
-
+    Event SNP_C_99 = new Event("20",99, Allele.REF_A,Allele.ALT_C);
+    Event SNP_C_120 = new Event("20",120, Allele.REF_A,Allele.ALT_C);
 
     @DataProvider
     public Object[][] testConstructHaplotypeFromVariantsDataProvider() {
@@ -86,25 +80,25 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
         };
     }
     @Test(dataProvider = "testConstructHaplotypeFromVariantsDataProvider")
-    public void basicConstructHaplotypeFromVariants(List<VariantContext> variants, String expectedBases, String expectedCigar, int numberOfCompounds) {
+    public void basicConstructHaplotypeFromVariants(List<Event> events, String expectedBases, String expectedCigar, int numberOfCompounds) {
         Haplotype ref = new Haplotype("AAAAAAAAAA".getBytes(), true, 500, TextCigarCodec.decode("10M"));
         ref.setGenomeLocation(new SimpleInterval("20", 100, 110));
 
-        Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromVariants(ref, variants, true);
+        Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromVariants(ref, events, true);
         Assert.assertEquals(result.getBases(), expectedBases.getBytes());
         Assert.assertEquals(result.getCigar(), TextCigarCodec.decode(expectedCigar));
 
         // Assert that the resulting event map matches the input variants:
         EventMap resultEMap = result.getEventMap();
         // NOTE, because of representation in VCF lines, the compound alleles get compressed into a single in the event map, here we assert that this is correct.
-        Assert.assertEquals(resultEMap.getNumberOfEvents(), variants.size() - numberOfCompounds);
+        Assert.assertEquals(resultEMap.getNumberOfEvents(), events.size() - numberOfCompounds);
     }
 
     @Test(expectedExceptions = GATKException.class)
     public void TestOutOfOrderInputs() {
         Haplotype ref = new Haplotype("AAAAAAAAAA".getBytes(), true, 500, TextCigarCodec.decode("10M"));
         ref.setGenomeLocation(new SimpleInterval("20", 100, 110));
-        List<VariantContext> variants = Arrays.asList(SNP_C_105, SNP_G_105);
+        List<Event> variants = Arrays.asList(SNP_C_105, SNP_G_105);
 
         Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromVariants(ref, variants, true);
     }
@@ -113,27 +107,27 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
     public void TestSNPsOverlapping() {
         Haplotype ref = new Haplotype("AAAAAAAAAA".getBytes(), true, 500, TextCigarCodec.decode("10M"));
         ref.setGenomeLocation(new SimpleInterval("20", 100, 110));
-        List<VariantContext> variants = Arrays.asList(SNP_C_109, DEL_AA_100);
+        List<Event> events = Arrays.asList(SNP_C_109, DEL_AA_100);
 
-        Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromVariants(ref, variants, true);
+        Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromVariants(ref, events, true);
     }
 
     @Test(expectedExceptions = GATKException.class)
     public void TestVariantNotOverlappingHap() {
         Haplotype ref = new Haplotype("AAAAAAAAAA".getBytes(), true, 500, TextCigarCodec.decode("10M"));
         ref.setGenomeLocation(new SimpleInterval("20", 100, 110));
-        List<VariantContext> variants = Arrays.asList(SNP_C_90);
+        List<Event> events = Arrays.asList(SNP_C_90);
 
-        Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromVariants(ref, variants, true);
+        Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromVariants(ref, events, true);
     }
 
     @Test(expectedExceptions = GATKException.class)
     public void TestVariantIndelPartiallyOverlapping() {
         Haplotype ref = new Haplotype("AAAAAAAAAA".getBytes(), true, 500, TextCigarCodec.decode("10M"));
         ref.setGenomeLocation(new SimpleInterval("20", 100, 110));
-        List<VariantContext> variants = Arrays.asList(DEL_AAAAAAA_98);
+        List<Event> events = Arrays.asList(DEL_AAAAAAA_98);
 
-        Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromVariants(ref, variants, true);
+        Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromVariants(ref, events, true);
     }
 
     //This is a test asserting that a real edge case that was prone to cause failures in the PDHMM is handled properly when compound variants are taken into account.
@@ -143,22 +137,22 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
         Haplotype ref = new Haplotype("AAGAAAGATGGAGGCCCAGCCAGATCTGGACCCCACAGGCCGTCTCCCCACACAGCCATTCATGTGGTCTACTTCCAGCCATTCATGTGGTCTATTTCCAAGAAAATAGCCCATCCCCCCAAGATAACACCTTCTCAAAAACTTTACAGCTTTGTGTCTACACTGATATTTAGGTATTTTCTTTCTTTTTTTTTTATGATTAACACATCTAATTCAAGAATATCTTGGCAGGATATTCCCCGCTTAGGAAATG".getBytes(), true, 575, TextCigarCodec.decode("253M"));
         ref.setGenomeLocation(new SimpleInterval("20", 24152646, 24152898));
 
-        VariantContext VC1 = new VariantContextBuilder("a", "20", 24152708, 24152708, Arrays.asList(Allele.REF_T, Allele.ALT_C)).make();
-        VariantContext VC2 = new VariantContextBuilder("a", "20", 24152728, 24152728, Arrays.asList(Allele.REF_T, Allele.ALT_C)).make();
-        VariantContext VC3 = new VariantContextBuilder("a", "20", 24152729, 24152741, Arrays.asList(Allele.create("CATGTGGTCTATT", true), Allele.ALT_C)).make();
+        final Event e1 = new Event("20", 24152708, Allele.REF_T, Allele.ALT_C);
+        final Event e2 = new Event("20", 24152728, Allele.REF_T, Allele.ALT_C);
+        final Event e3 = new Event("20", 24152729, Allele.create("CATGTGGTCTATT", true), Allele.ALT_C);
 
-        List<VariantContext> variants = Arrays.asList(VC1, VC2, VC3);
+        final List<Event> events = Arrays.asList(e1, e2, e3);
 
-        Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromVariants(ref, variants, true);
+        Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromVariants(ref, events, true);
         Assert.assertEquals(result.getCigar(), TextCigarCodec.decode("62M1X19M1X1M12D157M"));
 
         // Assert that the resulting event map matches the input variants:
         EventMap resultEMap = result.getEventMap();
-        Assert.assertEquals(resultEMap.getNumberOfEvents(), variants.size());
-        for (VariantContext v : variants) {
-            VariantContext actualVC = resultEMap.get(v.getStart());
-            Assert.assertNotNull(actualVC);
-            Assert.assertEquals(actualVC.getAlleles(), v.getAlleles());
+        Assert.assertEquals(resultEMap.getNumberOfEvents(), events.size());
+        for (Event e : events) {
+            Event actualEvent = resultEMap.get(e.getStart());
+            Assert.assertNotNull(actualEvent);
+            Assert.assertEquals(actualEvent, e);
         }
     }
 
@@ -192,15 +186,15 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
         };
     }
     @Test(dataProvider = "testGeneratePDHaplotypeDataProvider")
-    public void testGeneratePDHaplotypeFromVariants(List<VariantContext> variants, VariantContext targetVariant, boolean useRefBase, String expectedBases, byte[] expectedAltArray, String expectedCigar) {
+    public void testGeneratePDHaplotypeFromVariants(List<Event> events, Event targetEvent, boolean useRefBase, String expectedBases, byte[] expectedAltArray, String expectedCigar) {
         Haplotype ref = new Haplotype("AAAAAAAAAA".getBytes(), true, 500, TextCigarCodec.decode("10M"));
         ref.setGenomeLocation(new SimpleInterval("20", 100, 110));
 
-        PartiallyDeterminedHaplotype result = PartiallyDeterminedHaplotypeComputationEngine.createNewPDHaplotypeFromEvents(ref, targetVariant, useRefBase, variants);
+        PartiallyDeterminedHaplotype result = PartiallyDeterminedHaplotypeComputationEngine.createNewPDHaplotypeFromEvents(ref, targetEvent, useRefBase, events);
         Assert.assertEquals(new String(result.getBases()), expectedBases);
         Assert.assertEquals(result.getAlternateBases(), expectedAltArray);
         Assert.assertEquals(result.getCigar(), TextCigarCodec.decode(expectedCigar));
-        Assert.assertEquals(result.getDeterminedPosition(), targetVariant.getStart());
+        Assert.assertEquals(result.getDeterminedPosition(), targetEvent.getStart());
     }
 
     // NOTE: This is an enfocement of a behavior that I consider to be a bug in DRAGEN. Specifically my assumption that we needn't ever concern

@@ -4,7 +4,6 @@ import com.google.common.annotations.VisibleForTesting;
 import com.netflix.servo.util.Objects;
 import htsjdk.samtools.Cigar;
 import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.util.Arrays;
@@ -74,16 +73,16 @@ public final class  PartiallyDeterminedHaplotype extends Haplotype {
     }
 
     private final byte[] alternateBases;
-    private final List<VariantContext> constituentBuiltEvents;
+    private final List<Event> constituentBuiltEvents;
     // NOTE: we must store ALL of the determined events at this site (which is different than the constituent events, we expect the constituent
     //       events for one of these objects to only be a single element) for the purposes of the overlapping reads PDHMM optimization.
     //       At Multiallelic sites, we ultimately genotype all of the alleles at once. If we aren't careful, reads that only overlap some
     //       alleles at a site will end up with incorrect/undetermined PDHMM scores for a subset of alleles in the genotyper which can
     //       lead to false positives/poorly called sites.
-    private List<VariantContext> allDeterminedEventsAtThisSite;
+    private List<Event> allDeterminedEventsAtThisSite;
 
     //TODO Eventually these will have to be refactored to support multiple determined alleles per PDHaplotype
-    private final VariantContext alleleBearingVariantContext; // NOTE this must be in both of the previous lists
+    private final Event alleleBearingEvent; // NOTE this must be in both of the previous lists
     private final long determinedPosition;
     private final boolean isDeterminedAlleleRef;
 
@@ -106,13 +105,13 @@ public final class  PartiallyDeterminedHaplotype extends Haplotype {
      * @param determinedPosition            position (wrt the reference contig) that the haplotype should be considered determined //TODO this will be refactored to be a range of events in JointDetection
      * @param getAlignmentStartHapwrtRef    alignment startHapwrtRef from baseHaplotype corresponding to the in-memory storage of reference bases (must be set for trimming/clipping ops to work)
      */
-    public PartiallyDeterminedHaplotype(final Haplotype base, boolean isRefAllele, byte[] pdBytes, List<VariantContext> constituentEvents,
-                                        VariantContext eventWithVariant, Cigar cigar, long determinedPosition, int getAlignmentStartHapwrtRef) {
+    public PartiallyDeterminedHaplotype(final Haplotype base, boolean isRefAllele, byte[] pdBytes, List<Event> constituentEvents,
+                                        final Event eventWithVariant, final Cigar cigar, long determinedPosition, int getAlignmentStartHapwrtRef) {
         super(base.getBases(), false, base.getAlignmentStartHapwrtRef(), cigar);
         this.setGenomeLocation(base.getGenomeLocation());
         this.alternateBases = pdBytes;
         this.constituentBuiltEvents = constituentEvents;
-        this.alleleBearingVariantContext = eventWithVariant;
+        this.alleleBearingEvent = eventWithVariant;
         this.allDeterminedEventsAtThisSite = Collections.singletonList(eventWithVariant);
         this.determinedPosition = determinedPosition;
         this.isDeterminedAlleleRef = isRefAllele;
@@ -135,15 +134,15 @@ public final class  PartiallyDeterminedHaplotype extends Haplotype {
         String output = "HapLen:"+length() +", "+new String(getDisplayBases());
         output = output + "\nUnresolved Bases["+alternateBases.length+"] "+Arrays.toString(alternateBases);
         return output + "\n"+getCigar().toString()+" "+ constituentBuiltEvents.stream()
-                .map(v ->(v==this.alleleBearingVariantContext ?"*":"")+getDRAGENDebugVariantContextString((int)getStartPosition()).apply(v) )
+                .map(v ->(v==this.alleleBearingEvent ?"*":"")+ getDRAGENDebugEventString((int)getStartPosition()).apply(v) )
                 .collect(Collectors.joining("->"));
     }
 
     /**
      * A printout of the PD haplotype meant to be readable and easily comparable to the DRAGEN debug mode output for the same haplotype.
      */
-    public static Function<VariantContext, String> getDRAGENDebugVariantContextString(final int offset) {
-        return v -> "(" + Integer.toString(v.getStart() - offset + (v.isSimpleDeletion()? 1 : 0))+ (v.isSimpleInsertion()?".5":"") + ",Rlen=" + v.getLengthOnReference()+"," + v.getAlternateAlleles() + ")";
+    public static Function<Event, String> getDRAGENDebugEventString(final int offset) {
+        return e -> "(" + Integer.toString(e.getStart() - offset + (e.isSimpleDeletion()? 1 : 0))+ (e.isSimpleInsertion()?".5":"") + ",Rlen=" + e.getLengthOnReference()+"," + e.altAllele() + ")";
     }
 
     @Override
@@ -161,11 +160,11 @@ public final class  PartiallyDeterminedHaplotype extends Haplotype {
         return Objects.hash(Arrays.hashCode(getBases()),Arrays.hashCode(alternateBases));
     }
 
-    public List<VariantContext> getDeterminedAlleles() {
-        return isDeterminedAlleleRef ? Collections.emptyList() : Collections.singletonList(alleleBearingVariantContext);
+    public List<Event> getDeterminedAlleles() {
+        return isDeterminedAlleleRef ? Collections.emptyList() : Collections.singletonList(alleleBearingEvent);
     }
 
-    public void setAllDeterminedEventsAtThisSite(List<VariantContext> allDeterminedEventsAtThisSite) {
+    public void setAllDeterminedEventsAtThisSite(List<Event> allDeterminedEventsAtThisSite) {
         this.allDeterminedEventsAtThisSite = allDeterminedEventsAtThisSite;
         cachedExtent = null;
     }
@@ -173,9 +172,9 @@ public final class  PartiallyDeterminedHaplotype extends Haplotype {
     //NOTE: we never want the genotyper to handle reads that were not HMM scored, caching this extent helps keep us safe from messy sites
     public SimpleInterval getMaximumExtentOfSiteDeterminedAlleles() {
         if (cachedExtent == null) {
-            cachedExtent = new SimpleInterval(alleleBearingVariantContext);
-            for( VariantContext variantContext : allDeterminedEventsAtThisSite) {
-                cachedExtent = cachedExtent.mergeWithContiguous(variantContext);
+            cachedExtent = new SimpleInterval(alleleBearingEvent);
+            for( Event event : allDeterminedEventsAtThisSite) {
+                cachedExtent = cachedExtent.mergeWithContiguous(event);
             }
         }
         return cachedExtent;
