@@ -34,6 +34,7 @@ workflow GvsQuickstartHailIntegration {
         input:
             go = GvsQuickstartVcfIntegration.done,
             project_id = project_id,
+            use_VQSR_lite = use_VQSR_lite,
             dataset_name = GvsQuickstartVcfIntegration.dataset_name,
             filter_set_name = GvsQuickstartVcfIntegration.filter_set_name,
             scatter_width = 10,
