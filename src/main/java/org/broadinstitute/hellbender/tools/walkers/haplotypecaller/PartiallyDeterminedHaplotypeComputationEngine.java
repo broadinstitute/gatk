@@ -129,10 +129,8 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         for (Event vc : eventsInOrder) {
             // Break everything into independent groups (don't worry about transitivitiy right now)
             Double eventKey = vc.getStart() + (vc.isSimpleInsertion() ? 0.5 : 0) + (vc.isSimpleDeletion() ? 1 : 0) - referenceHaplotype.getStartPosition();
-            eventsByDRAGENCoordinates.putIfAbsent(eventKey, new ArrayList<>());
-            eventsByDRAGENCoordinates.get(eventKey).add(vc);
-            variantsByStartPos.putIfAbsent(vc.getStart(), new ArrayList<>());
-            variantsByStartPos.get(vc.getStart()).add(vc);
+            eventsByDRAGENCoordinates.putIfAbsent(eventKey, new ArrayList<>()).add(vc);
+            variantsByStartPos.putIfAbsent(vc.getStart(), new ArrayList<>()).add(vc);
             if (debug) System.out.println("testing:"+vc);
             if (debug) System.out.println("EventKey:"+eventKey);
             if (eventKey <= lastEventEnd + 0.5) {
