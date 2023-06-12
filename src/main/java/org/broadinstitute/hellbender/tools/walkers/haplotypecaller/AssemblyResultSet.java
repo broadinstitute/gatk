@@ -633,7 +633,6 @@ public final class AssemblyResultSet {
     /**
      * Remove haplotypes with alleles we wish to filter
      * // TODO this is a bad algorithm for bad people -- it might eliminate good alleles on the same haplotypes
-     * // TODO: this should be a method of AssemblyResultSet, not an external static method
      */
     public void removeHaplotypesWithBadAlleles(final AssemblyBasedCallerArgumentCollection argumentCollection,
                                                final Collection<Event> badPileupEvents) {
