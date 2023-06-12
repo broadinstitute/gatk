@@ -67,8 +67,6 @@ def get_entity_data(user_defined_entity, entity_set):
     if entity not in list(table.list_tables()):
         print("error in possible entities")
 
-    print(entity)
-
     return entity
 
 
