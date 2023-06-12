@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.haplotype;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.util.Locatable;
@@ -38,6 +39,8 @@ public final class EventMap extends TreeMap<Integer, Event> {
         return new EventMap(getEvents(haplotype, ref, haplotype.getLocation(), maxMnpDistance));
     }
 
+    // this is really just a convenient way to make EventMap objects in unit tests
+    @VisibleForTesting
     public static EventMap of(final Event ... events) {
         return new EventMap(Arrays.asList(events));
     }
