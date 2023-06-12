@@ -64,18 +64,10 @@ def get_entity_data(user_defined_entity, entity_set):
         print("default set to entity type sample")
         entity = default_entity
 
-
-    entity_id=entity + "_id"
-    if user_defined_entity_id != entity_id:
-        user_entity_id = user_defined_entity_id
-    else:
-        user_entity_id = entity_id
-
     if entity not in list(table.list_tables()):
         print("error in possible entities")
 
     print(entity)
-    print(user_entity_id)
 
     return entity
 
@@ -261,17 +253,9 @@ def get_column_values(columnSamples, numSamples):
     print(f"path_ends_in_vcf_gz: {path_ends_in_vcf_gz}")
     print(f"path_ends_in_vcf_gz_tbi: {path_ends_in_vcf_gz_tbi}")
 
-    column_names = {
-        'vcf_column' : final_vcf_column,
-        'vcf_column_index': final_vcf_index_column
-    }
+    return (final_vcf_column, final_vcf_index_column)
 
-    return column_names
-
-
-def write_column_names(column_names, vcf_output, vcf_index_output):
-    final_vcf_column = column_names['vcf_column']
-    final_vcf_index_column = column_names['vcf_column_index']
+def write_column_names(final_vcf_column, final_vcf_index_column, vcf_output, vcf_index_output):
     with open(vcf_output, "w") as vcf_output, open(vcf_index_output, "w") as vcf_index_output:
         vcf_output.write(f'{final_vcf_column}\n')
         vcf_index_output.write(f'{final_vcf_index_column}\n')
@@ -324,6 +308,8 @@ if __name__ == '__main__':
     ### NOTE: FOR NOW WE JUST ALLOW "SAMPLE" TO BE THE DEFAULT ENTITY TYPE AND THIS CODE JUST VALIDATES THAT
 
     # if the user is using sample_sets, then that will potentially help us get the first (and thus also the second) or validate a user defined entity_type
+    # 1. The entity type
+    entity_type = ""
     sample_set_name = args.entity_set_name
     if "entity_set_name" in args:
         entity_type = get_entity_data(args.entity_type, args.entity_set_name)
@@ -334,6 +320,21 @@ if __name__ == '__main__':
     else:
         entity_type = "sample"
 
+    # 2. The entity type id column name
+    entity_id = entity_type + "_id"
+
+    # 3. The sample name column name
+    sample_id = ""
+    if "user_defined_entity_id" in args:
+        sample_id = args.user_defined_entity_id
+    else:
+        sample_id = entity_id
+
+    # validate the entity information
     (columnSamples, numSamples) = get_column_data(entity_type)
-    column_names = get_column_values(columnSamples, numSamples)
-    write_column_names(column_names, args.vcf_output, args.vcf_index_output)
+
+    # 4 and # 5: The input GVCFs path column name and the input GVCF index path column name
+    (vcf_column, vcf_column_index) = get_column_values(columnSamples, numSamples)
+
+    # Write the derived values to their corresponding locations -- we just pass the vcf paths for now, as at this point, everything else is just for validation rather than discovery
+    write_column_names(vcf_column, vcf_column_index, args.vcf_output, args.vcf_index_output)
