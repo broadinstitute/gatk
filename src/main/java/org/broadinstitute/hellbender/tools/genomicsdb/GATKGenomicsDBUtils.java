@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.genomicsdb;
 
-import com.googlecode.protobuf.format.JsonFormat;
+import com.google.protobuf.util.JsonFormat;
 import htsjdk.samtools.util.FileExtensions;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
@@ -169,7 +169,7 @@ public class GATKGenomicsDBUtils {
     public static GenomicsDBVidMapProto.VidMappingPB getProtobufVidMappingFromJsonFile(final String vidmapJson)
             throws IOException {
         final GenomicsDBVidMapProto.VidMappingPB.Builder vidMapBuilder = GenomicsDBVidMapProto.VidMappingPB.newBuilder();
-        JsonFormat.merge(readEntireFile(vidmapJson), vidMapBuilder);
+        JsonFormat.parser().merge(readEntireFile(vidmapJson), vidMapBuilder);
         return vidMapBuilder.build();
     }
 

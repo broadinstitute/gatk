@@ -62,7 +62,7 @@ final barclayVersion = System.getProperty('barclay.version','5.0.0')
 final sparkVersion = System.getProperty('spark.version', '3.3.1')
 final hadoopVersion = System.getProperty('hadoop.version', '3.3.1')
 final disqVersion = System.getProperty('disq.version','0.3.6')
-final genomicsdbVersion = System.getProperty('genomicsdb.version','1.4.4')
+final genomicsdbVersion = System.getProperty('genomicsdb.version','1.5.0')
 final bigQueryVersion = System.getProperty('bigQuery.version', '2.9.0')
 final bigQueryStorageVersion = System.getProperty('bigQueryStorage.version', '2.9.1')
 final guavaVersion = System.getProperty('guava.version', '31.0.1-jre')
@@ -242,8 +242,6 @@ dependencies {
     implementation ('org.genomicsdb:genomicsdb:' + genomicsdbVersion)  {
         exclude module: 'log4j-api'
         exclude module: 'log4j-core'
-        exclude module: 'spark-core_2.12'
-        exclude module: 'spark-sql_2.12'
         exclude module: 'htsjdk'
         exclude module: 'protobuf-java'
     }
