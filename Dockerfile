@@ -81,8 +81,8 @@ RUN echo "source activate gatk" > /root/run_unit_tests.sh && \
     echo "cd /gatk/ && /gatkCloneMountPoint/gradlew -Dfile.encoding=UTF-8 -b /gatkCloneMountPoint/dockertest.gradle testOnPackagedReleaseJar jacocoTestReportOnPackagedReleaseJar -a -p /gatkCloneMountPoint" >> /root/run_unit_tests.sh
 
 # TODO: Remove this when we switch to a better way of loading the pgen dependency
-RUN mkdir /gatk/lib
-COPY --from=gradleBuild /gatk/lib/linux/libpgen.so /gatk/lib/libpgen.so
+RUN mkdir /usr/lib
+COPY --from=gradleBuild /gatk/lib/linux/libpgen.so /usr/lib/libpgen.so
 ENV CLASSPATH /gatk/lib/libpgen.so:$CLASSPATH
 
 WORKDIR /root
