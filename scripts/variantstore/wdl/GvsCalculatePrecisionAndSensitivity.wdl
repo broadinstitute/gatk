@@ -352,7 +352,7 @@ task EvaluateVcf {
     File truth_vcf
     File truth_vcf_index
     File truth_bed
-    Array[string] contigs
+    Array[String] contigs
 
     File ref_fasta
 
@@ -366,7 +366,7 @@ task EvaluateVcf {
     Int disk_size_gb = ceil(2 * size(ref_fasta, "GiB")) + 50
   }
 
-  String contigs_string = if (length(contigs) == 1) then contigs[0] else contigs[0] + "-" + contigs[length(contigs)-1]
+  String contigs_string = if (length(contigs) == 1) then contigs[0] else contigs[0] + "-" + contigs[(length(contigs)-1)]
 
   String max_score_field_tag = if (is_vqsr_lite == true) then 'MAX_AS_VQS_SENS' else 'MAX_AS_VQSLOD'
 
