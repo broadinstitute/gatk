@@ -4,7 +4,6 @@ import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -150,18 +149,22 @@ public final class EventMap extends TreeMap<Integer, Event> {
     // add an event, combining it into a compound event if an event already exists at the same position
     private void addEvent(final Event newEvent) {
         Utils.nonNull(newEvent);
-        computeIfPresent(newEvent.getStart(), (pos, oldEvent) -> combineEvents(oldEvent, newEvent));
+        computeIfPresent(newEvent.getStart(), (pos, oldEvent) -> makeCompoundEvents(oldEvent, newEvent));
         putIfAbsent(newEvent.getStart(), newEvent);
     }
 
     /**
-     * Combine two events with the same start into a single compound event.  The resulting event will not be a SNP
-     * or a simple indel.
+     * Merge two events with the same start into a single compound event.  The resulting event will not be a SNP
+     * or a simple indel.  This should not in any way be conflated with making a multiallelic VariantContext.  Here we
+     * apply the substitution encoded by one event and then apply the substitution encoded by a second event to obtain
+     * a single complex event.
+     *
+     * Examples: A -> C + A -> AT = A -> CT; C -> CGGG + CAAA -> C = CAAA -> CGGG
      *
      * e1 can be SNP, and e2 can then be either a insertion or deletion.
      * If e1 is an indel, then e2 must be the opposite type (e1 deletion => e2 must be an insertion)
      */
-    protected static Event combineEvents(final Event e1, final Event e2) {
+    protected static Event makeCompoundEvents(final Event e1, final Event e2) {
         Utils.validateArg( e1.getStart() == e2.getStart(), "e1 and e2 must have the same start");
 
         if ( e1.isSNP() || e2.isSNP()) {

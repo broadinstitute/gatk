@@ -158,7 +158,7 @@ public final class EventMapUnitTest extends GATKBaseTest {
         final Event e2 = new Event("20", 10, Allele.create(secondAlleles.get(0), true), Allele.create(secondAlleles.get(1)));
         final Event expected = new Event("20", 10, Allele.create(expectedAlleles.get(0), true), Allele.create(expectedAlleles.get(1)));
 
-        final Event block = EventMap.combineEvents(e1, e2);
+        final Event block = EventMap.makeCompoundEvents(e1, e2);
 
         Assert.assertEquals(block, expected);
     }
