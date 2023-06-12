@@ -88,14 +88,14 @@ public final class PileupBasedAlleles {
             Map<Byte, int[]> SNPCounts = new HashMap<>();
 
             for (PileupElement element : pileup) {
-                final byte eachBase = element.getBase();
+                final byte base = element.getBase();
 
                 // Subtract out low quality bases to mimic the reading active region determination //TODO this might need to also ignore the qual basees
                 if (element.getQual() < minBaseQualityScore) {
                     pileupDepth.decrement();
                 }
 
-                final boolean SNPFound = !onlyTrackDeletions && refBase != eachBase && eachBase != 'D' && element.getQual() > args.qualityForSnpsInPileupDetection;
+                final boolean SNPFound = !onlyTrackDeletions && refBase != base && base != 'D' && element.getQual() > args.qualityForSnpsInPileupDetection;
                 final boolean insertionFound = !onlyTrackDeletions && args.detectIndels && element.isBeforeInsertion();
                 final boolean deletionFound = args.detectIndels && element.isBeforeDeletionStart();
 
@@ -104,7 +104,7 @@ public final class PileupBasedAlleles {
                     final boolean badAssembly = isBadAssemblyRead(element.getRead(), args);
 
                     if (SNPFound) {
-                        incrementCounts(eachBase, SNPCounts, badPileup, badAssembly);
+                        incrementCounts(base, SNPCounts, badPileup, badAssembly);
                     }
 
                     if (insertionFound) {
