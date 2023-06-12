@@ -114,7 +114,7 @@ public class SomaticGenotypingEngine implements AutoCloseable {
         final AlleleLikelihoods<Fragment, Haplotype> logFragmentLikelihoods = logReadLikelihoods.groupEvidence(MTAC.independentMates ? read -> read : GATKRead::getName, Fragment::createAndAvoidFailure);
 
         for( final int loc : eventStarts ) {
-            final List<VariantContext> eventsAtThisLoc = AssemblyBasedCallerUtils.getEventsFromActiveHaplotypes(loc, haplotypes, false);
+            final List<VariantContext> eventsAtThisLoc = AssemblyBasedCallerUtils.getVariantsFromActiveHaplotypes(loc, haplotypes, false);
             VariantContext mergedVC = AssemblyBasedCallerUtils.makeMergedVariantContext(eventsAtThisLoc);
             if( mergedVC == null ) {
                 continue;

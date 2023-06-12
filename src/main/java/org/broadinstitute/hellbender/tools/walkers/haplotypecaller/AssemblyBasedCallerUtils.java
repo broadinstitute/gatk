@@ -593,14 +593,18 @@ public final class AssemblyBasedCallerUtils {
 
 
     /**
-     * Returns the list of events discovered in assembled haplotypes that are active at this location. The results will
+     * Returns the list of variants discovered in assembled haplotypes that are active at this location. The results will
      * include events that span the current location if includeSpanningEvents is set to true; otherwise it will only
      * include events that have loc as their start position.
+     *
+     * This marks the point in the code at which Events discovered from assembly are converted to VariantContext object.
+     * Prior to this point everything is an Event -- that is, biallelic ref -> alt substitutions -- and after this point
+     * everything is contained in heavier, potentially multiallelic, VariantContext objects for genotyping and output.
      * @param loc The start position we are genotyping
      * @param haplotypes list of active haplotypes at the current location
      * @param includeSpanningEvents If true, will also return events that span loc
      */
-    public static List<VariantContext> getEventsFromActiveHaplotypes(final int loc, final List<Haplotype> haplotypes, final boolean includeSpanningEvents) {
+    public static List<VariantContext> getVariantsFromActiveHaplotypes(final int loc, final List<Haplotype> haplotypes, final boolean includeSpanningEvents) {
         final Set<Event> events = new HashSet<>();
         final List<VariantContext> result = new ArrayList<>();
 

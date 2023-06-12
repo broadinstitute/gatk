@@ -422,7 +422,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
                                                            final int loc,
                                                            final List<Event> expectedEventsAtThisLocation) {
 
-        final List<VariantContext> vcsAtThisPosition = getEventsFromActiveHaplotypes(loc, haplotypes, true);
+        final List<VariantContext> vcsAtThisPosition = getVariantsFromActiveHaplotypes(loc, haplotypes, true);
         Assert.assertEquals(vcsAtThisPosition.size(), expectedEventsAtThisLocation.size());
         for (int i = 0; i < expectedEventsAtThisLocation.size(); i++) {
             VariantContextTestUtils.assertVariantContextsAreEqual(vcsAtThisPosition.get(i), expectedEventsAtThisLocation.get(i).convertToVariantContext("SRC"), new ArrayList<>(), Collections.emptyList());

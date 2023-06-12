@@ -218,7 +218,7 @@ public final class HaplotypeBasedVariantRecaller extends GATKTool {
             if ( activeRegionWindow.contains(new SimpleInterval(activeRegionWindow.getContig(), loc, loc)) ) {
 
                 // collect events
-                final List<VariantContext> eventsAtThisLoc = AssemblyBasedCallerUtils.getEventsFromActiveHaplotypes(loc,
+                final List<VariantContext> eventsAtThisLoc = AssemblyBasedCallerUtils.getVariantsFromActiveHaplotypes(loc,
                         haplotypes, true);
                 final List<VariantContext> eventsAtThisLocWithSpanDelsReplaced = HaplotypeCallerGenotypingEngine.replaceSpanDels(eventsAtThisLoc,
                         Allele.create(ref[loc - refLoc.getStart()], true), loc);
