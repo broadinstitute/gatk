@@ -25,25 +25,25 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Class that manages the complicated steps involved in generating artifical haplotypes for the PDHMM:
+ * Class that manages the complicated steps involved in generating artificial haplotypes for the PDHMM:
  *
  * The primary method to this class is {@link #generatePDHaplotypes} which will be called with an existing AssemblyResultSet object
  * as well as the list of alleles that were found from the pileupcaller code. The method attempts to replace the existing haplotypes
- * from the provided result set object with new haplotyeps that were artificially generated from merging the assembled alleles
+ * from the provided result set object with new haplotypes that were artificially generated from merging the assembled alleles
  * with those found by the pileup caller. Crucially, the constructed haplotypes will be PartiallyDeterminedHaplotype objects
  * which have markers indicating what bases are "undetermined" and should not be penalized in the HMM when computing likelihoods
  * The method might hit one of a few heuristic barriers and chose to fallback on only the assembled haplotypes if the
  * processing would become too complicated.
  */
 public class PartiallyDeterminedHaplotypeComputationEngine {
-    final static int MAX_PD_HAPS_TO_GENERATE = 256*2; //(2048 is illuminas #) (without optimizing the hmm to some degree this is probably unattainable)
-    final static int MAX_BRANCH_PD_HAPS = 128; //(128 is illuminas #)
-    final static int MAX_VAR_IN_EVENT_GROUP = 17; // (20 is illuminas #)
+    final static int MAX_PD_HAPS_TO_GENERATE = 256*2; //(2048 is Illumina's #) (without optimizing the hmm to some degree this is probably unattainable)
+    final static int MAX_BRANCH_PD_HAPS = 128; //(128 is Illumina's #)
+    final static int MAX_VAR_IN_EVENT_GROUP = 17; // (20 is Illumina's #)
 
     //To make this somewhat cleaner of a port from Illumina, we have two base spaces. R and U space. R space is vcf coordinate space,
     //U is a 0->N (N = region size) based space where Insertions are +0.5 and deletions are + 1 from their original position
 
-    // We use this comparator for haplotype construcion to make it slightly easier to build compound haplotypes (i.e. snp+insertion/deletion at the same anchor base)
+    // We use this comparator for haplotype construction to make it slightly easier to build compound haplotypes (i.e. snp+insertion/deletion at the same anchor base)
     public static final Comparator<Event> HAPLOTYPE_SNP_FIRST_COMPARATOR = Comparator.comparingInt(Event::getStart)
             // Decide arbitrarily so as not to accidentally throw away overlapping variants
             .thenComparingInt(e -> e.refAllele().length())
@@ -52,7 +52,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
 
     /**
-     * The workhorse method for the PDHMM branching code. This method is responsible for the lionshare of the work in taking a list of
+     * The workhorse method for the PDHMM branching code. This method is responsible for the lion's share of the work in taking a list of
      * assembly haplotypes/alleles and the alleles found in the ColumnwiseDetection code and converting them into the artificial haplotypes
      * that are necessary for variant calling. This code might fail due to having too complex a site, if that happens it will return
      * the input sourceSet object without anything being changed.
@@ -73,7 +73,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
      * @param badPileupEvents Pileup alleles that should be filtered if they are part of the assembly
      * @param goodPileupEvents Pileup alleles that pass the heuristics to be included in genotyping
      * @param aligner SmithWatermanAligner to use for filtering out equivalent event sets
-     * @return unchanged assembly result set if failed, updated haplotyeps otherwise
+     * @return unchanged assembly result set if failed, updated haplotypes otherwise
      */
     public static AssemblyResultSet generatePDHaplotypes(final AssemblyResultSet sourceSet,
                                                          final Set<Event> badPileupEvents,
@@ -127,13 +127,13 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         dragenDisallowedGroupsMessage(referenceHaplotype.getStart(), debug, disallowedPairs);
         Utils.printIf(debug, () -> "Event groups before merging:\n"+eventGroups.stream().map(eg -> eg.toDisplayString(referenceHaplotype.getStart())).collect(Collectors.joining("\n")));
 
-        //Now that we have the disallowed groups, lets merge any of them from seperate groups:
+        //Now that we have the disallowed groups, lets merge any of them from separate groups:
         //TODO this is not an efficient way of doing this
         for (List<Event> pair : disallowedPairs) {
             EventGroup eventGrpLeft = null;
             for (Event event : pair) {
                 EventGroup grpForEvent = eventGroups.stream().filter(grp -> grp.contains(event)).findFirst().get();
-                // If the event isn't in the same event group as its predicessor, merge this group with that one and
+                // If the event isn't in the same event group as its predecessor, merge this group with that one and
                 if (eventGrpLeft != grpForEvent) {
                     if (eventGrpLeft == null) {
                         eventGrpLeft = grpForEvent;
@@ -170,7 +170,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             Utils.printIf(debug, () -> "working with variants of the group: " + variantSiteGroup);
             // Skip
             if (entriesRInOrder.get(indexOfDeterminedInR).getKey() < callingSpan.getStart() || entriesRInOrder.get(indexOfDeterminedInR).getKey() > callingSpan.getEnd()) {
-                Utils.printIf(debug,() -> "Skipping determined hap construction! otside of span: " + callingSpan);
+                Utils.printIf(debug,() -> "Skipping determined hap construction! outside of span: " + callingSpan);
                 continue;
             }
 
@@ -192,7 +192,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                 final Event determinedEventToTest = allEventsHere.get(isRef ? 0 : determinedAlleleIndex);
 
                 /*
-                 * Here we handle any of the necessary work to deal with the event groups and maybe forming compund branches out of the groups
+                 * Here we handle any of the necessary work to deal with the event groups and maybe forming compound branches out of the groups
                  */
 
                 // Loop over eventGroups, have each of them return a list of VariantContexts
@@ -203,7 +203,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                  * An assembly region could potentially have any number of (within some limitations) of event groups. When we are constructing
                  * haplotypes out of the assembled variants we want to take the dot product of the branches for each set of event groups that
                  * we find. I.E. if an event group with mutex variants (B,C) requires two branches for Variant A and Variant A also leads to two branches in
-                 * anothe!r event group with mutex variants (D,E). Then we would want to ultimately generate the branches A,B,D -> A,B,E -> A,C,D -> A,C,E.
+                 * another event group with mutex variants (D,E). Then we would want to ultimately generate the branches A,B,D -> A,B,E -> A,C,D -> A,C,E.
                  * This is why we iterate over branchExcludeAlleles internally here.
                  */
                 for(EventGroup group : eventGroups ) {
@@ -228,7 +228,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                     branchExcludeAlleles.addAll(newBranchesToAdd);
 
                     if (branchExcludeAlleles.size() > MAX_BRANCH_PD_HAPS) {
-                        if (debug ) System.out.println("Found too many branches for variants at: "+determinedEventToTest.getStart()+" aborting and falling back to Assembly Varinats!");
+                        if (debug ) System.out.println("Found too many branches for variants at: "+determinedEventToTest.getStart()+" aborting and falling back to Assembly Variants!");
                         return sourceSet;
                     }
                 }
@@ -271,7 +271,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                         // We can drastically cut down on combinatorial expansion here by saying each allele is the FIRST variant in the list, thus preventing double counting.
                         for (int secondRIndex = indexOfDeterminedInR; secondRIndex < entriesRInOrder.size(); secondRIndex++) {
                             if (variantGroupsCombinatorialExpansion.size() > MAX_BRANCH_PD_HAPS) {
-                                if(debug ) System.out.println("Too many branch haplotypes ["+variantGroupsCombinatorialExpansion.size()+"] generated from site, falling back on assebmly variants!");
+                                if(debug ) System.out.println("Too many branch haplotypes ["+variantGroupsCombinatorialExpansion.size()+"] generated from site, falling back on assembly variants!");
                                 return sourceSet;
                             }
                             // Iterate through the growing combinatorial expansion of haps, split it into either having or not having the variant.
@@ -279,7 +279,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                                 for (List<Event> hclist : variantGroupsCombinatorialExpansion) {
                                     hclist.add(determinedEventToTest);
                                 }
-                            // Othewise make sure to include the combinatorial expansion of events at the other site
+                            // Otherwise make sure to include the combinatorial expansion of events at the other site
                             } else {
                                 List<List<Event>> hapsPerVCsAtRSite = new ArrayList<>();
                                 for (Event vc : entriesRInOrder.get(secondRIndex).getValue()) {
@@ -298,7 +298,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
                         for (List<Event> subset : variantGroupsCombinatorialExpansion) {
                             subset.sort(HAPLOTYPE_SNP_FIRST_COMPARATOR);
-                            Utils.printIf(debug, () -> "Construcing Hap From Events:"+ dragenString(subset,  referenceHaplotype.getStart()));
+                            Utils.printIf(debug, () -> "Constructing Hap From Events:"+ dragenString(subset,  referenceHaplotype.getStart()));
                             branchHaps.add(constructHaplotypeFromVariants(referenceHaplotype, subset, true));
                         }
                     }
@@ -332,7 +332,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
     }
 
     /**
-     * Helper method that handles one of the Heuristics baked by DRAGEN into this artifical haplotype genration code.
+     * Helper method that handles one of the Heuristics baked by DRAGEN into this artificial haplotype generation code.
      *
      * To help mitigate the risk of generating combinatorial haplotypes with SNPs/Indels that that might or might not add
      * up to equivalent events, DRAGEN enforces that events are NOT allowed to be present in the same haplotype if they
@@ -340,12 +340,12 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
      *
      * To cut down on the complexity of the task; we (and DRAGEN) follow this procedure:
      * 1. look at all sets of 2 variants where at least one is an indel and none overlap.
-     *    a) for each set construct an artifical haplotype with only those two variants on it
-     *    b) SmithWtarman align it against the reference to generate the cheapest cigar string representation
+     *    a) for each set construct an artificial haplotype with only those two variants on it
+     *    b) Smith Waterman align it against the reference to generate the cheapest cigar string representation
      *    c) Construct the event map for the new artificial haplotype, if any events in the new event map are in our list of variants
      *       but are NOT the constituent events that were used to construct the haplotype then disallow the pair
      * 2. Look at all sets of 3 variants that do not contain disallowed pairs found in step 1.
-     *    a-b-c) repeat steps 1a,1b,and 1c on the 3 evetn sets
+     *    a-b-c) repeat steps 1a,1b,and 1c on the 3 event sets
      *
      * @return A list of lists of variant contexts that correspond to disallowed groups. This list may be empty if none are found.
      */
@@ -359,7 +359,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                 // For every indel, make every 2-3 element subset (without overlapping) of variants to test for equivalency
                 for (int j = 0; j < eventsAsList.size(); j++) {
                     final Event secondEvent = eventsAsList.get(j);
-                    // Don't compare myslef, any overlappers to myself, or indels i've already examined me (to prevent double counting)
+                    // Don't compare myself, any overlappers to myself, or indels I've already examined me (to prevent double counting)
                     if (j != i && !eventsOverlapForPDHapsCode(firstEvent, secondEvent, true) && ((!secondEvent.isIndel()) || j > i)) {
                         final List<Event> events = new ArrayList<>(Arrays.asList(firstEvent, secondEvent));
                         events.sort(HAPLOTYPE_SNP_FIRST_COMPARATOR);
@@ -381,9 +381,9 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                 // For every indel, make every 2-3 element subset (without overlapping) of variants to test for equivalency
                 for (int j = 0; j < eventsAsList.size(); j++) {
                     final Event secondEvent = eventsAsList.get(j);
-                    // Don't compare myslef, any overlappers to myself, or indels i've already examined me (to prevent double counting)
+                    // Don't compare myself, any overlappers to myself, or indels i've already examined me (to prevent double counting)
                     if (j != i && !eventsOverlapForPDHapsCode(firstEvent, secondEvent, true) && ((!secondEvent.isIndel()) || j > i)) {
-                        // if i and j area lready disalowed keep going
+                        // if i and j area already disallowed keep going
                         if (disallowedPairs.stream().anyMatch(p -> p.contains(firstEvent) && p.contains(secondEvent))) {
                             continue;
                         }
@@ -418,7 +418,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
      * indels don't overlap on their anchor bases and insertions don't overlap anything except deletions spanning them or other insertions
      * at the same base.
      *
-     * @param snpsOverlap if false, don't ever evaluate snps as overlapping other snps (we do this because sometimes we need to construct artifical haps where we don't allow overlapping)
+     * @param snpsOverlap if false, don't ever evaluate snps as overlapping other snps (we do this because sometimes we need to construct artificial haps where we don't allow overlapping)
      */
     static boolean eventsOverlapForPDHapsCode(Event e1, Event e2, boolean snpsOverlap){
         if (!snpsOverlap && e2.isSNP() && e1.isSNP()) {
@@ -443,7 +443,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
      * The method is as follows, construct and artificial haplotype of the provided events, then realign it vs the reference and test
      * if any of the resulting variants are present in the inputs (but doesn't match)
      *
-     * NOTE: as per DRAGEN impelmeneation, a set is considered invalid if we re-SmithWaterman align and we get:
+     * NOTE: as per DRAGEN implementation, a set is considered invalid if we re-SmithWaterman align and we get:
      * 1) A different result hap from the ref + alleles we added
      * 2) At least one of the resulting events is NOT in the initial set of alleles we added to the ref
      * 3) Was at least one of the resulting alleles a variant we discovered in the pileups/assembly
@@ -533,7 +533,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             if (intermediateRefEndPosition - intermediateRefStartPosition > 0) {
                 newRefBases = ArrayUtils.addAll(newRefBases, ArrayUtils.subarray(refbases, intermediateRefStartPosition, event.getStart() - genomicStartPosition)); // bases before the variant
             }
-            // Handle the ref base for indels that exlcude their ref bases
+            // Handle the ref base for indels that exclude their ref bases
             if (refAllele.length() != altAllele.length() && !includeRefBaseForIndel) {
                 newRefBases = ArrayUtils.addAll(newRefBases, Arrays.copyOfRange(altAllele.getBases(),1, altAllele.length()));
             // else add the snp
@@ -566,7 +566,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
      * NOTE: we assume each provided VC is in start position order, and only ever contains one allele (and that if there are overlapping SNPs and indels that the SNPs come fist)
      */
     @VisibleForTesting
-    //TODO When we implement JointDetection we will need to allow multiple eventWithVariants to be prsent...
+    //TODO When we implement JointDetection we will need to allow multiple eventWithVariants to be present...
     static PartiallyDeterminedHaplotype createNewPDHaplotypeFromEvents(final Haplotype base, final Event eventWithVariant, final boolean useRef, final List<Event> constituentEvents) {
         //ASSERT that the base is ref and cool
         if (!base.isReference() || base.getCigar().numCigarElements() > 1) {
