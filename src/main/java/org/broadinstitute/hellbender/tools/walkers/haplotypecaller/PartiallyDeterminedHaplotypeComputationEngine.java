@@ -338,14 +338,9 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             return sourceSet;
         }
         sourceSet.storeAssemblyHaplotypes();
-        Set<Haplotype> result = new LinkedHashSet<>();
+
         // TODO this is an entirely unnecessary step that can be done away with but i leave in because it makes debugging against previous versions much easier.
-        outputHaplotypes.stream().sorted(new Comparator<Haplotype>() {
-            @Override
-            public int compare(Haplotype o1, Haplotype o2) {
-                return new String(o1.getBases()).compareTo(new String(o2.getBases()));
-            }
-        }).forEach(h -> result.add(h));
+        final Set<Haplotype> result = outputHaplotypes.stream().sorted(Comparator.comparing(Haplotype::getBaseString)).collect(Collectors.toCollection(LinkedHashSet::new));
         sourceSet.replaceAllHaplotypes(result);
         Utils.printIf(debug, () -> "Constructed Haps for Branch"+sourceSet.getHaplotypeList().stream().map(Haplotype::toString).collect(Collectors.joining("\n")));
         if (!pileupArgs.determinePDHaps) {
