@@ -278,8 +278,8 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
         }
 
         AssemblyResultSet assemblyResult = untrimmedAssemblyResult.trimTo(trimmingResult.getVariantRegion());
-        assemblyResult.addGivenAlleles(givenAlleles, MTAC.maxMnpDistance, aligner, MTAC.getHaplotypeToReferenceSWParameters());
         assemblyResult.removeHaplotypesWithBadAlleles(MTAC, badPileupEvents);
+        assemblyResult.addGivenAlleles(givenAlleles, MTAC.maxMnpDistance, aligner, MTAC.getHaplotypeToReferenceSWParameters());
         assemblyResult.injectPileupEvents(originalAssemblyRegion, MTAC, aligner, goodPileupEvents);
 
         // we might find out after assembly that the "active" region actually has no variants
