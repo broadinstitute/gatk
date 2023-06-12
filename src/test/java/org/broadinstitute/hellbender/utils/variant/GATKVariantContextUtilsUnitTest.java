@@ -2248,7 +2248,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
                 .alleles(variant2Alleles)
                 .make();
 
-        final int[] matches = GATKVariantContextUtils.matchAllelesOnly(variant1, variant2);
+        final int[] matches = GATKVariantContextUtils.matchAllelesAndStart(variant1, variant2);
         Assert.assertTrue(Arrays.equals(matches, gtMatch), "Failed");
     }
 

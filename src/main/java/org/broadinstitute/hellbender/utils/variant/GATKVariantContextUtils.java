@@ -2062,7 +2062,7 @@ public final class GATKVariantContextUtils {
      *  indicates no match in variant2.  If the reference alleles do not match, the output array will be populated
      *  exclusively with -1.
      */
-    public static int[] matchAllelesOnly(final VariantContext variant1, final VariantContext variant2) {
+    public static int[] matchAllelesAndStart(final VariantContext variant1, final VariantContext variant2) {
         Utils.nonNull(variant1);
         Utils.nonNull(variant2);
 
