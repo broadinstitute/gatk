@@ -123,7 +123,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
         // Iterate over all events starting with all indels
 
-        List<Pair<Event, Event>> disallowedPairs = findRedundantEventPairsViaRealignment(referenceHaplotype, aligner, args.getHaplotypeToReferenceSWParameters(), debug, eventsInOrder);
+        final Set<Pair<Event, Event>> disallowedPairs = findRedundantEventPairsViaRealignment(referenceHaplotype, aligner, args.getHaplotypeToReferenceSWParameters(), debug, eventsInOrder);
         dragenDisallowedGroupsMessage(referenceHaplotype.getStart(), debug, disallowedPairs);
         Utils.printIf(debug, () -> "Event groups before merging:\n"+eventGroups.stream().map(eg -> eg.toDisplayString(referenceHaplotype.getStart())).collect(Collectors.joining("\n")));
 
@@ -342,64 +342,51 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
      *
      * Note that while sets of three events are considered internally in this heuristic, the result is a list of *pairs*.
      *
+     * @param eventsInOrder events from which to test pairs and triples for redundancy.  We assume that these are already
+     *                      sorted according to HAPLOTYPE_SNP_FIRST_COMPARATOR.
+     *
      * @return A possibly-empty list of disallowed pairs of events.
      */
-    private static List<Pair<Event, Event>> findRedundantEventPairsViaRealignment(Haplotype referenceHaplotype, SmithWatermanAligner aligner, SWParameters swParameters, boolean debug, List<Event> eventsInOrder) {
-        List<Pair<Event, Event>> disallowedPairs = new ArrayList<>();
+    private static Set<Pair<Event, Event>> findRedundantEventPairsViaRealignment(Haplotype referenceHaplotype, SmithWatermanAligner aligner, SWParameters swParameters, boolean debug, List<Event> eventsInOrder) {
+        final Set<Pair<Event, Event>> disallowedPairs = new HashSet<>();
 
-        //Iterate over all 2 element permutations in which one element is an indel and test for alignments
+        // Realign artificial haplotypes with pairs of non-overlapping events where one is an indel
         for (int i = 0; i < eventsInOrder.size(); i++) {
-            final Event firstEvent = eventsInOrder.get(i);
-            if (firstEvent.isIndel()) {
-                // For every indel, make every 2-3 element subset (without overlapping) of variants to test for equivalency
-                for (int j = 0; j < eventsInOrder.size(); j++) {
-                    final Event secondEvent = eventsInOrder.get(j);
-                    // Don't compare myself, any overlappers to myself, or indels I've already examined me (to prevent double counting)
-                    if (j != i && !eventsOverlapForPDHapsCode(firstEvent, secondEvent) && ((!secondEvent.isIndel()) || j > i)) {
-                        final List<Event> events = new ArrayList<>(Arrays.asList(firstEvent, secondEvent));
-                        events.sort(HAPLOTYPE_SNP_FIRST_COMPARATOR);
-                        Utils.printIf(debug, () -> "Testing events: "+ dragenString(events,  referenceHaplotype.getStart()));
-                        if (constructArtificialHaplotypeAndTestEquivalentEvents(referenceHaplotype, aligner, swParameters, eventsInOrder, events, debug)) {
-                            disallowedPairs.add(ImmutablePair.of(firstEvent, secondEvent));
-                        }
-                    }
+            final Event first = eventsInOrder.get(i);
+            for (int j = i + 1; j < eventsInOrder.size(); j++) {
+                final Event second = eventsInOrder.get(j);
+                if (!(first.isIndel() || second.isIndel()) || eventsOverlapForPDHapsCode(first, second)) {
+                    continue;
+                }
+                final List<Event> events = List.of(first,second);
+                Utils.printIf(debug, () -> "Testing events: "+ dragenString(events,  referenceHaplotype.getStart()));
+                if (constructArtificialHaplotypeAndTestEquivalentEvents(referenceHaplotype, aligner, swParameters, eventsInOrder, events, debug)) {
+                    disallowedPairs.add(ImmutablePair.of(first, second));
                 }
             }
         }
 
-        //TODO NOTE: there are some discrepancies with the iteration over 3x variants in some complicated cases involving
-        //TODO       lots of transitively disallowed pairs. Hopefully this is a minor effect.
-        //Now iterate over all 3 element pairs and make sure none of the
+        // now test three events at a time
         for (int i = 0; i < eventsInOrder.size(); i++) {
-            final Event firstEvent = eventsInOrder.get(i);
-            if (firstEvent.isIndel()) {
-                // For every indel, make every 2-3 element subset (without overlapping) of variants to test for equivalency
-                for (int j = 0; j < eventsInOrder.size(); j++) {
-                    final Event secondEvent = eventsInOrder.get(j);
-                    // Don't compare myself, any overlappers to myself, or indels i've already examined me (to prevent double counting)
-                    if (j != i && !eventsOverlapForPDHapsCode(firstEvent, secondEvent) && ((!secondEvent.isIndel()) || j > i)) {
-                        // if i and j area already disallowed keep going
-                        if (disallowedPairs.stream().anyMatch(p -> p.contains(firstEvent) && p.contains(secondEvent))) {
-                            continue;
-                        }
-                        final List<Event> events = new ArrayList<>(Arrays.asList(firstEvent, secondEvent));
-                        // If our 2 element arrays weren't inequivalent, test subsets of 3 including this:
-                        for (int k = j+1; k < eventsInOrder.size(); k++) {
-                            final Event thirdEvent = eventsInOrder.get(k);
-                            if (k != i && !eventsOverlapForPDHapsCode(thirdEvent, firstEvent) && !eventsOverlapForPDHapsCode(thirdEvent, secondEvent)) {
-                                // if k and j or k and i are disallowed, keep looking
-                                if (disallowedPairs.stream().anyMatch(p -> (p.contains(firstEvent) && p.contains(thirdEvent)) || (p.contains(secondEvent) && p.contains(thirdEvent)))) {
-                                    continue;
-                                }
-                                List<Event> subList = new ArrayList<>(events);
-                                subList.add(thirdEvent);
-                                subList.sort(HAPLOTYPE_SNP_FIRST_COMPARATOR);
-                                Utils.printIf(debug,() ->"Testing events: " + dragenString(subList,  referenceHaplotype.getStart()));
-                                if (constructArtificialHaplotypeAndTestEquivalentEvents(referenceHaplotype, aligner, swParameters, eventsInOrder, subList, debug)) {
-                                    disallowedPairs.add(subList);
-                                }
-                            }
-                        }
+            final Event first = eventsInOrder.get(i);
+            for (int j = i + 1; j < eventsInOrder.size(); j++) {
+                final Event second = eventsInOrder.get(j);
+                final Pair<Event, Event> pair12 = ImmutablePair.of(first, second);
+                if (disallowedPairs.contains(pair12) || eventsOverlapForPDHapsCode(first, second)) {
+                    continue;
+                }
+                for (int k = j + 1; k < eventsInOrder.size(); k++) {
+                    final Event third = eventsInOrder.get(k);
+                    if (!(first.isIndel() || second.isIndel() || third.isIndel()) || eventsOverlapForPDHapsCode(second, third)) {
+                        continue;
+                    }
+                    final Pair<Event, Event> pair13 = ImmutablePair.of(first, third);
+                    final Pair<Event, Event> pair23 = ImmutablePair.of(second, third);
+                    if (disallowedPairs.contains(pair13) || disallowedPairs.contains(pair23)) {
+                        continue;
+                    }
+                    if (constructArtificialHaplotypeAndTestEquivalentEvents(referenceHaplotype, aligner, swParameters, eventsInOrder, List.of(first, second, third), debug)) {
+                        disallowedPairs.addAll(List.of(pair12, pair13, pair23));
                     }
                 }
             }
@@ -736,7 +723,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
          * @param disallowedEvents Pairs of events disallowed
          * @return false if the event group is too large to process
          */
-        public void populateBitset(List<List<Event>> disallowedEvents) {
+        public void populateBitset(Collection<Pair<Event, Event>> disallowedEvents) {
             if (eventsInBitmapOrder.size() > MAX_VAR_IN_EVENT_GROUP || eventsInBitmapOrder.size() < 2) {
                 return;
             }
@@ -760,11 +747,11 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                 }
             }
             // mark as disallowed any sets of variants from the bitmask.
-            for (List<Event> disallowed : disallowedEvents) {
+            for (final Pair<Event, Event> disallowed : disallowedEvents) {
                 //
-                if (disallowed.stream().anyMatch(v -> eventSet.contains(v))){
+                if (eventSet.contains(disallowed.getLeft()) || eventSet.contains(disallowed.getRight())){
                     int bitmask = 0;
-                    for (Event v : disallowed) {
+                    for (Event v : List.of(disallowed.getLeft(), disallowed.getRight())) {
                         int indexOfV = eventsInBitmapOrder.indexOf(v);
                         if (indexOfV < 0) {
                             throw new RuntimeException("Something went wrong in event group merging, variant "+v+" is missing from the event group despite being in a mutex pair: "+disallowed+"\n"+this);
@@ -913,7 +900,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         Utils.printIf(debug, () -> "Variants to PDHapDetermination:\n" + dragenString(eventsInOrder, refStart));
     }
 
-    private static void dragenDisallowedGroupsMessage(int refStart, boolean debug, List<Pair<Event, Event>> disallowedPairs) {
+    private static void dragenDisallowedGroupsMessage(int refStart, boolean debug, Collection<Pair<Event, Event>> disallowedPairs) {
         Utils.printIf(debug, () -> "disallowed groups:" + disallowedPairs.stream().map(pair -> dragenString(List.of(pair.getLeft(), pair.getRight()), refStart)).collect(Collectors.joining("\n")));
     }
 
