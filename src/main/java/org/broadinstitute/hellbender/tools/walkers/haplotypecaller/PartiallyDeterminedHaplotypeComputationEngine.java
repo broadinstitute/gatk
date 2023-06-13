@@ -8,6 +8,8 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.Tuple;
 import htsjdk.variant.variantcontext.Allele;
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -121,25 +123,18 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
         // Iterate over all events starting with all indels
 
-        List<List<Event>> disallowedPairs = smithWatermanRealignPairsOfVariantsForEquivalentEvents(referenceHaplotype, aligner, args.getHaplotypeToReferenceSWParameters(), debug, eventsInOrder);
+        List<Pair<Event, Event>> disallowedPairs = findRedundantEventPairsViaRealignment(referenceHaplotype, aligner, args.getHaplotypeToReferenceSWParameters(), debug, eventsInOrder);
         dragenDisallowedGroupsMessage(referenceHaplotype.getStart(), debug, disallowedPairs);
         Utils.printIf(debug, () -> "Event groups before merging:\n"+eventGroups.stream().map(eg -> eg.toDisplayString(referenceHaplotype.getStart())).collect(Collectors.joining("\n")));
 
         //Now that we have the disallowed groups, lets merge any of them from separate groups:
         //TODO this is not an efficient way of doing this
-        for (List<Event> pair : disallowedPairs) {
-            EventGroup eventGrpLeft = null;
-            for (Event event : pair) {
-                EventGroup grpForEvent = eventGroups.stream().filter(grp -> grp.contains(event)).findFirst().get();
-                // If the event isn't in the same event group as its predecessor, merge this group with that one and
-                if (eventGrpLeft != grpForEvent) {
-                    if (eventGrpLeft == null) {
-                        eventGrpLeft = grpForEvent;
-                    } else {
-                        eventGrpLeft.mergeEvent(grpForEvent);
-                        eventGroups.remove(grpForEvent);
-                    }
-                }
+        for (final Pair<Event, Event> pair : disallowedPairs) {
+            EventGroup leftGroup = eventGroups.stream().filter(grp -> grp.contains(pair.getLeft())).findFirst().get();
+            EventGroup rightGroup = eventGroups.stream().filter(grp -> grp.contains(pair.getRight())).findFirst().get();
+            if (leftGroup != rightGroup) {
+                leftGroup.mergeEvent(rightGroup);
+                eventGroups.remove(rightGroup);
             }
         }
         Utils.printIf(debug,() -> "Event groups after merging:\n"+eventGroups.stream().map(eg -> eg.toDisplayString(referenceHaplotype.getStart())).collect(Collectors.joining("\n")));
@@ -332,23 +327,25 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
     /**
      * Helper method that handles one of the Heuristics baked by DRAGEN into this artificial haplotype generation code.
      *
-     * To help mitigate the risk of generating combinatorial haplotypes with SNPs/Indels that that might or might not add
+     * To reduce the risk of generating combinatorial haplotypes with events that might add
      * up to equivalent events, DRAGEN enforces that events are NOT allowed to be present in the same haplotype if they
      * (when run through smith waterman) add up to other events that were found at this assembly region.
      *
      * To cut down on the complexity of the task; we (and DRAGEN) follow this procedure:
-     * 1. look at all sets of 2 variants where at least one is an indel and none overlap.
-     *    a) for each set construct an artificial haplotype with only those two variants on it
-     *    b) Smith Waterman align it against the reference to generate the cheapest cigar string representation
-     *    c) Construct the event map for the new artificial haplotype, if any events in the new event map are in our list of variants
-     *       but are NOT the constituent events that were used to construct the haplotype then disallow the pair
-     * 2. Look at all sets of 3 variants that do not contain disallowed pairs found in step 1.
-     *    a-b-c) repeat steps 1a,1b,and 1c on the 3 event sets
+     * 1. For each pair of non-overlapping events where at least one is an indel:
+     *    a) construct an artificial haplotype with only those two events
+     *    b) Smith Waterman align it against the reference to construct the event map of this artificial haplotype
+     *    c) If this new event map contains any events in our list other than the pair, disallow the pair
+     * 2. For each set of 3 non-overlapping variants where at least one is an indel that do not contain disallowed pairs found in step 1:
+     *    a-b-c) Smith Waterman align artificial haplotypes containing the three events.  If the resulting event map contains an
+     *    event in our list, disallow all three pairs of any two of these events.
      *
-     * @return A list of lists of variant contexts that correspond to disallowed groups. This list may be empty if none are found.
+     * Note that while sets of three events are considered internally in this heuristic, the result is a list of *pairs*.
+     *
+     * @return A possibly-empty list of disallowed pairs of events.
      */
-    private static List<List<Event>> smithWatermanRealignPairsOfVariantsForEquivalentEvents(Haplotype referenceHaplotype, SmithWatermanAligner aligner, SWParameters swParameters, boolean debug, List<Event> eventsInOrder) {
-        List<List<Event>> disallowedPairs = new ArrayList<>();
+    private static List<Pair<Event, Event>> findRedundantEventPairsViaRealignment(Haplotype referenceHaplotype, SmithWatermanAligner aligner, SWParameters swParameters, boolean debug, List<Event> eventsInOrder) {
+        List<Pair<Event, Event>> disallowedPairs = new ArrayList<>();
 
         //Iterate over all 2 element permutations in which one element is an indel and test for alignments
         for (int i = 0; i < eventsInOrder.size(); i++) {
@@ -363,7 +360,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                         events.sort(HAPLOTYPE_SNP_FIRST_COMPARATOR);
                         Utils.printIf(debug, () -> "Testing events: "+ dragenString(events,  referenceHaplotype.getStart()));
                         if (constructArtificialHaplotypeAndTestEquivalentEvents(referenceHaplotype, aligner, swParameters, eventsInOrder, events, debug)) {
-                            disallowedPairs.add(events);
+                            disallowedPairs.add(ImmutablePair.of(firstEvent, secondEvent));
                         }
                     }
                 }
@@ -916,8 +913,8 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         Utils.printIf(debug, () -> "Variants to PDHapDetermination:\n" + dragenString(eventsInOrder, refStart));
     }
 
-    private static void dragenDisallowedGroupsMessage(int refStart, boolean debug, List<List<Event>> disallowedPairs) {
-        Utils.printIf(debug, () -> "disallowed groups:" + disallowedPairs.stream().map(group -> dragenString(group, refStart)).collect(Collectors.joining("\n")));
+    private static void dragenDisallowedGroupsMessage(int refStart, boolean debug, List<Pair<Event, Event>> disallowedPairs) {
+        Utils.printIf(debug, () -> "disallowed groups:" + disallowedPairs.stream().map(pair -> dragenString(List.of(pair.getLeft(), pair.getRight()), refStart)).collect(Collectors.joining("\n")));
     }
 
     private static void branchExcludeAllelesMessage(Haplotype referenceHaplotype, boolean debug, Collection<Event> eventsInOrder, List<Set<Event>> branchExcludeAlleles) {
