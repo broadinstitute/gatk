@@ -100,7 +100,6 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         finalEventsListMessage(referenceHaplotype.getStart(), debug, eventsInOrder);
 
         // TODO this is where we filter out if indels > 32 (a heuristic known from DRAGEN that is not implemented here)
-        List<Event> vcsAsList = new ArrayList<>(eventsInOrder);
 
         Map<Double, List<Event>> eventsByDRAGENCoordinates = new LinkedHashMap<>();
         SortedMap<Integer, List<Event>> variantsByStartPos = eventsInOrder.stream()
@@ -123,7 +122,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
         // Iterate over all events starting with all indels
 
-        List<List<Event>> disallowedPairs = smithWatermanRealignPairsOfVariantsForEquivalentEvents(referenceHaplotype, aligner, args.getHaplotypeToReferenceSWParameters(), debug, eventsInOrder, vcsAsList);
+        List<List<Event>> disallowedPairs = smithWatermanRealignPairsOfVariantsForEquivalentEvents(referenceHaplotype, aligner, args.getHaplotypeToReferenceSWParameters(), debug, eventsInOrder);
         dragenDisallowedGroupsMessage(referenceHaplotype.getStart(), debug, disallowedPairs);
         Utils.printIf(debug, () -> "Event groups before merging:\n"+eventGroups.stream().map(eg -> eg.toDisplayString(referenceHaplotype.getStart())).collect(Collectors.joining("\n")));
 
@@ -349,16 +348,16 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
      *
      * @return A list of lists of variant contexts that correspond to disallowed groups. This list may be empty if none are found.
      */
-    private static List<List<Event>> smithWatermanRealignPairsOfVariantsForEquivalentEvents(Haplotype referenceHaplotype, SmithWatermanAligner aligner, SWParameters swParameters, boolean debug, Collection<Event> eventsInOrder, List<Event> eventsAsList) {
+    private static List<List<Event>> smithWatermanRealignPairsOfVariantsForEquivalentEvents(Haplotype referenceHaplotype, SmithWatermanAligner aligner, SWParameters swParameters, boolean debug, List<Event> eventsInOrder) {
         List<List<Event>> disallowedPairs = new ArrayList<>();
 
         //Iterate over all 2 element permutations in which one element is an indel and test for alignments
-        for (int i = 0; i < eventsAsList.size(); i++) {
-            final Event firstEvent = eventsAsList.get(i);
+        for (int i = 0; i < eventsInOrder.size(); i++) {
+            final Event firstEvent = eventsInOrder.get(i);
             if (firstEvent.isIndel()) {
                 // For every indel, make every 2-3 element subset (without overlapping) of variants to test for equivalency
-                for (int j = 0; j < eventsAsList.size(); j++) {
-                    final Event secondEvent = eventsAsList.get(j);
+                for (int j = 0; j < eventsInOrder.size(); j++) {
+                    final Event secondEvent = eventsInOrder.get(j);
                     // Don't compare myself, any overlappers to myself, or indels I've already examined me (to prevent double counting)
                     if (j != i && !eventsOverlapForPDHapsCode(firstEvent, secondEvent, true) && ((!secondEvent.isIndel()) || j > i)) {
                         final List<Event> events = new ArrayList<>(Arrays.asList(firstEvent, secondEvent));
@@ -375,12 +374,12 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         //TODO NOTE: there are some discrepancies with the iteration over 3x variants in some complicated cases involving
         //TODO       lots of transitively disallowed pairs. Hopefully this is a minor effect.
         //Now iterate over all 3 element pairs and make sure none of the
-        for (int i = 0; i < eventsAsList.size(); i++) {
-            final Event firstEvent = eventsAsList.get(i);
+        for (int i = 0; i < eventsInOrder.size(); i++) {
+            final Event firstEvent = eventsInOrder.get(i);
             if (firstEvent.isIndel()) {
                 // For every indel, make every 2-3 element subset (without overlapping) of variants to test for equivalency
-                for (int j = 0; j < eventsAsList.size(); j++) {
-                    final Event secondEvent = eventsAsList.get(j);
+                for (int j = 0; j < eventsInOrder.size(); j++) {
+                    final Event secondEvent = eventsInOrder.get(j);
                     // Don't compare myself, any overlappers to myself, or indels i've already examined me (to prevent double counting)
                     if (j != i && !eventsOverlapForPDHapsCode(firstEvent, secondEvent, true) && ((!secondEvent.isIndel()) || j > i)) {
                         // if i and j area already disallowed keep going
@@ -389,8 +388,8 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                         }
                         final List<Event> events = new ArrayList<>(Arrays.asList(firstEvent, secondEvent));
                         // If our 2 element arrays weren't inequivalent, test subsets of 3 including this:
-                        for (int k = j+1; k < eventsAsList.size(); k++) {
-                            final Event thirdEvent = eventsAsList.get(k);
+                        for (int k = j+1; k < eventsInOrder.size(); k++) {
+                            final Event thirdEvent = eventsInOrder.get(k);
                             if (k != i && !eventsOverlapForPDHapsCode(thirdEvent, firstEvent, true) && !eventsOverlapForPDHapsCode(thirdEvent, secondEvent, true)) {
                                 // if k and j or k and i are disallowed, keep looking
                                 if (disallowedPairs.stream().anyMatch(p -> (p.contains(firstEvent) && p.contains(thirdEvent)) || (p.contains(secondEvent) && p.contains(thirdEvent)))) {
