@@ -9,7 +9,6 @@ def get_entities_in_set(data_table_name, sample_set_name):
     sample_set_list = list(table.list_rows(f"{data_table_name}_set"))
     for sample_set in sample_set_list:
         if sample_set.name == sample_set_name: ## else it's some other sample set and we dont care about it
-            # for sample in sample_set.attributes['samples']: ## TODO why is this samples in Terra? Is this some Terra hardcoding?!?!
             for sample in sample_set.attributes[f"{data_table_name}s"]:
                 set_of_entities.add(sample['entityName'])
 
@@ -17,8 +16,8 @@ def get_entities_in_set(data_table_name, sample_set_name):
 
 
 ## Note that there are two different possible <entity>_id options:
-## There is the id col that is used by the <entity>_set to differentiate what is and isn't in the set / inclusion list
-## The user may want to use a _different_ column other than the <entity>_id col for sample level info. E.g. the "research_id" col
+## There is the id column that is used by the <entity>_set to differentiate what is and isn't in the set / inclusion list
+## The user may want to use a _different_ column other than the <entity>_id column for sample level info. E.g. the "research_id" col
 ## The user passes this in as the sample_id_column_name, which is set to be the <entity>_id if it is missing
 
 
@@ -30,6 +29,9 @@ def generate_FOFNs_from_data_table_with_sample_set(
     with open(vcf_files_name, "w") as vcf_files, open(vcf_index_files_name, "w") as vcf_index_files, open(sample_names_file_name, "w") as sample_names_file, open(error_file_name, "w") as error_file:
         count = 0
         processed_entities = 0
+        # Cycle through each row / sample in the data table.
+        # If there is an inclusion list (a sample_set), check to see if the sample is in it.
+        # Then write what is needed for the FOFN.
         for row in table.list_rows(data_table_name):
             try:
                 # The table data model is weird, as each row has a "name" property followed by a hash of attributes.  But it
@@ -60,7 +62,7 @@ def generate_FOFNs_from_data_table_with_sample_set(
                 error_file.write(f'Row "{row.name}" skipped: missing columns\n')
 
             count += 1
-            processed_entities += 1 ## TODO is this just for the sample set we are looking at!??!!
+            processed_entities += 1
             if count >= attempts_between_pauses:
                 print(f"sleeping between requests ({processed_entities} processed)...")
                 time.sleep(1)
