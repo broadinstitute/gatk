@@ -1,0 +1,73 @@
+@HD	VN:1.6	SO:coordinate
+@SQ	SN:chr20	LN:64444167	M5:b18e6c531b0bd70e949a7fc20859cb01	AS:38	UR:/seq/references/Homo_sapiens_assembly38/v0/Homo_sapiens_assembly38.fasta	SP:Homo sapiens
+@SQ	SN:chrX	LN:156040895	M5:2b3a55ff7f58eb308420c8a9b11cac50	AS:38	UR:/seq/references/Homo_sapiens_assembly38/v0/Homo_sapiens_assembly38.fasta	SP:Homo sapiens
+@SQ	SN:chrY	LN:57227415	M5:ce3e31103314a704255f3cd90369ecce	AS:38	UR:/seq/references/Homo_sapiens_assembly38/v0/Homo_sapiens_assembly38.fasta	SP:Homo sapiens
+@SQ	SN:chrY_KI270740v1_random	LN:37240	M5:69e42252aead509bf56f1ea6fda91405	AS:38	UR:/seq/references/Homo_sapiens_assembly38/v0/Homo_sapiens_assembly38.fasta	SP:Homo sapiens
+@SQ	SN:chr20_GL383577v2_alt	LN:128386	M5:f00c218d09df83c8b515a6b5591fe30c	AS:38	UR:/seq/references/Homo_sapiens_assembly38/v0/Homo_sapiens_assembly38.fasta	SP:Homo sapiens
+@SQ	SN:chr20_KI270869v1_alt	LN:118774	M5:2b8065d3bdbac6664d7f35c25d049113	AS:38	UR:/seq/references/Homo_sapiens_assembly38/v0/Homo_sapiens_assembly38.fasta	SP:Homo sapiens
+@SQ	SN:chr20_KI270871v1_alt	LN:58661	M5:29e7c064fe54ab6b7fd8accb0363821b	AS:38	UR:/seq/references/Homo_sapiens_assembly38/v0/Homo_sapiens_assembly38.fasta	SP:Homo sapiens
+@SQ	SN:chr20_KI270870v1_alt	LN:183433	M5:779f6fd5220eddc54631e80b94bb905a	AS:38	UR:/seq/references/Homo_sapiens_assembly38/v0/Homo_sapiens_assembly38.fasta	SP:Homo sapiens
+@SQ	SN:chrX_KI270880v1_alt	LN:284869	M5:e4ed2d1ef2ee71f00075ed9537aab284	AS:38	UR:/seq/references/Homo_sapiens_assembly38/v0/Homo_sapiens_assembly38.fasta	SP:Homo sapiens
+@SQ	SN:chrX_KI270881v1_alt	LN:144206	M5:6370851c900248567c9bc5bee75089ab	AS:38	UR:/seq/references/Homo_sapiens_assembly38/v0/Homo_sapiens_assembly38.fasta	SP:Homo sapiens
+@SQ	SN:chrX_KI270913v1_alt	LN:274009	M5:a4d4a5e5b5da1e65f007116b2797a4f6	AS:38	UR:/seq/references/Homo_sapiens_assembly38/v0/Homo_sapiens_assembly38.fasta	SP:Homo sapiens
+@PG	ID:1	CL:picard.util.IntervalListTools INPUT=[HG38excludeNs.interval_list, genome.interval_list] OUTPUT=wgs_calling_regions.v3.interval_list SORT=true ACTION=INTERSECT    PADDING=0 UNIQUE=false SCATTER_COUNT=1 INCLUDE_FILTERED=false BREAK_BANDS_AT_MULTIPLES_OF=0 SUBDIVISION_MODE=INTERVAL_SUBDIVISION INVERT=false VERBOSITY=INFO QUIET=false VALIDATION_STRINGENCY=STRICT COMPRESSION_LEVEL=5 MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false GA4GH_CLIENT_SECRETS=client_secrets.json	PN:IntervalListTools
+@PG	ID:2	CL:IntervalListTools --INPUT /Users/gauthier/Resources/wgs_calling_regions.hg38.interval_list --INPUT /Users/gauthier/Resources/hg38.handcurated.noCentromeres.noTelomeres.interval_list --OUTPUT wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list --ACTION INTERSECT --PADDING 0 --UNIQUE false --SORT true --SCATTER_COUNT 1 --INCLUDE_FILTERED false --BREAK_BANDS_AT_MULTIPLES_OF 0 --SUBDIVISION_MODE INTERVAL_SUBDIVISION --INVERT false --OUTPUT_VALUE NONE --VERBOSITY INFO --QUIET false --VALIDATION_STRINGENCY STRICT --COMPRESSION_LEVEL 2 --MAX_RECORDS_IN_RAM 500000 --CREATE_INDEX false --CREATE_MD5_FILE false --GA4GH_CLIENT_SECRETS client_secrets.json --help false --version false --showHidden false --USE_JDK_DEFLATER false --USE_JDK_INFLATER false	PN:IntervalListTools
+chr20	60001	63215	+	. intersection . intersection ACGTmer
+chr20	63841	26364240	+	. intersection . intersection ACGTmer
+chr20	26365415	26382164	+	. intersection . intersection ACGTmer
+chr20	26382617	26386232	+	. intersection . intersection ACGTmer
+chr20	30088349	30425128	+	. intersection . intersection ACGTmer
+chr20	30456078	30761898	+	. intersection . intersection ACGTmer
+chr20	30811899	31001508	+	. intersection . intersection ACGTmer
+chr20	31051509	31107036	+	. intersection . intersection ACGTmer
+chr20	31157037	31159119	+	. intersection . intersection ACGTmer
+chr20	31161626	36314371	+	. intersection . intersection ACGTmer
+chr20	36314720	64334167	+	. intersection . intersection ACGTmer
+chrX	10001	44821	+	. intersection . intersection ACGTmer
+chrX	94822	133871	+	. intersection . intersection ACGTmer
+chrX	222347	1949345	+	. intersection . intersection ACGTmer
+chrX	2132995	37099262	+	. intersection . intersection ACGTmer
+chrX	37285838	49348394	+	. intersection . intersection ACGTmer
+chrX	49528395	50228964	+	. intersection . intersection ACGTmer
+chrX	50278965	58555579	+	. intersection . intersection ACGTmer
+chrX	62462543	114281198	+	. intersection . intersection ACGTmer
+chrX	114331199	115738949	+	. intersection . intersection ACGTmer
+chrX	115838950	116557779	+	. intersection . intersection ACGTmer
+chrX	116595567	120879381	+	. intersection . intersection ACGTmer
+chrX	120929382	144425606	+	. intersection . intersection ACGTmer
+chrX	144475607	156030895	+	. intersection . intersection ACGTmer
+chrY	2781480	9046914	+	. intersection . intersection ACGTmer
+chrY	9055175	9057608	+	. intersection . intersection ACGTmer
+chrY	9107609	9111868	+	. intersection . intersection ACGTmer
+chrY	9112716	9114319	+	. intersection . intersection ACGTmer
+chrY	9116372	9403713	+	. intersection . intersection ACGTmer
+chrY	9453714	10266944	+	. intersection . intersection ACGTmer
+chrY	10594040	10633440	+	. intersection . intersection ACGTmer
+chrY	10744193	10762107	+	. intersection . intersection ACGTmer
+chrY	10821870	10852900	+	. intersection . intersection ACGTmer
+chrY	10855136	10871218	+	. intersection . intersection ACGTmer
+chrY	10871898	10890419	+	. intersection . intersection ACGTmer
+chrY	10891943	10896525	+	. intersection . intersection ACGTmer
+chrY	10898185	10908519	+	. intersection . intersection ACGTmer
+chrY	10909102	10922486	+	. intersection . intersection ACGTmer
+chrY	10923565	10956868	+	. intersection . intersection ACGTmer
+chrY	10957768	10961625	+	. intersection . intersection ACGTmer
+chrY	10962534	10965694	+	. intersection . intersection ACGTmer
+chrY	10967285	10969992	+	. intersection . intersection ACGTmer
+chrY	10970621	11002276	+	. intersection . intersection ACGTmer
+chrY	11003060	11012528	+	. intersection . intersection ACGTmer
+chrY	11013047	11016992	+	. intersection . intersection ACGTmer
+chrY	11017248	11023374	+	. intersection . intersection ACGTmer
+chrY	11024267	11028342	+	. intersection . intersection ACGTmer
+chrY	11029161	11036252	+	. intersection . intersection ACGTmer
+chrY	11037033	11592902	+	. intersection . intersection ACGTmer
+chrY	11642903	11647442	+	. intersection . intersection ACGTmer
+chrY	11647710	11660374	+	. intersection . intersection ACGTmer
+chrY	11662182	11673795	+	. intersection . intersection ACGTmer
+chrY	11674124	11717714	+	. intersection . intersection ACGTmer
+chrY	12018433	15326323	+	. intersection . intersection ACGTmer
+chrY	15627041	19837090	+	. intersection . intersection ACGTmer
+chrY	20438525	20739243	+	. intersection . intersection ACGTmer
+chrY	22242832	26252007	+	. intersection . intersection ACGTmer
+chrY	56673215	56771509	+	. intersection . intersection ACGTmer
+chrY	56821510	56887902	+	. intersection . intersection ACGTmer
