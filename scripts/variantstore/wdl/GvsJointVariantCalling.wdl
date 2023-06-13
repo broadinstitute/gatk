@@ -12,6 +12,9 @@ workflow GvsJointVariantCalling {
         String call_set_identifier
         String? extract_output_gcs_dir
         String drop_state = "FORTY"
+        Boolean use_classic_VQSR = true
+        # Beta users have accounts with tighter quotas, and we must work around that
+        Boolean tighter_gcp_quotas = true
     }
 
     # the call_set_identifier string is used to name many different things throughout this workflow (BQ tables, vcfs etc),
@@ -40,9 +43,6 @@ workflow GvsJointVariantCalling {
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
 
     File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
-    # do we ever want non-beta customers to use this instead of using GvsUnified directly?  If so, we can make this an
-    # argument that just defaults to true
-    Boolean is_beta_user = true
 
     call GvsUnified.GvsUnified {
         input:
@@ -53,7 +53,7 @@ workflow GvsJointVariantCalling {
             input_vcf_indexes = input_vcf_indexes,
             input_vcfs = input_vcfs,
             filter_set_name = filter_set_name,
-            use_classic_VQSR = true,
+            use_classic_VQSR = use_classic_VQSR,
             extract_output_gcs_dir = extract_output_gcs_dir,
             destination_dataset = dataset_name,
             destination_project = project_id,
@@ -80,7 +80,7 @@ workflow GvsJointVariantCalling {
             SNP_VQSR_CLASSIC_max_gaussians_override = SNP_VQSR_CLASSIC_max_gaussians_override,
             SNP_VQSR_CLASSIC_mem_gb_override = SNP_VQSR_CLASSIC_mem_gb_override,
             drop_state = drop_state,
-            is_beta_user = is_beta_user,
+            is_beta_user = tighter_gcp_quotas,
     }
 
     output {
