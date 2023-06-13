@@ -9,7 +9,9 @@ import htsjdk.samtools.util.Tuple;
 import htsjdk.variant.variantcontext.Allele;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.ImmutableTriple;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.Triple;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -367,6 +369,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         }
 
         // now test three events at a time
+        final List<Pair<Event, Event>> pairsFromDisallowedTriples = new ArrayList<>();
         for (int i = 0; i < eventsInOrder.size(); i++) {
             final Event first = eventsInOrder.get(i);
             for (int j = i + 1; j < eventsInOrder.size(); j++) {
@@ -386,11 +389,12 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                         continue;
                     }
                     if (constructArtificialHaplotypeAndTestEquivalentEvents(referenceHaplotype, aligner, swParameters, eventsInOrder, List.of(first, second, third), debug)) {
-                        disallowedPairs.addAll(List.of(pair12, pair13, pair23));
+                        pairsFromDisallowedTriples.addAll(List.of(pair12, pair13, pair23));
                     }
                 }
             }
         }
+        disallowedPairs.addAll(pairsFromDisallowedTriples);
 
         return disallowedPairs;
     }
