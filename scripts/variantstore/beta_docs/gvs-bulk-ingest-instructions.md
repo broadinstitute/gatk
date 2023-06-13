@@ -7,11 +7,11 @@ In order to do this, the bulk ingest workflow needs to collect some additional i
 
 Since we ask for so many additional inputs, we have tried to streamline the process in two ways.
 The first is that we have defaults of the most common values that are input automatically. These are listed below. 
-The second is that we use the information we have to the best of our abilities to make educated guesses about what columns you may want to use
+The second is that we use the information we have to the best of our abilities to make educated guesses about what columns you may want to use.
 
 The logic for these guesses is also below.
 
-Since you are planning to use a bulk ingest workflow, we recommend that you use a sample set to load your data
+Since you are planning to use a bulk ingest workflow, we recommend that you use a sample set to load your data.
 
 ---
 
@@ -24,27 +24,27 @@ The table below describes the GVS bulk ingest variables:
 | data_table_name             | (Optional) The name of the data table; This table hold the GVCFs to be ingested; `sample` is most likely the name of the data table in Terra.                              | String |
 | entity_id_column_name       | (Optional) User defined column id name; `sample_id` is the recommended name;`research_id` is also commonly used.                                                           | String |                                                         | String |
 | vcf_files_column_name       | (Optional) Column that contains the GCS paths to the sample GVCF files.                                                                                                    | String |
-| vcf_index_files_column_name | (Optional) Column that contains the GCS paths to the sample GVCF index files                                                                                               | String |
-| sample_set_name             | (Optional) The name of the set of samples / entities                                                                                                                       | String |
+| vcf_index_files_column_name | (Optional) Column that contains the GCS paths to the sample GVCF index files.                                                                                              | String |
+| sample_set_name             | (Optional) The name of the set of samples / entities.                                                                                                                      | String |
 | dataset_name                | Name of the BigQuery dataset used to hold input samples, filtering model data, and other tables created during the workflow.                                               | String |
 | bq_project_id               | Name of the Google project that contains the BigQuery dataset.                                                                                                             | String |
 | call_set_identifier         | Used to name the filter model, BigQuery extract tables, and final joint VCF shards. Should begin with a letter, valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”. | String |
 
 
 The first four parameters are labelled as optional, but the pipeline needs a value for each of them to process the data. This is because the system can likely determine the four values it needs.
-if you know the values that you want for these 4, feel free to fill them in, but it is not necessary.
+If you know the values that you want for these 4, feel free to fill them in, but it is not necessary.
 If the user does not supply all 4 values, the system uses a mix of default values and heuristics to determine these parameters.
 The first parameter, `data_table_name`, is the name of the data entity and is overwhelmingly labelled "sample". This is the default that is used in the system. User documentation likewise suggests this term as does the Beta workspace.
-The second parameter, `entity_id_column_name`, dictates the sames of the samples as they will show up in GVS and GVS outputs. Some advanced users prefer to use a custom column. This defaults to the value of `data_table_name` + "_id" which is most likely "sample_id"
+The second parameter, `entity_id_column_name`, dictates the names of the samples as they will show up in GVS. Some advanced users prefer to use a custom column. This defaults to the value of `data_table_name` + "_id" which is most likely "sample_id".
 
-The next two parameters, `vcf_files_column_name` and `vcf_index_files_column_name`, are used to understand the GCP locations of the GVCFs. 
+The next two parameters, `vcf_files_column_name` and `vcf_index_files_column_name`, name the two columns that track the GCP locations of the GVCFs. 
 If they are not input by the user, the system will look at all the possible columns and a subset of the data in each to predict which columns have the sample paths. The system looks for paths ending in `vcf` or similar.
 
-The system will also validate that any user input for these parameters fit with the expected relationships between them. 
+The system will also validate that any user input for these parameters fits with the expected relationships among them. 
 
 The fifth parameter (`sample_set_name`) is required if a sample set is being used for ingest, which we do recommend for large batches. 
 You can create a sample set from the data tab of your workspace, by selecting the samples that you desire to include, clicking edit and selecting "Save selection as set". 
-You will then be given the option to name your sample set. That name is what you will use as the `sample_set_name` parameter
+You will then be given the option to name your sample set. That name is what you will use as the `sample_set_name` parameter.
 
 ## Setup
 
@@ -74,12 +74,3 @@ the entity_id_column_name value is `sample_id`
 the vcf_files_column_name value is `gvcf`
 the vcf_index_files_column_name value is `gvcf_index`
 the sample_set_name value is `sample_set_name`
-
-
-### Import sample GVCF files
-
-This step validates that sample GVCF files contain required annotations and loads samples into BigQuery tables. 
-Once the samples are loaded into BQ, the next step can be run, which creates a table of Alternate Alleles. This table can be used to create a filter or to enable search
-
-The next recommended wdl to run is:
-[GvsPopulateAltAllele](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/wdl/GvsPopulateAltAllele.wdl) 
