@@ -12,7 +12,6 @@ import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.bwa.InvalidInputException;
 import org.broadinstitute.hellbender.utils.haplotype.Event;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
@@ -710,8 +709,8 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
     // A helper class for managing mutually exclusive event clusters and the logic arround forming valid events vs eachother.
     private static class EventGroup {
-        List<Event> variantsInBitmapOrder;
-        HashSet<Event> variantContextSet;
+        List<Event> eventsInBitmapOrder;
+        HashSet<Event> eventSet;
         //From Illumina (there is a LOT of math that will eventually go into these)/
         BitSet allowedEvents = null;
 
@@ -719,12 +718,12 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         List<List<Tuple<Event,Boolean>>> cachedEventLists = null;
 
         public EventGroup(final Event ... events) {
-            variantsInBitmapOrder = new ArrayList<>();
-            variantContextSet = new HashSet<>();
+            eventsInBitmapOrder = new ArrayList<>();
+            eventSet = new HashSet<>();
 
             for (final Event event : events) {
-                variantsInBitmapOrder.add(event);
-                variantContextSet.add(event);
+                eventsInBitmapOrder.add(event);
+                eventSet.add(event);
             }
         }
 
@@ -744,21 +743,21 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
          * @return false if the event group is too large to process
          */
         public void populateBitset(List<List<Event>> disallowedEvents) {
-            if (variantsInBitmapOrder.size() > MAX_VAR_IN_EVENT_GROUP || variantsInBitmapOrder.size() < 2) {
+            if (eventsInBitmapOrder.size() > MAX_VAR_IN_EVENT_GROUP || eventsInBitmapOrder.size() < 2) {
                 return;
             }
 
-            allowedEvents = new BitSet(variantsInBitmapOrder.size());
-            allowedEvents.flip(1, 1 << variantsInBitmapOrder.size());
+            allowedEvents = new BitSet(eventsInBitmapOrder.size());
+            allowedEvents.flip(1, 1 << eventsInBitmapOrder.size());
             // initialize all events as being allowed and then disallow them in turn .
 
             // Ensure the list is in positional order before commencing.
-            variantsInBitmapOrder.sort(HAPLOTYPE_SNP_FIRST_COMPARATOR);
+            eventsInBitmapOrder.sort(HAPLOTYPE_SNP_FIRST_COMPARATOR);
             List<Integer> bitmasks = new ArrayList<>();
             // Mark as disallowed all events that overlap eachother
-            for (int i = 0; i < variantsInBitmapOrder.size(); i++) {
-                for (int j = i+1; j < variantsInBitmapOrder.size(); j++) {
-                    if (eventsOverlapForPDHapsCode(variantsInBitmapOrder.get(i), variantsInBitmapOrder.get(j), false)) {
+            for (int i = 0; i < eventsInBitmapOrder.size(); i++) {
+                for (int j = i+1; j < eventsInBitmapOrder.size(); j++) {
+                    if (eventsOverlapForPDHapsCode(eventsInBitmapOrder.get(i), eventsInBitmapOrder.get(j), false)) {
                         bitmasks.add(1 << i | 1 << j);
                     }
                 }
@@ -766,14 +765,14 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             // mark as disallowed any sets of variants from the bitmask.
             for (List<Event> disallowed : disallowedEvents) {
                 //
-                if (disallowed.stream().anyMatch(v -> variantContextSet.contains(v))){
+                if (disallowed.stream().anyMatch(v -> eventSet.contains(v))){
                     int bitmask = 0;
                     for (Event v : disallowed) {
-                        int indexOfV = variantsInBitmapOrder.indexOf(v);
+                        int indexOfV = eventsInBitmapOrder.indexOf(v);
                         if (indexOfV < 0) {
                             throw new RuntimeException("Something went wrong in event group merging, variant "+v+" is missing from the event group despite being in a mutex pair: "+disallowed+"\n"+this);
                         }
-                        bitmask += 1 << variantsInBitmapOrder.indexOf(v);
+                        bitmask += 1 << eventsInBitmapOrder.indexOf(v);
                     }
                     bitmasks.add(bitmask);
                 }
@@ -808,8 +807,8 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             int eventMask = 0;
             int maskValues = 0;
             for(int i = 0; i < allEventsHere.size(); i++) {
-                if (variantContextSet.contains(allEventsHere.get(i))) {
-                    int index = variantsInBitmapOrder.indexOf(allEventsHere.get(i));
+                if (eventSet.contains(allEventsHere.get(i))) {
+                    int index = eventsInBitmapOrder.indexOf(allEventsHere.get(i));
                     eventMask = eventMask | (1 << index);
                     maskValues = maskValues | ((i == determinedAlleleIndex ? 1 : 0) << index);
                 }
@@ -843,9 +842,9 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             List<List<Tuple<Event,Boolean>>> output = new ArrayList<>();
             for (Integer grp : ints) {
                 List<Tuple<Event,Boolean>> newGrp = new ArrayList<>();
-                for (int i = 0; i < variantsInBitmapOrder.size(); i++) {
+                for (int i = 0; i < eventsInBitmapOrder.size(); i++) {
                     // if the corresponding bit is 1, set it as such, otherwise set it as 0.
-                    newGrp.add(new Tuple<>(variantsInBitmapOrder.get(i), ((1<<i) & grp) != 0));
+                    newGrp.add(new Tuple<>(eventsInBitmapOrder.get(i), ((1<<i) & grp) != 0));
                 }
                 output.add(newGrp);
             }
@@ -857,29 +856,29 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         }
 
         public boolean causesBranching() {
-            return variantsInBitmapOrder.size() > 1;
+            return eventsInBitmapOrder.size() > 1;
         }
 
         //Print The event group in Illumina indexed ordering:
         public String toDisplayString(int startPos) {
-            return "EventGroup: " + dragenString(variantsInBitmapOrder, startPos);
+            return "EventGroup: " + dragenString(eventsInBitmapOrder, startPos);
         }
 
         public boolean contains(final Event event) {
-            return variantContextSet.contains(event);
+            return eventSet.contains(event);
         }
 
-        public int size() { return variantsInBitmapOrder.size(); }
+        public int size() { return eventsInBitmapOrder.size(); }
 
         public void addEvent(final Event event) {
-            variantsInBitmapOrder.add(event);
-            variantContextSet.add(event);
+            eventsInBitmapOrder.add(event);
+            eventSet.add(event);
             allowedEvents = null;
         }
 
         public EventGroup mergeEvent(final EventGroup other) {
-            variantsInBitmapOrder.addAll(other.variantsInBitmapOrder);
-            variantContextSet.addAll(other.variantsInBitmapOrder);
+            eventsInBitmapOrder.addAll(other.eventsInBitmapOrder);
+            eventSet.addAll(other.eventsInBitmapOrder);
             allowedEvents = null;
             return this;
         }
