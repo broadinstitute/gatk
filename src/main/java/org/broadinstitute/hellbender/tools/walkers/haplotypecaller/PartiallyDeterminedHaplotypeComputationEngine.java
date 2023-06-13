@@ -100,7 +100,8 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
         // TODO this is where we filter out if indels > 32 (a heuristic known from DRAGEN that is not implemented here)
 
-        Map<Double, List<Event>> eventsByDRAGENCoordinates = new LinkedHashMap<>();
+        Map<Double, List<Event>> eventsByDRAGENCoordinates = eventsInOrder.stream()
+                .collect(Collectors.groupingBy(e -> dragenStart(e), LinkedHashMap::new, Collectors.toList()));
         SortedMap<Integer, List<Event>> variantsByStartPos = eventsInOrder.stream()
                 .collect(Collectors.groupingBy(Event::getStart, TreeMap::new, Collectors.toList()));
         List<EventGroup> eventGroups = new ArrayList<>();
@@ -108,7 +109,6 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         for (Event vc : eventsInOrder) {
             // Break everything into independent groups (don't worry about transitivitiy right now)
             Double eventKey = dragenStart(vc) - referenceHaplotype.getStart();
-            eventsByDRAGENCoordinates.putIfAbsent(eventKey, new ArrayList<>()).add(vc);
             if (eventKey <= lastEventEnd + 0.5) {
                 eventGroups.get(eventGroups.size()-1).addEvent(vc);
             } else {
