@@ -358,7 +358,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                 for (int j = 0; j < eventsInOrder.size(); j++) {
                     final Event secondEvent = eventsInOrder.get(j);
                     // Don't compare myself, any overlappers to myself, or indels I've already examined me (to prevent double counting)
-                    if (j != i && !eventsOverlapForPDHapsCode(firstEvent, secondEvent, true) && ((!secondEvent.isIndel()) || j > i)) {
+                    if (j != i && !eventsOverlapForPDHapsCode(firstEvent, secondEvent) && ((!secondEvent.isIndel()) || j > i)) {
                         final List<Event> events = new ArrayList<>(Arrays.asList(firstEvent, secondEvent));
                         events.sort(HAPLOTYPE_SNP_FIRST_COMPARATOR);
                         Utils.printIf(debug, () -> "Testing events: "+ dragenString(events,  referenceHaplotype.getStart()));
@@ -380,7 +380,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                 for (int j = 0; j < eventsInOrder.size(); j++) {
                     final Event secondEvent = eventsInOrder.get(j);
                     // Don't compare myself, any overlappers to myself, or indels i've already examined me (to prevent double counting)
-                    if (j != i && !eventsOverlapForPDHapsCode(firstEvent, secondEvent, true) && ((!secondEvent.isIndel()) || j > i)) {
+                    if (j != i && !eventsOverlapForPDHapsCode(firstEvent, secondEvent) && ((!secondEvent.isIndel()) || j > i)) {
                         // if i and j area already disallowed keep going
                         if (disallowedPairs.stream().anyMatch(p -> p.contains(firstEvent) && p.contains(secondEvent))) {
                             continue;
@@ -389,7 +389,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                         // If our 2 element arrays weren't inequivalent, test subsets of 3 including this:
                         for (int k = j+1; k < eventsInOrder.size(); k++) {
                             final Event thirdEvent = eventsInOrder.get(k);
-                            if (k != i && !eventsOverlapForPDHapsCode(thirdEvent, firstEvent, true) && !eventsOverlapForPDHapsCode(thirdEvent, secondEvent, true)) {
+                            if (k != i && !eventsOverlapForPDHapsCode(thirdEvent, firstEvent) && !eventsOverlapForPDHapsCode(thirdEvent, secondEvent)) {
                                 // if k and j or k and i are disallowed, keep looking
                                 if (disallowedPairs.stream().anyMatch(p -> (p.contains(firstEvent) && p.contains(thirdEvent)) || (p.contains(secondEvent) && p.contains(thirdEvent)))) {
                                     continue;
@@ -412,26 +412,23 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
     }
 
     /**
-     * Overlaps method to handle indels and snps correctly. Specifically for this branching codes purposes, SNPS never overlap other SNPS,
+     * Overlaps method to handle indels and snps correctly. Specifically for this branching codes purposes,
      * indels don't overlap on their anchor bases and insertions don't overlap anything except deletions spanning them or other insertions
      * at the same base.
      *
-     * @param snpsOverlap if false, don't ever evaluate snps as overlapping other snps (we do this because sometimes we need to construct artificial haps where we don't allow overlapping)
      */
-    static boolean eventsOverlapForPDHapsCode(Event e1, Event e2, boolean snpsOverlap){
-        if (!snpsOverlap && e2.isSNP() && e1.isSNP()) {
-            return false;
-        }
+    static boolean eventsOverlapForPDHapsCode(Event e1, Event e2){
         if (!e1.getContig().equals(e2.getContig())) {
             return false;
         }
-        double vc1start = e1.isIndel() ? (e1.isSimpleDeletion() ? e1.getStart() + 1 : e1.getStart() + 0.5) : e1.getStart();
-        double vc1end = e1.isSimpleInsertion() ? e1.getEnd() + 0.5 : e1.getEnd();
-        double vc2start = e2.isIndel() ? (e2.isSimpleDeletion() ? e2.getStart() + 1 : e2.getStart() + 0.5) : e2.getStart();
-        double vc2end = e2.isSimpleInsertion() ? e2.getEnd() + 0.5 : e2.getEnd();
+
+        double start1 = dragenStart(e1);
+        double end1 = e1.getEnd() + (e1.isSimpleInsertion() ? 0.5 : 0);
+        double start2 = dragenStart(e2);
+        double end2 = e2.getEnd() + (e2.isSimpleInsertion() ? 0.5 : 0);
 
         //Pulled directly from CoordMath.java (not using here because of doubles)
-        return (vc2start >= vc1start && vc2start <= vc1end) || (vc2end >=vc1start && vc2end <= vc1end) || vc1start >= vc2start && vc1end <= vc2end;
+        return (start2 >= start1 && start2 <= end1) || (end2 >=start1 && end2 <= end1) || start1 >= start2 && end1 <= end2;
     }
 
 
@@ -754,10 +751,13 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             // Ensure the list is in positional order before commencing.
             eventsInBitmapOrder.sort(HAPLOTYPE_SNP_FIRST_COMPARATOR);
             List<Integer> bitmasks = new ArrayList<>();
-            // Mark as disallowed all events that overlap eachother
+
+            // Mark as disallowed all events that overlap each other, excluding pairs of SNPs
             for (int i = 0; i < eventsInBitmapOrder.size(); i++) {
+                final Event first = eventsInBitmapOrder.get(i);
                 for (int j = i+1; j < eventsInBitmapOrder.size(); j++) {
-                    if (eventsOverlapForPDHapsCode(eventsInBitmapOrder.get(i), eventsInBitmapOrder.get(j), false)) {
+                    final Event second = eventsInBitmapOrder.get(j);
+                    if (!(first.isSNP() && second.isSNP()) && eventsOverlapForPDHapsCode(first, second)) {
                         bitmasks.add(1 << i | 1 << j);
                     }
                 }
@@ -895,7 +895,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
     }
 
     private static double dragenStart(final Event event) {
-        return event.getStart() + (event.isSimpleInsertion() ? 0.5 : 0) + (event.isSimpleDeletion() ? 1 : 0);
+        return event.getStart() + (event.isIndel() ? (event.isSimpleDeletion() ? 1 : 0.5) : 0);
     }
 
     private static void eventGroupsMessage(final Haplotype referenceHaplotype, final boolean debug, final Map<Double, List<Event>> eventsByDRAGENCoordinates) {
