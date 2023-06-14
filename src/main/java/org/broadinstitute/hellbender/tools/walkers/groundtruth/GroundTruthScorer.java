@@ -76,18 +76,24 @@ public class GroundTruthScorer extends ReadWalker {
             add(b);
             if ( bins != null && bin >= 0 && bin < bins.length ) {
                 bins[bin].add(b);
+            } else {
+                throw new GATKException("bin out of range; " + bin);
             }
         }
         void add(final boolean b, final int bin, final int bin2) {
             add(b);
             if ( bins != null && bin >= 0 && bin < bins.length ) {
                 bins[bin].add(b, bin2);
+            } else {
+                throw new GATKException("bin out of range; " + bin);
             }
         }
         void add(final boolean b, final int bin, final int bin2, final int bin3) {
             add(b);
             if ( bins != null && bin >= 0 && bin < bins.length ) {
                 bins[bin].add(b, bin2, bin3);
+            } else {
+                throw new GATKException("bin out of range; " + bin);
             }
         }
 
@@ -644,7 +650,7 @@ public class GroundTruthScorer extends ReadWalker {
             // accumulate
             if ( qual < qualReport.length ) {
                 int         baseBin = baseToBin(flowOrder[flow % flowOrder.length], flowRead.isReverseStrand());
-                qualReport[qual].add(same, readKey[flow], deviation, baseBin);
+                qualReport[qual].add(same, readKey[flow], deviationToBin(deviation), baseBin);
             }
         }
     }
