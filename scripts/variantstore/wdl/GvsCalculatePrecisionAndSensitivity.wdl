@@ -55,7 +55,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
       input:
         input_vcf = GatherVcfs.output_vcf,
         input_vcf_index = GatherVcfs.output_vcf_index,
-        contigs = chromosomes,
+        chromosomes = chromosomes,
         sample_name = sample_name,
         output_basename = output_sample_basename
     }
@@ -84,7 +84,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
         truth_vcf = truth_vcfs[i],
         truth_vcf_index = truth_vcf_indices[i],
         truth_bed = truth_beds[i],
-        contigs = chromosomes,
+        chromosomes = chromosomes,
         output_basename = sample_name + "-bq_roc_filtered",
         is_vqsr_lite = IsVQSRLite.is_vqsr_lite,
         ref_fasta = ref_fasta
@@ -97,7 +97,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
         truth_vcf = truth_vcfs[i],
         truth_vcf_index = truth_vcf_indices[i],
         truth_bed = truth_beds[i],
-        contigs = chromosomes,
+        chromosomes = chromosomes,
         all_records = true,
         output_basename = sample_name + "-bq_all",
         is_vqsr_lite = IsVQSRLite.is_vqsr_lite,
@@ -138,9 +138,9 @@ task IsVcfOnChromosomes {
     mkdir output
     touch output/~{output_vcf_name}
     VCF_CHR=$(cat chrom.txt)
-    contigs=( ~{sep=' ' chromosomes} )
+    chromosomes=( ~{sep=' ' chromosomes} )
 
-    for i in "${contigs[@]}"
+    for i in "${cchromosomes[@]}"
     do
       if [ $VCF_CHR = $i ]; then
         cp ~{input_vcf} output/~{output_vcf_name}
@@ -218,7 +218,7 @@ task SelectVariants {
   input {
     File input_vcf
     File input_vcf_index
-    Array[String] contigs
+    Array[String] chromosomes
     String sample_name
 
     String output_basename
@@ -234,7 +234,7 @@ task SelectVariants {
   command <<<
     gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
       SelectVariants \
-        -L ~{sep=' -L ' contigs} \
+        -L ~{sep=' -L ' chromosomes} \
         -V ~{input_vcf} \
         --sample-name ~{sample_name} \
         --select-type-to-exclude NO_VARIATION \
@@ -354,7 +354,7 @@ task EvaluateVcf {
     File truth_bed
 
     Boolean all_records = false
-    Array[String] contigs
+    Array[String] chromosomes
 
     File ref_fasta
 
@@ -373,18 +373,18 @@ task EvaluateVcf {
   command <<<
     set -e -o pipefail
 
-    contigs=( ~{sep=' ' contigs} )
+    chromosomes=( ~{sep=' ' chromosomes} )
 
     echo "Creating .bed file to control which chromosomes should be evaluated."
-    for i in "${contigs[@]}"
+    for i in "${chromosomes[@]}"
     do
-      echo "$i	0	300000000" >> contigs.to.eval.bed
+      echo "$i	0	300000000" >> chromosomes.to.eval.txt
     done
 
     rtg format --output human_REF_SDF ~{ref_fasta}
 
     rtg vcfeval \
-      --bed-regions contigs.to.eval.bed \
+      --bed-regions chromosomes.to.eval.txt \
       ~{if all_records then "--all-records" else ""} \
       --roc-subset snp,indel \
       --vcf-score-field=INFO.~{max_score_field_tag} \
@@ -413,7 +413,7 @@ task EvaluateVcf {
 
   }
   output {
-    File coverage = "contigs.to.eval.bed"
+    File coverage = "chromosomes.to.eval.txt"
     File report = "report.txt"
     Array[File] outputs = glob("~{output_basename}/*")
   }
