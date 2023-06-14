@@ -369,6 +369,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         }
 
         // now test three events at a time
+        final List<List<Integer>> indexTriples = new ArrayList<>();
         final List<Pair<Event, Event>> pairsFromDisallowedTriples = new ArrayList<>();
         for (int i = 0; i < eventsInOrder.size(); i++) {
             final Event first = eventsInOrder.get(i);
@@ -390,6 +391,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                     }
                     if (constructArtificialHaplotypeAndTestEquivalentEvents(referenceHaplotype, aligner, swParameters, eventsInOrder, List.of(first, second, third), debug)) {
                         pairsFromDisallowedTriples.addAll(List.of(pair12, pair13, pair23));
+                        indexTriples.add(List.of(i,j,k));
                     }
                 }
             }
