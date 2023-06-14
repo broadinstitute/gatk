@@ -169,7 +169,6 @@ public class GroundTruthScorer extends ReadWalker {
             table.addColumn(name3, "%s");
             table.addColumn(name4, "%s");
             table.addColumn("count", "%d");
-            table.addColumn("error", "%f");
             int rowIndex = 0;
             for (int i = 0; i < report.length; i++) {
                 for ( int j = 0; j < report[i].bins.length ; j++ ) {
@@ -180,7 +179,6 @@ public class GroundTruthScorer extends ReadWalker {
                             table.set(rowIndex, 2, binToDeviation(k));
                             table.set(rowIndex, 3, String.format("%c", binToBase(m)));
                             table.set(rowIndex, 4, report[i].bins[j].bins[k].bins[m].getCount());
-                            table.set(rowIndex, 5, report[i].bins[j].bins[k].bins[m].getFalseRate());
                             rowIndex++;
                         }
                     }
