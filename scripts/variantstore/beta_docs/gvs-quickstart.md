@@ -119,9 +119,19 @@ By default, the workflow is set up to write outputs to the workspace Google buck
 ### Time and cost
 Below is an example of the time and cost of running the workflow with the sample data pre-loaded in the workspace.
 
-| Number of Samples | Elapsed Time (hh:mm) | Terra Cost | BigQuery Cost | Total Cost | Approximate Cost per Sample |
+| Number of Genome Samples | Elapsed Time (hh:mm) | Terra Cost $ | BigQuery Cost | Total Cost | Measured Cost per Sample |
 |-------------------|----------------------|------------|---------------|------------|-----------------------------|
 | 10                | 04:30                | $0.84      | $0.51         | $1.35      | $0.14                       |
+
+Here is further information on the cost as you scale to run your dataset:
+
+| Number of Genome Samples | Wall Clock Time (hh:mm) | Terra Cost $  | Measured Cost per Sample |
+|-------------------|-----------------|---------|-----------------|
+| 10                | 04:30        | $1.35   |  $0.14          |
+| 1000              | 07:24        | $59.64     |  $0.06          |
+| 2500              | 08:45        | $141.28     |  $0.06          |
+| 5000              | 12:00        | $286.71  |  $0.06          |
+| 10000             | 13:41        | $604.97 |  $0.06          |
 
 **Note:** The time and cost listed above represent a single run of the GVS workflow. Actual time and cost may vary depending on BigQuery and Terra load at the time of the callset creation.
 
