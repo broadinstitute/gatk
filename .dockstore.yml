@@ -111,8 +111,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_vs_941
-
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
@@ -206,7 +204,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_vs_941
    - name: GvsQuickstartVcfIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartVcfIntegration.wdl
