@@ -8,7 +8,7 @@ import org.broadinstitute.hellbender.utils.gvs.bigquery.AvroFileReader;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-public class ExtractCohortRecordUnitTest extends GATKBaseTest {
+public class ExtractCohortToVcfRecordUnitTest extends GATKBaseTest {
     // KCIBUL - 2021-06-04 For the historical record, I had to recreate these AVROs for this PR and wanted to document my reverse
     // engineering.  This query was run, saving results to a temp table and then using the BQ GUI to export that to Avro
     //

@@ -563,7 +563,7 @@ public abstract class GATKTool extends CommandLineProgram {
     /**
      * Does this tool require features? Traversals types and/or tools that do should override to return true.
      *
-     * @return true if this tool requires reads, otherwise false
+     * @return true if this tool requires features, otherwise false
      */
     public boolean requiresFeatures() {
         return false;

@@ -10,7 +10,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.util.List;
 
-public class ExtractCohortRemoveAnnotationsUnitTest extends GATKBaseTest{
+public class ExtractCohortToVcfRemoveAnnotationsUnitTest extends GATKBaseTest{
     private static final String ALLELE_SPECIFIC_DIRECTORY = toolsTestDir + "walkers/annotator/allelespecific";
     private static final File ORIGINAL_TEST_FILE =  new File(ALLELE_SPECIFIC_DIRECTORY + "/GenotypeGVCFs.output.vcf");
 

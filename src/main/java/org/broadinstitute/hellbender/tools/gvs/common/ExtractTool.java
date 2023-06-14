@@ -1,8 +1,6 @@
 package org.broadinstitute.hellbender.tools.gvs.common;
 
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.GATKTool;
@@ -18,18 +16,8 @@ import java.util.Collections;
 import java.util.List;
 
 public abstract class ExtractTool extends GATKTool {
-    private static final Logger logger = LogManager.getLogger(ExtractTool.class);
     public static final int DEFAULT_LOCAL_SORT_MAX_RECORDS_IN_RAM = 1000000;
-    protected VariantContextWriter vcfWriter = null;
     protected VariantAnnotatorEngine annotationEngine;
-
-    @Argument(
-            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-            fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
-            doc = "Output VCF file to which annotated variants should be written.",
-            optional = false
-    )
-    protected String outputVcfPathString = null;
 
     @Argument(
             fullName = "project-id",
@@ -38,14 +26,12 @@ public abstract class ExtractTool extends GATKTool {
     )
     protected String projectID = null;
 
-
     @Argument(
             fullName = "dataset-id",
             doc = "ID of the Google Cloud dataset to use when executing queries",
-            optional = true // I guess, but wont it break otherwise or require that a dataset be created with the name temp_tables?
+            optional = true // I guess, but won't it break otherwise or require that a dataset be created with the name temp_tables?
     )
     protected String datasetID = null;
-
 
     @Argument(
             fullName = "sample-table",
@@ -122,10 +108,6 @@ public abstract class ExtractTool extends GATKTool {
         //TODO verify what we really need here
         annotationEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), null, Collections.emptyList(), false, false);
 
-        vcfWriter = createVCFWriter(IOUtils.getPath(outputVcfPathString));
-
         ChromosomeEnum.setRefVersion(refVersion);
-
     }
-
 }

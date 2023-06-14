@@ -7,10 +7,13 @@ import "GvsQuickstartVcfIntegration.wdl" as QuickstartVcfIntegration
 workflow GvsQuickstartHailIntegration {
     input {
         String branch_name
+        Boolean use_VQSR_lite = true
+        File interval_list
         Boolean use_classic_VQSR = true
         Boolean extract_do_not_filter_override
         String dataset_suffix = "hail"
         String? gatk_override
+        String expected_output_prefix
     }
 
     String project_id = "gvs-internal"
@@ -19,26 +22,29 @@ workflow GvsQuickstartHailIntegration {
         input:
             branch_name = branch_name,
             drop_state = "NONE",
-            use_classic_VQSR = use_classic_VQSR,
+            use_VQSR_lite = use_VQSR_lite,
             extract_do_not_filter_override = extract_do_not_filter_override,
             dataset_suffix = dataset_suffix,
-            gatk_override = gatk_override
+            gatk_override = gatk_override,
+            interval_list = interval_list,
+            expected_output_prefix = expected_output_prefix,
     }
 
     call ExtractAvroFilesForHail.GvsExtractAvroFilesForHail {
         input:
             go = GvsQuickstartVcfIntegration.done,
             project_id = project_id,
+            use_VQSR_lite = use_VQSR_lite,
             dataset_name = GvsQuickstartVcfIntegration.dataset_name,
             filter_set_name = GvsQuickstartVcfIntegration.filter_set_name,
             scatter_width = 10,
-            call_set_identifier = branch_name
+            call_set_identifier = branch_name,
     }
 
     call CreateAndTieOutVds {
         input:
             branch_name = branch_name,
-            use_classic_VQSR = use_classic_VQSR,
+            use_VQSR_lite = use_VQSR_lite,
             avro_prefix = GvsExtractAvroFilesForHail.avro_prefix,
             vds_destination_path = GvsExtractAvroFilesForHail.vds_output_path,
             tieout_vcfs = GvsQuickstartVcfIntegration.output_vcfs,
@@ -59,7 +65,7 @@ workflow GvsQuickstartHailIntegration {
 task CreateAndTieOutVds {
     input {
         String branch_name
-        Boolean use_classic_VQSR
+        Boolean use_VQSR_lite
         String avro_prefix
         String vds_destination_path
         Array[File] tieout_vcfs
@@ -132,7 +138,7 @@ task CreateAndTieOutVds {
             --vds-path ${VDS_PATH} \
             --temp-path ${TEMP_PATH} \
             --references-path ${REFERENCES_PATH} \
-            ~{true='' false='--use-vqsr-lite' use_classic_VQSR}
+            ~{true='--use-vqsr-lite' false='' use_VQSR_lite}
 
         export JOINED_MATRIX_TABLE_PATH=${WORK}/joined.mt
 

@@ -139,9 +139,9 @@ workflow GvsExtractCallset {
     }
   }
 
-  # If we're not using the VQSR filters, set it to classic (really shouldn't matter one way or the other)
+  # If we're not using the VQSR filters, set it to Lite (really shouldn't matter one way or the other)
   # Otherwise use the auto-derived flag.
-  Boolean use_classic_VQSR = !select_first([IsVQSRLite.is_vqsr_lite, true])
+  Boolean use_VQSR_lite = select_first([IsVQSRLite.is_vqsr_lite, true])
 
   call Utils.GetBQTablesMaxLastModifiedTimestamp {
     input:
@@ -160,7 +160,7 @@ workflow GvsExtractCallset {
         go                                 = select_first([ValidateFilterSetName.done, true]),
         dataset_name                       = dataset_name,
         call_set_identifier                = call_set_identifier,
-        use_classic_VQSR                   = use_classic_VQSR,
+        use_VQSR_lite                      = use_VQSR_lite,
         gatk_override                      = gatk_override,
         reference                          = reference,
         reference_index                    = reference_index,
@@ -175,7 +175,7 @@ workflow GvsExtractCallset {
         do_not_filter_override             = do_not_filter_override,
         fq_filter_set_info_table           = fq_filter_set_info_table,
         fq_filter_set_site_table           = fq_filter_set_site_table,
-        fq_filter_set_tranches_table       = if (use_classic_VQSR) then fq_filter_set_tranches_table else none,
+        fq_filter_set_tranches_table       = if (use_VQSR_lite) then none else fq_filter_set_tranches_table,
         filter_set_name                    = filter_set_name,
         drop_state                         = drop_state,
         output_file                        = vcf_filename,
@@ -235,7 +235,7 @@ task ExtractTask {
     String dataset_name
     String call_set_identifier
 
-    Boolean use_classic_VQSR
+    Boolean use_VQSR_lite
 
     File reference
     File reference_index
@@ -296,7 +296,7 @@ task ExtractTask {
 
     if [ ~{do_not_filter_override} = true ]; then
       FILTERING_ARGS=''
-    elif [ ~{use_classic_VQSR} = true ]; then
+    elif [ ~{use_VQSR_lite} = false ]; then
       FILTERING_ARGS='--filter-set-info-table ~{fq_filter_set_info_table}
         --filter-set-site-table ~{fq_filter_set_site_table}
         --tranches-table ~{fq_filter_set_tranches_table}
@@ -308,7 +308,7 @@ task ExtractTask {
     fi
 
     gatk --java-options "-Xmx9g" \
-      ExtractCohort \
+      ExtractCohortToVcf \
         --vet-ranges-extract-fq-table ~{fq_ranges_cohort_vet_extract_table} \
         --ref-ranges-extract-fq-table ~{fq_ranges_cohort_ref_extract_table} \
         --ref-version 38 \
@@ -321,7 +321,7 @@ task ExtractTask {
         --project-id ~{read_project_id} \
         ~{true='--emit-pls' false='' emit_pls} \
         ~{true='--emit-ads' false='' emit_ads} \
-        ~{true='--use-vqsr-classic-scoring' false='' use_classic_VQSR} \
+        ~{true='' false='--use-vqsr-classic-scoring' use_VQSR_lite} \
         ${FILTERING_ARGS} \
         --dataset-id ~{dataset_name} \
         --call-set-identifier ~{call_set_identifier} \

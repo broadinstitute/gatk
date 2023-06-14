@@ -7,52 +7,32 @@ workflow GvsQuickstartVcfIntegration {
 
     input {
         String branch_name
-        Boolean use_classic_VQSR = true
+        File interval_list
+        String expected_output_prefix
+        Boolean use_VQSR_lite = true
         Boolean extract_do_not_filter_override = true
-        String expected_output_prefix = "gs://gvs-internal-quickstart/integration/2023-05-31/"
 
         Array[String] external_sample_names = [
                                               "ERS4367795",
                                               "ERS4367796",
                                               "ERS4367797",
-                                              "ERS4367798",
-                                              "ERS4367799",
-                                              "ERS4367800",
-                                              "ERS4367801",
-                                              "ERS4367803",
-                                              "ERS4367804",
-                                              "ERS4367805"
                                               ]
 
         Array[File] input_vcfs = [
                                  "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00405.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
                                  "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00408.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
                                  "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00418.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
-                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00420.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
-                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00423.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
-                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00427.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
-                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00429.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
-                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00444.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
-                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00447.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
-                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00450.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz"
                                  ]
 
         Array[File] input_vcf_indexes = [
                                         "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00405.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
                                         "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00408.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
                                         "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00418.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
-                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00420.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
-                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00423.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
-                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00427.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
-                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00429.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
-                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00444.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
-                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00447.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
-                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00450.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi"
                                         ]
 
         Int? extract_scatter_count
         String drop_state = "FORTY"
-        String dataset_suffix = "vcf"
+        String dataset_suffix
         File? gatk_override
     }
     String project_id = "gvs-internal"
@@ -68,7 +48,7 @@ workflow GvsQuickstartVcfIntegration {
         input:
             branch_name = branch_name,
             dataset_prefix = "quickit",
-            dataset_suffix = dataset_suffix
+            dataset_suffix = dataset_suffix,
     }
 
     call Unified.GvsUnified {
@@ -81,22 +61,23 @@ workflow GvsQuickstartVcfIntegration {
             input_vcfs = input_vcfs,
             input_vcf_indexes = input_vcf_indexes,
             filter_set_name = "quickit",
-            use_classic_VQSR = use_classic_VQSR,
+            use_VQSR_lite = use_VQSR_lite,
             extract_table_prefix = "quickit",
             extract_scatter_count = extract_scatter_count,
             # optionally turn off filtering (VQSR Classic is not deterministic)
             # (and the initial version of this integration test does not allow for inexact matching of actual and expected results.)
             extract_do_not_filter_override = extract_do_not_filter_override,
-            drop_state = drop_state
+            drop_state = drop_state,
+            interval_list = interval_list,
     }
 
     # Only assert identical outputs if we did not filter (filtering is not deterministic) OR if we are using VQSR Lite (which is deterministic)
-    if (extract_do_not_filter_override || !use_classic_VQSR) {
+    if (extract_do_not_filter_override || use_VQSR_lite) {
         String expected_prefix = expected_output_prefix + dataset_suffix + "/"
         call AssertIdenticalOutputs {
             input:
                 expected_output_prefix = expected_prefix,
-                actual_vcfs = GvsUnified.output_vcfs
+                actual_vcfs = GvsUnified.output_vcfs,
         }
 
         call AssertCostIsTrackedAndExpected {
@@ -104,7 +85,7 @@ workflow GvsQuickstartVcfIntegration {
                 go = GvsUnified.done,
                 dataset_name = CreateDataset.dataset_name,
                 project_id = project_id,
-                expected_output_csv = expected_prefix + "cost_observability_expected.csv"
+                expected_output_csv = expected_prefix + "cost_observability_expected.csv",
         }
 
         call AssertTableSizesAreExpected {
@@ -112,7 +93,7 @@ workflow GvsQuickstartVcfIntegration {
                 go = GvsUnified.done,
                 dataset_name = CreateDataset.dataset_name,
                 project_id = project_id,
-                expected_output_csv = expected_prefix + "table_sizes_expected.csv"
+                expected_output_csv = expected_prefix + "table_sizes_expected.csv",
         }
     }
 

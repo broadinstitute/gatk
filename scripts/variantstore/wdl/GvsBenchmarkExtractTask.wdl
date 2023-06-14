@@ -153,7 +153,7 @@ task ExtractTask {
         fi
 
         gatk --java-options "-Xmx9g" \
-            ExtractCohort \
+            ExtractCohortToVcf \
                 --mode RANGES --vet-ranges-fq-dataset ~{fq_ranges_dataset} \
                 --ref-version 38 \
                 -R ~{reference} \

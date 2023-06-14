@@ -16,7 +16,7 @@ workflow GvsCreateFilterSet {
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
     File? gatk_override
 
-    Boolean use_classic_VQSR = true
+    Boolean use_VQSR_lite = true
 
     Int? INDEL_VQSR_CLASSIC_max_gaussians_override = 4
     Int? INDEL_VQSR_CLASSIC_mem_gb_override
@@ -104,7 +104,7 @@ workflow GvsCreateFilterSet {
 
   # From this point, the paths diverge depending on whether they're using classic VQSR or VQSR-Lite
   # The first branch here is VQSR-Lite, and the second is classic VQSR
-  if (!use_classic_VQSR) {
+  if (use_VQSR_lite) {
     call VQSRLite.JointVcfFiltering as JointVcfFiltering {
       input:
         input_vcfs = ExtractFilterTask.output_vcf,
@@ -170,7 +170,7 @@ workflow GvsCreateFilterSet {
     }
   }
 
-  if (use_classic_VQSR) {
+  if (!use_VQSR_lite) {
     call VQSRClassic.JointVcfFiltering as VQSRClassic {
       input:
         base_name = filter_set_name,

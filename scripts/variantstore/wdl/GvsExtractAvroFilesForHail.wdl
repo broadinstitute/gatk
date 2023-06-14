@@ -10,12 +10,12 @@ workflow GvsExtractAvroFilesForHail {
         String dataset_name
         String filter_set_name
         String call_set_identifier
-        Boolean use_classic_VQSR = true
+        Boolean use_VQSR_lite = true
         Int scatter_width = 10
     }
 
     String fq_gvs_dataset = "~{project_id}.~{dataset_name}"
-    String filter_set_info_tablename = if (use_classic_VQSR) then "filter_set_info" else "filter_set_info_vqsr_lite"
+    String filter_set_info_tablename = "filter_set_info"
     String fq_filter_set_info_table = "~{fq_gvs_dataset}.~{filter_set_info_tablename}"
 
     call Utils.ValidateFilterSetName {
@@ -177,7 +177,7 @@ task ExtractFromNonSuperpartitionedTables {
     }
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-01-alpine"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-13-alpine"
         disks: "local-disk 500 HDD"
     }
 }
@@ -244,7 +244,7 @@ task ExtractFromSuperpartitionedTables {
     }
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-01-alpine"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-13-alpine"
         disks: "local-disk 500 HDD"
     }
 }
@@ -312,7 +312,7 @@ task GenerateHailScripts {
         File hail_create_vat_inputs_script = 'hail_create_vat_inputs.py'
     }
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-01-alpine"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-13-alpine"
         disks: "local-disk 500 HDD"
     }
 }

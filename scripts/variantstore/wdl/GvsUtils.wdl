@@ -168,7 +168,7 @@ task GetBQTableLastModifiedDatetime {
     # bq needs the project name to be separate by a colon
     DATASET_TABLE_COLON=$(echo ~{fq_table} | sed 's/\./:/')
 
-    LASTMODIFIED=$(bq --project_id=~{project_id} --format=json show ${DATASET_TABLE_COLON} | python3 -c "import sys, json; print(json.load(sys.stdin)['lastModifiedTime']);")
+    LASTMODIFIED=$(bq --apilog=false --project_id=~{project_id} --format=json show ${DATASET_TABLE_COLON} | python3 -c "import sys, json; print(json.load(sys.stdin)['lastModifiedTime']);")
     if [[ $LASTMODIFIED =~ ^[0-9]+$ ]]; then
       echo $LASTMODIFIED
     else
@@ -338,13 +338,13 @@ task CreateDataset {
     # any remaining characters that are not alphanumeric or underscores.
     dataset="$(echo ~{dataset_prefix}_${branch}_${hash}_~{dataset_suffix} | tr '-' '_' | tr -c -d '[:alnum:]_')"
 
-    bq mk --project_id="gvs-internal" "$dataset"
+    bq --apilog=false mk --project_id="gvs-internal" "$dataset"
 
     # add labels for DSP Cloud Cost Control Labeling and Reporting
-    bq update --set_label service:gvs gvs-internal:$dataset
-    bq update --set_label team:variants gvs-internal:$dataset
-    bq update --set_label environment:dev gvs-internal:$dataset
-    bq update --set_label managedby:build_gatk_jar_and_create_dataset gvs-internal:$dataset
+    bq --apilog=false update --set_label service:gvs gvs-internal:$dataset
+    bq --apilog=false update --set_label team:variants gvs-internal:$dataset
+    bq --apilog=false update --set_label environment:dev gvs-internal:$dataset
+    bq --apilog=false update --set_label managedby:build_gatk_jar_and_create_dataset gvs-internal:$dataset
 
     echo -n "$dataset" > dataset.txt
   >>>
@@ -509,7 +509,7 @@ task ScaleXYBedValues {
     }
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-01-alpine"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-13-alpine"
         maxRetries: 3
         memory: "7 GB"
         preemptible: 3
@@ -615,7 +615,7 @@ task ValidateFilterSetName {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-        OUTPUT=$(bq --project_id=~{project_id} --format=csv query --use_legacy_sql=false ~{bq_labels} "SELECT filter_set_name as available_filter_set_names FROM \`~{fq_filter_set_info_table}\` GROUP BY filter_set_name")
+        OUTPUT=$(bq --apilog=false --project_id=~{project_id} --format=csv query --use_legacy_sql=false ~{bq_labels} "SELECT filter_set_name as available_filter_set_names FROM \`~{fq_filter_set_info_table}\` GROUP BY filter_set_name")
         FILTERSETS=${OUTPUT#"available_filter_set_names"}
 
         if [[ $FILTERSETS =~ "~{filter_set_name}" ]]; then
@@ -854,7 +854,7 @@ task SummarizeTaskMonitorLogs {
   # ------------------------------------------------
   # Runtime settings:
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-01-alpine"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-13-alpine"
     memory: "1 GB"
     preemptible: 3
     cpu: "1"
