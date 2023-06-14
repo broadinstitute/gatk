@@ -43,7 +43,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
 
   call GatherVcfs {
     input:
-      input_vcfs = select_first([IsVcfOnChromosomes.output_vcf, input_vcfs]),
+      input_vcfs = IsVcfOnChromosomes.output_vcf,
       output_basename = output_basename
   }
 
