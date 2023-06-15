@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Range;
 import com.google.common.collect.Sets;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
@@ -157,22 +158,18 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             outputHaplotypes.add(referenceHaplotype);
         }
 
-        //Iterate over very VCF start position in R space
-        List<Map.Entry<Integer, List<Event>>> entriesRInOrder = new ArrayList<>(variantsByStartPos.entrySet());
         /**
          * Overall Loop:
          * Iterate over every cluster of variants with the same start position.
          */
-        for (int indexOfDeterminedInR = 0; indexOfDeterminedInR < entriesRInOrder.size(); indexOfDeterminedInR++) {
-            Map.Entry<Integer, List<Event>> variantSiteGroup = entriesRInOrder.get(indexOfDeterminedInR);
-            Utils.printIf(debug, () -> "working with variants of the group: " + variantSiteGroup);
-            // Skip
-            if (entriesRInOrder.get(indexOfDeterminedInR).getKey() < callingSpan.getStart() || entriesRInOrder.get(indexOfDeterminedInR).getKey() > callingSpan.getEnd()) {
-                Utils.printIf(debug,() -> "Skipping determined hap construction! outside of span: " + callingSpan);
+        for (final int start : variantsByStartPos.keySet()) {
+            final List<Event> allEventsHere = variantsByStartPos.get(start);
+            Utils.printIf(debug, () -> "working with variants: " + allEventsHere + " at position " + start);
+
+            if (!Range.closed(callingSpan.getStart(), callingSpan.getEnd()).contains(start)) {
+                Utils.printIf(debug, () -> "Skipping determined hap construction! Outside of span: " + callingSpan);
                 continue;
             }
-
-            final List<Event> allEventsHere = variantSiteGroup.getValue();
 
             /**
              * Determined Event Loop:
@@ -181,7 +178,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
              * NOTE: we skip the reference allele in the event that we are making determined haplotypes instead of undetermined haplotypes
              */
             for (int determinedAlleleIndex = (pileupArgs.determinePDHaps?0:-1); determinedAlleleIndex < allEventsHere.size(); determinedAlleleIndex++) { //note -1 for I here corresponds to the reference allele at this site
-                if (debug) System.out.println("Working with allele at site: "+(determinedAlleleIndex ==-1? "[ref:"+(variantSiteGroup.getKey()-referenceHaplotype.getStart())+"]" : PartiallyDeterminedHaplotype.getDRAGENDebugEventString(referenceHaplotype.getStart()).apply(allEventsHere.get(determinedAlleleIndex))));
+                if (debug) System.out.println("Working with allele at site: "+(determinedAlleleIndex ==-1? "[ref:"+(start-referenceHaplotype.getStart())+"]" : PartiallyDeterminedHaplotype.getDRAGENDebugEventString(referenceHaplotype.getStart()).apply(allEventsHere.get(determinedAlleleIndex))));
                 // This corresponds to the DRAGEN code for
                 // 0 0
                 // 0 1
@@ -244,16 +241,14 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
                     // Handle the simple case of making PD haplotypes
                     if (!pileupArgs.determinePDHaps) {
-                        for (int secondRIndex = 0; secondRIndex < entriesRInOrder.size(); secondRIndex++) {
-                            if (secondRIndex != indexOfDeterminedInR) {
+                        for (final int secondStart : variantsByStartPos.keySet()) {
+                            if (secondStart == start) {
+                                newBranch.add(determinedEventToTest);
+                            } else {
                                 // We know here that nothing illegally overlaps because there are no groups.
                                 // Also exclude any events that overlap the determined allele since we cant construct them (also this stops compound alleles from being formed)
                                 // NOTE: it is important that we allow reference alleles to overlap undetermined variants as it leads to mismatches against DRAGEN otherwise.
-                                entriesRInOrder.get(secondRIndex).getValue().stream()
-                                        .filter(vc -> !excludeEvents.contains(vc))
-                                        .forEach(newBranch::add);
-                            } else {
-                                newBranch.add(determinedEventToTest);
+                                variantsByStartPos.get(secondStart).stream().filter(vc -> !excludeEvents.contains(vc)).forEach(newBranch::add);
                             }
                         }
                         newBranch.sort(HAPLOTYPE_SNP_FIRST_COMPARATOR);
@@ -267,24 +262,27 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                         List<List<Event>> variantGroupsCombinatorialExpansion = new ArrayList<>();
                         variantGroupsCombinatorialExpansion.add(new ArrayList<>());
                         // We can drastically cut down on combinatorial expansion here by saying each allele is the FIRST variant in the list, thus preventing double counting.
-                        for (int secondRIndex = indexOfDeterminedInR; secondRIndex < entriesRInOrder.size(); secondRIndex++) {
-                            if (variantGroupsCombinatorialExpansion.size() > MAX_BRANCH_PD_HAPS) {
-                                if(debug ) System.out.println("Too many branch haplotypes ["+variantGroupsCombinatorialExpansion.size()+"] generated from site, falling back on assembly variants!");
+                        for (final int secondStart : variantsByStartPos.keySet()) {
+                            // We reduce combinatorial expansion by saying each allele is the first variant in the list, thus preventing double counting.
+                            if (secondStart < start) {
+                                continue;
+                            } else if (variantGroupsCombinatorialExpansion.size() > MAX_BRANCH_PD_HAPS) {
+                                Utils.printIf(debug, () -> "Too many branch haplotypes ["+variantGroupsCombinatorialExpansion.size()+"] generated from site, falling back on assembly variants!");
                                 return sourceSet;
                             }
                             // Iterate through the growing combinatorial expansion of haps, split it into either having or not having the variant.
-                            if (secondRIndex == indexOfDeterminedInR) {
+                            if (secondStart == start) {
                                 for (List<Event> hclist : variantGroupsCombinatorialExpansion) {
                                     hclist.add(determinedEventToTest);
                                 }
                             // Otherwise make sure to include the combinatorial expansion of events at the other site
                             } else {
                                 List<List<Event>> hapsPerVCsAtRSite = new ArrayList<>();
-                                for (Event vc : entriesRInOrder.get(secondRIndex).getValue()) {
+                                for (Event event : variantsByStartPos.get(secondStart)) {
                                     for (List<Event> hclist : variantGroupsCombinatorialExpansion) {
-                                        if (!excludeEvents.contains(vc)) {
+                                        if (!excludeEvents.contains(event)) {
                                             List<Event> newList = new ArrayList<>(hclist);
-                                            newList.add(vc);
+                                            newList.add(event);
                                             hapsPerVCsAtRSite.add(newList);
                                         }
                                     }
