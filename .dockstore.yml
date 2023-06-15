@@ -65,7 +65,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_vs_836_v2
    - name: GvsBenchmarkExtractTask
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsBenchmarkExtractTask.wdl
@@ -96,7 +95,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - VS-910
    - name: GvsCreateTables
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateTables.wdl
@@ -120,7 +118,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_vs_836_v2
    - name: GvsPrepareBulkImport
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareBulkImport.wdl
@@ -193,7 +190,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_vs_836_v2
    - name: GvsJointVariantCallsetCost
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCallsetCost.wdl
@@ -222,7 +218,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rc-fix-hail-python
    - name: GvsQuickstartIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartIntegration.wdl
@@ -230,7 +225,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_700_lite_by_default
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
