@@ -86,18 +86,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         final PileupDetectionArgumentCollection pileupArgs = args.pileupDetectionArgs;
         final boolean debug = pileupArgs.debugPileupStdout;
 
-        // start with all assembled events, using maxMnpDistance = 0 because we currently don't support MNPs here,
-        // then remove bad pileup events and add good pileup events other than SNPs too close to indels
-        removeBadPileupEventsMessage(debug, sourceSet, badPileupEvents);
-        final Set<Event> passingEvents = sourceSet.getVariationEvents(0).stream()
-                .filter(event -> !badPileupEvents.contains(event))
-                .collect(Collectors.toSet());
-        final List<Event> indels = passingEvents.stream().filter(Event::isIndel).toList();
-        goodPileupEvents.stream().filter(event -> !passingEvents.contains(event)).filter(event -> event.isIndel() ||
-                        indels.stream().noneMatch(indel -> event.withinDistanceOf(indel, pileupArgs.snpAdjacentToAssemblyIndel)))
-                .forEach(passingEvents::add);
-        final List<Event> eventsInOrder = passingEvents.stream().sorted(HAPLOTYPE_SNP_FIRST_COMPARATOR).toList();
-        finalEventsListMessage(referenceHaplotype.getStart(), debug, eventsInOrder);
+        final List<Event> eventsInOrder = makeFinalListOfEventsInOrder(sourceSet, badPileupEvents, goodPileupEvents, referenceHaplotype, pileupArgs, debug);
 
         // TODO this is where we filter out if indels > 32 (a heuristic known from DRAGEN that is not implemented here)
 
@@ -325,6 +314,24 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         }
         Utils.printIf(debug, () -> "Returning "+outputHaplotypes.size()+" to the HMM");
         return sourceSet;
+    }
+
+    private static List<Event> makeFinalListOfEventsInOrder(final AssemblyResultSet sourceSet, final Set<Event> badPileupEvents,
+                                                            final Collection<Event> goodPileupEvents, final Haplotype referenceHaplotype,
+                                                            final PileupDetectionArgumentCollection pileupArgs, final boolean debug) {
+        // start with all assembled events, using maxMnpDistance = 0 because we currently don't support MNPs here,
+        // then remove bad pileup events and add good pileup events other than SNPs too close to indels
+        removeBadPileupEventsMessage(debug, sourceSet, badPileupEvents);
+        final Set<Event> passingEvents = sourceSet.getVariationEvents(0).stream()
+                .filter(event -> !badPileupEvents.contains(event))
+                .collect(Collectors.toSet());
+        final List<Event> indels = passingEvents.stream().filter(Event::isIndel).toList();
+        goodPileupEvents.stream().filter(event -> !passingEvents.contains(event)).filter(event -> event.isIndel() ||
+                        indels.stream().noneMatch(indel -> event.withinDistanceOf(indel, pileupArgs.snpAdjacentToAssemblyIndel)))
+                .forEach(passingEvents::add);
+        final List<Event> eventsInOrder = passingEvents.stream().sorted(HAPLOTYPE_SNP_FIRST_COMPARATOR).toList();
+        finalEventsListMessage(referenceHaplotype.getStart(), debug, eventsInOrder);
+        return eventsInOrder;
     }
 
     /**
