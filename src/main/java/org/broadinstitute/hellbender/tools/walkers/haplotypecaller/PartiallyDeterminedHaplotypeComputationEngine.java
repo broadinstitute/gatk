@@ -167,13 +167,14 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
              * NOTE: we skip the reference allele in the event that we are making determined haplotypes instead of undetermined haplotypes
              */
             for (int determinedAlleleIndex = (pileupArgs.determinePDHaps?0:-1); determinedAlleleIndex < allEventsHere.size(); determinedAlleleIndex++) { //note -1 for I here corresponds to the reference allele at this site
-                if (debug) System.out.println("Working with allele at site: "+(determinedAlleleIndex ==-1? "[ref:"+(start-referenceHaplotype.getStart())+"]" : PartiallyDeterminedHaplotype.getDRAGENDebugEventString(referenceHaplotype.getStart()).apply(allEventsHere.get(determinedAlleleIndex))));
+                final boolean isRef = determinedAlleleIndex == -1;
+                final Event determinedEventToTest = allEventsHere.get(isRef ? 0 : determinedAlleleIndex);
+                Utils.printIf(debug, () -> "Working with allele at site: "+(isRef? "[ref:"+(start-referenceHaplotype.getStart())+"]" : PartiallyDeterminedHaplotype.getDRAGENDebugEventString(referenceHaplotype.getStart()).apply(determinedEventToTest)));
                 // This corresponds to the DRAGEN code for
                 // 0 0
                 // 0 1
                 // 1 0
-                final boolean isRef = determinedAlleleIndex == -1;
-                final Event determinedEventToTest = allEventsHere.get(isRef ? 0 : determinedAlleleIndex);
+
 
                 /*
                  * Here we handle any of the necessary work to deal with the event groups and maybe forming compound branches out of the groups
@@ -212,7 +213,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                     branchExcludeAlleles.addAll(newBranchesToAdd);
 
                     if (branchExcludeAlleles.size() > MAX_BRANCH_PD_HAPS) {
-                        if (debug ) System.out.println("Found too many branches for variants at: "+determinedEventToTest.getStart()+" aborting and falling back to Assembly Variants!");
+                        Utils.printIf(debug, () -> "Found too many branches for variants at: "+determinedEventToTest.getStart()+" aborting and falling back to Assembly Variants!");
                         return sourceSet;
                     }
                 }
