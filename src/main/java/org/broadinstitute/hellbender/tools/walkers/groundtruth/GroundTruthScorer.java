@@ -52,6 +52,7 @@ public class GroundTruthScorer extends ReadWalker {
     public static final String FEATURES_FILE_LONG_NAME = "features-file";
     public static final String NORMALIZED_SCORE_THRESHOLD_LONG_NAME = "normalized-score-threshold";
     public static final String ADD_MEAN_CALL_LONG_NAME = "add-mean-call";
+    public static final String GT_NO_OUTPUT_LONG_NAME = "gt-no-output";
 
     private static final int QUAL_VALUE_MAX = 60;
     private static final int HMER_VALUE_MAX = 30; //TODO: This should become a parameter
@@ -222,7 +223,7 @@ public class GroundTruthScorer extends ReadWalker {
     @Argument(fullName = ADD_MEAN_CALL_LONG_NAME, doc="Add ReadMeanCall and ReadProbs columns to output", optional = true)
     public boolean addMeanCalll;
 
-    @Argument(fullName = "gt-no-output", doc = "do not generate output records", optional = true)
+    @Argument(fullName = GT_NO_OUTPUT_LONG_NAME, doc = "do not generate output records", optional = true)
     public boolean      noOutput = false;
 
 
