@@ -268,7 +268,8 @@ if __name__ == '__main__':
                         help='The name of the entity being ingested--we default to sample')
 
     parser.add_argument('--entity_set_name', type=str,
-                        help='Optional set of entities--often called a sample_set. Having a sample_set is recommended for loading large amounts of data')
+                        help='Optional set of entities--often called a sample_set. Having a sample_set is recommended for loading large amounts of data',
+                        required=False)
 
     parser.add_argument('--user_defined_sample_id', type=str,
                         help='The column that the user would like to use as the sample name in GVS and in the final extract',
@@ -308,7 +309,6 @@ if __name__ == '__main__':
     # if the user is using sample_sets, then that will potentially help us get the first (and thus also the second) or validate a user defined entity_type
     # 1. The entity type
     entity_type = ""
-    sample_set_name = args.entity_set_name
     if "entity_set_name" in args:
         entity_type = get_entity_data(args.entity_type, args.entity_set_name)
     # if there is no sample_set, we must rely on the user defining the entity type
