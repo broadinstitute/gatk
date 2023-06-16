@@ -196,7 +196,7 @@ task GetColumnNames {
 
         python3 /app/get_columns_for_import.py \
            ~{"--user_defined_sample_id " + user_defined_sample_id_column_name} \
-          --entity_set_name ~{sample_set_name} \
+           ~{"--entity_set_name " + sample_set_name} \
           --entity_type ~{data_table_name} \
           --vcf_output ~{vcf_files_column_name_output} \
           --vcf_index_output ~{vcf_index_files_column_name_output} \
