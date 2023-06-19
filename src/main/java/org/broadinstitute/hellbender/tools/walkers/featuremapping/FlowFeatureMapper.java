@@ -103,6 +103,9 @@ public final class FlowFeatureMapper extends ReadWalker {
     private static final String     VCF_SMQ_RIGHT_MEAN = "X_SMQ_RIGHT_MEAN";
 
     private static final Double     LOWEST_PROB = 0.0001;
+    private static final int        VENDOR_QUALITY_CHECK_FLAG = 0x200;
+
+    private static final String     INCLUDE_QC_FAILED_READS_FULL_NAME = "include-qc-failed-reads";
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -130,6 +133,10 @@ public final class FlowFeatureMapper extends ReadWalker {
     @Advanced
     @Argument(fullName=HaplotypeCallerArgumentCollection.OUTPUT_BLOCK_LOWER_BOUNDS, doc = "Output the band lower bound for each GQ block regardless of the data it represents", optional = true)
     public boolean floorBlocks = false;
+
+    @Advanced
+    @Argument(fullName=INCLUDE_QC_FAILED_READS_FULL_NAME, doc = "include reads with QC failed flag", optional = true)
+    public boolean includeQcFailedReads = false;
 
     @ArgumentCollection
     public FlowBasedArgumentCollection fbargs = new FlowBasedArgumentCollection();
@@ -334,6 +341,11 @@ public final class FlowFeatureMapper extends ReadWalker {
 
         // include supplementary alignments?
         if ( read.isSupplementaryAlignment() && !fmArgs.keepSupplementaryAlignments ) {
+            return;
+        }
+
+        // include qc-failed reads?
+        if ( ((read.getFlags() & VENDOR_QUALITY_CHECK_FLAG) != 0) && !includeQcFailedReads ) {
             return;
         }
 
