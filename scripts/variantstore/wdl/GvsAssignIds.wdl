@@ -1,6 +1,6 @@
 version 1.0
 
-import "GvsCreateTables.wdl" as GvsCreateTables
+import "GvsUtils.wdl" as Utils
 
 workflow GvsAssignIds {
 
@@ -22,8 +22,10 @@ workflow GvsAssignIds {
   String vcf_header_lines_schema_json = '[{"name":"vcf_header_lines_hash","type":"STRING","mode":"REQUIRED"}, {"name":"vcf_header_lines","type":"STRING","mode":"REQUIRED"},{"name":"is_expected_unique","type":"BOOLEAN","mode":"REQUIRED"}]'
   String sample_vcf_header_schema_json = '[{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"}, {"name":"vcf_header_lines_hash","type":"STRING","mode":"REQUIRED"}]'
   String sample_load_status_schema_json = '[{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name":"status","type":"STRING","mode":"REQUIRED"}, {"name":"event_timestamp","type":"TIMESTAMP","mode":"REQUIRED"}]'
+  String ref_ranges_schema_json = '[{"name": "location","type": "INTEGER","mode": "REQUIRED"},{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name": "length","type": "INTEGER","mode": "REQUIRED"},{"name": "state","type": "STRING","mode": "REQUIRED"}]'
+  String vet_schema_json = '[{"name": "sample_id", "type" :"INTEGER", "mode": "REQUIRED"},{"name": "location", "type" :"INTEGER", "mode": "REQUIRED"},{"name": "ref", "type" :"STRING", "mode": "REQUIRED"},{"name": "alt", "type" :"STRING", "mode": "REQUIRED"},{"name": "AS_RAW_MQ", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_RAW_MQRankSum", "type" :"STRING", "mode": "NULLABLE"},{"name": "QUALapprox", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_QUALapprox", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_RAW_ReadPosRankSum", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_SB_TABLE", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_VarDP", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_GT", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_AD", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_GQ", "type" :"INTEGER", "mode": "NULLABLE"},{"name": "call_PGT", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_PID", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_PL", "type" :"STRING", "mode": "NULLABLE"}]'
 
-  call GvsCreateTables.CreateTables as CreateSampleInfoTable {
+  call Utils.CreateTables as CreateSampleInfoTable {
   	input:
       project_id = project_id,
       dataset_name = dataset_name,
@@ -34,7 +36,7 @@ workflow GvsAssignIds {
       partitioned = "false"
   }
 
-  call GvsCreateTables.CreateTables as CreateSampleLoadStatusTable {
+  call Utils.CreateTables as CreateSampleLoadStatusTable {
     input:
       project_id = project_id,
       dataset_name = dataset_name,
@@ -45,7 +47,7 @@ workflow GvsAssignIds {
       partitioned = "false"
   }
   if (process_vcf_headers) {
-    call GvsCreateTables.CreateTables as CreateScratchVCFHeaderLinesTable {
+    call Utils.CreateTables as CreateScratchVCFHeaderLinesTable {
       input:
         project_id = project_id,
         dataset_name = dataset_name,
@@ -56,7 +58,7 @@ workflow GvsAssignIds {
         partitioned = "false"
     }
 
-    call GvsCreateTables.CreateTables as CreateVCFHeaderLinesTable {
+    call Utils.CreateTables as CreateVCFHeaderLinesTable {
       input:
         project_id = project_id,
         dataset_name = dataset_name,
@@ -67,7 +69,7 @@ workflow GvsAssignIds {
         partitioned = "false"
     }
 
-    call GvsCreateTables.CreateTables as CreateSampleVCFHeaderTable {
+    call Utils.CreateTables as CreateSampleVCFHeaderTable {
       input:
         project_id = project_id,
         dataset_name = dataset_name,
@@ -95,11 +97,26 @@ workflow GvsAssignIds {
       table_creation_done = CreateSampleInfoTable.done,
   }
 
-  call GvsCreateTables.CreateBQTables as CreateTablesForMaxId {
+  call Utils.CreateTables as CreatRefRangesTables {
     input:
       project_id = project_id,
       dataset_name = dataset_name,
-      max_table_id = AssignIds.max_table_id
+      datatype = "ref_ranges",
+      schema_json = sample_vcf_header_schema_json,
+      max_table_id = AssignIds.max_table_id,
+      superpartitioned = "true",
+      partitioned = "true"
+  }
+
+  call Utils.CreateTables as CreatVetTables {
+    input:
+      project_id = project_id,
+      dataset_name = dataset_name,
+      datatype = "vet",
+      schema_json = sample_vcf_header_schema_json,
+      max_table_id = AssignIds.max_table_id,
+      superpartitioned = "true",
+      partitioned = "true"
   }
 
   output {
