@@ -1,6 +1,11 @@
 version 1.0
 
 import "GvsUnified.wdl" as GvsUnified
+import "GvsBulkIngestGenomes.wdl" as BulkIngestGenomes
+import "GvsPopulateAltAllele.wdl" as PopulateAltAllele
+import "GvsCreateFilterSet.wdl" as CreateFilterSet
+import "GvsPrepareRangesCallset.wdl" as PrepareRangesCallset
+import "GvsExtractCallset.wdl" as ExtractCallset
 
 workflow GvsJointVariantCalling {
     input {
@@ -10,6 +15,10 @@ workflow GvsJointVariantCalling {
         Array[File] input_vcfs
         Array[File] input_vcf_indexes
         String call_set_identifier
+        String samples_table_name = "sample"
+        String sample_id_column_name = "sample_id"
+
+
         String? extract_output_gcs_dir
         String drop_state = "FORTY"
         Boolean use_classic_VQSR = true
@@ -43,6 +52,18 @@ workflow GvsJointVariantCalling {
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
 
     File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
+
+    call BulkIngestGenomes.GvsBulkIngestGenomes as BulkIngestGenomes {
+        input:
+            dataset_name = dataset_name,
+            project_id = project_id,
+            call_set_identifier = call_set_identifier,
+            samples_table_name = samples_table_name,
+            sample_id_column_name = sample_id_column_name,
+            interval_list = interval_list,
+            drop_state = drop_state,
+            gatk_override = gatk_override,
+    }
 
     call GvsUnified.GvsUnified {
         input:
