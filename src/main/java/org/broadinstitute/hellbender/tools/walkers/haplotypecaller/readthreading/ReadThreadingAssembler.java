@@ -454,21 +454,6 @@ public final class ReadThreadingAssembler {
         return c.getCigarElements().stream().anyMatch(ce -> ce.getOperator() == CigarOperator.N);
     }
 
-    /**
-     * Print graph to file NOTE this requires that debugGraphTransformations be enabled.
-     *
-     * @param graph the graph to print
-     * @param fileName the name to give the graph file
-     */
-    private void printDebugGraphTransform(final BaseGraph<?,?> graph, final String fileName) {
-        File outputFile = new File(debugGraphOutputPath, fileName);
-        if ( PRINT_FULL_GRAPH_FOR_DEBUGGING ) {
-            graph.printGraph(outputFile, pruneFactor);
-        } else {
-            graph.subsetToRefSource(10).printGraph(outputFile, pruneFactor);
-        }
-    }
-
     private AssemblyResult getResultSetForRTGraph(final AbstractReadThreadingGraph rtGraph) {
 
         // The graph has degenerated in some way, so the reference source and/or sink cannot be id'd.  Can
@@ -482,28 +467,20 @@ public final class ReadThreadingAssembler {
     }
 
     // Performs the various transformations necessary on a sequence graph
-    private AssemblyResult cleanupSeqGraph(final SeqGraph seqGraph, final Haplotype refHaplotype) {
-        if (debugGraphTransformations) {
-            printDebugGraphTransform(seqGraph, dotFileName(refHaplotype, seqGraph.getKmerSize(),".1.0.non_ref_removed.dot"));
-        }
+    private AssemblyResult cleanupSeqGraph(final SeqGraph seqGraph, final Haplotype refHaplotype, final DotFilePrinter dotFilePrinter) {
+        dotFilePrinter.printGraphToFileIfDebugEnabled(seqGraph, "non_ref_removed");
+
         // the very first thing we need to do is zip up the graph, or pruneGraph will be too aggressive
         seqGraph.zipLinearChains();
-        if (debugGraphTransformations) {
-            printDebugGraphTransform(seqGraph, dotFileName(refHaplotype, seqGraph.getKmerSize(), ".1.1.zipped.dot"));
-        }
+        dotFilePrinter.printGraphToFileIfDebugEnabled(seqGraph, "zipped");
 
         // now go through and prune the graph, removing vertices no longer connected to the reference chain
         seqGraph.removeSingletonOrphanVertices();
         seqGraph.removeVerticesNotConnectedToRefRegardlessOfEdgeDirection();
+        dotFilePrinter.printGraphToFileIfDebugEnabled(seqGraph, "pruned");
 
-        if (debugGraphTransformations) {
-            printDebugGraphTransform(seqGraph, dotFileName(refHaplotype, seqGraph.getKmerSize(), ".1.2.pruned.dot"));
-        }
         seqGraph.simplifyGraph();
-
-        if (debugGraphTransformations) {
-            printDebugGraphTransform(seqGraph, dotFileName(refHaplotype, seqGraph.getKmerSize(), ".1.3.merged.dot"));
-        }
+        dotFilePrinter.printGraphToFileIfDebugEnabled(seqGraph, "merged");
 
         // The graph has degenerated in some way, so the reference source and/or sink cannot be id'd.  Can
         // happen in cases where for example the reference somehow manages to acquire a cycle, or
@@ -523,9 +500,8 @@ public final class ReadThreadingAssembler {
             seqGraph.addVertex(dummy);
             seqGraph.addEdge(complete, dummy, new BaseEdge(true, 0));
         }
-        if (debugGraphTransformations) {
-            printDebugGraphTransform(seqGraph, dotFileName(refHaplotype, seqGraph.getKmerSize(), ".1.4.final.dot"));
-        }
+        dotFilePrinter.printGraphToFileIfDebugEnabled(seqGraph, "final");
+
         return new AssemblyResult(AssemblyResult.Status.ASSEMBLED_SOME_VARIATION, seqGraph, null);
     }
 
@@ -647,6 +623,8 @@ public final class ReadThreadingAssembler {
             return new AssemblyResult(AssemblyResult.Status.FAILED, null, null);
         }
 
+        final DotFilePrinter dotFilePrinter = new DotFilePrinter(refHaplotype.getGenomeLocation(), kmerSize);
+
         if ( !allowNonUniqueKmersInRef && !ReadThreadingGraph.determineNonUniqueKmers(
                 new ReadThreadingGraph.SequenceForKmers("ref", refHaplotype.getBases(), 0,
                         refHaplotype.getBases().length, 1, true), kmerSize).isEmpty() ) {
@@ -672,10 +650,7 @@ public final class ReadThreadingAssembler {
 
         // actually build the read threading graph
         rtgraph.buildGraphIfNecessary();
-
-        if (debugGraphTransformations) {
-            printDebugGraphTransform(rtgraph, dotFileName(refHaplotype, kmerSize, ".0.0.raw_readthreading_graph.dot"));
-        }
+        dotFilePrinter.printGraphToFileIfDebugEnabled(rtgraph, "raw_readthreading_graph");
 
         // It's important to prune before recovering dangling ends so that we don't waste time recovering bad ends.
         // It's also important to prune before checking for cycles so that sequencing errors don't create false cycles
@@ -700,7 +675,7 @@ public final class ReadThreadingAssembler {
             return null;
         }
 
-        final AssemblyResult result = getAssemblyResult(refHaplotype, kmerSize, rtgraph, aligner, danglingEndSWParameters);
+        final AssemblyResult result = getAssemblyResult(refHaplotype, kmerSize, rtgraph, aligner, danglingEndSWParameters, dotFilePrinter);
         // check whether recovering dangling ends created cycles
         if (recoverAllDanglingBranches && rtgraph.hasCycles()) {
             return null;
@@ -708,14 +683,12 @@ public final class ReadThreadingAssembler {
         return result;
     }
 
-    private AssemblyResult getAssemblyResult(final Haplotype refHaplotype, final int kmerSize, final AbstractReadThreadingGraph rtgraph, final SmithWatermanAligner aligner, final SWParameters danglingEndSWParameters) {
+    private AssemblyResult getAssemblyResult(final Haplotype refHaplotype, final int kmerSize, final AbstractReadThreadingGraph rtgraph, final SmithWatermanAligner aligner, final SWParameters danglingEndSWParameters, final DotFilePrinter dotFilePrinter) {
         if (!pruneBeforeCycleCounting) {
             chainPruner.pruneLowWeightChains(rtgraph);
         }
 
-        if (debugGraphTransformations) {
-            printDebugGraphTransform(rtgraph, dotFileName(refHaplotype, kmerSize, ".0.1.chain_pruned_readthreading_graph.dot"));
-        }
+        dotFilePrinter.printGraphToFileIfDebugEnabled(rtgraph, "chain_pruned_readthreading_graph");
 
         // look at all chains in the graph that terminate in a non-ref node (dangling sources and sinks) and see if
         // we can recover them by merging some N bases from the chain back into the reference
@@ -729,16 +702,13 @@ public final class ReadThreadingAssembler {
             rtgraph.removePathsNotConnectedToRef();
         }
 
-        if (debugGraphTransformations) {
-            printDebugGraphTransform(rtgraph, dotFileName(refHaplotype, kmerSize, ".0.2.cleaned_readthreading_graph.dot"));
-        }
+        dotFilePrinter.printGraphToFileIfDebugEnabled(rtgraph, "cleaned_readthreading_graph");
 
         // Either return an assembly result with a sequence graph or with an unchanged sequence graph deptending on the kmer duplication behavior
         if (generateSeqGraph) {
             final SeqGraph initialSeqGraph = rtgraph.toSequenceGraph();
-            if (debugGraphTransformations) {
-                rtgraph.printGraph(new File(debugGraphOutputPath, dotFileName(refHaplotype, kmerSize, ".0.3.initial_seqgraph.dot")), 10000);
-            }
+
+            dotFilePrinter.printGraphToFileIfDebugEnabled(initialSeqGraph, "initial_seqgraph");
 
             // if the unit tests don't want us to cleanup the graph, just return the raw sequence graph
             if (justReturnRawGraph) {
@@ -748,17 +718,14 @@ public final class ReadThreadingAssembler {
             if (debug) {
                 logger.info("Using kmer size of " + rtgraph.getKmerSize() + " in read threading assembler");
             }
-            if (debugGraphTransformations) {
-                printDebugGraphTransform(initialSeqGraph, dotFileName(refHaplotype, kmerSize, ".0.4.initial_seqgraph.dot"));
-            }
+
             initialSeqGraph.cleanNonRefPaths(); // TODO -- I don't this is possible by construction
 
-            final AssemblyResult cleaned = cleanupSeqGraph(initialSeqGraph, refHaplotype);
+            final AssemblyResult cleaned = cleanupSeqGraph(initialSeqGraph, refHaplotype, dotFilePrinter);
             final AssemblyResult.Status status = cleaned.getStatus();
             return new AssemblyResult(status, cleaned.getSeqGraph(), rtgraph);
 
         } else {
-
             // if the unit tests don't want us to cleanup the graph, just return the raw sequence graph
             if (justReturnRawGraph) {
                 return new AssemblyResult(AssemblyResult.Status.ASSEMBLED_SOME_VARIATION, null, rtgraph);
@@ -940,8 +907,48 @@ public final class ReadThreadingAssembler {
         return resultSet;
     }
 
-    private static String dotFileName(final Haplotype refHaplotype, final int kmerSize, final String suffix) {
-        return (refHaplotype.getGenomeLocation() ==  null ? "" : IntervalUtils.locatableToString(refHaplotype) )
-                + "-sequenceGraph." + kmerSize + suffix;
+    /**
+     * Manage the printing of dot files and their naming convention, for example
+     * chr20:20-100-sequenceGraph.13.0.1.chain_pruned_read_threading_graph.dot
+     * chr20:20-100-sequenceGraph.13.0.2.cleaned_read_threading_graph.dot
+     * . . .
+     * chr20:20-100-sequenceGraph.13.1.0.non_ref_removed.dot,
+     * where 13 is the kmer size, and the following two numbers indicate broad categories (0 for the initial read threading
+     * de Bruijn graph, 1 for the later seq graph) and individual tags, respectively
+     * . . .
+     *
+     * This class automatically increments the section whenever a new graph is printed i.e. it switches from 0 to 1 once
+     * it is asked to print a transformation of the seq graph instead of the read threading graph
+     */
+    private class DotFilePrinter {
+        private int section = -1; // start at -1 because upon seeing the first graph it will be incremented to 0
+        private int subsection = 1;
+        private final String locationString;
+        private final int kmerSize;
+        private BaseGraph<?,?> lastGraphPrinted = null;
+
+        public DotFilePrinter(final Locatable location, final int kmerSize) {
+            locationString = location ==  null ? "" : IntervalUtils.locatableToString(location);
+            this.kmerSize = kmerSize;
+        }
+
+        public void printGraphToFileIfDebugEnabled(final BaseGraph<?,?> graph, final String name) {
+            if (debugGraphTransformations) {
+                if (graph != lastGraphPrinted) {
+                    lastGraphPrinted = graph;
+                    section++;
+                    subsection = 0;
+                }
+                final String fileName = String.format("%s-sequenceGraph.%d.%d.%d.%s.dot", locationString, kmerSize, section, subsection++, name);
+                File outputFile = new File(debugGraphOutputPath, fileName);
+                if (PRINT_FULL_GRAPH_FOR_DEBUGGING) {
+                    graph.printGraph(outputFile, pruneFactor);
+                } else {
+                    graph.subsetToRefSource(10).printGraph(outputFile, pruneFactor);
+                }
+            }
+        }
+
+        // provide the next file name and increments the subsection index
     }
 }
