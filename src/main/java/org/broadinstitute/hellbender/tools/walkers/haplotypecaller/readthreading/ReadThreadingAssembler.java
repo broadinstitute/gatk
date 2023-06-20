@@ -918,6 +918,7 @@ public final class ReadThreadingAssembler {
             this.kmerSize = kmerSize;
         }
 
+        // save the next file with the appropriate name, incrementing the subsection index
         public void printGraphToFileIfDebugEnabled(final BaseGraph<?,?> graph, final String name) {
             if (debugGraphTransformations) {
                 if (graph != lastGraphPrinted) {
@@ -934,7 +935,5 @@ public final class ReadThreadingAssembler {
                 }
             }
         }
-
-        // provide the next file name and increments the subsection index
     }
 }
