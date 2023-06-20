@@ -106,7 +106,22 @@ def get_column_data(entity_type):
             break
     return (columnSamples, numSamples)
 
-def get_column_values(columnSamples, numSamples):
+def get_column_values(columnSamples, numSamples, user_defined_vcf, user_defined_index):
+    if user_defined_vcf:
+        if user_defined_vcf not in columnSamples: # validate that the user defined vcf column is present in the table
+            raise ValueError("vcf column not in table")
+        if user_defined_index:
+            if user_defined_index not in columnSamples: # validate that the user defined index column is present in the table
+                raise ValueError("vcf index column not in table")
+            else:
+                return (user_defined_vcf, user_defined_index)
+        elif user_defined_vcf + "_index" in columnSamples: # If no index col was provided, but there is one that matches a provided vcf column, we go with that
+            return (user_defined_vcf, user_defined_vcf + "_index")
+        else:
+            raise ValueError(f"No index column specified for: {user_defined_vcf}")
+    elif user_defined_index:
+        raise ValueError(f"No GVCF column specified for: {user_defined_index}")
+
     # time to start gathering some potential rows.
     # how many samples did we actually take?
     numSampledRows = numSamples
@@ -178,7 +193,7 @@ def get_column_values(columnSamples, numSamples):
 
     found_vcf_column = False
 
-    # this is for returning debug info to the user, showing the multiple columns that matched?
+    # this is for returning debug info to the user, showing the multiple columns that matched
     matching_vcf_columns = set()
 
     # super simple heuristic: Are there columns that end in vcf?
@@ -210,7 +225,7 @@ def get_column_values(columnSamples, numSamples):
     content_matching_vcfs = set()
     # We STILL weren't able to uniquely determine the correct columns for the vcf and index files going by column names?
     if not found_vcf_column:
-        # Check the contents of the columns: the duck algorithm.  If its contents LOOK like like vcfs and indexes, go from there
+        # Check the contents of the columns: the duck algorithm.  If its contents LOOK like vcfs and indexes, go from there
         for col in path_ends_in_vcf_gz:
             # ...and has an analogue that looks like an index file?
             index_column = f"{column}_index"
@@ -278,12 +293,22 @@ if __name__ == '__main__':
                         required=False)
 
     parser.add_argument('--vcf_output', type=str,
-                        help='The location to write the suggested vcf col name',
+                        help='The location to write the suggested vcf column name',
                         required=False)
 
     parser.add_argument('--vcf_index_output', type=str,
-                        help='The location to write the suggested index col name',
+                        help='The location to write the suggested index column name',
                         required=False)
+
+    parser.add_argument('--user_defined_vcf', type=str,
+                        help='The column that the user has specified as the vcf column name',
+                        required=False)
+
+    parser.add_argument('--user_defined_index', type=str,
+                        help='The column that the user has specified as the index column name',
+                        required=False)
+
+
 
     args = parser.parse_args()
 
@@ -334,7 +359,7 @@ if __name__ == '__main__':
     (columnSamples, numSamples) = get_column_data(entity_type)
 
     # 4 and # 5: The input GVCFs path column name and the input GVCF index path column name
-    (vcf_column, vcf_column_index) = get_column_values(columnSamples, numSamples)
+    (vcf_column, vcf_column_index) = get_column_values(columnSamples, numSamples, args.user_defined_vcf, args.user_defined_index)
 
     # Write the derived values to their corresponding locations -- we just pass the vcf paths for now, as at this point, everything else is just for validation rather than discovery
     write_column_names(vcf_column, vcf_column_index, args.vcf_output, args.vcf_index_output)

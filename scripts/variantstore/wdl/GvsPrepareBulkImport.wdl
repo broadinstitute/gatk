@@ -12,7 +12,7 @@ workflow GvsPrepareBulkImport {
         String user_defined_sample_id_column_name
         String vcf_files_column_name
         String vcf_index_files_column_name
-        String? sample_set_name ## currently we only allow for one sample set at a time
+        String? sample_set_name
     }
 
     call GenerateFOFNsFromDataTables {
@@ -36,7 +36,6 @@ workflow GvsPrepareBulkImport {
     }
 }
 
-# NOTE: If no sample_set_name is specified, this copies the entirety of the data tables over and into GVS
 task GenerateFOFNsFromDataTables {
     ## In order to get the <entity>_ids in the sample_set for an inclusion list, we use Terra Notebook Utils
     ## This also allows us to validate that the requested sample_set exists
