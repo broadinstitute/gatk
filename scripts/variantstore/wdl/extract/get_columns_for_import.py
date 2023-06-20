@@ -233,23 +233,25 @@ def get_column_values(columnSamples, numSamples):
 
     if not found_vcf_column:
         print("Unable to uniquely identify columns for the vcf and vcf index files")
+        error_string = "No appropriate columns were found for the vcf and vcf index file"
         if len(matching_vcf_columns) > 1:
-            print(f"Multiple columns that look like the right naming convention: {matching_vcf_columns}")
+            error_string = f"Multiple columns that look like the right naming convention: {matching_vcf_columns}"
         if len(content_matching_vcfs) > 1:
-            print(f"Multiple columns that look like have contents that look like zipped vcfs: {content_matching_vcfs}")
+            error_string = f"Multiple columns that look like have contents that look like zipped vcfs: {content_matching_vcfs}"
+
+        # debug vomit
+        print("\n\nDebug info:")
+        print(f"ends_in_vcf: {ends_in_vcf}")
+        print(f"ends_in_vcf_index: {ends_in_vcf_index}")
+        print(f"contains_reblocked: {contains_reblocked}")
+        print(f"path_ends_in_vcf_gz: {path_ends_in_vcf_gz}")
+        print(f"path_ends_in_vcf_gz_tbi: {path_ends_in_vcf_gz_tbi}")
+
+        raise ValueError(error_string)
     else:
         print("\nDerived values:");
         print(f"final_vcf_column: {final_vcf_column}")
         print(f"final_vcf_index_column: {final_vcf_index_column}")
-
-    # debug vomit
-    print("\n\nDebug info:")
-    print(f"ends_in_vcf: {ends_in_vcf}")
-    print(f"ends_in_vcf_index: {ends_in_vcf_index}")
-    print(f"contains_reblocked: {contains_reblocked}")
-
-    print(f"path_ends_in_vcf_gz: {path_ends_in_vcf_gz}")
-    print(f"path_ends_in_vcf_gz_tbi: {path_ends_in_vcf_gz_tbi}")
 
     return (final_vcf_column, final_vcf_index_column)
 
