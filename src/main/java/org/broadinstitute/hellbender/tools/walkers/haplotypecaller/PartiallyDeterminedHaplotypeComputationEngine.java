@@ -258,20 +258,11 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                             } else if (otherEventGroupStart == thisEventGroupStart) {
                                 growingEventGroups.forEach(group -> group.add(determinedEventToTest));
                             } else if (thisEventGroupStart < otherEventGroupStart) {
-                                List<List<Event>> hapsPerVCsAtRSite = new ArrayList<>();
-                                for (Event event : variantsByStartPos.get(otherEventGroupStart)) {
-                                    for (List<Event> hclist : growingEventGroups) {
-                                        if (!excludeEvents.contains(event)) {
-                                            List<Event> newList = new ArrayList<>(hclist);
-                                            newList.add(event);
-                                            hapsPerVCsAtRSite.add(newList);
-                                        }
-                                    }
-                                }
-                                //Add them after to prevent accidentally adding duplicates of events at a site
-                                growingEventGroups.addAll(hapsPerVCsAtRSite);
+                                variantsByStartPos.get(otherEventGroupStart).stream()
+                                        .filter(event -> !excludeEvents.contains(event))
+                                        .flatMap(event -> growingEventGroups.stream().map(group -> growEventGroup(group, event)))
+                                        .forEach(growingEventGroups::add);
                             }
-                            // We reduce combinatorial expansion by saying each allele is the first variant in the list, thus preventing double counting.
                         }
 
                         for (List<Event> subset : growingEventGroups) {
@@ -894,6 +885,12 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             allowedEvents = null;
             return this;
         }
+    }
+
+    private static List<Event> growEventGroup(final List<Event> group, final Event event) {
+        final List<Event> result = new ArrayList<>(group);
+        result.add(event);
+        return result;
     }
 
     // To match DRAGEN we must define a modified start position for indels, which is used to determine overlaps when creating event groups
