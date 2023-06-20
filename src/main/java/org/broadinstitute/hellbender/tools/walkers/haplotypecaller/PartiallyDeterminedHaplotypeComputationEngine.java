@@ -151,7 +151,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
          * Overall Loop:
          * Iterate over every cluster of variants with the same start position.
          */
-        for (final int start : variantsByStartPos.keySet()) {
+        for (final int start : variantsByStartPos.keySet()) {   // it's a SortedMap -- iterating over its keyset is okay!
             final List<Event> allEventsHere = variantsByStartPos.get(start);
             Utils.printIf(debug, () -> "working with variants: " + allEventsHere + " at position " + start);
 
@@ -284,7 +284,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
                         for (List<Event> subset : variantGroupsCombinatorialExpansion) {
                             subset.sort(HAPLOTYPE_SNP_FIRST_COMPARATOR);
-                            Utils.printIf(debug, () -> "Constructing Hap From Events:"+ dragenString(subset,  referenceHaplotype.getStart()));
+                            Utils.printIf(debug, () -> "Constructing Hap From Events:"+ formatEventsLikeDragenLogs(subset,  referenceHaplotype.getStart()));
                             branchHaps.add(constructHaplotypeFromVariants(referenceHaplotype, subset, true));
                         }
                     }
@@ -363,11 +363,11 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                 // For every indel, make every 2-3 element subset (without overlapping) of variants to test for equivalency
                 for (int j = 0; j < eventsInOrder.size(); j++) {
                     final Event secondEvent = eventsInOrder.get(j);
-                    // Don't compare myself, any overlappers to myself, or indels I've already examined me (to prevent double counting)
+                    // Don't compare the event to itself, to overlapping events, or to indels I've already examined me (to prevent double counting)
                     if (j != i && !eventsOverlapForPDHapsCode(firstEvent, secondEvent) && ((!secondEvent.isIndel()) || j > i)) {
                         final List<Event> events = new ArrayList<>(Arrays.asList(firstEvent, secondEvent));
                         events.sort(HAPLOTYPE_SNP_FIRST_COMPARATOR);
-                        Utils.printIf(debug, () -> "Testing events: "+ dragenString(events,  referenceHaplotype.getStart()));
+                        Utils.printIf(debug, () -> "Testing events: "+ formatEventsLikeDragenLogs(events,  referenceHaplotype.getStart()));
                         if (constructArtificialHaplotypeAndTestEquivalentEvents(referenceHaplotype, aligner, swParameters, eventsInOrder, events, debug)) {
                             disallowedPairs.add(events);
                         }
@@ -385,7 +385,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                 // For every indel, make every 2-3 element subset (without overlapping) of variants to test for equivalency
                 for (int j = 0; j < eventsInOrder.size(); j++) {
                     final Event secondEvent = eventsInOrder.get(j);
-                    // Don't compare myself, any overlappers to myself, or indels i've already examined me (to prevent double counting)
+                    // Don't compare the event to itself, to overlapping events, or to indels I've already examined me (to prevent double counting)
                     if (j != i && !eventsOverlapForPDHapsCode(firstEvent, secondEvent) && ((!secondEvent.isIndel()) || j > i)) {
                         // if i and j area already disallowed keep going
                         if (disallowedPairs.stream().anyMatch(p -> p.contains(firstEvent) && p.contains(secondEvent))) {
@@ -403,7 +403,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                                 List<Event> subList = new ArrayList<>(events);
                                 subList.add(thirdEvent);
                                 subList.sort(HAPLOTYPE_SNP_FIRST_COMPARATOR);
-                                Utils.printIf(debug,() ->"Testing events: " + dragenString(subList,  referenceHaplotype.getStart()));
+                                Utils.printIf(debug,() ->"Testing events: " + formatEventsLikeDragenLogs(subList,  referenceHaplotype.getStart()));
                                 if (constructArtificialHaplotypeAndTestEquivalentEvents(referenceHaplotype, aligner, swParameters, eventsInOrder, subList, debug)) {
                                     disallowedPairs.add(subList);
                                 }
@@ -476,7 +476,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                 .filter(event -> eventsToTest.stream().noneMatch(event::equals))
                 // Do any of variants (that were not in our set of 2-3 targets) appear in our overall list of alleles
                 .anyMatch(event -> events.stream().anyMatch(event::equals));
-        Utils.printIf(debug, () -> dragenString(realignHap.getEventMap().getEvents(),  referenceHaplotype.getStart(), "\n"));
+        Utils.printIf(debug, () -> formatEventsLikeDragenLogs(realignHap.getEventMap().getEvents(),  referenceHaplotype.getStart(), "\n"));
         Utils.printIf(debug && wasEquivalentEvent,()->"Events mismatched!");
 
         return wasEquivalentEvent;
@@ -743,10 +743,10 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
          * Iterate through the mutex variants and ensure pairs containing all mutex variant groups are marked as true
          *
          * @param disallowedEvents Pairs of events disallowed
-         * @return false if the event group is too large to process
          */
         public void populateBitset(List<List<Event>> disallowedEvents) {
-            if (eventsInBitmapOrder.size() > MAX_VAR_IN_EVENT_GROUP || eventsInBitmapOrder.size() < 2) {
+            Utils.validate(size() <= MAX_VAR_IN_EVENT_GROUP, () -> "Too many events (" + size() + ") for populating bitset.");
+            if (eventsInBitmapOrder.size() < 2) {
                 return;
             }
 
@@ -867,7 +867,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
         //Print The event group in Illumina indexed ordering:
         public String toDisplayString(int startPos) {
-            return "EventGroup: " + dragenString(eventsInBitmapOrder, startPos);
+            return "EventGroup: " + formatEventsLikeDragenLogs(eventsInBitmapOrder, startPos);
         }
 
         public boolean contains(final Event event) {
@@ -890,23 +890,29 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         }
     }
 
-    private static String dragenString(final Collection<Event> events, final int refStart) {
-        return dragenString(events, refStart,"->");
+    // To match DRAGEN we must define a modified start position for indels, which is used to determine overlaps when creating event groups
+    private static double dragenStart(final Event event) {
+        return event.getStart() + (event.isIndel() ? (event.isSimpleDeletion() ? 1 : 0.5) : 0);
     }
 
-    private static String dragenString(final Collection<Event> events, final int refStart, final CharSequence delimiter) {
+    /**
+     * The remaining methods in this class are for debugging only, trying to produce output logs as similar as possible
+     * to DRAGEN's for the sake of comparison and functional equivalence.
+     */
+
+    private static String formatEventsLikeDragenLogs(final Collection<Event> events, final int refStart) {
+        return formatEventsLikeDragenLogs(events, refStart,"->");
+    }
+
+    private static String formatEventsLikeDragenLogs(final Collection<Event> events, final int refStart, final CharSequence delimiter) {
         return events.stream()
                 .map(PartiallyDeterminedHaplotype.getDRAGENDebugEventString(refStart))
                 .collect(Collectors.joining(delimiter));
     }
 
-    private static double dragenStart(final Event event) {
-        return event.getStart() + (event.isIndel() ? (event.isSimpleDeletion() ? 1 : 0.5) : 0);
-    }
-
     private static void eventGroupsMessage(final Haplotype referenceHaplotype, final boolean debug, final Map<Double, List<Event>> eventsByDRAGENCoordinates) {
         Utils.printIf(debug, () -> eventsByDRAGENCoordinates.entrySet().stream()
-                .map(e -> String.format("%.1f", e.getKey()) + " -> " + dragenString(e.getValue(),  referenceHaplotype.getStart(),","))
+                .map(e -> String.format("%.1f", e.getKey()) + " -> " + formatEventsLikeDragenLogs(e.getValue(),  referenceHaplotype.getStart(),","))
                 .collect(Collectors.joining("\n")));
     }
 
@@ -919,11 +925,11 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
     }
 
     private static void finalEventsListMessage(final int refStart, final boolean debug, final Collection<Event> eventsInOrder) {
-        Utils.printIf(debug, () -> "Variants to PDHapDetermination:\n" + dragenString(eventsInOrder, refStart));
+        Utils.printIf(debug, () -> "Variants to PDHapDetermination:\n" + formatEventsLikeDragenLogs(eventsInOrder, refStart));
     }
 
     private static void dragenDisallowedGroupsMessage(int refStart, boolean debug, List<List<Event>> disallowedPairs) {
-        Utils.printIf(debug, () -> "disallowed groups:" + disallowedPairs.stream().map(group -> dragenString(group, refStart)).collect(Collectors.joining("\n")));
+        Utils.printIf(debug, () -> "disallowed groups:" + disallowedPairs.stream().map(group -> formatEventsLikeDragenLogs(group, refStart)).collect(Collectors.joining("\n")));
     }
 
     private static void branchExcludeAllelesMessage(Haplotype referenceHaplotype, boolean debug, Collection<Event> eventsInOrder, List<Set<Event>> branchExcludeAlleles) {
@@ -932,16 +938,16 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             for (int i = 0; i < branchExcludeAlleles.size(); i++) {
                 final int ifinal = i;
                 System.out.println("Branch "+i+" VCs:");
-                System.out.println("exclude:" + dragenString(branchExcludeAlleles.get(i), referenceHaplotype.getStart()));
+                System.out.println("exclude:" + formatEventsLikeDragenLogs(branchExcludeAlleles.get(i), referenceHaplotype.getStart()));
                 //to match dragen debug output for personal sanity
                 final Collection<Event> included = eventsInOrder.stream().filter(variantContext -> !branchExcludeAlleles.get(ifinal).contains(variantContext)).collect(Collectors.toList());
-                System.out.println("include:" + dragenString(included, referenceHaplotype.getStart()));
+                System.out.println("include:" + formatEventsLikeDragenLogs(included, referenceHaplotype.getStart()));
             }
         }
     }
 
     private static void branchHaplotypesDebugMessage(final Haplotype referenceHaplotype, final boolean debug, final Set<Event> excludeEvents, final List<Haplotype> branchHaps) {
-            Utils.printIf(debug, () -> "Constructed Haps for Branch" + dragenString(excludeEvents,  referenceHaplotype.getStart(), ",") + ":");
+            Utils.printIf(debug, () -> "Constructed Haps for Branch" + formatEventsLikeDragenLogs(excludeEvents,  referenceHaplotype.getStart(), ",") + ":");
             Utils.printIf(debug, () -> branchHaps.stream().map(h -> h.getCigar() + " " + h.toString()).collect(Collectors.joining("\n")));
     }
 
