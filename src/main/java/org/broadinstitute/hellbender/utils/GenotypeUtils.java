@@ -62,19 +62,9 @@ public final class GenotypeUtils {
                 continue;
             }
 
-            if (!g.hasLikelihoods()) {
-                if (!g.isHomRef() && !roundContributionFromEachGenotype) {
-                    throw new IllegalStateException("Genotype likelihoods cannot be determined from GQ for genotype: " + g.toString()) +
-                        "Genotypes with no PLs should have integer counts using roundContributionFromEachGenotype = true";
-                }
+            if (!g.hasLikelihoods() && g.isHomRef()) {
                 if (roundContributionFromEachGenotype) {
-                    if (g.isHomRef()) {
-                        genotypeWithTwoRefsCount += 1;
-                    } else if (g.isHet()) {
-                        genotypeWithOneRefCount += 1;
-                    } else {
-                        genotypesWithNoRefsCount += 1;   
-                    }
+                    genotypeWithTwoRefsCount += 1;
                     continue;
                 } else if (g.getGQ() == 0) {
                     genotypeWithTwoRefsCount += 1.0/3;
