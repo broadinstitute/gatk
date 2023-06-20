@@ -19,16 +19,16 @@ Since you are planning to use a bulk ingest workflow, we recommend that you use 
 
 The table below describes the GVS bulk ingest variables:
 
-| Input variable name         | Description                                                                                                                                                                | Type |
-|-----------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------| --- |
-| data_table_name             | (Optional) The name of the data table; This table hold the GVCFs to be ingested; `sample` is most likely the name of the data table in Terra.                              | String |
-| entity_id_column_name       | (Optional) User defined column id name; `sample_id` is the recommended name;`research_id` is also commonly used.                                                           | String |                                                         | String |
-| vcf_files_column_name       | (Optional) Column that contains the GCS paths to the sample GVCF files.                                                                                                    | String |
+| Input variable name      | Description                                                                                                                                                                | Type |
+|--------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------| --- |
+| data_table_name          | (Optional) The name of the data table; This table hold the GVCFs to be ingested; `sample` is most likely the name of the data table in Terra.                              | String |
+| entity_id_column_name    | (Optional) User defined column id name; `sample_id` is the recommended name;`research_id` is also commonly used.                                                           | String |                                                         | String |
+| vcf_files_column_name    | (Optional) Column that contains the GCS paths to the sample GVCF files.                                                                                                    | String |
 | vcf_index_files_column_name | (Optional) Column that contains the GCS paths to the sample GVCF index files.                                                                                              | String |
-| sample_set_name             | (Optional) The name of the set of samples / entities.                                                                                                                      | String |
-| dataset_name                | Name of the BigQuery dataset used to hold input samples, filtering model data, and other tables created during the workflow.                                               | String |
-| bq_project_id               | Name of the Google project that contains the BigQuery dataset.                                                                                                             | String |
-| call_set_identifier         | Used to name the filter model, BigQuery extract tables, and final joint VCF shards. Should begin with a letter, valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”. | String |
+| sample_set_name          | (Optional) The name of the set of samples / entities.                                                                                                                      | String |
+| dataset_name             | Name of the BigQuery dataset used to hold input samples, filtering model data, and other tables created during the workflow.                                               | String |
+| project_id               | Name of the Google project that contains the BigQuery dataset.                                                                                                             | String |
+| call_set_identifier      | Used to name the filter model, BigQuery extract tables, and final joint VCF shards. Should begin with a letter, valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”. | String |
 
 
 The first four parameters are labelled as optional, but the pipeline needs a value for each of them to process the data. This is because the system can likely determine the four values it needs.

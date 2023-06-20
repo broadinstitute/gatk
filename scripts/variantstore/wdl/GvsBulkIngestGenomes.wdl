@@ -19,7 +19,7 @@ workflow GvsBulkIngestGenomes {
 
         # Begin GvsAssignIds
         String dataset_name
-        String bq_project_id
+        String project_id
         String call_set_identifier
 
         File? gatk_override
@@ -44,7 +44,7 @@ workflow GvsBulkIngestGenomes {
         sample_id_column_name: "The column that will be used for the sample name / id in GVS; the <data_table_name>_id will be used as the default"
         vcf_files_column_name: "The column that supplies the path for the GVCFs to be ingested. If not specified, the workflow will attempt to derive the column name."
         vcf_index_files_column_name: "The column that supplies the path for the GVCF index files to be ingested. If not specified, the workflow will attempt to derive the column name."
-        sample_set_name: "The recommended way to load samples; Sample sets must be created by the user"
+        sample_set_name: "The recommended way to load samples; Sample sets must be created by the user. If no sample_set_name is specified, all samples will be loaded into GVS"
     }
 
     ## Start off by getting the Workspace ID to query for more information
@@ -85,7 +85,7 @@ workflow GvsBulkIngestGenomes {
     call AssignIds.GvsAssignIds as AssignIds {
         input:
             dataset_name = dataset_name,
-            project_id = bq_project_id,
+            project_id = project_id,
             external_sample_names = read_lines(PrepareBulkImport.sampleFOFN),
             samples_are_controls = false
     }
@@ -94,7 +94,7 @@ workflow GvsBulkIngestGenomes {
         input:
             go = AssignIds.done,
             dataset_name = dataset_name,
-            project_id = bq_project_id,
+            project_id = project_id,
             external_sample_names = read_lines(PrepareBulkImport.sampleFOFN),
             input_vcfs = read_lines(PrepareBulkImport.vcfFOFN),
             input_vcf_indexes = read_lines(PrepareBulkImport.vcfIndexFOFN),
@@ -197,9 +197,11 @@ task GetColumnNames {
         python3 /app/get_columns_for_import.py \
            ~{"--user_defined_sample_id " + user_defined_sample_id_column_name} \
            ~{"--entity_set_name " + sample_set_name} \
+           ~{"--user_defined_vcf " + vcf_files_column_name} \
+           ~{"--user_defined_index " + vcf_index_files_column_name} \
           --entity_type ~{data_table_name} \
           --vcf_output ~{vcf_files_column_name_output} \
-          --vcf_index_output ~{vcf_index_files_column_name_output} \
+          --vcf_index_output ~{vcf_index_files_column_name_output}
 
     >>>
 
