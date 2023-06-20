@@ -8,6 +8,7 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
+import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
@@ -395,9 +396,7 @@ public final class ReadThreadingAssembler {
                         resultSet.add(h);
                     }
 
-                    if (debug) {
-                        logger.info("Adding haplotype " + h.getCigar() + " from graph with kmer " + assemblyResult.getKmerSize());
-                    }
+                    logger.log(debug ? Level.INFO : Level.OFF, () -> "Adding haplotype " + h.getCigar() + " from graph with kmer " + assemblyResult.getKmerSize());
                 }
             }
 
@@ -624,9 +623,8 @@ public final class ReadThreadingAssembler {
         if ( !allowNonUniqueKmersInRef && !ReadThreadingGraph.determineNonUniqueKmers(
                 new ReadThreadingGraph.SequenceForKmers("ref", refHaplotype.getBases(), 0,
                         refHaplotype.getBases().length, 1, true), kmerSize).isEmpty() ) {
-            if ( debug ) {
-                logger.info("Not using kmer size of " + kmerSize + " in read threading assembler because reference contains non-unique kmers");
-            }
+            logger.log(debug ? Level.INFO : Level.OFF, () -> "Not using kmer size of " + kmerSize + " in read threading assembler because reference contains non-unique kmers");
+
             return null;
         }
 
@@ -657,17 +655,13 @@ public final class ReadThreadingAssembler {
 
         // sanity check: make sure there are no cycles in the graph, unless we are in experimental mode
         if ( generateSeqGraph && rtgraph.hasCycles() ) {
-            if ( debug ) {
-                logger.info("Not using kmer size of " + kmerSize + " in read threading assembler because it contains a cycle");
-            }
+            logger.log(debug ? Level.INFO : Level.OFF, () -> "Not using kmer size of " + kmerSize + " in read threading assembler because it contains a cycle");
             return null;
         }
 
         // sanity check: make sure the graph had enough complexity with the given kmer
         if ( ! allowLowComplexityGraphs && rtgraph.isLowQualityGraph() ) {
-            if ( debug ) {
-                logger.info("Not using kmer size of " + kmerSize + " in read threading assembler because it does not produce a graph with enough complexity");
-            }
+            logger.log(debug ? Level.INFO : Level.OFF, () -> "Not using kmer size of " + kmerSize + " in read threading assembler because it does not produce a graph with enough complexity");
             return null;
         }
 
@@ -711,9 +705,7 @@ public final class ReadThreadingAssembler {
                 return new AssemblyResult(AssemblyResult.Status.ASSEMBLED_SOME_VARIATION, initialSeqGraph, null);
             }
 
-            if (debug) {
-                logger.info("Using kmer size of " + rtgraph.getKmerSize() + " in read threading assembler");
-            }
+            logger.log(debug ? Level.INFO : Level.OFF, () -> "Using kmer size of " + rtgraph.getKmerSize() + " in read threading assembler");
 
             initialSeqGraph.cleanNonRefPaths(); // TODO -- I don't this is possible by construction
 
@@ -727,9 +719,7 @@ public final class ReadThreadingAssembler {
                 return new AssemblyResult(AssemblyResult.Status.ASSEMBLED_SOME_VARIATION, null, rtgraph);
             }
 
-            if (debug) {
-                logger.info("Using kmer size of " + rtgraph.getKmerSize() + " in read threading assembler");
-            }
+            logger.log(debug ? Level.INFO : Level.OFF, () -> "Using kmer size of " + rtgraph.getKmerSize() + " in read threading assembler");
 
             final AssemblyResult cleaned = getResultSetForRTGraph(rtgraph);
             final AssemblyResult.Status status = cleaned.getStatus();
