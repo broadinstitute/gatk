@@ -19,16 +19,16 @@ Since you are planning to use a bulk ingest workflow, we recommend that you use 
 
 The table below describes the GVS bulk ingest variables:
 
-| Input variable name      | Description                                                                                                                                                                | Type |
-|--------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------| --- |
-| data_table_name          | (Optional) The name of the data table; This table hold the GVCFs to be ingested; `sample` is most likely the name of the data table in Terra.                              | String |
-| entity_id_column_name    | (Optional) User defined column id name; `sample_id` is the recommended name;`research_id` is also commonly used.                                                           | String |                                                         | String |
-| vcf_files_column_name    | (Optional) Column that contains the GCS paths to the sample GVCF files.                                                                                                    | String |
-| vcf_index_files_column_name | (Optional) Column that contains the GCS paths to the sample GVCF index files.                                                                                              | String |
-| sample_set_name          | (Optional) The name of the set of samples / entities.                                                                                                                      | String |
-| dataset_name             | Name of the BigQuery dataset used to hold input samples, filtering model data, and other tables created during the workflow.                                               | String |
-| project_id               | Name of the Google project that contains the BigQuery dataset.                                                                                                             | String |
-| call_set_identifier      | Used to name the filter model, BigQuery extract tables, and final joint VCF shards. Should begin with a letter, valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”. | String |
+| Input variable name      | Description                                                                                                                                                                     | Type |
+|--------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------| --- |
+| data_table_name          | (Optional) The name of the data table; This table hold the GVCFs to be ingested; `sample` is most likely the name of the data table in Terra, so `sample` is set as the default | String |
+| entity_id_column_name    | (Optional) User defined column id name; `sample_id` is the recommended name;`research_id` is also commonly used.                                                                | String |                                                         | String |
+| vcf_files_column_name    | (Optional) Column that contains the GCS paths to the sample GVCF files.                                                                                                         | String |
+| vcf_index_files_column_name | (Optional) Column that contains the GCS paths to the sample GVCF index files.                                                                                                   | String |
+| sample_set_name          | (Optional) The name of the set of samples / entities.                                                                                                                           | String |
+| dataset_name             | Name of the BigQuery dataset used to hold input samples, filtering model data, and other tables created during the workflow.                                                    | String |
+| project_id               | Name of the Google project that contains the BigQuery dataset.                                                                                                                  | String |
+| call_set_identifier      | Used to name the filter model, BigQuery extract tables, and final joint VCF shards. Should begin with a letter, valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”.      | String |
 
 
 The first four parameters are labelled as optional, but the pipeline needs a value for each of them to process the data. This is because the system can likely determine the four values it needs.
@@ -38,12 +38,19 @@ The first parameter, `data_table_name`, is the name of the data entity and is us
 The second parameter, `entity_id_column_name`, corresponds to the `sample_name` value in the GVS database. Some advanced users prefer to use a custom column. This defaults to the value of `data_table_name` + "_id" which is most likely "sample_id".
 
 The next two parameters, `vcf_files_column_name` and `vcf_index_files_column_name`, name the two columns that track the GCP locations of the GVCFs and their corresponding index files.
-If they are not input by the user, the workflow will look at all the possible columns and a subset of the data in each to predict which columns have the sample paths. The workflow looks for paths ending in `vcf` or similar.
+These two columns have no explicit defaults. If they are not input by the user, the workflow uses heuristics to determine what they might be
+The workflow does this by looking at all the possible columns and a subset of the data in each to predict which columns have the sample GVCF and index file paths.
+
+The workflow looks for paths ending in `vcf` or similar.
 The workflow will also validate that any user input for these parameters fits with the expected relationships between them.
 
 The fifth parameter (`sample_set_name`) is required if a sample set is being used for ingest, which we do recommend for large batches. 
 You can create a sample set from the data tab of your workspace, by selecting the samples that you desire to include, clicking edit and selecting "Save selection as set". 
 You will then be given the option to name your sample set. That name is what you will use as the `sample_set_name` parameter.
+We validate that the requested sample_set exists when it is input as a parameter. There is a `<data_table_name>_id` column that is used by the sample_set, but a different sample_name column can still be specified independently to differentiate the samples.
+
+
+
 
 ## Setup
 
