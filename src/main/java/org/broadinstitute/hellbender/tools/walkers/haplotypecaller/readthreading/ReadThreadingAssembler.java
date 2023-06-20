@@ -69,8 +69,8 @@ public final class ReadThreadingAssembler {
     private boolean recoverAllDanglingBranches = false;
     private int minDanglingBranchLength = 0;
 
-    protected byte minBaseQualityToUseInAssembly = DEFAULT_MIN_BASE_QUALITY_TO_USE;
-    private int pruneFactor;
+    private byte minBaseQualityToUseInAssembly = DEFAULT_MIN_BASE_QUALITY_TO_USE;
+    private final int pruneFactor;
     private final ChainPruner<MultiDeBruijnVertex, MultiSampleEdge> chainPruner;
     private int minMatchingBasesToDanglingEndRecovery;
 
@@ -86,7 +86,7 @@ public final class ReadThreadingAssembler {
                                   final double initialErrorRateForPruning, final double pruningLogOddsThreshold,
                                   final double pruningSeedingLogOddsThreshold, final int maxUnprunedVariants, final boolean useLinkedDebruijnGraphs,
                                   final boolean enableLegacyGraphCycleDetection,
-                                  final int minMatchingBasesToDanglngEndRecovery) {
+                                  final int minMatchingBasesToDanglingEndRecovery) {
         Utils.validateArg( maxAllowedPathsForReadThreadingAssembler >= 1, "numBestHaplotypesPerGraph should be >= 1 but got " + maxAllowedPathsForReadThreadingAssembler);
         this.kmerSizes = kmerSizes.stream().sorted(Integer::compareTo).collect(Collectors.toList());
         this.dontIncreaseKmerSizesForCycles = dontIncreaseKmerSizesForCycles;
@@ -102,7 +102,7 @@ public final class ReadThreadingAssembler {
         chainPruner = useAdaptivePruning ? new AdaptiveChainPruner<>(initialErrorRateForPruning, pruningLogOddsThreshold, pruningSeedingLogOddsThreshold, maxUnprunedVariants) :
                 new LowWeightChainPruner<>(pruneFactor);
         numBestHaplotypesPerGraph = maxAllowedPathsForReadThreadingAssembler;
-        this.minMatchingBasesToDanglingEndRecovery = minMatchingBasesToDanglngEndRecovery;
+        this.minMatchingBasesToDanglingEndRecovery = minMatchingBasesToDanglingEndRecovery;
     }
 
     @VisibleForTesting
@@ -112,7 +112,7 @@ public final class ReadThreadingAssembler {
 
     @VisibleForTesting
     ReadThreadingAssembler() {
-        this(DEFAULT_NUM_PATHS_PER_GRAPH, Arrays.asList(25), 2);
+        this(DEFAULT_NUM_PATHS_PER_GRAPH, List.of(25), 2);
     }
 
     // this method should not be used, only exposed for testing purposes. This should be set in the constructor.
@@ -157,7 +157,7 @@ public final class ReadThreadingAssembler {
         List<GATKRead> correctedReads = readErrorCorrector == null ? assemblyRegion.getReads() : readErrorCorrector.correctReads(assemblyRegion.getReads());
 
         // Revert clipped bases if necessary (since we do not want to assemble them)
-        correctedReads = correctedReads.stream().map(r -> ReadClipper.hardClipSoftClippedBases(r)).collect(Collectors.toList());
+        correctedReads = correctedReads.stream().map(ReadClipper::hardClipSoftClippedBases).collect(Collectors.toList());
 
         final List<AbstractReadThreadingGraph> nonRefRTGraphs = new LinkedList<>();
         final List<SeqGraph> nonRefSeqGraphs = new LinkedList<>();
@@ -182,7 +182,7 @@ public final class ReadThreadingAssembler {
                     danglingEndSWParameters, haplotypeToReferenceSWParameters, correctedReads, nonRefRTGraphs, resultSet, activeRegionExtendedLocation);
         }
 
-        // If we get to this point then no graph worked... thats bad and indicates something horrible happened, in this case we just return a reference haplotype
+        // If we get to this point then no graph worked... that's bad and indicates something horrible happened, in this case we just return a reference haplotype
         if (resultSet.getHaplotypeList().isEmpty()) {
             logger.debug("Graph at position "+resultSet.getPaddedReferenceLoc()+" failed to assemble anything informative; emitting just the reference here" );
         }
@@ -229,16 +229,14 @@ public final class ReadThreadingAssembler {
     }
 
     /**
-     * Follow the kmer expansion heurisics as {@link #assemble(List, Haplotype, SAMFileHeader, SmithWatermanAligner, SWParameters)}, but in this case
+     * Follow the kmer expansion heuristics as {@link #assemble(List, Haplotype, SAMFileHeader, SmithWatermanAligner, SWParameters)}, but in this case
      * attempt to recover haplotypes from the kmer graph and use them to assess whether to expand the kmer size.
      */
     private void assembleGraphsAndExpandKmersGivenHaplotypes(final Haplotype refHaplotype, final SimpleInterval refLoc, final SAMFileHeader header,
                                                              final SmithWatermanAligner aligner, final SWParameters danglingEndSWParameters, final SWParameters haplotypeToReferenceSWParameters, final List<GATKRead> correctedReads,
                                                              final List<AbstractReadThreadingGraph> nonRefRTGraphs, final AssemblyResultSet resultSet,
                                                              final SimpleInterval activeRegionExtendedLocation) {
-        final Map<AbstractReadThreadingGraph,AssemblyResult> assemblyResultByRTGraph = new HashMap<>();
         // create the graphs by calling our subclass assemble method
-
         final List<AssemblyResult> savedAssemblyResults = new ArrayList<>();
 
         boolean hasAdequatelyAssembledGraph = false;
@@ -254,7 +252,6 @@ public final class ReadThreadingAssembler {
                     sanityCheckGraph(assembledResult.getThreadingGraph(), refHaplotype);
                     assembledResult.getThreadingGraph().postProcessForHaplotypeFinding(debugGraphOutputPath, refHaplotype);
                     // add it to graphs with meaningful non-reference features
-                    assemblyResultByRTGraph.put(assembledResult.getThreadingGraph(), assembledResult);
                     nonRefRTGraphs.add(assembledResult.getThreadingGraph());
 
                     if (graphHaplotypeHistogramPath != null) {
@@ -271,9 +268,9 @@ public final class ReadThreadingAssembler {
                     //TODO                 - but if we failed to assemble due to excessive looping or did have badly assembled haplotypes then we expand kmer size.
                     //TODO                 - If we get no variation
 
-                    // if asssembly didn't fail ( which is a degenerate case that occurs for some subset of graphs with difficult loops)
+                    // if assembly didn't fail ( which is a degenerate case that occurs for some subset of graphs with difficult loops)
                     if (! assembledResult.getDiscoveredHaplotypes().isEmpty()) {
-                        // we have found our workable kmer size so lets add the results and finish
+                        // we have found our workable kmer size so let's add the results and finish
                         if (!assembledResult.containsSuspectHaplotypes()) {
                             for (Haplotype h : assembledResult.getDiscoveredHaplotypes()) {
                                 resultSet.add(h, assembledResult);
@@ -308,7 +305,7 @@ public final class ReadThreadingAssembler {
     /**
      * Find discover paths by using KBestHaplotypeFinder over each graph.
      *
-     * This method has the side effect that it will annotate all of the AssemblyResults objects with the derived haplotypes
+     * This method has the side effect that it will annotate all the AssemblyResults objects with the derived haplotypes
      * which can be used for basing kmer graph pruning on the discovered haplotypes.
      *
      * @param graphs                graphs to be used for kmer detection
@@ -319,7 +316,7 @@ public final class ReadThreadingAssembler {
      * @param resultSet             (can be null) the results set into which to deposit discovered haplotypes
      * @param aligner               {@link SmithWatermanAligner} to use for aligning the discovered haplotype to the reference haplotype
      * @param haplotypeToReferenceSWParameters {@link SWParameters} to use for aligning the discovered haplotype to the reference haplotype
-     * @return A list of discovered haplotyes (note that this is not currently used for anything)
+     * @return A list of discovered haplotypes (note that this is not currently used for anything)
      */
     @SuppressWarnings({"unchecked"})
     private <V extends  BaseVertex, E extends BaseEdge, T extends BaseGraph<V, E>>
@@ -467,7 +464,7 @@ public final class ReadThreadingAssembler {
     }
 
     // Performs the various transformations necessary on a sequence graph
-    private AssemblyResult cleanupSeqGraph(final SeqGraph seqGraph, final Haplotype refHaplotype, final DotFilePrinter dotFilePrinter) {
+    private AssemblyResult cleanupSeqGraph(final SeqGraph seqGraph, final DotFilePrinter dotFilePrinter) {
         dotFilePrinter.printGraphToFileIfDebugEnabled(seqGraph, "non_ref_removed");
 
         // the very first thing we need to do is zip up the graph, or pruneGraph will be too aggressive
@@ -577,8 +574,7 @@ public final class ReadThreadingAssembler {
     }
 
     /**
-     * Method for getting a list of all of the specified kmer sizes to test for the graph including kmer expansions
-     * @return
+     * Method for getting a list of all the specified kmer sizes to test for the graph including kmer expansions
      */
     List<Integer> getExpandedKmerList() {
         List<Integer> returnList = new ArrayList<>(kmerSizes);
@@ -675,7 +671,7 @@ public final class ReadThreadingAssembler {
             return null;
         }
 
-        final AssemblyResult result = getAssemblyResult(refHaplotype, kmerSize, rtgraph, aligner, danglingEndSWParameters, dotFilePrinter);
+        final AssemblyResult result = getAssemblyResult(rtgraph, aligner, danglingEndSWParameters, dotFilePrinter);
         // check whether recovering dangling ends created cycles
         if (recoverAllDanglingBranches && rtgraph.hasCycles()) {
             return null;
@@ -683,7 +679,7 @@ public final class ReadThreadingAssembler {
         return result;
     }
 
-    private AssemblyResult getAssemblyResult(final Haplotype refHaplotype, final int kmerSize, final AbstractReadThreadingGraph rtgraph, final SmithWatermanAligner aligner, final SWParameters danglingEndSWParameters, final DotFilePrinter dotFilePrinter) {
+    private AssemblyResult getAssemblyResult(final AbstractReadThreadingGraph rtgraph, final SmithWatermanAligner aligner, final SWParameters danglingEndSWParameters, final DotFilePrinter dotFilePrinter) {
         if (!pruneBeforeCycleCounting) {
             chainPruner.pruneLowWeightChains(rtgraph);
         }
@@ -704,13 +700,13 @@ public final class ReadThreadingAssembler {
 
         dotFilePrinter.printGraphToFileIfDebugEnabled(rtgraph, "cleaned_readthreading_graph");
 
-        // Either return an assembly result with a sequence graph or with an unchanged sequence graph deptending on the kmer duplication behavior
+        // Either return an assembly result with a sequence graph or with an unchanged sequence graph depending on the kmer duplication behavior
         if (generateSeqGraph) {
             final SeqGraph initialSeqGraph = rtgraph.toSequenceGraph();
 
             dotFilePrinter.printGraphToFileIfDebugEnabled(initialSeqGraph, "initial_seqgraph");
 
-            // if the unit tests don't want us to cleanup the graph, just return the raw sequence graph
+            // if the unit tests don't want us to clean up the graph, just return the raw sequence graph
             if (justReturnRawGraph) {
                 return new AssemblyResult(AssemblyResult.Status.ASSEMBLED_SOME_VARIATION, initialSeqGraph, null);
             }
@@ -721,12 +717,12 @@ public final class ReadThreadingAssembler {
 
             initialSeqGraph.cleanNonRefPaths(); // TODO -- I don't this is possible by construction
 
-            final AssemblyResult cleaned = cleanupSeqGraph(initialSeqGraph, refHaplotype, dotFilePrinter);
+            final AssemblyResult cleaned = cleanupSeqGraph(initialSeqGraph, dotFilePrinter);
             final AssemblyResult.Status status = cleaned.getStatus();
             return new AssemblyResult(status, cleaned.getSeqGraph(), rtgraph);
 
         } else {
-            // if the unit tests don't want us to cleanup the graph, just return the raw sequence graph
+            // if the unit tests don't want us to clean up the graph, just return the raw sequence graph
             if (justReturnRawGraph) {
                 return new AssemblyResult(AssemblyResult.Status.ASSEMBLED_SOME_VARIATION, null, rtgraph);
             }
@@ -757,7 +753,7 @@ public final class ReadThreadingAssembler {
             graphWriter.println("digraph assemblyGraphs {");
             for ( final T graph : graphs ) {
                 if ( debugGraphTransformations && graph.getKmerSize() >= writeFirstGraphWithSizeSmallerThan ) {
-                    logger.info("Skipping writing of graph with kmersize " + graph.getKmerSize());
+                    logger.info("Skipping writing of graph with kmer size " + graph.getKmerSize());
                     continue;
                 }
 
