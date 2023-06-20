@@ -45,6 +45,10 @@ public class SplitReadEvidenceAggregator extends SVEvidenceAggregator<SplitReadE
 
     @Override
     public boolean evidenceFilter(final SVCallRecord record, final SplitReadEvidence evidence) {
+        Utils.validateArg(record.getStrandA() != null, "Attempted split read evidence filtering on " +
+                "variant with null first strand");
+        Utils.validateArg(record.getStrandB() != null, "Attempted split read evidence filtering on " +
+                "variant with null second strand");
         if (isStart) {
             return evidence.getStrand() == record.getStrandA();
         } else {
