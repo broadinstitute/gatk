@@ -420,18 +420,15 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
      * at the same base.
      *
      */
+    @VisibleForTesting
     static boolean eventsOverlapForPDHapsCode(Event e1, Event e2){
         if (!e1.getContig().equals(e2.getContig())) {
             return false;
         }
 
-        double start1 = dragenStart(e1);
         double end1 = e1.getEnd() + (e1.isSimpleInsertion() ? 0.5 : 0);
-        double start2 = dragenStart(e2);
         double end2 = e2.getEnd() + (e2.isSimpleInsertion() ? 0.5 : 0);
-
-        //Pulled directly from CoordMath.java (not using here because of doubles)
-        return (start2 >= start1 && start2 <= end1) || (end2 >=start1 && end2 <= end1) || start1 >= start2 && end1 <= end2;
+        return !(dragenStart(e1) > end2 || dragenStart(e2) > end1);
     }
 
 

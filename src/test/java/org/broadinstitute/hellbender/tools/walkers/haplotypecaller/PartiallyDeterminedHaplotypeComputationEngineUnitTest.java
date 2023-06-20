@@ -16,6 +16,7 @@ import org.testng.annotations.Test;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.BiPredicate;
 
 public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKBaseTest {
 
@@ -213,5 +214,43 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
         Assert.assertEquals(result.getAlternateBases(), new byte[]{0,0,0,2,0,0,0,0,4,0});
         Assert.assertEquals(result.getCigar(), TextCigarCodec.decode("10M"));
         Assert.assertEquals(result.getDeterminedPosition(), DEL_AA_105.getStart());
+    }
+
+    @Test
+    public void testEventsOverlapForPDHapsCode() {
+        final BiPredicate<Event, Event> overlaps = ((e1, e2) -> PartiallyDeterminedHaplotypeComputationEngine.eventsOverlapForPDHapsCode(e1,e2));
+
+        // easy SNP cases
+        Assert.assertFalse(overlaps.test(SNP_C_100, SNP_G_101));
+        Assert.assertFalse(overlaps.test(SNP_C_100, SNP_G_102));
+        Assert.assertFalse(overlaps.test(SNP_C_107, SNP_G_105));
+        Assert.assertTrue(overlaps.test(SNP_C_105, SNP_G_105));
+        Assert.assertTrue(overlaps.test(SNP_T_106, SNP_T_106));
+
+        // overlap of SNP and deletion -- note that we add 1 to deletion start but not to deletion end
+        Assert.assertFalse(overlaps.test(DEL_AAA_102, SNP_G_101));
+        Assert.assertFalse(overlaps.test(DEL_AAA_102, SNP_G_102));
+        Assert.assertTrue(overlaps.test(DEL_AAA_102, SNP_C_104));
+        Assert.assertFalse(overlaps.test(DEL_AAA_102, SNP_C_105));
+
+        // overlap of SNP and insertion -- note that we add 0.5 to insertion start and end
+        Assert.assertFalse(overlaps.test(SNP_G_102, INS_TT_103));
+        Assert.assertFalse(overlaps.test(SNP_C_104, INS_TT_103));
+        Assert.assertFalse(overlaps.test(SNP_C_105, INS_TT_105));
+
+        // two insertions should overlap only if they occur at the same position
+        Assert.assertTrue(overlaps.test(INS_TT_105, INS_TT_105));
+        Assert.assertFalse(overlaps.test(INS_TT_105, INS_GGG_106));
+
+        // two deletions
+        Assert.assertTrue(overlaps.test(DEL_AAAAAAA_102, DEL_AAA_102));
+        Assert.assertTrue(overlaps.test(DEL_AA_105, DEL_AAAAAAA_102));
+        Assert.assertFalse(overlaps.test(DEL_AA_100, DEL_AAA_102));
+
+        // deletion and insertion
+        Assert.assertFalse(overlaps.test(INS_TT_105, DEL_AA_105));  // add 1 to deletion start but only 0.5 to insertion end
+        Assert.assertFalse(overlaps.test(INS_TT_103, DEL_AA_105));
+        Assert.assertTrue(overlaps.test(DEL_AAAAAAA_102, INS_GGG_106));
+        Assert.assertTrue(overlaps.test(INS_TT_103, DEL_AAA_102));
     }
 }
