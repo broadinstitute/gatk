@@ -34,13 +34,12 @@ The table below describes the GVS bulk ingest variables:
 The first four parameters are labelled as optional, but the pipeline needs a value for each of them to process the data. This is because the system can likely determine the four values it needs.
 If you know the values that you want for these 4, feel free to fill them in, but it is not necessary.
 If the user does not supply all 4 values, the system uses a mix of default values and heuristics to determine these parameters.
-The first parameter, `data_table_name`, is the name of the data entity and is overwhelmingly labelled "sample". This is the default that is used in the system. User documentation likewise suggests this term as does the Beta workspace.
-The second parameter, `entity_id_column_name`, dictates the names of the samples as they will show up in GVS. Some advanced users prefer to use a custom column. This defaults to the value of `data_table_name` + "_id" which is most likely "sample_id".
+The first parameter, `data_table_name`, is the name of the data entity and is usually "sample," which is the default value for the input.
+The second parameter, `entity_id_column_name`, corresponds to the `sample_name` value in the GVS database. Some advanced users prefer to use a custom column. This defaults to the value of `data_table_name` + "_id" which is most likely "sample_id".
 
-The next two parameters, `vcf_files_column_name` and `vcf_index_files_column_name`, name the two columns that track the GCP locations of the GVCFs. 
-If they are not input by the user, the system will look at all the possible columns and a subset of the data in each to predict which columns have the sample paths. The system looks for paths ending in `vcf` or similar.
-
-The system will also validate that any user input for these parameters fits with the expected relationships among them. 
+The next two parameters, `vcf_files_column_name` and `vcf_index_files_column_name`, name the two columns that track the GCP locations of the GVCFs and their corresponding index files.
+If they are not input by the user, the workflow will look at all the possible columns and a subset of the data in each to predict which columns have the sample paths. The workflow looks for paths ending in `vcf` or similar.
+The workflow will also validate that any user input for these parameters fits with the expected relationships between them.
 
 The fifth parameter (`sample_set_name`) is required if a sample set is being used for ingest, which we do recommend for large batches. 
 You can create a sample set from the data tab of your workspace, by selecting the samples that you desire to include, clicking edit and selecting "Save selection as set". 
