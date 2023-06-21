@@ -227,6 +227,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_971_move_bigquery_classes
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
