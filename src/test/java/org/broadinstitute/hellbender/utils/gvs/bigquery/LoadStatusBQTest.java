@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.utils.gvs.bigquery;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
 import org.broadinstitute.hellbender.tools.gvs.ingest.LoadStatus;
-import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
 import org.testng.Assert;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
