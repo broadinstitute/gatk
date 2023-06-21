@@ -1150,7 +1150,7 @@ public class ExtractCohortEngine {
         }
 
         // finish writing out reference rows
-        if ((lastSample != null) && (lastSample != maxSampleId)) {
+        if (lastSample != maxSampleId) {
             processReferenceData(currentPositionRecords, sortedReferenceRangeIterator, referenceCache, lastPosition, lastSample + 1, maxSampleId, sampleIdsToExtract);
         }
 
