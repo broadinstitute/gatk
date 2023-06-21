@@ -31,27 +31,28 @@ workflow GvsBulkIngestGenomes {
             workspace_bucket = GetWorkspaceId.workspace_bucket,
     }
 
-    call GetColumnNames { ## TODO should we even run this at all if we have values for all 4?
-        input:
-            workspace_id = GetWorkspaceId.workspace_id,
-            workspace_name = GetWorkspaceName.workspace_name,
-            workspace_namespace = GetWorkspaceName.workspace_namespace,
-            samples_table_name = samples_table_name,
-            sample_id_column_name = sample_id_column_name,
-            vcf_files_column_name = vcf_files_column_name,
-            vcf_index_files_column_name = vcf_index_files_column_name,
+    if (!defined(vcf_files_column_name) || !defined(vcf_index_files_column_name)) {
+        call GetColumnNames {
+            input:
+                workspace_id = GetWorkspaceId.workspace_id,
+                workspace_name = GetWorkspaceName.workspace_name,
+                workspace_namespace = GetWorkspaceName.workspace_namespace,
+                samples_table_name = samples_table_name,
+                sample_id_column_name = sample_id_column_name,
+        }
     }
+
 
     call GenerateFOFNsFromDataTables {
         input:
-            google_project_id = project_id,
+            project_id = GetWorkspaceName.workspace_namespace,
             workspace_name = GetWorkspaceName.workspace_name,
             workspace_namespace = GetWorkspaceName.workspace_namespace,
             workspace_bucket  = GetWorkspaceId.workspace_bucket,
             samples_table_name = samples_table_name,
             sample_id_column_name = sample_id_column_name,
-            vcf_files_column_name = vcf_files_column_name,
-            vcf_index_files_column_name = vcf_index_files_column_name
+            vcf_files_column_name = select_first([vcf_files_column_name, GetColumnNames.vcf_files_column_name]),
+            vcf_index_files_column_name = select_first([vcf_index_files_column_name, GetColumnNames.vcf_index_files_column_name]),
     }
 
     call AssignIds.GvsAssignIds as AssignIds {
@@ -167,7 +168,7 @@ task GetWorkspaceName {
 # This copies the entirety of the data tables over.  We'll want a different task to make FOFNs for just a sample set
 task GenerateFOFNsFromDataTables {
     input {
-        String google_project_id
+        String project_id
         String workspace_name
         String workspace_namespace
         String workspace_bucket
@@ -186,7 +187,7 @@ task GenerateFOFNsFromDataTables {
     command <<<
         set -o errexit -o nounset -o xtrace -o pipefail
 
-        export GOOGLE_PROJECT='~{google_project_id}'
+        export GOOGLE_PROJECT='~{project_id}'
         export WORKSPACE_NAMESPACE='~{workspace_namespace}'
         export WORKSPACE_NAME='~{workspace_name}'
         export WORKSPACE_BUCKET='~{workspace_bucket}'
