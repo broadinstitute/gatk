@@ -297,7 +297,7 @@ jobs:
       - name: Reclaim some runner disk space
         run: |
           sudo rm -rf /usr/share/dotnet
-          sudo rm -rf "$AGENT_TOOLS_DIRECTORY"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
