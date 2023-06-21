@@ -292,6 +292,8 @@ jobs:
     continue-on-error: true
     name: WDL test ${{ matrix.wdlTest }} on cromwell
     steps:
+      #Reclaim some disk space on the runner to prevent the WDL tasks from running out of space on the docker.
+      #https://stackoverflow.com/questions/75536771/github-runner-out-of-disk-space-after-building-docker-image
       - name: Reclaim some runner disk space
         run: |
           sudo rm -rf /usr/share/dotnet
