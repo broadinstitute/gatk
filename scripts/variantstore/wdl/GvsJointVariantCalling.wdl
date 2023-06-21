@@ -11,9 +11,6 @@ workflow GvsJointVariantCalling {
     input {
         String dataset_name
         String project_id
-        Array[String] external_sample_names
-        Array[File] input_vcfs
-        Array[File] input_vcf_indexes
         String call_set_identifier
         String samples_table_name = "sample"
         String sample_id_column_name = "sample_id"
