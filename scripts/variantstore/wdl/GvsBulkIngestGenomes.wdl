@@ -42,7 +42,6 @@ workflow GvsBulkIngestGenomes {
         }
     }
 
-
     call GenerateFOFNsFromDataTables {
         input:
             project_id = GetWorkspaceName.workspace_namespace,
@@ -163,7 +162,6 @@ task GetWorkspaceName {
         String workspace_namespace = read_string(workspace_namespace_output)
     }
 }
-
 
 # This copies the entirety of the data tables over.  We'll want a different task to make FOFNs for just a sample set
 task GenerateFOFNsFromDataTables {
