@@ -136,8 +136,6 @@ public class ExtractFeatures extends ExtractTool {
         sampleList = new SampleList(sampleTableName, sampleFileName, projectID, printDebugInformation, "extract-features");
 
         Set<VCFHeaderLine> extraHeaderLines = new HashSet<>();
-        extraHeaderLines.add(
-                FilterSensitivityTools.getExcessAllelesHeader(excessAllelesThreshold, GATKVCFConstants.EXCESS_ALLELES));
 
         extraHeaderLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.LOW_QUAL_FILTER_NAME));
 

@@ -60,7 +60,6 @@ public class CommonCode {
 
         headerLines.addAll( getEvoquerVcfHeaderLines() );
         headerLines.addAll( extraHeaders );
-//        headerLines.addAll( defaultHeaderLines );
 
         final VCFHeader header = new VCFHeader(headerLines, sampleNames);
         header.setSequenceDictionary(sequenceDictionary);
@@ -69,7 +68,7 @@ public class CommonCode {
     }
 
     // TODO is this specific for cohort extract? if so name it such
-    public static Set<VCFHeaderLine> getEvoquerVcfHeaderLines() {
+    private static Set<VCFHeaderLine> getEvoquerVcfHeaderLines() {
         final Set<VCFHeaderLine> headerLines = new HashSet<>();
 
         // TODO: Get a list of all possible values here so that we can make sure they're in the VCF Header!
@@ -113,9 +112,6 @@ public class CommonCode {
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_SB_TABLE_KEY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.SB_TABLE_KEY));
 
-        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_VQS_LOD_KEY));
-        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_YNG_STATUS_KEY));
-
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_VARIANT_DEPTH_KEY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.VARIANT_DEPTH_KEY));
 
@@ -130,7 +126,6 @@ public class CommonCode {
 
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.SB_TABLE_KEY));
 
-        headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.NAY_FROM_YNG));
         headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.EXCESS_HET_KEY));
 
         headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.EXCESS_ALLELES));
