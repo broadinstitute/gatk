@@ -12,7 +12,6 @@ workflow JointVcfFiltering {
     Array[File] sites_only_variant_filtered_vcfs
     Array[File] sites_only_variant_filtered_vcf_idxs
 
-    File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
     File? gatk_override
 
     Int? INDEL_VQSR_max_gaussians_override = 4
