@@ -9,14 +9,14 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
-import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
-import org.broadinstitute.hellbender.utils.bigquery.BigQueryResultAndStatistics;
+import org.broadinstitute.hellbender.utils.gvs.bigquery.BigQueryUtils;
+import org.broadinstitute.hellbender.utils.gvs.bigquery.BigQueryResultAndStatistics;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.IOException;
 
-import static org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils.extractCausalStatusRuntimeExceptionOrThrow;
+import static org.broadinstitute.hellbender.utils.gvs.bigquery.BigQueryUtils.extractCausalStatusRuntimeExceptionOrThrow;
 
 public class LoadStatus {
     static final Logger logger = LogManager.getLogger(org.broadinstitute.hellbender.tools.gvs.ingest.LoadStatus.class);

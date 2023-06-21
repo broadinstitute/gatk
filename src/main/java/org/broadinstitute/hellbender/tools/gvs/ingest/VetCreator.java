@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
 import org.broadinstitute.hellbender.tools.gvs.common.IngestConstants;
 import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
-import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
+import org.broadinstitute.hellbender.utils.gvs.bigquery.BigQueryUtils;
 import org.broadinstitute.hellbender.utils.gvs.bigquery.PendingBQWriter;
 import org.broadinstitute.hellbender.utils.tsv.SimpleXSVWriter;
 import org.json.JSONObject;
