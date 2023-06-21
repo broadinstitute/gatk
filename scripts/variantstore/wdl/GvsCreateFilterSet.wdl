@@ -246,10 +246,8 @@ workflow GvsCreateFilterSet {
   }
 
   output {
-    File output_vcf = MergeVCFs.output_vcf
-    File output_vcf_idx = MergeVCFs.output_vcf_index
     File monitoring_summary = SummarizeItAll.monitoring_summary
-    Boolean done = true
+    String loaded_filter_set_name = select_first([PopulateFilterSetInfoClassic.loaded_filter_set_name, PopulateFilterSetInfo.loaded_filter_set_name])
   }
 }
 
@@ -394,6 +392,8 @@ task PopulateFilterSetInfo {
       --schema "~{filter_schema}" \
       ${bq_table} \
       ~{filter_set_name}.filter_set_load.tsv > status_load_filter_set_info
+
+    echo "~{filter_set_name}" > loaded_filter_set_name.txt
   >>>
 
   runtime {
@@ -408,6 +408,7 @@ task PopulateFilterSetInfo {
   output {
     String status_load_filter_set_info = read_string("status_load_filter_set_info")
     File monitoring_log = "monitoring.log"
+    String loaded_filter_set_name = read_string("loaded_filter_set_name.txt")
   }
 }
 
@@ -454,6 +455,7 @@ task PopulateFilterSetSites {
     --schema "filter_set_name:string,location:integer,filters:string" \
     ${bq_table} \
     ~{filter_set_name}.filter_sites_load.tsv > status_load_filter_set_sites
+
   >>>
 
   runtime {
