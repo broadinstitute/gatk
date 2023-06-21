@@ -323,7 +323,7 @@ task LoadData {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_06_01"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_06_21_d1c76a9ae43abc17ae6100a83eefad0fd6e61030"
     maxRetries: load_data_maxretries
     memory: "3.75 GB"
     disks: "local-disk 50 HDD"

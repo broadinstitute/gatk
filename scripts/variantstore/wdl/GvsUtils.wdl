@@ -41,7 +41,7 @@ task MergeVCFs {
   }
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_06_01"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_06_21_d1c76a9ae43abc17ae6100a83eefad0fd6e61030"
     preemptible: select_first([preemptible_tries, 3])
     memory: "3 GiB"
     disks: "local-disk ~{disk_size} HDD"
@@ -127,7 +127,7 @@ task SplitIntervals {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_06_01"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_06_21_d1c76a9ae43abc17ae6100a83eefad0fd6e61030"
     bootDiskSizeGb: 15
     memory: "~{disk_memory} GB"
     disks: "local-disk ~{disk_size} HDD"
