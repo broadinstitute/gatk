@@ -15,8 +15,8 @@ task MergeVCFs {
 
   parameter_meta {
     input_vcfs: {
-      localization_optional: true
-    }
+                  localization_optional: true
+                }
   }
 
   command {
@@ -35,8 +35,8 @@ task MergeVCFs {
     OUTPUT_GCS_DIR=$(echo ~{output_directory} | sed 's/\/$//')
 
     if [ -n "$OUTPUT_GCS_DIR" ]; then
-      gsutil cp ~{output_vcf_name} $OUTPUT_GCS_DIR/
-      gsutil cp ~{output_vcf_name}.tbi $OUTPUT_GCS_DIR/
+    gsutil cp ~{output_vcf_name} $OUTPUT_GCS_DIR/
+    gsutil cp ~{output_vcf_name}.tbi $OUTPUT_GCS_DIR/
     fi
   }
 
@@ -82,17 +82,17 @@ task SplitIntervals {
 
   parameter_meta {
     intervals: {
-      localization_optional: true
-    }
+                 localization_optional: true
+               }
     ref_fasta: {
-      localization_optional: true
-    }
+                 localization_optional: true
+               }
     ref_fai: {
-      localization_optional: true
-    }
+               localization_optional: true
+             }
     ref_dict: {
-      localization_optional: true
-    }
+                localization_optional: true
+              }
   }
 
   command <<<
@@ -107,22 +107,22 @@ task SplitIntervals {
 
     mkdir interval-files
     gatk --java-options "-Xmx~{java_memory}g" ~{gatk_tool} \
-      --dont-mix-contigs \
-      -R ~{ref_fasta} \
-      ~{"-L " + intervals} \
-      ~{"--weight-bed-file " + interval_weights_bed} \
-      -scatter ~{scatter_count} \
-      -O interval-files \
-      ~{"--extension " + intervals_file_extension} \
-      --interval-file-num-digits 10 \
-      ~{split_intervals_extra_args}
+    --dont-mix-contigs \
+    -R ~{ref_fasta} \
+    ~{"-L " + intervals} \
+    ~{"--weight-bed-file " + interval_weights_bed} \
+    -scatter ~{scatter_count} \
+    -O interval-files \
+    ~{"--extension " + intervals_file_extension} \
+    --interval-file-num-digits 10 \
+    ~{split_intervals_extra_args}
     cp interval-files/*.interval_list .
 
     # Drop trailing slash if one exists
     OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
 
     if [ -n "$OUTPUT_GCS_DIR" ]; then
-      gsutil -m cp *.interval_list $OUTPUT_GCS_DIR/
+    gsutil -m cp *.interval_list $OUTPUT_GCS_DIR/
     fi
   >>>
 
@@ -170,9 +170,9 @@ task GetBQTableLastModifiedDatetime {
 
     LASTMODIFIED=$(bq --apilog=false --project_id=~{project_id} --format=json show ${DATASET_TABLE_COLON} | python3 -c "import sys, json; print(json.load(sys.stdin)['lastModifiedTime']);")
     if [[ $LASTMODIFIED =~ ^[0-9]+$ ]]; then
-      echo $LASTMODIFIED
+    echo $LASTMODIFIED
     else
-      exit 1
+    exit 1
     fi
   >>>
 
@@ -481,41 +481,41 @@ task TerminateWorkflow {
 }
 
 task ScaleXYBedValues {
-    input {
-        Boolean go = true
-        File interval_weights_bed
-        Float x_bed_weight_scaling
-        Float y_bed_weight_scaling
-    }
-    meta {
-        # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
-    }
-    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+  input {
+    Boolean go = true
+    File interval_weights_bed
+    Float x_bed_weight_scaling
+    Float y_bed_weight_scaling
+  }
+  meta {
+    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
+  }
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
-    command <<<
-        bash ~{monitoring_script} > monitoring.log &
+  command <<<
+    bash ~{monitoring_script} > monitoring.log &
 
-        python3 /app/scale_xy_bed_values.py \
-            --input ~{interval_weights_bed} \
-            --output "interval_weights_xy_scaled.bed" \
-            --xscale ~{x_bed_weight_scaling} \
-            --yscale ~{y_bed_weight_scaling} \
-    >>>
+    python3 /app/scale_xy_bed_values.py \
+    --input ~{interval_weights_bed} \
+    --output "interval_weights_xy_scaled.bed" \
+    --xscale ~{x_bed_weight_scaling} \
+    --yscale ~{y_bed_weight_scaling} \
+  >>>
 
-    output {
-        File xy_scaled_bed = "interval_weights_xy_scaled.bed"
-        Boolean done = true
-        File monitoring_log = "monitoring.log"
-    }
+  output {
+    File xy_scaled_bed = "interval_weights_xy_scaled.bed"
+    Boolean done = true
+    File monitoring_log = "monitoring.log"
+  }
 
-    runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-13-alpine"
-        maxRetries: 3
-        memory: "7 GB"
-        preemptible: 3
-        cpu: "2"
-        disks: "local-disk 500 HDD"
-    }
+  runtime {
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-13-alpine"
+    maxRetries: 3
+    memory: "7 GB"
+    preemptible: 3
+    cpu: "2"
+    disks: "local-disk 500 HDD"
+  }
 }
 
 task GetNumSamplesLoaded {
@@ -538,10 +538,10 @@ task GetNumSamplesLoaded {
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
     bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
 
-      SELECT COUNT(*) FROM `~{fq_sample_table}` WHERE
-        is_loaded = true AND
-        withdrawn IS NULL AND
-        is_control = ~{control_samples}
+    SELECT COUNT(*) FROM `~{fq_sample_table}` WHERE
+    is_loaded = true AND
+    withdrawn IS NULL AND
+    is_control = ~{control_samples}
 
     ' | sed 1d
   >>>
@@ -560,83 +560,84 @@ task GetNumSamplesLoaded {
   }
 }
 
+
 task CountSuperpartitions {
-    meta {
-        description: "Return the number of superpartitions based on the number of vet_% tables in `INFORMATION_SCHEMA.PARTITIONS`."
-        # Definitely don't cache this, the values can change while the inputs to this task will not!
-        volatile: true
-    }
-    input {
-        String project_id
-        String dataset_name
-    }
-    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
-    command <<<
-        bash ~{monitoring_script} > monitoring.log &
+  meta {
+    description: "Return the number of superpartitions based on the number of vet_% tables in `INFORMATION_SCHEMA.PARTITIONS`."
+    # Definitely don't cache this, the values can change while the inputs to this task will not!
+    volatile: true
+  }
+  input {
+    String project_id
+    String dataset_name
+  }
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+  command <<<
+    bash ~{monitoring_script} > monitoring.log &
 
-        bq --apilog=false query --location=US --project_id='~{project_id}' --format=csv --use_legacy_sql=false '
+    bq --apilog=false query --location=US --project_id='~{project_id}' --format=csv --use_legacy_sql=false '
 
-            SELECT COUNT(*) FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES`
-                WHERE table_name LIKE "vet_%"
+    SELECT COUNT(*) FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES`
+    WHERE table_name LIKE "vet_%"
 
-        ' | sed 1d > num_superpartitions.txt
-    >>>
-    runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
-        disks: "local-disk 500 HDD"
-    }
-    output {
-        Int num_superpartitions = read_int('num_superpartitions.txt')
-        File monitoring_log = "monitoring.log"
-    }
+    ' | sed 1d > num_superpartitions.txt
+  >>>
+  runtime {
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
+    disks: "local-disk 500 HDD"
+  }
+  output {
+    Int num_superpartitions = read_int('num_superpartitions.txt')
+    File monitoring_log = "monitoring.log"
+  }
 }
 
 task ValidateFilterSetName {
-    input {
-        Boolean go = true
-        String project_id
-        String fq_filter_set_info_table
-        String filter_set_name
-        String filter_set_info_timestamp = ""
-    }
-    meta {
-        # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
-    }
+  input {
+    Boolean go = true
+    String project_id
+    String fq_filter_set_info_table
+    String filter_set_name
+    String filter_set_info_timestamp = ""
+  }
+  meta {
+    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
+  }
 
-    # add labels for DSP Cloud Cost Control Labeling and Reporting
-    String bq_labels = "--label service:gvs --label team:variants --label managedby:gvs_utils"
-    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+  # add labels for DSP Cloud Cost Control Labeling and Reporting
+  String bq_labels = "--label service:gvs --label team:variants --label managedby:gvs_utils"
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
-    command <<<
-        set -o errexit -o nounset -o xtrace -o pipefail
+  command <<<
+    set -o errexit -o nounset -o xtrace -o pipefail
 
-        bash ~{monitoring_script} > monitoring.log &
+    bash ~{monitoring_script} > monitoring.log &
 
-        echo "project_id = ~{project_id}" > ~/.bigqueryrc
+    echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-        OUTPUT=$(bq --apilog=false --project_id=~{project_id} --format=csv query --use_legacy_sql=false ~{bq_labels} "SELECT filter_set_name as available_filter_set_names FROM \`~{fq_filter_set_info_table}\` GROUP BY filter_set_name")
-        FILTERSETS=${OUTPUT#"available_filter_set_names"}
+    OUTPUT=$(bq --apilog=false --project_id=~{project_id} --format=csv query --use_legacy_sql=false ~{bq_labels} "SELECT filter_set_name as available_filter_set_names FROM \`~{fq_filter_set_info_table}\` GROUP BY filter_set_name")
+    FILTERSETS=${OUTPUT#"available_filter_set_names"}
 
-        if [[ $FILTERSETS =~ "~{filter_set_name}" ]]; then
-            echo "Filter set name '~{filter_set_name}' found."
-        else
-            echo "ERROR: '~{filter_set_name}' is not an existing filter_set_name. Available in ~{fq_filter_set_info_table} are"
-            echo $FILTERSETS
-            exit 1
-        fi
-    >>>
-    output {
-        Boolean done = true
-        File monitoring_log = "monitoring.log"
-    }
+    if [[ $FILTERSETS =~ "~{filter_set_name}" ]]; then
+    echo "Filter set name '~{filter_set_name}' found."
+    else
+    echo "ERROR: '~{filter_set_name}' is not an existing filter_set_name. Available in ~{fq_filter_set_info_table} are"
+    echo $FILTERSETS
+    exit 1
+    fi
+  >>>
+  output {
+    Boolean done = true
+    File monitoring_log = "monitoring.log"
+  }
 
-    runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
-        memory: "3 GB"
-        disks: "local-disk 500 HDD"
-        preemptible: 3
-        cpu: 1
-    }
+  runtime {
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
+    memory: "3 GB"
+    disks: "local-disk 500 HDD"
+    preemptible: 3
+    cpu: 1
+  }
 }
 
 task IsVQSRLite {
@@ -660,29 +661,29 @@ task IsVQSRLite {
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
     bq --apilog=false query --project_id='~{project_id}' --format=csv --use_legacy_sql=false ~{bq_labels} \
-      "SELECT COUNT(1) FROM \`~{fq_filter_set_info_table}\` WHERE filter_set_name = '~{filter_set_name}' \
-      AND calibration_sensitivity IS NOT NULL" | tail -1 > lite_count_file.txt
+    "SELECT COUNT(1) FROM \`~{fq_filter_set_info_table}\` WHERE filter_set_name = '~{filter_set_name}' \
+    AND calibration_sensitivity IS NOT NULL" | tail -1 > lite_count_file.txt
     LITE_COUNT=`cat lite_count_file.txt`
 
     bq --apilog=false query --project_id='~{project_id}' --format=csv --use_legacy_sql=false ~{bq_labels} \
-      "SELECT COUNT(1) FROM \`~{fq_filter_set_info_table}\` WHERE filter_set_name = '~{filter_set_name}' \
-      AND vqslod IS NOT NULL" | tail -1 > classic_count_file.txt
+    "SELECT COUNT(1) FROM \`~{fq_filter_set_info_table}\` WHERE filter_set_name = '~{filter_set_name}' \
+    AND vqslod IS NOT NULL" | tail -1 > classic_count_file.txt
     CLASSIC_COUNT=`cat classic_count_file.txt`
 
     if [[ $LITE_COUNT != "0" ]]; then
-      echo "Found $LITE_COUNT rows with calibration_sensitivity defined"
-      if [[ $CLASSIC_COUNT != "0" ]]; then
-        echo "Found $CLASSIC_COUNT rows with vqslod defined"
-        echo "ERROR - can't have both defined for a filter_set"
-        exit 1
-      fi
-      echo "true" > ~{is_vqsr_lite_file}
+    echo "Found $LITE_COUNT rows with calibration_sensitivity defined"
+    if [[ $CLASSIC_COUNT != "0" ]]; then
+    echo "Found $CLASSIC_COUNT rows with vqslod defined"
+    echo "ERROR - can't have both defined for a filter_set"
+    exit 1
+    fi
+    echo "true" > ~{is_vqsr_lite_file}
     elif [[ $CLASSIC_COUNT != "0" ]]; then
-      echo "Found $CLASSIC_COUNT rows with vqslod defined"
-      echo "false" > ~{is_vqsr_lite_file}
+    echo "Found $CLASSIC_COUNT rows with vqslod defined"
+    echo "false" > ~{is_vqsr_lite_file}
     else
-      echo "Found NO rows with either calibration_sensitivity or vqslod defined"
-      exit 1
+    echo "Found NO rows with either calibration_sensitivity or vqslod defined"
+    exit 1
     fi
 
   >>>
@@ -700,134 +701,134 @@ task IsVQSRLite {
 }
 
 task IndexVcf {
-    input {
-        File input_vcf
+  input {
+    File input_vcf
 
-        Int memory_mb = 7500
-        Int disk_size_gb = ceil(2 * size(input_vcf, "GiB")) + 200
-    }
+    Int memory_mb = 7500
+    Int disk_size_gb = ceil(2 * size(input_vcf, "GiB")) + 200
+  }
 
-    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
-    Int command_mem = memory_mb - 1000
-    Int max_heap = memory_mb - 500
+  Int command_mem = memory_mb - 1000
+  Int max_heap = memory_mb - 500
 
-    String local_file = basename(input_vcf)
-    Boolean is_compressed = sub(local_file, ".*\\.", "") == "gz"
-    String index_extension = if is_compressed then ".tbi" else ".idx"
+  String local_file = basename(input_vcf)
+  Boolean is_compressed = sub(local_file, ".*\\.", "") == "gz"
+  String index_extension = if is_compressed then ".tbi" else ".idx"
 
-    command <<<
-        set -e
+  command <<<
+    set -e
 
-        bash ~{monitoring_script} > monitoring.log &
+    bash ~{monitoring_script} > monitoring.log &
 
-        # Localize the passed input_vcf to the working directory so the
-        # to-be-created index file is also created there, alongside it.
-        ln -s ~{input_vcf} ~{local_file}
+    # Localize the passed input_vcf to the working directory so the
+    # to-be-created index file is also created there, alongside it.
+    ln -s ~{input_vcf} ~{local_file}
 
-        gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
-            IndexFeatureFile \
-            -I ~{local_file}
+    gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
+    IndexFeatureFile \
+    -I ~{local_file}
 
-    >>>
+  >>>
 
-    runtime {
-        docker: "us.gcr.io/broad-gatk/gatk:4.2.6.1"
-        cpu: 1
-        memory: "${memory_mb} MiB"
-        disks: "local-disk ${disk_size_gb} HDD"
-        bootDiskSizeGb: 15
-        preemptible: 3
-    }
+  runtime {
+    docker: "us.gcr.io/broad-gatk/gatk:4.2.6.1"
+    cpu: 1
+    memory: "${memory_mb} MiB"
+    disks: "local-disk ${disk_size_gb} HDD"
+    bootDiskSizeGb: 15
+    preemptible: 3
+  }
 
-    output {
-        File output_vcf_index = "~{local_file}~{index_extension}"
-        File monitoring_log = "monitoring.log"
-    }
+  output {
+    File output_vcf_index = "~{local_file}~{index_extension}"
+    File monitoring_log = "monitoring.log"
+  }
 }
 
 task SelectVariants {
-    input {
-        File input_vcf
-        File input_vcf_index
-        File? interval_list
-        String? type_to_include
-        Boolean exclude_filtered = false
-        String output_basename
+  input {
+    File input_vcf
+    File input_vcf_index
+    File? interval_list
+    String? type_to_include
+    Boolean exclude_filtered = false
+    String output_basename
 
-        Int memory_mb = 7500
-        Int disk_size_gb = ceil(2*size(input_vcf, "GiB")) + 200
-    }
+    Int memory_mb = 7500
+    Int disk_size_gb = ceil(2*size(input_vcf, "GiB")) + 200
+  }
 
-    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
-    Int command_mem = memory_mb - 1000
-    Int max_heap = memory_mb - 500
+  Int command_mem = memory_mb - 1000
+  Int max_heap = memory_mb - 500
 
-    String local_vcf = basename(input_vcf)
-    String local_index = basename(input_vcf_index)
+  String local_vcf = basename(input_vcf)
+  String local_index = basename(input_vcf_index)
 
-    command <<<
-      set -e
+  command <<<
+    set -e
 
-      bash ~{monitoring_script} > monitoring.log &
+    bash ~{monitoring_script} > monitoring.log &
 
-      # Localize the passed input_vcf and input_vcf_index to the working directory so the
-      # index and the VCF are side by side in the same directory.
-      ln -s ~{input_vcf} ~{local_vcf}
-      ln -s ~{input_vcf_index} ~{local_index}
+    # Localize the passed input_vcf and input_vcf_index to the working directory so the
+    # index and the VCF are side by side in the same directory.
+    ln -s ~{input_vcf} ~{local_vcf}
+    ln -s ~{input_vcf_index} ~{local_index}
 
-      gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
-        SelectVariants \
-          -V ~{local_vcf} \
-          ~{"-L " + interval_list} \
-          ~{"--select-type-to-include " + type_to_include} \
-          ~{true="--exclude-filtered true" false="" exclude_filtered} \
-          -O ~{output_basename}.vcf
-    >>>
+    gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
+    SelectVariants \
+    -V ~{local_vcf} \
+    ~{"-L " + interval_list} \
+    ~{"--select-type-to-include " + type_to_include} \
+    ~{true="--exclude-filtered true" false="" exclude_filtered} \
+    -O ~{output_basename}.vcf
+  >>>
 
-    runtime {
-        docker: "us.gcr.io/broad-gatk/gatk:4.2.6.1"
-        cpu: 1
-        memory: "${memory_mb} MiB"
-        disks: "local-disk ${disk_size_gb} HDD"
-        bootDiskSizeGb: 15
-        preemptible: 3
-    }
+  runtime {
+    docker: "us.gcr.io/broad-gatk/gatk:4.2.6.1"
+    cpu: 1
+    memory: "${memory_mb} MiB"
+    disks: "local-disk ${disk_size_gb} HDD"
+    bootDiskSizeGb: 15
+    preemptible: 3
+  }
 
-    output {
-        File output_vcf = "~{output_basename}.vcf"
-        File output_vcf_index = "~{output_basename}.vcf.idx"
-        File monitoring_log = "monitoring.log"
-    }
+  output {
+    File output_vcf = "~{output_basename}.vcf"
+    File output_vcf_index = "~{output_basename}.vcf.idx"
+    File monitoring_log = "monitoring.log"
+  }
 }
 
 task MergeTsvs {
-    input {
-        Array[File] input_files
-        String output_file_name
-    }
+  input {
+    Array[File] input_files
+    String output_file_name
+  }
 
-    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
-    command <<<
-      bash ~{monitoring_script} > monitoring.log &
+  command <<<
+    bash ~{monitoring_script} > monitoring.log &
 
-      echo -n > ~{output_file_name}
-      for f in ~{sep=' ' input_files}
-      do
-        cat $f >> ~{output_file_name}
-      done
-    >>>
+    echo -n > ~{output_file_name}
+    for f in ~{sep=' ' input_files}
+    do
+    cat $f >> ~{output_file_name}
+    done
+  >>>
 
-    runtime {
-      docker: "ubuntu:latest"
-    }
+  runtime {
+    docker: "ubuntu:latest"
+  }
 
-    output {
-      File output_file = output_file_name
-      File monitoring_log = "monitoring.log"
-    }
+  output {
+    File output_file = output_file_name
+    File monitoring_log = "monitoring.log"
+  }
 
 }
 
@@ -841,11 +842,11 @@ task SummarizeTaskMonitorLogs {
 
     INPUTS="~{sep=" " inputs}"
     if [[ -z "$INPUTS" ]]; then
-      echo "No monitoring log files found" > monitoring_summary.txt
+    echo "No monitoring log files found" > monitoring_summary.txt
     else
-      python3 /app/summarize_task_monitor_logs.py \
-        --input $INPUTS \
-        --output monitoring_summary.txt
+    python3 /app/summarize_task_monitor_logs.py \
+    --input $INPUTS \
+    --output monitoring_summary.txt
     fi
 
   >>>
@@ -861,71 +862,5 @@ task SummarizeTaskMonitorLogs {
   }
   output {
     File monitoring_summary = "monitoring_summary.txt"
-  }
-}
-
-task CreateTables {
-  input {
-    String project_id
-    String dataset_name
-    String datatype
-    Int max_table_id
-    String schema_json
-    String superpartitioned
-    String partitioned
-  }
-  meta {
-    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
-  }
-
-  command <<<
-    set -x
-    set -e
-
-    echo "project_id = ~{project_id}" > ~/.bigqueryrc
-
-    for TABLE_ID in $(seq 1 ~{max_table_id}); do
-    PARTITION_STRING=""
-    CLUSTERING_STRING=""
-    if [ ~{partitioned} == "true" ]; then
-    # assume clustering as well
-    let "PARTITION_START=(${TABLE_ID}-1)*4000+1"
-    let "PARTITION_END=$PARTITION_START+4000"
-    let "PARTITION_STEP=1"
-    PARTITION_FIELD="sample_id"
-    CLUSTERING_FIELD="location"
-    PARTITION_STRING="--range_partitioning=$PARTITION_FIELD,$PARTITION_START,$PARTITION_END,$PARTITION_STEP"
-    CLUSTERING_STRING="--clustering_fields=$CLUSTERING_FIELD"
-    fi
-
-    if [ ~{superpartitioned} = "true" ]; then
-    printf -v PADDED_TABLE_ID "%03d" ${TABLE_ID}
-    TABLE="~{dataset_name}.~{datatype}_${PADDED_TABLE_ID}"
-    else
-    TABLE="~{dataset_name}.~{datatype}"
-    fi
-
-    # Check that the table has not been created yet
-    set +e
-    bq --apilog=false show --project_id ~{project_id} $TABLE > /dev/null
-    BQ_SHOW_RC=$?
-    set -e
-    if [ $BQ_SHOW_RC -ne 0 ]; then
-    echo "making table $TABLE"
-    echo '~{schema_json}' > schema.json
-    bq --apilog=false mk ${PARTITION_STRING} ${CLUSTERING_STRING} --project_id=~{project_id} $TABLE schema.json
-    fi
-    done
-  >>>
-
-  output {
-    String done = "true"
-  }
-
-  runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
-    memory: "3 GB"
-    disks: "local-disk 10 HDD"
-    cpu: 1
   }
 }
