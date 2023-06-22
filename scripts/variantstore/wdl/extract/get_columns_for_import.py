@@ -1,4 +1,5 @@
 import argparse
+import re
 from terra_notebook_utils import table
 
 
@@ -228,7 +229,8 @@ def get_column_values(columnSamples, numSamples, user_defined_vcf, user_defined_
 
         # We have multiple potential columns to go with.  Two ways to trim them down
         # 1: See if any specifically have "reblocked" in their names.  If that gets us down to 1, go with it
-        also_contains_reblocked = matching_vcf_columns.intersect(contains_reblocked)
+        print("rahrahrah")
+        also_contains_reblocked = matching_vcf_columns.intersection(contains_reblocked)
         if len(also_contains_reblocked) == 1:
             # They likely just had a raw AND reblocked columns in the data. Pick the reblocked one
             found_vcf_column = True
