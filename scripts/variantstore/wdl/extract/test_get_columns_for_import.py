@@ -15,6 +15,20 @@ class TestBulkIngestGenomes(unittest.TestCase):
             actual = get_column_values(columnSamplesExpected, numSamples, None, None)
             self.assertEqual(actual, expected)
 
+    def test_get_column_user_defined_values(self):
+        numSamples = 5
+        with open('bulk_ingest_test_files/columns_for_import.json') as columnSamples:
+            columnSamplesExpected = json.load(columnSamples)
+            expected = ("control_vcf", "control_vcf_index")
+            actual = get_column_values(columnSamplesExpected, numSamples, "control_vcf", "control_vcf_index")
+            self.assertEqual(actual, expected)
+
+    def test_get_column_bad_user_defined_values(self):
+        numSamples = 5
+        with open('bulk_ingest_test_files/columns_for_import.json') as columnSamples:
+            columnSamplesExpected = json.load(columnSamples)
+            # self.assertRaises(ValueError, get_column_values(columnSamplesExpected, numSamples, "im_the_problem", "its_me"))
+
     def test_get_column_quickstart_values(self):
         numSamples = 10
         with open('bulk_ingest_test_files/quickstart_columns_for_import.json') as quickstartColumnSamples:
