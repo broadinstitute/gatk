@@ -28,8 +28,8 @@ workflow GvsJointVariantCalling {
     String extract_output_file_base_name = sub(call_set_identifier, "\\s+|\_+", "-")
     String extract_table_prefix = sub(call_set_identifier, "\\s+|\_+", "-")
     String filter_set_name = sub(call_set_identifier, "\\s+|\_+", "-")
-    # This is the most updated snapshot of the code as of June 2, 2023
-    File gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-747-gbb08d81-SNAPSHOT-local.jar"
+    # This is the most updated snapshot of the code as of June 22, 2023
+    File gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-726-g63a0bea-SNAPSHOT-local.jar"
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
 
     File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
