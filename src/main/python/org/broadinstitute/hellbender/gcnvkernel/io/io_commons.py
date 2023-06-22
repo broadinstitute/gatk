@@ -279,7 +279,7 @@ def get_var_map_list_from_mean_field_approx(approx: pm.MeanField) -> List[pm.blo
     """
     if pm.__version__ == "3.1":
         return approx.gbij.ordering.vmap
-    elif pm.__version__ == "3.2":
+    elif pm.__version__ == "3.5":
         return approx.bij.ordering.vmap
     else:
         raise Exception("Unsupported PyMC3 version")

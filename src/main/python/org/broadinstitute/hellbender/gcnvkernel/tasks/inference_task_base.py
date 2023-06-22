@@ -341,7 +341,7 @@ class HybridInferenceTask(InferenceTask):
     def engage(self):
         try:
             all_converged = False
-            while self.i_epoch <= self.hybrid_inference_params.max_training_epochs:
+            while self.i_epoch <= self.hybrid_inference_params.max_training_epochs: 
                 _logger.debug("Starting epoch {0}...".format(self.i_epoch))
                 converged_continuous = self._update_continuous_posteriors()
                 all_converged = converged_continuous
