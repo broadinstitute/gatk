@@ -297,7 +297,13 @@ jobs:
     continue-on-error: true
     name: WDL test ${{ matrix.wdlTest }} on cromwell
     steps:
-      - uses: actions/checkout@v2
+      #Reclaim some disk space on the runner to prevent the WDL tasks from running out of space on the docker.
+      #https://stackoverflow.com/questions/75536771/github-runner-out-of-disk-space-after-building-docker-image
+      - name: Reclaim some runner disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
       - name: pull lfs files
