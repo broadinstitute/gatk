@@ -111,7 +111,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_VS-987_OutOfDateDocker
+         - gg_FixExomes
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
