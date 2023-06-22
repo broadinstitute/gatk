@@ -17,6 +17,7 @@ workflow GvsQuickstartVcfIntegration {
 
         String drop_state = "FORTY"
         String dataset_suffix
+        String expected_output_prefix
         File? gatk_override
     }
     String project_id = "gvs-internal"
@@ -55,7 +56,7 @@ workflow GvsQuickstartVcfIntegration {
 
     # Only assert identical outputs if we did not filter (filtering is not deterministic) OR if we are using VQSR Lite (which is deterministic)
     if (extract_do_not_filter_override || use_VQSR_lite) {
-        String expected_prefix = branch_name + dataset_suffix + "/"
+        String expected_prefix = expected_output_prefix + dataset_suffix + "/"
         call AssertIdenticalOutputs {
             input:
                 expected_output_prefix = expected_prefix,

@@ -4,28 +4,6 @@ import "GvsQuickstartVcfIntegration.wdl" as QuickstartVcfIntegration
 import "GvsQuickstartHailIntegration.wdl" as QuickstartHailIntegration
 import "GvsUtils.wdl" as Utils
 
-
-task FilterIntervalListChromosomes {
-    input {
-        File full_interval_list
-        Array[String]+ chromosomes
-    }
-    command <<<
-        # Prepend date, time and pwd to xtrace log entries.
-        PS4='\D{+%F %T} \w $ '
-        set -o errexit -o nounset -o pipefail -o xtrace
-
-        python3 /app/filter_interval_list_chromosomes.py --input-interval-list ~{full_interval_list} \
-            --output-interval-list "filtered.interval_list" --chromosome ~{sep=' --chromosome ' chromosomes}
-    >>>
-    runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-13-alpine"
-    }
-    output {
-        File out = "filtered.interval_list"
-    }
-}
-
 workflow GvsQuickstartIntegration {
     input {
         String branch_name
@@ -65,7 +43,6 @@ workflow GvsQuickstartIntegration {
                 extract_do_not_filter_override = false,
                 dataset_suffix = "classic_hail",
                 gatk_override = BuildGATKJar.jar,
-                gatk_override = BuildGATKJar.jar,
                 interval_list = FilterIntervalListChromosomes.out,
                 expected_output_prefix = expected_output_prefix,
         }
@@ -92,5 +69,26 @@ workflow GvsQuickstartIntegration {
                 interval_list = FilterIntervalListChromosomes.out,
                 expected_output_prefix = expected_output_prefix,
         }
+    }
+}
+
+task FilterIntervalListChromosomes {
+    input {
+        File full_interval_list
+        Array[String]+ chromosomes
+    }
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        python3 /app/filter_interval_list_chromosomes.py --input-interval-list ~{full_interval_list} \
+        --output-interval-list "filtered.interval_list" --chromosome ~{sep=' --chromosome ' chromosomes}
+    >>>
+    runtime {
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-13-alpine"
+    }
+    output {
+        File out = "filtered.interval_list"
     }
 }
