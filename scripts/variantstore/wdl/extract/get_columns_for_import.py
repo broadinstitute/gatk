@@ -1,7 +1,20 @@
 import argparse
-
 from terra_notebook_utils import table
-import re
+
+
+# The goal of this code is to validate and determine the 5 values for:
+# 1. The entity type (default: sample)
+# 2. The entity type id column name. This is never anything but #1 + _id (default: sample_id)
+# 3. The sample name column name (default: sample_id if it exists, otherwise <entity>_id)
+# 4. The input GVCFs path column name. This has no explicit default, but uses heuristics above to be determined
+# 5. The input GVCF index files path column name. This has no explicit default, but uses heuristics above to be determined
+
+# The method get_entity_data returns the values for the first two
+# The method get_column_data tells us how much data we want to survey
+# The method get_column_values looks in the columns and gives us the best guess for the fourth and fifth values
+
+### NOTE: FOR NOW WE JUST ALLOW "SAMPLE" TO BE THE DEFAULT ENTITY TYPE AND THIS CODE JUST VALIDATES THAT
+
 
 
 maxNumSamples = 50
@@ -315,23 +328,6 @@ if __name__ == '__main__':
     # allow this to be overridden, but default it to 500
     if "attempts_between_pauses" in args:
         attempts_between_pauses = args.attempts_between_pauses
-
-
-
-    # The goal of this code is to validate and determine the 5 values for:
-    # 1. The entity type (default: sample)
-    # 2. The entity type id column name. This is never anything but #1 + _id (default: sample_id)
-    # 3. The sample name column name (default: sample_id if it exists, otherwise <entity>_id)
-    # 4. The input GVCFs path column name. This has no explicit default, but uses heuristics above to be determined
-    # 5. The input GVCF index files path column name. This has no explicit default, but uses heuristics above to be determined
-
-    # The method get_entity_data returns the values for the first two
-    # The method get_column_data tells us how much data we want to survey
-    # The method get_column_values looks in the columns and gives us the best guess for the fourth and fifth values
-
-
-
-    ### NOTE: FOR NOW WE JUST ALLOW "SAMPLE" TO BE THE DEFAULT ENTITY TYPE AND THIS CODE JUST VALIDATES THAT
 
     # if the user is using sample_sets, then that will potentially help us get the first (and thus also the second) or validate a user defined entity_type
     # 1. The entity type
