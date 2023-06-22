@@ -22,10 +22,11 @@ maxNumSamples = 50
 
 
 def get_entity_data(user_defined_entity, entity_set):
+    tables_list=list(table.list_tables())
     ## When the user has supplied a defined entity
     if user_defined_entity:
         # validate that the user defined entity is present in the workspace
-        if user_defined_entity in list(table.list_tables()):
+        if user_defined_entity in tables_list:
             entity = user_defined_entity
             # if there is a user specified <entity>_set, validate that it is of the expected entity type
             if entity_set:
@@ -38,20 +39,20 @@ def get_entity_data(user_defined_entity, entity_set):
             print("error in user defined entity type")
 
     # In the case that there is only one or two possible entities, they can easily be derived
-    elif len(list(table.list_tables())) == 1:
-        entity = list(table.list_tables())[0]
-    elif len(list(table.list_tables())) == 2:
-        if list(table.list_tables())[0]+"_set" ==list(table.list_tables())[1]:
-            entity = list(table.list_tables())[0]
-        elif list(table.list_tables())[1]+"_set" ==list(table.list_tables())[0]:
-            entity = list(table.list_tables())[1]
+    elif len(tables_list) == 1:
+        entity = tables_list[0]
+    elif len(tables_list) == 2:
+        if tables_list[0]+"_set" ==tables_list[1]:
+            entity = tables_list[0]
+        elif tables_list[1]+"_set" ==tables_list[0]:
+            entity = tables_list[1]
 
 
     ## If the user has selected an entity_set name (but not defined an entity), grab all tables that end in "_set"
     # and validate that the named <entity>_set is present in at least one entity type, and if it's in only one, set that as the entity type
     elif entity_set:
         entity_table_that_ends_in_set=[]
-        for entity_table in list(table.list_tables()):
+        for entity_table in tables_list:
             if entity_table[-4:]=="_set":
                 entity_table_that_ends_in_set.append(entity_table)
 
@@ -66,19 +67,19 @@ def get_entity_data(user_defined_entity, entity_set):
         if len(presence) == 1:
             entity = presence[0]
 
-    elif len(list(table.list_tables())) == 1:
-        entity = list(table.list_tables())[0]
-    elif len(list(table.list_tables())) == 2:
-        if list(table.list_tables())[0]+"_set" ==list(table.list_tables())[1]:
-            entity = list(table.list_tables())[0]
-        elif list(table.list_tables())[1]+"_set" ==list(table.list_tables())[0]:
-            entity = list(table.list_tables())[1]
+    elif len(tables_list) == 1:
+        entity = tables_list[0]
+    elif len(tables_list) == 2:
+        if tables_list[0]+"_set" ==tables_list[1]:
+            entity = tables_list[0]
+        elif tables_list[1]+"_set" ==tables_list[0]:
+            entity = tables_list[1]
     else:
         ## TODO: move this to the top or do it throughout the gates--not sure which is better. Currently it is set immediately by the default value in the argparse arg
         print("default set to entity type sample")
         entity = default_entity
 
-    if entity not in list(table.list_tables()):
+    if entity not in tables_list:
         print("error in possible entities")
 
     return entity
@@ -229,7 +230,6 @@ def get_column_values(columnSamples, numSamples, user_defined_vcf, user_defined_
 
         # We have multiple potential columns to go with.  Two ways to trim them down
         # 1: See if any specifically have "reblocked" in their names.  If that gets us down to 1, go with it
-        print("rahrahrah")
         also_contains_reblocked = matching_vcf_columns.intersection(contains_reblocked)
         if len(also_contains_reblocked) == 1:
             # They likely just had a raw AND reblocked columns in the data. Pick the reblocked one
