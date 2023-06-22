@@ -374,7 +374,7 @@ dependencies {
     implementation 'org.xerial:sqlite-jdbc:3.20.1'
     
     // Required for SV Discovery machine learning
-    implementation group: 'biz.k11i', name: 'xgboost-predictor', version: '0.3.0'
+    implementation group: 'ai.h2o', name: 'xgboost-predictor', version: '0.3.1'
 
     // natural sort
     implementation('net.grey-panther:natural-comparator:1.1')
