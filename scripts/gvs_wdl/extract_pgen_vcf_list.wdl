@@ -69,9 +69,9 @@ task GatkGvsPgenExtract {
 
         if [[ ! -f output.pgen ]]
         then
-        touch output.pgen
-        touch output.psam
-        touch output.pvar
+            touch output.pgen
+            touch output.psam
+            touch output.pvar
         fi
     }
 
@@ -109,7 +109,7 @@ task MergePgen {
             if [ -s ${pgen} ]
             then
                 count=$((count+1))
-                echo -e "${pgen%.pgen}\n" >> mergelist.txt
+                echo -e "${pgen%.pgen}" >> mergelist.txt
             fi
         done
 
@@ -139,6 +139,7 @@ task MergePgen {
         File pgen_file = "merged.pgen"
         File pvar_file = "merged.pvar"
         File psam_file = "merged.psam"
+        File mergelist = "mergelist.txt"
     }
 
     runtime {
