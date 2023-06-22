@@ -138,7 +138,7 @@ task GatherTranches {
         bootDiskSizeGb: 15
         disks: "local-disk " + disk_size + " HDD"
         preemptible: 1
-        docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_06_01"
+        docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_06_21"
     }
 
     output {
