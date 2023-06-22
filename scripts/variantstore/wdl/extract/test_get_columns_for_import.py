@@ -27,7 +27,31 @@ class TestBulkIngestGenomes(unittest.TestCase):
         numSamples = 5
         with open('bulk_ingest_test_files/columns_for_import.json') as columnSamples:
             columnSamplesExpected = json.load(columnSamples)
-            # self.assertRaises(ValueError, get_column_values(columnSamplesExpected, numSamples, "im_the_problem", "its_me"))
+            with self.assertRaises(ValueError):
+                get_column_values(columnSamplesExpected, numSamples, "im_the_problem", "its_me")
+
+    def test_get_column_missing_user_defined_vcf(self):
+        numSamples = 5
+        with open('bulk_ingest_test_files/columns_for_import.json') as columnSamples:
+            columnSamplesExpected = json.load(columnSamples)
+            with self.assertRaises(ValueError):
+                get_column_values(columnSamplesExpected, numSamples, None, "control_vcf_index")
+
+    def test_get_column_unspecified_user_defined_index(self):
+        numSamples = 5
+        with open('bulk_ingest_test_files/columns_for_import.json') as columnSamples:
+            columnSamplesExpected = json.load(columnSamples)
+            expected = ("control_vcf", "control_vcf_index")
+            actual = get_column_values(columnSamplesExpected, numSamples, "control_vcf", None)
+            self.assertEqual(actual, expected)
+
+    def test_get_column_missing_user_defined_index(self):
+        numSamples = 5
+        with open('bulk_ingest_test_files/columns_for_import.json') as columnSamples:
+            columnSamplesExpected = json.load(columnSamples)
+            with self.assertRaises(ValueError):
+                get_column_values(columnSamplesExpected, numSamples, "random_vcf", None)
+
 
     def test_get_column_quickstart_values(self):
         numSamples = 10
@@ -54,3 +78,5 @@ class TestBulkIngestGenomes(unittest.TestCase):
             expected = ('gvcf','gvcf_index')
             actual = get_column_values(columnSamplesExpected, numSamples, None, None)
             self.assertEqual(actual, expected)
+
+
