@@ -24,7 +24,7 @@ public final class GvsPgenExtractor extends TwoPassVariantWalker {
     private GATKPath outputFile = null;
 
     @Argument(fullName = "maxAltAlleles", shortName = "maa", doc = "Maximum alt alleles to write", optional = true)
-    private int maxAltAlleles = 255;
+    private int maxAltAlleles = 254;
 
     @Argument(fullName = "writeMode", shortName = "wm", doc = "Write mode for the PGEN writer", optional = true)
     private PgenWriter.PgenWriteMode writeMode = PgenWriter.PgenWriteMode.PGEN_FILE_MODE_WRITE_AND_COPY;
@@ -57,6 +57,13 @@ public final class GvsPgenExtractor extends TwoPassVariantWalker {
     @Override
     protected void secondPassApply(VariantContext variant, ReadsContext readsContext, ReferenceContext referenceContext, FeatureContext featureContext) {
         pgenWriter.add(variant);
+    }
+
+    @Override
+    public Object onTraversalSuccess() {
+        // Log the number of dropped variants
+        logger.info("Number of variants dropped as a result of exceeding the maximum number of alt alleles: " + pgenWriter.getDroppedVariantCount());
+        return null;
     }
 
     @Override
