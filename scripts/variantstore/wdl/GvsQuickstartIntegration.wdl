@@ -9,6 +9,10 @@ workflow GvsQuickstartIntegration {
         String branch_name
         Boolean run_vcf_integration = true
         Boolean run_hail_integration = true
+        String samples_table_name = "integration_sample"
+        String sample_id_column_name = "integration_sample_id"
+        String vcf_files_column_name = "reblocked_vcf"
+        String vcf_index_files_column_name = "reblocked_vcf_index"
     }
 
     File full_interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
@@ -35,6 +39,10 @@ workflow GvsQuickstartIntegration {
                 gatk_override = BuildGATKJar.jar,
                 interval_list = FilterIntervalListChromosomes.out,
                 expected_output_prefix = expected_output_prefix,
+                samples_table_name = samples_table_name,
+                sample_id_column_name = sample_id_column_name,
+                vcf_files_column_name = vcf_files_column_name,
+                vcf_index_files_column_name = vcf_index_files_column_name,
         }
         call QuickstartHailIntegration.GvsQuickstartHailIntegration as GvsQuickstartHailVQSRClassicIntegration {
             input:
@@ -45,6 +53,10 @@ workflow GvsQuickstartIntegration {
                 gatk_override = BuildGATKJar.jar,
                 interval_list = FilterIntervalListChromosomes.out,
                 expected_output_prefix = expected_output_prefix,
+                samples_table_name = samples_table_name,
+                sample_id_column_name = sample_id_column_name,
+                vcf_files_column_name = vcf_files_column_name,
+                vcf_index_files_column_name = vcf_index_files_column_name,
         }
     }
 
@@ -58,6 +70,10 @@ workflow GvsQuickstartIntegration {
                 gatk_override = BuildGATKJar.jar,
                 interval_list = FilterIntervalListChromosomes.out,
                 expected_output_prefix = expected_output_prefix,
+                samples_table_name = samples_table_name,
+                sample_id_column_name = sample_id_column_name,
+                vcf_files_column_name = vcf_files_column_name,
+                vcf_index_files_column_name = vcf_index_files_column_name,
         }
         call QuickstartVcfIntegration.GvsQuickstartVcfIntegration as QuickstartVcfVQSRClassicIntegration {
             input:
@@ -68,6 +84,10 @@ workflow GvsQuickstartIntegration {
                 gatk_override = BuildGATKJar.jar,
                 interval_list = FilterIntervalListChromosomes.out,
                 expected_output_prefix = expected_output_prefix,
+                samples_table_name = samples_table_name,
+                sample_id_column_name = sample_id_column_name,
+                vcf_files_column_name = vcf_files_column_name,
+                vcf_index_files_column_name = vcf_index_files_column_name,
         }
     }
 }
