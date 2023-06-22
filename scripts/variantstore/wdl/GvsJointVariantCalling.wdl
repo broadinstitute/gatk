@@ -13,7 +13,9 @@ workflow GvsJointVariantCalling {
         String project_id
 
         String drop_state = "FORTY"
+        Boolean extract_do_not_filter_override = false
         String? extract_output_gcs_dir
+        File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
         Boolean is_beta_user = false
         String sample_id_column_name = "sample_id"
         String samples_table_name = "sample"
@@ -21,6 +23,9 @@ workflow GvsJointVariantCalling {
         Boolean use_classic_VQSR = true
         String? vcf_files_column_name
         String? vcf_index_files_column_name
+
+        # This is the most updated snapshot of the code as of June 22, 2023
+        File gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-726-g63a0bea-SNAPSHOT-local.jar"
     }
 
     # the call_set_identifier string is used to name many different things throughout this workflow (BQ tables, vcfs etc),
@@ -28,9 +33,6 @@ workflow GvsJointVariantCalling {
     String extract_output_file_base_name = sub(call_set_identifier, "\\s+|\_+", "-")
     String extract_table_prefix = sub(call_set_identifier, "\\s+|\_+", "-")
     String filter_set_name = sub(call_set_identifier, "\\s+|\_+", "-")
-    # This is the most updated snapshot of the code as of June 22, 2023
-    File gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-726-g63a0bea-SNAPSHOT-local.jar"
-    File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
 
     File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
     String fq_temp_table_dataset = "~{project_id}.~{dataset_name}"
@@ -88,7 +90,7 @@ workflow GvsJointVariantCalling {
         input:
             call_set_identifier = call_set_identifier,
             dataset_name = dataset_name,
-            do_not_filter_override = false,
+            do_not_filter_override = extract_do_not_filter_override,
             drop_state = drop_state,
             extract_table_prefix = extract_table_prefix,
             filter_set_name = GvsCreateFilterSet.loaded_filter_set_name,

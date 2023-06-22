@@ -173,13 +173,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-   - name: GvsUnified
-     subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsUnified.wdl
-     filters:
-       branches:
-         - master
-         - ah_var_store
    - name: GvsJointVariantCalling
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCalling.wdl
@@ -209,6 +202,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_vs_982
    - name: GvsQuickstartHailIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartHailIntegration.wdl
@@ -216,6 +210,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_vs_982
    - name: GvsQuickstartIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartIntegration.wdl
@@ -223,6 +218,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_vs_982
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
