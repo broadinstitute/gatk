@@ -13,6 +13,8 @@ workflow GvsQuickstartIntegration {
         String sample_id_column_name = "integration_sample_id"
         String vcf_files_column_name = "reblocked_vcf"
         String vcf_index_files_column_name = "reblocked_vcf_index"
+        Boolean use_classic_VQSR = true
+        Boolean use_vqsr_lite = true
     }
 
     File full_interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
@@ -30,64 +32,73 @@ workflow GvsQuickstartIntegration {
     }
 
     if (run_hail_integration) {
-        call QuickstartHailIntegration.GvsQuickstartHailIntegration as GvsQuickstartHailVQSRLiteIntegration {
-            input:
-                branch_name = branch_name,
-                use_VQSR_lite = true,
-                extract_do_not_filter_override = false,
-                dataset_suffix = "lite_hail",
-                gatk_override = BuildGATKJar.jar,
-                interval_list = FilterIntervalListChromosomes.out,
-                expected_output_prefix = expected_output_prefix,
-                samples_table_name = samples_table_name,
-                sample_id_column_name = sample_id_column_name,
-                vcf_files_column_name = vcf_files_column_name,
-                vcf_index_files_column_name = vcf_index_files_column_name,
+        if (use_classic_VQSR) {
+            call QuickstartHailIntegration.GvsQuickstartHailIntegration as GvsQuickstartHailVQSRClassicIntegration {
+                input:
+                    branch_name = branch_name,
+                    use_classic_VQSR = true,
+                    extract_do_not_filter_override = false,
+                    dataset_suffix = "lite_hail",
+                    gatk_override = BuildGATKJar.jar,
+                    interval_list = FilterIntervalListChromosomes.out,
+                    expected_output_prefix = expected_output_prefix,
+                    samples_table_name = samples_table_name,
+                    sample_id_column_name = sample_id_column_name,
+                    vcf_files_column_name = vcf_files_column_name,
+                    vcf_index_files_column_name = vcf_index_files_column_name,
+            }
         }
-        call QuickstartHailIntegration.GvsQuickstartHailIntegration as GvsQuickstartHailVQSRClassicIntegration {
-            input:
-                branch_name = branch_name,
-                use_VQSR_lite = false,
-                extract_do_not_filter_override = false,
-                dataset_suffix = "classic_hail",
-                gatk_override = BuildGATKJar.jar,
-                interval_list = FilterIntervalListChromosomes.out,
-                expected_output_prefix = expected_output_prefix,
-                samples_table_name = samples_table_name,
-                sample_id_column_name = sample_id_column_name,
-                vcf_files_column_name = vcf_files_column_name,
-                vcf_index_files_column_name = vcf_index_files_column_name,
+        if (use_vqsr_lite) {
+            call QuickstartHailIntegration.GvsQuickstartHailIntegration as GvsQuickstartHailVQSRLiteIntegration {
+                input:
+                    branch_name = branch_name,
+                    use_classic_VQSR = false,
+                    extract_do_not_filter_override = false,
+                    dataset_suffix = "classic_hail",
+                    gatk_override = BuildGATKJar.jar,
+                    interval_list = FilterIntervalListChromosomes.out,
+                    expected_output_prefix = expected_output_prefix,
+                    samples_table_name = samples_table_name,
+                    sample_id_column_name = sample_id_column_name,
+                    vcf_files_column_name = vcf_files_column_name,
+                    vcf_index_files_column_name = vcf_index_files_column_name,
+            }
         }
     }
 
     if (run_vcf_integration) {
-        call QuickstartVcfIntegration.GvsQuickstartVcfIntegration as QuickstartVcfVQSRLiteIntegration {
-            input:
-                branch_name = branch_name,
-                use_VQSR_lite = true,
-                extract_do_not_filter_override = false,
-                dataset_suffix = "lite_vcf",
-                gatk_override = BuildGATKJar.jar,
-                interval_list = FilterIntervalListChromosomes.out,
-                expected_output_prefix = expected_output_prefix,
-                samples_table_name = samples_table_name,
-                sample_id_column_name = sample_id_column_name,
-                vcf_files_column_name = vcf_files_column_name,
-                vcf_index_files_column_name = vcf_index_files_column_name,
-        }
-        call QuickstartVcfIntegration.GvsQuickstartVcfIntegration as QuickstartVcfVQSRClassicIntegration {
-            input:
-                branch_name = branch_name,
-                use_VQSR_lite = false,
-                extract_do_not_filter_override = true,
-                dataset_suffix = "classic_vcf",
-                gatk_override = BuildGATKJar.jar,
-                interval_list = FilterIntervalListChromosomes.out,
-                expected_output_prefix = expected_output_prefix,
-                samples_table_name = samples_table_name,
-                sample_id_column_name = sample_id_column_name,
-                vcf_files_column_name = vcf_files_column_name,
-                vcf_index_files_column_name = vcf_index_files_column_name,
+        if (use_classic_VQSR) {
+            call QuickstartVcfIntegration.GvsQuickstartVcfIntegration as QuickstartVcfVQSRClassicIntegration {
+                input:
+                    branch_name = branch_name,
+                    use_classic_VQSR = true,
+                    extract_do_not_filter_override = false,
+                    dataset_suffix = "lite_vcf",
+                    gatk_override = BuildGATKJar.jar,
+                    interval_list = FilterIntervalListChromosomes.out,
+                    expected_output_prefix = expected_output_prefix,
+                    samples_table_name = samples_table_name,
+                    sample_id_column_name = sample_id_column_name,
+                    vcf_files_column_name = vcf_files_column_name,
+                    vcf_index_files_column_name = vcf_index_files_column_name,
+            }
+       }
+       if (use_vqsr_lite) {
+            call QuickstartVcfIntegration.GvsQuickstartVcfIntegration as QuickstartVcfVQSRLiteIntegration {
+                input:
+                    branch_name = branch_name,
+                    use_classic_VQSR = false,
+                    extract_do_not_filter_override = true,
+                    dataset_suffix = "classic_vcf",
+                    gatk_override = BuildGATKJar.jar,
+                    interval_list = FilterIntervalListChromosomes.out,
+                    expected_output_prefix = expected_output_prefix,
+                    samples_table_name = samples_table_name,
+                    sample_id_column_name = sample_id_column_name,
+                    vcf_files_column_name = vcf_files_column_name,
+                    vcf_index_files_column_name = vcf_index_files_column_name,
+            }
+
         }
     }
 }

@@ -10,7 +10,7 @@ workflow GvsExtractAvroFilesForHail {
         String dataset_name
         String filter_set_name
         String call_set_identifier
-        Boolean use_VQSR_lite = true
+        Boolean use_classic_VQSR = false
         Int scatter_width = 10
     }
 

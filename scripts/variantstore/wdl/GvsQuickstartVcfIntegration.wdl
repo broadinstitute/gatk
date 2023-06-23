@@ -8,7 +8,7 @@ workflow GvsQuickstartVcfIntegration {
     input {
         String branch_name
         File interval_list
-        Boolean use_VQSR_lite = true
+        Boolean use_classic_VQSR
         Boolean extract_do_not_filter_override = true
         String? sample_id_column_name
         String? samples_table_name
@@ -44,7 +44,7 @@ workflow GvsQuickstartVcfIntegration {
             gatk_override = select_first([gatk_override, BuildGATKJar.jar]),
             sample_id_column_name = sample_id_column_name,
             samples_table_name = samples_table_name,
-            use_classic_VQSR = !use_VQSR_lite,
+            use_classic_VQSR = use_classic_VQSR,
             # optionally turn off filtering (VQSR Classic is not deterministic)
             # (and the initial version of this integration test does not allow for inexact matching of actual and expected results.)
             extract_do_not_filter_override = extract_do_not_filter_override,
@@ -59,7 +59,7 @@ workflow GvsQuickstartVcfIntegration {
     }
 
     # Only assert identical outputs if we did not filter (filtering is not deterministic) OR if we are using VQSR Lite (which is deterministic)
-    if (extract_do_not_filter_override || use_VQSR_lite) {
+    if (extract_do_not_filter_override || !use_classic_VQSR) {
         String expected_prefix = expected_output_prefix + dataset_suffix + "/"
         call AssertIdenticalOutputs {
             input:
