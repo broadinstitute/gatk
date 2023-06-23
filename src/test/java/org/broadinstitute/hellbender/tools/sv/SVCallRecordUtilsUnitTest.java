@@ -474,10 +474,10 @@ public class SVCallRecordUtilsUnitTest {
                             ALLELES_DEL, Lists.newArrayList(GENOTYPE_DEL_1, GENOTYPE_DEL_2), 1000, "+-",
                             GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
                             null, null,
-                            TEST_ATTRIBUTES, -10.),
+                            TEST_ATTRIBUTES, -90.),
                         new SVCallRecord("var1", "chr1", 1000, true, "chr1", 1999, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null, 1000,
                             Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM), ALLELES_DEL, Lists.newArrayList(GENOTYPE_DEL_1, GENOTYPE_DEL_2),
-                                TEST_ATTRIBUTES, Collections.emptySet(), -10.)
+                                TEST_ATTRIBUTES, Collections.emptySet(), -90.)
                 },
                 {
                         SVTestUtils.newVariantContext("var2", "chr1", 1000, 1999,
