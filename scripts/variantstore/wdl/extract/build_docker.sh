@@ -1,46 +1,24 @@
 usage() {
     echo "
 
-USAGE: ./build_docker.sh [-r|-b]
+USAGE: ./build_docker.sh [-r|--release|-b|--branch]
 
-One of the options -r (release) or -b (branch) must be given, which determines the format of the Docker image tag.
-Release tags look like <ISO 8601 Date>-alpine, branch tags look like <ISO 8601 Date>-alpine-<short git hash>.
+One of the options -r|--release or -b|--branch must be given, which determines the format of the Docker image tag.
+Release tags will be <ISO 8601 Date>-alpine, branch tags will be <ISO 8601 Date>-alpine-<short git hash>.
 
 e.g. 2023-06-06-alpine or 2023-06-06-alpine-ed338e48e
 "
     exit 1
 }
 
-args=$(getopt rb $*)
+TAG=$(python3 ./build_docker_tag.py $*)
 if [[ $? -ne 0 ]]
 then
     usage
 fi
 
-TAG=""
-eval set -- $args
-while true
-do
-    case "$1" in
-    -r)
-        TAG="$(date -Idate)-alpine"
-        shift
-        ;;
-    -b)
-        TAG="$(date -Idate)-alpine-$(git rev-parse --short HEAD)"
-        shift
-        ;;
-    --)
-        shift
-        break
-        ;;
-    esac
-done
-
-if [[ -z "$TAG" ]]
-then
-    usage
-fi
+echo "parsed tag as $TAG"
+exit 0
 
 BASE_REPO="broad-dsde-methods/variantstore"
 REPO_WITH_TAG="${BASE_REPO}:${TAG}"
