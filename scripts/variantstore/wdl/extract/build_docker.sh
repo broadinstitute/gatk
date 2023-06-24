@@ -17,9 +17,6 @@ then
     usage
 fi
 
-echo "parsed tag as $TAG"
-exit 0
-
 BASE_REPO="broad-dsde-methods/variantstore"
 REPO_WITH_TAG="${BASE_REPO}:${TAG}"
 GCR_TAG="us.gcr.io/${REPO_WITH_TAG}"
