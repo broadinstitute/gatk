@@ -124,13 +124,13 @@ workflows:
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareBulkImport.wdl
      filters:
        branches:
-         - rc-vs-835-add-defaults-to-ingest
+         - rc-vs-916-sample-sets-ingest
    - name: GvsBulkIngestGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsBulkIngestGenomes.wdl
      filters:
        branches:
-         - rc-vs-835-add-defaults-to-ingest
+         - rc-vs-916-sample-sets-ingest
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl

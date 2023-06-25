@@ -2,13 +2,7 @@ import json
 import requests
 import argparse
 
-from terra_notebook_utils import table
 from terra_notebook_utils import gs
-# from terra_notebook_utils import workspace
-import re
-
-# make a default, but allow a user to overwrite it
-
 
 def get_workspace_name(workspace_id, workspace_name_output, workspace_namespace_output):
     with open(workspace_name_output, "w") as name_output, open(workspace_namespace_output, "w") as namespace_output:
@@ -26,7 +20,6 @@ def get_workspace_name(workspace_id, workspace_name_output, workspace_namespace_
         workspace_namespace=response_dict['workspace']['namespace']
         namespace_output.write(f'{workspace_namespace}\n')
         return (workspace_namespace, workspace_name)
-        #workspace_name=workspace.get_workspace().get('workspace').get('namespace')
 
 
 
@@ -37,10 +30,6 @@ if __name__ == '__main__':
     parser.add_argument('--workspace_id', type=str,
                         help='The ID of your workspace that holds your sample data',
                         required=True)
-
-    parser.add_argument('--workspace_name', type=str,
-                        help='The name of your workspace that holds your sample data',
-                        required=False)
 
     parser.add_argument('--workspace_name_output', type=str,
                         help='The location to write the workspace name to',

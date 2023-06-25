@@ -1,9 +1,11 @@
 {
-"sample": ["sample_1", "sample_2", "sample_3", "sample_4", "sample_5"],
-"sample_id": ["sample_1", "sample_2", "sample_3", "sample_4", "sample_5"],
-"control_vcf": ["control_1.vcf", "control_2.vcf"],
-"control_vcf_index":["control_1.vcf", "control_2.vcf"],
-"random_vcf":["sample_1.vcf", "sample_2.vcf", "sample_3.vcf", "sample_4.vcf", "sample_5.vcf"],
-"hg38_reblocked_v2_vcf": ["sample_1.vcf", "sample_2.vcf", "sample_3.vcf", "sample_4.vcf", "sample_5.vcf"],
-"hg38_reblocked_v2_vcf_index":["sample_1", "sample_2", "sample_3", "sample_4", "sample_5"]
+  "sample": ["sample_1", "sample_2", "sample_3", "sample_4", "sample_5"],
+  "sample_id": ["sample_1", "sample_2", "sample_3", "sample_4", "sample_5"],
+  "control_vcf": ["control_1.vcf.gz", "control_2.vcf.gz","control_3.vcf.gz", "control_4.vcf.gz","control_5.vcf.gz", "control_6.vcf.gz"],
+  "control_vcf_index":["control_1.vcf.idx", "control_2.vcf.idx","control_3.vcf.idx", "control_4.vcf.idx","control_5.vcf.idx", "control_6.vcf.idx"],
+  "test_vcf": ["test_1.vcf.gz", "test_2.vcf.gz","test_3.vcf.gz", "test_4.vcf.gz","test_5.vcf.gz", "test_6.vcf.gz"],
+  "test_vcf_index":["test_1.vcf.idx" ,"test_2.vcf.idx", "test_3.vcf.idx", "test_4.vcf.idx", "test_5.vcf.idx", "test_6.vcf.idx"],
+  "random_vcf":["sample_1.vcf", "sample_2.vcf", "sample_3.vcf", "sample_4.vcf", "sample_5.vcf"],
+  "hg38_reblocked_v2_vcf": ["sample_1.vcf", "sample_2.vcf", "sample_3.vcf", "sample_4.vcf", "sample_5.vcf"],
+  "hg38_reblocked_v2_vcf_index":["sample_1.idx", "sample_2.idx", "sample_3", "sample_4", "sample_5"]
 }
