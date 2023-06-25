@@ -52,4 +52,3 @@ class TestBuildDockerTag(unittest.TestCase):
             args = self.argument_parser.parse_args(['--branch', '--release'])
             build_tag(args)
         self.assertTrue('Both release and branch options specified.' in context.exception.args)
-
