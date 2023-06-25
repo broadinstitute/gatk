@@ -8,7 +8,7 @@ class TestBuildDockerTag(unittest.TestCase):
         self.argument_parser = build_argument_parser()
 
     def test_release(self):
-        tag_re = re.compile("^20\\d{2}-\\d{2}-\\d{2}-alpine$")
+        tag_re = re.compile(r"^20\d{2}-\d{2}-\d{2}-alpine$")
 
         args = self.argument_parser.parse_args(['-r'])
         self.assertTrue(args.release)
@@ -25,7 +25,7 @@ class TestBuildDockerTag(unittest.TestCase):
         self.assertTrue(tag_re.match(tag))
 
     def test_branch(self):
-        tag_re = re.compile("^20\\d{2}-\\d{2}-\\d{2}-alpine-[0-9a-f]{9}$")
+        tag_re = re.compile(r"^20\d{2}-\d{2}-\d{2}-alpine-[0-9a-f]{9}$")
 
         args = self.argument_parser.parse_args(['-b'])
         self.assertFalse(args.release)

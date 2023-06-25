@@ -30,5 +30,6 @@ def build_argument_parser():
 
 if __name__ == '__main__':
     arg_parser = build_argument_parser()
-    tag = build_tag(arg_parser.parse_args())
+    parsed_args = arg_parser.parse_args()
+    tag = build_tag(parsed_args)
     print(tag, end='')
