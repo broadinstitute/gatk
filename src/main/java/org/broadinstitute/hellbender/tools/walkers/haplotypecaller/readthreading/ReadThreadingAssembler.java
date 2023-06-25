@@ -464,19 +464,19 @@ public final class ReadThreadingAssembler {
 
     // Performs the various transformations necessary on a sequence graph
     private AssemblyResult cleanupSeqGraph(final SeqGraph seqGraph, final DotFilePrinter dotFilePrinter) {
-        dotFilePrinter.printGraphToFileIfDebugEnabled(seqGraph, "non_ref_removed");
+        dotFilePrinter.saveGraphIfDebugEnabled(seqGraph, "non_ref_removed");
 
         // the very first thing we need to do is zip up the graph, or pruneGraph will be too aggressive
         seqGraph.zipLinearChains();
-        dotFilePrinter.printGraphToFileIfDebugEnabled(seqGraph, "zipped");
+        dotFilePrinter.saveGraphIfDebugEnabled(seqGraph, "zipped");
 
         // now go through and prune the graph, removing vertices no longer connected to the reference chain
         seqGraph.removeSingletonOrphanVertices();
         seqGraph.removeVerticesNotConnectedToRefRegardlessOfEdgeDirection();
-        dotFilePrinter.printGraphToFileIfDebugEnabled(seqGraph, "pruned");
+        dotFilePrinter.saveGraphIfDebugEnabled(seqGraph, "pruned");
 
         seqGraph.simplifyGraph();
-        dotFilePrinter.printGraphToFileIfDebugEnabled(seqGraph, "merged");
+        dotFilePrinter.saveGraphIfDebugEnabled(seqGraph, "merged");
 
         // The graph has degenerated in some way, so the reference source and/or sink cannot be id'd.  Can
         // happen in cases where for example the reference somehow manages to acquire a cycle, or
@@ -496,7 +496,7 @@ public final class ReadThreadingAssembler {
             seqGraph.addVertex(dummy);
             seqGraph.addEdge(complete, dummy, new BaseEdge(true, 0));
         }
-        dotFilePrinter.printGraphToFileIfDebugEnabled(seqGraph, "final");
+        dotFilePrinter.saveGraphIfDebugEnabled(seqGraph, "final");
 
         return new AssemblyResult(AssemblyResult.Status.ASSEMBLED_SOME_VARIATION, seqGraph, null);
     }
@@ -644,7 +644,7 @@ public final class ReadThreadingAssembler {
 
         // actually build the read threading graph
         rtgraph.buildGraphIfNecessary();
-        dotFilePrinter.printGraphToFileIfDebugEnabled(rtgraph, "raw_readthreading_graph");
+        dotFilePrinter.saveGraphIfDebugEnabled(rtgraph, "raw_readthreading_graph");
 
         // It's important to prune before recovering dangling ends so that we don't waste time recovering bad ends.
         // It's also important to prune before checking for cycles so that sequencing errors don't create false cycles
@@ -678,7 +678,7 @@ public final class ReadThreadingAssembler {
             chainPruner.pruneLowWeightChains(rtgraph);
         }
 
-        dotFilePrinter.printGraphToFileIfDebugEnabled(rtgraph, "chain_pruned_readthreading_graph");
+        dotFilePrinter.saveGraphIfDebugEnabled(rtgraph, "chain_pruned_readthreading_graph");
 
         // look at all chains in the graph that terminate in a non-ref node (dangling sources and sinks) and see if
         // we can recover them by merging some N bases from the chain back into the reference
@@ -692,13 +692,13 @@ public final class ReadThreadingAssembler {
             rtgraph.removePathsNotConnectedToRef();
         }
 
-        dotFilePrinter.printGraphToFileIfDebugEnabled(rtgraph, "cleaned_readthreading_graph");
+        dotFilePrinter.saveGraphIfDebugEnabled(rtgraph, "cleaned_readthreading_graph");
 
         // Either return an assembly result with a sequence graph or with an unchanged sequence graph depending on the kmer duplication behavior
         if (generateSeqGraph) {
             final SeqGraph initialSeqGraph = rtgraph.toSequenceGraph();
 
-            dotFilePrinter.printGraphToFileIfDebugEnabled(initialSeqGraph, "initial_seqgraph");
+            dotFilePrinter.saveGraphIfDebugEnabled(initialSeqGraph, "initial_seqgraph");
 
             // if the unit tests don't want us to clean up the graph, just return the raw sequence graph
             if (justReturnRawGraph) {
@@ -919,7 +919,7 @@ public final class ReadThreadingAssembler {
         }
 
         // save the next file with the appropriate name, incrementing the subsection index
-        public void printGraphToFileIfDebugEnabled(final BaseGraph<?,?> graph, final String name) {
+        public void saveGraphIfDebugEnabled(final BaseGraph<?,?> graph, final String name) {
             if (debugGraphTransformations) {
                 if (graph != lastGraphPrinted) {
                     lastGraphPrinted = graph;
