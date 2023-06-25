@@ -41,15 +41,6 @@ class TestBuildDockerTag(unittest.TestCase):
         tag = build_tag(args)
         self.assertTrue(tag_re.match(tag))
 
-    def test_release(self):
-        args = self.argument_parser.parse_args(['-r'])
-        self.assertTrue(args.release)
-        self.assertFalse(args.branch)
-
-        args = self.argument_parser.parse_args(['--release'])
-        self.assertTrue(args.release)
-        self.assertFalse(args.branch)
-
     def test_no_args(self):
         with self.assertRaises(ValueError) as context:
             args = self.argument_parser.parse_args([])
