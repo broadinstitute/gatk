@@ -13,12 +13,11 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.AlignmentUtils;
 import org.broadinstitute.hellbender.utils.read.CigarBuilder;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
-import spire.math.All;
 
 import java.util.Arrays;
 import java.util.Comparator;
 
-public class Haplotype extends SimpleAllele {
+public class Haplotype extends SimpleAllele implements Locatable{
     private static final long serialVersionUID = 1L;
 
     /**
@@ -187,23 +186,22 @@ public class Haplotype extends SimpleAllele {
         return getDisplayString();
     }
 
-    /**
-     * Get the span of this haplotype (may be null)
-     * @return a potentially null genome loc
-     */
-    public Locatable getLocation() {
-        return this.genomeLocation;
-    }
-
     public void setGenomeLocation(final Locatable genomeLocation) {
         this.genomeLocation = genomeLocation;
     }
 
-    public long getStartPosition() {
+    @Override
+    public String getContig() {
+        return genomeLocation.getContig();
+    }
+
+    @Override
+    public int getStart() {
         return genomeLocation.getStart();
     }
 
-    public long getStopPosition() {
+    @Override
+    public int getEnd() {
         return genomeLocation.getEnd();
     }
 
@@ -260,7 +258,7 @@ public class Haplotype extends SimpleAllele {
     public Haplotype insertAllele(final Allele refAllele, final Allele altAllele, final int insertLocation) {
         //special case for zeroth base deletion. In this case the common base is "outside" of the contig
         final byte[] myBases = getBases();
-        if ((refAllele.length()>altAllele.length()) && (insertLocation==(int)getStartPosition()-1)){
+        if ((refAllele.length()>altAllele.length()) && (insertLocation==getStart()-1)){
             int delSize = refAllele.length() - altAllele.length();
             if (delSize > myBases.length){
                 return null;
@@ -273,7 +271,7 @@ public class Haplotype extends SimpleAllele {
         }
 
 
-        final Pair<Integer, CigarOperator> haplotypeInsertLocationAndOperator = ReadUtils.getReadIndexForReferenceCoordinate((int) getStartPosition(), cigar, insertLocation);
+        final Pair<Integer, CigarOperator> haplotypeInsertLocationAndOperator = ReadUtils.getReadIndexForReferenceCoordinate(getStart(), cigar, insertLocation);
 
         // can't insert outside the haplotype or into a deletion
         if( haplotypeInsertLocationAndOperator.getLeft() == ReadUtils.READ_INDEX_NOT_FOUND || !haplotypeInsertLocationAndOperator.getRight().consumesReadBases() ) {

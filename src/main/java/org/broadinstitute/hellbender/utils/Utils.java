@@ -824,6 +824,12 @@ public final class Utils {
         }
     }
 
+    public static void printIf(final boolean condition, final Supplier<String> msg){
+        if (condition){
+            System.out.println(msg.get());
+        }
+    }
+
 
     /**
      * Calculates the optimum initial size for a hash table given the maximum number
