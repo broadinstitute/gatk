@@ -66,13 +66,13 @@ task GenerateFOFNsFromDataTables {
             --sample-id-column-name ~{sample_id_column_name} \
             --vcf-files-column-name ~{vcf_files_column_name} \
             --vcf-index-files-column-name ~{vcf_index_files_column_name} \
-            ~{"--sample_set_name " + sample_set_name} \
+            ~{"--sample-set-name " + sample_set_name} \
             --output-file-name ~{output_tsv_name} \
             --error-file-name ~{error_file_name}
 
     >>>
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-23-alpine"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-26-alpine-f50968fc0"
         memory: "3 GB"
         disks: "local-disk 200 HDD"
         cpu: 1
