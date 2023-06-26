@@ -8,17 +8,20 @@ def get_entities_in_set(data_table_name, sample_set_name):
     set_of_entities = set()
     sample_set_list = list(table.list_rows(f"{data_table_name}_set"))
     for sample_set in sample_set_list:
-        if sample_set.name == sample_set_name:  ## else it's some other sample set and we dont care about it
+        # Otherwise it's some other sample set and we don't care about it.
+        if sample_set.name == sample_set_name:
             for sample in sample_set.attributes[f"{data_table_name}s"]:
                 set_of_entities.add(sample['entityName'])
 
     return set_of_entities
 
 
-## Note that there are two different possible <entity>_id options:
-## There is the id column that is used by the <entity>_set to differentiate what is and isn't in the set / inclusion list
-## The user may want to use a _different_ column other than the <entity>_id column for sample level info. E.g. the "research_id" col
-## The user passes this in as the sample_id_column_name, which is set to be the <entity>_id if it is missing
+# Note that there are two different possible <entity>_id options:
+# - There is the id column that is used by the <entity>_set to differentiate what is and isn't in the set / inclusion
+#   list.
+# - The user may want to use a _different_ column other than the <entity>_id column for sample level info. E.g. the
+#   "research_id" column. The user passes this in as the sample_id_column_name, which is set to be the <entity>_id if it
+#   is missing.
 
 
 def generate_FOFNs_from_data_table_with_sample_set(
@@ -35,18 +38,20 @@ def generate_FOFNs_from_data_table_with_sample_set(
         # Then write what is needed for the FOFN.
         for row in table.list_rows(data_table_name):
             try:
-                # The table data model is weird, as each row has a "name" property followed by a hash of attributes.  But it
-                # is all displayed as though they are equivalent columns, and the name field is mapped to an imaginary
-                # column with the name table_name_id.  Map "name" to that imaginary attribute here so none of the lookups
-                # below fail if they reference that call.  This is safe, as this Row object is a read only copy of the actual
-                # table content, and it is disposed
-                row.attributes[
-                    f"{data_table_name}_id"] = row.name  ## NOTE: this is the <entity>_id value and will be used by the sample_set
+                # The table data model is weird, as each row has a "name" property followed by a hash of attributes.
+                # But it is all displayed as though they are equivalent columns, and the name field is mapped to an
+                # imaginary column with the name table_name_id.  Map "name" to that imaginary attribute here so none of
+                # the lookups below fail if they reference that call.  This is safe, as this Row object is a read only
+                # copy of the actual table content, and it is disposed.
 
-                current_sample_id = row.attributes[
-                    f"{data_table_name}_id"]  ## NOTE: this is the sample id based on the <entity>_id
-                current_sample_name = row.attributes[
-                    sample_id_column_name]  ## NOTE: this is the sample name based on the user defined sample id col name
+                # NOTE: this is the <entity>_id value and will be used by the sample_set
+                row.attributes[f"{data_table_name}_id"] = row.name
+
+                # NOTE: this is the sample id based on the <entity>_id
+                current_sample_id = row.attributes[f"{data_table_name}_id"]
+
+                # NOTE: this is the sample name based on the user defined sample id col name
+                current_sample_name = row.attributes[sample_id_column_name]
 
                 if set_of_entities:
                     if current_sample_id in set_of_entities:
@@ -75,7 +80,8 @@ def generate_FOFNs_from_data_table_with_sample_set(
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False,
-                                     description='Turn the data tables into 3 FOFNs, one for sample names, vcf paths, and vcf index paths')
+                                     description='Turn the data tables into 3 FOFNs, one for sample names, vcf paths, '
+                                                 'and vcf index paths')
 
     parser.add_argument('--data_table_name', type=str,
                         help='The name of the table in your workspace that holds your sample data', default='sample')
@@ -110,11 +116,13 @@ if __name__ == '__main__':
     if "sample_set_name" in args:
         sample_set_name = args.sample_set_name
 
-    ## Note: check to see if there is a user defined sample name column
+    # Note: check to see if there is a user defined sample name column
     if "sample_id_column_name" in args:
         sample_id_column_name = args.sample_id_column_name
     else:
-        sample_id_column_name = args.data_table_name + "_id"  ## <-- NOTE: This makes the assumption that the default setting for the GVS sample name is <entity>_id if not specified
+        # NOTE: This makes the assumption that the default setting for the GVS sample name is <entity>_id if not
+        # specified
+        sample_id_column_name = args.data_table_name + "_id"
 
     if sample_set_name:
         set_of_entities = get_entities_in_set(
