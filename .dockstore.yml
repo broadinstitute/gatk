@@ -125,16 +125,14 @@ workflows:
      filters:
        branches:
          - master
-         - ah_var-store
-         - rc-vs-916-sample-sets-ingest
+         - ah_var_store
    - name: GvsBulkIngestGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsBulkIngestGenomes.wdl
      filters:
        branches:
          - master
-         - ah_var-store
-         - rc-vs-916-sample-sets-ingest
+         - ah_var_store
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
