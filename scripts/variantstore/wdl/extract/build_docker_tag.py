@@ -16,8 +16,12 @@ def build_tag(args):
     if args.release:
         return f"{date_string}-alpine"
     else:
-        proc = run(["git", "rev-parse", "--short", "HEAD"], stdout=subprocess.PIPE)
-        git_hash = proc.stdout.rstrip().decode('utf-8')
+        if not args.dummy_testing_hash:
+            proc = run(["git", "rev-parse", "--short", "HEAD"], stdout=subprocess.PIPE)
+            git_hash = proc.stdout.rstrip().decode('utf-8')
+        else:
+            # Do not actually try to run git during testing, the .git directory is not mounted into the container.
+            git_hash = args.dummy_testing_hash
         return f"{date_string}-alpine-{git_hash}"
 
 
@@ -25,6 +29,8 @@ def build_argument_parser():
     parser = argparse.ArgumentParser(allow_abbrev=False, description='Build a tag for Variants Docker image')
     parser.add_argument('-r', '--release', action='store_true', help='Create a release tag')
     parser.add_argument('-b', '--branch', action='store_true', help='Create a branch tag')
+    parser.add_argument('-d', '--dummy-testing-hash', default=None,
+                        help='Dummy short git hash to return during testing')
     return parser
 
 
