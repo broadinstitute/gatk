@@ -4,9 +4,6 @@ import "GvsQuickstartVcfIntegration.wdl" as QuickstartVcfIntegration
 import "GvsQuickstartHailIntegration.wdl" as QuickstartHailIntegration
 import "GvsUtils.wdl" as Utils
 
-<<<<<<< HEAD
-=======
-
 task FilterIntervalListChromosomes {
     input {
         File full_interval_list
@@ -28,7 +25,6 @@ task FilterIntervalListChromosomes {
     }
 }
 
->>>>>>> ah_var_store
 workflow GvsQuickstartIntegration {
     input {
         String branch_name

@@ -111,5 +111,6 @@ workflow GvsJointVariantCalling {
         Float total_vcfs_size_mb = GvsExtractCallset.total_vcfs_size_mb
         File? sample_name_list = GvsExtractCallset.sample_name_list
         File manifest = GvsExtractCallset.manifest
+        String filter_set_name = GvsCreateFilterSet.loaded_filter_set_name
     }
 }

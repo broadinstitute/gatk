@@ -90,7 +90,7 @@ workflow GvsQuickstartVcfIntegration {
         Float total_vcfs_size_mb = GvsJointVariantCalling.total_vcfs_size_mb
         File manifest = GvsJointVariantCalling.manifest
         String dataset_name = CreateDataset.dataset_name
-        String filter_set_name = "quickit"
+        String filter_set_name = GvsJointVariantCalling.filter_set_name
         Boolean done = true
     }
 }
