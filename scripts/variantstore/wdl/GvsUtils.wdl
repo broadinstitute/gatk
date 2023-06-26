@@ -15,8 +15,8 @@ task MergeVCFs {
 
   parameter_meta {
     input_vcfs: {
-                  localization_optional: true
-                }
+      localization_optional: true
+    }
   }
 
   command {
@@ -24,10 +24,10 @@ task MergeVCFs {
     bash ~{monitoring_script} > monitoring.log &
 
     gatk --java-options -Xmx3g GatherVcfsCloud \
-    --ignore-safety-checks --gather-type ~{gather_type} \
-    --create-output-variant-index false \
-    -I ~{sep=' -I ' input_vcfs} \
-    --output ~{output_vcf_name}
+      --ignore-safety-checks --gather-type ~{gather_type} \
+      --create-output-variant-index false \
+      -I ~{sep=' -I ' input_vcfs} \
+      --output ~{output_vcf_name}
 
     tabix ~{output_vcf_name}
 
@@ -35,8 +35,8 @@ task MergeVCFs {
     OUTPUT_GCS_DIR=$(echo ~{output_directory} | sed 's/\/$//')
 
     if [ -n "$OUTPUT_GCS_DIR" ]; then
-    gsutil cp ~{output_vcf_name} $OUTPUT_GCS_DIR/
-    gsutil cp ~{output_vcf_name}.tbi $OUTPUT_GCS_DIR/
+      gsutil cp ~{output_vcf_name} $OUTPUT_GCS_DIR/
+      gsutil cp ~{output_vcf_name}.tbi $OUTPUT_GCS_DIR/
     fi
   }
 
@@ -82,17 +82,17 @@ task SplitIntervals {
 
   parameter_meta {
     intervals: {
-                 localization_optional: true
-               }
+      localization_optional: true
+    }
     ref_fasta: {
-                 localization_optional: true
-               }
+      localization_optional: true
+    }
     ref_fai: {
-               localization_optional: true
-             }
+      localization_optional: true
+    }
     ref_dict: {
-                localization_optional: true
-              }
+      localization_optional: true
+    }
   }
 
   command <<<
@@ -107,22 +107,23 @@ task SplitIntervals {
 
     mkdir interval-files
     gatk --java-options "-Xmx~{java_memory}g" ~{gatk_tool} \
-    --dont-mix-contigs \
-    -R ~{ref_fasta} \
-    ~{"-L " + intervals} \
-    ~{"--weight-bed-file " + interval_weights_bed} \
-    -scatter ~{scatter_count} \
-    -O interval-files \
-    ~{"--extension " + intervals_file_extension} \
-    --interval-file-num-digits 10 \
-    ~{split_intervals_extra_args}
+      --dont-mix-contigs \
+      -R ~{ref_fasta} \
+      ~{"-L " + intervals} \
+      ~{"--weight-bed-file " + interval_weights_bed} \
+      -scatter ~{scatter_count} \
+      -O interval-files \
+      ~{"--extension " + intervals_file_extension} \
+      --interval-file-num-digits 10 \
+      ~{split_intervals_extra_args}
+
     cp interval-files/*.interval_list .
 
     # Drop trailing slash if one exists
     OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
 
     if [ -n "$OUTPUT_GCS_DIR" ]; then
-    gsutil -m cp *.interval_list $OUTPUT_GCS_DIR/
+      gsutil -m cp *.interval_list $OUTPUT_GCS_DIR/
     fi
   >>>
 
@@ -170,9 +171,9 @@ task GetBQTableLastModifiedDatetime {
 
     LASTMODIFIED=$(bq --apilog=false --project_id=~{project_id} --format=json show ${DATASET_TABLE_COLON} | python3 -c "import sys, json; print(json.load(sys.stdin)['lastModifiedTime']);")
     if [[ $LASTMODIFIED =~ ^[0-9]+$ ]]; then
-    echo $LASTMODIFIED
+      echo $LASTMODIFIED
     else
-    exit 1
+      exit 1
     fi
   >>>
 
@@ -481,7 +482,6 @@ task TerminateWorkflow {
 }
 
 task ScaleXYBedValues {
-<<<<<<< HEAD
   input {
     Boolean go = true
     File interval_weights_bed
@@ -497,10 +497,10 @@ task ScaleXYBedValues {
     bash ~{monitoring_script} > monitoring.log &
 
     python3 /app/scale_xy_bed_values.py \
-    --input ~{interval_weights_bed} \
-    --output "interval_weights_xy_scaled.bed" \
-    --xscale ~{x_bed_weight_scaling} \
-    --yscale ~{y_bed_weight_scaling} \
+      --input ~{interval_weights_bed} \
+      --output "interval_weights_xy_scaled.bed" \
+      --xscale ~{x_bed_weight_scaling} \
+      --yscale ~{y_bed_weight_scaling} \
   >>>
 
   output {
@@ -517,43 +517,6 @@ task ScaleXYBedValues {
     cpu: "2"
     disks: "local-disk 500 HDD"
   }
-=======
-    input {
-        Boolean go = true
-        File interval_weights_bed
-        Float x_bed_weight_scaling
-        Float y_bed_weight_scaling
-    }
-    meta {
-        # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
-    }
-    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
-
-    command <<<
-        bash ~{monitoring_script} > monitoring.log &
-
-        python3 /app/scale_xy_bed_values.py \
-            --input ~{interval_weights_bed} \
-            --output "interval_weights_xy_scaled.bed" \
-            --xscale ~{x_bed_weight_scaling} \
-            --yscale ~{y_bed_weight_scaling} \
-    >>>
-
-    output {
-        File xy_scaled_bed = "interval_weights_xy_scaled.bed"
-        Boolean done = true
-        File monitoring_log = "monitoring.log"
-    }
-
-    runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-23-alpine"
-        maxRetries: 3
-        memory: "7 GB"
-        preemptible: 3
-        cpu: "2"
-        disks: "local-disk 500 HDD"
-    }
->>>>>>> ah_var_store
 }
 
 task GetNumSamplesLoaded {
@@ -657,12 +620,12 @@ task ValidateFilterSetName {
     FILTERSETS=${OUTPUT#"available_filter_set_names"}
 
     if [[ $FILTERSETS =~ "~{filter_set_name}" ]]; then
-    echo "Filter set name '~{filter_set_name}' found."
+      echo "Filter set name '~{filter_set_name}' found."
     else
-    echo "ERROR: '~{filter_set_name}' is not an existing filter_set_name. Available in ~{fq_filter_set_info_table} are"
-    echo $FILTERSETS
-    exit 1
-    fi
+      echo "ERROR: '~{filter_set_name}' is not an existing filter_set_name. Available in ~{fq_filter_set_info_table} are"
+      echo $FILTERSETS
+      exit 1
+      fi
   >>>
   output {
     Boolean done = true
@@ -709,19 +672,19 @@ task IsVQSRLite {
     CLASSIC_COUNT=`cat classic_count_file.txt`
 
     if [[ $LITE_COUNT != "0" ]]; then
-    echo "Found $LITE_COUNT rows with calibration_sensitivity defined"
-    if [[ $CLASSIC_COUNT != "0" ]]; then
-    echo "Found $CLASSIC_COUNT rows with vqslod defined"
-    echo "ERROR - can't have both defined for a filter_set"
-    exit 1
-    fi
-    echo "true" > ~{is_vqsr_lite_file}
-    elif [[ $CLASSIC_COUNT != "0" ]]; then
-    echo "Found $CLASSIC_COUNT rows with vqslod defined"
-    echo "false" > ~{is_vqsr_lite_file}
-    else
-    echo "Found NO rows with either calibration_sensitivity or vqslod defined"
-    exit 1
+      echo "Found $LITE_COUNT rows with calibration_sensitivity defined"
+      if [[ $CLASSIC_COUNT != "0" ]]; then
+        echo "Found $CLASSIC_COUNT rows with vqslod defined"
+        echo "ERROR - can't have both defined for a filter_set"
+        exit 1
+      fi
+      echo "true" > ~{is_vqsr_lite_file}
+      elif [[ $CLASSIC_COUNT != "0" ]]; then
+        echo "Found $CLASSIC_COUNT rows with vqslod defined"
+        echo "false" > ~{is_vqsr_lite_file}
+      else
+        echo "Found NO rows with either calibration_sensitivity or vqslod defined"
+        exit 1
     fi
 
   >>>
@@ -765,8 +728,8 @@ task IndexVcf {
     ln -s ~{input_vcf} ~{local_file}
 
     gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
-    IndexFeatureFile \
-    -I ~{local_file}
+      IndexFeatureFile \
+      -I ~{local_file}
 
   >>>
 
@@ -817,12 +780,12 @@ task SelectVariants {
     ln -s ~{input_vcf_index} ~{local_index}
 
     gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
-    SelectVariants \
-    -V ~{local_vcf} \
-    ~{"-L " + interval_list} \
-    ~{"--select-type-to-include " + type_to_include} \
-    ~{true="--exclude-filtered true" false="" exclude_filtered} \
-    -O ~{output_basename}.vcf
+      SelectVariants \
+      -V ~{local_vcf} \
+      ~{"-L " + interval_list} \
+      ~{"--select-type-to-include " + type_to_include} \
+      ~{true="--exclude-filtered true" false="" exclude_filtered} \
+      -O ~{output_basename}.vcf
   >>>
 
   runtime {
@@ -855,7 +818,7 @@ task MergeTsvs {
     echo -n > ~{output_file_name}
     for f in ~{sep=' ' input_files}
     do
-    cat $f >> ~{output_file_name}
+      cat $f >> ~{output_file_name}
     done
   >>>
 
@@ -880,11 +843,11 @@ task SummarizeTaskMonitorLogs {
 
     INPUTS="~{sep=" " inputs}"
     if [[ -z "$INPUTS" ]]; then
-    echo "No monitoring log files found" > monitoring_summary.txt
+      echo "No monitoring log files found" > monitoring_summary.txt
     else
-    python3 /app/summarize_task_monitor_logs.py \
-    --input $INPUTS \
-    --output monitoring_summary.txt
+      python3 /app/summarize_task_monitor_logs.py \
+        --input $INPUTS \
+        --output monitoring_summary.txt
     fi
 
   >>>
@@ -902,4 +865,3 @@ task SummarizeTaskMonitorLogs {
     File monitoring_summary = "monitoring_summary.txt"
   }
 }
-
