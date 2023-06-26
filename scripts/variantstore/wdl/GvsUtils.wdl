@@ -481,6 +481,7 @@ task TerminateWorkflow {
 }
 
 task ScaleXYBedValues {
+<<<<<<< HEAD
   input {
     Boolean go = true
     File interval_weights_bed
@@ -516,6 +517,43 @@ task ScaleXYBedValues {
     cpu: "2"
     disks: "local-disk 500 HDD"
   }
+=======
+    input {
+        Boolean go = true
+        File interval_weights_bed
+        Float x_bed_weight_scaling
+        Float y_bed_weight_scaling
+    }
+    meta {
+        # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
+    }
+    File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
+    command <<<
+        bash ~{monitoring_script} > monitoring.log &
+
+        python3 /app/scale_xy_bed_values.py \
+            --input ~{interval_weights_bed} \
+            --output "interval_weights_xy_scaled.bed" \
+            --xscale ~{x_bed_weight_scaling} \
+            --yscale ~{y_bed_weight_scaling} \
+    >>>
+
+    output {
+        File xy_scaled_bed = "interval_weights_xy_scaled.bed"
+        Boolean done = true
+        File monitoring_log = "monitoring.log"
+    }
+
+    runtime {
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-23-alpine"
+        maxRetries: 3
+        memory: "7 GB"
+        preemptible: 3
+        cpu: "2"
+        disks: "local-disk 500 HDD"
+    }
+>>>>>>> ah_var_store
 }
 
 task GetNumSamplesLoaded {
@@ -854,7 +892,7 @@ task SummarizeTaskMonitorLogs {
   # ------------------------------------------------
   # Runtime settings:
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-13-alpine"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-23-alpine"
     memory: "1 GB"
     preemptible: 3
     cpu: "1"
