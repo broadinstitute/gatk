@@ -29,9 +29,7 @@ workflow GvsPrepareBulkImport {
     }
 
     output {
-        File sampleFOFN = GenerateFOFNsFromDataTables.sampleFOFN
-        File vcfFOFN = GenerateFOFNsFromDataTables.vcfFOFN
-        File vcfIndexFOFN = GenerateFOFNsFromDataTables.vcfIndexFOFN
+        File output_fofn = GenerateFOFNsFromDataTables.output_fofn
         File errorRows = GenerateFOFNsFromDataTables.errors
     }
 }
@@ -51,44 +49,26 @@ task GenerateFOFNsFromDataTables {
         String? sample_set_name
     }
 
-    String sample_names_file_name = "sample_names.txt"
-    String vcf_files_name = "vcf_files.txt"
-    String vcf_index_files_name = "vcf_index_files.txt"
+    String output_tsv_name = "output.tsv"
     String error_file_name = "errors.txt"
 
     command <<<
         set -o errexit -o nounset -o xtrace -o pipefail
+        PS4='\D{+%F %T} \w $ '
 
         export GOOGLE_PROJECT='~{google_project_id}'
         export WORKSPACE_NAMESPACE='~{workspace_namespace}'
         export WORKSPACE_NAME='~{workspace_name}'
         export WORKSPACE_BUCKET='~{workspace_bucket}'
 
-        python3 /app/generate_FOFNs_for_import.py \
-            --data_table_name ~{samples_table_name} \
-            --sample_id_column_name ~{sample_id_column_name} \
-            --vcf_files_column_name ~{vcf_files_column_name} \
-            --vcf_index_files_column_name ~{vcf_index_files_column_name} \
+        python3 /app/generate_fofn_for_import.py \
+            --data-table-name ~{samples_table_name} \
+            --sample-id-column-name ~{sample_id_column_name} \
+            --vcf-files-column-name ~{vcf_files_column_name} \
+            --vcf-index-files-column-name ~{vcf_index_files_column_name} \
             ~{"--sample_set_name " + sample_set_name} \
-            --sample_names_file_name ~{sample_names_file_name} \
-            --vcf_files_name ~{vcf_files_name} \
-            --vcf_index_files_name ~{vcf_index_files_name} \
-            --error_file_name ~{error_file_name}
-
-        ## Validate by testing file lengths and failing if they are not all the same
-        sample_count=$(wc -l < ~{sample_names_file_name})
-        vcf_count=$(wc -l < ~{vcf_files_name})
-        index_count=$(wc -l < ~{vcf_index_files_name})
-
-        if [[ $sample_count -eq $vcf_count && $sample_count -eq $index_count ]]; then
-            echo $sample_count
-        else
-            echo "Error: mismatched sample / VCF / index counts"
-            echo "sample count: $sample_count"
-            echo "vcf count: $vcf_count"
-            echo "index count: $index_count"
-            exit 1
-        fi
+            --output-file-name ~{output_tsv_name} \
+            --error-file-name ~{error_file_name}
 
     >>>
     runtime {
@@ -99,9 +79,7 @@ task GenerateFOFNsFromDataTables {
     }
 
     output {
-        File sampleFOFN = sample_names_file_name
-        File vcfFOFN = vcf_files_name
-        File vcfIndexFOFN = vcf_index_files_name
+        File output_fofn = output_tsv_name
         File errors = error_file_name
     }
 }

@@ -24,13 +24,11 @@ def get_entities_in_set(data_table_name, sample_set_name):
 #   is missing.
 
 
-def generate_FOFNs_from_data_table_with_sample_set(
+def generate_fofn_from_data_table_with_sample_set(
         data_table_name, sample_id_column_name,
-        vcf_files_name, vcf_index_files_name,
-        vcf_files_column_name, vcf_index_files_column_name, sample_names_file_name, error_file_name,
+        output_file_name, vcf_files_column_name, vcf_index_files_column_name, error_file_name,
         set_of_entities):
-    with open(vcf_files_name, "w") as vcf_files, open(vcf_index_files_name, "w") as vcf_index_files, open(
-            sample_names_file_name, "w") as sample_names_file, open(error_file_name, "w") as error_file:
+    with open(output_file_name, "w") as output_file, open(error_file_name, "w") as error_file:
         count = 0
         processed_entities = 0
         # Cycle through each row / sample in the data table.
@@ -57,15 +55,11 @@ def generate_FOFNs_from_data_table_with_sample_set(
                     if current_sample_id in set_of_entities:
                         current_vcf_file = row.attributes[vcf_files_column_name]
                         current_vcf_index_file = row.attributes[vcf_index_files_column_name]
-                        sample_names_file.write(f'{current_sample_name}\n')
-                        vcf_files.write(f'{current_vcf_file}\n')
-                        vcf_index_files.write(f'{current_vcf_index_file}\n')
+                        output_file.write(f'{current_sample_name}\t{current_vcf_file}\t{current_vcf_index_file}\n')
                 else:
                     current_vcf_file = row.attributes[vcf_files_column_name]
                     current_vcf_index_file = row.attributes[vcf_index_files_column_name]
-                    sample_names_file.write(f'{current_sample_name}\n')
-                    vcf_files.write(f'{current_vcf_file}\n')
-                    vcf_index_files.write(f'{current_vcf_index_file}\n')
+                    output_file.write(f'{current_sample_name}\t{current_vcf_file}\t{current_vcf_index_file}\n')
 
             except KeyError:
                 error_file.write(f'Row "{row.name}" skipped: missing columns\n')
@@ -94,20 +88,18 @@ if __name__ == '__main__':
                         help='The name of the column that holds the paths to the vcf index files',
                         required=True)
     parser.add_argument('--attempts_between_pauses', type=int,
-                        help='The number of rows in the db that are processed before we pause', default=500)
+                        help='The number of rows in the db that are processed before we pause', required=False,
+                        default=500)
     parser.add_argument('--sample_set_name', type=str,
-                        help='The name of the entity / sample set to use', default=None)
-    parser.add_argument('--sample_names_file_name', type=str,
-                        help='The text file we save the sample column name to', default="sample_names.txt")
-    parser.add_argument('--vcf_files_name', type=str,
-                        help='The text file we save the vcf column name to', default="vcf_files.txt")
-    parser.add_argument('--vcf_index_files_name', type=str,
-                        help='The text file we save the vcf index column name to', default="vcf_index_files.txt")
-    parser.add_argument('--error_file_name', type=str,
-                        help='The text file we save error msgs to', default="errors.txt")
+                        help='The name of the entity / sample set to use', required=False)
+    parser.add_argument('--output_file_name', type=str,
+                        help='The output TSV file to receive the sample name / VCF / VCF index data', required=True)
+    parser.add_argument('--error-file-name', type=str,
+                        help='The output file for error messages', required=True)
 
     args = parser.parse_args()
 
+    sample_set_name = None
     # allow this to be overridden, but default it to 500
     if "attempts_between_pauses" in args:
         attempts_between_pauses = args.attempts_between_pauses
@@ -128,17 +120,15 @@ if __name__ == '__main__':
         set_of_entities = get_entities_in_set(
             args.data_table_name,
             sample_set_name)
-
     else:
-        set_of_entities = None  # set_of_entities is now nothing
+        # set_of_entities is now nothing
+        set_of_entities = None
 
-    generate_FOFNs_from_data_table_with_sample_set(
+    generate_fofn_from_data_table_with_sample_set(
         args.data_table_name,
         sample_id_column_name,
-        args.vcf_files_name,
-        args.vcf_index_files_name,
+        args.output_file_name,
         args.vcf_files_column_name,
         args.vcf_index_files_column_name,
-        args.sample_names_file_name,
         args.error_file_name,
         set_of_entities)
