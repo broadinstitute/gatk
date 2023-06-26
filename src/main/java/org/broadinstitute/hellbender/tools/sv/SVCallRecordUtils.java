@@ -95,9 +95,9 @@ public final class SVCallRecordUtils {
         }
 
         builder.attribute(GATKSVVCFConstants.SVLEN, record.getLength());
-        if ((svtype.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.BND)
-                || svtype.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.INV)
-                || svtype.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.INS))
+        if ((svtype == GATKSVVCFConstants.StructuralVariantAnnotationType.BND
+                || svtype == GATKSVVCFConstants.StructuralVariantAnnotationType.INV
+                || svtype == GATKSVVCFConstants.StructuralVariantAnnotationType.INS)
                 && record.getStrandA() != null && record.getStrandB() != null) {
             builder.attribute(GATKSVVCFConstants.STRANDS_ATTRIBUTE, getStrandString(record));
         }
@@ -295,7 +295,7 @@ public final class SVCallRecordUtils {
      * @return stream of BND records pair, or the original record if not an INV
      */
     public static Stream<SVCallRecord> convertInversionsToBreakends(final SVCallRecord record, final SAMSequenceDictionary dictionary) {
-        if (!record.getType().equals(GATKSVVCFConstants.StructuralVariantAnnotationType.INV)) {
+        if (record.getType() != GATKSVVCFConstants.StructuralVariantAnnotationType.INV) {
             return Stream.of(record);
         }
         Utils.validateArg(record.isIntrachromosomal(), "Inversion " + record.getId() + " is not intrachromosomal");
@@ -334,9 +334,9 @@ public final class SVCallRecordUtils {
         final List<String> algorithms = getAlgorithms(variant);
 
         final String strands;
-        if (type.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL)
-                || type.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.CNV)
-                || type.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.DUP)) {
+        if (type == GATKSVVCFConstants.StructuralVariantAnnotationType.DEL
+                || type == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV
+                || type == GATKSVVCFConstants.StructuralVariantAnnotationType.DUP) {
             // SVCallRecord class can resolve these
             strands = null;
         } else {
@@ -346,12 +346,12 @@ public final class SVCallRecordUtils {
         final Boolean strand2 = strands == null ? null : strands.endsWith(SVCallRecord.STRAND_PLUS);
 
         final Integer length;
-        if (type.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.BND)
-                || type.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL)
-                || type.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.DUP)
-                || type.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.CNV)
-                || type.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.INV)
-                || type.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.CTX)) {
+        if (type == GATKSVVCFConstants.StructuralVariantAnnotationType.BND
+                || type == GATKSVVCFConstants.StructuralVariantAnnotationType.DEL
+                || type == GATKSVVCFConstants.StructuralVariantAnnotationType.DUP
+                || type == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV
+                || type == GATKSVVCFConstants.StructuralVariantAnnotationType.INV
+                || type == GATKSVVCFConstants.StructuralVariantAnnotationType.CTX) {
             // SVCallRecord class can resolve these
             length = null;
         } else {
@@ -364,8 +364,8 @@ public final class SVCallRecordUtils {
         final int positionB;
         final boolean hasContig2 = variant.hasAttribute(GATKSVVCFConstants.CONTIG2_ATTRIBUTE);
         final boolean hasEnd2 = variant.hasAttribute(GATKSVVCFConstants.END2_ATTRIBUTE);
-        if (type.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.BND)
-                || type.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.CTX)) {
+        if (type == GATKSVVCFConstants.StructuralVariantAnnotationType.BND
+                || type == GATKSVVCFConstants.StructuralVariantAnnotationType.CTX) {
             if (!(hasContig2 && hasEnd2)) {
                 throw new UserException.BadInput("Attributes " + GATKSVVCFConstants.END2_ATTRIBUTE +
                         " and " + GATKSVVCFConstants.CONTIG2_ATTRIBUTE + " are required for BND records (variant " +

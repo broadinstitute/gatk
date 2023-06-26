@@ -97,8 +97,8 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
             return false;
         }
         // Only require matching strands if BND or INV type
-        if ((a.getType().equals(GATKSVVCFConstants.StructuralVariantAnnotationType.BND)
-                || a.getType().equals(GATKSVVCFConstants.StructuralVariantAnnotationType.INV))
+        if ((a.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.BND
+                || a.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.INV)
                 && !strandsMatch(a, b)) {
             return false;
         }
