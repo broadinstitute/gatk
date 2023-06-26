@@ -525,26 +525,31 @@ public class SVTestUtils {
                                                    final List<Genotype> genotypes, final Integer svlen,
                                                    final String strands, final GATKSVVCFConstants.StructuralVariantAnnotationType svtype,
                                                    final List<String> algorithms, final String chr2, final Integer end2,
-                                                   final Map<String, Object> extendedAttributes) {
+                                                   final Map<String, Object> extendedAttributes, final Double log10PError) {
         final Map<String, Object> attributes = new HashMap<>();
         attributes.put(GATKSVVCFConstants.SVLEN, svlen);
         attributes.put(GATKSVVCFConstants.SVTYPE, svtype);
         attributes.put(GATKSVVCFConstants.STRANDS_ATTRIBUTE, strands);
         attributes.put(GATKSVVCFConstants.ALGORITHMS_ATTRIBUTE, algorithms);
-        if (chr2 != null && end2 != null) {
+        if (chr2 != null) {
             attributes.put(GATKSVVCFConstants.CONTIG2_ATTRIBUTE, chr2);
+        }
+        if (end2 != null) {
             attributes.put(GATKSVVCFConstants.END2_ATTRIBUTE, end2);
         }
         attributes.putAll(extendedAttributes);
-        return new VariantContextBuilder()
+        VariantContextBuilder builder = new VariantContextBuilder()
                 .id(id)
                 .start(posA)
                 .chr(chrA)
                 .stop(end)
                 .alleles(alleles)
                 .genotypes(genotypes)
-                .attributes(attributes)
-                .make();
+                .attributes(attributes);
+        if (log10PError != null) {
+            builder = builder.log10PError(log10PError);
+        }
+        return builder.make();
     }
 
     public static Boolean getValidTestStrandA(final GATKSVVCFConstants.StructuralVariantAnnotationType type) {

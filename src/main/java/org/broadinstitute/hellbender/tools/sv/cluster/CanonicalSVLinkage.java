@@ -96,7 +96,10 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
         if (!typesMatch(a, b)) {
             return false;
         }
-        if (!strandsMatch(a, b)) {
+        // Only require matching strands if BND or INV type
+        if ((a.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.BND
+                || a.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.INV)
+                && !strandsMatch(a, b)) {
             return false;
         }
         // Checks appropriate parameter set
