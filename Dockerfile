@@ -80,6 +80,13 @@ RUN echo "source activate gatk" > /root/run_unit_tests.sh && \
     echo "ln -s /gatkCloneMountPoint/build/ /gatkCloneMountPoint/scripts/docker/build" >> /root/run_unit_tests.sh && \
     echo "cd /gatk/ && /gatkCloneMountPoint/gradlew -Dfile.encoding=UTF-8 -b /gatkCloneMountPoint/dockertest.gradle testOnPackagedReleaseJar jacocoTestReportOnPackagedReleaseJar -a -p /gatkCloneMountPoint" >> /root/run_unit_tests.sh
 
+# TODO: Determine whether we actually need this.  For now it seems to be required because the version of libstdc++ on
+# the gatk base docker is out of date (maybe?)
+RUN add-apt-repository -y ppa:ubuntu-toolchain-r/test && \
+    apt-get update && \
+    apt-get -y upgrade libstdc++6 && \
+    apt-get -y dist-upgrade
+
 WORKDIR /root
 RUN cp -r /root/run_unit_tests.sh /gatk
 RUN cp -r gatk.jar /gatk
