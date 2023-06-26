@@ -77,22 +77,22 @@ if __name__ == '__main__':
                                      description='Turn the data tables into a FOFN, one column each for sample name, '
                                                  'vcf paths, and vcf index paths')
 
-    parser.add_argument('--data_table_name', type=str,
+    parser.add_argument('--data-table-name', type=str,
                         help='The name of the table in your workspace that holds your sample data', default='sample')
-    parser.add_argument('--sample_id_column_name', type=str,
+    parser.add_argument('--sample-id-column-name', type=str,
                         help='The name of the column that holds the external sample names')
-    parser.add_argument('--vcf_files_column_name', type=str,
+    parser.add_argument('--vcf-files-column-name', type=str,
                         help='The name of the column that holds the paths to the vcf files',
                         required=True)
-    parser.add_argument('--vcf_index_files_column_name', type=str,
+    parser.add_argument('--vcf-index-files-column-name', type=str,
                         help='The name of the column that holds the paths to the vcf index files',
                         required=True)
-    parser.add_argument('--attempts_between_pauses', type=int,
+    parser.add_argument('--attempts-between-pauses', type=int,
                         help='The number of rows in the db that are processed before we pause', required=False,
                         default=500)
-    parser.add_argument('--sample_set_name', type=str,
+    parser.add_argument('--sample-set-name', type=str,
                         help='The name of the entity / sample set to use', required=False)
-    parser.add_argument('--output_file_name', type=str,
+    parser.add_argument('--output-file-name', type=str,
                         help='The output TSV file to receive the sample name / VCF path / VCF index path data',
                         required=True)
     parser.add_argument('--error-file-name', type=str,
