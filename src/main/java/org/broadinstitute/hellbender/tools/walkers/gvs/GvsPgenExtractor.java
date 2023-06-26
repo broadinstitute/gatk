@@ -24,7 +24,7 @@ public final class GvsPgenExtractor extends TwoPassVariantWalker {
     private GATKPath outputFile = null;
 
     @Argument(fullName = "maxAltAlleles", shortName = "maa", doc = "Maximum alt alleles to write", optional = true)
-    private int maxAltAlleles = 254;
+    private int maxAltAlleles = PgenWriter.PLINK2_MAX_ALTERNATE_ALLELES;
 
     @Argument(fullName = "writeMode", shortName = "wm", doc = "Write mode for the PGEN writer", optional = true)
     private PgenWriter.PgenWriteMode writeMode = PgenWriter.PgenWriteMode.PGEN_FILE_MODE_WRITE_AND_COPY;

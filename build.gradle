@@ -356,7 +356,7 @@ dependencies {
     implementation('com.fasterxml.jackson.module:jackson-module-scala_2.12:2.9.8')
 
     // TODO: This will need to be removed once the pgen jni work is complete (I think?)
-    implementation('pgen-jni:pgenlib:0.0.4l-SNAPSHOT')
+    implementation('pgen-jni:pgenlib:0.1.2l-SNAPSHOT')
     //implementation files('lib/linux/pgen.jar')
 
     testUtilsImplementation sourceSets.main.output
