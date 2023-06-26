@@ -74,8 +74,8 @@ def generate_fofn_from_data_table_with_sample_set(
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False,
-                                     description='Turn the data tables into 3 FOFNs, one for sample names, vcf paths, '
-                                                 'and vcf index paths')
+                                     description='Turn the data tables into a FOFN, one column each for sample name, '
+                                                 'vcf paths, and vcf index paths')
 
     parser.add_argument('--data_table_name', type=str,
                         help='The name of the table in your workspace that holds your sample data', default='sample')
@@ -93,7 +93,8 @@ if __name__ == '__main__':
     parser.add_argument('--sample_set_name', type=str,
                         help='The name of the entity / sample set to use', required=False)
     parser.add_argument('--output_file_name', type=str,
-                        help='The output TSV file to receive the sample name / VCF / VCF index data', required=True)
+                        help='The output TSV file to receive the sample name / VCF path / VCF index path data',
+                        required=True)
     parser.add_argument('--error-file-name', type=str,
                         help='The output file for error messages', required=True)
 
