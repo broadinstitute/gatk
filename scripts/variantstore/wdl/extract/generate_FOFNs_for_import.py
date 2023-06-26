@@ -8,7 +8,7 @@ def get_entities_in_set(data_table_name, sample_set_name):
     set_of_entities = set()
     sample_set_list = list(table.list_rows(f"{data_table_name}_set"))
     for sample_set in sample_set_list:
-        if sample_set.name == sample_set_name: ## else it's some other sample set and we dont care about it
+        if sample_set.name == sample_set_name:  ## else it's some other sample set and we dont care about it
             for sample in sample_set.attributes[f"{data_table_name}s"]:
                 set_of_entities.add(sample['entityName'])
 
@@ -26,7 +26,8 @@ def generate_FOFNs_from_data_table_with_sample_set(
         vcf_files_name, vcf_index_files_name,
         vcf_files_column_name, vcf_index_files_column_name, sample_names_file_name, error_file_name,
         set_of_entities):
-    with open(vcf_files_name, "w") as vcf_files, open(vcf_index_files_name, "w") as vcf_index_files, open(sample_names_file_name, "w") as sample_names_file, open(error_file_name, "w") as error_file:
+    with open(vcf_files_name, "w") as vcf_files, open(vcf_index_files_name, "w") as vcf_index_files, open(
+            sample_names_file_name, "w") as sample_names_file, open(error_file_name, "w") as error_file:
         count = 0
         processed_entities = 0
         # Cycle through each row / sample in the data table.
@@ -39,10 +40,13 @@ def generate_FOFNs_from_data_table_with_sample_set(
                 # column with the name table_name_id.  Map "name" to that imaginary attribute here so none of the lookups
                 # below fail if they reference that call.  This is safe, as this Row object is a read only copy of the actual
                 # table content, and it is disposed
-                row.attributes[f"{data_table_name}_id"] = row.name  ## NOTE: this is the <entity>_id value and will be used by the sample_set
+                row.attributes[
+                    f"{data_table_name}_id"] = row.name  ## NOTE: this is the <entity>_id value and will be used by the sample_set
 
-                current_sample_id = row.attributes[f"{data_table_name}_id"] ## NOTE: this is the sample id based on the <entity>_id
-                current_sample_name = row.attributes[sample_id_column_name] ## NOTE: this is the sample name based on the user defined sample id col name
+                current_sample_id = row.attributes[
+                    f"{data_table_name}_id"]  ## NOTE: this is the sample id based on the <entity>_id
+                current_sample_name = row.attributes[
+                    sample_id_column_name]  ## NOTE: this is the sample name based on the user defined sample id col name
 
                 if set_of_entities:
                     if current_sample_id in set_of_entities:
@@ -67,6 +71,7 @@ def generate_FOFNs_from_data_table_with_sample_set(
                 print(f"sleeping between requests ({processed_entities} processed)...")
                 time.sleep(1)
                 count = 0
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False,
@@ -97,7 +102,6 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-
     # allow this to be overridden, but default it to 500
     if "attempts_between_pauses" in args:
         attempts_between_pauses = args.attempts_between_pauses
@@ -110,9 +114,7 @@ if __name__ == '__main__':
     if "sample_id_column_name" in args:
         sample_id_column_name = args.sample_id_column_name
     else:
-        sample_id_column_name = args.data_table_name + "_id" ## <-- NOTE: This makes the assumption that the default setting for the GVS sample name is <entity>_id if not specified
-
-
+        sample_id_column_name = args.data_table_name + "_id"  ## <-- NOTE: This makes the assumption that the default setting for the GVS sample name is <entity>_id if not specified
 
     if sample_set_name:
         set_of_entities = get_entities_in_set(
@@ -120,7 +122,7 @@ if __name__ == '__main__':
             sample_set_name)
 
     else:
-        set_of_entities = None # set_of_entities is now nothing
+        set_of_entities = None  # set_of_entities is now nothing
 
     generate_FOFNs_from_data_table_with_sample_set(
         args.data_table_name,
