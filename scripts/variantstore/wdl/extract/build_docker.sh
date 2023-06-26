@@ -1,42 +1,18 @@
 usage() {
     echo "
 
-USAGE: ./build_docker.sh [--release|--branch]
+USAGE: ./build_docker.sh [-r|--release|-b|--branch]
 
-One of the options --release or --branch must be given, which determines the format of the Docker image tag.
-Release tags look like <ISO 8601 Date>-alpine, branch tags look like <ISO 8601 Date>-alpine-<short git hash>.
+One of the options -r|--release or -b|--branch must be given, which determines the format of the Docker image tag.
+Release tags will be <ISO 8601 Date>-alpine, branch tags will be <ISO 8601 Date>-alpine-<short git hash>.
 
 e.g. 2023-06-06-alpine or 2023-06-06-alpine-ed338e48e
 "
     exit 1
 }
 
-VALID_ARGS=$(getopt --options r,b --longoptions release,branch -- "$@")
-if [[ $? -ne 0 ]]; then
-    usage
-fi
-
-TAG=""
-eval set -- "$VALID_ARGS"
-while true
-do
-    case "$1" in
-    -r | --release)
-        TAG="$(date -Idate)-alpine"
-        shift
-        ;;
-    -b | --branch)
-        TAG="$(date -Idate)-alpine-$(git rev-parse --short HEAD)"
-        shift
-        ;;
-    --)
-        shift
-        break
-        ;;
-    esac
-done
-
-if [[ -z "$TAG" ]]
+TAG=$(python3 ./build_docker_tag.py $*)
+if [[ $? -ne 0 ]]
 then
     usage
 fi
