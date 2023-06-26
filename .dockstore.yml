@@ -124,13 +124,13 @@ workflows:
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareBulkImport.wdl
      filters:
        branches:
-         - rc-vs-916-sample-sets-ingest
+         - ah_var-store
    - name: GvsBulkIngestGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsBulkIngestGenomes.wdl
      filters:
        branches:
-         - rc-vs-916-sample-sets-ingest
+         - ah_var-store
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
