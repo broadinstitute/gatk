@@ -280,8 +280,8 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                 1,
                 "",
                 GencodeGTFFieldConstants.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
-                null,
-                "");
+                null
+        );
     }
 
     private GencodeGtfExonFeature helpCreateExonFeature(final SimpleInterval interval,
@@ -701,7 +701,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 1, variantInterval.getContig(), GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.GENE,
                 variantInterval.getStart()-2000, variantInterval.getEnd()+2000, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", null, GencodeGTFFieldConstants.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, "TEST_GENE", null, null, null, -1, null, GencodeGTFFieldConstants.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(), null, null);
+                null, "TEST_GENE", null, null, null, -1, null, GencodeGTFFieldConstants.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(), null);
         final GencodeGtfGeneFeature gene = (GencodeGtfGeneFeature)GencodeGtfFeature.create(data);
 
         // ======================
@@ -709,8 +709,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         data = new GencodeGtfFeatureBaseData(GencodeGtfCodec.GTF_FILE_TYPE_STRING, 2, variantInterval.getContig(), GencodeGtfFeature.ANNOTATION_SOURCE_ENSEMBL, GencodeGtfFeature.FeatureType.TRANSCRIPT,
                 variantInterval.getStart()-1000, variantInterval.getEnd()+1000, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, "TEST_GENE1", "TEST_TRANSCRIPT1", GencodeGTFFieldConstants.KnownGeneBiotype.PROTEIN_CODING.toString(),
                 null, "TEST_GENE", GencodeGTFFieldConstants.KnownGeneBiotype.PROTEIN_CODING.toString(), null, "TEST_TRANSCRIPT1", -1, null, GencodeGTFFieldConstants.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
-                Collections.emptyList(),
-                null
+                Collections.emptyList()
         );
         final GencodeGtfTranscriptFeature transcript1 = (GencodeGtfTranscriptFeature) GencodeGtfFeature.create(data);
         gene.addTranscript(transcript1);

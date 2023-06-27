@@ -299,8 +299,8 @@ public class FuncotatorTestUtils {
                         -1,
                         null,
                         GencodeGTFFieldConstants.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
-                        Collections.emptyList(),
-                        null)
+                        Collections.emptyList()
+                )
         );
     }
 

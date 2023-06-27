@@ -148,38 +148,38 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
 
             switch (fieldName) {
                 // Find the right field to set:
-                case "gene_id":
+                case GencodeGTFFieldConstants.GENE_ID:
                     baseData.geneId = fieldValue;
                     break;
-                case "transcript_id":
+                case GencodeGTFFieldConstants.TRANSCRIPT_ID:
                     baseData.transcriptId = fieldValue;
                     break;
-                case "gene_type":
+                case GencodeGTFFieldConstants.GENE_TYPE:
                     baseData.geneType = fieldValue;
                     break;
                 // For ENSEMBL GTF files:
-                case "gene_biotype":
+                case GencodeGTFFieldConstants.GENE_BIOTYPE:
                     baseData.geneType = fieldValue;
                     break;
-                case "gene_status":
+                case GencodeGTFFieldConstants.GENE_STATUS:
                     baseData.geneStatus = fieldValue;
                     break;
-                case "gene_name":
+                case GencodeGTFFieldConstants.GENE_NAME:
                     baseData.geneName = fieldValue;
                     break;
-                case "transcript_type":
+                case GencodeGTFFieldConstants.TRANSCRIPT_TYPE:
                     baseData.transcriptType = fieldValue;
                     break;
-                case "transcript_biotype":
+                case GencodeGTFFieldConstants.TRANSCRIPT_BIOTYPE:
                     baseData.transcriptType = fieldValue;
                     break;
-                case "transcript_status":
+                case GencodeGTFFieldConstants.TRANSCRIPT_STATUS:
                     baseData.transcriptStatus = fieldValue;
                     break;
-                case "transcript_name":
+                case GencodeGTFFieldConstants.TRANSCRIPT_NAME:
                     baseData.transcriptName = fieldValue;
                     break;
-                case "exon_number":
+                case GencodeGTFFieldConstants.EXON_NUMBER:
                     try {
                         baseData.exonNumber = Integer.valueOf(fieldValue);
                     }
@@ -187,61 +187,14 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
                         throw new UserException.MalformedFile("Could not convert field value into integer: " + fieldValue);
                     }
                     break;
-                case "exon_id":
+                case GencodeGTFFieldConstants.EXON_ID:
                     baseData.exonId = fieldValue;
                     break;
-                case "level":
+                case GencodeGTFFieldConstants.LEVEL:
                     baseData.locusLevel = fieldValue;
                     break;
-                case "tag":
-                    optionalField = new OptionalField<>(fieldName, fieldValue);
-                    break;
-                case "ccdsid":
-                    optionalField = new OptionalField<>(fieldName, fieldValue);
-                    break;
-                case "havana_gene":
-                    optionalField = new OptionalField<>(fieldName, fieldValue);
-                    break;
-                case "havana_transcript":
-                    optionalField = new OptionalField<>(fieldName, fieldValue);
-                    break;
-                case "protein_id":
-                    optionalField = new OptionalField<>(fieldName, fieldValue);
-                    break;
-                case "ont":
-                    optionalField = new OptionalField<>(fieldName, fieldValue);
-                    break;
-                case "transcript_support_level":
-                    optionalField = new OptionalField<>(fieldName, fieldValue);
-                    break;
-                case "remap_status":
-                    optionalField = new OptionalField<>(fieldName, fieldValue);
-                    break;
-                case "remap_original_id":
-                    optionalField = new OptionalField<>(fieldName, fieldValue);
-                    break;
-                case "remap_original_location":
-                    try {
-                        optionalField = new OptionalField<>(fieldName, Long.valueOf(fieldValue));
-                    }
-                    catch (final NumberFormatException nfe) {
-                        // We must have gotten a field that has a different format.
-                        // For now, just copy it over:
-                        optionalField = new OptionalField<>(fieldName, fieldValue);
-                    }
-                    break;
-                case "remap_num_mappings":
-                    optionalField = new OptionalField<>(fieldName, Long.valueOf(fieldValue));
-                    break;
-                case "remap_target_status":
-                    optionalField = new OptionalField<>(fieldName, fieldValue);
-                    break;
-                case "remap_substituted_missing_target":
-                    optionalField = new OptionalField<>(fieldName, fieldValue);
-                    break;
                 default:
-                    anonymousOptionalFieldBuilder.append(extraField);
-                    anonymousOptionalFieldBuilder.append(EXTRA_FIELD_DELIMITER);
+                    optionalField = new OptionalField<>(fieldName, fieldValue);
                     break;
             }
 
@@ -249,11 +202,6 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
             if ( optionalField != null ) {
                 baseData.optionalFields.add(optionalField);
             }
-        }
-
-        // Save our anonymous optional fields:
-        if ( anonymousOptionalFieldBuilder.length() != 0 ) {
-            baseData.anonymousOptionalFields = anonymousOptionalFieldBuilder.toString();
         }
     }
 
@@ -458,10 +406,6 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
                 baseData.optionalFields.stream().map(Object::toString).collect(Collectors.joining(" "))
         );
 
-        if ( baseData.anonymousOptionalFields != null ) {
-            stringBuilder.append(baseData.anonymousOptionalFields);
-        }
-
         return stringBuilder.toString().trim();
     }
 
@@ -581,11 +525,7 @@ public abstract class GencodeGtfFeature implements Feature, Comparable<GencodeGt
         return baseData.optionalFields;
     }
 
-    public String getAnonymousOptionalFields() {
-        return baseData.anonymousOptionalFields;
-    }
-
-    // Certian optional fields support multiple values, so we need to return a list of them.
+    // Certian optional fields support multiple values (for example "tag"), so we need to return a list of them.
     public List<OptionalField<?>> getOptionalField(final String key) {
         final List<OptionalField<?>> optionalFields = new ArrayList<>();
         for (final OptionalField<?> optionalField : baseData.optionalFields) {

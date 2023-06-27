@@ -12,6 +12,48 @@ import java.util.stream.Collectors;
  * be instantiated if necessary to preserve the spec compliance of funcotator against future releases of Gencode.
  */
 public class GencodeGTFFieldConstants {
+
+    /**
+     * A list of required fields from the GencodeGTF codec. These are the fields that are currently first-class members of the
+     * GencodeGTFFeature and are handled specially handled by the GencodeGTFCodec.
+     */
+    public static final String GENE_ID = "gene_id";
+    public static final String TRANSCRIPT_ID = "transcript_id";
+    public static final String GENE_TYPE = "gene_type";
+    public static final String GENE_BIOTYPE = "gene_biotype";
+    public static final String GENE_STATUS = "gene_status";
+    public static final String GENE_NAME = "gene_name";
+    public static final String TRANSCRIPT_TYPE = "transcript_type";
+    public static final String TRANSCRIPT_BIOTYPE = "transcript_biotype";
+    public static final String TRANSCRIPT_STATUS = "transcript_status";
+    public static final String TRANSCRIPT_NAME = "transcript_name";
+    public static final String LEVEL = "level";
+
+    // Mandatory except in Gene and Transcript lines (not enforced by this codec)
+    public static final String EXON_NUMBER = "exon_number";
+    public static final String EXON_ID = "exon_id";
+
+    public class GencodeOptionalFields {
+        /**
+         * Spec optional gencode fields:
+         */
+        public static final String TAG = "tag";
+        public static final String CCDSID = "ccdsid";
+        public static final String HAVANA_GENE = "havana_gene";
+        public static final String HAVANA_TRANSCRIPT = "havana_transcript";
+        public static final String PROTEIN_ID = "protein_id";
+        public static final String ONT = "ont";
+        public static final String TRANSCRIPT_SUPPORT_LEVEL = "transcript_support_level";
+        public static final String REMAP_STATUS = "remap_status";
+        public static final String REMAP_ORIGINAL_ID = "remap_original_id";
+        public static final String REMAP_ORIGINAL_LOCATION = "remap_original_location";
+        public static final String REMAP_NUM_MAPPINGS = "remap_num_mappings";
+        public static final String REMAP_TARGET_STATUS = "remap_target_status";
+        public static final String REMAP_SUBSTITUTED_MISSING_TARGET = "remap_substituted_missing_target";
+        public static final String HGNC_ID = "hgnc_id";
+        public static final String MGI_ID = "mgi_id";
+    }
+
     /**
      * Biotype / transcript type for the transcript or gene represented in a feature.
      * This is a tag of some biological function associated with a feature.

@@ -83,16 +83,12 @@ final public class GencodeGtfFeatureBaseData {
 
     /**
      * Optional GENCODE GTF Fields.
+     * This also includes unidentified GTF fields that may not be specified in the Gencode GTF specification.
      * For details, see the following:
      *     https://www.gencodegenes.org/data_format.html
      *     https://www.gencodegenes.org/gencode_tags.html
      */
     public List<GencodeGtfFeature.OptionalField<?>> optionalFields          = new ArrayList<>();
-
-    /**
-     * Additional optional GTF fields.
-     */
-    public String                                   anonymousOptionalFields = null;
 
     public GencodeGtfFeatureBaseData() {}
 
@@ -117,8 +113,7 @@ final public class GencodeGtfFeatureBaseData {
             final int exonNumber,
             final String exonId,
             final String locusLevel,
-            final List<GencodeGtfFeature.OptionalField<?>> optionalFields,
-            final String anonymousOptionalFields
+            final List<GencodeGtfFeature.OptionalField<?>> optionalFields
     ) {
         this.gtfSourceFileType = gtfSourceFileType;
         this.featureOrderNumber = featureOrderNumber;
@@ -145,7 +140,6 @@ final public class GencodeGtfFeatureBaseData {
             this.optionalFields = optionalFields;
         }
 
-        this.anonymousOptionalFields = anonymousOptionalFields;
     }
 
     @Override
@@ -183,8 +177,7 @@ final public class GencodeGtfFeatureBaseData {
                     Objects.equals(exonNumber,              thatBaseData.exonNumber)                &&
                     Objects.equals(exonId,                  thatBaseData.exonId)                    &&
                     Objects.equals(locusLevel,              thatBaseData.locusLevel)                &&
-                    Objects.equals(anonymousOptionalFields, thatBaseData.anonymousOptionalFields)   &&
-                    Objects.equals(optionalFields,          thatBaseData.optionalFields);
+                    Objects.equals(optionalFields,          thatBaseData.optionalFields); //TODO should equality enforce the order of the optional fields?
         }
 
         return isEqual;
@@ -211,7 +204,6 @@ final public class GencodeGtfFeatureBaseData {
         result = 31 * result + (exonId != null ? exonId.hashCode() : 0);
         result = 31 * result + (locusLevel != null ? locusLevel.hashCode() : 0);
         result = 31 * result + (optionalFields != null ? optionalFields.hashCode() : 0);
-        result = 31 * result + (anonymousOptionalFields != null ? anonymousOptionalFields.hashCode() : 0);
         return result;
     }
 }
