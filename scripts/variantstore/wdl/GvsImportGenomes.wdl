@@ -69,7 +69,7 @@ workflow GvsImportGenomes {
       dataset_name = dataset_name,
       project_id = project_id,
       bulk_import_tsv = bulk_import_tsv,
-      table_name = "sample_info"
+      table_name = "sample_info",
   }
 
   call CurateInputLists {
@@ -81,9 +81,7 @@ workflow GvsImportGenomes {
   call CreateFOFNs {
     input:
       batch_size = effective_load_data_batch_size,
-      input_vcf_index_list = CurateInputLists.input_vcf_indexes,
-      input_vcf_list = CurateInputLists.input_vcfs,
-      sample_name_list = CurateInputLists.sample_name_list,
+      curated_bulk_import_tsv = CurateInputLists.curated_bulk_import_tsv,
   }
 
   scatter (i in range(length(CreateFOFNs.vcf_batch_vcf_fofns))) {
@@ -95,15 +93,12 @@ workflow GvsImportGenomes {
         skip_loading_vqsr_fields = skip_loading_vqsr_fields,
         drop_state = drop_state,
         drop_state_includes_greater_than = false,
-        input_vcf_indexes = read_lines(CreateFOFNs.vcf_batch_vcf_index_fofns[i]),
-        input_vcfs = read_lines(CreateFOFNs.vcf_batch_vcf_fofns[i]),
+        bulk_import_fofn = CreateFOFNs.bulk_import_fofn[i],
         interval_list = interval_list,
         gatk_override = load_data_gatk_override,
         load_data_preemptible = effective_load_data_preemptible,
         load_data_maxretries = effective_load_data_maxretries,
-        sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
-        sample_map = GetUningestedSampleIds.sample_map,
-        process_vcf_headers = process_vcf_headers
+        process_vcf_headers = process_vcf_headers,
     }
   }
  if (process_vcf_headers) {
@@ -119,7 +114,7 @@ workflow GvsImportGenomes {
     input:
       load_done = LoadData.done,
       project_id = project_id,
-      dataset_name = dataset_name
+      dataset_name = dataset_name,
   }
 
   output {
@@ -131,9 +126,7 @@ workflow GvsImportGenomes {
 task CreateFOFNs {
   input {
     Int batch_size
-    File input_vcf_index_list
-    File input_vcf_list
-    File sample_name_list
+    File curated_bulk_import_tsv
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
@@ -142,9 +135,7 @@ task CreateFOFNs {
   command <<<
     set -e
 
-    split -a 5 -l ~{batch_size} ~{input_vcf_list} batched_vcfs.
-    split -a 5 -l ~{batch_size} ~{input_vcf_index_list} batched_vcf_indexes.
-    split -a 5 -l ~{batch_size} ~{sample_name_list} batched_sample_names.
+    split -a 5 -l ~{batch_size} ~{curated_bulk_import_tsv} bulk_import.
   >>>
   runtime {
     docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
@@ -156,9 +147,7 @@ task CreateFOFNs {
   }
 
   output {
-    Array[File] vcf_batch_vcf_fofns = glob("batched_vcfs.*")
-    Array[File] vcf_batch_vcf_index_fofns = glob("batched_vcf_indexes.*")
-    Array[File] vcf_sample_name_fofns = glob("batched_sample_names.*")
+    Array[File] bulk_import_fofns = glob("bulk_import.*")
   }
 }
 
@@ -168,11 +157,11 @@ task LoadData {
     String dataset_name
     String project_id
 
-    Array[File] input_vcf_indexes
-    Array[File] input_vcfs
+    File bulk_import_fofn
     File interval_list
-    File sample_map
-    Array[String] sample_names
+    # TODO Is this still needed? It's only used in one place and that's suspicious looking. There is another file
+    # TODO "sample_map.csv" which is generated as part of the re-curation that takes place in this task.
+    # File sample_map
 
     String? drop_state
     Boolean? drop_state_includes_greater_than = false
@@ -193,18 +182,7 @@ task LoadData {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
-  parameter_meta {
-    input_vcfs: {
-      localization_optional: true
-    }
-
-    input_vcf_indexes: {
-      localization_optional: true
-    }
-  }
-
   Int samples_per_table = 4000
-  Int num_samples = length(sample_names)
   String temp_table = "~{dataset_name}.sample_names_to_load_~{index}"
   # add labels for DSP Cloud Cost Control Labeling and Reporting
   String bq_labels = "--label service:gvs --label team:variants --label managedby:import_genomes"
@@ -237,7 +215,10 @@ task LoadData {
 
     echo "Creating the external sample name list table ~{temp_table}"
     bq --apilog=false --project_id=~{project_id} mk ~{temp_table} "sample_name:STRING"
-    NAMES_FILE=~{write_lines(sample_names)}
+
+    NAMES_FILE="sample_names.txt"
+    cut -f 1 ~{bulk_import_fofn} > $NAMES_FILE
+
     bq --apilog=false load --project_id=~{project_id} ~{temp_table} $NAMES_FILE "sample_name:STRING"
 
     # Get the current min/max id, or 0 if there are none. Withdrawn samples still have IDs so don't filter them out.
@@ -245,31 +226,36 @@ task LoadData {
       SELECT IFNULL(MIN(sample_id),0) as min, IFNULL(MAX(sample_id),0) as max FROM `~{dataset_name}.~{table_name}`
         AS samples JOIN `~{temp_table}` AS temp ON samples.sample_name = temp.sample_name' > results.csv
 
+    SAMPLE_MAP=sample_map.csv
+
     # get sample map of samples that haven't been loaded yet
-    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} '
+    num_samples=$(wc -l ~{bulk_import_fofn})
+    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n $num_samples '
       SELECT sample_id, samples.sample_name FROM `~{dataset_name}.~{table_name}` AS samples JOIN `~{temp_table}` AS temp ON
             samples.sample_name = temp.sample_name WHERE
             samples.sample_id NOT IN (SELECT sample_id FROM `~{dataset_name}.sample_load_status` WHERE status="FINISHED") AND
-            samples.withdrawn is NULL' > sample_map.csv
+            samples.withdrawn is NULL' > $SAMPLE_MAP
 
     ## delete the table that was only needed for this ingest test
     bq --apilog=false --project_id=~{project_id} rm -f=true ~{temp_table}
 
     ## now we want to create a sub list of these samples (without the ones that have already been loaded)
-    curl https://raw.githubusercontent.com/broadinstitute/gatk/ah_var_store/scripts/variantstore/wdl/extract/curate_input_array_files.py -o curate_input_array_files.py
+    curl --location --remote-name https://raw.githubusercontent.com/broadinstitute/gatk/ah_var_store/scripts/variantstore/wdl/extract/curate_bulk_import_tsv.py
 
+    # *re-*curated because the curation script is run again in this task. The curation script was already run at least
+    # once before in a separate task to filter out already-loaded samples before the call to `LoadTask`. Here the
+    # `LoadTask` job might be retried due to preemption so we only want to load the samples which still need loading.
+    RECURATED_OUTPUT="bulk_import_recurated.tsv"
 
-    python3 curate_input_array_files.py --sample_map_to_be_loaded_file_name sample_map.csv \
-      --sample_name_list_file_name $NAMES_FILE \
-      --vcf_list_file_name ~{write_lines(input_vcfs)} \
-      --vcf_index_list_file_name  ~{write_lines(input_vcf_indexes)} \
-      --output_files True
+    python3 curate_bulk_import_tsv.py \
+      --samples-to-load $SAMPLE_MAP \
+      --bulk-import-input-tsv ~{bulk_import_fofn} \
+      --bulk-import-output-tsv $RECURATED_OUTPUT
 
     # translate files created by the python script into BASH arrays---but only of the samples that aren't there already
-    VCFS_ARRAY=($(cat output_vcf_list_file |tr "\n" " "))
-    VCF_INDEXES_ARRAY=($(cat output_vcf_index_list_file |tr "\n" " "))
-    SAMPLE_NAMES_ARRAY=($(cat output_sample_name_list_file |tr "\n" " "))
-
+    SAMPLE_NAMES_ARRAY=($(cut -f 1 $RECURATED_OUTPUT | tr "\n" " "))
+    VCFS_ARRAY=($(cut -f 2 $RECURATED_OUTPUT | tr "\n" " "))
+    VCF_INDEXES_ARRAY=($(cut -f 3 $RECURATED_OUTPUT | tr "\n" " "))
 
     # loop over the BASH arrays (See https://stackoverflow.com/questions/6723426/looping-over-arrays-printing-both-index-and-value)
     for i in "${!VCFS_ARRAY[@]}"; do
@@ -278,8 +264,8 @@ task LoadData {
       sample_name="${SAMPLE_NAMES_ARRAY[$i]}"
 
       # we always do our own localization
-      gsutil cp $gs_input_vcf input_vcf_$i.vcf.gz
-      gsutil cp $gs_input_vcf_index input_vcf_$i.vcf.gz.tbi
+      gsutil -m cp $gs_input_vcf input_vcf_$i.vcf.gz
+      gsutil -m cp $gs_input_vcf_index input_vcf_$i.vcf.gz.tbi
       updated_input_vcf=input_vcf_$i.vcf.gz
 
       gatk --java-options "-Xmx2g" CreateVariantIngestFiles \
@@ -294,7 +280,7 @@ task LoadData {
         --enable-reference-ranges ~{load_ref_ranges} \
         --enable-vet ~{load_vet} \
         -SN ${sample_name} \
-        -SNM ~{sample_map} \
+        -SNM $SAMPLE_MAP \
         --ref-version 38 \
         --skip-loading-vqsr-fields ~{skip_loading_vqsr_fields} \
         --enable-vcf-header-processing ~{process_vcf_headers}

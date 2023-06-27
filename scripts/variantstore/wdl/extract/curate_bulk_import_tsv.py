@@ -40,7 +40,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False,
                                      description='Curate bulk import TSV to remove already-loaded samples.')
 
-    parser.add_argument('--samples-to-load', type=str, help='Path to a single column TSV / CSV of sample names to load',
+    parser.add_argument('--samples-to-load', type=str, help='Path to a two column CSV *with a header* containing '
+                                                            'sample_id, sample_name to load',
                         required=True)
     parser.add_argument('--bulk-import-input-tsv', type=str,
                         help='Path to input uncurated bulk import TSV: sample names, VCF paths, VCF index paths',
