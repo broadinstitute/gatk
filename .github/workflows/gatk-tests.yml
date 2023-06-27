@@ -85,10 +85,10 @@ jobs:
       SCALA_VERSION: ${{ matrix.scalaVersion }}
     name: Java ${{ matrix.Java }} build and test ${{ matrix.testType }}
     steps:
-      - uses: ./.github/actions/purge-runner-disk
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
+      - uses: ./.github/actions/purge-runner-disk
       - name: 'Set up java ${{ matrix.Java }}'
         uses: actions/setup-java@v3
         with:
@@ -159,10 +159,11 @@ jobs:
 
     name: Java ${{ matrix.Java }} test on docker ${{matrix.testType}}
     steps:
-      - uses: ./.github/actions/purge-runner-disk
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0 #TODO make this shallow
+
+      - uses: ./.github/actions/purge-runner-disk
 
       - name: 'Set up java ${{ matrix.Java }}'
         uses: actions/setup-java@v3
@@ -250,10 +251,10 @@ jobs:
     runs-on: ubuntu-latest
     name: Validate script WDLs using womtools
     steps:
-      - uses: ./.github/actions/purge-runner-disk
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
+      - uses: ./.github/actions/purge-runner-disk
       - name: Set up java 17
         uses: actions/setup-java@v3
         with:
@@ -271,10 +272,10 @@ jobs:
     runs-on: ubuntu-latest
     name: Validate generated WDLs using womtools
     steps:
-      - uses: ./.github/actions/purge-runner-disk
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
+      - uses: ./.github/actions/purge-runner-disk
       - name: Set up java 17
         uses: actions/setup-java@v3
         with:
@@ -297,10 +298,10 @@ jobs:
     continue-on-error: true
     name: WDL test ${{ matrix.wdlTest }} on cromwell
     steps:
-      - uses: ./.github/actions/purge-runner-disk
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
+      - uses: ./.github/actions/purge-runner-disk
       - name: pull lfs files
         run: git lfs pull
       - name: Set up java 17
