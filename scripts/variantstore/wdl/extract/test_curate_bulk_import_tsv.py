@@ -11,7 +11,7 @@ class TestCurateInputArrays(unittest.TestCase):
     def test_curate_input_array_files_success(self):
         with open(test_dir + "bulk_import_output_expected.tsv") as expected_file:
 
-            expected = np.loadtxt(expected_file, dtype=str)
+            expected = np.loadtxt(expected_file, dtype=str).tolist()
 
             actual = curate_bulk_import_data(
                 sample_map_to_be_loaded_file_name=test_dir + 'input_samples_to_be_loaded_map.csv',

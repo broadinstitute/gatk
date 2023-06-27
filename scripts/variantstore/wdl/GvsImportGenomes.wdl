@@ -74,8 +74,8 @@ workflow GvsImportGenomes {
 
   call CurateInputLists {
     input:
-      bulk_import_tsv = bulk_import_tsv,
-      input_samples_to_be_loaded_map = GetUningestedSampleIds.sample_map
+      uncurated_bulk_import_tsv = bulk_import_tsv,
+      input_samples_to_be_loaded_map = GetUningestedSampleIds.sample_map,
   }
 
   call CreateFOFNs {
@@ -211,8 +211,9 @@ task LoadData {
   String table_name = "sample_info"
 
   command <<<
-    set -e
-    set -o errexit -o nounset -o xtrace -o pipefail
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
