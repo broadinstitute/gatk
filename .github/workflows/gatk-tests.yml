@@ -39,6 +39,12 @@ jobs:
     name: build and push gatk docker to artifacts
     runs-on: ubuntu-latest
     steps:
+      #Reclaim some disk space on the runner to prevent the WDL tasks from running out of space on the docker.
+      #https://github.com/actions/runner-images/issues/2840
+      - name: Reclaim some runner disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
       - name: checkout gatk
         uses: actions/checkout@v3
 
@@ -84,6 +90,12 @@ jobs:
       SCALA_VERSION: ${{ matrix.scalaVersion }}
     name: Java ${{ matrix.Java }} build and test ${{ matrix.testType }}
     steps:
+      #Reclaim some disk space on the runner to prevent the WDL tasks from running out of space on the docker.
+      #https://github.com/actions/runner-images/issues/2840
+      - name: Reclaim some runner disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
@@ -157,6 +169,12 @@ jobs:
 
     name: Java ${{ matrix.Java }} test on docker ${{matrix.testType}}
     steps:
+      #Reclaim some disk space on the runner to prevent the WDL tasks from running out of space on the docker.
+      #https://github.com/actions/runner-images/issues/2840
+      - name: Reclaim some runner disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0 #TODO make this shallow
@@ -247,6 +265,12 @@ jobs:
     runs-on: ubuntu-latest
     name: Validate script WDLs using womtools
     steps:
+      #Reclaim some disk space on the runner to prevent the WDL tasks from running out of space on the docker.
+      #https://github.com/actions/runner-images/issues/2840
+      - name: Reclaim some runner disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
@@ -267,6 +291,12 @@ jobs:
     runs-on: ubuntu-latest
     name: Validate generated WDLs using womtools
     steps:
+      #Reclaim some disk space on the runner to prevent the WDL tasks from running out of space on the docker.
+      #https://github.com/actions/runner-images/issues/2840
+      - name: Reclaim some runner disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
@@ -293,7 +323,7 @@ jobs:
     name: WDL test ${{ matrix.wdlTest }} on cromwell
     steps:
       #Reclaim some disk space on the runner to prevent the WDL tasks from running out of space on the docker.
-      #https://stackoverflow.com/questions/75536771/github-runner-out-of-disk-space-after-building-docker-image
+      #https://github.com/actions/runner-images/issues/2840
       - name: Reclaim some runner disk space
         run: |
           sudo rm -rf /usr/share/dotnet
