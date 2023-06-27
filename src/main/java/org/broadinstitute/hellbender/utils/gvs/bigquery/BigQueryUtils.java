@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.bigquery;
+package org.broadinstitute.hellbender.utils.gvs.bigquery;
 
 import com.google.cloud.bigquery.*;
 import io.grpc.StatusRuntimeException;
@@ -451,6 +451,19 @@ public final class BigQueryUtils {
     }
 
     public static boolean doRowsExistFor(String projectID, String datasetName, String tableName, String columnName, String value) {
+        String template = "SELECT COUNT(*) FROM `%s.%s.%s` WHERE %s = '%s'";
+        String query = String.format(template, projectID, datasetName, tableName, columnName, value);
+
+        BigQueryResultAndStatistics resultAndStatistics = BigQueryUtils.executeQuery(projectID, query, true, null);
+        for (final FieldValueList row : resultAndStatistics.result.iterateAll()) {
+            final long count = row.get(0).getLongValue();
+            return count != 0;
+        }
+        throw new GATKException(String.format("No rows returned from count of `%s.%s.%s` for %s = '%s'",
+                projectID, datasetName, tableName, columnName, value));
+    }
+
+    public static boolean doRowsExistFor(String projectID, String datasetName, String tableName, String columnName, Long value) {
         String template = "SELECT COUNT(*) FROM `%s.%s.%s` WHERE %s = %s";
         String query = String.format(template, projectID, datasetName, tableName, columnName, value);
 
