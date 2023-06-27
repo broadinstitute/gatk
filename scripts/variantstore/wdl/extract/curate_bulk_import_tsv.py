@@ -7,7 +7,7 @@ from typing import Union
 def curate_bulk_import_data(sample_map_to_be_loaded_file_name: str,
                             bulk_import_input_file_name: str,
                             bulk_import_output_file_name: Union[str, None] = None) \
-        -> Union[None, np.ndarray[np.ndarray[str]]]:
+        -> Union[None, list[list[str]]]:
 
     with open(sample_map_to_be_loaded_file_name, 'r') as sample_map_to_be_loaded_file, \
             open(bulk_import_input_file_name, 'r') as bulk_import_input_file:
