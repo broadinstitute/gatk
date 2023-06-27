@@ -225,6 +225,9 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
     private static final String EV_KEY = "EV";
     private static final String CONC_ST_KEY = "CONC_ST";
     private static final String FILTER_KEY = "FILTER";
+    private static final String HIGH_SR_BACKGROUND_KEY = "HIGH_SR_BACKGROUND";
+    private static final String BOTHSIDES_SUPPORT_KEY = "BOTHSIDES_SUPPORT";
+    private static final String PESR_GT_OVERDISPERSION_KEY = "PESR_GT_OVERDISPERSION";
     private static final String ALGORITHMS_KEY = "ALGORITHMS";
     private static final String EVIDENCE_KEY = "EVIDENCE";
     private static final String STATUS_KEY = "STATUS";
@@ -971,7 +974,19 @@ public abstract class MinGqVariantFilterBase extends VariantWalker {
         }
         propertiesTable.append(VCFConstants.ALLELE_FREQUENCY_KEY, alleleFrequency);
         ///////////////////////////////////////////////// Get FILTER ///////////////////////////////////////////////////
-        propertiesTable.append(FILTER_KEY, variantContext.getFilters());
+        // TODO : Get these as INFO fields directly
+        // Transfer properties to FILTER that are now INFO fields, allowing for backward compatability
+        final Set<String> filters = new HashSet<>(variantContext.getFilters());
+        if (variantContext.getAttributeAsBoolean(HIGH_SR_BACKGROUND_KEY, false)) {
+            filters.add(HIGH_SR_BACKGROUND_KEY);
+        }
+        if (variantContext.getAttributeAsBoolean(BOTHSIDES_SUPPORT_KEY, false)) {
+            filters.add(BOTHSIDES_SUPPORT_KEY);
+        }
+        if (variantContext.getAttributeAsBoolean(PESR_GT_OVERDISPERSION_KEY, false)) {
+            filters.add(PESR_GT_OVERDISPERSION_KEY);
+        }
+        propertiesTable.append(FILTER_KEY, filters);
         ////////////////////////////////////////////// Get INFO fields /////////////////////////////////////////////////
         // SVTYPE is mandatory
         final String svType = variantContext.getAttributeAsString(VCFConstants.SVTYPE, null);
