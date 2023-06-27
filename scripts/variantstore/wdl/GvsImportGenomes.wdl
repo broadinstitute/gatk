@@ -84,7 +84,7 @@ workflow GvsImportGenomes {
       curated_bulk_import_tsv = CurateInputLists.curated_bulk_import_tsv,
   }
 
-  scatter (i in range(length(CreateFOFNs.vcf_batch_vcf_fofns))) {
+  scatter (i in range(length(CreateFOFNs.bulk_import_fofns))) {
     call LoadData {
       input:
         index = i,
@@ -93,7 +93,7 @@ workflow GvsImportGenomes {
         skip_loading_vqsr_fields = skip_loading_vqsr_fields,
         drop_state = drop_state,
         drop_state_includes_greater_than = false,
-        bulk_import_fofn = CreateFOFNs.bulk_import_fofn[i],
+        bulk_import_fofn = CreateFOFNs.bulk_import_fofns[i],
         interval_list = interval_list,
         gatk_override = load_data_gatk_override,
         load_data_preemptible = effective_load_data_preemptible,
