@@ -39,9 +39,10 @@ jobs:
     name: build and push gatk docker to artifacts
     runs-on: ubuntu-latest
     steps:
-      - uses: ./.github/actions/install-cromwell
       - name: checkout gatk
         uses: actions/checkout@v3
+
+      - uses: ./.github/actions/purge-runner-disk
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
