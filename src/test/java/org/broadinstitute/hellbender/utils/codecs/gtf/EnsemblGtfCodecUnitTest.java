@@ -36,8 +36,6 @@ public class EnsemblGtfCodecUnitTest extends GATKBaseTest {
         final List<GencodeGtfFeature.OptionalField<?>> transcriptAnonymousOptionalFields = Arrays.asList(
                 new GencodeGtfFeature.OptionalField<>("gene_source", "ena"),
                 new GencodeGtfFeature.OptionalField<>("transcript_source", "ena"));
-        //final String geneAnonymousOptionalFields = " gene_source \"ena\";";
-        //final String transcriptAnonymousOptionalFields = geneAnonymousOptionalFields + " transcript_source \"ena\";";
 
         int featureOrderNum = startingFeatureOrder;
 
