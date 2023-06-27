@@ -86,7 +86,7 @@ workflow GvsBulkIngestGenomes {
         input:
             dataset_name = dataset_name,
             project_id = project_id,
-            external_sample_names = read_lines(PrepareBulkImport.sampleFOFN),
+            bulk_import_tsv = PrepareBulkImport.output_tsv,
             samples_are_controls = false
     }
 
@@ -95,10 +95,8 @@ workflow GvsBulkIngestGenomes {
             go = AssignIds.done,
             dataset_name = dataset_name,
             project_id = project_id,
-            external_sample_names = read_lines(PrepareBulkImport.sampleFOFN),
-            input_vcfs = read_lines(PrepareBulkImport.vcfFOFN),
-            input_vcf_indexes = read_lines(PrepareBulkImport.vcfIndexFOFN),
-
+            bulk_import_tsv = PrepareBulkImport.output_tsv,
+            num_samples = PrepareBulkImport.num_samples,
             interval_list = interval_list,
 
             # The larger the `load_data_batch_size` the greater the probability of preemptions and non-retryable

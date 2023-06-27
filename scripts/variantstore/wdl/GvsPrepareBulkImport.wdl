@@ -29,7 +29,7 @@ workflow GvsPrepareBulkImport {
     }
 
     output {
-        File output_fofn = GenerateFOFNsFromDataTables.output_fofn
+        File output_tsv = GenerateFOFNsFromDataTables.output_tsv
         File errorRows = GenerateFOFNsFromDataTables.errors
     }
 }
@@ -70,6 +70,8 @@ task GenerateFOFNsFromDataTables {
             --output-file-name ~{output_tsv_name} \
             --error-file-name ~{error_file_name}
 
+        wc -l ~{output_tsv_name} > "num_samples.txt"
+
     >>>
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-26-alpine-8bddf46d1"
@@ -79,7 +81,8 @@ task GenerateFOFNsFromDataTables {
     }
 
     output {
-        File output_fofn = output_tsv_name
+        File output_tsv = output_tsv_name
+        Int num_samples = read_int("num_samples.txt")
         File errors = error_file_name
     }
 }

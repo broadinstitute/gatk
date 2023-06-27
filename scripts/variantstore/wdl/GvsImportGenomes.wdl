@@ -9,9 +9,8 @@ workflow GvsImportGenomes {
     String dataset_name
     String project_id
 
-    Array[String] external_sample_names
-    Array[File] input_vcfs
-    Array[File] input_vcf_indexes
+    File bulk_import_tsv
+    Int num_samples
 
     Boolean skip_loading_vqsr_fields = false
 
@@ -32,7 +31,6 @@ workflow GvsImportGenomes {
     File? load_data_gatk_override
   }
 
-  Int num_samples = length(external_sample_names)
   Int max_auto_batch_size = 20000
   # Broad users enjoy higher quotas and can scatter more widely than beta users before BigQuery smacks them
   # We don't expect this to be changed at runtime, so we can keep this as a constant defined in here
@@ -66,33 +64,17 @@ workflow GvsImportGenomes {
 
   Int effective_load_data_maxretries = select_first([load_data_maxretries_override, 5])
 
-  # return an error if the lengths are not equal
-  Int input_length = length(input_vcfs)
-  Int input_indexes_length = length(input_vcf_indexes)
-  if ((input_length != length(external_sample_names)) || (input_indexes_length != length(external_sample_names))) {
-    call Utils.TerminateWorkflow as DieDueToMismatchedVcfAndIndexLengths {
-      input:
-        message = "The lengths of workflow inputs 'external_sample_names' (" + length(external_sample_names) +
-                  "), 'input_vcfs' (" + input_length + ") and 'input_vcf_indexes' (" + input_indexes_length + ") should be the same.\n\n" +
-                  "If any of these counts are zero an incorrect or non-existent attribute may have been referenced."
-    }
-  }
-
   call GetUningestedSampleIds {
     input:
       dataset_name = dataset_name,
       project_id = project_id,
-      external_sample_names = external_sample_names,
+      bulk_import_tsv = bulk_import_tsv,
       table_name = "sample_info"
   }
 
   call CurateInputLists {
     input:
-      dataset_name = dataset_name,
-      project_id = project_id,
-      input_vcf_index_list = write_lines(input_vcf_indexes),
-      input_vcf_list = write_lines(input_vcfs),
-      input_sample_name_list = write_lines(external_sample_names),
+      bulk_import_tsv = bulk_import_tsv,
       input_samples_to_be_loaded_map = GetUningestedSampleIds.sample_map
   }
 
@@ -413,7 +395,7 @@ task GetUningestedSampleIds {
     String dataset_name
     String project_id
 
-    Array[String] external_sample_names
+    File bulk_import_tsv
     String table_name
   }
   meta {
@@ -422,12 +404,12 @@ task GetUningestedSampleIds {
   }
 
   Int samples_per_table = 4000
-  Int num_samples = length(external_sample_names)
   # add labels for DSP Cloud Cost Control Labeling and Reporting
   String bq_labels = "--label service:gvs --label team:variants --label managedby:import_genomes"
   String temp_table="~{dataset_name}.sample_names_to_load"
 
   command <<<
+    PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o xtrace -o pipefail
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
@@ -446,7 +428,10 @@ task GetUningestedSampleIds {
 
     echo "Creating the external sample name list table ~{temp_table}"
     bq --apilog=false --project_id=~{project_id} mk ~{temp_table} "sample_name:STRING"
-    NAMES_FILE=~{write_lines(external_sample_names)}
+
+    NAMES_FILE="sample_names.txt"
+    cut -f 1 ~{bulk_import_tsv} > $NAMES_FILE
+
     bq --apilog=false load --project_id=~{project_id} ~{temp_table} $NAMES_FILE "sample_name:STRING"
 
     # Get the current min/max id, or 0 if there are none. Withdrawn samples still have IDs so don't filter them out.
@@ -470,8 +455,9 @@ task GetUningestedSampleIds {
     python3 -c "from math import ceil; print(ceil($max_sample_id/~{samples_per_table}))" > max_sample_id
     python3 -c "from math import ceil; print(ceil($min_sample_id/~{samples_per_table}))" > min_sample_id
 
+    num_samples=$(wc -l $NAMES_FILE)
     # get sample map of samples that haven't been loaded yet
-    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} '
+    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n $num_samples '
 
       SELECT sample_id, samples.sample_name FROM `~{dataset_name}.~{table_name}` AS samples JOIN `~{temp_table}` AS temp ON
         samples.sample_name = temp.sample_name WHERE
@@ -502,25 +488,21 @@ task GetUningestedSampleIds {
 
 task CurateInputLists {
   input {
-    String dataset_name
-    String project_id
-    File input_vcf_index_list
-    File input_vcf_list
+    File uncurated_bulk_import_tsv
     File input_samples_to_be_loaded_map
-    File input_sample_name_list
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
   command <<<
-    set -ex
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
-    python3 /app/curate_input_array_files.py --sample_map_to_be_loaded_file_name ~{input_samples_to_be_loaded_map} \
-                                             --sample_name_list_file_name ~{input_sample_name_list} \
-                                             --vcf_list_file_name ~{input_vcf_list} \
-                                             --vcf_index_list_file_name  ~{input_vcf_index_list} \
-                                             --output_files True
+    python3 /app/curate_bulk_import_tsv.py --samples-to-load ~{input_samples_to_be_loaded_map} \
+                                           --bulk-import-input-tsv ~{uncurated_bulk_import_tsv} \
+                                           --bulk-import-output-tsv "curated_bulk_import.tsv"
   >>>
   runtime {
     docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-26-alpine-8bddf46d1"
@@ -532,8 +514,6 @@ task CurateInputLists {
   }
 
   output {
-    File input_vcf_indexes = "output_vcf_index_list_file"
-    File input_vcfs = "output_vcf_list_file"
-    File sample_name_list = "output_sample_name_list_file"
+    File curated_bulk_import_tsv = "curated_bulk_import.tsv"
   }
 }
