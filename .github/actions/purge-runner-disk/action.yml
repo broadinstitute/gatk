@@ -9,3 +9,4 @@ runs:
       run: |
         sudo rm -rf /usr/share/dotnet
         sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+      shell: bash
