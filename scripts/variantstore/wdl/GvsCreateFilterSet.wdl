@@ -37,7 +37,6 @@ workflow GvsCreateFilterSet {
   String fq_alt_allele_table = "~{project_id}.~{dataset_name}.alt_allele"
   String fq_filter_sites_destination_table =    "~{project_id}.~{dataset_name}.filter_set_sites"
   String fq_filter_set_info_destination_table = "~{project_id}.~{dataset_name}.filter_set_info"
-  String fq_tranches_destination_table =        "~{project_id}.~{dataset_name}.filter_set_tranches"
 
   String filter_set_info_destination_table_schema = "filter_set_name:string,type:string,location:integer,ref:string,alt:string,calibration_sensitivity:float,vqslod:float,culprit:string,training_label:string,yng_status:string"
 
@@ -173,7 +172,10 @@ workflow GvsCreateFilterSet {
   if (!use_VQSR_lite) {
     call VQSRClassic.JointVcfFiltering as VQSRClassic {
       input:
+        dataset_name = dataset_name,
+        project_id = project_id,
         base_name = filter_set_name,
+        filter_set_name = filter_set_name,
         num_samples_loaded = GetNumSamplesLoaded.num_samples,
         sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
         sites_only_variant_filtered_vcf_idx = MergeVCFs.output_vcf_index,
@@ -197,16 +199,6 @@ workflow GvsCreateFilterSet {
         indel_recal_file_index = VQSRClassic.indels_variant_recalibration_file_index,
         project_id = project_id,
         useClassic = true
-    }
-
-    call PopulateFilterSetTranches {
-      input:
-        gatk_override = gatk_override,
-        filter_set_name = filter_set_name,
-        snp_recal_tranches = VQSRClassic.snps_variant_tranches_file,
-        indel_recal_tranches = VQSRClassic.indels_variant_tranches_file,
-        fq_tranches_destination_table = fq_tranches_destination_table,
-        project_id = project_id
     }
   }
 
@@ -238,7 +230,6 @@ workflow GvsCreateFilterSet {
                [PopulateFilterSetInfo.monitoring_log],
                select_first([VQSRClassic.monitoring_logs, []]),
                [PopulateFilterSetInfoClassic.monitoring_log],
-               [PopulateFilterSetTranches.monitoring_log],
                [PopulateFilterSetSites.monitoring_log]
                ]
                )
@@ -467,58 +458,6 @@ task PopulateFilterSetSites {
 
   output {
     String status_load_filter_set_sites = read_string("status_load_filter_set_sites")
-    File monitoring_log = "monitoring.log"
-  }
-}
-
-task PopulateFilterSetTranches {
-  input {
-    File? gatk_override
-
-    String filter_set_name
-    String fq_tranches_destination_table
-
-    File snp_recal_tranches
-    File indel_recal_tranches
-
-    String project_id
-  }
-  meta {
-    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
-  }
-
-  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
-
-  command <<<
-    set -eo pipefail
-
-    bash ~{monitoring_script} > monitoring.log &
-
-    export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
-
-    cat ~{snp_recal_tranches} ~{indel_recal_tranches} | grep -v targetTruthSensitivity | grep -v "#" | awk -v CALLSET=~{filter_set_name} '{ print CALLSET "," $0 }' > ~{filter_set_name}.tranches_load.csv
-
-    # BQ load likes a : instead of a . after the project
-    bq_table=$(echo ~{fq_tranches_destination_table} | sed s/\\./:/)
-
-    echo "Loading combined tranches CSV into ~{fq_tranches_destination_table}"
-    bq --apilog=false load --project_id=~{project_id} --skip_leading_rows 0 -F "," \
-    --schema "filter_set_name:string,target_truth_sensitivity:float,num_known:integer,num_novel:integer,known_ti_tv:float,novel_ti_tv:float,min_vqslod:float,filter_name:string,model:string,accessible_truth_sites:integer,calls_at_truth_sites:integer,truth_sensitivity:float" \
-    ${bq_table} \
-    ~{filter_set_name}.tranches_load.csv > status_load_filter_set_tranches
-  >>>
-
-  runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_06_22"
-    memory: "3500 MB"
-    disks: "local-disk 200 HDD"
-    bootDiskSizeGb: 15
-    preemptible: 0
-    cpu: 1
-  }
-
-  output {
-    String status_load_filter_set_tranches = read_string("status_load_filter_set_tranches")
     File monitoring_log = "monitoring.log"
   }
 }
