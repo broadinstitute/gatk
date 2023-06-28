@@ -42,6 +42,8 @@ jobs:
       - name: checkout gatk
         uses: actions/checkout@v3
 
+      - uses: ./.github/actions/purge-runner-disk
+
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@v4
@@ -87,6 +89,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
+      - uses: ./.github/actions/purge-runner-disk
       - name: 'Set up java ${{ matrix.Java }}'
         uses: actions/setup-java@v3
         with:
@@ -160,6 +163,8 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0 #TODO make this shallow
+
+      - uses: ./.github/actions/purge-runner-disk
 
       - name: 'Set up java ${{ matrix.Java }}'
         uses: actions/setup-java@v3
@@ -250,6 +255,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
+      - uses: ./.github/actions/purge-runner-disk
       - name: Set up java 17
         uses: actions/setup-java@v3
         with:
@@ -270,6 +276,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
+      - uses: ./.github/actions/purge-runner-disk
       - name: Set up java 17
         uses: actions/setup-java@v3
         with:
@@ -292,15 +299,10 @@ jobs:
     continue-on-error: true
     name: WDL test ${{ matrix.wdlTest }} on cromwell
     steps:
-      #Reclaim some disk space on the runner to prevent the WDL tasks from running out of space on the docker.
-      #https://stackoverflow.com/questions/75536771/github-runner-out-of-disk-space-after-building-docker-image
-      - name: Reclaim some runner disk space
-        run: |
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
+      - uses: ./.github/actions/purge-runner-disk
       - name: pull lfs files
         run: git lfs pull
       - name: Set up java 17
