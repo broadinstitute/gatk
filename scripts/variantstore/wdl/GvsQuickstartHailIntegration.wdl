@@ -7,16 +7,13 @@ import "GvsQuickstartVcfIntegration.wdl" as QuickstartVcfIntegration
 workflow GvsQuickstartHailIntegration {
     input {
         String branch_name
+        Boolean use_VQSR_lite = true
         File interval_list
-        Boolean use_classic_VQSR
+        Boolean use_classic_VQSR = true
         Boolean extract_do_not_filter_override
         String dataset_suffix = "hail"
-        String expected_output_prefix
         String? gatk_override
-        String? samples_table_name
-        String? sample_id_column_name
-        String? vcf_files_column_name
-        String? vcf_index_files_column_name
+        String expected_output_prefix
     }
 
     String project_id = "gvs-internal"
@@ -25,23 +22,19 @@ workflow GvsQuickstartHailIntegration {
         input:
             branch_name = branch_name,
             drop_state = "NONE",
-            use_classic_VQSR = use_classic_VQSR,
+            use_VQSR_lite = use_VQSR_lite,
             extract_do_not_filter_override = extract_do_not_filter_override,
             dataset_suffix = dataset_suffix,
             gatk_override = gatk_override,
             interval_list = interval_list,
             expected_output_prefix = expected_output_prefix,
-            samples_table_name = samples_table_name,
-            sample_id_column_name = sample_id_column_name,
-            vcf_files_column_name = vcf_files_column_name,
-            vcf_index_files_column_name = vcf_index_files_column_name,
     }
 
     call ExtractAvroFilesForHail.GvsExtractAvroFilesForHail {
         input:
             go = GvsQuickstartVcfIntegration.done,
             project_id = project_id,
-            use_classic_VQSR = use_classic_VQSR,
+            use_VQSR_lite = use_VQSR_lite,
             dataset_name = GvsQuickstartVcfIntegration.dataset_name,
             filter_set_name = GvsQuickstartVcfIntegration.filter_set_name,
             scatter_width = 10,
@@ -51,7 +44,7 @@ workflow GvsQuickstartHailIntegration {
     call CreateAndTieOutVds {
         input:
             branch_name = branch_name,
-            use_VQSR_lite = !use_classic_VQSR,
+            use_VQSR_lite = use_VQSR_lite,
             avro_prefix = GvsExtractAvroFilesForHail.avro_prefix,
             vds_destination_path = GvsExtractAvroFilesForHail.vds_output_path,
             tieout_vcfs = GvsQuickstartVcfIntegration.output_vcfs,
