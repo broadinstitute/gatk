@@ -248,6 +248,7 @@ workflow GvsCreateFilterSet {
   output {
     File monitoring_summary = SummarizeItAll.monitoring_summary
     String loaded_filter_set_name = select_first([PopulateFilterSetInfoClassic.loaded_filter_set_name, PopulateFilterSetInfo.loaded_filter_set_name])
+    Boolean done = true
   }
 }
 
