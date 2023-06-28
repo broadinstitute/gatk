@@ -8,7 +8,11 @@ workflow JointVcfFiltering {
     String dataset_name
     String project_id
     String base_name
+
     String filter_set_name
+    String filter_set_info_schema
+    String fq_filter_set_info_destination_table
+
     Int num_samples_loaded
     File sites_only_variant_filtered_vcf
     File sites_only_variant_filtered_vcf_idx
@@ -179,6 +183,20 @@ workflow JointVcfFiltering {
     }
   }
 
+  call Utils.PopulateFilterSetInfo {
+    input:
+      gatk_override = gatk_override,
+      filter_set_name = filter_set_name,
+      filter_schema = filter_set_info_schema,
+      fq_filter_set_info_destination_table = fq_filter_set_info_destination_table,
+      snp_recal_file = select_first([MergeRecalibrationFiles.output_vcf, SNPsVariantRecalibratorClassic.recalibration]),
+      snp_recal_file_index = select_first([MergeRecalibrationFiles.output_vcf_index, SNPsVariantRecalibratorClassic.recalibration_index]),
+      indel_recal_file = IndelsVariantRecalibrator.recalibration,
+      indel_recal_file_index = IndelsVariantRecalibrator.recalibration_index,
+      project_id = project_id,
+      useClassic = true
+  }
+
   call PopulateFilterSetTranches {
     input:
       project_id = project_id,
@@ -203,6 +221,7 @@ workflow JointVcfFiltering {
                                    [SNPGatherTranches.monitoring_log],
                                    [MergeRecalibrationFiles.monitoring_log],
                                    [SNPsVariantRecalibratorClassic.monitoring_log],
+                                   [PopulateFilterSetInfo.monitoring_log],
                                    [PopulateFilterSetTranches.monitoring_log],
                                    ]))
   }
