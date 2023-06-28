@@ -456,7 +456,6 @@ task PopulateFilterSetSites {
     --schema "filter_set_name:string,location:integer,filters:string" \
     ${bq_table} \
     ~{filter_set_name}.filter_sites_load.tsv > status_load_filter_set_sites
-
   >>>
 
   runtime {

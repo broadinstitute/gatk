@@ -116,7 +116,7 @@ task GetColumnNames {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-13-alpine"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-23-alpine"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     cpu: 1
@@ -150,7 +150,7 @@ task GetWorkspaceName {
 
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-13-alpine"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-23-alpine"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     cpu: 1
@@ -197,7 +197,7 @@ task GenerateFOFNsFromDataTables {
 
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-13-alpine"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-23-alpine"
     memory: "3 GB"
     disks: "local-disk 200 HDD"
     cpu: 1
