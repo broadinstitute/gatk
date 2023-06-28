@@ -46,7 +46,7 @@ workflow GvsJointVariantCalling {
             interval_list = interval_list,
             project_id = project_id,
             sample_id_column_name = sample_id_column_name,
-            samples_table_name = samples_table_name,
+            data_table_name = samples_table_name,
             vcf_files_column_name = vcf_files_column_name,
             vcf_index_files_column_name = vcf_index_files_column_name,
     }
