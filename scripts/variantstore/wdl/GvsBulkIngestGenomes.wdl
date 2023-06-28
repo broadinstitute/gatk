@@ -46,7 +46,7 @@ workflow GvsBulkIngestGenomes {
       project_id = GetWorkspaceName.workspace_namespace,
       workspace_name = GetWorkspaceName.workspace_name,
       workspace_namespace = GetWorkspaceName.workspace_namespace,
-      workspace_bucket  = GetWorkspaceId.workspace_bucket,
+      workspace_bucket = GetWorkspaceId.workspace_bucket,
       samples_table_name = samples_table_name,
       sample_id_column_name = sample_id_column_name,
       vcf_files_column_name = select_first([vcf_files_column_name, GetColumnNames.vcf_files_column_name]),
