@@ -5,6 +5,7 @@ import htsjdk.tribble.annotation.Strand;
 import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.funcotator.metadata.FuncotationMetadataUtils;
+import org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGTFFieldConstants;
 import org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfGeneFeature;
 
 import java.util.ArrayList;
@@ -260,10 +261,10 @@ public class GencodeFuncotationBuilder {
 
     /**
      * Set the Appris Rank in the {@link GencodeFuncotation}.
-     * @param apprisRank The {@link GencodeGtfGeneFeature.FeatureTag} containing the Appris Rank for the {@link GencodeFuncotation}.
+     * @param apprisRank The {@link GencodeGTFFieldConstants.FeatureTag} containing the Appris Rank for the {@link GencodeFuncotation}.
      * @return {@code this} {@link GencodeFuncotationBuilder}
      */
-    public GencodeFuncotationBuilder setApprisRank( final GencodeGtfGeneFeature.FeatureTag apprisRank ) {
+    public GencodeFuncotationBuilder setApprisRank( final GencodeGTFFieldConstants.FeatureTag apprisRank ) {
         gencodeFuncotation.setApprisRank( apprisRank );
         return this;
     }

@@ -46,7 +46,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfFeature.FeatureTag.*;
+import static org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGTFFieldConstants.FeatureTag.*;
 
 /**
  * A factory to create {@link GencodeFuncotation}s.
@@ -111,24 +111,22 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     /**
      * List of valid Appris Ranks used for sorting funcotations to get the "best" one.z
      */
-    private static final HashSet<GencodeGtfGeneFeature.FeatureTag> apprisRanks = new HashSet<>(
-            Arrays.asList(
-                APPRIS_PRINCIPAL,
-                APPRIS_PRINCIPAL_1,
-                APPRIS_PRINCIPAL_2,
-                APPRIS_PRINCIPAL_3,
-                APPRIS_PRINCIPAL_4,
-                APPRIS_PRINCIPAL_5,
-                APPRIS_ALTERNATIVE_1,
-                APPRIS_ALTERNATIVE_2,
-                APPRIS_CANDIDATE_HIGHEST_SCORE,
-                APPRIS_CANDIDATE_LONGEST_CCDS,
-                APPRIS_CANDIDATE_CCDS,
-                APPRIS_CANDIDATE_LONGEST_SEQ,
-                APPRIS_CANDIDATE_LONGEST,
-                APPRIS_CANDIDATE
-            )
-    );
+    private static final LinkedHashMap<String, GencodeGTFFieldConstants.FeatureTag> apprisRanks = new LinkedHashMap<>() {{
+            put(APPRIS_PRINCIPAL.toString(), APPRIS_PRINCIPAL);
+            put(APPRIS_PRINCIPAL_1.toString(), APPRIS_PRINCIPAL_1);
+            put(APPRIS_PRINCIPAL_2.toString(), APPRIS_PRINCIPAL_2);
+            put(APPRIS_PRINCIPAL_3.toString(), APPRIS_PRINCIPAL_3);
+            put(APPRIS_PRINCIPAL_4.toString(), APPRIS_PRINCIPAL_4);
+            put(APPRIS_PRINCIPAL_5.toString(), APPRIS_PRINCIPAL_5);
+            put(APPRIS_ALTERNATIVE_1.toString(), APPRIS_ALTERNATIVE_1);
+            put(APPRIS_ALTERNATIVE_2.toString(), APPRIS_ALTERNATIVE_2);
+            put(APPRIS_CANDIDATE_HIGHEST_SCORE.toString(), APPRIS_CANDIDATE_HIGHEST_SCORE);
+            put(APPRIS_CANDIDATE_LONGEST_CCDS.toString(), APPRIS_CANDIDATE_LONGEST_CCDS);
+            put(APPRIS_CANDIDATE_CCDS.toString(), APPRIS_CANDIDATE_CCDS);
+            put(APPRIS_CANDIDATE_LONGEST_SEQ.toString(), APPRIS_CANDIDATE_LONGEST_SEQ);
+            put(APPRIS_CANDIDATE_LONGEST.toString(), APPRIS_CANDIDATE_LONGEST);
+            put(APPRIS_CANDIDATE.toString(), APPRIS_CANDIDATE);
+        }};
 
     /**
      * The set of {@link GencodeFuncotation.VariantClassification} types that are valid for coding regions.
@@ -946,8 +944,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         // Check if this transcript has the `basic` tag:
         return transcript.getOptionalFields().stream()
                 .filter( f -> f.getName().equals("tag") )
-                .filter( f -> f.getValue() instanceof GencodeGtfFeature.FeatureTag )
-                .filter( f -> f.getValue().equals(GencodeGtfFeature.FeatureTag.BASIC) )
+                .filter( f -> f.getValue().equals(GencodeGTFFieldConstants.FeatureTag.BASIC.toString()) )
                 .count() > 0;
     }
 
@@ -1079,7 +1076,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         // Before we get started, check to see if this is a non-protein-coding feature.
         // If it is, we must handle it differently:
-        if ( GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString().equals(transcript.getGeneType()) ) {
+        if ( GencodeGTFFieldConstants.KnownGeneBiotype.PROTEIN_CODING.toString().equals(transcript.getGeneType()) ) {
             return createCodingRegionFuncotationForProteinCodingFeature(variant, altAllele, reference, transcript, exon);
         }
         else {
@@ -1700,7 +1697,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         gencodeFuncotationBuilder.setReferenceContext(referenceBases.getBaseString(Strand.POSITIVE));
 
         // Set the VariantClassification:
-        if ( GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString().equals(transcript.getGeneType()) ) {
+        if ( GencodeGTFFieldConstants.KnownGeneBiotype.PROTEIN_CODING.toString().equals(transcript.getGeneType()) ) {
             gencodeFuncotationBuilder.setVariantClassification(GencodeFuncotation.VariantClassification.INTRON);
         }
         else {
@@ -2708,19 +2705,18 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
     /**
      * Get the Appris Rank from the given {@link GencodeGtfGeneFeature}.
-     * Appris ranks are specified as annotations using {@link org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfFeature.FeatureTag}s.
+     * Appris ranks are specified as annotations using {@link GencodeGTFFieldConstants.FeatureTag}s.
      * @param gtfFeature The {@link GencodeGtfTranscriptFeature} from which to get the Appris Rank.
      * @return The highest Appris Rank found in the given {@code gtfFeature}; if no Appris Rank exists, {@code null}.
      */
     @VisibleForTesting
-    static GencodeGtfFeature.FeatureTag getApprisRank( final GencodeGtfTranscriptFeature gtfFeature ) {
+    static GencodeGTFFieldConstants.FeatureTag getApprisRank(final GencodeGtfTranscriptFeature gtfFeature ) {
 
-        // Get our appris tag(s) if it/they exist(s):
-        final List<GencodeGtfFeature.FeatureTag> gtfApprisTags = gtfFeature.getOptionalFields().stream()
+        // Get the Appris Rank tags and convert them to Sortable Enums:
+        final List<GencodeGTFFieldConstants.FeatureTag> gtfApprisTags = gtfFeature.getOptionalFields().stream()
                 .filter( f -> f.getName().equals("tag") )
-                .filter( f -> f.getValue() instanceof GencodeGtfFeature.FeatureTag )
-                .filter( f -> apprisRanks.contains( f.getValue() ) )
-                .map( f -> (GencodeGtfFeature.FeatureTag)f.getValue() ).collect(Collectors.toList());
+                .filter( f -> apprisRanks.containsKey( f.getValue() ) )
+                .map( f -> apprisRanks.get(f.getValue()) ).collect(Collectors.toList());
 
         if ( gtfApprisTags.isEmpty() ) {
             return null;
@@ -2737,7 +2733,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
     /**
      * Converts a given GeneTranscriptType {@link String} to a {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification}.
-     * Assumes the given {@code type} is not {@link GencodeGtfFeature.KnownGeneBiotype#PROTEIN_CODING}.
+     * Assumes the given {@code type} is not {@link GencodeGTFFieldConstants.KnownGeneBiotype#PROTEIN_CODING}.
      * If no type can be assessed, returns {@code null}.
      * @param type A {@link String} representing a GeneTranscriptType to convert to a {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification}.
      * @return A {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification} representing the given GeneTranscriptType {@link String}, or {@code null}.
@@ -2745,8 +2741,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     private static GencodeFuncotation.VariantClassification convertGeneTranscriptTypeToVariantClassification (final String type ) {
 
         //TODO: This all needs to be fixed so there is a 1:1 mapping of GencodeGtfFeature.KnownGeneBiotype->VariantClassification - Issue #4405
-        if (GencodeGtfFeature.KnownGeneBiotype.LINCRNA.toString().equals(type) ||
-                GencodeGtfFeature.KnownGeneBiotype.MACRO_LNCRNA.toString().equals(type)) {
+        if (GencodeGTFFieldConstants.KnownGeneBiotype.LINCRNA.toString().equals(type) ||
+                GencodeGTFFieldConstants.KnownGeneBiotype.MACRO_LNCRNA.toString().equals(type)) {
 			return GencodeFuncotation.VariantClassification.LINCRNA;
 		}
         return GencodeFuncotation.VariantClassification.RNA;

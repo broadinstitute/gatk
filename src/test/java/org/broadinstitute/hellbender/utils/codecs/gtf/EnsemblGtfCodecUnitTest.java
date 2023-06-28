@@ -11,6 +11,8 @@ import java.io.BufferedInputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Test class for the ENSEMBL GTF Reader.
@@ -30,61 +32,60 @@ public class EnsemblGtfCodecUnitTest extends GATKBaseTest {
                                              final String exonId, final int cdsStart, final int cdsEnd) {
 
         // Placeholder for constant extra data:
-        final String geneAnonymousOptionalFields = " gene_source \"ena\";";
-        final String transcriptAnonymousOptionalFields = geneAnonymousOptionalFields + " transcript_source \"ena\";";
+        final List<GencodeGtfFeature.OptionalField<?>> geneAnonymousOptionalFields = Arrays.asList( new GencodeGtfFeature.OptionalField<>("gene_source", "ena"));
+        final List<GencodeGtfFeature.OptionalField<?>> transcriptAnonymousOptionalFields = Arrays.asList(
+                new GencodeGtfFeature.OptionalField<>("gene_source", "ena"),
+                new GencodeGtfFeature.OptionalField<>("transcript_source", "ena"));
 
         int featureOrderNum = startingFeatureOrder;
 
         GencodeGtfFeatureBaseData data;
 
         data = new GencodeGtfFeatureBaseData(EnsemblGtfCodec.GTF_FILE_TYPE_STRING, featureOrderNum++, ECOLI_CONTIG_NAME, GencodeGtfFeature.ANNOTATION_SOURCE_ENA, GencodeGtfFeature.FeatureType.GENE,
-                geneStart, geneEnd, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, geneId, null, GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
+                geneStart, geneEnd, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, geneId, null, GencodeGTFFieldConstants.KnownGeneBiotype.PROTEIN_CODING.toString(),
                 null, geneName, null, null, null, -1, null, null,
-                null,
                 geneAnonymousOptionalFields);
         final GencodeGtfGeneFeature gene = (GencodeGtfGeneFeature)GencodeGtfFeature.create(data);
         gene.setUcscGenomeVersion(ECOLI_UCSC_GENOME_VERSION);
 
         data = new GencodeGtfFeatureBaseData(EnsemblGtfCodec.GTF_FILE_TYPE_STRING, featureOrderNum++, ECOLI_CONTIG_NAME, GencodeGtfFeature.ANNOTATION_SOURCE_ENA, GencodeGtfFeature.FeatureType.TRANSCRIPT,
-                geneStart, geneEnd, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, geneId, transcriptId, GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, geneName, GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, transcriptName, -1, null, null,
-                null,
+                geneStart, geneEnd, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, geneId, transcriptId, GencodeGTFFieldConstants.KnownGeneBiotype.PROTEIN_CODING.toString(),
+                null, geneName, GencodeGTFFieldConstants.KnownGeneBiotype.PROTEIN_CODING.toString(), null, transcriptName, -1, null, null,
                 transcriptAnonymousOptionalFields
         );
         final GencodeGtfTranscriptFeature transcript = (GencodeGtfTranscriptFeature) GencodeGtfFeature.create(data);
         transcript.setUcscGenomeVersion(ECOLI_UCSC_GENOME_VERSION);
 
         data = new GencodeGtfFeatureBaseData(EnsemblGtfCodec.GTF_FILE_TYPE_STRING, featureOrderNum++, ECOLI_CONTIG_NAME, GencodeGtfFeature.ANNOTATION_SOURCE_ENA, GencodeGtfFeature.FeatureType.EXON,
-                geneStart, geneEnd, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, geneId, transcriptId, GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, geneName, GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, transcriptName, 1, exonId, null,
-                null,
+                geneStart, geneEnd, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.DOT, geneId, transcriptId, GencodeGTFFieldConstants.KnownGeneBiotype.PROTEIN_CODING.toString(),
+                null, geneName, GencodeGTFFieldConstants.KnownGeneBiotype.PROTEIN_CODING.toString(), null, transcriptName, 1, exonId, null,
                 transcriptAnonymousOptionalFields
         );
         final GencodeGtfExonFeature exon = (GencodeGtfExonFeature) GencodeGtfFeature.create(data);
         exon.setUcscGenomeVersion(ECOLI_UCSC_GENOME_VERSION);
 
         data = new GencodeGtfFeatureBaseData(EnsemblGtfCodec.GTF_FILE_TYPE_STRING, featureOrderNum++, ECOLI_CONTIG_NAME, GencodeGtfFeature.ANNOTATION_SOURCE_ENA, GencodeGtfFeature.FeatureType.CDS,
-                cdsStart, cdsEnd, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ZERO, geneId, transcriptId, GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, geneName, GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, transcriptName, 1, null, null,
-                Collections.singletonList(new GencodeGtfFeature.OptionalField<>("protein_id", transcriptId)),
-                transcriptAnonymousOptionalFields
+                cdsStart, cdsEnd, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ZERO, geneId, transcriptId, GencodeGTFFieldConstants.KnownGeneBiotype.PROTEIN_CODING.toString(),
+                null, geneName, GencodeGTFFieldConstants.KnownGeneBiotype.PROTEIN_CODING.toString(), null, transcriptName, 1, null, null,
+                Stream.concat(
+                        transcriptAnonymousOptionalFields.stream(),
+                        Stream.of(new GencodeGtfFeature.OptionalField<>("protein_id", transcriptId))
+                ).collect(Collectors.toList())
         );
         final GencodeGtfCDSFeature cds = (GencodeGtfCDSFeature) GencodeGtfFeature.create(data);
         cds.setUcscGenomeVersion(ECOLI_UCSC_GENOME_VERSION);
 
         data = new GencodeGtfFeatureBaseData(EnsemblGtfCodec.GTF_FILE_TYPE_STRING, featureOrderNum++, ECOLI_CONTIG_NAME, GencodeGtfFeature.ANNOTATION_SOURCE_ENA, GencodeGtfFeature.FeatureType.START_CODON,
-                cdsStart, cdsStart+2, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ZERO, geneId, transcriptId, GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, geneName, GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, transcriptName, 1, null, null,
-                null,
+                cdsStart, cdsStart+2, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ZERO, geneId, transcriptId, GencodeGTFFieldConstants.KnownGeneBiotype.PROTEIN_CODING.toString(),
+                null, geneName, GencodeGTFFieldConstants.KnownGeneBiotype.PROTEIN_CODING.toString(), null, transcriptName, 1, null, null,
                 transcriptAnonymousOptionalFields
         );
         final GencodeGtfStartCodonFeature startCodon = (GencodeGtfStartCodonFeature) GencodeGtfFeature.create(data);
         startCodon.setUcscGenomeVersion(ECOLI_UCSC_GENOME_VERSION);
 
         data = new GencodeGtfFeatureBaseData(EnsemblGtfCodec.GTF_FILE_TYPE_STRING, featureOrderNum, ECOLI_CONTIG_NAME, GencodeGtfFeature.ANNOTATION_SOURCE_ENA, GencodeGtfFeature.FeatureType.STOP_CODON,
-                cdsEnd+1, cdsEnd+3, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ZERO, geneId, transcriptId, GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(),
-                null, geneName, GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString(), null, transcriptName, 1, null, null,
-                null,
+                cdsEnd+1, cdsEnd+3, Strand.POSITIVE, GencodeGtfFeature.GenomicPhase.ZERO, geneId, transcriptId, GencodeGTFFieldConstants.KnownGeneBiotype.PROTEIN_CODING.toString(),
+                null, geneName, GencodeGTFFieldConstants.KnownGeneBiotype.PROTEIN_CODING.toString(), null, transcriptName, 1, null, null,
                 transcriptAnonymousOptionalFields
         );
         final GencodeGtfStopCodonFeature stopCodon = (GencodeGtfStopCodonFeature) GencodeGtfFeature.create(data);

@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.funcotator;
 
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
+import org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGTFFieldConstants;
 import org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfFeature;
 
 import java.util.Comparator;
@@ -246,8 +247,8 @@ public enum TranscriptSelectionMode {
         @Override
         public int compare( final GencodeFuncotation a, final GencodeFuncotation b ) {
             // Is it protein coding?
-            final boolean isAProteinCoding = GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString().equals(a.getGeneTranscriptType());
-            final boolean isBProteinCoding = GencodeGtfFeature.KnownGeneBiotype.PROTEIN_CODING.toString().equals(b.getGeneTranscriptType());
+            final boolean isAProteinCoding = GencodeGTFFieldConstants.KnownGeneBiotype.PROTEIN_CODING.toString().equals(a.getGeneTranscriptType());
+            final boolean isBProteinCoding = GencodeGTFFieldConstants.KnownGeneBiotype.PROTEIN_CODING.toString().equals(b.getGeneTranscriptType());
             if ( isAProteinCoding != isBProteinCoding ) {
                 if ( isAProteinCoding ) {
                     return -1;
