@@ -62,6 +62,8 @@ workflow MitochondriaPipeline {
     Float? verifyBamID
     Boolean compress_output_vcf = false
 
+    Int java_xmx_mb
+
     #Optional runtime arguments
     Int? preemptible_tries
   }
@@ -92,6 +94,7 @@ workflow MitochondriaPipeline {
     input:
       input_bam = SubsetBamToChrM.output_bam,
       preemptible_tries = preemptible_tries
+      java_xmx_mb = java_xmx_mb
   }
 
   String base_name = basename(SubsetBamToChrM.output_bam, ".bam")
@@ -247,6 +250,7 @@ task RevertSam {
   input {
     File input_bam
     String basename = basename(input_bam, ".bam")
+    Int java_xmx_mb
 
     # runtime
     Int? preemptible_tries
@@ -260,7 +264,7 @@ task RevertSam {
     input_bam: "aligned bam"
   }
   command {
-    java -Xmx1000m -jar /usr/gitc/picard.jar \
+    java -Xmx~{java_xmx_mb}m -jar /usr/gitc/picard.jar \
     RevertSam \
     INPUT=~{input_bam} \
     OUTPUT_BY_READGROUP=false \
