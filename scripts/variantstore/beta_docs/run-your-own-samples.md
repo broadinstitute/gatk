@@ -17,7 +17,6 @@ To learn more about the GVS workflow, see the [Genomic Variant Store workflow ov
 
 While the GVS workflow has been tested with 100,000 single sample GVCF files as input, only datasets of up to 10,000 files are being used for beta testing.
 
-
 #### Reblocked GVCF files
 
 If your GVCF files have not been reblocked, you can reblock them using the [WARP reblocking workflow](https://github.com/broadinstitute/warp/blob/master/pipelines/broad/dna_seq/germline/joint_genotyping/reblocking/ReblockGVCF.wdl), which is configured in the [ReblockGVCF Terra workspace](https://app.terra.bio/#workspaces/warp-pipelines/ReblockGVCF). 
@@ -32,12 +31,12 @@ Input GVCF files for the GVS workflow must include the annotations described in 
 | --- | --- | --- |
 | Ref | Reference allele. | --- |
 | Alt | Alternate allele. | --- |
-| AS_RAW_MQ, RAW_MQandDP, or RAW_MQ | RMS mapping quality (‘AS’: allele-specific). | Required for VQSR Data |
-| AS_RAW_MQRankSum or Map_QUAL_RANK_SUM_KEY | Z-score from Wilcoxon rank sum test of alternate versus reference read mapping qualities. | Required for VQSR Data |
-| QUALapprox | Sum of PL[0] values; used to approximate the QUAL score. | Required for VQSR Data |
-| AS_QUALapprox | Allele-specific sum of PL[0] values; used to approximate the QUAL score. | Required for VQSR Data |
-| AS_SB_TABLE or STRAND_BIAS_BY_SAMPLE | Allele-specific forward/reverse read counts for strand bias tests. | Required for VQSR Data |
-| AS_VarDP, VarDP, or DP | Depth over variant genotypes, or read depth  (‘AS’: allele-specific). | Required for VQSR Data |
+| AS_RAW_MQ, RAW_MQandDP, or RAW_MQ | RMS mapping quality (‘AS’: allele-specific). | Required for VQSR |
+| AS_RAW_MQRankSum or Map_QUAL_RANK_SUM_KEY | Z-score from Wilcoxon rank sum test of alternate versus reference read mapping qualities. | Required for VQSR |
+| QUALapprox | Sum of PL[0] values; used to approximate the QUAL score. | Required for VQSR |
+| AS_QUALapprox | Allele-specific sum of PL[0] values; used to approximate the QUAL score. | Required for VQSR |
+| AS_SB_TABLE or STRAND_BIAS_BY_SAMPLE | Allele-specific forward/reverse read counts for strand bias tests. | Required for VQSR |
+| AS_VarDP, VarDP, or DP | Depth over variant genotypes, or read depth  (‘AS’: allele-specific). | Required for VQSR |
 | call_GT | Genotype. | --- |
 | call_GQ | Genotype quality. | --- |
 
@@ -60,15 +59,27 @@ Before you can begin uploading your data to Terra, you’ll need to setup some a
 
 To run the GVS workflow, your single sample GVCF files need to be stored in the cloud and loaded into a data table in your clone of the [GVS workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta). The procedure is a little different, depending on whether your samples are already stored in the cloud. Follow the step-by-step instructions below to load your sample files into the workspace based on where your files are stored.
 
-### Data stored in the cloud
+### Download the sample table template
 
-If your data is already stored in the cloud, you’ll need to upload a TSV file to Terra containing the cloud paths to your files and update permissions on the data to allow Terra to access it. 
+The GVS workflow relies on the table structure and names in the Beta workspace. Download a TSV of the `sample` table to use for uploading your own data following this template.
 
-1. Navigate to the **Data tab** in your clone of the GVS workspace.
+1.Navigate to the **Data tab** in your clone of the GVS workspace.
 
 2. Click on the **three vertical dots icon** next to the **sample** data table inside the TABLES sidebar on the left side of the page.
 
-3. Select **Download TSV** to download the data table to your local machine. 
+3. Select **Download TSV** to download the data table to your local machine.
+
+### Delete the example data
+You will need to delete the example sample data from the workspace so that it is not included in your callset.
+
+1. Navigate to the **Data tab** in your clone of the GVS workspace.
+2. Click on the **sample** data table. 
+3. Click the top check mark to select all samples.
+4. Click **Edit** and click **Delete selected rows** to delete the data.
+
+### Edit TSV to upload data stored in the cloud
+
+If your data is already stored in the cloud, you’ll need to upload a TSV file to Terra containing the cloud paths to your files and update permissions on the data to allow Terra to access it. 
 
 4. **Open the TSV file** with a spreadsheet editor of your choice.
 
@@ -79,7 +90,7 @@ If your data is already stored in the cloud, you’ll need to upload a TSV file 
 ---
 
 **Warning:**      
-The workflow in the GVS beta workspace is configured based on the format of the TSV file. To avoid reconfiguring the workflow, do **not** rearrange or rename the columns in the TSV file.
+The workflow in the GVS beta workspace is configured based on the format of the TSV file. To avoid reconfiguring the workflow, do **not** rearrange or rename the columns in the TSV file. If you need to customize the column names, read more about the parameters to use in [GVS Bulk Ingest Details](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/docs/gvs-bulk-ingest-details.md). 
 
 ---
 
@@ -87,15 +98,9 @@ The workflow in the GVS beta workspace is configured based on the format of the 
 
 8. Grant your Terra proxy group the Storage Object Creator and Storage Object Viewer roles on the Google Cloud Storage (GCS) bucket that holds your sample data by following the **Add a principal to a bucket-level policy** instructions in the Google Cloud documentation article, [Use IAM permissions](https://cloud.google.com/storage/docs/access-control/using-iam-permissions).
 
-### Data NOT stored in the cloud
+### Edit TSV to upload data NOT stored in the cloud
 
 If your data is not stored in the cloud, you’ll need to upload it to your workspace storage bucket along with a TSV file containing each of the data file names.
-
-1. Navigate to the **Data tab** in your clone of the GVS workspace.
-
-2. Click on the **three vertical dots icon** next to the **sample** data table inside the TABLES sidebar on the left side of the page.
-
-3. Select **Download TSV** to download the data table to your local machine. 
 
 4. **Open the TSV file** with a spreadsheet editor of your choice.
 
@@ -106,7 +111,7 @@ If your data is not stored in the cloud, you’ll need to upload it to your work
 ---
 
 **Warning:**        
-The workflow in the GVS beta workspace is configured based on the format of the TSV file. To avoid reconfiguring the workflow, do **not** rearrange or rename the columns in the TSV file.
+The workflow in the GVS beta workspace is configured based on the format of the TSV file. To avoid reconfiguring the workflow, do **not** rearrange or rename the columns in the TSV file. If you need to customize the column names, read more about the parameters to use in [GVS Bulk Ingest Details](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/docs/gvs-bulk-ingest-details.md).
 
 ---
 
@@ -114,33 +119,16 @@ The workflow in the GVS beta workspace is configured based on the format of the 
 
 ## Run the workflow
 
-Now that your samples are loaded into data table in Terra, it’s time to setup and run the GVS workflow! The workflow is configured to call inputs from and write outputs to the sample_set table.
+Now that your samples are loaded into data table in Terra, it’s time to setup and run the GVS workflow!
 
 1. **Select the workflow** from the Workflows tab.
-1. In the configuration page, select the **sample_set entity** in Step 1.
-1. Create a new sample_set dataset in Step 2.
-    1. Select **Create a new sample_set from selected samples**.
-    1. Click on the **arrow next to the tickbox** in the header row of the table.
-    1. Select All in the dropdown menu that appears to select all of the samples.
-    1. If you do **not** want to include the example data in your callset, **click on the tickbox** next to each of the 10 samples to deselect them.
-    1. At the bottom of the page, **name your new sample_set**. This will appear in the sample_set data table.
-    1. Click **OK** to create the sample_set.
 1. Configure the workflow inputs.
     1. Enter a **name for the callset** as a string with the format “*CALLSET_NAME*” for the `call_set_identifier` variable. This string is used as to name several variables and files and should begin with a letter. Valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”.
     1. Enter the name of your **BigQuery dataset** as a string with the format “*DATASET_NAME*” for the `dataset_name` variable.
     1. Enter the name of the **GCP project** that holds the BigQuery dataset as a string with the format “*PROJECT_NAME*” for the `project_id` variable.
+   2. Enter the name of a directory for writing outputs. Enter a string in the format "*gs://your_bucket/here*" in `extract_output_gcs_dir`. If you want the data in your Terra workspace bucket you can find that on the Workspace Dashboard, right panel, under Cloud Information. Copy the "Bucket Name" and use it to the inputs to create a gs path as a string like this "*gs://fc-338fe040-3522-484c-ba48-14b48f9950c2*". If you do not enter a bucket here, the outputs will be in the execution directory under *Files*.
 1. **Save** the workflow configuration.
 1. **Run** the workflow.
-
-### Adding additional data to the BigQuery dataset
-The workflow imports GVCFs to the BigQuery dataset. The example GVCFs for the workspace are listed as a set in the workspace sample_set table. Multiple sample sets may be added to the same BigQuery dataset to appear in the same callset, but the workflow only runs on one sample set at a time. 
-
-If you run the workflow with the example data pre-loaded into the workspace, and then load additional data into that same dataset, the example data will be in your callset. Be sure to make a new dataset for your own data if you run the example data (unless you want the example data in there too–the more the merrier!).
-
-### Important configuration notes
-
-By default, the workflow is set up to write outputs to the workspace Google bucket. If you want to write the outputs to a different cloud storage location, you can specify the cloud path in the `extract_output_gcs_dir` optional input in the workflow configuration. 
-
 
 ### Time and cost
 Below are several examples of the time and cost of running the workflow.
@@ -190,5 +178,5 @@ Details on citing Terra workspaces can be found here: [How to cite Terra](https:
 Data Sciences Platform, Broad Institute (*Year, Month Day that the workspace was last modified*) gvs-prod/Genomic_Variant_Store_Beta [workspace] Retrieved *Month Day, Year that workspace was retrieved*, https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta
 
 ### License
-**Copyright Broad Institute, 2022 | Apache**
+**Copyright Broad Institute, 2023 | Apache**
 The workflow script is released under the Apache License, Version 2.0 (full license text at https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT). Note however that the programs called by the scripts may be subject to different licenses. Users are responsible for checking that they are authorized to run all programs before running these tools.
