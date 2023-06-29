@@ -864,3 +864,86 @@ task SummarizeTaskMonitorLogs {
     File monitoring_summary = "monitoring_summary.txt"
   }
 }
+
+# Note - this task should probably live in GvsCreateFilterSet, but I moved it here when I was refactoring VQSR Classic out of
+# GvsCreateFilterSet (in order to avoid a circular dependency)
+# When VQSR Classic is removed, consider putting this task back in GvsCreateFilterSet
+task PopulateFilterSetInfo {
+  input {
+    String filter_set_name
+    String filter_schema
+    String fq_filter_set_info_destination_table
+    Boolean useClassic = false
+
+    File snp_recal_file
+    File snp_recal_file_index
+    File indel_recal_file
+    File indel_recal_file_index
+
+    String project_id
+
+    File? gatk_override
+  }
+  meta {
+    # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
+  }
+
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+
+  command <<<
+    set -eo pipefail
+
+    bash ~{monitoring_script} > monitoring.log &
+
+    export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+
+    echo "Creating SNPs recalibration file"
+    gatk --java-options "-Xmx1g" \
+    CreateFilteringFiles \
+    --ref-version 38 \
+    --filter-set-name ~{filter_set_name} \
+    -mode SNP \
+    --classic ~{useClassic} \
+    -V ~{snp_recal_file} \
+    -O ~{filter_set_name}.snps.recal.tsv
+
+    echo "Creating INDELs racalibration file"
+    gatk --java-options "-Xmx1g" \
+    CreateFilteringFiles \
+    --ref-version 38 \
+    --filter-set-name ~{filter_set_name} \
+    -mode INDEL \
+    --classic ~{useClassic} \
+    -V ~{indel_recal_file} \
+    -O ~{filter_set_name}.indels.recal.tsv
+
+    # merge into a single file
+    echo "Merging SNP + INDELs"
+    cat ~{filter_set_name}.snps.recal.tsv ~{filter_set_name}.indels.recal.tsv | grep -v filter_set_name | grep -v "#"  > ~{filter_set_name}.filter_set_load.tsv
+
+    # BQ load likes a : instead of a . after the project
+    bq_table=$(echo ~{fq_filter_set_info_destination_table} | sed s/\\./:/)
+
+    echo "Loading combined TSV into ~{fq_filter_set_info_destination_table}"
+    bq --apilog=false load --project_id=~{project_id} --skip_leading_rows 0 -F "tab" \
+    --range_partitioning=location,0,26000000000000,6500000000 \
+    --clustering_fields=location \
+    --schema "~{filter_schema}" \
+    ${bq_table} \
+    ~{filter_set_name}.filter_set_load.tsv > status_load_filter_set_info
+  >>>
+
+  runtime {
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_06_22"
+    memory: "3500 MB"
+    disks: "local-disk 250 HDD"
+    bootDiskSizeGb: 15
+    preemptible: 0
+    cpu: 1
+  }
+
+  output {
+    String status_load_filter_set_info = read_string("status_load_filter_set_info")
+    File monitoring_log = "monitoring.log"
+  }
+}
