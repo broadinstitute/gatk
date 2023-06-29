@@ -577,16 +577,16 @@ public final class AggregateSVEvidence extends TwoPassVariantWalker {
             header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.DISCORDANT_PAIR_CARRIER_SIGNAL_ATTRIBUTE, 1, VCFHeaderLineType.Integer, "Carrier sample discordant pair signal"));
         }
         if (splitReadCollectionEnabled()) {
-            header.addMetaDataLine(new VCFFormatHeaderLine(GATKSVVCFConstants.START_SPLIT_READ_COUNT_ATTRIBUTE, 1, VCFHeaderLineType.Integer, "Split read count at start"));
-            header.addMetaDataLine(new VCFFormatHeaderLine(GATKSVVCFConstants.END_SPLIT_READ_COUNT_ATTRIBUTE, 1, VCFHeaderLineType.Integer, "Split read count at end"));
-            header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.START_SPLIT_QUALITY_ATTRIBUTE, 1, VCFHeaderLineType.Integer, "Split read quality at start"));
-            header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.END_SPLIT_QUALITY_ATTRIBUTE, 1, VCFHeaderLineType.Integer, "Split read quality at end"));
+            header.addMetaDataLine(new VCFFormatHeaderLine(GATKSVVCFConstants.FIRST_SPLIT_READ_COUNT_ATTRIBUTE, 1, VCFHeaderLineType.Integer, "Split read count at start"));
+            header.addMetaDataLine(new VCFFormatHeaderLine(GATKSVVCFConstants.SECOND_SPLIT_READ_COUNT_ATTRIBUTE, 1, VCFHeaderLineType.Integer, "Split read count at end"));
+            header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.FIRST_SPLIT_QUALITY_ATTRIBUTE, 1, VCFHeaderLineType.Integer, "Split read quality at start"));
+            header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.SECOND_SPLIT_QUALITY_ATTRIBUTE, 1, VCFHeaderLineType.Integer, "Split read quality at end"));
             header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TOTAL_SPLIT_QUALITY_ATTRIBUTE, 1, VCFHeaderLineType.Integer, "Split read quality for both ends"));
-            header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.START_SPLIT_CARRIER_SIGNAL_ATTRIBUTE, 1, VCFHeaderLineType.Integer, "Carrier sample split read signal at start"));
-            header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.END_SPLIT_CARRIER_SIGNAL_ATTRIBUTE, 1, VCFHeaderLineType.Integer, "Carrier sample split read signal at end"));
+            header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.FIRST_SPLIT_CARRIER_SIGNAL_ATTRIBUTE, 1, VCFHeaderLineType.Integer, "Carrier sample split read signal at start"));
+            header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.SECOND_SPLIT_CARRIER_SIGNAL_ATTRIBUTE, 1, VCFHeaderLineType.Integer, "Carrier sample split read signal at end"));
             header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.TOTAL_SPLIT_CARRIER_SIGNAL_ATTRIBUTE, 1, VCFHeaderLineType.Integer, "Carrier sample split read signal for both ends"));
-            header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.START_SPLIT_POSITION_ATTRIBUTE, 1, VCFHeaderLineType.Integer, "Split read position at start"));
-            header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.END_SPLIT_POSITION_ATTRIBUTE, 1, VCFHeaderLineType.Integer, "Split read position at end"));
+            header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.FIRST_SPLIT_POSITION_ATTRIBUTE, 1, VCFHeaderLineType.Integer, "Split read position at start"));
+            header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.SECOND_SPLIT_POSITION_ATTRIBUTE, 1, VCFHeaderLineType.Integer, "Split read position at end"));
             if (discordantPairCollectionEnabled()) {
                 header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.PESR_QUALITY_ATTRIBUTE, 1, VCFHeaderLineType.Integer, "Combined PE/SR quality"));
                 header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.PESR_CARRIER_SIGNAL_ATTRIBUTE, 1, VCFHeaderLineType.Integer, "Combined PE/SR carrier signal"));

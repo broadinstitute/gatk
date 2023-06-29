@@ -112,17 +112,17 @@ public final class GATKSVVCFConstants {
     public static final String EXPECTED_COPY_NUMBER_FORMAT = "ECN";
     public static final String COPY_NUMBER_QUALITY_FORMAT = "CNQ";
 
-    public static final String START_SPLIT_READ_COUNT_ATTRIBUTE = "SR1";
-    public static final String END_SPLIT_READ_COUNT_ATTRIBUTE = "SR2";
+    public static final String FIRST_SPLIT_READ_COUNT_ATTRIBUTE = "SR1";
+    public static final String SECOND_SPLIT_READ_COUNT_ATTRIBUTE = "SR2";
 
-    public static final String START_SPLIT_POSITION_ATTRIBUTE = "SR1POS";
-    public static final String END_SPLIT_POSITION_ATTRIBUTE = "SR2POS";
+    public static final String FIRST_SPLIT_POSITION_ATTRIBUTE = "SR1POS";
+    public static final String SECOND_SPLIT_POSITION_ATTRIBUTE = "SR2POS";
 
     // PESR aggregation
-    public static final String START_SPLIT_QUALITY_ATTRIBUTE = "SR1Q";
-    public static final String START_SPLIT_CARRIER_SIGNAL_ATTRIBUTE = "SR1CS";
-    public static final String END_SPLIT_QUALITY_ATTRIBUTE = "SR2Q";
-    public static final String END_SPLIT_CARRIER_SIGNAL_ATTRIBUTE = "SR2CS";
+    public static final String FIRST_SPLIT_QUALITY_ATTRIBUTE = "SR1Q";
+    public static final String FIRST_SPLIT_CARRIER_SIGNAL_ATTRIBUTE = "SR1CS";
+    public static final String SECOND_SPLIT_QUALITY_ATTRIBUTE = "SR2Q";
+    public static final String SECOND_SPLIT_CARRIER_SIGNAL_ATTRIBUTE = "SR2CS";
     public static final String TOTAL_SPLIT_QUALITY_ATTRIBUTE = "SRQ";
     public static final String TOTAL_SPLIT_CARRIER_SIGNAL_ATTRIBUTE = "SRCS";
     public static final String DISCORDANT_PAIR_COUNT_ATTRIBUTE = "PE";

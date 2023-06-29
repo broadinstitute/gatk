@@ -71,16 +71,21 @@ public class BreakpointRefiner {
      * Performs refinement on one side of a breakpoint
      *
      * @param sortedEvidence split read evidence to test, sorted by position
+     * @param strand split read evidence strand
      * @param carrierSamples carrier sample ids
      * @param backgroundSamples background sample ids
+     * @param representativeDepth normalization depth
+     * @param defaultContig contig to use if test cannot be performed (no evidence or carriers)
      * @param defaultPosition position to use if test cannot be performed (no evidence or carriers)
      * @return pair containing site with refined breakpoints and probability (null if no evidence or carriers)
      */
     protected static SplitReadSite refineSplitReadSite(final List<SplitReadEvidence> sortedEvidence,
+                                                       final boolean strand,
                                                        final Collection<String> carrierSamples,
                                                        final Collection<String> backgroundSamples,
                                                        final Map<String, Double> sampleCoverageMap,
                                                        final int representativeDepth,
+                                                       final String defaultContig,
                                                        final int defaultPosition) {
         Utils.validateArg(sampleCoverageMap.keySet().containsAll(carrierSamples),
                 "One or more carrier samples not found in sample coverage map");
@@ -89,12 +94,13 @@ public class BreakpointRefiner {
 
         // Default case
         if (sortedEvidence.isEmpty() || carrierSamples.isEmpty()) {
-            return new SplitReadSite(defaultPosition, Collections.emptyMap(), null);
+            return new SplitReadSite(defaultContig, defaultPosition, strand, Collections.emptyMap(), null);
         }
 
         EvidenceStatUtils.PoissonTestResult minPResult = null;
         Integer minDistance = null;
         Integer minPPosition = null;
+        String minPContig = null;
         Map<String, Integer> minPSampleCounts = null;
         int position;
         Map<String, Integer> sampleCounts = new HashMap<>();
@@ -110,13 +116,14 @@ public class BreakpointRefiner {
                 if (minPResult == null || result.getP() < minPResult.getP() || (result.getP() == minPResult.getP() && dist < minDistance)) {
                     minPResult = result;
                     minPPosition = position;
+                    minPContig = e.getContig();
                     minPSampleCounts = sampleCounts;
                     minDistance = dist;
                 }
                 sampleCounts = new HashMap<>();
             }
         }
-        return new SplitReadSite(minPPosition, minPSampleCounts, minPResult);
+        return new SplitReadSite(minPContig, minPPosition, strand, minPSampleCounts, minPResult);
     }
 
     /**
@@ -133,121 +140,123 @@ public class BreakpointRefiner {
                                    final DiscordantPairEvidenceTester.DiscordantPairTestResult discordantPairResult) {
         Utils.nonNull(record);
         SVCallRecordUtils.validateCoordinatesWithDictionary(record, dictionary);
-        SplitReadSite refinedStartSite;
-        SplitReadSite refinedEndSite;
+        Utils.validateArg(record.getStrandA() != null, "Record has null strand A");
+        Utils.validateArg(record.getStrandB() != null, "Record has null strand B");
+        SplitReadSite refinedFirstSite;
+        SplitReadSite refinedSecondSite;
         if (!record.isIntrachromosomal()) {
             // Interchromosomal variants, just refine without any checks
-            refinedStartSite = refineSplitReadSite(startEvidence, carrierSamples,
-                    backgroundSamples, sampleCoverageMap, representativeDepth, record.getPositionA());
-            refinedEndSite = refineSplitReadSite(endEvidence, carrierSamples,
-                    backgroundSamples, sampleCoverageMap, representativeDepth, record.getPositionB());
+            refinedFirstSite = refineSplitReadSite(startEvidence, record.getStrandA(), carrierSamples,
+                    backgroundSamples, sampleCoverageMap, representativeDepth, record.getContigA(), record.getPositionA());
+            refinedSecondSite = refineSplitReadSite(endEvidence, record.getStrandB(), carrierSamples,
+                    backgroundSamples, sampleCoverageMap, representativeDepth, record.getContigB(), record.getPositionB());
         } else if (record.getStrandA() == record.getStrandB()) {
             // Case of intrachromosomal and matching strands, need to ensure start/end don't end up the same
-            refinedStartSite = refineSplitReadSite(startEvidence, carrierSamples,
-                    backgroundSamples, sampleCoverageMap, representativeDepth, record.getPositionA());
-            // Don't want to re-test at the refined start position if the strands are the same
-            final int refinedStartPosition = refinedStartSite.getPosition();
+            refinedFirstSite = refineSplitReadSite(startEvidence, record.getStrandA(), carrierSamples,
+                    backgroundSamples, sampleCoverageMap, representativeDepth, record.getContigA(), record.getPositionA());
+            // Filter out evidence at the refined start position so that we don't double-test
+            final int refinedStartPosition = refinedFirstSite.getPosition();
             final List<SplitReadEvidence> validEndEvidence = endEvidence.stream()
                     .filter(e -> e.getStart() != refinedStartPosition).collect(Collectors.toList());
-            refinedEndSite = refineSplitReadSite(validEndEvidence, carrierSamples,
-                    backgroundSamples, sampleCoverageMap, representativeDepth, record.getPositionB());
-            // Make sure start site before end site
-            if (refinedStartSite.getPosition() > refinedEndSite.getPosition()) {
-                final SplitReadSite swap = refinedStartSite;
-                refinedStartSite = refinedEndSite;
-                refinedEndSite = swap;
-            }
+            refinedSecondSite = refineSplitReadSite(validEndEvidence, record.getStrandB(), carrierSamples,
+                    backgroundSamples, sampleCoverageMap, representativeDepth, record.getContigB(), record.getPositionB());
         } else {
-            refinedStartSite = refineSplitReadSite(startEvidence, carrierSamples,
-                    backgroundSamples, sampleCoverageMap, representativeDepth, record.getPositionA());
-            refinedEndSite = refineSplitReadSite(endEvidence, carrierSamples,
-                    backgroundSamples, sampleCoverageMap, representativeDepth, record.getPositionB());
+            // Intrachromosomal and non-matching strands
+            refinedFirstSite = refineSplitReadSite(startEvidence, record.getStrandA(), carrierSamples,
+                    backgroundSamples, sampleCoverageMap, representativeDepth, record.getContigA(), record.getPositionA());
+            refinedSecondSite = refineSplitReadSite(endEvidence, record.getStrandB(), carrierSamples,
+                    backgroundSamples, sampleCoverageMap, representativeDepth, record.getContigB(), record.getPositionB());
 
             // Check if refined coordinates are valid. If not, choose the better one and refine the other again
-            final int endLowerBound = getEndLowerBound(record, refinedStartSite.getPosition());
-            if (refinedEndSite.getPosition() < endLowerBound) {
-                if (refinedStartSite.getP() < refinedEndSite.getP()) {
+            final int endLowerBound = getEndLowerBound(record, refinedFirstSite.getPosition());
+            if (refinedSecondSite.getPosition() < endLowerBound) {
+                if (refinedFirstSite.getP() < refinedSecondSite.getP()) {
                     // Start site had more significant result, so recompute end site with valid boundaries
                     final List<SplitReadEvidence> validEndEvidence = filterSplitReadSitesLowerBound(endEvidence, endLowerBound);
                     final int defaultEndPosition = Math.max(endLowerBound, record.getPositionB());
-                    refinedEndSite = refineSplitReadSite(validEndEvidence, carrierSamples,
-                            backgroundSamples, sampleCoverageMap, representativeDepth, defaultEndPosition);
+                    refinedSecondSite = refineSplitReadSite(validEndEvidence, record.getStrandB(), carrierSamples,
+                            backgroundSamples, sampleCoverageMap, representativeDepth, record.getContigB(), defaultEndPosition);
                 } else {
-                    // Recompute start site
-                    final int startUpperBound = getStartUpperBound(record, refinedEndSite.getPosition());
+                    // End site had more significant result, so recompute start site with valid boundaries
+                    final int startUpperBound = getStartUpperBound(record, refinedSecondSite.getPosition());
                     final List<SplitReadEvidence> validStartEvidence = filterSplitReadSitesUpperBound(startEvidence, startUpperBound);
                     final int defaulStartPosition = Math.min(startUpperBound, record.getPositionA());
-                    refinedStartSite = refineSplitReadSite(validStartEvidence, carrierSamples,
-                            backgroundSamples, sampleCoverageMap, representativeDepth, defaulStartPosition);
+                    refinedFirstSite = refineSplitReadSite(validStartEvidence, record.getStrandA(), carrierSamples,
+                            backgroundSamples, sampleCoverageMap, representativeDepth, record.getContigA(), defaulStartPosition);
                 }
             }
         }
 
         // Compute stats on sum of start and end counts
-        final EvidenceStatUtils.PoissonTestResult bothsideResult = calculateBothsideTest(refinedStartSite, refinedEndSite,
+        final EvidenceStatUtils.PoissonTestResult bothsideResult = calculateBothsideTest(refinedFirstSite, refinedSecondSite,
                 carrierSamples, backgroundSamples, sampleCoverageMap, representativeDepth);
 
         EvidenceStatUtils.PoissonTestResult combinedResult = null;
         if (discordantPairResult != null) {
-            combinedResult = calculatePESRTest(refinedStartSite, refinedEndSite,
+            combinedResult = calculatePESRTest(refinedFirstSite, refinedSecondSite,
                     discordantPairResult, carrierSamples, backgroundSamples,
                     sampleCoverageMap, representativeDepth);
         }
 
-        return new RefineResult(refinedStartSite, refinedEndSite, bothsideResult, discordantPairResult, combinedResult);
+        return new RefineResult(refinedFirstSite, refinedSecondSite, bothsideResult, discordantPairResult, combinedResult);
     }
 
     public SVCallRecord applyToRecord(final SVCallRecord record,
                                       final RefineResult result) {
         Utils.nonNull(record);
         Utils.nonNull(result);
-        final SplitReadSite refinedStartSite;
-        final SplitReadSite refinedEndSite;
-        final Boolean refinedStartStrand;
-        final Boolean refinedEndStrand;
-        if (record.isIntrachromosomal() && result.getEnd().getPosition() < result.getStart().getPosition()) {
-            // Swap start/end if strands match and positions are out of order e.g. for inversions
-            refinedStartSite = result.getEnd();
-            refinedStartStrand = record.getStrandB();
-            refinedEndSite = result.getStart();
-            refinedEndStrand = record.getStrandA();
+        final SplitReadSite refinedFirstSite;
+        final SplitReadSite refinedSecondSite;
+        if (record.isIntrachromosomal() && result.getSecond().getPosition() < result.getFirst().getPosition()) {
+            // Swap first and second if out of order
+            refinedFirstSite = result.getSecond();
+            refinedSecondSite = result.getFirst();
         } else {
-            refinedStartSite = result.getStart();
-            refinedStartStrand = record.getStrandA();
-            refinedEndSite = result.getEnd();
-            refinedEndStrand = record.getStrandB();
+            refinedFirstSite = result.getFirst();
+            refinedSecondSite = result.getSecond();
         }
         final EvidenceStatUtils.PoissonTestResult bothsideResult = result.getBothsidesResult();
 
+        final int newStart;
+        final int newEnd;
+        if (record.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.INS) {
+            // By convention, choose the left coordinate, which is guaranteed after the above check
+            newStart = refinedFirstSite.getPosition();
+            newEnd = newStart;
+        } else {
+            newStart = refinedFirstSite.getPosition();
+            newEnd = refinedSecondSite.getPosition();
+        }
+
         final Integer length = record.getType().equals(GATKSVVCFConstants.StructuralVariantAnnotationType.INS) ? record.getLength() : null;
 
-        final Integer startQuality = refinedStartSite.getP() == null || Double.isNaN(refinedStartSite.getP()) ? null : EvidenceStatUtils.probToQual(refinedStartSite.getP(), (byte) MAX_QUAL);
-        final Integer endQuality = refinedEndSite.getP() == null || Double.isNaN(refinedEndSite.getP()) ? null : EvidenceStatUtils.probToQual(refinedEndSite.getP(), (byte) MAX_QUAL);
+        final Integer firstQuality = refinedFirstSite.getP() == null || Double.isNaN(refinedFirstSite.getP()) ? null : EvidenceStatUtils.probToQual(refinedFirstSite.getP(), (byte) MAX_QUAL);
+        final Integer secondQuality = refinedSecondSite.getP() == null || Double.isNaN(refinedSecondSite.getP()) ? null : EvidenceStatUtils.probToQual(refinedSecondSite.getP(), (byte) MAX_QUAL);
         final Integer totalQuality = Double.isNaN(bothsideResult.getP()) ? null : EvidenceStatUtils.probToQual(bothsideResult.getP(), (byte) MAX_QUAL);
         final Map<String, Object> refinedAttr = new HashMap<>(record.getAttributes());
-        refinedAttr.put(GATKSVVCFConstants.START_SPLIT_QUALITY_ATTRIBUTE, startQuality);
-        refinedAttr.put(GATKSVVCFConstants.END_SPLIT_QUALITY_ATTRIBUTE, endQuality);
+        refinedAttr.put(GATKSVVCFConstants.FIRST_SPLIT_QUALITY_ATTRIBUTE, firstQuality);
+        refinedAttr.put(GATKSVVCFConstants.SECOND_SPLIT_QUALITY_ATTRIBUTE, secondQuality);
         refinedAttr.put(GATKSVVCFConstants.TOTAL_SPLIT_QUALITY_ATTRIBUTE, totalQuality);
 
-        final Integer startCarrierSignal = EvidenceStatUtils.carrierSignalFraction(refinedStartSite.getCarrierSignal(),
-                refinedStartSite.getBackgroundSignal());
-        final Integer endCarrierSignal = EvidenceStatUtils.carrierSignalFraction(refinedEndSite.getCarrierSignal(),
-                refinedEndSite.getBackgroundSignal());
+        final Integer startCarrierSignal = EvidenceStatUtils.carrierSignalFraction(refinedFirstSite.getCarrierSignal(),
+                refinedFirstSite.getBackgroundSignal());
+        final Integer endCarrierSignal = EvidenceStatUtils.carrierSignalFraction(refinedSecondSite.getCarrierSignal(),
+                refinedSecondSite.getBackgroundSignal());
         final Integer totalCarrierSignal = EvidenceStatUtils.carrierSignalFraction(bothsideResult.getCarrierSignal(),
                 bothsideResult.getBackgroundSignal());
-        refinedAttr.put(GATKSVVCFConstants.START_SPLIT_CARRIER_SIGNAL_ATTRIBUTE, startCarrierSignal);
-        refinedAttr.put(GATKSVVCFConstants.END_SPLIT_CARRIER_SIGNAL_ATTRIBUTE, endCarrierSignal);
+        refinedAttr.put(GATKSVVCFConstants.FIRST_SPLIT_CARRIER_SIGNAL_ATTRIBUTE, startCarrierSignal);
+        refinedAttr.put(GATKSVVCFConstants.SECOND_SPLIT_CARRIER_SIGNAL_ATTRIBUTE, endCarrierSignal);
         refinedAttr.put(GATKSVVCFConstants.TOTAL_SPLIT_CARRIER_SIGNAL_ATTRIBUTE, totalCarrierSignal);
-        refinedAttr.put(GATKSVVCFConstants.START_SPLIT_POSITION_ATTRIBUTE, refinedStartSite.getPosition());
-        refinedAttr.put(GATKSVVCFConstants.END_SPLIT_POSITION_ATTRIBUTE, refinedEndSite.getPosition());
+        refinedAttr.put(GATKSVVCFConstants.FIRST_SPLIT_POSITION_ATTRIBUTE, refinedFirstSite.getPosition());
+        refinedAttr.put(GATKSVVCFConstants.SECOND_SPLIT_POSITION_ATTRIBUTE, refinedSecondSite.getPosition());
 
         final List<Genotype> genotypes = record.getGenotypes();
         final GenotypesContext newGenotypes = GenotypesContext.create(genotypes.size());
         for (final Genotype genotype : genotypes) {
             final String sample = genotype.getSampleName();
             final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(genotype);
-            genotypeBuilder.attribute(GATKSVVCFConstants.START_SPLIT_READ_COUNT_ATTRIBUTE, refinedStartSite.getCount(sample));
-            genotypeBuilder.attribute(GATKSVVCFConstants.END_SPLIT_READ_COUNT_ATTRIBUTE, refinedEndSite.getCount(sample));
+            genotypeBuilder.attribute(GATKSVVCFConstants.FIRST_SPLIT_READ_COUNT_ATTRIBUTE, refinedFirstSite.getCount(sample));
+            genotypeBuilder.attribute(GATKSVVCFConstants.SECOND_SPLIT_READ_COUNT_ATTRIBUTE, refinedSecondSite.getCount(sample));
             newGenotypes.add(genotypeBuilder.make());
         }
 
@@ -263,10 +272,10 @@ public class BreakpointRefiner {
         }
 
         // Create new record
-        return new SVCallRecord(record.getId(), record.getContigA(), refinedStartSite.getPosition(),
-                refinedStartStrand, record.getContigB(), refinedEndSite.getPosition(), refinedEndStrand, record.getType(),
-                record.getComplexSubtype(), length, record.getAlgorithms(), record.getAlleles(), newGenotypes,
-                refinedAttr, record.getFilters(), record.getLog10PError(), dictionary);
+        return new SVCallRecord(record.getId(), record.getContigA(), newStart,
+                refinedFirstSite.getStrand(), record.getContigB(), newEnd, refinedSecondSite.getStrand(),
+                record.getType(), record.getComplexSubtype(), length, record.getAlgorithms(), record.getAlleles(),
+                newGenotypes, refinedAttr, record.getFilters(), record.getLog10PError(), dictionary);
     }
 
     private static EvidenceStatUtils.PoissonTestResult calculateBothsideTest(final SplitReadSite startSite,
@@ -349,7 +358,7 @@ public class BreakpointRefiner {
      */
     private int getStartUpperBound(final SVCallRecord call, final int refinedEndPosition) {
         if (!call.isIntrachromosomal()) {
-            return 1;
+            return Integer.MAX_VALUE;
         }
         if (call.getType().equals(GATKSVVCFConstants.StructuralVariantAnnotationType.INS)) {
             return refinedEndPosition + maxSplitReadCrossDistance;
@@ -358,29 +367,29 @@ public class BreakpointRefiner {
     }
 
     public final class RefineResult {
-        private final SplitReadSite start;
-        private final SplitReadSite end;
+        private final SplitReadSite first;
+        private final SplitReadSite second;
         private final EvidenceStatUtils.PoissonTestResult bothsidesResult;
         private final DiscordantPairEvidenceTester.DiscordantPairTestResult discordantPairTestResult;
         private final EvidenceStatUtils.PoissonTestResult pesrResult;
 
-        public RefineResult(final SplitReadSite start, final SplitReadSite end,
+        public RefineResult(final SplitReadSite first, final SplitReadSite second,
                             final EvidenceStatUtils.PoissonTestResult bothsidesResult,
                             final DiscordantPairEvidenceTester.DiscordantPairTestResult discordantPairTestResult,
                             final EvidenceStatUtils.PoissonTestResult pesrResult) {
-            this.start = start;
-            this.end = end;
+            this.first = first;
+            this.second = second;
             this.bothsidesResult = bothsidesResult;
             this.discordantPairTestResult = discordantPairTestResult;
             this.pesrResult = pesrResult;
         }
 
-        public SplitReadSite getStart() {
-            return start;
+        public SplitReadSite getFirst() {
+            return first;
         }
 
-        public SplitReadSite getEnd() {
-            return end;
+        public SplitReadSite getSecond() {
+            return second;
         }
 
         public EvidenceStatUtils.PoissonTestResult getBothsidesResult() {
