@@ -15,7 +15,7 @@ To learn more about the GVS workflow, see the [Genomic Variant Store workflow ov
 - Reblocked single sample GVCF files (`input_vcfs`) with specific annotations described below
 - GVCF index files (`input_vcf_indexes`)
 
-While the GVS workflow has been tested with 100,000 single sample GVCF files as input, only datasets of up to 10,000 files are being used for beta testing.
+While the GVS has been tested with 250,000 single sample genome GVCF files as input, only datasets of up to 25,000 genomes are being used for beta testing.
 
 #### Reblocked GVCF files
 
@@ -42,7 +42,7 @@ Input GVCF files for the GVS workflow must include the annotations described in 
 
 ### What does it return as output?
 
-The following files are stored in the workspace Google bucket and links to the files are written to the sample_set data table:
+The following files are stored in the workspace workflow execution bucket under Data>Files, or the google bucket specified in the inputs.
 
 - Sharded joint VCF files, index files, the interval lists for each sharded VCF, and a list of the sample names included in the callset.
 - Size of output VCF files in MB

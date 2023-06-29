@@ -114,7 +114,7 @@ The final outputs of the GVS workflow are described in the table below:
 
 The GVS workflow outputs a sharded joint VCF file containing filter sites and genotypes flagged as probable artifacts and annotations calculated during the `GvsExtractCallset` subworkflow, including allele count (`AC`), allele number (`AN`), and allele frequency (`AF`). The output VCF file is sharded so that no shards span multiple chromosomes. 
 
-The [GVS beta workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta) is configured to write the outputs of the workflow back to the `sample_set` data table.
+The [GVS beta workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta) is configured to write the outputs of the workflow to the google bucket specified in the inputs at runtime.
 
 ## Citing the GVS workflow
 

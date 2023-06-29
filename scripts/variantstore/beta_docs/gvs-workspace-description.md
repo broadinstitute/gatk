@@ -23,13 +23,13 @@ For workflow documentation, see the [Genomic Variant Store workflow overview](ht
 - Reblocked single sample GVCF files (`input_vcfs`)
 - GVCF index files (`input_vcf_indexes`)
 
-Example GVCF and index files in the Data tab of this workspace are hosted in a public Google bucket and links are provided in the sample data table.
+To see details about input requirements, see [Run Your Own Samples](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/beta_docs/run-your-own-samples.md). Example GVCF and index files in the Data tab of this workspace are hosted in a public Google bucket and links are provided in the sample data table.
 
-While the GVS workflow has been tested with 100,000 single sample GVCF files as input, only datasets of up to 10,000 files are being used for beta testing.
+While the GVS has been tested with 250,000 single sample genome GVCF files as input, only datasets of up to 25,000 genomes are being used for beta testing.
 
 ### What does it return as output?
 
-The following files are stored in the workspace Google bucket and links to the files are written to the `sample_set` data table:
+The following files are stored in the workspace workflow execution bucket under Data>Files, or the google bucket specified in the inputs.
 
 - Sharded joint VCF files, index files, the interval lists for each sharded VCF, and a list of the sample names included in the callset.
 - Size of output VCF files in megabytes
@@ -51,19 +51,18 @@ For troubleshooting or questions, contact the [Broad Variants team](mailto:varia
 
 ## Running the workflow
 
-The workflow in this workspace is pre-configured to use 10 sample GVCF files as a sample set in the sample_set data table in the workspace Data tab.
+The workflow in the GVS beta workspace is pre-configured to use 10 sample GVCF files in the workspace Data tab.
 
 The workflow is configured to call this input from the data table. To run:
 
-1. Select the workflow from the Workflows tab.
-1. In the configuration page, select the sample_set entity in Step 1.
-1. Select the sample_set dataset in Step 2.
+1. **Select the workflow** from the Workflows tab.
 1. Configure the workflow inputs.
-    1. Enter a name for the callset as a string with the format “*CALLSET_NAME*” for the `callset_identifier` variable in the workflow **Inputs** tab. This string is used to name several variables and files and should begin with a letter. Valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”.
-    1. Enter the name of the BigQuery dataset you created in Step 4 of Setup as a string with the format “*DATASET_NAME*” for the `dataset_name` variable in the workflow **Inputs** tab.
-    1. Enter the name of the GCP project you created in Step 3 of Setup as a string with the format “*PROJECT_NAME*” for the `project_id` variable in the workflow **Inputs** tab.
-1. Save the workflow configuration.
-1. Run the workflow.
+    1. Enter a **name for the callset** as a string with the format “*CALLSET_NAME*” for the `call_set_identifier` variable. This string is used as to name several variables and files and should begin with a letter. Valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”.
+    1. Enter the name of your **BigQuery dataset** as a string with the format “*DATASET_NAME*” for the `dataset_name` variable.
+    1. Enter the name of the **GCP project** that holds the BigQuery dataset as a string with the format “*PROJECT_NAME*” for the `project_id` variable.
+    2. Enter the name of a directory for writing outputs. Enter a string in the format "*gs://your_bucket/here*" in `extract_output_gcs_dir`. If you want the data in your Terra workspace bucket you can find that on the Workspace Dashboard, right panel, under Cloud Information. Copy the "Bucket Name" and use it to the inputs to create a gs path as a string like this "*gs://fc-338fe040-3522-484c-ba48-14b48f9950c2*". If you do not enter a bucket here, the outputs will be in the execution directory under *Files*.
+1. **Save** the workflow configuration.
+1. **Run** the workflow.
 
 To run the GVS workflow on your own sample data, follow the instructions in the tutorial, [Upload data to Terra and run the GVS workflow](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/beta_docs/run-your-own-samples.md).
 
@@ -116,13 +115,14 @@ Details on citing Terra workspaces can be found in [How to cite Terra](https://s
 Data Sciences Platform, Broad Institute (*Year, Month Day that this workspace was last modified*) gvs-prod/Genomic_Variant_Store_Beta [workspace] Retrieved *Month Day, Year that workspace was retrieved*, https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta
 
 ### License
-**Copyright Broad Institute, 2022 | Apache**  
+**Copyright Broad Institute, 2023 | Apache**  
 The workflow script is released under the Apache License, Version 2.0 (full license text at https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT). Note however that the programs called by the scripts may be subject to different licenses. Users are responsible for checking that they are authorized to run all programs before running these tools.
 
 ### Workspace Change Log
-| Date | Change | Author |
-| --- | --- | --- |
+| Date | Change                                   | Author |
+| --- |------------------------------------------| --- |
+| 06/29/2023 | Updated to support larger sample sizes.  | Kylee Degatano | 
 | 09/08/2022 | Updated information on workflow outputs. | Aaron Hatcher |
-| 09/07/2022 | Added licensing information. | Kaylee Mathews |
-| 09/06/2022 | Added note about storage cost. | Kaylee Mathews |
-| 06/24/2022 | First release of the workspace. | Kaylee Mathews |
+| 09/07/2022 | Added licensing information.             | Kaylee Mathews |
+| 09/06/2022 | Added note about storage cost.           | Kaylee Mathews |
+| 06/24/2022 | First release of the workspace.          | Kaylee Mathews |
