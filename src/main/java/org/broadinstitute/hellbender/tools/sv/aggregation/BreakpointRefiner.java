@@ -272,8 +272,8 @@ public class BreakpointRefiner {
         }
 
         // Create new record
-        return new SVCallRecord(record.getId(), record.getContigA(), newStart,
-                refinedFirstSite.getStrand(), record.getContigB(), newEnd, refinedSecondSite.getStrand(),
+        return new SVCallRecord(record.getId(), refinedFirstSite.getContig(), newStart,
+                refinedFirstSite.getStrand(), refinedSecondSite.getContig(), newEnd, refinedSecondSite.getStrand(),
                 record.getType(), record.getComplexSubtype(), length, record.getAlgorithms(), record.getAlleles(),
                 newGenotypes, refinedAttr, record.getFilters(), record.getLog10PError(), dictionary);
     }
