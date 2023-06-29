@@ -211,28 +211,9 @@ public class SplitReadEvidenceTester {
                                       final SplitReadTestResult result) {
         Utils.nonNull(record);
         Utils.nonNull(result);
-        final SplitReadSite refinedFirstSite;
-        final SplitReadSite refinedSecondSite;
-        if (record.isIntrachromosomal() && result.getSecond().getPosition() < result.getFirst().getPosition()) {
-            // Swap first and second if out of order
-            refinedFirstSite = result.getSecond();
-            refinedSecondSite = result.getFirst();
-        } else {
-            refinedFirstSite = result.getFirst();
-            refinedSecondSite = result.getSecond();
-        }
+        final SplitReadSite refinedFirstSite = result.getFirst();
+        final SplitReadSite refinedSecondSite = result.getSecond();
         final EvidenceStatUtils.PoissonTestResult bothsideResult = result.getBothsidesResult();
-
-        final int newStart;
-        final int newEnd;
-        if (record.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.INS) {
-            // By convention, choose the left coordinate, which is guaranteed after the above check
-            newStart = refinedFirstSite.getPosition();
-            newEnd = newStart;
-        } else {
-            newStart = refinedFirstSite.getPosition();
-            newEnd = refinedSecondSite.getPosition();
-        }
 
         final Integer length = record.getType().equals(GATKSVVCFConstants.StructuralVariantAnnotationType.INS) ? record.getLength() : null;
 
@@ -278,8 +259,8 @@ public class SplitReadEvidenceTester {
         }
 
         // Create new record
-        return new SVCallRecord(record.getId(), refinedFirstSite.getContig(), newStart,
-                refinedFirstSite.getStrand(), refinedSecondSite.getContig(), newEnd, refinedSecondSite.getStrand(),
+        return new SVCallRecord(record.getId(), record.getContigA(), record.getPositionA(),
+                record.getStrandA(), record.getContigB(), record.getPositionB(), record.getStrandB(),
                 record.getType(), record.getComplexSubtype(), length, record.getAlgorithms(), record.getAlleles(),
                 newGenotypes, refinedAttr, record.getFilters(), record.getLog10PError(), dictionary);
     }
@@ -346,10 +327,7 @@ public class SplitReadEvidenceTester {
      * @return position
      */
     private int getEndLowerBound(final SVCallRecord call, final int refinedStartPosition) {
-        if (!call.isIntrachromosomal()) {
-            return 1;
-        }
-        if (call.getType().equals(GATKSVVCFConstants.StructuralVariantAnnotationType.INS)) {
+        if (call.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.INS) {
             return refinedStartPosition - maxSplitReadCrossDistance;
         }
         return refinedStartPosition + 1;
@@ -363,10 +341,7 @@ public class SplitReadEvidenceTester {
      * @return position
      */
     private int getStartUpperBound(final SVCallRecord call, final int refinedEndPosition) {
-        if (!call.isIntrachromosomal()) {
-            return Integer.MAX_VALUE;
-        }
-        if (call.getType().equals(GATKSVVCFConstants.StructuralVariantAnnotationType.INS)) {
+        if (call.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.INS) {
             return refinedEndPosition + maxSplitReadCrossDistance;
         }
         return refinedEndPosition - 1;

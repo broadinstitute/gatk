@@ -408,8 +408,8 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                 Sets.difference(carrierSamples, excludedSamples), Sets.difference(backgroundSamples, excludedSamples), null);
         final SVCallRecord test = refiner.applyToRecord(record, result);
         Assert.assertEquals(test.getId(), "call1");
-        Assert.assertEquals(test.getPositionA(), expectedPositionA);
-        Assert.assertEquals(test.getPositionB(), expectedPositionB);
+        Assert.assertEquals(test.getPositionA(), 1000);
+        Assert.assertEquals(test.getPositionB(), 2000);
         Assert.assertEquals(test.getAttributes().get(GATKSVVCFConstants.FIRST_SPLIT_POSITION_ATTRIBUTE), expectedPositionA);
         Assert.assertEquals(test.getAttributes().get(GATKSVVCFConstants.SECOND_SPLIT_POSITION_ATTRIBUTE), expectedPositionB);
         Assert.assertEquals(test.getStrandA(), Boolean.TRUE);
@@ -439,7 +439,7 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                         .attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2).make());
         genotypes.add(new GenotypeBuilder("sample2").alleles(Lists.newArrayList(Allele.REF_N, Allele.REF_N))
                 .attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2).make());
-        final SVCallRecord record = new SVCallRecord("call1", "chr21", 1000, true, "chr21", 1001, false, GATKSVVCFConstants.StructuralVariantAnnotationType.INS,
+        final SVCallRecord record = new SVCallRecord("call1", "chr21", 1000, true, "chr21", 1000, false, GATKSVVCFConstants.StructuralVariantAnnotationType.INS,
                 null, 500, Collections.singletonList("pesr"), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS), genotypes, Collections.emptyMap(), Collections.emptySet(), null, DICTIONARY);
         final Map<String, Double> sampleCoverageMap = new HashMap<>();
         sampleCoverageMap.put("sample1", 35.);
@@ -462,20 +462,20 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                 Collections.singleton("sample1"), Collections.emptySet(), null);
         final SVCallRecord test = refiner.applyToRecord(record, result);
         Assert.assertEquals(test.getId(), "call1");
-        Assert.assertEquals(test.getPositionA(), 995 - maxSplitReadCrossDistance);
-        Assert.assertEquals(test.getPositionB(), 995 - maxSplitReadCrossDistance);
+        Assert.assertEquals(test.getPositionA(), 1000);
+        Assert.assertEquals(test.getPositionB(), 1000);
         Assert.assertEquals(test.getAlgorithms(), Collections.singletonList("pesr"));
         Assert.assertEquals(test.getLength(), Integer.valueOf(500));
-        Assert.assertEquals((int) test.getAttributes().get(GATKSVVCFConstants.FIRST_SPLIT_POSITION_ATTRIBUTE), 995 - maxSplitReadCrossDistance);
-        Assert.assertEquals(test.getStrandA(), Boolean.FALSE);
-        Assert.assertEquals((int) test.getAttributes().get(GATKSVVCFConstants.SECOND_SPLIT_POSITION_ATTRIBUTE), 995);
-        Assert.assertEquals(test.getStrandB(), Boolean.TRUE);
+        Assert.assertEquals((int) test.getAttributes().get(GATKSVVCFConstants.FIRST_SPLIT_POSITION_ATTRIBUTE), 995);
+        Assert.assertEquals(test.getStrandA(), Boolean.TRUE);
+        Assert.assertEquals((int) test.getAttributes().get(GATKSVVCFConstants.SECOND_SPLIT_POSITION_ATTRIBUTE), 995 - maxSplitReadCrossDistance);
+        Assert.assertEquals(test.getStrandB(), Boolean.FALSE);
         final Integer startCount = VariantContextGetters.getAttributeAsInt(test.getGenotypes().get("sample1"),
                 GATKSVVCFConstants.FIRST_SPLIT_READ_COUNT_ATTRIBUTE, -1);
-        Assert.assertEquals(startCount, Integer.valueOf(9));
+        Assert.assertEquals(startCount, Integer.valueOf(12));
         final Integer endCount = VariantContextGetters.getAttributeAsInt(test.getGenotypes().get("sample1"),
                 GATKSVVCFConstants.SECOND_SPLIT_READ_COUNT_ATTRIBUTE, -1);
-        Assert.assertEquals(endCount, Integer.valueOf(12));
+        Assert.assertEquals(endCount, Integer.valueOf(9));
     }
 
     @Test
@@ -495,7 +495,6 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
         final List<SplitReadEvidence> startEvidence = Lists.newArrayList(
                 new SplitReadEvidence("sample1", "chr21", 900, 4, false)
         );
-        // No limits on end position since it's interchromosomal
         final List<SplitReadEvidence> endEvidence = Lists.newArrayList(
                 new SplitReadEvidence("sample1", "chr22", 1, 10, false),
                 new SplitReadEvidence("sample1", "chr22", 8000, 9, false)
@@ -507,11 +506,11 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
         final SVCallRecord test = refiner.applyToRecord(record, result);
         Assert.assertEquals(test.getId(), "call1");
         Assert.assertEquals(test.getContigA(), "chr21");
-        Assert.assertEquals(test.getPositionA(), 900);
+        Assert.assertEquals(test.getPositionA(), 1000);
         Assert.assertEquals(test.getStrandA(), Boolean.TRUE);
         Assert.assertEquals(test.getAttributes().get(GATKSVVCFConstants.FIRST_SPLIT_POSITION_ATTRIBUTE), 900);
         Assert.assertEquals(test.getContigB(), "chr22");
-        Assert.assertEquals(test.getPositionB(), 1);
+        Assert.assertEquals(test.getPositionB(), 8000);
         Assert.assertEquals(test.getStrandB(), Boolean.FALSE);
         Assert.assertEquals(test.getAttributes().get(GATKSVVCFConstants.SECOND_SPLIT_POSITION_ATTRIBUTE), 1);
         Assert.assertEquals(test.getAlgorithms(), Collections.singletonList("pesr"));
@@ -551,20 +550,20 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
         final SVCallRecord test = refiner.applyToRecord(record, result);
         Assert.assertEquals(test.getId(), "call1");
         Assert.assertEquals(test.getContigA(), "chr21");
-        Assert.assertEquals(test.getPositionA(), 2000);
+        Assert.assertEquals(test.getPositionA(), 1000);
         Assert.assertEquals(test.getStrandA(), Boolean.TRUE);
-        Assert.assertEquals(test.getAttributes().get(GATKSVVCFConstants.FIRST_SPLIT_POSITION_ATTRIBUTE), 2000);
+        Assert.assertEquals(test.getAttributes().get(GATKSVVCFConstants.FIRST_SPLIT_POSITION_ATTRIBUTE), 4000);
         Assert.assertEquals(test.getContigB(), "chr21");
-        Assert.assertEquals(test.getPositionB(), 4000);
+        Assert.assertEquals(test.getPositionB(), 8000);
         Assert.assertEquals(test.getStrandB(), Boolean.TRUE);
-        Assert.assertEquals(test.getAttributes().get(GATKSVVCFConstants.SECOND_SPLIT_POSITION_ATTRIBUTE), 4000);
+        Assert.assertEquals(test.getAttributes().get(GATKSVVCFConstants.SECOND_SPLIT_POSITION_ATTRIBUTE), 2000);
         Assert.assertEquals(test.getAlgorithms(), Collections.singletonList("pesr"));
         final Integer startCount = VariantContextGetters.getAttributeAsInt(test.getGenotypes().get("sample1"),
                 GATKSVVCFConstants.FIRST_SPLIT_READ_COUNT_ATTRIBUTE, -1);
-        Assert.assertEquals(startCount, Integer.valueOf(3));
+        Assert.assertEquals(startCount, Integer.valueOf(4));
         final Integer endCount = VariantContextGetters.getAttributeAsInt(test.getGenotypes().get("sample1"),
                 GATKSVVCFConstants.SECOND_SPLIT_READ_COUNT_ATTRIBUTE, -1);
-        Assert.assertEquals(endCount, Integer.valueOf(4));
+        Assert.assertEquals(endCount, Integer.valueOf(3));
     }
 
 }
