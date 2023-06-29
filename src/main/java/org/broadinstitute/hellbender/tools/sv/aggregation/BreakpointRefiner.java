@@ -53,7 +53,7 @@ public class BreakpointRefiner {
     protected int representativeDepth;
 
     public static final int DEFAULT_MAX_CROSS_DISTANCE = 200;
-    public static final int MAX_QUAL = 200;
+    public static final int MAX_QUAL = 99;
 
     /**
      * @param sampleCoverageMap map with (sample id, per-base sample coverage) entries
