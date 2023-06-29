@@ -19,7 +19,7 @@ import org.testng.annotations.Test;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class BreakpointRefinerTest extends GATKBaseTest {
+public class SplitReadEvidenceTesterTest extends GATKBaseTest {
 
     private static final SAMSequenceDictionary DICTIONARY = SVTestUtils.hg38Dict;
     private static final double ERROR_TOL = 1e-6;
@@ -139,7 +139,7 @@ public class BreakpointRefinerTest extends GATKBaseTest {
                                         final int defaultPosition,
                                         final boolean strand,
                                         final SplitReadSite expected) {
-        final SplitReadSite test = BreakpointRefiner.refineSplitReadSite(sortedEvidence, strand, carrierSamples,
+        final SplitReadSite test = SplitReadEvidenceTester.testSplitReadSite(sortedEvidence, strand, carrierSamples,
                 backgroundSamples, sampleCoverageMap, representativeDepth, "chr21", defaultPosition);
         Assert.assertEquals(test.getPosition(), expected.getPosition());
         final Set<String> samples = new HashSet<>(carrierSamples);
@@ -403,8 +403,8 @@ public class BreakpointRefinerTest extends GATKBaseTest {
         sampleCoverageMap.put("sample1", 35.);
         sampleCoverageMap.put("sample2", 25.);
 
-        final BreakpointRefiner refiner = new BreakpointRefiner(sampleCoverageMap, 20, DICTIONARY);
-        final BreakpointRefiner.RefineResult result = refiner.testRecord(record, startEvidence, endEvidence,
+        final SplitReadEvidenceTester refiner = new SplitReadEvidenceTester(sampleCoverageMap, 20, DICTIONARY);
+        final SplitReadEvidenceTester.SplitReadTestResult result = refiner.testRecord(record, startEvidence, endEvidence,
                 Sets.difference(carrierSamples, excludedSamples), Sets.difference(backgroundSamples, excludedSamples), null);
         final SVCallRecord test = refiner.applyToRecord(record, result);
         Assert.assertEquals(test.getId(), "call1");
@@ -457,8 +457,8 @@ public class BreakpointRefinerTest extends GATKBaseTest {
                 new SplitReadEvidence("sample1", "chr21", 2010, 5, false)
         );
 
-        final BreakpointRefiner refiner = new BreakpointRefiner(sampleCoverageMap, maxSplitReadCrossDistance, DICTIONARY);
-        final BreakpointRefiner.RefineResult result = refiner.testRecord(record, startEvidence, endEvidence,
+        final SplitReadEvidenceTester refiner = new SplitReadEvidenceTester(sampleCoverageMap, maxSplitReadCrossDistance, DICTIONARY);
+        final SplitReadEvidenceTester.SplitReadTestResult result = refiner.testRecord(record, startEvidence, endEvidence,
                 Collections.singleton("sample1"), Collections.emptySet(), null);
         final SVCallRecord test = refiner.applyToRecord(record, result);
         Assert.assertEquals(test.getId(), "call1");
@@ -501,8 +501,8 @@ public class BreakpointRefinerTest extends GATKBaseTest {
                 new SplitReadEvidence("sample1", "chr22", 8000, 9, false)
         );
 
-        final BreakpointRefiner refiner = new BreakpointRefiner(sampleCoverageMap, 20, DICTIONARY);
-        final BreakpointRefiner.RefineResult result = refiner.testRecord(record, startEvidence, endEvidence,
+        final SplitReadEvidenceTester refiner = new SplitReadEvidenceTester(sampleCoverageMap, 20, DICTIONARY);
+        final SplitReadEvidenceTester.SplitReadTestResult result = refiner.testRecord(record, startEvidence, endEvidence,
                 Collections.singleton("sample1"), Collections.emptySet(), null);
         final SVCallRecord test = refiner.applyToRecord(record, result);
         Assert.assertEquals(test.getId(), "call1");
@@ -545,8 +545,8 @@ public class BreakpointRefinerTest extends GATKBaseTest {
                 new SplitReadEvidence("sample1", "chr21", 2000, 3, true)
         );
 
-        final BreakpointRefiner refiner = new BreakpointRefiner(sampleCoverageMap, 20, DICTIONARY);
-        final BreakpointRefiner.RefineResult result = refiner.testRecord(record, startEvidence, endEvidence,
+        final SplitReadEvidenceTester refiner = new SplitReadEvidenceTester(sampleCoverageMap, 20, DICTIONARY);
+        final SplitReadEvidenceTester.SplitReadTestResult result = refiner.testRecord(record, startEvidence, endEvidence,
                 Collections.singleton("sample1"), Collections.emptySet(), null);
         final SVCallRecord test = refiner.applyToRecord(record, result);
         Assert.assertEquals(test.getId(), "call1");

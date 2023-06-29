@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
  * Refines variant breakpoints using split read evidence.
  *
  * The start and end of the breakpoint are tested independently. At each end we perform a series of Poisson
- * tests using the following model:
+ * tests across positions of the provided SR evidence using the following model:
  *
  *  Given:
  *      d_i : depth of sample i
@@ -38,10 +38,9 @@ import java.util.stream.Collectors;
  *   Calculate probability of observing the background count:
  *      p = P(X < x_b)
  *
- *   We then select the site with the lowest score. Breakpoint end positions are restricted by a lowerbound that depends
- *   on the refined start position (see {@link BreakpointRefiner#getEndLowerBound(SVCallRecord, int)}.
+ *   For each end, we select the position with the most significant test result and annotate the variant record.
  */
-public class BreakpointRefiner {
+public class SplitReadEvidenceTester {
 
     private final Map<String,Double> sampleCoverageMap;
     private final SAMSequenceDictionary dictionary;
@@ -59,8 +58,8 @@ public class BreakpointRefiner {
      * @param sampleCoverageMap map with (sample id, per-base sample coverage) entries
      * @param dictionary reference dictionary
      */
-    public BreakpointRefiner(final Map<String, Double> sampleCoverageMap, int maxSplitReadCrossDistance,
-                             final SAMSequenceDictionary dictionary) {
+    public SplitReadEvidenceTester(final Map<String, Double> sampleCoverageMap, int maxSplitReadCrossDistance,
+                                   final SAMSequenceDictionary dictionary) {
         this.sampleCoverageMap = Utils.nonNull(sampleCoverageMap);
         this.dictionary = Utils.nonNull(dictionary);
         this.maxSplitReadCrossDistance = maxSplitReadCrossDistance;
@@ -79,14 +78,14 @@ public class BreakpointRefiner {
      * @param defaultPosition position to use if test cannot be performed (no evidence or carriers)
      * @return pair containing site with refined breakpoints and probability (null if no evidence or carriers)
      */
-    protected static SplitReadSite refineSplitReadSite(final List<SplitReadEvidence> sortedEvidence,
-                                                       final boolean strand,
-                                                       final Collection<String> carrierSamples,
-                                                       final Collection<String> backgroundSamples,
-                                                       final Map<String, Double> sampleCoverageMap,
-                                                       final int representativeDepth,
-                                                       final String defaultContig,
-                                                       final int defaultPosition) {
+    protected static SplitReadSite testSplitReadSite(final List<SplitReadEvidence> sortedEvidence,
+                                                     final boolean strand,
+                                                     final Collection<String> carrierSamples,
+                                                     final Collection<String> backgroundSamples,
+                                                     final Map<String, Double> sampleCoverageMap,
+                                                     final int representativeDepth,
+                                                     final String defaultContig,
+                                                     final int defaultPosition) {
         Utils.validateArg(sampleCoverageMap.keySet().containsAll(carrierSamples),
                 "One or more carrier samples not found in sample coverage map");
         Utils.validateArg(sampleCoverageMap.keySet().containsAll(backgroundSamples),
@@ -127,17 +126,21 @@ public class BreakpointRefiner {
     }
 
     /**
-     * Performs breakend refinement for a call
+     * Applies statistical model to SR evidence around variant breakends.
      *
-     * @param record with split read evidence
-     * @return record with new breakpoints
+     * @param record  variant to test
+     * @param startEvidence  SR evidence for start position
+     * @param endEvidence  SR evidence for end position
+     * @param carrierSamples  non-ref samples for this variant
+     * @param backgroundSamples  hom-ref samples for this variant
+     * @param discordantPairResult  PE test result for this variant (if applicable)
      */
-    public RefineResult testRecord(final SVCallRecord record,
-                                   final List<SplitReadEvidence> startEvidence,
-                                   final List<SplitReadEvidence> endEvidence,
-                                   final Set<String> carrierSamples,
-                                   final Set<String> backgroundSamples,
-                                   final DiscordantPairEvidenceTester.DiscordantPairTestResult discordantPairResult) {
+    public SplitReadTestResult testRecord(final SVCallRecord record,
+                                          final List<SplitReadEvidence> startEvidence,
+                                          final List<SplitReadEvidence> endEvidence,
+                                          final Set<String> carrierSamples,
+                                          final Set<String> backgroundSamples,
+                                          final DiscordantPairEvidenceTester.DiscordantPairTestResult discordantPairResult) {
         Utils.nonNull(record);
         SVCallRecordUtils.validateCoordinatesWithDictionary(record, dictionary);
         Utils.validateArg(record.getStrandA() != null, "Record has null strand A");
@@ -145,43 +148,43 @@ public class BreakpointRefiner {
         SplitReadSite refinedFirstSite;
         SplitReadSite refinedSecondSite;
         if (!record.isIntrachromosomal()) {
-            // Interchromosomal variants, just refine without any checks
-            refinedFirstSite = refineSplitReadSite(startEvidence, record.getStrandA(), carrierSamples,
+            // Interchromosomal variants, just test without any checks
+            refinedFirstSite = testSplitReadSite(startEvidence, record.getStrandA(), carrierSamples,
                     backgroundSamples, sampleCoverageMap, representativeDepth, record.getContigA(), record.getPositionA());
-            refinedSecondSite = refineSplitReadSite(endEvidence, record.getStrandB(), carrierSamples,
+            refinedSecondSite = testSplitReadSite(endEvidence, record.getStrandB(), carrierSamples,
                     backgroundSamples, sampleCoverageMap, representativeDepth, record.getContigB(), record.getPositionB());
         } else if (record.getStrandA() == record.getStrandB()) {
             // Case of intrachromosomal and matching strands, need to ensure start/end don't end up the same
-            refinedFirstSite = refineSplitReadSite(startEvidence, record.getStrandA(), carrierSamples,
+            refinedFirstSite = testSplitReadSite(startEvidence, record.getStrandA(), carrierSamples,
                     backgroundSamples, sampleCoverageMap, representativeDepth, record.getContigA(), record.getPositionA());
             // Filter out evidence at the refined start position so that we don't double-test
             final int refinedStartPosition = refinedFirstSite.getPosition();
             final List<SplitReadEvidence> validEndEvidence = endEvidence.stream()
                     .filter(e -> e.getStart() != refinedStartPosition).collect(Collectors.toList());
-            refinedSecondSite = refineSplitReadSite(validEndEvidence, record.getStrandB(), carrierSamples,
+            refinedSecondSite = testSplitReadSite(validEndEvidence, record.getStrandB(), carrierSamples,
                     backgroundSamples, sampleCoverageMap, representativeDepth, record.getContigB(), record.getPositionB());
         } else {
             // Intrachromosomal and non-matching strands
-            refinedFirstSite = refineSplitReadSite(startEvidence, record.getStrandA(), carrierSamples,
+            refinedFirstSite = testSplitReadSite(startEvidence, record.getStrandA(), carrierSamples,
                     backgroundSamples, sampleCoverageMap, representativeDepth, record.getContigA(), record.getPositionA());
-            refinedSecondSite = refineSplitReadSite(endEvidence, record.getStrandB(), carrierSamples,
+            refinedSecondSite = testSplitReadSite(endEvidence, record.getStrandB(), carrierSamples,
                     backgroundSamples, sampleCoverageMap, representativeDepth, record.getContigB(), record.getPositionB());
 
-            // Check if refined coordinates are valid. If not, choose the better one and refine the other again
+            // Check if refined coordinates are valid. If not, choose the better one and test the other again
             final int endLowerBound = getEndLowerBound(record, refinedFirstSite.getPosition());
             if (refinedSecondSite.getPosition() < endLowerBound) {
                 if (refinedFirstSite.getP() < refinedSecondSite.getP()) {
                     // Start site had more significant result, so recompute end site with valid boundaries
                     final List<SplitReadEvidence> validEndEvidence = filterSplitReadSitesLowerBound(endEvidence, endLowerBound);
                     final int defaultEndPosition = Math.max(endLowerBound, record.getPositionB());
-                    refinedSecondSite = refineSplitReadSite(validEndEvidence, record.getStrandB(), carrierSamples,
+                    refinedSecondSite = testSplitReadSite(validEndEvidence, record.getStrandB(), carrierSamples,
                             backgroundSamples, sampleCoverageMap, representativeDepth, record.getContigB(), defaultEndPosition);
                 } else {
                     // End site had more significant result, so recompute start site with valid boundaries
                     final int startUpperBound = getStartUpperBound(record, refinedSecondSite.getPosition());
                     final List<SplitReadEvidence> validStartEvidence = filterSplitReadSitesUpperBound(startEvidence, startUpperBound);
                     final int defaulStartPosition = Math.min(startUpperBound, record.getPositionA());
-                    refinedFirstSite = refineSplitReadSite(validStartEvidence, record.getStrandA(), carrierSamples,
+                    refinedFirstSite = testSplitReadSite(validStartEvidence, record.getStrandA(), carrierSamples,
                             backgroundSamples, sampleCoverageMap, representativeDepth, record.getContigA(), defaulStartPosition);
                 }
             }
@@ -198,11 +201,14 @@ public class BreakpointRefiner {
                     sampleCoverageMap, representativeDepth);
         }
 
-        return new RefineResult(refinedFirstSite, refinedSecondSite, bothsideResult, discordantPairResult, combinedResult);
+        return new SplitReadTestResult(refinedFirstSite, refinedSecondSite, bothsideResult, discordantPairResult, combinedResult);
     }
 
+    /**
+     * Annotates record with SR test results
+     */
     public SVCallRecord applyToRecord(final SVCallRecord record,
-                                      final RefineResult result) {
+                                      final SplitReadTestResult result) {
         Utils.nonNull(record);
         Utils.nonNull(result);
         final SplitReadSite refinedFirstSite;
@@ -332,7 +338,7 @@ public class BreakpointRefiner {
 
     /**
      * Determines lower-bound on end site position (inclusive). For inter-chromosomal variants, boundaries are at the
-     * start of the chromsome (any position is valid). For INS, {@link BreakpointRefiner#maxSplitReadCrossDistance}
+     * start of the chromsome (any position is valid). For INS, {@link SplitReadEvidenceTester#maxSplitReadCrossDistance}
      * is used to determine how far past the original breakpoint it can be. Otherwise, we just use the new start position.
      *
      * @param call
@@ -350,7 +356,7 @@ public class BreakpointRefiner {
     }
 
     /**
-     * Same as {@link BreakpointRefiner#getEndLowerBound} but for upper-bound on start position.
+     * Same as {@link SplitReadEvidenceTester#getEndLowerBound} but for upper-bound on start position.
      *
      * @param call
      * @param refinedEndPosition new end position of call
@@ -366,17 +372,17 @@ public class BreakpointRefiner {
         return refinedEndPosition - 1;
     }
 
-    public final class RefineResult {
+    public final class SplitReadTestResult {
         private final SplitReadSite first;
         private final SplitReadSite second;
         private final EvidenceStatUtils.PoissonTestResult bothsidesResult;
         private final DiscordantPairEvidenceTester.DiscordantPairTestResult discordantPairTestResult;
         private final EvidenceStatUtils.PoissonTestResult pesrResult;
 
-        public RefineResult(final SplitReadSite first, final SplitReadSite second,
-                            final EvidenceStatUtils.PoissonTestResult bothsidesResult,
-                            final DiscordantPairEvidenceTester.DiscordantPairTestResult discordantPairTestResult,
-                            final EvidenceStatUtils.PoissonTestResult pesrResult) {
+        public SplitReadTestResult(final SplitReadSite first, final SplitReadSite second,
+                                   final EvidenceStatUtils.PoissonTestResult bothsidesResult,
+                                   final DiscordantPairEvidenceTester.DiscordantPairTestResult discordantPairTestResult,
+                                   final EvidenceStatUtils.PoissonTestResult pesrResult) {
             this.first = first;
             this.second = second;
             this.bothsidesResult = bothsidesResult;

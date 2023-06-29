@@ -167,7 +167,7 @@ public final class AggregateSVEvidence extends TwoPassVariantWalker {
             minValue = 0,
             optional = true
     )
-    private int splitReadCrossover = BreakpointRefiner.DEFAULT_MAX_CROSS_DISTANCE;
+    private int splitReadCrossover = SplitReadEvidenceTester.DEFAULT_MAX_CROSS_DISTANCE;
 
     @Argument(
             doc = "Minimum variant size for BAF aggregation",
@@ -268,7 +268,7 @@ public final class AggregateSVEvidence extends TwoPassVariantWalker {
     private FeatureDataSource<SplitReadEvidence> splitReadSource;
     private SplitReadEvidenceAggregator startSplitCollector;
     private SplitReadEvidenceAggregator endSplitCollector;
-    private BreakpointRefiner breakpointRefiner;
+    private SplitReadEvidenceTester splitReadEvidenceTester;
 
     private FeatureDataSource<DiscordantPairEvidence> discordantPairSource;
     private DiscordantPairEvidenceAggregator discordantPairCollector;
@@ -350,7 +350,7 @@ public final class AggregateSVEvidence extends TwoPassVariantWalker {
 
     private void initializeSplitReadCollection() {
         initializeSplitReadEvidenceDataSource();
-        breakpointRefiner = new BreakpointRefiner(sampleCoverageMap, splitReadCrossover, dictionary);
+        splitReadEvidenceTester = new SplitReadEvidenceTester(sampleCoverageMap, splitReadCrossover, dictionary);
     }
 
     private void initializeBAFCollection() {
@@ -532,8 +532,8 @@ public final class AggregateSVEvidence extends TwoPassVariantWalker {
             if (splitReadCollectionEnabled() && useSplitReadEvidence(record)) {
                 final List<SplitReadEvidence> startSplitReadEvidence = startSplitCollector.collectEvidence(record);
                 final List<SplitReadEvidence> endSplitReadEvidence = endSplitCollector.collectEvidence(record);
-                final BreakpointRefiner.RefineResult result = breakpointRefiner.testRecord(record, startSplitReadEvidence, endSplitReadEvidence, carrierSamples, backgroundSamples, discordantPairResult);
-                record = breakpointRefiner.applyToRecord(record, result);
+                final SplitReadEvidenceTester.SplitReadTestResult result = splitReadEvidenceTester.testRecord(record, startSplitReadEvidence, endSplitReadEvidence, carrierSamples, backgroundSamples, discordantPairResult);
+                record = splitReadEvidenceTester.applyToRecord(record, result);
             }
         }
         outputBuffer.add(SVCallRecordUtils.getVariantBuilder(record).make());
