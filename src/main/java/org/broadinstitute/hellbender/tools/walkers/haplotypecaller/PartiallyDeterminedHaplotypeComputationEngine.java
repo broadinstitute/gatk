@@ -162,21 +162,17 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                  */
                 for(EventGroup group : eventGroups ) {
                     if (group.causesBranching()) {
-                        List<List<Tuple<Event, Boolean>>> groupVCs = group.getVariantGroupsForEvent(allEventsHere, determinedEvents, true);
+                        List<Set<Event>> branchingSets = group.setsForBranching(allEventsHere, determinedEvents, true);
                         // Combinatorially expand the branches as necessary
                         List<Set<Event>> newBranchesToAdd = new ArrayList<>();
                         for (Set<Event> excludedVars : branchExcludeAlleles) {
                             //For every exclude group, fork it by each subset we have:
-                            for (int i = 1; i < groupVCs.size(); i++) { //NOTE: iterate starting at 1 here because we special case that branch at the end
-                                Set<Event> newSet = new HashSet<>(excludedVars);
-
-                                // add all events not in the group to newSet
-                                groupVCs.get(i).stream().filter(t -> !t.b).forEach(t -> newSet.add(t.a));
-                                newBranchesToAdd.add(newSet);
+                            for (int i = 1; i < branchingSets.size(); i++) { //NOTE: iterate starting at 1 here because we special case that branch at the end
+                                newBranchesToAdd.add(Sets.union(excludedVars, branchingSets.get(i)).immutableCopy());
                             }
                             // Be careful since this event group might have returned nothing
-                            if (!groupVCs.isEmpty()) {
-                                groupVCs.get(0).stream().filter(t -> !t.b).forEach(t -> excludedVars.add(t.a));
+                            if (!branchingSets.isEmpty()) {
+                                excludedVars.addAll(branchingSets.get(0));
                             }
                         }
                         branchExcludeAlleles.addAll(newBranchesToAdd);
@@ -718,7 +714,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         private final BitSet allowedEvents;
 
         // Optimization to save ourselves recomputing the subsets at every point its necessary to do so.
-        List<List<Tuple<Event,Boolean>>> cachedEventLists = null;
+        List<Set<Event>> cachedEventSets = null;
 
         public EventGroup(final Collection<Event> events, List<List<Event>> disallowedCombinations) {
             Utils.validate(events.size() <= MAX_VAR_IN_EVENT_GROUP, () -> "Too many events (" + events.size() + ") for populating bitset.");
@@ -792,13 +788,13 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
          * @param disallowSubsets
          * @return
          */
-        public List<List<Tuple<Event,Boolean>>> getVariantGroupsForEvent(final List<Event> locusEvents, final Set<Event> determinedEvents, final boolean disallowSubsets) {
+        public List<Set<Event>> setsForBranching(final List<Event> locusEvents, final Set<Event> determinedEvents, final boolean disallowSubsets) {
             final SmallBitSet locusOverlapSet = overlapSet(locusEvents);
             final SmallBitSet determinedOverlapSet = overlapSet(determinedEvents);
 
             // Special case (if we are determining bases outside of this mutex cluster we can reuse the work from previous iterations)
-            if (locusOverlapSet.isEmpty() && cachedEventLists != null) {
-                return cachedEventLists;
+            if (locusOverlapSet.isEmpty() && cachedEventSets != null) {
+                return cachedEventSets;
             }
 
             final List<SmallBitSet> allowedAndDetermined = new ArrayList<>();
@@ -814,18 +810,19 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             }
 
             // Now that we have all the mutex groups, unpack them into lists of variants
-            List<List<Tuple<Event,Boolean>>> output = new ArrayList<>();
+            List<Set<Event>> output = new ArrayList<>();
             for (SmallBitSet grp : allowedAndDetermined) {
-                List<Tuple<Event,Boolean>> newGrp = new ArrayList<>();
+                Set<Event> newGrp = new HashSet<>();
                 for (int i = 0; i < eventsInOrder.size(); i++) {
-                    // if the corresponding bit is 1, set it as such, otherwise set it as 0.
-                    newGrp.add(new Tuple<>(eventsInOrder.get(i), grp.get(i)));
+                    if (!grp.get(i)) {
+                        newGrp.add(eventsInOrder.get(i));
+                    }
                 }
                 output.add(newGrp);
             }
             // Cache the result
             if(locusOverlapSet.isEmpty()) {
-                cachedEventLists = Collections.unmodifiableList(output);
+                cachedEventSets = Collections.unmodifiableList(output);
             }
             return output;
         }
