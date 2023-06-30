@@ -1,8 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Range;
-import com.google.common.collect.Sets;
+import com.google.common.collect.*;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.util.Locatable;
@@ -27,6 +26,7 @@ import org.jgrapht.graph.SimpleGraph;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Class that manages the complicated steps involved in generating artificial haplotypes for the PDHMM:
@@ -94,23 +94,19 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
         // TODO this is where we filter out if indels > 32 (a heuristic known from DRAGEN that is not implemented here)
 
-        Map<Double, List<Event>> eventsByDRAGENCoordinates = eventsInOrder.stream()
-                .collect(Collectors.groupingBy(e -> dragenStart(e), LinkedHashMap::new, Collectors.toList()));
         SortedMap<Integer, List<Event>> variantsByStartPos = eventsInOrder.stream()
                 .collect(Collectors.groupingBy(Event::getStart, TreeMap::new, Collectors.toList()));
 
-        List<List<Event>> disallowedPairs = smithWatermanRealignPairsOfVariantsForEquivalentEvents(referenceHaplotype, aligner, args.getHaplotypeToReferenceSWParameters(), debug, eventsInOrder);
-        dragenDisallowedGroupsMessage(referenceHaplotype.getStart(), debug, disallowedPairs);
+        List<List<Event>> disallowedCombinations = smithWatermanRealignPairsOfVariantsForEquivalentEvents(referenceHaplotype, aligner, args.getHaplotypeToReferenceSWParameters(), debug, eventsInOrder);
+        dragenDisallowedGroupsMessage(referenceHaplotype.getStart(), debug, disallowedCombinations);
 
-        final List<EventGroup> eventGroups = getEventGroupClusters(eventsInOrder, disallowedPairs);
-        Utils.printIf(debug,() -> "Event groups after merging:\n"+eventGroups.stream().map(eg -> eg.toDisplayString(referenceHaplotype.getStart())).collect(Collectors.joining("\n")));
-
+        final List<EventGroup> eventGroups = getEventGroupClusters(eventsInOrder, disallowedCombinations);
         // if any of our merged event groups is too large, abort.
-        if (eventGroups.stream().anyMatch(eg -> eg.size() > MAX_VAR_IN_EVENT_GROUP)) {
+        if (eventGroups == null) {
             Utils.printIf(debug, () -> "Found event group with too many variants! Aborting haplotype building");
             return sourceSet;
         }
-        eventGroups.forEach(eg -> eg.populateBitset(disallowedPairs));
+        Utils.printIf(debug,() -> "Event groups after merging:\n"+eventGroups.stream().map(eg -> eg.toDisplayString(referenceHaplotype.getStart())).collect(Collectors.joining("\n")));
 
         Set<Haplotype> outputHaplotypes = new LinkedHashSet<>();
         if (pileupArgs.determinePDHaps) {
@@ -389,6 +385,9 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
      * Partition events into clusters that must be considered together, either because they overlap or because they belong to the
      * same mutually exclusive pair or trio.  To find this clustering we calculate the connected components of an undirected graph
      * with an edge connecting events that overlap or are mutually excluded.
+     *
+     * return null if any event group exceeds the allowed size -- this tells the calling code to fall back on the original
+     * GATK assembly.
      */
     private static List<EventGroup> getEventGroupClusters(List<Event> eventsInOrder, List<List<Event>> disallowedPairsAndTrios) {
         final Graph<Event, DefaultEdge> graph = new SimpleGraph<>(DefaultEdge.class);
@@ -413,9 +412,9 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             }
         }
 
-        return new ConnectivityInspector<>(graph).connectedSets().stream()
-                .map(set -> set.stream().sorted(HAPLOTYPE_SNP_FIRST_COMPARATOR).toList()).map(EventGroup::new)
-                .toList();
+        final List<Set<Event>> components = new ConnectivityInspector<>(graph).connectedSets();
+        return components.stream().anyMatch(comp -> comp.size() > MAX_VAR_IN_EVENT_GROUP) ? null :
+                components.stream().map(component -> new EventGroup(component, disallowedPairsAndTrios)).toList();
     }
 
     /**
@@ -710,22 +709,18 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
     // A helper class for managing mutually exclusive event clusters and the logic arround forming valid events vs eachother.
     private static class EventGroup {
-        List<Event> eventsInBitmapOrder;
-        HashSet<Event> eventSet;
-        //From Illumina (there is a LOT of math that will eventually go into these)/
-        BitSet allowedEvents = null;
+        private final ImmutableList<Event> eventsInBitmapOrder;
+        final ImmutableMap<Event, Integer> eventIndices;
+        final BitSet allowedEvents;
 
         // Optimization to save ourselves recomputing the subsets at every point its necessary to do so.
         List<List<Tuple<Event,Boolean>>> cachedEventLists = null;
 
-        public EventGroup(final Collection<Event> events) {
-            eventsInBitmapOrder = new ArrayList<>();
-            eventSet = new HashSet<>();
-
-            for (final Event event : events) {
-                eventsInBitmapOrder.add(event);
-                eventSet.add(event);
-            }
+        public EventGroup(final Collection<Event> events, List<List<Event>> disallowedCombinations) {
+            eventsInBitmapOrder = events.stream().sorted(HAPLOTYPE_SNP_FIRST_COMPARATOR).collect(ImmutableList.toImmutableList());
+            eventIndices = IntStream.range(0, events.size()).boxed().collect(ImmutableMap.toImmutableMap(eventsInBitmapOrder::get, n -> n));
+            allowedEvents = new BitSet(1 << eventsInBitmapOrder.size());
+            populateBitset(disallowedCombinations);
         }
 
         /**
@@ -742,18 +737,16 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
          *
          * @param disallowedEvents Pairs of events disallowed
          */
-        public void populateBitset(List<List<Event>> disallowedEvents) {
+        private void populateBitset(List<List<Event>> disallowedEvents) {
             Utils.validate(size() <= MAX_VAR_IN_EVENT_GROUP, () -> "Too many events (" + size() + ") for populating bitset.");
             if (eventsInBitmapOrder.size() < 2) {
                 return;
             }
 
-            allowedEvents = new BitSet(eventsInBitmapOrder.size());
-            allowedEvents.flip(1, 1 << eventsInBitmapOrder.size());
+
+            allowedEvents.set(1, 1 << eventsInBitmapOrder.size());
             // initialize all events as being allowed and then disallow them in turn .
 
-            // Ensure the list is in positional order before commencing.
-            eventsInBitmapOrder.sort(HAPLOTYPE_SNP_FIRST_COMPARATOR);
             List<Integer> bitmasks = new ArrayList<>();
 
             // Mark as disallowed all events that overlap each other, excluding pairs of SNPs
@@ -769,14 +762,14 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             // mark as disallowed any sets of variants from the bitmask.
             for (List<Event> disallowed : disallowedEvents) {
                 //
-                if (disallowed.stream().anyMatch(v -> eventSet.contains(v))){
+                if (disallowed.stream().anyMatch(v -> eventIndices.containsKey(v))){
                     int bitmask = 0;
                     for (Event v : disallowed) {
-                        int indexOfV = eventsInBitmapOrder.indexOf(v);
+                        int indexOfV = eventIndices.get(v);
                         if (indexOfV < 0) {
                             throw new RuntimeException("Something went wrong in event group merging, variant "+v+" is missing from the event group despite being in a mutex pair: "+disallowed+"\n"+this);
                         }
-                        bitmask += 1 << eventsInBitmapOrder.indexOf(v);
+                        bitmask += 1 << eventIndices.get(v);
                     }
                     bitmasks.add(bitmask);
                 }
@@ -811,8 +804,8 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             int eventMask = 0;
             int maskValues = 0;
             for(int i = 0; i < allEventsHere.size(); i++) {
-                if (eventSet.contains(allEventsHere.get(i))) {
-                    int index = eventsInBitmapOrder.indexOf(allEventsHere.get(i));
+                if (eventIndices.containsKey(allEventsHere.get(i))) {
+                    int index = eventIndices.get(allEventsHere.get(i));
                     eventMask = eventMask | (1 << index);
                     maskValues = maskValues | ((i == determinedAlleleIndex ? 1 : 0) << index);
                 }
@@ -868,24 +861,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             return "EventGroup: " + formatEventsLikeDragenLogs(eventsInBitmapOrder, startPos);
         }
 
-        public boolean contains(final Event event) {
-            return eventSet.contains(event);
-        }
-
         public int size() { return eventsInBitmapOrder.size(); }
-
-        public void addEvent(final Event event) {
-            eventsInBitmapOrder.add(event);
-            eventSet.add(event);
-            allowedEvents = null;
-        }
-
-        public EventGroup mergeEvent(final EventGroup other) {
-            eventsInBitmapOrder.addAll(other.eventsInBitmapOrder);
-            eventSet.addAll(other.eventsInBitmapOrder);
-            allowedEvents = null;
-            return this;
-        }
     }
 
     private static List<Event> growEventGroup(final List<Event> group, final Event event) {
