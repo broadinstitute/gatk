@@ -45,8 +45,11 @@ The [GVS beta workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Vari
 The GVS workflow takes in reblocked single sample GVCF files and their corresponding index files as `input_vcfs` and `input_vcf_indexes`, respectively. 
 
 In the Beta user workflow, the value examples are as follows:
-the samples_table_name value is `sample`
-the entity_id_column_name value is `sample_id`
-the vcf_files_column_name value is `gvcf`
-the vcf_index_files_column_name value is `gvcf_index`
-the sample_set_name value is `sample_set`
+
+| Input variable name    | Value   |                                                                                                                                                                | Type |
+| ---------------------- | ------- | 
+| samples_table_name| `sample` |
+| entity_id_column_name | `sample_id` |
+| vcf_files_column_name | `gvcf` | 
+| vcf_index_files_column_name | `gvcf_index` | 
+| sample_set_name | `sample_set` |
