@@ -11,6 +11,7 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.SmallBitSet;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Event;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
@@ -135,6 +136,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
              */
             for (int determinedAlleleIndex = (pileupArgs.determinePDHaps?0:-1); determinedAlleleIndex < allEventsHere.size(); determinedAlleleIndex++) { //note -1 for I here corresponds to the reference allele at this site
                 final boolean isRef = determinedAlleleIndex == -1;
+                final Set<Event> determinedEvents = isRef ? Set.of() : Set.of(allEventsHere.get(determinedAlleleIndex));
                 final Event determinedEventToTest = allEventsHere.get(isRef ? 0 : determinedAlleleIndex);
                 Utils.printIf(debug, () -> "Working with allele at site: "+(isRef? "[ref:"+(thisEventGroupStart-referenceHaplotype.getStart())+"]" : PartiallyDeterminedHaplotype.getDRAGENDebugEventString(referenceHaplotype.getStart()).apply(determinedEventToTest)));
                 // This corresponds to the DRAGEN code for
@@ -160,7 +162,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                  */
                 for(EventGroup group : eventGroups ) {
                     if (group.causesBranching()) {
-                        List<List<Tuple<Event, Boolean>>> groupVCs = group.getVariantGroupsForEvent(allEventsHere, determinedAlleleIndex, true);
+                        List<List<Tuple<Event, Boolean>>> groupVCs = group.getVariantGroupsForEvent(allEventsHere, determinedEvents, true);
                         // Combinatorially expand the branches as necessary
                         List<Set<Event>> newBranchesToAdd = new ArrayList<>();
                         for (Set<Event> excludedVars : branchExcludeAlleles) {
@@ -709,18 +711,25 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
     // A helper class for managing mutually exclusive event clusters and the logic arround forming valid events vs eachother.
     private static class EventGroup {
-        private final ImmutableList<Event> eventsInBitmapOrder;
-        final ImmutableMap<Event, Integer> eventIndices;
-        final BitSet allowedEvents;
+        private final ImmutableList<Event> eventsInOrder;
+        private final ImmutableMap<Event, Integer> eventIndices;
+        private final BitSet allowedEvents;
 
         // Optimization to save ourselves recomputing the subsets at every point its necessary to do so.
         List<List<Tuple<Event,Boolean>>> cachedEventLists = null;
 
         public EventGroup(final Collection<Event> events, List<List<Event>> disallowedCombinations) {
-            eventsInBitmapOrder = events.stream().sorted(HAPLOTYPE_SNP_FIRST_COMPARATOR).collect(ImmutableList.toImmutableList());
-            eventIndices = IntStream.range(0, events.size()).boxed().collect(ImmutableMap.toImmutableMap(eventsInBitmapOrder::get, n -> n));
-            allowedEvents = new BitSet(1 << eventsInBitmapOrder.size());
-            populateBitset(disallowedCombinations);
+            Utils.validate(events.size() <= MAX_VAR_IN_EVENT_GROUP, () -> "Too many events (" + events.size() + ") for populating bitset.");
+            eventsInOrder = events.stream().sorted(HAPLOTYPE_SNP_FIRST_COMPARATOR).collect(ImmutableList.toImmutableList());
+            eventIndices = IntStream.range(0, events.size()).boxed().collect(ImmutableMap.toImmutableMap(eventsInOrder::get, n -> n));
+            allowedEvents = new BitSet(1 << eventsInOrder.size());
+
+            final List<List<Event>> overlappingMutexes = disallowedCombinations.stream()
+                            .filter(mutext -> mutext.stream().anyMatch(eventIndices::containsKey)).toList();
+            for (final List<Event> mutex : overlappingMutexes) {
+                Utils.validate(mutex.stream().allMatch(eventIndices::containsKey), () -> "Mutex group " + mutex + " only partially overlaps event group " + this);
+            }
+            populateBitset(overlappingMutexes);
         }
 
         /**
@@ -735,59 +744,41 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
          * Iterate through pairs of Variants that overlap and mark off any pairings including this.
          * Iterate through the mutex variants and ensure pairs containing all mutex variant groups are marked as true
          *
-         * @param disallowedEvents Pairs of events disallowed
+         * @param mutexes Groups of mutually forbidden events.  Note that when this is called we have already ensured
+         *                that each mutex group comprises only events contained in this EventGroup.
          */
-        private void populateBitset(List<List<Event>> disallowedEvents) {
-            Utils.validate(size() <= MAX_VAR_IN_EVENT_GROUP, () -> "Too many events (" + size() + ") for populating bitset.");
-            if (eventsInBitmapOrder.size() < 2) {
+        private void populateBitset(List<List<Event>> mutexes) {
+            if (eventsInOrder.size() < 2) {
                 return;
             }
 
-
-            allowedEvents.set(1, 1 << eventsInBitmapOrder.size());
             // initialize all events as being allowed and then disallow them in turn .
+            allowedEvents.set(1, 1 << eventsInOrder.size());
 
-            List<Integer> bitmasks = new ArrayList<>();
+            final List<SmallBitSet> forbiddenCombinations = new ArrayList<>();
 
             // Mark as disallowed all events that overlap each other, excluding pairs of SNPs
-            for (int i = 0; i < eventsInBitmapOrder.size(); i++) {
-                final Event first = eventsInBitmapOrder.get(i);
-                for (int j = i+1; j < eventsInBitmapOrder.size(); j++) {
-                    final Event second = eventsInBitmapOrder.get(j);
+            for (int i = 0; i < eventsInOrder.size(); i++) {
+                final Event first = eventsInOrder.get(i);
+                for (int j = i+1; j < eventsInOrder.size(); j++) {
+                    final Event second = eventsInOrder.get(j);
                     if (!(first.isSNP() && second.isSNP()) && eventsOverlapForPDHapsCode(first, second)) {
-                        bitmasks.add(1 << i | 1 << j);
+                        forbiddenCombinations.add(new SmallBitSet(i,j));
                     }
-                }
-            }
-            // mark as disallowed any sets of variants from the bitmask.
-            for (List<Event> disallowed : disallowedEvents) {
-                //
-                if (disallowed.stream().anyMatch(v -> eventIndices.containsKey(v))){
-                    int bitmask = 0;
-                    for (Event v : disallowed) {
-                        int indexOfV = eventIndices.get(v);
-                        if (indexOfV < 0) {
-                            throw new RuntimeException("Something went wrong in event group merging, variant "+v+" is missing from the event group despite being in a mutex pair: "+disallowed+"\n"+this);
-                        }
-                        bitmask += 1 << eventIndices.get(v);
-                    }
-                    bitmasks.add(bitmask);
                 }
             }
 
-            // Now iterate through the list and disallow all events with every bitmask
+            // make SmallBitSet of the event indices of each mutex
+            mutexes.stream().map(mutex -> new SmallBitSet(mutex.stream().map(eventIndices::get).toList())).forEach(forbiddenCombinations::add);
+
+            // Now forbid all subsets that contain forbidden combinations
             //TODO This method is potentially very inefficient! We don't technically have to iterate over every i,
             //TODO we know there is an optimization involving minimizing the number of checks necessary here by iterating
             //TODO using the bitmask values themselves for the loop
-            if (!bitmasks.isEmpty()) {
-                events:
-                for (int i = 1; i < allowedEvents.length(); i++) {
-                    for (final int mask : bitmasks) {
-                        if ((i & mask) == mask) { // are the bits form the mask true?
-                            allowedEvents.set(i, false);
-                            continue events;
-                            // Once i is set we don't need to keep checking bitmasks
-                        }
+            if (!forbiddenCombinations.isEmpty()) {
+                for (final SmallBitSet subset = new SmallBitSet().increment(); !subset.hasElementGreaterThan(eventsInOrder.size()); subset.increment()) {
+                    if (forbiddenCombinations.stream().anyMatch(subset::contains)) {
+                        allowedEvents.set(subset.index(), false);
                     }
                 }
             }
@@ -799,69 +790,60 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
          * @param disallowSubsets
          * @return
          */
-        public List<List<Tuple<Event,Boolean>>> getVariantGroupsForEvent(final List<Event> allEventsHere, final int determinedAlleleIndex, final boolean disallowSubsets) {
-            // If we are dealing with an external to this list event
-            int eventMask = 0;
-            int maskValues = 0;
-            for(int i = 0; i < allEventsHere.size(); i++) {
-                if (eventIndices.containsKey(allEventsHere.get(i))) {
-                    int index = eventIndices.get(allEventsHere.get(i));
-                    eventMask = eventMask | (1 << index);
-                    maskValues = maskValues | ((i == determinedAlleleIndex ? 1 : 0) << index);
-                }
-            }
+        public List<List<Tuple<Event,Boolean>>> getVariantGroupsForEvent(final List<Event> locusEvents, final Set<Event> determinedEvents, final boolean disallowSubsets) {
+            final SmallBitSet locusOverlapSet = overlapSet(locusEvents);
+            final SmallBitSet determinedOverlapSet = overlapSet(determinedEvents);
+
             // Special case (if we are determining bases outside of this mutex cluster we can reuse the work from previous iterations)
-            if (eventMask == 0 && cachedEventLists != null) {
+            if (locusOverlapSet.isEmpty() && cachedEventLists != null) {
                 return cachedEventLists;
             }
 
-            List<Integer> ints = new ArrayList<>();
+            List<SmallBitSet> allowedAndDetermined = new ArrayList<>();
             // Iterate from the BACK of the list (i.e. ~supersets -> subsets)
             // NOTE: we skip over 0 here since that corresponds to ref-only events, handle those externally to this code
-            outerLoop:
-            for (int i = allowedEvents.length(); i > 0; i--) {
+            for (final SmallBitSet subset = SmallBitSet.fullSet(eventsInOrder.size()); !subset.isEmpty(); subset.decrement()) {
                 // If the event is allowed AND if we are looking for a particular event to be present or absent.
-                if (allowedEvents.get(i) && (eventMask == 0 || ((i & eventMask) == maskValues))) {
+                if (allowedEvents.get(subset.index()) && subset.intersection(locusOverlapSet).equals(determinedOverlapSet)) {
                     // Only check for subsets if we need to
-                    if (disallowSubsets) {
-                        for (Integer group : ints) {
-                            // if the current i is a subset of an existing group
-                            if ((i | group) == group) {
-                                continue outerLoop;
-                            }
-                        }
+                    if (!disallowSubsets || allowedAndDetermined.stream().noneMatch(group -> group.contains(subset))) {
+                        allowedAndDetermined.add(subset.copy());
                     }
-                    ints.add(i);
                 }
             }
 
             // Now that we have all the mutex groups, unpack them into lists of variants
             List<List<Tuple<Event,Boolean>>> output = new ArrayList<>();
-            for (Integer grp : ints) {
+            for (SmallBitSet grp : allowedAndDetermined) {
                 List<Tuple<Event,Boolean>> newGrp = new ArrayList<>();
-                for (int i = 0; i < eventsInBitmapOrder.size(); i++) {
+                for (int i = 0; i < eventsInOrder.size(); i++) {
                     // if the corresponding bit is 1, set it as such, otherwise set it as 0.
-                    newGrp.add(new Tuple<>(eventsInBitmapOrder.get(i), ((1<<i) & grp) != 0));
+                    newGrp.add(new Tuple<>(eventsInOrder.get(i), grp.get(i)));
                 }
                 output.add(newGrp);
             }
             // Cache the result
-            if(eventMask==0) {
+            if(locusOverlapSet.isEmpty()) {
                 cachedEventLists = Collections.unmodifiableList(output);
             }
             return output;
         }
 
+        // create the SmallBitSet of those elements from some collection of events that overlap this EventGroup
+        private SmallBitSet overlapSet(final Collection<Event> events) {
+            return new SmallBitSet(events.stream().map(e -> eventIndices.getOrDefault(e, -1)).filter(n -> n != -1).toList());
+        }
+
         public boolean causesBranching() {
-            return eventsInBitmapOrder.size() > 1;
+            return eventsInOrder.size() > 1;
         }
 
         //Print The event group in Illumina indexed ordering:
         public String toDisplayString(int startPos) {
-            return "EventGroup: " + formatEventsLikeDragenLogs(eventsInBitmapOrder, startPos);
+            return "EventGroup: " + formatEventsLikeDragenLogs(eventsInOrder, startPos);
         }
 
-        public int size() { return eventsInBitmapOrder.size(); }
+        public int size() { return eventsInOrder.size(); }
     }
 
     private static List<Event> growEventGroup(final List<Event> group, final Event event) {

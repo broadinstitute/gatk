@@ -56,38 +56,26 @@ public class SmallBitSet {
         }
     }
 
+    // create a full bit set of all 1s in binary up to a certain number of elements i.e. 00000000000111111....
+    public static SmallBitSet fullSet(final int numElements) {
+        final SmallBitSet result = new SmallBitSet();
+        result.bits = (1 << numElements) - 1;
+        return result;
+    }
+
+    public SmallBitSet increment() {
+        bits++;
+        return this;
+    }
+
+    public SmallBitSet decrement() {
+        bits--;
+        return this;
+    }
+
     // the bits as an integer define a unique index within the set of bitsets
     // that is, bitsets can be enumerated as {}, {0}, {1}, {0, 1}, {2}, {0, 2} . . .
     public int index() { return bits; }
-
-    // iterate over all SmallBitSets up to a certain element index in standard order
-    public static Iterator<SmallBitSet> iterator(final int numElements, final boolean reverse) {
-        return new Iterator<>() {
-            private final int numSets = 1 << numElements;
-            private int previousIndex = reverse ? numSets : -1; // start one past end if reverse, otherwise one before start
-
-            private final SmallBitSet bitset = new SmallBitSet();
-
-            @Override
-            public boolean hasNext() {
-                return reverse ? previousIndex > 0 : previousIndex < numSets - 1;
-            }
-
-            @Override
-            public SmallBitSet next() {
-                bitset.bits = reverse ? --previousIndex : ++previousIndex;
-                return bitset;
-            }
-        };
-    }
-
-    public static Iterator<SmallBitSet> iterator(final int numElements) {
-        return iterator(numElements, false);
-    }
-
-    public static Iterator<SmallBitSet> reverseIterator(final int numElements) {
-        return iterator(numElements, true);
-    }
 
     // intersection is equivalent to bitwise AND
     public SmallBitSet intersection(final SmallBitSet other) {
@@ -124,6 +112,8 @@ public class SmallBitSet {
     }
 
     public boolean isEmpty() { return bits == 0; }
+
+    public boolean hasElementGreaterThan(final int element) { return bits >= 1 << element; }
 
     private static int elementIndex(final int element) {
         return 1 << element;
