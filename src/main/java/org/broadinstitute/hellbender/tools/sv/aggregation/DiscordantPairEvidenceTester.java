@@ -21,10 +21,10 @@ public class DiscordantPairEvidenceTester {
         this.dictionary = Utils.nonNull(dictionary);
     }
 
-    public DiscordantPairTestResult poissonTestRecord(final SVCallRecord record,
-                                                      final List<DiscordantPairEvidence> evidence,
-                                                      final Set<String> carrierSamples,
-                                                      final Set<String> backgroundSamples) {
+    public DiscordantPairTestResult test(final SVCallRecord record,
+                                         final List<DiscordantPairEvidence> evidence,
+                                         final Set<String> carrierSamples,
+                                         final Set<String> backgroundSamples) {
         Utils.nonNull(record);
         SVCallRecordUtils.validateCoordinatesWithDictionary(record, dictionary);
 

@@ -9,6 +9,7 @@ import htsjdk.variant.variantcontext.GenotypesContext;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
+import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
 import org.broadinstitute.hellbender.tools.sv.SVTestUtils;
 import org.broadinstitute.hellbender.tools.sv.SplitReadEvidence;
 import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
@@ -23,6 +24,19 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
 
     private static final SAMSequenceDictionary DICTIONARY = SVTestUtils.hg38Dict;
     private static final double ERROR_TOL = 1e-6;
+    private static final int MAX_SR_CROSS_DISTANCE = 20;
+
+    private final SVCallRecord TEST_DEL_RECORD = new SVCallRecord("call1", "chr21", 1000, true, "chr21", 2000, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
+            null, null, Collections.singletonList("pesr"), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, DICTIONARY);
+
+    private final SVCallRecord TEST_INS_RECORD = new SVCallRecord("call1", "chr21", 1000, true, "chr21", 1000, false, GATKSVVCFConstants.StructuralVariantAnnotationType.INS,
+            null, 500, Collections.singletonList("pesr"), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, DICTIONARY);
+
+    private final SVCallRecord TEST_BND_RECORD = new SVCallRecord("call1", "chr21", 1000, true, "chr22", 8000, false, GATKSVVCFConstants.StructuralVariantAnnotationType.BND,
+            null, null, Collections.singletonList("pesr"), Lists.newArrayList(Allele.REF_N, Allele.create("<BND>", false)), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, DICTIONARY);
+
+    private final SVCallRecord TEST_INV_RECORD = new SVCallRecord("call1", "chr21", 1000, true, "chr21", 8000, true, GATKSVVCFConstants.StructuralVariantAnnotationType.INV,
+            null, null, Collections.singletonList("pesr"), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INV), Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, DICTIONARY);
 
     @DataProvider(name = "refineSplitReadSiteTestData")
     public Object[][] refineSplitReadSiteTestData() {
@@ -160,6 +174,7 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
         return new Object[][]{
                 // No evidence
                 {
+                        TEST_DEL_RECORD,
                         Collections.emptySet(),
                         Collections.emptySet(),
                         Collections.emptySet(),
@@ -167,16 +182,21 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                         Collections.emptyList(),
                         1000,
                         2000,
+                        1000,
+                        2000,
                         Collections.emptyMap(),
                         Collections.emptyMap()
                 },
                 // Single carrier with evidence at new coordinates
                 {
+                        TEST_DEL_RECORD,
                         Sets.newHashSet("sample1"),
                         Sets.newHashSet("sample2"),
                         Collections.emptySet(),
                         Collections.singletonList(new SplitReadEvidence("sample1", "chr21", 1005, 5, true)),
                         Collections.singletonList(new SplitReadEvidence("sample1", "chr21", 2005, 4, false)),
+                        1000,
+                        2000,
                         1005,
                         2005,
                         Lists.newArrayList(new HashMap.SimpleEntry<>("sample1", 5), new HashMap.SimpleEntry<>("sample2", 0)).stream()
@@ -186,6 +206,7 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                 },
                 // Single carrier with evidence at new coordinates, but excluded
                 {
+                        TEST_DEL_RECORD,
                         Sets.newHashSet("sample1"),
                         Sets.newHashSet("sample2"),
                         Collections.singleton("sample1"),
@@ -193,11 +214,14 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                         Collections.singletonList(new SplitReadEvidence("sample1", "chr21", 2005, 5, false)),
                         1000,
                         2000,
+                        1000,
+                        2000,
                         Collections.emptyMap(),
                         Collections.emptyMap()
                 },
                 // Single carrier and background sample with evidence at new coordinates
                 {
+                        TEST_DEL_RECORD,
                         Sets.newHashSet("sample1"),
                         Sets.newHashSet("sample2"),
                         Collections.emptySet(),
@@ -209,6 +233,8 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                                 new SplitReadEvidence("sample1", "chr21", 2005, 5, false),
                                 new SplitReadEvidence("sample2", "chr21", 2005, 1, false)
                         ),
+                        1000,
+                        2000,
                         1005,
                         2005,
                         Collections.singletonMap("sample1", 5),
@@ -217,6 +243,7 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                 // Single carrier and background sample with invalid end evidence upstream of refined start
                 // Start evidence better
                 {
+                        TEST_DEL_RECORD,
                         Sets.newHashSet("sample1"),
                         Sets.newHashSet("sample2"),
                         Collections.emptySet(),
@@ -228,6 +255,8 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                                 new SplitReadEvidence("sample1", "chr21", 1400, 5, false),
                                 new SplitReadEvidence("sample2", "chr21", 1400, 1, false)
                         ),
+                        1000,
+                        2000,
                         1500,
                         2000,
                         Collections.singletonMap("sample1", 6),
@@ -236,6 +265,7 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                 // Single carrier and background sample with invalid end evidence upstream of refined start
                 // End evidence better
                 {
+                        TEST_DEL_RECORD,
                         Sets.newHashSet("sample1"),
                         Sets.newHashSet("sample2"),
                         Collections.emptySet(),
@@ -248,12 +278,15 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                                 new SplitReadEvidence("sample2", "chr21", 1400, 1, false)
                         ),
                         1000,
+                        2000,
+                        1000,
                         1400,
                         Collections.emptyMap(),
                         Collections.singletonMap("sample1", 6)
                 },
                 // Single carrier and background sample with valid end evidence upstream of original start but not refined start
                 {
+                        TEST_DEL_RECORD,
                         Sets.newHashSet("sample1"),
                         Sets.newHashSet("sample2"),
                         Collections.emptySet(),
@@ -265,6 +298,8 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                                 new SplitReadEvidence("sample1", "chr21", 950, 5, false),
                                 new SplitReadEvidence("sample2", "chr21", 950, 1, false)
                         ),
+                        1000,
+                        2000,
                         900,
                         950,
                         Collections.singletonMap("sample1", 5),
@@ -273,6 +308,7 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                 // Single carrier and background sample with multiple evidence sites
                 //   --Refined locus 3'
                 {
+                        TEST_DEL_RECORD,
                         Sets.newHashSet("sample1"),
                         Sets.newHashSet("sample2"),
                         Collections.emptySet(),
@@ -286,6 +322,8 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                                 new SplitReadEvidence("sample2", "chr21", 2005, 1, false),
                                 new SplitReadEvidence("sample1", "chr21", 2010, 6, false)
                         ),
+                        1000,
+                        2000,
                         1010,
                         2010,
                         Collections.singletonMap("sample1", 6),
@@ -293,6 +331,7 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                 },
                 //   --Refined locus 5'
                 {
+                        TEST_DEL_RECORD,
                         Sets.newHashSet("sample1"),
                         Sets.newHashSet("sample2"),
                         Collections.emptySet(),
@@ -307,6 +346,8 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                                 new SplitReadEvidence("sample1", "chr21", 2005, 5, false),
                                 new SplitReadEvidence("sample2", "chr21", 2005, 1, false)
                         ),
+                        1000,
+                        2000,
                         995,
                         1995,
                         Collections.singletonMap("sample1", 6),
@@ -314,6 +355,7 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                 },
                 //   --3' evidence weaker
                 {
+                        TEST_DEL_RECORD,
                         Sets.newHashSet("sample1"),
                         Sets.newHashSet("sample2"),
                         Collections.emptySet(),
@@ -327,6 +369,8 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                                 new SplitReadEvidence("sample2", "chr21", 2005, 1, false),
                                 new SplitReadEvidence("sample1", "chr21", 2010, 1, false)
                         ),
+                        1000,
+                        2000,
                         1005,
                         2005,
                         Collections.singletonMap("sample1", 5),
@@ -334,6 +378,7 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                 },
                 //   --Equal evidence, refine closest to original coordinates
                 {
+                        TEST_DEL_RECORD,
                         Sets.newHashSet("sample1"),
                         Sets.newHashSet("sample2"),
                         Collections.emptySet(),
@@ -351,6 +396,8 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                                 new SplitReadEvidence("sample1", "chr21", 2001, 5, false),
                                 new SplitReadEvidence("sample1", "chr21", 2010, 5, false)
                         ),
+                        1000,
+                        2000,
                         1001,
                         2001,
                         Collections.singletonMap("sample1", 5),
@@ -358,6 +405,7 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                 },
                 //   --Ignore excluded sample
                 {
+                        TEST_DEL_RECORD,
                         Sets.newHashSet("sample1"),
                         Sets.newHashSet("sample2"),
                         Collections.singleton("sample2"),
@@ -371,51 +419,164 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                                 new SplitReadEvidence("sample2", "chr21", 2005, 5, false),
                                 new SplitReadEvidence("sample1", "chr21", 2010, 4, false)
                         ),
+                        1000,
+                        2000,
                         1005,
                         2005,
                         Collections.singletonMap("sample1", 5),
                         Collections.singletonMap("sample1", 5)
                 },
+                // INS simple case
+                {
+                        TEST_INS_RECORD,
+                        Sets.newHashSet("sample1"),
+                        Sets.newHashSet("sample2"),
+                        Collections.emptySet(),
+                        Lists.newArrayList(
+                                new SplitReadEvidence("sample1", "chr21", 995, 12, true)
+                        ),
+                        Lists.newArrayList(
+                                new SplitReadEvidence("sample1", "chr21", 1001, 10, false)
+                        ),
+                        1000,
+                        1000,
+                        995,
+                        1001,
+                        Collections.singletonMap("sample1", 12),
+                        Collections.singletonMap("sample1", 10)
+                },
+                // INS
+                // First end has most evidence, but is beyond the max crossover distance
+                // Second end has second-most evidence and is in valid range, so should be chosen
+                // Third end has least evidence
+                {
+                        TEST_INS_RECORD,
+                        Sets.newHashSet("sample1"),
+                        Sets.newHashSet("sample2"),
+                        Collections.emptySet(),
+                        Lists.newArrayList(
+                                new SplitReadEvidence("sample1", "chr21", 995, 12, true)
+                        ),
+                        Lists.newArrayList(
+                                new SplitReadEvidence("sample1", "chr21", 995 - MAX_SR_CROSS_DISTANCE - 1, 10, false),
+                                new SplitReadEvidence("sample1", "chr21", 995 - MAX_SR_CROSS_DISTANCE, 9, false),
+                                new SplitReadEvidence("sample1", "chr21", 2010, 5, false)
+                        ),
+                        1000,
+                        1000,
+                        995,
+                        995 - MAX_SR_CROSS_DISTANCE,
+                        Collections.singletonMap("sample1", 12),
+                        Collections.singletonMap("sample1", 9)
+                },
+                // INS, reverse crossover case
+                {
+                        TEST_INS_RECORD,
+                        Sets.newHashSet("sample1"),
+                        Sets.newHashSet("sample2"),
+                        Collections.emptySet(),
+                        Lists.newArrayList(
+                                new SplitReadEvidence("sample1", "chr21", 995 + MAX_SR_CROSS_DISTANCE + 1, 10, false),
+                                new SplitReadEvidence("sample1", "chr21", 995 + MAX_SR_CROSS_DISTANCE, 9, false),
+                                new SplitReadEvidence("sample1", "chr21", 2010, 5, false)
+                        ),
+                        Lists.newArrayList(
+                                new SplitReadEvidence("sample1", "chr21", 995, 12, true)
+                        ),
+                        1000,
+                        1000,
+                        995 + MAX_SR_CROSS_DISTANCE,
+                        995,
+                        Collections.singletonMap("sample1", 9),
+                        Collections.singletonMap("sample1", 12)
+                },
+                // BND, interchromosomal
+                {
+                        TEST_BND_RECORD,
+                        Sets.newHashSet("sample1"),
+                        Sets.newHashSet("sample2"),
+                        Collections.emptySet(),
+                        Lists.newArrayList(
+                                new SplitReadEvidence("sample1", "chr21", 900, 4, false)
+                        ),
+                        Lists.newArrayList(
+                                new SplitReadEvidence("sample1", "chr22", 1, 10, false),
+                                new SplitReadEvidence("sample1", "chr22", 8000, 9, false)
+                        ),
+                        1000,
+                        8000,
+                        900,
+                        1,
+                        Collections.singletonMap("sample1", 4),
+                        Collections.singletonMap("sample1", 10)
+                },
+                // INV, with same evidence at POS=4000
+                {
+                        TEST_INV_RECORD,
+                        Sets.newHashSet("sample1"),
+                        Sets.newHashSet("sample2"),
+                        Collections.emptySet(),
+                        Lists.newArrayList(
+                                new SplitReadEvidence("sample1", "chr21", 4000, 4, true)
+                        ),
+                        Lists.newArrayList(
+                                new SplitReadEvidence("sample1", "chr21", 4000, 5, true),
+                                new SplitReadEvidence("sample1", "chr21", 2000, 3, true)
+                        ),
+                        1000,
+                        8000,
+                        4000,
+                        2000,
+                        Collections.singletonMap("sample1", 4),
+                        Collections.singletonMap("sample1", 3)
+                },
         };
     }
 
     @Test(dataProvider= "refineCallTestData")
-    public void refineCallTest(final Set<String> carrierSamples,
+    public void refineCallTest(final SVCallRecord baseRecord,
+                               final Set<String> carrierSamples,
                                final Set<String> backgroundSamples,
                                final Set<String> excludedSamples,
                                final List<SplitReadEvidence> startEvidence,
                                final List<SplitReadEvidence> endEvidence,
                                final int expectedPositionA,
                                final int expectedPositionB,
+                               final int expectedFirstSRPosition,
+                               final int expectedSecondSRPosition,
                                final Map<String, Integer> expectedStartSampleCounts,
                                final Map<String, Integer> expectedEndSampleCounts) {
         final GenotypesContext genotypes = GenotypesContext.create();
         carrierSamples.stream()
-                .forEach(s -> genotypes.add(new GenotypeBuilder(s).alleles(Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL))
-                        .attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 1).make()));
-        backgroundSamples.stream()
-                .forEach(s -> genotypes.add(new GenotypeBuilder(s).alleles(Lists.newArrayList(Allele.REF_N, Allele.REF_N))
+                .forEach(s -> genotypes.add(new GenotypeBuilder(s).alleles(Lists.newArrayList(baseRecord.getRefAllele(), baseRecord.getAltAlleles().get(0)))
                         .attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2).make()));
+        backgroundSamples.stream()
+                .forEach(s -> genotypes.add(new GenotypeBuilder(s).alleles(Lists.newArrayList(baseRecord.getRefAllele(), baseRecord.getRefAllele()))
+                        .attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2).make()));
+
         final Map<String, Object> attributes = Collections.singletonMap("TEST_KEY", "TEST_VALUE");
-        final SVCallRecord record = new SVCallRecord("call1", "chr21", 1000, true, "chr21", 2000, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
-                null, null, Collections.singletonList("pesr"), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL), genotypes, attributes, Collections.emptySet(), null, DICTIONARY);
+
+        final SVCallRecord record = SVCallRecordUtils.copyCallWithNewGenotypes(SVCallRecordUtils.copyCallWithNewAttributes(baseRecord, attributes), genotypes);
+
         final Map<String, Double> sampleCoverageMap = new HashMap<>();
         sampleCoverageMap.put("sample1", 35.);
         sampleCoverageMap.put("sample2", 25.);
 
-        final SplitReadEvidenceTester refiner = new SplitReadEvidenceTester(sampleCoverageMap, 20, DICTIONARY);
-        final SplitReadEvidenceTester.SplitReadTestResult result = refiner.testRecord(record, startEvidence, endEvidence,
+        final SplitReadEvidenceTester refiner = new SplitReadEvidenceTester(sampleCoverageMap, MAX_SR_CROSS_DISTANCE, DICTIONARY);
+        final SplitReadEvidenceTester.SplitReadTestResult result = refiner.test(record, startEvidence, endEvidence,
                 Sets.difference(carrierSamples, excludedSamples), Sets.difference(backgroundSamples, excludedSamples));
         final SVCallRecord test = refiner.applyToRecord(record, result);
-        Assert.assertEquals(test.getId(), "call1");
-        Assert.assertEquals(test.getPositionA(), 1000);
-        Assert.assertEquals(test.getPositionB(), 2000);
-        Assert.assertEquals(test.getAttributes().get(GATKSVVCFConstants.FIRST_SPLIT_POSITION_ATTRIBUTE), expectedPositionA);
-        Assert.assertEquals(test.getAttributes().get(GATKSVVCFConstants.SECOND_SPLIT_POSITION_ATTRIBUTE), expectedPositionB);
-        Assert.assertEquals(test.getStrandA(), Boolean.TRUE);
-        Assert.assertEquals(test.getStrandB(), Boolean.FALSE);
-        Assert.assertEquals(test.getType(), GATKSVVCFConstants.StructuralVariantAnnotationType.DEL);
-        Assert.assertEquals(test.getAlgorithms(), Collections.singletonList("pesr"));
+        Assert.assertEquals(test.getId(), record.getId());
+        Assert.assertEquals(test.getContigA(), record.getContigA());
+        Assert.assertEquals(test.getContigB(), record.getContigB());
+        Assert.assertEquals(test.getPositionA(), expectedPositionA);
+        Assert.assertEquals(test.getPositionB(), expectedPositionB);
+        Assert.assertEquals(test.getAttributes().get(GATKSVVCFConstants.FIRST_SPLIT_POSITION_ATTRIBUTE), expectedFirstSRPosition);
+        Assert.assertEquals(test.getAttributes().get(GATKSVVCFConstants.SECOND_SPLIT_POSITION_ATTRIBUTE), expectedSecondSRPosition);
+        Assert.assertEquals(test.getStrandA(), record.getStrandA());
+        Assert.assertEquals(test.getStrandB(), record.getStrandB());
+        Assert.assertEquals(test.getType(), record.getType());
+        Assert.assertEquals(test.getAlgorithms(), record.getAlgorithms());
         Assert.assertEquals(test.getAttributes().get("TEST_KEY"), "TEST_VALUE");
         Assert.assertTrue(test.getGenotypes().containsSamples(carrierSamples));
         Assert.assertTrue(test.getGenotypes().containsSamples(backgroundSamples));
@@ -430,140 +591,4 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
             Assert.assertEquals(count, expectedEndSampleCounts.get(s));
         }
     }
-
-    @Test
-    public void refineInsertionCallTest() {
-        final int maxSplitReadCrossDistance = 20;
-        final GenotypesContext genotypes = GenotypesContext.create();
-        genotypes.add(new GenotypeBuilder("sample1").alleles(Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS))
-                        .attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2).make());
-        genotypes.add(new GenotypeBuilder("sample2").alleles(Lists.newArrayList(Allele.REF_N, Allele.REF_N))
-                .attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2).make());
-        final SVCallRecord record = new SVCallRecord("call1", "chr21", 1000, true, "chr21", 1000, false, GATKSVVCFConstants.StructuralVariantAnnotationType.INS,
-                null, 500, Collections.singletonList("pesr"), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INS), genotypes, Collections.emptyMap(), Collections.emptySet(), null, DICTIONARY);
-        final Map<String, Double> sampleCoverageMap = new HashMap<>();
-        sampleCoverageMap.put("sample1", 35.);
-        sampleCoverageMap.put("sample2", 25.);
-
-        final List<SplitReadEvidence> startEvidence = Lists.newArrayList(
-                new SplitReadEvidence("sample1", "chr21", 995, 12, true)
-        );
-        // First case has most evidence, but is beyond the max crossover distance
-        // Second case has second-most evidence and is in valid range
-        // Third case has least evidence
-        final List<SplitReadEvidence> endEvidence = Lists.newArrayList(
-                new SplitReadEvidence("sample1", "chr21", 995 - maxSplitReadCrossDistance - 1, 10, false),
-                new SplitReadEvidence("sample1", "chr21", 995 - maxSplitReadCrossDistance, 9, false),
-                new SplitReadEvidence("sample1", "chr21", 2010, 5, false)
-        );
-
-        final SplitReadEvidenceTester refiner = new SplitReadEvidenceTester(sampleCoverageMap, maxSplitReadCrossDistance, DICTIONARY);
-        final SplitReadEvidenceTester.SplitReadTestResult result = refiner.testRecord(record, startEvidence, endEvidence,
-                Collections.singleton("sample1"), Collections.emptySet());
-        final SVCallRecord test = refiner.applyToRecord(record, result);
-        Assert.assertEquals(test.getId(), "call1");
-        Assert.assertEquals(test.getPositionA(), 1000);
-        Assert.assertEquals(test.getPositionB(), 1000);
-        Assert.assertEquals(test.getAlgorithms(), Collections.singletonList("pesr"));
-        Assert.assertEquals(test.getLength(), Integer.valueOf(500));
-        Assert.assertEquals((int) test.getAttributes().get(GATKSVVCFConstants.FIRST_SPLIT_POSITION_ATTRIBUTE), 995);
-        Assert.assertEquals(test.getStrandA(), Boolean.TRUE);
-        Assert.assertEquals((int) test.getAttributes().get(GATKSVVCFConstants.SECOND_SPLIT_POSITION_ATTRIBUTE), 995 - maxSplitReadCrossDistance);
-        Assert.assertEquals(test.getStrandB(), Boolean.FALSE);
-        final Integer startCount = VariantContextGetters.getAttributeAsInt(test.getGenotypes().get("sample1"),
-                GATKSVVCFConstants.FIRST_SPLIT_READ_COUNT_ATTRIBUTE, -1);
-        Assert.assertEquals(startCount, Integer.valueOf(12));
-        final Integer endCount = VariantContextGetters.getAttributeAsInt(test.getGenotypes().get("sample1"),
-                GATKSVVCFConstants.SECOND_SPLIT_READ_COUNT_ATTRIBUTE, -1);
-        Assert.assertEquals(endCount, Integer.valueOf(9));
-    }
-
-    @Test
-    public void refineInterchromosomalCallTest() {
-        final Allele bndAllele = Allele.create("<BND>", false);
-        final GenotypesContext genotypes = GenotypesContext.create();
-        genotypes.add(new GenotypeBuilder("sample1").alleles(Lists.newArrayList(Allele.REF_N, bndAllele))
-                .attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2).make());
-        genotypes.add(new GenotypeBuilder("sample2").alleles(Lists.newArrayList(Allele.REF_N, Allele.REF_N))
-                .attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2).make());
-        final SVCallRecord record = new SVCallRecord("call1", "chr21", 1000, true, "chr22", 8000, false, GATKSVVCFConstants.StructuralVariantAnnotationType.BND,
-                null, null, Collections.singletonList("pesr"), Lists.newArrayList(Allele.REF_N, bndAllele), genotypes, Collections.emptyMap(), Collections.emptySet(), null, DICTIONARY);
-        final Map<String, Double> sampleCoverageMap = new HashMap<>();
-        sampleCoverageMap.put("sample1", 35.);
-        sampleCoverageMap.put("sample2", 25.);
-
-        final List<SplitReadEvidence> startEvidence = Lists.newArrayList(
-                new SplitReadEvidence("sample1", "chr21", 900, 4, false)
-        );
-        final List<SplitReadEvidence> endEvidence = Lists.newArrayList(
-                new SplitReadEvidence("sample1", "chr22", 1, 10, false),
-                new SplitReadEvidence("sample1", "chr22", 8000, 9, false)
-        );
-
-        final SplitReadEvidenceTester refiner = new SplitReadEvidenceTester(sampleCoverageMap, 20, DICTIONARY);
-        final SplitReadEvidenceTester.SplitReadTestResult result = refiner.testRecord(record, startEvidence, endEvidence,
-                Collections.singleton("sample1"), Collections.emptySet());
-        final SVCallRecord test = refiner.applyToRecord(record, result);
-        Assert.assertEquals(test.getId(), "call1");
-        Assert.assertEquals(test.getContigA(), "chr21");
-        Assert.assertEquals(test.getPositionA(), 1000);
-        Assert.assertEquals(test.getStrandA(), Boolean.TRUE);
-        Assert.assertEquals(test.getAttributes().get(GATKSVVCFConstants.FIRST_SPLIT_POSITION_ATTRIBUTE), 900);
-        Assert.assertEquals(test.getContigB(), "chr22");
-        Assert.assertEquals(test.getPositionB(), 8000);
-        Assert.assertEquals(test.getStrandB(), Boolean.FALSE);
-        Assert.assertEquals(test.getAttributes().get(GATKSVVCFConstants.SECOND_SPLIT_POSITION_ATTRIBUTE), 1);
-        Assert.assertEquals(test.getAlgorithms(), Collections.singletonList("pesr"));
-        final Integer startCount = VariantContextGetters.getAttributeAsInt(test.getGenotypes().get("sample1"),
-                GATKSVVCFConstants.FIRST_SPLIT_READ_COUNT_ATTRIBUTE, -1);
-        Assert.assertEquals(startCount, Integer.valueOf(4));
-        final Integer endCount = VariantContextGetters.getAttributeAsInt(test.getGenotypes().get("sample1"),
-                GATKSVVCFConstants.SECOND_SPLIT_READ_COUNT_ATTRIBUTE, -1);
-        Assert.assertEquals(endCount, Integer.valueOf(10));
-    }
-
-    @Test
-    public void refineInversionTest() {
-        final GenotypesContext genotypes = GenotypesContext.create();
-        genotypes.add(new GenotypeBuilder("sample1").alleles(Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INV))
-                .attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2).make());
-        genotypes.add(new GenotypeBuilder("sample2").alleles(Lists.newArrayList(Allele.REF_N, Allele.REF_N))
-                .attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2).make());
-        final SVCallRecord record = new SVCallRecord("call1", "chr21", 1000, true, "chr21", 8000, true, GATKSVVCFConstants.StructuralVariantAnnotationType.INV,
-                null, null, Collections.singletonList("pesr"), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_INV), genotypes, Collections.emptyMap(), Collections.emptySet(), null, DICTIONARY);
-        final Map<String, Double> sampleCoverageMap = new HashMap<>();
-        sampleCoverageMap.put("sample1", 35.);
-        sampleCoverageMap.put("sample2", 25.);
-
-        final List<SplitReadEvidence> startEvidence = Lists.newArrayList(
-                new SplitReadEvidence("sample1", "chr21", 4000, 4, true)
-        );
-        // No limits on end position since it's interchromosomal
-        final List<SplitReadEvidence> endEvidence = Lists.newArrayList(
-                new SplitReadEvidence("sample1", "chr21", 4000, 4, true),
-                new SplitReadEvidence("sample1", "chr21", 2000, 3, true)
-        );
-
-        final SplitReadEvidenceTester refiner = new SplitReadEvidenceTester(sampleCoverageMap, 20, DICTIONARY);
-        final SplitReadEvidenceTester.SplitReadTestResult result = refiner.testRecord(record, startEvidence, endEvidence,
-                Collections.singleton("sample1"), Collections.emptySet());
-        final SVCallRecord test = refiner.applyToRecord(record, result);
-        Assert.assertEquals(test.getId(), "call1");
-        Assert.assertEquals(test.getContigA(), "chr21");
-        Assert.assertEquals(test.getPositionA(), 1000);
-        Assert.assertEquals(test.getStrandA(), Boolean.TRUE);
-        Assert.assertEquals(test.getAttributes().get(GATKSVVCFConstants.FIRST_SPLIT_POSITION_ATTRIBUTE), 4000);
-        Assert.assertEquals(test.getContigB(), "chr21");
-        Assert.assertEquals(test.getPositionB(), 8000);
-        Assert.assertEquals(test.getStrandB(), Boolean.TRUE);
-        Assert.assertEquals(test.getAttributes().get(GATKSVVCFConstants.SECOND_SPLIT_POSITION_ATTRIBUTE), 2000);
-        Assert.assertEquals(test.getAlgorithms(), Collections.singletonList("pesr"));
-        final Integer startCount = VariantContextGetters.getAttributeAsInt(test.getGenotypes().get("sample1"),
-                GATKSVVCFConstants.FIRST_SPLIT_READ_COUNT_ATTRIBUTE, -1);
-        Assert.assertEquals(startCount, Integer.valueOf(4));
-        final Integer endCount = VariantContextGetters.getAttributeAsInt(test.getGenotypes().get("sample1"),
-                GATKSVVCFConstants.SECOND_SPLIT_READ_COUNT_ATTRIBUTE, -1);
-        Assert.assertEquals(endCount, Integer.valueOf(3));
-    }
-
 }
