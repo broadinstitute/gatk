@@ -134,11 +134,11 @@ public class SplitReadEvidenceTester {
      * @param carrierSamples  non-ref samples for this variant
      * @param backgroundSamples  hom-ref samples for this variant
      */
-    public SplitReadTestResult testRecord(final SVCallRecord record,
-                                          final List<SplitReadEvidence> startEvidence,
-                                          final List<SplitReadEvidence> endEvidence,
-                                          final Set<String> carrierSamples,
-                                          final Set<String> backgroundSamples) {
+    public SplitReadTestResult test(final SVCallRecord record,
+                                    final List<SplitReadEvidence> startEvidence,
+                                    final List<SplitReadEvidence> endEvidence,
+                                    final Set<String> carrierSamples,
+                                    final Set<String> backgroundSamples) {
         Utils.nonNull(record);
         SVCallRecordUtils.validateCoordinatesWithDictionary(record, dictionary);
         Utils.validateArg(record.getStrandA() != null, "Record has null strand A");

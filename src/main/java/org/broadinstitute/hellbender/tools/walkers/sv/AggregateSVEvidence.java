@@ -536,7 +536,7 @@ public final class AggregateSVEvidence extends TwoPassVariantWalker {
             if (discordantPairCollectionEnabled() && useDiscordantPairEvidence(record)) {
                 // PE
                 final List<DiscordantPairEvidence> discordantPairEvidence = discordantPairCollector.collectEvidence(record);
-                discordantPairResult = discordantPairEvidenceTester.poissonTestRecord(record, discordantPairEvidence, carrierSamples, backgroundSamples);
+                discordantPairResult = discordantPairEvidenceTester.test(record, discordantPairEvidence, carrierSamples, backgroundSamples);
                 record = discordantPairEvidenceTester.applyToRecord(record, discordantPairResult);
             }
             SplitReadEvidenceTester.SplitReadTestResult splitReadResult = null;
@@ -544,7 +544,7 @@ public final class AggregateSVEvidence extends TwoPassVariantWalker {
                 // SR
                 final List<SplitReadEvidence> startSplitReadEvidence = startSplitCollector.collectEvidence(record);
                 final List<SplitReadEvidence> endSplitReadEvidence = endSplitCollector.collectEvidence(record);
-                splitReadResult = splitReadEvidenceTester.testRecord(record, startSplitReadEvidence, endSplitReadEvidence, carrierSamples, backgroundSamples);
+                splitReadResult = splitReadEvidenceTester.test(record, startSplitReadEvidence, endSplitReadEvidence, carrierSamples, backgroundSamples);
                 record = splitReadEvidenceTester.applyToRecord(record, splitReadResult);
             }
             if (discordantPairResult != null && splitReadResult != null) {
