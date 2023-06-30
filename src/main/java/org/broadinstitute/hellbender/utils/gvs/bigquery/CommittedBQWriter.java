@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.utils.gvs.bigquery;
 
 import com.google.api.client.util.ExponentialBackOff;
 import com.google.api.core.ApiFuture;
-import com.google.cloud.bigquery.storage.v1beta2.*;
+import com.google.cloud.bigquery.storage.v1.*;
 import com.google.protobuf.Descriptors;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;

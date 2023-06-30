@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.utils.gvs.bigquery;
 
-import com.google.cloud.bigquery.storage.v1beta2.*;
+import com.google.cloud.bigquery.storage.v1.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
