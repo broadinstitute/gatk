@@ -3,12 +3,11 @@ package org.broadinstitute.hellbender.tools.gvs.ingest;
 import com.google.protobuf.Descriptors;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
+import org.broadinstitute.hellbender.utils.gvs.bigquery.BigQueryUtils;
 import org.broadinstitute.hellbender.utils.gvs.bigquery.PendingBQWriter;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 

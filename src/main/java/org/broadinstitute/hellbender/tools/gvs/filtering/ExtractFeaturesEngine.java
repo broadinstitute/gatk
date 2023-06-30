@@ -25,7 +25,10 @@ import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculation
 import org.broadinstitute.hellbender.utils.GenotypeCounts;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.bigquery.*;
+import org.broadinstitute.hellbender.utils.gvs.bigquery.BigQueryUtils;
+import org.broadinstitute.hellbender.utils.gvs.bigquery.GATKAvroReader;
+import org.broadinstitute.hellbender.utils.gvs.bigquery.StorageAPIAvroReaderAndBigQueryStatistics;
+import org.broadinstitute.hellbender.utils.gvs.bigquery.TableReference;
 import org.broadinstitute.hellbender.utils.gvs.localsort.AvroSortingCollection;
 import org.broadinstitute.hellbender.utils.gvs.localsort.SortingCollection;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;

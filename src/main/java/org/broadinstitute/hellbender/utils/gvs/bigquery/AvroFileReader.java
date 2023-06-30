@@ -7,7 +7,6 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DatumReader;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.bigquery.GATKAvroReader;
 
 import java.io.IOException;
 import java.util.Iterator;

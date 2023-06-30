@@ -22,7 +22,7 @@ import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.GenomeLocSortedSet;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
-import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
+import org.broadinstitute.hellbender.utils.gvs.bigquery.BigQueryUtils;
 
 import java.io.File;
 import java.io.IOException;

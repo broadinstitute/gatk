@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.bigquery;
+package org.broadinstitute.hellbender.utils.gvs.bigquery;
 
 import htsjdk.samtools.util.CloseableIterator;
 import org.apache.avro.generic.GenericRecord;
