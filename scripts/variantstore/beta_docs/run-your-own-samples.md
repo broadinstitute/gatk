@@ -61,31 +61,27 @@ To run the GVS workflow, your single sample GVCF files need to be stored in the 
 
 ### Download the sample table template
 
-The GVS workflow relies on the table structure and names in the Beta workspace. Download a TSV of the `sample` table to use for uploading your own data following this template.
+The GVS workflow relies on the table structure and names in the Beta workspace. Download a TSV of the `sample` table to use as a template for uploading your own data.
 
-1.Navigate to the **Data tab** in your clone of the GVS workspace.
-
+1. Navigate to the **Data tab** in your clone of the GVS workspace.
 2. Click on the **three vertical dots icon** next to the **sample** data table inside the TABLES sidebar on the left side of the page.
-
 3. Select **Download TSV** to download the data table to your local machine.
 
 ### Delete the example data
-You will need to delete the example sample data from the workspace so that it is not included in your callset.
+You will need to delete the example sample data from your workspace so that it is not included in your callset.
 
 1. Navigate to the **Data tab** in your clone of the GVS workspace.
 2. Click on the **sample** data table. 
-3. Click the top check mark to select all samples.
+3. Click the **top check mark** to select all samples.
 4. Click **Edit** and click **Delete selected rows** to delete the data.
 
 ### Edit TSV to upload data stored in the cloud
 
 If your data is already stored in the cloud, you’ll need to upload a TSV file to Terra containing the cloud paths to your files and update permissions on the data to allow Terra to access it. 
 
-4. **Open the TSV file** with a spreadsheet editor of your choice.
-
-5. **Replace the cloud paths** to the example GVCF and index files in the second and third columns with the cloud paths to your GVCF and index files.
-
-6. **Update the `sample_id` field** for each sample to anything you’d like. These will be used to name the samples in the output joint VCF file.
+1. **Open the TSV file** with a spreadsheet editor of your choice.
+2. **Replace the cloud paths** to the example GVCF and index files in the second and third columns with the cloud paths to your GVCF and index files.
+3. **Update the `sample_id` field** for each sample to anything you’d like. These will be used to name the samples in the output joint VCF file.
 
 ---
 
@@ -93,20 +89,16 @@ If your data is already stored in the cloud, you’ll need to upload a TSV file 
 The workflow in the GVS beta workspace is configured based on the format of the TSV file. To avoid reconfiguring the workflow, do **not** rearrange or rename the columns in the TSV file. If you need to customize the column names, read more about the parameters to use in [GVS Bulk Ingest Details](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/docs/gvs-bulk-ingest-details.md). 
 
 ---
-
-7. Follow steps 2 and 3 in [How to make a data table from scratch or a template](https://support.terra.bio/hc/en-us/articles/6197368140955) to **save and upload the TSV file** to Terra.
-
-8. Grant your Terra proxy group the Storage Object Creator and Storage Object Viewer roles on the Google Cloud Storage (GCS) bucket that holds your sample data by following the **Add a principal to a bucket-level policy** instructions in the Google Cloud documentation article, [Use IAM permissions](https://cloud.google.com/storage/docs/access-control/using-iam-permissions).
+4. Follow steps 2 and 3 in [How to make a data table from scratch or a template](https://support.terra.bio/hc/en-us/articles/6197368140955) to **save and upload the TSV file** to Terra.
+5. Grant your Terra proxy group the Storage Object Creator and Storage Object Viewer roles on the Google Cloud Storage (GCS) bucket that holds your sample data by following the **Add a principal to a bucket-level policy** instructions in the Google Cloud documentation article, [Use IAM permissions](https://cloud.google.com/storage/docs/access-control/using-iam-permissions).
 
 ### Edit TSV to upload data NOT stored in the cloud
 
 If your data is not stored in the cloud, you’ll need to upload it to your workspace storage bucket along with a TSV file containing each of the data file names.
 
-4. **Open the TSV file** with a spreadsheet editor of your choice.
-
-5. **Replace the cloud paths** to the example GVCF and index files in the second and third columns with the names of your GVCF and index files for each sample in your dataset.
-
-6. **Update the `sample_id` field** to anything you’d like for each sample in your dataset. These will be used to name the samples in the output joint VCF file.
+1. **Open the TSV file** with a spreadsheet editor of your choice.
+2. **Replace the cloud paths** to the example GVCF and index files in the second and third columns with the names of your GVCF and index files for each sample in your dataset.
+3. **Update the `sample_id` field** to anything you’d like for each sample in your dataset. These will be used to name the samples in the output joint VCF file.
 
 ---
 
@@ -114,8 +106,7 @@ If your data is not stored in the cloud, you’ll need to upload it to your work
 The workflow in the GVS beta workspace is configured based on the format of the TSV file. To avoid reconfiguring the workflow, do **not** rearrange or rename the columns in the TSV file. If you need to customize the column names, read more about the parameters to use in [GVS Bulk Ingest Details](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/docs/gvs-bulk-ingest-details.md).
 
 ---
-
-7. Follow the steps in [How to use the Data Uploader](https://support.terra.bio/hc/en-us/articles/4419428208411) to **upload your data and TSV file** to Terra.
+4. Follow the steps in [How to use the Data Uploader](https://support.terra.bio/hc/en-us/articles/4419428208411) to **upload your data and TSV file** to Terra.
 
 ## Run the workflow
 
@@ -126,7 +117,7 @@ Now that your samples are loaded into data table in Terra, it’s time to setup 
     1. Enter a **name for the callset** as a string with the format “*CALLSET_NAME*” for the `call_set_identifier` variable. This string is used as to name several variables and files and should begin with a letter. Valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”.
     1. Enter the name of your **BigQuery dataset** as a string with the format “*DATASET_NAME*” for the `dataset_name` variable.
     1. Enter the name of the **GCP project** that holds the BigQuery dataset as a string with the format “*PROJECT_NAME*” for the `project_id` variable.
-   2. Enter the name of a **directory for writing outputs**. Enter a string in the format "*gs://your_bucket/here*" in `extract_output_gcs_dir`. If you want the data in your Terra workspace bucket you can find that on the Workspace Dashboard, right panel, under Cloud Information. Copy the "Bucket Name" and use it to the inputs to create a gs path as a string like this "*gs://fc-338fe040-3522-484c-ba48-14b48f9950d2*". If you do not enter a bucket here, the outputs will be in the execution directory under *Files*.
+    2. Enter the name of a **directory for writing outputs**. Enter a string in the format "*gs://your_bucket/here*" in `extract_output_gcs_dir`. If you want the data in your Terra workspace bucket you can find that on the Workspace Dashboard, right panel, under Cloud Information. Copy the "Bucket Name" and use it to the inputs to create a gs path as a string like this "*gs://fc-338fe040-3522-484c-ba48-14b48f9950d2*". If you do not enter a bucket here, the outputs will be in the execution directory under *Files*.
 1. **Save** the workflow configuration.
 1. **Run** the workflow.
 
