@@ -169,6 +169,8 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                             //For every exclude group, fork it by each subset we have:
                             for (int i = 1; i < groupVCs.size(); i++) { //NOTE: iterate starting at 1 here because we special case that branch at the end
                                 Set<Event> newSet = new HashSet<>(excludedVars);
+
+                                // add all events not in the group to newSet
                                 groupVCs.get(i).stream().filter(t -> !t.b).forEach(t -> newSet.add(t.a));
                                 newBranchesToAdd.add(newSet);
                             }
@@ -799,11 +801,10 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                 return cachedEventLists;
             }
 
-            List<SmallBitSet> allowedAndDetermined = new ArrayList<>();
+            final List<SmallBitSet> allowedAndDetermined = new ArrayList<>();
             // Iterate from the BACK of the list (i.e. ~supersets -> subsets)
             // NOTE: we skip over 0 here since that corresponds to ref-only events, handle those externally to this code
             for (final SmallBitSet subset = SmallBitSet.fullSet(eventsInOrder.size()); !subset.isEmpty(); subset.decrement()) {
-                // If the event is allowed AND if we are looking for a particular event to be present or absent.
                 if (allowedEvents.get(subset.index()) && subset.intersection(locusOverlapSet).equals(determinedOverlapSet)) {
                     // Only check for subsets if we need to
                     if (!disallowSubsets || allowedAndDetermined.stream().noneMatch(group -> group.contains(subset))) {
