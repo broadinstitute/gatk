@@ -40,7 +40,7 @@ public abstract class SVEvidenceAggregator<T extends SVFeature> {
     }
 
     abstract public SimpleInterval getEvidenceQueryInterval(final SVCallRecord record);
-    public boolean evidenceFilter(final SVCallRecord record, final T evidence) { return true; }
+    abstract public boolean evidenceFilter(final SVCallRecord record, final T evidence);
 
     private SimpleInterval getRegionInterval(final SimpleInterval interval) {
         final Set<SimpleInterval> evidenceIntervals = cacheIntervalTree.getOverlaps(interval);
