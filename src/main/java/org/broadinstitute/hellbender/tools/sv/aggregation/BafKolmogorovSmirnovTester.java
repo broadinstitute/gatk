@@ -42,7 +42,7 @@ public class BafKolmogorovSmirnovTester {
         if (result == null) {
             return record;
         }
-        final Map<String, Object> attributes = new HashMap<>();
+        final Map<String, Object> attributes = new HashMap<>(record.getAttributes());
         final Integer q = EvidenceStatUtils.probToQual(result.getP(), (byte) 99);
         attributes.put(GATKSVVCFConstants.BAF_KS_STAT_ATTRIBUTE, result.getStat());
         attributes.put(GATKSVVCFConstants.BAF_KS_Q_ATTRIBUTE, q);

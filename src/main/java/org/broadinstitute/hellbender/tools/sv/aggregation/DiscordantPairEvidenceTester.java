@@ -42,7 +42,7 @@ public class DiscordantPairEvidenceTester {
         final Integer q = EvidenceStatUtils.probToQual(p, (byte) 99);
         final Integer carrierSignal = test == null ? 0 :
                 EvidenceStatUtils.carrierSignalFraction(test.getCarrierSignal(), test.getBackgroundSignal());
-        final Map<String, Object> attributes = new HashMap<>();
+        final Map<String, Object> attributes = new HashMap<>(record.getAttributes());
         attributes.put(GATKSVVCFConstants.DISCORDANT_PAIR_QUALITY_ATTRIBUTE, q);
         attributes.put(GATKSVVCFConstants.DISCORDANT_PAIR_CARRIER_SIGNAL_ATTRIBUTE, carrierSignal);
         final SVCallRecord newRecord = SVCallRecordUtils.copyCallWithNewAttributes(record, attributes);

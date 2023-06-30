@@ -133,14 +133,12 @@ public class SplitReadEvidenceTester {
      * @param endEvidence  SR evidence for end position
      * @param carrierSamples  non-ref samples for this variant
      * @param backgroundSamples  hom-ref samples for this variant
-     * @param discordantPairResult  PE test result for this variant (if applicable)
      */
     public SplitReadTestResult testRecord(final SVCallRecord record,
                                           final List<SplitReadEvidence> startEvidence,
                                           final List<SplitReadEvidence> endEvidence,
                                           final Set<String> carrierSamples,
-                                          final Set<String> backgroundSamples,
-                                          final DiscordantPairEvidenceTester.DiscordantPairTestResult discordantPairResult) {
+                                          final Set<String> backgroundSamples) {
         Utils.nonNull(record);
         SVCallRecordUtils.validateCoordinatesWithDictionary(record, dictionary);
         Utils.validateArg(record.getStrandA() != null, "Record has null strand A");
@@ -194,14 +192,7 @@ public class SplitReadEvidenceTester {
         final EvidenceStatUtils.PoissonTestResult bothsideResult = calculateBothsideTest(refinedFirstSite, refinedSecondSite,
                 carrierSamples, backgroundSamples, sampleCoverageMap, representativeDepth);
 
-        EvidenceStatUtils.PoissonTestResult combinedResult = null;
-        if (discordantPairResult != null) {
-            combinedResult = calculatePESRTest(refinedFirstSite, refinedSecondSite,
-                    discordantPairResult, carrierSamples, backgroundSamples,
-                    sampleCoverageMap, representativeDepth);
-        }
-
-        return new SplitReadTestResult(refinedFirstSite, refinedSecondSite, bothsideResult, discordantPairResult, combinedResult);
+        return new SplitReadTestResult(refinedFirstSite, refinedSecondSite, bothsideResult);
     }
 
     /**
@@ -214,8 +205,6 @@ public class SplitReadEvidenceTester {
         final SplitReadSite refinedFirstSite = result.getFirst();
         final SplitReadSite refinedSecondSite = result.getSecond();
         final EvidenceStatUtils.PoissonTestResult bothsideResult = result.getBothsidesResult();
-
-        final Integer length = record.getType().equals(GATKSVVCFConstants.StructuralVariantAnnotationType.INS) ? record.getLength() : null;
 
         final Integer firstQuality = refinedFirstSite.getP() == null || Double.isNaN(refinedFirstSite.getP()) ? null : EvidenceStatUtils.probToQual(refinedFirstSite.getP(), (byte) MAX_QUAL);
         final Integer secondQuality = refinedSecondSite.getP() == null || Double.isNaN(refinedSecondSite.getP()) ? null : EvidenceStatUtils.probToQual(refinedSecondSite.getP(), (byte) MAX_QUAL);
@@ -247,21 +236,10 @@ public class SplitReadEvidenceTester {
             newGenotypes.add(genotypeBuilder.make());
         }
 
-        if (result.getPesrResult() != null) {
-            final EvidenceStatUtils.PoissonTestResult discordantPairTest = result.getDiscordantPairTestResult().getTest();
-            final Integer combinedCarrierSignal = EvidenceStatUtils.carrierSignalFraction(
-                    discordantPairTest.getCarrierSignal() + bothsideResult.getCarrierSignal(),
-                    discordantPairTest.getBackgroundSignal() + bothsideResult.getBackgroundSignal());
-            refinedAttr.put(GATKSVVCFConstants.PESR_CARRIER_SIGNAL_ATTRIBUTE, combinedCarrierSignal);
-            final Integer pesrQuality = Double.isNaN(result.getPesrResult().getP()) ?
-                    null : EvidenceStatUtils.probToQual(result.getPesrResult().getP(), (byte) MAX_QUAL);
-            refinedAttr.put(GATKSVVCFConstants.PESR_QUALITY_ATTRIBUTE, pesrQuality);
-        }
-
         // Create new record
         return new SVCallRecord(record.getId(), record.getContigA(), record.getPositionA(),
                 record.getStrandA(), record.getContigB(), record.getPositionB(), record.getStrandB(),
-                record.getType(), record.getComplexSubtype(), length, record.getAlgorithms(), record.getAlleles(),
+                record.getType(), record.getComplexSubtype(), record.getLength(), record.getAlgorithms(), record.getAlleles(),
                 newGenotypes, refinedAttr, record.getFilters(), record.getLog10PError(), dictionary);
     }
 
@@ -277,22 +255,6 @@ public class SplitReadEvidenceTester {
         }
         return EvidenceStatUtils.calculateOneSamplePoissonTest(sampleCountSums,
                carrierSamples, backgroundSamples, sampleCoverageMap, representativeDepth);
-    }
-
-    private static EvidenceStatUtils.PoissonTestResult calculatePESRTest(final SplitReadSite startSite,
-                                                                         final SplitReadSite endSite,
-                                                                         final DiscordantPairEvidenceTester.DiscordantPairTestResult discordantPairTestResult,
-                                                                         final Set<String> carrierSamples,
-                                                                         final Set<String> backgroundSamples,
-                                                                         final Map<String, Double> sampleCoverageMap,
-                                                                         final double representativeDepth) {
-        final Map<String, Integer> sampleCountSums = new HashMap<>(SVUtils.hashMapCapacity(carrierSamples.size() + backgroundSamples.size()));
-        final Map<String, Integer> discordantPairCounts = discordantPairTestResult.getSampleCounts();
-        for (final String sample : Sets.union(carrierSamples, backgroundSamples)) {
-            sampleCountSums.put(sample, startSite.getCount(sample) + endSite.getCount(sample) + discordantPairCounts.getOrDefault(sample, 0));
-        }
-        return EvidenceStatUtils.calculateOneSamplePoissonTest(sampleCountSums,
-                carrierSamples, backgroundSamples, sampleCoverageMap, representativeDepth);
     }
 
     /**
@@ -351,18 +313,12 @@ public class SplitReadEvidenceTester {
         private final SplitReadSite first;
         private final SplitReadSite second;
         private final EvidenceStatUtils.PoissonTestResult bothsidesResult;
-        private final DiscordantPairEvidenceTester.DiscordantPairTestResult discordantPairTestResult;
-        private final EvidenceStatUtils.PoissonTestResult pesrResult;
 
         public SplitReadTestResult(final SplitReadSite first, final SplitReadSite second,
-                                   final EvidenceStatUtils.PoissonTestResult bothsidesResult,
-                                   final DiscordantPairEvidenceTester.DiscordantPairTestResult discordantPairTestResult,
-                                   final EvidenceStatUtils.PoissonTestResult pesrResult) {
+                                   final EvidenceStatUtils.PoissonTestResult bothsidesResult) {
             this.first = first;
             this.second = second;
             this.bothsidesResult = bothsidesResult;
-            this.discordantPairTestResult = discordantPairTestResult;
-            this.pesrResult = pesrResult;
         }
 
         public SplitReadSite getFirst() {
@@ -375,14 +331,6 @@ public class SplitReadEvidenceTester {
 
         public EvidenceStatUtils.PoissonTestResult getBothsidesResult() {
             return bothsidesResult;
-        }
-
-        public EvidenceStatUtils.PoissonTestResult getPesrResult() {
-            return pesrResult;
-        }
-
-        public DiscordantPairEvidenceTester.DiscordantPairTestResult getDiscordantPairTestResult() {
-            return discordantPairTestResult;
         }
     }
 }
