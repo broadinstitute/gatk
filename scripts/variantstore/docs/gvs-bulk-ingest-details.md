@@ -46,7 +46,7 @@ The GVS workflow takes in reblocked single sample GVCF files and their correspon
 
 In the Beta user workflow, the value examples are as follows:
 
-| Input variable name    | Value   |                                                                                                                                                                | Type |
+| Input variable name    | Value   |
 | ---------------------- | ------- | 
 | samples_table_name| `sample` |
 | entity_id_column_name | `sample_id` |
