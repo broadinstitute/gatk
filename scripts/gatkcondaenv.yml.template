@@ -23,6 +23,7 @@ dependencies:
 - pip=20.0.2                        # specifying channel may cause a warning to be emitted by conda
 - conda-forge::mkl=2019.5           # MKL typically provides dramatic performance increases for theano, tensorflow, and other key dependencies
 - conda-forge::mkl-service=2.3.0
+- conda-forge::joblib=1.1.1         # must pin joblib - versions after 1.1.1 no longer support python 3.6
 - conda-forge::numpy=1.17.5         # do not update, this will break scipy=1.0.0
                                     #   verify that numpy is compiled against MKL (e.g., by checking *_mkl_info using numpy.show_config())
                                     #   and that it is used in tensorflow, theano, and other key dependencies
