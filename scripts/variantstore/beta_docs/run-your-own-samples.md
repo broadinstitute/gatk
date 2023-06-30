@@ -42,7 +42,7 @@ Input GVCF files for the GVS workflow must include the annotations described in 
 
 ### What does it return as output?
 
-The following files are stored in the workspace workflow execution bucket under Data>Files, or the google bucket specified in the inputs.
+The following files are stored in the workspace workflow execution bucket under Data>Files, or the Google bucket specified in the inputs.
 
 - Sharded joint VCF files, index files, the interval lists for each sharded VCF, and a list of the sample names included in the callset.
 - Size of output VCF files in MB
