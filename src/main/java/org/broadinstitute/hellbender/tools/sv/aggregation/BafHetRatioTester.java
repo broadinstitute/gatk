@@ -50,7 +50,7 @@ public class BafHetRatioTester {
         if (result == null) {
             return record;
         }
-        final Map<String, Object> attributes = new HashMap<>();
+        final Map<String, Object> attributes = new HashMap<>(record.getAttributes());
         attributes.put(GATKSVVCFConstants.BAF_HET_RATIO_ATTRIBUTE, result);
         return SVCallRecordUtils.copyCallWithNewAttributes(record, attributes);
     }

@@ -274,6 +274,8 @@ public final class AggregateSVEvidence extends TwoPassVariantWalker {
     private DiscordantPairEvidenceAggregator discordantPairCollector;
     private DiscordantPairEvidenceTester discordantPairEvidenceTester;
 
+    private PESREvidenceTester pesrEvidenceTester;
+
     private FeatureDataSource<BafEvidence> bafSource;
     private BafEvidenceAggregator bafCollector;
     private BafHetRatioTester bafHetRatioTester;
@@ -315,6 +317,9 @@ public final class AggregateSVEvidence extends TwoPassVariantWalker {
         }
         if (splitReadCollectionEnabled()) {
             initializeSplitReadCollection();
+            if (discordantPairCollectionEnabled()) {
+                pesrEvidenceTester = new PESREvidenceTester(sampleCoverageMap, dictionary);
+            }
         }
         if (bafCollectionEnabled()) {
             initializeBAFCollection();
@@ -436,6 +441,7 @@ public final class AggregateSVEvidence extends TwoPassVariantWalker {
                 && length != null && length >= bafMinSize && length <= bafMaxSize;
     }
 
+    // Collect intervals for the evidence
     @Override
     public void firstPassApply(final VariantContext variant, final ReadsContext readsContext,
                       final ReferenceContext referenceContext, final FeatureContext featureContext) {
@@ -455,6 +461,7 @@ public final class AggregateSVEvidence extends TwoPassVariantWalker {
         }
     }
 
+    // Localize evidence over the intervals we found
     @Override
     public void afterFirstPass() {
         if (discordantPairCollectionEnabled()) {
@@ -503,6 +510,7 @@ public final class AggregateSVEvidence extends TwoPassVariantWalker {
         }
     }
 
+    // Perform evidence testing
     @Override
     public void secondPassApply(final VariantContext variant, final ReadsContext readsContext,
                                 final ReferenceContext referenceContext, final FeatureContext featureContext) {
@@ -514,6 +522,7 @@ public final class AggregateSVEvidence extends TwoPassVariantWalker {
             final Set<String> carrierSamples = Sets.intersection(record.getCarrierSampleSet(), allSamples);
             final Set<String> backgroundSamples = Sets.difference(allSamples, carrierSamples);
             if (bafCollectionEnabled() && useBafEvidence(record)) {
+                // BAF
                 final List<BafEvidence> bafEvidence = bafCollector.collectEvidence(record).stream().filter(baf -> allSamples.contains(baf.getSample())).collect(Collectors.toList());
                 if (record.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.DEL) {
                     final Double result = bafHetRatioTester.test(record, bafEvidence, allSamples, carrierSamples, (int) bafPaddingFraction * record.getLength());
@@ -525,15 +534,23 @@ public final class AggregateSVEvidence extends TwoPassVariantWalker {
             }
             DiscordantPairEvidenceTester.DiscordantPairTestResult discordantPairResult = null;
             if (discordantPairCollectionEnabled() && useDiscordantPairEvidence(record)) {
+                // PE
                 final List<DiscordantPairEvidence> discordantPairEvidence = discordantPairCollector.collectEvidence(record);
                 discordantPairResult = discordantPairEvidenceTester.poissonTestRecord(record, discordantPairEvidence, carrierSamples, backgroundSamples);
                 record = discordantPairEvidenceTester.applyToRecord(record, discordantPairResult);
             }
+            SplitReadEvidenceTester.SplitReadTestResult splitReadResult = null;
             if (splitReadCollectionEnabled() && useSplitReadEvidence(record)) {
+                // SR
                 final List<SplitReadEvidence> startSplitReadEvidence = startSplitCollector.collectEvidence(record);
                 final List<SplitReadEvidence> endSplitReadEvidence = endSplitCollector.collectEvidence(record);
-                final SplitReadEvidenceTester.SplitReadTestResult result = splitReadEvidenceTester.testRecord(record, startSplitReadEvidence, endSplitReadEvidence, carrierSamples, backgroundSamples, discordantPairResult);
-                record = splitReadEvidenceTester.applyToRecord(record, result);
+                splitReadResult = splitReadEvidenceTester.testRecord(record, startSplitReadEvidence, endSplitReadEvidence, carrierSamples, backgroundSamples);
+                record = splitReadEvidenceTester.applyToRecord(record, splitReadResult);
+            }
+            if (discordantPairResult != null && splitReadResult != null) {
+                // Combined PE/SR
+                final PESREvidenceTester.PESRTestResult result = pesrEvidenceTester.test(splitReadResult, discordantPairResult, carrierSamples, backgroundSamples);
+                record = pesrEvidenceTester.applyToRecord(record, result);
             }
         }
         outputBuffer.add(SVCallRecordUtils.getVariantBuilder(record).make());

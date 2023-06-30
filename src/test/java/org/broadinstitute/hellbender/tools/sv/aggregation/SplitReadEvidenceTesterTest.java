@@ -405,7 +405,7 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
 
         final SplitReadEvidenceTester refiner = new SplitReadEvidenceTester(sampleCoverageMap, 20, DICTIONARY);
         final SplitReadEvidenceTester.SplitReadTestResult result = refiner.testRecord(record, startEvidence, endEvidence,
-                Sets.difference(carrierSamples, excludedSamples), Sets.difference(backgroundSamples, excludedSamples), null);
+                Sets.difference(carrierSamples, excludedSamples), Sets.difference(backgroundSamples, excludedSamples));
         final SVCallRecord test = refiner.applyToRecord(record, result);
         Assert.assertEquals(test.getId(), "call1");
         Assert.assertEquals(test.getPositionA(), 1000);
@@ -459,7 +459,7 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
 
         final SplitReadEvidenceTester refiner = new SplitReadEvidenceTester(sampleCoverageMap, maxSplitReadCrossDistance, DICTIONARY);
         final SplitReadEvidenceTester.SplitReadTestResult result = refiner.testRecord(record, startEvidence, endEvidence,
-                Collections.singleton("sample1"), Collections.emptySet(), null);
+                Collections.singleton("sample1"), Collections.emptySet());
         final SVCallRecord test = refiner.applyToRecord(record, result);
         Assert.assertEquals(test.getId(), "call1");
         Assert.assertEquals(test.getPositionA(), 1000);
@@ -502,7 +502,7 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
 
         final SplitReadEvidenceTester refiner = new SplitReadEvidenceTester(sampleCoverageMap, 20, DICTIONARY);
         final SplitReadEvidenceTester.SplitReadTestResult result = refiner.testRecord(record, startEvidence, endEvidence,
-                Collections.singleton("sample1"), Collections.emptySet(), null);
+                Collections.singleton("sample1"), Collections.emptySet());
         final SVCallRecord test = refiner.applyToRecord(record, result);
         Assert.assertEquals(test.getId(), "call1");
         Assert.assertEquals(test.getContigA(), "chr21");
@@ -546,7 +546,7 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
 
         final SplitReadEvidenceTester refiner = new SplitReadEvidenceTester(sampleCoverageMap, 20, DICTIONARY);
         final SplitReadEvidenceTester.SplitReadTestResult result = refiner.testRecord(record, startEvidence, endEvidence,
-                Collections.singleton("sample1"), Collections.emptySet(), null);
+                Collections.singleton("sample1"), Collections.emptySet());
         final SVCallRecord test = refiner.applyToRecord(record, result);
         Assert.assertEquals(test.getId(), "call1");
         Assert.assertEquals(test.getContigA(), "chr21");
