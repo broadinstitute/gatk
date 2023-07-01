@@ -49,19 +49,14 @@ public class DiscordantPairEvidenceTester {
         return SVCallRecordUtils.assignDiscordantPairCountsToGenotypes(newRecord, discordantPairResult.getDiscordantPairEvidence());
     }
 
-    public DiscordantPairTestResult poissonTest(final List<DiscordantPairEvidence> evidence,
-                                                final Collection<String> carrierSamples,
-                                                final Collection<String> backgroundSamples,
-                                                final int representativeDepth) {
+    protected DiscordantPairTestResult poissonTest(final List<DiscordantPairEvidence> evidence,
+                                                   final Collection<String> carrierSamples,
+                                                   final Collection<String> backgroundSamples,
+                                                   final int representativeDepth) {
         Utils.validateArg(sampleCoverageMap.keySet().containsAll(carrierSamples),
                 "One or more carrier samples not found in sample coverage map");
         Utils.validateArg(sampleCoverageMap.keySet().containsAll(backgroundSamples),
                 "One or more non-carrier samples not found in sample coverage map");
-
-        // Default case
-        if (evidence.isEmpty() || carrierSamples.isEmpty() || backgroundSamples.isEmpty()) {
-            return null;
-        }
         final Map<String, Integer> sampleCounts = evidence.stream()
                 .collect(Collectors.groupingBy(DiscordantPairEvidence::getSample,
                         Collectors.collectingAndThen(Collectors.toList(), List::size)));
@@ -70,7 +65,7 @@ public class DiscordantPairEvidenceTester {
         return new DiscordantPairTestResult(test, sampleCounts, evidence);
     }
 
-    public final class DiscordantPairTestResult {
+    public static final class DiscordantPairTestResult {
         private final EvidenceStatUtils.PoissonTestResult test;
         private final Map<String, Integer> sampleCounts;
         private final List<DiscordantPairEvidence> discordantPairEvidence;

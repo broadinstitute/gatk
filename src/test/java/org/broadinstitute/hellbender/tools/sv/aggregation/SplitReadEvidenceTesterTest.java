@@ -47,14 +47,13 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                         Collections.emptyList(),
                         Collections.emptyList(),
                         Collections.emptyMap(),
-                        30,
                         1,
                         true,
                         new SplitReadSite("chr21",
                                 1,
                                 true,
                                 Collections.emptyMap(),
-                                null)
+                                new EvidenceStatUtils.PoissonTestResult(1, 0., 0.))
                 },
                 // 0 carrier / 1 background sample
                 {
@@ -62,30 +61,27 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                         Collections.emptyList(),
                         Collections.singletonList("sample1"),
                         Collections.singletonMap("sample1", 22.),
-                        30,
-                        1,
-                        true,
-                        new SplitReadSite("chr21",
-                                1,
-                                true,
-                                Collections.emptyMap(),
-                                null)
-                },
-                // 1 carrier / 0 background sample
-                {
-                        Collections.singletonList(new SplitReadEvidence("sample1", "chr21", 10, 1, true)),
-                        Collections.singletonList("sample1"),
-                        Collections.emptyList(),
-                        Collections.singletonList(new HashMap.SimpleEntry<>("sample1", 22.)).stream()
-                                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)),
-                        30,
                         1,
                         true,
                         new SplitReadSite("chr21",
                                 10,
                                 true,
                                 Collections.singletonMap("sample1", 1),
-                                new EvidenceStatUtils.PoissonTestResult(0.2557291599131005, 1.3636363636363638, 0.0))
+                                new EvidenceStatUtils.PoissonTestResult(1, 0., 1.))
+                },
+                // 1 carrier / 0 background sample
+                {
+                        Collections.singletonList(new SplitReadEvidence("sample1", "chr21", 10, 1, true)),
+                        Collections.singletonList("sample1"),
+                        Collections.emptyList(),
+                        Collections.singletonMap("sample1", 22.),
+                        1,
+                        true,
+                        new SplitReadSite("chr21",
+                                10,
+                                true,
+                                Collections.singletonMap("sample1", 1),
+                                new EvidenceStatUtils.PoissonTestResult(0.3678794411714422, 1.0, 0.0))
                 },
                 // 1 carrier / 1 background sample
                 {
@@ -94,14 +90,13 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                         Collections.singletonList("sample2"),
                         Lists.newArrayList(new AbstractMap.SimpleEntry<>("sample1", 22.), new AbstractMap.SimpleEntry<>("sample2", 20.)).stream()
                                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)),
-                        30,
                         1,
                         true,
                         new SplitReadSite("chr21",
                                 10,
                                 true,
                                 Collections.singletonMap("sample1", 1),
-                                new EvidenceStatUtils.PoissonTestResult(0.2557291599131005, 1.3636363636363638, 0.0))
+                                new EvidenceStatUtils.PoissonTestResult(0.3849870989234836, 0.9545454545454546, 0.0))
                 },
                 // 1 carrier / 1 background sample with evidence
                 {
@@ -111,7 +106,6 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                         Collections.singletonList("sample2"),
                         Lists.newArrayList(new AbstractMap.SimpleEntry<>("sample1", 22.), new AbstractMap.SimpleEntry<>("sample2", 20.)).stream()
                                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)),
-                        30,
                         1,
                         true,
                         new SplitReadSite("chr21",
@@ -119,7 +113,7 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                                 true,
                                 Lists.newArrayList(new HashMap.SimpleEntry<>("sample1", 1), new HashMap.SimpleEntry<>("sample2", 1)).stream()
                                         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)),
-                                new EvidenceStatUtils.PoissonTestResult(0.8422154564080215, 1.3636363636363638, 1.5))
+                                new EvidenceStatUtils.PoissonTestResult(0.7524747842595363, 0.9545454545454546, 1.05))
                 },
                 // 1 carrier / 1 background; multiple loci with evidence
                 {
@@ -131,7 +125,6 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                         Collections.singletonList("sample2"),
                         Lists.newArrayList(new AbstractMap.SimpleEntry<>("sample1", 22.), new AbstractMap.SimpleEntry<>("sample2", 20.)).stream()
                                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)),
-                        30,
                         1,
                         true,
                         new SplitReadSite("chr21",
@@ -139,7 +132,7 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                                 true,
                                 Lists.newArrayList(new HashMap.SimpleEntry<>("sample1", 6), new HashMap.SimpleEntry<>("sample2", 1)).stream()
                                         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)),
-                                new EvidenceStatUtils.PoissonTestResult(0.011929713129970071, 8.181818181818182, 1.5))
+                                new EvidenceStatUtils.PoissonTestResult(0.02190362990370459, 5.727272727272727, 1.05))
                 },
         };
     }
@@ -149,12 +142,12 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                                         final Collection<String> carrierSamples,
                                         final Collection<String> backgroundSamples,
                                         final Map<String, Double> sampleCoverageMap,
-                                        final int representativeDepth,
                                         final int defaultPosition,
                                         final boolean strand,
                                         final SplitReadSite expected) {
-        final SplitReadSite test = SplitReadEvidenceTester.testSplitReadSite(sortedEvidence, strand, carrierSamples,
-                backgroundSamples, sampleCoverageMap, representativeDepth, "chr21", defaultPosition);
+        final SplitReadEvidenceTester tester = new SplitReadEvidenceTester(sampleCoverageMap, MAX_SR_CROSS_DISTANCE, DICTIONARY);
+        final SplitReadSite test = tester.testSplitReadSite(sortedEvidence, strand, carrierSamples,
+                backgroundSamples, "chr21", defaultPosition);
         Assert.assertEquals(test.getPosition(), expected.getPosition());
         final Set<String> samples = new HashSet<>(carrierSamples);
         samples.addAll(backgroundSamples);
@@ -185,7 +178,13 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                         1000,
                         2000,
                         Collections.emptyMap(),
-                        Collections.emptyMap()
+                        Collections.emptyMap(),
+                        1,
+                        0,
+                        0,
+                        1,
+                        1,
+                        0
                 },
                 // Single carrier with evidence at new coordinates
                 {
@@ -203,6 +202,12 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)),
                         Lists.newArrayList(new HashMap.SimpleEntry<>("sample1", 4), new HashMap.SimpleEntry<>("sample2", 0)).stream()
                                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)),
+                        23,
+                        100,
+                        100,
+                        15,
+                        19,
+                        100
                 },
                 // Single carrier with evidence at new coordinates, but excluded
                 {
@@ -214,10 +219,16 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                         Collections.singletonList(new SplitReadEvidence("sample1", "chr21", 2005, 5, false)),
                         1000,
                         2000,
-                        1000,
-                        2000,
+                        1005,
+                        2005,
                         Collections.emptyMap(),
-                        Collections.emptyMap()
+                        Collections.emptyMap(),
+                        1,
+                        0,
+                        0,
+                        1,
+                        1,
+                        0
                 },
                 // Single carrier and background sample with evidence at new coordinates
                 {
@@ -238,7 +249,13 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                         1005,
                         2005,
                         Collections.singletonMap("sample1", 5),
-                        Collections.singletonMap("sample1", 5)
+                        Collections.singletonMap("sample1", 5),
+                        21,
+                        78,
+                        78,
+                        11,
+                        11,
+                        78
                 },
                 // Single carrier and background sample with invalid end evidence upstream of refined start
                 // Start evidence better
@@ -260,7 +277,13 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                         1500,
                         2000,
                         Collections.singletonMap("sample1", 6),
-                        Collections.emptyMap()
+                        Collections.emptyMap(),
+                        14,
+                        0,
+                        81,
+                        1,
+                        14,
+                        81
                 },
                 // Single carrier and background sample with invalid end evidence upstream of refined start
                 // End evidence better
@@ -282,7 +305,13 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                         1000,
                         1400,
                         Collections.emptyMap(),
-                        Collections.singletonMap("sample1", 6)
+                        Collections.singletonMap("sample1", 6),
+                        14,
+                        0,
+                        81,
+                        1,
+                        14,
+                        81
                 },
                 // Single carrier and background sample with valid end evidence upstream of original start but not refined start
                 {
@@ -303,7 +332,13 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                         900,
                         950,
                         Collections.singletonMap("sample1", 5),
-                        Collections.singletonMap("sample1", 5)
+                        Collections.singletonMap("sample1", 5),
+                        21,
+                        78,
+                        78,
+                        11,
+                        11,
+                        78
                 },
                 // Single carrier and background sample with multiple evidence sites
                 //   --Refined locus 3'
@@ -327,7 +362,13 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                         1010,
                         2010,
                         Collections.singletonMap("sample1", 6),
-                        Collections.singletonMap("sample1", 6)
+                        Collections.singletonMap("sample1", 6),
+                        45,
+                        100,
+                        100,
+                        22,
+                        22,
+                        100
                 },
                 //   --Refined locus 5'
                 {
@@ -351,7 +392,13 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                         995,
                         1995,
                         Collections.singletonMap("sample1", 6),
-                        Collections.singletonMap("sample1", 6)
+                        Collections.singletonMap("sample1", 6),
+                        45,
+                        100,
+                        100,
+                        22,
+                        22,
+                        100
                 },
                 //   --3' evidence weaker
                 {
@@ -374,7 +421,13 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                         1005,
                         2005,
                         Collections.singletonMap("sample1", 5),
-                        Collections.singletonMap("sample1", 5)
+                        Collections.singletonMap("sample1", 5),
+                        21,
+                        78,
+                        78,
+                        11,
+                        11,
+                        78
                 },
                 //   --Equal evidence, refine closest to original coordinates
                 {
@@ -401,7 +454,13 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                         1001,
                         2001,
                         Collections.singletonMap("sample1", 5),
-                        Collections.singletonMap("sample1", 5)
+                        Collections.singletonMap("sample1", 5),
+                        37,
+                        100,
+                        100,
+                        19,
+                        19,
+                        100
                 },
                 //   --Ignore excluded sample
                 {
@@ -424,7 +483,13 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                         1005,
                         2005,
                         Collections.singletonMap("sample1", 5),
-                        Collections.singletonMap("sample1", 5)
+                        Collections.singletonMap("sample1", 5),
+                        37,
+                        100,
+                        100,
+                        19,
+                        19,
+                        100
                 },
                 // INS simple case
                 {
@@ -443,7 +508,13 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                         995,
                         1001,
                         Collections.singletonMap("sample1", 12),
-                        Collections.singletonMap("sample1", 10)
+                        Collections.singletonMap("sample1", 10),
+                        82,
+                        100,
+                        100,
+                        37,
+                        45,
+                        100
                 },
                 // INS
                 // First end has most evidence, but is beyond the max crossover distance
@@ -467,7 +538,13 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                         995,
                         995 - MAX_SR_CROSS_DISTANCE,
                         Collections.singletonMap("sample1", 12),
-                        Collections.singletonMap("sample1", 9)
+                        Collections.singletonMap("sample1", 9),
+                        78,
+                        100,
+                        100,
+                        34,
+                        45,
+                        100
                 },
                 // INS, reverse crossover case
                 {
@@ -488,7 +565,13 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                         995 + MAX_SR_CROSS_DISTANCE,
                         995,
                         Collections.singletonMap("sample1", 9),
-                        Collections.singletonMap("sample1", 12)
+                        Collections.singletonMap("sample1", 12),
+                        78,
+                        100,
+                        100,
+                        45,
+                        34,
+                        100
                 },
                 // BND, interchromosomal
                 {
@@ -508,7 +591,13 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                         900,
                         1,
                         Collections.singletonMap("sample1", 4),
-                        Collections.singletonMap("sample1", 10)
+                        Collections.singletonMap("sample1", 10),
+                        52,
+                        100,
+                        100,
+                        37,
+                        15,
+                        100
                 },
                 // INV, with same evidence at POS=4000
                 {
@@ -528,7 +617,13 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                         4000,
                         2000,
                         Collections.singletonMap("sample1", 4),
-                        Collections.singletonMap("sample1", 3)
+                        Collections.singletonMap("sample1", 3),
+                        26,
+                        100,
+                        100,
+                        11,
+                        15,
+                        100
                 },
         };
     }
@@ -545,7 +640,13 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
                                final int expectedFirstSRPosition,
                                final int expectedSecondSRPosition,
                                final Map<String, Integer> expectedStartSampleCounts,
-                               final Map<String, Integer> expectedEndSampleCounts) {
+                               final Map<String, Integer> expectedEndSampleCounts,
+                               final int expectedSRQ,
+                               final int expectedSR2CS,
+                               final int expectedSR1CS,
+                               final int expectedSR2Q,
+                               final int expectedSR1Q,
+                               final int expectedSRCS) {
         final GenotypesContext genotypes = GenotypesContext.create();
         carrierSamples.stream()
                 .forEach(s -> genotypes.add(new GenotypeBuilder(s).alleles(Lists.newArrayList(baseRecord.getRefAllele(), baseRecord.getAltAlleles().get(0)))
@@ -580,6 +681,8 @@ public class SplitReadEvidenceTesterTest extends GATKBaseTest {
         Assert.assertEquals(test.getAttributes().get("TEST_KEY"), "TEST_VALUE");
         Assert.assertTrue(test.getGenotypes().containsSamples(carrierSamples));
         Assert.assertTrue(test.getGenotypes().containsSamples(backgroundSamples));
+        //Assert.assertEquals(test.getAttributes().get(GATKSVVCFConstants.FIRST_SPLIT_CARRIER_SIGNAL_ATTRIBUTE), expectedFirstCarrierSignal);
+        //Assert.assertEquals(test.getAttributes().get(GATKSVVCFConstants.DISCORDANT_PAIR_QUALITY_ATTRIBUTE), expectedQuality);
         for (final String s : expectedStartSampleCounts.keySet()) {
             final Integer count = VariantContextGetters.getAttributeAsInt(test.getGenotypes().get(s),
                     GATKSVVCFConstants.FIRST_SPLIT_READ_COUNT_ATTRIBUTE, -1);

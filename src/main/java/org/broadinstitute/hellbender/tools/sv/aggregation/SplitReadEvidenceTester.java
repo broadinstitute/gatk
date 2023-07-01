@@ -73,17 +73,14 @@ public class SplitReadEvidenceTester {
      * @param strand split read evidence strand
      * @param carrierSamples carrier sample ids
      * @param backgroundSamples background sample ids
-     * @param representativeDepth normalization depth
      * @param defaultContig contig to use if test cannot be performed (no evidence or carriers)
      * @param defaultPosition position to use if test cannot be performed (no evidence or carriers)
      * @return pair containing site with refined breakpoints and probability (null if no evidence or carriers)
      */
-    protected static SplitReadSite testSplitReadSite(final List<SplitReadEvidence> sortedEvidence,
+    protected SplitReadSite testSplitReadSite(final List<SplitReadEvidence> sortedEvidence,
                                                      final boolean strand,
                                                      final Collection<String> carrierSamples,
                                                      final Collection<String> backgroundSamples,
-                                                     final Map<String, Double> sampleCoverageMap,
-                                                     final int representativeDepth,
                                                      final String defaultContig,
                                                      final int defaultPosition) {
         Utils.validateArg(sampleCoverageMap.keySet().containsAll(carrierSamples),
@@ -92,8 +89,11 @@ public class SplitReadEvidenceTester {
                 "One or more non-carrier samples not found in sample coverage map");
 
         // Default case
-        if (sortedEvidence.isEmpty() || carrierSamples.isEmpty()) {
-            return new SplitReadSite(defaultContig, defaultPosition, strand, Collections.emptyMap(), null);
+        if (sortedEvidence.isEmpty()) {
+            final EvidenceStatUtils.PoissonTestResult result = EvidenceStatUtils.calculateOneSamplePoissonTest(
+                    Collections.emptyMap(), carrierSamples, backgroundSamples, sampleCoverageMap, representativeDepth
+            );
+            return new SplitReadSite(defaultContig, defaultPosition, strand, Collections.emptyMap(), result);
         }
 
         EvidenceStatUtils.PoissonTestResult minPResult = null;
@@ -148,25 +148,25 @@ public class SplitReadEvidenceTester {
         if (!record.isIntrachromosomal()) {
             // Interchromosomal variants, just test without any checks
             refinedFirstSite = testSplitReadSite(startEvidence, record.getStrandA(), carrierSamples,
-                    backgroundSamples, sampleCoverageMap, representativeDepth, record.getContigA(), record.getPositionA());
+                    backgroundSamples, record.getContigA(), record.getPositionA());
             refinedSecondSite = testSplitReadSite(endEvidence, record.getStrandB(), carrierSamples,
-                    backgroundSamples, sampleCoverageMap, representativeDepth, record.getContigB(), record.getPositionB());
+                    backgroundSamples, record.getContigB(), record.getPositionB());
         } else if (record.getStrandA() == record.getStrandB()) {
             // Case of intrachromosomal and matching strands, need to ensure start/end don't end up the same
             refinedFirstSite = testSplitReadSite(startEvidence, record.getStrandA(), carrierSamples,
-                    backgroundSamples, sampleCoverageMap, representativeDepth, record.getContigA(), record.getPositionA());
+                    backgroundSamples, record.getContigA(), record.getPositionA());
             // Filter out evidence at the refined start position so that we don't double-test
             final int refinedStartPosition = refinedFirstSite.getPosition();
             final List<SplitReadEvidence> validEndEvidence = endEvidence.stream()
                     .filter(e -> e.getStart() != refinedStartPosition).collect(Collectors.toList());
             refinedSecondSite = testSplitReadSite(validEndEvidence, record.getStrandB(), carrierSamples,
-                    backgroundSamples, sampleCoverageMap, representativeDepth, record.getContigB(), record.getPositionB());
+                    backgroundSamples, record.getContigB(), record.getPositionB());
         } else {
             // Intrachromosomal and non-matching strands
             refinedFirstSite = testSplitReadSite(startEvidence, record.getStrandA(), carrierSamples,
-                    backgroundSamples, sampleCoverageMap, representativeDepth, record.getContigA(), record.getPositionA());
+                    backgroundSamples, record.getContigA(), record.getPositionA());
             refinedSecondSite = testSplitReadSite(endEvidence, record.getStrandB(), carrierSamples,
-                    backgroundSamples, sampleCoverageMap, representativeDepth, record.getContigB(), record.getPositionB());
+                    backgroundSamples, record.getContigB(), record.getPositionB());
 
             // Check if refined coordinates are valid. If not, choose the better one and test the other again
             final int endLowerBound = getEndLowerBound(record, refinedFirstSite.getPosition());
@@ -176,14 +176,14 @@ public class SplitReadEvidenceTester {
                     final List<SplitReadEvidence> validEndEvidence = filterSplitReadSitesLowerBound(endEvidence, endLowerBound);
                     final int defaultEndPosition = Math.max(endLowerBound, record.getPositionB());
                     refinedSecondSite = testSplitReadSite(validEndEvidence, record.getStrandB(), carrierSamples,
-                            backgroundSamples, sampleCoverageMap, representativeDepth, record.getContigB(), defaultEndPosition);
+                            backgroundSamples, record.getContigB(), defaultEndPosition);
                 } else {
                     // End site had more significant result, so recompute start site with valid boundaries
                     final int startUpperBound = getStartUpperBound(record, refinedSecondSite.getPosition());
                     final List<SplitReadEvidence> validStartEvidence = filterSplitReadSitesUpperBound(startEvidence, startUpperBound);
                     final int defaulStartPosition = Math.min(startUpperBound, record.getPositionA());
                     refinedFirstSite = testSplitReadSite(validStartEvidence, record.getStrandA(), carrierSamples,
-                            backgroundSamples, sampleCoverageMap, representativeDepth, record.getContigA(), defaulStartPosition);
+                            backgroundSamples, record.getContigA(), defaulStartPosition);
                 }
             }
         }
