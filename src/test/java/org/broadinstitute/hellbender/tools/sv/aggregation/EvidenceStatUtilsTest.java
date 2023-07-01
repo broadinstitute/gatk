@@ -33,6 +33,29 @@ public class EvidenceStatUtilsTest {
         Assert.assertEquals(test, expected);
     }
 
+    @DataProvider(name = "testCarrierSignalFractionData")
+    public Object[][] testCarrierSignalFractionData() {
+        return new Object[][]{
+                {null, null, null},
+                {null, 1., null},
+                {1., null, null},
+                {0., 0., 0},
+                {0., 3., 0},
+                {5., 0., 100},
+                {4., 4., 50},
+                {10., 20., 33},
+                {20., 10., 67},
+                {1., 49., 2},
+                {1., 99., 1},
+        };
+    }
+
+    @Test(dataProvider= "testCarrierSignalFractionData")
+    public void testCarrierSignalFraction(final Double carrierSignal, final Double backgroundSignal, final Integer expected) {
+        final Integer test = EvidenceStatUtils.carrierSignalFraction(carrierSignal, backgroundSignal);
+        Assert.assertEquals(test, expected);
+    }
+
     @DataProvider(name = "testComputeRepresentativeDepthData")
     public Object[][] testComputeRepresentativeDepthData() {
         return new Object[][]{
