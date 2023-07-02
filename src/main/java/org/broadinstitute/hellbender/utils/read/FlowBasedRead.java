@@ -591,11 +591,11 @@ public class FlowBasedRead extends SAMRecordToGATKReadAdapter implements GATKRea
 
     private void applyClipping(int clipLeft, final int leftHmerClip, int clipRight, final int rightHmerClip, final boolean spread){
         if ((clipLeft < 0) || (clipRight < 0)  || (clipLeft >= getKeyLength() ) || ( clipRight >= getKeyLength())) {
-            throw new IllegalStateException("Weird read clip calculated");
+            throw new IllegalStateException(String.format("Weird read clip calculated: left/right/keyLength %d/%d/%d", clipLeft, clipRight, getKeyLength()));
         }
 
-        if ((leftHmerClip < 0) || (rightHmerClip < 0)  || (leftHmerClip >= 14 ) || ( rightHmerClip >= 14)) {
-            throw new IllegalStateException("Weird read clip calculated");
+        if ((leftHmerClip < 0) || (rightHmerClip < 0)  || (leftHmerClip >= (getMaxHmer() + 2) ) || ( rightHmerClip >= (getMaxHmer() + 2))) {
+            throw new IllegalStateException(String.format("Weird read clip calculated: left/right/maxHmer+2 %d/%d/%d", leftHmerClip, rightHmerClip, getMaxHmer() + 2));
         }
 
         final int originalLength = key.length;
