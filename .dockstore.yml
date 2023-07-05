@@ -130,6 +130,7 @@ workflows:
      filters:
        branches:
          - ah_var_store
+         - gg_VS-1001_UpdateDockersForGoogleStorageLibraryUpdate
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
