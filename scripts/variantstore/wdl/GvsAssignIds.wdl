@@ -132,7 +132,7 @@ task AssignIds {
     set -o errexit -o nounset -o pipefail -o xtrace
 
     # make sure that sample names were actually passed, fail if empty
-    num_samples=$(wc -l ~{bulk_import_tsv})
+    num_samples=$(wc -l ~{bulk_import_tsv} | awk '{print $1}')
     if [ $num_samples -eq 0 ]; then
       echo "No sample names passed. Exiting"
       exit 1
