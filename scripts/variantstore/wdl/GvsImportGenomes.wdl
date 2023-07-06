@@ -29,6 +29,7 @@ workflow GvsImportGenomes {
     Int? load_data_maxretries_override
     Boolean process_vcf_headers = false
     File? load_data_gatk_override
+    String branch_name = "ah_var_store"
   }
 
   Int max_auto_batch_size = 20000
@@ -99,6 +100,7 @@ workflow GvsImportGenomes {
         load_data_preemptible = effective_load_data_preemptible,
         load_data_maxretries = effective_load_data_maxretries,
         process_vcf_headers = process_vcf_headers,
+        branch_name = branch_name,
     }
   }
  if (process_vcf_headers) {
@@ -170,6 +172,7 @@ task LoadData {
     Boolean process_vcf_headers
 
     File? gatk_override
+    String branch_name
     Int load_data_preemptible
     Int load_data_maxretries
   }
@@ -240,7 +243,7 @@ task LoadData {
     bq --apilog=false --project_id=~{project_id} rm -f=true ~{temp_table}
 
     ## now we want to create a sub list of these samples (without the ones that have already been loaded)
-    curl --location --remote-name https://raw.githubusercontent.com/broadinstitute/gatk/ah_var_store/scripts/variantstore/wdl/extract/curate_bulk_import_tsv.py
+    curl --location --remote-name https://raw.githubusercontent.com/broadinstitute/gatk/~{branch_name}/scripts/variantstore/wdl/extract/curate_bulk_import_tsv.py
 
     # *re-*curated because the curation script is run again in this task. The curation script was already run at least
     # once before in a separate task to filter out already-loaded samples before the call to `LoadTask`. Here the

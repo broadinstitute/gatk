@@ -74,6 +74,7 @@ workflow GvsUnified {
         Int? split_intervals_mem_override
         Boolean extract_do_not_filter_override = false
         # End GvsExtractCallset
+        String branch_name
     }
 
     call BulkIngestGenomes.GvsBulkIngestGenomes as BulkIngestGenomes {
@@ -82,6 +83,7 @@ workflow GvsUnified {
             project_id = project_id,
             call_set_identifier = call_set_identifier,
             gatk_override = gatk_override,
+            branch_name = branch_name,
     }
 
     call PopulateAltAllele.GvsPopulateAltAllele {
