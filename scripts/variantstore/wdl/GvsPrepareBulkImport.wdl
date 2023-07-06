@@ -71,7 +71,7 @@ task GenerateFOFNsFromDataTables {
             --output-file-name ~{output_tsv_name} \
             --error-file-name ~{error_file_name}
 
-        wc -l ~{output_tsv_name} | awk '{print $1}' > "num_samples.txt"
+        cat ~{output_tsv_name} | wc -l > "num_samples.txt"
 
     >>>
     runtime {

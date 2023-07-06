@@ -229,7 +229,7 @@ task LoadData {
     SAMPLE_MAP=sample_map.csv
 
     # get sample map of samples that haven't been loaded yet
-    num_samples=$(wc -l ~{bulk_import_fofn})
+    num_samples=$(cat ~{bulk_import_fofn} | wc -l)
     bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n $num_samples '
       SELECT sample_id, samples.sample_name FROM `~{dataset_name}.~{table_name}` AS samples JOIN `~{temp_table}` AS temp ON
             samples.sample_name = temp.sample_name WHERE
@@ -442,7 +442,7 @@ task GetUningestedSampleIds {
     python3 -c "from math import ceil; print(ceil($max_sample_id/~{samples_per_table}))" > max_sample_id
     python3 -c "from math import ceil; print(ceil($min_sample_id/~{samples_per_table}))" > min_sample_id
 
-    num_samples=$(wc -l $NAMES_FILE)
+    num_samples=$(cat $NAMES_FILE | wc -l)
     # get sample map of samples that haven't been loaded yet
     bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n $num_samples '
 
