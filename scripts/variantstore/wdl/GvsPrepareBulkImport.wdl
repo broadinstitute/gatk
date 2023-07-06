@@ -25,12 +25,13 @@ workflow GvsPrepareBulkImport {
             sample_id_column_name = user_defined_sample_id_column_name,
             vcf_files_column_name = vcf_files_column_name,
             vcf_index_files_column_name = vcf_index_files_column_name,
-            sample_set_name = sample_set_name
+            sample_set_name = sample_set_name,
     }
 
     output {
         File output_tsv = GenerateFOFNsFromDataTables.output_tsv
         File errorRows = GenerateFOFNsFromDataTables.errors
+        Int num_samples = GenerateFOFNsFromDataTables.num_samples
     }
 }
 

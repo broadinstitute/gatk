@@ -79,7 +79,7 @@ workflow GvsBulkIngestGenomes {
             user_defined_sample_id_column_name = GetColumnNames.sample_name_column,  ## NOTE: if no sample_id_column_name has been specified, this is now the <entity>_id column
             vcf_files_column_name = GetColumnNames.vcf_files_column_name,
             vcf_index_files_column_name = GetColumnNames.vcf_index_files_column_name,
-            sample_set_name = sample_set_name
+            sample_set_name = sample_set_name,
     }
 
     call AssignIds.GvsAssignIds as AssignIds {
@@ -87,7 +87,7 @@ workflow GvsBulkIngestGenomes {
             dataset_name = dataset_name,
             project_id = project_id,
             bulk_import_tsv = PrepareBulkImport.output_tsv,
-            samples_are_controls = false
+            samples_are_controls = false,
     }
 
     call ImportGenomes.GvsImportGenomes as ImportGenomes {
