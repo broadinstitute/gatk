@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.gvs.common;
 
 import com.google.api.client.util.ExponentialBackOff;
 import com.google.api.core.ApiFuture;
-import com.google.cloud.bigquery.storage.v1beta2.*;
+import com.google.cloud.bigquery.storage.v1.*;
 import io.grpc.StatusRuntimeException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -13,7 +13,7 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.util.Date;
 
-import static org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils.extractCausalStatusRuntimeExceptionOrThrow;
+import static org.broadinstitute.hellbender.utils.gvs.bigquery.BigQueryUtils.extractCausalStatusRuntimeExceptionOrThrow;
 
 public class CostObservability {
     static final Logger logger = LogManager.getLogger(org.broadinstitute.hellbender.tools.gvs.common.CostObservability.class);

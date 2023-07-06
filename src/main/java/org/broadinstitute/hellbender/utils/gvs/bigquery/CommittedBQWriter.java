@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.utils.gvs.bigquery;
 
 import com.google.api.client.util.ExponentialBackOff;
 import com.google.api.core.ApiFuture;
-import com.google.cloud.bigquery.storage.v1beta2.*;
+import com.google.cloud.bigquery.storage.v1.*;
 import com.google.protobuf.Descriptors;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
@@ -15,7 +15,7 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 
-import static org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils.extractCausalStatusRuntimeExceptionOrThrow;
+import static org.broadinstitute.hellbender.utils.gvs.bigquery.BigQueryUtils.extractCausalStatusRuntimeExceptionOrThrow;
 
 
 public class CommittedBQWriter implements AutoCloseable {

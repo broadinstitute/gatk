@@ -6,8 +6,8 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.bigquery.StorageAPIAvroReader;
-import org.broadinstitute.hellbender.utils.bigquery.TableReference;
+import org.broadinstitute.hellbender.utils.gvs.bigquery.StorageAPIAvroReader;
+import org.broadinstitute.hellbender.utils.gvs.bigquery.TableReference;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.HashMap;

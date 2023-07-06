@@ -4,7 +4,7 @@ import java.io.File;
 
 import org.apache.commons.io.FileUtils;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.bigquery.TableReference;
+import org.broadinstitute.hellbender.utils.gvs.bigquery.TableReference;
 import org.broadinstitute.hellbender.utils.io.Resource;
 
 public class ExtractFeaturesBQ {

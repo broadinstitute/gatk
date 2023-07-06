@@ -10,9 +10,9 @@ import java.util.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.utils.bigquery.BigQueryUtils;
-import org.broadinstitute.hellbender.utils.bigquery.BigQueryResultAndStatistics;
-import org.broadinstitute.hellbender.utils.bigquery.TableReference;
+import org.broadinstitute.hellbender.utils.gvs.bigquery.BigQueryUtils;
+import org.broadinstitute.hellbender.utils.gvs.bigquery.BigQueryResultAndStatistics;
+import org.broadinstitute.hellbender.utils.gvs.bigquery.TableReference;
 
 public class SampleList {
     static final Logger logger = LogManager.getLogger(SampleList.class);

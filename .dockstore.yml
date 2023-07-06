@@ -130,6 +130,7 @@ workflows:
      filters:
        branches:
          - ah_var_store
+         - gg_VS-1001_UpdateDockersForGoogleStorageLibraryUpdate
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
@@ -227,6 +228,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_1001_bigquery_storage_to_v1
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
