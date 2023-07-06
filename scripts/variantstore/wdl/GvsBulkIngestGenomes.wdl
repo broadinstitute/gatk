@@ -107,6 +107,10 @@ workflow GvsBulkIngestGenomes {
             load_data_preemptible_override = load_data_preemptible_override,
             load_data_gatk_override = gatk_override,
     }
+
+    output {
+        Boolean done = true
+    }
 }
 
 task GetWorkspaceId {

@@ -6,6 +6,7 @@ import "GvsPopulateAltAllele.wdl" as PopulateAltAllele
 import "GvsCreateFilterSet.wdl" as CreateFilterSet
 import "GvsPrepareRangesCallset.wdl" as PrepareRangesCallset
 import "GvsExtractCallset.wdl" as ExtractCallset
+import "GvsBulkIngestGenomes.wdl" as BulkIngestGenomes
 
 workflow GvsUnified {
     input {
@@ -75,37 +76,20 @@ workflow GvsUnified {
         # End GvsExtractCallset
     }
 
-    call AssignIds.GvsAssignIds as AssignIds {
+    call BulkIngestGenomes.GvsBulkIngestGenomes as BulkIngestGenomes {
         input:
             dataset_name = dataset_name,
             project_id = project_id,
-            external_sample_names = external_sample_names,
-            assign_ids_gatk_override = gatk_override
-    }
-
-    call ImportGenomes.GvsImportGenomes {
-        input:
-            go = AssignIds.done,
-            dataset_name = dataset_name,
-            project_id = project_id,
-            external_sample_names = external_sample_names,
-            input_vcfs = input_vcfs,
-            input_vcf_indexes = input_vcf_indexes,
-            interval_list = interval_list,
-            load_data_preemptible_override = load_data_preemptible_override,
-            load_data_maxretries_override = load_data_maxretries_override,
-            load_data_gatk_override = gatk_override,
-            load_data_batch_size = load_data_batch_size,
-            drop_state = drop_state,
-            is_rate_limited_beta_customer = is_beta_user
+            call_set_identifier = call_set_identifier,
+            gatk_override = gatk_override,
     }
 
     call PopulateAltAllele.GvsPopulateAltAllele {
         input:
             call_set_identifier = call_set_identifier,
-            go = GvsImportGenomes.done,
+            go = BulkIngestGenomes.done,
             dataset_name = dataset_name,
-            project_id = project_id
+            project_id = project_id,
     }
 
     call CreateFilterSet.GvsCreateFilterSet {
@@ -121,7 +105,7 @@ workflow GvsUnified {
             INDEL_VQSR_CLASSIC_max_gaussians_override = INDEL_VQSR_CLASSIC_max_gaussians_override,
             INDEL_VQSR_CLASSIC_mem_gb_override = INDEL_VQSR_CLASSIC_mem_gb_override,
             SNP_VQSR_CLASSIC_max_gaussians_override = SNP_VQSR_CLASSIC_max_gaussians_override,
-            SNP_VQSR_CLASSIC_mem_gb_override = SNP_VQSR_CLASSIC_mem_gb_override
+            SNP_VQSR_CLASSIC_mem_gb_override = SNP_VQSR_CLASSIC_mem_gb_override,
     }
 
     call PrepareRangesCallset.GvsPrepareCallset {
@@ -136,7 +120,7 @@ workflow GvsUnified {
             destination_dataset = destination_dataset,
             fq_temp_table_dataset = fq_temp_table_dataset,
             query_labels = query_labels,
-            sample_names_to_extract = sample_names_to_extract
+            sample_names_to_extract = sample_names_to_extract,
     }
 
     call ExtractCallset.GvsExtractCallset {
@@ -159,7 +143,7 @@ workflow GvsUnified {
             split_intervals_disk_size_override = split_intervals_disk_size_override,
             split_intervals_mem_override = split_intervals_mem_override,
             do_not_filter_override = extract_do_not_filter_override,
-            drop_state = drop_state
+            drop_state = drop_state,
     }
 
     output {
