@@ -156,7 +156,7 @@ task GetWorkspaceName {
 
     >>>
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-27-alpine-93f8e60b1"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-06-alpine-0593cbe3b"
         memory: "3 GB"
         disks: "local-disk 10 HDD"
         cpu: 1
@@ -204,7 +204,7 @@ task GetColumnNames {
     >>>
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-27-alpine-93f8e60b1"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-06-alpine-0593cbe3b"
         memory: "3 GB"
         disks: "local-disk 10 HDD"
         cpu: 1

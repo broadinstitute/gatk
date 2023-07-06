@@ -509,7 +509,7 @@ task ScaleXYBedValues {
     }
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-27-alpine-93f8e60b1"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-06-alpine-0593cbe3b"
         maxRetries: 3
         memory: "7 GB"
         preemptible: 3
@@ -854,7 +854,7 @@ task SummarizeTaskMonitorLogs {
   # ------------------------------------------------
   # Runtime settings:
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-27-alpine-93f8e60b1"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-06-alpine-0593cbe3b"
     memory: "1 GB"
     preemptible: 3
     cpu: "1"
