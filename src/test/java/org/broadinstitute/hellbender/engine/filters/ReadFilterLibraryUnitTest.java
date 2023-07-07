@@ -614,7 +614,7 @@ public final class ReadFilterLibraryUnitTest {
         ReadNameReadFilter f = new ReadNameReadFilter();
 
         final String fred= "fred";
-        f.readName = fred;
+        f.readNames = Collections.singleton(fred);
         read.setName(fred);
         Assert.assertTrue(f.test(read), read.toString());//pass
 

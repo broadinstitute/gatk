@@ -23,11 +23,11 @@ public final class ReadNameReadFilter extends ReadFilter implements Serializable
     private static final long serialVersionUID = 1L;
 
     @Argument(fullName = ReadFilterArgumentDefinitions.READ_NAME_LONG_NAME, doc="Keep only reads with this read name", optional=false)
-    public Set<String> sampleNames = new LinkedHashSet<>(0);
+    public Set<String> readNames = new LinkedHashSet<>(0);
 
     @Override
     public boolean test( final GATKRead read ) {
-        return read.getName() != null && sampleNames.contains(read.getName());
+        return read.getName() != null && readNames.contains(read.getName());
     }
 
 }
