@@ -107,6 +107,8 @@ public final class ValidateVariants extends VariantWalker {
     static final Logger logger = LogManager.getLogger(ValidateVariants.class);
     static final OneShotLogger oneShotLogger = new OneShotLogger(ValidateVariants.class);
 
+    static final Logger debugLogger = LogManager.getLogger(ValidateVariants.class);
+
     public static final String GVCF_VALIDATE = "validate-GVCF";
     public static final String DO_NOT_VALIDATE_FILTERED_RECORDS = "do-not-validate-filtered-records";
 
@@ -631,6 +633,9 @@ public final class ValidateVariants extends VariantWalker {
         for (final Genotype g : vc.getGenotypes()) {
             if (!g.hasPL()) {
                 break;
+            }
+            if (g.getPloidy() != 2) {
+                debugLogger.warn("Genotype " + g.toString() + " isn't diploid at position " + vc.getStart());
             }
             if (g.getPL().length != GenotypeLikelihoods.numLikelihoods(nAlleles, g.getPloidy())) {
                 final UserException e = new UserException.BadInput("Genotype for sample " + g.getSampleName() + " has incorrect PL length at " + vc.getContig() + ":" + vc.getStart() + " : " + g);
