@@ -29,7 +29,7 @@ workflow GvsImportGenomes {
     Int? load_data_maxretries_override
     Boolean process_vcf_headers = false
     File? load_data_gatk_override
-    String branch_name = "ah_var_store"
+    String branch_name
   }
 
   Int max_auto_batch_size = 20000
