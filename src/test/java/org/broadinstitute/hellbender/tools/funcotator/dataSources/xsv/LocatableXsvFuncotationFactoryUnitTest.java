@@ -20,6 +20,7 @@ import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotati
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationBuilder;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.codecs.xsvLocatableTable.XsvLocatableTableCodec;
 import org.broadinstitute.hellbender.utils.codecs.xsvLocatableTable.XsvTableFeature;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -31,11 +32,9 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.lang.reflect.Array;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Unit tests for {@link LocatableXsvFuncotationFactory}.
@@ -128,8 +127,7 @@ public class LocatableXsvFuncotationFactoryUnitTest extends GATKBaseTest {
     private Object[][] provideForTestCreateFuncotations() {
         Object[][] arr1 = provideDataForTestCreateFuncotations(false);
         Object[][] arr2 = provideDataForTestCreateFuncotations(true);
-        return Stream.concat(Arrays.stream(arr1), Arrays.stream(arr2)).
-                toArray(size -> (Object[][]) Array.newInstance(arr1.getClass().getComponentType(), arr1.length + arr2.length));
+        return Utils.concat(arr1, arr2, Object[][]::new);
     }
 
     private Object[][] provideDataForTestCreateFuncotations(boolean doGzip) {
