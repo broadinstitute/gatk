@@ -27,7 +27,7 @@ def curate_bulk_import_data(sample_map_to_be_loaded_file_name: str,
         if bulk_import_output_file_name:
             # If an output file is specified write the curated bulk import data to that.
             with open(bulk_import_output_file_name, 'w') as output:
-                np.savetxt(output, bulk_import_data, fmt='%s')
+                np.savetxt(output, bulk_import_data, fmt='%s', delimiter='\t')
         else:
             # Otherwise return the curated bulk import data as a list[list[str]].
             return bulk_import_data

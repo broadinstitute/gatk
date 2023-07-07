@@ -240,7 +240,8 @@ task LoadData {
             samples.withdrawn is NULL' > $SAMPLE_MAP
 
     ## delete the table that was only needed for this ingest test
-    bq --apilog=false --project_id=~{project_id} rm -f=true ~{temp_table}
+    # leave this table during debugging
+    # bq --apilog=false --project_id=~{project_id} rm -f=true ~{temp_table}
 
     ## now we want to create a sub list of these samples (without the ones that have already been loaded)
     curl --location --remote-name https://raw.githubusercontent.com/broadinstitute/gatk/~{branch_name}/scripts/variantstore/wdl/extract/curate_bulk_import_tsv.py
