@@ -80,6 +80,7 @@ workflow GvsUnified {
             call_set_identifier = call_set_identifier,
             gatk_override = gatk_override,
             branch_name = branch_name,
+            interval_list = interval_list,
     }
 
     call PopulateAltAllele.GvsPopulateAltAllele {
