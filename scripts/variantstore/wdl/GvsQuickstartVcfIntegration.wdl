@@ -12,24 +12,6 @@ workflow GvsQuickstartVcfIntegration {
         Boolean use_VQSR_lite = true
         Boolean extract_do_not_filter_override = true
 
-        Array[String] external_sample_names = [
-                                              "ERS4367795",
-                                              "ERS4367796",
-                                              "ERS4367797",
-                                              ]
-
-        Array[File] input_vcfs = [
-                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00405.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
-                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00408.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
-                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00418.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
-                                 ]
-
-        Array[File] input_vcf_indexes = [
-                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00405.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
-                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00408.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
-                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00418.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
-                                        ]
-
         Int? extract_scatter_count
         String drop_state = "FORTY"
         String dataset_suffix
@@ -56,10 +38,7 @@ workflow GvsQuickstartVcfIntegration {
             call_set_identifier = branch_name,
             dataset_name = CreateDataset.dataset_name,
             project_id = project_id,
-            external_sample_names = external_sample_names,
             gatk_override = select_first([gatk_override, BuildGATKJar.jar]),
-            input_vcfs = input_vcfs,
-            input_vcf_indexes = input_vcf_indexes,
             filter_set_name = "quickit",
             use_VQSR_lite = use_VQSR_lite,
             extract_table_prefix = "quickit",

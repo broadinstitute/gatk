@@ -6,9 +6,6 @@ workflow GvsJointVariantCalling {
     input {
         String dataset_name
         String project_id
-        Array[String] external_sample_names
-        Array[File] input_vcfs
-        Array[File] input_vcf_indexes
         String call_set_identifier
         String? extract_output_gcs_dir
         String drop_state = "FORTY"
@@ -49,9 +46,6 @@ workflow GvsJointVariantCalling {
             call_set_identifier = call_set_identifier,
             dataset_name = dataset_name,
             project_id = project_id,
-            external_sample_names = external_sample_names,
-            input_vcf_indexes = input_vcf_indexes,
-            input_vcfs = input_vcfs,
             filter_set_name = filter_set_name,
             use_VQSR_lite = !use_classic_VQSR,
             extract_output_gcs_dir = extract_output_gcs_dir,

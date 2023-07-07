@@ -15,14 +15,10 @@ workflow GvsUnified {
         String project_id
         String call_set_identifier
 
-        Array[String] external_sample_names
-
         File? gatk_override
         # End GvsAssignIds
 
         # Begin GvsImportGenomes
-        Array[File] input_vcfs
-        Array[File] input_vcf_indexes
         File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
 
         # set to "NONE" to ingest all the reference data into GVS for VDS (instead of VCF) output
