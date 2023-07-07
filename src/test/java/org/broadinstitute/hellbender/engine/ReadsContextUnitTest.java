@@ -11,10 +11,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public final class ReadsContextUnitTest extends GATKBaseTest {
@@ -44,6 +41,8 @@ public final class ReadsContextUnitTest extends GATKBaseTest {
         // should behave as empty context objects.
         ReadNameReadFilter readNameFilter = new ReadNameReadFilter();
         readNameFilter.readNames = Collections.singleton("d");
+        ReadNameReadFilter twoReadNamesReadFilter = new ReadNameReadFilter();
+        twoReadNamesReadFilter.readNames = Set.of("d", "b");
         return new Object[][]{
                 {new ReadsContext(
                         new ReadsPathDataSource(IOUtils.getPath(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam")),
@@ -54,6 +53,11 @@ public final class ReadsContextUnitTest extends GATKBaseTest {
                         new ReadsPathDataSource(IOUtils.getPath(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam")),
                         new SimpleInterval("1", 200, 1000), // query over larger interval with readNameFilter on "d"
                         readNameFilter), new String[] { "d" }
+                },
+                {new ReadsContext(
+                        new ReadsPathDataSource(IOUtils.getPath(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam")),
+                        new SimpleInterval("1", 200, 1000), // query over larger interval with readNameFilter on "d", "b"
+                        twoReadNamesReadFilter), new String[] { "b", "d" }
                 }
         };
     }
