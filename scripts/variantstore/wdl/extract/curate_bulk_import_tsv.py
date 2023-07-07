@@ -10,8 +10,7 @@ def curate_bulk_import_data(sample_map_to_be_loaded_file_name: str,
     with open(sample_map_to_be_loaded_file_name, 'r') as sample_map_to_be_loaded_file, \
             open(bulk_import_input_file_name, 'r') as bulk_import_input_file:
 
-        # The sample map has a header so skiprows=1.
-        sample_map = np.loadtxt(sample_map_to_be_loaded_file, dtype=str, delimiter=",", ndmin=2, skiprows=1)
+        sample_map = np.loadtxt(sample_map_to_be_loaded_file, dtype=str, delimiter=",", ndmin=2)
         # The sample map format is CSV with fields sample_id, sample_name. We want only the sample_name:
         samples_to_load = [arr[1] for arr in sample_map]
 
