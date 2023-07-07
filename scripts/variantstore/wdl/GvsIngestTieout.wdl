@@ -24,7 +24,6 @@ workflow GvsIngestTieout {
         input:
             project_id = project,
             dataset_name = BuildGATKJarAndCreateDataset.dataset_name,
-            external_sample_names = sample_names,
             assign_ids_gatk_override = BuildGATKJarAndCreateDataset.jar
     }
 
@@ -33,9 +32,6 @@ workflow GvsIngestTieout {
             go = GvsAssignIds.done,
             dataset_name = BuildGATKJarAndCreateDataset.dataset_name,
             project_id = project,
-            external_sample_names = sample_names,
-            input_vcfs = input_vcfs,
-            input_vcf_indexes = input_vcf_indexes,
             load_data_gatk_override = BuildGATKJarAndCreateDataset.jar
     }
 
