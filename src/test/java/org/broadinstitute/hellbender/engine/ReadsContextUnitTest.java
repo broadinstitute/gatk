@@ -12,6 +12,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -42,7 +43,7 @@ public final class ReadsContextUnitTest extends GATKBaseTest {
         // Default-constructed ReadsContexts and ReadsContexts constructed from null ReadsDataSources/intervals
         // should behave as empty context objects.
         ReadNameReadFilter readNameFilter = new ReadNameReadFilter();
-        readNameFilter.readName = "d";
+        readNameFilter.readNames = Collections.singleton("d");
         return new Object[][]{
                 {new ReadsContext(
                         new ReadsPathDataSource(IOUtils.getPath(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam")),
