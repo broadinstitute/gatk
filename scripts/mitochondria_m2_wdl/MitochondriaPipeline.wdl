@@ -25,6 +25,8 @@ workflow MitochondriaPipeline {
     File? ref_fasta_index
     File? ref_dict
 
+    String java_heap_memory = "1000m"
+
     File mt_dict
     File mt_fasta
     File mt_fasta_index
@@ -91,6 +93,7 @@ workflow MitochondriaPipeline {
   call RevertSam {
     input:
       input_bam = SubsetBamToChrM.output_bam,
+      heap_mem = java_heap_memory,
       preemptible_tries = preemptible_tries
   }
 
@@ -247,6 +250,7 @@ task RevertSam {
   input {
     File input_bam
     String basename = basename(input_bam, ".bam")
+    String heap_mem
 
     # runtime
     Int? preemptible_tries
@@ -260,7 +264,7 @@ task RevertSam {
     input_bam: "aligned bam"
   }
   command {
-    java -Xmx1000m -jar /usr/gitc/picard.jar \
+    java -Xmx~{heap_mem} -jar /usr/gitc/picard.jar \
     RevertSam \
     INPUT=~{input_bam} \
     OUTPUT_BY_READGROUP=false \
