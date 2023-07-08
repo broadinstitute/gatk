@@ -12,7 +12,6 @@ workflow GvsQuickstartVcfIntegration {
         Boolean use_VQSR_lite = true
         Boolean extract_do_not_filter_override = true
 
-        Int? extract_scatter_count
         String drop_state = "FORTY"
         String dataset_suffix
         File? gatk_override
@@ -46,7 +45,6 @@ workflow GvsQuickstartVcfIntegration {
             filter_set_name = "quickit",
             use_VQSR_lite = use_VQSR_lite,
             extract_table_prefix = "quickit",
-            extract_scatter_count = extract_scatter_count,
             # optionally turn off filtering (VQSR Classic is not deterministic)
             # (and the initial version of this integration test does not allow for inexact matching of actual and expected results.)
             extract_do_not_filter_override = extract_do_not_filter_override,
