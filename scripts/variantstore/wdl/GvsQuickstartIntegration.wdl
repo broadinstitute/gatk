@@ -35,6 +35,7 @@ workflow GvsQuickstartIntegration {
         String? vcf_files_column_name
         String? vcf_index_files_column_name
         String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
+        Int? vcf_extract_scatter_count
     }
 
     File full_interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
@@ -100,6 +101,7 @@ workflow GvsQuickstartIntegration {
                 vcf_index_files_column_name = vcf_index_files_column_name,
                 sample_set_name = sample_set_name,
                 drop_state = "FORTY",
+                extract_scatter_count = vcf_extract_scatter_count,
         }
         call QuickstartVcfIntegration.GvsQuickstartVcfIntegration as QuickstartVcfVQSRClassicIntegration {
             input:
@@ -115,6 +117,7 @@ workflow GvsQuickstartIntegration {
                 vcf_index_files_column_name = vcf_index_files_column_name,
                 sample_set_name = sample_set_name,
                 drop_state = "FORTY",
+                extract_scatter_count = vcf_extract_scatter_count,
         }
     }
 }
