@@ -108,6 +108,7 @@ workflow GvsBulkIngestGenomes {
             load_data_preemptible_override = load_data_preemptible_override,
             load_data_gatk_override = gatk_override,
             branch_name = branch_name,
+            drop_state = drop_state,
     }
 
     output {
