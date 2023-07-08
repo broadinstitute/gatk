@@ -16,6 +16,10 @@ workflow GvsQuickstartVcfIntegration {
         String drop_state = "FORTY"
         String dataset_suffix
         File? gatk_override
+        String? sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
+        String? vcf_files_column_name
+        String? vcf_index_files_column_name
+        String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
     }
     String project_id = "gvs-internal"
 
@@ -49,6 +53,10 @@ workflow GvsQuickstartVcfIntegration {
             drop_state = drop_state,
             interval_list = interval_list,
             branch_name = branch_name,
+            sample_id_column_name = sample_id_column_name,
+            vcf_files_column_name = vcf_files_column_name,
+            vcf_index_files_column_name = vcf_index_files_column_name,
+            sample_set_name = sample_set_name,
     }
 
     # Only assert identical outputs if we did not filter (filtering is not deterministic) OR if we are using VQSR Lite (which is deterministic)

@@ -13,6 +13,11 @@ workflow GvsJointVariantCalling {
         # Beta users have accounts with tighter quotas, and we must work around that
         Boolean tighter_gcp_quotas = true
         String branch_name = "ah_var_store"
+        # TODO should these all be exposed in this WDL?
+        String? sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
+        String? vcf_files_column_name
+        String? vcf_index_files_column_name
+        String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
     }
 
     # the call_set_identifier string is used to name many different things throughout this workflow (BQ tables, vcfs etc),
@@ -77,6 +82,10 @@ workflow GvsJointVariantCalling {
             drop_state = drop_state,
             is_beta_user = tighter_gcp_quotas,
             branch_name = branch_name,
+            sample_id_column_name = sample_id_column_name,
+            vcf_files_column_name = vcf_files_column_name,
+            vcf_index_files_column_name = vcf_index_files_column_name,
+            sample_set_name = sample_set_name,
     }
 
     output {
