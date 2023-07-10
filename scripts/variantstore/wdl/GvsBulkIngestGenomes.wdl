@@ -36,7 +36,6 @@ workflow GvsBulkIngestGenomes {
         Int? load_data_preemptible_override
         Int? load_data_maxretries_override
         # End GvsImportGenomes
-        String branch_name = "ah_var_store"
     }
 
     parameter_meta {
@@ -106,7 +105,6 @@ workflow GvsBulkIngestGenomes {
             load_data_maxretries_override = load_data_maxretries_override,
             load_data_preemptible_override = load_data_preemptible_override,
             load_data_gatk_override = gatk_override,
-            branch_name = branch_name,
             drop_state = drop_state,
     }
 

@@ -80,7 +80,6 @@ workflow GvsUnified {
             dataset_name = dataset_name,
             project_id = project_id,
             gatk_override = gatk_override,
-            branch_name = branch_name,
             interval_list = interval_list,
             drop_state = drop_state,
             sample_id_column_name = sample_id_column_name,
