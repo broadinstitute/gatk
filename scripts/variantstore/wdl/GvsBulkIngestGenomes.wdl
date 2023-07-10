@@ -20,7 +20,6 @@ workflow GvsBulkIngestGenomes {
         # Begin GvsAssignIds
         String dataset_name
         String project_id
-        String call_set_identifier
 
         File? gatk_override
         # End GvsAssignIds

@@ -1,12 +1,10 @@
 version 1.0
 
-import "GvsAssignIds.wdl" as AssignIds
-import "GvsImportGenomes.wdl" as ImportGenomes
+import "GvsBulkIngestGenomes.wdl" as BulkIngestGenomes
 import "GvsPopulateAltAllele.wdl" as PopulateAltAllele
 import "GvsCreateFilterSet.wdl" as CreateFilterSet
 import "GvsPrepareRangesCallset.wdl" as PrepareRangesCallset
 import "GvsExtractCallset.wdl" as ExtractCallset
-import "GvsBulkIngestGenomes.wdl" as BulkIngestGenomes
 
 workflow GvsUnified {
     input {
@@ -81,7 +79,6 @@ workflow GvsUnified {
         input:
             dataset_name = dataset_name,
             project_id = project_id,
-            call_set_identifier = call_set_identifier,
             gatk_override = gatk_override,
             branch_name = branch_name,
             interval_list = interval_list,
