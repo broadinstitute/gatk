@@ -175,12 +175,18 @@ public class CanonicalSVCollapser {
         final List<String> algorithms = collapseAlgorithms(items);
         final Map<String, Object> attributes = collapseAttributes(representative, items);
 
-        final List<Allele> altAlleles = collapseAltAlleles(items);
-        final Allele refAllele = collapseRefAlleles(representative.getContigA(), start);
-        final List<Allele> alleles = collapseAlleles(altAlleles, refAllele);
-        final List<Genotype> genotypes = harmonizeAltAlleles(altAlleles, collapseAllGenotypes(items, refAllele));
         final Boolean strandA = type == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV ? null : representative.getStrandA();
         final Boolean strandB = type == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV ? null : representative.getStrandB();
+
+        final Allele refAllele = collapseRefAlleles(representative.getContigA(), start);
+        final List<Allele> altAlleles;
+        if (type == GATKSVVCFConstants.StructuralVariantAnnotationType.BND) {
+            altAlleles = Collections.singletonList(constructBndAllele(strandA, representative.getStrandB(), representative.getContigB(), end, refAllele));
+        } else {
+            altAlleles = collapseAltAlleles(items);
+        }
+        final List<Allele> alleles = collapseAlleles(altAlleles, refAllele);
+        final List<Genotype> genotypes = harmonizeAltAlleles(altAlleles, collapseAllGenotypes(items, refAllele));
 
         final Set<String> filters = collapseFilters(items);
         final Double quality = collapseQuality(items);
@@ -257,8 +263,22 @@ public class CanonicalSVCollapser {
         return Allele.create(bases[0], true);
     }
 
+    protected static Allele constructBndAllele(final Boolean strandA, final Boolean strandB, final String contigB,
+                                        final int posB, final Allele refAllele) {
+        Utils.validateArg(strandA != null, "First breakend strand cannot be null");
+        Utils.validateArg(strandB != null, "Second breakend strand cannot be null");
+        final String bracket = strandB ? "]" : "[";
+        final String str;
+        if (strandA) {
+            str = refAllele.getBaseString() + bracket + contigB + ":" + posB + bracket;
+        } else {
+            str = bracket + contigB + ":" + posB + bracket + refAllele.getBaseString();
+        }
+        return Allele.create(str, false);
+    }
+
     /**
-     * Collapses alternate alleles into a list of representative alleles. Note this supports sub-typed alleles such as
+     * Collapses symbolic alleles into a list of representative alleles. Note this supports sub-typed alleles such as
      * &lt;INS:MEI&gt;. If multiple alt alleles are found, the variant must either be a CNV or sub-typed alleles with the
      * same base symbol (e.g. &lt;INS:MEI&gt; and &lt;INS:MEI:SVA&gt; would result in &lt;INS&gt;).
      * @param items records whose alt alleles should be collapsed
@@ -276,6 +296,11 @@ public class CanonicalSVCollapser {
         } else if (altAlleles.size() == 1) {
             return Collections.singletonList(altAlleles.get(0));
         } else {
+            for (final Allele a : altAlleles) {
+                if (!validateAltAllele(a)) {
+                    throw new IllegalArgumentException("Cannot collapse non-symbolic allele: " + a.getDisplayString());
+                }
+            }
             // Multiple non-ref alleles need collapsing
             // TODO does not search for subtypes e.g. <DUP:TANDEM>
             int numCnvAlleles = 0;
@@ -285,8 +310,7 @@ public class CanonicalSVCollapser {
                 if (a.equals(Allele.SV_SIMPLE_CNV)) {
                     numCnvAlleles++;
                     numMultiallelicAlleles++;
-                }
-                if (a.equals(Allele.SV_SIMPLE_DUP) || a.equals(Allele.SV_SIMPLE_DEL)) {
+                } else if (a.equals(Allele.SV_SIMPLE_DUP) || a.equals(Allele.SV_SIMPLE_DEL)) {
                     numCnvAlleles++;
                 }
             }
@@ -307,9 +331,12 @@ public class CanonicalSVCollapser {
             } else {
                 throw new UnsupportedOperationException("Unimplemented alt allele summary strategy: " + altAlleleSummaryStrategy.name());
             }
-            Utils.validate(collapsedAlleleTokens.length > 0, "Encountered multiple symbolic allele base symbols for non-CNV");
             return Collections.singletonList(Allele.create("<" + String.join(":", collapsedAlleleTokens) + ">", false));
         }
+    }
+
+    protected boolean validateAltAllele(final Allele allele) {
+        return !allele.isReference() && allele.isSymbolic() && !allele.isBreakpoint() && !allele.isSingleBreakend();
     }
 
     private String[] collapseAltAllelesCommon(final List<Allele> alleles) {
@@ -646,23 +673,22 @@ public class CanonicalSVCollapser {
         }
         // Favor more common variant with most similar distance
         final Comparator<SVCallRecord> carrierCountComparator = Comparator.comparing(r -> -r.getCarrierGenotypeList().size());
-        final Comparator<SVCallRecord> distanceComparator = Comparator.comparing(r -> getDistance(r, starts, ends));
-        final Comparator<SVCallRecord> idComparator = Comparator.comparing(r -> getDistance(r, starts, ends)); // stabilizes order
+        final Comparator<SVCallRecord> distanceComparator = Comparator.comparing(r -> getDistance(r.getPositionA(), r.getPositionB(), starts, ends));
+        final Comparator<SVCallRecord> idComparator = Comparator.comparing(r -> getDistance(r.getPositionA(), r.getPositionB(), starts, ends)); // stabilizes order
         return records.stream().min(
                 carrierCountComparator
                         .thenComparing(distanceComparator)
                         .thenComparing(idComparator)).get();
     }
 
-    private long getDistance(final SVCallRecord record,
-                             final int[] starts,
-                             final int[] ends) {
+    protected static long getDistance(final int posA,
+                                      final int posB,
+                                      final int[] starts,
+                                      final int[] ends) {
         long d = 0;
-        final int posA = record.getPositionA();
         for (int j = 0; j < starts.length; j++) {
             d += FastMath.abs(starts[j] - posA);
         }
-        final int posB = record.getPositionB();
         for (int j = 0; j < ends.length; j++) {
             d += FastMath.abs(ends[j] - posB);
         }
