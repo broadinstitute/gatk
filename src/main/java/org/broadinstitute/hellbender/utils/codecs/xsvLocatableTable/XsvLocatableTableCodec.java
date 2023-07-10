@@ -5,6 +5,7 @@ import com.google.common.collect.ImmutableList;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMTextHeaderCodec;
 import htsjdk.samtools.util.BufferedLineReader;
+import htsjdk.samtools.util.IOUtil;
 import htsjdk.samtools.util.LineReader;
 import htsjdk.samtools.util.StringUtil;
 import htsjdk.tribble.AsciiFeatureCodec;
@@ -571,7 +572,7 @@ public final class XsvLocatableTableCodec extends AsciiFeatureCodec<XsvTableFeat
 
     private String determinePreambleLineStart(final Path path) {
 
-        try (final InputStream stream = Files.newInputStream(path)){
+        try (final InputStream stream = IOUtil.openFileForReading(path)){
 
             byte[] buff = new byte[SAM_FILE_HEADER_START.length()];
             stream.read(buff, 0, SAM_FILE_HEADER_START.length());
