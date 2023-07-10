@@ -247,11 +247,13 @@ task RevertSam {
   input {
     File input_bam
     String basename = basename(input_bam, ".bam")
+    Int machine_mem = 2000
 
     # runtime
     Int? preemptible_tries
   }
   Int disk_size = ceil(size(input_bam, "GB") * 2.5) + 20
+  Int java_mem = machine_mem - 1000
 
   meta {
     description: "Removes alignment information while retaining recalibrated base qualities and original alignment tags"
@@ -260,7 +262,7 @@ task RevertSam {
     input_bam: "aligned bam"
   }
   command {
-    java -Xmx1000m -jar /usr/gitc/picard.jar \
+    java -Xmx~{java_mem}m -jar /usr/gitc/picard.jar \
     RevertSam \
     INPUT=~{input_bam} \
     OUTPUT_BY_READGROUP=false \
@@ -273,7 +275,7 @@ task RevertSam {
   }
   runtime {
     disks: "local-disk " + disk_size + " HDD"
-    memory: "2 GB"
+    memory: machine_mem + " MB"
     docker: "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.2-1552931386"
     preemptible: select_first([preemptible_tries, 5])
   }
