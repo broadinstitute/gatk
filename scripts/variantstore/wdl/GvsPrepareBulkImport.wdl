@@ -28,10 +28,16 @@ workflow GvsPrepareBulkImport {
             sample_set_name = sample_set_name,
     }
 
+    call SplitImportFofn {
+        input:
+            import_fofn = GenerateImportFofnFromDataTable.output_fofn,
+    }
+
     output {
-        File output_tsv = GenerateImportFofnFromDataTable.output_tsv
+        Array[String] external_sample_names = SplitImportFofn.external_sample_names
+        Array[String] vcf_file_names = SplitImportFofn.vcf_file_names
+        Array[String] vcf_index_file_names = SplitImportFofn.vcf_index_file_names
         File errorRows = GenerateImportFofnFromDataTable.errors
-        Int num_samples = GenerateImportFofnFromDataTable.num_samples
     }
 }
 
@@ -50,7 +56,7 @@ task GenerateImportFofnFromDataTable {
         String? sample_set_name
     }
 
-    String output_tsv_name = "output.tsv"
+    String output_fofn_name = "output.tsv"
     String error_file_name = "errors.txt"
 
     command <<<
@@ -68,11 +74,8 @@ task GenerateImportFofnFromDataTable {
             --vcf-files-column-name ~{vcf_files_column_name} \
             --vcf-index-files-column-name ~{vcf_index_files_column_name} \
             ~{"--sample-set-name " + sample_set_name} \
-            --output-file-name ~{output_tsv_name} \
+            --output-file-name ~{output_fofn_name} \
             --error-file-name ~{error_file_name}
-
-        cat ~{output_tsv_name} | wc -l > "num_samples.txt"
-
     >>>
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-07-alpine-13fa284e9"
@@ -82,8 +85,35 @@ task GenerateImportFofnFromDataTable {
     }
 
     output {
-        File output_tsv = output_tsv_name
-        Int num_samples = read_int("num_samples.txt")
+        File output_fofn = output_fofn_name
         File errors = error_file_name
+    }
+}
+
+task SplitImportFofn {
+    input {
+        File import_fofn
+    }
+
+    command <<<
+        set -o errexit -o nounset -o xtrace -o pipefail
+        PS4='\D{+%F %T} \w $ '
+
+        cut -f 1 ~{import_fofn} > sample_names.txt
+        cut -f 2 ~{import_fofn} > vcf_file_names.txt
+        cut -f 3 ~{import_fofn} > vcf_index_file_names.txt
+    >>>
+
+    runtime {
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-07-alpine-13fa284e9"
+        memory: "3 GB"
+        disks: "local-disk 200 HDD"
+        cpu: 1
+    }
+
+    output {
+        Array[String] external_sample_names = read_lines("sample_names.txt")
+        Array[String] vcf_file_names = read_lines("vcf_file_names.txt")
+        Array[String] vcf_index_file_names = read_lines("vcf_index_file_names.txt")
     }
 }
