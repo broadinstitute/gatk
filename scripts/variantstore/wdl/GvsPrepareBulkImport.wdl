@@ -15,7 +15,7 @@ workflow GvsPrepareBulkImport {
         String? sample_set_name
     }
 
-    call GenerateFOFNsFromDataTables {
+    call GenerateImportFofnFromDataTable {
         input:
             google_project_id = project_id,
             workspace_name = workspace_name,
@@ -29,13 +29,13 @@ workflow GvsPrepareBulkImport {
     }
 
     output {
-        File output_tsv = GenerateFOFNsFromDataTables.output_tsv
-        File errorRows = GenerateFOFNsFromDataTables.errors
-        Int num_samples = GenerateFOFNsFromDataTables.num_samples
+        File output_tsv = GenerateImportFofnFromDataTable.output_tsv
+        File errorRows = GenerateImportFofnFromDataTable.errors
+        Int num_samples = GenerateImportFofnFromDataTable.num_samples
     }
 }
 
-task GenerateFOFNsFromDataTables {
+task GenerateImportFofnFromDataTable {
     ## In order to get the <entity>_ids in the sample_set for an inclusion list, we use Terra Notebook Utils
     ## This also allows us to validate that the requested sample_set exists
     input {
