@@ -337,7 +337,7 @@ dependencies {
     implementation('com.github.fommil.netlib:netlib-native_system-linux-x86_64:1.1:natives')
     implementation('com.github.fommil.netlib:netlib-native_system-osx-x86_64:1.1:natives')
 
-    implementation('com.intel.gkl:gkl:0.8.8') {
+    implementation('com.intel.gkl:gkl:0.8.11') {
         exclude module: 'htsjdk'
     }
 
