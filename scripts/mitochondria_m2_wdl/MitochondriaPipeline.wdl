@@ -201,6 +201,7 @@ task SubsetBamToChrM {
 
     # runtime
     Int? preemptible_tries
+    Int mem = 3
   }
   Float ref_size = if defined(ref_fasta) then size(ref_fasta, "GB") + size(ref_fasta_index, "GB") + size(ref_dict, "GB") else 0
   Int disk_size = ceil(size(input_bam, "GB") + ref_size) + 20
@@ -232,7 +233,7 @@ task SubsetBamToChrM {
       -O ~{basename}.bam
   >>>
   runtime {
-    memory: "3 GB"
+    memory: mem + " GB"
     disks: "local-disk " + disk_size + " HDD"
     docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
     preemptible: select_first([preemptible_tries, 5])
@@ -247,12 +248,12 @@ task RevertSam {
   input {
     File input_bam
     String basename = basename(input_bam, ".bam")
-    Int machine_mem = 2000
 
     # runtime
     Int? preemptible_tries
+    Int machine_mem = 2000
+    Int disk_size = ceil(size(input_bam, "GB") * 2.5) + 20
   }
-  Int disk_size = ceil(size(input_bam, "GB") * 2.5) + 20
   Int java_mem = machine_mem - 1000
 
   meta {
@@ -300,9 +301,10 @@ task CoverageAtEveryBase {
     File shifted_ref_fasta_index
     File shifted_ref_dict
 
+    # runtime
     Int? preemptible_tries
+    Int disk_size = ceil(size(input_bam_regular_ref, "GB") + size(input_bam_shifted_ref, "GB") + size(ref_fasta, "GB") * 2) + 20
   }
-  Int disk_size = ceil(size(input_bam_regular_ref, "GB") + size(input_bam_shifted_ref, "GB") + size(ref_fasta, "GB") * 2) + 20
 
   meta {
     description: "Remove this hack once there's a GVCF solution."
