@@ -1,8 +1,11 @@
 package org.broadinstitute.hellbender.tools.gvs.filtering;
 
+import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
+import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
+import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -136,12 +139,9 @@ public class ExtractFeatures extends ExtractTool {
         sampleList = new SampleList(sampleTableName, sampleFileName, projectID, printDebugInformation, "extract-features");
 
         Set<VCFHeaderLine> extraHeaderLines = new HashSet<>();
-        extraHeaderLines.add(
-                FilterSensitivityTools.getExcessAllelesHeader(excessAllelesThreshold, GATKVCFConstants.EXCESS_ALLELES));
-
         extraHeaderLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.LOW_QUAL_FILTER_NAME));
 
-        VCFHeader header = CommonCode.generateVcfHeader(
+        VCFHeader header = generateVcfHeader(
                 new HashSet<>(), reference.getSequenceDictionary(), extraHeaderLines);
 
         vcfWriter = createVCFWriter(IOUtils.getPath(outputVcfPathString));
@@ -214,6 +214,81 @@ public class ExtractFeatures extends ExtractTool {
         if (vcfWriter != null) {
             vcfWriter.close();
         }
+    }
+
+    private static VCFHeader generateVcfHeader(Set<String> sampleNames,
+                                              final SAMSequenceDictionary sequenceDictionary,
+                                              final Set<VCFHeaderLine> extraHeaders) {
+        final Set<VCFHeaderLine> headerLines = new HashSet<>();
+
+        headerLines.addAll( getEvoquerVcfHeaderLines() );
+        headerLines.addAll( extraHeaders );
+        final VCFHeader header = new VCFHeader(headerLines, sampleNames);
+        header.setSequenceDictionary(sequenceDictionary);
+
+        return header;
+    }
+
+    private static Set<VCFHeaderLine> getEvoquerVcfHeaderLines() {
+        final Set<VCFHeaderLine> headerLines = new HashSet<>();
+        // Add standard VCF fields first:
+        VCFStandardHeaderLines.addStandardInfoLines( headerLines, true,
+                VCFConstants.STRAND_BIAS_KEY,
+                VCFConstants.DEPTH_KEY,
+                VCFConstants.RMS_MAPPING_QUALITY_KEY,
+                VCFConstants.ALLELE_COUNT_KEY,
+                VCFConstants.ALLELE_FREQUENCY_KEY,
+                VCFConstants.ALLELE_NUMBER_KEY,
+                VCFConstants.END_KEY
+        );
+
+        VCFStandardHeaderLines.addStandardFormatLines(headerLines, true,
+                VCFConstants.GENOTYPE_KEY,
+                VCFConstants.GENOTYPE_QUALITY_KEY,
+                VCFConstants.DEPTH_KEY,
+                VCFConstants.GENOTYPE_PL_KEY,
+                VCFConstants.GENOTYPE_ALLELE_DEPTHS
+        );
+
+        headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.REFERENCE_GENOTYPE_QUALITY));
+
+        headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY));
+        headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY));
+
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY));
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_RMS_MAPPING_QUALITY_KEY));
+
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_RAW_MAP_QUAL_RANK_SUM_KEY));
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_MAP_QUAL_RANK_SUM_KEY));
+
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY));
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.RAW_QUAL_APPROX_KEY));
+
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_RAW_READ_POS_RANK_SUM_KEY));
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_READ_POS_RANK_SUM_KEY));
+
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_SB_TABLE_KEY));
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.SB_TABLE_KEY));
+
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_VARIANT_DEPTH_KEY));
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.VARIANT_DEPTH_KEY));
+
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_STRAND_ODDS_RATIO_KEY));
+
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_FISHER_STRAND_KEY));
+
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_QUAL_BY_DEPTH_KEY));
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.QUAL_BY_DEPTH_KEY));
+
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.EXCESS_HET_KEY));
+
+        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.SB_TABLE_KEY));
+
+        headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.EXCESS_HET_KEY));
+        headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.EXCESS_ALLELES));
+        headerLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.NO_HQ_GENOTYPES));
+
+        return headerLines;
     }
 
 }
