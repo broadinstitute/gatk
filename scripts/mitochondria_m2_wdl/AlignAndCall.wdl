@@ -308,12 +308,13 @@ task CollectWgsMetrics {
     Int? read_length
     Int? coverage_cap
 
+    # runtime
     Int? preemptible_tries
+    Int disk_size = ceil(size(input_bam, "GB") + size(ref_fasta, "GB") + size(ref_fasta_index, "GB")) + 20
   }
 
   Int read_length_for_optimization = select_first([read_length, 151])
   Float ref_size = size(ref_fasta, "GB") + size(ref_fasta_index, "GB")
-  Int disk_size = ceil(size(input_bam, "GB") + ref_size) + 20
 
   meta {
     description: "Collect coverage metrics"
