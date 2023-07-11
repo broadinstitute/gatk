@@ -42,7 +42,7 @@ Input GVCF files for the GVS workflow must include the annotations described in 
 
 ### What does it return as output?
 
-The following files are stored in the workspace workflow execution bucket under Data>Files, or the Google bucket specified in the inputs.
+The following files are stored in the workspace workflow execution bucket under Data>Files, or the Google bucket specified in the `extract_output_gcs_dir` input.
 
 - Sharded joint VCF files, index files, the interval lists for each sharded VCF, and a list of the sample names included in the callset.
 - Size of output VCF files in MB
@@ -77,11 +77,11 @@ You will need to delete the example sample data from your workspace so that it i
 
 ### Edit TSV to upload data stored in the cloud
 
-If your data is already stored in the cloud, you’ll need to upload a TSV file to Terra containing the cloud paths to your files and update permissions on the data to allow Terra to access it. 
+If your data is already stored in the cloud, you’ll need to upload a TSV file to Terra containing the cloud paths to your files and update the cloud permissions on the data to allow your Terra proxy group to access it. 
 
 1. **Open the TSV file** with a spreadsheet editor of your choice.
 2. **Replace the cloud paths** to the example GVCF and index files in the second and third columns with the cloud paths to your GVCF and index files.
-3. **Update the `sample_id` field** for each sample to anything you’d like. These will be used to name the samples in the output joint VCF file.
+3. **Update the `sample_id` field** for each sample to anything you’d like. These will be used to name the samples in the output joint VCF files.
 
 ---
 
@@ -117,7 +117,7 @@ Now that your samples are loaded into data table in Terra, it’s time to setup 
     1. Enter a **name for the callset** as a string with the format “*CALLSET_NAME*” for the `call_set_identifier` variable. This string is used as to name several variables and files and should begin with a letter. Valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”.
     1. Enter the name of your **BigQuery dataset** as a string with the format “*DATASET_NAME*” for the `dataset_name` variable.
     1. Enter the name of the **GCP project** that holds the BigQuery dataset as a string with the format “*PROJECT_NAME*” for the `project_id` variable.
-    2. Enter the name of a **directory for writing outputs**. Enter a string in the format "*gs://your_bucket/here*" in `extract_output_gcs_dir`. If you want the data in your Terra workspace bucket you can find that on the Workspace Dashboard, right panel, under Cloud Information. Copy the "Bucket Name" and use it to the inputs to create a gs path as a string like this "*gs://fc-338fe040-3522-484c-ba48-14b48f9950d2*". If you do not enter a bucket here, the outputs will be in the execution directory under *Files*.
+    2. Enter the path of a **Google Cloud Storage directory for writing outputs**. Enter a string in the format "*gs://your_bucket/here*" in `extract_output_gcs_dir`. If you want the data in your Terra workspace bucket you can find that on the Workspace Dashboard, right panel, under Cloud Information. Copy the "Bucket Name" and use it to the inputs to create a gs path as a string like this "*gs://fc-338fe040-3522-484c-ba48-14b48f9950d2*". If you do not enter a bucket here, the outputs will be in the execution directory under *Files*.
 1. **Save** the workflow configuration.
 1. **Run** the workflow.
 

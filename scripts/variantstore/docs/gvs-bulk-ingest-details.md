@@ -11,14 +11,14 @@ The table below describes the GVS ingest variables:
 
 | Input variable name         | Description                                                                                                                                                                | Type |
 |-----------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------| --- |
-| samples_table_name          | (Optional) The name of the data table; This table holds the GVCFs to be ingested; `sample` is the default.                                                                 | String |
+| samples_table_name          | (Optional) The name of the data table; This table holds the sample IDs, the GVCFs, and their respective indexes, to be ingested; `sample` is the default.                                                                 | String |
 | sample_id_column_name       | (Optional) User defined sample id column name; `sample_id` is the recommended name;                                                                                        | String |
-| vcf_files_column_name       | (Optional) Column that contains the GCS paths to the sample GVCF files. Determined by file inspection if not supplied.                                                     | String |
-| vcf_index_files_column_name | (Optional) Column that contains the GCS paths to the sample GVCF index files. Determined by file inspection if not supplied.                                               | String |
-| sample_set_name             | (Optional) The name of the set of samples. Only required when doing subsets of data in the `sample` table.                                                                 | String |
+| vcf_files_column_name       | (Optional) Column that contains the GCS paths to the sample GVCF files. Determined by analysis of the available column names if not supplied.                                                     | String |
+| vcf_index_files_column_name | (Optional) Column that contains the GCS paths to the sample GVCF index files. Determined by analysis of the available column names if not supplied.                                               | String |
+| sample_set_name             | (Optional) The name of the set of samples. Only required when doing subsets of data in the `sample` table; otherwise all the samples will be ingested.                                                                 | String |
 | dataset_name                | Name of the BigQuery dataset used to hold input samples, filtering model data, and other tables created during the workflow.                                               | String |
 | project_id                  | Name of the Google project that contains the BigQuery dataset.                                                                                                             | String |
-| call_set_identifier         | Used to name the filter model, BigQuery extract tables, and final joint VCF shards. Should begin with a letter, valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”. | String |
+| call_set_identifier         | Used to track costs and name the filter model, BigQuery extract tables, and final joint VCF shards. Should begin with a letter, valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”. | String |
 
 
 If the user does not supply all 4 optional inputs, GVS uses a mix of default values and heuristics to determine these parameters.
