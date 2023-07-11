@@ -108,6 +108,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
     public static final String RGQ_THRESHOLD_SHORT_NAME = "rgq-threshold";
     public static final String TREE_SCORE_THRESHOLD_LONG_NAME = "tree-score-threshold-to-no-call";
     public static final String ANNOTATIONS_TO_KEEP_LONG_NAME = "annotations-to-keep";
+    public static final String ANNOTATIONS_TO_REMOVE_LONG_NAME = "format-annotations-to-remove";
     public static final String KEEP_ALL_ALTS_ARG_NAME = "keep-all-alts";
     public static final String QUAL_APPROX_LONG_NAME = "do-qual-score-approximation";
     public static final String QUAL_APPROX_SHORT_NAME = "do-qual-approx";
@@ -153,6 +154,10 @@ public final class ReblockGVCF extends MultiVariantWalker {
     @Advanced
     @Argument(fullName=ANNOTATIONS_TO_KEEP_LONG_NAME, doc="Annotations that are not recognized by GATK to keep, that should be kept in final GVCF at variant sites.", optional = true)
     private List<String> annotationsToKeep = new ArrayList<>();
+
+    @Advanced
+    @Argument(fullName=ANNOTATIONS_TO_REMOVE_LONG_NAME, doc="FORMAT level annotations to remove from all genotypes in final GVCF.", optional = true)
+    private List<String> annotationsToRemove = new ArrayList<>();
 
     @Advanced
     @Argument(fullName=QUAL_APPROX_LONG_NAME, shortName=QUAL_APPROX_SHORT_NAME, doc="Add necessary INFO field annotation to perform QUAL approximation downstream; required for GnarlyGenotyper", optional = true)
@@ -226,6 +231,9 @@ public final class ReblockGVCF extends MultiVariantWalker {
             throw new UserException("-" + TREE_SCORE_THRESHOLD_LONG_NAME + " is set to value greater than 0: " + treeScoreThreshold
                 + ", but the " + GATKVCFConstants.TREE_SCORE + " annotation is not present in the input GVCF.");
         }
+
+        List<String> missingAnnotationsToRemove = annotationsToRemove.stream().filter(a -> inputHeader.getFormatHeaderLine(a)==null).toList();
+        missingAnnotationsToRemove.forEach(a -> logger.warn("FORMAT level annotation " + a + ", which was requested to be removed by --" + ANNOTATIONS_TO_REMOVE_LONG_NAME + ", not found in input GVCF header."));
 
         final Set<VCFHeaderLine> inputHeaders = inputHeader.getMetaDataInSortedOrder();
 
@@ -317,7 +325,27 @@ public final class ReblockGVCF extends MultiVariantWalker {
     // get VariantContexts from input gVCFs and regenotype
     @Override
     public void apply(VariantContext variant, ReadsContext reads, ReferenceContext ref, FeatureContext features) {
-        regenotypeVC(variant);
+        if (!variant.hasAllele(Allele.NON_REF_ALLELE)) {
+            throw new GATKException("Variant Context at " + variant.getContig() + ":" + variant.getStart() + " does not contain a <NON-REF> allele. This tool is only intended for use with GVCFs.");
+        }
+        VariantContext newVC = annotationsToRemove.size() > 0 ? vcFormatAnnotationsRemoved(variant) : variant;
+        regenotypeVC(newVC);
+    }
+
+    /**
+     * Remove format level annotations from genotype in variant context.
+     *
+     * @param vc variant context to remove format annotations from
+     * @return variant context with format annotations removed from genotype
+     */
+    private VariantContext vcFormatAnnotationsRemoved(final VariantContext vc) {
+        final Genotype genotype = vc.getGenotype(0);
+        Map<String, Object> extendedAttributes = genotype.getExtendedAttributes();
+        for (String annotation : annotationsToRemove) {
+            extendedAttributes.remove(annotation);
+        }
+        final Genotype newGenotype = new GenotypeBuilder(genotype).noAttributes().attributes(extendedAttributes).make();
+        return new VariantContextBuilder(vc).genotypes(newGenotype).make();
     }
 
     /**
