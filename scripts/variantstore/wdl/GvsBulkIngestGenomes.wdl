@@ -81,11 +81,16 @@ workflow GvsBulkIngestGenomes {
             sample_set_name = sample_set_name,
     }
 
+    call SplitImportFofn {
+        input:
+            import_fofn = PrepareBulkImport.output_fofn,
+    }
+
     call AssignIds.GvsAssignIds as AssignIds {
         input:
             dataset_name = dataset_name,
             project_id = project_id,
-            bulk_import_tsv = PrepareBulkImport.output_tsv,
+            external_sample_names = read_lines(SplitImportFofn.sample_name_fofn),
             samples_are_controls = false,
     }
 
@@ -94,8 +99,9 @@ workflow GvsBulkIngestGenomes {
             go = AssignIds.done,
             dataset_name = dataset_name,
             project_id = project_id,
-            bulk_import_tsv = PrepareBulkImport.output_tsv,
-            num_samples = PrepareBulkImport.num_samples,
+            external_sample_names = read_lines(SplitImportFofn.sample_name_fofn),
+            input_vcfs = read_lines(SplitImportFofn.vcf_file_name_fofn),
+            input_vcf_indexes = read_lines(SplitImportFofn.vcf_index_file_name_fofn),
             interval_list = interval_list,
 
             # The larger the `load_data_batch_size` the greater the probability of preemptions and non-retryable
@@ -219,5 +225,33 @@ task GetColumnNames {
         String vcf_index_files_column_name = if (defined(vcf_index_files_column_name)) then select_first([vcf_index_files_column_name]) else read_string(vcf_index_files_column_name_output)
         String sample_name_column = if (defined(user_defined_sample_id_column_name)) then select_first([user_defined_sample_id_column_name]) else entity_id
         String data_table = data_table_name
+    }
+}
+
+task SplitImportFofn {
+    input {
+        File import_fofn
+    }
+
+    command <<<
+        set -o errexit -o nounset -o xtrace -o pipefail
+        PS4='\D{+%F %T} \w $ '
+
+        cut -f 1 ~{import_fofn} > sample_names.txt
+        cut -f 2 ~{import_fofn} > vcf_file_names.txt
+        cut -f 3 ~{import_fofn} > vcf_index_file_names.txt
+    >>>
+
+    runtime {
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-07-alpine-13fa284e9"
+        memory: "3 GB"
+        disks: "local-disk 200 HDD"
+        cpu: 1
+    }
+
+    output {
+        File sample_name_fofn = "sample_names.txt"
+        File vcf_file_name_fofn = "vcf_file_names.txt"
+        File vcf_index_file_name_fofn = "vcf_index_file_names.txt"
     }
 }

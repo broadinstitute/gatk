@@ -9,8 +9,9 @@ workflow GvsImportGenomes {
     String dataset_name
     String project_id
 
-    File bulk_import_tsv
-    Int num_samples
+    Array[String] external_sample_names
+    Array[File] input_vcfs
+    Array[File] input_vcf_indexes
 
     Boolean skip_loading_vqsr_fields = false
 
@@ -31,6 +32,7 @@ workflow GvsImportGenomes {
     File? load_data_gatk_override
   }
 
+  Int num_samples = length(external_sample_names)
   Int max_auto_batch_size = 20000
   # Broad users enjoy higher quotas and can scatter more widely than beta users before BigQuery smacks them
   # We don't expect this to be changed at runtime, so we can keep this as a constant defined in here
@@ -68,23 +70,27 @@ workflow GvsImportGenomes {
     input:
       dataset_name = dataset_name,
       project_id = project_id,
-      bulk_import_tsv = bulk_import_tsv,
+      external_sample_names = external_sample_names,
       table_name = "sample_info",
   }
 
   call CurateInputLists {
     input:
-      uncurated_bulk_import_tsv = bulk_import_tsv,
+      input_vcf_index_list = write_lines(input_vcf_indexes),
+      input_vcf_list = write_lines(input_vcfs),
+      input_sample_name_list = write_lines(external_sample_names),
       input_samples_to_be_loaded_map = GetUningestedSampleIds.sample_map,
   }
 
   call CreateFOFNs {
     input:
       batch_size = effective_load_data_batch_size,
-      curated_bulk_import_tsv = CurateInputLists.curated_bulk_import_tsv,
+      input_vcf_index_list = CurateInputLists.input_vcf_indexes,
+      input_vcf_list = CurateInputLists.input_vcfs,
+      sample_name_list = CurateInputLists.sample_name_list,
   }
 
-  scatter (i in range(length(CreateFOFNs.bulk_import_fofns))) {
+  scatter (i in range(length(CreateFOFNs.vcf_sample_name_fofns))) {
     call LoadData {
       input:
         index = i,
@@ -93,11 +99,14 @@ workflow GvsImportGenomes {
         skip_loading_vqsr_fields = skip_loading_vqsr_fields,
         drop_state = drop_state,
         drop_state_includes_greater_than = false,
-        bulk_import_fofn = CreateFOFNs.bulk_import_fofns[i],
+        input_vcf_indexes = read_lines(CreateFOFNs.vcf_batch_vcf_index_fofns[i]),
+        input_vcfs = read_lines(CreateFOFNs.vcf_batch_vcf_fofns[i]),
         interval_list = interval_list,
         gatk_override = load_data_gatk_override,
         load_data_preemptible = effective_load_data_preemptible,
         load_data_maxretries = effective_load_data_maxretries,
+        sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
+        sample_map = GetUningestedSampleIds.sample_map,
         process_vcf_headers = process_vcf_headers,
     }
   }
@@ -126,16 +135,22 @@ workflow GvsImportGenomes {
 task CreateFOFNs {
   input {
     Int batch_size
-    File curated_bulk_import_tsv
+    File input_vcf_index_list
+    File input_vcf_list
+    File sample_name_list
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
   command <<<
-    set -e
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
-    split -a 5 -l ~{batch_size} ~{curated_bulk_import_tsv} bulk_import.
+    split -a 5 -l ~{batch_size} ~{input_vcf_list} batched_vcfs.
+    split -a 5 -l ~{batch_size} ~{input_vcf_index_list} batched_vcf_indexes.
+    split -a 5 -l ~{batch_size} ~{sample_name_list} batched_sample_names.
   >>>
   runtime {
     docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
@@ -147,7 +162,9 @@ task CreateFOFNs {
   }
 
   output {
-    Array[File] bulk_import_fofns = glob("bulk_import.*")
+    Array[File] vcf_batch_vcf_fofns = glob("batched_vcfs.*")
+    Array[File] vcf_batch_vcf_index_fofns = glob("batched_vcf_indexes.*")
+    Array[File] vcf_sample_name_fofns = glob("batched_sample_names.*")
   }
 }
 
@@ -157,11 +174,11 @@ task LoadData {
     String dataset_name
     String project_id
 
-    File bulk_import_fofn
+    Array[File] input_vcf_indexes
+    Array[File] input_vcfs
     File interval_list
-    # TODO Is this still needed? It's only used in one place and that's suspicious looking. There is another file
-    # TODO "sample_map.csv" which is generated as part of the re-curation that takes place in this task.
-    # File sample_map
+    File sample_map
+    Array[String] sample_names
 
     String? drop_state
     Boolean? drop_state_includes_greater_than = false
@@ -182,7 +199,18 @@ task LoadData {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
+  parameter_meta {
+    input_vcfs: {
+      localization_optional: true
+    }
+
+    input_vcf_indexes: {
+      localization_optional: true
+    }
+  }
+
   Int samples_per_table = 4000
+  Int num_samples = length(sample_names)
   String temp_table = "~{dataset_name}.sample_names_to_load_~{index}"
   # add labels for DSP Cloud Cost Control Labeling and Reporting
   String bq_labels = "--label service:gvs --label team:variants --label managedby:import_genomes"
@@ -216,8 +244,7 @@ task LoadData {
     echo "Creating the external sample name list table ~{temp_table}"
     bq --apilog=false --project_id=~{project_id} mk ~{temp_table} "sample_name:STRING"
 
-    NAMES_FILE="sample_names.txt"
-    cut -f 1 ~{bulk_import_fofn} > $NAMES_FILE
+    NAMES_FILE=~{write_lines(sample_names)}
 
     bq --apilog=false load --project_id=~{project_id} ~{temp_table} $NAMES_FILE "sample_name:STRING"
 
@@ -226,15 +253,12 @@ task LoadData {
       SELECT IFNULL(MIN(sample_id),0) as min, IFNULL(MAX(sample_id),0) as max FROM `~{dataset_name}.~{table_name}`
         AS samples JOIN `~{temp_table}` AS temp ON samples.sample_name = temp.sample_name' > results.csv
 
-    SAMPLE_MAP=sample_map.csv
-
     # get sample map of samples that haven't been loaded yet
-    num_samples=$(cat ~{bulk_import_fofn} | wc -l)
-    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n $num_samples '
+    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} '
       SELECT sample_id, samples.sample_name FROM `~{dataset_name}.~{table_name}` AS samples JOIN `~{temp_table}` AS temp ON
             samples.sample_name = temp.sample_name WHERE
             samples.sample_id NOT IN (SELECT sample_id FROM `~{dataset_name}.sample_load_status` WHERE status="FINISHED") AND
-            samples.withdrawn is NULL' > $SAMPLE_MAP
+            samples.withdrawn is NULL' > sample_map.csv
 
     ## delete the table that was only needed for this ingest test
     bq --apilog=false --project_id=~{project_id} rm -f=true ~{temp_table}
@@ -246,15 +270,16 @@ task LoadData {
     # `LoadTask` job might be retried due to preemption so we only want to load the samples which still need loading.
     RECURATED_OUTPUT="bulk_import_recurated.tsv"
 
-    python3 /gatk/scripts/variantstore/wdl/extract/curate_bulk_import_tsv.py \
-      --samples-to-load $SAMPLE_MAP \
-      --bulk-import-input-tsv ~{bulk_import_fofn} \
-      --bulk-import-output-tsv $RECURATED_OUTPUT
+    python3 /gatk/scripts/varianstore/wdl/extract/curate_input_array_files.py \
+      --sample_map_to_be_loaded_file_name sample_map.csv \
+      --sample_name_list_file_name $NAMES_FILE \
+      --vcf_list_file_name ~{write_lines(input_vcfs)} \
+      --vcf_index_list_file_name  ~{write_lines(input_vcf_indexes)}
 
     # translate files created by the python script into BASH arrays---but only of the samples that aren't there already
-    SAMPLE_NAMES_ARRAY=($(cut -f 1 $RECURATED_OUTPUT | tr "\n" " "))
-    VCFS_ARRAY=($(cut -f 2 $RECURATED_OUTPUT | tr "\n" " "))
-    VCF_INDEXES_ARRAY=($(cut -f 3 $RECURATED_OUTPUT | tr "\n" " "))
+    VCFS_ARRAY=($(cat output_vcf_list_file |tr "\n" " "))
+    VCF_INDEXES_ARRAY=($(cat output_vcf_index_list_file |tr "\n" " "))
+    SAMPLE_NAMES_ARRAY=($(cat output_sample_name_list_file |tr "\n" " "))
 
     # loop over the BASH arrays (See https://stackoverflow.com/questions/6723426/looping-over-arrays-printing-both-index-and-value)
     for i in "${!VCFS_ARRAY[@]}"; do
@@ -279,7 +304,7 @@ task LoadData {
         --enable-reference-ranges ~{load_ref_ranges} \
         --enable-vet ~{load_vet} \
         -SN ${sample_name} \
-        -SNM $SAMPLE_MAP \
+        -SNM ~{sample_map} \
         --ref-version 38 \
         --skip-loading-vqsr-fields ~{skip_loading_vqsr_fields} \
         --enable-vcf-header-processing ~{process_vcf_headers}
@@ -381,7 +406,7 @@ task GetUningestedSampleIds {
     String dataset_name
     String project_id
 
-    File bulk_import_tsv
+    Array[String] external_sample_names
     String table_name
   }
   meta {
@@ -390,6 +415,7 @@ task GetUningestedSampleIds {
   }
 
   Int samples_per_table = 4000
+  Int num_samples = length(external_sample_names)
   # add labels for DSP Cloud Cost Control Labeling and Reporting
   String bq_labels = "--label service:gvs --label team:variants --label managedby:import_genomes"
   String temp_table="~{dataset_name}.sample_names_to_load"
@@ -415,8 +441,7 @@ task GetUningestedSampleIds {
     echo "Creating the external sample name list table ~{temp_table}"
     bq --apilog=false --project_id=~{project_id} mk ~{temp_table} "sample_name:STRING"
 
-    NAMES_FILE="sample_names.txt"
-    cut -f 1 ~{bulk_import_tsv} > $NAMES_FILE
+    NAMES_FILE=~{write_lines(external_sample_names)}
 
     bq --apilog=false load --project_id=~{project_id} ~{temp_table} $NAMES_FILE "sample_name:STRING"
 
@@ -443,7 +468,7 @@ task GetUningestedSampleIds {
 
     num_samples=$(cat $NAMES_FILE | wc -l)
     # get sample map of samples that haven't been loaded yet
-    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n $num_samples '
+    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} '
 
       SELECT sample_id, samples.sample_name FROM `~{dataset_name}.~{table_name}` AS samples JOIN `~{temp_table}` AS temp ON
         samples.sample_name = temp.sample_name WHERE
@@ -474,8 +499,10 @@ task GetUningestedSampleIds {
 
 task CurateInputLists {
   input {
-    File uncurated_bulk_import_tsv
+    File input_vcf_index_list
+    File input_vcf_list
     File input_samples_to_be_loaded_map
+    File input_sample_name_list
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
@@ -486,9 +513,11 @@ task CurateInputLists {
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
 
-    python3 /app/curate_bulk_import_tsv.py --samples-to-load ~{input_samples_to_be_loaded_map} \
-                                           --bulk-import-input-tsv ~{uncurated_bulk_import_tsv} \
-                                           --bulk-import-output-tsv "curated_bulk_import.tsv"
+    python3 /app/curate_input_array_files.py \
+      --sample_map_to_be_loaded_file_name ~{input_samples_to_be_loaded_map} \
+      --sample_name_list_file_name ~{input_sample_name_list} \
+      --vcf_list_file_name ~{input_vcf_list} \
+      --vcf_index_list_file_name  ~{input_vcf_index_list}
   >>>
   runtime {
     docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-07-alpine-13fa284e9"
@@ -500,6 +529,8 @@ task CurateInputLists {
   }
 
   output {
-    File curated_bulk_import_tsv = "curated_bulk_import.tsv"
+    File input_vcf_indexes = "output_vcf_index_list_file"
+    File input_vcfs = "output_vcf_list_file"
+    File sample_name_list = "output_sample_name_list_file"
   }
 }

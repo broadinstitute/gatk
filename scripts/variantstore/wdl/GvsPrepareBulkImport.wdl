@@ -28,15 +28,8 @@ workflow GvsPrepareBulkImport {
             sample_set_name = sample_set_name,
     }
 
-    call SplitImportFofn {
-        input:
-            import_fofn = GenerateImportFofnFromDataTable.output_fofn,
-    }
-
     output {
-        Array[String] external_sample_names = SplitImportFofn.external_sample_names
-        Array[String] vcf_file_names = SplitImportFofn.vcf_file_names
-        Array[String] vcf_index_file_names = SplitImportFofn.vcf_index_file_names
+        File output_fofn = GenerateImportFofnFromDataTable.output_fofn
         File errorRows = GenerateImportFofnFromDataTable.errors
     }
 }
@@ -87,33 +80,5 @@ task GenerateImportFofnFromDataTable {
     output {
         File output_fofn = output_fofn_name
         File errors = error_file_name
-    }
-}
-
-task SplitImportFofn {
-    input {
-        File import_fofn
-    }
-
-    command <<<
-        set -o errexit -o nounset -o xtrace -o pipefail
-        PS4='\D{+%F %T} \w $ '
-
-        cut -f 1 ~{import_fofn} > sample_names.txt
-        cut -f 2 ~{import_fofn} > vcf_file_names.txt
-        cut -f 3 ~{import_fofn} > vcf_index_file_names.txt
-    >>>
-
-    runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-07-alpine-13fa284e9"
-        memory: "3 GB"
-        disks: "local-disk 200 HDD"
-        cpu: 1
-    }
-
-    output {
-        Array[String] external_sample_names = read_lines("sample_names.txt")
-        Array[String] vcf_file_names = read_lines("vcf_file_names.txt")
-        Array[String] vcf_index_file_names = read_lines("vcf_index_file_names.txt")
     }
 }

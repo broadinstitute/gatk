@@ -9,7 +9,7 @@ workflow GvsAssignIds {
     String dataset_name
     String project_id
 
-    File bulk_import_tsv
+    Array[String] external_sample_names
     Boolean samples_are_controls = false
 
     File? assign_ids_gatk_override
@@ -87,7 +87,7 @@ workflow GvsAssignIds {
 
   call AssignIds {
     input:
-      bulk_import_tsv = bulk_import_tsv,
+      sample_names = external_sample_names,
       project_id = project_id,
       dataset_name = dataset_name,
       sample_info_table = sample_info_table,
@@ -114,7 +114,7 @@ task AssignIds {
     String project_id
 
     String sample_info_table
-    File bulk_import_tsv
+    Array[String] sample_names
     Boolean samples_are_controls
     String table_creation_done
   }
@@ -132,7 +132,7 @@ task AssignIds {
     set -o errexit -o nounset -o pipefail -o xtrace
 
     # make sure that sample names were actually passed, fail if empty
-    num_samples=$(cat ~{bulk_import_tsv} | wc -l)
+    num_samples=~{length(sample_names)}
     if [ $num_samples -eq 0 ]; then
       echo "No sample names passed. Exiting"
       exit 1
@@ -153,8 +153,7 @@ task AssignIds {
     # create the lock table
     bq --apilog=false --project_id=~{project_id} mk ~{dataset_name}.sample_id_assignment_lock "sample_name:STRING"
 
-    NAMES_FILE="sample_names.txt"
-    cut -f 1 ~{bulk_import_tsv} > $NAMES_FILE
+    NAMES_FILE=~{write_lines(sample_names)}
 
     # first load name into the lock table - will check for dupes when adding to sample_info table
     bq --apilog=false load --project_id=~{project_id} ~{dataset_name}.sample_id_assignment_lock $NAMES_FILE "sample_name:STRING"

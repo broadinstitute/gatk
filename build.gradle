@@ -539,7 +539,7 @@ task collectBundleIntoDir(type: Copy) {
     from("scripts/cnv_wdl/", { into("scripts/cnv_wdl") })
     from("scripts/mutect2_wdl/", { into("scripts/mutect2_wdl") })
     from("scripts/variantstore/") {
-        include 'wdl/extract/specific_file.py'
+        include 'wdl/extract/curate_input_array_files.py'
         into("scripts/variantstore")
     }
     from("scripts/dataproc-cluster-ui", { into("scripts/")})
