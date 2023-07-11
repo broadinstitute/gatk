@@ -201,9 +201,10 @@ task SubsetBamToChrM {
 
     # runtime
     Int? preemptible_tries
+    Float ref_size = if defined(ref_fasta) then size(ref_fasta, "GB") + size(ref_fasta_index, "GB") + size(ref_dict, "GB") else 0
+    Int disk_size = ceil(size(input_bam, "GB") + ref_size) + 20
+    Int mem = 3
   }
-  Float ref_size = if defined(ref_fasta) then size(ref_fasta, "GB") + size(ref_fasta_index, "GB") + size(ref_dict, "GB") else 0
-  Int disk_size = ceil(size(input_bam, "GB") + ref_size) + 20
 
   meta {
     description: "Subsets a whole genome bam to just Mitochondria reads"
@@ -232,7 +233,7 @@ task SubsetBamToChrM {
       -O ~{basename}.bam
   >>>
   runtime {
-    memory: "3 GB"
+    memory: mem + " GB"
     disks: "local-disk " + disk_size + " HDD"
     docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
     preemptible: select_first([preemptible_tries, 5])
@@ -252,6 +253,7 @@ task RevertSam {
     Int? preemptible_tries
     Int machine_mem = 2000
     Int disk_size = ceil(size(input_bam, "GB") * 2.5) + 20
+    Int mem = machine_mem
   }
   Int java_mem = machine_mem - 1000
 
@@ -275,7 +277,7 @@ task RevertSam {
   }
   runtime {
     disks: "local-disk " + disk_size + " HDD"
-    memory: machine_mem + " MB"
+    memory: mem + " MB"
     docker: "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.2-1552931386"
     preemptible: select_first([preemptible_tries, 5])
   }
