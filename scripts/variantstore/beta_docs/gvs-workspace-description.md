@@ -25,7 +25,7 @@ For workflow documentation, see the [Genomic Variant Store workflow overview](ht
 
 To see details about input requirements, see [Run Your Own Samples](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/beta_docs/run-your-own-samples.md). Example GVCF and index files in the Data tab of this workspace are hosted in a public Google bucket and links are provided in the sample data table.
 
-While the GVS has been tested with 250,000 single sample genome GVCF files as input, only datasets of up to 25,000 genomes are being used for beta testing.
+While the GVS has been tested with 250,000 single sample whole genome GVCF files as input, only datasets of up to 25,000 whole genomes are being used for beta testing.
 
 ### What does it return as output?
 

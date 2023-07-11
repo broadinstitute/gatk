@@ -15,7 +15,7 @@ To learn more about the GVS workflow, see the [Genomic Variant Store workflow ov
 - Reblocked single sample GVCF files (`input_vcfs`) with specific annotations described below
 - GVCF index files (`input_vcf_indexes`)
 
-While the GVS has been tested with 250,000 single sample genome GVCF files as input, only datasets of up to 25,000 genomes are being used for beta testing.
+While the GVS has been tested with 250,000 single sample whole genome GVCF files as input, only datasets of up to 25,000 whole genomes are being used for beta testing.
 
 #### Reblocked GVCF files
 
