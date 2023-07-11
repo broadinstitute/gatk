@@ -539,9 +539,9 @@ task collectBundleIntoDir(type: Copy) {
     from("scripts/cnv_wdl/", { into("scripts/cnv_wdl") })
     from("scripts/mutect2_wdl/", { into("scripts/mutect2_wdl") })
     from("scripts/variantstore/") {
-        include 'wdl/extract/*.py'
-        exclude '**/test*.py'
-    } into("scripts/variantstore")
+        include 'wdl/extract/specific_file.py'
+        into("scripts/variantstore")
+    }
     from("scripts/dataproc-cluster-ui", { into("scripts/")})
     into "$buildDir/bundle-files-collected"
 }
