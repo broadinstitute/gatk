@@ -114,7 +114,7 @@ task PrepareRangesCallsetTask {
   }
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-07-alpine-13fa284e9"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-11-alpine-552291017"
     memory: "3 GB"
     disks: "local-disk 100 HDD"
     bootDiskSizeGb: 15

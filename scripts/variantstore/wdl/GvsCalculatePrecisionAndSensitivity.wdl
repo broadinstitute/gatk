@@ -261,7 +261,7 @@ task Add_AS_MAX_VQS_SCORE_ToVcf {
     File input_vcf
     String output_basename
 
-    String docker = "us.gcr.io/broad-dsde-methods/variantstore:2023-07-07-alpine-13fa284e9"
+    String docker = "us.gcr.io/broad-dsde-methods/variantstore:2023-07-11-alpine-552291017"
     Int cpu = 1
     Int memory_mb = 3500
     Int disk_size_gb = ceil(2*size(input_vcf, "GiB")) + 50
