@@ -201,10 +201,10 @@ task SubsetBamToChrM {
 
     # runtime
     Int? preemptible_tries
-    Float ref_size = if defined(ref_fasta) then size(ref_fasta, "GB") + size(ref_fasta_index, "GB") + size(ref_dict, "GB") else 0
-    Int disk_size = ceil(size(input_bam, "GB") + ref_size) + 20
     Int mem = 3
   }
+  Float ref_size = if defined(ref_fasta) then size(ref_fasta, "GB") + size(ref_fasta_index, "GB") + size(ref_dict, "GB") else 0
+  Int disk_size = ceil(size(input_bam, "GB") + ref_size) + 20
 
   meta {
     description: "Subsets a whole genome bam to just Mitochondria reads"
