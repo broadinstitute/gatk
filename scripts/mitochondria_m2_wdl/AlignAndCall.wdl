@@ -311,6 +311,7 @@ task CollectWgsMetrics {
     # runtime
     Int? preemptible_tries
     Int disk_size = ceil(size(input_bam, "GB") + size(ref_fasta, "GB") + size(ref_fasta_index, "GB")) + 20
+    Int mem = 3
   }
 
   Int read_length_for_optimization = select_first([read_length, 151])
@@ -346,7 +347,7 @@ task CollectWgsMetrics {
   >>>
   runtime {
     preemptible: select_first([preemptible_tries, 5])
-    memory: "3 GB"
+    memory: mem + " GB"
     disks: "local-disk " + disk_size + " HDD"
     docker: "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.2-1552931386"
   }
