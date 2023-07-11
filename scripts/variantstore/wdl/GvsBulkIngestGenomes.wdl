@@ -81,7 +81,7 @@ workflow GvsBulkIngestGenomes {
             sample_set_name = sample_set_name,
     }
 
-    call SplitImportFofn {
+    call SplitBulkImportFofn {
         input:
             import_fofn = PrepareBulkImport.output_fofn,
     }
@@ -90,7 +90,7 @@ workflow GvsBulkIngestGenomes {
         input:
             dataset_name = dataset_name,
             project_id = project_id,
-            external_sample_names = read_lines(SplitImportFofn.sample_name_fofn),
+            external_sample_names = read_lines(SplitBulkImportFofn.sample_name_fofn),
             samples_are_controls = false,
     }
 
@@ -99,9 +99,9 @@ workflow GvsBulkIngestGenomes {
             go = AssignIds.done,
             dataset_name = dataset_name,
             project_id = project_id,
-            external_sample_names = read_lines(SplitImportFofn.sample_name_fofn),
-            input_vcfs = read_lines(SplitImportFofn.vcf_file_name_fofn),
-            input_vcf_indexes = read_lines(SplitImportFofn.vcf_index_file_name_fofn),
+            external_sample_names = read_lines(SplitBulkImportFofn.sample_name_fofn),
+            input_vcfs = read_lines(SplitBulkImportFofn.vcf_file_name_fofn),
+            input_vcf_indexes = read_lines(SplitBulkImportFofn.vcf_index_file_name_fofn),
             interval_list = interval_list,
 
             # The larger the `load_data_batch_size` the greater the probability of preemptions and non-retryable
@@ -228,7 +228,7 @@ task GetColumnNames {
     }
 }
 
-task SplitImportFofn {
+task SplitBulkImportFofn {
     input {
         File import_fofn
     }
