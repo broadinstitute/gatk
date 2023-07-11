@@ -264,10 +264,10 @@ task LoadData {
     ## now we want to create a sub list of these samples (without the ones that have already been loaded)
 
     python3 /gatk/scripts/varianstore/wdl/extract/curate_input_array_files.py \
-      --sample_map_to_be_loaded_file_name sample_map.csv \
-      --sample_name_list_file_name $NAMES_FILE \
-      --vcf_list_file_name ~{write_lines(input_vcfs)} \
-      --vcf_index_list_file_name  ~{write_lines(input_vcf_indexes)}
+      --sample-map-to-be-loaded-file-name sample_map.csv \
+      --sample-name-list-file-name $NAMES_FILE \
+      --vcf-list-file-name ~{write_lines(input_vcfs)} \
+      --vcf-index-list-file-name  ~{write_lines(input_vcf_indexes)}
 
     # translate files created by the python script into BASH arrays---but only of the samples that aren't there already
     VCFS_ARRAY=($(cat output_vcf_list_file |tr "\n" " "))
