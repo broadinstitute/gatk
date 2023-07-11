@@ -253,7 +253,6 @@ task RevertSam {
     Int? preemptible_tries
     Int machine_mem = 2000
     Int disk_size = ceil(size(input_bam, "GB") * 2.5) + 20
-    Int mem = machine_mem
   }
   Int java_mem = machine_mem - 1000
 
@@ -277,7 +276,7 @@ task RevertSam {
   }
   runtime {
     disks: "local-disk " + disk_size + " HDD"
-    memory: mem + " MB"
+    memory: machine_mem + " MB"
     docker: "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.2-1552931386"
     preemptible: select_first([preemptible_tries, 5])
   }

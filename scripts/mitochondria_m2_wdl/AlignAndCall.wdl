@@ -430,15 +430,16 @@ task M2 {
    
     # runtime
     String? gatk_docker_override
-    Int mem
+    Int? mem
     Int? preemptible_tries
     Int disk_size = ceil(size(input_bam, "GB") + size(ref_fasta, "GB") + size(ref_fai, "GB")) + 20
-    Int machine_mem = if defined(mem) then mem * 1000 else 3500 # Mem is in units of GB but our command and memory runtime values are in MB
   }
 
   String output_vcf = "raw" + if compress then ".vcf.gz" else ".vcf"
   String output_vcf_index = output_vcf + if compress then ".tbi" else ".idx"
 
+  # Mem is in units of GB but our command and memory runtime values are in MB
+  Int machine_mem = if defined(mem) then mem * 1000 else 3500
   Int command_mem = machine_mem - 500
 
   meta {
