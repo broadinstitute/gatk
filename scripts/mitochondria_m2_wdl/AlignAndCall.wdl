@@ -315,7 +315,6 @@ task CollectWgsMetrics {
   }
 
   Int read_length_for_optimization = select_first([read_length, 151])
-  Float ref_size = size(ref_fasta, "GB") + size(ref_fasta_index, "GB")
 
   meta {
     description: "Collect coverage metrics"
@@ -439,7 +438,6 @@ task M2 {
 
   String output_vcf = "raw" + if compress then ".vcf.gz" else ".vcf"
   String output_vcf_index = output_vcf + if compress then ".tbi" else ".idx"
-  Float ref_size = size(ref_fasta, "GB") + size(ref_fai, "GB")
 
   Int command_mem = machine_mem - 500
 
