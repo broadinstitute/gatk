@@ -300,9 +300,10 @@ task CoverageAtEveryBase {
     File shifted_ref_fasta_index
     File shifted_ref_dict
 
+    # runtime
     Int? preemptible_tries
+    Int disk_size = ceil(size(input_bam_regular_ref, "GB") + size(input_bam_shifted_ref, "GB") + size(ref_fasta, "GB") * 2) + 20
   }
-  Int disk_size = ceil(size(input_bam_regular_ref, "GB") + size(input_bam_shifted_ref, "GB") + size(ref_fasta, "GB") * 2) + 20
 
   meta {
     description: "Remove this hack once there's a GVCF solution."
