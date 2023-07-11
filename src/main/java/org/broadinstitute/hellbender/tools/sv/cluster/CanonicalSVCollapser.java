@@ -181,7 +181,7 @@ public class CanonicalSVCollapser {
         final Allele refAllele = collapseRefAlleles(representative.getContigA(), start);
         final List<Allele> altAlleles;
         if (type == GATKSVVCFConstants.StructuralVariantAnnotationType.BND) {
-            altAlleles = Collections.singletonList(constructBndAllele(strandA, representative.getStrandB(), representative.getContigB(), end, refAllele));
+            altAlleles = Collections.singletonList(constructBndAllele(strandA, strandB, representative.getContigB(), end, refAllele));
         } else {
             altAlleles = collapseAltAlleles(items);
         }
