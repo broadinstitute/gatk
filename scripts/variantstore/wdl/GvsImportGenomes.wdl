@@ -243,9 +243,7 @@ task LoadData {
 
     echo "Creating the external sample name list table ~{temp_table}"
     bq --apilog=false --project_id=~{project_id} mk ~{temp_table} "sample_name:STRING"
-
     NAMES_FILE=~{write_lines(sample_names)}
-
     bq --apilog=false load --project_id=~{project_id} ~{temp_table} $NAMES_FILE "sample_name:STRING"
 
     # Get the current min/max id, or 0 if there are none. Withdrawn samples still have IDs so don't filter them out.
@@ -265,11 +263,6 @@ task LoadData {
 
     ## now we want to create a sub list of these samples (without the ones that have already been loaded)
 
-    # *re-*curated because the curation script is run again in this task. The curation script was already run at least
-    # once before in a separate task to filter out already-loaded samples before the call to `LoadTask`. Here the
-    # `LoadTask` job might be retried due to preemption so we only want to load the samples which still need loading.
-    RECURATED_OUTPUT="bulk_import_recurated.tsv"
-
     python3 /gatk/scripts/varianstore/wdl/extract/curate_input_array_files.py \
       --sample_map_to_be_loaded_file_name sample_map.csv \
       --sample_name_list_file_name $NAMES_FILE \
@@ -281,6 +274,7 @@ task LoadData {
     VCF_INDEXES_ARRAY=($(cat output_vcf_index_list_file |tr "\n" " "))
     SAMPLE_NAMES_ARRAY=($(cat output_sample_name_list_file |tr "\n" " "))
 
+
     # loop over the BASH arrays (See https://stackoverflow.com/questions/6723426/looping-over-arrays-printing-both-index-and-value)
     for i in "${!VCFS_ARRAY[@]}"; do
       gs_input_vcf="${VCFS_ARRAY[$i]}"
@@ -288,8 +282,8 @@ task LoadData {
       sample_name="${SAMPLE_NAMES_ARRAY[$i]}"
 
       # we always do our own localization
-      gsutil -m cp $gs_input_vcf input_vcf_$i.vcf.gz
-      gsutil -m cp $gs_input_vcf_index input_vcf_$i.vcf.gz.tbi
+      gsutil cp $gs_input_vcf input_vcf_$i.vcf.gz
+      gsutil cp $gs_input_vcf_index input_vcf_$i.vcf.gz.tbi
       updated_input_vcf=input_vcf_$i.vcf.gz
 
       gatk --java-options "-Xmx2g" CreateVariantIngestFiles \
@@ -440,9 +434,7 @@ task GetUningestedSampleIds {
 
     echo "Creating the external sample name list table ~{temp_table}"
     bq --apilog=false --project_id=~{project_id} mk ~{temp_table} "sample_name:STRING"
-
     NAMES_FILE=~{write_lines(external_sample_names)}
-
     bq --apilog=false load --project_id=~{project_id} ~{temp_table} $NAMES_FILE "sample_name:STRING"
 
     # Get the current min/max id, or 0 if there are none. Withdrawn samples still have IDs so don't filter them out.
@@ -466,7 +458,6 @@ task GetUningestedSampleIds {
     python3 -c "from math import ceil; print(ceil($max_sample_id/~{samples_per_table}))" > max_sample_id
     python3 -c "from math import ceil; print(ceil($min_sample_id/~{samples_per_table}))" > min_sample_id
 
-    num_samples=$(cat $NAMES_FILE | wc -l)
     # get sample map of samples that haven't been loaded yet
     bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} '
 
@@ -513,11 +504,10 @@ task CurateInputLists {
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
 
-    python3 /app/curate_input_array_files.py \
-      --sample_map_to_be_loaded_file_name ~{input_samples_to_be_loaded_map} \
-      --sample_name_list_file_name ~{input_sample_name_list} \
-      --vcf_list_file_name ~{input_vcf_list} \
-      --vcf_index_list_file_name  ~{input_vcf_index_list}
+    python3 /app/curate_input_array_files.py --sample-map-to-be-loaded-file-name ~{input_samples_to_be_loaded_map} \
+                                             --sample-name-list-file-name ~{input_sample_name_list} \
+                                             --vcf-list-file-name ~{input_vcf_list} \
+                                             --vcf-index-list-file-name  ~{input_vcf_index_list}
   >>>
   runtime {
     docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-07-alpine-13fa284e9"
