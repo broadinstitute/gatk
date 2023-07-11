@@ -13,7 +13,7 @@ apt-get install --assume-yes docker-ce docker-ce-cli containerd.io docker-buildx
 # Make sure this all worked with a Docker 'Hello World!' test.
 docker run hello-world
 # required cleanup, boot disk space is very tight by default
-docker system prune
+docker system prune --force
 
 # Install Java
 apt-get -qq install wget apt-transport-https gnupg
