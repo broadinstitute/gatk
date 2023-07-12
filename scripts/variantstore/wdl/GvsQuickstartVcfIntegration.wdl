@@ -50,7 +50,6 @@ workflow GvsQuickstartVcfIntegration {
             extract_do_not_filter_override = extract_do_not_filter_override,
             drop_state = drop_state,
             interval_list = interval_list,
-            branch_name = branch_name,
             sample_id_column_name = sample_id_column_name,
             vcf_files_column_name = vcf_files_column_name,
             vcf_index_files_column_name = vcf_index_files_column_name,
