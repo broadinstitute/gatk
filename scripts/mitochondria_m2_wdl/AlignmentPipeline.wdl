@@ -21,6 +21,8 @@ workflow AlignmentPipeline {
 
     #Optional runtime arguments
     Int? preemptible_tries
+    Int disk_size = ceil(size(input_bam, "GB") * 4 + size(mt_fasta, "GB") + size(mt_fasta_index, "GB") + size(mt_amb, "GB") + size(mt_ann, "GB") + size(mt_bwt, "GB") + size(mt_pac, "GB") + size(mt_sa, "GB")) + 20
+    Int mem = 6
   }
 
   parameter_meta {
@@ -44,8 +46,8 @@ workflow AlignmentPipeline {
       ref_pac = mt_pac,
       ref_sa = mt_sa,
       preemptible_tries = preemptible_tries,
-      disk_size = ceil(size(input_bam, "GB") * 4 + size(mt_fasta, "GB") + size(mt_fasta_index, "GB") + size(mt_amb, "GB") + size(mt_ann, "GB") + size(mt_bwt, "GB") + size(mt_pac, "GB") + size(mt_sa, "GB")) + 20,
-      mem = 6
+      disk_size = disk_size,
+      mem = mem
   }
 
   output {
@@ -74,8 +76,8 @@ task AlignAndMarkDuplicates {
 
     # runtime
     Int? preemptible_tries
-    Int? disk_size
-    Int? mem
+    Int disk_size
+    Int mem
   }
 
   String basename = basename(input_bam, ".bam")
