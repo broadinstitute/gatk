@@ -118,13 +118,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-   - name: GvsPrepareBulkImport
-     subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareBulkImport.wdl
-     filters:
-       branches:
-         - ah_var_store
-         - vs_962_there_can_be_only_one
    - name: GvsBulkIngestGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsBulkIngestGenomes.wdl

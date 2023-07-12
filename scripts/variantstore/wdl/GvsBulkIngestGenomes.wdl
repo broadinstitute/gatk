@@ -1,21 +1,20 @@
 version 1.0
 
 import "GvsUtils.wdl" as Utils
-import "GvsPrepareBulkImport.wdl" as PrepareBulkImport
 import "GvsAssignIds.wdl" as AssignIds
 import "GvsImportGenomes.wdl" as ImportGenomes
 
 
 workflow GvsBulkIngestGenomes {
     input {
-        # Begin GvsPrepareBulkImport
+        # Begin GenerateImportFofnFromDataTable
         # for now set the entity type names with a default
         String data_table_name = "sample" ## Note that it is possible an advanced user has a different name for the table. We could glean some information from the sample_set name if that has been defined, but this has not, and try to use that information instead of simply using the default "sample"
         String? sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
         String? vcf_files_column_name
         String? vcf_index_files_column_name
         String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
-        # End GvsPrepareBulkImport
+        # End GenerateImportFofnFromDataTable
 
         # Begin GvsAssignIds
         String dataset_name
@@ -68,14 +67,14 @@ workflow GvsBulkIngestGenomes {
             vcf_index_files_column_name = vcf_index_files_column_name,
     }
 
-    call PrepareBulkImport.GvsPrepareBulkImport as PrepareBulkImport {
+    call GenerateImportFofnFromDataTable {
         input:
-            project_id = GetWorkspaceName.workspace_namespace,
+            google_project_id = GetWorkspaceName.workspace_namespace,
             workspace_name = GetWorkspaceName.workspace_name,
             workspace_namespace = GetWorkspaceName.workspace_namespace,
             workspace_bucket = GetWorkspaceId.workspace_bucket,
             samples_table_name = GetColumnNames.data_table,
-            user_defined_sample_id_column_name = GetColumnNames.sample_name_column,  ## NOTE: if no sample_id_column_name has been specified, this is now the <entity>_id column
+            sample_id_column_name = GetColumnNames.sample_name_column,  ## NOTE: if no sample_id_column_name has been specified, this is now the <entity>_id column
             vcf_files_column_name = GetColumnNames.vcf_files_column_name,
             vcf_index_files_column_name = GetColumnNames.vcf_index_files_column_name,
             sample_set_name = sample_set_name,
@@ -83,7 +82,7 @@ workflow GvsBulkIngestGenomes {
 
     call SplitBulkImportFofn {
         input:
-            import_fofn = PrepareBulkImport.output_fofn,
+            import_fofn = GenerateImportFofnFromDataTable.output_fofn,
     }
 
     call AssignIds.GvsAssignIds as AssignIds {
@@ -253,5 +252,55 @@ task SplitBulkImportFofn {
         File sample_name_fofn = "sample_names.txt"
         File vcf_file_name_fofn = "vcf_file_names.txt"
         File vcf_index_file_name_fofn = "vcf_index_file_names.txt"
+    }
+}
+
+
+task GenerateImportFofnFromDataTable {
+    ## In order to get the <entity>_ids in the sample_set for an inclusion list, we use Terra Notebook Utils
+    ## This also allows us to validate that the requested sample_set exists
+    input {
+        String google_project_id
+        String workspace_name
+        String workspace_namespace
+        String workspace_bucket
+        String samples_table_name
+        String sample_id_column_name ## NOTE: if the user has specified a different sample name column for GVS, it needs to be used independently of the sample_set info
+        String vcf_files_column_name
+        String vcf_index_files_column_name
+        String? sample_set_name
+    }
+
+    String output_fofn_name = "output.tsv"
+    String error_file_name = "errors.txt"
+
+    command <<<
+        set -o errexit -o nounset -o xtrace -o pipefail
+        PS4='\D{+%F %T} \w $ '
+
+        export GOOGLE_PROJECT='~{google_project_id}'
+        export WORKSPACE_NAMESPACE='~{workspace_namespace}'
+        export WORKSPACE_NAME='~{workspace_name}'
+        export WORKSPACE_BUCKET='~{workspace_bucket}'
+
+        python3 /app/generate_fofn_for_import.py \
+            --data-table-name ~{samples_table_name} \
+            --sample-id-column-name ~{sample_id_column_name} \
+            --vcf-files-column-name ~{vcf_files_column_name} \
+            --vcf-index-files-column-name ~{vcf_index_files_column_name} \
+            ~{"--sample-set-name " + sample_set_name} \
+            --output-file-name ~{output_fofn_name} \
+            --error-file-name ~{error_file_name}
+    >>>
+    runtime {
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-12-alpine-bf93ad833"
+        memory: "3 GB"
+        disks: "local-disk 200 HDD"
+        cpu: 1
+    }
+
+    output {
+        File output_fofn = output_fofn_name
+        File errors = error_file_name
     }
 }
