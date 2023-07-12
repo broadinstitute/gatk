@@ -21,6 +21,8 @@ workflow AlignmentPipeline {
 
     #Optional runtime arguments
     Int? preemptible_tries
+    Int disk_size
+    Int mem
   }
 
   parameter_meta {
@@ -43,7 +45,9 @@ workflow AlignmentPipeline {
       ref_bwt = mt_bwt,
       ref_pac = mt_pac,
       ref_sa = mt_sa,
-      preemptible_tries = preemptible_tries
+      preemptible_tries = preemptible_tries,
+      disk_size = disk_size,
+      mem = mem
   }
 
   output {
