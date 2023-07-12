@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
 import org.broadinstitute.hellbender.tools.sv.SVTestUtils;
+import org.broadinstitute.hellbender.utils.variant.GATKSVVariantContextUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -41,6 +42,10 @@ public class CanonicalSVCollapserUnitTest {
             SVTestUtils.hg38Reference,
             CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE,
             CanonicalSVCollapser.BreakpointSummaryStrategy.MEAN_START_MEAN_END);
+    private static final CanonicalSVCollapser collapserRepresentative = new CanonicalSVCollapser(
+            SVTestUtils.hg38Reference,
+            CanonicalSVCollapser.AltAlleleSummaryStrategy.COMMON_SUBTYPE,
+            CanonicalSVCollapser.BreakpointSummaryStrategy.REPRESENTATIVE);
     private static final CanonicalSVCollapser collapserSpecificAltAllele = new CanonicalSVCollapser(
             SVTestUtils.hg38Reference,
             CanonicalSVCollapser.AltAlleleSummaryStrategy.MOST_SPECIFIC_SUBTYPE,
@@ -49,6 +54,103 @@ public class CanonicalSVCollapserUnitTest {
     private static final Allele MEI_INSERTION_ALLELE = Allele.create("<INS:MEI>");
     private static final Allele SVA_INSERTION_ALLELE = Allele.create("<INS:MEI:SVA>");
     private static final Allele LINE_INSERTION_ALLELE = Allele.create("<INS:MEI:LINE>");
+
+    @DataProvider(name = "clusterData")
+    public Object[][] getClusterData() {
+        return new Object[][]{
+                // One deletion
+                {
+                        new SVClusterEngine.OutputCluster(
+                                Lists.newArrayList(
+                                        SVTestUtils.makeRecord("record1", "chr1", 1000, true,
+                                                "chr1", 2000, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
+                                                null, Collections.emptyList(), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
+                                                Lists.newArrayList(
+                                                        new GenotypeBuilder("sample1", Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)).attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2),
+                                                        new GenotypeBuilder("sample2", Lists.newArrayList(Allele.REF_N, Allele.REF_N)).attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2)
+                                                )
+                                        )
+                                )
+                        ),
+                        SVTestUtils.makeRecord("record1", "chr1", 1000, true,
+                                "chr1", 2000, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
+                                null, Collections.emptyList(), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
+                                Lists.newArrayList(
+                                        new GenotypeBuilder("sample1", Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)).attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2),
+                                        new GenotypeBuilder("sample2", Lists.newArrayList(Allele.REF_N, Allele.REF_N)).attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2)
+                                )
+                        )
+                },
+                // Two deletions
+                {
+                    new SVClusterEngine.OutputCluster(
+                        Lists.newArrayList(
+                                SVTestUtils.makeRecord("record1", "chr1", 1000, true,
+                                        "chr1", 2000, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
+                                        null, Collections.emptyList(), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
+                                        Lists.newArrayList(
+                                                new GenotypeBuilder("sample1", Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)).attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2),
+                                                new GenotypeBuilder("sample2", Lists.newArrayList(Allele.REF_N, Allele.REF_N)).attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2)
+                                        )
+                                ),
+                                SVTestUtils.makeRecord("record2", "chr1", 1000, true,
+                                        "chr1", 2000, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
+                                        null, Collections.emptyList(), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
+                                        Lists.newArrayList(
+                                                new GenotypeBuilder("sample1", Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)).attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2),
+                                                new GenotypeBuilder("sample2", Lists.newArrayList(Allele.REF_N, Allele.REF_N)).attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2)
+                                        )
+                                )
+                        )
+                    ),
+                    SVTestUtils.makeRecord("record1", "chr1", 1000, true,
+                            "chr1", 2000, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
+                            null, Collections.emptyList(), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
+                            Lists.newArrayList(
+                                    new GenotypeBuilder("sample1", Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)).attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2),
+                                    new GenotypeBuilder("sample2", Lists.newArrayList(Allele.REF_N, Allele.REF_N)).attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2)
+                            )
+                    )
+                },
+                // Breakends
+                {
+                        new SVClusterEngine.OutputCluster(
+                                Lists.newArrayList(
+                                        SVTestUtils.makeRecord("record1", "chr1", 1000, true,
+                                                "chr2", 2000, false, GATKSVVCFConstants.StructuralVariantAnnotationType.BND,
+                                                null, Collections.emptyList(), Lists.newArrayList(Allele.REF_N, GATKSVVariantContextUtils.BND_ALLELE),
+                                                Lists.newArrayList(
+                                                        new GenotypeBuilder("sample1", Lists.newArrayList(Allele.REF_N, GATKSVVariantContextUtils.BND_ALLELE)).attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2),
+                                                        new GenotypeBuilder("sample2", Lists.newArrayList(Allele.REF_N, Allele.REF_N)).attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2)
+                                                )
+                                        ),
+                                        SVTestUtils.makeRecord("record2", "chr1", 1000, true,
+                                                "chr2", 2000, false, GATKSVVCFConstants.StructuralVariantAnnotationType.BND,
+                                                null, Collections.emptyList(), Lists.newArrayList(Allele.REF_N, GATKSVVariantContextUtils.BND_ALLELE),
+                                                Lists.newArrayList(
+                                                        new GenotypeBuilder("sample1", Lists.newArrayList(Allele.REF_N, GATKSVVariantContextUtils.BND_ALLELE)).attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2),
+                                                        new GenotypeBuilder("sample2", Lists.newArrayList(Allele.REF_N, Allele.REF_N)).attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2)
+                                                )
+                                        )
+                                )
+                        ),
+                        SVTestUtils.makeRecord("record1", "chr1", 1000, true,
+                                "chr2", 2000, false, GATKSVVCFConstants.StructuralVariantAnnotationType.BND,
+                                null, Collections.emptyList(), Lists.newArrayList(Allele.REF_N, Allele.create("N[chr2:2000[")),
+                                Lists.newArrayList(
+                                        new GenotypeBuilder("sample1", Lists.newArrayList(Allele.REF_N, Allele.create("N[chr2:2000["))).attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2),
+                                        new GenotypeBuilder("sample2", Lists.newArrayList(Allele.REF_N, Allele.REF_N)).attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2)
+                                )
+                        )
+                }
+        };
+    }
+
+    @Test(dataProvider = "clusterData")
+    public void testCollapse(SVClusterEngine.OutputCluster cluster, SVCallRecord expected) {
+        SVCallRecord result = collapser.collapse(cluster);
+        SVTestUtils.assertEqualsExceptExcludedAttributes(result, expected, Collections.singletonList(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY));
+    }
 
     @DataProvider(name = "collapseRefAllelesTestData")
     public Object[][] collapseRefAllelesTestData() {
@@ -257,6 +359,44 @@ public class CanonicalSVCollapserUnitTest {
         final List<Allele> sortedTestSpecific = SVCallRecordUtils.sortAlleles(collapserSpecificAltAllele.collapseAltAlleles(records));
         final List<Allele> sortedExpectedSpecific = SVCallRecordUtils.sortAlleles(resultSpecific);
         Assert.assertEquals(sortedTestSpecific, sortedExpectedSpecific);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void collapseInvalidAltAllelesTest() {
+        final List<SVCallRecord> records = Lists.newArrayList(
+                SVTestUtils.newCallRecordWithAlleles(
+                        Lists.newArrayList(Allele.REF_N, Allele.create("N[chr1:1[", false)),
+                        Lists.newArrayList(Allele.REF_N, Allele.create("N[chr1:1[", false)),
+                        GATKSVVCFConstants.StructuralVariantAnnotationType.INS,
+                        2, 2
+                ),
+                SVTestUtils.newCallRecordWithAlleles(
+                        Lists.newArrayList(Allele.REF_N, Allele.create("N[chr1:2[", false)),
+                        Lists.newArrayList(Allele.REF_N, Allele.create("N[chr1:2[", false)),
+                        GATKSVVCFConstants.StructuralVariantAnnotationType.INS,
+                        2, 2
+                )
+        );
+        collapser.collapseAltAlleles(records);
+    }
+
+    @DataProvider(name = "bndAlleleData")
+    public Object[][] bndAlleleData() {
+        return new Object[][] {
+                { true, true, "contigB", 10, "A", "A]contigB:10]" },
+                { true, false, "contigB", 10, "T", "T[contigB:10[" },
+                { false, true, "contigB", 20, "C", "]contigB:20]C" },
+                { false, false, "contigB", 20, "G", "[contigB:20[G" },
+        };
+    }
+
+    @Test(dataProvider = "bndAlleleData")
+    public void testConstructBndAllele(Boolean strandA, Boolean strandB, String contigB, int posB,
+                                       String refAlleleString, String expectedAlleleString) {
+        final Allele refAllele = Allele.create(refAlleleString, true);
+        final Allele expected = Allele.create(expectedAlleleString, false);
+        Allele result = CanonicalSVCollapser.constructBndAllele(strandA, strandB, contigB, posB, refAllele);
+        Assert.assertEquals(result, expected);
     }
 
     private static final String TEST_KEY_1 = "TEST_KEY_1";
@@ -1289,6 +1429,84 @@ public class CanonicalSVCollapserUnitTest {
         collapseIntervalTestHelper(collapserMinMax, svtype, contigs, records, expectedMinMax);
         collapseIntervalTestHelper(collapserMaxMin, svtype, contigs, records, expectedMaxMin);
         collapseIntervalTestHelper(collapserMean, svtype, contigs, records, expectedMean);
+    }
+
+    @Test
+    public void collapseIntervalRepresentativeTest() {
+        // Choose second record with more carriers
+        final List<SVCallRecord> records =
+                Lists.newArrayList(
+                        SVTestUtils.makeRecord("record1", "chr1", 1000, true,
+                                "chr1", 2000, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
+                                null, Collections.emptyList(), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
+                                Lists.newArrayList(
+                                        new GenotypeBuilder("sample1", Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)).attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2),
+                                        new GenotypeBuilder("sample2", Lists.newArrayList(Allele.REF_N, Allele.REF_N)).attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2)
+                                )
+                        ),
+                        SVTestUtils.makeRecord("record2", "chr1", 1001, true,
+                                "chr1", 2001, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
+                                null, Collections.emptyList(), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
+                                Lists.newArrayList(
+                                        new GenotypeBuilder("sample1", Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)).attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2),
+                                        new GenotypeBuilder("sample2", Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)).attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2)
+                                )
+                        )
+                );
+        final Pair<Integer, Integer> result = collapserRepresentative.collapseInterval(records);
+        Assert.assertEquals((int) result.getLeft(), 1001);
+        Assert.assertEquals((int) result.getRight(), 2001);
+
+        // record2 and record3 have the best carrier status, but choose second record which is closer to all others on average
+        final List<SVCallRecord> records2 =
+                Lists.newArrayList(
+                        SVTestUtils.makeRecord("record1", "chr1", 1000, true,
+                                "chr1", 2000, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
+                                null, Collections.emptyList(), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
+                                Lists.newArrayList(
+                                        new GenotypeBuilder("sample1", Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)).attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2),
+                                        new GenotypeBuilder("sample2", Lists.newArrayList(Allele.REF_N, Allele.REF_N)).attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2)
+                                )
+                        ),
+                        SVTestUtils.makeRecord("record2", "chr1", 999, true,
+                                "chr1", 2000, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
+                                null, Collections.emptyList(), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
+                                Lists.newArrayList(
+                                        new GenotypeBuilder("sample1", Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)).attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2),
+                                        new GenotypeBuilder("sample2", Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)).attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2)
+                                )
+                        ),
+                        SVTestUtils.makeRecord("record3", "chr1", 1005, true,
+                                "chr1", 2000, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
+                                null, Collections.emptyList(), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
+                                Lists.newArrayList(
+                                        new GenotypeBuilder("sample1", Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)).attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2),
+                                        new GenotypeBuilder("sample2", Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL)).attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2)
+                                )
+                        )
+                );
+        final Pair<Integer, Integer> result2 = collapserRepresentative.collapseInterval(records2);
+        Assert.assertEquals((int) result2.getLeft(), 999);
+        Assert.assertEquals((int) result2.getRight(), 2000);
+    }
+
+    @DataProvider(name = "distanceDataProvider")
+    public Object[][] distanceDataProvider() {
+        return new Object[][]{
+                {5, 10, new int[]{0}, new int[]{0}, 15},
+                {5, 10, new int[]{0}, new int[]{10}, 5},
+                {5, 10, new int[]{5}, new int[]{0}, 10},
+                {5, 10, new int[]{5}, new int[]{10}, 0},
+                {5, 10, new int[]{1, 3, 7}, new int[]{9, 12}, 11},
+                {0, 0, new int[]{0, 0, 0}, new int[]{0, 0}, 0},
+                {-5, -10, new int[]{-1, -3, -7}, new int[]{-9, -12}, 11},
+        };
+    }
+
+    @Test(dataProvider = "distanceDataProvider")
+    public void testGetDistance(int posA, int posB, int[] starts, int[] ends, long expectedDistance) {
+        final long actualDistance = CanonicalSVCollapser.getDistance(posA, posB, starts, ends);
+        Assert.assertEquals(actualDistance, expectedDistance);
     }
 
     private static void collapseIntervalTestHelper(final CanonicalSVCollapser collapser,
