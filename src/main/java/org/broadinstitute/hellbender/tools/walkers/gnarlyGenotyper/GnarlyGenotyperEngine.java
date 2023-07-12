@@ -9,9 +9,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.*;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAlleleCounts;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypesCache;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.utils.GenotypeCounts;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -59,7 +57,7 @@ public final class GnarlyGenotyperEngine {
         this.keepAllSites = keepAllSites;
         this.stripASAnnotations = stripASAnnotations;
 
-        final GenotypeLikelihoodCalculators GLCprovider = new GenotypeLikelihoodCalculators();
+        /*final GenotypeLikelihoodCalculators GLCprovider = new GenotypeLikelihoodCalculators();
 
         //initialize PL size cache -- HTSJDK cache only goes up to 4 alts, but I need 6
         likelihoodSizeCache = new int[maxAltAllelesToOutput + 1 + 1]; //+1 for ref and +1 so index == numAlleles
@@ -67,8 +65,8 @@ public final class GnarlyGenotyperEngine {
         for (final int numAlleles : IntStream.rangeClosed(1, maxAltAllelesToOutput + 1).boxed().collect(Collectors.toList())) {
             likelihoodSizeCache[numAlleles] = GenotypeLikelihoods.numLikelihoods(numAlleles, ASSUMED_PLOIDY);
             //GL calculator cache is indexed by the total number of alleles, including ref
-            glcCache.add(numAlleles, GLCprovider.getInstance(ASSUMED_PLOIDY, numAlleles));
-        }
+            glcCache.add(numAlleles, GenotypeIndexCalculator.genotypeCount(2, numAlleles)GLCprovider.getInstance(ASSUMED_PLOIDY, numAlleles));
+        }*/
 
         //TODO: fix weird reflection logging?
         final Reflections reflections = new Reflections("org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific");
@@ -360,7 +358,7 @@ public final class GnarlyGenotyperEngine {
                 genotypeBuilder.GQ(MathUtils.secondSmallestMinusSmallest(PLs, 0));
                 //If GenomicsDB returns no-call genotypes like CombineGVCFs (depending on the GenomicsDBExportConfiguration),
                 // then we need to actually find the GT from PLs
-                makeGenotypeCall(genotypeBuilder, GenotypeLikelihoods.fromPLs(PLs).getAsVector(), targetAlleles);
+                makeGenotypeCall(g, genotypeBuilder, GenotypeLikelihoods.fromPLs(PLs).getAsVector(), targetAlleles);
             }
             final Map<String, Object> attrs = new HashMap<>(g.getExtendedAttributes());
             attrs.remove(GATKVCFConstants.MIN_DP_FORMAT_KEY);
@@ -403,11 +401,12 @@ public final class GnarlyGenotyperEngine {
     protected void makeGenotypeCall(final Genotype g, final GenotypeBuilder gb,
                                         final double[] genotypeLikelihoods,
                                         final List<Allele> allelesToUse) {
-        final int maxAllelesToOutput = maxAltAllelesToOutput + 1; //+1 for ref
-
         if ( genotypeLikelihoods == null || !GATKVariantContextUtils.isInformative(genotypeLikelihoods) ) {
-            gb.alleles(GATKVariantContextUtils.noCallAlleles(g.getAlleles().size())).noGQ();
+            //gb.alleles(GATKVariantContextUtils.noCallAlleles(g.getAlleles().size())).noGQ();
+            GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(), gb, GenotypeAssignmentMethod.SET_TO_NO_CALL,
+                    genotypeLikelihoods, allelesToUse, null);
         } else {
+            /*final int maxAllelesToOutput = maxAltAllelesToOutput + 1; //+1 for ref
             final int maxLikelihoodIndex = MathUtils.maxElementIndex(genotypeLikelihoods);
 
             GenotypeLikelihoodCalculator glCalc;
@@ -424,7 +423,9 @@ public final class GnarlyGenotyperEngine {
             final int numAltAlleles = allelesToUse.size() - 1;
             if ( numAltAlleles > 0 ) {
                 gb.log10PError(GenotypeLikelihoods.getGQLog10FromLikelihoods(maxLikelihoodIndex, genotypeLikelihoods));
-            }
+            }*/
+            GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(), gb, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN,
+                    genotypeLikelihoods, allelesToUse, null);
         }
     }
 
