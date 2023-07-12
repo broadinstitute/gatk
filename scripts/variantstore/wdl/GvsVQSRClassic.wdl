@@ -362,7 +362,7 @@ task GatherTranches {
     bootDiskSizeGb: 15
     disks: "local-disk " + disk_size + " HDD"
     preemptible: 1
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_07_02_e90d90e00615dcbd9a71d4301fdc04fe2fe155fc"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_07_12_950da0bd19e650125507599bca97f66d5e25e391"
   }
 
   output {
@@ -565,7 +565,7 @@ task PopulateFilterSetTranches {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_07_02_e90d90e00615dcbd9a71d4301fdc04fe2fe155fc"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_07_12_950da0bd19e650125507599bca97f66d5e25e391"
     memory: "3500 MB"
     disks: "local-disk 200 HDD"
     bootDiskSizeGb: 15

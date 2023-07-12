@@ -88,6 +88,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - gg_VS-1007_UpdateVQSRLiteNaming
    - name: GvsPopulateAltAllele
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPopulateAltAllele.wdl
@@ -111,6 +112,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - gg_VS-1007_UpdateVQSRLiteNaming
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
