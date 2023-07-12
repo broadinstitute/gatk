@@ -264,10 +264,10 @@ task LoadData {
     ## now we want to create a sub list of these samples (without the ones that have already been loaded)
 
     python3 /gatk/scripts/varianstore/wdl/extract/curate_input_array_files.py \
-      --sample-map-to-be-loaded-file-name sample_map.csv \
-      --sample-name-list-file-name $NAMES_FILE \
-      --vcf-list-file-name ~{write_lines(input_vcfs)} \
-      --vcf-index-list-file-name  ~{write_lines(input_vcf_indexes)}
+      --sample_map_to_be_loaded_file_name sample_map.csv \
+      --sample_name_list_file_name $NAMES_FILE \
+      --vcf_list_file_name ~{write_lines(input_vcfs)} \
+      --vcf_index_list_file_name  ~{write_lines(input_vcf_indexes)}
 
     # translate files created by the python script into BASH arrays---but only of the samples that aren't there already
     VCFS_ARRAY=($(cat output_vcf_list_file |tr "\n" " "))
@@ -504,10 +504,10 @@ task CurateInputLists {
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
 
-    python3 /app/curate_input_array_files.py --sample-map-to-be-loaded-file-name ~{input_samples_to_be_loaded_map} \
-                                             --sample-name-list-file-name ~{input_sample_name_list} \
-                                             --vcf-list-file-name ~{input_vcf_list} \
-                                             --vcf-index-list-file-name  ~{input_vcf_index_list}
+    python3 /app/curate_input_array_files.py --sample_map_to_be_loaded_file_name ~{input_samples_to_be_loaded_map} \
+                                             --sample_name_list_file_name ~{input_sample_name_list} \
+                                             --vcf_list_file_name ~{input_vcf_list} \
+                                             --vcf_index_list_file_name  ~{input_vcf_index_list}
   >>>
   runtime {
     docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-11-alpine-f8d063943"
