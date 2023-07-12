@@ -71,7 +71,7 @@ task GenerateImportFofnFromDataTable {
             --error-file-name ~{error_file_name}
     >>>
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-11-alpine-f8d063943"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-12-alpine-bf93ad833"
         memory: "3 GB"
         disks: "local-disk 200 HDD"
         cpu: 1

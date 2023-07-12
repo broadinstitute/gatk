@@ -167,7 +167,7 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-11-alpine-f8d063943"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-12-alpine-bf93ad833"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -212,7 +212,7 @@ task StripCustomAnnotationsFromSitesOnlyVCF {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-11-alpine-f8d063943"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-12-alpine-bf93ad833"
         memory: "7 GiB"
         cpu: "2"
         preemptible: 3
@@ -297,7 +297,7 @@ task RemoveDuplicatesFromSitesOnlyVCF {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-11-alpine-f8d063943"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-12-alpine-bf93ad833"
         maxRetries: 3
         memory: "16 GB"
         preemptible: 3
@@ -457,7 +457,7 @@ task PrepVtAnnotationJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-11-alpine-f8d063943"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-12-alpine-bf93ad833"
         memory: "7 GB"
         preemptible: 3
         cpu: "1"
@@ -503,7 +503,7 @@ task PrepGenesAnnotationJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-11-alpine-f8d063943"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-12-alpine-bf93ad833"
         memory: "7 GB"
         preemptible: 3
         cpu: "1"

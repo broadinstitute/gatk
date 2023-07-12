@@ -339,7 +339,7 @@ task ProcessVCFHeaders {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-11-alpine-f8d063943"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-12-alpine-bf93ad833"
     disks: "local-disk 500 HDD"
   }
 }
@@ -510,7 +510,7 @@ task CurateInputLists {
                                              --vcf_index_list_file_name  ~{input_vcf_index_list}
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-11-alpine-f8d063943"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-12-alpine-bf93ad833"
     memory: "3 GB"
     disks: "local-disk 100 HDD"
     bootDiskSizeGb: 15
