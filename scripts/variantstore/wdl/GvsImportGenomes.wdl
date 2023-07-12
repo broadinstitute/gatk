@@ -263,7 +263,7 @@ task LoadData {
 
     ## now we want to create a sub list of these samples (without the ones that have already been loaded)
 
-    python3 /gatk/scripts/varianstore/wdl/extract/curate_input_array_files.py \
+    python3 /gatk/scripts/variantstore/wdl/extract/curate_input_array_files.py \
       --sample_map_to_be_loaded_file_name sample_map.csv \
       --sample_name_list_file_name $NAMES_FILE \
       --vcf_list_file_name ~{write_lines(input_vcfs)} \
