@@ -17,6 +17,11 @@ workflow GvsJointVariantCalling {
         String? vcf_files_column_name
         String? vcf_index_files_column_name
         String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
+
+        # This is the most updated snapshot of the code as of July 12, 2023
+        File gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-727-g950da0b-SNAPSHOT-local.jar"
+        File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
+        Boolean extract_do_not_filter_override = false
     }
 
     # the call_set_identifier string is used to name many different things throughout this workflow (BQ tables, vcfs etc),
@@ -40,9 +45,6 @@ workflow GvsJointVariantCalling {
       Int SNP_VQSR_CLASSIC_max_gaussians_override = 6
       Int SNP_VQSR_CLASSIC_mem_gb_override = ""
     }
-    # This is the most updated snapshot of the code as of July 12, 2023
-    File gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-727-g950da0b-SNAPSHOT-local.jar"
-    File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
 
     File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
 
@@ -56,7 +58,7 @@ workflow GvsJointVariantCalling {
             extract_output_gcs_dir = extract_output_gcs_dir,
             destination_dataset = dataset_name,
             destination_project = project_id,
-            extract_do_not_filter_override = false,
+            extract_do_not_filter_override = extract_do_not_filter_override,
             extract_maxretries_override = extract_maxretries_override,
             extract_output_file_base_name = extract_output_file_base_name,
             extract_preemptible_override = extract_preemptible_override,
@@ -93,5 +95,6 @@ workflow GvsJointVariantCalling {
         Float total_vcfs_size_mb = GvsUnified.total_vcfs_size_mb
         File? sample_name_list = GvsUnified.sample_name_list
         File manifest = GvsUnified.manifest
+        Boolean done = true
     }
 }

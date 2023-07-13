@@ -1,0 +1,73 @@
+I0713 16:17:53.159495 8194924032 bigquery_client.py:1366] Requesting discovery document from https://www.googleapis.com/discovery/v1/apis/bigquery/v2/rest
+I0713 16:17:53.159571 8194924032 transport.py:280] Requesting: GET https://www.googleapis.com/discovery/v1/apis/bigquery/v2/rest
+I0713 16:17:53.355425 8194924032 model.py:113] --request-start--
+I0713 16:17:53.355522 8194924032 model.py:114] -headers-start-
+I0713 16:17:53.355571 8194924032 model.py:116] accept: application/json
+I0713 16:17:53.355611 8194924032 model.py:116] accept-encoding: gzip, deflate
+I0713 16:17:53.355649 8194924032 model.py:116] user-agent: (gzip)
+I0713 16:17:53.355686 8194924032 model.py:116] x-goog-api-client: gdcl/2.2.0 gl-python/3.9.6
+I0713 16:17:53.355724 8194924032 model.py:117] -headers-end-
+I0713 16:17:53.355760 8194924032 model.py:118] -path-parameters-start-
+I0713 16:17:53.355797 8194924032 model.py:120] datasetId: mlc_bulk_ingest_2023_07_13_01
+I0713 16:17:53.355833 8194924032 model.py:120] projectId: gvs-internal
+I0713 16:17:53.355866 8194924032 model.py:121] -path-parameters-end-
+I0713 16:17:53.355901 8194924032 model.py:122] body: None
+I0713 16:17:53.355985 8194924032 model.py:123] query: ?alt=json
+I0713 16:17:53.356024 8194924032 model.py:124] --request-end--
+I0713 16:17:53.356162 8194924032 bigquery_client.py:1037] URL being requested from BQ client: GET https://bigquery.googleapis.com/bigquery/v2/projects/gvs-internal/datasets/mlc_bulk_ingest_2023_07_13_01?alt=json
+I0713 16:17:53.356246 8194924032 transport.py:280] Requesting: GET https://bigquery.googleapis.com/bigquery/v2/projects/gvs-internal/datasets/mlc_bulk_ingest_2023_07_13_01?alt=json
+I0713 16:17:53.551525 8194924032 transport.py:184] Refreshing due to a 401 (attempt 1/2)
+I0713 16:17:53.552484 8194924032 client.py:650] access_token is expired. Now: 2023-07-13 20:17:53.552471, token_expiry: 2023-07-12 22:29:39
+I0713 16:17:53.552752 8194924032 reauth_creds.py:103] Refreshing access_token
+I0713 16:17:53.552947 8194924032 transport.py:280] Requesting: POST https://oauth2.googleapis.com/token
+I0713 16:17:53.755018 8194924032 transport.py:280] Requesting: GET https://bigquery.googleapis.com/bigquery/v2/projects/gvs-internal/datasets/mlc_bulk_ingest_2023_07_13_01?alt=json
+I0713 16:17:54.112236 8194924032 model.py:192] --response-start--
+I0713 16:17:54.112666 8194924032 model.py:194] vary: Origin, X-Origin, Referer
+I0713 16:17:54.112804 8194924032 model.py:194] content-type: application/json; charset=UTF-8
+I0713 16:17:54.112920 8194924032 model.py:194] date: Thu, 13 Jul 2023 20:17:54 GMT
+I0713 16:17:54.113037 8194924032 model.py:194] server: ESF
+I0713 16:17:54.113151 8194924032 model.py:194] cache-control: private
+I0713 16:17:54.113255 8194924032 model.py:194] x-xss-protection: 0
+I0713 16:17:54.113360 8194924032 model.py:194] x-frame-options: SAMEORIGIN
+I0713 16:17:54.113465 8194924032 model.py:194] x-content-type-options: nosniff
+I0713 16:17:54.113569 8194924032 model.py:194] alt-svc: h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+I0713 16:17:54.113683 8194924032 model.py:194] transfer-encoding: chunked
+I0713 16:17:54.113786 8194924032 model.py:194] status: 404
+I0713 16:17:54.113895 8194924032 model.py:194] content-length: 324
+I0713 16:17:54.113998 8194924032 model.py:194] -content-encoding: gzip
+I0713 16:17:54.114109 8194924032 model.py:196] b'{\n  "error": {\n    "code": 404,\n    "message": "Not found: Dataset gvs-internal:mlc_bulk_ingest_2023_07_13_01",\n    "errors": [\n      {\n        "message": "Not found: Dataset gvs-internal:mlc_bulk_ingest_2023_07_13_01",\n        "domain": "global",\n        "reason": "notFound"\n      }\n    ],\n    "status": "NOT_FOUND"\n  }\n}\n'
+I0713 16:17:54.114233 8194924032 model.py:197] --response-end--
+I0713 16:17:54.117213 8194924032 model.py:113] --request-start--
+I0713 16:17:54.117367 8194924032 model.py:114] -headers-start-
+I0713 16:17:54.117486 8194924032 model.py:116] accept: application/json
+I0713 16:17:54.117592 8194924032 model.py:116] accept-encoding: gzip, deflate
+I0713 16:17:54.117697 8194924032 model.py:116] user-agent: (gzip)
+I0713 16:17:54.117810 8194924032 model.py:116] x-goog-api-client: gdcl/2.2.0 gl-python/3.9.6
+I0713 16:17:54.117966 8194924032 model.py:116] content-type: application/json
+I0713 16:17:54.118071 8194924032 model.py:117] -headers-end-
+I0713 16:17:54.118180 8194924032 model.py:118] -path-parameters-start-
+I0713 16:17:54.118286 8194924032 model.py:120] projectId: gvs-internal
+I0713 16:17:54.118387 8194924032 model.py:121] -path-parameters-end-
+I0713 16:17:54.118490 8194924032 model.py:122] body: {"datasetReference": {"datasetId": "mlc_bulk_ingest_2023_07_13_01", "projectId": "gvs-internal"}}
+I0713 16:17:54.118613 8194924032 model.py:123] query: ?alt=json
+I0713 16:17:54.118717 8194924032 model.py:124] --request-end--
+I0713 16:17:54.119039 8194924032 bigquery_client.py:1037] URL being requested from BQ client: POST https://bigquery.googleapis.com/bigquery/v2/projects/gvs-internal/datasets?alt=json
+I0713 16:17:54.119272 8194924032 transport.py:280] Requesting: POST https://bigquery.googleapis.com/bigquery/v2/projects/gvs-internal/datasets?alt=json
+I0713 16:17:54.728968 8194924032 bigquery_client.py:1021] Response from server with status code: 200
+I0713 16:17:54.729416 8194924032 model.py:192] --response-start--
+I0713 16:17:54.729573 8194924032 model.py:194] etag: CUZXiasZVSARoHANGl4CUw==
+I0713 16:17:54.729690 8194924032 model.py:194] content-type: application/json; charset=UTF-8
+I0713 16:17:54.729803 8194924032 model.py:194] vary: Origin, X-Origin, Referer
+I0713 16:17:54.729907 8194924032 model.py:194] date: Thu, 13 Jul 2023 20:17:54 GMT
+I0713 16:17:54.730012 8194924032 model.py:194] server: ESF
+I0713 16:17:54.730117 8194924032 model.py:194] cache-control: private
+I0713 16:17:54.730221 8194924032 model.py:194] x-xss-protection: 0
+I0713 16:17:54.730322 8194924032 model.py:194] x-frame-options: SAMEORIGIN
+I0713 16:17:54.730426 8194924032 model.py:194] x-content-type-options: nosniff
+I0713 16:17:54.730528 8194924032 model.py:194] alt-svc: h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+I0713 16:17:54.730629 8194924032 model.py:194] transfer-encoding: chunked
+I0713 16:17:54.730731 8194924032 model.py:194] status: 200
+I0713 16:17:54.730831 8194924032 model.py:194] content-length: 803
+I0713 16:17:54.730931 8194924032 model.py:194] -content-encoding: gzip
+I0713 16:17:54.731035 8194924032 model.py:196] b'{\n  "kind": "bigquery#dataset",\n  "etag": "CUZXiasZVSARoHANGl4CUw==",\n  "id": "gvs-internal:mlc_bulk_ingest_2023_07_13_01",\n  "selfLink": "https://bigquery.googleapis.com/bigquery/v2/projects/gvs-internal/datasets/mlc_bulk_ingest_2023_07_13_01",\n  "datasetReference": {\n    "datasetId": "mlc_bulk_ingest_2023_07_13_01",\n    "projectId": "gvs-internal"\n  },\n  "access": [\n    {\n      "role": "WRITER",\n      "specialGroup": "projectWriters"\n    },\n    {\n      "role": "OWNER",\n      "specialGroup": "projectOwners"\n    },\n    {\n      "role": "OWNER",\n      "userByEmail": "mcovarr@broadinstitute.org"\n    },\n    {\n      "role": "READER",\n      "specialGroup": "projectReaders"\n    }\n  ],\n  "creationTime": "1689279474539",\n  "lastModifiedTime": "1689279474539",\n  "location": "US",\n  "type": "DEFAULT"\n}\n'
+I0713 16:17:54.731168 8194924032 model.py:197] --response-end--

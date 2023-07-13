@@ -2,6 +2,7 @@ version 1.0
 
 import "GvsUnified.wdl" as Unified
 import "GvsUtils.wdl" as Utils
+import "GvsJointVariantCalling.wdl" as JointVariantCalling
 
 workflow GvsQuickstartVcfIntegration {
 
@@ -36,15 +37,13 @@ workflow GvsQuickstartVcfIntegration {
             dataset_suffix = dataset_suffix,
     }
 
-    call Unified.GvsUnified {
+    call JointVariantCalling.GvsJointVariantCalling as Beta {
         input:
             call_set_identifier = branch_name,
             dataset_name = CreateDataset.dataset_name,
             project_id = project_id,
             gatk_override = select_first([gatk_override, BuildGATKJar.jar]),
-            filter_set_name = "quickit",
-            use_VQSR_lite = use_VQSR_lite,
-            extract_table_prefix = "quickit",
+            use_classic_VQSR = !use_VQSR_lite,
             # optionally turn off filtering (VQSR Classic is not deterministic)
             # (and the initial version of this integration test does not allow for inexact matching of actual and expected results.)
             extract_do_not_filter_override = extract_do_not_filter_override,
@@ -62,12 +61,12 @@ workflow GvsQuickstartVcfIntegration {
         call AssertIdenticalOutputs {
             input:
                 expected_output_prefix = expected_prefix,
-                actual_vcfs = GvsUnified.output_vcfs,
+                actual_vcfs = Beta.output_vcfs,
         }
 
         call AssertCostIsTrackedAndExpected {
             input:
-                go = GvsUnified.done,
+                go = Beta.done,
                 dataset_name = CreateDataset.dataset_name,
                 project_id = project_id,
                 expected_output_csv = expected_prefix + "cost_observability_expected.csv",
@@ -75,7 +74,7 @@ workflow GvsQuickstartVcfIntegration {
 
         call AssertTableSizesAreExpected {
             input:
-                go = GvsUnified.done,
+                go = Beta.done,
                 dataset_name = CreateDataset.dataset_name,
                 project_id = project_id,
                 expected_output_csv = expected_prefix + "table_sizes_expected.csv",
@@ -83,10 +82,10 @@ workflow GvsQuickstartVcfIntegration {
     }
 
     output {
-        Array[File] output_vcfs = GvsUnified.output_vcfs
-        Array[File] output_vcf_indexes = GvsUnified.output_vcf_indexes
-        Float total_vcfs_size_mb = GvsUnified.total_vcfs_size_mb
-        File manifest = GvsUnified.manifest
+        Array[File] output_vcfs = Beta.output_vcfs
+        Array[File] output_vcf_indexes = Beta.output_vcf_indexes
+        Float total_vcfs_size_mb = Beta.total_vcfs_size_mb
+        File manifest = Beta.manifest
         String dataset_name = CreateDataset.dataset_name
         String filter_set_name = "quickit"
         Boolean done = true
