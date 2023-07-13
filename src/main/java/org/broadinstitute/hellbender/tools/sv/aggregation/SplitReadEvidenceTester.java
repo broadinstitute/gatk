@@ -51,7 +51,7 @@ public class SplitReadEvidenceTester {
     protected int maxSplitReadCrossDistance;
     protected int representativeDepth;
 
-    public static final int DEFAULT_MAX_CROSS_DISTANCE = 200;
+    public static final int DEFAULT_MAX_CROSS_DISTANCE = 50;
     public static final int MAX_QUAL = 99;
 
     /**
