@@ -25,14 +25,14 @@ To get started using the GVS workflow in Terra with example data, follow the ins
 
 The following table provides a quick overview of the GVS workflow features:
 
-| Workflow features | Description | Source | 
-| --- | --- | --- |
-| Overall workflow | End-to-end joint calling workflow that imports samples, trains the filtering model, and extracts VCF files | Code available from [GitHub](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/wdl/GvsJointVariantCalling.wdl) |
-| Filtering model | Powered by machine learning; uses VQSR and sample annotations | [VQSR](https://gatk.broadinstitute.org/hc/en-us/articles/360035531612) |
-| Workflow language | WDL 1.0 | [openWDL](https://github.com/openwdl/wdl) |
-| Genomic reference sequence | GRCh38 (hg38) human genome primary sequence | Genome Reference Consortium [GRCh38](https://www.ncbi.nlm.nih.gov/assembly/GCF_000001405.39) |
-| Data input file format | File format in which input data is provided | [GVCF](https://gatk.broadinstitute.org/hc/en-us/articles/360035531812) |
-| Data output file formats | File formats in which outputs are provided | [VCF](https://gatk.broadinstitute.org/hc/en-us/articles/360035531692) and associated index files; TXT (manifest) |
+| Workflow features | Description | Source                                                                                                                                             | 
+| --- | --- |----------------------------------------------------------------------------------------------------------------------------------------------------|
+| Overall workflow | End-to-end joint calling workflow that imports samples, trains the filtering model, and extracts VCF files | Code available from [GitHub](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/wdl/GvsJointVariantCalling.wdl)         |
+| Filtering model | Powered by machine learning; uses VQSR and sample annotations | [VQSR](https://gatk.broadinstitute.org/hc/en-us/articles/360035531612)                                                                             |
+| Workflow language | WDL 1.0 | [openWDL](https://github.com/openwdl/wdl)                                                                                                          |
+| Genomic reference sequence | GRCh38 (hg38) human genome primary sequence | Genome Reference Consortium [GRCh38](https://www.ncbi.nlm.nih.gov/assembly/GCF_000001405.39)                                                       |
+| Data input file format | File format in which input data is provided | [Reblocked](https://broadinstitute.github.io/warp/blog/Nov21_ReblockedGVCF) [GVCF](https://gatk.broadinstitute.org/hc/en-us/articles/360035531812) |
+| Data output file formats | File formats in which outputs are provided | [VCF](https://gatk.broadinstitute.org/hc/en-us/articles/360035531692) and associated index files; TXT (manifest)                                   |
 
 ## Setup
 
@@ -114,7 +114,7 @@ The final outputs of the GVS workflow are described in the table below:
 
 The GVS workflow outputs a sharded joint VCF file containing filter sites and genotypes flagged as probable artifacts and annotations calculated during the `GvsExtractCallset` subworkflow, including allele count (`AC`), allele number (`AN`), and allele frequency (`AF`). The output VCF file is sharded so that no shards span multiple chromosomes. 
 
-The [GVS beta workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta) is configured to write the outputs of the workflow back to the `sample_set` data table.
+The [GVS beta workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta) is configured to write the outputs of the workflow to the Google bucket specified in the inputs at runtime.
 
 ## Citing the GVS workflow
 
