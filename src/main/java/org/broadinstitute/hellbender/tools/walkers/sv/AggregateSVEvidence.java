@@ -153,7 +153,7 @@ public final class AggregateSVEvidence extends TwoPassVariantWalker {
             minValue = 0,
             optional = true
     )
-    private int splitReadWindow = 200;
+    private int splitReadWindow = 50;
 
     /**
      * The split read signature for INS/DEL identified by searching for right-clipped (+ stranded) reads
