@@ -1,6 +1,5 @@
 version 1.0
 
-import "GvsUnified.wdl" as Unified
 import "GvsUtils.wdl" as Utils
 import "GvsJointVariantCalling.wdl" as JointVariantCalling
 
