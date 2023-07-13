@@ -2,6 +2,8 @@ package org.broadinstitute.hellbender.utils.read;
 
 import org.jetbrains.annotations.NotNull;
 
+import java.util.List;
+
 /**
  * Immutable sequence of bytes (assuming you don't change the array externally).
  * Subsequences reference the parent array.
@@ -64,6 +66,20 @@ public final class ByteSequence implements CharSequence, Comparable<ByteSequence
         final byte[] newBytes = new byte[length + bytesToAppend.length];
         System.arraycopy(bytes, start, newBytes, 0, length);
         System.arraycopy(bytesToAppend.bytes, bytesToAppend.start, newBytes, length, bytesToAppend.length);
+        return new ByteSequence(newBytes);
+    }
+
+    public static ByteSequence concat( final List<ByteSequence> sequences ) {
+        int totLen = 0;
+        for ( final ByteSequence seq : sequences ) {
+            totLen += seq.length;
+        }
+        final byte[] newBytes = new byte[totLen];
+        int destPos = 0;
+        for ( final ByteSequence seq : sequences ) {
+            System.arraycopy(seq.bytes, seq.start, newBytes, destPos, seq.length);
+            destPos += seq.length;
+        }
         return new ByteSequence(newBytes);
     }
 

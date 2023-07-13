@@ -126,7 +126,8 @@ public final class ErrorCorrectHiFi extends VariantWalker {
                 }
                 final ByteSequence calls = call.getCalls();
                 final int len = calls.length();
-                if ( len == 0 && call.getCigarElement().getLength() == 1 || len == 2 ) {
+                // if we have a single-base deletion, or a single-base insertion
+                if ( (len == 0 && call.getCigarElement().getLength() == 1) || len == 2 ) {
                     callIterator.fixup(call, BYTE_SEQUENCE_A);
                 }
             }
@@ -411,6 +412,10 @@ public final class ErrorCorrectHiFi extends VariantWalker {
                     cigarElements.remove(lastIdx);
                 } else {
                     cigarElements.set(lastIdx, new CigarElement(len - 1, CigarOperator.M));
+                    if ( lastIdx == 0 && cigarElementIndex == len - 1 ) {
+                        cigarElementIndex = 0;
+                        cigarElementsIndex = 1;
+                    }
                 }
                 return new CigarElement(cigarElement.getLength() + 1, CigarOperator.I);
             }

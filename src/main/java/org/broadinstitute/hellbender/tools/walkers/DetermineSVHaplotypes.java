@@ -1,22 +1,28 @@
 package org.broadinstitute.hellbender.tools.walkers;
 
+import htsjdk.samtools.CigarElement;
+import htsjdk.samtools.CigarOperator;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.walkers.ErrorCorrectHiFi.*;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.read.ByteSequence;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
 import java.util.*;
+import java.util.function.Function;
 
 @CommandLineProgramProperties(
-        summary = "Assemble long read fragments near SV breakpoint.",
-        oneLineSummary = "Assemble long read fragments near SV breakpoint.",
+        summary = "Find and phase small variants near an SV breakpoint.",
+        oneLineSummary = "Find and phase small variants near an SV breakpoint.",
         programGroup = VariantEvaluationProgramGroup.class
 )
 public class DetermineSVHaplotypes extends VariantWalker {
     public static final int PADDING = 150;
     public static final int WINDOW_SIZE = 2 * PADDING;
+    public static final int SLOP = 10; // a few extra bases in case we have some small deletions
     public static final int MIN_QUAL = 10;
     public static final int MIN_SMALL_INDEL_COUNT = 3;
     public static final float MIN_SMALL_INDEL_FRACT = 0.1F;
@@ -29,44 +35,107 @@ public class DetermineSVHaplotypes extends VariantWalker {
                        final ReadsContext readsContext,
                        final ReferenceContext refContext,
                        final FeatureContext featureContext ) {
-        final int variantStart = variant.getStart() + 1; // vcf references base before the actual variant for indels
+        final String contig = variant.getContig();
+        final String svType = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, null);
+        final boolean isDel = GATKSVVCFConstants.SYMB_ALT_STRING_DEL.equals(svType);
+
+        // The VCF references the base before the actual variant for deletions and the base after for duplications.
+        // At least it's true in the VCF I'm testing with.
+        final int variantStart = variant.getStart() +
+                (isDel ? 1 : GATKSVVCFConstants.SYMB_ALT_STRING_DUP.equals(svType) ? -1 : 0);
         final int paddedStart = Math.max(1, variantStart - PADDING);
-        final SimpleInterval window = new SimpleInterval(variant.getContig(), paddedStart, paddedStart);
+        final SimpleInterval readQueryWindow = new SimpleInterval(contig, paddedStart, paddedStart);
+
+        // make an iterator for the calls in each read that overlap the variant region
         final List<CallIterator> callIterators = new ArrayList<>();
-        readsContext.iterator(window).forEachRemaining(read -> callIterators.add(new CallIterator(read, paddedStart)));
-        final int paddedEnd = paddedStart + WINDOW_SIZE;
+        readsContext.iterator(readQueryWindow)
+                .forEachRemaining(read -> callIterators.add(new CallIterator(read, paddedStart)));
+
+        final int paddedEnd;
+        final int windowSize;
+        if ( !isDel ) {
+            paddedEnd = paddedStart + WINDOW_SIZE + SLOP;
+            windowSize = WINDOW_SIZE + SLOP;
+        } else {
+            paddedEnd = variant.getEnd() + PADDING + SLOP;
+            windowSize = paddedEnd - paddedStart;
+        }
         final int nReads = callIterators.size();
         Map<Call, List<Integer>> callMap = new HashMap<>(nReads);
-        final List<VariantLoc> variantLocs = new ArrayList<>();
-        final List<Call> consensusCalls = new ArrayList<>(WINDOW_SIZE);
-        for ( int refLoc = paddedStart; refLoc < paddedEnd; ++refLoc ) {
-            for ( int readIdx = 0; readIdx != nReads; ++ readIdx ) {
-                final CallIterator callIterator = callIterators.get(readIdx);
-                final Call call = callIterator.hasNext() ? callIterator.next() : null;
-                if ( call != null && call.getMeanQual() >= MIN_QUAL ) {
-                    final int callIdx = readIdx;
-                    callMap.compute(call, (k, v) -> {
-                        if ( v == null ) v = new ArrayList<>();
-                        v.add(callIdx);
-                        return v;
-                    });
-                }
-            }
-            if ( isVariant(callMap, consensusCalls) ) {
-                variantLocs.add(new VariantLoc(refLoc, callMap));
+        final List<HetSite> hetSites = new ArrayList<>();
+        final List<Call> consensusCalls = new ArrayList<>(windowSize);
 
-                // make a new collection, the old one has been stashed in the variantLoc
+        // find the heterozygous sites in a window around the variant site
+        for ( int refLoc = paddedStart; refLoc < paddedEnd && fillCallMap(callMap, callIterators); ++refLoc ) {
+            if ( isVariant(callMap, consensusCalls) ) {
+                hetSites.add(new HetSite(refLoc, callMap));
+
+                // make a new collection, the old one has been stashed in the HetSite
                 callMap = new HashMap<>(nReads);
             } else {
                 // reuse the old collection after clearing it
                 callMap.clear();
             }
         }
-        phase(variantLocs, variantStart);
-        System.out.println(variant.getContig() + ":" + variant.getStart() + "\t" + variant.getID() + "\t" + variantLocs.size());
+
+        // phase the variants -- save the HetSite at the variantStart locus, if present
+        final HetSite ourHetSite = phase(hetSites, variantStart);
+
+        final List<ByteSequence> haplotypes =
+                getHaplotypes(paddedStart, windowSize, consensusCalls, hetSites);
+        final CigarMatcher cigarMatcher = new CigarMatcher(variant);
+        if ( ourHetSite == null ) {
+            final Call ourCall = consensusCalls.get(PADDING);
+            final String genotype =
+                    ourCall != null && cigarMatcher.matches(ourCall.getCigarElement()) ? "1/1" : "0/0";
+            writeHaplotypes(variant, haplotypes, genotype);
+            return;
+        }
+
+        final boolean alt1Matches = cigarMatcher.matches(ourHetSite.getAlt1().getCigarElement());
+        final boolean alt2Matches = cigarMatcher.matches(ourHetSite.getAlt2().getCigarElement());
+        if ( alt1Matches ) {
+            if ( alt2Matches ) {
+                writeHaplotypes(variant, haplotypes, "1/1");
+            } else {
+                final ByteSequence alt1Sequence = haplotypes.get(0);
+                haplotypes.set(0, haplotypes.get(1));
+                haplotypes.set(1, alt1Sequence);
+                writeHaplotypes(variant, haplotypes, "0/1");
+            }
+        } else if ( alt2Matches ) {
+            writeHaplotypes(variant, haplotypes, "0/1");
+        } else {
+            writeHaplotypes(variant, haplotypes, "0/0");
+        }
     }
 
-    private boolean isVariant( final Map<Call, List<Integer>> callMap,
+    private static boolean fillCallMap( final Map<Call, List<Integer>> callMap,
+                                        final List<CallIterator> callIterators ) {
+        boolean exhausted = true;
+        final int nReads = callIterators.size();
+        for ( int readIdx = 0; readIdx != nReads; ++readIdx ) {
+            final CallIterator callIterator = callIterators.get(readIdx);
+            final Call call;
+            if ( callIterator.hasNext() ) {
+                call = callIterator.next();
+                exhausted = false;
+            } else {
+                call = null;
+            }
+            if ( call != null && call.getMeanQual() >= MIN_QUAL ) {
+                final int callIdx = readIdx;
+                callMap.compute(call, ( k, v ) -> {
+                    if ( v == null ) v = new ArrayList<>();
+                    v.add(callIdx);
+                    return v;
+                });
+            }
+        }
+        return !exhausted;
+    }
+
+    private static boolean isVariant( final Map<Call, List<Integer>> callMap,
                                final List<Call> consensusCalls ) {
         int maxIDs = 0;
         final int totalIds = callMap.values().stream().mapToInt(List::size).sum();
@@ -74,8 +143,7 @@ public class DetermineSVHaplotypes extends VariantWalker {
         final Iterator<Map.Entry<Call, List<Integer>>> itr = callMap.entrySet().iterator();
         while ( itr.hasNext() ) {
             final Map.Entry<Call, List<Integer>> entry = itr.next();
-            final List<Integer> callIndices = entry.getValue();
-            final int nIDs = callIndices.size();
+            final int nIDs = entry.getValue().size();
             if ( nIDs == 1 ) { // assume that variation seen in a single read is bogus
                 itr.remove();
                 continue;
@@ -83,7 +151,8 @@ public class DetermineSVHaplotypes extends VariantWalker {
             // remove small indels that aren't well attested -- that's our main sequencing error mode
             final Call call = entry.getKey();
             final int keyLen = call.getCalls().length();
-            if ( keyLen == 2 || (keyLen == 0 && call.getCigarElement().getLength() <= 2) ) {
+            // if we have a single-base deletion, or a single-base insertion
+            if ( (keyLen == 0 && call.getCigarElement().getLength() == 1) || keyLen == 2 ) {
                 if ( nIDs <= MIN_SMALL_INDEL_COUNT || 1.F*nIDs/totalIds < MIN_SMALL_INDEL_FRACT ) {
                     itr.remove();
                     continue;
@@ -99,27 +168,30 @@ public class DetermineSVHaplotypes extends VariantWalker {
         return callMap.size() > 1;
     }
 
-    private void phase( final List<VariantLoc> variantLocs, final int variantStart ) {
-        final int nLocs = variantLocs.size();
+    private static HetSite phase( final List<HetSite> hetSites, final int variantStart ) {
+        final int nLocs = hetSites.size();
         for ( int idx = 0; idx != nLocs; ++idx ) {
-            final VariantLoc variantLoc = variantLocs.get(idx);
-            if ( variantLoc.getRefLoc() == variantStart || nLocs == 1 ) {
+            final HetSite hetSite = hetSites.get(idx);
+            final int cmp = Integer.compare(hetSite.getRefLoc(), variantStart);
+            if ( cmp == 0 || nLocs == 1 ) {
                 final ArrayList<Map.Entry<Call, List<Integer>>> locs =
-                        new ArrayList<>(variantLoc.getCallMap().entrySet());
+                        new ArrayList<>(hetSite.getCallMap().entrySet());
                 locs.sort(Comparator.comparingInt(e -> -e.getValue().size()));
-                variantLoc.setPhase(locs.get(0).getKey(), locs.get(1).getKey());
-                phaseExtend(variantLocs, idx, idx);
-                return;
+                hetSite.setPhase(locs.get(0).getKey(), locs.get(1).getKey());
+                if ( nLocs > 1 ) {
+                    phaseExtend(hetSites, idx, idx);
+                }
+                return cmp == 0 ? hetSite : null;
             }
-            if ( variantLoc.getRefLoc() > variantStart ) {
+            if ( cmp > 0 ) {
                 break;
             }
         }
         for ( int idx1 = 0; idx1 < nLocs - 1; ++idx1 ) {
             for ( int idx2 = idx1 + 1; idx2 < nLocs; ++idx2 ) {
-                if ( phasePair(variantLocs.get(idx1), variantLocs.get(idx2)) ) {
-                    phaseExtend(variantLocs, idx1, idx2);
-                    return;
+                if ( phasePair(hetSites.get(idx1), hetSites.get(idx2)) ) {
+                    phaseExtend(hetSites, idx1, idx2);
+                    return null;
                 }
             }
         }
@@ -127,23 +199,24 @@ public class DetermineSVHaplotypes extends VariantWalker {
         // if we have only two variants, and they can't be phased together
         if ( nLocs == 2 ) {
             // remove the one that's farther from the variant of interest
-            if ( Math.abs(variantLocs.get(0).getRefLoc() - variantStart) <
-                    Math.abs(variantLocs.get(1).getRefLoc() - variantStart) ) {
-                variantLocs.remove(1);
+            if ( Math.abs(hetSites.get(0).getRefLoc() - variantStart) <
+                    Math.abs(hetSites.get(1).getRefLoc() - variantStart) ) {
+                hetSites.remove(1);
             } else {
-                variantLocs.remove(0);
+                hetSites.remove(0);
             }
             // arbitrarily set the phase of the one that remains
-            final VariantLoc variantLoc = variantLocs.get(0);
+            final HetSite hetSite = hetSites.get(0);
             final ArrayList<Map.Entry<Call, List<Integer>>> locs =
-                    new ArrayList<>(variantLoc.getCallMap().entrySet());
+                    new ArrayList<>(hetSite.getCallMap().entrySet());
             locs.sort(Comparator.comparingInt(e -> -e.getValue().size()));
-            variantLoc.setPhase(locs.get(0).getKey(), locs.get(1).getKey());
+            hetSite.setPhase(locs.get(0).getKey(), locs.get(1).getKey());
         }
-        variantLocs.clear();
+        hetSites.clear();
+        return null;
     }
 
-    private boolean phasePair( final VariantLoc loc1, final VariantLoc loc2 ) {
+    private static boolean phasePair( final HetSite loc1, final HetSite loc2 ) {
         final List<CallPair> pairs = new ArrayList<>();
         for ( Map.Entry<Call, List<Integer>> entry1 : loc1.getCallMap().entrySet() ) {
             final List<Integer> list1 = entry1.getValue();
@@ -175,54 +248,54 @@ public class DetermineSVHaplotypes extends VariantWalker {
         return true;
     }
 
-    private void phaseExtend( final List<VariantLoc> variantLocs, final int idx1, int idx2 ) {
+    private static void phaseExtend( final List<HetSite> hetSites, final int idx1, int idx2 ) {
         // phase or delete variants downstream of idx2
-        VariantLoc phasedLoc = variantLocs.get(idx2);
+        HetSite phasedLoc = hetSites.get(idx2);
         int idx3 = idx2 + 1;
-        while ( idx3 < variantLocs.size() ) {
-            final VariantLoc unphasedLoc = variantLocs.get(idx3);
+        while ( idx3 < hetSites.size() ) {
+            final HetSite unphasedLoc = hetSites.get(idx3);
             if ( extendPhase(phasedLoc, unphasedLoc) ) {
                 phasedLoc = unphasedLoc;
                 idx3 += 1;
             } else {
-                variantLocs.remove(idx3);
+                hetSites.remove(idx3);
             }
         }
 
         // phase or delete variants between idx1 and idx2
-        phasedLoc = variantLocs.get(idx1);
+        phasedLoc = hetSites.get(idx1);
         int idx4 = idx1 + 1;
         while ( idx4 < idx2 ) {
-            final VariantLoc unphasedLoc = variantLocs.get(idx4);
+            final HetSite unphasedLoc = hetSites.get(idx4);
             if ( extendPhase(phasedLoc, unphasedLoc) ) {
                 phasedLoc = unphasedLoc;
                 idx4 += 1;
             } else {
-                variantLocs.remove(idx4);
+                hetSites.remove(idx4);
                 idx2 -= 1;
             }
         }
 
         // phase or delete variants upstream of idx1
-        phasedLoc = variantLocs.get(idx1);
+        phasedLoc = hetSites.get(idx1);
         int idx0 = idx1 - 1;
         while ( idx0 >= 0 ) {
-            final VariantLoc unphasedLoc = variantLocs.get(idx0);
+            final HetSite unphasedLoc = hetSites.get(idx0);
             if ( extendPhase(phasedLoc, unphasedLoc) ) {
                 phasedLoc = unphasedLoc;
             } else {
-                variantLocs.remove(idx0);
+                hetSites.remove(idx0);
             }
             idx0 -= 1;
         }
     }
 
-    private boolean extendPhase( final VariantLoc phasedLoc, final VariantLoc unphasedLoc ) {
-        final Call call1 = findEntry(phasedLoc.getAlt1(), unphasedLoc);
+    private static boolean extendPhase( final HetSite phasedLoc, final HetSite unphasedLoc ) {
+        final Call call1 = findEntry(phasedLoc.getListFor(phasedLoc.getAlt1()), unphasedLoc);
         if ( call1 == null ) {
             return false;
         }
-        final Call call2 = findEntry(phasedLoc.getAlt2(), unphasedLoc);
+        final Call call2 = findEntry(phasedLoc.getListFor(phasedLoc.getAlt2()), unphasedLoc);
         if ( call2 == null || call1.equals(call2) ) {
             return false;
         }
@@ -230,7 +303,7 @@ public class DetermineSVHaplotypes extends VariantWalker {
         return true;
     }
 
-    private Call findEntry( final List<Integer> list1, final VariantLoc unphasedLoc ) {
+    private static Call findEntry( final List<Integer> list1, final HetSite unphasedLoc ) {
         Call result = null;
         for ( Map.Entry<Call, List<Integer>> entry2 : unphasedLoc.getCallMap().entrySet() ) {
             final List<Integer> list2 = entry2.getValue();
@@ -249,7 +322,7 @@ public class DetermineSVHaplotypes extends VariantWalker {
         return result;
     }
 
-    private int countCommonIDs( final List<Integer> list1, final List<Integer> list2 ) {
+    private static int countCommonIDs( final List<Integer> list1, final List<Integer> list2 ) {
         final Iterator<Integer> itr1 = list1.iterator();
         int val1 = itr1.next();
         final Iterator<Integer> itr2 = list2.iterator();
@@ -273,27 +346,116 @@ public class DetermineSVHaplotypes extends VariantWalker {
         // can't reach here
     }
 
+    private static List<ByteSequence> getHaplotypes( final int windowStart,
+                                                     final int windowSize,
+                                                     final List<Call> consensusCalls,
+                                                     final List<HetSite> hetSites ) {
+        if ( hetSites.isEmpty() ) {
+            return Collections.singletonList(getHaplotype(windowStart, windowSize, consensusCalls, hetSites.iterator(), (h)->null));
+        }
+        final List<ByteSequence> result = new ArrayList<>(2);
+        result.add(getHaplotype(windowStart, windowSize, consensusCalls, hetSites.iterator(), HetSite::getAlt1));
+        result.add(getHaplotype(windowStart, windowSize, consensusCalls, hetSites.iterator(), HetSite::getAlt2));
+        return result;
+    }
+
+    public static ByteSequence getHaplotype( final int windowStart,
+                                             final int windowSize,
+                                             final List<Call> consensusCalls,
+                                             final Iterator<HetSite> hetSiteIterator,
+                                             final Function<HetSite, Call> hetSiteCallFunc ) {
+        final List<ByteSequence> seqs = new ArrayList<>(windowSize);
+        HetSite curHetSite = hetSiteIterator.hasNext() ? hetSiteIterator.next() : null;
+        final int nCalls = consensusCalls.size();
+        for ( int idx = 0; idx < nCalls; ++idx ) {
+            final Call call;
+            if ( curHetSite == null || windowStart + idx != curHetSite.getRefLoc() ) {
+                call = consensusCalls.get(idx);
+            } else {
+                call = hetSiteCallFunc.apply(curHetSite);
+                if ( hetSiteIterator.hasNext() ) {
+                    curHetSite = hetSiteIterator.next();
+                }
+            }
+            if ( call == null ) {
+                continue;
+            }
+            final CigarElement cigarElement = call.getCigarElement();
+            if ( cigarElement.getOperator() == CigarOperator.D ) {
+                idx += cigarElement.getLength() - 1;
+            } else {
+                final ByteSequence seq = call.getCalls();
+                seqs.add(seq);
+            }
+        }
+        return ByteSequence.concat(seqs);
+    }
+
+    public void writeHaplotypes( final VariantContext variant,
+                                 final List<ByteSequence> haplotypes,
+                                 final String genotype ) {
+        final StringBuilder sb = new StringBuilder();
+        sb.append(variant.getContig()).append('\t').append(variant.getStart()).append('\t');
+        sb.append(variant.getID()).append('\t').append(genotype).append('\t');
+        sb.append(variant.getGenotype(0).isHet() ? "0/1" : "1/1");
+        for ( final ByteSequence haplotype : haplotypes ) {
+            sb.append('\t');
+            sb.append(haplotype);
+        }
+        System.out.println(sb);
+    }
+
     public record CallPair( Call call1, Call call2 ) {}
 
-    public static final class VariantLoc {
+    public static final class HetSite {
         private final int refLoc;
         private final Map<Call, List<Integer>> callMap;
         private Call alt1;
         private Call alt2;
 
-        public VariantLoc( int refLoc, Map<Call, List<Integer>> callMap ) {
+        public HetSite( int refLoc, Map<Call, List<Integer>> callMap ) {
             this.refLoc = refLoc;
             this.callMap = callMap;
         }
 
         public int getRefLoc() { return refLoc; }
         public Map<Call, List<Integer>> getCallMap() { return callMap; }
-        public List<Integer> getAlt1() { return alt1 == null ? null : callMap.get(alt1); }
-        public List<Integer> getAlt2() { return alt1 == null ? null : callMap.get(alt2); }
+        public Call getAlt1() { return alt1; }
+        public Call getAlt2() { return alt2; }
+        public List<Integer> getListFor( final Call call ) { return callMap.get(call); }
 
         public void setPhase( final Call alt1, final Call alt2 ) {
             this.alt1 = alt1;
             this.alt2 = alt2;
+        }
+    }
+
+    public static final class CigarMatcher {
+        final CigarOperator operator;
+        final int length;
+
+        public CigarMatcher( final VariantContext variant ) {
+            final String svType = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, null);
+            final int svLen = variant.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0);
+            if ( GATKSVVCFConstants.SYMB_ALT_STRING_INS.equals(svType) ||
+                    GATKSVVCFConstants.SYMB_ALT_STRING_DUP.equals(svType) ) {
+                operator = CigarOperator.I;
+                length = svLen + 1;
+            } else if ( GATKSVVCFConstants.SYMB_ALT_STRING_DEL.equals(svType) ) {
+                operator = CigarOperator.D;
+                length = -svLen;
+            } else if ( GATKSVVCFConstants.BREAKEND_STR.equals(svType) ||
+                    GATKSVVCFConstants.SYMB_ALT_STRING_INV.equals(svType) ) {
+                operator = CigarOperator.M;
+                length = -1;
+            } else {
+                throw new UnsupportedOperationException("Can't handle svType " + svType);
+            }
+        }
+
+        public boolean matches( final CigarElement element ) {
+            return element.getOperator() == operator &&
+                    (length < 0 || Math.abs(element.getLength() - length) <= 2);
         }
     }
 }
