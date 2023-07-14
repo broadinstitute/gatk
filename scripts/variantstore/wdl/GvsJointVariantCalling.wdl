@@ -89,7 +89,7 @@ workflow GvsJointVariantCalling {
             project_id = project_id,
             call_set_identifier = call_set_identifier,
             filter_set_name = effective_filter_set_name,
-            use_VQSR_lite = use_classic_VQSR,
+            use_VQSR_lite = !use_classic_VQSR,
             interval_list = interval_list,
             gatk_override = gatk_override,
             INDEL_VQSR_CLASSIC_max_gaussians_override = INDEL_VQSR_CLASSIC_max_gaussians_override,
