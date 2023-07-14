@@ -43,6 +43,8 @@ workflow GvsQuickstartVcfIntegration {
             project_id = project_id,
             gatk_override = select_first([gatk_override, BuildGATKJar.jar]),
             use_classic_VQSR = !use_VQSR_lite,
+            filter_set_name = "quickit",
+            extract_table_prefix = "quickit",
             # optionally turn off filtering (VQSR Classic is not deterministic)
             # (and the initial version of this integration test does not allow for inexact matching of actual and expected results.)
             extract_do_not_filter_override = extract_do_not_filter_override,
@@ -213,9 +215,9 @@ task AssertCostIsTrackedAndExpected {
     }
 
     command <<<
-        set -o errexit
-        set -o nounset
-        set -o pipefail
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
         bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false \

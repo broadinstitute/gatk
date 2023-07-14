@@ -26,13 +26,15 @@ workflow GvsJointVariantCalling {
         File gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-727-g950da0b-SNAPSHOT-local.jar"
         File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
         Boolean extract_do_not_filter_override = false
+        String? extract_table_prefix
+        String? filter_set_name
     }
 
     # the call_set_identifier string is used to name many different things throughout this workflow (BQ tables, vcfs etc),
     # and so make sure nothing is broken by creative users, we replace spaces and underscores with hyphens
     String extract_output_file_base_name = sub(call_set_identifier, "\\s+|\_+", "-")
-    String extract_table_prefix = sub(call_set_identifier, "\\s+|\_+", "-")
-    String filter_set_name = sub(call_set_identifier, "\\s+|\_+", "-")
+    String effective_extract_table_prefix = select_first([extract_table_prefix, sub(call_set_identifier, "\\s+|\_+", "-")])
+    String effective_filter_set_name = select_first([filter_set_name, sub(call_set_identifier, "\\s+|\_+", "-")])
 
     String query_project = project_id
     String destination_project = project_id
@@ -86,7 +88,7 @@ workflow GvsJointVariantCalling {
             dataset_name = dataset_name,
             project_id = project_id,
             call_set_identifier = call_set_identifier,
-            filter_set_name = filter_set_name,
+            filter_set_name = effective_filter_set_name,
             use_VQSR_lite = use_classic_VQSR,
             interval_list = interval_list,
             gatk_override = gatk_override,
@@ -102,7 +104,7 @@ workflow GvsJointVariantCalling {
             go = GvsCreateFilterSet.done,
             dataset_name = dataset_name,
             project_id = project_id,
-            extract_table_prefix = extract_table_prefix,
+            extract_table_prefix = effective_extract_table_prefix,
             query_project = query_project,
             destination_project = destination_project,
             destination_dataset = destination_dataset,
@@ -117,8 +119,8 @@ workflow GvsJointVariantCalling {
             dataset_name = dataset_name,
             project_id = project_id,
             call_set_identifier = call_set_identifier,
-            extract_table_prefix = extract_table_prefix,
-            filter_set_name = filter_set_name,
+            extract_table_prefix = effective_extract_table_prefix,
+            filter_set_name = effective_filter_set_name,
             query_project = query_project,
             scatter_count = extract_scatter_count,
             interval_list = interval_list,
