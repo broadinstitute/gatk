@@ -415,6 +415,7 @@ task GetUningestedSampleIds {
   String temp_table="~{dataset_name}.sample_names_to_load"
 
   command <<<
+    # Prepend date, time and pwd to xtrace log entries.
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o xtrace -o pipefail
 

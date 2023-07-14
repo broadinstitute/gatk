@@ -128,6 +128,7 @@ task AssignIds {
   String bq_labels = "--label service:gvs --label team:variants --label managedby:assign_ids"
 
   command <<<
+    # Prepend date, time and pwd to xtrace log entries.
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
 

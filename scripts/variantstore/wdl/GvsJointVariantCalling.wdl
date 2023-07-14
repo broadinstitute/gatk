@@ -16,7 +16,6 @@ workflow GvsJointVariantCalling {
         Boolean use_classic_VQSR = true
         # Beta users have accounts with tighter quotas, and we must work around that
         Boolean tighter_gcp_quotas = true
-        # TODO should these all be exposed in this WDL?
         String? sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
         String? vcf_files_column_name
         String? vcf_index_files_column_name
