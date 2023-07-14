@@ -36,7 +36,7 @@ workflow GvsQuickstartVcfIntegration {
             dataset_suffix = dataset_suffix,
     }
 
-    call JointVariantCalling.GvsJointVariantCalling as Beta {
+    call JointVariantCalling.GvsJointVariantCalling as JointVariantCalling {
         input:
             call_set_identifier = branch_name,
             dataset_name = CreateDataset.dataset_name,
@@ -60,12 +60,12 @@ workflow GvsQuickstartVcfIntegration {
         call AssertIdenticalOutputs {
             input:
                 expected_output_prefix = expected_prefix,
-                actual_vcfs = Beta.output_vcfs,
+                actual_vcfs = JointVariantCalling.output_vcfs,
         }
 
         call AssertCostIsTrackedAndExpected {
             input:
-                go = Beta.done,
+                go = JointVariantCalling.done,
                 dataset_name = CreateDataset.dataset_name,
                 project_id = project_id,
                 expected_output_csv = expected_prefix + "cost_observability_expected.csv",
@@ -73,7 +73,7 @@ workflow GvsQuickstartVcfIntegration {
 
         call AssertTableSizesAreExpected {
             input:
-                go = Beta.done,
+                go = JointVariantCalling.done,
                 dataset_name = CreateDataset.dataset_name,
                 project_id = project_id,
                 expected_output_csv = expected_prefix + "table_sizes_expected.csv",
@@ -81,10 +81,10 @@ workflow GvsQuickstartVcfIntegration {
     }
 
     output {
-        Array[File] output_vcfs = Beta.output_vcfs
-        Array[File] output_vcf_indexes = Beta.output_vcf_indexes
-        Float total_vcfs_size_mb = Beta.total_vcfs_size_mb
-        File manifest = Beta.manifest
+        Array[File] output_vcfs = JointVariantCalling.output_vcfs
+        Array[File] output_vcf_indexes = JointVariantCalling.output_vcf_indexes
+        Float total_vcfs_size_mb = JointVariantCalling.total_vcfs_size_mb
+        File manifest = JointVariantCalling.manifest
         String dataset_name = CreateDataset.dataset_name
         String filter_set_name = "quickit"
         Boolean done = true
