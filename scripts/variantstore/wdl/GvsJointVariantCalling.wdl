@@ -26,13 +26,14 @@ workflow GvsJointVariantCalling {
         File gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-727-g950da0b-SNAPSHOT-local.jar"
         File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
         Boolean extract_do_not_filter_override = false
+        String? extract_output_file_base_name
         String? extract_table_prefix
         String? filter_set_name
     }
 
     # the call_set_identifier string is used to name many different things throughout this workflow (BQ tables, vcfs etc),
     # and so make sure nothing is broken by creative users, we replace spaces and underscores with hyphens
-    String extract_output_file_base_name = sub(call_set_identifier, "\\s+|\_+", "-")
+    String effective_extract_output_file_base_name = select_first([extract_output_file_base_name, sub(call_set_identifier, "\\s+|\_+", "-")])
     String effective_extract_table_prefix = select_first([extract_table_prefix, sub(call_set_identifier, "\\s+|\_+", "-")])
     String effective_filter_set_name = select_first([filter_set_name, sub(call_set_identifier, "\\s+|\_+", "-")])
 
@@ -126,7 +127,7 @@ workflow GvsJointVariantCalling {
             interval_list = interval_list,
             interval_weights_bed = interval_weights_bed,
             gatk_override = gatk_override,
-            output_file_base_name = extract_output_file_base_name,
+            output_file_base_name = effective_extract_output_file_base_name,
             extract_maxretries_override = extract_maxretries_override,
             extract_preemptible_override = extract_preemptible_override,
             output_gcs_dir = extract_output_gcs_dir,

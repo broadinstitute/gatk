@@ -43,6 +43,7 @@ workflow GvsQuickstartVcfIntegration {
             project_id = project_id,
             gatk_override = select_first([gatk_override, BuildGATKJar.jar]),
             use_classic_VQSR = !use_VQSR_lite,
+            extract_output_file_base_name = "quickit",
             filter_set_name = "quickit",
             extract_table_prefix = "quickit",
             # optionally turn off filtering (VQSR Classic is not deterministic)
