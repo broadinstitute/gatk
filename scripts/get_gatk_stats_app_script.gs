@@ -255,7 +255,12 @@ function recordGitHubReleaseDownloadCount(githubUrl, authToken) {
     var tagName = release['tag_name'];
     var downloadCount = 0;
     if (release['assets'].length != 0) {
-      var downloadCount = release['assets'][0]['download_count'];
+      var downloadCount = 0
+      release['assets'].forEach(
+        function (asset) {
+          downloadCount += asset['download_count'];
+        }
+      )
     }
 
     // Add our new download count to our row:
@@ -378,4 +383,5 @@ function get_image_pull_count(image) {
   var imageStats = JSON.parse(response.getContentText());
   return imageStats['pull_count'];
 }
+
 
