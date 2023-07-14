@@ -326,9 +326,9 @@ public final class ReblockGVCF extends MultiVariantWalker {
     @Override
     public void apply(VariantContext variant, ReadsContext reads, ReferenceContext ref, FeatureContext features) {
         if (!variant.hasAllele(Allele.NON_REF_ALLELE)) {
-            throw new GATKException("Variant Context at " + variant.getContig() + ":" + variant.getStart() + " does not contain a <NON-REF> allele. This tool is only intended for use with GVCFs.");
+            throw new UserException("Variant Context at " + variant.getContig() + ":" + variant.getStart() + " does not contain a <NON-REF> allele. This tool is only intended for use with GVCFs.");
         }
-        VariantContext newVC = annotationsToRemove.size() > 0 ? vcFormatAnnotationsRemoved(variant) : variant;
+        VariantContext newVC = annotationsToRemove.size() > 0 ? removeVCFFormatAnnotations(variant) : variant;
         regenotypeVC(newVC);
     }
 
@@ -338,7 +338,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
      * @param vc variant context to remove format annotations from
      * @return variant context with format annotations removed from genotype
      */
-    private VariantContext vcFormatAnnotationsRemoved(final VariantContext vc) {
+    private VariantContext removeVCFFormatAnnotations(final VariantContext vc) {
         final Genotype genotype = vc.getGenotype(0);
         Map<String, Object> extendedAttributes = genotype.getExtendedAttributes();
         for (String annotation : annotationsToRemove) {
