@@ -38,7 +38,7 @@ workflow GvsCreateFilterSet {
   String fq_filter_sites_destination_table =    "~{project_id}.~{dataset_name}.filter_set_sites"
   String fq_filter_set_info_destination_table = "~{project_id}.~{dataset_name}.filter_set_info"
 
-  String filter_set_info_destination_table_schema = "filter_set_name:string,type:string,location:integer,ref:string,alt:string,calibration_sensitivity:float,vqslod:float,culprit:string,training_label:string,yng_status:string"
+  String filter_set_info_destination_table_schema = "filter_set_name:string,type:string,location:integer,ref:string,alt:string,calibration_sensitivity:float,score:float,vqslod:float,culprit:string,training_label:string,yng_status:string"
 
   call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
     input:
