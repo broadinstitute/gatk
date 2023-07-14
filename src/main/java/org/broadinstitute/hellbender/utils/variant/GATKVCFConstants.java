@@ -27,7 +27,8 @@ public final class GATKVCFConstants {
     public static final String AS_RAW_RMS_MAPPING_QUALITY_KEY =     "AS_RAW_MQ";
     public static final String AS_CULPRIT_KEY =                     "AS_culprit";
     public static final String AS_VQS_LOD_KEY =                     "AS_VQSLOD";
-    public static final String AS_VQS_SENS_KEY =                    "AS_VQS_SENS";
+    public static final String SCORE_KEY =                          "SCORE";
+    public static final String CALIBRATION_SENSITIVITY_KEY =        "CALIBRATION_SENSITIVITY";
     public static final String AS_YNG_STATUS_KEY =                  "AS_YNG";
     public static final String ORIGINAL_AC_KEY =                    "AC_Orig"; //SelectVariants
     public static final String ORIGINAL_AF_KEY =                    "AF_Orig"; //SelectVariants
@@ -178,9 +179,9 @@ public final class GATKVCFConstants {
     public static final String VQSR_FAILURE_PREFIX = "low_VQSLOD_";
     public static final String VQSR_FAILURE_SNP = VQSR_FAILURE_PREFIX + SNP;
     public static final String VQSR_FAILURE_INDEL = VQSR_FAILURE_PREFIX + INDEL;
-    public static final String VQS_SENS_FAILURE_PREFIX = "high_VQS_SENS_";
-    public static final String VQS_SENS_FAILURE_SNP = VQS_SENS_FAILURE_PREFIX + SNP;
-    public static final String VQS_SENS_FAILURE_INDEL = VQS_SENS_FAILURE_PREFIX + INDEL;
+    public static final String CALIBRATION_SENSITIVITY_FAILURE_PREFIX = "high_CALIBRATION_SENSITIVITY_";
+    public static final String CALIBRATION_SENSITIVITY_FAILURE_SNP = CALIBRATION_SENSITIVITY_FAILURE_PREFIX + SNP;
+    public static final String CALIBRATION_SENSITIVITY_FAILURE_INDEL = CALIBRATION_SENSITIVITY_FAILURE_PREFIX + INDEL;
 
 
 
