@@ -66,34 +66,20 @@ workflow GvsImportGenomes {
 
   Int effective_load_data_maxretries = select_first([load_data_maxretries_override, 5])
 
-  # return an error if the lengths are not equal
-  Int input_length = length(input_vcfs)
-  Int input_indexes_length = length(input_vcf_indexes)
-  if ((input_length != length(external_sample_names)) || (input_indexes_length != length(external_sample_names))) {
-    call Utils.TerminateWorkflow as DieDueToMismatchedVcfAndIndexLengths {
-      input:
-        message = "The lengths of workflow inputs 'external_sample_names' (" + length(external_sample_names) +
-                  "), 'input_vcfs' (" + input_length + ") and 'input_vcf_indexes' (" + input_indexes_length + ") should be the same.\n\n" +
-                  "If any of these counts are zero an incorrect or non-existent attribute may have been referenced."
-    }
-  }
-
   call GetUningestedSampleIds {
     input:
       dataset_name = dataset_name,
       project_id = project_id,
       external_sample_names = external_sample_names,
-      table_name = "sample_info"
+      table_name = "sample_info",
   }
 
   call CurateInputLists {
     input:
-      dataset_name = dataset_name,
-      project_id = project_id,
       input_vcf_index_list = write_lines(input_vcf_indexes),
       input_vcf_list = write_lines(input_vcfs),
       input_sample_name_list = write_lines(external_sample_names),
-      input_samples_to_be_loaded_map = GetUningestedSampleIds.sample_map
+      input_samples_to_be_loaded_map = GetUningestedSampleIds.sample_map,
   }
 
   call CreateFOFNs {
@@ -104,7 +90,7 @@ workflow GvsImportGenomes {
       sample_name_list = CurateInputLists.sample_name_list,
   }
 
-  scatter (i in range(length(CreateFOFNs.vcf_batch_vcf_fofns))) {
+  scatter (i in range(length(CreateFOFNs.vcf_sample_name_fofns))) {
     call LoadData {
       input:
         index = i,
@@ -121,7 +107,7 @@ workflow GvsImportGenomes {
         load_data_maxretries = effective_load_data_maxretries,
         sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
         sample_map = GetUningestedSampleIds.sample_map,
-        process_vcf_headers = process_vcf_headers
+        process_vcf_headers = process_vcf_headers,
     }
   }
  if (process_vcf_headers) {
@@ -137,7 +123,7 @@ workflow GvsImportGenomes {
     input:
       load_done = LoadData.done,
       project_id = project_id,
-      dataset_name = dataset_name
+      dataset_name = dataset_name,
   }
 
   output {
@@ -158,7 +144,9 @@ task CreateFOFNs {
   }
 
   command <<<
-    set -e
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     split -a 5 -l ~{batch_size} ~{input_vcf_list} batched_vcfs.
     split -a 5 -l ~{batch_size} ~{input_vcf_index_list} batched_vcf_indexes.
@@ -229,8 +217,9 @@ task LoadData {
   String table_name = "sample_info"
 
   command <<<
-    set -e
-    set -o errexit -o nounset -o xtrace -o pipefail
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
@@ -273,14 +262,12 @@ task LoadData {
     bq --apilog=false --project_id=~{project_id} rm -f=true ~{temp_table}
 
     ## now we want to create a sub list of these samples (without the ones that have already been loaded)
-    curl https://raw.githubusercontent.com/broadinstitute/gatk/ah_var_store/scripts/variantstore/wdl/extract/curate_input_array_files.py -o curate_input_array_files.py
 
-
-    python3 curate_input_array_files.py --sample_map_to_be_loaded_file_name sample_map.csv \
+    python3 /gatk/scripts/variantstore/wdl/extract/curate_input_array_files.py \
+      --sample_map_to_be_loaded_file_name sample_map.csv \
       --sample_name_list_file_name $NAMES_FILE \
       --vcf_list_file_name ~{write_lines(input_vcfs)} \
-      --vcf_index_list_file_name  ~{write_lines(input_vcf_indexes)} \
-      --output_files True
+      --vcf_index_list_file_name  ~{write_lines(input_vcf_indexes)}
 
     # translate files created by the python script into BASH arrays---but only of the samples that aren't there already
     VCFS_ARRAY=($(cat output_vcf_list_file |tr "\n" " "))
@@ -323,7 +310,7 @@ task LoadData {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_07_20"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_07_14"
     maxRetries: load_data_maxretries
     memory: "3.75 GB"
     disks: "local-disk 50 HDD"
@@ -352,7 +339,7 @@ task ProcessVCFHeaders {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-23-alpine"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-14-alpine-a56ebf156"
     disks: "local-disk 500 HDD"
   }
 }
@@ -428,6 +415,8 @@ task GetUningestedSampleIds {
   String temp_table="~{dataset_name}.sample_names_to_load"
 
   command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o xtrace -o pipefail
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
@@ -502,8 +491,6 @@ task GetUningestedSampleIds {
 
 task CurateInputLists {
   input {
-    String dataset_name
-    String project_id
     File input_vcf_index_list
     File input_vcf_list
     File input_samples_to_be_loaded_map
@@ -514,16 +501,17 @@ task CurateInputLists {
   }
 
   command <<<
-    set -ex
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     python3 /app/curate_input_array_files.py --sample_map_to_be_loaded_file_name ~{input_samples_to_be_loaded_map} \
                                              --sample_name_list_file_name ~{input_sample_name_list} \
                                              --vcf_list_file_name ~{input_vcf_list} \
-                                             --vcf_index_list_file_name  ~{input_vcf_index_list} \
-                                             --output_files True
+                                             --vcf_index_list_file_name  ~{input_vcf_index_list}
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-23-alpine"
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-14-alpine-a56ebf156"
     memory: "3 GB"
     disks: "local-disk 100 HDD"
     bootDiskSizeGb: 15

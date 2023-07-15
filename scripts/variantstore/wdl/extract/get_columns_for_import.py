@@ -243,13 +243,13 @@ def get_column_values(columnSamples, numSamples, user_defined_vcf, user_defined_
         # Check the contents of the columns: the duck algorithm.  If its contents LOOK like vcfs and indexes, go from there
         for col in path_ends_in_vcf_gz:
             # ...and has an analogue that looks like an index file?
-            index_column = f"{column}_index"
+            index_column = f"{col}_index"
             # is this the correct logic?  Or do we just want to look for ANY singular column that has contents that
             # look liks a vcf and ANY other singular column with contents that look like an index file?  Stick with
             # enforcing a naming convention for now...
             if index_column in path_ends_in_vcf_gz_tbi:
                 # woohoo!
-                final_vcf_column = column
+                final_vcf_column = col
                 final_vcf_index_column = index_column
                 found_vcf_column = True
 
