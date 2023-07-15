@@ -118,19 +118,13 @@ workflows:
        branches:
          - master
          - ah_var_store
-   - name: GvsPrepareBulkImport
-     subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareBulkImport.wdl
-     filters:
-       branches:
-         - ah_var_store
    - name: GvsBulkIngestGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsBulkIngestGenomes.wdl
      filters:
        branches:
          - ah_var_store
-         - gg_VS-1001_UpdateDockersForGoogleStorageLibraryUpdate
+         - vs_962_there_can_be_only_one
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
@@ -177,13 +171,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-   - name: GvsUnified
-     subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsUnified.wdl
-     filters:
-       branches:
-         - master
-         - ah_var_store
    - name: GvsJointVariantCalling
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCalling.wdl
@@ -191,8 +178,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_vs_982
-         - rsa_jar_fix_230722
+         - vs_962_there_can_be_only_one
    - name: GvsJointVariantCallsetCost
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCallsetCost.wdl
@@ -228,8 +214,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1001_bigquery_storage_to_v1
-         - rc-vs-855-pin-hail
+         - vs_962_there_can_be_only_one
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl

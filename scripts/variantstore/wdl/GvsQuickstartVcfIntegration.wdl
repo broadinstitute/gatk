@@ -1,7 +1,7 @@
 version 1.0
 
-import "GvsUnified.wdl" as Unified
 import "GvsUtils.wdl" as Utils
+import "GvsJointVariantCalling.wdl" as JointVariantCalling
 
 workflow GvsQuickstartVcfIntegration {
 
@@ -12,28 +12,13 @@ workflow GvsQuickstartVcfIntegration {
         Boolean use_VQSR_lite = true
         Boolean extract_do_not_filter_override = true
 
-        Array[String] external_sample_names = [
-                                              "ERS4367795",
-                                              "ERS4367796",
-                                              "ERS4367797",
-                                              ]
-
-        Array[File] input_vcfs = [
-                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00405.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
-                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00408.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
-                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00418.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
-                                 ]
-
-        Array[File] input_vcf_indexes = [
-                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00405.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
-                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00408.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
-                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00418.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
-                                        ]
-
-        Int? extract_scatter_count
         String drop_state = "FORTY"
         String dataset_suffix
         File? gatk_override
+        String? sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
+        String? vcf_files_column_name
+        String? vcf_index_files_column_name
+        String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
     }
     String project_id = "gvs-internal"
 
@@ -51,24 +36,25 @@ workflow GvsQuickstartVcfIntegration {
             dataset_suffix = dataset_suffix,
     }
 
-    call Unified.GvsUnified {
+    call JointVariantCalling.GvsJointVariantCalling as JointVariantCalling {
         input:
             call_set_identifier = branch_name,
             dataset_name = CreateDataset.dataset_name,
             project_id = project_id,
-            external_sample_names = external_sample_names,
             gatk_override = select_first([gatk_override, BuildGATKJar.jar]),
-            input_vcfs = input_vcfs,
-            input_vcf_indexes = input_vcf_indexes,
+            use_classic_VQSR = !use_VQSR_lite,
+            extract_output_file_base_name = "quickit",
             filter_set_name = "quickit",
-            use_VQSR_lite = use_VQSR_lite,
             extract_table_prefix = "quickit",
-            extract_scatter_count = extract_scatter_count,
             # optionally turn off filtering (VQSR Classic is not deterministic)
             # (and the initial version of this integration test does not allow for inexact matching of actual and expected results.)
             extract_do_not_filter_override = extract_do_not_filter_override,
             drop_state = drop_state,
             interval_list = interval_list,
+            sample_id_column_name = sample_id_column_name,
+            vcf_files_column_name = vcf_files_column_name,
+            vcf_index_files_column_name = vcf_index_files_column_name,
+            sample_set_name = sample_set_name,
     }
 
     # Only assert identical outputs if we did not filter (filtering is not deterministic) OR if we are using VQSR Lite (which is deterministic)
@@ -77,12 +63,12 @@ workflow GvsQuickstartVcfIntegration {
         call AssertIdenticalOutputs {
             input:
                 expected_output_prefix = expected_prefix,
-                actual_vcfs = GvsUnified.output_vcfs,
+                actual_vcfs = JointVariantCalling.output_vcfs,
         }
 
         call AssertCostIsTrackedAndExpected {
             input:
-                go = GvsUnified.done,
+                go = JointVariantCalling.done,
                 dataset_name = CreateDataset.dataset_name,
                 project_id = project_id,
                 expected_output_csv = expected_prefix + "cost_observability_expected.csv",
@@ -90,7 +76,7 @@ workflow GvsQuickstartVcfIntegration {
 
         call AssertTableSizesAreExpected {
             input:
-                go = GvsUnified.done,
+                go = JointVariantCalling.done,
                 dataset_name = CreateDataset.dataset_name,
                 project_id = project_id,
                 expected_output_csv = expected_prefix + "table_sizes_expected.csv",
@@ -98,10 +84,10 @@ workflow GvsQuickstartVcfIntegration {
     }
 
     output {
-        Array[File] output_vcfs = GvsUnified.output_vcfs
-        Array[File] output_vcf_indexes = GvsUnified.output_vcf_indexes
-        Float total_vcfs_size_mb = GvsUnified.total_vcfs_size_mb
-        File manifest = GvsUnified.manifest
+        Array[File] output_vcfs = JointVariantCalling.output_vcfs
+        Array[File] output_vcf_indexes = JointVariantCalling.output_vcf_indexes
+        Float total_vcfs_size_mb = JointVariantCalling.total_vcfs_size_mb
+        File manifest = JointVariantCalling.manifest
         String dataset_name = CreateDataset.dataset_name
         String filter_set_name = "quickit"
         Boolean done = true
@@ -230,9 +216,9 @@ task AssertCostIsTrackedAndExpected {
     }
 
     command <<<
-        set -o errexit
-        set -o nounset
-        set -o pipefail
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
         bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false \
