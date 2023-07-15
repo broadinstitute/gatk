@@ -21,8 +21,8 @@ workflow GvsJointVariantCalling {
         String? vcf_index_files_column_name
         String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
 
-        # This is the most updated snapshot of the code as of July 14, 2023
-        File gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-799-g9b585e4-SNAPSHOT-local.jar"
+        # This is the most updated snapshot of the code as of July 15, 2023
+        File gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-801-gea8a4fd-SNAPSHOT-local.jar"
         File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
         Boolean extract_do_not_filter_override = false
         String? extract_output_file_base_name
