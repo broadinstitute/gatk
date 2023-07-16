@@ -204,10 +204,6 @@ public abstract class FlowAnnotatorBase implements InfoFieldAnnotation {
             if ((localContext.hmerIndelLength.get(i)==null) || (localContext.hmerIndelLength.get(i)==0)){
                 isHmer=false;
             }
-            if ((localContext.hmerIndelLength.get(i)==1) && (localContext.indel.equals(C_DELETE))){ // new definition 1->0 has hmer indel 1
-                isHmer=false;
-            }
-
         }
 
         if (isHmer){
