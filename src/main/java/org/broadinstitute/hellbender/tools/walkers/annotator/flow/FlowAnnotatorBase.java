@@ -295,7 +295,7 @@ public abstract class FlowAnnotatorBase implements InfoFieldAnnotation {
             if ( diffIndex < 0 ) {
                 continue;
             }
-            if ( Math.min(refKey[diffIndex], altKey[diffIndex]) == 0 ) {
+            if ( Math.max(refKey[diffIndex], altKey[diffIndex]) == 0 ) {
                 continue;
             }
 

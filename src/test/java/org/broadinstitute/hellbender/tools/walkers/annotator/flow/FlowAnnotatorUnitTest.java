@@ -57,7 +57,7 @@ public class FlowAnnotatorUnitTest extends GATKBaseTest {
                 {
                         // not hmer indel
                         "TATCT CA TTGACCAA", "C",
-                        "del", "1", "0", "", "ATCTC", "TTGAC", "0.3", "NA", "non-h-indel"
+                        "del", "1", "1", "A", "ATCTC", "TTGAC", "0.3", "NA", "non-h-indel"
                 },
                 {
                         // del hmer indel
