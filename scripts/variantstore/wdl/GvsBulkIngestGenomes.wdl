@@ -165,7 +165,7 @@ task GetWorkspaceName {
 
     >>>
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-28-alpine-d2dd17fd6"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-17-alpine-2345c4448"
         memory: "3 GB"
         disks: "local-disk 10 HDD"
         cpu: 1
@@ -213,7 +213,7 @@ task GetColumnNames {
     >>>
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-28-alpine-d2dd17fd6"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-17-alpine-2345c4448"
         memory: "3 GB"
         disks: "local-disk 10 HDD"
         cpu: 1
@@ -242,7 +242,7 @@ task SplitBulkImportFofn {
     >>>
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-28-alpine-d2dd17fd6"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-17-alpine-2345c4448"
         memory: "3 GB"
         disks: "local-disk 200 HDD"
         cpu: 1
