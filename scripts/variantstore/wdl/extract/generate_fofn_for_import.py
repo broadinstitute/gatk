@@ -61,8 +61,8 @@ def generate_fofn_from_data_table_with_sample_set(
                     current_vcf_index_file = row.attributes[vcf_index_files_column_name]
                     output_file.write(f'{current_sample_name}\t{current_vcf_file}\t{current_vcf_index_file}\n')
 
-            except KeyError:
-                error_file.write(f'Row "{row.name}" skipped: missing columns\n')
+            except KeyError as key:
+                error_file.write(f'Row "{row.name}" is missing column {key}\n')
 
             count += 1
             processed_entities += 1
