@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers;
 
+import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
@@ -8,7 +10,6 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
-import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_RMSMappingQuality;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
@@ -22,7 +23,6 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -53,13 +53,19 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
     @DataProvider(name="VCFdata")
     public Object[][] getVCFdata() {
         return new Object[][]{
+               /*
+                //chrX haploid sample plus diploid sample -- expected results validated with vcf-validator (samtools?)
+                {new File[]{getTestFile("NA12891.chrX.haploid.rb.g.vcf"), getTestFile("NA12892.chrX.diploid.rb.g.vcf")},
+                        getTestFile("haploidPlusDiploid.expected.vcf"), null, Arrays.asList(new SimpleInterval("chrX", 1000000, 5000000)), Arrays.asList("--merge-input-intervals", "--only-output-calls-starting-in-intervals"), b38_reference_20_21},
+
                 //8 ALT alleles -- no PLs
                 {new File[]{getTestFile("sample6.vcf"), getTestFile("sample7.vcf"), getTestFile("sample8.vcf"), getTestFile("sample9.vcf")},
                         getTestFile("lotsOfAltsNoPLs.vcf"), null, Arrays.asList(new SimpleInterval("chr20", 257008, 257008)), Arrays.asList("--merge-input-intervals", "--only-output-calls-starting-in-intervals"), b38_reference_20_21},
                 //6 ALT alleles -- yes PLs
                 {new File[]{getTestFile("sample6.vcf"), getTestFile("sample7.vcf"), getTestFile("sample8.vcf")},
                         getTestFile("lotsOfAltsYesPLs.vcf"), null, Arrays.asList(new SimpleInterval("chr20", 257008, 257008)), Arrays.asList("--merge-input-intervals", "--only-output-calls-starting-in-intervals"), b38_reference_20_21},
-                // Simple Test, spanning deletions; standard calling confidence
+        */
+        // Simple Test, spanning deletions; standard calling confidence
                 //No variants outside requested intervals; no SNPs with QUAL < 60, no INDELs with QUAL < 69?; has star alleles after deletion at chr20:263497; has AC, AF, AN, DP, ExcessHet, FS, MQ, (MQRankSum), (ReadPosRankSum), SOR, QD; has called genotypes
                 {new File[]{getTestFile("sample1.vcf"), getTestFile("sample2.vcf"), getTestFile("sample3.vcf"), getTestFile("sample4.vcf"), getTestFile("sample5.vcf")},
                          getTestFile("fiveSampleTest.vcf"), null, Arrays.asList(new SimpleInterval("chr20", 251370, 252000), new SimpleInterval("chr20", 263000, 265600)), Arrays.asList("--merge-input-intervals", "--only-output-calls-starting-in-intervals"), b38_reference_20_21},
@@ -217,4 +223,26 @@ public class GnarlyGenotyperIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(sors.get(1), VCFConstants.MISSING_VALUE_v4);
     }
 
+    @Test
+    public void testHaploidInput() {
+        final File haploidGVCF = new File(getToolTestDataDir(), "chrY_haploid_dragen.g.vcf");
+        final File output = createTempFile("GnarlyGenotyper", ".vcf");
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(new File(hg38Reference))
+                .add("V", haploidGVCF)
+                .addOutput(output)
+                .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
+        runCommandLine(args);
+
+        final Pair<VCFHeader, List<VariantContext>> outputData = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
+        Assert.assertEquals(outputData.getRight().size(), 1);
+        final VariantContext vc = outputData.getRight().get(0);
+        Assert.assertEquals(vc.getGenotypes().size(), 1);
+        final Genotype g = vc.getGenotype(0);
+        Assert.assertEquals(g.getPloidy(), 1);
+        Assert.assertEquals(g.getAlleles().get(0), Allele.ALT_A);
+        Assert.assertTrue(g.hasPL());
+        Assert.assertEquals(g.getPL().length, 2);
+        Assert.assertEquals(g.getPL(), new int[]{83,0});
+    }
 }
