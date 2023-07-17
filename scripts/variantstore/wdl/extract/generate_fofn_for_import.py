@@ -4,6 +4,11 @@ import time
 from terra_notebook_utils import table
 
 
+# handle KeyErrors gracefully so that the user can be given a full report of what data is missing at the end
+def handle_key_error(error_file_handle, sample_name, key):
+    error_file_handle.write(f"Sample '{sample_name}' is missing an expected value in column {key}\n")
+
+
 def get_entities_in_set(data_table_name, sample_set_name):
     set_of_entities = set()
     sample_set_list = list(table.list_rows(f"{data_table_name}_set"))
@@ -35,34 +40,48 @@ def generate_fofn_from_data_table_with_sample_set(
         # If there is an inclusion list (a sample_set), check to see if the sample is in it.
         # Then write what is needed for the FOFN.
         for row in table.list_rows(data_table_name):
-            try:
-                # The table data model is weird, as each row has a "name" property followed by a hash of attributes.
-                # But it is all displayed as though they are equivalent columns, and the name field is mapped to an
-                # imaginary column with the name table_name_id.  Map "name" to that imaginary attribute here so none of
-                # the lookups below fail if they reference that call.  This is safe, as this Row object is a read only
-                # copy of the actual table content, and it is disposed.
+            # The table data model is weird, as each row has a "name" property followed by a hash of attributes.
+            # But it is all displayed as though they are equivalent columns, and the name field is mapped to an
+            # imaginary column with the name table_name_id.  Map "name" to that imaginary attribute here so none of
+            # the lookups below fail if they reference that call.  This is safe, as this Row object is a read only
+            # copy of the actual table content, and it is disposed.
 
-                # NOTE: this is the <entity>_id value and will be used by the sample_set
-                row.attributes[f"{data_table_name}_id"] = row.name
+            # NOTE: this is the <entity>_id value and will be used by the sample_set
+            row.attributes[f"{data_table_name}_id"] = row.name
 
-                # NOTE: this is the sample id based on the <entity>_id
-                current_sample_id = row.attributes[f"{data_table_name}_id"]
+            # NOTE: this is the sample id based on the <entity>_id
+            current_sample_id = row.attributes[f"{data_table_name}_id"]
 
-                # NOTE: this is the sample name based on the user defined sample id col name
-                current_sample_name = row.attributes[sample_id_column_name]
+            # NOTE: this is the sample name based on the user defined sample id col name
+            current_sample_name = row.attributes[sample_id_column_name]
 
-                if set_of_entities:
-                    if current_sample_id in set_of_entities:
+            if set_of_entities:
+                if current_sample_id in set_of_entities:
+                    try:
                         current_vcf_file = row.attributes[vcf_files_column_name]
+                    except KeyError as ex:
+                        handle_key_error(error_file, current_sample_name, ex)
+                    try:
                         current_vcf_index_file = row.attributes[vcf_index_files_column_name]
+                    except KeyError as ex:
+                        handle_key_error(error_file, current_sample_name, ex)
+                    try:
                         output_file.write(f'{current_sample_name}\t{current_vcf_file}\t{current_vcf_index_file}\n')
-                else:
+                    except KeyError as ex:
+                        handle_key_error(error_file, current_sample_name, ex)
+            else:
+                try:
                     current_vcf_file = row.attributes[vcf_files_column_name]
+                except KeyError as ex:
+                    handle_key_error(error_file, current_sample_name, ex)
+                try:
                     current_vcf_index_file = row.attributes[vcf_index_files_column_name]
+                except KeyError as ex:
+                    handle_key_error(error_file, current_sample_name, ex)
+                try:
                     output_file.write(f'{current_sample_name}\t{current_vcf_file}\t{current_vcf_index_file}\n')
-
-            except KeyError as key:
-                error_file.write(f'Sample "{row.name}" is missing column "{key}"\n')
+                except KeyError as ex:
+                    handle_key_error(error_file, current_sample_name, ex)
 
             count += 1
             processed_entities += 1
