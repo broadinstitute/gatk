@@ -165,7 +165,7 @@ task GetWorkspaceName {
 
     >>>
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-14-alpine-a56ebf156"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-28-alpine-d2dd17fd6"
         memory: "3 GB"
         disks: "local-disk 10 HDD"
         cpu: 1
@@ -213,7 +213,7 @@ task GetColumnNames {
     >>>
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-14-alpine-a56ebf156"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-28-alpine-d2dd17fd6"
         memory: "3 GB"
         disks: "local-disk 10 HDD"
         cpu: 1
@@ -242,7 +242,7 @@ task SplitBulkImportFofn {
     >>>
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-14-alpine-a56ebf156"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-28-alpine-d2dd17fd6"
         memory: "3 GB"
         disks: "local-disk 200 HDD"
         cpu: 1
@@ -293,8 +293,10 @@ task GenerateImportFofnFromDataTable {
             --error-file-name ~{error_file_name}
 
         if [ -s ~{error_file_name} ]; then
-            echo "-------- sample data issues --------"
+            echo ""
+            echo "-------- the following issues were found with the sample data, no samples were ingested in this run --------"
             cat ~{error_file_name}
+            echo ""
             exit 1
         fi
 
@@ -308,6 +310,5 @@ task GenerateImportFofnFromDataTable {
 
     output {
         File output_fofn = output_fofn_name
-        File errors = error_file_name
     }
 }
