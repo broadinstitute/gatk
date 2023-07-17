@@ -291,6 +291,13 @@ task GenerateImportFofnFromDataTable {
             ~{"--sample-set-name " + sample_set_name} \
             --output-file-name ~{output_fofn_name} \
             --error-file-name ~{error_file_name}
+
+        if [ -s ~{error_file_name} ]
+            echo "The following samples were skipped:"
+            cat ~{error_file_name}
+            exit 1
+        fi
+
     >>>
     runtime {
         docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-14-alpine-a56ebf156"
