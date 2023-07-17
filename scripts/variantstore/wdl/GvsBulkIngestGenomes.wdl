@@ -275,7 +275,7 @@ task GenerateImportFofnFromDataTable {
     String error_file_name = "errors.txt"
 
     command <<<
-        set -o errexit -o nounset -o xtrace -o pipefail
+        set -o errexit -o nounset -o pipefail
         PS4='\D{+%F %T} \w $ '
 
         export GOOGLE_PROJECT='~{google_project_id}'
@@ -300,7 +300,7 @@ task GenerateImportFofnFromDataTable {
 
     >>>
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-17-alpine-8ac6defb1"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-17-alpine-d2dd17fd6"
         memory: "3 GB"
         disks: "local-disk 200 HDD"
         cpu: 1
