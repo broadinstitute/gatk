@@ -292,7 +292,7 @@ task GenerateImportFofnFromDataTable {
             --output-file-name ~{output_fofn_name} \
             --error-file-name ~{error_file_name}
 
-        if [ -s ~{error_file_name} ]
+        if [ -s ~{error_file_name} ]; then
             echo "The following samples were skipped:"
             cat ~{error_file_name}
             exit 1
