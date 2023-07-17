@@ -293,13 +293,14 @@ task GenerateImportFofnFromDataTable {
             --error-file-name ~{error_file_name}
 
         if [ -s ~{error_file_name} ]; then
+            echo "-------- sample data issues --------"
             cat ~{error_file_name}
             exit 1
         fi
 
     >>>
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-14-alpine-a56ebf156"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-17-alpine-533d8d9d3"
         memory: "3 GB"
         disks: "local-disk 200 HDD"
         cpu: 1

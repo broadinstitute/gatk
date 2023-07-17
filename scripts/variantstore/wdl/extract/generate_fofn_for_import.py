@@ -62,7 +62,7 @@ def generate_fofn_from_data_table_with_sample_set(
                     output_file.write(f'{current_sample_name}\t{current_vcf_file}\t{current_vcf_index_file}\n')
 
             except KeyError as key:
-                error_file.write(f'Row "{row.name}" is missing column {key}\n')
+                error_file.write(f'Sample "{row.name}" is missing column "{key}"\n')
 
             count += 1
             processed_entities += 1
