@@ -22,6 +22,8 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
+import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -43,6 +45,7 @@ import org.genomicsdb.model.ImportConfig;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serial;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
@@ -218,12 +221,14 @@ public final class GenomicsDBImport extends GATKTool {
     public static final String MAX_NUM_INTERVALS_TO_IMPORT_IN_PARALLEL = "max-num-intervals-to-import-in-parallel";
     public static final String MERGE_CONTIGS_INTO_NUM_PARTITIONS = "merge-contigs-into-num-partitions";
     public static final String BYPASS_FEATURE_READER = "bypass-feature-reader";
+    public static final String VCF_HEADER = "vcf-header";
     public static final int INTERVAL_LIST_SIZE_WARNING_THRESHOLD = 100;
     public static final int ARRAY_COLUMN_BOUNDS_START = 0;
     public static final int ARRAY_COLUMN_BOUNDS_END = 1;
 
     public static final String SHARED_POSIXFS_OPTIMIZATIONS = GenomicsDBArgumentCollection.SHARED_POSIXFS_OPTIMIZATIONS;
     public static final String USE_GCS_HDFS_CONNECTOR = GenomicsDBArgumentCollection.USE_GCS_HDFS_CONNECTOR;
+    public static final String AVOID_NIO = "avoid-nio";
 
     @Argument(fullName = WORKSPACE_ARG_LONG_NAME,
               doc = "Workspace for GenomicsDB. Can be a POSIX file system absolute or relative path or a HDFS/GCS URL. " +
@@ -239,7 +244,7 @@ public final class GenomicsDBImport extends GATKTool {
                     "when using the "+INTERVAL_LIST_LONG_NAME+" option. " +
                     "Either this or "+WORKSPACE_ARG_LONG_NAME+" must be specified. " +
                     "Must point to an existing workspace.",
-              mutex = {WORKSPACE_ARG_LONG_NAME})
+              mutex = {WORKSPACE_ARG_LONG_NAME, VCF_HEADER})
     private String incrementalImportWorkspace;
 
     @Argument(fullName = SEGMENT_SIZE_ARG_LONG_NAME,
@@ -364,6 +369,13 @@ public final class GenomicsDBImport extends GATKTool {
             optional = true)
     private boolean sharedPosixFSOptimizations = false;
 
+    @Argument(fullName = VCF_HEADER,
+        doc = "Specify a vcf file to use instead of reading and combining headers from the input vcfs",
+        optional = true,
+        mutex ={INCREMENTAL_WORKSPACE_ARG_LONG_NAME}
+    )
+    private FeatureInput<VariantContext> headerOverride = null;
+
     @Argument(fullName = BYPASS_FEATURE_READER,
             doc = "Use htslib to read input VCFs instead of GATK's FeatureReader. This will reduce memory usage and potentially speed up " +
                   "the import. Lower memory requirements may also enable parallelism through " + MAX_NUM_INTERVALS_TO_IMPORT_IN_PARALLEL +
@@ -371,6 +383,13 @@ public final class GenomicsDBImport extends GATKTool {
             optional = true)
     private boolean bypassFeatureReader = false;
 
+    @Argument(fullName = AVOID_NIO,
+                doc = "Do not attempt to open the input vcf file paths in java.  This can only be used with " + BYPASS_FEATURE_READER
+            + ".  It allows operating on file systems which GenomicsDB understands how to open but GATK does not.  This will disable "
+            + "many of the sanity checks."
+    )
+    @Advanced
+    private boolean avoidNio = false;
     @Argument(fullName = USE_GCS_HDFS_CONNECTOR,
             doc = "Use the GCS HDFS Connector instead of the native GCS SDK client with gs:// URLs.",
             optional = true)
@@ -463,10 +482,13 @@ public final class GenomicsDBImport extends GATKTool {
         initializeWorkspaceAndToolMode();
         assertVariantPathsOrSampleNameFileWasSpecified();
         assertOverwriteWorkspaceAndIncrementalImportMutuallyExclusive();
+        assertAvoidNioOnlySpecifiedWithBypassFeaureReader();
         initializeHeaderAndSampleMappings();
         initializeIntervals();
         super.onStartup();
     }
+
+
 
     private void initializeWorkspaceAndToolMode() {
         if (incrementalImportWorkspace != null && !incrementalImportWorkspace.isEmpty()) {
@@ -492,6 +514,12 @@ public final class GenomicsDBImport extends GATKTool {
         if ( (variantPaths == null || variantPaths.isEmpty()) && sampleNameMapFile == null && !getIntervalsFromExistingWorkspace) {
             throw new CommandLineException.MissingArgument(StandardArgumentDefinitions.VARIANT_LONG_NAME,
                                                        "One of --" + StandardArgumentDefinitions.VARIANT_LONG_NAME + " or --" + SAMPLE_NAME_MAP_LONG_NAME + " must be specified" );
+        }
+    }
+
+    private void assertAvoidNioOnlySpecifiedWithBypassFeaureReader() {
+        if (avoidNio && ! bypassFeatureReader){
+            throw new CommandLineException("--" +AVOID_NIO + " cannot be set without --" + BYPASS_FEATURE_READER + " also being set");
         }
     }
 
@@ -529,7 +557,7 @@ public final class GenomicsDBImport extends GATKTool {
             sampleNameMap = new SampleNameMap();
             for (final String variantPathString : variantPaths) {
                 final Path variantPath = IOUtils.getPath(variantPathString);
-                if (bypassFeatureReader) {
+                if (bypassFeatureReader && !avoidNio) {
                     GATKGenomicsDBUtils.assertVariantFileIsCompressedAndIndexed(variantPath);
                 }
                 final  VCFHeader header = getHeaderFromPath(variantPath, null);
@@ -545,10 +573,15 @@ public final class GenomicsDBImport extends GATKTool {
                     throw new UserException("Malformed URI "+e.toString(), e);
                 }
             }
-            mergedHeaderLines = VCFUtils.smartMergeHeaders(headers, true);
-            mergedHeaderSequenceDictionary = new VCFHeader(mergedHeaderLines).getSequenceDictionary();
+            if(headerOverride == null) {
+                mergedHeaderLines = VCFUtils.smartMergeHeaders(headers, true);
+                mergedHeaderSequenceDictionary = new VCFHeader(mergedHeaderLines).getSequenceDictionary();
+            } else {
+                final VCFHeader header = getHeaderFromPath(headerOverride.toPath(), null);
+                mergedHeaderLines = new LinkedHashSet<>(header.getMetaDataInInputOrder());
+                mergedHeaderSequenceDictionary = header.getSequenceDictionary();
+            }
             mergedHeaderLines.addAll(getDefaultToolVCFHeaderLines());
-
         } else if (sampleNameMapFile != null) {
             // --sampleNameMap was specified
 
@@ -561,10 +594,11 @@ public final class GenomicsDBImport extends GATKTool {
             final String firstSample = sampleNameMap.getSampleNameToVcfPath().entrySet().iterator().next().getKey();
             final Path firstVCFPath = sampleNameMap.getVCFForSampleAsPath(firstSample);
             final Path firstVCFIndexPath = sampleNameMap.getVCFIndexForSampleAsPath(firstSample);
-            final VCFHeader header = getHeaderFromPath(firstVCFPath, firstVCFIndexPath);
+            final VCFHeader header = headerOverride == null ? getHeaderFromPath(firstVCFPath, firstVCFIndexPath)
+                                                : getHeaderFromPath(headerOverride.toPath(), null);
 
             //getMetaDataInInputOrder() returns an ImmutableSet - LinkedHashSet is mutable and preserves ordering
-            mergedHeaderLines = new LinkedHashSet<VCFHeaderLine>(header.getMetaDataInInputOrder());
+            mergedHeaderLines = new LinkedHashSet<>(header.getMetaDataInInputOrder());
             mergedHeaderSequenceDictionary = header.getSequenceDictionary();
             mergedHeaderLines.addAll(getDefaultToolVCFHeaderLines());
         }
@@ -574,10 +608,10 @@ public final class GenomicsDBImport extends GATKTool {
             final String header = GenomicsDBUtils.readEntireFile(vcfHeader);
             try {
                 File tempHeader = IOUtils.createTempFile("tempheader", ".vcf");
-                Files.write(tempHeader.toPath(), header.getBytes(StandardCharsets.UTF_8));
+                Files.writeString(tempHeader.toPath(), header);
                 mergedHeaderSequenceDictionary = VCFFileReader.getSequenceDictionary(tempHeader);
             } catch (final IOException e) {
-                throw new UserException("Unable to create temporary header file to get sequence dictionary");
+                throw new UserException("Unable to create temporary header file to get sequence dictionary", e);
             }
         }
         else {
@@ -647,7 +681,7 @@ public final class GenomicsDBImport extends GATKTool {
         } else {
             logger.info("Vid Map JSON file will be written to " + vidMapJSONFile);
             logger.info("Callset Map JSON file will be written to " + callsetMapJSONFile);
-            logger.info("Complete VCF Header will be written to " + vcfHeaderFile);
+            logger.info("Complete VCF Header will be written to " + vcf);
             logger.info("Importing to workspace - " + workspaceDir);
         }
         initializeInputPreloadExecutorService();
@@ -785,7 +819,7 @@ public final class GenomicsDBImport extends GATKTool {
                 GenomicsDBImportConfiguration.ImportConfiguration.newBuilder();
         importConfigurationBuilder.addAllColumnPartitions(partitions);
         importConfigurationBuilder.setSizePerColumnPartition(vcfBufferSizePerSample);
-        importConfigurationBuilder.setFailIfUpdating(true && !doIncrementalImport);
+        importConfigurationBuilder.setFailIfUpdating(!doIncrementalImport);
         importConfigurationBuilder.setSegmentSize(segmentSize);
         importConfigurationBuilder.setConsolidateTiledbArrayAfterLoad(doConsolidation);
         importConfigurationBuilder.setEnableSharedPosixfsOptimizations(sharedPosixFSOptimizations);
@@ -936,7 +970,7 @@ public final class GenomicsDBImport extends GATKTool {
             /* Anonymous FeatureReader subclass that wraps returned iterators to ensure that the GVCFs do not
              * contain MNPs.
              */
-            return new FeatureReader<VariantContext>() {
+            return new FeatureReader<>() {
                 /** Iterator that asserts that variants are not MNPs. */
                 class NoMnpIterator implements CloseableTribbleIterator<VariantContext> {
                     private final CloseableTribbleIterator<VariantContext> inner;
@@ -971,7 +1005,8 @@ public final class GenomicsDBImport extends GATKTool {
                     return new NoMnpIterator(reader.query(chr, start, end));
                 }
 
-                @Override public CloseableTribbleIterator<VariantContext> iterator() throws IOException {
+                @Override
+                public CloseableTribbleIterator<VariantContext> iterator() throws IOException {
                     return new NoMnpIterator(reader.iterator());
                 }
             };
@@ -1016,7 +1051,7 @@ public final class GenomicsDBImport extends GATKTool {
     }
 
     static class UnableToCreateGenomicsDBWorkspace extends UserException {
-        private static final long serialVersionUID = 1L;
+        @Serial private static final long serialVersionUID = 1L;
 
         UnableToCreateGenomicsDBWorkspace(final String message){
             super(message);
@@ -1028,7 +1063,7 @@ public final class GenomicsDBImport extends GATKTool {
      * dictionary (as returned by {@link #getBestAvailableSequenceDictionary})
      * to parse/verify them. Does nothing if no intervals were specified.
      */
-    protected void initializeIntervals() {
+    void initializeIntervals() {
         if (intervalArgumentCollection.intervalsSpecified()) {
             if (getIntervalsFromExistingWorkspace || doIncrementalImport) {
                 logger.warn(INCREMENTAL_WORKSPACE_ARG_LONG_NAME+" was set, so ignoring specified intervals." +
