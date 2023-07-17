@@ -101,6 +101,8 @@ public class ExtractCohortEngine {
         return GATKVCFConstants.VQSR_FAILURE_INDEL;
     }
 
+    boolean hasScoreField() { return false; }
+
     public ExtractCohortEngine(final String projectID,
                                final VCFHeader vcfHeader,
                                final VariantAnnotatorEngine annotationEngine,
@@ -204,6 +206,7 @@ public class ExtractCohortEngine {
     public void traverse() {
         // First allele here is the ref, followed by the alts associated with that ref. We need this because at this
         // point the alleles haven't been joined and remapped to one reference allele.
+        final Map<Long, Map<Allele, Map<Allele, Double>>> fullScoreMap = new HashMap<>();
         final Map<Long, Map<Allele, Map<Allele, Double>>> fullVQScoreMap = new HashMap<>();
         final Map<Long, Map<Allele, Map<Allele, String>>> fullYngMap = new HashMap<>();
         final Map<Long, List<String>> siteFilterMap = new HashMap<>();
@@ -228,10 +231,14 @@ public class ExtractCohortEngine {
                     final ExtractCohortFilterRecord filterRow = new ExtractCohortFilterRecord(queryRow, getVQScoreFieldName());
 
                     final long location = filterRow.getLocation();
+                    final Double score = filterRow.getScore();
                     final Double vqsScore = filterRow.getVqScore();
                     final String yng = filterRow.getYng();
                     final Allele ref = Allele.create(filterRow.getRefAllele(), true);
                     final Allele alt = Allele.create(filterRow.getAltAllele(), false);
+                    fullScoreMap.putIfAbsent(location, new HashMap<>());
+                    fullScoreMap.get(location).putIfAbsent(ref, new HashMap<>());
+                    fullScoreMap.get(location).get(ref).put(alt, score);
                     fullVQScoreMap.putIfAbsent(location, new HashMap<>());
                     fullVQScoreMap.get(location).putIfAbsent(ref, new HashMap<>());
                     fullVQScoreMap.get(location).get(ref).put(alt, vqsScore);
@@ -267,13 +274,13 @@ public class ExtractCohortEngine {
         SortedSet<Long> sampleIdsToExtract = new TreeSet<>(this.sampleIdToName.keySet());
         if (fqRangesExtractVetTable != null) {
             createVariantsFromUnsortedExtractTableBigQueryRanges(fqRangesExtractVetTable, fqRangesExtractRefTable,
-                    sampleIdsToExtract, minLocation, maxLocation, fullVQScoreMap, fullYngMap, siteFilterMap, noVQScoreFilteringRequested);
+                    sampleIdsToExtract, minLocation, maxLocation, fullScoreMap, fullVQScoreMap, fullYngMap, siteFilterMap, noVQScoreFilteringRequested);
         } else if (vetRangesFQDataSet != null) {
             createVariantsFromUnsortedBigQueryRanges(vetRangesFQDataSet, sampleIdsToExtract, minLocation, maxLocation,
-                    fullVQScoreMap, fullYngMap, siteFilterMap, noVQScoreFilteringRequested);
+                    fullScoreMap, fullVQScoreMap, fullYngMap, siteFilterMap, noVQScoreFilteringRequested);
         } else {
             createVariantsFromUnsortedAvroRanges(vetAvroFileName, refRangesAvroFileName, sampleIdsToExtract, minLocation,
-                    maxLocation, fullVQScoreMap, fullYngMap, siteFilterMap, noVQScoreFilteringRequested, presortedAvroFiles);
+                    maxLocation,  fullScoreMap, fullVQScoreMap, fullYngMap, siteFilterMap, noVQScoreFilteringRequested, presortedAvroFiles);
         }
 
         logger.debug("Finished Initializing Reader");
@@ -387,6 +394,7 @@ public class ExtractCohortEngine {
 
     protected VariantContext processSampleRecordsForLocation(final long location,
                                                              final Iterable<ExtractCohortRecord> sampleRecordsAtPosition,
+                                                             final Map<Long, Map<Allele, Map<Allele, Double>>> fullScoreMap,
                                                              final Map<Long, Map<Allele, Map<Allele, Double>>> fullVQScoreMap,
                                                              final Map<Long, Map<Allele, Map<Allele, String>>> fullYngMap,
                                                              final boolean noVQScoreFilteringRequested,
@@ -405,6 +413,7 @@ public class ExtractCohortEngine {
         final Allele refAllele = getReferenceAllele(refSource, location);
         int numRecordsAtPosition = 0;
 
+        final Map<Allele, Map<Allele, Double>> scoreMap;
         final Map<Allele, Map<Allele, Double>> vqScoreMap;
         final Map<Allele, Map<Allele, String>> yngMap;
 
@@ -412,11 +421,14 @@ public class ExtractCohortEngine {
 
         // If there's no yng/score(vqslod/sensitivity) for this site, then we'll treat these as NAYs because VQSR-Lite dropped them (they have no alt reads).
         if (fullVQScoreMap.get(SchemaUtils.encodeLocation(contig, currentPosition)) == null) {
+            scoreMap = new HashMap<>();
+            scoreMap.put(refAllele, new HashMap<>());
             vqScoreMap = new HashMap<>();
             vqScoreMap.put(refAllele, new HashMap<>());
             yngMap = new HashMap<>();
             yngMap.put(refAllele, new HashMap<>());
         } else {
+            scoreMap = fullScoreMap.get(SchemaUtils.encodeLocation(contig, currentPosition));
             vqScoreMap = fullVQScoreMap.get(SchemaUtils.encodeLocation(contig, currentPosition));
             yngMap = fullYngMap.get(SchemaUtils.encodeLocation(contig, currentPosition));
         }
@@ -482,7 +494,7 @@ public class ExtractCohortEngine {
             logger.info(contig + ":" + currentPosition + ": processed " + numRecordsAtPosition + " total sample records");
         }
 
-        return finalizeCurrentVariant(unmergedCalls, refCalls, samplesSeen, currentPositionHasVariant, location, contig, currentPosition, refAllele, vqScoreMap, yngMap, noVQScoreFilteringRequested, siteFilterMap);
+        return finalizeCurrentVariant(unmergedCalls, refCalls, samplesSeen, currentPositionHasVariant, location, contig, currentPosition, refAllele, scoreMap, vqScoreMap, yngMap, noVQScoreFilteringRequested, siteFilterMap);
     }
 
     VariantContext finalizeCurrentVariant(final List<VariantContext> unmergedVariantCalls,
@@ -493,6 +505,7 @@ public class ExtractCohortEngine {
                                           final String contig,
                                           final long start,
                                           final Allele refAllele,
+                                          final Map<Allele, Map<Allele, Double>> scoreMap,
                                           final Map<Allele, Map<Allele, Double>> vqScoreMap,
                                           final Map<Allele, Map<Allele, String>> yngMap,
                                           final boolean noVQScoreFilteringRequested,
@@ -554,7 +567,7 @@ public class ExtractCohortEngine {
 
         // apply VQScore (vqslod/calibration sensitivity)-based filters
         VariantContext filteredVC =
-                noVQScoreFilteringRequested ? genotypedVC : filterSiteByAlleleSpecificVQScore(genotypedVC, vqScoreMap, yngMap, vqScoreFilteringType);
+                noVQScoreFilteringRequested ? genotypedVC : filterSiteByAlleleSpecificVQScore(genotypedVC, scoreMap, vqScoreMap, yngMap, vqScoreFilteringType);
 
         // apply SiteQC-based filters, if they exist
         if (siteFilterMap.containsKey(location)) {
@@ -576,12 +589,16 @@ public class ExtractCohortEngine {
     }
 
     private VariantContext filterSiteByAlleleSpecificVQScore(VariantContext mergedVC,
+                                                             Map<Allele, Map<Allele, Double>> scoreMap,
                                                              Map<Allele, Map<Allele, Double>> vqScoreMap,
                                                              Map<Allele, Map<Allele, String>> yngMap,
                                                              ExtractCohort.VQScoreFilteringType vqScoreFilteringType) {
+        final Map<Allele, Double> remappedScoreMap = remapAllelesInMap(mergedVC, scoreMap, Double.NaN);
         final Map<Allele, Double> remappedVQScoreMap = remapAllelesInMap(mergedVC, vqScoreMap, Double.NaN);
         final Map<Allele, String> remappedYngMap = remapAllelesInMap(mergedVC, yngMap, VCFConstants.EMPTY_INFO_FIELD);
 
+        final Map<Allele, Double> relevantScoreMap = new LinkedHashMap<>();
+        mergedVC.getAlternateAlleles().forEach(key -> Optional.ofNullable(remappedScoreMap.get(key)).ifPresent(value -> relevantScoreMap.put(key, value)));
         final Map<Allele, Double> relevantVQScoreMap = new LinkedHashMap<>();
         mergedVC.getAlternateAlleles().forEach(key -> Optional.ofNullable(remappedVQScoreMap.get(key)).ifPresent(value -> relevantVQScoreMap.put(key, value)));
         final Map<Allele, String> relevantYngMap = new LinkedHashMap<>();
@@ -589,6 +606,10 @@ public class ExtractCohortEngine {
 
         final VariantContextBuilder builder = new VariantContextBuilder(mergedVC);
 
+        if (hasScoreField()) {
+            // TODO - should this be a constant in ExtractCohortLiteEngine?
+            builder.attribute(GATKVCFConstants.SCORE_KEY, relevantScoreMap.values().stream().map(val -> val.equals(Double.NaN) ? VCFConstants.EMPTY_INFO_FIELD : val.toString()).collect(Collectors.toList()));
+        }
         builder.attribute(getAlleleSpecificVQSScoreKey(), relevantVQScoreMap.values().stream().map(val -> val.equals(Double.NaN) ? VCFConstants.EMPTY_INFO_FIELD : val.toString()).collect(Collectors.toList()));
         builder.attribute(GATKVCFConstants.AS_YNG_STATUS_KEY, new ArrayList<>(relevantYngMap.values()));
 
@@ -908,6 +929,7 @@ public class ExtractCohortEngine {
             final SortedSet<Long> sampleIdsToExtract,
             final Long minLocation,
             final Long maxLocation,
+            final Map<Long, Map<Allele, Map<Allele, Double>>> fullScoreMap,
             final Map<Long, Map<Allele, Map<Allele, Double>>> fullVQScoreMap,
             final Map<Long, Map<Allele, Map<Allele, String>>> fullYngMap,
             final Map<Long, List<String>> siteFilterMap,
@@ -937,7 +959,7 @@ public class ExtractCohortEngine {
                 localSortMaxRecordsInRam,
                 vbs);
 
-        createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullVQScoreMap, fullYngMap, siteFilterMap, noVQScoreFilteringRequested);
+        createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullScoreMap, fullVQScoreMap, fullYngMap, siteFilterMap, noVQScoreFilteringRequested);
     }
 
     //
@@ -949,6 +971,7 @@ public class ExtractCohortEngine {
             final SortedSet<Long> sampleIdsToExtract,
             final Long minLocation,
             final Long maxLocation,
+            final Map<Long, Map<Allele, Map<Allele, Double>>> fullScoreMap,
             final Map<Long, Map<Allele, Map<Allele, Double>>> fullVQScoreMap,
             final Map<Long, Map<Allele, Map<Allele, String>>> fullYngMap,
             final Map<Long, List<String>> siteFilterMap,
@@ -976,7 +999,7 @@ public class ExtractCohortEngine {
                 localSortMaxRecordsInRam,
                 vbs);
 
-        createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullVQScoreMap, fullYngMap, siteFilterMap, noVQScoreFilteringRequested);
+        createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullScoreMap, fullVQScoreMap, fullYngMap, siteFilterMap, noVQScoreFilteringRequested);
     }
 
     private SortingCollection<GenericRecord> createSortedVetCollectionFromExtractTableBigQuery(final String projectID,
@@ -1042,6 +1065,7 @@ public class ExtractCohortEngine {
             final SortedSet<Long> sampleIdsToExtract,
             final Long minLocation,
             final Long maxLocation,
+            final Map<Long, Map<Allele, Map<Allele, Double>>> fullScoreMap,
             final Map<Long, Map<Allele, Map<Allele, Double>>> fullVQScoreMap,
             final Map<Long, Map<Allele, Map<Allele, String>>> fullYngMap,
             final Map<Long, List<String>> siteFilterMap,
@@ -1070,13 +1094,14 @@ public class ExtractCohortEngine {
             sortedReferenceRange = localSortedReferenceRange;
         }
 
-        createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullVQScoreMap, fullYngMap, siteFilterMap, noVQScoreFilteringRequested);
+        createVariantsFromSortedRanges(sampleIdsToExtract, sortedVet, sortedReferenceRange, fullScoreMap, fullVQScoreMap, fullYngMap, siteFilterMap, noVQScoreFilteringRequested);
 
     }
 
     void createVariantsFromSortedRanges(final SortedSet<Long> sampleIdsToExtract,
                                         final Iterable<GenericRecord> sortedVet,
                                         Iterable<GenericRecord> sortedReferenceRange,
+                                        final Map<Long, Map<Allele, Map<Allele, Double>>> fullScoreMap,
                                         final Map<Long, Map<Allele, Map<Allele, Double>>> fullVQScoreMap,
                                         final Map<Long, Map<Allele, Map<Allele, String>>> fullYngMap,
                                         final Map<Long, List<String>> siteFilterMap,
@@ -1125,7 +1150,7 @@ public class ExtractCohortEngine {
                 }
 
                 ++totalNumberOfSites;
-                VariantContext vc = processSampleRecordsForLocation(lastPosition, currentPositionRecords.values(), fullVQScoreMap, fullYngMap, noVQScoreFilteringRequested, siteFilterMap, vqScoreFilteringType);
+                VariantContext vc = processSampleRecordsForLocation(lastPosition, currentPositionRecords.values(), fullScoreMap, fullVQScoreMap, fullYngMap, noVQScoreFilteringRequested, siteFilterMap, vqScoreFilteringType);
                 variantContextConsumer.accept(vc);
                 currentPositionRecords.clear();
 
@@ -1156,7 +1181,7 @@ public class ExtractCohortEngine {
 
         if (!currentPositionRecords.isEmpty()) {
             ++totalNumberOfSites;
-            VariantContext vc = processSampleRecordsForLocation(lastPosition, currentPositionRecords.values(), fullVQScoreMap, fullYngMap, noVQScoreFilteringRequested, siteFilterMap, vqScoreFilteringType);
+            VariantContext vc = processSampleRecordsForLocation(lastPosition, currentPositionRecords.values(), fullScoreMap, fullVQScoreMap, fullYngMap, noVQScoreFilteringRequested, siteFilterMap, vqScoreFilteringType);
             variantContextConsumer.accept(vc);
         }
     }

@@ -43,6 +43,8 @@ public class ExtractCohortLiteEngine extends ExtractCohortEngine {
         return GATKVCFConstants.CALIBRATION_SENSITIVITY_FAILURE_INDEL;
     }
 
+    boolean hasScoreField() { return true; }
+
     public ExtractCohortLiteEngine(final String projectID,
                                    final VCFHeader vcfHeader,
                                    final VariantAnnotatorEngine annotationEngine,
