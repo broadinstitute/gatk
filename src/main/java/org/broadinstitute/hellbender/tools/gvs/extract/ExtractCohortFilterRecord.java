@@ -24,7 +24,7 @@ public class ExtractCohortFilterRecord implements Locatable {
         this.start = SchemaUtils.decodePosition(location);
         this.end = start;
 
-        this.score = null;
+        this.score = Double.parseDouble(genericRecord.get(SchemaUtils.SCORE).toString());
         this.vqScore = Double.parseDouble(genericRecord.get(vqScoreFieldName).toString());
         this.yng = genericRecord.get(SchemaUtils.YNG_STATUS).toString();
 
