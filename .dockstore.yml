@@ -123,8 +123,9 @@ workflows:
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsBulkIngestGenomes.wdl
      filters:
        branches:
+         - master
          - ah_var_store
-         - vs_962_there_can_be_only_one
+         - rsa_vs_997
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
@@ -178,7 +179,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_962_there_can_be_only_one
+         - rsa_vs_997
    - name: GvsJointVariantCallsetCost
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCallsetCost.wdl
@@ -214,7 +215,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_962_there_can_be_only_one
+         - rsa_vs_997
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
