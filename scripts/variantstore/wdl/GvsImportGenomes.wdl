@@ -121,7 +121,7 @@ workflow GvsImportGenomes {
         load_data_maxretries = effective_load_data_maxretries,
         sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
         sample_map = GetUningestedSampleIds.sample_map,
-        process_vcf_headers = process_vcf_headers
+        process_vcf_headers = process_vcf_headers,
     }
   }
  if (process_vcf_headers) {
@@ -323,7 +323,7 @@ task LoadData {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_07_12"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:merge_master_to_ah_var_store_2023_07_18_9b2fbaf"
     maxRetries: load_data_maxretries
     memory: "3.75 GB"
     disks: "local-disk 50 HDD"
