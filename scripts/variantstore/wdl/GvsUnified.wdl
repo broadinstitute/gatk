@@ -62,7 +62,8 @@ workflow GvsUnified {
         # Begin GvsExtractCallset
         Int? extract_scatter_count
 
-        File? interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
+        Boolean use_interval_weights = true
+        File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
 
         String extract_output_file_base_name = sub(filter_set_name, " ", "-")
 
@@ -150,6 +151,7 @@ workflow GvsUnified {
             query_project = query_project,
             scatter_count = extract_scatter_count,
             interval_list = interval_list,
+            use_interval_weights = use_interval_weights,
             interval_weights_bed = interval_weights_bed,
             gatk_override = gatk_override,
             output_file_base_name = extract_output_file_base_name,

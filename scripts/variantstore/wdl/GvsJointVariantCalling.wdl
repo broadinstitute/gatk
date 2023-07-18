@@ -11,7 +11,8 @@ workflow GvsJointVariantCalling {
         Array[File] input_vcf_indexes
         String call_set_identifier
         File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
-        File? interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
+        Boolean use_interval_weights = true
+        File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
         String? extract_output_gcs_dir
         String drop_state = "FORTY"
         Boolean use_classic_VQSR = true
@@ -65,6 +66,7 @@ workflow GvsJointVariantCalling {
             fq_temp_table_dataset = "~{project_id}.~{dataset_name}",
             gatk_override = gatk_override,
             interval_list = interval_list,
+            use_interval_weights = use_interval_weights,
             interval_weights_bed = interval_weights_bed,
             load_data_batch_size = load_data_batch_size,
             load_data_maxretries_override = load_data_maxretries_override,
