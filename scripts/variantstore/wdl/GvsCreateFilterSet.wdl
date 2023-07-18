@@ -4,6 +4,8 @@ import "GvsUtils.wdl" as Utils
 import "GvsVQSRClassic.wdl" as VQSRClassic
 import "../../vcf_site_level_filtering_wdl/JointVcfFiltering.wdl" as VQSRLite
 
+# !
+
 workflow GvsCreateFilterSet {
   input {
     Boolean go = true
@@ -186,7 +188,8 @@ workflow GvsCreateFilterSet {
         INDEL_VQSR_max_gaussians_override = INDEL_VQSR_CLASSIC_max_gaussians_override,
         INDEL_VQSR_mem_gb_override = INDEL_VQSR_CLASSIC_mem_gb_override,
         SNP_VQSR_max_gaussians_override = SNP_VQSR_CLASSIC_max_gaussians_override,
-        SNP_VQSR_mem_gb_override = SNP_VQSR_CLASSIC_mem_gb_override
+        SNP_VQSR_mem_gb_override = SNP_VQSR_CLASSIC_mem_gb_override,
+        gatk_override = gatk_override
     }
   }
 
