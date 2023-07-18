@@ -2,36 +2,40 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import com.google.common.collect.Maps;
 import htsjdk.samtools.*;
-import htsjdk.variant.variantcontext.*;
-
 import htsjdk.samtools.util.Locatable;
+import htsjdk.variant.variantcontext.*;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.*;
+import org.broadinstitute.hellbender.utils.haplotype.Event;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
-import org.apache.commons.lang3.StringUtils;
-
-import java.util.*;
-import java.util.stream.Collectors;
-
-import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
+import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignmentConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.util.*;
+import java.util.stream.Collectors;
+
 import static org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerUtils.*;
 
 public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
+    private static final SWParameters HAPLOTYPE_TO_REFERENCE_SW_PARAMETERS = SmithWatermanAlignmentConstants.NEW_SW_PARAMETERS;
+
     final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(1, 1, 100000000);
     final SAMLineParser parser = new SAMLineParser(header);
 
@@ -69,7 +73,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         SampleList sampleList = SampleList.singletonSampleList("tumor");
         Byte minbq = 9;
         // NOTE: this test MUST be run with correctOverlappingBaseQualities enabled otherwise this test can succeed even with unsafe code
-        AssemblyBasedCallerUtils.finalizeRegion(activeRegion, false, false, minbq, header, sampleList, true, false);
+        AssemblyBasedCallerUtils.finalizeRegion(activeRegion, false, false, minbq, header, sampleList, true, false, false, false);
 
         // make sure that the original reads are not changed due to finalizeRegion()
         Assert.assertTrue(reads.get(0).convertToSAMRecord(header).equals(orgRead0));
@@ -324,7 +328,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
     }
 
     private Haplotype applyVariant(final VariantContext vc, final Haplotype refHaplotype, final int altIndex) {
-        Haplotype retHaplotype = refHaplotype.insertAllele(vc.getReference(), vc.getAlternateAllele(altIndex), vc.getStart() - (int) refHaplotype.getStartPosition(), vc.getStart());
+        Haplotype retHaplotype = refHaplotype.insertAllele(vc.getReference(), vc.getAlternateAllele(altIndex), vc.getStart());
         if (retHaplotype == null) {
             return refHaplotype;
         }
@@ -356,96 +360,6 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         }
     }
 
-    @Test(dataProvider = "getVariantContextsFromGivenAlleles")
-    public void testGetVariantContextsFromGivenAlleles(final int loc,
-                                                       final List<VariantContext> activeAllelesToGenotype,
-                                                       final List<VariantContext> expectedVcsAtThisLocation) {
-
-        final List<VariantContext> vcsAtThisPosition = getVariantContextsFromGivenAlleles(loc, activeAllelesToGenotype, true);
-        Assert.assertEquals(vcsAtThisPosition.size(), expectedVcsAtThisLocation.size());
-        for (int i = 0; i < expectedVcsAtThisLocation.size(); i++) {
-            VariantContextTestUtils.assertVariantContextsAreEqual(vcsAtThisPosition.get(i), expectedVcsAtThisLocation.get(i), new ArrayList<>(), Collections.emptyList());
-            Assert.assertEquals(vcsAtThisPosition.get(i).getSource(), expectedVcsAtThisLocation.get(i).getSource());
-        }
-    }
-
-    @DataProvider(name = "getVariantContextsFromGivenAlleles")
-    public Object[][] getVcsAtThisLocationFromGivenAllelesData() {
-        final List<Object[]> tests = new ArrayList<>();
-
-        tests.add(new Object[]{1000, new ArrayList<>(), new ArrayList<>()});
-
-        final Haplotype snpHaplotype = new Haplotype("ACTGGTCAACTGGTCAACTGGTCAACTGGTCA".getBytes());
-        final List<Allele> snpAlleles = Arrays.asList(Allele.create("A", true), Allele.create("G"));
-        final VariantContextBuilder snpVCBuilder = new VariantContextBuilder("a", "20", 1000, 1000, snpAlleles);
-        final VariantContext snpVc = snpVCBuilder.make();
-        snpHaplotype.setEventMap(new EventMap(Arrays.asList(snpVc)));
-
-        // this one matches the snp haplotype above (to test duplicate removal)
-        final Haplotype snpHaplotypeDuplicate = new Haplotype("ACTGGTCAACTGGTCAACTGGTCAACTGGACA".getBytes());
-        final List<Allele> snpAlleles2 = Arrays.asList(Allele.create("A", true), Allele.create("G"));
-        final VariantContextBuilder svpVC2Builder = new VariantContextBuilder("a", "20", 1000, 1000, snpAlleles2);
-        final VariantContext snpVc2 = svpVC2Builder.make();
-        final List<Allele> snpAlleles3 = Arrays.asList(Allele.create("T", true), Allele.create("A"));
-        final VariantContextBuilder snpVC3Builder = new VariantContextBuilder("a", "20", 1020, 1020, snpAlleles3);
-        final VariantContext snpVc3 = snpVC3Builder.make();
-        snpHaplotypeDuplicate.setEventMap(new EventMap(Arrays.asList(snpVc2, snpVc3)));
-
-
-        final Haplotype deletionHaplotype = new Haplotype("ACTGGTCAGGTCAACTGGTCA".getBytes());
-        final List<Allele> deletionAlleles = Arrays.asList(Allele.create("ACTGGTCAACT", true), Allele.create("A"));
-        final VariantContextBuilder deletionVCBuilder = new VariantContextBuilder("a", "20", 995, 1005, deletionAlleles);
-        final VariantContext deletionVc = deletionVCBuilder.make();
-        deletionHaplotype.setEventMap(new EventMap(Arrays.asList(deletionVc)));
-
-        // matches the deletion alleles above but at a different position (to catch an edge case in duplicate removal)
-        final Haplotype deletionHaplotypeFalseDuplicate = new Haplotype("ACTGGTCAGGTCAACTGGTCA".getBytes());
-        final List<Allele> deletionAllelesFalseDuplicate = Arrays.asList(Allele.create("ACTGGTCAACT", true), Allele.create("A"));
-        final VariantContextBuilder deletionFalseDuplicateBuilder = new VariantContextBuilder("a", "20", 998, 1008, deletionAllelesFalseDuplicate);
-        final VariantContext deletionVcFalseDuplicate = deletionFalseDuplicateBuilder.make();
-        deletionHaplotypeFalseDuplicate.setEventMap(new EventMap(Arrays.asList(deletionVcFalseDuplicate)));
-
-        // doesn't overlap 1000
-        final Haplotype deletionHaplotypeNoSpan = new Haplotype("CAACTGGTCAACTGGTCAACTGGTCAACTGGTCAACTGGTCA".getBytes());
-        final List<Allele> deletionAllelesNoSpan = Arrays.asList(Allele.create("GTCAA", true), Allele.create("G"));
-        final VariantContextBuilder deletionVcNoSpanBuilder = new VariantContextBuilder("a", "20", 990, 994, deletionAllelesNoSpan);
-        final VariantContext deletionVcNoSpan = deletionVcNoSpanBuilder.make();
-        deletionHaplotypeNoSpan.setEventMap(new EventMap(Arrays.asList(deletionVcNoSpan)));
-
-        final Haplotype sameLocDelHap1 = new Haplotype("AAAAAAAGAAA".getBytes());
-        final List<Allele> sameLocDelAlleles1 = Arrays.asList(Allele.create("GTT", true), Allele.create("G"));
-        final VariantContext sameLocDelVc1 = new VariantContextBuilder("a", "20", 10093568, 10093570, sameLocDelAlleles1).make();
-        sameLocDelHap1.setEventMap(new EventMap(Arrays.asList(sameLocDelVc1)));
-
-        final Haplotype sameLocDelHap2 = new Haplotype("AAAAAAAGTAAA".getBytes());
-        final List<Allele> sameLocDelAlleles2 = Arrays.asList(Allele.create("GT", true), Allele.create("G"));
-        final VariantContext sameLocDelVc2 = new VariantContextBuilder("a", "20", 10093568, 10093569, sameLocDelAlleles2).make();
-        sameLocDelHap2.setEventMap(new EventMap(Arrays.asList(sameLocDelVc2)));
-
-        final Haplotype sameLocInsHap1 = new Haplotype("AAAAAAAGTTTAAA".getBytes());
-        final List<Allele> sameLocInsAlleles1 = Arrays.asList(Allele.create("G", true), Allele.create("GT"));
-        final VariantContext sameLocInsVc1 = new VariantContextBuilder("a", "20", 10093568, 10093568, sameLocInsAlleles1).make();
-        sameLocInsHap1.setEventMap(new EventMap(Arrays.asList(sameLocInsVc1)));
-
-        final VariantContextBuilder deletionVCBuilderWithGts = new VariantContextBuilder("a", "20", 995, 1005, deletionAlleles)
-                .genotypes(new GenotypeBuilder("TEST", Arrays.asList(deletionAlleles.get(0), deletionAlleles.get(1))).make());
-        final VariantContext deletionVcWithGts = deletionVCBuilderWithGts.make();
-
-        tests.add(new Object[]{1000, Arrays.asList(snpVc), Arrays.asList(snpVCBuilder.source("Comp0Allele0").make())});
-        tests.add(new Object[]{995, Arrays.asList(deletionVc), Arrays.asList(deletionVCBuilder.source("Comp0Allele0").make())});
-        tests.add(new Object[]{1000, Arrays.asList(deletionVc), Arrays.asList(deletionVCBuilder.source("Comp0Allele0").make())});
-        tests.add(new Object[]{1000, Arrays.asList(deletionVc, snpVc),
-                Arrays.asList(deletionVCBuilder.source("Comp0Allele0").make(), snpVCBuilder.source("Comp1Allele0").make())});
-        tests.add(new Object[]{1000, Arrays.asList(deletionVc, deletionVcNoSpan), Arrays.asList(deletionVCBuilder.source("Comp0Allele0").make())});
-        tests.add(new Object[]{1000, Arrays.asList(deletionVc, deletionVcFalseDuplicate, deletionVcNoSpan),
-                Arrays.asList(deletionVCBuilder.source("Comp0Allele0").make(), deletionFalseDuplicateBuilder.source("Comp1Allele0").make())});
-
-        tests.add(new Object[]{1000, Arrays.asList(deletionVcWithGts, snpVc),
-                Arrays.asList(deletionVCBuilder.source("Comp0Allele0").make(), snpVCBuilder.source("Comp1Allele0").make())});
-
-        return tests.toArray(new Object[][]{});
-    }
-
     @DataProvider(name = "getVariantContextsFromActiveHaplotypes")
     public Object[][] getVariantContextsFromActiveHaplotypesData() {
         final List<Object[]> tests = new ArrayList<>();
@@ -453,67 +367,52 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         tests.add(new Object[]{new ArrayList<>(), 1000, new ArrayList<>()});
 
         final Haplotype snpHaplotype = new Haplotype("ACTGGTCAACTGGTCAACTGGTCAACTGGTCA".getBytes());
-        final List<Allele> snpAlleles = Arrays.asList(Allele.create("A", true), Allele.create("G"));
-        final VariantContextBuilder snpVCBuilder = new VariantContextBuilder("a", "20", 1000, 1000, snpAlleles);
-        final VariantContext snpVc = snpVCBuilder.make();
-        snpHaplotype.setEventMap(new EventMap(Arrays.asList(snpVc)));
+        final Event snpEvent = new Event("20", 1000, Allele.create("A", true), Allele.create("G"));
+        snpHaplotype.setEventMap(EventMap.of(snpEvent));
 
         // this one matches the snp haplotype above (to test duplicate removal)
         final Haplotype snpHaplotypeDuplicate = new Haplotype("ACTGGTCAACTGGTCAACTGGTCAACTGGACA".getBytes());
-        final List<Allele> snpAlleles2 = Arrays.asList(Allele.create("A", true), Allele.create("G"));
-        final VariantContextBuilder svpVC2Builder = new VariantContextBuilder("a", "20", 1000, 1000, snpAlleles2);
-        final VariantContext snpVc2 = svpVC2Builder.make();
-        final List<Allele> snpAlleles3 = Arrays.asList(Allele.create("T", true), Allele.create("A"));
-        final VariantContextBuilder snpVC3Builder = new VariantContextBuilder("a", "20", 1020, 1020, snpAlleles3);
-        final VariantContext snpVc3 = snpVC3Builder.make();
-        snpHaplotypeDuplicate.setEventMap(new EventMap(Arrays.asList(snpVc2, snpVc3)));
+        final Event snpEvent2 = new Event("20", 1000, Allele.create("A", true), Allele.create("G"));
+        final Event snpEvent3 = new Event("20", 1020, Allele.create("T", true), Allele.create("A"));
+        snpHaplotypeDuplicate.setEventMap(EventMap.of(snpEvent2, snpEvent3));
 
 
         final Haplotype deletionHaplotype = new Haplotype("ACTGGTCAGGTCAACTGGTCA".getBytes());
-        final List<Allele> deletionAlleles = Arrays.asList(Allele.create("ACTGGTCAACT", true), Allele.create("A"));
-        final VariantContextBuilder deletionVCBuilder = new VariantContextBuilder("a", "20", 995, 1005, deletionAlleles);
-        final VariantContext deletionVc = deletionVCBuilder.make();
-        deletionHaplotype.setEventMap(new EventMap(Arrays.asList(deletionVc)));
+        final Event deletionEvent = new Event("20", 995, Allele.create("ACTGGTCAACT", true), Allele.create("A"));
+        deletionHaplotype.setEventMap(EventMap.of(deletionEvent));
 
         // matches the deletion alleles above but at a different position (to catch an edge case in duplicate removal)
         final Haplotype deletionHaplotypeFalseDuplicate = new Haplotype("ACTGGTCAGGTCAACTGGTCA".getBytes());
-        final List<Allele> deletionAllelesFalseDuplicate = Arrays.asList(Allele.create("ACTGGTCAACT", true), Allele.create("A"));
-        final VariantContextBuilder deletionFalseDuplicateBuilder = new VariantContextBuilder("a", "20", 998, 1008, deletionAllelesFalseDuplicate);
-        final VariantContext deletionVcFalseDuplicate = deletionFalseDuplicateBuilder.make();
-        deletionHaplotypeFalseDuplicate.setEventMap(new EventMap(Arrays.asList(deletionVcFalseDuplicate)));
+        final Event deletionEventFalseDuplicate = new Event("20", 998, Allele.create("ACTGGTCAACT", true), Allele.create("A"));
+        deletionHaplotypeFalseDuplicate.setEventMap(EventMap.of(deletionEventFalseDuplicate));
 
         // doesn't overlap 1000
         final Haplotype deletionHaplotypeNoSpan = new Haplotype("CAACTGGTCAACTGGTCAACTGGTCAACTGGTCAACTGGTCA".getBytes());
-        final List<Allele> deletionAllelesNoSpan = Arrays.asList(Allele.create("GTCAA", true), Allele.create("G"));
-        final VariantContextBuilder deletionVcNoSpanBuilder = new VariantContextBuilder("a", "20", 990, 994, deletionAllelesNoSpan);
-        final VariantContext deletionVcNoSpan = deletionVcNoSpanBuilder.make();
-        deletionHaplotypeNoSpan.setEventMap(new EventMap(Arrays.asList(deletionVcNoSpan)));
+        final Event deletionEventNoSpan = new Event("20", 990, Allele.create("GTCAA", true), Allele.create("G"));
+        deletionHaplotypeNoSpan.setEventMap(EventMap.of(deletionEventNoSpan));
 
-        tests.add(new Object[]{Arrays.asList(snpHaplotype), 1000, Arrays.asList(snpVc)});
-        tests.add(new Object[]{Arrays.asList(snpHaplotype, snpHaplotypeDuplicate), 1000, Arrays.asList(snpVc)});
-        tests.add(new Object[]{Arrays.asList(deletionHaplotype), 995, Arrays.asList(deletionVc)});
-        tests.add(new Object[]{Arrays.asList(deletionHaplotype), 1000, Arrays.asList(deletionVc)});
-        tests.add(new Object[]{Arrays.asList(deletionHaplotype, deletionHaplotypeNoSpan), 1000, Arrays.asList(deletionVc)});
-        tests.add(new Object[]{Arrays.asList(deletionHaplotype, deletionHaplotypeFalseDuplicate, deletionHaplotypeNoSpan), 1000, Arrays.asList(deletionVc, deletionVcFalseDuplicate)});
+        tests.add(new Object[]{Arrays.asList(snpHaplotype), 1000, Arrays.asList(snpEvent)});
+        tests.add(new Object[]{Arrays.asList(snpHaplotype, snpHaplotypeDuplicate), 1000, Arrays.asList(snpEvent)});
+        tests.add(new Object[]{Arrays.asList(deletionHaplotype), 995, Arrays.asList(deletionEvent)});
+        tests.add(new Object[]{Arrays.asList(deletionHaplotype), 1000, Arrays.asList(deletionEvent)});
+        tests.add(new Object[]{Arrays.asList(deletionHaplotype, deletionHaplotypeNoSpan), 1000, Arrays.asList(deletionEvent)});
+        tests.add(new Object[]{Arrays.asList(deletionHaplotype, deletionHaplotypeFalseDuplicate, deletionHaplotypeNoSpan), 1000, Arrays.asList(deletionEvent, deletionEventFalseDuplicate)});
 
-        tests.add(new Object[]{Arrays.asList(deletionHaplotype, snpHaplotype), 1000, Arrays.asList(deletionVc, snpVc)});
+        tests.add(new Object[]{Arrays.asList(deletionHaplotype, snpHaplotype), 1000, Arrays.asList(deletionEvent, snpEvent)});
 
         final Haplotype sameLocDelHap1 = new Haplotype("AAAAAAAGAAA".getBytes());
-        final List<Allele> sameLocDelAlleles1 = Arrays.asList(Allele.create("GTT", true), Allele.create("G"));
-        final VariantContext sameLocDelVc1 = new VariantContextBuilder("a", "20", 10093568, 10093570, sameLocDelAlleles1).make();
-        sameLocDelHap1.setEventMap(new EventMap(Arrays.asList(sameLocDelVc1)));
+        final Event sameLocDelEvent1 = new Event("20", 10093568, Allele.create("GTT", true), Allele.create("G"));
+        sameLocDelHap1.setEventMap(EventMap.of(sameLocDelEvent1));
 
         final Haplotype sameLocDelHap2 = new Haplotype("AAAAAAAGTAAA".getBytes());
-        final List<Allele> sameLocDelAlleles2 = Arrays.asList(Allele.create("GT", true), Allele.create("G"));
-        final VariantContext sameLocDelVc2 = new VariantContextBuilder("a", "20", 10093568, 10093569, sameLocDelAlleles2).make();
-        sameLocDelHap2.setEventMap(new EventMap(Arrays.asList(sameLocDelVc2)));
+        final Event sameLocDelEvent2 = new Event("20", 10093568, Allele.create("GT", true), Allele.create("G"));
+        sameLocDelHap2.setEventMap(EventMap.of(sameLocDelEvent2));
 
         final Haplotype sameLocInsHap1 = new Haplotype("AAAAAAAGTTTAAA".getBytes());
-        final List<Allele> sameLocInsAlleles1 = Arrays.asList(Allele.create("G", true), Allele.create("GT"));
-        final VariantContext sameLocInsVc1 = new VariantContextBuilder("a", "20", 10093568, 10093568, sameLocInsAlleles1).make();
-        sameLocInsHap1.setEventMap(new EventMap(Arrays.asList(sameLocInsVc1)));
+        final Event sameLocInsEvent1 = new Event("20", 10093568, Allele.create("G", true), Allele.create("GT"));
+        sameLocInsHap1.setEventMap(EventMap.of(sameLocInsEvent1));
 
-        tests.add(new Object[]{Arrays.asList(sameLocDelHap1, sameLocDelHap2, sameLocInsHap1), 10093568, Arrays.asList(sameLocDelVc1, sameLocDelVc2, sameLocInsVc1)});
+        tests.add(new Object[]{Arrays.asList(sameLocDelHap1, sameLocDelHap2, sameLocInsHap1), 10093568, Arrays.asList(sameLocDelEvent1, sameLocDelEvent2, sameLocInsEvent1)});
 
         return tests.toArray(new Object[][]{});
     }
@@ -521,13 +420,12 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
     @Test(dataProvider = "getVariantContextsFromActiveHaplotypes")
     public void testGetVariantContextsFromActiveHaplotypes(final List<Haplotype> haplotypes,
                                                            final int loc,
-                                                           final List<VariantContext> expectedVcsAtThisLocation) {
+                                                           final List<Event> expectedEventsAtThisLocation) {
 
-        final List<VariantContext> vcsAtThisPosition = getVariantContextsFromActiveHaplotypes(loc, haplotypes, true);
-        Assert.assertEquals(vcsAtThisPosition.size(), expectedVcsAtThisLocation.size());
-        for (int i = 0; i < expectedVcsAtThisLocation.size(); i++) {
-            VariantContextTestUtils.assertVariantContextsAreEqual(vcsAtThisPosition.get(i), expectedVcsAtThisLocation.get(i), new ArrayList<>(), Collections.emptyList());
-            Assert.assertEquals(vcsAtThisPosition.get(i).getSource(), expectedVcsAtThisLocation.get(i).getSource());
+        final List<VariantContext> vcsAtThisPosition = getVariantsFromActiveHaplotypes(loc, haplotypes, true);
+        Assert.assertEquals(vcsAtThisPosition.size(), expectedEventsAtThisLocation.size());
+        for (int i = 0; i < expectedEventsAtThisLocation.size(); i++) {
+            VariantContextTestUtils.assertVariantContextsAreEqual(vcsAtThisPosition.get(i), expectedEventsAtThisLocation.get(i).convertToVariantContext("SRC"), new ArrayList<>(), Collections.emptyList());
         }
     }
 
@@ -535,43 +433,35 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
     public Object[][] getEventMapperData() {
 
         final Haplotype refHaplotype = new Haplotype("ACTGGTCAACTAGTCAACTGGTCAACTGGTCA".getBytes());
-        refHaplotype.setEventMap(new EventMap(new HashSet<>()));
+        refHaplotype.setEventMap(EventMap.of());
 
         final Haplotype snpHaplotype = new Haplotype("ACTGGTCAACTGGTCAACTGGTCAACTGGTCA".getBytes());
         final Allele refAllele = Allele.create("A", true);
         final List<Allele> snpAlleles = Arrays.asList(refAllele, Allele.create("G"));
-        final VariantContextBuilder snpVCBuilder = new VariantContextBuilder("a", "20", 1000, 1000, snpAlleles);
-        final VariantContext snpVc = snpVCBuilder.make();
-        snpHaplotype.setEventMap(new EventMap(Arrays.asList(snpVc)));
+        final Event snpEvent = new Event("20", 1000, refAllele, Allele.create("G"));
+        snpHaplotype.setEventMap(EventMap.of(snpEvent));
 
         final Haplotype snpHaplotypeNotPresentInEventsAtThisLoc = new Haplotype("ACTGGTCAACTTGTCAACTGGTCAACTGGTCA".getBytes());
-        final List<Allele> snpAllelesNotPresentInEventsAtThisLoc = Arrays.asList(refAllele, Allele.create("T"));
-        final VariantContextBuilder snpNotPresentInEventsAtThisLocVCBuilder = new VariantContextBuilder("a", "20", 1000, 1000, snpAllelesNotPresentInEventsAtThisLoc);
-        final VariantContext snpVcNotPresentInEventsAtThisLoc = snpNotPresentInEventsAtThisLocVCBuilder.make();
-        snpHaplotypeNotPresentInEventsAtThisLoc.setEventMap(new EventMap(Arrays.asList(snpVcNotPresentInEventsAtThisLoc)));
+        final Event snpEventNotPresentInEventsAtThisLoc = new Event("20", 1000, refAllele, Allele.create("T"));
+        snpHaplotypeNotPresentInEventsAtThisLoc.setEventMap(EventMap.of(snpEventNotPresentInEventsAtThisLoc));
 
         final Haplotype deletionHaplotype = new Haplotype("ACTGGTCAGGTCAACTGGTCA".getBytes());
-        final List<Allele> deletionAlleles = Arrays.asList(Allele.create("ACTGGTCAACT", true), Allele.create("A"));
-        final VariantContextBuilder deletionVCBuilder = new VariantContextBuilder("a", "20", 995, 1005, deletionAlleles);
-        final VariantContext deletionVc = deletionVCBuilder.make();
-        deletionHaplotype.setEventMap(new EventMap(Arrays.asList(deletionVc)));
+        final Event deletionEvent = new Event("20", 995, Allele.create("ACTGGTCAACT", true), Allele.create("A"));
+        deletionHaplotype.setEventMap(EventMap.of(deletionEvent));
 
         final VariantContext spandDelVc = new VariantContextBuilder("a", "20", 1000, 1000, Arrays.asList(refAllele, Allele.SPAN_DEL)).make();
 
         final Haplotype deletionHaplotype2 = new Haplotype("ACTGGTCAGGTCAAGGTCA".getBytes());
-        final List<Allele> deletionAlleles2 = Arrays.asList(Allele.create("ACTGGTCAACTCT", true), Allele.create("A"));
-        final VariantContextBuilder deletionVCBuilder2 = new VariantContextBuilder("b", "20", 995, 1007, deletionAlleles2);
-        final VariantContext deletionVc2 = deletionVCBuilder2.make();
-        deletionHaplotype2.setEventMap(new EventMap(Arrays.asList(deletionVc2)));
+        final Event deletionEvent2 = new Event("20", 995, Allele.create("ACTGGTCAACTCT", true), Allele.create("A"));
+        deletionHaplotype2.setEventMap(EventMap.of(deletionEvent2));
 
         final VariantContext spandDelVc2 = new VariantContextBuilder("b", "20", 1000, 1000, Arrays.asList(refAllele, Allele.SPAN_DEL)).make();
 
         final Haplotype deletionStartingAtLocHaplotype = new Haplotype("ACTGGTCAGGTCAAGGTCA".getBytes());
         final Allele deletionStartingAtLocRefAllele = Allele.create("ACTGGTCAACTCT", true);
         final List<Allele> deletionStartingAtLocAlleles = Arrays.asList(deletionStartingAtLocRefAllele, Allele.create("A"));
-        final VariantContextBuilder deletionStartingAtLocVCBuilder = new VariantContextBuilder("b", "20", 1000, 1012, deletionStartingAtLocAlleles);
-        final VariantContext deletionStartingAtLocVc = deletionStartingAtLocVCBuilder.make();
-        deletionStartingAtLocHaplotype.setEventMap(new EventMap(Arrays.asList(deletionStartingAtLocVc)));
+        final Event deletionStartingAtLocEvent = new Event("20", 1000, deletionStartingAtLocRefAllele, Allele.create("A"));
+        deletionStartingAtLocHaplotype.setEventMap(EventMap.of(deletionStartingAtLocEvent));
 
         final Allele remappedSNPAllele = Allele.create("GCTGGTCAACTCT");
         final VariantContext mergedSnpAndDelStartingAtLocVC = new VariantContextBuilder("a", "20", 1000, 1012,
@@ -592,8 +482,8 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
 
         final List<Object[]> tests = new ArrayList<>();
         tests.add(new Object[]{
-                snpVc,
-                snpVc.getStart(),
+                snpEvent.convertToVariantContext("SRC"),
+                snpEvent.getStart(),
                 Arrays.asList(snpHaplotype, refHaplotype),
                 Maps.asMap(new HashSet<>(snpAlleles),
                         (key) -> {
@@ -614,10 +504,10 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         });
         // includes a SNP haplotype not present in events at this loc (which might happen in GGA mode)
         tests.add(new Object[]{
-                snpVc,
-                snpVc.getStart(),
+                snpEvent.convertToVariantContext("SRC"),
+                snpEvent.getStart(),
                 Arrays.asList(snpHaplotype, refHaplotype, snpHaplotypeNotPresentInEventsAtThisLoc),
-                Maps.asMap(new HashSet<>(snpVc.getAlleles()),
+                Maps.asMap(new HashSet<>(Arrays.asList(snpEvent.refAllele(), snpEvent.altAllele())),
                         (key) -> {
                             if (snpAlleles.get(1).equals(key)) return Arrays.asList(snpHaplotype);
                             return Arrays.asList(refHaplotype);
@@ -627,7 +517,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         // two spanning deletions, no given alleles -> both dels should be in event map for span del
         tests.add(new Object[]{
                 mergedSnpAndDelVC,
-                snpVc.getStart(),
+                snpEvent.getStart(),
                 Arrays.asList(snpHaplotype, refHaplotype, deletionHaplotype, deletionHaplotype2),
                 Maps.asMap(new HashSet<>(mergedSnpAndDelVC.getAlleles()),
                         (key) -> {
@@ -640,7 +530,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         // two spanning deletions, one in given alleles
         tests.add(new Object[]{
                 mergedSnpAndDelVC,
-                snpVc.getStart(),
+                snpEvent.getStart(),
                 Arrays.asList(snpHaplotype, refHaplotype, deletionHaplotype, deletionHaplotype2),
                 Maps.asMap(new HashSet<>(mergedSnpAndDelVC.getAlleles()),
                         (key) -> {
@@ -652,10 +542,10 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
 
         // A deletion starting at the loc in the given alleles, the snp not in the given alleles
         tests.add(new Object[]{
-                deletionStartingAtLocVc,
-                deletionStartingAtLocVc.getStart(),
+                deletionStartingAtLocEvent.convertToVariantContext("SRC"),
+                deletionStartingAtLocEvent.getStart(),
                 Arrays.asList(snpHaplotype, refHaplotype, deletionStartingAtLocHaplotype),
-                Maps.asMap(new HashSet<>(deletionStartingAtLocVc.getAlleles()),
+                Maps.asMap(new HashSet<>(Arrays.asList(deletionStartingAtLocEvent.refAllele(), deletionStartingAtLocEvent.altAllele())),
                         (key) -> {
                             if (deletionStartingAtLocAlleles.get(1).equals(key)) return Arrays.asList(deletionStartingAtLocHaplotype);
                             return Arrays.asList(refHaplotype);
@@ -664,10 +554,10 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
 
         // A deletion starting at the loc not in the given alleles, the snp in the given alleles
         tests.add(new Object[]{
-                snpVc,
-                snpVc.getStart(),
+                snpEvent.convertToVariantContext("SRC"),
+                snpEvent.getStart(),
                 Arrays.asList(snpHaplotype, refHaplotype, deletionStartingAtLocHaplotype),
-                Maps.asMap(new HashSet<>(snpVc.getAlleles()),
+                Maps.asMap(new HashSet<>(Arrays.asList(snpEvent.refAllele(), snpEvent.altAllele())),
                         (key) -> {
                             if (snpAlleles.get(1).equals(key)) return Arrays.asList(snpHaplotype);
                             return Arrays.asList(refHaplotype);
@@ -677,7 +567,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         // A deletion starting at the loc and the SNP in the given alleles
         tests.add(new Object[]{
                 mergedSnpAndDelStartingAtLocVC,
-                snpVc.getStart(),
+                snpEvent.getStart(),
                 Arrays.asList(snpHaplotype, refHaplotype, deletionStartingAtLocHaplotype),
                 Maps.asMap(new HashSet<>(mergedSnpAndDelStartingAtLocVC.getAlleles()),
                         (key) -> {
@@ -687,6 +577,21 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
                         })
         });
 
+
+        // location forced to be after alleles - to activate Allele.SPAN_DEL insertion into the result
+        HashSet<Allele>         deletionLocationAfterAlleles = new HashSet<>(Arrays.asList(deletionStartingAtLocEvent.refAllele(), deletionStartingAtLocEvent.altAllele()));
+        deletionLocationAfterAlleles.add(Allele.SPAN_DEL);
+        tests.add(new Object[]{
+                deletionStartingAtLocEvent.convertToVariantContext("SRC"),
+                deletionStartingAtLocEvent.getStart() + 1,
+                Arrays.asList(snpHaplotype, refHaplotype, deletionStartingAtLocHaplotype),
+                Maps.asMap(new HashSet<>(deletionLocationAfterAlleles),
+                        (key) -> {
+                            if ( key.equals(Allele.SPAN_DEL) ) return Arrays.asList(deletionStartingAtLocHaplotype);
+                            if (deletionStartingAtLocAlleles.get(1).equals(key)) return Arrays.asList();
+                            return Arrays.asList(snpHaplotype, refHaplotype);
+                        })
+        });
 
         return tests.toArray(new Object[][]{});
     }
@@ -837,35 +742,21 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         final List<VariantContext> calls = Arrays.asList(vc2, vc3, vc4);
 
         final Haplotype pos1 = new Haplotype("CAAAA".getBytes());
-        pos1.setEventMap(new EventMap(Arrays.asList(vc1)));
-        pos1.getEventMap().put(1, vc1);
+        pos1.setEventMap(EventMap.of(vcToEvent(vc1)));
         final Haplotype pos2 = new Haplotype("ACAAA".getBytes());
-        pos2.setEventMap(new EventMap(Arrays.asList(vc2)));
-        pos2.getEventMap().put(2, vc2);
+        pos2.setEventMap(EventMap.of(vcToEvent(vc2)));
         final Haplotype pos3 = new Haplotype("AACAA".getBytes());
-        pos3.setEventMap(new EventMap(Arrays.asList(vc3)));
-        pos3.getEventMap().put(3, vc3);
+        pos3.setEventMap(EventMap.of(vcToEvent(vc3)));
         final Haplotype pos4 = new Haplotype("AAACA".getBytes());
-        pos4.setEventMap(new EventMap(Arrays.asList(vc4)));
-        pos4.getEventMap().put(4, vc4);
+        pos4.setEventMap(EventMap.of(vcToEvent(vc4)));
         final Haplotype pos24 = new Haplotype("ACACA".getBytes());
-        pos24.setEventMap(new EventMap(Arrays.asList(vc2, vc4)));
-        pos24.getEventMap().put(2, vc2);
-        pos24.getEventMap().put(4, vc4);
+        pos24.setEventMap(EventMap.of(vcToEvent(vc2), vcToEvent(vc4)));
         final Haplotype pos34 = new Haplotype("AACCA".getBytes());
-        pos34.setEventMap(new EventMap(Arrays.asList(vc3, vc4)));
-        pos34.getEventMap().put(3, vc3);
-        pos34.getEventMap().put(4, vc4);
+        pos34.setEventMap(EventMap.of(vcToEvent(vc3), vcToEvent(vc4)));
         final Haplotype pos234 = new Haplotype("ACCCA".getBytes());
-        pos234.setEventMap(new EventMap(Arrays.asList(vc2, vc3, vc4)));
-        pos234.getEventMap().put(2, vc2);
-        pos234.getEventMap().put(3, vc3);
-        pos234.getEventMap().put(4, vc4);
+        pos234.setEventMap(EventMap.of(vcToEvent(vc2), vcToEvent(vc3), vcToEvent(vc4)));
         final Haplotype pos23 = new Haplotype("ACCAA".getBytes());
-        pos24.setEventMap(new EventMap(Arrays.asList(vc2, vc3)));
-        pos24.getEventMap().put(2, vc2);
-        pos24.getEventMap().put(3, vc3);
-
+        pos24.setEventMap(EventMap.of(vcToEvent(vc2), vcToEvent(vc3)));
 
         final Map<VariantContext, Set<Haplotype>> haplotypeMap = new HashMap<>();
 
@@ -961,10 +852,11 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
 
         // the ref haplotype would be "TAGCA"
         final Haplotype spandelHap = new Haplotype("TACA".getBytes());
-        spandelHap.setEventMap(new EventMap(Arrays.asList(delVC)));
+        spandelHap.setEventMap(EventMap.of(vcToEvent(delVC)));
 
         final Haplotype spannedSnp = new Haplotype("TATCA".getBytes());
-        spannedSnp.setEventMap(new EventMap(Arrays.asList(spannedSnpVC)));
+        // set the event map to just the SNP, not the SPAN_DEL symbolic allele, from spannedSnpVC
+        spannedSnp.setEventMap(EventMap.of(new Event(spannedSnpVC.getContig(), spannedSnpVC.getStart(), spannedSnpVC.getReference(), altT)));
 
         final Set<Haplotype> haplotypesWithSpanDel = new HashSet<>();
         haplotypesWithSpanDel.add(spandelHap);
@@ -1048,19 +940,11 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         // test 15: create two phase groups broken by an unphased SNP
         final Map<VariantContext, Set<Haplotype>> haplotypeMap15 = new HashMap<>();
         final Haplotype pos12 = new Haplotype("CCAAA".getBytes());
-        pos12.setEventMap(new EventMap(Arrays.asList(vc1, vc2)));
-        pos12.getEventMap().put(1, vc1);
-        pos12.getEventMap().put(2, vc2);
+        pos12.setEventMap(EventMap.of(vcToEvent(vc1), vcToEvent(vc2)));
         final Haplotype pos1245 = new Haplotype("CCACC".getBytes());
-        pos12.setEventMap(new EventMap(Arrays.asList(vc1, vc2, vc4, vc5)));
-        pos12.getEventMap().put(1, vc1);
-        pos12.getEventMap().put(2, vc2);
-        pos12.getEventMap().put(4, vc5);
-        pos12.getEventMap().put(5, vc5);
+        pos12.setEventMap(EventMap.of(vcToEvent(vc1), vcToEvent(vc2), vcToEvent(vc4), vcToEvent(vc5)));
         final Haplotype pos45 = new Haplotype("AAACC".getBytes());
-        pos45.setEventMap(new EventMap(Arrays.asList(vc4, vc5)));
-        pos45.getEventMap().put(4, vc4);
-        pos45.getEventMap().put(5, vc5);
+        pos45.setEventMap(EventMap.of(vcToEvent(vc4), vcToEvent(vc5)));
 
         final Set<Haplotype> haplotypes1het15 = new HashSet<>();
         haplotypes1het15.add(pos12);
@@ -1136,14 +1020,12 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
 
         final Haplotype AtoC1 = new Haplotype("AACAA".getBytes());
         final VariantContext vc1 = new VariantContextBuilder().chr("20").start(3).stop(3).alleles(Arrays.asList(ref, altC)).make();
-        AtoC1.setEventMap(new EventMap(Arrays.asList(vc1)));
-        AtoC1.getEventMap().put(3, vc1);
+        AtoC1.setEventMap(EventMap.of(vcToEvent(vc1)));
         haplotypes.add(AtoC1);
 
         final Haplotype AtoC2 = new Haplotype("AAACA".getBytes());
         final VariantContext vc2 = new VariantContextBuilder().chr("20").start(4).stop(4).alleles(Arrays.asList(ref, altT)).make();
-        AtoC2.setEventMap(new EventMap(Arrays.asList(vc2)));
-        AtoC2.getEventMap().put(4, vc2);
+        AtoC2.setEventMap(EventMap.of(vcToEvent(vc2)));
         haplotypes.add(AtoC2);
 
         final VariantContext spannedSnpVC = new VariantContextBuilder().chr("20").start(4).stop(4).alleles(Arrays.asList(ref, altT, Allele.SPAN_DEL)).make();
@@ -1153,7 +1035,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         final List<Allele> deletionAlleles = Arrays.asList(Allele.create("AA", true), Allele.create("A"));
         final VariantContextBuilder deletionVCBuilder = new VariantContextBuilder("a", "20", 3, 4, deletionAlleles);
         final VariantContext deletionVc = deletionVCBuilder.make();
-        spandelHap.setEventMap(new EventMap(Arrays.asList(deletionVc)));
+        spandelHap.setEventMap(EventMap.of(vcToEvent(deletionVc)));
 
         final Set<Haplotype> haplotypesWithSpanDel = new HashSet<>(haplotypes);
         haplotypesWithSpanDel.add(spandelHap);
@@ -1200,11 +1082,11 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         final Set<Haplotype> haplotypes = new HashSet<>();
 
         final Haplotype hap1 = new Haplotype("ACATAA".getBytes());
-        hap1.setEventMap(new EventMap(Arrays.asList(vc1, vc3)));
+        hap1.setEventMap(EventMap.of(vcToEvent(vc1), vcToEvent(vc3)));
         haplotypes.add(hap1);
 
         final Haplotype hap2 = new Haplotype("AACATA".getBytes());
-        hap2.setEventMap(new EventMap(Arrays.asList(vc2, vc4)));
+        hap2.setEventMap(EventMap.of(vcToEvent(vc2), vcToEvent(vc4)));
         haplotypes.add(hap2);
 
 
@@ -1227,7 +1109,7 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
 
         final Set<Haplotype> haplotypesPlusUncalledVariant = new HashSet<>(haplotypes);
         final Haplotype hap3 = new Haplotype("AAAAAT".getBytes());
-        hap3.setEventMap(new EventMap(Arrays.asList(vc5Uncalled)));
+        hap3.setEventMap(EventMap.of(vcToEvent(vc5Uncalled)));
         haplotypesPlusUncalledVariant.add(hap3);
 
         tests.add(new Object[]{calls, haplotypesPlusUncalledVariant, phasedCalls});
@@ -1263,25 +1145,23 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         assemblyResultSet.setFullReferenceWithPadding(fullReferenceWithPadding);
 
         // add a SNP
-        final VariantContext givenVC = new VariantContextBuilder("test", "chr", 2, 2,
-                Arrays.asList(Allele.create((byte) 'A', true), Allele.create((byte) 'C', false))).make();
+        final Event givenEvent = new Event("chr", 2, Allele.create((byte) 'A', true), Allele.create((byte) 'C'));
 
-        addGivenAlleles(assemblyRegionStart, Collections.singletonList(givenVC), maxMnpDistance,
-                aligner, refHaplotype, assemblyResultSet);
+        assemblyResultSet.addGivenAlleles(Collections.singletonList(givenEvent), maxMnpDistance,
+                aligner, HAPLOTYPE_TO_REFERENCE_SW_PARAMETERS);
         Assert.assertEquals(assemblyResultSet.getHaplotypeCount(), 2);
         Assert.assertEquals(assemblyResultSet.getHaplotypeList().get(1).getBaseString(), "ACAACCCCGGGGTTTT");
 
 
         // adding the same VC should have no effect
-        addGivenAlleles(assemblyRegionStart, Collections.singletonList(givenVC), maxMnpDistance,
-                aligner, refHaplotype, assemblyResultSet);
+        assemblyResultSet.addGivenAlleles(Collections.singletonList(givenEvent), maxMnpDistance,
+                aligner, HAPLOTYPE_TO_REFERENCE_SW_PARAMETERS);
         Assert.assertEquals(assemblyResultSet.getHaplotypeCount(), 2);
 
         // add another SNP
-        final VariantContext givenVC2 = new VariantContextBuilder("test", "chr", 5, 5,
-                Arrays.asList(Allele.create((byte) 'C', true), Allele.create((byte) 'G', false))).make();
-        addGivenAlleles(assemblyRegionStart, Collections.singletonList(givenVC2), maxMnpDistance,
-                aligner, refHaplotype, assemblyResultSet);
+        final Event givenEvent2 = new Event("chr", 5, Allele.create((byte) 'C', true), Allele.create((byte) 'G'));
+        assemblyResultSet.addGivenAlleles(Collections.singletonList(givenEvent2), maxMnpDistance,
+                aligner, HAPLOTYPE_TO_REFERENCE_SW_PARAMETERS);
         // SNP is not found in existing variation, so it's added to the ref and the first SNP
         Assert.assertEquals(assemblyResultSet.getHaplotypeCount(), 4);
         Assert.assertEquals(assemblyResultSet.getHaplotypeList().get(2).getBaseString(), "AAAAGCCCGGGGTTTT");
@@ -1289,19 +1169,17 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
 
         // add a deletion that overlaps the second SNP.  This variant gets added to the ref and first SNP haplotypes but not either
         // haplotype that contains the overlapping 2nd SNP
-        final VariantContext givenVC3 = new VariantContextBuilder("test", "chr", 5, 7,
-                Arrays.asList(Allele.create("CCC".getBytes(), true), Allele.create((byte) 'C', false))).make();
-        addGivenAlleles(assemblyRegionStart, Collections.singletonList(givenVC3), maxMnpDistance,
-                aligner, refHaplotype, assemblyResultSet);
+        final Event givenEvent3 = new Event("chr", 5, Allele.create("CCC".getBytes(), true), Allele.create((byte) 'C'));
+        assemblyResultSet.addGivenAlleles(Collections.singletonList(givenEvent3), maxMnpDistance,
+                aligner, HAPLOTYPE_TO_REFERENCE_SW_PARAMETERS);
         Assert.assertEquals(assemblyResultSet.getHaplotypeCount(), 6);
         Assert.assertEquals(assemblyResultSet.getHaplotypeList().get(4).getBaseString(), "AAAACCGGGGTTTT");
         Assert.assertEquals(assemblyResultSet.getHaplotypeList().get(5).getBaseString(), "ACAACCGGGGTTTT");
 
-        // adding an equivalent deletion should do nothing
-        final VariantContext givenVC4 = new VariantContextBuilder("test", "chr", 5, 8,
-                Arrays.asList(Allele.create("CCCC".getBytes(), true), Allele.create("CC".getBytes(), false))).make();
-        addGivenAlleles(assemblyRegionStart, Collections.singletonList(givenVC4), maxMnpDistance,
-                aligner, refHaplotype, assemblyResultSet);
+        // adding the same deletion should do nothing
+        final Event givenEvent4 = new Event("chr", 5, Allele.create("CCC".getBytes(), true), Allele.create("C".getBytes(), false));
+        assemblyResultSet.addGivenAlleles(Collections.singletonList(givenEvent4), maxMnpDistance,
+                aligner, HAPLOTYPE_TO_REFERENCE_SW_PARAMETERS);
         Assert.assertEquals(assemblyResultSet.getHaplotypeCount(), 6);
 
         // finally, add a haplotype with two new phased SNPs, after which adding an allele with one of these SNPs does nothing
@@ -1315,10 +1193,9 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(assemblyResultSet.getHaplotypeCount(), 7);
 
 
-        final VariantContext givenVC5 = new VariantContextBuilder("test", "chr", 8, 8,
-                Arrays.asList(Allele.create((byte) 'C', true), Allele.create((byte) 'T', false))).make();
-        addGivenAlleles(assemblyRegionStart, Collections.singletonList(givenVC5), maxMnpDistance,
-                aligner, refHaplotype, assemblyResultSet);
+        final Event givenEvent5 = new Event("chr", 8, Allele.create((byte) 'C', true), Allele.create((byte) 'T'));
+        assemblyResultSet.addGivenAlleles(Collections.singletonList(givenEvent5), maxMnpDistance,
+                aligner, HAPLOTYPE_TO_REFERENCE_SW_PARAMETERS);
         Assert.assertEquals(assemblyResultSet.getHaplotypeCount(), 7);
     }
 
@@ -1339,11 +1216,11 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         assemblyResultSet.setFullReferenceWithPadding(fullReferenceWithPadding);
 
         // add two SNPs at the same locus
-        final VariantContext givenVC = new VariantContextBuilder("test", "chr", 2, 2,
-                Arrays.asList(Allele.create((byte) 'A', true), Allele.create((byte) 'C', false), Allele.create((byte) 'T', false))).make();
+        final Event givenEvent1 = new Event("chr", 2, Allele.create((byte) 'A', true), Allele.create((byte) 'C'));
+        final Event givenEvent2 = new Event("chr", 2, Allele.create((byte) 'A', true), Allele.create((byte) 'T'));
 
-        addGivenAlleles(assemblyRegionStart, Collections.singletonList(givenVC), maxMnpDistance,
-                aligner, refHaplotype, assemblyResultSet);
+        assemblyResultSet.addGivenAlleles(List.of(givenEvent1, givenEvent2), maxMnpDistance,
+                aligner, HAPLOTYPE_TO_REFERENCE_SW_PARAMETERS);
         Assert.assertEquals(assemblyResultSet.getHaplotypeCount(), 3);
         Assert.assertEquals(assemblyResultSet.getHaplotypeList().get(1).getBaseString(), "ACAACCCCGGGGTTTT");
         Assert.assertEquals(assemblyResultSet.getHaplotypeList().get(2).getBaseString(), "ATAACCCCGGGGTTTT");
@@ -1371,12 +1248,110 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
 
 
         // add huge insertion
-        final VariantContext givenVC = new VariantContextBuilder("test", "chr", 2, 2,
-                Arrays.asList(Allele.create((byte) 'A', true), Allele.create('A' + new String(insertedBases), false))).make();
+        final Event givenEvent = new Event("chr", 2, Allele.create((byte) 'A', true), Allele.create('A' + new String(insertedBases)));
 
-        addGivenAlleles(assemblyRegionStart, Collections.singletonList(givenVC), maxMnpDistance,
-                aligner, refHaplotype, assemblyResultSet);
+        assemblyResultSet.addGivenAlleles(Collections.singletonList(givenEvent), maxMnpDistance,
+                aligner, HAPLOTYPE_TO_REFERENCE_SW_PARAMETERS);
         Assert.assertEquals(assemblyResultSet.getHaplotypeCount(), 2);
         Assert.assertEquals(assemblyResultSet.getHaplotypeList().get(1).getBaseString(), "AA" + new String(insertedBases) + "AACCCCGGGGTTTT");
+    }
+
+
+    @DataProvider(name = "filterPileupHaplotypesDataProvider")
+    public Object[][] filterPileupHaplotypesDataProvider() {
+        final Haplotype hapA = new Haplotype("ACCTGTA".getBytes());
+        final Haplotype hapB = new Haplotype("ATCTGTA".getBytes());
+        final Haplotype hapC = new Haplotype("ATCTGAA".getBytes());
+        final Haplotype hapD = new Haplotype("ACCTGAA".getBytes());
+        final Haplotype hapF = new Haplotype("GAAGAAG".getBytes()); // testing repeated kmers
+
+        Map<Kmer, Integer> flatSupportAllKmers = new HashMap<Kmer, Integer>() {
+            private static final long serialVersionUID = 0L; {
+            put(new Kmer("ACC"), 1);
+            put(new Kmer("CCT"), 1);
+            put(new Kmer("CTG"), 1);
+            put(new Kmer("TGT"), 1);
+            put(new Kmer("GTA"), 1);
+            put(new Kmer("ATC"), 1);
+            put(new Kmer("TCT"), 1);
+            put(new Kmer("TGA"), 1);
+            put(new Kmer("GAA"), 1);
+            put(new Kmer("AGA"), 1);
+            put(new Kmer("AAG"), 1);
+        }};
+
+        Map<Kmer, Integer> hapDKmersHighSupport = new HashMap<Kmer, Integer>() {
+            private static final long serialVersionUID = 0L;{
+            put(new Kmer("ACC"), 10);
+            put(new Kmer("CCT"), 10);
+            put(new Kmer("CTG"), 10);
+            put(new Kmer("TGT"), 1);
+            put(new Kmer("GTA"), 1);
+            put(new Kmer("ATC"), 1);
+            put(new Kmer("TCT"), 1);
+            put(new Kmer("TGA"), 10);
+            put(new Kmer("GAA"), 10);
+            put(new Kmer("AGA"), 1);
+            put(new Kmer("AAG"), 1);
+        }};
+
+        Map<Kmer, Integer> hapDKmers = new HashMap<Kmer, Integer>() {
+            private static final long serialVersionUID = 0L; {
+            put(new Kmer("ACC"), 10);
+            put(new Kmer("CCT"), 10);
+            put(new Kmer("CTG"), 10);
+            put(new Kmer("TGA"), 10);
+            put(new Kmer("GAA"), 10);
+        }};
+
+        Map<Kmer, Integer> hapFRepeatedKmers = new HashMap<Kmer, Integer>() {
+            private static final long serialVersionUID = 0L; {
+            put(new Kmer("GAA"), 1);
+        }};
+
+
+        Object[][] tests = new Object[][] {
+                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD),flatSupportAllKmers,5,3,Arrays.asList(hapA,hapB,hapC,hapD)}, //returns all when no filtering required
+                // These haplotypes are all equivalent, these test stability of the filtering
+                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD),flatSupportAllKmers,1,3,Arrays.asList(hapA,hapB,hapC,hapD)},
+                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD),flatSupportAllKmers,2,3,Arrays.asList(hapA,hapB,hapC,hapD)},
+                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD),flatSupportAllKmers,3,3,Arrays.asList(hapA,hapB,hapC,hapD)},
+
+                // Repetitive kmers in hapF don't get double counted
+                new Object[]{Arrays.asList(hapA,hapB,hapD,hapF),hapFRepeatedKmers,2,3,Arrays.asList(hapF,hapD)},
+                new Object[]{Arrays.asList(hapA,hapB,hapD,hapF),hapFRepeatedKmers,1,3,Arrays.asList(hapF, hapD)}, //currently repeated kmers only count as singular evidence
+
+                // These tests demonstrate that the weights in the map don't matter
+                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD),hapDKmersHighSupport,1,3,Arrays.asList(hapA,hapB,hapC,hapD)},
+                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD),hapDKmersHighSupport,2,3,Arrays.asList(hapA,hapB,hapC,hapD)},
+                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD),hapDKmersHighSupport,3,3,Arrays.asList(hapA,hapB,hapC,hapD)}, // Despite hapD having good support it is not weighted higher
+
+                // Test of the output when only one hap has support
+                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD,hapF),hapDKmers,1,3,Arrays.asList(hapD)},
+                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD,hapF),hapDKmers,2,3,Arrays.asList(hapD,hapA, hapC)},
+                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD,hapF),hapDKmers,3,3,Arrays.asList(hapD,hapA,hapC)},
+                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD,hapF),hapDKmers,4,3,Arrays.asList(hapD,hapA,hapC,hapB,hapF)},
+        };
+
+        return tests;
+    }
+
+    // This test is intended to record the current behavior of the filtering code. This may be revised in the future.
+    @Test (dataProvider = "filterPileupHaplotypesDataProvider")
+    public void testFilterPileupHaplotypes(final List<Haplotype> inputHaplotypes,
+                                           final Map<Kmer, Integer> kmerReadCounts,
+                                           final int numPileupHaplotypes,
+                                           final int kmerSize,
+                                           final List<Haplotype> expected) {
+        final Map<Kmer, MutableInt> counts = kmerReadCounts.entrySet().stream()
+                .collect(Collectors.toMap(entry -> entry.getKey(), entry -> new MutableInt(entry.getValue())));
+        Set<Haplotype> actual = AssemblyBasedCallerUtils.filterPileupHaplotypes(new HashSet<>(inputHaplotypes), counts, numPileupHaplotypes, kmerSize);
+
+        Assert.assertEquals(actual, new HashSet<>(expected));
+    }
+
+    private static Event vcToEvent(final VariantContext vc) {
+        Utils.validate(vc.getNAlleles() == 2, "must be biallelic");
+        return new Event(vc.getContig(), vc.getStart(), vc.getReference(), vc.getAlternateAllele(0));
     }
 }

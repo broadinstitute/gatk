@@ -7,11 +7,14 @@ import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBArgumentCollection;
+import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBOptions;
 import org.broadinstitute.hellbender.tools.walkers.readorientation.BetaDistributionShape;
 import org.broadinstitute.hellbender.tools.walkers.validation.basicshortmutpileup.BetaBinomialDistribution;
 import org.broadinstitute.hellbender.utils.MathUtils;
@@ -115,9 +118,20 @@ public class CreateSomaticPanelOfNormals extends VariantWalker {
     @Argument(fullName= MAX_GERMLINE_PROBABILITY_LONG_NAME, doc="Skip genotypes with germline probability greater than this value", optional = true)
     public double maxGermlineProbability = DEFAULT_MAX_GERMLINE_PROBABILITY;
 
+    @ArgumentCollection
+    private GenomicsDBArgumentCollection genomicsdbArgs = new GenomicsDBArgumentCollection();
+
     private VariantContextWriter vcfWriter;
 
     private int numSamples;
+
+    @Override
+    protected GenomicsDBOptions getGenomicsDBOptions() {
+        if (genomicsDBOptions == null) {
+            genomicsDBOptions = new GenomicsDBOptions(referenceArguments.getReferencePath(), genomicsdbArgs);
+        }
+        return genomicsDBOptions;
+    }
 
     @Override
     public void onTraversalStart() {

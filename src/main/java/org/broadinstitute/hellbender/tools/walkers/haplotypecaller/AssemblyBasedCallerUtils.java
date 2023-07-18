@@ -4,18 +4,21 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFileWriter;
+import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
-import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
+import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
-import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
+import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.FlowBasedArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
+import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -23,11 +26,16 @@ import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.dragstr.DragstrParamUtils;
 import org.broadinstitute.hellbender.utils.fragments.FragmentCollection;
 import org.broadinstitute.hellbender.utils.fragments.FragmentUtils;
-import org.broadinstitute.hellbender.utils.genotyper.*;
+import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
+import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
+import org.broadinstitute.hellbender.utils.genotyper.SampleList;
+import org.broadinstitute.hellbender.utils.haplotype.Event;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
+import org.broadinstitute.hellbender.utils.haplotype.PartiallyDeterminedHaplotype;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState;
+
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.*;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
@@ -45,12 +53,15 @@ import java.util.stream.Collectors;
  */
 public final class AssemblyBasedCallerUtils {
 
-    static final int REFERENCE_PADDING_FOR_ASSEMBLY = 500;
+    public static final int REFERENCE_PADDING_FOR_ASSEMBLY = 500;
+    public static final int DETERMINE_COLLAPSE_THRESHOLD = -1;
     public static final int NUM_HAPLOTYPES_TO_INJECT_FORCE_CALLING_ALLELES_INTO = 5;
     public static final String SUPPORTED_ALLELES_TAG="XA";
     public static final String CALLABLE_REGION_TAG = "CR";
     public static final String ALIGNMENT_REGION_TAG = "AR";
-    public static final String READ_ORIGINAL_ALIGNMENT_KEY = "originalAlignment";
+    public static final String EXT_COLLAPSED_TAG = "XC";
+    public static final String EXT_SPECIAL_TAG = "XS"; // added to haplotype to assist in reading them back in with all fields restored.
+
     public static final Function<Haplotype, Double> HAPLOTYPE_ALIGNMENT_TIEBREAKING_PRIORITY = h -> {
         final Cigar cigar = h.getCigar();
         final int referenceTerm = (h.isReference() ? 1 : 0);
@@ -93,7 +104,7 @@ public final class AssemblyBasedCallerUtils {
      * </p>
      * @return never {@code null}
      */
-    public static Map<GATKRead, GATKRead> realignReadsToTheirBestHaplotype(final AlleleLikelihoods<GATKRead, Haplotype> originalReadLikelihoods, final Haplotype refHaplotype, final Locatable paddedReferenceLoc, final SmithWatermanAligner aligner) {
+    public static Map<GATKRead, GATKRead> realignReadsToTheirBestHaplotype(final AlleleLikelihoods<GATKRead, Haplotype> originalReadLikelihoods, final Haplotype refHaplotype, final Locatable paddedReferenceLoc, final SmithWatermanAligner aligner, final SWParameters readToHaplotypeSWParameters) {
         final Collection<AlleleLikelihoods<GATKRead, Haplotype>.BestAllele> bestAlleles = originalReadLikelihoods.bestAllelesBreakingTies(HAPLOTYPE_ALIGNMENT_TIEBREAKING_PRIORITY);
         final Map<GATKRead, GATKRead> result = new HashMap<>(bestAlleles.size());
 
@@ -101,7 +112,7 @@ public final class AssemblyBasedCallerUtils {
             final GATKRead originalRead = bestAllele.evidence;
             final Haplotype bestHaplotype = bestAllele.allele;
             final boolean isInformative = bestAllele.isInformative();
-            final GATKRead realignedRead = AlignmentUtils.createReadAlignedToRef(originalRead, bestHaplotype, refHaplotype, paddedReferenceLoc.getStart(), isInformative, aligner);
+            final GATKRead realignedRead = AlignmentUtils.createReadAlignedToRef(originalRead, bestHaplotype, refHaplotype, paddedReferenceLoc.getStart(), isInformative, aligner, readToHaplotypeSWParameters);
             result.put(originalRead, realignedRead);
         }
         return result;
@@ -114,46 +125,66 @@ public final class AssemblyBasedCallerUtils {
                                       final SAMFileHeader readsHeader,
                                       final SampleList samplesList,
                                       final boolean correctOverlappingBaseQualities,
-                                      final boolean softClipLowQualityEnds) {
+                                      final boolean softClipLowQualityEnds,
+                                      final boolean overrideSoftclipFragmentCheck,
+                                      final boolean trackHardclippedReads) {
         if ( region.isFinalized() ) {
             return;
         }
-
         final byte minTailQualityToUse = errorCorrectReads ? HaplotypeCallerEngine.MIN_TAIL_QUALITY_WITH_ERROR_CORRECTION : minTailQuality;
 
         final List<GATKRead> readsToUse = new ArrayList<>();
-        for (GATKRead originalRead : region.getReads()) {
-            // TODO unclipping soft clips may introduce bases that aren't in the extended region if the unclipped bases
+        final List<GATKRead> hardClippedReadsToUse = new ArrayList<>();
+
+        for (final GATKRead originalRead : region.getReads()) {
             // TODO include a deletion w.r.t. the reference.  We must remove kmers that occur before the reference haplotype start
-            GATKRead read = (dontUseSoftClippedBases || ! ReadUtils.hasWellDefinedFragmentSize(originalRead) ?
-                    ReadClipper.hardClipSoftClippedBases(originalRead) : ReadClipper.revertSoftClippedBases(originalRead));
-            read = (softClipLowQualityEnds ? ReadClipper.softClipLowQualEnds(read, minTailQualityToUse) :
-                    ReadClipper.hardClipLowQualEnds(read, minTailQualityToUse));
+            GATKRead readTemp =  dontUseSoftClippedBases || ! ( overrideSoftclipFragmentCheck || ReadUtils.hasWellDefinedFragmentSize(originalRead)) ?
+                    ReadClipper.hardClipSoftClippedBases(originalRead) : revertSoftClippedBases(originalRead);
 
-            if (read.getStart() <= read.getEnd()) {
-                read = (read.isUnmapped() ? read : ReadClipper.hardClipAdaptorSequence(read));
+            final GATKRead read = (softClipLowQualityEnds ? ReadClipper.softClipLowQualEnds(readTemp, minTailQualityToUse) :
+                    ReadClipper.hardClipLowQualEnds(readTemp, minTailQualityToUse));
 
-                if (!read.isEmpty() && read.getCigar().getReadLength() > 0) {
-                    read = ReadClipper.hardClipToRegion(read, region.getPaddedSpan().getStart(), region.getPaddedSpan().getEnd() );
+            HardClipAndPossiblyAddToCollection(region, readsToUse, originalRead, read);
 
-                    if (read.getStart() <= read.getEnd() && read.getLength() > 0 && read.overlaps(region.getPaddedSpan())) {
-                        // NOTE: here we make a defensive copy of the read if it has not been modified by the above operations
-                        // which might only make copies in the case that the read is actually clipped
-                        readsToUse.add(read == originalRead? read.copy() : read);
-                    }
-                }
+            if (trackHardclippedReads) {
+                final GATKRead hardClippedRead = ReadClipper.hardClipLowQualEnds(ReadClipper.hardClipSoftClippedBases(originalRead), minTailQualityToUse);
+
+                HardClipAndPossiblyAddToCollection(region, hardClippedReadsToUse, originalRead, hardClippedRead);
             }
         }
+
         readsToUse.sort(new ReadCoordinateComparator(readsHeader));
+        hardClippedReadsToUse.sort(new ReadCoordinateComparator(readsHeader));
 
         // handle overlapping read pairs from the same fragment
         if (correctOverlappingBaseQualities) {
             cleanOverlappingReadPairs(readsToUse, samplesList, readsHeader, true, OptionalInt.empty(), OptionalInt.empty());
         }
 
+        // handle overlapping read pairs from the same fragment
+        if (correctOverlappingBaseQualities) {
+            cleanOverlappingReadPairs(hardClippedReadsToUse, samplesList, readsHeader, true, OptionalInt.empty(), OptionalInt.empty());
+        }
         region.clearReads();
         region.addAll(readsToUse);
+        region.addHardClippedPileupReads(hardClippedReadsToUse);
         region.setFinalized(true);
+    }
+
+    private static void HardClipAndPossiblyAddToCollection(final AssemblyRegion region, final List<GATKRead> readsToUse, final GATKRead originalRead, final GATKRead read) {
+        if (read.getStart() <= read.getEnd() && !read.isUnmapped()) {
+            final GATKRead adaptorClippedRead = ReadClipper.hardClipAdaptorSequence(read);
+
+            if (!adaptorClippedRead.isEmpty() && adaptorClippedRead.getCigar().getReadLength() > 0) {
+                final GATKRead adaptorAndRegionClippedRead = ReadClipper.hardClipToRegion(adaptorClippedRead, region.getPaddedSpan().getStart(), region.getPaddedSpan().getEnd());
+
+                if (adaptorAndRegionClippedRead.getStart() <= adaptorAndRegionClippedRead.getEnd() && adaptorAndRegionClippedRead.getLength() > 0 && adaptorClippedRead.overlaps(region.getPaddedSpan())) {
+                    // NOTE: here we make a defensive copy of the read if it has not been modified by the above operations
+                    // which might only make copies in the case that the read is actually clipped
+                    readsToUse.add(adaptorAndRegionClippedRead == originalRead ? adaptorAndRegionClippedRead.copy() : adaptorAndRegionClippedRead);
+                }
+            }
+        }
     }
 
     /**
@@ -219,15 +250,42 @@ public final class AssemblyBasedCallerUtils {
      *
      * @return never {@code null}.
      */
-    public static ReadLikelihoodCalculationEngine createLikelihoodCalculationEngine(final LikelihoodEngineArgumentCollection likelihoodArgs, final boolean handleSoftclips) {
-        //AlleleLikelihoods::normalizeLikelihoods uses Double.NEGATIVE_INFINITY as a flag to disable capping
-        final double log10GlobalReadMismappingRate = likelihoodArgs.phredScaledGlobalReadMismappingRate < 0 ? Double.NEGATIVE_INFINITY
-                : QualityUtils.qualToErrorProbLog10(likelihoodArgs.phredScaledGlobalReadMismappingRate);
 
-        return new PairHMMLikelihoodCalculationEngine((byte) likelihoodArgs.gcpHMM, likelihoodArgs.dontUseDragstrPairHMMScores ? null : DragstrParamUtils.parse(likelihoodArgs.dragstrParams),
-                likelihoodArgs.pairHMMNativeArgs.getPairHMMArgs(), likelihoodArgs.pairHMM, log10GlobalReadMismappingRate, likelihoodArgs.pcrErrorModel,
+    public static ReadLikelihoodCalculationEngine createLikelihoodCalculationEngine(final LikelihoodEngineArgumentCollection likelihoodArgs, final boolean handleSoftClips) {
+        return createLikelihoodCalculationEngine(likelihoodArgs, new FlowBasedAlignmentArgumentCollection(), handleSoftClips, likelihoodArgs.likelihoodEngineImplementation);
+    }
+
+    public static ReadLikelihoodCalculationEngine createLikelihoodCalculationEngine(final LikelihoodEngineArgumentCollection likelihoodArgs,
+                                                                                    final FlowBasedAlignmentArgumentCollection fbargs,
+                                                                                    final boolean handleSoftclips,
+                                                                                    final ReadLikelihoodCalculationEngine.Implementation implementation) {
+        //AlleleLikelihoods::normalizeLikelihoods uses Double.NEGATIVE_INFINITY as a flag to disable capping
+        final double log10GlobalReadMismappingRate = getGlobalMismatchingRateFromArgs(likelihoodArgs);
+
+        switch ( implementation) {
+            // TODO these constructors should eventually be matched so they both incorporate all the same ancilliary arguments
+            case PairHMM:
+                return new PairHMMLikelihoodCalculationEngine((byte) likelihoodArgs.gcpHMM, likelihoodArgs.dontUseDragstrPairHMMScores ? null : DragstrParamUtils.parse(likelihoodArgs.dragstrParams),
+                likelihoodArgs.pairHMMNativeArgs.getPairHMMArgs(), likelihoodArgs.pairHMM, likelihoodArgs.pairHmmResultsFile, log10GlobalReadMismappingRate, likelihoodArgs.pcrErrorModel,
                 likelihoodArgs.BASE_QUALITY_SCORE_THRESHOLD, likelihoodArgs.enableDynamicReadDisqualification, likelihoodArgs.readDisqualificationThresholdConstant,
                 likelihoodArgs.expectedErrorRatePerBase, !likelihoodArgs.disableSymmetricallyNormalizeAllelesToReference, likelihoodArgs.disableCapReadQualitiesToMapQ, handleSoftclips);
+            case FlowBased:
+                return new FlowBasedAlignmentLikelihoodEngine(fbargs, log10GlobalReadMismappingRate, likelihoodArgs.expectedErrorRatePerBase, likelihoodArgs.enableDynamicReadDisqualification, likelihoodArgs.readDisqualificationThresholdConstant);
+            case FlowBasedHMM:
+                return new FlowBasedHMMEngine(fbargs, (byte) likelihoodArgs.gcpHMM, log10GlobalReadMismappingRate, likelihoodArgs.expectedErrorRatePerBase, likelihoodArgs.pcrErrorModel,
+                        likelihoodArgs.dontUseDragstrPairHMMScores ? null : DragstrParamUtils.parse(likelihoodArgs.dragstrParams), likelihoodArgs.enableDynamicReadDisqualification, likelihoodArgs.readDisqualificationThresholdConstant,
+                        likelihoodArgs.minUsableIndelScoreToUse, (byte) likelihoodArgs.flatDeletionPenalty, (byte) likelihoodArgs.flatInsertionPenatly);
+            default:
+                throw new UserException("Unsupported likelihood calculation engine.");
+        }
+    }
+
+    /**
+     * Exposed so that PDHMM can be constructed outside of this class
+     */
+    public static double getGlobalMismatchingRateFromArgs(LikelihoodEngineArgumentCollection likelihoodArgs) {
+        return likelihoodArgs.phredScaledGlobalReadMismappingRate < 0 ? Double.NEGATIVE_INFINITY
+                : QualityUtils.qualToErrorProbLog10(likelihoodArgs.phredScaledGlobalReadMismappingRate);
     }
 
     public static Optional<HaplotypeBAMWriter> createBamWriter(final AssemblyBasedCallerArgumentCollection args,
@@ -238,6 +296,14 @@ public final class AssemblyBasedCallerUtils {
                 Optional.of(new HaplotypeBAMWriter(args.bamWriterType, IOUtils.getPath(args.bamOutputPath), createBamOutIndex, createBamOutMD5, header)) :
                 Optional.empty();
     }
+
+    public static Optional<AlleleLikelihoodWriter> createAlleleLikelihoodWriter(final AssemblyBasedCallerArgumentCollection args) {
+        return args.alleleLikelihoodMatrixPath != null ?
+                Optional.of(new AlleleLikelihoodWriter(IOUtils.getPath(args.alleleLikelihoodMatrixPath),
+                        new SimpleInterval(args.alleleLikelihoodMatrixInterval) ) ):Optional.empty();
+    }
+
+
 
     // Contract: the List<Allele> alleles of the resulting VariantContext is the ref allele followed by alt alleles in the
     // same order as in the input vcs
@@ -258,7 +324,6 @@ public final class AssemblyBasedCallerUtils {
      * for further HC steps
      */
     public static AssemblyResultSet assembleReads(final AssemblyRegion region,
-                                                  final List<VariantContext> givenAlleles,
                                                   final AssemblyBasedCallerArgumentCollection argumentCollection,
                                                   final SAMFileHeader header,
                                                   final SampleList sampleList,
@@ -266,8 +331,21 @@ public final class AssemblyBasedCallerUtils {
                                                   final ReferenceSequenceFile referenceReader,
                                                   final ReadThreadingAssembler assemblyEngine,
                                                   final SmithWatermanAligner aligner,
-                                                  final boolean correctOverlappingBaseQualities){
-        finalizeRegion(region, argumentCollection.assemblerArgs.errorCorrectReads, argumentCollection.dontUseSoftClippedBases, (byte)(argumentCollection.minBaseQualityScore - 1), header, sampleList, correctOverlappingBaseQualities, argumentCollection.softClipLowQualityEnds);
+                                                  final boolean correctOverlappingBaseQualities,
+                                                  final FlowBasedArgumentCollection fbargs,
+                                                  final boolean bypassAssembly){
+        finalizeRegion(region,
+                argumentCollection.assemblerArgs.errorCorrectReads,
+                argumentCollection.dontUseSoftClippedBases,
+                (byte)(argumentCollection.minBaseQualityScore - 1),
+                header,
+                sampleList,
+                correctOverlappingBaseQualities,
+                argumentCollection.softClipLowQualityEnds,
+                argumentCollection.overrideSoftclipFragmentCheck,
+                true);
+
+
         if( argumentCollection.assemblerArgs.debugAssembly) {
             logger.info("Assembling " + region.getSpan() + " with " + region.size() + " reads:    (with overlap region = " + region.getPaddedSpan() + ")");
         }
@@ -285,13 +363,42 @@ public final class AssemblyBasedCallerUtils {
                                 fullReferenceWithPadding) :
                         null)
                 : new PileupReadErrorCorrector(argumentCollection.assemblerArgs.pileupErrorCorrectionLogOdds, header);
-        try {
-            final AssemblyResultSet assemblyResultSet = assemblyEngine.runLocalAssembly(region, refHaplotype, fullReferenceWithPadding,
-                    paddedReferenceLoc, readErrorCorrector, header, aligner);
-            if (!givenAlleles.isEmpty()) {
-                addGivenAlleles(region.getPaddedSpan().getStart(), givenAlleles, argumentCollection.maxMnpDistance, aligner, refHaplotype, assemblyResultSet);
-            }
+        final SWParameters danglingEndSWParameters = argumentCollection.getDanglingEndSWParameters();
+        final SWParameters haplotypeToReferenceSWParameters = argumentCollection.getHaplotypeToReferenceSWParameters();
 
+        // establish reference mapper, if needed
+        int collapseHmerSize = argumentCollection.flowAssemblyCollapseHKerSize;
+        if (collapseHmerSize == DETERMINE_COLLAPSE_THRESHOLD){
+            collapseHmerSize = AssemblyBasedCallerUtils.determineFlowAssemblyColapseHmer(header);
+        }
+        final LongHomopolymerHaplotypeCollapsingEngine haplotypeCollapsing = ( collapseHmerSize > 0 && LongHomopolymerHaplotypeCollapsingEngine.needsCollapsing(refHaplotype.getBases(), collapseHmerSize, logger))
+                                            ? new LongHomopolymerHaplotypeCollapsingEngine(collapseHmerSize, argumentCollection.flowAssemblyCollapsePartialMode, fullReferenceWithPadding,
+                paddedReferenceLoc, logger, argumentCollection.assemblerArgs.debugAssembly, aligner, argumentCollection.getHaplotypeToReferenceSWParameters())
+                                            : null;
+        if ( haplotypeCollapsing != null ) {
+            logger.debug("deploying haplotypeCollapsing on " + paddedReferenceLoc + ", region: " + region);
+        }
+
+        try {
+            final AssemblyResultSet assemblyResultSet =
+                    !bypassAssembly
+                            ? assemblyEngine.runLocalAssembly(
+                            region,
+                            refHaplotype,
+                            fullReferenceWithPadding,
+                            paddedReferenceLoc,
+                            readErrorCorrector,
+                            header, aligner,
+                            haplotypeCollapsing,
+                            danglingEndSWParameters, haplotypeToReferenceSWParameters)
+                            : assemblyEngine.generateEmptyLLocalAssemblyResult(
+                            region,
+                            refHaplotype,
+                            fullReferenceWithPadding,
+                            paddedReferenceLoc,
+                            haplotypeCollapsing);
+
+            assemblyResultSet.setHaplotypeCollapsingEngine(haplotypeCollapsing);
             assemblyResultSet.setDebug(argumentCollection.assemblerArgs.debugAssembly);
             assemblyResultSet.debugDump(logger);
             return assemblyResultSet;
@@ -308,60 +415,75 @@ public final class AssemblyBasedCallerUtils {
         }
     }
 
-    @VisibleForTesting
-    static void addGivenAlleles(final int assemblyRegionStart, final List<VariantContext> givenAlleles, final int maxMnpDistance,
-                                final SmithWatermanAligner aligner, final Haplotype refHaplotype, final AssemblyResultSet assemblyResultSet) {
-        final int activeRegionStart = refHaplotype.getAlignmentStartHapwrtRef();
-        final Map<Integer, VariantContext> assembledVariants = assemblyResultSet.getVariationEvents(maxMnpDistance).stream()
-                .collect(Collectors.groupingBy(VariantContext::getStart, Collectors.collectingAndThen(Collectors.toList(), AssemblyBasedCallerUtils::makeMergedVariantContext)));
-
-        final List<Haplotype> assembledHaplotypes = assemblyResultSet.getHaplotypeList();
-        for (final VariantContext givenVC : givenAlleles) {
-            final VariantContext assembledVC = assembledVariants.get(givenVC.getStart());
-            final int givenVCRefLength = givenVC.getReference().length();
-            final Allele longerRef = (assembledVC == null || givenVCRefLength > assembledVC.getReference().length()) ? givenVC.getReference() : assembledVC.getReference();
-            final List<Allele> unassembledGivenAlleles;
-            if (assembledVC == null) {
-                unassembledGivenAlleles = givenVC.getAlternateAlleles();
-            } else {
-                // map all alleles to the longest common reference
-                final Set<Allele> assembledAlleleSet = new HashSet<>(longerRef.length() == assembledVC.getReference().length() ? assembledVC.getAlternateAlleles() :
-                        ReferenceConfidenceVariantContextMerger.remapAlleles(assembledVC, longerRef));
-                final Set<Allele> givenAlleleSet = new HashSet<>(longerRef.length() == givenVCRefLength ? givenVC.getAlternateAlleles() :
-                        ReferenceConfidenceVariantContextMerger.remapAlleles(givenVC, longerRef));
-                unassembledGivenAlleles = givenAlleleSet.stream().filter(a -> !assembledAlleleSet.contains(a)).collect(Collectors.toList());
-            }
-
-            final List<Allele> unassembledNonSymbolicAlleles = unassembledGivenAlleles.stream().filter(a -> {
-                final byte[] bases = a.getBases();
-                return !(Allele.wouldBeNoCallAllele(bases) || Allele.wouldBeNullAllele(bases) || Allele.wouldBeStarAllele(bases) || Allele.wouldBeSymbolicAllele(bases));
-            }).collect(Collectors.toList());
-
-            // choose the highest-scoring haplotypes along with the reference for building force-calling haplotypes
-            final List<Haplotype> baseHaplotypes = unassembledNonSymbolicAlleles.isEmpty() ? Collections.emptyList() : assembledHaplotypes.stream()
-                    .sorted(Comparator.comparingInt((Haplotype hap) -> hap.isReference() ? 1 : 0).thenComparingDouble(hap -> hap.getScore()).reversed())
-                    .limit(NUM_HAPLOTYPES_TO_INJECT_FORCE_CALLING_ALLELES_INTO)
-                    .collect(Collectors.toList());
-
-            for (final Allele givenAllele : unassembledNonSymbolicAlleles) {
-                for (final Haplotype baseHaplotype : baseHaplotypes) {
-                    // make sure this allele doesn't collide with a variant on the haplotype
-                    if (baseHaplotype.getEventMap()!= null && baseHaplotype.getEventMap().getVariantContexts().stream().anyMatch(vc -> vc.overlaps(givenVC))) {
-                        continue;
-                    }
-
-                    final Haplotype insertedHaplotype = baseHaplotype.insertAllele(longerRef, givenAllele, activeRegionStart + givenVC.getStart() - assemblyRegionStart, givenVC.getStart());
-                    if (insertedHaplotype != null) { // can be null if the requested allele can't be inserted into the haplotype
-                        final Cigar cigar = CigarUtils.calculateCigar(refHaplotype.getBases(), insertedHaplotype.getBases(), aligner, SWOverhangStrategy.INDEL);
-                        insertedHaplotype.setCigar(cigar);
-                        insertedHaplotype.setGenomeLocation(refHaplotype.getGenomeLocation());
-                        insertedHaplotype.setAlignmentStartHapwrtRef(activeRegionStart);
-                        assemblyResultSet.add(insertedHaplotype);
-                    }
-                }
+    private static int determineFlowAssemblyColapseHmer(SAMFileHeader readsHeader) {
+        int result = 0;
+        List<SAMReadGroupRecord> rgr = readsHeader.getReadGroups();
+        for (SAMReadGroupRecord rg : rgr) {
+            FlowBasedReadUtils.ReadGroupInfo rgi = new FlowBasedReadUtils.ReadGroupInfo(rg);
+            if (rgi.maxClass >= result) {
+                result = rgi.maxClass;
             }
         }
-        assemblyResultSet.regenerateVariationEvents(maxMnpDistance);
+        return result;
+    }
+
+    /**
+     * Returns a map of kmer -> count of total unique occurrences across all of the provided reads. This is a necessary step
+     * in the {@link AssemblyResultSet#injectPileupEvents} pileup haplotype filtering.
+     *
+     * @param hardClippedPileupReads  Reads to scan to genreate kmer counts from
+     * @param kmerSize                kmer size to use in kmerizing the reads
+     * @return a map of kmer to the number of occurences in the data.
+     */
+    static Map<Kmer, MutableInt>  getKmerReadCounts(final List<GATKRead> hardClippedPileupReads, int kmerSize) {
+        Map<Kmer, MutableInt> kmerReadCounts = new HashMap<>();
+        for (final GATKRead read : hardClippedPileupReads) {
+            final byte[] bases = read.getBasesNoCopy();
+            new IndexRange(0, Math.max(bases.length - kmerSize + 1, 0))
+                    .forEach(i -> kmerReadCounts.computeIfAbsent(new Kmer(bases, i, kmerSize), k -> new MutableInt(0)).increment());
+        }
+        return kmerReadCounts;
+    }
+
+    /**
+     * Method for filtering combinatorial expansion of the number of extra artifical haplotypes that have been created to
+     * a more tractable number. It works in the following way:
+     *    - For each kmer in the kmerReadsCounts, find haplotypes that also contain that kmer and increment a score for each
+     *      found haplotype by the support found for the kmer.
+     *    - Once this is done select the top #kmerSize haplotypes from the list as the most probable.
+     *
+     * @return A set of artificial haplotypes limited to at most numPileupHaplotypes
+     */
+    @VisibleForTesting
+    static Set<Haplotype> filterPileupHaplotypes(final Set<Haplotype> onlyNewHaplotypes,
+                                                 final Map<Kmer, MutableInt> kmerReadCounts,
+                                                 final int numPileupHaplotypes,
+                                                 final int kmerSize ) {
+        if (onlyNewHaplotypes.size() <= numPileupHaplotypes) {
+            return onlyNewHaplotypes;   // if the limiting haplotype count is more haplotypes than we have, everything passes
+        }
+
+        // sort by score = # of kmers in haplotype that appear in any read
+        // TODO this code might use some normalizing based on haplotype length in the future
+        final Map<Haplotype, Long> scores =  onlyNewHaplotypes.stream()
+                .collect(Collectors.toMap(h -> h, h -> kmerizeSequence(h.getBases(), kmerSize).stream()
+                                .filter(kmer -> kmerReadCounts.getOrDefault(kmer, new MutableInt(0)).intValue() > 0)
+                                .count()));
+
+        // if there are ties, we pass any haplotype with a score as good as the numPileupHaplotypes-th best
+        final long minimumPassingScore = scores.values().stream().sorted(Comparator.reverseOrder()).skip(numPileupHaplotypes - 1).findFirst().get();
+        return onlyNewHaplotypes.stream().filter(h -> scores.get(h) >= minimumPassingScore).collect(Collectors.toSet());
+    }
+
+
+    private static Set<Kmer> kmerizeSequence(byte[] sequence, int kmerSize){
+        final Set<Kmer> allKmers = new LinkedHashSet<>();
+        final int stopPosition = sequence.length - kmerSize;
+        for (int i = 0; i <= stopPosition; i++) {
+            final Kmer kmer = new Kmer(sequence, i, kmerSize);
+            allKmers.add(kmer);
+        }
+        return allKmers;
     }
 
     /**
@@ -451,8 +573,7 @@ public final class AssemblyBasedCallerUtils {
         final List<GATKRead> reads = new ArrayList<>(readLikelihoods.sampleEvidence(0));
         reads.sort(new ReadCoordinateComparator(readsHeader));  //because we updated the reads based on the local realignments we have to re-sort or the pileups will be... unpredictable
 
-        final LocusIteratorByState libs = new LocusIteratorByState(reads.iterator(), LocusIteratorByState.NO_DOWNSAMPLING,
-                false, samples.asSetOfSamples(), readsHeader, true);
+        final LocusIteratorByState libs = new LocusIteratorByState(reads.iterator(), LocusIteratorByState.NO_DOWNSAMPLING, samples.asSetOfSamples(), readsHeader, true);
 
         final int startPos = activeRegionSpan.getStart();
         final List<ReadPileup> pileups = new ArrayList<>(activeRegionSpan.getEnd() - startPos);
@@ -470,78 +591,36 @@ public final class AssemblyBasedCallerUtils {
         return pileups;
     }
 
-    /**
-     * Returns the list of given alleles active at this location. This method will include events that span the current
-     * location if includeSpanningEvents is set to true; otherwise it will only include events that have loc as their \
-     * start position.
-     * @param loc The start position we are genotyping
-     * @param activeAllelesToGenotype The list of given alleles for the current active region, empty unless we are in GGA mode
-     * @param includeSpanningEvents If true, will also return events that span loc
-     */
-    public static List<VariantContext> getVariantContextsFromGivenAlleles(final int loc,
-                                                                          final List<VariantContext> activeAllelesToGenotype,
-                                                                          final boolean includeSpanningEvents) {
-        final Set<LocationAndAlleles> uniqueLocationsAndAlleles = new HashSet<>();
-        final List<VariantContext> results = new ArrayList<>();
-
-        int givenAlleleSourceCount = 0;
-        for( final VariantContext givenAlleleVC : activeAllelesToGenotype ) {
-            if( givenAlleleVC.getStart() <= loc && givenAlleleVC.getEnd() >= loc) {
-                if (! (includeSpanningEvents || givenAlleleVC.getStart() == loc)) {
-                    continue;
-                }
-                int alleleCount = 0;
-                for( final Allele givenAltAllele : givenAlleleVC.getAlternateAlleles() ) {
-                    final List<Allele> alleleSet = Arrays.asList(givenAlleleVC.getReference(), givenAltAllele);
-
-                    //TODO: this source name seems arbitrary and probably just has to be unique
-                    //TODO: how about replace it by vcSourceName = String.parseInt(nameCounter++)?
-                    final String vcSourceName = "Comp" + givenAlleleSourceCount + "Allele" + alleleCount;
-                    // check if this event is already in the list of events due to a repeat in the input alleles track
-                    final VariantContext candidateEventToAdd = new VariantContextBuilder(givenAlleleVC).alleles(alleleSet)
-                            .genotypes(GenotypesContext.NO_GENOTYPES).source(vcSourceName).make();
-
-                    final LocationAndAlleles locationAndAlleles = new LocationAndAlleles(candidateEventToAdd.getStart(), candidateEventToAdd.getAlleles());
-                    if (! uniqueLocationsAndAlleles.contains(locationAndAlleles)) {
-                        uniqueLocationsAndAlleles.add(locationAndAlleles);
-                        results.add(candidateEventToAdd);
-                    }
-
-                    alleleCount++;
-                }
-            }
-            givenAlleleSourceCount++;
-        }
-        return results;
-    }
-
 
     /**
-     * Returns the list of events discovered in assembled haplotypes that are active at this location. The results will
+     * Returns the list of variants discovered in assembled haplotypes that are active at this location. The results will
      * include events that span the current location if includeSpanningEvents is set to true; otherwise it will only
      * include events that have loc as their start position.
+     *
+     * This marks the point in the code at which Events discovered from assembly are converted to VariantContext object.
+     * Prior to this point everything is an Event -- that is, biallelic ref -> alt substitutions -- and after this point
+     * everything is contained in heavier, potentially multiallelic, VariantContext objects for genotyping and output.
      * @param loc The start position we are genotyping
      * @param haplotypes list of active haplotypes at the current location
      * @param includeSpanningEvents If true, will also return events that span loc
      */
-    public static List<VariantContext> getVariantContextsFromActiveHaplotypes(final int loc,
-                                                                                 final List<Haplotype> haplotypes,
-                                                                                 final boolean includeSpanningEvents) {
-        final List<VariantContext> results = new ArrayList<>();
-        final Set<LocationAndAlleles> uniqueLocationsAndAlleles = new HashSet<>();
+    public static List<VariantContext> getVariantsFromActiveHaplotypes(final int loc, final List<Haplotype> haplotypes, final boolean includeSpanningEvents) {
+        final Set<Event> events = new HashSet<>();
+        final List<VariantContext> result = new ArrayList<>();
 
-        haplotypes.stream()
-                .flatMap(h -> Utils.stream(h.getEventMap().getOverlappingEvents(loc)))
-                .filter(Objects::nonNull)
-                .filter(v -> (includeSpanningEvents || v.getStart() == loc))
-                .forEach(v -> {
-                    final LocationAndAlleles locationAndAlleles = new LocationAndAlleles(v.getStart(), v.getAlleles());
-                    if (! uniqueLocationsAndAlleles.contains(locationAndAlleles)) {
-                        uniqueLocationsAndAlleles.add(locationAndAlleles);
-                        results.add(v);
-                    }
-                });
-        return results;
+        int hapNumber = 0;
+        for (final Haplotype haplotype : haplotypes) {
+            final String sourceName = "HC" + hapNumber++;
+            for (final Event event : haplotype.getEventMap().getOverlappingEvents(loc)) {
+                if (event == null || (!includeSpanningEvents && event.getStart() != loc)) {
+                    continue;
+                } else if (events.add(event)) {
+                    result.add(event.convertToVariantContext(sourceName));
+                }
+            }
+        }
+
+        return result;
     }
 
     /**
@@ -569,30 +648,34 @@ public final class AssemblyBasedCallerUtils {
 
         for (final Haplotype h : haplotypes) {
 
-            final List<VariantContext> spanningEvents = h.getEventMap().getOverlappingEvents(loc);
+            // Partially determined haplotypes know at what position they are determined, only determined position haps should be considered for genotyping
+            if (h.isPartiallyDetermined() && ((PartiallyDeterminedHaplotype) h).getDeterminedPosition() != loc) {
+                continue;
+            }
+            final List<Event> overlappingEvents = h.getEventMap().getOverlappingEvents(loc);
 
-            if (spanningEvents.isEmpty()) {    //no events --> this haplotype supports the reference at this locus
+            if (overlappingEvents.isEmpty()) {    //no events --> this haplotype supports the reference at this locus
                 result.get(ref).add(h);
                 continue;
             }
 
-            for (VariantContext spanningEvent : spanningEvents) {
-                if (spanningEvent.getStart() == loc) {
+            for (Event overlappingEvent : overlappingEvents) {
+                if (overlappingEvent.getStart() == loc) {
                     // the event starts at the current location
 
-                    if (spanningEvent.getReference().length() == mergedVC.getReference().length()) {
+                    if (overlappingEvent.refAllele().length() == mergedVC.getReference().length()) {
                         // reference allele lengths are equal; we can just use the spanning event's alt allele
                         // in the case of GGA mode the spanning event might not match an allele in the mergedVC
-                        if (result.containsKey(spanningEvent.getAlternateAllele(0))) {
+                        if (result.containsKey(overlappingEvent.altAllele())) {
                             // variant contexts derived from the event map have only one alt allele each, so we can just
                             // grab the first one (we're not assuming that the sample is biallelic)
-                            result.get(spanningEvent.getAlternateAllele(0)).add(h);
+                            result.get(overlappingEvent.altAllele()).add(h);
                         }
-                    } else if (spanningEvent.getReference().length() < mergedVC.getReference().length()) {
+                    } else if (overlappingEvent.refAllele().length() < mergedVC.getReference().length()) {
                         // spanning event has shorter ref allele than merged VC; we need to pad out its alt allele
                         final Map<Allele, Allele> spanningEventAlleleMappingToMergedVc
-                                = GATKVariantContextUtils.createAlleleMapping(mergedVC.getReference(), spanningEvent);
-                        final Allele remappedSpanningEventAltAllele = spanningEventAlleleMappingToMergedVc.get(spanningEvent.getAlternateAllele(0));
+                                = GATKVariantContextUtils.createAlleleMapping(mergedVC.getReference(), overlappingEvent.refAllele(), Collections.singletonList(overlappingEvent.altAllele()));
+                        final Allele remappedSpanningEventAltAllele = spanningEventAlleleMappingToMergedVc.get(overlappingEvent.altAllele());
                         // in the case of GGA mode the spanning event might not match an allele in the mergedVC
                         if (result.containsKey(remappedSpanningEventAltAllele)) {
                             result.get(remappedSpanningEventAltAllele).add(h);
@@ -603,7 +686,6 @@ public final class AssemblyBasedCallerUtils {
                         // because we're in GGA mode and it's not an allele we want
                         continue;
                     }
-
                 } else {
                     if (emitSpanningDels) {
                         // the event starts prior to the current location, so it's a spanning deletion
@@ -618,11 +700,13 @@ public final class AssemblyBasedCallerUtils {
                         break;
                     }
                 }
+
             }
 
         }
         return result;
     }
+
 
     /**
      * Tries to phase the individual alleles based on pairwise comparisons to the other alleles based on all called haplotypes
@@ -665,9 +749,9 @@ public final class AssemblyBasedCallerUtils {
 
             // keep track of the haplotypes that contain this particular alternate allele
             final Allele alt = getSiteSpecificAlternateAllele(call);
-            final Predicate<VariantContext> hasThisAlt = vc -> (vc.getStart() == call.getStart() && vc.getAlternateAlleles().contains(alt));
+            final Predicate<Event> hasThisAlt = vc -> (vc.getStart() == call.getStart() && vc.altAllele().equals(alt));
             final Set<Haplotype> hapsWithAllele = calledHaplotypes.stream()
-                    .filter(h -> h.getEventMap().getVariantContexts().stream().anyMatch(hasThisAlt))
+                    .filter(h -> h.getEventMap().getEvents().stream().anyMatch(hasThisAlt))
                     .collect(Collectors.toCollection(HashSet<Haplotype>::new));
 
             haplotypeMap.put(call, hapsWithAllele);
@@ -681,14 +765,12 @@ public final class AssemblyBasedCallerUtils {
      * from within the current variant context.
      */
     private static Allele getSiteSpecificAlternateAllele(final VariantContext call) {
-        final Allele allele = call.getAlternateAlleles().stream().filter(a -> isSiteSpecificAltAllele(a)).findFirst().orElse(null);
-        return allele;
+        return call.getAlternateAlleles().stream().filter(AssemblyBasedCallerUtils::isSiteSpecificAltAllele).findFirst().orElse(null);
     }
 
     /**
      * Construct the mapping from call (variant context) to phase set ID
      *
-     * @param totalAvailableHaplotypes the total number haplotypes that support alternate alleles of called variants
      * @param originalCalls    the original unphased calls
      * @param haplotypeMap     mapping from alternate allele to the set of haplotypes that contain that allele
      * @return a map from each variant context to a pair with the phase set ID and phase group of the alt allele
@@ -909,34 +991,35 @@ public final class AssemblyBasedCallerUtils {
         return new VariantContextBuilder(vc).genotypes(phasedGenotypes).make();
     }
 
-    public static Set<Allele> getAllelesConsistentWithGivenAlleles(final List<VariantContext> givenAlleles, final VariantContext mergedVC) {
-        if (givenAlleles.isEmpty()) {
-            return Collections.emptySet();
-        }
-
-        final List<Pair<Allele, Allele>> givenAltAndRefAllelesInOriginalContext =  getVariantContextsFromGivenAlleles(mergedVC.getStart(), givenAlleles, false).stream()
-                .flatMap(vc -> vc.getAlternateAlleles().stream().map(allele -> ImmutablePair.of(allele, vc.getReference()))).collect(Collectors.toList());
-
-        return mergedVC.getAlternateAlleles().stream()
-                .map(allele -> ImmutablePair.of(allele, mergedVC.getReference()))
-                .filter(altAndRef -> givenAltAndRefAllelesInOriginalContext.stream().anyMatch(givenAltAndRef -> allelesAreConsistent(givenAltAndRef, altAndRef)))
-                .map(altAndRefPair -> altAndRefPair.getLeft())
+    // find all alleles in a VariantContext that encode an equivalent ref -> alt as at least one given event
+    public static Set<Allele> allelesConsistentWithGivenAlleles(final Collection<Event> givenAlleles, final VariantContext mergedVC) {
+        return givenAlleles.isEmpty() ? Collections.emptySet() : mergedVC.getAlternateAlleles().stream()
+                .filter(allele -> givenAlleles.stream().anyMatch(ga -> allelesAreConsistent(ga.refAllele(), ga.altAllele(), mergedVC.getReference(), allele)))
                 .collect(Collectors.toSet());
     }
 
     // check whether two alleles coming from different variant contexts and with possibly different reference alleles
     // could in fact be the same.  The condition is that one is a prefix of the other
-    private static boolean allelesAreConsistent(final Pair<Allele,Allele> altAndRef1, final Pair<Allele,Allele> altAndRef2) {
-        final Allele alt1 = altAndRef1.getLeft();
-        final Allele alt2 = altAndRef2.getLeft();
+    private static boolean allelesAreConsistent(final Allele ref1, final Allele alt1, final Allele ref2, final Allele alt2) {
         if (alt1.isSymbolic() || alt2.isSymbolic()) {
             return false;
         } else {
-            final int sizeDiff1 = alt1.length() - altAndRef1.getRight().length();
-            final int sizeDiff2 = alt2.length() - altAndRef2.getRight().length();
+            final int sizeDiff1 = alt1.length() - ref1.length();
+            final int sizeDiff2 = alt2.length() - ref2.length();
             return (sizeDiff1 == sizeDiff2) && (alt1.length() < alt2.length() ?
                     alt1.basesMatch(Arrays.copyOf(alt2.getBases(), alt1.length())) :
                     alt2.basesMatch(Arrays.copyOf(alt1.getBases(), alt2.length())));
         }
     }
+
+    // revert soft clipped bases, but also save the original position in a tag
+    private static GATKRead revertSoftClippedBases(GATKRead inputRead){
+        int softStart = inputRead.getStart();
+        int softEnd = inputRead.getEnd();
+        GATKRead result = ReadClipper.revertSoftClippedBases(inputRead);
+        result.setAttribute(ReferenceConfidenceModel.ORIGINAL_SOFTCLIP_START_TAG, softStart);
+        result.setAttribute(ReferenceConfidenceModel.ORIGINAL_SOFTCLIP_END_TAG, softEnd);
+        return result;
+    }
+
 }

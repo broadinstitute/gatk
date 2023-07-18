@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific;
 
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFInfoHeaderLine;
+import htsjdk.variant.vcf.VCFCompoundHeaderLine;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
@@ -10,12 +10,14 @@ import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
 /**
  * An interface for annotations that are calculated using raw data across samples, rather than the median (or median of median) of samples values
+ * The Raw annotation keeps some summary (one example might be a histogram of the raw values for each sample) of the individual sample (or allele)
+ * level annotation. As the annotations are combined across multiple samples the raw annotation continues to contain individual values while
+ * the final reduced annotation will typically be a summary statistic from these raw values.
  *
  */
 public interface ReducibleAnnotation extends Annotation {
@@ -83,8 +85,8 @@ public interface ReducibleAnnotation extends Annotation {
      * Returns the descriptions used for the VCF INFO meta field corresponding to the annotations raw key.
      * @return A list of VCFInfoHeaderLines corresponding to the raw keys added by this annotaiton
      */
-    default List<VCFInfoHeaderLine> getRawDescriptions() {
-        final List<VCFInfoHeaderLine> lines = new ArrayList<>(1);
+    default List<VCFCompoundHeaderLine> getRawDescriptions() {
+        final List<VCFCompoundHeaderLine> lines = new ArrayList<>(1);
         for (final String rawKey : getRawKeyNames()) {
             lines.add(GATKVCFHeaderLines.getInfoLine(rawKey));
         }

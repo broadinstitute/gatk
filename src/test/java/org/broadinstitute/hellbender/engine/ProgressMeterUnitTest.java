@@ -174,4 +174,15 @@ public class ProgressMeterUnitTest extends GATKBaseTest {
         Assert.assertTrue(pm.stopped());
     }
 
+    @Test
+    public void testDisabledProgressMeter() {
+        final ProgressMeter disabledPM = new ProgressMeter(ProgressMeter.DEFAULT_SECONDS_BETWEEN_UPDATES, true);
+
+        disabledPM.start();
+        Assert.assertFalse(disabledPM.started());
+        disabledPM.update(new SimpleInterval("1", 1, 1));
+        Assert.assertEquals(disabledPM.numRecordsProcessed(), 0);
+        disabledPM.stop();
+        Assert.assertFalse(disabledPM.stopped());
+    }
 }

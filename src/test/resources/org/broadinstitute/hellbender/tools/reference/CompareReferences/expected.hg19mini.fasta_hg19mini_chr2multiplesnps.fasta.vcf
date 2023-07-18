@@ -1,0 +1,9 @@
+##fileformat=VCFv4.2
+##contig=<ID=1,length=16000>
+##contig=<ID=2,length=16000>
+##contig=<ID=3,length=16000>
+##contig=<ID=4,length=16000>
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+2	13368	.	A	T	.	.	.
+2	13770	.	A	C	.	.	.
+2	15953	.	G	C	.	.	.

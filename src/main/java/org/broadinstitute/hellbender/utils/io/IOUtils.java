@@ -31,13 +31,14 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.Arrays;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.zip.GZIPInputStream;
-import java.util.zip.GZIPOutputStream;
-import java.util.zip.ZipException;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
+import java.util.zip.*;
 
 public final class IOUtils {
     private static final Logger logger = LogManager.getLogger(IOUtils.class);
@@ -97,7 +98,7 @@ public final class IOUtils {
      * Writes content to a temp file and returns the path to the temporary file.
      *
      * @param content   to write.
-     * @param prefix    Prefix for the temp file.
+     * @param prefix    Prefix for the temp file; {@link File#createTempFile(String, String, File)} requires that this be >= 3 characters
      * @param suffix    Suffix for the temp file.
      * @return the path to the temp file.
      */
@@ -109,7 +110,7 @@ public final class IOUtils {
      * Writes content to a temp file and returns the path to the temporary file.
      *
      * @param content   to write.
-     * @param prefix    Prefix for the temp file.
+     * @param prefix    Prefix for the temp file; {@link File#createTempFile(String, String, File)} requires that this be >= 3 characters
      * @param suffix    Suffix for the temp file.
      * @param directory Directory for the temp file.
      * @return the path to the temp file.
@@ -658,7 +659,7 @@ public final class IOUtils {
      * Creates a temp file that will be deleted on exit
      *
      * This will also mark the corresponding Tribble/Tabix/BAM indices matching the temp file for deletion.
-     * @param name Prefix of the file.
+     * @param name Prefix of the file; {@link File#createTempFile(String, String, File)} requires that this be >= 3 characters
      * @param extension Extension to concat to the end of the file.
      * @return A file in the temporary directory starting with name, ending with extension, which will be deleted after the program exits.
      */
@@ -670,7 +671,7 @@ public final class IOUtils {
      * Creates a temp file in a target directory that will be deleted on exit
      *
      * This will also mark the corresponding Tribble/Tabix/BAM indices matching the temp file for deletion.
-     * @param name Prefix of the file.
+     * @param name Prefix of the file; {@link File#createTempFile(String, String, File)} requires that this be >= 3 characters
      * @param extension Extension to concat to the end of the file name.
      * @param targetDir Directory in which to create the temp file. If null, the default temp directory is used.
      * @return A file in the temporary directory starting with name, ending with extension, which will be deleted after the program exits.
@@ -1053,5 +1054,69 @@ public final class IOUtils {
      */
     public static Path fileToPath(File toConvert) {
         return (null == toConvert ? null : toConvert.toPath());
+    }
+
+
+    /**
+     * Strips extension from the given path, if it has one. Note it will use the first matching extension in the list.
+     *
+     * @param path Path to modify. May not be null.
+     * @param extensions Possible extensions to remove, in order of priority
+     * @return Resulting path
+     */
+    public static Path removeExtension(final Path path, final List<String> extensions) {
+        Utils.nonNull(path);
+        Utils.nonNull(extensions);
+        final String pathString = path.toString();
+        for (final String testExtension : extensions) {
+            if (pathString.endsWith(testExtension)) {
+                return Paths.get(pathString.substring(0, pathString.length() - testExtension.length()));
+            }
+        }
+        return path;
+    }
+
+    /**
+     * A simple helper method that reads a zipped archive and unzippes it to a file target, preserving the directory structure.
+     *
+     * @param zippedArchive A Path to a zipped archive
+     * @param toUnzipFolder A Path to a folder into which to place the archive contents
+     * @throws IOException
+     */
+    public static void unzipToFolder(final Path zippedArchive, final Path toUnzipFolder) throws IOException {
+        ZipFile resultZip = new ZipFile(zippedArchive.toFile());
+
+        Enumeration<? extends ZipEntry> entries = resultZip.entries();
+
+        while(entries.hasMoreElements()) {
+            ZipEntry current = entries.nextElement();
+            String suffix = current.toString();
+            if (!current.isDirectory()) {
+                // if the entry is a file, extracts it
+                try {
+                    Path entryTarget = toUnzipFolder.resolve(suffix);
+                    entryTarget.getParent().toFile().mkdirs();
+                    extractZipStreamToFile(resultZip.getInputStream(current), entryTarget.toString());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            } else {
+                // if the entry is a directory, make the directory
+                new File(String.valueOf(toUnzipFolder.resolve(suffix))).mkdirs();
+            }
+        }
+    }
+    /**
+     * Extracts a zip entry (file entry)
+     */
+    private static void extractZipStreamToFile(InputStream zipIn, String filePath) throws IOException {
+        BufferedInputStream bis = new BufferedInputStream(zipIn);
+        BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(filePath));
+        byte[] bytesIn = new byte[1024 * 1024];
+        int read = 0;
+        while ((read = bis.read(bytesIn)) != -1) {
+            bos.write(bytesIn, 0, read);
+        }
+        bos.close();
     }
 }

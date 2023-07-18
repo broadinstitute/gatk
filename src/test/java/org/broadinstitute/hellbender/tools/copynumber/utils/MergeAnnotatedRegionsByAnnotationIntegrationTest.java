@@ -4,6 +4,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedIntervalCollection;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -23,11 +24,10 @@ public class MergeAnnotatedRegionsByAnnotationIntegrationTest extends CommandLin
      * Very simple test, since this tool basically calls out to a class that does all the heavy lifting.  Most testing
      *  is done in
      * {@link org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedIntervalUtilsUnitTest}.
-     * @throws IOException
      */
     @Test
-    public void testLegacySegFile() throws IOException {
-        final File outputFile = File.createTempFile("mergeannotatedregionsbyannotation", ".seg");
+    public void testLegacySegFile() {
+        final File outputFile = IOUtils.createTempFile("mergeannotatedregionsbyannotation", ".seg");
         final String annotationToMatch = "Segment_Mean";
         final List<String> arguments = new ArrayList<>();
         arguments.add("--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME);

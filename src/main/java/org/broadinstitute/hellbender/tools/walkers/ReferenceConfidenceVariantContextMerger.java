@@ -11,9 +11,9 @@ import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AlleleSpecificAnnotationData;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotationData;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUtils;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeLikelihoodCalculators;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.Mutect2FilteringEngine;
+import org.broadinstitute.hellbender.utils.GenotypeUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -32,11 +32,11 @@ import java.util.stream.Stream;
 @SuppressWarnings({"rawtypes","unchecked"}) //TODO fix uses of untyped Comparable.
 public final class ReferenceConfidenceVariantContextMerger {
 
-    private static final GenotypeLikelihoodCalculators calculators = new GenotypeLikelihoodCalculators();
     private static VCFHeader vcfInputHeader = null;
     protected final VariantAnnotatorEngine annotatorEngine;
     private final boolean doSomaticMerge;
     protected boolean dropSomaticFilteringAnnotations;
+    protected boolean callGTAlleles;
     protected final OneShotLogger oneShotAnnotationLogger = new OneShotLogger(this.getClass());
     protected final OneShotLogger oneShotHeaderLineLogger = new OneShotLogger(this.getClass());
     protected final OneShotLogger AS_Warning = new OneShotLogger(this.getClass());
@@ -59,17 +59,46 @@ public final class ReferenceConfidenceVariantContextMerger {
     }
 
     public ReferenceConfidenceVariantContextMerger(VariantAnnotatorEngine engine, final VCFHeader inputHeader, boolean somaticInput, boolean dropSomaticFilteringAnnotations) {
+        this(engine, inputHeader, somaticInput, dropSomaticFilteringAnnotations, false);
+    }
+
+    public ReferenceConfidenceVariantContextMerger(VariantAnnotatorEngine engine, final VCFHeader inputHeader, boolean somaticInput, boolean dropSomaticFilteringAnnotations, boolean callGTAlleles) {
         Utils.nonNull(inputHeader, "A VCF header must be provided");
 
         annotatorEngine = engine;
         vcfInputHeader = inputHeader;
         doSomaticMerge = somaticInput;
         this.dropSomaticFilteringAnnotations = dropSomaticFilteringAnnotations;
+        this.callGTAlleles = callGTAlleles;
     }
 
     /**
      * Merges VariantContexts from gVCFs into a single hybrid.
      * Assumes that none of the input records are filtered.
+     *
+     * This version applies allele remapping prior to genotyping.
+     *
+     * TODO: THIS BEHAVIOR SHOULD BE MADE THE DEFAULT, AND THIS METHOD RETIRED IN FAVOR OF MERGE() BELOW
+     * TODO: SEE https://github.com/broadinstitute/gatk/issues/8317
+     *
+     * @param vcs     collection of unsorted genomic vcs
+     * @param loc     the current location
+     * @param refBase the reference allele to use if all contexts in the VC are spanning (i.e. don't start at the location in loc); if null, we'll return null in this case
+     * @param removeNonRefSymbolicAllele if true, remove the <NON_REF> allele from the merged VC
+     * @param samplesAreUniquified  if true, sample names have been uniquified
+     * @return new VariantContext representing the merge of all vcs or null if it not relevant
+     */
+    public VariantContext mergeWithRemapping(final List<VariantContext> vcs, final Locatable loc, final Byte refBase,
+                                             final boolean removeNonRefSymbolicAllele, final boolean samplesAreUniquified) {
+        // Call merge() with useRemappedAllelesForGenotyping == true
+        return merge(vcs, loc, refBase, removeNonRefSymbolicAllele, samplesAreUniquified, true);
+    }
+
+    /**
+     * Merges VariantContexts from gVCFs into a single hybrid.
+     * Assumes that none of the input records are filtered.
+     *
+     * This overload does not apply allele remapping prior to genotyping.
      *
      * @param vcs     collection of unsorted genomic vcs
      * @param loc     the current location
@@ -80,6 +109,7 @@ public final class ReferenceConfidenceVariantContextMerger {
      */
     public VariantContext merge(final List<VariantContext> vcs, final Locatable loc, final Byte refBase,
                                 final boolean removeNonRefSymbolicAllele, final boolean samplesAreUniquified) {
+        // Call merge() with useRemappedAllelesForGenotyping == false
         return merge(vcs, loc, refBase, removeNonRefSymbolicAllele, samplesAreUniquified, false);
     }
 
@@ -92,13 +122,12 @@ public final class ReferenceConfidenceVariantContextMerger {
      * @param refBase the reference allele to use if all contexts in the VC are spanning (i.e. don't start at the location in loc); if null, we'll return null in this case
      * @param removeNonRefSymbolicAllele if true, remove the <NON_REF> allele from the merged VC
      * @param samplesAreUniquified  if true, sample names have been uniquified
-     * @param preserveGermlineGenotypes  if true, preserve germline genotypes during merge (and remap them to remapped alleles when necessary,
-     *                                   if false, replace all genotypes with no calls
+     * @param useRemappedAllelesForGenotyping  if true, remap alleles prior to making the genotype call
      * @return new VariantContext representing the merge of all vcs or null if it not relevant
      */
     public VariantContext merge(final List<VariantContext> vcs, final Locatable loc, final Byte refBase,
                                 final boolean removeNonRefSymbolicAllele, final boolean samplesAreUniquified,
-                                final boolean preserveGermlineGenotypes) {
+                                final boolean useRemappedAllelesForGenotyping) {
         Utils.nonEmpty(vcs);
 
         // establish the baseline info (sometimes from the first VC)
@@ -142,7 +171,7 @@ public final class ReferenceConfidenceVariantContextMerger {
             final VariantContext vc = vcWithNewAlleles.getVc();
             final List<Allele> remappedAlleles = vcWithNewAlleles.getNewAlleles();
 
-            genotypes.addAll(mergeRefConfidenceGenotypes(vc, remappedAlleles, allelesList, samplesAreUniquified, preserveGermlineGenotypes));
+            genotypes.addAll(mergeRefConfidenceGenotypes(vc, remappedAlleles, allelesList, samplesAreUniquified, useRemappedAllelesForGenotyping));
             depth += calculateVCDepth(vc);
 
             if ( loc.getStart() != vc.getStart() ) {
@@ -527,21 +556,18 @@ public final class ReferenceConfidenceVariantContextMerger {
      * @param remappedAlleles       the list of remapped alleles for the sample
      * @param targetAlleles         the list of target alleles
      * @param samplesAreUniquified  true if sample names have been uniquified
-     * @param preserveGermlineGenotypes  if true, preserve germline genotypes during merge (and remap them to remapped alleles when necessary,
-     *                                   if false, replace all genotypes with no calls
+     * @param useRemappedAllelesForGenotyping  if true, remap alleles prior to making the genotype call
      */
     private GenotypesContext mergeRefConfidenceGenotypes(final VariantContext vc,
                                                            final List<Allele> remappedAlleles,
                                                            final List<Allele> targetAlleles,
                                                            final boolean samplesAreUniquified,
-                                                           final boolean preserveGermlineGenotypes) {
-
+                                                           final boolean useRemappedAllelesForGenotyping) {
         final GenotypesContext mergedGenotypes = GenotypesContext.create();
         final int maximumPloidy = vc.getMaxPloidy(GATKVariantContextUtils.DEFAULT_PLOIDY);
         // the map is different depending on the ploidy, so in order to keep this method flexible (mixed ploidies)
         // we need to get a map done (lazily inside the loop) for each ploidy, up to the maximum possible.
         final int[][] genotypeIndexMapsByPloidy = new int[maximumPloidy + 1][];
-        final int maximumAlleleCount = Math.max(remappedAlleles.size(),targetAlleles.size());
 
         for ( final Genotype g : vc.getGenotypes() ) {
             final String name;
@@ -554,20 +580,19 @@ public final class ReferenceConfidenceVariantContextMerger {
             final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(g);
             if (!doSomaticMerge) {
                 if (g.hasPL() || g.hasAD()) {
-                    // lazy initialization of the genotype index map by ploidy.
-                    int[]  perSampleIndexesOfRelevantAlleles = AlleleSubsettingUtils.getIndexesOfRelevantAllelesForGVCF(remappedAlleles, targetAlleles, vc.getStart(), g, false);
+                    int[] perSampleIndexesOfRelevantAlleles = AlleleSubsettingUtils.getIndexesOfRelevantAllelesForGVCF(remappedAlleles, targetAlleles, vc.getStart(), g, false);
                     if (g.hasPL()) {
-                        // lazy initialization of the genotype index map by ploidy.
                         final int[] genotypeIndexMapByPloidy = genotypeIndexMapsByPloidy[ploidy] == null
-                                ? calculators.getInstance(ploidy, maximumAlleleCount).genotypeIndexMap(perSampleIndexesOfRelevantAlleles, calculators) //probably horribly slow
+                                ? GenotypeIndexCalculator.newToOldGenotypeMap(ploidy, perSampleIndexesOfRelevantAlleles) //probably horribly slow
                                 : genotypeIndexMapsByPloidy[ploidy];
-                        final int[] PLs = generatePL(g, genotypeIndexMapByPloidy);
-                        genotypeBuilder.PL(PLs);
+                        genotypeBuilder.PL(generatePL(g, genotypeIndexMapByPloidy));
                     }
                     if (g.hasAD()) {
-                        final int[] AD = AlleleSubsettingUtils.generateAD(g.getAD(), perSampleIndexesOfRelevantAlleles);
-                        genotypeBuilder.AD(AD);
+                        genotypeBuilder.AD(AlleleSubsettingUtils.generateAD(g.getAD(), perSampleIndexesOfRelevantAlleles));
                     }
+                //clean up low confidence hom refs for better annotations later
+                } else if (GenotypeGVCFsEngine.excludeFromAnnotations(g)) {
+                    genotypeBuilder.alleles(Collections.nCopies(ploidy, Allele.NO_CALL));
                 }
 
                 if ( preserveGermlineGenotypes ) {
@@ -576,7 +601,7 @@ public final class ReferenceConfidenceVariantContextMerger {
                 }
                 genotypeBuilder.name(name);
             }
-            else {  //doSomaticMerge
+            else {  // doSomaticMerge
                 genotypeBuilder.noAttributes();
                 if (g.hasDP()) {
                     genotypeBuilder.DP(g.getDP());
@@ -627,9 +652,22 @@ public final class ReferenceConfidenceVariantContextMerger {
             }
 
             if ( ! preserveGermlineGenotypes ) {
-                genotypeBuilder.alleles(GATKVariantContextUtils.noCallAlleles(g.getPloidy())).name(name);
-            }
+                genotypeBuilder.name(name);
+            final List<Allele> originalGTAlleles = useRemappedAllelesForGenotyping ?
+                    g.getAlleles().stream().map(a -> (vc.getAlleleIndex(a) > -1 ? remappedAlleles.get(vc.getAlleleIndex(a)) : Allele.NO_CALL)).collect(Collectors.toList()) :
+                    g.getAlleles();
 
+            final GenotypeAssignmentMethod assignmentMethod;
+            if (callGTAlleles && GenotypeUtils.shouldBeCalled(g)) {
+                assignmentMethod = GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL;
+            } else {
+                assignmentMethod = GenotypeAssignmentMethod.SET_TO_NO_CALL;
+            }
+            GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(),
+                    genotypeBuilder, assignmentMethod,
+                    g.hasLikelihoods() ? g.getLikelihoods().getAsVector() : null,
+                    targetAlleles, originalGTAlleles, null);
+            }
             mergedGenotypes.add(genotypeBuilder.make());
         }
 

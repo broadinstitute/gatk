@@ -70,19 +70,23 @@ final class LabeledVariantAnnotationsDatum implements Locatable {
             // TODO: can we trigger allele-specific parsing based on annotation prefix or some other logic?
             if (useASAnnotations && annotationName.startsWith(GATKVCFConstants.ALLELE_SPECIFIC_PREFIX)) {
                 final List<Object> valueList = vc.getAttributeAsList(annotationName);
-                final Allele altAllele = altAlleles.get(0);
-                // FIXME: we need to look at the ref allele here too (SL: this comment was retained from VQSR code, I'm not sure what it means...)
-                if (vc.hasAllele(altAllele)) {
-                    final int altIndex = vc.getAlleleIndex(altAllele) - 1; //- 1 is to convert the index from all alleles (including reference) to just alternate alleles
-                    try {
-                        value = Double.parseDouble((String) valueList.get(altIndex));
-                    } catch (final IndexOutOfBoundsException e) {
-                        throw new UserException(String.format("Could not extract annotation %s from variant context: %s. " +
-                                "Encountered exception: %s", annotationName, vc, e));
-                    }
+                if (valueList.isEmpty()) {
+                    value = Double.NaN;
                 } else {
-                    //if somehow our alleles got mixed up
-                    throw new IllegalStateException("Allele " + altAllele + " is not contained in the input VariantContext.");
+                    final Allele altAllele = altAlleles.get(0);
+                    // FIXME: we need to look at the ref allele here too (SL: this comment was retained from VQSR code, I'm not sure what it means...)
+                    if (vc.hasAllele(altAllele)) {
+                        final int altIndex = vc.getAlleleIndex(altAllele) - 1; //- 1 is to convert the index from all alleles (including reference) to just alternate alleles
+                        try {
+                            value = Double.parseDouble((String) valueList.get(altIndex));
+                        } catch (final ClassCastException e) {
+                            throw new UserException(String.format("Could not extract annotation %s from variant context: %s. " +
+                                    "Encountered exception: %s", annotationName, vc, e));
+                        }
+                    } else {
+                        //if somehow our alleles got mixed up
+                        throw new IllegalStateException("Allele " + altAllele + " is not contained in the input VariantContext.");
+                    }
                 }
             } else {
                 try {

@@ -23,10 +23,7 @@ import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.Gencod
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotationFactory;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfCodec;
-import org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfFeature;
-import org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfFeatureBaseData;
-import org.broadinstitute.hellbender.utils.codecs.gtf.GencodeGtfTranscriptFeature;
+import org.broadinstitute.hellbender.utils.codecs.gtf.*;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
@@ -293,17 +290,17 @@ public class FuncotatorTestUtils {
                         GencodeGtfFeature.GenomicPhase.DOT,
                         "FakeGeneID",
                         "FakeTranscriptID",
-                        GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                        GencodeGTFFieldConstants.KnownGeneBiotype.PROTEIN_CODING.toString(),
                         null,
                         "FakeGeneName",
-                        GencodeGtfFeature.GeneTranscriptType.PROTEIN_CODING,
+                        GencodeGTFFieldConstants.KnownGeneBiotype.PROTEIN_CODING.toString(),
                         null,
                         "FakeTranscriptName",
                         -1,
                         null,
-                        GencodeGtfFeature.LocusLevel.AUTOMATICALLY_ANNOTATED,
-                        Collections.emptyList(),
-                        null)
+                        GencodeGTFFieldConstants.LocusLevel.AUTOMATICALLY_ANNOTATED.toString(),
+                        Collections.emptyList()
+                )
         );
     }
 

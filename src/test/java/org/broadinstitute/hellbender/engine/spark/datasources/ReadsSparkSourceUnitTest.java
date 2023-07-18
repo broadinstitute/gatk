@@ -21,6 +21,7 @@ import org.broadinstitute.hellbender.utils.read.SAMRecordToGATKReadAdapter;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
 import org.testng.Assert;
+import org.testng.SkipException;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -194,6 +195,11 @@ public class ReadsSparkSourceUnitTest extends GATKBaseTest {
         //TODO: add or change getTestFile overload with GATKPath
         final GATKPath bam = new GATKPath(getTestFile("hdfs_file_test.bam").getAbsolutePath());
         final File bai = getTestFile("hdfs_file_test.bai");
+        // see https://github.com/eclipse/jetty.project/issues/8549
+        if (isGATKDockerContainer()) {
+            // for the docker tests, the test dependencies are in a separate jar
+            throw new SkipException("skipping due to jetty jar parsing issues (https://github.com/eclipse/jetty.project/issues/8549)");
+        }
         MiniClusterUtils.runOnIsolatedMiniCluster( cluster -> {
             final Path workingDirectory = MiniClusterUtils.getWorkingDir(cluster);
             final Path bamPath = new Path(workingDirectory,"hdfs.bam");
@@ -217,6 +223,11 @@ public class ReadsSparkSourceUnitTest extends GATKBaseTest {
         final GATKPath reference = new GATKPath(v37_chr17_1Mb_Reference);
         final GATKPath referenceIndex = new GATKPath(v37_chr17_1Mb_Reference + ".fai");
 
+        // see https://github.com/eclipse/jetty.project/issues/8549
+        if (isGATKDockerContainer()) {
+            // for the docker tests, the test dependencies are in a separate jar
+            throw new SkipException("skipping due to jetty jar parsing issues (https://github.com/eclipse/jetty.project/issues/8549)");
+        }
         MiniClusterUtils.runOnIsolatedMiniCluster( cluster -> {
             final Path workingDirectory = MiniClusterUtils.getWorkingDir(cluster);
             final Path cramHDFSPath = new Path(workingDirectory, "hdfs.cram");

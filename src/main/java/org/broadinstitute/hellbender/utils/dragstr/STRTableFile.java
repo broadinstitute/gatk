@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.utils.dragstr;
 
-import com.google.common.io.Files;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceDictionaryCodec;
 import htsjdk.samtools.util.BufferedLineReader;
@@ -18,6 +17,7 @@ import org.broadinstitute.hellbender.utils.ZipUtils;
 import org.broadinstitute.hellbender.tools.dragstr.STRDecimationTable;
 
 import java.io.*;
+import java.nio.file.Files;
 
 /**
  * Class to create and access STR table file contents.
@@ -89,7 +89,14 @@ public final class STRTableFile implements AutoCloseable {
      * @return never {@code null}.
      */
     public static STRTableFile open(final GATKPath path) {
-        final File dir = Files.createTempDir();
+        File dir;
+        try {
+            dir = Files.createTempDirectory("STRTableFile").toFile();
+        }
+        catch ( IOException e ) {
+            throw new GATKException("Unable to create temp directory for STRTableFile", e);
+        }
+
         try {
             ZipUtils.unzip(path, dir, ESSENTIAL_FILES);
         } catch (final Exception ex) {

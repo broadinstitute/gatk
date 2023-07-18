@@ -71,7 +71,9 @@ public abstract class GATKBaseTest extends BaseTest {
 
     // ~600,000 reads from chromosomes 20 and 21 of an NA12878 WGS bam aligned to b37, plus ~50,000 unmapped reads
     public static final String NA12878_20_21_WGS_bam = largeFileTestDir + "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam";
+    public static final String NA12878_20_21_WGS_mmp2_bam = largeFileTestDir + "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.mmp2.bam";
     public static final String NA12878_20_21_WGS_cram = largeFileTestDir + "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.cram";
+
     public static final String NA12878_20_21_covered_regions = publicTestDir + "wgs_calling_regions.v1.chr20_chr21.interval_list";
 
     // ~10,000 reads from chromosome 20 of NA12878 RNA-seq, aligned to b37 with STAR

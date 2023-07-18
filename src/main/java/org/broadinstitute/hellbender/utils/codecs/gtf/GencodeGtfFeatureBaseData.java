@@ -38,9 +38,9 @@ final public class GencodeGtfFeatureBaseData {
      *
      * There is no restriction on which keywords can be used here, but some
      * known annotation sources are defined in their GTF parent objects:
-     *      {@link GencodeGtfCodec#GENCODE_ANNOTATION_SOURCE_ENSEMBL}
-     *      {@link GencodeGtfCodec#GENCODE_ANNOTATION_SOURCE_HAVANA}
-     *      {@link EnsemblGtfCodec#ENSEMBL_ANNOTATION_SOURCE_ENA}
+     *      {@link GencodeGtfFeature#ANNOTATION_SOURCE_ENSEMBL}
+     *      {@link GencodeGtfFeature#ANNOTATION_SOURCE_HAVANA}
+     *      {@link GencodeGtfFeature#ANNOTATION_SOURCE_ENA}
      */
     public String annotationSource;
 
@@ -63,28 +63,32 @@ final public class GencodeGtfFeatureBaseData {
     // "Required" GENCODE GTF Fields:
     public String                                   geneId                  = null;
     public String                                   transcriptId            = null;
-    public GencodeGtfFeature.GeneTranscriptStatus   geneStatus              = null;
-    public GencodeGtfFeature.GeneTranscriptType     geneType                = null;
+    public String                                   geneStatus              = null;
+    /**
+     * There are no formal definitions for what can be a valid geneType and the
+     * number of possible values seem to increase as new versions of Gencode are released.
+     */
+    public String                                   geneType                = null;
     public String                                   geneName                = null;
-    public GencodeGtfFeature.GeneTranscriptType     transcriptType          = null;
-    public GencodeGtfFeature.GeneTranscriptStatus   transcriptStatus        = null;
+    /**
+     * There are no formal definitions for what can be a valid transcriptType and the
+     * number of possible values seem to increase as new versions of Gencode are released.
+     */
+    public String                                   transcriptType          = null;
+    public String                                   transcriptStatus        = null;
     public String                                   transcriptName          = null;
     public int                                      exonNumber              = GencodeGtfFeature.NO_EXON_NUMBER;
     public String                                   exonId                  = null;
-    public GencodeGtfFeature.LocusLevel             locusLevel              = null;
+    public String                                   locusLevel              = null;
 
     /**
      * Optional GENCODE GTF Fields.
+     * This also includes unidentified GTF fields that may not be specified in the Gencode GTF specification.
      * For details, see the following:
      *     https://www.gencodegenes.org/data_format.html
      *     https://www.gencodegenes.org/gencode_tags.html
      */
     public List<GencodeGtfFeature.OptionalField<?>> optionalFields          = new ArrayList<>();
-
-    /**
-     * Additional optional GTF fields.
-     */
-    public String                                   anonymousOptionalFields = null;
 
     public GencodeGtfFeatureBaseData() {}
 
@@ -100,17 +104,16 @@ final public class GencodeGtfFeatureBaseData {
             final GencodeGtfFeature.GenomicPhase genomicPhase,
             final String geneId,
             final String transcriptId,
-            final GencodeGtfFeature.GeneTranscriptType geneType,
-            final GencodeGtfFeature.GeneTranscriptStatus geneStatus,
+            final String geneType,
+            final String geneStatus,
             final String geneName,
-            final GencodeGtfFeature.GeneTranscriptType transcriptType,
-            final GencodeGtfFeature.GeneTranscriptStatus transcriptStatus,
+            final String transcriptType,
+            final String transcriptStatus,
             final String transcriptName,
             final int exonNumber,
             final String exonId,
-            final GencodeGtfFeature.LocusLevel locusLevel,
-            final List<GencodeGtfFeature.OptionalField<?>> optionalFields,
-            final String anonymousOptionalFields
+            final String locusLevel,
+            final List<GencodeGtfFeature.OptionalField<?>> optionalFields
     ) {
         this.gtfSourceFileType = gtfSourceFileType;
         this.featureOrderNumber = featureOrderNumber;
@@ -137,7 +140,6 @@ final public class GencodeGtfFeatureBaseData {
             this.optionalFields = optionalFields;
         }
 
-        this.anonymousOptionalFields = anonymousOptionalFields;
     }
 
     @Override
@@ -175,8 +177,7 @@ final public class GencodeGtfFeatureBaseData {
                     Objects.equals(exonNumber,              thatBaseData.exonNumber)                &&
                     Objects.equals(exonId,                  thatBaseData.exonId)                    &&
                     Objects.equals(locusLevel,              thatBaseData.locusLevel)                &&
-                    Objects.equals(anonymousOptionalFields, thatBaseData.anonymousOptionalFields)   &&
-                    Objects.equals(optionalFields,          thatBaseData.optionalFields);
+                    Objects.equals(optionalFields,          thatBaseData.optionalFields); //TODO should equality enforce the order of the optional fields?
         }
 
         return isEqual;
@@ -203,7 +204,6 @@ final public class GencodeGtfFeatureBaseData {
         result = 31 * result + (exonId != null ? exonId.hashCode() : 0);
         result = 31 * result + (locusLevel != null ? locusLevel.hashCode() : 0);
         result = 31 * result + (optionalFields != null ? optionalFields.hashCode() : 0);
-        result = 31 * result + (anonymousOptionalFields != null ? anonymousOptionalFields.hashCode() : 0);
         return result;
     }
 }

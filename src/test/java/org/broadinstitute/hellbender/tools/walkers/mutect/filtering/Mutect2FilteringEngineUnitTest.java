@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.mutect.filtering;
 
 import com.google.common.primitives.Doubles;
+import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;

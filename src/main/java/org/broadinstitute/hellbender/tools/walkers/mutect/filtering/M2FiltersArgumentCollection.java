@@ -43,6 +43,13 @@ public class M2FiltersArgumentCollection {
     @Argument(fullName = M2ArgumentCollection.MITOCHONDRIA_MODE_LONG_NAME, optional = true, doc = "Set filters to mitochondrial defaults")
     public boolean mitochondria = false;
 
+    /**
+     * Microbial mode excludes the filters {@link ClusteredEventsFilter}, {@link MultiallelicFilter},
+     * {@link FilteredHaplotypeFilter}, {@link FragmentLengthFilter}, and {@link GermlineFilter}
+     */
+    @Argument(fullName = M2ArgumentCollection.MICROBIAL_MODE_LONG_NAME, optional = true, doc = "Set filters to microbial defaults")
+    public boolean microbial = false;
+
 
     /**
      * Hard filter thresholds
@@ -62,12 +69,12 @@ public class M2FiltersArgumentCollection {
     private static final int DEFAULT_MAX_ALT_ALLELES = 1;
     private static final int DEFAULT_MIN_UNIQUE_ALT_READS = 0;
     private static final int DEFAULT_MIN_MEDIAN_MAPPING_QUALITY = 30;
+    private static final int DEFAULT_MIN_MEDIAN_MAPPING_QUALITY_FOR_MICROBIAL = 20;
     private static final int DEFAULT_MIN_MEDIAN_BASE_QUALITY = 20;
     private static final int DEFAULT_MAX_MEDIAN_FRAGMENT_LENGTH_DIFFERENCE = 10000;
     private static final int DEFAULT_MIN_MEDIAN_READ_POSITION = 1;
     private static final double DEFAULT_MAX_N_RATIO = Double.POSITIVE_INFINITY;
     private static final int DEFAULT_MIN_READS_ON_EACH_STRAND = 0;
-    private static final double DEFAULT_MAX_NUMT_FRACTION = 0.85;
     private static final double DEFAULT_MIN_AF = 0;
 
     @Argument(fullName = MAX_EVENTS_IN_REGION_LONG_NAME, optional = true, doc = "Maximum events in a single assembly region.  Filter all variants if exceeded.")
@@ -80,7 +87,17 @@ public class M2FiltersArgumentCollection {
     public int uniqueAltReadCount = DEFAULT_MIN_UNIQUE_ALT_READS;
 
     @Argument(fullName = MIN_MEDIAN_MAPPING_QUALITY_LONG_NAME, optional = true, doc="Minimum median mapping quality of alt reads")
-    public int minMedianMappingQuality = DEFAULT_MIN_MEDIAN_MAPPING_QUALITY;
+    public int minMedianMappingQuality = -1;
+    public int getMinMedianMappingQuality() {
+        if (minMedianMappingQuality == -1) {
+            if (microbial) {
+                minMedianMappingQuality = DEFAULT_MIN_MEDIAN_MAPPING_QUALITY_FOR_MICROBIAL;
+            } else {
+                minMedianMappingQuality = DEFAULT_MIN_MEDIAN_MAPPING_QUALITY;
+            }
+        }
+        return minMedianMappingQuality;
+    }
 
     @Argument(fullName = MIN_MEDIAN_BASE_QUALITY_LONG_NAME, optional = true, doc="Minimum median base quality of alt reads")
     public int minMedianBaseQuality = DEFAULT_MIN_MEDIAN_BASE_QUALITY;

@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
+import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -7,15 +8,18 @@ import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
+import org.broadinstitute.hellbender.cmdline.ModeArgumentUtils;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.ReferenceInputArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
+import org.broadinstitute.hellbender.tools.walkers.annotator.HaplotypeFilteringAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
 import org.broadinstitute.hellbender.transformers.DRAGENMappingQualityReadTransformer;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
@@ -99,8 +103,8 @@ import java.util.Optional;
  *   -I input.bam \
  *   -O output.g.vcf.gz \
  *   -ERC GVCF \
- *   -G Standard \
- *   -G AS_Standard
+ *   -G StandardAnnotation \
+ *   -G AS_StandardAnnotation
  * </pre>
  *
  * <h4>Variant calling with <a href='https://software.broadinstitute.org/gatk/documentation/article?id=5484'>bamout</a> to show realigned reads</h4>
@@ -139,7 +143,7 @@ import java.util.Optional;
         programGroup = ShortVariantDiscoveryProgramGroup.class
 )
 @DocumentedFeature
-public final class HaplotypeCaller extends AssemblyRegionWalker {
+public class HaplotypeCaller extends AssemblyRegionWalker {
 
     @ArgumentCollection
     private HaplotypeCallerArgumentCollection hcArgs = new HaplotypeCallerArgumentCollection();
@@ -147,7 +151,9 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
     /**
      * A raw, unfiltered, highly sensitive callset in VCF format.
      */
-    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, doc = "File to which variants should be written")
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
+            shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
+            doc = "File to which variants should be written")
     public GATKPath outputVCF = null;
 
     private VariantContextWriter vcfWriter;
@@ -160,15 +166,31 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
     }
 
     /**
-     * This is being used to set the mapping quality filter when in dragen mode... there are problems here...
+     * This is being used to set the mapping quality filter when in dragen and/or flow mode. This is also where make alterations to the input arguments based on DragenMode.
      */
+    @Override
     protected String[] customCommandLineValidation() {
-        if (hcArgs.dragenMode) {
+        if ((hcArgs.isDragenGATKMode()) && hcArgs.isFlowBasedCallingMode()) {
+            throw new UserException("dragen mode and flow mode can't be both specified");
+        }
+
+        if (hcArgs.isDragenGATKMode()) {
             final GATKReadFilterPluginDescriptor readFilterPlugin =
                     getCommandLineParser().getPluginDescriptor(GATKReadFilterPluginDescriptor.class);
             Optional<ReadFilter> filterOptional = readFilterPlugin.getResolvedInstances().stream().filter(rf -> rf instanceof MappingQualityReadFilter).findFirst();
             filterOptional.ifPresent(readFilter -> ((MappingQualityReadFilter) readFilter).minMappingQualityScore = 1);
+            ModeArgumentUtils.setArgValues(
+                    getCommandLineParser(),
+                    hcArgs.dragen378Mode? hcArgs.getDragenVersion378NameValuePairs() : hcArgs.getDragenVersion3412NameValuePairs(),
+                    hcArgs.dragen378Mode? HaplotypeCallerArgumentCollection.DRAGEN_378_GATK_MODE_LONG_NAME : HaplotypeCallerArgumentCollection.DRAGEN_3412_GATK_MODE_LONG_NAME);
         }
+        if (hcArgs.isFlowBasedCallingMode()) {
+            ModeArgumentUtils.setArgValues(
+                    getCommandLineParser(),
+                    hcArgs.flowMode.getNameValuePairs(),
+                    HaplotypeCallerArgumentCollection.FLOW_GATK_MODE_LONG_NAME);
+        }
+
         return null;
     }
 
@@ -198,12 +220,20 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
     public Collection<Annotation> makeVariantAnnotations() {
         final boolean confidenceMode = hcArgs.emitReferenceConfidence != ReferenceConfidenceMode.NONE;
         final Collection<Annotation> annotations = super.makeVariantAnnotations();
+        if (hcArgs.filterAlleles) {
+            annotations.add(new HaplotypeFilteringAnnotation());
+        }
         return confidenceMode? HaplotypeCallerEngine.filterReferenceConfidenceAnnotations(annotations): annotations;
     }
 
     @Override
     public AssemblyRegionEvaluator assemblyRegionEvaluator() {
         return hcEngine;
+    }
+
+    @Override
+    public boolean shouldTrackPileupsForAssemblyRegions() {
+        return hcArgs.pileupDetectionArgs.usePileupDetection;
     }
 
     @Override
@@ -216,47 +246,9 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
             logger.warn("*************************************************************************");
         }
 
-        if (hcArgs.dragenMode) {
-            logger.warn("*************************************************************************");
-            logger.warn("* DRAGEN-GATK mode enabled                                              *");
-            logger.warn("* The following arguments have had their inputs overwritten:            *");
-            logger.warn("* --apply-frd                                                           *");
-            logger.warn("* --apply-bqd                                                           *");
-            logger.warn("* --transform-dragen-mapping-quality                                    *");
-            logger.warn("* --soft-clip-low-quality-ends                                          *");
-            logger.warn("* --mapping-quality-threshold-for-genotyping  1                         *");
-            logger.warn("* --minimum-mapping-quality  1                                          *");
-            logger.warn("* --allele-informative-reads-overlap-margin  1                          *");
-            logger.warn("* --disable-cap-base-qualities-to-map-quality                           *");
-            logger.warn("* --enable-dynamic-read-disqualification-for-genotyping                 *");
-            logger.warn("* --expected-mismatch-rate-for-read-disqualification  0.03              *");
-            logger.warn("* --genotype-assignment-method USE_POSTERIOR_PROBABILITIES              *");
-            logger.warn("* --padding-around-indels  150                                          *");
-            logger.warn("* --standard-min-confidence-threshold-for-calling 3.0                   *");
-            logger.warn("* --use-posteriors-to-calculate-qual                                    *");
-            logger.warn("* --allele-informative-reads-overlap-margin  1                          *");
-            logger.warn("*                                                                       *");
-            logger.warn("* If you would like to run DRAGEN-GATK with different inputs for any    *");
-            logger.warn("* of the above arguments please manually construct the command.         *");
-            logger.warn("*************************************************************************");
-            hcArgs.applyBQD = true;
-            hcArgs.applyFRD = true;
-            hcArgs.transformDRAGENMapQ = true;
-            hcArgs.softClipLowQualityEnds = true;
-            hcArgs.mappingQualityThreshold = 1;
-            hcArgs.informativeReadOverlapMargin = 1;
-            hcArgs.likelihoodArgs.disableCapReadQualitiesToMapQ = true;
-            hcArgs.likelihoodArgs.enableDynamicReadDisqualification = true;
-            hcArgs.likelihoodArgs.expectedErrorRatePerBase = 0.03;
-            hcArgs.standardArgs.genotypeArgs.genotypeAssignmentMethod = GenotypeAssignmentMethod.USE_POSTERIOR_PROBABILITIES;
-            hcArgs.standardArgs.genotypeArgs.STANDARD_CONFIDENCE_FOR_CALLING = 3.0;
-            hcArgs.standardArgs.genotypeArgs.usePosteriorProbabilitiesToCalculateQual = true;
-            assemblyRegionArgs.indelPaddingForGenotyping = 150;
-        }
-
         final VariantAnnotatorEngine variantAnnotatorEngine = new VariantAnnotatorEngine(makeVariantAnnotations(),
                 hcArgs.dbsnp.dbsnp, hcArgs.comps,  hcArgs.emitReferenceConfidence != ReferenceConfidenceMode.NONE, false);
-        hcEngine = new HaplotypeCallerEngine(hcArgs, assemblyRegionArgs, createOutputBamIndex, createOutputBamMD5, getHeaderForReads(), getReferenceReader(referenceArguments), variantAnnotatorEngine);
+        hcEngine = buildHaplotypeCallerEngine(hcArgs, assemblyRegionArgs, createOutputBamIndex, createOutputBamMD5, getHeaderForReads(), getReferenceReader(referenceArguments), variantAnnotatorEngine);
 
         // The HC engine will make the right kind (VCF or GVCF) of writer for us
         final SAMSequenceDictionary sequenceDictionary = getHeaderForReads().getSequenceDictionary();
@@ -264,7 +256,11 @@ public final class HaplotypeCaller extends AssemblyRegionWalker {
         hcEngine.writeHeader(vcfWriter, sequenceDictionary, getDefaultToolVCFHeaderLines());
     }
 
-    private static CachingIndexedFastaSequenceFile getReferenceReader(ReferenceInputArgumentCollection referenceArguments) {
+    protected HaplotypeCallerEngine buildHaplotypeCallerEngine(final HaplotypeCallerArgumentCollection hcArgs, final AssemblyRegionArgumentCollection assemblyRegionArgs, final boolean createOutputBamIndex, final boolean createOutputBamMD5, final SAMFileHeader headerForReads, final CachingIndexedFastaSequenceFile referenceReader, final VariantAnnotatorEngine variantAnnotatorEngine) {
+        return new HaplotypeCallerEngine(hcArgs, assemblyRegionArgs, createOutputBamIndex, createOutputBamMD5, getHeaderForReads(), getReferenceReader(referenceArguments), variantAnnotatorEngine);
+    }
+
+    protected static CachingIndexedFastaSequenceFile getReferenceReader(ReferenceInputArgumentCollection referenceArguments) {
         return new CachingIndexedFastaSequenceFile(referenceArguments.getReferenceSpecifier());
     }
 
