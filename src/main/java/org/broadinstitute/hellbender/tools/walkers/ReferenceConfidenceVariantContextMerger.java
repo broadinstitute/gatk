@@ -594,12 +594,6 @@ public final class ReferenceConfidenceVariantContextMerger {
                 } else if (GenotypeGVCFsEngine.excludeFromAnnotations(g)) {
                     genotypeBuilder.alleles(Collections.nCopies(ploidy, Allele.NO_CALL));
                 }
-
-                if ( preserveGermlineGenotypes ) {
-                    final List<Allele> remappedGTAlleles = g.getAlleles().stream().map(a -> (vc.getAlleleIndex(a) > -1 ? remappedAlleles.get(vc.getAlleleIndex(a)) : Allele.NO_CALL)).collect(Collectors.toList());
-                    genotypeBuilder.alleles(remappedGTAlleles);
-                }
-                genotypeBuilder.name(name);
             }
             else {  // doSomaticMerge
                 genotypeBuilder.noAttributes();
@@ -650,9 +644,7 @@ public final class ReferenceConfidenceVariantContextMerger {
                     }
                 }
             }
-
-            if ( ! preserveGermlineGenotypes ) {
-                genotypeBuilder.name(name);
+            genotypeBuilder.name(name);
             final List<Allele> originalGTAlleles = useRemappedAllelesForGenotyping ?
                     g.getAlleles().stream().map(a -> (vc.getAlleleIndex(a) > -1 ? remappedAlleles.get(vc.getAlleleIndex(a)) : Allele.NO_CALL)).collect(Collectors.toList()) :
                     g.getAlleles();
@@ -667,7 +659,6 @@ public final class ReferenceConfidenceVariantContextMerger {
                     genotypeBuilder, assignmentMethod,
                     g.hasLikelihoods() ? g.getLikelihoods().getAsVector() : null,
                     targetAlleles, originalGTAlleles, null);
-            }
             mergedGenotypes.add(genotypeBuilder.make());
         }
 

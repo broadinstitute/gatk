@@ -316,22 +316,22 @@ public abstract class ExtractCohort extends ExtractTool {
                     extraHeaderLines.add(FilterSensitivityTools.getTruthSensitivityHeader(truthSensitivityINDELThreshold, vqsLodINDELThreshold, GATKVCFConstants.INDEL));
                 }
             } else {
-                extraHeaderLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.CALIBRATION_SENSITIVITY_KEY));
+                extraHeaderLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_VQS_SENS_KEY));
                 if (truthSensitivitySNPThreshold == null) {
                     truthSensitivitySNPThreshold = FilterSensitivityTools.DEFAULT_TRUTH_SENSITIVITY_THRESHOLD_SNPS;
                 }
                 truthSensitivitySNPThreshold /= 100.0;
-                logger.info("Passing all SNP variants with " + GATKVCFConstants.CALIBRATION_SENSITIVITY_KEY + " < " + truthSensitivitySNPThreshold);
+                logger.info("Passing all SNP variants with " + GATKVCFConstants.AS_VQS_SENS_KEY + " < " + truthSensitivitySNPThreshold);
 
                 if (truthSensitivityINDELThreshold == null) {
                     truthSensitivityINDELThreshold = FilterSensitivityTools.DEFAULT_TRUTH_SENSITIVITY_THRESHOLD_INDELS;
                 }
                 truthSensitivityINDELThreshold /= 100.0;
-                logger.info("Passing all INDEL variants with " + GATKVCFConstants.CALIBRATION_SENSITIVITY_KEY + " < " + truthSensitivityINDELThreshold);
+                logger.info("Passing all INDEL variants with " + GATKVCFConstants.AS_VQS_SENS_KEY + " < " + truthSensitivityINDELThreshold);
 
-                extraHeaderLines.add(new VCFFilterHeaderLine(GATKVCFConstants.CALIBRATION_SENSITIVITY_FAILURE_SNP,
+                extraHeaderLines.add(new VCFFilterHeaderLine(GATKVCFConstants.VQS_SENS_FAILURE_SNP,
                         "Site failed SNP model calibration sensitivity cutoff (" + truthSensitivitySNPThreshold.toString() + ")"));
-                extraHeaderLines.add(new VCFFilterHeaderLine(GATKVCFConstants.CALIBRATION_SENSITIVITY_FAILURE_INDEL,
+                extraHeaderLines.add(new VCFFilterHeaderLine(GATKVCFConstants.VQS_SENS_FAILURE_INDEL,
                         "Site failed INDEL model calibration sensitivity cutoff (" + truthSensitivityINDELThreshold.toString() + ")"));
             }
         }

@@ -32,15 +32,15 @@ public class ExtractCohortLiteEngine extends ExtractCohortEngine {
     }
 
     String getAlleleSpecificVQSScoreKey() {
-        return GATKVCFConstants.CALIBRATION_SENSITIVITY_KEY;
+        return GATKVCFConstants.AS_VQS_SENS_KEY;
     }
 
     String getVqScoreSNPFailureFilterName() {
-        return GATKVCFConstants.CALIBRATION_SENSITIVITY_FAILURE_SNP;
+        return GATKVCFConstants.VQS_SENS_FAILURE_SNP;
     }
 
     String getVqScoreINDELFailureFilterName() {
-        return GATKVCFConstants.CALIBRATION_SENSITIVITY_FAILURE_INDEL;
+        return GATKVCFConstants.VQS_SENS_FAILURE_INDEL;
     }
 
     public ExtractCohortLiteEngine(final String projectID,
