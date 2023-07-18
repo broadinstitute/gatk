@@ -24,8 +24,9 @@ workflow GvsExtractCallset {
     String drop_state = "NONE"
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
-    Boolean use_interval_weights = true
-    File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
+    # If interval_weights_bed file is defined, it will be used to split the interval_list based on it.
+    # If undefiend, the interval_list will be split uniformly.
+    File? interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
 
     File? gatk_override
 
@@ -66,11 +67,13 @@ workflow GvsExtractCallset {
 
   String intervals_file_extension = if (zero_pad_output_vcf_filenames) then '-~{output_file_base_name}.vcf.gz.interval_list' else '-scattered.interval_list'
 
-  call Utils.ScaleXYBedValues {
-    input:
-      interval_weights_bed = interval_weights_bed,
-      x_bed_weight_scaling = x_bed_weight_scaling,
-      y_bed_weight_scaling = y_bed_weight_scaling
+  if (defined(interval_weights_bed)) {
+    call Utils.ScaleXYBedValues {
+      input:
+        interval_weights_bed = select_first([interval_weights_bed]),
+        x_bed_weight_scaling = x_bed_weight_scaling,
+        y_bed_weight_scaling = y_bed_weight_scaling
+    }
   }
 
   call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
@@ -107,7 +110,7 @@ workflow GvsExtractCallset {
       ref_fasta = reference,
       ref_fai = reference_index,
       ref_dict = reference_dict,
-      interval_weights_bed = if (use_interval_weights) then ScaleXYBedValues.xy_scaled_bed else none,
+      interval_weights_bed = ScaleXYBedValues.xy_scaled_bed,
       intervals_file_extension = intervals_file_extension,
       scatter_count = effective_scatter_count,
       output_gcs_dir = output_gcs_dir,

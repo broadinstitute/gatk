@@ -193,6 +193,7 @@ workflows:
          - ah_var_store
          - rsa_vs_982
          - rsa_jar_fix_230722
+         - gg_VS-991_IntervalListAWiring
    - name: GvsJointVariantCallsetCost
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCallsetCost.wdl
