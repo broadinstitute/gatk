@@ -18,13 +18,13 @@ public class ExtractCohortFilterRecord implements Locatable {
     private final String refAllele;
     private final String altAllele;
 
-    public ExtractCohortFilterRecord(GenericRecord genericRecord, final String vqScoreFieldName) {
+    public ExtractCohortFilterRecord(GenericRecord genericRecord, final String vqScoreFieldName, final String scoreFieldName) {
         this.location = Long.parseLong(genericRecord.get(SchemaUtils.LOCATION_FIELD_NAME).toString());
         this.contig = SchemaUtils.decodeContig(location);
         this.start = SchemaUtils.decodePosition(location);
         this.end = start;
 
-        this.score = Double.parseDouble(genericRecord.get(SchemaUtils.SCORE).toString());
+        this.score = (scoreFieldName != null) ? Double.parseDouble(genericRecord.get(SchemaUtils.SCORE).toString()) : null;
         this.vqScore = Double.parseDouble(genericRecord.get(vqScoreFieldName).toString());
         this.yng = genericRecord.get(SchemaUtils.YNG_STATUS).toString();
 

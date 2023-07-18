@@ -27,6 +27,12 @@ public class ExtractCohortLiteEngine extends ExtractCohortEngine {
         return SchemaUtils.VQSLITE_YNG_FIELDS;
     }
 
+    String getScoreFieldName() { return SchemaUtils.SCORE; }
+
+    String getScoreKey() {
+        return GATKVCFConstants.SCORE_KEY;
+    }
+
     String getVQScoreFieldName() {
         return SchemaUtils.CALIBRATION_SENSITIVITY;
     }
@@ -42,8 +48,6 @@ public class ExtractCohortLiteEngine extends ExtractCohortEngine {
     String getVqScoreINDELFailureFilterName() {
         return GATKVCFConstants.CALIBRATION_SENSITIVITY_FAILURE_INDEL;
     }
-
-    boolean hasScoreField() { return true; }
 
     public ExtractCohortLiteEngine(final String projectID,
                                    final VCFHeader vcfHeader,

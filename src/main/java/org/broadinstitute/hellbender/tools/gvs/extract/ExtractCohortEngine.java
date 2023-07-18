@@ -85,6 +85,14 @@ public class ExtractCohortEngine {
         return SchemaUtils.YNG_FIELDS;
     }
 
+    String getScoreFieldName() {
+        return null;
+    }
+
+    String getScoreKey() {
+        return null;
+    }
+
     String getVQScoreFieldName() {
         return SchemaUtils.VQSLOD;
     }
@@ -100,8 +108,6 @@ public class ExtractCohortEngine {
     String getVqScoreINDELFailureFilterName() {
         return GATKVCFConstants.VQSR_FAILURE_INDEL;
     }
-
-    boolean hasScoreField() { return false; }
 
     public ExtractCohortEngine(final String projectID,
                                final VCFHeader vcfHeader,
@@ -228,7 +234,7 @@ public class ExtractCohortEngine {
             try (StorageAPIAvroReader reader = new StorageAPIAvroReader(filterSetInfoTableRef, rowRestrictionWithFilterSetName, projectID)) {
 
                 for (final GenericRecord queryRow : reader) {
-                    final ExtractCohortFilterRecord filterRow = new ExtractCohortFilterRecord(queryRow, getVQScoreFieldName());
+                    final ExtractCohortFilterRecord filterRow = new ExtractCohortFilterRecord(queryRow, getVQScoreFieldName(), getScoreFieldName());
 
                     final long location = filterRow.getLocation();
                     final Double score = filterRow.getScore();
@@ -606,9 +612,9 @@ public class ExtractCohortEngine {
 
         final VariantContextBuilder builder = new VariantContextBuilder(mergedVC);
 
-        if (hasScoreField()) {
+        if (getScoreFieldName() != null) {
             // TODO - should this be a constant in ExtractCohortLiteEngine?
-            builder.attribute(GATKVCFConstants.SCORE_KEY, relevantScoreMap.values().stream().map(val -> val.equals(Double.NaN) ? VCFConstants.EMPTY_INFO_FIELD : val.toString()).collect(Collectors.toList()));
+            builder.attribute(getScoreKey(), relevantScoreMap.values().stream().map(val -> val.equals(Double.NaN) ? VCFConstants.EMPTY_INFO_FIELD : val.toString()).collect(Collectors.toList()));
         }
         builder.attribute(getAlleleSpecificVQSScoreKey(), relevantVQScoreMap.values().stream().map(val -> val.equals(Double.NaN) ? VCFConstants.EMPTY_INFO_FIELD : val.toString()).collect(Collectors.toList()));
         builder.attribute(GATKVCFConstants.AS_YNG_STATUS_KEY, new ArrayList<>(relevantYngMap.values()));
