@@ -179,7 +179,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_vs_997
+         - bulk_ingest_staging
    - name: GvsJointVariantCallsetCost
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCallsetCost.wdl
@@ -187,6 +187,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - bulk_ingest_staging
    - name: GvsCalculatePrecisionAndSensitivity
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCalculatePrecisionAndSensitivity.wdl
