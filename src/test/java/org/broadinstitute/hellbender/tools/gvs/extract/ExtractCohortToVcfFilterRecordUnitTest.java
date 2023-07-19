@@ -14,7 +14,7 @@ public class ExtractCohortToVcfFilterRecordUnitTest extends GATKBaseTest {
     @Test
     public void testExtractCohortFilterVQSRClassicRecord() {
         GenericRecord inputGenericRecord = new AvroFileReader(new GATKPath(getToolTestDataDir() + "test_input_vqsr_classic.avro")).next();
-        ExtractCohortFilterRecord allDefinedRecord = new ExtractCohortFilterRecord(inputGenericRecord, SchemaUtils.VQSLOD);
+        ExtractCohortFilterRecord allDefinedRecord = new ExtractCohortFilterRecord(inputGenericRecord, SchemaUtils.VQSLOD, null);
 
         Assert.assertEquals(allDefinedRecord.getContig(), "chr1");
         Assert.assertEquals(allDefinedRecord.getStart(), 183706);
@@ -29,7 +29,7 @@ public class ExtractCohortToVcfFilterRecordUnitTest extends GATKBaseTest {
     @Test
     public void testExtractCohortFilterVQSRLiteRecord() {
         GenericRecord inputGenericRecord = new AvroFileReader(new GATKPath(getToolTestDataDir() + "test_input_vqsr_lite.avro")).next();
-        ExtractCohortFilterRecord allDefinedRecord = new ExtractCohortFilterRecord(inputGenericRecord, SchemaUtils.CALIBRATION_SENSITIVITY);
+        ExtractCohortFilterRecord allDefinedRecord = new ExtractCohortFilterRecord(inputGenericRecord, SchemaUtils.CALIBRATION_SENSITIVITY, SchemaUtils.SCORE);
 
         Assert.assertEquals(allDefinedRecord.getContig(), "chr1");
         Assert.assertEquals(allDefinedRecord.getStart(), 183706);
