@@ -43,7 +43,7 @@ public class ExtractCohortFilterRecord implements Locatable {
 
     public long getLocation() { return this.location; }
 
-    public Double getScore() { return score; }
+    public double getScore() { return score; }
 
     public double getVqScore() { return vqScore; }
 
