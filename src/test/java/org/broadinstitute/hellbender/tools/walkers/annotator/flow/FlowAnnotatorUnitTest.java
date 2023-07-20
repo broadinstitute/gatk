@@ -56,7 +56,7 @@ public class FlowAnnotatorUnitTest extends GATKBaseTest {
                         "NA", "", "0", "", "GTATC", "ACATC", "0.3", "cycle-skip", "snp"
                 },
                 {
-                        // not hmer indel
+                        // hmer indel (1->0)
                         "TATCT CA TTGACCAA", "C",
                         "del", "1", "1", "A", "ATCTC", "TTGAC", "0.3", "NA", "h-indel"
                 },
