@@ -237,7 +237,7 @@ public class ExtractCohortEngine {
                     final ExtractCohortFilterRecord filterRow = new ExtractCohortFilterRecord(queryRow, getVQScoreFieldName(), getScoreFieldName());
 
                     final long location = filterRow.getLocation();
-                    final Double score = filterRow.getScore();
+                    final Double score = (getScoreFieldName() != null) ? filterRow.getScore() : null;
                     final Double vqsScore = filterRow.getVqScore();
                     final String yng = filterRow.getYng();
                     final Allele ref = Allele.create(filterRow.getRefAllele(), true);
