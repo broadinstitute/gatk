@@ -22,6 +22,7 @@ public class ExtractCohortToVcfFilterRecordUnitTest extends GATKBaseTest {
         Assert.assertEquals(allDefinedRecord.getLocation(), Long.parseLong("1000000183706"));
         Assert.assertEquals(allDefinedRecord.getRefAllele(), "G");
         Assert.assertEquals(allDefinedRecord.getAltAllele(), "GT");
+        Assert.assertNull(allDefinedRecord.getScore());
         Assert.assertEquals(allDefinedRecord.getVqScore(), Double.parseDouble("20.2295"));
         Assert.assertEquals(allDefinedRecord.getYng(), "G");
     }
@@ -37,7 +38,7 @@ public class ExtractCohortToVcfFilterRecordUnitTest extends GATKBaseTest {
         Assert.assertEquals(allDefinedRecord.getLocation(), Long.parseLong("1000004390450"));
         Assert.assertEquals(allDefinedRecord.getRefAllele(), "G");
         Assert.assertEquals(allDefinedRecord.getAltAllele(), "T");
-        Assert.assertEquals(allDefinedRecord.getScore(), Double.parseDouble("-0.4698"));
+        Assert.assertEquals(allDefinedRecord.getScore().doubleValue(), Double.parseDouble("-0.4698"));
         Assert.assertEquals(allDefinedRecord.getVqScore(), Double.parseDouble("0.8285"));
         Assert.assertEquals(allDefinedRecord.getYng(), "Y");
     }
