@@ -237,7 +237,7 @@ public class ExtractCohortEngine {
                     final ExtractCohortFilterRecord filterRow = new ExtractCohortFilterRecord(queryRow, getVQScoreFieldName(), getScoreFieldName());
 
                     final long location = filterRow.getLocation();
-                    final Double score = (getScoreFieldName() != null) ? filterRow.getScore() : null;
+                    final Double score = filterRow.getScore();
                     final Double vqsScore = filterRow.getVqScore();
                     final String yng = filterRow.getYng();
                     final Allele ref = Allele.create(filterRow.getRefAllele(), true);
@@ -613,7 +613,6 @@ public class ExtractCohortEngine {
         final VariantContextBuilder builder = new VariantContextBuilder(mergedVC);
 
         if (getScoreFieldName() != null) {
-            // TODO - should this be a constant in ExtractCohortLiteEngine?
             builder.attribute(getScoreKey(), relevantScoreMap.values().stream().map(val -> val.equals(Double.NaN) ? VCFConstants.EMPTY_INFO_FIELD : val.toString()).collect(Collectors.toList()));
         }
         builder.attribute(getAlleleSpecificVQSScoreKey(), relevantVQScoreMap.values().stream().map(val -> val.equals(Double.NaN) ? VCFConstants.EMPTY_INFO_FIELD : val.toString()).collect(Collectors.toList()));
