@@ -14,7 +14,7 @@ public class ExtractCohortToVcfFilterRecordUnitTest extends GATKBaseTest {
     @Test
     public void testExtractCohortFilterVQSRClassicRecord() {
         GenericRecord inputGenericRecord = new AvroFileReader(new GATKPath(getToolTestDataDir() + "test_input_vqsr_classic.avro")).next();
-        ExtractCohortFilterRecord allDefinedRecord = new ExtractCohortFilterRecord(inputGenericRecord, SchemaUtils.VQSLOD);
+        ExtractCohortFilterRecord allDefinedRecord = new ExtractCohortFilterRecord(inputGenericRecord, SchemaUtils.VQSLOD, null);
 
         Assert.assertEquals(allDefinedRecord.getContig(), "chr1");
         Assert.assertEquals(allDefinedRecord.getStart(), 183706);
@@ -22,6 +22,7 @@ public class ExtractCohortToVcfFilterRecordUnitTest extends GATKBaseTest {
         Assert.assertEquals(allDefinedRecord.getLocation(), Long.parseLong("1000000183706"));
         Assert.assertEquals(allDefinedRecord.getRefAllele(), "G");
         Assert.assertEquals(allDefinedRecord.getAltAllele(), "GT");
+        Assert.assertNull(allDefinedRecord.getScore());
         Assert.assertEquals(allDefinedRecord.getVqScore(), Double.parseDouble("20.2295"));
         Assert.assertEquals(allDefinedRecord.getYng(), "G");
     }
@@ -29,15 +30,16 @@ public class ExtractCohortToVcfFilterRecordUnitTest extends GATKBaseTest {
     @Test
     public void testExtractCohortFilterVQSRLiteRecord() {
         GenericRecord inputGenericRecord = new AvroFileReader(new GATKPath(getToolTestDataDir() + "test_input_vqsr_lite.avro")).next();
-        ExtractCohortFilterRecord allDefinedRecord = new ExtractCohortFilterRecord(inputGenericRecord, SchemaUtils.CALIBRATION_SENSITIVITY);
+        ExtractCohortFilterRecord allDefinedRecord = new ExtractCohortFilterRecord(inputGenericRecord, SchemaUtils.CALIBRATION_SENSITIVITY, SchemaUtils.SCORE);
 
         Assert.assertEquals(allDefinedRecord.getContig(), "chr1");
-        Assert.assertEquals(allDefinedRecord.getStart(), 183706);
-        Assert.assertEquals(allDefinedRecord.getEnd(), 183706);
-        Assert.assertEquals(allDefinedRecord.getLocation(), Long.parseLong("1000000183706"));
+        Assert.assertEquals(allDefinedRecord.getStart(), 4390450);
+        Assert.assertEquals(allDefinedRecord.getEnd(), 4390450);
+        Assert.assertEquals(allDefinedRecord.getLocation(), Long.parseLong("1000004390450"));
         Assert.assertEquals(allDefinedRecord.getRefAllele(), "G");
-        Assert.assertEquals(allDefinedRecord.getAltAllele(), "GT");
-        Assert.assertEquals(allDefinedRecord.getVqScore(), Double.parseDouble("0.9389"));
-        Assert.assertEquals(allDefinedRecord.getYng(), "G");
+        Assert.assertEquals(allDefinedRecord.getAltAllele(), "T");
+        Assert.assertEquals(allDefinedRecord.getScore().doubleValue(), Double.parseDouble("-0.4698"));
+        Assert.assertEquals(allDefinedRecord.getVqScore(), Double.parseDouble("0.8285"));
+        Assert.assertEquals(allDefinedRecord.getYng(), "Y");
     }
 }

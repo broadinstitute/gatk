@@ -12,17 +12,19 @@ public class ExtractCohortFilterRecord implements Locatable {
     private final Integer start;
     private final Integer end;
 
+    private final Double score;
     private final Double vqScore;
     private final String yng;
     private final String refAllele;
     private final String altAllele;
 
-    public ExtractCohortFilterRecord(GenericRecord genericRecord, final String vqScoreFieldName) {
+    public ExtractCohortFilterRecord(GenericRecord genericRecord, final String vqScoreFieldName, final String scoreFieldName) {
         this.location = Long.parseLong(genericRecord.get(SchemaUtils.LOCATION_FIELD_NAME).toString());
         this.contig = SchemaUtils.decodeContig(location);
         this.start = SchemaUtils.decodePosition(location);
         this.end = start;
 
+        this.score = (scoreFieldName != null) ? Double.parseDouble(genericRecord.get(SchemaUtils.SCORE).toString()) : null;
         this.vqScore = Double.parseDouble(genericRecord.get(vqScoreFieldName).toString());
         this.yng = genericRecord.get(SchemaUtils.YNG_STATUS).toString();
 
@@ -40,6 +42,8 @@ public class ExtractCohortFilterRecord implements Locatable {
     public int getEnd() { return this.end; }
 
     public long getLocation() { return this.location; }
+
+    public Double getScore() { return score; }
 
     public double getVqScore() { return vqScore; }
 

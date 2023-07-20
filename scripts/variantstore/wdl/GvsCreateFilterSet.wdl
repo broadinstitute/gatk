@@ -38,7 +38,7 @@ workflow GvsCreateFilterSet {
   String fq_filter_sites_destination_table =    "~{project_id}.~{dataset_name}.filter_set_sites"
   String fq_filter_set_info_destination_table = "~{project_id}.~{dataset_name}.filter_set_info"
 
-  String filter_set_info_destination_table_schema = "filter_set_name:string,type:string,location:integer,ref:string,alt:string,calibration_sensitivity:float,vqslod:float,culprit:string,training_label:string,yng_status:string"
+  String filter_set_info_destination_table_schema = "filter_set_name:string,type:string,location:integer,ref:string,alt:string,calibration_sensitivity:float,score:float,vqslod:float,culprit:string,training_label:string,yng_status:string"
 
   call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
     input:
@@ -186,7 +186,8 @@ workflow GvsCreateFilterSet {
         INDEL_VQSR_max_gaussians_override = INDEL_VQSR_CLASSIC_max_gaussians_override,
         INDEL_VQSR_mem_gb_override = INDEL_VQSR_CLASSIC_mem_gb_override,
         SNP_VQSR_max_gaussians_override = SNP_VQSR_CLASSIC_max_gaussians_override,
-        SNP_VQSR_mem_gb_override = SNP_VQSR_CLASSIC_mem_gb_override
+        SNP_VQSR_mem_gb_override = SNP_VQSR_CLASSIC_mem_gb_override,
+        gatk_override = gatk_override
     }
   }
 
@@ -293,7 +294,7 @@ task ExtractFilterTask {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_07_17"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_07_20"
     memory: "7 GB"
     disks: "local-disk 10 HDD"
     bootDiskSizeGb: 15
