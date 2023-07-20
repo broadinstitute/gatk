@@ -27,7 +27,8 @@ public class FlowAnnotatorUnitTest extends GATKBaseTest {
             new HmerIndelNuc(),
             new HmerMotifs(),
             new GcContent(),
-            new CycleSkipStatus()
+            new CycleSkipStatus(),
+            new VariantType()
     };
 
     @DataProvider(name = "testData")
@@ -55,9 +56,9 @@ public class FlowAnnotatorUnitTest extends GATKBaseTest {
                         "NA", "", "0", "", "GTATC", "ACATC", "0.3", "cycle-skip", "snp"
                 },
                 {
-                        // not hmer indel
+                        // hmer indel (1->0)
                         "TATCT CA TTGACCAA", "C",
-                        "del", "1", "1", "A", "ATCTC", "TTGAC", "0.3", "NA", "non-h-indel"
+                        "del", "1", "1", "A", "ATCTC", "TTGAC", "0.3", "NA", "h-indel"
                 },
                 {
                         // del hmer indel
@@ -99,7 +100,7 @@ public class FlowAnnotatorUnitTest extends GATKBaseTest {
         // check that all expected attributes are there
         String[]        testResults = {indelClass, indelLength, hmerIndelLength, hmerIndelNuc,
                 leftMotif, rightMotif, gcContent, cycleskipStatus, variantType};
-        for ( int n = 0 ; n < 8 ; n++ ) {
+        for ( int n = 0 ; n < 9 ; n++ ) {
             String       key = expectedAttrs.get(n);
             String       elem = testResults[n];
             String       keyMsg = "on " + key + " " + msg;
