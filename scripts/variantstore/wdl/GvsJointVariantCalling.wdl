@@ -10,6 +10,9 @@ workflow GvsJointVariantCalling {
         Array[File] input_vcfs
         Array[File] input_vcf_indexes
         String call_set_identifier
+        File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
+        Boolean use_interval_weights = true
+        File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
         String? extract_output_gcs_dir
         String drop_state = "FORTY"
         Boolean use_classic_VQSR = true
@@ -40,9 +43,6 @@ workflow GvsJointVariantCalling {
     }
     # This is the most updated snapshot of the code as of July 20, 2023
     File gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-742-gdb62acf-SNAPSHOT-local.jar"
-    File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
-
-    File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
 
     call GvsUnified.GvsUnified {
         input:

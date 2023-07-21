@@ -7,28 +7,44 @@ workflow GvsQuickstartVcfIntegration {
 
     input {
         String branch_name
-        File interval_list
+        Boolean use_default_dockers = true  # enabled for testing.
+        Boolean is_wgs = false # defaulting to exomes for testing
         String expected_output_prefix
         Boolean use_VQSR_lite = true
         Boolean extract_do_not_filter_override = true
 
-        Array[String] external_sample_names = [
-                                              "ERS4367795",
-                                              "ERS4367796",
-                                              "ERS4367797",
-                                              ]
+        Array[String] wgs_external_sample_names = [
+                                                  "ERS4367795",
+                                                  "ERS4367796",
+                                                  "ERS4367797",
+                                                  ]
+      Array[String] exome_external_sample_names = [
+                                                  "NA12878",
+                                                  "NA12891",
+                                                  "NA12892",
+                                                  ]
 
-        Array[File] input_vcfs = [
-                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00405.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
-                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00408.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
-                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00418.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
-                                 ]
+        Array[File] wgs_input_vcfs = [
+                                     "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00405.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
+                                     "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00408.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
+                                     "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00418.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
+                                     ]
+        Array[File] exome_input_vcfs = [
+                                     "gs://gvs-internal-scratch/ggrant/exomes_for_integration_test/NA12878.rb.g.vcf.gz",
+                                     "gs://gvs-internal-scratch/ggrant/exomes_for_integration_test/NA12891.rb.g.vcf.gz",
+                                     "gs://gvs-internal-scratch/ggrant/exomes_for_integration_test/NA12892.rb.g.vcf.gz",
+                                     ]
 
-        Array[File] input_vcf_indexes = [
-                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00405.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
-                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00408.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
-                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00418.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
-                                        ]
+        Array[File] wgs_input_vcf_indexes = [
+                                            "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00405.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
+                                            "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00408.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
+                                            "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00418.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
+                                            ]
+        Array[File] exome_input_vcf_indexes = [
+                                               "gs://gvs-internal-scratch/ggrant/exomes_for_integration_test/NA12878.rb.g.vcf.gz.tbi",
+                                               "gs://gvs-internal-scratch/ggrant/exomes_for_integration_test/NA12891.rb.g.vcf.gz.tbi",
+                                               "gs://gvs-internal-scratch/ggrant/exomes_for_integration_test/NA12892.rb.g.vcf.gz.tbi",
+                                               ]
 
         Int? extract_scatter_count
         String drop_state = "FORTY"
@@ -37,7 +53,17 @@ workflow GvsQuickstartVcfIntegration {
     }
     String project_id = "gvs-internal"
 
-    if (!defined(gatk_override)) {
+    File interval_list = if (is_wgs) then "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list" else "gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list"
+    Boolean use_interval_weights = is_wgs
+    # TODO - someday? There will be a weights bed for exomes
+    File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
+
+    # WDL 1.0 trick to set a variable ('none') to be undefined.
+    if (false) {
+      File? none = ""
+    }
+
+    if (!use_default_dockers && !defined(gatk_override)) {
       call Utils.BuildGATKJar {
         input:
           branch_name = branch_name,
@@ -56,10 +82,10 @@ workflow GvsQuickstartVcfIntegration {
             call_set_identifier = branch_name,
             dataset_name = CreateDataset.dataset_name,
             project_id = project_id,
-            external_sample_names = external_sample_names,
-            gatk_override = select_first([gatk_override, BuildGATKJar.jar]),
-            input_vcfs = input_vcfs,
-            input_vcf_indexes = input_vcf_indexes,
+            external_sample_names = if (is_wgs) then wgs_external_sample_names else exome_external_sample_names,
+            gatk_override = if (use_default_dockers) then none else select_first([gatk_override, BuildGATKJar.jar]),
+            input_vcfs = if (is_wgs) then wgs_input_vcfs else exome_input_vcfs,
+            input_vcf_indexes = if (is_wgs) then wgs_input_vcf_indexes else exome_input_vcfs,
             filter_set_name = "quickit",
             use_VQSR_lite = use_VQSR_lite,
             extract_table_prefix = "quickit",

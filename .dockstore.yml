@@ -214,6 +214,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - gg_VS-931_ExomeIntegrationTest
    - name: GvsQuickstartHailIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartHailIntegration.wdl
