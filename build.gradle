@@ -12,7 +12,7 @@ plugins {
     id 'maven-publish'
     id 'signing'
     id "jacoco"
-    id "de.undercouch.download" version "4.1.2" //used for downloading GSA lib
+    id "de.undercouch.download" version "5.4.0" //used for downloading GSA lib
     id "com.github.johnrengelman.shadow" version "7.1.1"    //used to build the shadow and sparkJars
     id "com.github.ben-manes.versions" version "0.12.0" //used for identifying dependencies that need updating
     id 'com.palantir.git-version' version '0.5.1' //version helper
@@ -20,7 +20,6 @@ plugins {
 
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
-import de.undercouch.gradle.tasks.download.Download
 import java.time.format.DateTimeFormatter
 
 mainClassName = "org.broadinstitute.hellbender.Main"
@@ -456,8 +455,10 @@ test {
     jvmArgs = testConfigurationJVMArgs
 }
 
-//add gatk launcher script to the jar as a resource
+
 processResources {
+    dependsOn(downloadGsaLibFile)
+    //add gatk launcher script to the jar as a resource
     from("gatk")
 }
 
