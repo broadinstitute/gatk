@@ -455,9 +455,10 @@ test {
     jvmArgs = testConfigurationJVMArgs
 }
 
-//add gatk launcher script to the jar as a resource
+
 processResources {
     dependsOn(downloadGsaLibFile)
+    //add gatk launcher script to the jar as a resource
     from("gatk")
 }
 
