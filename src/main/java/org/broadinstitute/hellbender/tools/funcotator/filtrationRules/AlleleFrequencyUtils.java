@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.funcotator.filtrationRules;
 import org.broadinstitute.hellbender.tools.funcotator.FilterFuncotations.AlleleFrequencyDataSource;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -27,7 +28,10 @@ public abstract class AlleleFrequencyUtils {
         }
         else {
             return (funcotations, variant) -> {
-                final Map<String, String> condensedFuncotations = funcotations.stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                final Map<String, List<String>> condensedFuncotations = funcotations.stream().collect(
+                        Collectors.groupingBy(Map.Entry::getKey,
+                                              Collectors.mapping(Map.Entry::getValue, Collectors.toList()))
+                );
                 return (!AlleleFrequencyGnomadUtils.allFrequenciesFiltered(condensedFuncotations)
                         && AlleleFrequencyGnomadUtils.getMaxMinorAlleleFreq(condensedFuncotations) <= maxMaf);
             };

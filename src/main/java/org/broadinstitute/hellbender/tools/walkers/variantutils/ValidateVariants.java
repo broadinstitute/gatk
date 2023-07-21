@@ -12,6 +12,8 @@ import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
+import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
+import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.ReadsContext;
@@ -188,16 +190,31 @@ public final class ValidateVariants extends VariantWalker {
     Boolean VALIDATE_GVCF = false;
 
     /**
+     * Fail if GVCF contains positions that overlap. Overlapping variants are allowed because they are assumed to be on
+     * separate haplotypes.
+     */
+    @Argument(fullName = "fail-gvcf-on-overlap",
+            shortName = "no-overlaps",
+            doc = "Fail if GVCF contains positions that overlap (except two variants overlapping)",
+            optional = true,
+            mutex = DO_NOT_VALIDATE_FILTERED_RECORDS)
+    Boolean FAIL_ON_OVERLAP = false;
+
+    /**
      * Contains final set of validation to apply.
      */
     private Collection<ValidationType> validationTypes;
 
     private GenomeLocSortedSet genomeLocSortedSet;
+    private CachingIndexedFastaSequenceFile referenceReader;
 
     // information to keep track of when validating a GVCF
     private SimpleInterval previousInterval;
     private int previousStart = -1;
     private String previousContig = null;
+    private boolean previousIntervalIsReference = true;
+    private boolean sawOverlap = false;
+    private SimpleInterval firstOverlap;
 
     @Override
     public void onTraversalStart() {
@@ -222,6 +239,9 @@ public final class ValidateVariants extends VariantWalker {
             logger.warn("REF validation cannot be done because no reference file was provided");
             logger.warn("Other possible validations will still be performed");
         }
+        if(hasReference()) {
+            referenceReader = ReferenceUtils.createReferenceReader(referenceArguments.getReferenceSpecifier());
+        }
     }
 
     @Override
@@ -233,7 +253,7 @@ public final class ValidateVariants extends VariantWalker {
         final Allele reportedRefAllele = vc.getReference();
         final int refLength = reportedRefAllele.length();
 
-        final Allele observedRefAllele = hasReference() ? Allele.create(Arrays.copyOf(ref.getBases(), refLength)) : null;
+        final Allele observedRefAllele = hasReference() ? Allele.create(ReferenceUtils.getRefBasesAtPosition(referenceReader, vc.getContig(), vc.getStart(), refLength)) : null;
 
         final Set<String> rsIDs = getRSIDs(featureContext);
 
@@ -242,10 +262,18 @@ public final class ValidateVariants extends VariantWalker {
 
             validateVariantsOrder(vc);
 
+            final boolean thisIntervalIsReference =  vc.getAlternateAlleles().size() == 1 && vc.getAlternateAllele(0).equals(Allele.NON_REF_ALLELE);
+
             // GenomeLocSortedSet will automatically merge intervals that are overlapping when setting `mergeIfIntervalOverlaps`
             // to true.  In a GVCF most blocks are adjacent to each other so they wouldn't normally get merged.  We check
             // if the current record is adjacent to the previous record and "overlap" them if they are so our set is as
             // small as possible while still containing the same bases.
+            if (previousInterval != null && previousInterval.overlapsWithMargin(refInterval, 0) &&
+                    (previousIntervalIsReference || thisIntervalIsReference)) {
+                logger.warn("Current interval " + refInterval.toString() + " overlaps previous interval ending at " + previousInterval.getEnd());
+                sawOverlap = true;
+                firstOverlap = refInterval;
+            }
             final int start = (previousInterval != null && previousInterval.overlapsWithMargin(refInterval, 1)) ?
                     previousInterval.getStart() : refInterval.getStart();
             final int end = (previousInterval != null && previousInterval.overlapsWithMargin(refInterval, 1)) ?
@@ -255,6 +283,7 @@ public final class ValidateVariants extends VariantWalker {
 
             previousInterval = new SimpleInterval(possiblyMergedGenomeLoc);
             previousStart = vc.getStart();
+            previousIntervalIsReference = thisIntervalIsReference;
             validateGVCFVariant(vc);
         }
 
@@ -281,9 +310,14 @@ public final class ValidateVariants extends VariantWalker {
 
             final GenomeLocSortedSet uncoveredIntervals = intervalArgumentGenomeLocSortedSet.subtractRegions(genomeLocSortedSet);
             if (uncoveredIntervals.coveredSize() > 0) {
-                final UserException e = new UserException("A GVCF must cover the entire region. Found " + uncoveredIntervals.coveredSize() +
+                final UserException e = new UserException.ValidationFailure("A GVCF must cover the entire region. Found " + uncoveredIntervals.coveredSize() +
                         " loci with no VariantContext covering it. The first uncovered segment is:" +
                         uncoveredIntervals.iterator().next());
+                throwOrWarn(e);
+            }
+            if (FAIL_ON_OVERLAP && sawOverlap) {
+                final UserException e = new UserException.ValidationFailure("This GVCF contained overlapping reference blocks.  The first overlapping interval is " +
+                        firstOverlap.toString());
                 throwOrWarn(e);
             }
         }

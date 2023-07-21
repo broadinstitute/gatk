@@ -1,22 +1,33 @@
 
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
+import com.google.common.annotations.VisibleForTesting;
+import htsjdk.samtools.Cigar;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
-import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFConstants;
+import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
+import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
+import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.AbstractReadThreadingGraph;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.haplotype.Event;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
+import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
+import org.broadinstitute.hellbender.utils.read.CigarUtils;
+import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Collection of read assembly using several kmerSizes.
@@ -33,9 +44,13 @@ import java.util.*;
  * @author Valentin Ruano-Rubio &lt;valentin@broadinstitute.com&gt;
  */
 public final class AssemblyResultSet {
-
+    public static final Comparator<Event> HAPLOTYPE_EVENT_COMPARATOR = Comparator.comparingInt(Event::getStart)
+            // Decide arbitrarily so as not to accidentally throw away overlapping variants
+            .thenComparingInt(e -> e.refAllele().length())
+            .thenComparing(e -> e.altAllele());
     private final Map<Integer,AssemblyResult> assemblyResultByKmerSize;
     private final Set<Haplotype> haplotypes;
+    private Set<Haplotype> originalAssemblyHaps = new LinkedHashSet<>();
     private final Map<Haplotype,AssemblyResult> assemblyResultByHaplotype;
     private AssemblyRegion regionForGenotyping;
     private byte[] fullReferenceWithPadding;
@@ -43,10 +58,13 @@ public final class AssemblyResultSet {
     private boolean variationPresent;
     private Haplotype refHaplotype;
     private final SortedSet<Integer>  kmerSizes;
-    private SortedSet<VariantContext> variationEvents;
+    private SortedSet<Event> variationEvents;
     private OptionalInt lastMaxMnpDistanceUsed = OptionalInt.empty();
     private boolean debug;
     private static final Logger logger = LogManager.getLogger(AssemblyResultSet.class);
+    public static final OneShotLogger haplotypeDeletionWarningLogger = new OneShotLogger(AssemblyBasedCallerUtils.class);
+    private LongHomopolymerHaplotypeCollapsingEngine haplotypeCollapsingEngine; // this is nullable - indicating no collapsing engine (flow-based specific)
+    private boolean isPartiallyDeterminedList = false;
 
     /**
      * Constructs a new empty assembly result set.
@@ -102,6 +120,8 @@ public final class AssemblyResultSet {
     }
 
     private Map<Haplotype, Haplotype> calculateOriginalByTrimmedHaplotypes(final Locatable span) {
+
+
         if ( debug ) {
             logger.info("Trimming active region " + getRegionForGenotyping() + " with " + getHaplotypeCount() + " haplotypes");
         }
@@ -129,15 +149,22 @@ public final class AssemblyResultSet {
         return sortedOriginalByTrimmedHaplotypes;
     }
 
+    // trim haplotypes to span merging haplotypes that are equal in bases
     private Map<Haplotype, Haplotype> trimDownHaplotypes(final Locatable span, final List<Haplotype> haplotypeList) {
+
         final Map<Haplotype,Haplotype> originalByTrimmedHaplotypes = new HashMap<>();
 
+        // Note that two haplotypes one of which is marked as reference are different,
+        // so trivially after trimming duplicate haplotypes could occur. We remove
+        // these duplcations. If one of the haplotypes before trimming was marked as
+        // reference - we mark the trimmed haplotype reference
+
         for ( final Haplotype h : haplotypeList ) {
-            final Haplotype trimmed = h.trim(span);
+            final Haplotype trimmed = h.trim(span, true);
 
             if ( trimmed != null ) {
                 if (originalByTrimmedHaplotypes.containsKey(trimmed)) {
-                    if (trimmed.isReference()) {
+                    if (h.isReference()) {
                         originalByTrimmedHaplotypes.remove(trimmed);
                         originalByTrimmedHaplotypes.put(trimmed, h);
                     }
@@ -151,7 +178,22 @@ public final class AssemblyResultSet {
                         " because it starts with or ends with an insertion or deletion when trimmed to " + span);
             }
         }
-        return originalByTrimmedHaplotypes;
+
+        // Now set reference status originalByTrimmedHaplotypes
+        final Map<Haplotype, Haplotype> fixedOriginalByTrimmedHaplotypes = new HashMap<>();
+        for (Haplotype h : originalByTrimmedHaplotypes.keySet()){
+            if (originalByTrimmedHaplotypes.get(h).isReference()){
+                Haplotype fixedHap = new Haplotype(h.getBases(), true);
+                fixedHap.setCigar(h.getCigar());
+                fixedHap.setGenomeLocation(h.getGenomeLocation());
+                fixedHap.setScore(h.getScore());
+                fixedHap.setAlignmentStartHapwrtRef(h.getAlignmentStartHapwrtRef());
+                fixedOriginalByTrimmedHaplotypes.put(fixedHap, originalByTrimmedHaplotypes.get(h));
+            } else {
+                fixedOriginalByTrimmedHaplotypes.put(h, originalByTrimmedHaplotypes.get(h));
+            }
+        }
+        return fixedOriginalByTrimmedHaplotypes;
     }
 
     private static Map<Haplotype, Haplotype> mapOriginalToTrimmed(final Map<Haplotype, Haplotype> originalByTrimmedHaplotypes, final List<Haplotype> trimmedHaplotypes) {
@@ -234,6 +276,7 @@ public final class AssemblyResultSet {
      * @return {@code true} if the assembly result set has been modified as a result of this call.
      */
     public boolean add(final Haplotype h) {
+
         Utils.nonNull(h, "input haplotype cannot be null");
         Utils.nonNull(h.getGenomeLocation(), "haplotype genomeLocation cannot be null");
         if (haplotypes.contains(h)) {
@@ -499,7 +542,7 @@ public final class AssemblyResultSet {
      *                       at 10-12, a MNP at 14-15, and a SNP at 17.  May not be negative.
      * @return never {@code null}, but perhaps an empty collection.
      */
-    public SortedSet<VariantContext> getVariationEvents(final int maxMnpDistance) {
+    public SortedSet<Event> getVariationEvents(final int maxMnpDistance) {
         ParamUtils.isPositiveOrZero(maxMnpDistance, "maxMnpDistance may not be negative.");
 
         final boolean sameMnpDistance = lastMaxMnpDistanceUsed.isPresent() && maxMnpDistance == lastMaxMnpDistanceUsed.getAsInt();
@@ -524,22 +567,223 @@ public final class AssemblyResultSet {
      * @param haplotypes the set of haplotypes to grab the VCs from
      * @return a sorted set of variant contexts
      */
-    private static SortedSet<VariantContext> getAllVariantContexts( final List<Haplotype> haplotypes ) {
-        // Using the cigar from each called haplotype figure out what events need to be written out in a VCF file
-        final TreeSet<VariantContext> vcs = new TreeSet<>(
-                Comparator.comparingInt(VariantContext::getStart)
-                        // Decide arbitrarily so as not to accidentally throw away overlapping variants
-                .thenComparingInt(vc -> vc.getReference().length())
-                .thenComparing(vc -> vc.getAlternateAllele(0)));
-
-        for( final Haplotype h : haplotypes ) {
-            vcs.addAll(h.getEventMap().getVariantContexts());
-        }
-
-        return vcs;
+    private static SortedSet<Event> getAllVariantContexts(final List<Haplotype> haplotypes ) {
+        return haplotypes.stream().flatMap(h -> h.getEventMap().getEvents().stream())
+                .collect(Collectors.toCollection(() -> new TreeSet<>(HAPLOTYPE_EVENT_COMPARATOR)));
     }
 
     public void setDebug(boolean debug) {
         this.debug = debug;
+    }
+
+    public LongHomopolymerHaplotypeCollapsingEngine getHaplotypeCollapsingEngine() {
+        return haplotypeCollapsingEngine;
+    }
+
+    public void setHaplotypeCollapsingEngine(LongHomopolymerHaplotypeCollapsingEngine haplotypeCollapsingEngine) {
+        this.haplotypeCollapsingEngine = haplotypeCollapsingEngine;
+    }
+
+    public void clearHaplotypes() {
+        haplotypes.clear();
+        refHaplotype = null;
+    }
+    public void replaceAllHaplotypes(Set<Haplotype> list) {
+        haplotypes.clear();
+        refHaplotype = null;
+        for ( Haplotype h : list ) {
+            add(h);
+            if (h.isNonReference()) {
+                variationPresent = true;
+            }
+        }
+    }
+
+    // For PDHMM use: Remove a haplotype from this AssemblyResultSet and update all of the various references in the
+    //                object to that haplotype to be current.
+    // WARNING: Deleting haplotypes in this manner is highly dangerous and will likely lead to lost variants
+    private void removeHaplotype(final Haplotype hap) {
+        haplotypes.remove(hap);
+        assemblyResultByHaplotype.remove(hap);
+        for (Integer kmerSize : assemblyResultByKmerSize.keySet()) {
+            Set<Haplotype> discovered = assemblyResultByKmerSize.get(kmerSize).getDiscoveredHaplotypes();
+            discovered.remove(hap);
+            assemblyResultByKmerSize.get(kmerSize).setDiscoveredHaplotypes(discovered);
+        }
+    }
+
+    public void setPartiallyDeterminedMode() {
+        this.isPartiallyDeterminedList = true;
+    }
+
+    public boolean isPartiallyDeterminedList() {
+        return isPartiallyDeterminedList;
+    }
+
+    // For PDHMM use: store original assembly haplotypes if we are injecting artificial haplotypes later
+    // WARNING: This is likely not set in every case, use with caution
+    public void storeAssemblyHaplotypes() {
+        originalAssemblyHaps = new LinkedHashSet<>(haplotypes);
+    }
+
+    public boolean hasOverwrittenHaps() {
+        return !originalAssemblyHaps.isEmpty();
+    }
+
+    /**
+     * Remove haplotypes with alleles we wish to filter
+     * // TODO this is a bad algorithm for bad people -- it might eliminate good alleles on the same haplotypes
+     */
+    public void removeHaplotypesWithBadAlleles(final AssemblyBasedCallerArgumentCollection argumentCollection,
+                                               final Collection<Event> badPileupEvents) {
+        if (badPileupEvents.isEmpty()) {
+            return; // nothing to do
+        }
+        List<Haplotype> haplotypesWithFilterAlleles = new ArrayList<>();
+        // If we are not using partially determined haplotypes, we discard every haplotype containing a bad pileup allele.
+
+
+        for(Event badEvent : badPileupEvents) {
+            for (Haplotype hap : getHaplotypeList()) {
+                // NOTE: The event map may be null due to edge cases in the assembly engine + SW realignment that can cause
+                //       haplotypes to re-merge into the reference and end up with an empty event map. (Also the event map
+                //       code explicitly expects to fail in some instances)
+                if (hap.getEventMap() != null && hap.getEventMap().getEvents().stream().anyMatch(badEvent::equals)) {
+                    if (argumentCollection.pileupDetectionArgs.debugPileupStdout) System.err.println("Flagging hap " + hap + " for containing variant " + badEvent);
+                    haplotypesWithFilterAlleles.add(hap);
+                }
+            }
+        }
+
+        if (!haplotypesWithFilterAlleles.isEmpty()) {
+            if (argumentCollection.pileupDetectionArgs.debugPileupStdout) System.out.println("Found Assembly Haps with filtered Variants:\n"+haplotypesWithFilterAlleles.stream().map(Haplotype::toString).collect(Collectors.joining("\n")));
+            haplotypeDeletionWarningLogger.warn(() -> "Haplotypes from Assembly are being filtered by heuristics from the PileupCaller. This can lead to missing variants. See --"+PileupDetectionArgumentCollection.PILEUP_DETECTION_FILTER_ASSEMBLY_HAPS_THRESHOLD+" for more details");
+            haplotypesWithFilterAlleles.forEach(this::removeHaplotype);
+        }
+    }
+
+    /**
+     * Helper method that handles the actual "GGA-like" Merging of haplotype alleles into an assembly result set.
+     *
+     * First this method will filter out haplotypes that contain alleles that have failed the pileup calling filtering steps,
+     * Then the list will attempt to poke into the haplotype list artificial haplotypes that have the found alleles present.
+     */
+    @SuppressWarnings({"deprecation"})
+    public void injectPileupEvents(final AssemblyRegion region, final AssemblyBasedCallerArgumentCollection argumentCollection,
+                                   final SmithWatermanAligner aligner, final Collection<Event> goodPileupEvents) {
+        if (goodPileupEvents.isEmpty()) {
+            return; // nothing to do
+        }
+
+        final Haplotype refHaplotype = getReferenceHaplotype();
+        final Map<Integer, List<Event>> assembledEventByStart = getVariationEvents(argumentCollection.maxMnpDistance).stream()
+                .collect(Collectors.groupingBy(Event::getStart));
+        final Collection<Event> assembledIndels = getVariationEvents(argumentCollection.maxMnpDistance).stream().
+                filter(Event::isIndel).collect(Collectors.toList());
+
+        Set<Haplotype> baseHaplotypes = new TreeSet<>();
+        baseHaplotypes.addAll(getHaplotypeList().stream()
+                .sorted(Comparator.comparingInt((Haplotype hap) -> hap.isReference() ? 1 : 0).thenComparingDouble(hap -> hap.getScore()).reversed())
+                .limit(AssemblyBasedCallerUtils.NUM_HAPLOTYPES_TO_INJECT_FORCE_CALLING_ALLELES_INTO)
+                .collect(Collectors.toList()));
+
+        //TODO its unclear whether the correct answer here is to use the hardclipped pileup reads (which we used in generating the pileup alleles for specificty reasons)
+        //TODO or if it would be more accurate to use the softclipped bases here in filtering down the haplotypes. I suspect the latter but I will evaluate later.
+        Map<Kmer, MutableInt> kmerReadCounts = AssemblyBasedCallerUtils.getKmerReadCounts(region.getHardClippedPileupReads(), argumentCollection.pileupDetectionArgs.filteringKmerSize);
+
+        for (final Event event : goodPileupEvents.stream().sorted(Comparator.comparingInt(Event::getStart)).collect(Collectors.toList())) {
+
+            if (argumentCollection.pileupDetectionArgs.debugPileupStdout) System.out.println("Processing new Haplotypes for Pileup Allele that was not in the assembly: " + event);
+
+            // skip SNPs that are too close to assembled indels.
+            if (!event.isIndel() && assembledIndels.stream().anyMatch(indel -> event.withinDistanceOf(indel, argumentCollection.pileupDetectionArgs.snpAdjacentToAssemblyIndel))) {
+                continue;
+            }
+            final List<Event> assembledEvents = assembledEventByStart.getOrDefault(event.getStart(), Collections.emptyList());
+
+            if (isEventPresentInAssembly(event, assembledEvents) || isSymbolic(event.altAllele())) {
+                continue;
+            }
+
+            final Set<Haplotype> newPileupHaplotypes = new HashSet<>();
+            for (final Haplotype baseHaplotype : baseHaplotypes) {
+                final Haplotype insertedHaplotype = makeHaplotypeWithInsertedEvent(baseHaplotype, refHaplotype, event, aligner, argumentCollection.getHaplotypeToReferenceSWParameters());
+                if (insertedHaplotype != null) {
+                    newPileupHaplotypes.add(insertedHaplotype);
+                }
+            }
+
+            final Set<Haplotype> refactoredHaps = AssemblyBasedCallerUtils.filterPileupHaplotypes(newPileupHaplotypes, kmerReadCounts,
+                    argumentCollection.pileupDetectionArgs.numHaplotypesToIterate, argumentCollection.pileupDetectionArgs.filteringKmerSize);
+            if (argumentCollection.pileupDetectionArgs.debugPileupStdout) {
+                System.out.println("Constructed the following new Pileup Haplotypes after filtering:\n"+
+                        refactoredHaps.stream().map(Haplotype::toString).collect(Collectors.joining("\n")));
+            }
+            
+            baseHaplotypes.addAll(refactoredHaps);
+        }
+
+
+        baseHaplotypes.forEach(this::add);
+        regenerateVariationEvents(argumentCollection.maxMnpDistance);
+    }
+
+    @VisibleForTesting
+    public void addGivenAlleles(final List<Event> givenAlleles, final int maxMnpDistance, final SmithWatermanAligner aligner,
+                                final SWParameters haplotypeToReferenceSWParameters) {
+        if (givenAlleles.isEmpty()) {
+            return;
+        }
+        final Haplotype refHaplotype = getReferenceHaplotype();
+        final Map<Integer, List<Event>> assembledEventsByStart = getVariationEvents(maxMnpDistance).stream()
+                .collect(Collectors.groupingBy(Event::getStart));
+
+        // choose the highest-scoring haplotypes along with the reference for building force-calling haplotypes
+        final List<Haplotype> baseHaplotypes = getHaplotypeList().stream()
+                .sorted(Comparator.comparing(Haplotype::isReference).thenComparingDouble(hap -> hap.getScore()).reversed())
+                .limit(AssemblyBasedCallerUtils.NUM_HAPLOTYPES_TO_INJECT_FORCE_CALLING_ALLELES_INTO)
+                .collect(Collectors.toList());
+
+        for (final Event given : givenAlleles) {
+            final List<Event> assembledEvents = assembledEventsByStart.getOrDefault(given.getStart(), Collections.emptyList());
+
+            if (isEventPresentInAssembly(given, assembledEvents) || isSymbolic(given.altAllele())) {
+                continue;
+            }
+
+            for (final Haplotype baseHaplotype : baseHaplotypes) {
+                final Haplotype insertedHaplotype = makeHaplotypeWithInsertedEvent(baseHaplotype, refHaplotype, given, aligner, haplotypeToReferenceSWParameters);
+                if (insertedHaplotype != null) {
+                    add(insertedHaplotype);
+                }
+            }
+        }
+        regenerateVariationEvents(maxMnpDistance);
+    }
+
+    private static boolean isEventPresentInAssembly(final Event event, final List<Event> assembledEvents) {
+        return assembledEvents.stream().anyMatch(event::equals);    // note that Events are forced to have a minimal representation
+    }
+
+    private static boolean isSymbolic(final Allele a) {
+        return a.equals(Allele.NO_CALL) || a.getDisplayString().equals(String.valueOf(VCFConstants.NULL_ALLELE)) || a.equals(Allele.SPAN_DEL) || a.isSymbolic();
+    }
+
+    // returns a new haplotype with the event inserted or null if that is not possible
+    private static Haplotype makeHaplotypeWithInsertedEvent(final Haplotype baseHaplotype, final Haplotype refHaplotype, final Event event,
+                                                            final SmithWatermanAligner aligner, final SWParameters haplotypeToReferenceSWParameters) {
+        if (baseHaplotype.getEventMap() != null && baseHaplotype.getEventMap().getEvents().stream().anyMatch(event::overlaps)) {
+            return null; // Can't insert because the base haplotype already has an event there.
+        }
+
+        final Haplotype insertedHaplotype = baseHaplotype.insertAllele(event.refAllele(), event.altAllele(), event.getStart());
+        if (insertedHaplotype != null) { // can be null if the requested allele can't be inserted into the haplotype
+            final Cigar cigar = CigarUtils.calculateCigar(refHaplotype.getBases(), insertedHaplotype.getBases(), aligner, haplotypeToReferenceSWParameters, SWOverhangStrategy.INDEL);
+            insertedHaplotype.setCigar(cigar);
+            insertedHaplotype.setGenomeLocation(refHaplotype.getGenomeLocation());
+            insertedHaplotype.setAlignmentStartHapwrtRef(refHaplotype.getAlignmentStartHapwrtRef());
+
+        }
+        return insertedHaplotype;
     }
 }

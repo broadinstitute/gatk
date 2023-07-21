@@ -4,7 +4,8 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 
 /**
  * Command acknowledgements that are returned from a process managed by StreamingProcessController.
- * Ack results can be positive, negative, or negative with a message.
+ * Ack results can be positive, negative, or negative with a message. Positive acks never have a messsage,
+ * negative acks may optionally have a message.
  */
 public class ProcessControllerAckResult {
 
@@ -46,18 +47,7 @@ public class ProcessControllerAckResult {
      * @return true if this ack is negative and includes a message
      */
     public boolean hasMessage() {
-        return !isPositiveAck() && !message.isEmpty();
-    }
-
-    /**
-     * @return A (possibly empty) String with any message sent from the remote process.
-     * Only defined for negative acknowledgements {@link #hasMessage()}.
-     */
-    public String getNegativeACKMessage() {
-        if (isPositiveAck()) {
-            throw new GATKException("Can only retrieve messages for negative acknowledgements");
-        }
-        return message;
+        return !isPositiveAck() && message != null && !message.isEmpty();
     }
 
     /**
@@ -67,7 +57,7 @@ public class ProcessControllerAckResult {
         if (isPositiveAck()) {
             return ACK_LOG_MESSAGE;
         } else if (hasMessage()) {
-            return String.format("%s: %s", NCK_WITH_MESSAGE_LOG_MESSAGE, getNegativeACKMessage());
+            return String.format("%s: %s", NCK_WITH_MESSAGE_LOG_MESSAGE, message);
         } else {
             return NCK_LOG_MESSAGE;
         }

@@ -32,8 +32,8 @@ import java.util.*;
  *
  * <h3>Related annotations</h3>
  * <ul>
- *     <li><b><a href="https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_annotator_InbreedingCoeff.php">InbreedingCoeff</a></b> outputs a version of this annotation that includes all alternate alleles in a single calculation.</li>
- *     <li><b><a href="https://www.broadinstitute.org/gatk/gatkdocs/org_broadinstitute_gatk_tools_walkers_annotator_ExcessHet.php">ExcessHet</a></b> estimates excess heterozygosity in a population of samples.</li>
+ *     <li><b>InbreedingCoeff</b> outputs a version of this annotation that includes all alternate alleles in a single calculation.</li>
+ *     <li><b>ExcessHet</b> estimates excess heterozygosity in a population of samples.</li>
  * </ul>
  *
  */

@@ -13,10 +13,14 @@ import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
+import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.PileupDetectionArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReadThreadingAssemblerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceMode;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.FilterMutectCalls;
@@ -48,7 +52,6 @@ import java.util.stream.Collectors;
 public class Mutect2IntegrationTest extends CommandLineProgramTest {
     // positions 10,000,000 - 11,000,000 of chr 20 and with most annotations removed
     private static final File GNOMAD = new File(largeFileTestDir, "very-small-gnomad.vcf");
-
     private static final String DREAM_BAMS_DIR = largeFileTestDir + "mutect/dream_synthetic_bams/";
     private static final File DREAM_4_NORMAL = new File(DREAM_BAMS_DIR, "normal_4.bam");
     private static final File DREAM_3_NORMAL = new File(DREAM_BAMS_DIR, "normal_3.bam");
@@ -85,7 +88,10 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
     private static final File FILTERING_DIR = new File(toolsTestDir, "mutect/filtering");
 
+    private static final File FLOW_BASED_INPUT_BAM = new File(publicTestDir + "/large", "input_jukebox_for_test.bam");
+
     private static final File GNOMAD_WITHOUT_AF_SNIPPET = new File(toolsTestDir, "mutect/gnomad-without-af.vcf");
+    private static final File UNPARSIMONIOUS_GNOMAD_SNIPPET = new File(toolsTestDir, "mutect/unparsimonious_germline.vcf");
 
     private static final double TLOD_MATCH_EPSILON = 0.05;
     private static final double VARIANT_TLOD_MATCH_PCT = 0.01;
@@ -131,11 +137,14 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final File filteredVcf = createTempFile("filtered", ".vcf");
         final File f1r2Counts = createTempFile("f1r2", ".tar.gz");
         final File orientationModel = createTempFile("orientation", ".tar.gz");
+        final File dataset = createTempFile("dataset", ".txt");
 
         final List<File> normals = normal.isPresent() ? Collections.singletonList(normal.get()) : Collections.emptyList();
         runMutect2(Collections.singletonList(tumor), normals, unfilteredVcf, CHROMOSOME_20, b37Reference, Optional.of(GNOMAD),
                 args -> args.addMask(mask).add(M2ArgumentCollection.F1R2_TAR_GZ_NAME, f1r2Counts),
-                args -> errorCorrectReads ? args.add(ReadThreadingAssemblerArgumentCollection.PILEUP_ERROR_CORRECTION_LOG_ODDS_NAME, 3.0) : args
+                args -> args.add(M2ArgumentCollection.MUTECT3_DATASET_LONG_NAME, dataset),
+                args -> args.addFlag(M2ArgumentCollection.MUTECT3_TRAINING_MODE_LONG_NAME),
+                args -> errorCorrectReads ? args.add(ReadThreadingAssemblerArgumentCollection.PILEUP_ERROR_CORRECTION_LOG_ODDS_LONG_NAME, 3.0) : args
         );
 
         // verify that alleles contained in likelihoods matrix but dropped from somatic calls do not show up in annotations
@@ -297,6 +306,18 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(numVariantsPassingFilters < 2);
     }
 
+    @Test
+    public void testMutect3Dataset() {
+        Utils.resetRandomGenerator();
+        final File tumor = new File(NA12878_20_21_WGS_bam);
+        final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
+        final File mutect3Dataset = createTempFile("mutect3", ".data");
+
+        runMutect2(tumor, unfilteredVcf, "20:10000000-10010000", b37Reference, Optional.of(GNOMAD),
+                   args -> args.addFlag(ReadThreadingAssemblerArgumentCollection.LINKED_DE_BRUIJN_GRAPH_LONG_NAME),
+                   args -> args.add(M2ArgumentCollection.MUTECT3_DATASET_LONG_NAME, mutect3Dataset));
+    }
+
     // make sure we can call tumor alts when the normal has a different alt at the same site
     // regression test for https://github.com/broadinstitute/gatk/issues/6901
     @Test
@@ -445,6 +466,40 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 args -> args.addInterval(new SimpleInterval("20:10837425-10837426")));
     }
 
+    // make sure we have fixed a bug where germline resources with less parsimonious representations (eg AC -> TC when M2 calls A->T) still
+    // yield a correct annotation
+    @Test
+    public void testUnparsimoniousGermlineResource() {
+        final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
+        final int position1 = 1366255;
+        final int position2 = 1401389;
+        final int position3 = 2289449;
+        final double defaultAF = 9.78e-7;
+        final String interval1 = "20:" + (position1 - 1000) + "-" + (position1 + 1000);
+        final String interval2 = "20:" + (position2 - 1000) + "-" + (position2 + 1000);
+        final String interval3 = "20:" + (position3 - 1000) + "-" + (position3 + 1000);
+        runMutect2(DREAM_4_TUMOR, unfilteredVcf, interval1, b37Reference, Optional.of(UNPARSIMONIOUS_GNOMAD_SNIPPET),
+                args -> args.addInterval(interval2).addInterval(interval3).add(M2ArgumentCollection.DEFAULT_AF_LONG_NAME, defaultAF)
+                        .addFlag(M2ArgumentCollection.GENOTYPE_GERMLINE_SITES_LONG_NAME));
+
+        // when we call on these intervals we should get variants 20:1366255 G->A, 20:1401389 G->C, and 20:2289449 TCTGGGGACAAA->T
+        // In the germline resource file the alleles are represented as GT -> AT (equivalent to G->A), GT -> CA (not equivalent to G->C),
+        // and TCTGGGGACAAA->TAA (equivalent to TCTGGGGACA->T) with an extraneous TCTGGGGACAAA->T, respectively
+        // In the first case, we should get AF = 0.1 from GG -> AG = G -> A; in the second case we should get the default AF; in the third case
+        // we should get AF = 0.1 from TCTGGGGACAAA->TAA and NOT AF = 0.2 from TCTGGGGACAAA->T
+
+        final Map<Integer, double[]> startToAFArray = VariantContextTestUtils.streamVcf(unfilteredVcf).collect(Collectors.toMap(VariantContext::getStart,
+                vc -> MathUtils.applyToArray(VariantContextGetters.getAttributeAsDoubleArray(vc, GATKVCFConstants.POPULATION_AF_KEY), x -> Math.pow(10, -x))));
+
+        Assert.assertTrue(startToAFArray.containsKey(position1));
+        Assert.assertTrue(startToAFArray.containsKey(position2));
+        Assert.assertTrue(startToAFArray.containsKey(position3));
+
+        Assert.assertEquals(startToAFArray.get(position1), new double[] {0.1}, 1e-8);
+        Assert.assertEquals(startToAFArray.get(position2), new double[] {defaultAF}, 1e-8);
+        Assert.assertEquals(startToAFArray.get(position3), new double[] {0.1}, 1e-8);
+    }
+
     @Test
     public void testContaminationFilter() {
         Utils.resetRandomGenerator();
@@ -561,6 +616,76 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(variants.get(0).getAttributeAsInt(GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY, 0), 1741);
     }
 
+    // basic test on a small chunk of NA12878 mitochondria. This is intended to be a sanity check to ensure that the pileup-caller
+    // is A) Hooked up and functioning in Mutect and B) its arguments can be used to make reasonable calls when assembly doesn't detect variants
+    @Test
+    public void testPileupDetection()  {
+        Utils.resetRandomGenerator();
+        final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
+
+        runMutect2(NA12878_MITO_BAM, unfilteredVcf, "chrM:1-1000", MITO_REF.getAbsolutePath(), Optional.empty(),
+                args -> args.add(M2ArgumentCollection.MITOCHONDRIA_MODE_LONG_NAME, true)
+                        // Pileup-Detection arguments
+                        .add(PileupDetectionArgumentCollection.PILEUP_DETECTION_LONG_NAME, true)
+                        .add(PileupDetectionArgumentCollection.PILEUP_DETECTION_ENABLE_INDELS, true)
+                        //.add(PileupDetectionArgumentCollection.PILEUP_DETECTION_ACTIVE_REGION_LOD_THRESHOLD_LONG_NAME, 0) // This is currently incompatible with Mutect 2 (isActive() doesn't store the original activity scores in M2Engine)
+
+                        // NOTE: These arguments are intended to force the assembly to fail at all sites in order to test what gets recovered by the pileup code
+                        .add(ReadThreadingAssemblerArgumentCollection.KMER_SIZE_LONG_NAME, 1)
+                        .add(ReadThreadingAssemblerArgumentCollection.DONT_INCREASE_KMER_SIZE_LONG_NAME, true)
+        );
+
+        final List<VariantContext> variants = VariantContextTestUtils.streamVcf(unfilteredVcf).collect(Collectors.toList());
+        final List<String> variantKeys = variants.stream().map(VariantContextTestUtils::keyForVariant).collect(Collectors.toList());
+        System.out.print(variantKeys);
+
+        // NOTE: This list is un-principled, its simply asserting that we found SOMETHING with the pileupcaller we should because assembly is broken
+        //       this is not set in stone, future changes to the pileupcaller/Mutect2 might cause this list to change
+        final List<String> expectedKeys = Arrays.asList(
+                "chrM:152-152 T*, [C]",
+                "chrM:263-263 A*, [G]",
+                "chrM:302-302 A*, [AC]", //Pileup-calling doesn't detect overlapping indels as well as assembly
+                "chrM:310-310 T*, [C, TC]",
+                "chrM:750-750 A*, [G]");
+        Assert.assertTrue(variantKeys.containsAll(expectedKeys));
+    }
+
+    /**
+     * Several difficult force calling sites including regression test for a thorny force calling bug involving
+     * T -> A at chrM:8316.  Previously this call was lost while trimming the assemblyResultSet because every haplotype
+     * containing the allele contained a deletion that terminated exactly where trimming occurred, thereby causing the
+     * GATK to discard the trimmed haplotype.
+     */
+    @Test
+    public void testDifficultForceCalling() {
+        final File dir = new File(largeFileTestDir + "mutect/mito/");
+        final File ref = new File(dir, "mito_shifted_8000.fasta");
+        final File bam = new File(dir, "mito.bam");
+        final File force = new File(dir, "alleles.vcf");
+        final String interval = "chrM:8023-9140";
+
+        final File output = createTempFile("output", ".bam");
+
+        runMutect2(bam, output, interval, ref.getAbsolutePath(), Optional.empty(),
+                args -> args.add(AssemblyBasedCallerArgumentCollection.FORCE_CALL_ALLELES_LONG_NAME, force),
+                args -> args.addFlag(M2ArgumentCollection.MITOCHONDRIA_MODE_LONG_NAME),
+                args -> args.add(AssemblyRegionArgumentCollection.MAX_STARTS_LONG_NAME, 75));
+
+        final SimpleInterval callingInterval = new SimpleInterval(interval);
+
+        final Map<Integer, VariantContext> callsByLocus = VariantContextTestUtils.getVariantContexts(output).stream()
+                .collect(Collectors.toMap(vc -> vc.getStart(), vc -> vc));
+
+        final List<VariantContext> forceCallingVariants = VariantContextTestUtils.getVariantContexts(force).stream()
+                .filter(vc -> vc.overlaps(callingInterval))
+                .collect(Collectors.toList());
+
+        for (final VariantContext vc : forceCallingVariants) {
+            Assert.assertTrue(callsByLocus.containsKey(vc.getStart()));
+            Assert.assertTrue(callsByLocus.get(vc.getStart()).hasAllele(vc.getAlternateAllele(0)));
+        }
+    }
+
     @DataProvider(name = "vcfsForFiltering")
     public Object[][] vcfsForFiltering() {
         return new Object[][]{
@@ -607,6 +732,38 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         // vcf sequence dicts don't match ref
         runFilterMutectCalls(unfiltered, filteredVcf, MITO_REF.getAbsolutePath(),
                 args -> args.add(M2ArgumentCollection.MITOCHONDRIA_MODE_LONG_NAME, true),
+                args -> args.add(StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, true),
+                args -> args.add(M2FiltersArgumentCollection.MIN_AF_LONG_NAME, minAlleleFraction),
+                args -> args.add(M2FiltersArgumentCollection.MIN_READS_ON_EACH_STRAND_LONG_NAME, 1),
+                args -> args.add(M2FiltersArgumentCollection.UNIQUE_ALT_READ_COUNT_LONG_NAME, 2),
+                args -> {
+                    intervals.stream().map(SimpleInterval::new).forEach(args::addInterval);
+                    return args;
+                });
+
+        final List<Set<String>> actualFilters = VariantContextTestUtils.streamVcf(filteredVcf)
+                .map(VariantContext::getFilters).collect(Collectors.toList());
+
+        final List<List<String>> actualASFilters = VariantContextTestUtils.streamVcf(filteredVcf)
+                .map(vc -> AnnotationUtils.decodeAnyASListWithRawDelim(vc.getCommonInfo().getAttributeAsString(GATKVCFConstants.AS_FILTER_STATUS_KEY, ""))).collect(Collectors.toList());
+        Assert.assertEquals(actualASFilters, expectedASFilters);
+
+        Assert.assertEquals(actualFilters.size(), expectedFilters.size());
+        for (int n = 0; n < actualFilters.size(); n++) {
+            Assert.assertTrue(actualFilters.get(n).containsAll(expectedFilters.get(n)), "Actual filters missing some expected filters: " + SetUtils.difference(expectedFilters.get(n), actualFilters.get(n)));
+            Assert.assertTrue(expectedFilters.get(n).containsAll(actualFilters.get(n)), "Expected filters missing some actual filters: " + SetUtils.difference(actualFilters.get(n), expectedFilters.get(n)));
+        }
+
+        Assert.assertEquals(actualFilters, expectedFilters);
+    }
+
+    @Test(dataProvider = "vcfsForFiltering")
+    public void testFilterMicrobial(File unfiltered, final double minAlleleFraction, final List<String> intervals, List<Set<String>> expectedFilters, List<List<String>> expectedASFilters)  {
+        final File filteredVcf = createTempFile("filtered", ".vcf");
+
+        // vcf sequence dicts don't match ref
+        runFilterMutectCalls(unfiltered, filteredVcf, MITO_REF.getAbsolutePath(),
+                args -> args.add(M2ArgumentCollection.MICROBIAL_MODE_LONG_NAME, true),
                 args -> args.add(StandardArgumentDefinitions.DISABLE_SEQUENCE_DICT_VALIDATION_NAME, true),
                 args -> args.add(M2FiltersArgumentCollection.MIN_AF_LONG_NAME, minAlleleFraction),
                 args -> args.add(M2FiltersArgumentCollection.MIN_READS_ON_EACH_STRAND_LONG_NAME, 1),
@@ -853,6 +1010,23 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(bamout.exists());
     }
 
+    // this test is here for basic sanity of flow mode
+    @Test
+    public void testBamoutFlowMode() {
+        final File outputVcf = createTempFile("output", ".vcf");
+        final File bamout = createTempFile("bamout", ".bam");
+
+        runMutect2(FLOW_BASED_INPUT_BAM, outputVcf, "chr9:81149486-81177047", hg38Reference, Optional.empty(),
+                args -> {
+                    args.add(M2ArgumentCollection.FLOW_M2_MODE_LONG_NAME, "ADVANCED");
+                    return args.add(AssemblyBasedCallerArgumentCollection.BAM_OUTPUT_LONG_NAME, bamout);
+
+                });
+        Assert.assertTrue(bamout.exists());
+    }
+
+
+
     @Test
     public void testFilteringHeaders() {
         Utils.resetRandomGenerator();
@@ -869,6 +1043,51 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         for (final String header : GATKVCFConstants.MUTECT_FILTER_NAMES){
             Assert.assertTrue(filteredHeader.hasFilterLine(header));
         }
+    }
+
+
+    @DataProvider(name="ExposureOfSmithWatermanParametersTestInputs")
+    public Object[][] getExposureOfSmithWatermanParametersTestInputs() {
+        return new Object[][] {
+                {NA12878_20_21_WGS_bam, b37_reference_20_21}
+        };
+    }
+
+    /**
+     * See {@link org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerIntegrationTest#testExposureOfSmithWatermanParametersIsConsistentWithPastResults}.
+     */
+    @Test(dataProvider="ExposureOfSmithWatermanParametersTestInputs")
+    public void testExposureOfSmithWatermanParametersIsConsistentWithPastResults(final String inputFileName, final String referenceFileName) throws Exception {
+        Utils.resetRandomGenerator();
+
+        final File output = createTempFile("testExposureOfSmithWatermanParametersIsConsistentWithPastResults", ".vcf");
+        final File expected = new File(toolsTestDir + "mutect", "expected.testExposureOfSmithWatermanParameters.M2.gatk4.vcf");
+
+        final String outputPath = output.getAbsolutePath();
+
+        final String[] args = {
+                "-I", inputFileName,
+                "-R", referenceFileName,
+                "-L", "20:10000000-10100000",
+                "-O", outputPath,
+                "-pairHMM", "AVX_LOGLESS_CACHING",
+                "--" + AssemblyBasedCallerArgumentCollection.SMITH_WATERMAN_DANGLING_END_MATCH_VALUE_LONG_NAME, "1",
+                "--" + AssemblyBasedCallerArgumentCollection.SMITH_WATERMAN_DANGLING_END_MISMATCH_PENALTY_LONG_NAME, "-2",
+                "--" + AssemblyBasedCallerArgumentCollection.SMITH_WATERMAN_DANGLING_END_GAP_OPEN_PENALTY_LONG_NAME, "-3",
+                "--" + AssemblyBasedCallerArgumentCollection.SMITH_WATERMAN_DANGLING_END_GAP_EXTEND_PENALTY_LONG_NAME, "-4",
+                "--" + AssemblyBasedCallerArgumentCollection.SMITH_WATERMAN_HAPLOTYPE_TO_REFERENCE_MATCH_VALUE_LONG_NAME, "5",
+                "--" + AssemblyBasedCallerArgumentCollection.SMITH_WATERMAN_HAPLOTYPE_TO_REFERENCE_MISMATCH_PENALTY_LONG_NAME, "-6",
+                "--" + AssemblyBasedCallerArgumentCollection.SMITH_WATERMAN_HAPLOTYPE_TO_REFERENCE_GAP_OPEN_PENALTY_LONG_NAME, "-7",
+                "--" + AssemblyBasedCallerArgumentCollection.SMITH_WATERMAN_HAPLOTYPE_TO_REFERENCE_GAP_EXTEND_PENALTY_LONG_NAME, "-8",
+                "--" + AssemblyBasedCallerArgumentCollection.SMITH_WATERMAN_READ_TO_HAPLOTYPE_MATCH_VALUE_LONG_NAME, "9",
+                "--" + AssemblyBasedCallerArgumentCollection.SMITH_WATERMAN_READ_TO_HAPLOTYPE_MISMATCH_PENALTY_LONG_NAME, "-10",
+                "--" + AssemblyBasedCallerArgumentCollection.SMITH_WATERMAN_READ_TO_HAPLOTYPE_GAP_OPEN_PENALTY_LONG_NAME, "-11",
+                "--" + AssemblyBasedCallerArgumentCollection.SMITH_WATERMAN_READ_TO_HAPLOTYPE_GAP_EXTEND_PENALTY_LONG_NAME, "-12",
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
+        };
+
+        runCommandLine(args);
+        IntegrationTestSpec.assertEqualTextFiles(output, expected);
     }
 
     @SafeVarargs

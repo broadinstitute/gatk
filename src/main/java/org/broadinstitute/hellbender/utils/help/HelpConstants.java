@@ -9,11 +9,18 @@ public final class HelpConstants {
 
     private HelpConstants() {};
 
-    public static final String GATK_FORUM_URL = "http://gatkforums.broadinstitute.org/";
+    public static final String LEGACY_GATK_FORUM_URL = "http://gatkforums.broadinstitute.org/";
+    public static final String GATK_FORUM_URL = "https://gatk.broadinstitute.org/hc/en-us/community/topics";
     public static final String GATK_MAIN_SITE = "https://software.broadinstitute.org/gatk/";
-    
+    public static final String GATK_DOCS_SITE = "https://gatk.broadinstitute.org/hc/";
+
+    //TODO anything using this is a dead link, we should move any remaining references to this into some technical docs for the future.
     public static String forumPost(String post) {
-        return GATK_FORUM_URL + post;
+        return LEGACY_GATK_FORUM_URL + post;
+    }
+
+    public static String forumArticle(String article) {
+        return GATK_DOCS_SITE + "articles/" + article;
     }
 
     /**
@@ -25,6 +32,10 @@ public final class HelpConstants {
     public final static String DOC_CAT_ANNOTATORS = "Variant Annotations";
     public final static String DOC_CAT_ANNOTATORS_SUMMARY = "Available to HaplotypeCaller, Mutect2, VariantAnnotator and GenotypeGVCFs. " +
             "See https://software.broadinstitute.org/gatk/documentation/article?id=10836";
+
+    public final static String DOC_CAT_FLOW_ANNOTATORS = "Flow Annotations";
+    public final static String DOC_CAT_FLOW_ANNOTATORS_SUMMARY = "Flow annotataions available to HaplotypeCaller, Mutect2, VariantAnnotator and GenotypeGVCFs";
+
 
     public final static String DOC_CAT_COVERAGE_ANALYSIS = "Coverage Analysis";
     public final static String DOC_CAT_COVERAGE_ANALYSIS_SUMMARY = "Tools that count coverage, e.g. depth per allele";
@@ -55,6 +66,9 @@ public final class HelpConstants {
 
     public final static String DOC_CAT_METHYLATION_DISCOVERY = "Methylation-Specific Tools";
     public final static String DOC_CAT_METHYLATION_DISCOVERY_SUMMARY = "Tools that perform methylation calling, processing bisulfite sequenced, methylation-aware aligned BAM";
+
+    public final static String DOC_CAT_SHORT_FLOW_BASED = "Flow Based Tools";
+    public final static String DOC_CAT_SHORT_FLOW_BASED_SUMMARY = "Tools designed specifically to operate on flow based data";
 
     // End GATK Program groups
 
@@ -96,6 +110,7 @@ public final class HelpConstants {
             // supercat Utilities
             groupToSuperCategory.put(DOC_CAT_READFILTERS, DOC_SUPERCAT_UTILITIES);
             groupToSuperCategory.put(DOC_CAT_ANNOTATORS, DOC_SUPERCAT_UTILITIES);
+            groupToSuperCategory.put(DOC_CAT_FLOW_ANNOTATORS, DOC_SUPERCAT_UTILITIES);
 
             // supercat Exclude
             groupToSuperCategory.put(DOC_CAT_EXAMPLE, DOC_SUPERCAT_EXCLUDE);

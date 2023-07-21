@@ -22,6 +22,8 @@ import java.util.stream.Collectors;
 
 public class JointGermlineCNVSegmentationIntegrationTest extends CommandLineProgramTest {
     private static final File TEST_SUB_DIR = new File(toolsTestDir, "copynumber/gcnv-postprocess");
+    private static final double DEFAULT_DEFRAG_SAMPLE_OVERLAP = 0.5;
+    private static final double DEFAULT_DEFRAG_PADDING_FRACTION = 0.8;
 
     private static final List<File> SEGMENTS_VCF_CORRECT_OUTPUTS = Arrays.asList(
     new File(TEST_SUB_DIR, "segments_output_SAMPLE_000.vcf"),
@@ -158,14 +160,17 @@ public class JointGermlineCNVSegmentationIntegrationTest extends CommandLineProg
                 .addVCF(getToolTestDataDir() + "NA20533.fragmented.segments.vcf.gz")
                 .add(JointGermlineCNVSegmentation.MODEL_CALL_INTERVALS_LONG_NAME, getToolTestDataDir() + "intervals.chr13.interval_list")
                 .addInterval("13:52951204-115064572")
-                .add(StandardArgumentDefinitions.PEDIGREE_FILE_LONG_NAME, getToolTestDataDir() + "NA20533.ped");  //this sample actually appears Turner (X0), but doesn't matter for chr13
+                .add(StandardArgumentDefinitions.PEDIGREE_FILE_LONG_NAME, getToolTestDataDir() + "NA20533.ped")  //this sample actually appears Turner (X0), but doesn't matter for chr13 sample actually appears Turner (X0), but doesn't matter for chr13
+                .add(JointGermlineCNVSegmentation.MIN_SAMPLE_NUM_OVERLAP_LONG_NAME, DEFAULT_DEFRAG_SAMPLE_OVERLAP)
+                .add(JointGermlineCNVSegmentation.DEFRAGMENTATION_PADDING_LONG_NAME, DEFAULT_DEFRAG_PADDING_FRACTION);
 
         runCommandLine(args, JointGermlineCNVSegmentation.class.getSimpleName());
 
         final Pair<VCFHeader, List<VariantContext>> defragmentedEvents = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
         //events get combined into a single event of 62113369 bp
         Assert.assertEquals(defragmentedEvents.getRight().size(), 1);
-        Assert.assertEquals(defragmentedEvents.getRight().get(0).getAttributeAsInt(GATKSVVCFConstants.SVLEN,0), 62113369);
+        final VariantContext testEvent = defragmentedEvents.getRight().get(0);
+        Assert.assertEquals(testEvent.getEnd() - testEvent.getStart() + 1, 62113369);
 
         final File output2 = createTempFile("notDefragmented",".vcf");
         final ArgumentsBuilder args2 = new ArgumentsBuilder()
@@ -174,7 +179,9 @@ public class JointGermlineCNVSegmentationIntegrationTest extends CommandLineProg
                 .addVCF(getToolTestDataDir() + "adjacentDifferentCN.vcf")
                 .add(JointGermlineCNVSegmentation.MODEL_CALL_INTERVALS_LONG_NAME, getToolTestDataDir() + "intervals.chr8snippet.interval_list")
                 .addInterval("8:190726-666104")
-                .add(StandardArgumentDefinitions.PEDIGREE_FILE_LONG_NAME, getToolTestDataDir() + "NA20520.ped");
+                .add(StandardArgumentDefinitions.PEDIGREE_FILE_LONG_NAME, getToolTestDataDir() + "NA20520.ped") //this sample actually appears Turner (X0), but doesn't matter for chr13 sample actually appears Turner (X0), but doesn't matter for chr13
+                .add(JointGermlineCNVSegmentation.MIN_SAMPLE_NUM_OVERLAP_LONG_NAME, DEFAULT_DEFRAG_SAMPLE_OVERLAP)
+                .add(JointGermlineCNVSegmentation.DEFRAGMENTATION_PADDING_LONG_NAME, DEFAULT_DEFRAG_PADDING_FRACTION);
 
         runCommandLine(args2, JointGermlineCNVSegmentation.class.getSimpleName());
 
@@ -195,7 +202,9 @@ public class JointGermlineCNVSegmentationIntegrationTest extends CommandLineProg
                 .addReference(GATKBaseTest.b37Reference)
                 .add(StandardArgumentDefinitions.PEDIGREE_FILE_LONG_NAME, getToolTestDataDir() + "overlapping.ped")
                 .add(JointGermlineCNVSegmentation.MODEL_CALL_INTERVALS_LONG_NAME, getToolTestDataDir() + "intervals.chr22.interval_list")
-                .addInterval("22:22,538,114-23,538,437");
+                .addInterval("22:22,538,114-23,538,437")
+                .add(JointGermlineCNVSegmentation.CLUSTERING_INTERVAL_OVERLAP_LONG_NAME, 0.8)
+                .add(JointGermlineCNVSegmentation.CLUSTERING_BREAKEND_WINDOW_LONG_NAME, 0);
 
         inputVcfs.forEach(vcf -> args.addVCF(vcf));
 
@@ -219,8 +228,8 @@ public class JointGermlineCNVSegmentationIntegrationTest extends CommandLineProg
             Assert.assertTrue(vc.getAlternateAlleles().size() == 1 && vc.getAlternateAllele(0).equals(GATKSVVCFConstants.DEL_ALLELE));
             Assert.assertTrue(vc.hasAttribute(VCFConstants.ALLELE_COUNT_KEY));
             Assert.assertFalse(vc.getAttributeAsString(VCFConstants.ALLELE_COUNT_KEY, "").contains(",")); //no zero ACs for uncalled alts
-            Assert.assertTrue(vc.hasAttribute(GATKSVVCFConstants.SVTYPE) && vc.getAttributeAsString(GATKSVVCFConstants.SVTYPE, "").equals("DEL"));
-            Assert.assertTrue(vc.hasAttribute(GATKSVVCFConstants.SVLEN));
+            Assert.assertTrue(vc.hasAttribute(GATKSVVCFConstants.SVTYPE));
+            Assert.assertEquals(vc.getAttributeAsString(GATKSVVCFConstants.SVTYPE, null), "DEL");
         }
 
         //in NA11829 variant events are not overlapping, so there should be a CN2 homRef in between

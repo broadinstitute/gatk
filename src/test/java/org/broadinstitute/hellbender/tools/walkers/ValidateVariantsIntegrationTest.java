@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.ValidateVariants;
@@ -363,6 +364,24 @@ public final class ValidateVariantsIntegrationTest extends CommandLineProgramTes
                 baseTestString(false, "gvcf.basepairResolution.vcf", true, ALLELES, "20:10000000-10002158", b37_reference_20_21) + " -gvcf ",
                 Collections.emptyList());
         spec.executeTest("tests capture of non-complete region, on BP_RESOLUTION gvcf", this);
+    }
+
+    @Test
+    public void testBadGvcfOverlappingHomRefBlockAndVariant() throws IOException {
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(true, GATKBaseTest.toolsTestDir + "walkers/ValidateVariants/hasVariantOverlappingRefBlock.g.vcf",
+                        true, ALLELES, "chr4:24339199-24339226", hg38Reference) + " -gvcf --no-overlaps ",
+                0, UserException.ValidationFailure.class);
+        spec.executeTest("tests a gvcf with reference block overlapping variant and --no-overlaps arg", this);
+    }
+
+    @Test
+    public void testBadGvcfOverlappingHomRefBlocks() throws IOException {
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                baseTestString(true, GATKBaseTest.toolsTestDir + "walkers/ValidateVariants/hasRefBlockOverlaps.g.vcf",
+                        true, ALLELES, "chr4:24339199-24339226", hg38Reference) + " -gvcf --no-overlaps ",
+                0, UserException.ValidationFailure.class);
+        spec.executeTest("tests a gvcf with reference block overlapping variant and --no-overlaps arg", this);
     }
 
     @Test

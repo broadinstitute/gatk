@@ -1,10 +1,9 @@
 package org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications;
 
 import htsjdk.variant.variantcontext.VariantContext;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEvalEngine;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.SnpEffUtil;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.util.VariantEvalContext;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,17 +21,17 @@ public class FunctionalClass extends VariantStratifier {
         nonsense
     }
 
+    public FunctionalClass(VariantEvalEngine engine) {
+        super(engine);
 
-    @Override
-    public void initialize() {
         states.add("all");
         for ( FunctionalType type : FunctionalType.values() )
             states.add(type.name());
     }
 
-
-    public List<Object> getRelevantStates(ReferenceContext referenceContext, ReadsContext readsContext, FeatureContext featureContext, VariantContext comp, String compName, VariantContext eval, String evalName, String sampleName, String FamilyName) {
-        ArrayList<Object> relevantStates = new ArrayList<Object>();
+    @Override
+    public List<Object> getRelevantStates(final VariantEvalContext context, final VariantContext comp, final String compName, final VariantContext eval, final String evalName, final String sampleName, final String familyName) {
+        final ArrayList<Object> relevantStates = new ArrayList<>();
 
         relevantStates.add("all");
 
@@ -53,7 +52,7 @@ public class FunctionalClass extends VariantStratifier {
                     String newtypeStr = eval.getAttributeAsString(key, null);
                     if ( newtypeStr != null && !newtypeStr.equalsIgnoreCase("null") ) {
                         try {
-                            FunctionalType newType = FunctionalType.valueOf(newtypeStr);
+                            final FunctionalType newType = FunctionalType.valueOf(newtypeStr);
                             if ( type == null ||
                                     ( type == FunctionalType.silent && newType != FunctionalType.silent ) ||
                                     ( type == FunctionalType.missense && newType == FunctionalType.nonsense ) ) {
@@ -67,7 +66,7 @@ public class FunctionalClass extends VariantStratifier {
 
             } else if ( eval.hasAttribute(FUNCTIONAL_CLASS_KEY) ) {
                 try {
-                    SnpEffUtil.EffectFunctionalClass snpEffFunctionalClass = SnpEffUtil.EffectFunctionalClass.valueOf(eval.getAttribute(FUNCTIONAL_CLASS_KEY).toString());
+                    final SnpEffUtil.EffectFunctionalClass snpEffFunctionalClass = SnpEffUtil.EffectFunctionalClass.valueOf(eval.getAttribute(FUNCTIONAL_CLASS_KEY).toString());
                     if ( snpEffFunctionalClass == SnpEffUtil.EffectFunctionalClass.NONSENSE )
                         type = FunctionalType.nonsense;
                     else if ( snpEffFunctionalClass == SnpEffUtil.EffectFunctionalClass.MISSENSE )

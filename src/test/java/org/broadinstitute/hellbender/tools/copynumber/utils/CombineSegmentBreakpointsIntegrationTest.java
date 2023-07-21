@@ -10,12 +10,12 @@ import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStanda
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedInterval;
 import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedIntervalCollection;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -44,9 +44,9 @@ public final class CombineSegmentBreakpointsIntegrationTest extends CommandLineP
     private static final String SEGMENT_CALL_2 = "Segment_Call";
 
     @Test
-    public void testRunWithExactSegments() throws IOException {
+    public void testRunWithExactSegments() {
         // Segment intervals are the same in the input files.  Therefore, the union should only generate more columns.
-        final File outputFile = File.createTempFile("combineseg_", ".seg");
+        final File outputFile = IOUtils.createTempFile("combineseg_", ".seg");
         final Set<String> columnSet = Sets.newHashSet("MEAN_LOG2_COPY_RATIO", "CALL", "Segment_Mean", "Segment_Call");
         final List<String> arguments = new ArrayList<>();
         arguments.add("--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME);
@@ -71,13 +71,13 @@ public final class CombineSegmentBreakpointsIntegrationTest extends CommandLineP
         Assert.assertEquals(regions.size(), 4);
         Assert.assertTrue(regions.getRecords().stream().allMatch(r -> r.getAnnotations().size() == columnSet.size()));
         Assert.assertTrue(regions.getRecords().stream().allMatch(r -> r.getAnnotations().keySet().containsAll(columnSet)));
-        Assert.assertTrue(regions.getRecords().stream().noneMatch(r -> r.getAnnotations().values().contains("")));
+        Assert.assertTrue(regions.getRecords().stream().noneMatch(r -> r.getAnnotations().containsValue("")));
     }
 
     @Test
-    public void testRunWithExactSameFiles() throws IOException {
+    public void testRunWithExactSameFiles() {
         // Input files are exactly the same.  Therefore, the union should only generate more columns.
-        final File outputFile = File.createTempFile("combineseg_", ".seg");
+        final File outputFile = IOUtils.createTempFile("combineseg_", ".seg");
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
         arguments.add(REFERENCE_FILE);
@@ -100,14 +100,14 @@ public final class CombineSegmentBreakpointsIntegrationTest extends CommandLineP
         Assert.assertEquals(regions.size(), 4);
         Assert.assertTrue(regions.getRecords().stream().allMatch(r -> r.getAnnotations().size() == gtColumnSet.size()));
         Assert.assertTrue(regions.getRecords().stream().allMatch(r -> r.getAnnotations().keySet().containsAll(gtColumnSet)));
-        Assert.assertTrue(regions.getRecords().stream().noneMatch(r -> r.getAnnotations().values().contains("")));
+        Assert.assertTrue(regions.getRecords().stream().noneMatch(r -> r.getAnnotations().containsValue("")));
         Assert.assertTrue(regions.getRecords().stream().allMatch(r -> r.getAnnotations().get("MEAN_LOG2_COPY_RATIO_1").equals(r.getAnnotations().get("MEAN_LOG2_COPY_RATIO_2"))));
         Assert.assertTrue(regions.getRecords().stream().allMatch(r -> r.getAnnotations().get("CALL_1").equals(r.getAnnotations().get("CALL_2"))));
     }
     @Test
-    public void testRunWithoutExactOverlaps() throws IOException {
+    public void testRunWithoutExactOverlaps() {
         // This test is a bit more like the real world
-        final File outputFile = File.createTempFile("combineseg_", ".seg");
+        final File outputFile = IOUtils.createTempFile("combineseg_", ".seg");
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
         arguments.add(REFERENCE_FILE);
@@ -135,9 +135,9 @@ public final class CombineSegmentBreakpointsIntegrationTest extends CommandLineP
     }
 
     @Test(expectedExceptions = UserException.BadInput.class)
-    public void testFailureIfNotAllColsOfInterestExist() throws IOException {
+    public void testFailureIfNotAllColsOfInterestExist() {
         // This test is a bit more like the real world
-        final File outputFile = File.createTempFile("combineseg_", ".seg");
+        final File outputFile = IOUtils.createTempFile("combineseg_", ".seg");
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
         arguments.add(REFERENCE_FILE);
@@ -187,11 +187,11 @@ public final class CombineSegmentBreakpointsIntegrationTest extends CommandLineP
     }
 
     @Test
-    public void testRunWithoutExactOverlapsAndLabels() throws IOException {
+    public void testRunWithoutExactOverlapsAndLabels() {
         final String TEST = "test";
         final String GT = "gt";
         // This test is a bit more like the real world
-        final File outputFile = File.createTempFile("combineseg_", ".seg");
+        final File outputFile = IOUtils.createTempFile("combineseg_", ".seg");
         final List<String> arguments = new ArrayList<>();
         arguments.add("-" + StandardArgumentDefinitions.REFERENCE_SHORT_NAME);
         arguments.add(REFERENCE_FILE);
@@ -224,18 +224,17 @@ public final class CombineSegmentBreakpointsIntegrationTest extends CommandLineP
     }
 
     @Test(expectedExceptions = UserException.class)
-    public void testErrorWithoutSamHeadersAndNoReference() throws IOException {
-
-        final File outputFile = File.createTempFile("combineseg_", ".seg");
+    public void testErrorWithoutSamHeadersAndNoReference() {
+        final File outputFile = IOUtils.createTempFile("combineseg_", ".seg");
         runCombineSegmentBreakpoints(GROUND_TRUTH_SEGMENTS_FILE_NO_SAMHEADER, INPUT_SEGMENTS_FILE_NO_SAMHEADER,
                 outputFile, null);
     }
 
     @Test
-    public void testWithoutSamHeaderAndWithReference() throws IOException {
+    public void testWithoutSamHeaderAndWithReference() {
 
         // This test is a bit more like the real world
-        final File outputFile = File.createTempFile("combineseg_", ".seg");
+        final File outputFile = IOUtils.createTempFile("combineseg_", ".seg");
         runCombineSegmentBreakpoints(GROUND_TRUTH_SEGMENTS_FILE_NO_SAMHEADER, INPUT_SEGMENTS_FILE_NO_SAMHEADER, outputFile, REFERENCE_FILE);
 
         Assert.assertTrue(outputFile.exists());
@@ -251,10 +250,10 @@ public final class CombineSegmentBreakpointsIntegrationTest extends CommandLineP
     }
 
     @Test
-    public void testRunAndOneWithoutSamHeaderAndNoReference() throws IOException {
+    public void testRunAndOneWithoutSamHeaderAndNoReference() {
 
         // This test is a bit more like the real world
-        final File outputFile = File.createTempFile("combineseg_", ".seg");
+        final File outputFile = IOUtils.createTempFile("combineseg_", ".seg");
         runCombineSegmentBreakpoints(INPUT_SEGMENTS_FILE, GROUND_TRUTH_SEGMENTS_FILE_NO_SAMHEADER, outputFile, null);
 
         Assert.assertTrue(outputFile.exists());
@@ -275,15 +274,15 @@ public final class CombineSegmentBreakpointsIntegrationTest extends CommandLineP
     }
 
     @Test(expectedExceptions = UserException.BadInput.class)
-    public void testDisagreeingSamHeadersAndNoReference() throws IOException {
-        final File outputFile = File.createTempFile("combineseg_", ".seg");
+    public void testDisagreeingSamHeadersAndNoReference() {
+        final File outputFile = IOUtils.createTempFile("combineseg_", ".seg");
         runCombineSegmentBreakpoints(INPUT_SEGMENTS_FILE_ALT_SAMHEADER, GROUND_TRUTH_SEGMENTS_FILE, outputFile, null);
     }
 
     /** Reference is ignored if SAM Headers are specified. */
     @Test(expectedExceptions = UserException.BadInput.class)
-    public void testDisagreeingSamHeadersAndReference() throws IOException {
-        final File outputFile = File.createTempFile("combineseg_", ".seg");
+    public void testDisagreeingSamHeadersAndReference() {
+        final File outputFile = IOUtils.createTempFile("combineseg_", ".seg");
         runCombineSegmentBreakpoints(INPUT_SEGMENTS_FILE_ALT_SAMHEADER, GROUND_TRUTH_SEGMENTS_FILE, outputFile, REFERENCE_FILE);
     }
 
@@ -324,8 +323,8 @@ public final class CombineSegmentBreakpointsIntegrationTest extends CommandLineP
     }
 
     @Test(dataProvider = "oldFormats")
-    public void testOldFormats(final String inputSegFile, final String oldFormatSegFile, final String meanColumn, final String callColumn, int numAnnotations) throws IOException {
-        final File outputFile = File.createTempFile("combineseg_old_formats_", ".seg");
+    public void testOldFormats(final String inputSegFile, final String oldFormatSegFile, final String meanColumn, final String callColumn, int numAnnotations) {
+        final File outputFile = IOUtils.createTempFile("combineseg_old_formats_", ".seg");
         runCombineSegmentBreakpoints(inputSegFile, oldFormatSegFile, outputFile, REFERENCE_FILE, "MEAN_LOG2_COPY_RATIO", "CALL", meanColumn, callColumn);
         final AnnotatedIntervalCollection regions = AnnotatedIntervalCollection.create(outputFile.toPath(),
                 Sets.newHashSet("MEAN_LOG2_COPY_RATIO", "CALL", meanColumn, callColumn));
@@ -335,9 +334,9 @@ public final class CombineSegmentBreakpointsIntegrationTest extends CommandLineP
     }
 
     @Test(dataProvider = "realTsvFormats")
-    public void testRealFormats(final String segFile, final String externalSegFile, final String expectedResult, final String ... colsOfInterest) throws IOException {
+    public void testRealFormats(final String segFile, final String externalSegFile, final String expectedResult, final String ... colsOfInterest) {
 
-        final File outputFile = File.createTempFile("combineseg_realformats_gt_", ".seg");
+        final File outputFile = IOUtils.createTempFile("combineseg_realformats_gt_", ".seg");
         runCombineSegmentBreakpoints(segFile, externalSegFile, outputFile, REFERENCE_FILE,
                 colsOfInterest);
 

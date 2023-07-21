@@ -4,15 +4,19 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.primitives.Doubles;
 import com.google.common.primitives.Ints;
 import htsjdk.variant.variantcontext.*;
-import htsjdk.variant.vcf.*;
+import htsjdk.variant.vcf.VCFConstants;
+import htsjdk.variant.vcf.VCFFormatHeaderLine;
+import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.genotyper.GenotypePriorCalculator;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
+import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.collections.Permutation;
+import org.broadinstitute.hellbender.utils.genotyper.GenotypePriorCalculator;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
+import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
@@ -33,8 +37,16 @@ public final class AlleleSubsettingUtils {
     private static final int PL_INDEX_OF_HOM_REF = 0;
     public static final int NUM_OF_STRANDS = 2; // forward and reverse strands
 
-    private static final GenotypeLikelihoodCalculators GL_CALCS = new GenotypeLikelihoodCalculators();
+    private static final OneShotLogger attributesRemovedOneShotLogger = new OneShotLogger(AlleleSubsettingUtils.class);
 
+    public static GenotypesContext subsetAlleles(final GenotypesContext originalGs, final int defaultPloidy,
+                                                 final List<Allele> originalAlleles,
+                                                 final List<Allele> allelesToKeep,
+                                                 final GenotypePriorCalculator gpc,
+                                                 final GenotypeAssignmentMethod assignmentMethod) {
+        //TODO: if other usages of this method should update or remove A,R, or G length annotations then header parsing is necessary and the method below should be used
+        return subsetAlleles(originalGs, defaultPloidy, originalAlleles, allelesToKeep, gpc, assignmentMethod, Collections.emptyList());
+    }
 
     /**
      * Create the new GenotypesContext with the subsetted PLs and ADs
@@ -45,7 +57,7 @@ public final class AlleleSubsettingUtils {
      * @param originalAlleles          the original alleles
      * @param allelesToKeep            the subset of alleles to use with the new Genotypes
      * @param assignmentMethod         assignment strategy for the (subsetted) PLs
-     * @param depth                    the original variant DP or 0 if there was no DP
+     * @param alleleBasedLengthAnnots  list of annotations that have lengths based on the number of alleles (A, R, and G length types)
      * @return                         a new non-null GenotypesContext
      */
     public static GenotypesContext subsetAlleles(final GenotypesContext originalGs, final int defaultPloidy,
@@ -53,7 +65,7 @@ public final class AlleleSubsettingUtils {
                                                  final List<Allele> allelesToKeep,
                                                  final GenotypePriorCalculator gpc,
                                                  final GenotypeAssignmentMethod assignmentMethod,
-                                                 final int depth) {
+                                                 final List<String> alleleBasedLengthAnnots) {
         Utils.nonNull(originalGs, "original GenotypesContext must not be null");
         Utils.nonNull(allelesToKeep, "allelesToKeep is null");
         Utils.nonEmpty(allelesToKeep, "must keep at least one allele");
@@ -73,30 +85,51 @@ public final class AlleleSubsettingUtils {
             final int expectedNumLikelihoods = GenotypeLikelihoods.numLikelihoods(originalAlleles.size(), ploidy);
             // create the new likelihoods array from the alleles we are allowed to use
             double[] newLikelihoods = null;
-            double newLog10GQ = -1;
+            double newLog10GQ = Double.NEGATIVE_INFINITY;
             if (g.hasLikelihoods()) {
                 final double[] originalLikelihoods = g.getLikelihoods().getAsVector();
                 newLikelihoods = originalLikelihoods.length == expectedNumLikelihoods ?
                         MathUtils.scaleLogSpaceArrayForNumericalStability(Arrays.stream(subsettedLikelihoodIndices)
                                 .mapToDouble(idx -> originalLikelihoods[idx]).toArray()) : null;
                 if (newLikelihoods != null) {
-                    final int PLindex = MathUtils.maxElementIndex(newLikelihoods);
-                    newLog10GQ = GenotypeLikelihoods.getGQLog10FromLikelihoods(PLindex, newLikelihoods);
+                    if (newLikelihoods.length > 1) {
+                        final int PLindex = MathUtils.maxElementIndex(newLikelihoods);  //pick out the call (log10L = 0)
+                        newLog10GQ = GenotypeLikelihoods.getGQLog10FromLikelihoods(PLindex, newLikelihoods);
+                    } else {  //if we subset to just ref allele, keep the GQ
+                        newLog10GQ = g.getGQ()/-10.0;  //-10 to go from Phred to log space
+                    }
                 }
 
+            } else if (g.hasGQ()) {
+                newLog10GQ = -0.1*g.getGQ();
             }
 
-            final boolean useNewLikelihoods = newLikelihoods != null && (depth != 0 || GATKVariantContextUtils.isInformative(newLikelihoods));
             final GenotypeBuilder gb = new GenotypeBuilder(g);
-            if (useNewLikelihoods) {
-                final Map<String, Object> attributes = new HashMap<>(g.getExtendedAttributes());
-                gb.PL(newLikelihoods).log10PError(newLog10GQ);
-                attributes.remove(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY);
-                gb.noAttributes().attributes(attributes);
+            final Map<String, Object> attributes = new HashMap<>(g.getExtendedAttributes());
+            attributes.remove(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY);
+            attributes.remove(VCFConstants.GENOTYPE_POSTERIORS_KEY);
+            attributes.remove(GATKVCFConstants.GENOTYPE_PRIOR_KEY);
+            final List<String> attributesToRemove = new ArrayList<>();
+            for(final String attribute : attributes.keySet()) {
+                if (alleleBasedLengthAnnots.contains(attribute)) {
+                    if (attribute.equals(GATKVCFConstants.F1R2_KEY) || attribute.equals(GATKVCFConstants.F2R1_KEY)) {
+                        final String oldAttributeString = (String) attributes.get(attribute);
+                        final String[] oldAttributeArray = oldAttributeString.split(AnnotationUtils.LIST_DELIMITER);
+                        final int[] oldAttribute = Arrays.stream(oldAttributeArray).mapToInt(Integer::parseInt).toArray();
+                        final int[] newAttribute = getNewAlleleBasedReadCountAnnotation(allelesToKeep, allelePermutation, oldAttribute);
+                        attributes.put(attribute, newAttribute);
+                    } else {
+                        attributesToRemove.add(attribute);
+                    }
+                }
             }
-            else {
-                gb.noPL().noGQ();
+            attributesToRemove.forEach(attributes::remove);
+            gb.noPL().noGQ().noAttributes().attributes(attributes);  //if alleles are subset, old PLs and GQ are invalid
+            if (newLog10GQ != Double.NEGATIVE_INFINITY && g.hasGQ()) {  //only put GQ if originally present
+                gb.log10PError(newLog10GQ);
             }
+            gb.PL(newLikelihoods);
+
             GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(), gb, assignmentMethod, newLikelihoods, allelesToKeep, g.getAlleles(), gpc);
 
             // restrict SAC to the new allele subset
@@ -107,17 +140,37 @@ public final class AlleleSubsettingUtils {
 
             // restrict AD to the new allele subset
             if(g.hasAD()) {
-                final int[] oldAD = g.getAD();
-                final int[] newAD = IntStream.range(0, allelesToKeep.size()).map(n -> oldAD[allelePermutation.fromIndex(n)]).toArray();
-                final int nonRefIndex = allelesToKeep.indexOf(Allele.NON_REF_ALLELE);
-                if (nonRefIndex != -1 && nonRefIndex < newAD.length) {
-                    newAD[nonRefIndex] = 0;  //we will "lose" coverage here, but otherwise merging NON_REF AD counts with other alleles "creates" reads
-                }
+                final int[] newAD = getNewAlleleBasedReadCountAnnotation(allelesToKeep, allelePermutation, g.getAD());
                 gb.AD(newAD);
+                // if we have recalculated AD and the original genotype had AF but was then removed, then recalculate AF based on AD counts
+                if (alleleBasedLengthAnnots.contains(GATKVCFConstants.ALLELE_FRACTION_KEY) && g.hasExtendedAttribute(GATKVCFConstants.ALLELE_FRACTION_KEY)) {
+                    attributesToRemove.remove(GATKVCFConstants.ALLELE_FRACTION_KEY);
+                    final double[] newAFs = MathUtils.normalizeSumToOne(Arrays.stream(newAD).mapToDouble(x -> x).toArray());
+                    gb.attribute(GATKVCFConstants.ALLELE_FRACTION_KEY, Arrays.copyOfRange(newAFs, 1, newAFs.length)); //omit the first entry of the array corresponding to the reference
+                }
+            }
+            if (attributesToRemove.size() > 0) {
+                attributesRemovedOneShotLogger.warn(() -> "The following attributes have been removed at sites where alleles were subset: " + String.join(",", attributesToRemove));
             }
             newGTs.add(gb.make());
         }
         return newGTs;
+    }
+
+    /**
+     * Subsets allele length annotation to match the alleles that have been kept
+     * @param allelesToKeep     list of alleles that are not being filtered out
+     * @param allelePermutation permutation that matches the index from the old annotation to the new annotation given which alleles have been removed
+     * @param oldAnnot          the original annotation
+     * @return                  the new subset annotation
+     */
+    private static int[] getNewAlleleBasedReadCountAnnotation(List<Allele> allelesToKeep, Permutation<Allele> allelePermutation, int[] oldAnnot) {
+        final int[] newAnnot = IntStream.range(0, allelesToKeep.size()).map(n -> oldAnnot[allelePermutation.fromIndex(n)]).toArray();
+        final int nonRefIndex = allelesToKeep.indexOf(Allele.NON_REF_ALLELE);
+        if (nonRefIndex != -1 && nonRefIndex < newAnnot.length) {
+            newAnnot[nonRefIndex] = 0;  //we will "lose" coverage here, but otherwise merging NON_REF AD counts with other alleles "creates" reads
+        }
+        return newAnnot;
     }
 
 
@@ -278,13 +331,16 @@ public final class AlleleSubsettingUtils {
      *
      * In the case of ties, the alleles will be chosen from lowest index to highest index.
      *
+     * For all hom-ref genotypes, calculate the most likely alt alleles
+     *
      * @param vc target variant context.
      * @param numAltAllelesToKeep number of alt alleles to keep.
+     * @param ensureReturnContainsAlt make sure the alleles returned include an alternate, even if it's not in the most likely genotype
      * @return the list of alleles to keep, including the reference and {@link Allele#NON_REF_ALLELE} if present
      *
      */
     public static List<Allele> calculateMostLikelyAlleles(final VariantContext vc, final int defaultPloidy,
-                                                          final int numAltAllelesToKeep) {
+                                                          final int numAltAllelesToKeep, boolean ensureReturnContainsAlt) {
         Utils.nonNull(vc, "vc is null");
         Utils.validateArg(defaultPloidy > 0, () -> "default ploidy must be > 0 but defaultPloidy=" + defaultPloidy);
         Utils.validateArg(numAltAllelesToKeep > 0, () -> "numAltAllelesToKeep must be > 0, but numAltAllelesToKeep=" + numAltAllelesToKeep);
@@ -297,7 +353,7 @@ public final class AlleleSubsettingUtils {
             return vc.getAlleles();
         }
 
-        final double[] likelihoodSums = calculateLikelihoodSums(vc, defaultPloidy);
+        final double[] likelihoodSums = calculateLikelihoodSums(vc, defaultPloidy, ensureReturnContainsAlt);
         return filterToMaxNumberOfAltAllelesBasedOnScores(numAltAllelesToKeep, vc.getAlleles(), likelihoodSums);
     }
 
@@ -327,9 +383,12 @@ public final class AlleleSubsettingUtils {
      *
      * Since GLs are log likelihoods, this quantity is thus
      * SUM_{samples whose likeliest genotype contains this alt allele} log(likelihood alt / likelihood hom ref)
+     * @param vc
+     * @param defaultPloidy
+     * @param countAllelesWithoutHomRef true if we know the input is hom-ref, but we still want to know the most likely ALT
      */
     @VisibleForTesting
-    static double[] calculateLikelihoodSums(final VariantContext vc, final int defaultPloidy) {
+    static double[] calculateLikelihoodSums(final VariantContext vc, final int defaultPloidy, final boolean countAllelesWithoutHomRef) {
         final double[] likelihoodSums = new double[vc.getNAlleles()];
         for ( final Genotype genotype : vc.getGenotypes().iterateInSampleNameOrder() ) {
             final GenotypeLikelihoods gls = genotype.getLikelihoods();
@@ -337,17 +396,15 @@ public final class AlleleSubsettingUtils {
                 continue;
             }
             final double[] glsVector = gls.getAsVector();
-            final int indexOfMostLikelyGenotype = MathUtils.maxElementIndex(glsVector);
-            final double GLDiffBetweenRefAndBest = glsVector[indexOfMostLikelyGenotype] - glsVector[PL_INDEX_OF_HOM_REF];
+            final int indexOfMostLikelyVariantGenotype = MathUtils.maxElementIndex(glsVector, countAllelesWithoutHomRef ? 1 : 0, glsVector.length);
+            final double GLDiffBetweenRefAndBestVariantGenotype = Math.abs(glsVector[indexOfMostLikelyVariantGenotype] - glsVector[PL_INDEX_OF_HOM_REF]);
             final int ploidy = genotype.getPloidy() > 0 ? genotype.getPloidy() : defaultPloidy;
 
-            final int[] alleleCounts = new GenotypeLikelihoodCalculators()
-                    .getInstance(ploidy, vc.getNAlleles()).genotypeAlleleCountsAt(indexOfMostLikelyGenotype)
-                    .alleleCountsByIndex(vc.getNAlleles() - 1);
+            final GenotypeAlleleCounts mostLikelyGenotypeAlleleCounts = GenotypesCache.get(ploidy, indexOfMostLikelyVariantGenotype);
 
-            for (int allele = 1; allele < alleleCounts.length; allele++) {
-                if (alleleCounts[allele] > 0) {
-                    likelihoodSums[allele] += GLDiffBetweenRefAndBest;
+            for (int allele = 1; allele < vc.getNAlleles(); allele++) {
+                if (mostLikelyGenotypeAlleleCounts.containsAllele(allele)) {
+                    likelihoodSums[allele] += GLDiffBetweenRefAndBestVariantGenotype;
                 }
             }
         }
@@ -370,10 +427,7 @@ public final class AlleleSubsettingUtils {
         final int[] result = new int[GenotypeLikelihoods.numLikelihoods(newAlleles.size(), ploidy)];
         final Permutation<Allele> allelePermutation = new IndexedAlleleList<>(originalAlleles).permutation(new IndexedAlleleList<>(newAlleles));
 
-        final GenotypeLikelihoodCalculator glCalc = GL_CALCS.getInstance(ploidy, originalAlleles.size());
-        for (int oldPLIndex = 0; oldPLIndex < glCalc.genotypeCount(); oldPLIndex++) {
-            final GenotypeAlleleCounts oldAlleleCounts = glCalc.genotypeAlleleCountsAt(oldPLIndex);
-
+        for (final GenotypeAlleleCounts oldAlleleCounts : GenotypeAlleleCounts.iterable(ploidy, originalAlleles.size())) {
             final boolean containsOnlyNewAlleles = IntStream.range(0, oldAlleleCounts.distinctAlleleCount())
                     .map(oldAlleleCounts::alleleIndexAt).allMatch(allelePermutation::isKept);
 
@@ -383,8 +437,8 @@ public final class AlleleSubsettingUtils {
                 final int[] newAlleleCounts = IntStream.range(0, newAlleles.size()).flatMap(newAlleleIndex ->
                         IntStream.of(newAlleleIndex, oldAlleleCounts.alleleCountFor(allelePermutation.fromIndex(newAlleleIndex)))).toArray();
 
-                final int newPLIndex = glCalc.alleleCountsToIndex(newAlleleCounts);
-                result[newPLIndex] = oldPLIndex;
+                final int newPLIndex = GenotypeIndexCalculator.alleleCountsToIndex(newAlleleCounts);
+                result[newPLIndex] = oldAlleleCounts.index();
             }
         }
         return  result;
@@ -434,39 +488,6 @@ public final class AlleleSubsettingUtils {
         return indexMapping;
     }
 
-    public static int[] getIndexesOfRelevantAlleles(final List<Allele> remappedAlleles, final List<Allele> targetAlleles, final int position, final Genotype g) {
-        Utils.nonEmpty(remappedAlleles);
-        Utils.nonEmpty(targetAlleles);
-
-        final int[] indexMapping = new int[targetAlleles.size()];
-
-        // the reference likelihoods should always map to each other (even if the alleles don't)
-        indexMapping[0] = 0;
-
-        for ( int i = 1; i < targetAlleles.size(); i++ ) {
-            // if there's more than 1 spanning deletion (*) allele then we need to use the best one
-            if (targetAlleles.get(i) == Allele.SPAN_DEL && g.hasPL()) {
-                final int occurrences = Collections.frequency(remappedAlleles, Allele.SPAN_DEL);
-                if (occurrences > 1) {
-                    final int indexOfBestDel = indexOfBestDel(remappedAlleles, g.getPL(), g.getPloidy());
-                    if (indexOfBestDel == -1) {
-                        throw new IllegalArgumentException("At position " + position + " targetAlleles contains a spanning deletion, but remappedAlleles does not.");
-                    }
-                    indexMapping[i] = indexOfBestDel;
-                    continue;
-                }
-            }
-
-            final int indexOfRemappedAllele = remappedAlleles.indexOf(targetAlleles.get(i));
-            if (indexOfRemappedAllele == -1) {
-                throw new IllegalArgumentException("At position " + position + " targetAlleles contains a " + targetAlleles.get(i) + " allele, but remappedAlleles does not.");
-            }
-            indexMapping[i] = indexOfRemappedAllele;
-        }
-
-        return indexMapping;
-    }
-
     /**
      * Returns the index of the best spanning deletion allele based on AD counts
      *
@@ -481,7 +502,8 @@ public final class AlleleSubsettingUtils {
 
         for ( int i = 0; i < alleles.size(); i++ ) {
             if ( alleles.get(i) == Allele.SPAN_DEL ) {
-                final int homAltIndex = findHomIndex(GL_CALCS.getInstance(ploidy, alleles.size()), i, ploidy);
+                //In the canonical order, the homozygous genotype of the ith allele is immediately followed by the first genotype containing the (i+1)th allele.
+                final int homAltIndex = (int) GenotypeIndexCalculator.indexOfFirstGenotypeWithAllele(ploidy, i +1) - 1;
                 final int PL = PLs[homAltIndex];
                 if ( PL < bestPL ) {
                     bestIndex = i;
@@ -491,25 +513,6 @@ public final class AlleleSubsettingUtils {
         }
 
         return bestIndex;
-    }
-
-    /** //TODO simplify these methods
-     * Returns the index of the PL that represents the homozygous genotype of the given i'th allele
-     *
-     * @param i           the index of the allele with the list of alleles
-     * @param ploidy      the ploidy of the sample
-     * @return the hom index
-     */
-    private static int findHomIndex(final GenotypeLikelihoodCalculator calculator, final int i, final int ploidy) {
-        // some quick optimizations for the common case
-        if ( ploidy == 2 )
-            return GenotypeLikelihoods.calculatePLindex(i, i);
-        if ( ploidy == 1 )
-            return i;
-
-        final int[] alleleIndexes = new int[ploidy];
-        Arrays.fill(alleleIndexes, i);
-        return calculator.allelesToIndex(alleleIndexes);
     }
 
     /**

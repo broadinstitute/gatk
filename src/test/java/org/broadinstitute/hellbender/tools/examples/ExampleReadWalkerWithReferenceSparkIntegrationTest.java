@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.examples;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -14,9 +15,8 @@ public final class ExampleReadWalkerWithReferenceSparkIntegrationTest extends Co
 
     @Test
     public void testExampleReadWalkerWithReferenceSpark() throws IOException {
-        final File out = File.createTempFile("out", ".txt");
+        final File out = IOUtils.createTempFile("out", ".txt");
         out.delete();
-        out.deleteOnExit();
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addRaw("--input");
         args.addRaw(TEST_DATA_DIRECTORY + "reads_data_source_test1.bam");

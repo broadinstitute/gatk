@@ -3,13 +3,14 @@ package org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.CommandLineException;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEvalEngine;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.evaluators.VariantEvaluator;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.evaluators.VariantSummary;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.util.VariantEvalContext;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.*;
@@ -22,17 +23,19 @@ import java.util.*;
  * it computes the AC from the genotypes themselves.  If no AC can be computed, 0 is used.
  */
 public class AlleleCount extends VariantStratifier {
-    int nchrom;
+    private static final Logger log = LogManager.getLogger(AlleleCount.class);
+    private int nchrom;
 
-    @Override
-    public void initialize() {
+    public AlleleCount(VariantEvalEngine engine) {
+        super(engine);
+
         // we can only work with a single eval VCF, and it must have genotypes
-        if ( getVariantEvalWalker().getEvals().size() != 1 && !getVariantEvalWalker().mergeEvals )
+        if ( getEngine().getVariantEvalArgs().getEvals().size() != 1 && !getEngine().getVariantEvalArgs().isMergeEvals() )
             throw new CommandLineException.BadArgumentValue("AlleleCount", "AlleleCount stratification only works with a single eval vcf");
 
         // There are ploidy x n sample chromosomes
         // TODO -- generalize to handle multiple ploidy
-        nchrom = getVariantEvalWalker().getNumberOfSamplesForEvaluation() * getVariantEvalWalker().getSamplePloidy();
+        nchrom = getEngine().getNumberOfSamplesForEvaluation() * getEngine().getVariantEvalArgs().getPloidy();
         if ( nchrom < 2 )
             throw new CommandLineException.BadArgumentValue("AlleleCount", "AlleleCount stratification requires an eval vcf with at least one sample");
 
@@ -41,10 +44,11 @@ public class AlleleCount extends VariantStratifier {
             states.add(ac);
         }
 
-        getVariantEvalWalker().getLogger().info("AlleleCount using " + nchrom + " chromosomes");
+        log.info("AlleleCount using " + nchrom + " chromosomes");
     }
 
-    public List<Object> getRelevantStates(ReferenceContext referenceContext, ReadsContext readsContext, FeatureContext featureContext, VariantContext comp, String compName, VariantContext eval, String evalName, String sampleName, String familyName) {
+    @Override
+    public List<Object> getRelevantStates(final VariantEvalContext context, final VariantContext comp, final String compName, final VariantContext eval, final String evalName, final String sampleName, final String familyName) {
         if (eval != null) {
             int AC = 0; // by default, the site is considered monomorphic
 

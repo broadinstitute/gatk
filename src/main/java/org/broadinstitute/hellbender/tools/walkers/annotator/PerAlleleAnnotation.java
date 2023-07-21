@@ -56,15 +56,9 @@ public abstract class PerAlleleAnnotation implements InfoFieldAnnotation {
     }
 
     @Override
-    public List<VCFInfoHeaderLine> getDescriptions() {
-        return Arrays.asList(new VCFInfoHeaderLine(getVcfKey(), includeRefAllele() ? VCFHeaderLineCount.R : VCFHeaderLineCount.A, VCFHeaderLineType.Integer, getDescription()));
-    }
-
-    @Override
     public List<String> getKeyNames() { return Arrays.asList(getVcfKey()); }
 
     protected abstract OptionalInt getValueForRead(final GATKRead read, final VariantContext vc);
     protected abstract int aggregate(final List<Integer> values);
     protected abstract String getVcfKey();
-    protected abstract String getDescription();
 }

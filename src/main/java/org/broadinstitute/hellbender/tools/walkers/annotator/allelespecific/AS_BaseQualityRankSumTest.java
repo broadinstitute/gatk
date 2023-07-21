@@ -30,7 +30,7 @@ import java.util.OptionalDouble;
  *
  * <h3>Related annotations</h3>
  * <ul>
- * <li><b><a href="https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_annotator_BaseQualityRankSumTest.php">BaseQualityRankSumTest</a></b> outputs a version of this annotation that includes all alternate alleles in a single calculation.</li>
+ * <li><b>BaseQualityRankSumTest</b> outputs a version of this annotation that includes all alternate alleles in a single calculation.</li>
  * </ul>
  *
  */

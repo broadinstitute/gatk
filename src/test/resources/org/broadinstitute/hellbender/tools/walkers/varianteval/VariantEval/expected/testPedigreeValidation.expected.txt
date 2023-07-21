@@ -1,0 +1,6 @@
+#:GATKReport.v1.1:1
+#:GATKTable:31:1:%s:%s:%s:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:;
+#:GATKTable:MendelianViolationEvaluator:Mendelian Violation Evaluator
+MendelianViolationEvaluator  CompFeatureInput  EvalFeatureInput  nVariants  nSkipped  nFamCalled  nVarFamCalled  nLowQual  nNoCall  nLociViolations  nViolations  mvRefRef_Var  mvRefRef_Het  mvRefHet_Var  mvRefVar_Var  mvRefVar_Ref  mvVarHet_Ref  mvVarVar_Ref  mvVarVar_Het  HomRefHomRef_HomRef  HetHet_Het  HetHet_HomRef  HetHet_HomVar  HomVarHomVar_HomVar  HomRefHomVAR_Het  HetHet_inheritedRef  HetHet_inheritedVar  HomRefHet_inheritedRef  HomRefHet_inheritedVar  HomVarHet_inheritedRef  HomVarHet_inheritedVar
+MendelianViolationEvaluator  none              eval                     12         0          12             12         0        0               12           12             1             1             2             2             2             2             1             1                    0           0              0              0                    0                 0                    0                    0                       0                       0                       0                       0
+

@@ -94,6 +94,10 @@ public final class LabeledVariantAnnotationsData {
         return data.size();
     }
 
+    public int flatSize() {
+        return data.stream().mapToInt(List::size).sum();
+    }
+
     public void clear() {
         data.clear();
     }

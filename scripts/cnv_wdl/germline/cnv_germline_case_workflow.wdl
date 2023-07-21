@@ -247,18 +247,10 @@ workflow CNVGermlineCaseWorkflow {
                 ref_copy_number_autosomal_contigs = ref_copy_number_autosomal_contigs,
                 contig_ploidy_calls_tar = DetermineGermlineContigPloidyCaseMode.contig_ploidy_calls_tar,
                 sample_index = sample_index,
-                gatk4_jar_override = gatk4_jar_override,
-                gatk_docker = gatk_docker,
-                preemptible_attempts = preemptible_attempts
-        }
-
-        call CNVTasks.CollectSampleQualityMetrics {
-            input:
-                genotyped_segments_vcf = PostprocessGermlineCNVCalls.genotyped_segments_vcf,
-                entity_id = CollectCounts.entity_id[sample_index],
                 maximum_number_events = maximum_number_events_per_sample,
                 maximum_number_pass_events = maximum_number_pass_events_per_sample,
-                bash_docker = gatk_docker,
+                gatk4_jar_override = gatk4_jar_override,
+                gatk_docker = gatk_docker,
                 preemptible_attempts = preemptible_attempts
         }
     }
@@ -282,8 +274,8 @@ workflow CNVGermlineCaseWorkflow {
         Array[File] genotyped_intervals_vcf_indexes = PostprocessGermlineCNVCalls.genotyped_intervals_vcf_index
         Array[File] genotyped_segments_vcfs = PostprocessGermlineCNVCalls.genotyped_segments_vcf
         Array[File] genotyped_segments_vcf_indexes = PostprocessGermlineCNVCalls.genotyped_segments_vcf_index
-        Array[File] qc_status_files = CollectSampleQualityMetrics.qc_status_file
-        Array[String] qc_status_strings = CollectSampleQualityMetrics.qc_status_string
+        Array[File] qc_status_files = PostprocessGermlineCNVCalls.qc_status_file
+        Array[String] qc_status_strings = PostprocessGermlineCNVCalls.qc_status_string
         Array[File] denoised_copy_ratios = PostprocessGermlineCNVCalls.denoised_copy_ratios
     }
 }
@@ -331,7 +323,7 @@ task DetermineGermlineContigPloidyCaseMode {
             --output ~{output_dir_} \
             --output-prefix case \
             --verbosity DEBUG \
-            --mapping-error-rate ~{default="0.01" mapping_error_rate} \
+            --mapping-error-rate ~{default="0.3" mapping_error_rate} \
             --sample-psi-scale ~{default="0.0001" sample_psi_scale}
 
         tar c -C ~{output_dir_}/case-calls . | gzip -1 > case-contig-ploidy-calls.tar.gz
@@ -431,11 +423,11 @@ task GermlineCNVCallerCaseMode {
             --output ~{output_dir_} \
             --output-prefix case \
             --verbosity DEBUG \
-            --p-alt ~{default="1e-6" p_alt} \
+            --p-alt ~{default="5e-4" p_alt} \
             --cnv-coherence-length ~{default="10000.0" cnv_coherence_length} \
             --max-copy-number ~{default="5" max_copy_number} \
             --mapping-error-rate ~{default="0.01" mapping_error_rate} \
-            --sample-psi-scale ~{default="0.0001" sample_psi_scale} \
+            --sample-psi-scale ~{default="0.01" sample_psi_scale} \
             --depth-correction-tau ~{default="10000.0" depth_correction_tau} \
             --copy-number-posterior-expectation-mode ~{default="HYBRID" copy_number_posterior_expectation_mode} \
             --active-class-padding-hybrid-mode ~{default="50000" active_class_padding_hybrid_mode} \

@@ -54,7 +54,7 @@ public final class GcsNioIntegrationTest extends GATKBaseTest {
             try (OutputStream os = Files.newOutputStream(outputPath)) {
                 os.write(42);
             }
-        } catch (shaded.cloud_nio.com.google.api.client.http.HttpResponseException forbidden) {
+        } catch (com.google.api.client.http.HttpResponseException forbidden) {
             helpDebugAuthError();
             throw forbidden;
         }

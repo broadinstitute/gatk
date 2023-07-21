@@ -2,12 +2,11 @@ package org.broadinstitute.hellbender.tools.walkers.varianteval.evaluators;
 
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEvalEngine;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.Analysis;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.DataPoint;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.util.VariantEvalContext;
 
 @Analysis(description = "Computes different estimates of theta based on variant sites and genotypes")
 
@@ -26,7 +25,8 @@ public class VariantAFEvaluator extends VariantEvaluator {
     private static final double PLOIDY = 2.0; // assume ploidy of 2
     private double sumVariantAFs; // this is the allele fraction we're summing over all sites, to be used to calculate the avgVarAlleles
 
-    public VariantAFEvaluator() {
+    public VariantAFEvaluator(VariantEvalEngine engine) {
+        super(engine);
         sumVariantAFs = 0.0;
         totalCalledSites = 0;
     }
@@ -35,10 +35,11 @@ public class VariantAFEvaluator extends VariantEvaluator {
         return 1;
     }
 
-    public void update1(VariantContext vc, final ReferenceContext referenceContext, final ReadsContext readsContext, final FeatureContext featureContext) {
+    @Override
+    public void update1(final VariantContext vc, final VariantEvalContext context) {
         vc.getStart();
 
-        if (vc == null || !vc.isSNP() || (getWalker().ignoreAC0Sites() && vc.isMonomorphicInSamples())) {
+        if (vc == null || !vc.isSNP() || (getEngine().getVariantEvalArgs().ignoreAC0Sites() && vc.isMonomorphicInSamples())) {
             return;
         }
 

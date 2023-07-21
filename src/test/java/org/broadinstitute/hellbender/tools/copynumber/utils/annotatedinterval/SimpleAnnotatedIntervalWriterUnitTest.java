@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval;
 
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.utils.codecs.AnnotatedIntervalCodec;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -20,14 +21,14 @@ public class SimpleAnnotatedIntervalWriterUnitTest extends GATKBaseTest {
             "copynumber/utils/annotatedinterval/old-header.config");
 
     @Test
-    public void testNoSamFileHeaderWithComments() throws IOException {
-        final File outputFile = File.createTempFile("simpleannotatedintervalwriter_no_samheader", ".seg");
+    public void testNoSamFileHeaderWithComments() {
+        final File outputFile = IOUtils.createTempFile("simpleannotatedintervalwriter_no_samheader", ".seg");
         final AnnotatedIntervalCollection collection = AnnotatedIntervalCollection.create(TEST_FILE_NO_SAMHEADER.toPath(), null);
 
-        final SimpleAnnotatedIntervalWriter writer = new SimpleAnnotatedIntervalWriter(outputFile);
-        writer.writeHeader(AnnotatedIntervalCodec.createHeaderForWriter(collection.getAnnotations(), collection.getSamFileHeader()));
-        collection.getRecords().forEach(r -> writer.add(r));
-        writer.close();
+        try (final SimpleAnnotatedIntervalWriter writer = new SimpleAnnotatedIntervalWriter(outputFile)) {
+            writer.writeHeader(AnnotatedIntervalCodec.createHeaderForWriter(collection.getAnnotations(), collection.getSamFileHeader()));
+            collection.getRecords().forEach(writer::add);
+        }
 
         final AnnotatedIntervalCollection testCollection = AnnotatedIntervalCollection.create(outputFile.toPath(), null);
 
@@ -42,15 +43,14 @@ public class SimpleAnnotatedIntervalWriterUnitTest extends GATKBaseTest {
     }
 
     @Test
-    public void testRoundTrip() throws IOException {
-        final File outputFile = File.createTempFile("simpleannotatedintervalwriter_", ".seg");
+    public void testRoundTrip() {
+        final File outputFile = IOUtils.createTempFile("simpleannotatedintervalwriter_", ".seg");
         final AnnotatedIntervalCollection collection = AnnotatedIntervalCollection.create(TEST_FILE.toPath(), null);
 
-        final SimpleAnnotatedIntervalWriter writer = new SimpleAnnotatedIntervalWriter(outputFile);
-
-        writer.writeHeader(AnnotatedIntervalCodec.createHeaderForWriter(collection.getAnnotations(), collection.getSamFileHeader()));
-        collection.getRecords().forEach(r -> writer.add(r));
-        writer.close();
+        try (final SimpleAnnotatedIntervalWriter writer = new SimpleAnnotatedIntervalWriter(outputFile)) {
+            writer.writeHeader(AnnotatedIntervalCodec.createHeaderForWriter(collection.getAnnotations(), collection.getSamFileHeader()));
+            collection.getRecords().forEach(writer::add);
+        }
 
         final AnnotatedIntervalCollection testCollection = AnnotatedIntervalCollection.create(outputFile.toPath(), null);
 
@@ -65,11 +65,11 @@ public class SimpleAnnotatedIntervalWriterUnitTest extends GATKBaseTest {
     }
 
     @Test
-    public void testRoundTripWithReplacementHeader() throws IOException {
+    public void testRoundTripWithReplacementHeader() {
         // Tests that we can read a file with a non-standard header (specified by a config file) and that we can output
         //  with the default headers (input headers would then not match output headers).
         //  Also, tests that the structured comments get replaced with the new value.
-        final File outputFile = File.createTempFile("simpleannotatedintervalwriter_", ".seg");
+        final File outputFile = IOUtils.createTempFile("simpleannotatedintervalwriter_", ".seg");
         final AnnotatedIntervalCollection collection = AnnotatedIntervalCollection.create(TEST_FILE_OLD_HEADER.toPath(),
                 TEST_FILE_OLD_HEADER_CONFIG.toPath(),null);
 
@@ -79,7 +79,7 @@ public class SimpleAnnotatedIntervalWriterUnitTest extends GATKBaseTest {
 
         try (final SimpleAnnotatedIntervalWriter writer = new SimpleAnnotatedIntervalWriter(outputFile)) {
             writer.writeHeader(AnnotatedIntervalCodec.createHeaderForWriter(collection.getAnnotations(), collection.getSamFileHeader()));
-            collection.getRecords().forEach(r -> writer.add(r));
+            collection.getRecords().forEach(writer::add);
         }
 
         final AnnotatedIntervalCollection testCollection = AnnotatedIntervalCollection.create(outputFile.toPath(), null);

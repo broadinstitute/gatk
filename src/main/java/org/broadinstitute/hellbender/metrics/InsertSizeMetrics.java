@@ -1,7 +1,8 @@
 package org.broadinstitute.hellbender.metrics;
 
 import htsjdk.samtools.SamPairUtil.PairOrientation;
-import org.broadinstitute.hellbender.metrics.MultiLevelMetrics;
+import org.broadinstitute.barclay.help.DocumentedFeature;
+import picard.util.help.HelpConstants;
 
 import java.io.Serializable;
 
@@ -11,6 +12,7 @@ import java.io.Serializable;
  * ".insertSizeMetrics".  In addition the insert size distribution is plotted to
  * a file with the extension ".insertSizeMetrics.pdf".
  */
+@DocumentedFeature(groupName = HelpConstants.DOC_CAT_METRICS, summary = HelpConstants.DOC_CAT_METRICS_SUMMARY)
 public final class InsertSizeMetrics extends MultiLevelMetrics implements Serializable {
 
     private static final long serialVersionUID = 1L;

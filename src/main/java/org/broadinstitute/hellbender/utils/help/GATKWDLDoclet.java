@@ -3,14 +3,16 @@ package org.broadinstitute.hellbender.utils.help;
 import freemarker.template.Configuration;
 import freemarker.template.Template;
 import freemarker.template.TemplateException;
+import jdk.javadoc.doclet.Doclet;
 import org.apache.commons.io.FilenameUtils;
-import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.barclay.argparser.WorkflowProperties;
 import org.broadinstitute.barclay.help.*;
 
+import javax.lang.model.element.Element;
 import java.io.*;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Custom Barclay-based Javadoc Doclet used for generating tool WDL.
@@ -22,7 +24,7 @@ import java.util.Map;
 @SuppressWarnings("removal")
 public class GATKWDLDoclet extends WDLDoclet {
 
-    // emit an index file with links to all of the .wdl files
+    // emit an index file with links to all the .wdl files
     private final static String GATK_FREEMARKER_INDEX_TEMPLATE_NAME = "wdlIndexTemplate.html.ftl";
 
     // the directory where the wdlgen build is running
@@ -32,38 +34,20 @@ public class GATKWDLDoclet extends WDLDoclet {
     @Override
     public String getIndexFileExtension() { return "html"; }
 
-    /**
-     * Validates the given options against options supported by this doclet.
-     *
-     * @param option Option to validate.
-     * @return Number of potential parameters; 0 if not supported.
-     */
-    public static int optionLength(final String option) {
-        // Any arguments used for the doclet need to be recognized here. Many javadoc plugins (ie. gradle)
-        // automatically add some such as "-doctitle", "-windowtitle", which we ignore.
-        if (option.equals(OPT_BUILD_DIR)) {
-            return 2;
-        }
-        return WDLDoclet.optionLength(option);
-    }
-
     @Override
-    protected boolean parseOption(final String[] option) {
-        if (option[0].equals(OPT_BUILD_DIR)) {
-            buildDir = option[1];
-            return true;
-        } else {
-            return super.parseOption(option);
-        }
-    }
-
-    /**
-     * Create a WDL doclet and generate the FreeMarker templates properties.
-     * @param rootDoc
-     * @throws IOException
-     */
-    public static boolean start(final com.sun.javadoc.RootDoc rootDoc) throws IOException {
-        return new GATKWDLDoclet().startProcessDocs(rootDoc);
+    public Set<? extends Option> getSupportedOptions() {
+        final Set<Option> options = new LinkedHashSet<>();
+        options.addAll(super.getSupportedOptions());
+        final Doclet.Option localOption =
+                new BarclayDocletOption.SimpleStandardOption(OPT_BUILD_DIR) {
+                    @Override
+                    public boolean process(String option, List<String> arguments) {
+                        buildDir = arguments.get(0);
+                        return true;
+                    }
+                };
+        options.add(localOption);
+        return options;
     }
 
     /**
@@ -87,25 +71,25 @@ public class GATKWDLDoclet extends WDLDoclet {
      * @return Create and return a DocWorkUnit-derived object to handle documentation
      * for the target feature(s) represented by documentedFeature.
      *
-     * @param documentedFeature DocumentedFeature annotation for the target feature
-     * @param classDoc javadoc classDoc for the target feature
+     * @param classElement the Element for the class for this workunit
      * @param clazz class of the target feature
-     * @return DocWorkUnit to be used for this feature
+     * @param documentedFeature DocumentedFeature annotation for the target feature
+     * @return
      */
     @Override
-    protected DocWorkUnit createWorkUnit(
-            final DocumentedFeature documentedFeature,
-            final com.sun.javadoc.ClassDoc classDoc,
-            final Class<?> clazz)
+    public DocWorkUnit createWorkUnit(
+            final Element classElement,
+            final Class<?> clazz,
+            final DocumentedFeature documentedFeature)
     {
-        return includeInDocs(documentedFeature, classDoc, clazz) ?
+        return includeInDocs(documentedFeature, clazz) ?
                 // for WDL we don't need to customize the work unit, only the handler, so just use the
                 // Barclay default WorkUnit class
                 new DocWorkUnit(
                     new GATKWDLWorkUnitHandler(this),
-                    documentedFeature,
-                    classDoc,
-                    clazz) :
+                    classElement,
+                    clazz,
+                    documentedFeature) :
                 null;
     }
 

@@ -63,11 +63,6 @@ public class OriginalAlignment implements InfoFieldAnnotation {
     }
 
     @Override
-    public List<VCFInfoHeaderLine> getDescriptions() {
-        return Collections.singletonList(GATKVCFHeaderLines.getInfoLine(KEY));
-    }
-
-    @Override
     public List<String> getKeyNames() {
         return Collections.singletonList(KEY);
     }
