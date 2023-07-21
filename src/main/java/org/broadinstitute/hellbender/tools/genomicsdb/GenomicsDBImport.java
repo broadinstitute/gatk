@@ -22,7 +22,6 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
-import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
@@ -48,7 +47,6 @@ import java.io.IOException;
 import java.io.Serial;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -221,7 +219,7 @@ public final class GenomicsDBImport extends GATKTool {
     public static final String MAX_NUM_INTERVALS_TO_IMPORT_IN_PARALLEL = "max-num-intervals-to-import-in-parallel";
     public static final String MERGE_CONTIGS_INTO_NUM_PARTITIONS = "merge-contigs-into-num-partitions";
     public static final String BYPASS_FEATURE_READER = "bypass-feature-reader";
-    public static final String VCF_HEADER = "vcf-header";
+    public static final String VCF_HEADER = "header";
     public static final int INTERVAL_LIST_SIZE_WARNING_THRESHOLD = 100;
     public static final int ARRAY_COLUMN_BOUNDS_START = 0;
     public static final int ARRAY_COLUMN_BOUNDS_END = 1;
@@ -482,7 +480,7 @@ public final class GenomicsDBImport extends GATKTool {
         initializeWorkspaceAndToolMode();
         assertVariantPathsOrSampleNameFileWasSpecified();
         assertOverwriteWorkspaceAndIncrementalImportMutuallyExclusive();
-        assertAvoidNioOnlySpecifiedWithBypassFeaureReader();
+        assertAvoidNioConditionsAreValid();
         initializeHeaderAndSampleMappings();
         initializeIntervals();
         super.onStartup();
@@ -517,9 +515,10 @@ public final class GenomicsDBImport extends GATKTool {
         }
     }
 
-    private void assertAvoidNioOnlySpecifiedWithBypassFeaureReader() {
-        if (avoidNio && ! bypassFeatureReader){
-            throw new CommandLineException("--" +AVOID_NIO + " cannot be set without --" + BYPASS_FEATURE_READER + " also being set");
+    private void assertAvoidNioConditionsAreValid() {
+        if (avoidNio && (!bypassFeatureReader || headerOverride == null) ){
+            throw new CommandLineException("If --" +AVOID_NIO + " is set then --" + BYPASS_FEATURE_READER
+                    + " and --" + VCF_HEADER + " must also be specified.");
         }
     }
 
@@ -555,6 +554,7 @@ public final class GenomicsDBImport extends GATKTool {
             // -V was specified
             final List<VCFHeader> headers = new ArrayList<>(variantPaths.size());
             sampleNameMap = new SampleNameMap();
+
             for (final String variantPathString : variantPaths) {
                 final Path variantPath = IOUtils.getPath(variantPathString);
                 if (bypassFeatureReader && !avoidNio) {
@@ -568,9 +568,8 @@ public final class GenomicsDBImport extends GATKTool {
                 final String sampleName = header.getGenotypeSamples().get(0);
                 try {
                     sampleNameMap.addSample(sampleName, new URI(variantPathString));
-                }
-                catch(final URISyntaxException e) {
-                    throw new UserException("Malformed URI "+e.toString(), e);
+                } catch(final URISyntaxException e) {
+                    throw new UserException("Malformed URI "+ e.getMessage(), e);
                 }
             }
             if(headerOverride == null) {
@@ -589,13 +588,15 @@ public final class GenomicsDBImport extends GATKTool {
             //the resulting database will have incorrect sample names
             //see https://github.com/broadinstitute/gatk/issues/3682 for more information
             // The SampleNameMap class guarantees that the samples will be sorted correctly.
-            sampleNameMap = new SampleNameMap(IOUtils.getPath(sampleNameMapFile), bypassFeatureReader);
+            sampleNameMap = new SampleNameMap(IOUtils.getPath(sampleNameMapFile), bypassFeatureReader && !avoidNio);
 
             final String firstSample = sampleNameMap.getSampleNameToVcfPath().entrySet().iterator().next().getKey();
             final Path firstVCFPath = sampleNameMap.getVCFForSampleAsPath(firstSample);
             final Path firstVCFIndexPath = sampleNameMap.getVCFIndexForSampleAsPath(firstSample);
-            final VCFHeader header = headerOverride == null ? getHeaderFromPath(firstVCFPath, firstVCFIndexPath)
-                                                : getHeaderFromPath(headerOverride.toPath(), null);
+
+            final VCFHeader header = headerOverride == null
+                    ? getHeaderFromPath(firstVCFPath, firstVCFIndexPath)
+                    : getHeaderFromPath(headerOverride.toPath(), null);
 
             //getMetaDataInInputOrder() returns an ImmutableSet - LinkedHashSet is mutable and preserves ordering
             mergedHeaderLines = new LinkedHashSet<>(header.getMetaDataInInputOrder());
@@ -681,7 +682,7 @@ public final class GenomicsDBImport extends GATKTool {
         } else {
             logger.info("Vid Map JSON file will be written to " + vidMapJSONFile);
             logger.info("Callset Map JSON file will be written to " + callsetMapJSONFile);
-            logger.info("Complete VCF Header will be written to " + vcf);
+            logger.info("Complete VCF Header will be written to " + vcfHeaderFile);
             logger.info("Importing to workspace - " + workspaceDir);
         }
         initializeInputPreloadExecutorService();
