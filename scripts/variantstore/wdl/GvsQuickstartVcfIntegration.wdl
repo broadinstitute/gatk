@@ -3,7 +3,7 @@ version 1.0
 import "GvsUnified.wdl" as Unified
 import "GvsUtils.wdl" as Utils
 
-# .
+# ..
 
 workflow GvsQuickstartVcfIntegration {
 
@@ -97,6 +97,8 @@ workflow GvsQuickstartVcfIntegration {
             extract_do_not_filter_override = extract_do_not_filter_override,
             drop_state = drop_state,
             interval_list = interval_list,
+            use_interval_weights = use_interval_weights,
+            interval_weights_bed = interval_weights_bed
     }
 
     # Only assert identical outputs if we did not filter (filtering is not deterministic) OR if we are using VQSR Lite (which is deterministic)
