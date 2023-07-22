@@ -3,6 +3,8 @@ version 1.0
 import "GvsUnified.wdl" as Unified
 import "GvsUtils.wdl" as Utils
 
+# .
+
 workflow GvsQuickstartVcfIntegration {
 
     input {
@@ -85,7 +87,7 @@ workflow GvsQuickstartVcfIntegration {
             external_sample_names = if (is_wgs) then wgs_external_sample_names else exome_external_sample_names,
             gatk_override = if (use_default_dockers) then none else select_first([gatk_override, BuildGATKJar.jar]),
             input_vcfs = if (is_wgs) then wgs_input_vcfs else exome_input_vcfs,
-            input_vcf_indexes = if (is_wgs) then wgs_input_vcf_indexes else exome_input_vcfs,
+            input_vcf_indexes = if (is_wgs) then wgs_input_vcf_indexes else exome_input_vcf_indexes,
             filter_set_name = "quickit",
             use_VQSR_lite = use_VQSR_lite,
             extract_table_prefix = "quickit",
