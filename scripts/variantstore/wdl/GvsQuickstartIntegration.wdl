@@ -18,7 +18,7 @@ task FilterIntervalListChromosomes {
             --output-interval-list "filtered.interval_list" --chromosome ~{sep=' --chromosome ' chromosomes}
     >>>
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-17-alpine-2345c4448"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-24-alpine-bd6b9d62e"
     }
     output {
         File out = "filtered.interval_list"
