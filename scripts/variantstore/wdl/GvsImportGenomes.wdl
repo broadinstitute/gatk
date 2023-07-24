@@ -299,7 +299,7 @@ task LoadData {
       gsutil cp $gs_input_vcf_index input_vcf_$i.vcf.gz.tbi
       updated_input_vcf=input_vcf_$i.vcf.gz
 
-      gatk --java-options "-Xmx7g" CreateVariantIngestFiles \
+      gatk --java-options "-Xmx2g" CreateVariantIngestFiles \
         -V ${updated_input_vcf} \
         -L ~{interval_list} \
         ~{"-IG " + drop_state} \
@@ -325,7 +325,7 @@ task LoadData {
   runtime {
     docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_07_20"
     maxRetries: load_data_maxretries
-    memory: "7.5 GB"
+    memory: "3.75 GB"
     disks: "local-disk 50 HDD"
     preemptible: load_data_preemptible
     cpu: 1
