@@ -2096,7 +2096,7 @@ public final class GATKVariantContextUtils {
         final List<Event> result = new ArrayList<>();
 
         if (vc.isBiallelic()) {
-            return Collections.singletonList(Event.ofWithoutAttributes(GATKVariantContextUtils.trimAlleles(vc, true, true));
+            return Collections.singletonList(Event.ofWithoutAttributes(GATKVariantContextUtils.trimAlleles(vc, true, true)));
         } else {
             // Since variant context builders are slow to keep re-creating.  Just create one and spew variant contexts from it, since
             //  the only difference will be the alternate allele.  Initialize the VCB with a dummy alternate allele,
