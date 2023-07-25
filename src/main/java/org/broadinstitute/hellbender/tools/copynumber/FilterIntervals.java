@@ -326,11 +326,13 @@ public final class FilterIntervals extends CommandLineProgram {
         if (inputAnnotatedIntervalsFile != null && inputReadCountFiles.isEmpty()) {
             //only annotated intervals provided
             final AnnotatedIntervalCollection inputAnnotatedIntervals = new AnnotatedIntervalCollection(inputAnnotatedIntervalsFile);
+
             metadata = inputAnnotatedIntervals.getMetadata();
             resolved = intervalArgumentCollection.getIntervals(metadata.getSequenceDictionary());
             intersected = ListUtils.intersection(
                     resolved,
                     inputAnnotatedIntervals.getIntervals());
+
             final Set<SimpleInterval> intersectedSet = new HashSet<>(intersected);
             intersectedAnnotated = inputAnnotatedIntervals.getRecords().stream()
                     .filter(ai -> intersectedSet.contains(ai.getInterval()))
@@ -339,27 +341,33 @@ public final class FilterIntervals extends CommandLineProgram {
             //only counts provided
             final File firstReadCountFile = inputReadCountFiles.get(0);
             final SimpleCountCollection firstReadCounts = SimpleCountCollection.read(firstReadCountFile);
+
             metadata = firstReadCounts.getMetadata();
             resolved = intervalArgumentCollection.getIntervals(metadata.getSequenceDictionary());
+
             intersected = ListUtils.intersection(
                     resolved,
                     firstReadCounts.getIntervals());
+
             intersectedAnnotated = null;
         } else {
             //both annotated intervals and counts provided
-            final AnnotatedIntervalCollection inputAnnotatedIntervals = new AnnotatedIntervalCollection(inputAnnotatedIntervalsFile);
             final File firstReadCountFile = inputReadCountFiles.get(0);
             final SimpleCountCollection firstReadCounts = SimpleCountCollection.read(firstReadCountFile);
+
+            final AnnotatedIntervalCollection inputAnnotatedIntervals = new AnnotatedIntervalCollection(inputAnnotatedIntervalsFile);
             CopyNumberArgumentValidationUtils.isSameDictionary(
                     inputAnnotatedIntervals.getMetadata().getSequenceDictionary(),
                     firstReadCounts.getMetadata().getSequenceDictionary());
             metadata = inputAnnotatedIntervals.getMetadata();
             resolved = intervalArgumentCollection.getIntervals(metadata.getSequenceDictionary());
+
             intersected = ListUtils.intersection(
                     ListUtils.intersection(
                             resolved,
                             inputAnnotatedIntervals.getIntervals()),
                     firstReadCounts.getIntervals());
+
             final Set<SimpleInterval> intersectedSet = new HashSet<>(intersected);
             intersectedAnnotated = inputAnnotatedIntervals.getRecords().stream()
                     .filter(ai -> intersectedSet.contains(ai.getInterval()))
@@ -368,8 +376,10 @@ public final class FilterIntervals extends CommandLineProgram {
         Utils.validateArg(!intersected.isEmpty(), "At least one interval must remain after intersection.");
         logger.info(String.format("After interval resolution, %d intervals remain...", resolved.size()));
         logger.info(String.format("After interval intersection, %d intervals remain...", intersected.size()));
+
         final SimpleIntervalCollection intersectedIntervals = new SimpleIntervalCollection(metadata, intersected);
-        final AnnotatedIntervalCollection intersectedAnnotatedIntervals = intersectedAnnotated == null
+        final AnnotatedIntervalCollection intersectedAnnotatedIntervals =
+                intersectedAnnotated == null
                 ? null
                 : new AnnotatedIntervalCollection(metadata, intersectedAnnotated);
         if (intersectedAnnotatedIntervals != null && !intersectedIntervals.getRecords().equals(intersectedAnnotatedIntervals.getIntervals())) {
