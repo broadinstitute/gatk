@@ -2036,6 +2036,78 @@ public final class GATKVariantContextUtils {
         return vc.getAlternateAlleles().size() == 1 && GATKVCFConstants.isSpanningDeletion(vc.getAlternateAllele(0));
     }
 
+    public static int[] matchAllelesOnly(final VariantContext variant1, final VariantContext variant2) {
+        Utils.nonNull(variant1);
+        Utils.nonNull(variant2);
+
+        // Grab the trivial case:
+        if (variant1.isBiallelic() && variant2.isBiallelic()) {
+            if (variant1.getAlternateAllele(0).equals(variant2.getAlternateAllele(0)) &&
+                    (variant1.getReference().equals(variant2.getReference()))) {
+                return new int[]{0};
+            } else {
+                return new int[]{-1};
+            }
+        }
+
+        // Handle the case where one or both of the input VCs are not biallelic.
+        final int[] result = new int[variant1.getAlternateAlleles().size()];
+
+        // First split (and trim) all variant contexts into biallelics.  We are only going ot be interested in the alleles.
+        final List<VariantContext> splitVariants1 = simpleSplitIntoBiallelics2(variant1);
+        final List<VariantContext> splitVariants2 = simpleSplitIntoBiallelics2(variant2);
+
+        // Second, match on ref and alt.  If match occurs add it to the output list.
+        for (int i = 0; i < splitVariants1.size(); i++) {
+            result[i] = -1;
+            for (int j = 0; j < splitVariants2.size(); j++) {
+                final VariantContext splitVariant1 = splitVariants1.get(i);
+                final VariantContext splitVariant2 = splitVariants2.get(j);
+                if (splitVariant1.getAlternateAllele(0).equals(splitVariant2.getAlternateAllele(0))
+                        && splitVariant1.getReference().equals(splitVariant2.getReference())) {
+                    result[i] = j;
+                }
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Do not use this method for doing a full split of a variant context into biallelic components.  This method
+     *  ignores (and drops) genotypes and INFO attributes.  It is really meant just for alleles, but works on a
+     *  VariantContext to better leverage existing code in
+     *  {@link GATKVariantContextUtils#trimAlleles(VariantContext, boolean, boolean)}
+     *
+     * This method is trying to be fast, otherwise.
+     *
+     * @param vc variant context to split into simple biallelics.  Never {@code null}
+     * @return a list of variant contexts.  Each will be biallelic.  Length will be the number of alt alleles in the input vc.
+     * Note that the variant contexts are usually stripped of attributes and genotypes.  Never {@code null}.  Empty list
+     * if variant context has no alt alleles.
+     */
+    private static List<VariantContext> simpleSplitIntoBiallelics2(final VariantContext vc) {
+        Utils.nonNull(vc);
+        final List<VariantContext> result = new ArrayList<>();
+
+        if (vc.isBiallelic()) {
+            return Collections.singletonList(vc);
+        } else {
+            // Since variant context builders are slow to keep re-creating.  Just create one and spew variant contexts from it, since
+            //  the only difference will be the alternate allele.  Initialize the VCB with a dummy alternate allele,
+            //  since it will be overwritten in all cases.
+            final VariantContextBuilder vcb = new VariantContextBuilder("SimpleSplit", vc.getContig(), vc.getStart(), vc.getEnd(),
+                    Arrays.asList(vc.getReference(), Allele.NO_CALL));
+            vc.getAlternateAlleles().forEach(allele -> result.add(GATKVariantContextUtils.trimAlleles(
+                            vcb.alleles(Arrays.asList(vc.getReference(), allele)).make(true), true, true)
+                    )
+            );
+        }
+
+        return result;
+    }
+
+
     /**
      *
      * Attempt to match allele ref/alt pairs, even if the allele pairs in the given variant contexts are equivalent,
