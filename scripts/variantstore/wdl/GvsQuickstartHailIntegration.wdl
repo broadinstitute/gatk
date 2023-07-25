@@ -7,11 +7,13 @@ import "GvsQuickstartVcfIntegration.wdl" as QuickstartVcfIntegration
 workflow GvsQuickstartHailIntegration {
     input {
         String branch_name
+        Boolean is_wgs = true
         Boolean use_VQSR_lite = true
         File interval_list
         Boolean use_classic_VQSR = true
         Boolean extract_do_not_filter_override
         String dataset_suffix = "hail"
+        Boolean use_default_dockers = false
         String? gatk_override
         String expected_output_prefix
     }
@@ -21,10 +23,12 @@ workflow GvsQuickstartHailIntegration {
     call QuickstartVcfIntegration.GvsQuickstartVcfIntegration {
         input:
             branch_name = branch_name,
+            is_wgs = is_wgs,
             drop_state = "NONE",
             use_VQSR_lite = use_VQSR_lite,
             extract_do_not_filter_override = extract_do_not_filter_override,
             dataset_suffix = dataset_suffix,
+            use_default_dockers = use_default_dockers,
             gatk_override = gatk_override,
             interval_list = interval_list,
             expected_output_prefix = expected_output_prefix,
