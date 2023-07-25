@@ -4,7 +4,7 @@ import "GvsQuickstartVcfIntegration.wdl" as QuickstartVcfIntegration
 import "GvsQuickstartHailIntegration.wdl" as QuickstartHailIntegration
 import "GvsUtils.wdl" as Utils
 
-# ....
+# .....
 
 workflow GvsQuickstartIntegration {
     input {
@@ -95,7 +95,7 @@ workflow GvsQuickstartIntegration {
         call QuickstartVcfIntegration.GvsQuickstartVcfIntegration as QuickstartVcfExomeIntegration {
             input:
                 branch_name = branch_name,
-                is_wgs = true,
+                is_wgs = false,
                 use_VQSR_lite = true,
                 extract_do_not_filter_override = false,
                 dataset_suffix = "exome",
