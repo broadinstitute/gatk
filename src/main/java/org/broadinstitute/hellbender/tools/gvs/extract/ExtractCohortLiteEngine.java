@@ -27,6 +27,12 @@ public class ExtractCohortLiteEngine extends ExtractCohortEngine {
         return SchemaUtils.VQSLITE_YNG_FIELDS;
     }
 
+    String getScoreFieldName() { return SchemaUtils.SCORE; }
+
+    String getScoreKey() {
+        return GATKVCFConstants.SCORE_KEY;
+    }
+
     String getVQScoreFieldName() {
         return SchemaUtils.CALIBRATION_SENSITIVITY;
     }
