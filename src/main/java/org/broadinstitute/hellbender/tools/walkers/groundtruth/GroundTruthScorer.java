@@ -55,7 +55,7 @@ public class GroundTruthScorer extends ReadWalker {
     public static final String GT_NO_OUTPUT_LONG_NAME = "gt-no-output";
 
     private static final int QUAL_VALUE_MAX = 60;
-    private static final int HMER_VALUE_MAX = 30; //TODO: This should become a parameter
+    private static final int HMER_VALUE_MAX = 100; //TODO: This should become a parameter
     private static final int BASE_VALUE_MAX = FlowBasedRead.DEFAULT_FLOW_ORDER.length() - 1;
 
     private static final double NORMALIZED_SCORE_THRESHOLD_DEFAULT = -0.1;
@@ -78,7 +78,8 @@ public class GroundTruthScorer extends ReadWalker {
             if ( bins != null && bin >= 0 && bin < bins.length ) {
                 bins[bin].add(b);
             } else {
-                throw new GATKException("bin out of range; " + bin);
+                logger.warn("bin out of range; " + bin + ", range: [0," + bins.length + "), clipped");
+                bins[Math.max(0, Math.min(bin, bins.length - 1))].add(b);
             }
         }
         void add(final boolean b, final int bin, final int bin2) {
@@ -86,7 +87,8 @@ public class GroundTruthScorer extends ReadWalker {
             if ( bins != null && bin >= 0 && bin < bins.length ) {
                 bins[bin].add(b, bin2);
             } else {
-                throw new GATKException("bin out of range; " + bin);
+                logger.warn("bin out of range; " + bin + ", range: [0," + bins.length + "), clipped");
+                bins[Math.max(0, Math.min(bin, bins.length - 1))].add(b, bin2);
             }
         }
         void add(final boolean b, final int bin, final int bin2, final int bin3) {
@@ -94,7 +96,8 @@ public class GroundTruthScorer extends ReadWalker {
             if ( bins != null && bin >= 0 && bin < bins.length ) {
                 bins[bin].add(b, bin2, bin3);
             } else {
-                throw new GATKException("bin out of range; " + bin);
+                logger.warn("bin out of range; " + bin + ", range: [0," + bins.length + "), clipped");
+                bins[Math.max(0, Math.min(bin, bins.length - 1))].add(b, bin2, bin3);
             }
         }
 
