@@ -28,6 +28,7 @@ public class Event implements Locatable {
 
     public Event(final String contig, final int start, final Allele ref, final Allele alt) {
         // TODO: Should this instead silently trim to the minimal representation?
+        System.out.println("Event: " + contig + " " + start + " " + ref + " " + alt);
         Utils.validateArg(ref.length() == 1 || alt.length() == 1 || differentLastBase(ref, alt), "Ref and alt alleles have same last base, hence this event is not in its minimal representation.");
         Utils.validateArg(ref.isReference(), "ref is not ref");
         this.contig = contig;
