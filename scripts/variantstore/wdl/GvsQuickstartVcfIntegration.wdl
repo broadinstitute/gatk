@@ -3,14 +3,13 @@ version 1.0
 import "GvsUnified.wdl" as Unified
 import "GvsUtils.wdl" as Utils
 
-# ..
+# ...
 
 workflow GvsQuickstartVcfIntegration {
 
     input {
         String branch_name
-        Boolean use_default_dockers = true  # enabled for testing.
-        Boolean is_wgs = false # defaulting to exomes for testing
+        Boolean is_wgs = true
         String expected_output_prefix
         Boolean use_VQSR_lite = true
         Boolean extract_do_not_filter_override = true
@@ -20,11 +19,11 @@ workflow GvsQuickstartVcfIntegration {
                                                   "ERS4367796",
                                                   "ERS4367797",
                                                   ]
-      Array[String] exome_external_sample_names = [
-                                                  "NA12878",
-                                                  "NA12891",
-                                                  "NA12892",
-                                                  ]
+        Array[String] exome_external_sample_names = [
+                                                    "NA12878",
+                                                    "NA12891",
+                                                    "NA12892",
+                                                    ]
 
         Array[File] wgs_input_vcfs = [
                                      "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00405.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
@@ -51,11 +50,12 @@ workflow GvsQuickstartVcfIntegration {
         Int? extract_scatter_count
         String drop_state = "FORTY"
         String dataset_suffix
+        File interval_list
+        Boolean use_default_dockers = true
         File? gatk_override
     }
     String project_id = "gvs-internal"
 
-    File interval_list = if (is_wgs) then "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list" else "gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list"
     Boolean use_interval_weights = is_wgs
     # TODO - someday? There will be a weights bed for exomes
     File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
