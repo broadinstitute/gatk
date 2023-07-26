@@ -34,6 +34,8 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -288,6 +290,11 @@ public final class FilterIntervals extends CommandLineProgram {
         final SimpleIntervalCollection intersectedIntervals = intersectedIntervalsPair.getLeft();
         final AnnotatedIntervalCollection intersectedAnnotatedIntervals = intersectedIntervalsPair.getRight();
 
+        final IntervalList inputIntervalList = new IntervalList(intersectedIntervals.getMetadata().getSequenceDictionary());
+        intersectedIntervals.getIntervals().forEach(intv -> inputIntervalList.add(new Interval(intv)));
+        inputIntervalList.write(new File(outputFilteredIntervalsFile.getAbsolutePath().replaceAll(".interval_list$",
+                ".input-resolved.interval_list")));
+
         final SimpleIntervalCollection filteredIntervals = filterIntervals(intersectedIntervals, intersectedAnnotatedIntervals);
         logger.info(String.format("Writing filtered intervals to %s...", outputFilteredIntervalsFile.getAbsolutePath()));
         final IntervalList filteredIntervalList = new IntervalList(filteredIntervals.getMetadata().getSequenceDictionary());
@@ -389,11 +396,31 @@ public final class FilterIntervals extends CommandLineProgram {
         return Pair.of(intersectedIntervals, intersectedAnnotatedIntervals);
     }
 
+    private void debugOutputFilteredInterval(final SimpleIntervalCollection intersectedIntervals,
+                                             final boolean[] mask,
+                                             final String outputName) {
+        final int numIntersectedIntervals = intersectedIntervals.size();
+        final List<String> filteredAwayIntervals = IntStream.range(0, numIntersectedIntervals)
+                .filter(i -> mask[i]) // want those that are filtered out
+                .mapToObj(i -> intersectedIntervals.getRecords().get(i).toString())
+                .collect(Collectors.toList());
+        try {
+            final FileWriter writer = new FileWriter(outputName);
+            for (String s : filteredAwayIntervals) {
+                writer.write(String.format("%s\n", s));
+            }
+        } catch (IOException e) {
+            logger.warn(String.format("Failed to write debug file %s, due to the following error\n%s",
+                    outputName, e.getMessage()));
+        }
+    }
+
     private SimpleIntervalCollection filterIntervals(final SimpleIntervalCollection intersectedIntervals,
                                                      final AnnotatedIntervalCollection intersectedAnnotatedIntervals) {
         final int numIntersectedIntervals = intersectedIntervals.size();
         final boolean[] mask = new boolean[numIntersectedIntervals];     //if true, filter out; each filter modifies this mask
 
+        final String outputAbs = outputFilteredIntervalsFile.getAbsolutePath();
         //apply annotation-based filters
         if (intersectedAnnotatedIntervals != null) {
             logger.info("Applying annotation-based filters...");
@@ -403,16 +430,22 @@ public final class FilterIntervals extends CommandLineProgram {
                 updateMaskByAnnotationFilter(logger, intersectedIntervals, intersectedAnnotatedIntervals, mask,
                         CopyNumberAnnotations.GC_CONTENT, "GC-content",
                         minimumGCContent, maximumGCContent);
+                debugOutputFilteredInterval(intersectedIntervals, mask,
+                        outputAbs.replaceFirst(".interval_list$", ".0.GC-away.txt"));
             }
             if (annotationKeys.contains(CopyNumberAnnotations.MAPPABILITY)) {
                 updateMaskByAnnotationFilter(logger, intersectedIntervals, intersectedAnnotatedIntervals, mask,
                         CopyNumberAnnotations.MAPPABILITY, "mappability",
                         minimumMappability, maximumMappability);
+                debugOutputFilteredInterval(intersectedIntervals, mask,
+                        outputAbs.replaceFirst(".interval_list$", ".1.Mappability-away.txt"));
             }
             if (annotationKeys.contains(CopyNumberAnnotations.SEGMENTAL_DUPLICATION_CONTENT)) {
                 updateMaskByAnnotationFilter(logger, intersectedIntervals, intersectedAnnotatedIntervals, mask,
                         CopyNumberAnnotations.SEGMENTAL_DUPLICATION_CONTENT, "segmental-duplication-content",
                         minimumSegmentalDuplicationContent, maximumSegmentalDuplicationContent);
+                debugOutputFilteredInterval(intersectedIntervals, mask,
+                        outputAbs.replaceFirst(".interval_list$", ".2.SegDup-away.txt"));
             }
         }
 
