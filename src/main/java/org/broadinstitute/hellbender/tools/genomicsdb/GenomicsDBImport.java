@@ -147,7 +147,7 @@ import static org.broadinstitute.hellbender.tools.genomicsdb.GATKGenomicsDBUtils
  *  </pre>
  *
  *  It is also possible to specify an explicit index for only a subset of the samples:
- * 
+ *
  *  <pre>
  *  sample1      sample1.vcf.gz
  *  sample2      sample2.vcf.gz      sample2.vcf.gz.tbi
@@ -555,24 +555,24 @@ public final class GenomicsDBImport extends GATKTool {
             final List<VCFHeader> headers = new ArrayList<>(variantPaths.size());
             sampleNameMap = new SampleNameMap();
 
-            for (final String variantPathString : variantPaths) {
-                final Path variantPath = IOUtils.getPath(variantPathString);
-                if (bypassFeatureReader && !avoidNio) {
-                    GATKGenomicsDBUtils.assertVariantFileIsCompressedAndIndexed(variantPath);
-                }
-                final  VCFHeader header = getHeaderFromPath(variantPath, null);
-                Utils.validate(header != null, "Null header was found in " + variantPath + ".");
-                assertGVCFHasOnlyOneSample(variantPathString, header);
-                headers.add(header);
-
-                final String sampleName = header.getGenotypeSamples().get(0);
-                try {
-                    sampleNameMap.addSample(sampleName, new URI(variantPathString));
-                } catch(final URISyntaxException e) {
-                    throw new UserException("Malformed URI "+ e.getMessage(), e);
-                }
-            }
             if(headerOverride == null) {
+                for (final String variantPathString : variantPaths) {
+                    final Path variantPath = IOUtils.getPath(variantPathString);
+                    if (bypassFeatureReader) { // avoid-nio can't be set here because it requires headerOverride
+                        GATKGenomicsDBUtils.assertVariantFileIsCompressedAndIndexed(variantPath);
+                    }
+                    final VCFHeader header = getHeaderFromPath(variantPath, null);
+                    Utils.validate(header != null, "Null header was found in " + variantPath + ".");
+                    assertGVCFHasOnlyOneSample(variantPathString, header);
+                    headers.add(header);
+
+                    final String sampleName = header.getGenotypeSamples().get(0);
+                    try {
+                        sampleNameMap.addSample(sampleName, new URI(variantPathString));
+                    } catch (final URISyntaxException e) {
+                        throw new UserException("Malformed URI " + e.getMessage(), e);
+                    }
+                }
                 mergedHeaderLines = VCFUtils.smartMergeHeaders(headers, true);
                 mergedHeaderSequenceDictionary = new VCFHeader(mergedHeaderLines).getSequenceDictionary();
             } else {
@@ -588,22 +588,24 @@ public final class GenomicsDBImport extends GATKTool {
             //the resulting database will have incorrect sample names
             //see https://github.com/broadinstitute/gatk/issues/3682 for more information
             // The SampleNameMap class guarantees that the samples will be sorted correctly.
-            sampleNameMap = new SampleNameMap(IOUtils.getPath(sampleNameMapFile), bypassFeatureReader && !avoidNio);
+            sampleNameMap = new SampleNameMap(IOUtils.getPath(sampleNameMapFile),
+                    bypassFeatureReader && !avoidNio);
 
             final String firstSample = sampleNameMap.getSampleNameToVcfPath().entrySet().iterator().next().getKey();
-            final Path firstVCFPath = sampleNameMap.getVCFForSampleAsPath(firstSample);
-            final Path firstVCFIndexPath = sampleNameMap.getVCFIndexForSampleAsPath(firstSample);
 
-            final VCFHeader header = headerOverride == null
-                    ? getHeaderFromPath(firstVCFPath, firstVCFIndexPath)
-                    : getHeaderFromPath(headerOverride.toPath(), null);
-
+            final VCFHeader header;
+            if(headerOverride == null){
+                final Path firstVCFPath = sampleNameMap.getVCFForSampleAsPath(firstSample);
+                final Path firstVCFIndexPath = sampleNameMap.getVCFIndexForSampleAsPath(firstSample);
+                header = getHeaderFromPath(firstVCFPath, firstVCFIndexPath);
+            } else {
+                header = getHeaderFromPath(headerOverride.toPath(), null);
+            }
             //getMetaDataInInputOrder() returns an ImmutableSet - LinkedHashSet is mutable and preserves ordering
             mergedHeaderLines = new LinkedHashSet<>(header.getMetaDataInInputOrder());
             mergedHeaderSequenceDictionary = header.getSequenceDictionary();
             mergedHeaderLines.addAll(getDefaultToolVCFHeaderLines());
-        }
-        else if (getIntervalsFromExistingWorkspace){
+        } else if (getIntervalsFromExistingWorkspace){
             final String vcfHeader = IOUtils.appendPathToDir(workspace, GenomicsDBConstants.DEFAULT_VCFHEADER_FILE_NAME);
             IOUtils.assertPathsAreReadable(vcfHeader);
             final String header = GenomicsDBUtils.readEntireFile(vcfHeader);
@@ -614,8 +616,7 @@ public final class GenomicsDBImport extends GATKTool {
             } catch (final IOException e) {
                 throw new UserException("Unable to create temporary header file to get sequence dictionary", e);
             }
-        }
-        else {
+        } else {
             throw new UserException(StandardArgumentDefinitions.VARIANT_LONG_NAME+" or "+
                     SAMPLE_NAME_MAP_LONG_NAME+" must be specified unless "+
                     INTERVAL_LIST_LONG_NAME+" is specified");
