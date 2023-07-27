@@ -316,6 +316,7 @@ public abstract class ExtractCohort extends ExtractTool {
                     extraHeaderLines.add(FilterSensitivityTools.getTruthSensitivityHeader(truthSensitivityINDELThreshold, vqsLodINDELThreshold, GATKVCFConstants.INDEL));
                 }
             } else {
+                extraHeaderLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.SCORE_KEY));
                 extraHeaderLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.CALIBRATION_SENSITIVITY_KEY));
                 if (truthSensitivitySNPThreshold == null) {
                     truthSensitivitySNPThreshold = FilterSensitivityTools.DEFAULT_TRUTH_SENSITIVITY_THRESHOLD_SNPS;
