@@ -9,9 +9,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.*;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAlleleCounts;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
-import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypesCache;
+import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
 import org.broadinstitute.hellbender.utils.GenotypeCounts;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -41,6 +39,7 @@ public final class GnarlyGenotyperEngine {
 
     // cache the ploidy 2 PL array sizes for increasing numbers of alts up to the maximum of maxAltAllelesToOutput
     private int[] likelihoodSizeCache;
+    private final ArrayList<GenotypeLikelihoodCalculator> glcCache = new ArrayList<>();
     private Set<Class<? extends InfoFieldAnnotation>> allASAnnotations;
 
     private final int maxAltAllelesToOutput;
@@ -57,12 +56,6 @@ public final class GnarlyGenotyperEngine {
         this.emitPls = emitPls;
         this.keepAllSites = keepAllSites;
         this.stripASAnnotations = stripASAnnotations;
-
-        //initialize PL size cache -- HTSJDK cache only goes up to 4 alts, but I need 6
-        likelihoodSizeCache = new int[maxAltAllelesToOutput + 1 + 1]; //+1 for ref and +1 so index == numAlleles
-        for (final int numAlleles : IntStream.rangeClosed(1, maxAltAllelesToOutput + 1).boxed().collect(Collectors.toList())) {
-            likelihoodSizeCache[numAlleles] = GenotypeLikelihoods.numLikelihoods(numAlleles, ASSUMED_PLOIDY);
-        }
 
         //TODO: fix weird reflection logging?
         final Reflections reflections = new Reflections("org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific");
@@ -320,34 +313,32 @@ public final class GnarlyGenotyperEngine {
         int newPLsize = -1;
         final int maximumAlleleCount = inputAllelesWithNonRef.size();
         final int numConcreteAlts = maximumAlleleCount - 2; //-1 for NON_REF and -1 for ref
-        if (maximumAlleleCount <= maxAllelesToOutput) {
-            newPLsize = likelihoodSizeCache[numConcreteAlts + 1]; //cache is indexed by #alleles with ref; don't count NON_REF
-        } else {
-            newPLsize = GenotypeLikelihoods.numLikelihoods(numConcreteAlts + 1, ASSUMED_PLOIDY);
-        }
 
         for ( final Genotype g : vc.getGenotypes() ) {
             final String name = g.getSampleName();
-            if(g.getPloidy() != ASSUMED_PLOIDY && !isGDBnoCall(g)) {
-                throw new UserException.BadInput("This tool assumes diploid genotypes, but sample " + name + " has ploidy "
-                        + g.getPloidy() + " at position " + vc.getContig() + ":" + vc.getStart() + ".");
-            }
             final Genotype calledGT;
             final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(g);
             genotypeBuilder.name(name);
-            if (isGDBnoCall(g) || g.getAllele(0).equals(Allele.NON_REF_ALLELE) || g.getAllele(1).equals(Allele.NON_REF_ALLELE)) {
-                genotypeBuilder.alleles(GATKVariantContextUtils.noCallAlleles(ASSUMED_PLOIDY));
+            if (g.getAlleles().contains(Allele.NON_REF_ALLELE)) {
+                genotypeBuilder.alleles(GATKVariantContextUtils.noCallAlleles(g.getPloidy())).noGQ();
+            //there will be cases when we're running over Y or haploid X and we haven't seen any variants yet
+                // and we assume diploid when we shouldn't, but there's not a lot to be done about it
+            } else if (isGDBnoCall(g)) {
+                genotypeBuilder.alleles(GATKVariantContextUtils.noCallAlleles(ASSUMED_PLOIDY)).noGQ();
             }
-            else if (nonRefReturned) {
-                if (g.hasAD()) {
-                    final int[] AD = trimADs(g, targetAlleles.size());
-                    genotypeBuilder.AD(AD);
-                }
-                else if (g.countAllele(Allele.NON_REF_ALLELE) > 0) {
-                    genotypeBuilder.alleles(GATKVariantContextUtils.noCallAlleles(ASSUMED_PLOIDY)).noGQ();
-                }
+            if (nonRefReturned && g.hasAD()) {
+                final int[] AD = trimADs(g, targetAlleles.size());
+                genotypeBuilder.AD(AD);
             }
             if (g.hasPL()) {
+                //lookup PL size from cache if ploidy matches and cache has our number of alts
+                if (maximumAlleleCount <= maxAllelesToOutput && g.getPloidy() == ASSUMED_PLOIDY) {
+                    newPLsize = GenotypeIndexCalculator.genotypeCount(g.getPloidy(), numConcreteAlts+1);
+                    //newPLsize = likelihoodSizeCache[numConcreteAlts + 1]; //cache is indexed by #alleles with ref; don't count NON_REF
+                //otherwise calculate size on the fly
+                } else {
+                    newPLsize = GenotypeLikelihoods.numLikelihoods(numConcreteAlts + 1, g.getPloidy());
+                }
                 final int[] PLs = trimPLs(g, newPLsize);
                 if (emitPLs) {
                     genotypeBuilder.PL(PLs);
@@ -357,7 +348,7 @@ public final class GnarlyGenotyperEngine {
                 genotypeBuilder.GQ(MathUtils.secondSmallestMinusSmallest(PLs, 0));
                 //If GenomicsDB returns no-call genotypes like CombineGVCFs (depending on the GenomicsDBExportConfiguration),
                 // then we need to actually find the GT from PLs
-                makeGenotypeCall(genotypeBuilder, GenotypeLikelihoods.fromPLs(PLs).getAsVector(), targetAlleles);
+                makeGenotypeCall(g, genotypeBuilder, GenotypeLikelihoods.fromPLs(PLs).getAsVector(), targetAlleles);
             }
             final Map<String, Object> attrs = new HashMap<>(g.getExtendedAttributes());
             attrs.remove(GATKVCFConstants.MIN_DP_FORMAT_KEY);
@@ -370,7 +361,7 @@ public final class GnarlyGenotyperEngine {
             }
 
             //running total for AC values
-            for (int i = 0; i < ASSUMED_PLOIDY; i++) {
+            for (int i = 0; i < calledGT.getPloidy(); i++) {
                 final Allele a = calledGT.getAllele(i);
                 final int count = targetAlleleCounts.getOrDefault(a, 0);
                 if (!a.equals(Allele.NO_CALL)) {
@@ -391,37 +382,32 @@ public final class GnarlyGenotyperEngine {
      * For a genotype with likelihoods that has a no-call GT, determine the most likely genotype from PLs and set it
      * We use a GenotypeLikelihoodCalculator to convert from the best PL index to the indexes of the alleles for that
      * genotype so we can set the GenotypeBuilder with the alleles
+     * @param g     Genotype used to make the gb GenotypeBuilder
      * @param gb    GenotypeBuilder to modify and pass back
      * @param genotypeLikelihoods   PLs to use to call genotype; count should agree with number of alleles in allelesToUse
      * @param allelesToUse  alleles in the parent VariantContext (with ref), because GenotypeBuilder needs the allele String rather than index
      */
     @VisibleForTesting
-    protected void makeGenotypeCall(final GenotypeBuilder gb,
+    protected void makeGenotypeCall(final Genotype g, final GenotypeBuilder gb,
                                         final double[] genotypeLikelihoods,
                                         final List<Allele> allelesToUse) {
-        final int maxAllelesToOutput = maxAltAllelesToOutput + 1; //+1 for ref
-
         if ( genotypeLikelihoods == null || !GATKVariantContextUtils.isInformative(genotypeLikelihoods) ) {
-            gb.alleles(GATKVariantContextUtils.noCallAlleles(ASSUMED_PLOIDY)).noGQ();
+            //gb.alleles(GATKVariantContextUtils.noCallAlleles(g.getAlleles().size())).noGQ();
+            GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(), gb, GenotypeAssignmentMethod.SET_TO_NO_CALL,
+                    genotypeLikelihoods, allelesToUse, null);
         } else {
-            final int maxLikelihoodIndex = MathUtils.maxElementIndex(genotypeLikelihoods);
-            final GenotypeAlleleCounts alleleCounts = GenotypesCache.get(ASSUMED_PLOIDY, maxLikelihoodIndex);
-
-            gb.alleles(alleleCounts.asAlleleList(allelesToUse));
-            final int numAltAlleles = allelesToUse.size() - 1;
-            if ( numAltAlleles > 0 ) {
-                gb.log10PError(GenotypeLikelihoods.getGQLog10FromLikelihoods(maxLikelihoodIndex, genotypeLikelihoods));
-            }
+            GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(), gb, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN,
+                    genotypeLikelihoods, allelesToUse, null);
         }
     }
 
     /**
      * Some legacy versions of GenomicsDB report no-calls as `0` or `.`
      * @param g genotype to check
-     * @return  true if this is a genotype that should be represented as a ploidy-aware, spec compliant no-call
+     * @return  true if this is a genotype that should be represented spec compliant no-call (may need to fix ploidy)
      */
     private static boolean isGDBnoCall(final Genotype g) {
-        return g.getPloidy() == 1 && (g.getAllele(0).isReference() || g.getAllele(0).isNoCall());
+        return !g.hasPL() && !g.hasAD() && g.isNoCall();
     }
 
     /**

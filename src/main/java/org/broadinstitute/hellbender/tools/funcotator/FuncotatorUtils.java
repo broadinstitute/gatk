@@ -1454,7 +1454,7 @@ public final class FuncotatorUtils {
         // We must add bases to the start to adjust for indels because of the required preceding base in VCF format:
         final int indelStartBaseAdjustment = GATKVariantContextUtils.isIndel(refAllele, altAllele) ? 1 : 0;
 
-        final int start = reference.getWindow().getStart() - referenceWindow + indelStartBaseAdjustment;
+        final int start = Math.max(1, reference.getWindow().getStart() - referenceWindow + indelStartBaseAdjustment);
         final int end   = reference.getWindow().getEnd() + referenceWindow;
 
         // Calculate the interval from which to get the reference:

@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.CommandLineProgramTester;
@@ -339,6 +340,7 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test(expectedExceptions = UserException.class)
+    //ReblockGVCF can take multiple inputs, but only if they're non-overlapping shards from the same sample
     public void testMixedSamples() {
         final File output = createTempFile("reblockedgvcf", ".vcf");
         final ArgumentsBuilder args = new ArgumentsBuilder();
@@ -574,5 +576,36 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
         final VariantContext filteredRefBlockVC = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath()).getRight().get(0);
         Assert.assertFalse(filteredRefBlockVC.isFiltered()); // Ref block is unfiltered even though the input RefBlock and low qual variant were both filtered
         Assert.assertEquals(filteredRefBlockVC.getGenotype(0).getDP(), 12); // Ref block is combination of filtered variant with depth 22 and filtered ref block with depth 1
+    }
+
+    @Test
+    public void testRemovingFormatAnnotations() {
+        final File input = getTestFile("dragen.g.vcf");
+        final File output = createTempFile("reblockedgvcf", ".vcf");
+        final String priKey = "PRI";
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(new File(hg38Reference))
+                .add("V", input)
+                .add(ReblockGVCF.ANNOTATIONS_TO_REMOVE_LONG_NAME, priKey)
+                .addOutput(output);
+        runCommandLine(args);
+
+        final List<VariantContext> outVCs = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath()).getRight();
+        for(VariantContext vc : outVCs){
+            Assert.assertNull(vc.getGenotype(0).getExtendedAttribute(priKey));
+        }
+    }
+
+    @Test
+    public void testNonGVCFInput() {
+        final File output = createTempFile("reblockedgvcf", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(new File(b37_reference_20_21))
+                .add("V", "src/test/resources/large/NA12878.HiSeq.WGS.b37_decoy.indel.recalibrated.chr20.vcf")
+                .addOutput(output);
+
+        Assert.assertThrows(GATKException.class, () -> runCommandLine(args));
     }
 }

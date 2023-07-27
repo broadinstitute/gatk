@@ -308,12 +308,13 @@ task CollectWgsMetrics {
     Int? read_length
     Int? coverage_cap
 
+    # runtime
     Int? preemptible_tries
+    Int disk_size = ceil(size(input_bam, "GB") + size(ref_fasta, "GB") + size(ref_fasta_index, "GB")) + 20
+    Int mem = 3
   }
 
   Int read_length_for_optimization = select_first([read_length, 151])
-  Float ref_size = size(ref_fasta, "GB") + size(ref_fasta_index, "GB")
-  Int disk_size = ceil(size(input_bam, "GB") + ref_size) + 20
 
   meta {
     description: "Collect coverage metrics"
@@ -345,7 +346,7 @@ task CollectWgsMetrics {
   >>>
   runtime {
     preemptible: select_first([preemptible_tries, 5])
-    memory: "3 GB"
+    memory: mem + " GB"
     disks: "local-disk " + disk_size + " HDD"
     docker: "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.2-1552931386"
   }
@@ -426,16 +427,16 @@ task M2 {
     Boolean? make_bamout
     Boolean compress
     File? gatk_override
+   
     # runtime
     String? gatk_docker_override
     Int? mem
     Int? preemptible_tries
+    Int disk_size = ceil(size(input_bam, "GB") + size(ref_fasta, "GB") + size(ref_fai, "GB")) + 20
   }
 
   String output_vcf = "raw" + if compress then ".vcf.gz" else ".vcf"
   String output_vcf_index = output_vcf + if compress then ".tbi" else ".idx"
-  Float ref_size = size(ref_fasta, "GB") + size(ref_fai, "GB")
-  Int disk_size = ceil(size(input_bam, "GB") + ref_size) + 20
 
   # Mem is in units of GB but our command and memory runtime values are in MB
   Int machine_mem = if defined(mem) then mem * 1000 else 3500
