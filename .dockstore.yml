@@ -216,7 +216,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - bulk_ingest_fixup
+         - vs_1011_assignids_pipefail
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
