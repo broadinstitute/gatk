@@ -529,8 +529,8 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         final Haplotype result = new Haplotype(newHapBases.array(), false, refHap, runningCigar.make());
         if (setEventMap) {
             EventMap.buildEventMapsForHaplotypes(List.of(result), refHap.getBases(), refHap, false,0);
-            // NOTE: we set this AFTER generating the event maps because hte event map code above is being generated from the ref hap so this offset will cause out of bounds errors
-            result.setAlignmentStartHapwrtRef(refHap.getAlignmentStartHapwrtRef()); //TODO better logic here
+            // NOTE: we set this AFTER generating the event maps because the event map code above is being generated from the ref hap so this offset will cause out of bounds errors
+            result.setAlignmentStartHapwrtRef(refHap.getAlignmentStartHapwrtRef());
         }
         return result;
     }
