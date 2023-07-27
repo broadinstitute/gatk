@@ -4,7 +4,6 @@ import "GvsQuickstartVcfIntegration.wdl" as QuickstartVcfIntegration
 import "GvsQuickstartHailIntegration.wdl" as QuickstartHailIntegration
 import "GvsUtils.wdl" as Utils
 
-
 task FilterIntervalListChromosomes {
     input {
         File full_interval_list
@@ -34,7 +33,7 @@ workflow GvsQuickstartIntegration {
     }
 
     File full_interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
-    File expected_output_prefix = "gs://gvs-internal-quickstart/integration/2023-07-12-quicker/"
+    File expected_output_prefix = "gs://gvs-internal-quickstart/integration/2023-07-19-quicker/"
 
     call FilterIntervalListChromosomes {
         input:
