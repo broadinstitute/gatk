@@ -2,13 +2,18 @@ package org.broadinstitute.hellbender.utils;
 
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAlleleCounts;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeIndexCalculator;
+import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.util.Collection;
 import java.util.Iterator;
 
 /**
+ * Small BitSet with a capacity of 30 elements, corresponding to the number of bits in an int.
+ *
+ * Union and intersection are implemented as extremely fast bitwise | and & operators
+ *
  * This class is very much like the standard library BitSet class in java.util, but instead of using
- * a long[] array it uses single (32-bit) ints, which are much faster.  This limits the capacity but
+ * a long[] array it uses a single (32-bit) int, which is much faster.  This limits the capacity but
  * for small sets it makes sense.
  *
  * This class uses the binary representation of sets, in which set {i1, i2, . . .in} maps to the
@@ -36,38 +41,43 @@ public class SmallBitSet {
 
     // construct a singleton set
     public SmallBitSet(final int element) {
-        bits = elementIndex(element);
+        bits = elementIndex(validateElement(element));
     }
 
     // construct a two-element set
     public SmallBitSet(final int element1, final int element2) {
-        bits = elementIndex(element1) | elementIndex(element2);
+        bits = elementIndex(validateElement(element1)) | elementIndex(validateElement(element2));
     }
 
     // construct a three-element set
     public SmallBitSet(final int element1, final int element2, final int element3) {
-        bits = elementIndex(element1) | elementIndex(element2) | elementIndex(element3);
+        bits = elementIndex(validateElement(element1)) | elementIndex(validateElement(element2)) | elementIndex(validateElement(element3));
     }
 
     public SmallBitSet(final Collection<Integer> elements) {
         bits = 0;
         for (final int element : elements) {
-            bits |= elementIndex(element);
+            bits |= elementIndex(validateElement(element));
         }
     }
 
     // create a full bit set of all 1s in binary up to a certain number of elements i.e. 00000000000111111....
     public static SmallBitSet fullSet(final int numElements) {
+        validateElement(numElements);
         final SmallBitSet result = new SmallBitSet();
         result.bits = (1 << numElements) - 1;
         return result;
     }
 
+    // convert to the next bitset in the canonical ordering, which conveniently is just adding 1 to the underlying int.
+    // Useful for iterating over all possible subsets in order from empty to full.
+    // Calling code is responsible for starting iteration at 0 (empty bitset) and stopping iteration at 2^n - 1 for a full bitset of n elements.
     public SmallBitSet increment() {
         bits++;
         return this;
     }
 
+    // same as above, but in the reverse order.  Useful for iterating from a full bitset to the empty bitset.
     public SmallBitSet decrement() {
         bits--;
         return this;
@@ -132,6 +142,11 @@ public class SmallBitSet {
     @Override
     public int hashCode() {
         return bits;
+    }
+
+    private static int validateElement(final int element) {
+        ParamUtils.inRange(element, 0, MAX_ELEMENTS - 1, "Element indices must be non-negative and less than max capacity of SmallBitSet.");
+        return element;
     }
 
 }

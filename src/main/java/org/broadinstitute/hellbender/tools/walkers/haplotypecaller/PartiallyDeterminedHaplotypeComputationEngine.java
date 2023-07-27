@@ -798,13 +798,13 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             }
 
             final List<SmallBitSet> allowedAndDetermined = new ArrayList<>();
-            // Iterate from the BACK of the list (i.e. ~supersets -> subsets)
+            // Iterate from the full set (containing every event) to the empty set (no events), which lets us output the largest possible subsets
             // NOTE: we skip over 0 here since that corresponds to ref-only events, handle those externally to this code
             for (final SmallBitSet subset = SmallBitSet.fullSet(eventsInOrder.size()); !subset.isEmpty(); subset.decrement()) {
                 if (allowedEvents.get(subset.index()) && subset.intersection(locusOverlapSet).equals(determinedOverlapSet)) {
                     // Only check for subsets if we need to
                     if (!disallowSubsets || allowedAndDetermined.stream().noneMatch(group -> group.contains(subset))) {
-                        allowedAndDetermined.add(subset.copy());
+                        allowedAndDetermined.add(subset.copy());    // copy subset since the decrement() mutates it in-place
                     }
                 }
             }
