@@ -177,8 +177,12 @@ task AssignIds {
       'SELECT sample_name, sample_id from `~{dataset_name}.~{sample_info_table}` WHERE sample_id >= @offset' > update.tsv
     cat update.tsv | sed -e 's/sample_id/gvs_id/' -e 's/sample_name/entity:sample_id/' -e 's/,/\t/g' > gvs_ids.tsv
 
-    # get the max id to create tables for
-    max_sample_id=$(cat update.tsv | cut -d, -f2 | sort -r -n | head -1)
+    # Get the max id for which to create tables.
+    # We can't safely pipe to `head -1` because while `head` will exit successfully after reading the first line, the
+    # pipeline will continue trying to write data to the `head` process. If this happens we'll get a 141 exit code and
+    # with `set -o pipefail` turned on this will fail our task. As a workaround use this `<(...)` temp file construct.
+    # https://news.ycombinator.com/item?id=9255830
+    max_sample_id=$(head -1 <(cat update.tsv | cut -d, -f2 | sort -r -n))
     python3 -c "from math import ceil; print(ceil($max_sample_id/~{samples_per_table}))" > max_table_id
 
     # remove the lock table
