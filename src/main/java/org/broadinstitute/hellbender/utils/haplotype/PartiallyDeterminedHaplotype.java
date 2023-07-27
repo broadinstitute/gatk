@@ -5,6 +5,7 @@ import com.netflix.servo.util.Objects;
 import htsjdk.samtools.Cigar;
 import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -108,6 +109,7 @@ public final class  PartiallyDeterminedHaplotype extends Haplotype {
     public PartiallyDeterminedHaplotype(final Haplotype base, boolean isRefAllele, byte[] pdBytes, List<Event> constituentEvents,
                                         final Event eventWithVariant, final Cigar cigar, long determinedPosition, int getAlignmentStartHapwrtRef) {
         super(base.getBases(), false, base.getAlignmentStartHapwrtRef(), cigar);
+        Utils.validateArg(base.length() == pdBytes.length, "pdBytes array must have same length as base haplotype.");
         this.setGenomeLocation(base.getGenomeLocation());
         this.alternateBases = pdBytes;
         this.constituentBuiltEvents = constituentEvents;

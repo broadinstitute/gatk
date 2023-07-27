@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 import htsjdk.samtools.TextCigarCodec;
 import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.haplotype.Event;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
@@ -84,7 +83,7 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
         Haplotype ref = new Haplotype("AAAAAAAAAA".getBytes(), true, 500, TextCigarCodec.decode("10M"));
         ref.setGenomeLocation(new SimpleInterval("20", 100, 110));
 
-        Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromVariants(ref, events, true);
+        Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromEvents(ref, events, true);
         Assert.assertEquals(result.getBases(), expectedBases.getBytes());
         Assert.assertEquals(result.getCigar(), TextCigarCodec.decode(expectedCigar));
 
@@ -94,40 +93,40 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
         Assert.assertEquals(resultEMap.getNumberOfEvents(), events.size() - numberOfCompounds);
     }
 
-    @Test(expectedExceptions = GATKException.class)
+    @Test(expectedExceptions = IllegalStateException.class)
     public void TestOutOfOrderInputs() {
         Haplotype ref = new Haplotype("AAAAAAAAAA".getBytes(), true, 500, TextCigarCodec.decode("10M"));
         ref.setGenomeLocation(new SimpleInterval("20", 100, 110));
         List<Event> variants = List.of(SNP_C_105, SNP_G_105);
 
-        Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromVariants(ref, variants, true);
+        Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromEvents(ref, variants, true);
     }
 
-    @Test(expectedExceptions = GATKException.class)
+    @Test(expectedExceptions = IllegalStateException.class)
     public void TestSNPsOverlapping() {
         Haplotype ref = new Haplotype("AAAAAAAAAA".getBytes(), true, 500, TextCigarCodec.decode("10M"));
         ref.setGenomeLocation(new SimpleInterval("20", 100, 110));
         List<Event> events = List.of(SNP_C_109, DEL_AA_100);
 
-        Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromVariants(ref, events, true);
+        Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromEvents(ref, events, true);
     }
 
-    @Test(expectedExceptions = GATKException.class)
+    @Test(expectedExceptions = IllegalStateException.class)
     public void TestVariantNotOverlappingHap() {
         Haplotype ref = new Haplotype("AAAAAAAAAA".getBytes(), true, 500, TextCigarCodec.decode("10M"));
         ref.setGenomeLocation(new SimpleInterval("20", 100, 110));
         List<Event> events = List.of(SNP_C_90);
 
-        Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromVariants(ref, events, true);
+        Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromEvents(ref, events, true);
     }
 
-    @Test(expectedExceptions = GATKException.class)
+    @Test(expectedExceptions = IllegalStateException.class)
     public void TestVariantIndelPartiallyOverlapping() {
         Haplotype ref = new Haplotype("AAAAAAAAAA".getBytes(), true, 500, TextCigarCodec.decode("10M"));
         ref.setGenomeLocation(new SimpleInterval("20", 100, 110));
         List<Event> events = List.of(DEL_AAAAAAA_98);
 
-        Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromVariants(ref, events, true);
+        Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromEvents(ref, events, true);
     }
 
     //This is a test asserting that a real edge case that was prone to cause failures in the PDHMM is handled properly when compound variants are taken into account.
@@ -143,7 +142,7 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
 
         final List<Event> events = List.of(e1, e2, e3);
 
-        Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromVariants(ref, events, true);
+        Haplotype result = PartiallyDeterminedHaplotypeComputationEngine.constructHaplotypeFromEvents(ref, events, true);
         Assert.assertEquals(result.getCigar(), TextCigarCodec.decode("62M1X19M1X1M12D157M"));
 
         // Assert that the resulting event map matches the input variants:
