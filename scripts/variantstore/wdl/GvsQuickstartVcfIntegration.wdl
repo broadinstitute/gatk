@@ -3,8 +3,6 @@ version 1.0
 import "GvsUnified.wdl" as Unified
 import "GvsUtils.wdl" as Utils
 
-# ....
-
 workflow GvsQuickstartVcfIntegration {
 
     input {
@@ -57,7 +55,6 @@ workflow GvsQuickstartVcfIntegration {
     String project_id = "gvs-internal"
 
     Boolean use_interval_weights = is_wgs
-    # TODO - someday? There will be a weights bed for exomes
     File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
 
     # WDL 1.0 trick to set a variable ('none') to be undefined.
