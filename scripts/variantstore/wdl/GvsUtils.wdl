@@ -947,3 +947,37 @@ task PopulateFilterSetInfo {
     File monitoring_log = "monitoring.log"
   }
 }
+
+task GetWorkspaceName {
+  ## In order to get the name and namespace of the workspace, without requiring that the user input it manually, we hit rawls directly for the exact name
+  input {
+    String workspace_id
+    String workspace_bucket
+  }
+
+  String workspace_name_output = "workspace_name.txt"
+  String workspace_namespace_output = "workspace_namespace.txt"
+
+  command <<<
+    # Hit rawls with the workspace ID
+
+    export WORKSPACE_BUCKET='~{workspace_bucket}'
+
+    python3 /app/get_workspace_name_for_import.py \
+      --workspace_id ~{workspace_id} \
+      --workspace_name_output ~{workspace_name_output} \
+      --workspace_namespace_output ~{workspace_namespace_output} \
+
+  >>>
+  runtime {
+    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-24-alpine-bd6b9d62e"
+    memory: "3 GB"
+    disks: "local-disk 10 HDD"
+    cpu: 1
+  }
+
+  output {
+    String workspace_name = read_string(workspace_name_output)
+    String workspace_namespace = read_string(workspace_namespace_output)
+  }
+}
