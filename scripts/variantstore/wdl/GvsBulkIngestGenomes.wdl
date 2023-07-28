@@ -89,8 +89,9 @@ workflow GvsBulkIngestGenomes {
         input:
             dataset_name = dataset_name,
             project_id = project_id,
-            external_sample_names = read_lines(SplitBulkImportFofn.sample_name_fofn),
+            external_sample_names = SplitBulkImportFofn.sample_name_fofn,
             samples_are_controls = false,
+            num_samples = SplitBulkImportFofn.sample_num
     }
 
     call ImportGenomes.GvsImportGenomes as ImportGenomes {
@@ -98,9 +99,10 @@ workflow GvsBulkIngestGenomes {
             go = AssignIds.done,
             dataset_name = dataset_name,
             project_id = project_id,
-            external_sample_names = read_lines(SplitBulkImportFofn.sample_name_fofn),
-            input_vcfs = read_lines(SplitBulkImportFofn.vcf_file_name_fofn),
-            input_vcf_indexes = read_lines(SplitBulkImportFofn.vcf_index_file_name_fofn),
+            external_sample_names = SplitBulkImportFofn.sample_name_fofn,
+            num_samples = SplitBulkImportFofn.sample_num,
+            input_vcfs = SplitBulkImportFofn.vcf_file_name_fofn,
+            input_vcf_indexes = SplitBulkImportFofn.vcf_index_file_name_fofn,
             interval_list = interval_list,
 
             # The larger the `load_data_batch_size` the greater the probability of preemptions and non-retryable
@@ -239,6 +241,7 @@ task SplitBulkImportFofn {
         cut -f 1 ~{import_fofn} > sample_names.txt
         cut -f 2 ~{import_fofn} > vcf_file_names.txt
         cut -f 3 ~{import_fofn} > vcf_index_file_names.txt
+        wc -l  ~{import_fofn} > sample_num.txt
     >>>
 
     runtime {
@@ -252,6 +255,7 @@ task SplitBulkImportFofn {
         File sample_name_fofn = "sample_names.txt"
         File vcf_file_name_fofn = "vcf_file_names.txt"
         File vcf_index_file_name_fofn = "vcf_index_file_names.txt"
+        Int sample_num = read_int("sample_num.txt")
     }
 }
 

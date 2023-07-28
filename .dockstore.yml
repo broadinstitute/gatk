@@ -126,6 +126,7 @@ workflows:
          - master
          - ah_var_store
          - bulk_ingest_staging
+         - rsa_vs_1019
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl

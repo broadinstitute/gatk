@@ -9,7 +9,8 @@ workflow GvsAssignIds {
     String dataset_name
     String project_id
 
-    Array[String] external_sample_names
+    File external_sample_names
+    Int num_samples
     Boolean samples_are_controls = false
 
     File? assign_ids_gatk_override
@@ -93,6 +94,7 @@ workflow GvsAssignIds {
       sample_info_table = sample_info_table,
       samples_are_controls = samples_are_controls,
       table_creation_done = CreateSampleInfoTable.done,
+      num_samples = num_samples
   }
 
   call GvsCreateTables.CreateBQTables as CreateTablesForMaxId {
@@ -113,8 +115,9 @@ task AssignIds {
     String dataset_name
     String project_id
 
+    Int num_samples
     String sample_info_table
-    Array[String] sample_names
+    File sample_names
     Boolean samples_are_controls
     String table_creation_done
   }
@@ -133,8 +136,7 @@ task AssignIds {
     set -o errexit -o nounset -o pipefail -o xtrace
 
     # make sure that sample names were actually passed, fail if empty
-    num_samples=~{length(sample_names)}
-    if [ $num_samples -eq 0 ]; then
+    if [ ~{num_samples} -eq 0 ]; then
       echo "No sample names passed. Exiting"
       exit 1
     fi
@@ -154,10 +156,8 @@ task AssignIds {
     # create the lock table
     bq --apilog=false --project_id=~{project_id} mk ~{dataset_name}.sample_id_assignment_lock "sample_name:STRING"
 
-    NAMES_FILE=~{write_lines(sample_names)}
-
     # first load name into the lock table - will check for dupes when adding to sample_info table
-    bq --apilog=false load --project_id=~{project_id} ~{dataset_name}.sample_id_assignment_lock $NAMES_FILE "sample_name:STRING"
+    bq --apilog=false load --project_id=~{project_id} ~{dataset_name}.sample_id_assignment_lock ~{sample_names} "sample_name:STRING"
 
     # add sample_name to sample_info_table
     bq --apilog=false --project_id=~{project_id} query --use_legacy_sql=false ~{bq_labels} \
@@ -173,7 +173,7 @@ task AssignIds {
 
     # retrieve the list of assigned ids and samples to update the datamodel
     echo "entity:sample_id,gvs_id" > update.tsv
-    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n $num_samples --parameter=offset:INTEGER:$offset \
+    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} --parameter=offset:INTEGER:$offset \
       'SELECT sample_name, sample_id from `~{dataset_name}.~{sample_info_table}` WHERE sample_id >= @offset' > update.tsv
     cat update.tsv | sed -e 's/sample_id/gvs_id/' -e 's/sample_name/entity:sample_id/' -e 's/,/\t/g' > gvs_ids.tsv
 
