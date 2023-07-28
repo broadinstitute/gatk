@@ -24,6 +24,8 @@ workflow GvsJointVariantCalling {
         # This is the most updated snapshot of the code as of July 17, 2023
         File gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-732-g533d8d9-SNAPSHOT-local.jar"
         File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
+        Boolean use_interval_weights = true
+        File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
         Boolean extract_do_not_filter_override = false
         String? extract_output_file_base_name
         String? extract_table_prefix
@@ -57,8 +59,6 @@ workflow GvsJointVariantCalling {
       Int SNP_VQSR_CLASSIC_max_gaussians_override = 6
       Int SNP_VQSR_CLASSIC_mem_gb_override = ""
     }
-
-    File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
 
 
     call BulkIngestGenomes.GvsBulkIngestGenomes as BulkIngestGenomes {
@@ -124,6 +124,7 @@ workflow GvsJointVariantCalling {
             query_project = query_project,
             scatter_count = extract_scatter_count,
             interval_list = interval_list,
+            use_interval_weights = use_interval_weights,
             interval_weights_bed = interval_weights_bed,
             gatk_override = gatk_override,
             output_file_base_name = effective_extract_output_file_base_name,
