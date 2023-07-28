@@ -241,7 +241,7 @@ task SplitBulkImportFofn {
         cut -f 1 ~{import_fofn} > sample_names.txt
         cut -f 2 ~{import_fofn} > vcf_file_names.txt
         cut -f 3 ~{import_fofn} > vcf_index_file_names.txt
-        wc -l  ~{import_fofn} > sample_num.txt
+        wc -l  ~{import_fofn} | cut -w -f2 > sample_num.txt
     >>>
 
     runtime {
