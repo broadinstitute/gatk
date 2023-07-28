@@ -948,6 +948,31 @@ task PopulateFilterSetInfo {
   }
 }
 
+task GetWorkspaceId {
+  ## In order to get the ID and bucket of the workspace, without requiring that the user input it manually, we check the delocalization script
+  meta {
+    volatile: true # always run this when asked otherwise you can get a previously run workspace
+  }
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    # Sniff the workspace bucket out of the delocalization script and extract the workspace id from that.
+    sed -n -E 's!.*gs://fc-(secure-)?([^\/]+).*!\2!p' /cromwell_root/gcs_delocalization.sh | sort -u > workspace_id.txt
+    sed -n -E 's!.*gs://(fc-(secure-)?[^\/]+).*!\1!p' /cromwell_root/gcs_delocalization.sh | sort -u > workspace_bucket.txt
+  >>>
+
+  runtime {
+    docker: "ubuntu:latest"
+  }
+
+  output {
+    String workspace_id = read_string("workspace_id.txt")
+    String workspace_bucket = read_string("workspace_bucket.txt")
+  }
+}
+
 task GetWorkspaceName {
   ## In order to get the name and namespace of the workspace, without requiring that the user input it manually, we hit rawls directly for the exact name
   input {
