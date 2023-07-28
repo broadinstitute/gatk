@@ -202,7 +202,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_VS-991_IntervalListBWiring
    - name: GvsQuickstartHailIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartHailIntegration.wdl
@@ -210,7 +209,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_VS-991_IntervalListBWiring
    - name: GvsQuickstartIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartIntegration.wdl
@@ -218,8 +216,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_vs_997
-         - gg_VS-991_IntervalListBWiring
+         - vs_1011_assignids_pipefail
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
