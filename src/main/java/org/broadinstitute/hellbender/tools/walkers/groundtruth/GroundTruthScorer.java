@@ -53,6 +53,7 @@ public class GroundTruthScorer extends ReadWalker {
     public static final String NORMALIZED_SCORE_THRESHOLD_LONG_NAME = "normalized-score-threshold";
     public static final String ADD_MEAN_CALL_LONG_NAME = "add-mean-call";
     public static final String GT_NO_OUTPUT_LONG_NAME = "gt-no-output";
+    public static final String OMIT_ZEROS_FROM_REPORT = "omit-zeros-from-report";
 
     private static final int QUAL_VALUE_MAX = 60;
     private static final int HMER_VALUE_MAX = 100; //TODO: This should become a parameter
@@ -135,25 +136,31 @@ public class GroundTruthScorer extends ReadWalker {
             return report;
         }
 
-        static GATKReportTable newReportTable(final BooleanAccumulator[] report, final String name, final double probThreshold) {
+        static GATKReportTable newReportTable(final BooleanAccumulator[] report, final String name, final double probThreshold, final boolean omitZeros) {
             final GATKReportTable table = new GATKReportTable(name + "Report", "error rate per " + name, 4);
             table.addColumn(name, "%d");
             table.addColumn("count", "%d");
             table.addColumn("error", "%f");
             table.addColumn("phred", "%d");
+            int rowIndex = 0;
             for (int i = 0; i < report.length; i++) {
-                final double rate =  report[i].getFalseRate();
-                final double phredRate = (rate == 0.0 && report[i].getCount() != 0 && probThreshold != 0.0 ) ? probThreshold : rate;
+                if ( omitZeros && i != 0 && report[i].getCount() == 0 )
+                    continue;
+                else {
+                    final double rate = report[i].getFalseRate();
+                    final double phredRate = (rate == 0.0 && report[i].getCount() != 0 && probThreshold != 0.0) ? probThreshold : rate;
 
-                table.set(i, 0, i);
-                table.set(i, 1, report[i].getCount());
-                table.set(i, 2, rate);
-                table.set(i, 3, phredRate != 0 ? (int)Math.ceil(-10.0 * Math.log10(phredRate)) : 0);
+                    table.set(rowIndex, 0, i);
+                    table.set(rowIndex, 1, report[i].getCount());
+                    table.set(rowIndex, 2, rate);
+                    table.set(rowIndex, 3, phredRate != 0 ? (int) Math.ceil(-10.0 * Math.log10(phredRate)) : 0);
+                    rowIndex++;
+                }
             }
             return table;
         }
 
-        static GATKReportTable newReportTable(final BooleanAccumulator[] report, final String name1, final String name2) {
+        static GATKReportTable newReportTable(final BooleanAccumulator[] report, final String name1, final String name2, final boolean omitZeros) {
             final GATKReportTable table = new GATKReportTable(name1 + "_" + name2 + "Report", "error rate per " + name1 + " by " + name2, 4);
             table.addColumn(name1, "%d");
             table.addColumn(name2, "%d");
@@ -162,17 +169,21 @@ public class GroundTruthScorer extends ReadWalker {
             int rowIndex = 0;
             for (int i = 0; i < report.length; i++) {
                 for ( int j = 0; j < report[i].bins.length ; j++ ) {
-                    table.set(rowIndex, 0, i);
-                    table.set(rowIndex, 1, j);
-                    table.set(rowIndex, 2, report[i].bins[j].getCount());
-                    table.set(rowIndex, 3, report[i].bins[j].getFalseRate());
-                    rowIndex++;
+                    if ( omitZeros && (i != 0 || j != 0) && report[i].bins[j].getCount() == 0 )
+                        continue;
+                    else {
+                        table.set(rowIndex, 0, i);
+                        table.set(rowIndex, 1, j);
+                        table.set(rowIndex, 2, report[i].bins[j].getCount());
+                        table.set(rowIndex, 3, report[i].bins[j].getFalseRate());
+                        rowIndex++;
+                    }
                 }
             }
             return table;
         }
 
-        static GATKReportTable newReportTable(final BooleanAccumulator[] report, final String name1, final String name2, final String name3, final String name4) {
+        static GATKReportTable newReportTable(final BooleanAccumulator[] report, final String name1, final String name2, final String name3, final String name4, final boolean omitZeros) {
             final GATKReportTable table = new GATKReportTable(name1 + "_" + name2 + "_" + name3 + "_" + name4 + "_Report", "error rate per " + name1 + " by " + name2 + " and " + name3, 5);
             table.addColumn(name1, "%d");
             table.addColumn(name2, "%d");
@@ -184,12 +195,16 @@ public class GroundTruthScorer extends ReadWalker {
                 for ( int j = 0; j < report[i].bins.length ; j++ ) {
                     for ( int k = 0; k < report[i].bins[j].bins.length ; k++ ) {
                         for ( int m = 0; m < report[i].bins[j].bins[k].bins.length ; m++ ) {
-                            table.set(rowIndex, 0, i);
-                            table.set(rowIndex, 1, j);
-                            table.set(rowIndex, 2, binToDeviation(k));
-                            table.set(rowIndex, 3, String.format("%c", binToBase(m)));
-                            table.set(rowIndex, 4, report[i].bins[j].bins[k].bins[m].getCount());
-                            rowIndex++;
+                            if ( omitZeros && (i != 0 || j != 0 || k != 0 || m != 0) && report[i].bins[j].bins[k].bins[m].getCount() == 0 )
+                                continue;
+                            else {
+                                table.set(rowIndex, 0, i);
+                                table.set(rowIndex, 1, j);
+                                table.set(rowIndex, 2, binToDeviation(k));
+                                table.set(rowIndex, 3, String.format("%c", binToBase(m)));
+                                table.set(rowIndex, 4, report[i].bins[j].bins[k].bins[m].getCount());
+                                rowIndex++;
+                            }
                         }
                     }
                 }
@@ -229,6 +244,8 @@ public class GroundTruthScorer extends ReadWalker {
     @Argument(fullName = GT_NO_OUTPUT_LONG_NAME, doc = "do not generate output records", optional = true)
     public boolean      noOutput = false;
 
+    @Argument(fullName = OMIT_ZEROS_FROM_REPORT, doc = "omit zero values from output report", optional = true)
+    public boolean      omitZerosFromReport = false;
 
     // locals
     private FlowBasedAlignmentLikelihoodEngine likelihoodCalculationEngine;
@@ -305,9 +322,9 @@ public class GroundTruthScorer extends ReadWalker {
         // write reports
         if ( reportFilePath != null ) {
             final GATKReport report = new GATKReport(
-                    BooleanAccumulator.newReportTable(qualReport, "qual", fbargs.probabilityRatioThreshold),
-                    BooleanAccumulator.newReportTable(qualReport, "qual", "hmer"),
-                    BooleanAccumulator.newReportTable(qualReport, "qual", "hmer", "deviation", "base"));
+                    BooleanAccumulator.newReportTable(qualReport, "qual", fbargs.probabilityRatioThreshold, omitZerosFromReport),
+                    BooleanAccumulator.newReportTable(qualReport, "qual", "hmer", omitZerosFromReport),
+                    BooleanAccumulator.newReportTable(qualReport, "qual", "hmer", "deviation", "base", omitZerosFromReport));
             try ( final PrintStream ps = new PrintStream(reportFilePath.getOutputStream()) ) {
                 report.print(ps);
             }
@@ -318,6 +335,12 @@ public class GroundTruthScorer extends ReadWalker {
 
     @Override
     public void apply(final GATKRead read, final ReferenceContext referenceContext, final FeatureContext featureContext) {
+
+        // working with unmapped reads is really not practical, as we need the reference to work out ground truth
+        if ( read.isUnmapped() )
+            return;
+        if ( referenceContext.getWindow() == null )
+            return;
 
         // handle read clipping
         final GATKRead clippedRead;
@@ -689,6 +712,10 @@ public class GroundTruthScorer extends ReadWalker {
     }
 
     static private boolean isSoftClipped( final GATKRead read ) {
+        if ( read.isUnmapped() )
+            return false;
+        if ( read.getCigar().getFirstCigarElement() == null )
+            return false;
         final CigarOperator firstOperator = read.getCigar().getFirstCigarElement().getOperator();
         final CigarOperator lastOperator = read.getCigar().getLastCigarElement().getOperator();
         return (firstOperator == CigarOperator.SOFT_CLIP && lastOperator != CigarOperator.SOFT_CLIP) ||
