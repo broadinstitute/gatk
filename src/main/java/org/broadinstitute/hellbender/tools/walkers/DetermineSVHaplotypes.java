@@ -22,7 +22,6 @@ import java.util.function.Function;
 public class DetermineSVHaplotypes extends VariantWalker {
     public static final int PADDING = 150;
     public static final int WINDOW_SIZE = 2 * PADDING;
-    public static final int SLOP = 10; // a few extra bases in case we have some small deletions
     public static final int MIN_QUAL = 10;
     public static final int MIN_SMALL_INDEL_COUNT = 3;
     public static final float MIN_SMALL_INDEL_FRACT = 0.1F;
@@ -35,8 +34,10 @@ public class DetermineSVHaplotypes extends VariantWalker {
                        final ReadsContext readsContext,
                        final ReferenceContext refContext,
                        final FeatureContext featureContext ) {
-        final String contig = variant.getContig();
         final String svType = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, null);
+        if ( svType == null ) {
+            return;
+        }
         final boolean isDel = GATKSVVCFConstants.SYMB_ALT_STRING_DEL.equals(svType);
 
         // The VCF references the base before the actual variant for deletions and the base after for duplications.
@@ -44,35 +45,29 @@ public class DetermineSVHaplotypes extends VariantWalker {
         final int variantStart = variant.getStart() +
                 (isDel ? 1 : GATKSVVCFConstants.SYMB_ALT_STRING_DUP.equals(svType) ? -1 : 0);
         final int paddedStart = Math.max(1, variantStart - PADDING);
-        final SimpleInterval readQueryWindow = new SimpleInterval(contig, paddedStart, paddedStart);
+        final SimpleInterval readQueryWindow =
+                new SimpleInterval(variant.getContig(), paddedStart, paddedStart);
 
         // make an iterator for the calls in each read that overlap the variant region
         final List<CallIterator> callIterators = new ArrayList<>();
         readsContext.iterator(readQueryWindow)
                 .forEachRemaining(read -> callIterators.add(new CallIterator(read, paddedStart)));
 
-        final int paddedEnd;
-        final int windowSize;
-        if ( !isDel ) {
-            paddedEnd = paddedStart + WINDOW_SIZE + SLOP;
-            windowSize = WINDOW_SIZE + SLOP;
-        } else {
-            paddedEnd = variant.getEnd() + PADDING + SLOP;
-            windowSize = paddedEnd - paddedStart;
-        }
+        int paddedEnd = paddedStart + WINDOW_SIZE;
         final int nReads = callIterators.size();
         Map<Call, List<Integer>> callMap = new HashMap<>(nReads);
         final List<HetSite> hetSites = new ArrayList<>();
-        final List<Call> consensusCalls = new ArrayList<>(windowSize);
+        final List<Call> consensusCalls = new ArrayList<>(WINDOW_SIZE);
 
         // find the heterozygous sites in a window around the variant site
         for ( int refLoc = paddedStart; refLoc < paddedEnd && fillCallMap(callMap, callIterators); ++refLoc ) {
             if ( isVariant(callMap, consensusCalls) ) {
                 hetSites.add(new HetSite(refLoc, callMap));
-
+                paddedEnd = adjustWindowBoundary(paddedEnd, callMap.keySet());
                 // make a new collection, the old one has been stashed in the HetSite
                 callMap = new HashMap<>(nReads);
             } else {
+                paddedEnd = adjustWindowBoundary(paddedEnd, callMap.keySet());
                 // reuse the old collection after clearing it
                 callMap.clear();
             }
@@ -81,13 +76,16 @@ public class DetermineSVHaplotypes extends VariantWalker {
         // phase the variants -- save the HetSite at the variantStart locus, if present
         final HetSite ourHetSite = phase(hetSites, variantStart);
 
-        final List<ByteSequence> haplotypes =
-                getHaplotypes(paddedStart, windowSize, consensusCalls, hetSites);
+        final List<ByteSequence> haplotypes = getHaplotypes(paddedStart, consensusCalls, hetSites);
         final CigarMatcher cigarMatcher = new CigarMatcher(variant);
         if ( ourHetSite == null ) {
-            final Call ourCall = consensusCalls.get(PADDING);
-            final String genotype =
-                    ourCall != null && cigarMatcher.matches(ourCall.getCigarElement()) ? "1/1" : "0/0";
+            String genotype = "0/0";
+            if ( consensusCalls.size() > PADDING ) {
+                final Call ourCall = consensusCalls.get(PADDING);
+                if ( ourCall != null && cigarMatcher.matches(ourCall.getCigarElement()) ) {
+                    genotype = "1/1";
+                }
+            }
             writeHaplotypes(variant, haplotypes, genotype);
             return;
         }
@@ -108,6 +106,20 @@ public class DetermineSVHaplotypes extends VariantWalker {
         } else {
             writeHaplotypes(variant, haplotypes, "0/0");
         }
+    }
+
+    private static int adjustWindowBoundary( final int currentEnd, final Set<Call> calls ) {
+        int adjustment = 0;
+        for ( final Call call : calls ) {
+            final CigarElement cigarElement = call.getCigarElement();
+            if ( cigarElement.getOperator() == CigarOperator.D ) {
+                final int len = cigarElement.getLength();
+                if ( len > adjustment ) {
+                    adjustment = len;
+                }
+            }
+        }
+        return currentEnd + adjustment;
     }
 
     private static boolean fillCallMap( final Map<Call, List<Integer>> callMap,
@@ -169,16 +181,16 @@ public class DetermineSVHaplotypes extends VariantWalker {
     }
 
     private static HetSite phase( final List<HetSite> hetSites, final int variantStart ) {
-        final int nLocs = hetSites.size();
-        for ( int idx = 0; idx != nLocs; ++idx ) {
+        final int nHetSites = hetSites.size();
+        for ( int idx = 0; idx != nHetSites; ++idx ) {
             final HetSite hetSite = hetSites.get(idx);
             final int cmp = Integer.compare(hetSite.getRefLoc(), variantStart);
-            if ( cmp == 0 || nLocs == 1 ) {
+            if ( cmp == 0 || nHetSites == 1 ) {
                 final ArrayList<Map.Entry<Call, List<Integer>>> locs =
                         new ArrayList<>(hetSite.getCallMap().entrySet());
                 locs.sort(Comparator.comparingInt(e -> -e.getValue().size()));
                 hetSite.setPhase(locs.get(0).getKey(), locs.get(1).getKey());
-                if ( nLocs > 1 ) {
+                if ( nHetSites > 1 ) {
                     phaseExtend(hetSites, idx, idx);
                 }
                 return cmp == 0 ? hetSite : null;
@@ -187,8 +199,8 @@ public class DetermineSVHaplotypes extends VariantWalker {
                 break;
             }
         }
-        for ( int idx1 = 0; idx1 < nLocs - 1; ++idx1 ) {
-            for ( int idx2 = idx1 + 1; idx2 < nLocs; ++idx2 ) {
+        for ( int idx1 = 0; idx1 < nHetSites - 1; ++idx1 ) {
+            for ( int idx2 = idx1 + 1; idx2 < nHetSites; ++idx2 ) {
                 if ( phasePair(hetSites.get(idx1), hetSites.get(idx2)) ) {
                     phaseExtend(hetSites, idx1, idx2);
                     return null;
@@ -197,7 +209,7 @@ public class DetermineSVHaplotypes extends VariantWalker {
         }
 
         // if we have only two variants, and they can't be phased together
-        if ( nLocs == 2 ) {
+        if ( nHetSites == 2 ) {
             // remove the one that's farther from the variant of interest
             if ( Math.abs(hetSites.get(0).getRefLoc() - variantStart) <
                     Math.abs(hetSites.get(1).getRefLoc() - variantStart) ) {
@@ -211,7 +223,9 @@ public class DetermineSVHaplotypes extends VariantWalker {
                     new ArrayList<>(hetSite.getCallMap().entrySet());
             locs.sort(Comparator.comparingInt(e -> -e.getValue().size()));
             hetSite.setPhase(locs.get(0).getKey(), locs.get(1).getKey());
+            return null;
         }
+        // we tried everything we could think of, but couldn't phase
         hetSites.clear();
         return null;
     }
@@ -347,24 +361,22 @@ public class DetermineSVHaplotypes extends VariantWalker {
     }
 
     private static List<ByteSequence> getHaplotypes( final int windowStart,
-                                                     final int windowSize,
                                                      final List<Call> consensusCalls,
                                                      final List<HetSite> hetSites ) {
         if ( hetSites.isEmpty() ) {
-            return Collections.singletonList(getHaplotype(windowStart, windowSize, consensusCalls, hetSites.iterator(), (h)->null));
+            return Collections.singletonList(getHaplotype(windowStart, consensusCalls, hetSites.iterator(), (h)->null));
         }
         final List<ByteSequence> result = new ArrayList<>(2);
-        result.add(getHaplotype(windowStart, windowSize, consensusCalls, hetSites.iterator(), HetSite::getAlt1));
-        result.add(getHaplotype(windowStart, windowSize, consensusCalls, hetSites.iterator(), HetSite::getAlt2));
+        result.add(getHaplotype(windowStart, consensusCalls, hetSites.iterator(), HetSite::getAlt1));
+        result.add(getHaplotype(windowStart, consensusCalls, hetSites.iterator(), HetSite::getAlt2));
         return result;
     }
 
     public static ByteSequence getHaplotype( final int windowStart,
-                                             final int windowSize,
                                              final List<Call> consensusCalls,
                                              final Iterator<HetSite> hetSiteIterator,
                                              final Function<HetSite, Call> hetSiteCallFunc ) {
-        final List<ByteSequence> seqs = new ArrayList<>(windowSize);
+        final List<ByteSequence> seqs = new ArrayList<>(WINDOW_SIZE);
         HetSite curHetSite = hetSiteIterator.hasNext() ? hetSiteIterator.next() : null;
         final int nCalls = consensusCalls.size();
         for ( int idx = 0; idx < nCalls; ++idx ) {
@@ -394,10 +406,17 @@ public class DetermineSVHaplotypes extends VariantWalker {
     public void writeHaplotypes( final VariantContext variant,
                                  final List<ByteSequence> haplotypes,
                                  final String genotype ) {
+        boolean vcfIsHet = variant.getGenotype(0).isHet();
         final StringBuilder sb = new StringBuilder();
-        sb.append(variant.getContig()).append('\t').append(variant.getStart()).append('\t');
-        sb.append(variant.getID()).append('\t').append(genotype).append('\t');
-        sb.append(variant.getGenotype(0).isHet() ? "0/1" : "1/1");
+        sb.append(variant.getContig())
+                .append('\t')
+                .append(variant.getStart())
+                .append('\t')
+                .append(variant.getID())
+                .append('\t')
+                .append(genotype)
+                .append('\t')
+                .append(vcfIsHet ? "0/1" : "1/1");
         for ( final ByteSequence haplotype : haplotypes ) {
             sb.append('\t');
             sb.append(haplotype);
