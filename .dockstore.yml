@@ -118,6 +118,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - gg_VS-1004_BenchmarkBeta25K
    - name: GvsBulkIngestGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsBulkIngestGenomes.wdl
@@ -126,6 +127,7 @@ workflows:
          - master
          - ah_var_store
          - bulk_ingest_staging
+         - gg_VS-1004_BenchmarkBeta25K
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
@@ -180,6 +182,7 @@ workflows:
          - master
          - ah_var_store
          - bulk_ingest_staging
+         - gg_VS-1004_BenchmarkBeta25K
    - name: GvsJointVariantCallsetCost
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCallsetCost.wdl
@@ -188,6 +191,7 @@ workflows:
          - master
          - ah_var_store
          - bulk_ingest_staging
+         - gg_VS-1004_BenchmarkBeta25K
    - name: GvsCalculatePrecisionAndSensitivity
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCalculatePrecisionAndSensitivity.wdl
