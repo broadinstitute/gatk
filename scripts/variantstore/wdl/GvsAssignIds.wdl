@@ -9,7 +9,7 @@ workflow GvsAssignIds {
     String dataset_name
     String project_id
 
-    Array[String] external_sample_names
+    File external_sample_names
     Boolean samples_are_controls = false
 
     File? assign_ids_gatk_override
@@ -92,7 +92,7 @@ workflow GvsAssignIds {
       dataset_name = dataset_name,
       sample_info_table = sample_info_table,
       samples_are_controls = samples_are_controls,
-      table_creation_done = CreateSampleInfoTable.done,
+      table_creation_done = CreateSampleInfoTable.done
   }
 
   call GvsCreateTables.CreateBQTables as CreateTablesForMaxId {
@@ -114,7 +114,7 @@ task AssignIds {
     String project_id
 
     String sample_info_table
-    Array[String] sample_names
+    File sample_names
     Boolean samples_are_controls
     String table_creation_done
   }
@@ -131,11 +131,11 @@ task AssignIds {
     # Prepend date, time and pwd to xtrace log entries.
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
+    num_samples=$(wc -l < ~{sample_names})
 
     # make sure that sample names were actually passed, fail if empty
-    num_samples=~{length(sample_names)}
     if [ $num_samples -eq 0 ]; then
-      echo "No sample names passed. Exiting"
+      echo "No sample names found in file ~{sample_names}. Exiting"
       exit 1
     fi
 
@@ -154,10 +154,8 @@ task AssignIds {
     # create the lock table
     bq --apilog=false --project_id=~{project_id} mk ~{dataset_name}.sample_id_assignment_lock "sample_name:STRING"
 
-    NAMES_FILE=~{write_lines(sample_names)}
-
     # first load name into the lock table - will check for dupes when adding to sample_info table
-    bq --apilog=false load --project_id=~{project_id} ~{dataset_name}.sample_id_assignment_lock $NAMES_FILE "sample_name:STRING"
+    bq --apilog=false load --project_id=~{project_id} ~{dataset_name}.sample_id_assignment_lock ~{sample_names} "sample_name:STRING"
 
     # add sample_name to sample_info_table
     bq --apilog=false --project_id=~{project_id} query --use_legacy_sql=false ~{bq_labels} \
