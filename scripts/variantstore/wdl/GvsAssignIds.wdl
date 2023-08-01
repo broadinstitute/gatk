@@ -10,7 +10,6 @@ workflow GvsAssignIds {
     String project_id
 
     File external_sample_names
-    Int num_samples
     Boolean samples_are_controls = false
 
     File? assign_ids_gatk_override
@@ -93,8 +92,7 @@ workflow GvsAssignIds {
       dataset_name = dataset_name,
       sample_info_table = sample_info_table,
       samples_are_controls = samples_are_controls,
-      table_creation_done = CreateSampleInfoTable.done,
-      num_samples = num_samples
+      table_creation_done = CreateSampleInfoTable.done
   }
 
   call GvsCreateTables.CreateBQTables as CreateTablesForMaxId {
@@ -115,7 +113,6 @@ task AssignIds {
     String dataset_name
     String project_id
 
-    Int num_samples
     String sample_info_table
     File sample_names
     Boolean samples_are_controls
@@ -134,10 +131,11 @@ task AssignIds {
     # Prepend date, time and pwd to xtrace log entries.
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
+    num_samples=$(wc -l < ~{sample_names})
 
     # make sure that sample names were actually passed, fail if empty
-    if [ ~{num_samples} -eq 0 ]; then
-      echo "No sample names passed. Exiting"
+    if [ $num_samples -eq 0 ]; then
+      echo "No sample names found in file ~{sample_names}. Exiting"
       exit 1
     fi
 
@@ -173,7 +171,7 @@ task AssignIds {
 
     # retrieve the list of assigned ids and samples to update the datamodel
     echo "entity:sample_id,gvs_id" > update.tsv
-    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n ~{num_samples} --parameter=offset:INTEGER:$offset \
+    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} -n $num_samples --parameter=offset:INTEGER:$offset \
       'SELECT sample_name, sample_id from `~{dataset_name}.~{sample_info_table}` WHERE sample_id >= @offset' > update.tsv
     cat update.tsv | sed -e 's/sample_id/gvs_id/' -e 's/sample_name/entity:sample_id/' -e 's/,/\t/g' > gvs_ids.tsv
 

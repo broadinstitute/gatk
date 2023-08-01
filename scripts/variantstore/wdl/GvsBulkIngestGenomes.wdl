@@ -90,8 +90,7 @@ workflow GvsBulkIngestGenomes {
             dataset_name = dataset_name,
             project_id = project_id,
             external_sample_names = SplitBulkImportFofn.sample_name_fofn,
-            samples_are_controls = false,
-            num_samples = SplitBulkImportFofn.sample_num
+            samples_are_controls = false
     }
 
     call ImportGenomes.GvsImportGenomes as ImportGenomes {

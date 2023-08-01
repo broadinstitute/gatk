@@ -26,8 +26,8 @@ gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.in
 - OR you can run the two workflows that `GvsBulkIngestGenomes` calls (for instance if you also need to load control samples) 
 1. `GvsAssignIds` workflow
     - To optimize the GVS internal queries, each sample must have a unique and consecutive integer ID assigned. Running the `GvsAssignIds` will create a unique GVS ID for each sample (`sample_id`) and update the BQ `sample_info` table (creating it if it doesn't exist). This workflow takes care of creating the BQ `vet_*`, `ref_ranges_*` and `cost_observability` tables needed for the sample IDs generated.
-    - Run at the `sample set` level ("Step 1" in workflow submission) with a sample set of all the new samples to be included in the callset.
-    - You will want to set the `external_sample_names` input based on the column in the workspace Data table, e.g. "this.samples.research_id".
+    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
+    -  The `external_sample_names` input should be the GCS path of a text file that lists all the sample names (external sample ID).
     - If new controls are being added, they need to be done in a separate run, with the `samples_are_controls` input set to "true" (the referenced Data columns may also be different, e.g. "this.control_samples.control_sample_id" instead of "this.samples.research_id").
 2. `GvsImportGenomes` workflow
     - This will import the re-blocked gVCF files into GVS. The workflow will check whether data for that sample has already been loaded into GVS. It is designed to be re-run (with the same inputs) if there is a failure during one of the workflow tasks (e.g. BigQuery write API interrupts).

@@ -29,7 +29,7 @@ These are the required parameters which must be supplied to the workflow:
 | Parameter             | Description |
 | --------------------- | ----------- |
 | dataset_name          | the name of the dataset you created above       |
-| external_sample_names | `this.samples.sample_id` (the sample identifier column from the `gvs_demo_10` sample set) |
+| external_sample_names | GCS path of a text file that lists all the sample names (external sample ID) |
 | project_id            | the name of the google project containing the dataset |
 
 ## 1.2 Load data
@@ -42,7 +42,7 @@ These are the required parameters which must be supplied to the workflow:
 | Parameter             | Description |
 | --------------------- | ----------- |
 | dataset_name          | the name of the dataset you created above       |
-| external_sample_names | `this.samples.sample_id` (the sample identifier from the `gvs_demo_10` sample set) |
+| external_sample_names | GCS path of a text file that lists all the sample names (external sample ID) |
 | input_vcf_indexes     | `this.samples.hg38_reblocked_v2_vcf_index` (reblocked gvcf index file for each sample) |
 | input_vcfs            | `this.samples.hg38_reblocked_v2_vcf` (reblocked gvcf file for each sample) |
 | project_id            | the name of the google project containing the dataset |
