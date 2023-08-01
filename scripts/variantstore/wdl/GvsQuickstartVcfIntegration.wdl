@@ -7,13 +7,15 @@ workflow GvsQuickstartVcfIntegration {
 
     input {
         String branch_name
-        File interval_list
+        Boolean is_wgs = true
         String expected_output_prefix
         Boolean use_VQSR_lite = true
         Boolean extract_do_not_filter_override = true
 
         String drop_state = "FORTY"
         String dataset_suffix
+        File interval_list
+        Boolean use_default_dockers = false
         File? gatk_override
         String? sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
         String? vcf_files_column_name
@@ -22,7 +24,15 @@ workflow GvsQuickstartVcfIntegration {
     }
     String project_id = "gvs-internal"
 
-    if (!defined(gatk_override)) {
+    Boolean use_interval_weights = is_wgs
+    File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
+
+    # WDL 1.0 trick to set a variable ('none') to be undefined.
+    if (false) {
+      File? none = ""
+    }
+
+    if (!use_default_dockers && !defined(gatk_override)) {
       call Utils.BuildGATKJar {
         input:
           branch_name = branch_name,
@@ -41,7 +51,7 @@ workflow GvsQuickstartVcfIntegration {
             call_set_identifier = branch_name,
             dataset_name = CreateDataset.dataset_name,
             project_id = project_id,
-            gatk_override = select_first([gatk_override, BuildGATKJar.jar]),
+            gatk_override = if (use_default_dockers) then none else select_first([gatk_override, BuildGATKJar.jar]),
             use_classic_VQSR = !use_VQSR_lite,
             extract_output_file_base_name = "quickit",
             filter_set_name = "quickit",
@@ -51,6 +61,8 @@ workflow GvsQuickstartVcfIntegration {
             extract_do_not_filter_override = extract_do_not_filter_override,
             drop_state = drop_state,
             interval_list = interval_list,
+            use_interval_weights = use_interval_weights,
+            interval_weights_bed = interval_weights_bed,
             sample_id_column_name = sample_id_column_name,
             vcf_files_column_name = vcf_files_column_name,
             vcf_index_files_column_name = vcf_index_files_column_name,
