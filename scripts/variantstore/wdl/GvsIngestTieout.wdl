@@ -9,9 +9,9 @@ workflow GvsIngestTieout {
         String project
         String reference_dataset_name
         String branch_name
-        Array[String] sample_names
-        Array[File] input_vcfs
-        Array[File] input_vcf_indexes
+        File sample_names
+        File input_vcfs
+        File input_vcf_indexes
     }
 
     call Utils.BuildGATKJarAndCreateDataset {
