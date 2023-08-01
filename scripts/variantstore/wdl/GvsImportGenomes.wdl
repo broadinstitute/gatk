@@ -9,9 +9,10 @@ workflow GvsImportGenomes {
     String dataset_name
     String project_id
 
-    Array[String] external_sample_names
-    Array[File] input_vcfs
-    Array[File] input_vcf_indexes
+    Int num_samples
+    File external_sample_names
+    File input_vcfs
+    File input_vcf_indexes
 
     Boolean skip_loading_vqsr_fields = false
 
@@ -32,7 +33,6 @@ workflow GvsImportGenomes {
     File? load_data_gatk_override
   }
 
-  Int num_samples = length(external_sample_names)
   Int max_auto_batch_size = 20000
   # Broad users enjoy higher quotas and can scatter more widely than beta users before BigQuery smacks them
   # We don't expect this to be changed at runtime, so we can keep this as a constant defined in here
@@ -71,14 +71,15 @@ workflow GvsImportGenomes {
       dataset_name = dataset_name,
       project_id = project_id,
       external_sample_names = external_sample_names,
+      num_samples = num_samples,
       table_name = "sample_info",
   }
 
   call CurateInputLists {
     input:
-      input_vcf_index_list = write_lines(input_vcf_indexes),
-      input_vcf_list = write_lines(input_vcfs),
-      input_sample_name_list = write_lines(external_sample_names),
+      input_vcf_index_list = input_vcf_indexes,
+      input_vcf_list = input_vcfs,
+      input_sample_name_list = external_sample_names,
       input_samples_to_be_loaded_map = GetUningestedSampleIds.sample_map,
   }
 
@@ -400,7 +401,8 @@ task GetUningestedSampleIds {
     String dataset_name
     String project_id
 
-    Array[String] external_sample_names
+    File external_sample_names
+    Int num_samples
     String table_name
   }
   meta {
@@ -409,7 +411,6 @@ task GetUningestedSampleIds {
   }
 
   Int samples_per_table = 4000
-  Int num_samples = length(external_sample_names)
   # add labels for DSP Cloud Cost Control Labeling and Reporting
   String bq_labels = "--label service:gvs --label team:variants --label managedby:import_genomes"
   String temp_table="~{dataset_name}.sample_names_to_load"
@@ -435,8 +436,7 @@ task GetUningestedSampleIds {
 
     echo "Creating the external sample name list table ~{temp_table}"
     bq --apilog=false --project_id=~{project_id} mk ~{temp_table} "sample_name:STRING"
-    NAMES_FILE=~{write_lines(external_sample_names)}
-    bq --apilog=false load --project_id=~{project_id} ~{temp_table} $NAMES_FILE "sample_name:STRING"
+    bq --apilog=false load --project_id=~{project_id} ~{temp_table} ~{external_sample_names} "sample_name:STRING"
 
     # Get the current min/max id, or 0 if there are none. Withdrawn samples still have IDs so don't filter them out.
     bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} '
