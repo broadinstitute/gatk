@@ -16,7 +16,7 @@ The `GvsExtractCallset` workflow should have an output of type `Array[File]` cal
 gs://<long prefix with workspace id, submission id, etc>/call-ExtractTask/shard-0/control-001-extract.vcf.gz
 ```
 
-Then all of the output control VCFs might be selected into a FOFN with some globbing:
+Then all the output control VCFs might be selected into a FOFN with some globbing:
 
 ```
 gsutil ls 'gs://<long prefix with workspace id, submission id, etc>/call-ExtractTask/shard-*/*.vcf.gz' > vcfs_fofn.txt
