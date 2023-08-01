@@ -119,8 +119,10 @@ public class Mutect2EngineUnitTest extends GATKBaseTest {
 
             Assert.assertEquals(calculated, expected, precision);
         }
+    }
 
-
+    @Test
+    public void testOldErrorModelBehavior() {
 
     }
 

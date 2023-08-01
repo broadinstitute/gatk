@@ -122,8 +122,8 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
 
     private final Optional<F1R2CountsCollector> f1R2CountsCollector;
 
-    private PileupQualBuffer tumorPileupQualBuffer = new PileupQualBuffer();
-    private PileupQualBuffer normalPileupQualBuffer = new PileupQualBuffer();
+    private PileupQualBuffer tumorPileupQualBuffer;
+    private PileupQualBuffer normalPileupQualBuffer;
 
     /**
      * Create and initialize a new HaplotypeCallerEngine given a collection of HaplotypeCaller arguments, a reads header,
@@ -143,6 +143,9 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
         referenceReader = ReferenceUtils.createReferenceReader(Utils.nonNull(referenceSpec));
         aligner = SmithWatermanAligner.getAligner(MTAC.smithWatermanImplementation);
         samplesList = new IndexedSampleList(new ArrayList<>(ReadUtils.getSamplesFromHeader(header)));
+
+        tumorPileupQualBuffer = new PileupQualBuffer(MTAC.userDefinedBaseQualCorrection);
+        normalPileupQualBuffer = new PileupQualBuffer(MTAC.userDefinedBaseQualCorrection);
 
         // optimize set operations for the common cases of no normal and one normal
         if (MTAC.normalSamples.isEmpty()) {
@@ -677,10 +680,16 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
         // which corresponds to adding 10*log10(3) = 4.77 ~ 5 to the qual.
         private static final int ONE_THIRD_QUAL_CORRECTION = 5;
 
+        private static double USER_DEFINED_QUAL_CORRECTION = 1;
+
         // indices 0-3 are A,C,G,T; 4 is other substitution (just in case it's some exotic protocol); 5 is indel
         private List<ByteArrayList> buffers = IntStream.range(0,6).mapToObj(n -> new ByteArrayList()).collect(Collectors.toList());
 
         public PileupQualBuffer() { }
+
+        public PileupQualBuffer(final double userDefinedQualCorrection) {
+            USER_DEFINED_QUAL_CORRECTION = userDefinedQualCorrection;
+        }
 
         public void accumulateQuals(final ReadPileup pileup, final byte refBase, final int pcrErrorQual) {
             clear();
@@ -731,7 +740,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
             if (index == -1) {  // -1 is the hard-coded value for non-simple bases in BaseUtils
                 buffers.get(OTHER_SUBSTITUTION).add(qual);
             } else {
-                buffers.get(index).add((byte) FastMath.min(qual + ONE_THIRD_QUAL_CORRECTION, QualityUtils.MAX_QUAL));
+                buffers.get(index).add((byte) FastMath.min(qual + ONE_THIRD_QUAL_CORRECTION * USER_DEFINED_QUAL_CORRECTION, QualityUtils.MAX_QUAL));
             }
         }
 
