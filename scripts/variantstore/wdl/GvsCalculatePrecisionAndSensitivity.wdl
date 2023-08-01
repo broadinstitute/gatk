@@ -140,7 +140,7 @@ task IsVcfOnChromosomes {
     set -o errexit -o nounset -o pipefail -o xtrace
 
     # Get a one-based line number from the zero-based input index.
-    line_number=$((index + 1))
+    line_number=$((~{index} + 1))
     input_vcf_path=$(sed -n "${line_number}p" ~{input_vcf_fofn})
 
     input_vcf=$(basename ${input_vcf_path})
