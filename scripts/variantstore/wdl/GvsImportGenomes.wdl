@@ -33,7 +33,7 @@ workflow GvsImportGenomes {
     File? load_data_gatk_override
   }
 
-  Int max_auto_batch_size = 20000
+  Int max_auto_batch_size = 25000
   # Broad users enjoy higher quotas and can scatter more widely than beta users before BigQuery smacks them
   # We don't expect this to be changed at runtime, so we can keep this as a constant defined in here
   Int broad_user_max_scatter = 1000
