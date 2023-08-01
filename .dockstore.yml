@@ -204,6 +204,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - gg_VS-931_ExomeIntegrationTestOnBulkIngestStaging
    - name: GvsQuickstartHailIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartHailIntegration.wdl
@@ -211,6 +212,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - gg_VS-931_ExomeIntegrationTestOnBulkIngestStaging
    - name: GvsQuickstartIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartIntegration.wdl
@@ -219,6 +221,7 @@ workflows:
          - master
          - ah_var_store
          - vs_1011_assignids_pipefail
+         - gg_VS-931_ExomeIntegrationTestOnBulkIngestStaging
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl

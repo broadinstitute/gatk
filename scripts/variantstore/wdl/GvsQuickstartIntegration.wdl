@@ -11,10 +11,14 @@ workflow GvsQuickstartIntegration {
         Boolean run_vcf_integration = true
         Boolean run_hail_integration = true
         Boolean run_exome_integration = true
-        String? sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
-        String? vcf_files_column_name
-        String? vcf_index_files_column_name
-        String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
+        String? wgs_sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
+        String? wgs_vcf_files_column_name
+        String? wgs_vcf_index_files_column_name
+        String? wgs_sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
+        String? exome_sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
+        String? exome_vcf_files_column_name
+        String? exome_vcf_index_files_column_name
+        String? exome_sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
     }
 
     File full_wgs_interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
@@ -50,10 +54,10 @@ workflow GvsQuickstartIntegration {
                 gatk_override = if (use_default_dockers) then none else BuildGATKJar.jar,
                 interval_list = FilterIntervalListChromosomes.out,
                 expected_output_prefix = expected_output_prefix,
-                sample_id_column_name = sample_id_column_name,
-                vcf_files_column_name = vcf_files_column_name,
-                vcf_index_files_column_name = vcf_index_files_column_name,
-                sample_set_name = sample_set_name,
+                sample_id_column_name = wgs_sample_id_column_name,
+                vcf_files_column_name = wgs_vcf_files_column_name,
+                vcf_index_files_column_name = wgs_vcf_index_files_column_name,
+                sample_set_name = select_first(wgs_sample_set_name, "wgs_integration_sample_set"),
                 use_classic_VQSR = false
         }
         call QuickstartHailIntegration.GvsQuickstartHailIntegration as GvsQuickstartHailVQSRClassicIntegration {
@@ -66,10 +70,10 @@ workflow GvsQuickstartIntegration {
                 gatk_override = if (use_default_dockers) then none else BuildGATKJar.jar,
                 interval_list = FilterIntervalListChromosomes.out,
                 expected_output_prefix = expected_output_prefix,
-                sample_id_column_name = sample_id_column_name,
-                vcf_files_column_name = vcf_files_column_name,
-                vcf_index_files_column_name = vcf_index_files_column_name,
-                sample_set_name = sample_set_name,
+                sample_id_column_name = wgs_sample_id_column_name,
+                vcf_files_column_name = wgs_vcf_files_column_name,
+                vcf_index_files_column_name = wgs_vcf_index_files_column_name,
+                sample_set_name = select_first(wgs_sample_set_name, "wgs_integration_sample_set"),
                 use_classic_VQSR = true
         }
     }
@@ -85,10 +89,10 @@ workflow GvsQuickstartIntegration {
                 gatk_override = if (use_default_dockers) then none else BuildGATKJar.jar,
                 interval_list = FilterIntervalListChromosomes.out,
                 expected_output_prefix = expected_output_prefix,
-                sample_id_column_name = sample_id_column_name,
-                vcf_files_column_name = vcf_files_column_name,
-                vcf_index_files_column_name = vcf_index_files_column_name,
-                sample_set_name = sample_set_name,
+                sample_id_column_name = wgs_sample_id_column_name,
+                vcf_files_column_name = wgs_vcf_files_column_name,
+                vcf_index_files_column_name = wgs_vcf_index_files_column_name,
+                sample_set_name = select_first(wgs_sample_set_name, "wgs_integration_sample_set"),
                 drop_state = "FORTY"
         }
         call QuickstartVcfIntegration.GvsQuickstartVcfIntegration as QuickstartVcfVQSRClassicIntegration {
@@ -101,10 +105,10 @@ workflow GvsQuickstartIntegration {
                 gatk_override = if (use_default_dockers) then none else BuildGATKJar.jar,
                 interval_list = FilterIntervalListChromosomes.out,
                 expected_output_prefix = expected_output_prefix,
-                sample_id_column_name = sample_id_column_name,
-                vcf_files_column_name = vcf_files_column_name,
-                vcf_index_files_column_name = vcf_index_files_column_name,
-                sample_set_name = sample_set_name,
+                sample_id_column_name = wgs_sample_id_column_name,
+                vcf_files_column_name = wgs_vcf_files_column_name,
+                vcf_index_files_column_name = wgs_vcf_index_files_column_name,
+                sample_set_name = select_first(wgs_sample_set_name, "wgs_integration_sample_set"),
                 drop_state = "FORTY"
         }
     }
@@ -120,7 +124,12 @@ workflow GvsQuickstartIntegration {
                 use_default_dockers = use_default_dockers,
                 gatk_override = if (use_default_dockers) then none else BuildGATKJar.jar,
                 interval_list = full_exome_interval_list,
-                expected_output_prefix = expected_output_prefix
+                expected_output_prefix = expected_output_prefix,
+                sample_id_column_name = exome_sample_id_column_name,
+                vcf_files_column_name = exome_vcf_files_column_name,
+                vcf_index_files_column_name = exome_vcf_index_files_column_name,
+                sample_set_name = select_first(exome_sample_set_name, "exome_integration_sample_set"),
+                drop_state = "FORTY"
         }
     }
 }

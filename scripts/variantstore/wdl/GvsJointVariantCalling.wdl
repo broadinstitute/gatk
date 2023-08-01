@@ -12,7 +12,6 @@ workflow GvsJointVariantCalling {
         String project_id
         String call_set_identifier
         String? extract_output_gcs_dir
-        # TODO - Rori asked if Exomes have been reblocked with newest, or should this BE SIXTY
         String drop_state = "FORTY"
         Boolean use_classic_VQSR = true
         # Beta users have accounts with tighter quotas, and we must work around that
