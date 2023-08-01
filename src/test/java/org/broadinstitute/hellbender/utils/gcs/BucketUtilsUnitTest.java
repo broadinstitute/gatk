@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.utils.gcs;
 
 import com.google.cloud.storage.StorageException;
 import com.google.cloud.storage.contrib.nio.CloudStorageConfiguration;
-import com.google.cloud.storage.contrib.nio.CloudStorageFileSystemProvider;
 import com.google.cloud.storage.contrib.nio.SeekableByteChannelPrefetcher;
 import htsjdk.samtools.util.IOUtil;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -19,8 +18,6 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -86,7 +83,8 @@ public final class BucketUtilsUnitTest extends GATKBaseTest {
                 {"file:///local/file", false},
                 {"http://www.somewhere.com", true},
                 {"https://www.somewhere.com", true},
-                {"gs://abucket/bucket", true}
+                {"gs://abucket/bucket", true},
+                {"gs://abucket_with_underscores", true},
         };
     }
 

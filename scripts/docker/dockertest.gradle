@@ -165,7 +165,7 @@ task jacocoTestReportOnPackagedReleaseJar(type: JacocoReport) {
     description = "Generate Jacoco coverage reports after running tests inside the docker image."
 
     reports {
-        xml.enabled = true
-        html.enabled = true
+        xml.required = true
+        html.required = true
     }
 }
