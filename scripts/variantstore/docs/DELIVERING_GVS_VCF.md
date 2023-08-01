@@ -32,12 +32,12 @@
 1. `GvsAssignIds` workflow
    - To optimize the GVS internal queries, each sample must have a unique and consecutive integer ID assigned. Running the `GvsAssignIds` workflow will create a unique GVS ID for each sample (`sample_id`) and update the BQ `sample_info` table (creating it if it doesn't exist). This workflow takes care of creating the BQ `vet_*`, `ref_ranges_*` and `cost_observability` tables needed for the sample IDs generated.
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
-   -  The `external_sample_names` input should be the GCS path of a text file that lists all the sample names (external sample ID).
+   -  The `external_sample_names` input should be the GCS path of a text file that lists all the sample names (external sample IDs).
    - If new controls are being added, they need to be done in a separate run, with the `samples_are_controls` input set to "true" (the referenced Data columns may also be different, e.g. "this.control_samples.control_sample_id" instead of "this.samples.research_id").
 2. `GvsImportGenomes` workflow
    - This will import the re-blocked gVCF files into GVS. The workflow will check whether data for that sample has already been loaded into GVS. It is designed to be re-run (with the same inputs) if there is a failure during one of the workflow tasks (e.g. BigQuery write API interrupts).
    - Run at the `sample set` level ("Step 1" in workflow submission).  You can either run this on a sample_set of all the samples and rely on the workflow logic to break it up into batches (or manually set the `load_data_batch_size` input) or run it on smaller sample_sets created by the "Fetch WGS metadata for samples from list" notebook mentioned above.  
-   - The `external_sample_names` input should be the GCS path of a text file that lists all the sample names (external sample ID).
+   - The `external_sample_names` input should be the GCS path of a text file that lists all the sample names (external sample IDs).
 3. `GvsWithdrawSamples` workflow
    - Run if there are any samples to withdraw from the last callset.
 4. `GvsPopulateAltAllele` workflow

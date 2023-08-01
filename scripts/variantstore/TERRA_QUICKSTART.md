@@ -26,11 +26,11 @@ This workflow should be run on a **sample set** as the root entity, for this wor
 
 These are the required parameters which must be supplied to the workflow:
 
-| Parameter             | Description |
-| --------------------- | ----------- |
-| dataset_name          | the name of the dataset you created above       |
-| external_sample_names | GCS path of a text file that lists all the sample names (external sample ID) |
-| project_id            | the name of the google project containing the dataset |
+| Parameter             | Description                                                                   |
+| --------------------- |-------------------------------------------------------------------------------|
+| dataset_name          | the name of the dataset you created above                                     |
+| external_sample_names | GCS path of a text file that lists all the sample names (external sample IDs) |
+| project_id            | the name of the google project containing the dataset                         |
 
 ## 1.2 Load data
 Next, your re-blocked gVCF files will be copied into the `ref_ranges_*` and `vet_*` tables by running the `GvsImportGenomes` workflow.
@@ -39,13 +39,13 @@ This workflow should be run on a **sample set** as the root entity, for this wor
 
 These are the required parameters which must be supplied to the workflow:
 
-| Parameter             | Description |
-| --------------------- | ----------- |
-| dataset_name          | the name of the dataset you created above       |
-| external_sample_names | GCS path of a text file that lists all the sample names (external sample ID) |
+| Parameter             | Description                                                                            |
+| --------------------- |----------------------------------------------------------------------------------------|
+| dataset_name          | the name of the dataset you created above                                              |
+| external_sample_names | GCS path of a text file that lists all the sample names (external sample IDs)          |
 | input_vcf_indexes     | `this.samples.hg38_reblocked_v2_vcf_index` (reblocked gvcf index file for each sample) |
-| input_vcfs            | `this.samples.hg38_reblocked_v2_vcf` (reblocked gvcf file for each sample) |
-| project_id            | the name of the google project containing the dataset |
+| input_vcfs            | `this.samples.hg38_reblocked_v2_vcf` (reblocked gvcf file for each sample)             |
+| project_id            | the name of the google project containing the dataset                                  |
 
 ## 2. Create Alt Allele Table
 This step loads data into the ALT_ALLELE table from the `vet_*` tables.
