@@ -57,7 +57,7 @@ workflow GvsQuickstartIntegration {
                 sample_id_column_name = wgs_sample_id_column_name,
                 vcf_files_column_name = wgs_vcf_files_column_name,
                 vcf_index_files_column_name = wgs_vcf_index_files_column_name,
-                sample_set_name = select_first(wgs_sample_set_name, "wgs_integration_sample_set"),
+                sample_set_name = select_first([wgs_sample_set_name, "wgs_integration_sample_set"]),
                 use_classic_VQSR = false
         }
         call QuickstartHailIntegration.GvsQuickstartHailIntegration as GvsQuickstartHailVQSRClassicIntegration {
@@ -73,7 +73,7 @@ workflow GvsQuickstartIntegration {
                 sample_id_column_name = wgs_sample_id_column_name,
                 vcf_files_column_name = wgs_vcf_files_column_name,
                 vcf_index_files_column_name = wgs_vcf_index_files_column_name,
-                sample_set_name = select_first(wgs_sample_set_name, "wgs_integration_sample_set"),
+                sample_set_name = select_first([wgs_sample_set_name, "wgs_integration_sample_set"]),
                 use_classic_VQSR = true
         }
     }
@@ -92,7 +92,7 @@ workflow GvsQuickstartIntegration {
                 sample_id_column_name = wgs_sample_id_column_name,
                 vcf_files_column_name = wgs_vcf_files_column_name,
                 vcf_index_files_column_name = wgs_vcf_index_files_column_name,
-                sample_set_name = select_first(wgs_sample_set_name, "wgs_integration_sample_set"),
+                sample_set_name = select_first([wgs_sample_set_name, "wgs_integration_sample_set"]),
                 drop_state = "FORTY"
         }
         call QuickstartVcfIntegration.GvsQuickstartVcfIntegration as QuickstartVcfVQSRClassicIntegration {
@@ -108,7 +108,7 @@ workflow GvsQuickstartIntegration {
                 sample_id_column_name = wgs_sample_id_column_name,
                 vcf_files_column_name = wgs_vcf_files_column_name,
                 vcf_index_files_column_name = wgs_vcf_index_files_column_name,
-                sample_set_name = select_first(wgs_sample_set_name, "wgs_integration_sample_set"),
+                sample_set_name = select_first([wgs_sample_set_name, "wgs_integration_sample_set"]),
                 drop_state = "FORTY"
         }
     }
@@ -128,7 +128,7 @@ workflow GvsQuickstartIntegration {
                 sample_id_column_name = exome_sample_id_column_name,
                 vcf_files_column_name = exome_vcf_files_column_name,
                 vcf_index_files_column_name = exome_vcf_index_files_column_name,
-                sample_set_name = select_first(exome_sample_set_name, "exome_integration_sample_set"),
+                sample_set_name = select_first([exome_sample_set_name, "exome_integration_sample_set"]),
                 drop_state = "FORTY"
         }
     }
