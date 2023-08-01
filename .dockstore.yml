@@ -65,6 +65,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_vs_1019
    - name: GvsBenchmarkExtractTask
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsBenchmarkExtractTask.wdl
@@ -127,7 +128,7 @@ workflows:
          - master
          - ah_var_store
          - bulk_ingest_staging
-         - gg_VS-1004_BenchmarkBeta25K
+         - rsa_vs_1019
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
