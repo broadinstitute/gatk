@@ -22,9 +22,9 @@ workflow GvsJointVariantCalling {
         String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
 
         # NOTE: `gatk_override` should be at least as recent as `gatk_docker`
-        # This is the most updated snapshot of the code as of Aug 2, 2023 (for the jar; Docker is 2023-07-24)
-        File gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-742-g1bf5503-SNAPSHOT-local.jar"
-        File gatk_docker = "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_bulk_ingest_staging_2023_07_24"
+        # This is the most updated snapshot of the code as of 2023-08-02.
+        File gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-740-gcb484d7-SNAPSHOT-local.jar"
+        File gatk_docker = "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_bulk_ingest_staging_2023_08_02"
 
         File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
         Boolean use_interval_weights = true

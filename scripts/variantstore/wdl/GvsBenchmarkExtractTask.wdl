@@ -171,7 +171,7 @@ task ExtractTask {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_08_01"
+        docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_bulk_ingest_staging_2023_08_02"
         memory: select_first([extract_memory_override, "12 GB"])
         disks: "local-disk ~{local_disk} HDD"
         bootDiskSizeGb: 15
