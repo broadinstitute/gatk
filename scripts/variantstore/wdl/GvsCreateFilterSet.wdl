@@ -14,6 +14,7 @@ workflow GvsCreateFilterSet {
     String filter_set_name
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
+    String gatk_docker
     File? gatk_override
 
     Boolean use_VQSR_lite = true
@@ -65,7 +66,8 @@ workflow GvsCreateFilterSet {
       ref_fai = reference_index,
       ref_dict = reference_dict,
       scatter_count = scatter_count,
-      gatk_override = gatk_override
+      gatk_docker = gatk_docker,
+      gatk_override = gatk_override,
   }
 
   call Utils.GetBQTableLastModifiedDatetime as AltAlleleTableDatetimeCheck {
@@ -77,6 +79,7 @@ workflow GvsCreateFilterSet {
   scatter(i in range(length(SplitIntervals.interval_files))) {
     call ExtractFilterTask {
       input:
+        gatk_docker                = gatk_docker,
         gatk_override              = gatk_override,
         reference                  = reference,
         reference_index            = reference_index,
@@ -99,6 +102,7 @@ workflow GvsCreateFilterSet {
       input_vcfs = ExtractFilterTask.output_vcf,
       output_vcf_name = "${filter_set_name}.vcf.gz",
       preemptible_tries = 3,
+      gatk_docker = gatk_docker,
   }
 
   # From this point, the paths diverge depending on whether they're using classic VQSR or VQSR-Lite
@@ -118,7 +122,7 @@ workflow GvsCreateFilterSet {
         extract_runtime_attributes = vqsr_lite_extract_runtime_attributes,
         train_runtime_attributes = vqsr_lite_train_runtime_attributes,
         score_runtime_attributes = vqsr_lite_score_runtime_attributes,
-        gatk_docker = "us.gcr.io/broad-gatk/gatk:4.4.0.0",
+        gatk_docker = gatk_docker,
         gatk_override = gatk_override,
         monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     }
@@ -129,6 +133,7 @@ workflow GvsCreateFilterSet {
         gather_type = "CONVENTIONAL",
         output_vcf_name = "${filter_set_name}.vrecalibration.gz",
         preemptible_tries = 3,
+        gatk_docker = gatk_docker,
     }
 
     # These calls to SelectVariants are being added for two reasons
@@ -156,6 +161,7 @@ workflow GvsCreateFilterSet {
 
     call Utils.PopulateFilterSetInfo {
       input:
+        gatk_docker = gatk_docker,
         gatk_override = gatk_override,
         filter_set_name = filter_set_name,
         fq_filter_set_info_destination_table = fq_filter_set_info_destination_table,
@@ -187,12 +193,14 @@ workflow GvsCreateFilterSet {
         INDEL_VQSR_mem_gb_override = INDEL_VQSR_CLASSIC_mem_gb_override,
         SNP_VQSR_max_gaussians_override = SNP_VQSR_CLASSIC_max_gaussians_override,
         SNP_VQSR_mem_gb_override = SNP_VQSR_CLASSIC_mem_gb_override,
-        gatk_override = gatk_override
+        gatk_docker = gatk_docker,
+        gatk_override = gatk_override,
     }
   }
 
   call PopulateFilterSetSites {
     input:
+      gatk_docker = gatk_docker,
       gatk_override = gatk_override,
       filter_set_name = filter_set_name,
       sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
@@ -258,6 +266,7 @@ task ExtractFilterTask {
     Int? excess_alleles_threshold
 
     # Runtime Options:
+    String gatk_docker
     File? gatk_override
   }
   meta {
@@ -294,7 +303,7 @@ task ExtractFilterTask {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_08_01"
+    docker: gatk_docker
     memory: "7 GB"
     disks: "local-disk 10 HDD"
     bootDiskSizeGb: 15
@@ -320,6 +329,7 @@ task PopulateFilterSetSites {
 
     String project_id
 
+    String gatk_docker
     File? gatk_override
   }
   meta {
@@ -356,7 +366,7 @@ task PopulateFilterSetSites {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_08_01"
+    docker: gatk_docker
     memory: "3500 MB"
     disks: "local-disk 200 HDD"
     bootDiskSizeGb: 15

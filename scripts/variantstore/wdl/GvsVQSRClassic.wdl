@@ -18,6 +18,7 @@ workflow JointVcfFiltering {
     Array[File] sites_only_variant_filtered_vcfs
     Array[File] sites_only_variant_filtered_vcf_idxs
 
+    String gatk_docker
     File? gatk_override
 
     Int? INDEL_VQSR_max_gaussians_override = 4
@@ -147,7 +148,8 @@ workflow JointVcfFiltering {
         output_tranche_values = snp_recalibration_tranche_values,
         mode = "SNP",
         disk_size = "200",
-        gatk_override = gatk_override
+        gatk_docker = gatk_docker,
+        gatk_override = gatk_override,
     }
 
     call Utils.MergeVCFs as MergeRecalibrationFiles {
@@ -156,6 +158,7 @@ workflow JointVcfFiltering {
         gather_type = "CONVENTIONAL",
         output_vcf_name = "${base_name}.vrecalibration.vcf.gz",
         preemptible_tries = 3,
+        gatk_docker = gatk_docker,
     }
   }
 
@@ -185,6 +188,7 @@ workflow JointVcfFiltering {
 
   call Utils.PopulateFilterSetInfo {
     input:
+      gatk_docker = gatk_docker,
       gatk_override = gatk_override,
       filter_set_name = filter_set_name,
       filter_schema = filter_set_info_schema,
@@ -200,6 +204,7 @@ workflow JointVcfFiltering {
   call PopulateFilterSetTranches {
     input:
       project_id = project_id,
+      gatk_docker = gatk_docker,
       gatk_override = gatk_override,
       filter_set_name = filter_set_name,
       snp_recal_tranches = select_first([SNPGatherTranches.tranches_file, SNPsVariantRecalibratorClassic.tranches]),
@@ -317,6 +322,7 @@ task GatherTranches {
     String output_filename
     String mode
     Int disk_size
+    String gatk_docker
     File? gatk_override
   }
 
@@ -372,7 +378,7 @@ task GatherTranches {
     bootDiskSizeGb: 15
     disks: "local-disk " + disk_size + " HDD"
     preemptible: 1
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_08_01"
+    docker: gatk_docker
   }
 
   output {
@@ -541,6 +547,7 @@ task PopulateFilterSetTranches {
   input {
     String project_id
 
+    String gatk_docker
     File? gatk_override
 
     String filter_set_name
@@ -575,7 +582,7 @@ task PopulateFilterSetTranches {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_08_01"
+    docker: gatk_docker
     memory: "3500 MB"
     disks: "local-disk 200 HDD"
     bootDiskSizeGb: 15

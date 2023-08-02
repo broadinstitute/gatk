@@ -30,6 +30,7 @@ workflow GvsImportGenomes {
     Int? load_data_preemptible_override
     Int? load_data_maxretries_override
     Boolean process_vcf_headers = false
+    String gatk_docker
     File? load_data_gatk_override
   }
 
@@ -103,6 +104,7 @@ workflow GvsImportGenomes {
         input_vcf_indexes = read_lines(CreateFOFNs.vcf_batch_vcf_index_fofns[i]),
         input_vcfs = read_lines(CreateFOFNs.vcf_batch_vcf_fofns[i]),
         interval_list = interval_list,
+        gatk_docker = gatk_docker,
         gatk_override = load_data_gatk_override,
         load_data_preemptible = effective_load_data_preemptible,
         load_data_maxretries = effective_load_data_maxretries,
@@ -187,6 +189,7 @@ task LoadData {
     Boolean skip_loading_vqsr_fields = false
     Boolean process_vcf_headers
 
+    String gatk_docker
     File? gatk_override
     Int load_data_preemptible
     Int load_data_maxretries
@@ -311,7 +314,7 @@ task LoadData {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_08_01"
+    docker: gatk_docker
     maxRetries: load_data_maxretries
     memory: "3.75 GB"
     disks: "local-disk 50 HDD"

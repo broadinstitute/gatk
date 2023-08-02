@@ -21,8 +21,11 @@ workflow GvsJointVariantCalling {
         String? vcf_index_files_column_name
         String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
 
-        # This is the most updated snapshot of the code as of Aug 2, 2023
+        # NOTE: `gatk_override` should be at least as recent as `gatk_docker`
+        # This is the most updated snapshot of the code as of Aug 2, 2023 (for the jar; Docker is 2023-07-24)
         File gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-742-g1bf5503-SNAPSHOT-local.jar"
+        File gatk_docker = "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_bulk_ingest_staging_2023_07_24"
+
         File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
         Boolean use_interval_weights = true
         File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
@@ -67,6 +70,7 @@ workflow GvsJointVariantCalling {
         input:
             dataset_name = dataset_name,
             project_id = project_id,
+            gatk_docker = gatk_docker,
             gatk_override = gatk_override,
             interval_list = interval_list,
             drop_state = drop_state,
@@ -93,6 +97,7 @@ workflow GvsJointVariantCalling {
             filter_set_name = effective_filter_set_name,
             use_VQSR_lite = !use_classic_VQSR,
             interval_list = interval_list,
+            gatk_docker = gatk_docker,
             gatk_override = gatk_override,
             INDEL_VQSR_CLASSIC_max_gaussians_override = INDEL_VQSR_CLASSIC_max_gaussians_override,
             INDEL_VQSR_CLASSIC_mem_gb_override = INDEL_VQSR_CLASSIC_mem_gb_override,
@@ -128,6 +133,7 @@ workflow GvsJointVariantCalling {
             interval_list = interval_list,
             use_interval_weights = use_interval_weights,
             interval_weights_bed = interval_weights_bed,
+            gatk_docker = gatk_docker,
             gatk_override = gatk_override,
             output_file_base_name = effective_extract_output_file_base_name,
             extract_maxretries_override = extract_maxretries_override,

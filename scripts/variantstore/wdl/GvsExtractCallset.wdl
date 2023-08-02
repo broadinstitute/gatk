@@ -27,6 +27,7 @@ workflow GvsExtractCallset {
     Boolean use_interval_weights = true
     File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
 
+    String gatk_docker
     File? gatk_override
 
     String output_file_base_name = filter_set_name
@@ -113,7 +114,8 @@ workflow GvsExtractCallset {
       output_gcs_dir = output_gcs_dir,
       split_intervals_disk_size_override = split_intervals_disk_size_override,
       split_intervals_mem_override = split_intervals_mem_override,
-      gatk_override = gatk_override
+      gatk_docker = gatk_docker,
+      gatk_override = gatk_override,
   }
 
   call Utils.GetBQTableLastModifiedDatetime as FilterSetInfoTimestamp {
@@ -161,6 +163,7 @@ workflow GvsExtractCallset {
         dataset_name                       = dataset_name,
         call_set_identifier                = call_set_identifier,
         use_VQSR_lite                      = use_VQSR_lite,
+        gatk_docker                        = gatk_docker,
         gatk_override                      = gatk_override,
         reference                          = reference,
         reference_index                    = reference_index,
@@ -267,6 +270,7 @@ task ExtractTask {
     Boolean write_cost_to_db
 
     # Runtime Options:
+    String gatk_docker
     File? gatk_override
     Int? extract_preemptible_override
     Int? extract_maxretries_override
@@ -354,7 +358,7 @@ task ExtractTask {
     echo ~{interval_index},${OUTPUT_FILE_DEST},${OUTPUT_FILE_BYTES},${OUTPUT_FILE_INDEX_DEST},${OUTPUT_FILE_INDEX_BYTES} >> manifest.txt
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_08_01"
+    docker: gatk_docker
     memory: "12 GB"
     disks: "local-disk 150 HDD"
     bootDiskSizeGb: 15

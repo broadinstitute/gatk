@@ -20,6 +20,7 @@ workflow GvsBulkIngestGenomes {
         String dataset_name
         String project_id
 
+        String gatk_docker
         File? gatk_override
         # End GvsAssignIds
 
@@ -110,6 +111,7 @@ workflow GvsBulkIngestGenomes {
             load_data_batch_size = load_data_batch_size,
             load_data_maxretries_override = load_data_maxretries_override,
             load_data_preemptible_override = load_data_preemptible_override,
+            gatk_docker = gatk_docker,
             load_data_gatk_override = gatk_override,
             drop_state = drop_state,
     }

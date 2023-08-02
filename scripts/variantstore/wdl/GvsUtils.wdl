@@ -8,6 +8,7 @@ task MergeVCFs {
     String? output_directory
     Int? merge_disk_override
     Int? preemptible_tries
+    String gatk_docker
   }
 
   Int disk_size = select_first([merge_disk_override, 100])
@@ -41,7 +42,7 @@ task MergeVCFs {
   }
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_08_01"
+    docker: gatk_docker
     preemptible: select_first([preemptible_tries, 3])
     memory: "3 GiB"
     disks: "local-disk ~{disk_size} HDD"
@@ -67,6 +68,7 @@ task SplitIntervals {
     Int? split_intervals_disk_size_override
     Int? split_intervals_mem_override
     String? output_gcs_dir
+    String gatk_docker
     File? gatk_override
   }
   meta {
@@ -127,7 +129,7 @@ task SplitIntervals {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_08_01"
+    docker: gatk_docker
     bootDiskSizeGb: 15
     memory: "~{disk_memory} GB"
     disks: "local-disk ~{disk_size} HDD"
@@ -882,6 +884,7 @@ task PopulateFilterSetInfo {
 
     String project_id
 
+    String gatk_docker
     File? gatk_override
   }
   meta {
@@ -934,7 +937,7 @@ task PopulateFilterSetInfo {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_08_01"
+    docker: gatk_docker
     memory: "3500 MB"
     disks: "local-disk 250 HDD"
     bootDiskSizeGb: 15
