@@ -182,6 +182,7 @@ workflows:
          - master
          - ah_var_store
          - bulk_ingest_staging
+         - gg_UpdateOverrideJarInBulkIngestStaging
    - name: GvsJointVariantCallsetCost
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCallsetCost.wdl
