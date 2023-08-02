@@ -946,6 +946,78 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         }
     }
 
+    @Test(dataProvider="HaplotypeCallerTestInputs")
+    public void testCustomPloidyRegions(final String inputFileName, final String referenceFileName) throws Exception {
+        Utils.resetRandomGenerator();
+
+        final File output = createTempFile("output", ".vcf");
+        final File expected = new File(TEST_FILES_DIR, "expected.testPloidyRegions.vcf");
+        final File ploidyRegions = new File(TEST_FILES_DIR, "testPloidyRegions.bed");
+
+        final String[] args = {
+                "-I", inputFileName,
+                "-R", referenceFileName,
+                "-L", "20:10000000-10100000",
+                "-O", output.getAbsolutePath(),
+                "-ploidy", "3",
+                "--ploidy-regions", ploidyRegions.getAbsolutePath(),
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
+        };
+
+        runCommandLine(args);
+
+        IntegrationTestSpec.assertEqualTextFiles(output, expected);
+    }
+
+    // Should fail due to non-integer values in name column of bed
+    @Test(dataProvider="HaplotypeCallerTestInputs", expectedExceptions = UserException.class)
+    public void testNonIntegerCustomPloidyRegions(final String inputFileName, final String referenceFileName) throws Exception {
+        Utils.resetRandomGenerator();
+
+        final File output = createTempFile("output", ".vcf");
+        final File expected = new File(TEST_FILES_DIR, "expected.testPloidyRegions.vcf");
+        final File ploidyRegions = new File(TEST_FILES_DIR, "testNonIntegerPloidyRegions.bed");
+
+        final String[] args = {
+                "-I", inputFileName,
+                "-R", referenceFileName,
+                "-L", "20:10000000-10100000",
+                "-O", output.getAbsolutePath(),
+                "-ploidy", "3",
+                "--ploidy-regions", ploidyRegions.getAbsolutePath(),
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
+        };
+
+        runCommandLine(args);
+
+        IntegrationTestSpec.assertEqualTextFiles(output, expected);
+    }
+
+    // Should fail due to negative integer values in name column of bed
+    @Test(dataProvider="HaplotypeCallerTestInputs", expectedExceptions = UserException.class)
+    public void testNonPositiveCustomPloidyRegions(final String inputFileName, final String referenceFileName) throws Exception {
+        Utils.resetRandomGenerator();
+
+        final File output = createTempFile("output", ".vcf");
+        final File expected = new File(TEST_FILES_DIR, "expected.testPloidyRegions.vcf");
+        final File ploidyRegions = new File(TEST_FILES_DIR, "testNegativePloidyRegions.bed");
+
+        final String[] args = {
+                "-I", inputFileName,
+                "-R", referenceFileName,
+                "-L", "20:10000000-10100000",
+                "-O", output.getAbsolutePath(),
+                "-ploidy", "3",
+                "--ploidy-regions", ploidyRegions.getAbsolutePath(),
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
+        };
+
+        runCommandLine(args);
+
+        IntegrationTestSpec.assertEqualTextFiles(output, expected);
+    }
+
+
     // test that ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT removes reads that consume zero reference bases
     // e.g. read name HAVCYADXX150109:1:2102:20528:2129 with cigar 23S53I
     @Test

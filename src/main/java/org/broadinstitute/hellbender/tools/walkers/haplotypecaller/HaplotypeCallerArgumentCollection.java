@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
+import htsjdk.tribble.NamedFeature;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.barclay.argparser.Advanced;
@@ -9,6 +10,7 @@ import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
+import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
@@ -25,6 +27,8 @@ import java.util.List;
  */
 public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgumentCollection implements Serializable{
     private static final long serialVersionUID = 1L;
+
+    public static final String PLOIDY_REGIONS_NAME = "ploidy-regions";
 
     public static final String GQ_BAND_LONG_NAME = "gvcf-gq-bands";
     public static final String GQ_BAND_SHORT_NAME = "GQB";
@@ -60,6 +64,9 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
     protected ReadThreadingAssemblerArgumentCollection getReadThreadingAssemblerArgumentCollection() {
         return new HaplotypeCallerReadThreadingAssemblerArgumentCollection();
     }
+
+    @Argument(fullName = PLOIDY_REGIONS_NAME, shortName = PLOIDY_REGIONS_NAME, doc = "Interval file with column specifying desired ploidy for genotyping models. Overrides default ploidy and user-provided --ploidy argument in specific regions.", optional = true)
+    public FeatureDataSource<NamedFeature> ploidyRegions = null;
 
     /**
      * You can use this argument to specify that HC should process a single sample out of a multisample BAM file. This
@@ -312,6 +319,21 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
         return flowMode != FlowMode.NONE;
     }
 
+    // Default constructor
+    public HaplotypeCallerArgumentCollection() {
+        super();
+    }
+
+    // Private constructor for use in copyWithNewPloidy
+    // Allows you to make new instances of hcArgs with identical fields except for genotyper ploidy
+    private HaplotypeCallerArgumentCollection(int ploidy) {
+        this.standardArgs.genotypeArgs.samplePloidy = ploidy;
+    }
+
+    // Copy method used to create new hcArgs with same fields except input ploidy model
+    public HaplotypeCallerArgumentCollection copyWithNewPloidy(int ploidy) {
+        return new HaplotypeCallerArgumentCollection(ploidy);
+    }
 
     /**
      * the different flow modes, in terms of their parameters and their values
