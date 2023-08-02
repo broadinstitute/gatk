@@ -223,7 +223,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1027_sample_drop_stop
+         - vs_965_gatk_integration_stability_slash_sanity
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
