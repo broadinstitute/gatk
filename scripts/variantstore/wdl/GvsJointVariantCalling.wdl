@@ -21,9 +21,9 @@ workflow GvsJointVariantCalling {
         String? vcf_index_files_column_name
         String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
 
-        # NOTE: `gatk_override` should be at least as recent as `gatk_docker`
+        # NOTE: If defined, `gatk_override` should be at least as recent as `gatk_docker`.
+        File? gatk_override
         # This is the most updated snapshot of the code as of 2023-08-02.
-        File gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-740-gcb484d7-SNAPSHOT-local.jar"
         File gatk_docker = "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_bulk_ingest_staging_2023_08_02"
 
         File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
@@ -64,7 +64,6 @@ workflow GvsJointVariantCalling {
       Int split_intervals_disk_size_override = ""
       Int split_intervals_mem_override = ""
     }
-
 
     call BulkIngestGenomes.GvsBulkIngestGenomes as BulkIngestGenomes {
         input:
