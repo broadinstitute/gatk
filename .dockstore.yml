@@ -197,6 +197,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_970_ps_input_limits
    - name: GvsQuickstartVcfIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartVcfIntegration.wdl
