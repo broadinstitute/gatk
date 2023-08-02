@@ -22,7 +22,7 @@ workflow GvsJointVariantCalling {
         String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
 
         # This is the most updated snapshot of the code as of July 17, 2023
-        File gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-732-g533d8d9-SNAPSHOT-local.jar"
+        File gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-742-g1bf5503-SNAPSHOT-local.jar"
         File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
         Boolean use_interval_weights = true
         File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
