@@ -180,7 +180,7 @@ task BigQueryExportVat {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:441.0.0-alpine"
         memory: "2 GB"
         preemptible: 3
         cpu: "1"
