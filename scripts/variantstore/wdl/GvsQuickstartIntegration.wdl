@@ -4,8 +4,6 @@ import "GvsQuickstartVcfIntegration.wdl" as QuickstartVcfIntegration
 import "GvsQuickstartHailIntegration.wdl" as QuickstartHailIntegration
 import "GvsUtils.wdl" as Utils
 
-# ...
-
 workflow GvsQuickstartIntegration {
     input {
         String branch_name
