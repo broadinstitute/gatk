@@ -7,11 +7,13 @@ import "GvsQuickstartVcfIntegration.wdl" as QuickstartVcfIntegration
 workflow GvsQuickstartHailIntegration {
     input {
         String branch_name
+        Boolean is_wgs = true
         Boolean use_VQSR_lite = true
         File interval_list
         Boolean use_classic_VQSR = true
         Boolean extract_do_not_filter_override
         String dataset_suffix = "hail"
+        Boolean use_default_dockers = false
         String? gatk_override
         String expected_output_prefix
         String? sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
@@ -25,10 +27,12 @@ workflow GvsQuickstartHailIntegration {
     call QuickstartVcfIntegration.GvsQuickstartVcfIntegration {
         input:
             branch_name = branch_name,
+            is_wgs = is_wgs,
             drop_state = "NONE",
             use_VQSR_lite = use_VQSR_lite,
             extract_do_not_filter_override = extract_do_not_filter_override,
             dataset_suffix = dataset_suffix,
+            use_default_dockers = use_default_dockers,
             gatk_override = gatk_override,
             interval_list = interval_list,
             expected_output_prefix = expected_output_prefix,

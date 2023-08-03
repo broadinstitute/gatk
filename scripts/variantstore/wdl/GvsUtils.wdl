@@ -41,7 +41,7 @@ task MergeVCFs {
   }
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_07_17"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_08_01"
     preemptible: select_first([preemptible_tries, 3])
     memory: "3 GiB"
     disks: "local-disk ~{disk_size} HDD"
@@ -127,7 +127,7 @@ task SplitIntervals {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_07_17"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_08_01"
     bootDiskSizeGb: 15
     memory: "~{disk_memory} GB"
     disks: "local-disk ~{disk_size} HDD"
@@ -934,7 +934,7 @@ task PopulateFilterSetInfo {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_07_17"
+    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_08_01"
     memory: "3500 MB"
     disks: "local-disk 250 HDD"
     bootDiskSizeGb: 15
