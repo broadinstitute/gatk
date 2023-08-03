@@ -75,8 +75,8 @@ workflow GvsBulkIngestGenomes {
             workspace_bucket = GetWorkspaceId.workspace_bucket,
             samples_table_name = GetColumnNames.data_table,
             sample_id_column_name = GetColumnNames.sample_name_column,  ## NOTE: if no sample_id_column_name has been specified, this is now the <entity>_id column
-            vcf_files_column_name = GetColumnNames.vcf_files_column_name,
-            vcf_index_files_column_name = GetColumnNames.vcf_index_files_column_name,
+            vcf_files_column_name = GetColumnNames.vcf_files_column_name_output,
+            vcf_index_files_column_name = GetColumnNames.vcf_index_files_column_name_output,
             sample_set_name = sample_set_name,
     }
 
@@ -191,8 +191,8 @@ task GetColumnNames {
     }
 
     ## set some output files
-    String vcf_files_column_name_output = "vcf_files_column_name.txt"
-    String vcf_index_files_column_name_output = "vcf_index_files_column_name.txt"
+    String vcf_files_column_name_output_file = "vcf_files_column_name.txt"
+    String vcf_index_files_column_name_output_file = "vcf_index_files_column_name.txt"
 
     String entity_id = data_table_name + "_id"
 
@@ -208,8 +208,8 @@ task GetColumnNames {
            ~{"--user_defined_vcf " + vcf_files_column_name} \
            ~{"--user_defined_index " + vcf_index_files_column_name} \
           --entity_type ~{data_table_name} \
-          --vcf_output ~{vcf_files_column_name_output} \
-          --vcf_index_output ~{vcf_index_files_column_name_output}
+          --vcf_output ~{vcf_files_column_name_output_file} \
+          --vcf_index_output ~{vcf_index_files_column_name_output_file}
 
     >>>
 
@@ -221,8 +221,8 @@ task GetColumnNames {
     }
 
     output {
-        String vcf_files_column_name = if (defined(vcf_files_column_name)) then select_first([vcf_files_column_name]) else read_string(vcf_files_column_name_output)
-        String vcf_index_files_column_name = if (defined(vcf_index_files_column_name)) then select_first([vcf_index_files_column_name]) else read_string(vcf_index_files_column_name_output)
+        String vcf_files_column_name_output = if (defined(vcf_files_column_name)) then select_first([vcf_files_column_name]) else read_string(vcf_files_column_name_output_file)
+        String vcf_index_files_column_name_output = if (defined(vcf_index_files_column_name)) then select_first([vcf_index_files_column_name]) else read_string(vcf_index_files_column_name_output_file)
         String sample_name_column = if (defined(user_defined_sample_id_column_name)) then select_first([user_defined_sample_id_column_name]) else entity_id
         String data_table = data_table_name
     }
