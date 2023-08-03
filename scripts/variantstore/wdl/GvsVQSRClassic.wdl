@@ -255,8 +255,8 @@ task SNPsVariantRecalibratorCreateModel {
     Int disk_size
   }
 
-  Int machine_mem = select_first([machine_mem_gb, 100])
-  Int java_mem = machine_mem - 5
+  Int machine_mem = select_first([machine_mem_gb, 110])
+  Int java_mem = machine_mem - 10
 
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
@@ -397,8 +397,8 @@ task IndelsVariantRecalibrator {
     Int? machine_mem_gb
   }
 
-  Int machine_mem = select_first([machine_mem_gb, 30])
-  Int java_mem = machine_mem - 5
+  Int machine_mem = select_first([machine_mem_gb, 35])
+  Int java_mem = machine_mem - 10
 
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 

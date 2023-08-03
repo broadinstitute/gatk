@@ -30,6 +30,12 @@ workflow GvsJointVariantCalling {
         String? extract_output_file_base_name
         String? extract_table_prefix
         String? filter_set_name
+
+        # Overrides to be passed to GvsCreateFilterSet
+        Int? INDEL_VQSR_CLASSIC_max_gaussians_override = 4
+        Int? INDEL_VQSR_CLASSIC_mem_gb_override
+        Int? SNP_VQSR_CLASSIC_max_gaussians_override = 6
+        Int? SNP_VQSR_CLASSIC_mem_gb_override
     }
 
     # the call_set_identifier string is used to name many different things throughout this workflow (BQ tables, vcfs etc),
@@ -54,10 +60,6 @@ workflow GvsJointVariantCalling {
       File sample_names_to_extract = ""
       Int split_intervals_disk_size_override = ""
       Int split_intervals_mem_override = ""
-      Int INDEL_VQSR_CLASSIC_max_gaussians_override = 4
-      Int INDEL_VQSR_CLASSIC_mem_gb_override = ""
-      Int SNP_VQSR_CLASSIC_max_gaussians_override = 6
-      Int SNP_VQSR_CLASSIC_mem_gb_override = ""
     }
 
 
