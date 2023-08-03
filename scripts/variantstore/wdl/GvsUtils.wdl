@@ -488,6 +488,7 @@ task ScaleXYBedValues {
         File interval_weights_bed
         Float x_bed_weight_scaling
         Float y_bed_weight_scaling
+        String variants_docker
     }
     meta {
         # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
@@ -511,7 +512,7 @@ task ScaleXYBedValues {
     }
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-08-04-alpine-2d67c4cb4"
+        docker: variants_docker
         maxRetries: 3
         memory: "7 GB"
         preemptible: 3
@@ -837,6 +838,7 @@ task MergeTsvs {
 task SummarizeTaskMonitorLogs {
   input {
     Array[File] inputs
+    String variants_docker
   }
 
   command <<<
@@ -856,7 +858,7 @@ task SummarizeTaskMonitorLogs {
   # ------------------------------------------------
   # Runtime settings:
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-08-04-alpine-2d67c4cb4"
+    docker: variants_docker
     memory: "1 GB"
     preemptible: 3
     cpu: "1"

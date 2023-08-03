@@ -20,6 +20,7 @@ workflow GvsBulkIngestGenomes {
         String dataset_name
         String project_id
 
+        String variants_docker
         String gatk_docker
         File? gatk_override
         # End GvsAssignIds
@@ -52,6 +53,7 @@ workflow GvsBulkIngestGenomes {
     ## Next, use the workspace ID to get the Workspace Name
     call GetWorkspaceName {
         input:
+            variants_docker = variants_docker,
             workspace_id = GetWorkspaceId.workspace_id,
             workspace_bucket = GetWorkspaceId.workspace_bucket,
     }
@@ -59,6 +61,7 @@ workflow GvsBulkIngestGenomes {
 
     call GetColumnNames {
         input:
+            variants_docker = variants_docker,
             workspace_name = GetWorkspaceName.workspace_name,
             workspace_namespace = GetWorkspaceName.workspace_namespace,
             sample_set_name = sample_set_name,
@@ -70,6 +73,7 @@ workflow GvsBulkIngestGenomes {
 
     call GenerateImportFofnFromDataTable {
         input:
+            variants_docker = variants_docker,
             google_project_id = GetWorkspaceName.workspace_namespace,
             workspace_name = GetWorkspaceName.workspace_name,
             workspace_namespace = GetWorkspaceName.workspace_namespace,
@@ -111,6 +115,7 @@ workflow GvsBulkIngestGenomes {
             load_data_batch_size = load_data_batch_size,
             load_data_maxretries_override = load_data_maxretries_override,
             load_data_preemptible_override = load_data_preemptible_override,
+            variants_docker = variants_docker,
             gatk_docker = gatk_docker,
             load_data_gatk_override = gatk_override,
             drop_state = drop_state,
@@ -151,6 +156,7 @@ task GetWorkspaceName {
     input {
         String workspace_id
         String workspace_bucket
+        String variants_docker
     }
 
     String workspace_name_output = "workspace_name.txt"
@@ -168,7 +174,7 @@ task GetWorkspaceName {
 
     >>>
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-08-04-alpine-2d67c4cb4"
+        docker: variants_docker
         memory: "3 GB"
         disks: "local-disk 10 HDD"
         cpu: 1
@@ -190,6 +196,7 @@ task GetColumnNames {
         String? user_defined_sample_id_column_name
         String? vcf_files_column_name
         String? vcf_index_files_column_name
+        String variants_docker
     }
 
     ## set some output files
@@ -216,7 +223,7 @@ task GetColumnNames {
     >>>
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-08-04-alpine-2d67c4cb4"
+        docker: variants_docker
         memory: "3 GB"
         disks: "local-disk 10 HDD"
         cpu: 1
@@ -274,6 +281,7 @@ task GenerateImportFofnFromDataTable {
         String vcf_files_column_name
         String vcf_index_files_column_name
         String? sample_set_name
+        String variants_docker
     }
 
     String output_fofn_name = "output.tsv"
@@ -307,7 +315,7 @@ task GenerateImportFofnFromDataTable {
 
     >>>
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-08-04-alpine-2d67c4cb4"
+        docker: variants_docker
         memory: "3 GB"
         disks: "local-disk 200 HDD"
         cpu: 1

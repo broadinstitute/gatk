@@ -118,6 +118,7 @@ task ExtractFromNonSuperpartitionedTables {
         String avro_sibling
         String call_set_identifier
         Boolean is_vqsr_lite = true
+        String variants_docker
     }
 
     String vqs_score_field = if (is_vqsr_lite == true) then 'calibration_sensitivity' else 'vqslod'
@@ -177,7 +178,7 @@ task ExtractFromNonSuperpartitionedTables {
     }
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-08-04-alpine-2d67c4cb4"
+        docker: variants_docker
         disks: "local-disk 500 HDD"
     }
 }
@@ -197,6 +198,7 @@ task ExtractFromSuperpartitionedTables {
         Int num_superpartitions
         Int shard_index
         Int num_shards
+        String variants_docker
     }
     parameter_meta {
         avro_sibling: "Cloud path to a file that will be the sibling to the 'avro' 'directory' under which output Avro files will be written."
@@ -244,7 +246,7 @@ task ExtractFromSuperpartitionedTables {
     }
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-08-04-alpine-2d67c4cb4"
+        docker: variants_docker
         disks: "local-disk 500 HDD"
     }
 }
@@ -254,6 +256,7 @@ task GenerateHailScripts {
         String avro_prefix
         Boolean go_non_superpartitioned
         Array[Boolean] go_superpartitioned
+        String variants_docker
     }
     meta {
         # Do not cache, this doesn't know if the "tree" under `avro_prefix` has changed.
@@ -312,7 +315,7 @@ task GenerateHailScripts {
         File hail_create_vat_inputs_script = 'hail_create_vat_inputs.py'
     }
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-08-04-alpine-2d67c4cb4"
+        docker: variants_docker
         disks: "local-disk 500 HDD"
     }
 }

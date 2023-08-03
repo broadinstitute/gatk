@@ -9,6 +9,7 @@ workflow GvsPopulateAltAllele {
     String project_id
     String call_set_identifier
     Int max_alt_allele_shards = 10
+    String variants_docker
   }
 
   String fq_alt_allele_table = "~{project_id}.~{dataset_name}.alt_allele"
@@ -50,7 +51,8 @@ workflow GvsPopulateAltAllele {
         create_table_done = CreateAltAlleleTable.done,
         vet_table_names_file = vet_table_names_file,
         last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
-        max_sample_id = GetMaxSampleId.max_sample_id
+        max_sample_id = GetMaxSampleId.max_sample_id,
+        variants_docker = variants_docker,
     }
   }
 
@@ -221,6 +223,7 @@ task PopulateAltAlleleTable {
     Int max_sample_id
 
     String last_modified_timestamp
+    String variants_docker
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
@@ -243,7 +246,7 @@ task PopulateAltAlleleTable {
     done
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-08-04-alpine-2d67c4cb4"
+    docker: variants_docker
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     cpu: 1

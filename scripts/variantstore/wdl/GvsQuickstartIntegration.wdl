@@ -138,6 +138,7 @@ task FilterIntervalListChromosomes {
     input {
         File full_interval_list
         Array[String]+ chromosomes
+        String variants_docker
     }
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
@@ -148,7 +149,7 @@ task FilterIntervalListChromosomes {
         --output-interval-list "filtered.interval_list" --chromosome ~{sep=' --chromosome ' chromosomes}
     >>>
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-08-04-alpine-2d67c4cb4"
+        docker: variants_docker
     }
     output {
         File out = "filtered.interval_list"

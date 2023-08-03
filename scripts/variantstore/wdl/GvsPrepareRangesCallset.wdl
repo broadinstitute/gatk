@@ -21,6 +21,7 @@ workflow GvsPrepareCallset {
     File? sample_names_to_extract
     Boolean only_output_vet_tables = false
     Boolean write_cost_to_db = true
+    String variants_docker
   }
 
   String full_extract_prefix = if (control_samples) then "~{extract_table_prefix}_controls" else extract_table_prefix
@@ -42,7 +43,8 @@ workflow GvsPrepareCallset {
       temp_table_ttl_in_hours         = 72,
       control_samples                 = control_samples,
       only_output_vet_tables          = only_output_vet_tables,
-      write_cost_to_db                = write_cost_to_db
+      write_cost_to_db                = write_cost_to_db,
+      variants_docker = variants_docker,
   }
 
   output {
@@ -67,6 +69,7 @@ task PrepareRangesCallsetTask {
     Int temp_table_ttl_in_hours = 24
     Boolean only_output_vet_tables
     Boolean write_cost_to_db
+    String variants_docker
   }
   meta {
     # All kinds of BQ reading happening in the referenced Python script.
@@ -114,7 +117,7 @@ task PrepareRangesCallsetTask {
   }
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-08-04-alpine-2d67c4cb4"
+    docker: variants_docker
     memory: "3 GB"
     disks: "local-disk 100 HDD"
     bootDiskSizeGb: 15

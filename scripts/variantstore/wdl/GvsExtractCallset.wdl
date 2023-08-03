@@ -27,6 +27,7 @@ workflow GvsExtractCallset {
     Boolean use_interval_weights = true
     File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
 
+    String variants_docker
     String gatk_docker
     File? gatk_override
 
@@ -71,7 +72,8 @@ workflow GvsExtractCallset {
     input:
       interval_weights_bed = interval_weights_bed,
       x_bed_weight_scaling = x_bed_weight_scaling,
-      y_bed_weight_scaling = y_bed_weight_scaling
+      y_bed_weight_scaling = y_bed_weight_scaling,
+      variants_docker = variants_docker,
   }
 
   call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
@@ -188,7 +190,7 @@ workflow GvsExtractCallset {
         extract_maxretries_override        = extract_maxretries_override,
         emit_pls                           = emit_pls,
         emit_ads                           = emit_ads,
-        write_cost_to_db                   = write_cost_to_db
+        write_cost_to_db                   = write_cost_to_db,
     }
   }
 

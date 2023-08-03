@@ -14,6 +14,7 @@ workflow GvsCreateFilterSet {
     String filter_set_name
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
+    String variants_docker
     String gatk_docker
     File? gatk_override
 
@@ -211,6 +212,7 @@ workflow GvsCreateFilterSet {
 
   call Utils.SummarizeTaskMonitorLogs as SummarizeItAll {
     input:
+      variants_docker = variants_docker,
       inputs = select_all(
                flatten(
                [

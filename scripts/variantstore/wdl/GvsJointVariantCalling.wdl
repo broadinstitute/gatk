@@ -25,6 +25,7 @@ workflow GvsJointVariantCalling {
         File? gatk_override
         # This is the most updated snapshot of GATK code on `bulk_ingest_staging` (off `ah_var_store`) as of 2023-08-03.
         File gatk_docker = "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_bulk_ingest_staging_2023_08_03"
+        File variants_docker = ""
 
         File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
         Boolean use_interval_weights = true
@@ -69,6 +70,7 @@ workflow GvsJointVariantCalling {
         input:
             dataset_name = dataset_name,
             project_id = project_id,
+            variants_docker = variants_docker,
             gatk_docker = gatk_docker,
             gatk_override = gatk_override,
             interval_list = interval_list,
@@ -85,6 +87,7 @@ workflow GvsJointVariantCalling {
             go = BulkIngestGenomes.done,
             dataset_name = dataset_name,
             project_id = project_id,
+            variants_docker = variants_docker,
     }
 
     call CreateFilterSet.GvsCreateFilterSet {
@@ -96,6 +99,7 @@ workflow GvsJointVariantCalling {
             filter_set_name = effective_filter_set_name,
             use_VQSR_lite = !use_classic_VQSR,
             interval_list = interval_list,
+            variants_docker = variants_docker,
             gatk_docker = gatk_docker,
             gatk_override = gatk_override,
             INDEL_VQSR_CLASSIC_max_gaussians_override = INDEL_VQSR_CLASSIC_max_gaussians_override,
@@ -117,6 +121,7 @@ workflow GvsJointVariantCalling {
             fq_temp_table_dataset = fq_temp_table_dataset,
             query_labels = query_labels,
             sample_names_to_extract = sample_names_to_extract,
+            variants_docker = variants_docker,
     }
 
     call ExtractCallset.GvsExtractCallset {
@@ -132,6 +137,7 @@ workflow GvsJointVariantCalling {
             interval_list = interval_list,
             use_interval_weights = use_interval_weights,
             interval_weights_bed = interval_weights_bed,
+            variants_docker = variants_docker,
             gatk_docker = gatk_docker,
             gatk_override = gatk_override,
             output_file_base_name = effective_extract_output_file_base_name,

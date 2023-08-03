@@ -30,6 +30,7 @@ workflow GvsImportGenomes {
     Int? load_data_preemptible_override
     Int? load_data_maxretries_override
     Boolean process_vcf_headers = false
+    String variants_docker
     String gatk_docker
     File? load_data_gatk_override
   }
@@ -82,6 +83,7 @@ workflow GvsImportGenomes {
       input_vcf_list = input_vcfs,
       input_sample_name_list = external_sample_names,
       input_samples_to_be_loaded_map = GetUningestedSampleIds.sample_map,
+      variants_docker = variants_docker,
   }
 
   call CreateFOFNs {
@@ -116,6 +118,7 @@ workflow GvsImportGenomes {
  if (process_vcf_headers) {
    call ProcessVCFHeaders {
      input:
+       variants_docker = variants_docker,
        load_done = LoadData.done,
        dataset_name = dataset_name,
        project_id = project_id,
@@ -332,6 +335,7 @@ task ProcessVCFHeaders {
     String dataset_name
     String project_id
     Array[String] load_done
+    String variants_docker
   }
 
   command <<<
@@ -343,7 +347,7 @@ task ProcessVCFHeaders {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-08-04-alpine-2d67c4cb4"
+    docker: variants_docker
     disks: "local-disk 500 HDD"
   }
 }
@@ -498,6 +502,7 @@ task CurateInputLists {
     File input_vcf_list
     File input_samples_to_be_loaded_map
     File input_sample_name_list
+    String variants_docker
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
@@ -514,7 +519,7 @@ task CurateInputLists {
                                              --vcf_index_list_file_name  ~{input_vcf_index_list}
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-08-04-alpine-2d67c4cb4"
+    docker: variants_docker
     memory: "3 GB"
     disks: "local-disk 100 HDD"
     bootDiskSizeGb: 15
