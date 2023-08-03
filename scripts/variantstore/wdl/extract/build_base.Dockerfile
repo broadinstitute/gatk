@@ -11,7 +11,7 @@
 # under ideal circumstances, potentially much longer on low memory and/or non-x86 build hosts). Since this image isn't
 # expected to change often it's broken out into a separate "build-base" image that can effectively be globally cached
 # and referenced from the main Dockerfile.
-FROM gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine
+FROM gcr.io/google.com/cloudsdktool/cloud-sdk:441.0.0-alpine
 
 RUN apk update && apk upgrade
 RUN python3 -m ensurepip --upgrade
@@ -30,7 +30,7 @@ RUN apk add autoconf bash cmake g++ gcc make ninja python3-dev git openssl-dev z
 # including the numpy Python module. The main stage will then use the same base image and copy over the artifacts
 # produced by the build stage without having to install development tools or clean up after a build.
 
-ARG ARROW_VERSION=11.0.0
+ARG ARROW_VERSION=12.0.1
 RUN cd / && \
     curl -O https://dlcdn.apache.org/arrow/arrow-$ARROW_VERSION/apache-arrow-$ARROW_VERSION.tar.gz && \
     tar xfz apache-arrow-$ARROW_VERSION.tar.gz
@@ -38,7 +38,6 @@ RUN cd / && \
 # Pyarrow build instructions from https://arrow.apache.org/docs/developers/python.html#python-development
 # Modified slightly for the requirements of this installation:
 # - Download a static source tarball rather than cloning the git repo.
-# - Use `ninja` to build the C++ libraries as the `make` system doesn't seem to work as of Arrow 10.0.0.
 # - Install PyArrow and its dependencies specifying the --user flag so all artifacts go to the /root/.local directory
 #   which can easily be copied to the main stage below.
 ARG ARROW_SRC_DIR=/apache-arrow-$ARROW_VERSION
@@ -63,7 +62,7 @@ RUN cd $ARROW_SRC_DIR/python && \
 
 # Straightforward bcftools build following these instructions:
 # https://github.com/samtools/bcftools/blob/develop/INSTALL
-ARG BCFTOOLS_VERSION=1.17
+ARG BCFTOOLS_VERSION=1.18
 RUN mkdir /bcftools bcftools-build && \
     cd bcftools-build && \
     git clone --recurse-submodules https://github.com/samtools/htslib.git && \
