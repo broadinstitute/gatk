@@ -172,7 +172,7 @@ task IsVcfOnChromosomes {
   >>>
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:441.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
     disks: "local-disk 10 HDD"
     memory: "2 GiB"
     preemptible: 3

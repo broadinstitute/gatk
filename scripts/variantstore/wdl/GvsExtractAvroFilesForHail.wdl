@@ -98,7 +98,7 @@ task OutputPath {
         File out = stdout()
     }
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:441.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
         disks: "local-disk 500 HDD"
     }
 }

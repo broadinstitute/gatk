@@ -25,7 +25,7 @@ workflow GvsJointVariantCalling {
         File? gatk_override
         # This is the most updated snapshot of GATK code on `bulk_ingest_staging` (off `ah_var_store`) as of 2023-08-03.
         File gatk_docker = "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_bulk_ingest_staging_2023_08_03"
-        File variants_docker = ""
+        File variants_docker = "us.gcr.io/broad-dsde-methods/variantstore:2023-08-03-alpine-d9f94010b"
 
         File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
         Boolean use_interval_weights = true

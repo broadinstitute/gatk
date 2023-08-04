@@ -877,7 +877,7 @@ task DuplicateAnnotations {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:441.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
         memory: "1 GB"
         preemptible: 3
         cpu: "1"

@@ -187,7 +187,7 @@ task AssignIds {
     bq --apilog=false --project_id=~{project_id} rm -f -t ~{dataset_name}.sample_id_assignment_lock
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:441.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
     memory: "3.75 GB"
     disks: "local-disk " + 10 + " HDD"
     cpu: 1
@@ -237,7 +237,7 @@ task CreateCostObservabilityTable {
     fi
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:441.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
   }
   output {
     Boolean done = true

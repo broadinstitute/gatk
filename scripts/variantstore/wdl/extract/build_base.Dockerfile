@@ -11,7 +11,7 @@
 # under ideal circumstances, potentially much longer on low memory and/or non-x86 build hosts). Since this image isn't
 # expected to change often it's broken out into a separate "build-base" image that can effectively be globally cached
 # and referenced from the main Dockerfile.
-FROM gcr.io/google.com/cloudsdktool/cloud-sdk:441.0.0-alpine
+FROM gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine
 
 RUN apk update && apk upgrade
 RUN python3 -m ensurepip --upgrade
@@ -38,6 +38,7 @@ RUN cd / && \
 # Pyarrow build instructions from https://arrow.apache.org/docs/developers/python.html#python-development
 # Modified slightly for the requirements of this installation:
 # - Download a static source tarball rather than cloning the git repo.
+# - Use `ninja` to build the C++ libraries as the `make` system doesn't seem to work as of Arrow 10.0.0.
 # - Install PyArrow and its dependencies specifying the --user flag so all artifacts go to the /root/.local directory
 #   which can easily be copied to the main stage below.
 ARG ARROW_SRC_DIR=/apache-arrow-$ARROW_VERSION

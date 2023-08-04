@@ -184,7 +184,7 @@ task GetBQTableLastModifiedDatetime {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:441.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -227,7 +227,7 @@ task GetBQTablesMaxLastModifiedTimestamp {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:441.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -555,7 +555,7 @@ task GetNumSamplesLoaded {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:441.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -586,7 +586,7 @@ task CountSuperpartitions {
         ' | sed 1d > num_superpartitions.txt
     >>>
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:441.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
         disks: "local-disk 500 HDD"
     }
     output {
@@ -635,7 +635,7 @@ task ValidateFilterSetName {
     }
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:441.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
         memory: "3 GB"
         disks: "local-disk 500 HDD"
         preemptible: 3
@@ -695,7 +695,7 @@ task IsVQSRLite {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:441.0.0-alpine"
+    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
     memory: "3 GB"
     disks: "local-disk 500 HDD"
     preemptible: 3

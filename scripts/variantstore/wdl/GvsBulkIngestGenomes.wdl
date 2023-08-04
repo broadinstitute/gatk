@@ -253,7 +253,7 @@ task SplitBulkImportFofn {
     >>>
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:441.0.0-alpine"
+        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
         memory: "3 GB"
         disks: "local-disk 200 HDD"
         cpu: 1
