@@ -11,6 +11,10 @@
 # under ideal circumstances, potentially much longer on low memory and/or non-x86 build hosts). Since this image isn't
 # expected to change often it's broken out into a separate "build-base" image that can effectively be globally cached
 # and referenced from the main Dockerfile.
+#
+# 435.0.0 is the most recent version of the Cloud SDK Docker image that uses Python 3.10. Newer versions use Python 3.11
+# and unfortunately some of our depdendencies are not currently compiling with that.
+#
 FROM gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine
 
 RUN apk update && apk upgrade

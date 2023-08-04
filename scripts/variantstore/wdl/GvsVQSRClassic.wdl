@@ -88,6 +88,7 @@ workflow JointVcfFiltering {
       machine_mem_gb = INDEL_VQSR_mem_gb_override,
       max_gaussians = INDEL_VQSR_max_gaussians_override,
       maximum_training_variants = INDEL_VQSR_maximum_training_variants,
+      gatk_docker = gatk_docker
   }
 
   if (num_samples_loaded > snps_variant_recalibration_threshold) {
@@ -114,7 +115,8 @@ workflow JointVcfFiltering {
         machine_mem_gb = SNP_VQSR_mem_gb_override,
         max_gaussians = SNP_VQSR_max_gaussians_override,
         sample_every_nth_variant = SNP_VQSR_sample_every_nth_variant,
-        maximum_training_variants = SNP_VQSR_maximum_training_variants
+        maximum_training_variants = SNP_VQSR_maximum_training_variants,
+        gatk_docker = gatk_docker,
     }
 
     scatter (idx in range(length(sites_only_variant_filtered_vcfs))) {
@@ -137,7 +139,8 @@ workflow JointVcfFiltering {
           dbsnp_resource_vcf_index = dbsnp_vcf_index,
           use_allele_specific_annotations = true,
           disk_size = "1000",
-          machine_mem_gb = SNP_VQSR_mem_gb_override
+          machine_mem_gb = SNP_VQSR_mem_gb_override,
+          gatk_docker = gatk_docker,
       }
     }
 
@@ -183,6 +186,7 @@ workflow JointVcfFiltering {
         disk_size = "1000",
         machine_mem_gb = SNP_VQSR_mem_gb_override,
         max_gaussians = SNP_VQSR_max_gaussians_override,
+        gatk_docker = gatk_docker,
     }
   }
 
@@ -261,6 +265,7 @@ task SNPsVariantRecalibratorCreateModel {
     Int? machine_mem_gb
 
     Int disk_size
+    String gatk_docker
   }
 
   # Based on https://docs.google.com/spreadsheets/d/1jOsudfO1-RadJXPGuHOIrjZW3Rg2SzvlL8Wg-lxZVUU/edit#gid=1056496058
@@ -306,7 +311,7 @@ task SNPsVariantRecalibratorCreateModel {
     bootDiskSizeGb: 15
     disks: "local-disk " + disk_size + " HDD"
     preemptible: 1
-    docker: "us.gcr.io/broad-gatk/gatk:4.1.9.0"
+    docker: gatk_docker
   }
 
   output {
@@ -411,6 +416,7 @@ task IndelsVariantRecalibrator {
 
     Int disk_size
     Int? machine_mem_gb
+    String gatk_docker
   }
 
   Int machine_mem = select_first([machine_mem_gb, 35])
@@ -447,7 +453,7 @@ task IndelsVariantRecalibrator {
     cpu: "2"
     disks: "local-disk " + disk_size + " HDD"
     preemptible: 1
-    docker: "us.gcr.io/broad-gatk/gatk:4.1.9.0"
+    docker: gatk_docker
   }
 
   output {
@@ -484,7 +490,7 @@ task SNPsVariantRecalibrator {
 
     Int disk_size
     Int? machine_mem_gb
-
+    String gatk_docker
   }
 
   Int auto_mem = ceil(2 * size([sites_only_variant_filtered_vcf,
@@ -531,7 +537,7 @@ task SNPsVariantRecalibrator {
     cpu: 2
     disks: "local-disk " + disk_size + " HDD"
     preemptible: 0
-    docker: "us.gcr.io/broad-gatk/gatk:4.1.9.0"
+    docker: gatk_docker
   }
 
   output {
