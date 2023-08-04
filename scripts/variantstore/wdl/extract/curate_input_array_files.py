@@ -1,59 +1,55 @@
 # -*- coding: utf-8 -*-
-import numpy as np
-from contextlib import contextmanager
 import argparse
+import csv
+import numpy as np
 
 SAMPLE_MAP_TO_BE_LOADED_FILE_SUFFIX = "samples_to_be_loaded_map_file"
 SAMPLE_NAME_FILE_SUFFIX = "sample_name_list_file"
 VCF_FILE_SUFFIX = "vcf_list_file"
 VCF_INDEX_FILE_SUFFIX = "vcf_index_list_file"
 
-@contextmanager
-def handle_file_error(file_name):
-    try:
-        yield
-    except:
-        print(f"ERROR: required file named '{file_name}' does not exist.")
 
+def read_single_column_file(file_name):
+    ret = []
+    with open(file_name, 'r') as fd:
+        reader = csv.reader(fd)
+        for row in reader:
+            ret.append(row[0])
+    return ret
 
 def curate_input_arrays(sample_map_to_be_loaded_file_name,
                         sample_name_list_file_name,
                         vcf_list_file_name,
                         vcf_index_list_file_name,
                         output_files):
-    sample_map_to_be_loaded_array = vcf_array = vcf_indexes_array = sample_names_array = []
-    with handle_file_error(sample_map_to_be_loaded_file_name):
-        sample_map_to_be_loaded_array = np.loadtxt(sample_map_to_be_loaded_file_name, dtype=str, delimiter=",", ndmin=2)
-    with handle_file_error(vcf_list_file_name):
-        vcf_array = np.loadtxt(vcf_list_file_name, dtype=str, ndmin=2)
-    with handle_file_error(vcf_index_list_file_name):
-        vcf_indexes_array = np.loadtxt(vcf_index_list_file_name, dtype=str, ndmin=2)
-    with handle_file_error(sample_name_list_file_name):
-        sample_names_array = np.loadtxt(sample_name_list_file_name, dtype=str, ndmin=2)
-    rows_to_delete = []
 
-    # use input_sample_names_array to figure out which index "rows" to delete
-    for i in range(len(sample_names_array)):
-        if sample_names_array[i] not in sample_map_to_be_loaded_array:
-            rows_to_delete.append(i)
+    sample_map = set()
 
-    # re-create input arrays using array of "rows" to delete
-    vcf_array = [vcf_array[i] for i in range(len(vcf_array)) if i not in rows_to_delete]
-    vcf_indexes_array = [vcf_indexes_array[i] for i in range(len(vcf_indexes_array)) if
-                         i not in rows_to_delete]
-    sample_names_array = [sample_names_array[i] for i in range(len(sample_names_array)) if
-                          i not in rows_to_delete]
+    with open(sample_map_to_be_loaded_file_name, 'r') as fd:
+        reader = csv.reader(fd)
+        for row in reader:
+            sample_map.add(row[1])
+    vcfs = read_single_column_file(vcf_list_file_name)
+    vcf_indexes = read_single_column_file(vcf_index_list_file_name)
+    sample_names = read_single_column_file(sample_name_list_file_name)
+
+    # Work back to front to not mess up indexes if deleting.
+    for i in reversed(range(len(sample_names))):
+        if sample_names[i] not in sample_map:
+            del vcfs[i]
+            del vcf_indexes[i]
+            del sample_names[i]
 
     if output_files:
         print(f"Creating 'output_{SAMPLE_NAME_FILE_SUFFIX}', 'output_{VCF_FILE_SUFFIX}' and 'output_{VCF_INDEX_FILE_SUFFIX}'.")
-        np.savetxt(f"output_{SAMPLE_NAME_FILE_SUFFIX}", sample_names_array, fmt='%s')
-        np.savetxt(f"output_{VCF_FILE_SUFFIX}", vcf_array, fmt='%s')
-        np.savetxt(f"output_{VCF_INDEX_FILE_SUFFIX}", vcf_indexes_array, fmt='%s')
+        np.savetxt(f"output_{SAMPLE_NAME_FILE_SUFFIX}", sample_names, fmt='%s')
+        np.savetxt(f"output_{VCF_FILE_SUFFIX}", vcfs, fmt='%s')
+        np.savetxt(f"output_{VCF_INDEX_FILE_SUFFIX}", vcf_indexes, fmt='%s')
     else:
         d = dict();
-        d['sample_names_array'] = sample_names_array
-        d['vcf_array'] = vcf_array
-        d['vcf_indexes_array'] = vcf_indexes_array
+        d['sample_names_array'] = sample_names
+        d['vcf_array'] = vcfs
+        d['vcf_indexes_array'] = vcf_indexes
         return d
 
 if __name__ == '__main__':
