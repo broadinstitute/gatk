@@ -19,6 +19,8 @@ workflow GvsQuickstartIntegration {
         String? exome_vcf_files_column_name
         String? exome_vcf_index_files_column_name
         String? exome_sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
+        String cloud_sdk_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
+        String variants_docker = "us.gcr.io/broad-dsde-methods/variantstore:2023-08-03-alpine-d9f94010b"
     }
 
     File full_wgs_interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
@@ -34,6 +36,7 @@ workflow GvsQuickstartIntegration {
         input:
             full_interval_list = full_wgs_interval_list,
             chromosomes = ["chrX", "chrY", "chr20"],
+            variants_docker = variants_docker,
     }
 
     if (!use_default_dockers) {
@@ -58,7 +61,9 @@ workflow GvsQuickstartIntegration {
                 vcf_files_column_name = wgs_vcf_files_column_name,
                 vcf_index_files_column_name = wgs_vcf_index_files_column_name,
                 sample_set_name = select_first([wgs_sample_set_name, "wgs_integration_sample_set"]),
-                use_classic_VQSR = false
+                use_classic_VQSR = false,
+                cloud_sdk_docker = cloud_sdk_docker,
+                variants_docker = variants_docker,
         }
         call QuickstartHailIntegration.GvsQuickstartHailIntegration as GvsQuickstartHailVQSRClassicIntegration {
             input:
@@ -74,7 +79,9 @@ workflow GvsQuickstartIntegration {
                 vcf_files_column_name = wgs_vcf_files_column_name,
                 vcf_index_files_column_name = wgs_vcf_index_files_column_name,
                 sample_set_name = select_first([wgs_sample_set_name, "wgs_integration_sample_set"]),
-                use_classic_VQSR = true
+                use_classic_VQSR = true,
+                cloud_sdk_docker = cloud_sdk_docker,
+                variants_docker = variants_docker,
         }
     }
 
@@ -93,7 +100,8 @@ workflow GvsQuickstartIntegration {
                 vcf_files_column_name = wgs_vcf_files_column_name,
                 vcf_index_files_column_name = wgs_vcf_index_files_column_name,
                 sample_set_name = select_first([wgs_sample_set_name, "wgs_integration_sample_set"]),
-                drop_state = "FORTY"
+                drop_state = "FORTY",
+                cloud_sdk_docker = cloud_sdk_docker,
         }
         call QuickstartVcfIntegration.GvsQuickstartVcfIntegration as QuickstartVcfVQSRClassicIntegration {
             input:
@@ -109,7 +117,8 @@ workflow GvsQuickstartIntegration {
                 vcf_files_column_name = wgs_vcf_files_column_name,
                 vcf_index_files_column_name = wgs_vcf_index_files_column_name,
                 sample_set_name = select_first([wgs_sample_set_name, "wgs_integration_sample_set"]),
-                drop_state = "FORTY"
+                drop_state = "FORTY",
+                cloud_sdk_docker = cloud_sdk_docker,
         }
     }
 
@@ -129,7 +138,8 @@ workflow GvsQuickstartIntegration {
                 vcf_files_column_name = exome_vcf_files_column_name,
                 vcf_index_files_column_name = exome_vcf_index_files_column_name,
                 sample_set_name = select_first([exome_sample_set_name, "exome_integration_sample_set"]),
-                drop_state = "FORTY"
+                drop_state = "FORTY",
+                cloud_sdk_docker = cloud_sdk_docker,
         }
     }
 }

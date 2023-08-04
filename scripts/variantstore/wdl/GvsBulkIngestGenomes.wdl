@@ -20,6 +20,7 @@ workflow GvsBulkIngestGenomes {
         String dataset_name
         String project_id
 
+        String cloud_sdk_docker
         String variants_docker
         String gatk_docker
         File? gatk_override
@@ -95,7 +96,8 @@ workflow GvsBulkIngestGenomes {
             dataset_name = dataset_name,
             project_id = project_id,
             external_sample_names = SplitBulkImportFofn.sample_name_fofn,
-            samples_are_controls = false
+            samples_are_controls = false,
+            cloud_sdk_docker = cloud_sdk_docker,
     }
 
     call ImportGenomes.GvsImportGenomes as ImportGenomes {
@@ -115,6 +117,7 @@ workflow GvsBulkIngestGenomes {
             load_data_batch_size = load_data_batch_size,
             load_data_maxretries_override = load_data_maxretries_override,
             load_data_preemptible_override = load_data_preemptible_override,
+            cloud_sdk_docker = cloud_sdk_docker,
             variants_docker = variants_docker,
             gatk_docker = gatk_docker,
             load_data_gatk_override = gatk_override,
@@ -253,7 +256,7 @@ task SplitBulkImportFofn {
     >>>
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
+        docker: "ubuntu:latest"
         memory: "3 GB"
         disks: "local-disk 200 HDD"
         cpu: 1

@@ -14,6 +14,7 @@ workflow GvsAssignIds {
 
     File? assign_ids_gatk_override
     Boolean process_vcf_headers = false
+    String cloud_sdk_docker
   }
 
   String sample_info_table = "sample_info"
@@ -83,6 +84,7 @@ workflow GvsAssignIds {
     input:
       project_id = project_id,
       dataset_name = dataset_name,
+      cloud_sdk_docker = cloud_sdk_docker,
   }
 
   call AssignIds {
@@ -92,7 +94,8 @@ workflow GvsAssignIds {
       dataset_name = dataset_name,
       sample_info_table = sample_info_table,
       samples_are_controls = samples_are_controls,
-      table_creation_done = CreateSampleInfoTable.done
+      table_creation_done = CreateSampleInfoTable.done,
+      cloud_sdk_docker = cloud_sdk_docker,
   }
 
   call GvsCreateTables.CreateBQTables as CreateTablesForMaxId {
@@ -117,6 +120,7 @@ task AssignIds {
     File sample_names
     Boolean samples_are_controls
     String table_creation_done
+    String cloud_sdk_docker
   }
   meta {
     description: "Assigns Ids to samples"
@@ -187,7 +191,7 @@ task AssignIds {
     bq --apilog=false --project_id=~{project_id} rm -f -t ~{dataset_name}.sample_id_assignment_lock
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
+    docker: cloud_sdk_docker
     memory: "3.75 GB"
     disks: "local-disk " + 10 + " HDD"
     cpu: 1
@@ -202,6 +206,7 @@ task CreateCostObservabilityTable {
   input {
     String project_id
     String dataset_name
+    String cloud_sdk_docker
   }
 
   String cost_observability_json =
@@ -237,7 +242,7 @@ task CreateCostObservabilityTable {
     fi
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
+    docker: cloud_sdk_docker
   }
   output {
     Boolean done = true

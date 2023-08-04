@@ -30,6 +30,7 @@ workflow GvsImportGenomes {
     Int? load_data_preemptible_override
     Int? load_data_maxretries_override
     Boolean process_vcf_headers = false
+    String cloud_sdk_docker
     String variants_docker
     String gatk_docker
     File? load_data_gatk_override
@@ -75,6 +76,7 @@ workflow GvsImportGenomes {
       external_sample_names = external_sample_names,
       num_samples = num_samples,
       table_name = "sample_info",
+      cloud_sdk_docker = cloud_sdk_docker,
   }
 
   call CurateInputLists {
@@ -130,6 +132,7 @@ workflow GvsImportGenomes {
       load_done = LoadData.done,
       project_id = project_id,
       dataset_name = dataset_name,
+      cloud_sdk_docker = cloud_sdk_docker,
   }
 
   output {
@@ -159,7 +162,7 @@ task CreateFOFNs {
     split -a 5 -l ~{batch_size} ~{sample_name_list} batched_sample_names.
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
+    docker: "ubuntu:latest"
     bootDiskSizeGb: 15
     memory: "3 GB"
     disks: "local-disk 10 HDD"
@@ -359,6 +362,7 @@ task SetIsLoadedColumn {
     String project_id
 
     Array[String] load_done
+    String cloud_sdk_docker
   }
   meta {
     # This is doing some tricky stuff with `INFORMATION_SCHEMA` so just punt and let it be `volatile`.
@@ -392,7 +396,7 @@ task SetIsLoadedColumn {
                      AND sls2.status = "FINISHED")'
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
+    docker: cloud_sdk_docker
     memory: "1 GB"
     disks: "local-disk 10 HDD"
     cpu: 1
@@ -411,6 +415,7 @@ task GetUningestedSampleIds {
     File external_sample_names
     Int num_samples
     String table_name
+    String cloud_sdk_docker
   }
   meta {
     # Do not call cache this, we want to read the database state every time.
@@ -482,7 +487,7 @@ task GetUningestedSampleIds {
     bq --apilog=false --project_id=~{project_id} rm -f=true ~{temp_table}
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
+    docker: cloud_sdk_docker
     memory: "1 GB"
     disks: "local-disk 10 HDD"
     preemptible: 5

@@ -16,6 +16,7 @@ workflow GvsQuickstartVcfIntegration {
         String dataset_suffix
         File interval_list
         Boolean use_default_dockers = false
+        String cloud_sdk_docker
         File? gatk_override
         String? sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
         String? vcf_files_column_name
@@ -67,6 +68,7 @@ workflow GvsQuickstartVcfIntegration {
             vcf_files_column_name = vcf_files_column_name,
             vcf_index_files_column_name = vcf_index_files_column_name,
             sample_set_name = sample_set_name,
+            cloud_sdk_docker = cloud_sdk_docker,
     }
 
     # Only assert identical outputs if we did not filter (filtering is not deterministic) OR if we are using VQSR Lite (which is deterministic)
@@ -76,6 +78,7 @@ workflow GvsQuickstartVcfIntegration {
             input:
                 expected_output_prefix = expected_prefix,
                 actual_vcfs = JointVariantCalling.output_vcfs,
+                cloud_sdk_docker = cloud_sdk_docker,
         }
 
         call AssertCostIsTrackedAndExpected {
@@ -84,6 +87,7 @@ workflow GvsQuickstartVcfIntegration {
                 dataset_name = CreateDataset.dataset_name,
                 project_id = project_id,
                 expected_output_csv = expected_prefix + "cost_observability_expected.csv",
+                cloud_sdk_docker = cloud_sdk_docker,
         }
 
         call AssertTableSizesAreExpected {
@@ -92,6 +96,7 @@ workflow GvsQuickstartVcfIntegration {
                 dataset_name = CreateDataset.dataset_name,
                 project_id = project_id,
                 expected_output_csv = expected_prefix + "table_sizes_expected.csv",
+                cloud_sdk_docker = cloud_sdk_docker,
         }
     }
 
@@ -111,6 +116,7 @@ task AssertIdenticalOutputs {
     input {
         String expected_output_prefix
         Array[File] actual_vcfs
+        String cloud_sdk_docker
     }
     parameter_meta {
         actual_vcfs: {
@@ -205,7 +211,7 @@ task AssertIdenticalOutputs {
     >>>
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
+        docker: cloud_sdk_docker
         disks: "local-disk 500 HDD"
     }
 
@@ -225,6 +231,7 @@ task AssertCostIsTrackedAndExpected {
         String dataset_name
         String project_id
         File expected_output_csv
+        String cloud_sdk_docker
     }
 
     command <<<
@@ -303,7 +310,7 @@ task AssertCostIsTrackedAndExpected {
     >>>
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
+        docker: cloud_sdk_docker
         disks: "local-disk 10 HDD"
     }
 
@@ -323,6 +330,7 @@ task AssertTableSizesAreExpected {
         String dataset_name
         String project_id
         File expected_output_csv
+        String cloud_sdk_docker
     }
 
     command <<<
@@ -351,7 +359,7 @@ task AssertTableSizesAreExpected {
     >>>
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
+        docker: cloud_sdk_docker
         disks: "local-disk 10 HDD"
     }
 

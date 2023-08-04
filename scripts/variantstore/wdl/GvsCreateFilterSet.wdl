@@ -14,6 +14,7 @@ workflow GvsCreateFilterSet {
     String filter_set_name
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
+    String cloud_sdk_docker
     String variants_docker
     String gatk_docker
     File? gatk_override
@@ -45,7 +46,8 @@ workflow GvsCreateFilterSet {
   call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
     input:
       project_id = project_id,
-      fq_table = fq_sample_table
+      fq_table = fq_sample_table,
+      cloud_sdk_docker = cloud_sdk_docker,
   }
 
   call Utils.GetNumSamplesLoaded {
@@ -53,6 +55,7 @@ workflow GvsCreateFilterSet {
       fq_sample_table = fq_sample_table,
       project_id = project_id,
       sample_table_timestamp = SamplesTableDatetimeCheck.last_modified_timestamp,
+      cloud_sdk_docker = cloud_sdk_docker,
   }
 
   Int scatter_count = if GetNumSamplesLoaded.num_samples < 100 then 20
@@ -74,7 +77,8 @@ workflow GvsCreateFilterSet {
   call Utils.GetBQTableLastModifiedDatetime as AltAlleleTableDatetimeCheck {
     input:
       project_id = project_id,
-      fq_table = fq_alt_allele_table
+      fq_table = fq_alt_allele_table,
+      cloud_sdk_docker = cloud_sdk_docker,
   }
 
   scatter(i in range(length(SplitIntervals.interval_files))) {

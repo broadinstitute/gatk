@@ -13,6 +13,7 @@ workflow GvsExtractAvroFilesForHail {
         Boolean use_VQSR_lite = true
         Int scatter_width = 10
         String variants_docker
+        String cloud_sdk_docker
     }
 
     String fq_gvs_dataset = "~{project_id}.~{dataset_name}"
@@ -23,14 +24,16 @@ workflow GvsExtractAvroFilesForHail {
         input:
             project_id = project_id,
             fq_filter_set_info_table = "~{fq_filter_set_info_table}",
-            filter_set_name = filter_set_name
+            filter_set_name = filter_set_name,
+            cloud_sdk_docker = cloud_sdk_docker,
     }
 
     call Utils.IsVQSRLite {
         input:
             project_id = project_id,
             fq_filter_set_info_table = "~{project_id}.~{dataset_name}.filter_set_info",
-            filter_set_name = filter_set_name
+            filter_set_name = filter_set_name,
+            cloud_sdk_docker = cloud_sdk_docker,
     }
 
     call OutputPath {
@@ -52,7 +55,8 @@ workflow GvsExtractAvroFilesForHail {
     call Utils.CountSuperpartitions {
         input:
             project_id = project_id,
-            dataset_name = dataset_name
+            dataset_name = dataset_name,
+            cloud_sdk_docker = cloud_sdk_docker,
     }
 
     scatter (i in range(scatter_width)) {
@@ -102,7 +106,7 @@ task OutputPath {
         File out = stdout()
     }
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
+        docker: "ubuntu:latest"
         disks: "local-disk 500 HDD"
     }
 }

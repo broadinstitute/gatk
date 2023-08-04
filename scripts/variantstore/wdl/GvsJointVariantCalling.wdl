@@ -26,6 +26,7 @@ workflow GvsJointVariantCalling {
         # This is the most updated snapshot of GATK code on `bulk_ingest_staging` (off `ah_var_store`) as of 2023-08-03.
         String gatk_docker = "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_bulk_ingest_staging_2023_08_03"
         String variants_docker = "us.gcr.io/broad-dsde-methods/variantstore:2023-08-03-alpine-d9f94010b"
+        String cloud_sdk_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
 
         File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
         Boolean use_interval_weights = true
@@ -71,6 +72,7 @@ workflow GvsJointVariantCalling {
             dataset_name = dataset_name,
             project_id = project_id,
             variants_docker = variants_docker,
+            cloud_sdk_docker = cloud_sdk_docker,
             gatk_docker = gatk_docker,
             gatk_override = gatk_override,
             interval_list = interval_list,
@@ -88,6 +90,7 @@ workflow GvsJointVariantCalling {
             dataset_name = dataset_name,
             project_id = project_id,
             variants_docker = variants_docker,
+            cloud_sdk_docker = cloud_sdk_docker,
     }
 
     call CreateFilterSet.GvsCreateFilterSet {
@@ -106,6 +109,7 @@ workflow GvsJointVariantCalling {
             INDEL_VQSR_CLASSIC_mem_gb_override = INDEL_VQSR_CLASSIC_mem_gb_override,
             SNP_VQSR_CLASSIC_max_gaussians_override = SNP_VQSR_CLASSIC_max_gaussians_override,
             SNP_VQSR_CLASSIC_mem_gb_override = SNP_VQSR_CLASSIC_mem_gb_override,
+            cloud_sdk_docker = cloud_sdk_docker,
     }
 
     call PrepareRangesCallset.GvsPrepareCallset {
@@ -140,6 +144,7 @@ workflow GvsJointVariantCalling {
             variants_docker = variants_docker,
             gatk_docker = gatk_docker,
             gatk_override = gatk_override,
+            cloud_sdk_docker = cloud_sdk_docker,
             output_file_base_name = effective_extract_output_file_base_name,
             extract_maxretries_override = extract_maxretries_override,
             extract_preemptible_override = extract_preemptible_override,

@@ -14,6 +14,7 @@ workflow GvsQuickstartHailIntegration {
         Boolean extract_do_not_filter_override
         String dataset_suffix = "hail"
         Boolean use_default_dockers = false
+        String cloud_sdk_docker
         String variants_docker
         String? gatk_override
         String expected_output_prefix
@@ -41,6 +42,7 @@ workflow GvsQuickstartHailIntegration {
             vcf_files_column_name = vcf_files_column_name,
             vcf_index_files_column_name = vcf_index_files_column_name,
             sample_set_name = sample_set_name,
+            cloud_sdk_docker = cloud_sdk_docker,
     }
 
     call ExtractAvroFilesForHail.GvsExtractAvroFilesForHail {
@@ -53,6 +55,7 @@ workflow GvsQuickstartHailIntegration {
             scatter_width = 10,
             call_set_identifier = branch_name,
             variants_docker = variants_docker,
+            cloud_sdk_docker = cloud_sdk_docker,
     }
 
     call CreateAndTieOutVds {

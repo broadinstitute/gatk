@@ -148,6 +148,7 @@ task GetBQTableLastModifiedDatetime {
     Boolean go = true
     String project_id
     String fq_table
+    String cloud_sdk_docker
   }
   meta {
     # because this is being used to determine if the data has changed, never use call cache
@@ -184,7 +185,7 @@ task GetBQTableLastModifiedDatetime {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
+    docker: cloud_sdk_docker
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -198,6 +199,7 @@ task GetBQTablesMaxLastModifiedTimestamp {
     String data_project
     String dataset_name
     Array[String] table_patterns
+    String cloud_sdk_docker
   }
   meta {
     # because this is being used to determine if the data has changed, never use call cache
@@ -227,7 +229,7 @@ task GetBQTablesMaxLastModifiedTimestamp {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
+    docker: cloud_sdk_docker
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -527,6 +529,7 @@ task GetNumSamplesLoaded {
     String project_id
     String sample_table_timestamp
     Boolean control_samples = false
+    String cloud_sdk_docker
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
@@ -555,7 +558,7 @@ task GetNumSamplesLoaded {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
+    docker: cloud_sdk_docker
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -573,6 +576,7 @@ task CountSuperpartitions {
     input {
         String project_id
         String dataset_name
+        String cloud_sdk_docker
     }
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     command <<<
@@ -586,7 +590,7 @@ task CountSuperpartitions {
         ' | sed 1d > num_superpartitions.txt
     >>>
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
+        docker: cloud_sdk_docker
         disks: "local-disk 500 HDD"
     }
     output {
@@ -602,6 +606,7 @@ task ValidateFilterSetName {
         String fq_filter_set_info_table
         String filter_set_name
         String filter_set_info_timestamp = ""
+        String cloud_sdk_docker
     }
     meta {
         # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
@@ -635,7 +640,7 @@ task ValidateFilterSetName {
     }
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
+        docker: cloud_sdk_docker
         memory: "3 GB"
         disks: "local-disk 500 HDD"
         preemptible: 3
@@ -648,6 +653,7 @@ task IsVQSRLite {
     String project_id
     String fq_filter_set_info_table
     String filter_set_name
+    String cloud_sdk_docker
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
@@ -695,7 +701,7 @@ task IsVQSRLite {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
+    docker: cloud_sdk_docker
     memory: "3 GB"
     disks: "local-disk 500 HDD"
     preemptible: 3
