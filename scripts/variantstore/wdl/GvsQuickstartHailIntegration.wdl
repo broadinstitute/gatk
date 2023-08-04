@@ -14,6 +14,7 @@ workflow GvsQuickstartHailIntegration {
         Boolean extract_do_not_filter_override
         String dataset_suffix = "hail"
         Boolean use_default_dockers = false
+        String variants_docker
         String? gatk_override
         String expected_output_prefix
         String? sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
@@ -51,6 +52,7 @@ workflow GvsQuickstartHailIntegration {
             filter_set_name = GvsQuickstartVcfIntegration.filter_set_name,
             scatter_width = 10,
             call_set_identifier = branch_name,
+            variants_docker = variants_docker,
     }
 
     call CreateAndTieOutVds {

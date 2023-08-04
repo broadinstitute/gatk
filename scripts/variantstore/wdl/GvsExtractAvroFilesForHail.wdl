@@ -12,6 +12,7 @@ workflow GvsExtractAvroFilesForHail {
         String call_set_identifier
         Boolean use_VQSR_lite = true
         Int scatter_width = 10
+        String variants_docker
     }
 
     String fq_gvs_dataset = "~{project_id}.~{dataset_name}"
@@ -44,7 +45,8 @@ workflow GvsExtractAvroFilesForHail {
             filter_set_name = filter_set_name,
             avro_sibling = OutputPath.out,
             call_set_identifier = call_set_identifier,
-            is_vqsr_lite = IsVQSRLite.is_vqsr_lite
+            is_vqsr_lite = IsVQSRLite.is_vqsr_lite,
+            variants_docker = variants_docker,
     }
 
     call Utils.CountSuperpartitions {
@@ -62,7 +64,8 @@ workflow GvsExtractAvroFilesForHail {
                 avro_sibling = OutputPath.out,
                 num_superpartitions = CountSuperpartitions.num_superpartitions,
                 shard_index = i,
-                num_shards = scatter_width
+                num_shards = scatter_width,
+                variants_docker = variants_docker,
         }
     }
 
@@ -71,6 +74,7 @@ workflow GvsExtractAvroFilesForHail {
             go_non_superpartitioned = ExtractFromNonSuperpartitionedTables.done,
             go_superpartitioned = ExtractFromSuperpartitionedTables.done,
             avro_prefix = ExtractFromNonSuperpartitionedTables.output_prefix,
+            variants_docker = variants_docker,
     }
     output {
         File hail_gvs_import_script = GenerateHailScripts.hail_gvs_import_script
