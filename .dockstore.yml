@@ -222,8 +222,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1011_assignids_pipefail
-         - gg_VS-1004_PassClassicMemArguments
+         - vs_1027_sample_drop_stop
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
