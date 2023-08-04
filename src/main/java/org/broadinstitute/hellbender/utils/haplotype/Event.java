@@ -6,10 +6,9 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.broadinstitute.hellbender.utils.Utils;
+import picard.sam.util.Pair;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Very simple class wrapping VariantContext when we want to be explicit that a variant is biallelic, such as
@@ -27,14 +26,38 @@ public class Event implements Locatable {
     private static final long serialVersionUID = 1L;
 
     public Event(final String contig, final int start, final Allele ref, final Allele alt) {
-        // TODO: Should this instead silently trim to the minimal representation?
-        Utils.validateArg(ref.length() == 1 || alt.length() == 1 || differentLastBase(ref, alt), "Ref and alt alleles have same last base, hence this event is not in its minimal representation.");
         Utils.validateArg(ref.isReference(), "ref is not ref");
         this.contig = contig;
         this.start = start;
-        stop = start + ref.length() - 1;
-        refAllele = ref;
-        altAllele = alt;
+        //check for minimal representation
+        if(ref.length() == 1 || alt.length() == 1 || differentLastBase(ref.getBases(), alt.getBases())){
+            refAllele = ref;
+            altAllele = alt;
+        } else {
+            Pair<Allele, Allele> minimalAlleles = makeMinimalRepresentation(ref, alt);
+            refAllele = minimalAlleles.getLeft();
+            altAllele = minimalAlleles.getRight();
+        }
+        stop = start + refAllele.length() - 1;
+    }
+
+    /**
+     * Returns a pair of alleles that are in minimal representation (removes identical suffixes)
+     * @param ref allele not in minimal representation
+     * @param alt allele not in minimal representation
+     * @return pair of alleles in minimal representation
+     */
+    private static Pair<Allele, Allele> makeMinimalRepresentation(Allele ref, Allele alt) {
+        Utils.validateArg(!Arrays.equals(ref.getBases(), alt.getBases()), "ref and alt alleles are identical");
+        byte[] newRefBases = ref.getBases();
+        byte[] newAltBases = alt.getBases();
+        while (newRefBases.length != 1 && newAltBases.length != 1 && !differentLastBase(newRefBases, newAltBases)) {
+            newRefBases = Arrays.copyOf(ref.getBases(), ref.length() - 1);
+            newAltBases = Arrays.copyOf(alt.getBases(), alt.length() - 1);
+        }
+        Allele newRefAllele = Allele.create(newRefBases, true);
+        Allele newAltAllele = Allele.create(newAltBases, false);
+        return(new Pair<>(newRefAllele, newAltAllele));
     }
 
     public static Event ofWithoutAttributes(final VariantContext vc) {
@@ -103,10 +126,8 @@ public class Event implements Locatable {
         return new HashCodeBuilder().append(start).append(refAllele).append(altAllele).hashCode();
     }
 
-    private static boolean differentLastBase(final Allele ref, final Allele alt) {
-        final byte[] refBases = ref.getBases();
-        final byte[] altBases = alt.getBases();
-        return refBases.length == 0 || altBases.length == 0 || refBases[refBases.length-1] != altBases[altBases.length-1];
+    private static boolean differentLastBase(final byte[] ref, final byte[] alt) {
+        return ref.length == 0 || alt.length == 0 || ref[ref.length-1] != alt[alt.length-1];
     }
 
     @Override
