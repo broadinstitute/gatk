@@ -121,11 +121,6 @@ public class Mutect2EngineUnitTest extends GATKBaseTest {
         }
     }
 
-    @Test
-    public void testOldErrorModelBehavior() {
-
-    }
-
     @DataProvider(name = "fewAltData")
     public Object[][] getFewAltData() {
         return new Object[][] {
