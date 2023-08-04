@@ -261,7 +261,7 @@ task Add_AS_MAX_VQS_SCORE_ToVcf {
     File input_vcf
     String output_basename
 
-    String docker = "us.gcr.io/broad-dsde-methods/variantstore:2023-06-23-alpine"
+    String docker = "us.gcr.io/broad-dsde-methods/variantstore:2023-08-04-alpine-f839eb0fb"
     Int cpu = 1
     Int memory_mb = 3500
     Int disk_size_gb = ceil(2*size(input_vcf, "GiB")) + 50
@@ -294,8 +294,8 @@ task IsVQSRLite {
   command {
     set +e
 
-    # See if there are any non-header lines that contain the string 'AS_VQS_SENS'. If so, grep will return 0 else 1
-    grep -v '^#' ~{input_vcf} | grep AS_VQS_SENS > /dev/null
+    # See if there are any non-header lines that contain the string 'CALIBRATION_SENSITIVITY'. If so, grep will return 0 else 1
+    grep -v '^#' ~{input_vcf} | grep CALIBRATION_SENSITIVITY > /dev/null
     if [[ $? -eq 0 ]]; then
       echo "true" > ~{is_vqsr_lite_file}
     else
@@ -368,7 +368,7 @@ task EvaluateVcf {
     Int disk_size_gb = ceil(2 * size(ref_fasta, "GiB")) + 50
   }
 
-  String max_score_field_tag = if (is_vqsr_lite == true) then 'MAX_AS_VQS_SENS' else 'MAX_AS_VQSLOD'
+  String max_score_field_tag = if (is_vqsr_lite == true) then 'MAX_CALIBRATION_SENSITIVITY' else 'MAX_AS_VQSLOD'
 
   command <<<
     set -e -o pipefail

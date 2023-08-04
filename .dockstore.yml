@@ -207,6 +207,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - gg_VS-1009_FixPrecisionAndSensitivity
    - name: GvsQuickstartVcfIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartVcfIntegration.wdl
