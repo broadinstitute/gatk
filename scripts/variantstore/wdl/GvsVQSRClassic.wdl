@@ -92,6 +92,7 @@ workflow JointVcfFiltering {
   if (num_samples_loaded > snps_variant_recalibration_threshold) {
     call SNPsVariantRecalibratorCreateModel {
       input:
+        num_samples = num_samples_loaded,
         sites_only_variant_filtered_vcf = sites_only_variant_filtered_vcf,
         sites_only_variant_filtered_vcf_index = sites_only_variant_filtered_vcf_idx,
         recalibration_filename = base_name + ".snps.recal",
@@ -250,13 +251,22 @@ task SNPsVariantRecalibratorCreateModel {
     Int max_gaussians = 6
     Int sample_every_nth_variant = 1
     Int maximum_training_variants = 2500000
+
+    Int num_samples
     Int? machine_mem_gb
 
     Int disk_size
   }
 
-  Int machine_mem = select_first([machine_mem_gb, 100])
-  Int java_mem = machine_mem - 5
+  # Based on https://docs.google.com/spreadsheets/d/1jOsudfO1-RadJXPGuHOIrjZW3Rg2SzvlL8Wg-lxZVUU/edit#gid=1056496058
+  Int default_mem_gb = if (num_samples <= 10000) then 110
+      else if (num_samples <= 15000) then 150
+      else if (num_samples <= 40000) then 256
+      else if (num_samples <= 99000) then 512
+      else 624
+
+  Int machine_mem = select_first([machine_mem_gb, default_mem_gb])
+  Int java_mem = machine_mem - 10
 
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
@@ -397,8 +407,8 @@ task IndelsVariantRecalibrator {
     Int? machine_mem_gb
   }
 
-  Int machine_mem = select_first([machine_mem_gb, 30])
-  Int java_mem = machine_mem - 5
+  Int machine_mem = select_first([machine_mem_gb, 35])
+  Int java_mem = machine_mem - 10
 
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
