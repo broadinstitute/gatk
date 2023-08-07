@@ -48,6 +48,7 @@ workflow GvsQuickstartIntegration {
         call Utils.BuildGATKJar {
             input:
                 branch_name = branch_name,
+                cloud_sdk_slim_docker = cloud_sdk_slim_docker,
         }
     }
 
