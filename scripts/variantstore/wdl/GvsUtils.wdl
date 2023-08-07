@@ -240,6 +240,7 @@ task GetBQTablesMaxLastModifiedTimestamp {
 task BuildGATKJar {
   input {
     String branch_name
+    String cloud_sdk_slim_docker
   }
   meta {
     # Branch may be updated so do not call cache!
@@ -298,7 +299,7 @@ task BuildGATKJar {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-slim"
+    docker: cloud_sdk_slim_docker
     disks: "local-disk 500 HDD"
   }
 }
@@ -308,6 +309,7 @@ task CreateDataset {
     String branch_name
     String dataset_prefix
     String dataset_suffix
+    String cloud_sdk_docker
   }
   meta {
     # Branch may be updated so do not call cache!
@@ -360,7 +362,7 @@ task CreateDataset {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-slim"
+    docker: cloud_sdk_docker
     disks: "local-disk 500 HDD"
   }
 }
@@ -370,6 +372,7 @@ task BuildGATKJarAndCreateDataset {
     String branch_name
     String dataset_prefix
     String dataset_suffix
+    String cloud_sdk_slim_docker
   }
   meta {
     # Branch may be updated so do not call cache!
@@ -444,7 +447,7 @@ task BuildGATKJarAndCreateDataset {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-slim"
+    docker: cloud_sdk_slim_docker
     disks: "local-disk 500 HDD"
   }
 }
@@ -452,6 +455,7 @@ task BuildGATKJarAndCreateDataset {
 task TerminateWorkflow {
   input {
     String message
+    String cloud_sdk_docker
   }
   meta {
     # Definitely do not call cache this!
@@ -472,7 +476,7 @@ task TerminateWorkflow {
   >>>
 
   runtime {
-    docker: "python:3.8-slim-buster"
+    docker: cloud_sdk_docker
     memory: "1 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -715,6 +719,7 @@ task IndexVcf {
 
         Int memory_mb = 7500
         Int disk_size_gb = ceil(2 * size(input_vcf, "GiB")) + 200
+        String gatk_docker
     }
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
@@ -742,7 +747,7 @@ task IndexVcf {
     >>>
 
     runtime {
-        docker: "us.gcr.io/broad-gatk/gatk:4.2.6.1"
+        docker: gatk_docker
         cpu: 1
         memory: "${memory_mb} MiB"
         disks: "local-disk ${disk_size_gb} HDD"
@@ -767,6 +772,7 @@ task SelectVariants {
 
         Int memory_mb = 7500
         Int disk_size_gb = ceil(2*size(input_vcf, "GiB")) + 200
+        String gatk_docker
     }
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
@@ -797,7 +803,7 @@ task SelectVariants {
     >>>
 
     runtime {
-        docker: "us.gcr.io/broad-gatk/gatk:4.2.6.1"
+        docker: gatk_docker
         cpu: 1
         memory: "${memory_mb} MiB"
         disks: "local-disk ${disk_size_gb} HDD"

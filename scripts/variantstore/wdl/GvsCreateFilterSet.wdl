@@ -152,7 +152,8 @@ workflow GvsCreateFilterSet {
         input_vcf_index = MergeScoredVCFs.output_vcf_index,
         type_to_include = "SNP",
         exclude_filtered = true,
-        output_basename = "${filter_set_name}.filtered.scored.snps"
+        output_basename = "${filter_set_name}.filtered.scored.snps",
+        gatk_docker = gatk_docker,
     }
 
     call Utils.SelectVariants as CreateFilteredScoredINDELsVCF {
@@ -161,7 +162,8 @@ workflow GvsCreateFilterSet {
         input_vcf_index = MergeScoredVCFs.output_vcf_index,
         type_to_include = "INDEL",
         exclude_filtered = true,
-        output_basename = "${filter_set_name}.filtered.scored.indels"
+        output_basename = "${filter_set_name}.filtered.scored.indels",
+        gatk_docker = gatk_docker,
     }
 
     call Utils.PopulateFilterSetInfo {

@@ -8,19 +8,23 @@ workflow GvsCallsetCost {
         String workspace_name
         String call_set_identifier
         Array[String] excluded_submission_ids = []
+        String cloud_sdk_docker
+        String variants_docker
     }
 
     call WorkflowComputeCosts {
         input:
             workspace_namespace = workspace_namespace,
             workspace_name = workspace_name,
-            excluded_submission_ids = excluded_submission_ids
+            excluded_submission_ids = excluded_submission_ids,
+            variants_docker = variants_docker,
     }
 
     call CoreStorageModelSizes {
         input:
             project_id = project_id,
-            dataset_name = dataset_name
+            dataset_name = dataset_name,
+            cloud_sdk_docker = cloud_sdk_docker,
     }
 
     call ReadCostObservabilityTable {
@@ -28,6 +32,7 @@ workflow GvsCallsetCost {
             project_id = project_id,
             dataset_name = dataset_name,
             call_set_identifier = call_set_identifier,
+            cloud_sdk_docker = cloud_sdk_docker,
     }
 
     output {
@@ -49,6 +54,7 @@ task WorkflowComputeCosts {
         String workspace_namespace
         String workspace_name
         Array[String] excluded_submission_ids
+        String variants_docker
     }
 
     Array[String] excluded_ids = prefix('--exclude ', excluded_submission_ids)
@@ -79,6 +85,7 @@ task CoreStorageModelSizes {
     input {
         String project_id
         String dataset_name
+        String cloud_sdk_docker
     }
     command <<<
 
@@ -97,7 +104,7 @@ task CoreStorageModelSizes {
         get_billable_bytes_in_gib "alt_allele"   alt_allele_gib.txt
     >>>
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
+        docker: cloud_sdk_docker
     }
     output {
         Float vet_gib = read_float("vet_gib.txt")
@@ -116,6 +123,7 @@ task ReadCostObservabilityTable {
         String project_id
         String dataset_name
         String call_set_identifier
+        String cloud_sdk_docker
     }
     command <<<
         bq --apilog=false query --project_id='~{project_id}' --format=prettyjson --use_legacy_sql=false \
@@ -125,7 +133,7 @@ task ReadCostObservabilityTable {
             > cost_observability.json
     >>>
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
+        docker: cloud_sdk_docker
     }
     output {
         File cost_observability = "cost_observability.json"

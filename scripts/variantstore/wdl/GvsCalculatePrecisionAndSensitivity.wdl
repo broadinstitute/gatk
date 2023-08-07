@@ -16,6 +16,9 @@ workflow GvsCalculatePrecisionAndSensitivity {
     Array[File] truth_beds
 
     File ref_fasta
+    String basic_docker = "ubuntu:22.04"
+    String variants_docker = "us.gcr.io/broad-dsde-methods/variantstore:2023-08-03-alpine-d9f94010b"
+    String gatk_docker = "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_bulk_ingest_staging_2023_08_03"
   }
 
   parameter_meta {
@@ -39,6 +42,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
   call CountInputVcfs {
     input:
       input_vcf_fofn = input_vcf_fofn,
+      basic_docker = basic_docker,
   }
 
   scatter(i in range(CountInputVcfs.num_vcfs)) {
@@ -47,13 +51,15 @@ workflow GvsCalculatePrecisionAndSensitivity {
         input_vcf_fofn = input_vcf_fofn,
         index = i,
         chromosomes = chromosomes,
+        variants_docker = variants_docker,
     }
   }
 
   call GatherVcfs {
     input:
       input_vcfs = flatten(IsVcfOnChromosomes.output_vcf),
-      output_basename = output_basename
+      output_basename = output_basename,
+      gatk_docker = gatk_docker,
   }
 
   scatter(i in range(length(sample_names))) {
@@ -72,12 +78,14 @@ workflow GvsCalculatePrecisionAndSensitivity {
     call Add_AS_MAX_VQS_SCORE_ToVcf {
       input:
         input_vcf = SelectVariants.output_vcf,
-        output_basename = output_sample_basename + ".maxas"
+        output_basename = output_sample_basename + ".maxas",
+        variants_docker = variants_docker,
     }
 
     call IsVQSRLite {
       input:
-        input_vcf = Add_AS_MAX_VQS_SCORE_ToVcf.output_vcf
+        input_vcf = Add_AS_MAX_VQS_SCORE_ToVcf.output_vcf,
+        basic_docker = basic_docker,
     }
 
     call BgzipAndTabix {
@@ -117,7 +125,8 @@ workflow GvsCalculatePrecisionAndSensitivity {
   call CollateReports {
     input:
       all_reports = EvaluateVcfAll.report,
-      filtered_reports = EvaluateVcfFiltered.report
+      filtered_reports = EvaluateVcfFiltered.report,
+      basic_docker = basic_docker,
   }
 
   output {
@@ -132,6 +141,7 @@ task IsVcfOnChromosomes {
     File input_vcf_fofn
     Int index
     Array[String] chromosomes
+    String variants_docker
   }
 
   command <<<
@@ -172,7 +182,7 @@ task IsVcfOnChromosomes {
   >>>
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
+    docker: variants_docker
     disks: "local-disk 10 HDD"
     memory: "2 GiB"
     preemptible: 3
@@ -187,7 +197,7 @@ task GatherVcfs {
     Array[File] input_vcfs
     String output_basename
 
-    String gatk_docker = "us.gcr.io/broad-gatk/gatk:4.2.6.1"
+    String gatk_docker
     Int cpu = 1
     Int memory_mb = 7500
     Int disk_size_gb = ceil(3*size(input_vcfs, "GiB"))
@@ -279,7 +289,7 @@ task Add_AS_MAX_VQS_SCORE_ToVcf {
     File input_vcf
     String output_basename
 
-    String docker = variants_docker
+    String variants_docker
     Int cpu = 1
     Int memory_mb = 3500
     Int disk_size_gb = ceil(2*size(input_vcf, "GiB")) + 50
@@ -291,7 +301,7 @@ task Add_AS_MAX_VQS_SCORE_ToVcf {
     python3 /app/add_max_as_vqs_score.py ~{input_vcf} > ~{output_basename}.vcf
   >>>
   runtime {
-    docker: docker
+    docker: variants_docker
     cpu: cpu
     memory: "${memory_mb} MiB"
     disks: "local-disk ${disk_size_gb} HDD"
@@ -305,6 +315,7 @@ task Add_AS_MAX_VQS_SCORE_ToVcf {
 task IsVQSRLite {
   input {
     File input_vcf
+    String basic_docker
   }
 
   String is_vqsr_lite_file = "is_vqsr_lite_file.txt"
@@ -322,7 +333,7 @@ task IsVQSRLite {
   }
 
   runtime {
-    docker: "gcr.io/gcp-runtimes/ubuntu_16_0_4:latest"
+    docker: basic_docker
     disks: "local-disk 10 HDD"
     memory: "2 GiB"
     preemptible: 3
@@ -441,6 +452,7 @@ task CollateReports {
   input {
     Array[File] all_reports
     Array[File] filtered_reports
+    String basic_docker
   }
 
   command {
@@ -459,7 +471,7 @@ task CollateReports {
   }
 
   runtime {
-    docker: "gcr.io/gcp-runtimes/ubuntu_16_0_4:latest"
+    docker: basic_docker
     disks: "local-disk 10 HDD"
     memory: "2 GiB"
     preemptible: 3
@@ -473,6 +485,7 @@ task CollateReports {
 task CountInputVcfs {
   input {
     File input_vcf_fofn
+    String basic_docker
   }
   command <<<
     wc -l < ~{input_vcf_fofn} > num_vcfs.txt
@@ -481,6 +494,6 @@ task CountInputVcfs {
     Int num_vcfs = read_int("num_vcfs.txt")
   }
   runtime {
-    docker: "ubuntu:20.04"
+    docker: basic_docker
   }
 }

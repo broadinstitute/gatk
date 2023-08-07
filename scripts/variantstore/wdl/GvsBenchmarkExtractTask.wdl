@@ -45,7 +45,8 @@ workflow GvsBenchmarkExtractTask {
 
         String output_file_base_name
         String? output_gcs_dir
-        File? gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/kc_vqsr_magic_20220324/gatk-package-4.2.0.0-478-gd0e381c-SNAPSHOT-local.jar"
+        File? gatk_override
+        String gatk_docker
         Int local_disk_for_extract = 150
 
         String fq_samples_to_extract_table = "~{data_project}.~{dataset_name}.~{extract_table_prefix}__SAMPLES"
@@ -80,7 +81,8 @@ workflow GvsBenchmarkExtractTask {
                 extract_preemptible_override    = extract_preemptible_override,
                 extract_cpu_override            = extract_cpu_override,
                 extract_memory_override         = extract_memory_override,
-                extract_maxretries_override     = extract_maxretries_override
+                extract_maxretries_override     = extract_maxretries_override,
+                gatk_docker                     = gatk_docker,
         }
 }
 
@@ -122,6 +124,7 @@ task ExtractTask {
 
         # Runtime Options:
         File? gatk_override
+        String gatk_docker
         Int? extract_preemptible_override
         Int? extract_maxretries_override
         String? extract_memory_override
@@ -171,7 +174,7 @@ task ExtractTask {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_bulk_ingest_staging_2023_08_03"
+        docker: gatk_docker
         memory: select_first([extract_memory_override, "12 GB"])
         disks: "local-disk ~{local_disk} HDD"
         bootDiskSizeGb: 15
@@ -190,6 +193,7 @@ task SumBytes {
 
   input {
     Array[Float] file_sizes_bytes
+    String cloud_sdk_docker
   }
 
   command <<<
@@ -206,7 +210,7 @@ task SumBytes {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
+    docker: cloud_sdk_docker
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -219,6 +223,7 @@ task CreateManifest {
     input {
         Array[String] manifest_lines
         String? output_gcs_dir
+        String cloud_sdk_docker
     }
 
     command <<<
@@ -240,7 +245,7 @@ task CreateManifest {
     }
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
+        docker: cloud_sdk_docker
         memory: "3 GB"
         disks: "local-disk 10 HDD"
         preemptible: 3

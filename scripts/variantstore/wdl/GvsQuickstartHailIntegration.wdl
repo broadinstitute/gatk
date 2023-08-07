@@ -68,6 +68,7 @@ workflow GvsQuickstartHailIntegration {
             vds_destination_path = GvsExtractAvroFilesForHail.vds_output_path,
             tieout_vcfs = GvsQuickstartVcfIntegration.output_vcfs,
             tieout_vcf_indexes = GvsQuickstartVcfIntegration.output_vcf_indexes,
+            cloud_sdk_docker = cloud_sdk_docker,
     }
 
     output {
@@ -89,6 +90,7 @@ task CreateAndTieOutVds {
         String vds_destination_path
         Array[File] tieout_vcfs
         Array[File] tieout_vcf_indexes
+        String cloud_sdk_slim_docker
     }
     parameter_meta {
         tieout_vcfs: {
@@ -172,7 +174,7 @@ task CreateAndTieOutVds {
     >>>
     runtime {
         # `slim` here to be able to use Java
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-slim"
+        docker: cloud_sdk_slim_docker
         disks: "local-disk 2000 HDD"
         memory: "30 GiB"
     }

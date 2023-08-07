@@ -22,7 +22,9 @@ workflow GvsCreateVATfromVDS {
         Int? merge_vcfs_disk_size_override
 
         String basic_docker = "ubuntu:22.04"
+        String cloud_sdk_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
         String variants_docker = "us.gcr.io/broad-dsde-methods/variantstore:2023-08-03-alpine-d9f94010b"
+        String gatk_docker = "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_bulk_ingest_staging_2023_08_03"
     }
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
@@ -66,6 +68,7 @@ workflow GvsCreateVATfromVDS {
                 input_vcf_index = IndexVcf.output_vcf_index,
                 interval_list = SplitIntervals.interval_files[i],
                 output_basename = vcf_filename,
+                gatk_docker = gatk_docker,
         }
 
         call RemoveDuplicatesFromSitesOnlyVCF {
@@ -138,7 +141,8 @@ workflow GvsCreateVATfromVDS {
             vat_table_name = BigQueryLoadJson.vat_table_name,
             output_path = output_path,
             merge_vcfs_disk_size_override = merge_vcfs_disk_size_override,
-            precondition_met = BigQueryLoadJson.done
+            precondition_met = BigQueryLoadJson.done,
+            cloud_sdk_docker = cloud_sdk_docker,
    }
 
     output {
