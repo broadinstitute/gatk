@@ -166,7 +166,7 @@ task GetWorkspaceName {
 
     >>>
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-17-alpine-2345c4448"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-08-04-alpine-2d67c4cb4"
         memory: "3 GB"
         disks: "local-disk 10 HDD"
         cpu: 1
@@ -214,7 +214,7 @@ task GetColumnNames {
     >>>
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-17-alpine-2345c4448"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-08-04-alpine-2d67c4cb4"
         memory: "3 GB"
         disks: "local-disk 10 HDD"
         cpu: 1
@@ -305,7 +305,7 @@ task GenerateImportFofnFromDataTable {
 
     >>>
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-07-17-alpine-2345c4448"
+        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-08-04-alpine-2d67c4cb4"
         memory: "3 GB"
         disks: "local-disk 200 HDD"
         cpu: 1
