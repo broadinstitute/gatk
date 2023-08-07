@@ -418,7 +418,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         allMutexes.forEach(mutex -> new IndexRange(0, mutex.size() - 1).forEach(n -> graph.addEdge(mutex.get(n), mutex.get(n+1))));
         final List<Set<Event>> components = new ConnectivityInspector<>(graph).connectedSets();
         return components.stream().anyMatch(comp -> comp.size() > MAX_VAR_IN_EVENT_GROUP) ? null :
-                components.stream().map(component -> new EventGroup(component, swForbiddenPairsAndTrios)).toList();
+                components.stream().map(component -> new EventGroup(component, allMutexes)).toList();
     }
 
     /**
@@ -656,18 +656,26 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
     private static class EventGroup {
         private final ImmutableList<Event> eventsInOrder;
         private final ImmutableMap<Event, Integer> eventIndices;
+
+        
         private final BitSet allowedEvents;
 
         // Optimization to save ourselves recomputing the subsets at every point its necessary to do so.
         List<Set<Event>> cachedEventSets = null;
 
-        public EventGroup(final Collection<Event> events, List<List<Event>> disallowedCombinations) {
+        /**
+         *
+         * @param events all events in this event group
+         * @param mutexPairsAndTrios all mutexes of two or three events, defined by overlap and by the Smith-Waterman heuristic,
+         *                           that determined the event groups in this calling region
+         */
+        public EventGroup(final Collection<Event> events, List<List<Event>> mutexPairsAndTrios) {
             Utils.validate(events.size() <= MAX_VAR_IN_EVENT_GROUP, () -> "Too many events (" + events.size() + ") for populating bitset.");
             eventsInOrder = events.stream().sorted(HAPLOTYPE_SNP_FIRST_COMPARATOR).collect(ImmutableList.toImmutableList());
             eventIndices = IntStream.range(0, events.size()).boxed().collect(ImmutableMap.toImmutableMap(eventsInOrder::get, n -> n));
             allowedEvents = new BitSet(1 << eventsInOrder.size());
 
-            final List<List<Event>> overlappingMutexes = disallowedCombinations.stream()
+            final List<List<Event>> overlappingMutexes = mutexPairsAndTrios.stream()
                             .filter(mutext -> mutext.stream().anyMatch(eventIndices::containsKey)).toList();
             for (final List<Event> mutex : overlappingMutexes) {
                 Utils.validate(mutex.stream().allMatch(eventIndices::containsKey), () -> "Mutex group " + mutex + " only partially overlaps event group " + this);
@@ -687,10 +695,10 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
          * Iterate through pairs of Variants that overlap and mark off any pairings including this.
          * Iterate through the mutex variants and ensure pairs containing all mutex variant groups are marked as true
          *
-         * @param mutexes Groups of mutually forbidden events.  Note that when this is called we have already ensured
+         * @param mutexPairsAndTrios Groups of mutually forbidden events.  Note that when this is called we have already ensured
          *                that each mutex group comprises only events contained in this EventGroup.
          */
-        private void populateBitset(List<List<Event>> mutexes) {
+        private void populateBitset(List<List<Event>> mutexPairsAndTrios) {
             if (eventsInOrder.size() < 2) {
                 return;
             }
@@ -698,29 +706,16 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             // initialize all events as being allowed and then disallow them in turn .
             allowedEvents.set(1, 1 << eventsInOrder.size());
 
-            final List<SmallBitSet> forbiddenCombinations = new ArrayList<>();
-
-            // Mark as disallowed all events that overlap each other, excluding pairs of SNPs
-            for (int i = 0; i < eventsInOrder.size(); i++) {
-                final Event first = eventsInOrder.get(i);
-                for (int j = i+1; j < eventsInOrder.size(); j++) {
-                    final Event second = eventsInOrder.get(j);
-                    if (!(first.isSNP() && second.isSNP()) && eventsOverlapForPDHapsCode(first, second)) {
-                        forbiddenCombinations.add(new SmallBitSet(i,j));
-                    }
-                }
-            }
-
             // make SmallBitSet of the event indices of each mutex
-            mutexes.stream().map(mutex -> new SmallBitSet(mutex.stream().map(eventIndices::get).toList())).forEach(forbiddenCombinations::add);
+            final List<SmallBitSet> mutexes = mutexPairsAndTrios.stream().map(mutex -> new SmallBitSet(mutex.stream().map(eventIndices::get).toList())).toList();
 
             // Now forbid all subsets that contain forbidden combinations
             //TODO This method is potentially very inefficient! We don't technically have to iterate over every i,
             //TODO we know there is an optimization involving minimizing the number of checks necessary here by iterating
             //TODO using the bitmask values themselves for the loop
-            if (!forbiddenCombinations.isEmpty()) {
+            if (!mutexes.isEmpty()) {
                 for (final SmallBitSet subset = new SmallBitSet().increment(); !subset.hasElementGreaterThan(eventsInOrder.size()); subset.increment()) {
-                    if (forbiddenCombinations.stream().anyMatch(subset::contains)) {
+                    if (mutexes.stream().anyMatch(subset::contains)) {
                         allowedEvents.set(subset.index(), false);
                     }
                 }
