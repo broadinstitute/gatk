@@ -12,8 +12,9 @@ workflow GvsExtractAvroFilesForHail {
         String call_set_identifier
         Boolean use_VQSR_lite = true
         Int scatter_width = 10
-        String variants_docker
+        String basic_docker
         String cloud_sdk_docker
+        String variants_docker
     }
 
     String fq_gvs_dataset = "~{project_id}.~{dataset_name}"
@@ -37,7 +38,9 @@ workflow GvsExtractAvroFilesForHail {
     }
 
     call OutputPath {
-        input: go = ValidateFilterSetName.done
+        input:
+            go = ValidateFilterSetName.done,
+            basic_docker = basic_docker,
     }
 
     call ExtractFromNonSuperpartitionedTables {
@@ -99,6 +102,7 @@ task OutputPath {
     }
     input {
         Boolean go = true
+        String basic_docker
     }
     command <<<
     >>>
@@ -106,7 +110,7 @@ task OutputPath {
         File out = stdout()
     }
     runtime {
-        docker: "ubuntu:latest"
+        docker: basic_docker
         disks: "local-disk 500 HDD"
     }
 }

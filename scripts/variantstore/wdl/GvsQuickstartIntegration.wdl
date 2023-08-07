@@ -19,6 +19,7 @@ workflow GvsQuickstartIntegration {
         String? exome_vcf_files_column_name
         String? exome_vcf_index_files_column_name
         String? exome_sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
+        String basic_docker = "ubuntu:22.04"
         String cloud_sdk_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
         String variants_docker = "us.gcr.io/broad-dsde-methods/variantstore:2023-08-03-alpine-d9f94010b"
     }
@@ -62,6 +63,7 @@ workflow GvsQuickstartIntegration {
                 vcf_index_files_column_name = wgs_vcf_index_files_column_name,
                 sample_set_name = select_first([wgs_sample_set_name, "wgs_integration_sample_set"]),
                 use_classic_VQSR = false,
+                basic_docker = basic_docker,
                 cloud_sdk_docker = cloud_sdk_docker,
                 variants_docker = variants_docker,
         }
@@ -80,6 +82,7 @@ workflow GvsQuickstartIntegration {
                 vcf_index_files_column_name = wgs_vcf_index_files_column_name,
                 sample_set_name = select_first([wgs_sample_set_name, "wgs_integration_sample_set"]),
                 use_classic_VQSR = true,
+                basic_docker = basic_docker,
                 cloud_sdk_docker = cloud_sdk_docker,
                 variants_docker = variants_docker,
         }

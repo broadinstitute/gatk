@@ -30,6 +30,7 @@ workflow GvsImportGenomes {
     Int? load_data_preemptible_override
     Int? load_data_maxretries_override
     Boolean process_vcf_headers = false
+    String basic_docker
     String cloud_sdk_docker
     String variants_docker
     String gatk_docker
@@ -94,6 +95,7 @@ workflow GvsImportGenomes {
       input_vcf_index_list = CurateInputLists.input_vcf_indexes,
       input_vcf_list = CurateInputLists.input_vcfs,
       sample_name_list = CurateInputLists.sample_name_list,
+      basic_docker = basic_docker,
   }
 
   scatter (i in range(length(CreateFOFNs.vcf_sample_name_fofns))) {
@@ -147,6 +149,7 @@ task CreateFOFNs {
     File input_vcf_index_list
     File input_vcf_list
     File sample_name_list
+    String basic_docker
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
@@ -162,7 +165,7 @@ task CreateFOFNs {
     split -a 5 -l ~{batch_size} ~{sample_name_list} batched_sample_names.
   >>>
   runtime {
-    docker: "ubuntu:latest"
+    docker: basic_docker
     bootDiskSizeGb: 15
     memory: "3 GB"
     disks: "local-disk 10 HDD"

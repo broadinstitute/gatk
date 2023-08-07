@@ -816,6 +816,7 @@ task MergeTsvs {
     input {
         Array[File] input_files
         String output_file_name
+        String basic_docker
     }
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
@@ -831,7 +832,7 @@ task MergeTsvs {
     >>>
 
     runtime {
-      docker: "ubuntu:latest"
+      docker: basic_docker
     }
 
     output {

@@ -14,6 +14,7 @@ workflow GvsQuickstartHailIntegration {
         Boolean extract_do_not_filter_override
         String dataset_suffix = "hail"
         Boolean use_default_dockers = false
+        String basic_docker
         String cloud_sdk_docker
         String variants_docker
         String? gatk_override
@@ -54,8 +55,9 @@ workflow GvsQuickstartHailIntegration {
             filter_set_name = GvsQuickstartVcfIntegration.filter_set_name,
             scatter_width = 10,
             call_set_identifier = branch_name,
-            variants_docker = variants_docker,
+            basic_docker = basic_docker,
             cloud_sdk_docker = cloud_sdk_docker,
+            variants_docker = variants_docker,
     }
 
     call CreateAndTieOutVds {

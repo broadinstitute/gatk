@@ -32,7 +32,8 @@ workflow GvsAssignIds {
       schema_json = sample_info_schema_json,
       max_table_id = 1,
       superpartitioned = "false",
-      partitioned = "false"
+      partitioned = "false",
+      cloud_sdk_docker = cloud_sdk_docker,
   }
 
   call GvsCreateTables.CreateTables as CreateSampleLoadStatusTable {
@@ -43,7 +44,8 @@ workflow GvsAssignIds {
       schema_json = sample_load_status_schema_json,
       max_table_id = 1,
       superpartitioned = "false",
-      partitioned = "false"
+      partitioned = "false",
+      cloud_sdk_docker = cloud_sdk_docker,
   }
   if (process_vcf_headers) {
     call GvsCreateTables.CreateTables as CreateScratchVCFHeaderLinesTable {
@@ -54,7 +56,8 @@ workflow GvsAssignIds {
         schema_json = vcf_header_lines_scratch_schema_json,
         max_table_id = 1,
         superpartitioned = "false",
-        partitioned = "false"
+        partitioned = "false",
+        cloud_sdk_docker = cloud_sdk_docker,
     }
 
     call GvsCreateTables.CreateTables as CreateVCFHeaderLinesTable {
@@ -65,7 +68,8 @@ workflow GvsAssignIds {
         schema_json = vcf_header_lines_schema_json,
         max_table_id = 1,
         superpartitioned = "false",
-        partitioned = "false"
+        partitioned = "false",
+        cloud_sdk_docker = cloud_sdk_docker,
     }
 
     call GvsCreateTables.CreateTables as CreateSampleVCFHeaderTable {
@@ -76,7 +80,8 @@ workflow GvsAssignIds {
         schema_json = sample_vcf_header_schema_json,
         max_table_id = 1,
         superpartitioned = "false",
-        partitioned = "false"
+        partitioned = "false",
+        cloud_sdk_docker = cloud_sdk_docker,
     }
   }
 
@@ -102,7 +107,8 @@ workflow GvsAssignIds {
     input:
       project_id = project_id,
       dataset_name = dataset_name,
-      max_table_id = AssignIds.max_table_id
+      max_table_id = AssignIds.max_table_id,
+      cloud_sdk_docker = cloud_sdk_docker,
   }
 
   output {

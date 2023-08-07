@@ -8,6 +8,7 @@ workflow CreateBQTables {
     Int max_table_id
 
     Int? preemptible_tries
+    String cloud_sdk_docker
   }
 
   String pet_schema_json = '[{"name": "location","type": "INTEGER","mode": "REQUIRED"},{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name": "state","type": "STRING","mode": "REQUIRED"}]'
@@ -22,7 +23,8 @@ workflow CreateBQTables {
       max_table_id = max_table_id,
       schema_json = vet_schema_json,
       superpartitioned = "true",
-      partitioned = "true"
+      partitioned = "true",
+      cloud_sdk_docker = cloud_sdk_docker,
   }
 
   call CreateTables as CreateRefRangesTables {
@@ -33,7 +35,8 @@ workflow CreateBQTables {
       max_table_id = max_table_id,
       schema_json = ref_ranges_schema_json,
       superpartitioned = "true",
-      partitioned = "true"
+      partitioned = "true",
+      cloud_sdk_docker = cloud_sdk_docker,
   }
 
   output {
@@ -53,6 +56,7 @@ task CreateTables {
     String schema_json
     String superpartitioned
     String partitioned
+    String cloud_sdk_docker
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
@@ -103,7 +107,7 @@ task CreateTables {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
+    docker: cloud_sdk_docker
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     cpu: 1

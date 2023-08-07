@@ -20,6 +20,7 @@ workflow GvsBulkIngestGenomes {
         String dataset_name
         String project_id
 
+        String basic_docker
         String cloud_sdk_docker
         String variants_docker
         String gatk_docker
@@ -49,7 +50,10 @@ workflow GvsBulkIngestGenomes {
     }
 
     ## Start off by getting the Workspace ID to query for more information
-    call GetWorkspaceId
+    call GetWorkspaceId {
+        input:
+            basic_docker = basic_docker
+    }
 
     ## Next, use the workspace ID to get the Workspace Name
     call GetWorkspaceName {
@@ -89,6 +93,7 @@ workflow GvsBulkIngestGenomes {
     call SplitBulkImportFofn {
         input:
             import_fofn = GenerateImportFofnFromDataTable.output_fofn,
+            basic_docker = basic_docker,
     }
 
     call AssignIds.GvsAssignIds as AssignIds {
@@ -117,6 +122,7 @@ workflow GvsBulkIngestGenomes {
             load_data_batch_size = load_data_batch_size,
             load_data_maxretries_override = load_data_maxretries_override,
             load_data_preemptible_override = load_data_preemptible_override,
+            basic_docker = basic_docker,
             cloud_sdk_docker = cloud_sdk_docker,
             variants_docker = variants_docker,
             gatk_docker = gatk_docker,
@@ -131,6 +137,9 @@ workflow GvsBulkIngestGenomes {
 
 task GetWorkspaceId {
     ## In order to get the ID and bucket of the workspace, without requiring that the user input it manually, we check the delocalization script
+    input {
+        String basic_docker
+    }
     meta {
         volatile: true # always run this when asked otherwise you can get a previously run workspace
     }
@@ -145,7 +154,7 @@ task GetWorkspaceId {
     >>>
 
     runtime {
-        docker: "ubuntu:latest"
+        docker: basic_docker
     }
 
     output {
@@ -243,6 +252,7 @@ task GetColumnNames {
 task SplitBulkImportFofn {
     input {
         File import_fofn
+        String basic_docker
     }
 
     command <<<
@@ -256,7 +266,7 @@ task SplitBulkImportFofn {
     >>>
 
     runtime {
-        docker: "ubuntu:latest"
+        docker: basic_docker
         memory: "3 GB"
         disks: "local-disk 200 HDD"
         cpu: 1
