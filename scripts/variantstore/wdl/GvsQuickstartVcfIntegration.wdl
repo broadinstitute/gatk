@@ -17,6 +17,7 @@ workflow GvsQuickstartVcfIntegration {
         File interval_list
         Boolean use_default_dockers = false
         String cloud_sdk_docker
+        String cloud_sdk_slim_docker
         File? gatk_override
         String? sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
         String? vcf_files_column_name
@@ -37,6 +38,7 @@ workflow GvsQuickstartVcfIntegration {
       call Utils.BuildGATKJar {
         input:
           branch_name = branch_name,
+          cloud_sdk_slim_docker = cloud_sdk_slim_docker,
       }
     }
 
@@ -45,6 +47,7 @@ workflow GvsQuickstartVcfIntegration {
             branch_name = branch_name,
             dataset_prefix = "quickit",
             dataset_suffix = dataset_suffix,
+            cloud_sdk_docker = cloud_sdk_docker,
     }
 
     call JointVariantCalling.GvsJointVariantCalling as JointVariantCalling {

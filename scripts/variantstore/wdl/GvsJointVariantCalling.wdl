@@ -22,7 +22,7 @@ workflow GvsJointVariantCalling {
         String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
 
         # Docker images in order of increasing size / complexity, with the intent of using the smallest image suitable
-        # for the `task` at hand.
+        # for most jobs.
         String basic_docker = "ubuntu:22.04"
         String cloud_sdk_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
         String variants_docker = "us.gcr.io/broad-dsde-methods/variantstore:2023-08-03-alpine-d9f94010b"

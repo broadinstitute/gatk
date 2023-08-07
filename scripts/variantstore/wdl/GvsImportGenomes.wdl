@@ -49,7 +49,8 @@ workflow GvsImportGenomes {
   if ((num_samples > max_auto_batch_size) && !(defined(load_data_batch_size))) {
     call Utils.TerminateWorkflow as DieDueToTooManySamplesWithoutExplicitLoadDataBatchSize {
       input:
-        message = "Importing " + num_samples + " samples but 'load_data_batch_size' not explicitly specified; limit for auto batch-sizing is " + max_auto_batch_size + " samples."
+        message = "Importing " + num_samples + " samples but 'load_data_batch_size' not explicitly specified; limit for auto batch-sizing is " + max_auto_batch_size + " samples.",
+        cloud_sdk_docker = cloud_sdk_docker,
     }
   }
 

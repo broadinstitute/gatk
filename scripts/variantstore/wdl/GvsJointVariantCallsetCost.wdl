@@ -9,6 +9,7 @@ workflow GvsJointVariantCallsetCost {
         String workspace_namespace
         String workspace_name
         String call_set_identifier
+        String variants_docker
     }
 
     if(false) {
@@ -42,6 +43,7 @@ workflow GvsJointVariantCallsetCost {
             storage_api_cost = storage_api_cost,
             query_cost = query_cost,
             write_API_cost = write_API_cost,
+            variants_docker = variants_docker,
     }
 
     output {
@@ -62,6 +64,7 @@ workflow GvsJointVariantCallsetCost {
             Float storage_api_cost
             Float query_cost
             Float write_API_cost
+            String variants_docker
         }
 
         ## Assign Ids
@@ -99,7 +102,7 @@ workflow GvsJointVariantCallsetCost {
         >>>
 
         runtime {
-            docker: "stedolan/jq:latest"
+            docker: variants_docker
         }
 
         output {

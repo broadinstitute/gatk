@@ -16,6 +16,7 @@ workflow GvsQuickstartHailIntegration {
         Boolean use_default_dockers = false
         String basic_docker
         String cloud_sdk_docker
+        String cloud_sdk_slim_docker
         String variants_docker
         String? gatk_override
         String expected_output_prefix
@@ -44,6 +45,7 @@ workflow GvsQuickstartHailIntegration {
             vcf_index_files_column_name = vcf_index_files_column_name,
             sample_set_name = sample_set_name,
             cloud_sdk_docker = cloud_sdk_docker,
+            cloud_sdk_slim_docker = cloud_sdk_slim_docker,
     }
 
     call ExtractAvroFilesForHail.GvsExtractAvroFilesForHail {
@@ -68,7 +70,7 @@ workflow GvsQuickstartHailIntegration {
             vds_destination_path = GvsExtractAvroFilesForHail.vds_output_path,
             tieout_vcfs = GvsQuickstartVcfIntegration.output_vcfs,
             tieout_vcf_indexes = GvsQuickstartVcfIntegration.output_vcf_indexes,
-            cloud_sdk_docker = cloud_sdk_docker,
+            cloud_sdk_slim_docker = cloud_sdk_slim_docker,
     }
 
     output {
