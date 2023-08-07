@@ -9,6 +9,7 @@ import htsjdk.variant.variantcontext.Allele;
 import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
+import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.SmallBitSet;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Event;
@@ -398,8 +399,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
      *                                simplifying via Smith Waterman yields other events
      */
     private static List<EventGroup> getEventGroupClusters(List<Event> eventsInOrder, List<List<Event>> swForbiddenPairsAndTrios) {
-        final Graph<Event, DefaultEdge> graph = new SimpleGraph<>(DefaultEdge.class);
-        eventsInOrder.forEach(graph::addVertex);
+        final List<List<Event>> allMutexes = new ArrayList<>(swForbiddenPairsAndTrios);
 
         // edges due to overlapping position
         for (int e1 = 0; e1 < eventsInOrder.size(); e1++) {
@@ -407,19 +407,15 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             for (int e2 = e1 + 1; e2 < eventsInOrder.size() && eventsInOrder.get(e2).getStart() <= event1.getEnd() + 1; e2++) {
                 final Event event2 = eventsInOrder.get(e2);
                 if (eventsOverlapForPDHapsCode(event1, event2)) {
-                    graph.addEdge(event1, event2);
+                    allMutexes.add(List.of(event1, event2));
                 }
             }
         }
 
-        // edges due to mutual exclusion
-        for (final List<Event> excludedGroup : swForbiddenPairsAndTrios) {
-            graph.addEdge(excludedGroup.get(0), excludedGroup.get(1));
-            if (excludedGroup.size() == 3) {
-                graph.addEdge(excludedGroup.get(1), excludedGroup.get(2));
-            }
-        }
-
+        // for each mutex, add edges 0-1, 1-2. . . to put all mutex events in one connected component
+        final Graph<Event, DefaultEdge> graph = new SimpleGraph<>(DefaultEdge.class);
+        eventsInOrder.forEach(graph::addVertex);
+        allMutexes.forEach(mutex -> new IndexRange(0, mutex.size() - 1).forEach(n -> graph.addEdge(mutex.get(n), mutex.get(n+1))));
         final List<Set<Event>> components = new ConnectivityInspector<>(graph).connectedSets();
         return components.stream().anyMatch(comp -> comp.size() > MAX_VAR_IN_EVENT_GROUP) ? null :
                 components.stream().map(component -> new EventGroup(component, swForbiddenPairsAndTrios)).toList();
