@@ -380,14 +380,24 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
     }
 
     /**
-     * Partition events into clusters that must be considered together, either because they overlap or because they belong to the
-     * same mutually exclusive pair or trio.  To find this clustering we calculate the connected components of an undirected graph
-     * with an edge connecting events that overlap or are mutually excluded.
+     * Partition events into the largest possible clusters such that events in distinct clusters are mutually compatible
+     * i.e. can exist on the same haplotype.
      *
-     * return null if any event group exceeds the allowed size -- this tells the calling code to fall back on the original
-     * GATK assembly.
+     * Incompatibility comes in two types, the first and more obvious being overlap.  The second is defined by the
+     * heuristic in which we inject two or three events into the reference haplotype and realign the resulting two- or three-event
+     * haplotype against the reference haplotype via Smith-Waterman.  If the resulting reduced representation contains other events
+     * that have already been found the two or three events are mutually forbidden.
+     *
+     * To find the desired partition we calculate the connected components of an undirected graph whose edges correspond to
+     * either type of incompatibility.  That is, overlapping events and Smith-Waterman-forbidden pairs get an edge; Smith-Waterman-forbidden
+     * trios get three edges, one for every two events in the trio.
+     *
+     * @param eventsInOrder all events in a calling region
+     * @param swForbiddenPairsAndTrios list of lists of two or three non-overlapping events that are mutually excluded according
+     *                                to the Smith-Waterman heuristic in which injecting them into the reference haplotype and
+     *                                simplifying via Smith Waterman yields other events
      */
-    private static List<EventGroup> getEventGroupClusters(List<Event> eventsInOrder, List<List<Event>> disallowedPairsAndTrios) {
+    private static List<EventGroup> getEventGroupClusters(List<Event> eventsInOrder, List<List<Event>> swForbiddenPairsAndTrios) {
         final Graph<Event, DefaultEdge> graph = new SimpleGraph<>(DefaultEdge.class);
         eventsInOrder.forEach(graph::addVertex);
 
@@ -403,7 +413,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         }
 
         // edges due to mutual exclusion
-        for (final List<Event> excludedGroup : disallowedPairsAndTrios) {
+        for (final List<Event> excludedGroup : swForbiddenPairsAndTrios) {
             graph.addEdge(excludedGroup.get(0), excludedGroup.get(1));
             if (excludedGroup.size() == 3) {
                 graph.addEdge(excludedGroup.get(1), excludedGroup.get(2));
@@ -412,7 +422,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
         final List<Set<Event>> components = new ConnectivityInspector<>(graph).connectedSets();
         return components.stream().anyMatch(comp -> comp.size() > MAX_VAR_IN_EVENT_GROUP) ? null :
-                components.stream().map(component -> new EventGroup(component, disallowedPairsAndTrios)).toList();
+                components.stream().map(component -> new EventGroup(component, swForbiddenPairsAndTrios)).toList();
     }
 
     /**
