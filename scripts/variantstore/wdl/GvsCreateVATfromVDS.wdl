@@ -23,7 +23,7 @@ workflow GvsCreateVATfromVDS {
 
         String basic_docker = "ubuntu:22.04"
         String cloud_sdk_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
-        String variants_docker = "us.gcr.io/broad-dsde-methods/variantstore:2023-08-03-alpine-d9f94010b"
+        String variants_docker = "us.gcr.io/broad-dsde-methods/variantstore:2023-08-07-alpine-0ca773dc6"
         String gatk_docker = "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_bulk_ingest_staging_2023_08_03"
     }
 

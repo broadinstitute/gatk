@@ -25,7 +25,7 @@ workflow GvsJointVariantCalling {
         # for most jobs.
         String basic_docker = "ubuntu:22.04"
         String cloud_sdk_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
-        String variants_docker = "us.gcr.io/broad-dsde-methods/variantstore:2023-08-03-alpine-d9f94010b"
+        String variants_docker = "us.gcr.io/broad-dsde-methods/variantstore:2023-08-07-alpine-0ca773dc6"
 
         # NOTE: `gatk_override` is not intended for production runs of the GVS pipeline! If defined, `gatk_override`
         # should be at least as recent as `gatk_docker`. Legitimate uses of `gatk_override` include integration test

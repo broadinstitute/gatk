@@ -19,12 +19,13 @@ workflow GvsQuickstartIntegration {
         String? exome_vcf_files_column_name
         String? exome_vcf_index_files_column_name
         String? exome_sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
+
         String basic_docker = "ubuntu:22.04"
-        # GVS generally uses the smallest `alpine` version of the Google Cloud SDK as it suffices for most jobs, but
-        # there are a handlful of tasks that require the largere GNU libc-based `slim`.
         String cloud_sdk_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
+        # GVS generally uses the smallest `alpine` version of the Google Cloud SDK as it suffices for most tasks, but
+        # there are a handlful of tasks that require the larger GNU libc-based `slim`.
         String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-slim"
-        String variants_docker = "us.gcr.io/broad-dsde-methods/variantstore:2023-08-03-alpine-d9f94010b"
+        String variants_docker = "us.gcr.io/broad-dsde-methods/variantstore:2023-08-07-alpine-0ca773dc6"
     }
 
     File full_wgs_interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"

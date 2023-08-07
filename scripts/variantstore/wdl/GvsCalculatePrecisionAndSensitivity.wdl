@@ -17,7 +17,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
 
     File ref_fasta
     String basic_docker = "ubuntu:22.04"
-    String variants_docker = "us.gcr.io/broad-dsde-methods/variantstore:2023-08-03-alpine-d9f94010b"
+    String variants_docker = "us.gcr.io/broad-dsde-methods/variantstore:2023-08-07-alpine-0ca773dc6"
     String gatk_docker = "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_bulk_ingest_staging_2023_08_03"
   }
 
@@ -72,7 +72,8 @@ workflow GvsCalculatePrecisionAndSensitivity {
         input_vcf_index = GatherVcfs.output_vcf_index,
         chromosomes = chromosomes,
         sample_name = sample_name,
-        output_basename = output_sample_basename
+        output_basename = output_sample_basename,
+        gatk_docker = gatk_docker,
     }
 
     call Add_AS_MAX_VQS_SCORE_ToVcf {
@@ -251,7 +252,7 @@ task SelectVariants {
 
     String output_basename
 
-    String gatk_docker = "us.gcr.io/broad-gatk/gatk:4.2.6.1"
+    String gatk_docker
     Int cpu = 1
     Int memory_mb = 7500
     Int disk_size_gb = ceil(2*size(input_vcf, "GiB")) + 50
