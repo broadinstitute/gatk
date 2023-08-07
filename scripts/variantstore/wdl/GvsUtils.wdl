@@ -327,8 +327,8 @@ task CreateDataset {
     bash ~{monitoring_script} > monitoring.log &
 
     # git
-    apt-get -qq update
-    apt-get -qq install git
+    apk update && apk upgrade
+    apk add git
 
     # GATK
     git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{branch_name} --single-branch
