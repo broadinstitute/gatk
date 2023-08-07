@@ -7,6 +7,7 @@ workflow GvsValidateVat {
         String project_id
         String dataset_name
         String vat_table_name
+        String cloud_sdk_docker
     }
 
     String fq_vat_table = "~{project_id}.~{dataset_name}.~{vat_table_name}"
@@ -21,105 +22,120 @@ workflow GvsValidateVat {
         input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
+            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            cloud_sdk_docker = cloud_sdk_docker,
     }
 
     call SpotCheckForExpectedTranscripts {
         input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
+            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            cloud_sdk_docker = cloud_sdk_docker,
     }
 
     call SchemaOnlyOneRowPerNullTranscript {
         input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
+            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            cloud_sdk_docker = cloud_sdk_docker,
     }
 
     call SchemaNullTranscriptsExist {
         input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
+            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            cloud_sdk_docker = cloud_sdk_docker,
     }
 
     call SchemaNoNullRequiredFields {
         input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
+            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            cloud_sdk_docker = cloud_sdk_docker,
     }
 
     call SchemaPrimaryKey {
         input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
+            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            cloud_sdk_docker = cloud_sdk_docker,
     }
 
     call SchemaEnsemblTranscripts {
         input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
+            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            cloud_sdk_docker = cloud_sdk_docker,
     }
 
     call SchemaNonzeroAcAn {
         input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
+            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            cloud_sdk_docker = cloud_sdk_docker,
     }
 
     call SubpopulationMax {
         input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
+            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            cloud_sdk_docker = cloud_sdk_docker,
     }
 
     call SubpopulationAlleleCount {
         input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
+            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            cloud_sdk_docker = cloud_sdk_docker,
     }
 
     call SubpopulationAlleleNumber {
         input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
+            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            cloud_sdk_docker = cloud_sdk_docker,
     }
 
     call DuplicateAnnotations {
         input:
             query_project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
+            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            cloud_sdk_docker = cloud_sdk_docker,
     }
 
     call ClinvarSignificance {
         input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
+            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            cloud_sdk_docker = cloud_sdk_docker,
     }
 
     call SchemaAAChangeAndExonNumberConsistent {
         input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
+            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+            cloud_sdk_docker = cloud_sdk_docker,
     }
 
     call SpotCheckForAAChangeAndExonNumberConsistency {
          input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
-            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp
+            last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
+             cloud_sdk_docker = cloud_sdk_docker,
     }
 
     call GenerateFinalReport {
@@ -171,7 +187,8 @@ workflow GvsValidateVat {
                                  DuplicateAnnotations.result,
                                  SchemaAAChangeAndExonNumberConsistent.result,
                                  SpotCheckForAAChangeAndExonNumberConsistency.result
-                                 ]
+                                 ],
+        cloud_sdk_docker = cloud_sdk_docker,
     }
 
     output {
@@ -184,6 +201,7 @@ task EnsureVatTableHasVariants {
         String project_id
         String fq_vat_table
         String last_modified_timestamp
+        String cloud_sdk_docker
     }
 
     String pf_file = "pf.txt"
@@ -218,7 +236,7 @@ task EnsureVatTableHasVariants {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
+        docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -237,6 +255,7 @@ task SpotCheckForExpectedTranscripts {
         String project_id
         String fq_vat_table
         String last_modified_timestamp
+        String cloud_sdk_docker
     }
 
     String pf_file = "pf.txt"
@@ -283,7 +302,7 @@ task SpotCheckForExpectedTranscripts {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
+        docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -302,6 +321,7 @@ task SchemaNoNullRequiredFields {
         String project_id
         String fq_vat_table
         String last_modified_timestamp
+        String cloud_sdk_docker
     }
     # No non-nullable fields contain null values
 
@@ -361,7 +381,7 @@ task SchemaNoNullRequiredFields {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
+        docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -379,6 +399,7 @@ task SchemaOnlyOneRowPerNullTranscript {
         String project_id
         String fq_vat_table
         String last_modified_timestamp
+        String cloud_sdk_docker
     }
 
     String pf_file = "pf.txt"
@@ -419,7 +440,7 @@ task SchemaOnlyOneRowPerNullTranscript {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
+        docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -437,6 +458,7 @@ task SchemaPrimaryKey {
         String project_id
         String fq_vat_table
         String last_modified_timestamp
+        String cloud_sdk_docker
     }
     # Each key combination (vid+transcript) is unique--confirms that primary key is enforced.
 
@@ -473,7 +495,7 @@ task SchemaPrimaryKey {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
+        docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -491,6 +513,7 @@ task SchemaEnsemblTranscripts {
         String project_id
         String fq_vat_table
         String last_modified_timestamp
+        String cloud_sdk_docker
     }
     # Every transcript_source is Ensembl or null
 
@@ -528,7 +551,7 @@ task SchemaEnsemblTranscripts {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
+        docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -546,6 +569,7 @@ task SchemaNonzeroAcAn {
         String project_id
         String fq_vat_table
         String last_modified_timestamp
+        String cloud_sdk_docker
     }
     # No row has AC of zero or AN of zero.
 
@@ -586,7 +610,7 @@ task SchemaNonzeroAcAn {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
+        docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -604,6 +628,7 @@ task SchemaNullTranscriptsExist {
         String project_id
         String fq_vat_table
         String last_modified_timestamp
+        String cloud_sdk_docker
     }
 
     String pf_file = "pf.txt"
@@ -638,7 +663,7 @@ task SchemaNullTranscriptsExist {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
+        docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -656,6 +681,7 @@ task SubpopulationMax {
         String project_id
         String fq_vat_table
         String last_modified_timestamp
+        String cloud_sdk_docker
     }
     # gvs_max_af is actually the max
 
@@ -699,7 +725,7 @@ task SubpopulationMax {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
+        docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -717,6 +743,7 @@ task SubpopulationAlleleCount {
         String project_id
         String fq_vat_table
         String last_modified_timestamp
+        String cloud_sdk_docker
     }
     # sum of subpop ACs equal the gvs_all ACs
 
@@ -754,7 +781,7 @@ task SubpopulationAlleleCount {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
+        docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -772,6 +799,7 @@ task SubpopulationAlleleNumber {
         String project_id
         String fq_vat_table
         String last_modified_timestamp
+        String cloud_sdk_docker
     }
     # sum of subpop ACs equal the gvs_all ACs
 
@@ -809,7 +837,7 @@ task SubpopulationAlleleNumber {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
+        docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -827,6 +855,7 @@ task DuplicateAnnotations {
         String query_project_id
         String fq_vat_table
         String last_modified_timestamp
+        String cloud_sdk_docker
     }
     # there are vids with duplicate annotations
     # make sure there aren't matching sites with mis-matched ANs and matching variants with mis-matched ACs
@@ -877,7 +906,7 @@ task DuplicateAnnotations {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
+        docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -896,6 +925,7 @@ task ClinvarSignificance {
         String project_id
         String fq_vat_table
         String last_modified_timestamp
+        String cloud_sdk_docker
     }
     # this has been temporarily turned off so that we can discuss the test with Lee.
     # Not all of these values end up being seen in small sample sets
@@ -962,7 +992,7 @@ task ClinvarSignificance {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
+        docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -980,6 +1010,7 @@ task SchemaAAChangeAndExonNumberConsistent {
         String project_id
         String fq_vat_table
         String last_modified_timestamp
+        String cloud_sdk_docker
     }
     # Check that cases where (aa_change non-null AND exon_number null) OR (aa_change null AND exon_number non-null)
     # are all accounted for.
@@ -1056,7 +1087,7 @@ task SchemaAAChangeAndExonNumberConsistent {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
+        docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -1074,6 +1105,7 @@ task SpotCheckForAAChangeAndExonNumberConsistency {
         String project_id
         String fq_vat_table
         String last_modified_timestamp
+        String cloud_sdk_docker
     }
 
     String pf_file = "pf.txt"
@@ -1168,7 +1200,7 @@ task SpotCheckForAAChangeAndExonNumberConsistency {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
+        docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -1187,6 +1219,7 @@ task GenerateFinalReport {
         Array[Boolean] pf_flags
         Array[String] validation_names
         Array[String] validation_results
+        String cloud_sdk_docker
     }
 
     String report_file = "report.txt"
@@ -1232,7 +1265,7 @@ task GenerateFinalReport {
         File results = report_file
     }
     runtime {
-        docker: "python:3.8-slim-buster"
+        docker: cloud_sdk_docker
         memory: "1 GB"
         disks: "local-disk 10 HDD"
         preemptible: 3
