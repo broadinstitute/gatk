@@ -5,12 +5,10 @@ import com.google.common.collect.*;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.util.Locatable;
-import htsjdk.samtools.util.Tuple;
 import htsjdk.variant.variantcontext.Allele;
 import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
-import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.SmallBitSet;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Event;
@@ -162,7 +160,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                  */
                 for(EventGroup group : eventGroups ) {
                     if (group.causesBranching()) {
-                        List<Set<Event>> branchingSets = group.setsForBranching(allEventsHere, determinedEvents, true);
+                        List<Set<Event>> branchingSets = group.setsForBranching(allEventsHere, determinedEvents);
                         // Combinatorially expand the branches as necessary
                         List<Set<Event>> newBranchesToAdd = new ArrayList<>();
                         for (Set<Event> excludedVars : branchExcludeAlleles) {
@@ -726,10 +724,9 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         /**
          * This method handles the logic involved in getting all of the allowed subsets of alleles for this event group.
          *
-         * @param disallowSubsets
          * @return
          */
-        public List<Set<Event>> setsForBranching(final List<Event> locusEvents, final Set<Event> determinedEvents, final boolean disallowSubsets) {
+        public List<Set<Event>> setsForBranching(final List<Event> locusEvents, final Set<Event> determinedEvents) {
             final SmallBitSet locusOverlapSet = overlapSet(locusEvents);
             final SmallBitSet determinedOverlapSet = overlapSet(determinedEvents);
 
@@ -744,7 +741,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             for (final SmallBitSet subset = SmallBitSet.fullSet(eventsInOrder.size()); !subset.isEmpty(); subset.decrement()) {
                 if (allowedEvents.get(subset.index()) && subset.intersection(locusOverlapSet).equals(determinedOverlapSet)) {
                     // Only check for subsets if we need to
-                    if (!disallowSubsets || allowedAndDetermined.stream().noneMatch(group -> group.contains(subset))) {
+                    if (allowedAndDetermined.stream().noneMatch(group -> group.contains(subset))) {
                         allowedAndDetermined.add(subset.copy());    // copy subset since the decrement() mutates it in-place
                     }
                 }
