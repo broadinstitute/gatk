@@ -161,7 +161,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                  */
                 for(EventGroup group : eventGroups ) {
                     if (group.causesBranching()) {
-                        List<Set<Event>> branchingSets = group.setsForBranching(allEventsHere, determinedEvents);
+                        List<Set<Event>> branchingSets = group.setsForBranching(determinedEvents);
                         // Combinatorially expand the branches as necessary
                         List<Set<Event>> newBranchesToAdd = new ArrayList<>();
                         for (Set<Event> excludedVars : branchExcludeAlleles) {
@@ -719,16 +719,17 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         }
 
         /**
+         * For a given set of determined events, partition the event group into the largest possible subsets (i.e. smallest
+         * number of subsets in the partition)
          * This method handles the logic involved in getting all of the allowed subsets of alleles for this event group.
          *
          * @return
          */
-        public List<Set<Event>> setsForBranching(final List<Event> locusEvents, final Set<Event> determinedEvents) {
-            final SmallBitSet locusOverlapSet = overlapSet(locusEvents);
-            final SmallBitSet determinedOverlapSet = overlapSet(determinedEvents);
+        public List<Set<Event>> setsForBranching(final Set<Event> determinedEvents) {
+            final SmallBitSet determinedSubset = overlapSet(determinedEvents);
 
             // Special case (if we are determining bases outside of this mutex cluster we can reuse the work from previous iterations)
-            if (locusOverlapSet.isEmpty() && cachedEventSets != null) {
+            if (determinedSubset.isEmpty() && cachedEventSets != null) {
                 return cachedEventSets;
             }
 
@@ -736,7 +737,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             // Iterate from the full set (containing every event) to the empty set (no events), which lets us output the largest possible subsets
             // NOTE: we skip over 0 here since that corresponds to ref-only events, handle those externally to this code
             for (final SmallBitSet subset = SmallBitSet.fullSet(eventsInOrder.size()); !subset.isEmpty(); subset.decrement()) {
-                if (allowedSubsets.get(subset.index()) && subset.intersection(locusOverlapSet).equals(determinedOverlapSet)) {
+                if (allowedSubsets.get(subset.index()) && subset.contains(determinedSubset)) {
                     // Only check for subsets if we need to
                     if (allowedAndDetermined.stream().noneMatch(group -> group.contains(subset))) {
                         allowedAndDetermined.add(subset.copy());    // copy subset since the decrement() mutates it in-place
@@ -756,7 +757,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                 output.add(newGrp);
             }
             // Cache the result
-            if(locusOverlapSet.isEmpty()) {
+            if(determinedSubset.isEmpty()) {
                 cachedEventSets = Collections.unmodifiableList(output);
             }
             return output;
