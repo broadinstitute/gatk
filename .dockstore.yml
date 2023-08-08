@@ -130,7 +130,6 @@ workflows:
      filters:
        branches:
          - ah_var_store
-         - gg_VS-1001_UpdateDockersForGoogleStorageLibraryUpdate
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
@@ -191,8 +190,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_vs_982
-         - rsa_jar_fix_230722
    - name: GvsJointVariantCallsetCost
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCallsetCost.wdl
@@ -207,6 +204,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_vs_189
    - name: GvsQuickstartVcfIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartVcfIntegration.wdl
@@ -228,8 +226,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1001_bigquery_storage_to_v1
-         - rc-vs-855-pin-hail
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
