@@ -95,7 +95,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         final List<Event> eventsInOrder = makeFinalListOfEventsInOrder(sourceSet, badPileupEvents, goodPileupEvents, referenceHaplotype, pileupArgs, debug);
 
         // TODO this is where we filter out if indels > 32 (a heuristic known from DRAGEN that is not implemented here)
-        SortedMap<Integer, List<Event>> variantsByStartPos = eventsInOrder.stream()
+        SortedMap<Integer, List<Event>> eventsByStartPos = eventsInOrder.stream()
                 .collect(Collectors.groupingBy(Event::getStart, TreeMap::new, Collectors.toList()));
 
         List<List<Event>> disallowedCombinations = smithWatermanRealignPairsOfVariantsForEquivalentEvents(referenceHaplotype, aligner, args.getHaplotypeToReferenceSWParameters(), debug, eventsInOrder);
@@ -109,12 +109,6 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         }
         Utils.printIf(debug,() -> "Event groups after merging:\n"+eventGroups.stream().map(eg -> eg.toDisplayString(referenceHaplotype.getStart())).collect(Collectors.joining("\n")));
 
-        Set<Haplotype> outputHaplotypes = new LinkedHashSet<>();
-        if (pileupArgs.determinePDHaps) {
-            // only add the reference haplotype if we are producing regular haplotype objects (not PD haplotypes for the haplotype alleles)
-            outputHaplotypes.add(referenceHaplotype);
-        }
-
         /*
           There are several nested loops here:
 
@@ -124,8 +118,9 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
           Layer 3a: iterate over all event groups, computing partitions of each event group induced by this determined allele
           Layer 3b: make partially determined haplotypes based on these event group partitions
          */
-        for (final int determinedLocus : variantsByStartPos.keySet()) {   // it's a SortedMap -- iterating over its keyset is okay!
-            final List<Event> allEventsHere = variantsByStartPos.get(determinedLocus);
+        Set<Haplotype> outputHaplotypes = pileupArgs.determinePDHaps ? Sets.newHashSet(referenceHaplotype) : Sets.newHashSet();
+        for (final int determinedLocus : eventsByStartPos.keySet()) {   // it's a SortedMap -- iterating over its keyset is okay!
+            final List<Event> allEventsHere = eventsByStartPos.get(determinedLocus);
             Utils.printIf(debug, () -> "working with variants: " + allEventsHere + " at position " + determinedLocus);
 
             if (!Range.closed(callingSpan.getStart(), callingSpan.getEnd()).contains(determinedLocus)) {
@@ -173,53 +168,54 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
                 branchExcludeAllelesMessage(referenceHaplotype, debug, eventsInOrder, branchExcludeAlleles);
 
-
                 /*
                   Now handle each branch independently of the others. (the logic is the same in every case except we must ensure that none of the excluded alleles get included when constructing haps.
                  */
                 for (Set<Event> excludeEvents : branchExcludeAlleles) {
-
-                    List<Haplotype> branchHaps = new ArrayList<>();
-
                     if (!pileupArgs.determinePDHaps) {
                         // the partially determined haplotype contains the determined allele and anything not excluded at other loci
-                        final List<Event> eventsInPDHap = Stream.concat(determinedEvents.stream(), variantsByStartPos.entrySet().stream()
+                        final List<Event> eventsInPDHap = Stream.concat(determinedEvents.stream(), eventsByStartPos.entrySet().stream()
                                 .filter(locusAndEvents -> locusAndEvents.getKey() != determinedLocus)
                                 .flatMap(locusAndEvents -> locusAndEvents.getValue().stream().filter(event -> !excludeEvents.contains(event))))
                                 .sorted(HAPLOTYPE_SNP_FIRST_COMPARATOR).toList();
 
-                        PartiallyDeterminedHaplotype newPDHaplotypeFromEvents = createNewPDHaplotypeFromEvents(referenceHaplotype, determinedEventToTest, determinedAlleleIsRef, eventsInPDHap);
-                        newPDHaplotypeFromEvents.setAllDeterminedEventsAtThisSite(allEventsHere); // accounting for determined variants for later in case we are in optimization mode
-                        branchHaps.add(newPDHaplotypeFromEvents);
+                        PartiallyDeterminedHaplotype newPDHaplotype = createNewPDHaplotypeFromEvents(referenceHaplotype, determinedEventToTest, determinedAlleleIsRef, eventsInPDHap);
+                        newPDHaplotype.setAllDeterminedEventsAtThisSite(allEventsHere); // accounting for determined variants for later in case we are in optimization mode
+                        branchHaplotypesDebugMessage(referenceHaplotype, debug, excludeEvents, List.of(newPDHaplotype));
+                        outputHaplotypes.add(newPDHaplotype);
                     } else {
                         // TODO currently this approach doesn't properly handle a bunch of duplicate events...
-                        // If we are producing determined bases, then we want to enforce that every new event at least has THIS event as a variant.
-                        List<List<Event>> growingEventGroups = new ArrayList<>();
-                        growingEventGroups.add(new ArrayList<>());
-                        for (final int otherEventGroupStart : variantsByStartPos.keySet()) {
-                            // Iterate through the growing combinatorial expansion of haps, split it into either having or not having the variant.
-                            if (growingEventGroups.size() > MAX_BRANCH_PD_HAPS) {
-                                Utils.printIf(debug, () -> "Too many branch haplotypes ["+growingEventGroups.size()+"] generated from site, falling back on assembly variants!");
-                                return sourceSet;
-                            } else if (otherEventGroupStart == determinedLocus) {
-                                growingEventGroups.forEach(group -> group.add(determinedEventToTest));
-                            } else if (determinedLocus < otherEventGroupStart) {
-                                variantsByStartPos.get(otherEventGroupStart).stream()
-                                        .filter(event -> !excludeEvents.contains(event))
-                                        .flatMap(event -> growingEventGroups.stream().map(group -> growEventGroup(group, event)))
-                                        .forEach(growingEventGroups::add);
-                            }
+                        // iteratively grow the list of haplotypes: Start with a single "seed" haplotype containing the determined event(s).
+                        // At each locus downstream of that, every haplotype can grow by each non-excluded event, or remain unchanged.  For example,
+                        // if we have haplotypes H1 and H2 so far and reach a locus with non-excluded events A and B our list of haplotypes grows to
+                        // H1/ref, H2/ref, H1/A, H1/B, H2/A, H2/B.
+                        final double totalHaplotypeCount = eventsByStartPos.entrySet().stream()
+                                .filter(locusAndEvents -> determinedLocus < locusAndEvents.getKey())
+                                .mapToDouble(locusAndEvents -> locusAndEvents.getValue().stream().filter(event -> !excludeEvents.contains(event)).count() + 1)
+                                .reduce(1, (a,b) -> a*b);
+
+                        if (totalHaplotypeCount > MAX_BRANCH_PD_HAPS) {
+                            Utils.printIf(debug, () -> "Too many branch haplotypes ["+Math.round(totalHaplotypeCount)+"] generated from site, falling back on assembly variants!");
+                            return sourceSet;
                         }
 
-                        for (List<Event> subset : growingEventGroups) {
-                            subset.sort(HAPLOTYPE_SNP_FIRST_COMPARATOR);
-                            Utils.printIf(debug, () -> "Constructing Hap From Events:"+ formatEventsLikeDragenLogs(subset,  referenceHaplotype.getStart()));
-                            branchHaps.add(constructHaplotypeFromEvents(referenceHaplotype, subset, true));
-                        }
+                        List<List<Event>> haplotypeEvents = new ArrayList<>();
+                        haplotypeEvents.add(new ArrayList<>(determinedEvents)); // the seed haplotype
+
+                        eventsByStartPos.keySet().stream().filter(locus -> determinedLocus < locus).map(eventsByStartPos::get).forEach(events -> {
+                            final List<List<Event>> children = events.stream().filter(event -> !excludeEvents.contains(event))
+                                    .flatMap(event -> haplotypeEvents.stream().map(group -> growEventList(group, event))).toList();
+                            children.forEach(child -> child.sort(HAPLOTYPE_SNP_FIRST_COMPARATOR));
+                            haplotypeEvents.addAll(children);
+                        });
+
+                        haplotypeEvents.forEach(events -> Utils.printIf(debug, () -> "Constructing Haplotype From Events:"+ formatEventsLikeDragenLogs(events,  referenceHaplotype.getStart())));
+                        final List<Haplotype> branchHaps = haplotypeEvents.stream()
+                                .map(events -> constructHaplotypeFromEvents(referenceHaplotype, events, true)).toList();
+                        branchHaplotypesDebugMessage(referenceHaplotype, debug, excludeEvents, branchHaps);
+                        outputHaplotypes.addAll(branchHaps);
                     }
-                    branchHaplotypesDebugMessage(referenceHaplotype, debug, excludeEvents, branchHaps);
 
-                    outputHaplotypes.addAll(branchHaps);
                     if (outputHaplotypes.size() > MAX_PD_HAPS_TO_GENERATE) {
                         Utils.printIf(debug,() -> "Too many Haps ["+outputHaplotypes.size()+"] generated at this site! Aborting!");
                         return sourceSet;
@@ -754,7 +750,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         public int size() { return eventsInOrder.size(); }
     }
 
-    private static List<Event> growEventGroup(final List<Event> group, final Event event) {
+    private static List<Event> growEventList(final List<Event> group, final Event event) {
         final List<Event> result = new ArrayList<>(group);
         result.add(event);
         return result;
