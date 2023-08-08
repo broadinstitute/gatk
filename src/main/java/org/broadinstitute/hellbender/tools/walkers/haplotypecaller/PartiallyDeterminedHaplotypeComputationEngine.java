@@ -134,10 +134,10 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             }
 
             for (int determinedAlleleIndex = (pileupArgs.determinePDHaps?0:-1); determinedAlleleIndex < allEventsHere.size(); determinedAlleleIndex++) { //note -1 for I here corresponds to the reference allele at this site
-                final boolean isRef = determinedAlleleIndex == -1;
-                final Set<Event> determinedEvents = isRef ? Set.of() : Set.of(allEventsHere.get(determinedAlleleIndex));
-                final Event determinedEventToTest = allEventsHere.get(isRef ? 0 : determinedAlleleIndex);
-                Utils.printIf(debug, () -> "Working with determined allele(s) at site: "+(isRef? "[ref:"+(determinedLocus-referenceHaplotype.getStart())+"]" :
+                final boolean determinedAlleleIsRef = determinedAlleleIndex == -1;
+                final Set<Event> determinedEvents = determinedAlleleIsRef ? Set.of() : Set.of(allEventsHere.get(determinedAlleleIndex));
+                final Event determinedEventToTest = allEventsHere.get(determinedAlleleIsRef ? 0 : determinedAlleleIndex);
+                Utils.printIf(debug, () -> "Working with determined allele(s) at site: "+(determinedAlleleIsRef? "[ref:"+(determinedLocus-referenceHaplotype.getStart())+"]" :
                         determinedEvents.stream().map(PartiallyDeterminedHaplotype.getDRAGENDebugEventString(referenceHaplotype.getStart())).collect(Collectors.joining(", "))));
 
                 List<Set<Event>> branchExcludeAlleles = new ArrayList<>();
@@ -181,7 +181,6 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
                     List<Haplotype> branchHaps = new ArrayList<>();
 
-                    // Handle the simple case of making PD haplotypes
                     if (!pileupArgs.determinePDHaps) {
                         // the partially determined haplotype contains the determined allele and anything not excluded at other loci
                         final List<Event> eventsInPDHap = Stream.concat(determinedEvents.stream(), variantsByStartPos.entrySet().stream()
@@ -189,7 +188,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                                 .flatMap(locusAndEvents -> locusAndEvents.getValue().stream().filter(event -> !excludeEvents.contains(event))))
                                 .sorted(HAPLOTYPE_SNP_FIRST_COMPARATOR).toList();
 
-                        PartiallyDeterminedHaplotype newPDHaplotypeFromEvents = createNewPDHaplotypeFromEvents(referenceHaplotype, determinedEventToTest, isRef, eventsInPDHap);
+                        PartiallyDeterminedHaplotype newPDHaplotypeFromEvents = createNewPDHaplotypeFromEvents(referenceHaplotype, determinedEventToTest, determinedAlleleIsRef, eventsInPDHap);
                         newPDHaplotypeFromEvents.setAllDeterminedEventsAtThisSite(allEventsHere); // accounting for determined variants for later in case we are in optimization mode
                         branchHaps.add(newPDHaplotypeFromEvents);
                     } else {
