@@ -7,10 +7,11 @@ workflow GvsValidateVat {
         String project_id
         String dataset_name
         String vat_table_name
-        String cloud_sdk_docker
     }
 
     String fq_vat_table = "~{project_id}.~{dataset_name}.~{vat_table_name}"
+
+    call Utils.GetToolVersions
 
     call Utils.GetBQTableLastModifiedDatetime {
         input:
@@ -23,7 +24,7 @@ workflow GvsValidateVat {
             project_id = project_id,
             fq_vat_table = fq_vat_table,
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
-            cloud_sdk_docker = cloud_sdk_docker,
+            cloud_sdk_docker = GetToolVersions.cloud_sdk_docker,
     }
 
     call SpotCheckForExpectedTranscripts {
@@ -31,7 +32,7 @@ workflow GvsValidateVat {
             project_id = project_id,
             fq_vat_table = fq_vat_table,
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
-            cloud_sdk_docker = cloud_sdk_docker,
+            cloud_sdk_docker = GetToolVersions.cloud_sdk_docker,
     }
 
     call SchemaOnlyOneRowPerNullTranscript {
@@ -39,7 +40,7 @@ workflow GvsValidateVat {
             project_id = project_id,
             fq_vat_table = fq_vat_table,
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
-            cloud_sdk_docker = cloud_sdk_docker,
+            cloud_sdk_docker = GetToolVersions.cloud_sdk_docker,
     }
 
     call SchemaNullTranscriptsExist {
@@ -47,7 +48,7 @@ workflow GvsValidateVat {
             project_id = project_id,
             fq_vat_table = fq_vat_table,
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
-            cloud_sdk_docker = cloud_sdk_docker,
+            cloud_sdk_docker = GetToolVersions.cloud_sdk_docker,
     }
 
     call SchemaNoNullRequiredFields {
@@ -55,7 +56,7 @@ workflow GvsValidateVat {
             project_id = project_id,
             fq_vat_table = fq_vat_table,
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
-            cloud_sdk_docker = cloud_sdk_docker,
+            cloud_sdk_docker = GetToolVersions.cloud_sdk_docker,
     }
 
     call SchemaPrimaryKey {
@@ -63,7 +64,7 @@ workflow GvsValidateVat {
             project_id = project_id,
             fq_vat_table = fq_vat_table,
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
-            cloud_sdk_docker = cloud_sdk_docker,
+            cloud_sdk_docker = GetToolVersions.cloud_sdk_docker,
     }
 
     call SchemaEnsemblTranscripts {
@@ -71,7 +72,7 @@ workflow GvsValidateVat {
             project_id = project_id,
             fq_vat_table = fq_vat_table,
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
-            cloud_sdk_docker = cloud_sdk_docker,
+            cloud_sdk_docker = GetToolVersions.cloud_sdk_docker,
     }
 
     call SchemaNonzeroAcAn {
@@ -79,7 +80,7 @@ workflow GvsValidateVat {
             project_id = project_id,
             fq_vat_table = fq_vat_table,
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
-            cloud_sdk_docker = cloud_sdk_docker,
+            cloud_sdk_docker = GetToolVersions.cloud_sdk_docker,
     }
 
     call SubpopulationMax {
@@ -87,7 +88,7 @@ workflow GvsValidateVat {
             project_id = project_id,
             fq_vat_table = fq_vat_table,
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
-            cloud_sdk_docker = cloud_sdk_docker,
+            cloud_sdk_docker = GetToolVersions.cloud_sdk_docker,
     }
 
     call SubpopulationAlleleCount {
@@ -95,7 +96,7 @@ workflow GvsValidateVat {
             project_id = project_id,
             fq_vat_table = fq_vat_table,
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
-            cloud_sdk_docker = cloud_sdk_docker,
+            cloud_sdk_docker = GetToolVersions.cloud_sdk_docker,
     }
 
     call SubpopulationAlleleNumber {
@@ -103,7 +104,7 @@ workflow GvsValidateVat {
             project_id = project_id,
             fq_vat_table = fq_vat_table,
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
-            cloud_sdk_docker = cloud_sdk_docker,
+            cloud_sdk_docker = GetToolVersions.cloud_sdk_docker,
     }
 
     call DuplicateAnnotations {
@@ -111,7 +112,7 @@ workflow GvsValidateVat {
             query_project_id = project_id,
             fq_vat_table = fq_vat_table,
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
-            cloud_sdk_docker = cloud_sdk_docker,
+            cloud_sdk_docker = GetToolVersions.cloud_sdk_docker,
     }
 
     call ClinvarSignificance {
@@ -119,7 +120,7 @@ workflow GvsValidateVat {
             project_id = project_id,
             fq_vat_table = fq_vat_table,
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
-            cloud_sdk_docker = cloud_sdk_docker,
+            cloud_sdk_docker = GetToolVersions.cloud_sdk_docker,
     }
 
     call SchemaAAChangeAndExonNumberConsistent {
@@ -127,7 +128,7 @@ workflow GvsValidateVat {
             project_id = project_id,
             fq_vat_table = fq_vat_table,
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
-            cloud_sdk_docker = cloud_sdk_docker,
+            cloud_sdk_docker = GetToolVersions.cloud_sdk_docker,
     }
 
     call SpotCheckForAAChangeAndExonNumberConsistency {
@@ -135,7 +136,7 @@ workflow GvsValidateVat {
             project_id = project_id,
             fq_vat_table = fq_vat_table,
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
-             cloud_sdk_docker = cloud_sdk_docker,
+             cloud_sdk_docker = GetToolVersions.cloud_sdk_docker,
     }
 
     call GenerateFinalReport {
@@ -188,7 +189,7 @@ workflow GvsValidateVat {
                                  SchemaAAChangeAndExonNumberConsistent.result,
                                  SpotCheckForAAChangeAndExonNumberConsistency.result
                                  ],
-        cloud_sdk_docker = cloud_sdk_docker,
+            cloud_sdk_docker = GetToolVersions.cloud_sdk_docker,
     }
 
     output {
