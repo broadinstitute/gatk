@@ -101,8 +101,8 @@ public class SomaticClusteringModel {
         // get all alt allele indexes for symbolic alleles
         List<Integer> symIndexes = new IndexRange(0, vc.getNAlleles()-1).filter(n -> vc.getAlternateAllele(n).isSymbolic());
 
-        // set tumorAD to 0 for symbolic alleles so it won't contribute to overall AD
-        symIndexes.forEach(i -> tumorADs[i] = 0);
+        // set tumorAD to 0 for symbolic alleles so it won't contribute to overall AD, ADs include reference allele so add one to the index
+        symIndexes.forEach(i -> tumorADs[i+1] = 0);
         final int totalAD = (int) MathUtils.sum(tumorADs);
 
         // split into separate alt alleles for clustering
