@@ -4,7 +4,7 @@
 | :----: | :---: | :----: | :--------------: |
 | [GvsJointVariantCalling](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/wdl/GvsJointVariantCalling.wdl) | June, 2022 | [Kaylee Mathews](mailto:kmathews@broadinstitute.org) and [Aurora Cremer](mailto:aurora@broadinstitute.org) | If you have questions or feedback, contact the [Broad Variants team](mailto:variants@broadinstitute.org) |
  
-![Diagram depicting the Genomic Variant Store workflow. Sample GVCF files are imported into the core data model. A filtering model is trained using Variant Quality Score Recalibration, or VQSR, and then used to extract cohorts and produce sharded joint VCF files. Each step integrates BigQuery and GATK tools.](./genomic-variant-store_diagram.png)
+![Diagram depicting the Genomic Variant Store workflow. Sample GVCF files are imported into the core data model. A filtering model is trained using Variant Extract-Train-Score, or VETS, and then used to extract cohorts and produce sharded joint VCF files. Each step integrates BigQuery and GATK tools.](./genomic-variant-store_diagram.png)
 
 ## Introduction to the Genomic Variant Store workflow
 
@@ -12,7 +12,7 @@ The [Genomic Variant Store (GVS)](../gvs-product-sheet.pdf) was developed by the
 
 The [GVS workflow](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/wdl/GvsJointVariantCalling.wdl) is an open-source, cloud-optimized workflow for joint calling at a large scale using the Terra platform. The workflow takes in single sample GVCF files, loads them into [BigQuery](https://cloud.google.com/bigquery/docs) tables, and combines them into a variant filtering model driven by machine learning. The model is uploaded back into BigQuery and applied to the data. The workflow produces sharded joint VCF files with indices, a manifest file, and metrics.
 
-The filtering model is based on the [GATK best practices Joint Genotyping workflow](https://github.com/broadinstitute/warp/blob/master/pipelines/broad/dna_seq/germline/joint_genotyping/JointGenotyping.wdl) and is created using [Variant Quality Score Recalibration (VQSR)](https://gatk.broadinstitute.org/hc/en-us/articles/360035531612) technique, which uses machine learning to model the technical profile of variants and flag probable artifacts.
+The filtering approach follows the new best practice to use the GATK Variant Extract-Train-Score (VETS) toolchain with an isolation-forest model to flag probable artifacts.
 
 ---
 
@@ -25,14 +25,14 @@ To get started using the GVS workflow in Terra with example data, follow the ins
 
 The following table provides a quick overview of the GVS workflow features:
 
-| Workflow features | Description | Source                                                                                                                                             | 
-| --- | --- |----------------------------------------------------------------------------------------------------------------------------------------------------|
-| Overall workflow | End-to-end joint calling workflow that imports samples, trains the filtering model, and extracts VCF files | Code available from [GitHub](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/wdl/GvsJointVariantCalling.wdl)         |
-| Filtering model | Powered by machine learning; uses VQSR and sample annotations | [VQSR](https://gatk.broadinstitute.org/hc/en-us/articles/360035531612)                                                                             |
-| Workflow language | WDL 1.0 | [openWDL](https://github.com/openwdl/wdl)                                                                                                          |
-| Genomic reference sequence | GRCh38 (hg38) human genome primary sequence | Genome Reference Consortium [GRCh38](https://www.ncbi.nlm.nih.gov/assembly/GCF_000001405.39)                                                       |
-| Data input file format | File format in which input data is provided | [Reblocked](https://broadinstitute.github.io/warp/blog/Nov21_ReblockedGVCF) [GVCF](https://gatk.broadinstitute.org/hc/en-us/articles/360035531812) |
-| Data output file formats | File formats in which outputs are provided | [VCF](https://gatk.broadinstitute.org/hc/en-us/articles/360035531692) and associated index files; TXT (manifest)                                   |
+| Workflow features          | Description                                                                                                | Source                                                                                                                                     | 
+|----------------------------|------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|
+| Overall workflow           | End-to-end joint calling workflow that imports samples, trains the filtering model, and extracts VCF files | Code available from [GitHub](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/wdl/GvsJointVariantCalling.wdl) |
+| Filtering model            | Isolation-forest machine learning model; uses GATK VETS toolchain and sample annotations                   | [VETS](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/docs/release_notes/VETS_Release.pdf)                  |
+| Workflow language          | WDL 1.0                                                                                                    | [openWDL](https://github.com/openwdl/wdl)                                                                                                  |
+| Genomic reference sequence | GRCh38 (hg38) human genome primary sequence                                                                | Genome Reference Consortium [GRCh38](https://www.ncbi.nlm.nih.gov/assembly/GCF_000001405.39)                                               |
+| Data input file format     | File format in which input data is provided                                                                | [Reblocked](https://broadinstitute.github.io/warp/blog/tags/reblock/) [GVCF](https://gatk.broadinstitute.org/hc/en-us/articles/360035531812)                                                       |
+| Data output file formats   | File formats in which outputs are provided                                                                 | [VCF](https://gatk.broadinstitute.org/hc/en-us/articles/360035531692) and associated index files; TXT (manifest)                           |
 
 ## Setup
 
@@ -64,11 +64,16 @@ The [GVS beta workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Vari
 
 The table below describes the GVS workflow input variables:
 
-| Input variable name | Description | Type            |
-| --- | --- |-----------------|
-| call_set_identifier | Used to name the filter model, BigQuery extract tables, and final joint VCF shards; should begin with a letter; valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”. | String          |
-| dataset_name | Name of the BigQuery dataset used to hold input samples, filtering model data, and other tables created during the workflow. | String          |
-| project_id | Name of the Google project that contains the BigQuery dataset. | String          |
+| Input variable name    | Description                                                                                                                                                                | Type            |
+|------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------|
+| dataset_name           | Name of the BigQuery dataset used to hold input samples, filtering model data, and other tables created during the workflow.                                               | String          |
+| project_id             | Name of the Google project that contains the BigQuery dataset.                                                                                                             | String          |
+| external_sample_names  | Unique sample IDs used in creation of output VCF file; `sample_id` in the sample data table in Terra.                                                                      | Array of strings |
+| input_vcfs             | Cloud paths to the sample GVCF files.                                                                                                                                      | Array of files  |
+| input_vcf_indexes      | Cloud paths to the sample GVCF index files.                                                                                                                                | Array of files  |
+| call_set_identifier    | Used to name the filter model, BigQuery extract tables, and final joint VCF shards; should begin with a letter; valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”. | String          |
+| extract_output_gcs_dir | Optional; desired cloud path for output files.                                                                                                                             | String          |
+| use_classic_VQSR       | Optional; defaults to true until September 1, 2023.                                                                                                                        | Boolean         |
 
 ## Tasks and tools
 
@@ -88,8 +93,8 @@ This step validates that sample GVCF files contain required annotations and load
 
 GATK tools used: [SplitIntervals](https://gatk.broadinstitute.org/hc/en-us/articles/5358914364699), [GatherVcfsCloud](https://gatk.broadinstitute.org/hc/en-us/articles/5358884598555), [VariantRecalibrator](https://gatk.broadinstitute.org/hc/en-us/articles/5358906115227), [GatherTranches](https://gatk.broadinstitute.org/hc/en-us/articles/5358889613339)
 
-This step splits alternate alleles, calculates annotations to be used for filtering, and creates a filtering model using VQSR and annotations from a random subset of the input samples.
-SNPs are recalibrated using the annotations `AS_FS`, `AS_ReadPosRankSum`, `AS_MQRankSum`, `AS_QD`, and `AS_SOR`. Indels are recalibrated using the annotations `AS_FS`, `AS_ReadPosRankSum`, `AS_MQRankSum`, `AS_QD`, `AS_SOR`, and `AS_MQ`.
+This step splits alternate alleles, calculates annotations to be used for filtering, and creates a filtering model using VETS and annotations from the input samples.
+SNPs are filtered using the annotations `AS_FS`, `AS_ReadPosRankSum`, `AS_MQRankSum`, `AS_QD`, and `AS_SOR`. Indels are recalibrated using the annotations `AS_FS`, `AS_ReadPosRankSum`, `AS_MQRankSum`, `AS_QD`, `AS_SOR`, and `AS_MQ`.
 
 ### 3. Extract VCF files
 

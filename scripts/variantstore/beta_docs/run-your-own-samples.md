@@ -27,18 +27,18 @@ For more information about reblocking, check out [WARP Whole Genome and Exome Pi
 
 Input GVCF files for the GVS workflow must include the annotations described in the table below:
 
-| Annotation | Description | Notes |
-| --- | --- | --- |
-| Ref | Reference allele. | --- |
-| Alt | Alternate allele. | --- |
-| AS_RAW_MQ, RAW_MQandDP, or RAW_MQ | RMS mapping quality (‘AS’: allele-specific). | Required for VQSR |
-| AS_RAW_MQRankSum or Map_QUAL_RANK_SUM_KEY | Z-score from Wilcoxon rank sum test of alternate versus reference read mapping qualities. | Required for VQSR |
-| QUALapprox | Sum of PL[0] values; used to approximate the QUAL score. | Required for VQSR |
-| AS_QUALapprox | Allele-specific sum of PL[0] values; used to approximate the QUAL score. | Required for VQSR |
-| AS_SB_TABLE or STRAND_BIAS_BY_SAMPLE | Allele-specific forward/reverse read counts for strand bias tests. | Required for VQSR |
-| AS_VarDP, VarDP, or DP | Depth over variant genotypes, or read depth  (‘AS’: allele-specific). | Required for VQSR |
-| call_GT | Genotype. | --- |
-| call_GQ | Genotype quality. | --- |
+| Annotation | Description | Notes                           |
+| --- | --- |---------------------------------|
+| Ref | Reference allele. | ---                             |
+| Alt | Alternate allele. | ---                             |
+| AS_RAW_MQ, RAW_MQandDP, or RAW_MQ | RMS mapping quality (‘AS’: allele-specific). | Required for VETS training      |
+| AS_RAW_MQRankSum or Map_QUAL_RANK_SUM_KEY | Z-score from Wilcoxon rank sum test of alternate versus reference read mapping qualities. | Required for VETS training |
+| QUALapprox | Sum of PL[0] values; used to approximate the QUAL score. | Required for VETS training      |
+| AS_QUALapprox | Allele-specific sum of PL[0] values; used to approximate the QUAL score. | Required for VETS training      |
+| AS_SB_TABLE or STRAND_BIAS_BY_SAMPLE | Allele-specific forward/reverse read counts for strand bias tests. | Required for VETS training      |
+| AS_VarDP, VarDP, or DP | Depth over variant genotypes, or read depth  (‘AS’: allele-specific). | Required for VETS training      |
+| call_GT | Genotype. | ---                             |
+| call_GQ | Genotype quality. | ---                             |
 
 ### What does it return as output?
 
@@ -150,7 +150,7 @@ If you don’t plan to create subcohorts of your data, you can delete your BigQu
 ### Additional Resources
 * For questions regarding GATK-related tools and Best Practices, see the [GATK website](https://gatk.broadinstitute.org/hc/en-us).
 * For Terra-specific documentation and support, see the [Terra Support](https://support.terra.bio/hc/en-us).
-* To learn more about Variant Quality Score Recalibration (VQSR), see the [GATK tool index](https://gatk.broadinstitute.org/hc/en-us/articles/5257893583259).
+* To learn more about the GATK Variant Extract-Train-Score (VETS) toolchain, see the [release notes](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/docs/release_notes/VETS_Release.pdf).
 
 ### Contact Information
 * If you have questions or issues while running the GVS workflow in this workspace, contact the [Broad Variants team](mailto:variants@broadinstitute.org).
