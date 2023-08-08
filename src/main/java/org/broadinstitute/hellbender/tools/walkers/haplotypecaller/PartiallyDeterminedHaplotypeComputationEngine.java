@@ -728,7 +728,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         public List<Set<Event>> setsForBranching(final Set<Event> determinedEvents) {
             final SmallBitSet determinedSubset = overlapSet(determinedEvents);
 
-            // Special case (if we are determining bases outside of this mutex cluster we can reuse the work from previous iterations)
+            // We use a cache for the recurring case where the determined events do not belong to this event group
             if (determinedSubset.isEmpty() && cachedEventSets != null) {
                 return cachedEventSets;
             }
@@ -746,16 +746,10 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             }
 
             // Now that we have all the mutex groups, unpack them into lists of variants
-            List<Set<Event>> output = new ArrayList<>();
-            for (SmallBitSet grp : allowedAndDetermined) {
-                Set<Event> newGrp = new HashSet<>();
-                for (int i = 0; i < eventsInOrder.size(); i++) {
-                    if (!grp.get(i)) {
-                        newGrp.add(eventsInOrder.get(i));
-                    }
-                }
-                output.add(newGrp);
-            }
+            List<Set<Event>> output = allowedAndDetermined.stream()
+                    .map(bitset -> IntStream.range(0, eventsInOrder.size()).filter(i -> !bitset.get(i)).mapToObj(eventsInOrder::get).collect(Collectors.toSet()))
+                    .toList();
+
             // Cache the result
             if(determinedSubset.isEmpty()) {
                 cachedEventSets = Collections.unmodifiableList(output);
