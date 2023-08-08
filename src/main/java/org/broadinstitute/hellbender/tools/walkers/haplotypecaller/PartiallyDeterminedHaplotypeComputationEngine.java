@@ -179,8 +179,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                                 .flatMap(locusAndEvents -> locusAndEvents.getValue().stream().filter(event -> !excludeEvents.contains(event))))
                                 .sorted(HAPLOTYPE_SNP_FIRST_COMPARATOR).toList();
 
-                        PartiallyDeterminedHaplotype newPDHaplotype = createNewPDHaplotypeFromEvents(referenceHaplotype, determinedEvents, determinedLocus, eventsInPDHap);
-                        newPDHaplotype.setAllDeterminedEventsAtThisSite(allEventsHere); // accounting for determined variants for later in case we are in optimization mode
+                        PartiallyDeterminedHaplotype newPDHaplotype = createNewPDHaplotypeFromEvents(referenceHaplotype, determinedEvents, determinedLocus, eventsInPDHap, allEventsHere);
                         branchHaplotypesDebugMessage(referenceHaplotype, debug, excludeEvents, List.of(newPDHaplotype));
                         outputHaplotypes.add(newPDHaplotype);
                     } else {
@@ -534,7 +533,8 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
      */
     @VisibleForTesting
     //TODO When we implement JointDetection we will need to allow multiple eventWithVariants to be prsent...
-    static PartiallyDeterminedHaplotype createNewPDHaplotypeFromEvents(final Haplotype refHap, final Set<Event> determinedEvents, final int determinedLocus, final List<Event> constituentEvents) {
+    static PartiallyDeterminedHaplotype createNewPDHaplotypeFromEvents(final Haplotype refHap, final Set<Event> determinedEvents, final int determinedLocus,
+                                                                       final List<Event> constituentEvents, final List<Event> allEventsAtDeterminedLocus) {
         Utils.validate(refHap.isReference() && refHap.getCigar().numCigarElements() == 1, "This is not a valid base haplotype for construction");
         final boolean refIsDetermined = determinedEvents.isEmpty();
         //TODO add a more stringent check that the format of constituentEvents works
@@ -617,14 +617,13 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
         return new PartiallyDeterminedHaplotype(
                 new Haplotype(ArrayUtils.subarray(newHapBases.array(), 0, newHapBases.position()), false, refHap.getGenomeLocation(), runningCigar.make()),
-                refIsDetermined,
                 ArrayUtils.subarray(pdBytes.array(), 0, pdBytes.position()),
                 constituentEvents,
                 determinedEvents,
                 runningCigar.make(),
                 determinedLocus,
+                allEventsAtDeterminedLocus,
                 refHap.getAlignmentStartHapwrtRef());
-
     }
 
     // A helper class for managing mutually exclusive event clusters and the logic around forming valid events vs each other.
