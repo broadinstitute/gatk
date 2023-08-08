@@ -1,16 +1,10 @@
 # Running Exomes on GVS
 
-This document describes the changes necessary to run exome gVCFs through the GVS workflow. The changes needed to run exomes primarily involve using different parameters.
-
-**NOTE:**
-
-- Currently this document is written to be at the developer level (that is for experienced developers). For other docs (specifically, for our beta users) see [https://github.com/broadinstitute/gatk/tree/ah_var_store/scripts/variantstore/beta_docs/]([https://github.com/broadinstitute/gatk/tree/ah_var_store/scripts/variantstore/beta_docs/)
-- For exomes we want to use the latest BGE exome interval list:
-  `gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list`
+This document describes the changes necessary to run exome gVCFs through the GVS workflow. The changes needed to run exomes primarily involve using different parameters. Currently this document is written to be at the developer level (that is for experienced developers). For other docs (specifically, for our beta users) see [https://github.com/broadinstitute/gatk/tree/ah_var_store/scripts/variantstore/beta_docs/]([https://github.com/broadinstitute/gatk/tree/ah_var_store/scripts/variantstore/beta_docs/)
 
 ## Setup
 
-- Create a Terra workspace and a BigQuery dataset with the corresponding permissions for you PROXY group
+- Create a Terra workspace and a BigQuery dataset with the necessary corresponding permissions for your PROXY group.
 - Populate the workspace with the following workflows:
   - [GvsBulkIngestGenomes](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsBulkIngestGenomes) workflow
   - [GvsAssignIds](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsAssignIds) workflow (only if you want to calculate Precision and Sensitivity)
