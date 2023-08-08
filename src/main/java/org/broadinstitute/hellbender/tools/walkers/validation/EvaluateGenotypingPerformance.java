@@ -3,8 +3,10 @@ package org.broadinstitute.hellbender.tools.walkers.validation;
 import htsjdk.samtools.metrics.MetricBase;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.StringUtil;
+import htsjdk.tribble.util.ParsingUtils;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
+import htsjdk.variant.variantcontext.GenotypeType;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFUtils;
@@ -27,6 +29,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -174,6 +177,19 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
     )
     private GATKPath outputAccuracyACFile = null;
 
+    @Argument(
+            doc = "Output file for GP calibration",
+            fullName = "output-gp-calibration",
+            optional = true
+    )
+    private GATKPath outputCalibrationFile = null;
+
+    @Argument(
+            fullName = "n-calibration-bins",
+            optional = true
+    )
+    private int nCalibrationBins = 10;
+
     /**
      * List of strings specifying the annotations from which alt allele frequencies for each sample should be read.  Each string should be the sample name, and corresponding annotation, separated by a colon.
      */
@@ -250,7 +266,10 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
     final Map<String, String> afAnnotationsMap = new HashMap<>();
     final Set<String> afAnnotationSet = new HashSet<>();
     final Map<String, String> sampleMap = new HashMap<>();
+    final List<List<List<GPCalibrationMetrics>>> snpCalibrations = new ArrayList<>();
+    final List<List<List<GPCalibrationMetrics>>> indelCalibrations = new ArrayList<>();
 
+    final List<GenotypeType> genotypeTypes = Arrays.asList(GenotypeType.HOM_REF, GenotypeType.HET, GenotypeType.HOM_VAR);
     @Override
     public void onTraversalStart() {
         if (forceCompareSingleSample && sampleMappings.size() > 0) {
@@ -278,6 +297,7 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
         }
 
         //initialize the pearson correlation aggregators and accuracy metrics for each sample
+
         for (final String sample : samples) {
             final String mappedSample = getMappedSample(sample);
             if ((!afAnnotationsMap.containsKey(sample) && !afAnnotationsMap.containsKey(mappedSample))) {
@@ -313,6 +333,19 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
                 theseACSnpMetrics.add(new ACAccuracyMetrics(i+1, VariantContext.Type.SNP, sample));
                 theseACIndelMetrics.add(new ACAccuracyMetrics(i+1, VariantContext.Type.INDEL, sample));
             }
+
+            final List<List<GPCalibrationMetrics>> theseSnpGPCalibrationMetrics = new ArrayList<>();
+            final List<List<GPCalibrationMetrics>> theseIndelGPCalibrationMetrics = new ArrayList<>();
+            for (int i =0; i < nCalibrationBins; i++) {
+                final List<GPCalibrationMetrics> thisBinSnpCalibrationMetrics = new ArrayList<>();
+                final List<GPCalibrationMetrics> thisBinIndelCalibrationMetrics = new ArrayList<>();
+                for (final GenotypeType genotypeType : genotypeTypes) {
+                    thisBinSnpCalibrationMetrics.add(new GPCalibrationMetrics(sample, (i + 0.5) / (float) nCalibrationBins, VariantContext.Type.SNP, genotypeType));
+                    thisBinIndelCalibrationMetrics.add(new GPCalibrationMetrics(sample, (i + 0.5) / (float) nCalibrationBins, VariantContext.Type.INDEL, genotypeType));
+                }
+                theseSnpGPCalibrationMetrics.add(thisBinSnpCalibrationMetrics);
+                theseIndelGPCalibrationMetrics.add(thisBinIndelCalibrationMetrics);
+            }
             aggregators.add(theseAggregators);
             snpMetrics.add(new AccuracyMetrics(VariantContext.Type.SNP, sample));
             indelMetrics.add(new AccuracyMetrics(VariantContext.Type.INDEL, sample));
@@ -320,6 +353,8 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
             afIndelMetrics.add(theseIndelMetrics);
             acSnpMetrics.add(theseACSnpMetrics);
             acIndelMetrics.add(theseACIndelMetrics);
+            snpCalibrations.add(theseSnpGPCalibrationMetrics);
+            indelCalibrations.add(theseIndelGPCalibrationMetrics);
         }
 
         if (aggregators.size() == 0) {
@@ -402,7 +437,7 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
             final String mappedSample = getMappedSample(sample);
             final String afAnnotation = getAfAnnotation(sample);
             final Double af = afMap.get(afAnnotation);
-            if (af == null && ac == null) {
+            if (outputCalibrationFile == null && af == null && ac == null) {
                 // if we don't have alt allele frac information for this site, skip it
                 continue;
             }
@@ -429,6 +464,21 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
                     final Integer acBin = ac < maxACBin ? ac - 1 : maxACBin -1;
                     acSnpMetrics.get(i).get(acBin).incrementMetrics(concordanceState);
                 }
+
+                // calibration
+                if (evalGenotype.hasExtendedAttribute("GP")) {
+                    final List<String> gpStrings = ParsingUtils.split((String)evalGenotype.getExtendedAttribute("GP"), ',');
+                    if(gpStrings.size()== 3) {
+                        for (int j=0; j<3; j++) {
+                            final double gp = VCFUtils.parseVcfDouble(gpStrings.get(j));
+                            final int gp_bin = gp == 1? nCalibrationBins - 1 : (int) (gp * nCalibrationBins);
+                            final GenotypeType truthGenotypeType = truthGenotype == null? GenotypeType.HOM_REF : truthGenotype.getType();
+                            final GenotypeType thisGenotypeType = genotypeTypes.get(j);
+                            snpCalibrations.get(i).get(gp_bin).get(j).increment(thisGenotypeType == truthGenotypeType);
+                        }
+                    }
+                }
+
             } else if (evalVC.isIndel()) {
                 if (bin != null) {
                     aggregators.get(i).get(bin).indel_pearsonCorrelationAggregator.addEntry(evalDosageFrac, truthDosageFrac);
@@ -441,6 +491,20 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
                 if (ac != null) {
                     final Integer acBin = ac < maxACBin ? ac - 1 : maxACBin -1;
                     acIndelMetrics.get(i).get(acBin).incrementMetrics(concordanceState);
+                }
+
+                // calibration
+                if (evalGenotype.hasExtendedAttribute("GP")) {
+                    final List<String> gpStrings = ParsingUtils.split((String)evalGenotype.getExtendedAttribute("GP"), ',');
+                    if(gpStrings.size()== 3) {
+                        for (int j=0; j<3; j++) {
+                            final double gp = VCFUtils.parseVcfDouble(gpStrings.get(j));
+                            final int gp_bin = gp == 1? nCalibrationBins - 1 : (int) (gp * nCalibrationBins);
+                            final GenotypeType truthGenotypeType = truthGenotype == null? GenotypeType.HOM_REF : truthGenotype.getType();
+                            final GenotypeType thisGenotypeType = genotypeTypes.get(j);
+                            indelCalibrations.get(i).get(gp_bin).get(j).increment(thisGenotypeType == truthGenotypeType);
+                        }
+                    }
                 }
             }
         }
@@ -534,6 +598,25 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
     }
 
     @Override
+    protected boolean genotypesAgree(final Genotype geno1, final Genotype geno2) {
+        if (geno1 != null && geno1.getPloidy() != geno2.getPloidy()) {
+            //situation could arise from haploid vs diploid on X
+            if (!allowDifferingPloidy) {
+                throw new GATKException("sample " + geno1.getSampleName() + " is ploidy " + geno1.getPloidy() + " while truth sample " + geno2.getSampleName() + " is ploidy " + geno2.getPloidy() + "." +
+                        "  This may be due to haploid vs diploid representation on X.  If you would like to allow for this TYPE of data, use the allowDifferingPloidy argument.");
+            }
+
+            //build a set of all alleles in truth and eval genotypes.  If sets are the same, then genotypes "agree", if different, then genotypes "agree".  so 0/0 and 0 agree, 1/1 and 1 agree, but 0/1 and 1 disagree.
+            final Set<Allele> truthAlleles = new HashSet<>(geno1.getAlleles());
+            final Set<Allele> evalAlleles = new HashSet<>(geno2.getAlleles());
+
+            return truthAlleles.equals(evalAlleles);
+        } else {
+            return super.genotypesAgree(geno1, geno2);
+        }
+    }
+
+    @Override
     protected ConcordanceState getConcordanceState(final Genotype truth, final Genotype eval, final boolean evalWasFiltered) {
         if (truth != null && truth.getPloidy() != eval.getPloidy()) {
             //situation could arise from haploid vs diploid on X
@@ -599,6 +682,21 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
                 acAccuracyMetricsWriter.addAllMetrics(metrics);
             }
             acAccuracyMetricsWriter.write(outputAccuracyACFile.toPath().toFile());
+        }
+
+        if (outputCalibrationFile != null) {
+            final MetricsFile<GPCalibrationMetrics, Integer> calibrationMetricsWriter = getMetricsFile();
+            for (final List<List<GPCalibrationMetrics>> metricsList : snpCalibrations) {
+                for (final List<GPCalibrationMetrics> metrics : metricsList) {
+                    calibrationMetricsWriter.addAllMetrics(metrics);
+                }
+            }
+            for (final List<List<GPCalibrationMetrics>> metricsList : indelCalibrations) {
+                for (final List<GPCalibrationMetrics> metrics : metricsList) {
+                    calibrationMetricsWriter.addAllMetrics(metrics);
+                }
+            }
+            calibrationMetricsWriter.write(outputCalibrationFile.toPath().toFile());
         }
         return null;
     }
@@ -692,6 +790,29 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
         }
     }
 
+    public static class GPCalibrationMetrics extends MetricBase {
+        public String SAMPLE;
+        public double GP_BIN_CENTER;
+        public VariantContext.Type TYPE;
+        public GenotypeType GTYPE;
+        public int CORRECT;
+        public int TOTAL;
+
+        GPCalibrationMetrics(final String sample, final double bin_center, final VariantContext.Type type,
+                             final GenotypeType gtype) {
+            this.SAMPLE = sample;
+            this.GP_BIN_CENTER = bin_center;
+            this.TYPE = type;
+            this.GTYPE = gtype;
+        }
+
+        void increment(final boolean isCorrect) {
+            TOTAL++;
+            if (isCorrect) {
+                CORRECT++;
+            }
+        }
+    }
 
     /**
      * A class to store accuracy metrics
