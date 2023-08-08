@@ -184,7 +184,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                     // Handle the simple case of making PD haplotypes
                     if (!pileupArgs.determinePDHaps) {
                         // the partially determined haplotype contains the determined allele and anything not excluded at other loci
-                        final List<Event> eventsInPDHap = Stream.concat(Stream.of(determinedEventToTest), variantsByStartPos.entrySet().stream()
+                        final List<Event> eventsInPDHap = Stream.concat(determinedEvents.stream(), variantsByStartPos.entrySet().stream()
                                 .filter(locusAndEvents -> locusAndEvents.getKey() != determinedLocus)
                                 .flatMap(locusAndEvents -> locusAndEvents.getValue().stream().filter(event -> !excludeEvents.contains(event))))
                                 .sorted(HAPLOTYPE_SNP_FIRST_COMPARATOR).toList();
@@ -561,7 +561,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             final int actualStart = event.getStart() + (event.isIndel() ? 1 : 0);   // the +1 for indels accounts for the initial alt=ref dummy base
             int basesBeforeNextEvent = actualStart - lastPositionAdded;
 
-            // Special case for two SNPs at the same position
+            // Special case for two SNPs at the same position -- merge them into a single undetermined SNP via bitwise OR
             if (basesBeforeNextEvent == -1 && event.isSNP() && lastEventWasSnp) {
                 final byte byteForThisSnp = PartiallyDeterminedHaplotype.getPDBytesForHaplotypes(event.refAllele(), event.altAllele())[0];
                 final int bufferPositionOfLastSnp = pdBytes.position() - 1;
