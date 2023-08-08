@@ -12,7 +12,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
     Array[File] truth_vcf_indices
     Array[File] truth_beds
 
-    File ref_fasta
+    File ref_fasta = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
   }
 
   parameter_meta {
