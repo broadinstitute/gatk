@@ -137,7 +137,8 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                 final boolean isRef = determinedAlleleIndex == -1;
                 final Set<Event> determinedEvents = isRef ? Set.of() : Set.of(allEventsHere.get(determinedAlleleIndex));
                 final Event determinedEventToTest = allEventsHere.get(isRef ? 0 : determinedAlleleIndex);
-                Utils.printIf(debug, () -> "Working with allele at site: "+(isRef? "[ref:"+(determinedLocus-referenceHaplotype.getStart())+"]" : PartiallyDeterminedHaplotype.getDRAGENDebugEventString(referenceHaplotype.getStart()).apply(determinedEventToTest)));
+                Utils.printIf(debug, () -> "Working with determined allele(s) at site: "+(isRef? "[ref:"+(determinedLocus-referenceHaplotype.getStart())+"]" :
+                        determinedEvents.stream().map(PartiallyDeterminedHaplotype.getDRAGENDebugEventString(referenceHaplotype.getStart())).collect(Collectors.joining(", "))));
 
                 List<Set<Event>> branchExcludeAlleles = new ArrayList<>();
                 branchExcludeAlleles.add(new HashSet<>()); // Add the null branch (assuming no exclusions)
