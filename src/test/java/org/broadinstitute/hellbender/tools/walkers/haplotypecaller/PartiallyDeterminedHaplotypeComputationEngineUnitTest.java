@@ -14,6 +14,7 @@ import org.testng.annotations.Test;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.function.BiPredicate;
 
 public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKBaseTest {
@@ -189,7 +190,7 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
         Haplotype ref = new Haplotype("AAAAAAAAAA".getBytes(), true, 500, TextCigarCodec.decode("10M"));
         ref.setGenomeLocation(new SimpleInterval("20", 100, 110));
 
-        PartiallyDeterminedHaplotype result = PartiallyDeterminedHaplotypeComputationEngine.createNewPDHaplotypeFromEvents(ref, targetEvent, useRefBase, events);
+        PartiallyDeterminedHaplotype result = PartiallyDeterminedHaplotypeComputationEngine.createNewPDHaplotypeFromEvents(ref, Set.of(targetEvent), targetEvent.getStart(), events);
         Assert.assertEquals(new String(result.getBases()), expectedBases);
         Assert.assertEquals(result.getAlternateBases(), expectedAltArray);
         Assert.assertEquals(result.getCigar(), TextCigarCodec.decode(expectedCigar));
@@ -207,7 +208,7 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
         Haplotype ref = new Haplotype("AAAAAAAAAA".getBytes(), true, 500, TextCigarCodec.decode("10M"));
         ref.setGenomeLocation(new SimpleInterval("20", 100, 110));
 
-        PartiallyDeterminedHaplotype result = PartiallyDeterminedHaplotypeComputationEngine.createNewPDHaplotypeFromEvents(ref, DEL_AA_105, true, List.of(DEL_AAAAAAA_102, DEL_AA_105));
+        PartiallyDeterminedHaplotype result = PartiallyDeterminedHaplotypeComputationEngine.createNewPDHaplotypeFromEvents(ref, Set.of(DEL_AA_105), DEL_AA_105.getStart(), List.of(DEL_AAAAAAA_102, DEL_AA_105));
         Assert.assertEquals(new String(result.getBases()), "AAAAAAAAAA");
         Assert.assertEquals(result.getAlternateBases(), new byte[]{0,0,0,2,0,0,0,0,4,0});
         Assert.assertEquals(result.getCigar(), TextCigarCodec.decode("10M"));

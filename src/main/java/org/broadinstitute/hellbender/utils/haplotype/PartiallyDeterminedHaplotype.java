@@ -7,10 +7,7 @@ import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -101,20 +98,21 @@ public final class  PartiallyDeterminedHaplotype extends Haplotype {
      * @param isRefAllele                   is the determined allele reference or alt
      * @param pdBytes                       array of bytes indicating what bases are skips for the pdhmm
      * @param constituentEvents             events (both determined and undetermined) covered by this haplotype, should follow the rules for PD variants
-     * @param eventWithVariant              event from @param constituentEvents that is determined for this pd haplotype
+     * @param determinedEvents              event from @param constituentEvents that is determined for this pd haplotype
      * @param cigar                         haplotype cigar agianst the reference
      * @param determinedPosition            position (wrt the reference contig) that the haplotype should be considered determined //TODO this will be refactored to be a range of events in JointDetection
      * @param getAlignmentStartHapwrtRef    alignment startHapwrtRef from baseHaplotype corresponding to the in-memory storage of reference bases (must be set for trimming/clipping ops to work)
      */
     public PartiallyDeterminedHaplotype(final Haplotype base, boolean isRefAllele, byte[] pdBytes, List<Event> constituentEvents,
-                                        final Event eventWithVariant, final Cigar cigar, long determinedPosition, int getAlignmentStartHapwrtRef) {
+                                        final Set<Event> determinedEvents, final Cigar cigar, long determinedPosition, int getAlignmentStartHapwrtRef) {
         super(base.getBases(), false, base.getAlignmentStartHapwrtRef(), cigar);
         Utils.validateArg(base.length() == pdBytes.length, "pdBytes array must have same length as base haplotype.");
         this.setGenomeLocation(base.getGenomeLocation());
         this.alternateBases = pdBytes;
         this.constituentBuiltEvents = constituentEvents;
-        this.alleleBearingEvent = eventWithVariant;
-        this.allDeterminedEventsAtThisSite = Collections.singletonList(eventWithVariant);
+
+        this.alleleBearingEvent = determinedEvents;
+        this.allDeterminedEventsAtThisSite = Collections.singletonList(determinedEvents);
         this.determinedPosition = determinedPosition;
         this.isDeterminedAlleleRef = isRefAllele;
         setAlignmentStartHapwrtRef(getAlignmentStartHapwrtRef);
