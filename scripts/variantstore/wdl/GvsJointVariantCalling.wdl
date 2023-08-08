@@ -22,8 +22,6 @@ workflow GvsJointVariantCalling {
         String? vcf_index_files_column_name
         String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
 
-        # Docker images in order of increasing size / complexity, with the intent of using the smallest image suitable
-        # for most jobs.
         String? basic_docker
         String? cloud_sdk_docker
         String? variants_docker

@@ -11,8 +11,6 @@ task GetToolVersions {
     docker: "ubuntu:22.04"
   }
   output {
-    # Docker images in order of increasing size / complexity, with the intent of using the smallest image suitable
-    # for most jobs.
     String basic_docker = "ubuntu:22.04"
     String cloud_sdk_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
     # GVS generally uses the smallest `alpine` version of the Google Cloud SDK as it suffices for most tasks, but
