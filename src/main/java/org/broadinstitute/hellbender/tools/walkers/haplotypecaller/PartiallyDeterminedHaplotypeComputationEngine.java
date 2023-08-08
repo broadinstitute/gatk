@@ -172,25 +172,24 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                   Now handle each branch independently of the others. (the logic is the same in every case except we must ensure that none of the excluded alleles get included when constructing haps.
                  */
                 for (Set<Event> excludeEvents : branchExcludeAlleles) {
+                    // gather all the events that are allowable as undetermined events given this determined event(s)
+                    final Map<Integer, List<Event>> undeterminedEventsByStart = eventsByStartPos.keySet().stream().filter(locus -> locus != determinedLocus)
+                            .collect(Collectors.toMap(locus -> locus, locus -> eventsByStartPos.get(locus).stream().filter(event -> !excludeEvents.contains(event)).toList()));
+
                     if (!pileupArgs.determinePDHaps) {
                         // the partially determined haplotype contains the determined allele and anything not excluded at other loci
-                        final List<Event> eventsInPDHap = Stream.concat(determinedEvents.stream(), eventsByStartPos.entrySet().stream()
-                                .filter(locusAndEvents -> locusAndEvents.getKey() != determinedLocus)
-                                .flatMap(locusAndEvents -> locusAndEvents.getValue().stream().filter(event -> !excludeEvents.contains(event))))
-                                .sorted(HAPLOTYPE_SNP_FIRST_COMPARATOR).toList();
-
+                        final List<Event> eventsInPDHap = Stream.concat(determinedEvents.stream(), undeterminedEventsByStart.values().stream()
+                                .flatMap(List::stream)).sorted(HAPLOTYPE_SNP_FIRST_COMPARATOR).toList();
                         PartiallyDeterminedHaplotype newPDHaplotype = createNewPDHaplotypeFromEvents(referenceHaplotype, determinedEvents, determinedLocus, eventsInPDHap, allEventsHere);
                         branchHaplotypesDebugMessage(referenceHaplotype, debug, excludeEvents, List.of(newPDHaplotype));
                         outputHaplotypes.add(newPDHaplotype);
                     } else {
                         // TODO currently this approach doesn't properly handle a bunch of duplicate events...
-                        // iteratively grow the list of haplotypes: Start with a single "seed" haplotype containing the determined event(s).
-                        // At each locus downstream of that, every haplotype can grow by each non-excluded event, or remain unchanged.  For example,
-                        // if we have haplotypes H1 and H2 so far and reach a locus with non-excluded events A and B our list of haplotypes grows to
-                        // H1/ref, H2/ref, H1/A, H1/B, H2/A, H2/B.
-                        final double totalHaplotypeCount = eventsByStartPos.entrySet().stream()
-                                .filter(locusAndEvents -> determinedLocus < locusAndEvents.getKey())
-                                .mapToDouble(locusAndEvents -> locusAndEvents.getValue().stream().filter(event -> !excludeEvents.contains(event)).count() + 1)
+                        // Start with a single "seed" haplotype containing the determined event(s). At each downstream locus,
+                        // every haplotype can grow by every event, or remain unchanged.  For example, if we have haplotypes
+                        // H1 and H2 so far and reach a locus with events A and B our list grows to H1/ref, H2/ref, H1/A, H1/B, H2/A, H2/B.
+                        final double totalHaplotypeCount = undeterminedEventsByStart.keySet().stream().filter(locus -> determinedLocus < locus)
+                                .mapToDouble(locus -> undeterminedEventsByStart.get(locus).size() + 1)
                                 .reduce(1, (a,b) -> a*b);
 
                         if (totalHaplotypeCount > MAX_BRANCH_PD_HAPS) {
