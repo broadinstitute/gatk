@@ -223,11 +223,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                 }
             }
         }
-
-        if (outputHaplotypes.size() > MAX_PD_HAPS_TO_GENERATE) {
-            Utils.printIf(debug,() -> "Too many branch haplotypes found, aborting ["+outputHaplotypes.size()+"]");
-            return sourceSet;
-        }
+        
         sourceSet.storeAssemblyHaplotypes();
 
         // TODO this is an entirely unnecessary step that can be done away with but i leave in because it makes debugging against previous versions much easier.
