@@ -19,6 +19,7 @@ workflow GvsQuickstartHailIntegration {
         String? cloud_sdk_docker
         String? cloud_sdk_slim_docker
         String? variants_docker
+        String? gatk_docker
 
         String? gatk_override
         String expected_output_prefix
@@ -30,7 +31,8 @@ workflow GvsQuickstartHailIntegration {
 
     String project_id = "gvs-internal"
 
-    if (!defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(cloud_sdk_slim_docker) || !defined(variants_docker)) {
+    if (!defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(cloud_sdk_slim_docker) ||
+        !defined(variants_docker) || !defined(gatk_docker)) {
         call Utils.GetToolVersions
     }
 
@@ -38,6 +40,7 @@ workflow GvsQuickstartHailIntegration {
     String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
     String effective_cloud_sdk_slim_docker = select_first([cloud_sdk_slim_docker, GetToolVersions.cloud_sdk_slim_docker])
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
+    String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
 
     call QuickstartVcfIntegration.GvsQuickstartVcfIntegration {
         input:
@@ -55,9 +58,11 @@ workflow GvsQuickstartHailIntegration {
             vcf_files_column_name = vcf_files_column_name,
             vcf_index_files_column_name = vcf_index_files_column_name,
             sample_set_name = sample_set_name,
+            basic_docker = effective_basic_docker,
             cloud_sdk_docker = effective_cloud_sdk_docker,
             cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
             variants_docker = effective_variants_docker,
+            gatk_docker = effective_gatk_docker,
     }
 
     call ExtractAvroFilesForHail.GvsExtractAvroFilesForHail {
