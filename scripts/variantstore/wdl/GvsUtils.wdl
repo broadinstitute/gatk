@@ -1,5 +1,29 @@
 version 1.0
 
+task GetToolVersions {
+  meta {
+    # Don't even think about caching this.
+    volatile: true
+  }
+  command <<<
+  >>>
+  runtime {
+    docker: "ubuntu:22.04"
+  }
+  output {
+    # Docker images in order of increasing size / complexity, with the intent of using the smallest image suitable
+    # for most jobs.
+    String basic_docker = "ubuntu:22.04"
+    String cloud_sdk_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
+    # GVS generally uses the smallest `alpine` version of the Google Cloud SDK as it suffices for most tasks, but
+    # there are a handlful of tasks that require the larger GNU libc-based `slim`.
+    String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-slim"
+    String variants_docker = "us.gcr.io/broad-dsde-methods/variantstore:2023-08-07-alpine-0ca773dc6"
+    String gatk_docker = "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_bulk_ingest_staging_2023_08_03"
+    String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
+  }
+}
+
 task MergeVCFs {
   input {
     Array[File] input_vcfs

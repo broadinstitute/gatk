@@ -1,6 +1,7 @@
 version 1.0
 
 import "GvsCreateTables.wdl" as GvsCreateTables
+import "GvsUtils.wdl" as Utils
 
 workflow GvsAssignIds {
 
@@ -14,7 +15,7 @@ workflow GvsAssignIds {
 
     File? assign_ids_gatk_override
     Boolean process_vcf_headers = false
-    String cloud_sdk_docker
+    String? cloud_sdk_docker
   }
 
   String sample_info_table = "sample_info"
@@ -23,6 +24,13 @@ workflow GvsAssignIds {
   String vcf_header_lines_schema_json = '[{"name":"vcf_header_lines_hash","type":"STRING","mode":"REQUIRED"}, {"name":"vcf_header_lines","type":"STRING","mode":"REQUIRED"},{"name":"is_expected_unique","type":"BOOLEAN","mode":"REQUIRED"}]'
   String sample_vcf_header_schema_json = '[{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"}, {"name":"vcf_header_lines_hash","type":"STRING","mode":"REQUIRED"}]'
   String sample_load_status_schema_json = '[{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name":"status","type":"STRING","mode":"REQUIRED"}, {"name":"event_timestamp","type":"TIMESTAMP","mode":"REQUIRED"}]'
+
+  if (!defined(cloud_sdk_docker)) {
+    call Utils.GetToolVersions
+  }
+
+  String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
+
 
   call GvsCreateTables.CreateTables as CreateSampleInfoTable {
   	input:
@@ -33,7 +41,7 @@ workflow GvsAssignIds {
       max_table_id = 1,
       superpartitioned = "false",
       partitioned = "false",
-      cloud_sdk_docker = cloud_sdk_docker,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
   call GvsCreateTables.CreateTables as CreateSampleLoadStatusTable {
@@ -45,7 +53,7 @@ workflow GvsAssignIds {
       max_table_id = 1,
       superpartitioned = "false",
       partitioned = "false",
-      cloud_sdk_docker = cloud_sdk_docker,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
   }
   if (process_vcf_headers) {
     call GvsCreateTables.CreateTables as CreateScratchVCFHeaderLinesTable {
@@ -57,7 +65,7 @@ workflow GvsAssignIds {
         max_table_id = 1,
         superpartitioned = "false",
         partitioned = "false",
-        cloud_sdk_docker = cloud_sdk_docker,
+        cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
     call GvsCreateTables.CreateTables as CreateVCFHeaderLinesTable {
@@ -69,7 +77,7 @@ workflow GvsAssignIds {
         max_table_id = 1,
         superpartitioned = "false",
         partitioned = "false",
-        cloud_sdk_docker = cloud_sdk_docker,
+        cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
     call GvsCreateTables.CreateTables as CreateSampleVCFHeaderTable {
@@ -81,7 +89,7 @@ workflow GvsAssignIds {
         max_table_id = 1,
         superpartitioned = "false",
         partitioned = "false",
-        cloud_sdk_docker = cloud_sdk_docker,
+        cloud_sdk_docker = effective_cloud_sdk_docker,
     }
   }
 
@@ -89,7 +97,7 @@ workflow GvsAssignIds {
     input:
       project_id = project_id,
       dataset_name = dataset_name,
-      cloud_sdk_docker = cloud_sdk_docker,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
   call AssignIds {
@@ -100,7 +108,7 @@ workflow GvsAssignIds {
       sample_info_table = sample_info_table,
       samples_are_controls = samples_are_controls,
       table_creation_done = CreateSampleInfoTable.done,
-      cloud_sdk_docker = cloud_sdk_docker,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
   call GvsCreateTables.CreateBQTables as CreateTablesForMaxId {
@@ -108,7 +116,7 @@ workflow GvsAssignIds {
       project_id = project_id,
       dataset_name = dataset_name,
       max_table_id = AssignIds.max_table_id,
-      cloud_sdk_docker = cloud_sdk_docker,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
   output {

@@ -16,9 +16,6 @@ workflow GvsCalculatePrecisionAndSensitivity {
     Array[File] truth_beds
 
     File ref_fasta
-    String basic_docker = "ubuntu:22.04"
-    String variants_docker = "us.gcr.io/broad-dsde-methods/variantstore:2023-08-07-alpine-0ca773dc6"
-    String gatk_docker = "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_bulk_ingest_staging_2023_08_03"
   }
 
   parameter_meta {
@@ -32,6 +29,8 @@ workflow GvsCalculatePrecisionAndSensitivity {
     ref_fasta: "The cloud path for the reference fasta sequence."
   }
 
+  call Utils.GetToolVersions
+
   if ((length(sample_names) != length(truth_vcfs)) || (length(sample_names) != length(truth_vcf_indices)) || (length(sample_names) != length(truth_beds))) {
     call Utils.TerminateWorkflow {
       input:
@@ -42,7 +41,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
   call CountInputVcfs {
     input:
       input_vcf_fofn = input_vcf_fofn,
-      basic_docker = basic_docker,
+      basic_docker = GetToolVersions.basic_docker,
   }
 
   scatter(i in range(CountInputVcfs.num_vcfs)) {
@@ -51,7 +50,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
         input_vcf_fofn = input_vcf_fofn,
         index = i,
         chromosomes = chromosomes,
-        variants_docker = variants_docker,
+        variants_docker = GetToolVersions.variants_docker,
     }
   }
 
@@ -59,7 +58,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
     input:
       input_vcfs = flatten(IsVcfOnChromosomes.output_vcf),
       output_basename = output_basename,
-      gatk_docker = gatk_docker,
+      gatk_docker = GetToolVersions.gatk_docker,
   }
 
   scatter(i in range(length(sample_names))) {
@@ -73,20 +72,20 @@ workflow GvsCalculatePrecisionAndSensitivity {
         chromosomes = chromosomes,
         sample_name = sample_name,
         output_basename = output_sample_basename,
-        gatk_docker = gatk_docker,
+        gatk_docker = GetToolVersions.gatk_docker,
     }
 
     call Add_AS_MAX_VQS_SCORE_ToVcf {
       input:
         input_vcf = SelectVariants.output_vcf,
         output_basename = output_sample_basename + ".maxas",
-        variants_docker = variants_docker,
+        variants_docker = GetToolVersions.variants_docker,
     }
 
     call IsVQSRLite {
       input:
         input_vcf = Add_AS_MAX_VQS_SCORE_ToVcf.output_vcf,
-        basic_docker = basic_docker,
+        basic_docker = GetToolVersions.basic_docker,
     }
 
     call BgzipAndTabix {
@@ -127,7 +126,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
     input:
       all_reports = EvaluateVcfAll.report,
       filtered_reports = EvaluateVcfFiltered.report,
-      basic_docker = basic_docker,
+      basic_docker = GetToolVersions.basic_docker,
   }
 
   output {

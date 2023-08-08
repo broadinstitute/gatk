@@ -1,5 +1,7 @@
 version 1.0
 
+import "GvsUtils.wdl" as Utils
+
 workflow GvsPrepareCallset {
   input {
     Boolean go = true
@@ -21,13 +23,19 @@ workflow GvsPrepareCallset {
     File? sample_names_to_extract
     Boolean only_output_vet_tables = false
     Boolean write_cost_to_db = true
-    String variants_docker
+    String? variants_docker
   }
 
   String full_extract_prefix = if (control_samples) then "~{extract_table_prefix}_controls" else extract_table_prefix
   String fq_refvet_dataset = "~{project_id}.~{dataset_name}"
   String fq_sample_mapping_table = "~{project_id}.~{dataset_name}.sample_info"
   String fq_destination_dataset = "~{destination_project}.~{destination_dataset}"
+
+  if (!defined(variants_docker)) {
+    call Utils.GetToolVersions
+  }
+
+  String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
 
   call PrepareRangesCallsetTask {
     input:
@@ -44,7 +52,7 @@ workflow GvsPrepareCallset {
       control_samples                 = control_samples,
       only_output_vet_tables          = only_output_vet_tables,
       write_cost_to_db                = write_cost_to_db,
-      variants_docker = variants_docker,
+      variants_docker                 = effective_variants_docker,
   }
 
   output {

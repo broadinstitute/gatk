@@ -14,9 +14,9 @@ workflow GvsCreateFilterSet {
     String filter_set_name
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
-    String cloud_sdk_docker
-    String variants_docker
-    String gatk_docker
+    String? cloud_sdk_docker
+    String? variants_docker
+    String? gatk_docker
     File? gatk_override
 
     Boolean use_VQSR_lite = true
@@ -43,11 +43,19 @@ workflow GvsCreateFilterSet {
 
   String filter_set_info_destination_table_schema = "filter_set_name:string,type:string,location:integer,ref:string,alt:string,calibration_sensitivity:float,score:float,vqslod:float,culprit:string,training_label:string,yng_status:string"
 
+  if (!defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker)) {
+    call Utils.GetToolVersions
+  }
+
+  String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
+  String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
+  String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
+
   call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
     input:
       project_id = project_id,
       fq_table = fq_sample_table,
-      cloud_sdk_docker = cloud_sdk_docker,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
   call Utils.GetNumSamplesLoaded {
@@ -55,7 +63,7 @@ workflow GvsCreateFilterSet {
       fq_sample_table = fq_sample_table,
       project_id = project_id,
       sample_table_timestamp = SamplesTableDatetimeCheck.last_modified_timestamp,
-      cloud_sdk_docker = cloud_sdk_docker,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
   Int scatter_count = if GetNumSamplesLoaded.num_samples < 100 then 20
@@ -70,7 +78,7 @@ workflow GvsCreateFilterSet {
       ref_fai = reference_index,
       ref_dict = reference_dict,
       scatter_count = scatter_count,
-      gatk_docker = gatk_docker,
+      gatk_docker = effective_gatk_docker,
       gatk_override = gatk_override,
   }
 
@@ -78,13 +86,13 @@ workflow GvsCreateFilterSet {
     input:
       project_id = project_id,
       fq_table = fq_alt_allele_table,
-      cloud_sdk_docker = cloud_sdk_docker,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
   scatter(i in range(length(SplitIntervals.interval_files))) {
     call ExtractFilterTask {
       input:
-        gatk_docker                = gatk_docker,
+        gatk_docker                = effective_gatk_docker,
         gatk_override              = gatk_override,
         reference                  = reference,
         reference_index            = reference_index,
@@ -107,7 +115,7 @@ workflow GvsCreateFilterSet {
       input_vcfs = ExtractFilterTask.output_vcf,
       output_vcf_name = "${filter_set_name}.vcf.gz",
       preemptible_tries = 3,
-      gatk_docker = gatk_docker,
+      gatk_docker = effective_gatk_docker,
   }
 
   # From this point, the paths diverge depending on whether they're using classic VQSR or VQSR-Lite
@@ -127,7 +135,7 @@ workflow GvsCreateFilterSet {
         extract_runtime_attributes = vqsr_lite_extract_runtime_attributes,
         train_runtime_attributes = vqsr_lite_train_runtime_attributes,
         score_runtime_attributes = vqsr_lite_score_runtime_attributes,
-        gatk_docker = gatk_docker,
+        gatk_docker = effective_gatk_docker,
         gatk_override = gatk_override,
         monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     }
@@ -138,7 +146,7 @@ workflow GvsCreateFilterSet {
         gather_type = "CONVENTIONAL",
         output_vcf_name = "${filter_set_name}.vrecalibration.gz",
         preemptible_tries = 3,
-        gatk_docker = gatk_docker,
+        gatk_docker = effective_gatk_docker,
     }
 
     # These calls to SelectVariants are being added for two reasons
@@ -153,7 +161,7 @@ workflow GvsCreateFilterSet {
         type_to_include = "SNP",
         exclude_filtered = true,
         output_basename = "${filter_set_name}.filtered.scored.snps",
-        gatk_docker = gatk_docker,
+        gatk_docker = effective_gatk_docker,
     }
 
     call Utils.SelectVariants as CreateFilteredScoredINDELsVCF {
@@ -163,12 +171,12 @@ workflow GvsCreateFilterSet {
         type_to_include = "INDEL",
         exclude_filtered = true,
         output_basename = "${filter_set_name}.filtered.scored.indels",
-        gatk_docker = gatk_docker,
+        gatk_docker = effective_gatk_docker,
     }
 
     call Utils.PopulateFilterSetInfo {
       input:
-        gatk_docker = gatk_docker,
+        gatk_docker = effective_gatk_docker,
         gatk_override = gatk_override,
         filter_set_name = filter_set_name,
         fq_filter_set_info_destination_table = fq_filter_set_info_destination_table,
@@ -200,14 +208,14 @@ workflow GvsCreateFilterSet {
         INDEL_VQSR_mem_gb_override = INDEL_VQSR_CLASSIC_mem_gb_override,
         SNP_VQSR_max_gaussians_override = SNP_VQSR_CLASSIC_max_gaussians_override,
         SNP_VQSR_mem_gb_override = SNP_VQSR_CLASSIC_mem_gb_override,
-        gatk_docker = gatk_docker,
+        gatk_docker = effective_gatk_docker,
         gatk_override = gatk_override,
     }
   }
 
   call PopulateFilterSetSites {
     input:
-      gatk_docker = gatk_docker,
+      gatk_docker = effective_gatk_docker,
       gatk_override = gatk_override,
       filter_set_name = filter_set_name,
       sites_only_variant_filtered_vcf = MergeVCFs.output_vcf,
@@ -218,7 +226,7 @@ workflow GvsCreateFilterSet {
 
   call Utils.SummarizeTaskMonitorLogs as SummarizeItAll {
     input:
-      variants_docker = variants_docker,
+      variants_docker = effective_variants_docker,
       inputs = select_all(
                flatten(
                [

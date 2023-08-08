@@ -11,8 +11,9 @@ workflow GvsCallsetStatistics {
         String metrics_table = "~{extract_prefix}_sample_metrics"
         String aggregate_metrics_table = "~{extract_prefix}_sample_metrics_aggregate"
         String statistics_table = "~{extract_prefix}_statistics"
-        String cloud_sdk_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
     }
+
+    call Utils.GetToolVersions
 
     call Utils.ValidateFilterSetName {
         input:
@@ -29,7 +30,7 @@ workflow GvsCallsetStatistics {
             metrics_table = metrics_table,
             aggregate_metrics_table = aggregate_metrics_table,
             statistics_table = statistics_table,
-            cloud_sdk_docker = cloud_sdk_docker,
+            cloud_sdk_docker = GetToolVersions.cloud_sdk_docker,
     }
 
     # Only collect statistics for the autosomal chromosomes, the first 22 in our location scheme.
@@ -42,7 +43,7 @@ workflow GvsCallsetStatistics {
                 filter_set_name = filter_set_name,
                 extract_prefix = extract_prefix,
                 metrics_table = metrics_table,
-                cloud_sdk_docker = cloud_sdk_docker,
+                cloud_sdk_docker = GetToolVersions.cloud_sdk_docker,
                 chromosome = chrom + 1 # 0-based ==> 1-based,
         }
     }
@@ -56,7 +57,7 @@ workflow GvsCallsetStatistics {
             extract_prefix = extract_prefix,
             metrics_table = metrics_table,
             aggregate_metrics_table = aggregate_metrics_table,
-            cloud_sdk_docker = cloud_sdk_docker,
+            cloud_sdk_docker = GetToolVersions.cloud_sdk_docker,
     }
 
     call CollectStatistics {
@@ -69,7 +70,7 @@ workflow GvsCallsetStatistics {
             metrics_table = metrics_table,
             aggregate_metrics_table = aggregate_metrics_table,
             statistics_table = statistics_table,
-            cloud_sdk_docker = cloud_sdk_docker,
+            cloud_sdk_docker = GetToolVersions.cloud_sdk_docker,
     }
 
     call ExportToCSV {
@@ -78,7 +79,7 @@ workflow GvsCallsetStatistics {
           dataset_name = dataset_name,
           statistics_table = statistics_table,
           go = CollectStatistics.done,
-          cloud_sdk_docker = cloud_sdk_docker,
+          cloud_sdk_docker = GetToolVersions.cloud_sdk_docker,
     }
 
     output {

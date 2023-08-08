@@ -18,7 +18,7 @@ workflow JointVcfFiltering {
     Array[File] sites_only_variant_filtered_vcfs
     Array[File] sites_only_variant_filtered_vcf_idxs
 
-    String gatk_docker
+    String? gatk_docker
     File? gatk_override
 
     Int? INDEL_VQSR_max_gaussians_override = 4
@@ -69,6 +69,12 @@ workflow JointVcfFiltering {
   File one_thousand_genomes_resource_vcf = "gs://gcp-public-data--broad-references/hg38/v0/1000G_phase1.snps.high_confidence.hg38.vcf.gz"
   File one_thousand_genomes_resource_vcf_index = "gs://gcp-public-data--broad-references/hg38/v0/1000G_phase1.snps.high_confidence.hg38.vcf.gz.tbi"
 
+  if (!defined(gatk_docker)) {
+    call Utils.GetToolVersions
+  }
+
+  String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
+
   call IndelsVariantRecalibrator {
     input:
       sites_only_variant_filtered_vcf = sites_only_variant_filtered_vcf,
@@ -88,7 +94,7 @@ workflow JointVcfFiltering {
       machine_mem_gb = INDEL_VQSR_mem_gb_override,
       max_gaussians = INDEL_VQSR_max_gaussians_override,
       maximum_training_variants = INDEL_VQSR_maximum_training_variants,
-      gatk_docker = gatk_docker
+      gatk_docker = effective_gatk_docker,
   }
 
   if (num_samples_loaded > snps_variant_recalibration_threshold) {
@@ -116,7 +122,7 @@ workflow JointVcfFiltering {
         max_gaussians = SNP_VQSR_max_gaussians_override,
         sample_every_nth_variant = SNP_VQSR_sample_every_nth_variant,
         maximum_training_variants = SNP_VQSR_maximum_training_variants,
-        gatk_docker = gatk_docker,
+        gatk_docker = effective_gatk_docker,
     }
 
     scatter (idx in range(length(sites_only_variant_filtered_vcfs))) {
@@ -140,7 +146,7 @@ workflow JointVcfFiltering {
           use_allele_specific_annotations = true,
           disk_size = "1000",
           machine_mem_gb = SNP_VQSR_mem_gb_override,
-          gatk_docker = gatk_docker,
+          gatk_docker = effective_gatk_docker,
       }
     }
 
@@ -151,7 +157,7 @@ workflow JointVcfFiltering {
         output_tranche_values = snp_recalibration_tranche_values,
         mode = "SNP",
         disk_size = "200",
-        gatk_docker = gatk_docker,
+        gatk_docker = effective_gatk_docker,
         gatk_override = gatk_override,
     }
 
@@ -161,7 +167,7 @@ workflow JointVcfFiltering {
         gather_type = "CONVENTIONAL",
         output_vcf_name = "${base_name}.vrecalibration.vcf.gz",
         preemptible_tries = 3,
-        gatk_docker = gatk_docker,
+        gatk_docker = effective_gatk_docker,
     }
   }
 
@@ -186,13 +192,13 @@ workflow JointVcfFiltering {
         disk_size = "1000",
         machine_mem_gb = SNP_VQSR_mem_gb_override,
         max_gaussians = SNP_VQSR_max_gaussians_override,
-        gatk_docker = gatk_docker,
+        gatk_docker = effective_gatk_docker,
     }
   }
 
   call Utils.PopulateFilterSetInfo {
     input:
-      gatk_docker = gatk_docker,
+      gatk_docker = effective_gatk_docker,
       gatk_override = gatk_override,
       filter_set_name = filter_set_name,
       filter_schema = filter_set_info_schema,
@@ -208,7 +214,7 @@ workflow JointVcfFiltering {
   call PopulateFilterSetTranches {
     input:
       project_id = project_id,
-      gatk_docker = gatk_docker,
+      gatk_docker = effective_gatk_docker,
       gatk_override = gatk_override,
       filter_set_name = filter_set_name,
       snp_recal_tranches = select_first([SNPGatherTranches.tranches_file, SNPsVariantRecalibratorClassic.tranches]),

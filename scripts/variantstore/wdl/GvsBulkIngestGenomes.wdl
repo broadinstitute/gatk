@@ -20,10 +20,11 @@ workflow GvsBulkIngestGenomes {
         String dataset_name
         String project_id
 
-        String basic_docker
-        String cloud_sdk_docker
-        String variants_docker
-        String gatk_docker
+        String? basic_docker
+        String? cloud_sdk_docker
+        String? variants_docker
+        String? gatk_docker
+
         File? gatk_override
         # End GvsAssignIds
 
@@ -49,16 +50,25 @@ workflow GvsBulkIngestGenomes {
         sample_set_name: "The recommended way to load samples; Sample sets must be created by the user. If no sample_set_name is specified, all samples will be loaded into GVS"
     }
 
+    if (!defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker)) {
+        call Utils.GetToolVersions
+    }
+
+    String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
+    String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
+    String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
+    String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
+
     ## Start off by getting the Workspace ID to query for more information
     call GetWorkspaceId {
         input:
-            basic_docker = basic_docker
+            basic_docker = effective_basic_docker,
     }
 
     ## Next, use the workspace ID to get the Workspace Name
     call GetWorkspaceName {
         input:
-            variants_docker = variants_docker,
+            variants_docker = effective_variants_docker,
             workspace_id = GetWorkspaceId.workspace_id,
             workspace_bucket = GetWorkspaceId.workspace_bucket,
     }
@@ -66,7 +76,7 @@ workflow GvsBulkIngestGenomes {
 
     call GetColumnNames {
         input:
-            variants_docker = variants_docker,
+            variants_docker = effective_variants_docker,
             workspace_name = GetWorkspaceName.workspace_name,
             workspace_namespace = GetWorkspaceName.workspace_namespace,
             sample_set_name = sample_set_name,
@@ -78,7 +88,7 @@ workflow GvsBulkIngestGenomes {
 
     call GenerateImportFofnFromDataTable {
         input:
-            variants_docker = variants_docker,
+            variants_docker = effective_variants_docker,
             google_project_id = GetWorkspaceName.workspace_namespace,
             workspace_name = GetWorkspaceName.workspace_name,
             workspace_namespace = GetWorkspaceName.workspace_namespace,
@@ -93,7 +103,7 @@ workflow GvsBulkIngestGenomes {
     call SplitBulkImportFofn {
         input:
             import_fofn = GenerateImportFofnFromDataTable.output_fofn,
-            basic_docker = basic_docker,
+            basic_docker = effective_basic_docker,
     }
 
     call AssignIds.GvsAssignIds as AssignIds {
@@ -102,7 +112,7 @@ workflow GvsBulkIngestGenomes {
             project_id = project_id,
             external_sample_names = SplitBulkImportFofn.sample_name_fofn,
             samples_are_controls = false,
-            cloud_sdk_docker = cloud_sdk_docker,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
     call ImportGenomes.GvsImportGenomes as ImportGenomes {
@@ -122,10 +132,10 @@ workflow GvsBulkIngestGenomes {
             load_data_batch_size = load_data_batch_size,
             load_data_maxretries_override = load_data_maxretries_override,
             load_data_preemptible_override = load_data_preemptible_override,
-            basic_docker = basic_docker,
-            cloud_sdk_docker = cloud_sdk_docker,
-            variants_docker = variants_docker,
-            gatk_docker = gatk_docker,
+            basic_docker = effective_basic_docker,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
+            variants_docker = effective_variants_docker,
+            gatk_docker = effective_gatk_docker,
             load_data_gatk_override = gatk_override,
             drop_state = drop_state,
     }

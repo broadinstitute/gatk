@@ -1,5 +1,7 @@
 version 1.0
 
+import "GvsUtils.wdl" as Utils
+
 workflow ImportArrays {
 
   input {
@@ -18,10 +20,9 @@ workflow ImportArrays {
 
     Int? preemptible_tries
     File? gatk_override
-    String? docker
   }
 
-  String docker_final = select_first([docker, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
+  call Utils.GetToolVersions
 
   scatter (i in range(length(input_vcfs))) {
     if (defined(input_metrics)) {
@@ -37,7 +38,7 @@ workflow ImportArrays {
         sample_map = sample_map,
         output_directory = output_directory,
         gatk_override = gatk_override,
-        docker = docker_final,
+        docker = GetToolVersions.gatk_docker,
         preemptible_tries = preemptible_tries
     }
   }
@@ -52,7 +53,7 @@ workflow ImportArrays {
       raw_schema = raw_schema,
       sample_list_schema = sample_list_schema,
       preemptible_tries = preemptible_tries,
-      docker = docker_final
+      docker = GetToolVersions.cloud_sdk_docker,
   }
 }
 

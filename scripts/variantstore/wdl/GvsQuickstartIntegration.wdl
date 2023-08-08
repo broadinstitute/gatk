@@ -19,13 +19,6 @@ workflow GvsQuickstartIntegration {
         String? exome_vcf_files_column_name
         String? exome_vcf_index_files_column_name
         String? exome_sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
-
-        String basic_docker = "ubuntu:22.04"
-        String cloud_sdk_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
-        # GVS generally uses the smallest `alpine` version of the Google Cloud SDK as it suffices for most tasks, but
-        # there are a handlful of tasks that require the larger GNU libc-based `slim`.
-        String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-slim"
-        String variants_docker = "us.gcr.io/broad-dsde-methods/variantstore:2023-08-07-alpine-0ca773dc6"
     }
 
     File full_wgs_interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
@@ -37,18 +30,20 @@ workflow GvsQuickstartIntegration {
         File? none = ""
     }
 
+    call Utils.GetToolVersions
+
     call FilterIntervalListChromosomes {
         input:
             full_interval_list = full_wgs_interval_list,
             chromosomes = ["chrX", "chrY", "chr20"],
-            variants_docker = variants_docker,
+            variants_docker = GetToolVersions.variants_docker,
     }
 
     if (!use_default_dockers) {
         call Utils.BuildGATKJar {
             input:
                 branch_name = branch_name,
-                cloud_sdk_slim_docker = cloud_sdk_slim_docker,
+                cloud_sdk_slim_docker = GetToolVersions.cloud_sdk_slim_docker,
         }
     }
 
@@ -68,10 +63,10 @@ workflow GvsQuickstartIntegration {
                 vcf_index_files_column_name = wgs_vcf_index_files_column_name,
                 sample_set_name = select_first([wgs_sample_set_name, "wgs_integration_sample_set"]),
                 use_classic_VQSR = false,
-                basic_docker = basic_docker,
-                cloud_sdk_docker = cloud_sdk_docker,
-                cloud_sdk_slim_docker = cloud_sdk_slim_docker,
-                variants_docker = variants_docker,
+                basic_docker = GetToolVersions.basic_docker,
+                cloud_sdk_docker = GetToolVersions.cloud_sdk_docker,
+                cloud_sdk_slim_docker = GetToolVersions.cloud_sdk_slim_docker,
+                variants_docker = GetToolVersions.variants_docker,
         }
         call QuickstartHailIntegration.GvsQuickstartHailIntegration as GvsQuickstartHailVQSRClassicIntegration {
             input:
@@ -88,10 +83,10 @@ workflow GvsQuickstartIntegration {
                 vcf_index_files_column_name = wgs_vcf_index_files_column_name,
                 sample_set_name = select_first([wgs_sample_set_name, "wgs_integration_sample_set"]),
                 use_classic_VQSR = true,
-                basic_docker = basic_docker,
-                cloud_sdk_docker = cloud_sdk_docker,
-                cloud_sdk_slim_docker = cloud_sdk_slim_docker,
-                variants_docker = variants_docker,
+                basic_docker = GetToolVersions.basic_docker,
+                cloud_sdk_docker = GetToolVersions.cloud_sdk_docker,
+                cloud_sdk_slim_docker = GetToolVersions.cloud_sdk_slim_docker,
+                variants_docker = GetToolVersions.variants_docker,
         }
     }
 
@@ -111,8 +106,8 @@ workflow GvsQuickstartIntegration {
                 vcf_index_files_column_name = wgs_vcf_index_files_column_name,
                 sample_set_name = select_first([wgs_sample_set_name, "wgs_integration_sample_set"]),
                 drop_state = "FORTY",
-                cloud_sdk_docker = cloud_sdk_docker,
-                cloud_sdk_slim_docker = cloud_sdk_slim_docker,
+                cloud_sdk_docker = GetToolVersions.cloud_sdk_docker,
+                cloud_sdk_slim_docker = GetToolVersions.cloud_sdk_slim_docker,
         }
         call QuickstartVcfIntegration.GvsQuickstartVcfIntegration as QuickstartVcfVQSRClassicIntegration {
             input:
@@ -129,8 +124,8 @@ workflow GvsQuickstartIntegration {
                 vcf_index_files_column_name = wgs_vcf_index_files_column_name,
                 sample_set_name = select_first([wgs_sample_set_name, "wgs_integration_sample_set"]),
                 drop_state = "FORTY",
-                cloud_sdk_docker = cloud_sdk_docker,
-                cloud_sdk_slim_docker = cloud_sdk_slim_docker,
+                cloud_sdk_docker = GetToolVersions.cloud_sdk_docker,
+                cloud_sdk_slim_docker = GetToolVersions.cloud_sdk_slim_docker,
         }
     }
 
@@ -151,8 +146,8 @@ workflow GvsQuickstartIntegration {
                 vcf_index_files_column_name = exome_vcf_index_files_column_name,
                 sample_set_name = select_first([exome_sample_set_name, "exome_integration_sample_set"]),
                 drop_state = "FORTY",
-                cloud_sdk_docker = cloud_sdk_docker,
-                cloud_sdk_slim_docker = cloud_sdk_slim_docker,
+                cloud_sdk_docker = GetToolVersions.cloud_sdk_docker,
+                cloud_sdk_slim_docker = GetToolVersions.cloud_sdk_slim_docker,
         }
     }
 }

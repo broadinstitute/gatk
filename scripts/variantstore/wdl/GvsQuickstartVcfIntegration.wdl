@@ -16,8 +16,9 @@ workflow GvsQuickstartVcfIntegration {
         String dataset_suffix
         File interval_list
         Boolean use_default_dockers = false
-        String cloud_sdk_docker
-        String cloud_sdk_slim_docker
+        String? cloud_sdk_docker
+        String? cloud_sdk_slim_docker
+        String? variants_docker
         File? gatk_override
         String? sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
         String? vcf_files_column_name
@@ -34,11 +35,19 @@ workflow GvsQuickstartVcfIntegration {
       File? none = ""
     }
 
+    if (!defined(cloud_sdk_docker) || !defined(cloud_sdk_slim_docker) || !defined(variants_docker)) {
+        call Utils.GetToolVersions
+    }
+
+    String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
+    String effective_cloud_sdk_slim_docker = select_first([cloud_sdk_slim_docker, GetToolVersions.cloud_sdk_slim_docker])
+    String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
+
     if (!use_default_dockers && !defined(gatk_override)) {
       call Utils.BuildGATKJar {
         input:
           branch_name = branch_name,
-          cloud_sdk_slim_docker = cloud_sdk_slim_docker,
+          cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
       }
     }
 
@@ -47,7 +56,7 @@ workflow GvsQuickstartVcfIntegration {
             branch_name = branch_name,
             dataset_prefix = "quickit",
             dataset_suffix = dataset_suffix,
-            cloud_sdk_docker = cloud_sdk_docker,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
     call JointVariantCalling.GvsJointVariantCalling as JointVariantCalling {
@@ -71,7 +80,8 @@ workflow GvsQuickstartVcfIntegration {
             vcf_files_column_name = vcf_files_column_name,
             vcf_index_files_column_name = vcf_index_files_column_name,
             sample_set_name = sample_set_name,
-            cloud_sdk_docker = cloud_sdk_docker,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
+            variants_docker = effective_variants_docker,
     }
 
     # Only assert identical outputs if we did not filter (filtering is not deterministic) OR if we are using VQSR Lite (which is deterministic)
@@ -81,7 +91,7 @@ workflow GvsQuickstartVcfIntegration {
             input:
                 expected_output_prefix = expected_prefix,
                 actual_vcfs = JointVariantCalling.output_vcfs,
-                cloud_sdk_docker = cloud_sdk_docker,
+                cloud_sdk_docker = effective_cloud_sdk_docker,
         }
 
         call AssertCostIsTrackedAndExpected {
@@ -90,7 +100,7 @@ workflow GvsQuickstartVcfIntegration {
                 dataset_name = CreateDataset.dataset_name,
                 project_id = project_id,
                 expected_output_csv = expected_prefix + "cost_observability_expected.csv",
-                cloud_sdk_docker = cloud_sdk_docker,
+                cloud_sdk_docker = effective_cloud_sdk_docker,
         }
 
         call AssertTableSizesAreExpected {
@@ -99,7 +109,7 @@ workflow GvsQuickstartVcfIntegration {
                 dataset_name = CreateDataset.dataset_name,
                 project_id = project_id,
                 expected_output_csv = expected_prefix + "table_sizes_expected.csv",
-                cloud_sdk_docker = cloud_sdk_docker,
+                cloud_sdk_docker = effective_cloud_sdk_docker,
         }
     }
 

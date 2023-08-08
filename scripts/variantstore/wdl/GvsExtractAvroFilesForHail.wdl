@@ -12,10 +12,18 @@ workflow GvsExtractAvroFilesForHail {
         String call_set_identifier
         Boolean use_VQSR_lite = true
         Int scatter_width = 10
-        String basic_docker
-        String cloud_sdk_docker
-        String variants_docker
+        String? basic_docker
+        String? cloud_sdk_docker
+        String? variants_docker
     }
+
+    if (!defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker)) {
+        call Utils.GetToolVersions
+    }
+
+    String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
+    String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
+    String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
 
     String fq_gvs_dataset = "~{project_id}.~{dataset_name}"
     String filter_set_info_tablename = "filter_set_info"
@@ -26,7 +34,7 @@ workflow GvsExtractAvroFilesForHail {
             project_id = project_id,
             fq_filter_set_info_table = "~{fq_filter_set_info_table}",
             filter_set_name = filter_set_name,
-            cloud_sdk_docker = cloud_sdk_docker,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
     call Utils.IsVQSRLite {
@@ -34,13 +42,13 @@ workflow GvsExtractAvroFilesForHail {
             project_id = project_id,
             fq_filter_set_info_table = "~{project_id}.~{dataset_name}.filter_set_info",
             filter_set_name = filter_set_name,
-            cloud_sdk_docker = cloud_sdk_docker,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
     call OutputPath {
         input:
             go = ValidateFilterSetName.done,
-            basic_docker = basic_docker,
+            basic_docker = effective_basic_docker,
     }
 
     call ExtractFromNonSuperpartitionedTables {
@@ -52,14 +60,14 @@ workflow GvsExtractAvroFilesForHail {
             avro_sibling = OutputPath.out,
             call_set_identifier = call_set_identifier,
             is_vqsr_lite = IsVQSRLite.is_vqsr_lite,
-            variants_docker = variants_docker,
+            variants_docker = effective_variants_docker,
     }
 
     call Utils.CountSuperpartitions {
         input:
             project_id = project_id,
             dataset_name = dataset_name,
-            cloud_sdk_docker = cloud_sdk_docker,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
     scatter (i in range(scatter_width)) {
@@ -72,7 +80,7 @@ workflow GvsExtractAvroFilesForHail {
                 num_superpartitions = CountSuperpartitions.num_superpartitions,
                 shard_index = i,
                 num_shards = scatter_width,
-                variants_docker = variants_docker,
+                variants_docker = effective_variants_docker,
         }
     }
 
@@ -81,7 +89,7 @@ workflow GvsExtractAvroFilesForHail {
             go_non_superpartitioned = ExtractFromNonSuperpartitionedTables.done,
             go_superpartitioned = ExtractFromSuperpartitionedTables.done,
             avro_prefix = ExtractFromNonSuperpartitionedTables.output_prefix,
-            variants_docker = variants_docker,
+            variants_docker = effective_variants_docker,
     }
     output {
         File hail_gvs_import_script = GenerateHailScripts.hail_gvs_import_script

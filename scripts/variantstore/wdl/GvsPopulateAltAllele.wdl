@@ -9,17 +9,24 @@ workflow GvsPopulateAltAllele {
     String project_id
     String call_set_identifier
     Int max_alt_allele_shards = 10
-    String variants_docker
-    String cloud_sdk_docker
+    String? variants_docker
+    String? cloud_sdk_docker
   }
 
   String fq_alt_allele_table = "~{project_id}.~{dataset_name}.alt_allele"
+
+  if (!defined(cloud_sdk_docker) || !defined(variants_docker)) {
+    call Utils.GetToolVersions
+  }
+
+  String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
+  String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
 
   call CreateAltAlleleTable {
     input:
       dataset_name = dataset_name,
       project_id = project_id,
-      cloud_sdk_docker = cloud_sdk_docker,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
   call GetMaxSampleId {
@@ -27,7 +34,7 @@ workflow GvsPopulateAltAllele {
       go = CreateAltAlleleTable.done,
       dataset_name = dataset_name,
       project_id = project_id,
-      cloud_sdk_docker = cloud_sdk_docker,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
   call GetVetTableNames {
@@ -36,7 +43,7 @@ workflow GvsPopulateAltAllele {
       project_id = project_id,
       max_sample_id = GetMaxSampleId.max_sample_id,
       max_alt_allele_shards = max_alt_allele_shards,
-      cloud_sdk_docker = cloud_sdk_docker,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
   call Utils.GetBQTableLastModifiedDatetime {
@@ -44,7 +51,7 @@ workflow GvsPopulateAltAllele {
       go = CreateAltAlleleTable.done,
       project_id = project_id,
       fq_table = fq_alt_allele_table,
-      cloud_sdk_docker = cloud_sdk_docker,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
   scatter (vet_table_names_file in GetVetTableNames.vet_table_names_files) {
@@ -57,7 +64,7 @@ workflow GvsPopulateAltAllele {
         vet_table_names_file = vet_table_names_file,
         last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
         max_sample_id = GetMaxSampleId.max_sample_id,
-        variants_docker = variants_docker,
+        variants_docker = effective_variants_docker,
     }
   }
 

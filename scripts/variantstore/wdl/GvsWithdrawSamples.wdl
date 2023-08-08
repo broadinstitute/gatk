@@ -1,5 +1,7 @@
 version 1.0
 
+import "GvsUtils.wdl" as Utils
+
 workflow GvsWithdrawSamples {
 
   input {
@@ -10,8 +12,9 @@ workflow GvsWithdrawSamples {
     File sample_names_to_include_file
     # should be in the format "2022-01-01 00:00:00 UTC"
     String withdrawn_timestamp
-    String gatk_docker
   }
+
+  call Utils.GetToolVersions
 
   call WithdrawSamples {
     input:
@@ -20,7 +23,7 @@ workflow GvsWithdrawSamples {
       sample_name_column_name_in_file = sample_name_column_name_in_file,
       sample_names_to_include_file = sample_names_to_include_file,
       withdrawn_timestamp = withdrawn_timestamp,
-      gatk_docker = gatk_docker,
+      gatk_docker = GetToolVersions.gatk_docker,
   }
 
   output {

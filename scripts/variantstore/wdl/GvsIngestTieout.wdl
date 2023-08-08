@@ -12,8 +12,9 @@ workflow GvsIngestTieout {
         File sample_names
         File input_vcfs
         File input_vcf_indexes
-        String cloud_sdk_docker
     }
+
+    call Utils.GetToolVersions
 
     call Utils.BuildGATKJarAndCreateDataset {
         input:
@@ -46,7 +47,7 @@ workflow GvsIngestTieout {
             reference_dataset_name = reference_dataset_name,
             project = project,
             stderrs = GvsImportGenomes.load_data_stderrs,
-            cloud_sdk_docker = cloud_sdk_docker,
+            cloud_sdk_docker = GetToolVersions.cloud_sdk_docker,
     }
 }
 

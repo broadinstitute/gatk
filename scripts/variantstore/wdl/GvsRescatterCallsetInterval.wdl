@@ -20,6 +20,8 @@ workflow GvsRescatterCallsetInterval {
     Int? merge_disk_override
   }
 
+  call Utils.GetToolVersions
+
   scatter(i in range(length(intervals_to_scatter))) {
     # take out leading 0s from interval file name number for VCF and index
     Int shard_num = intervals_to_scatter[i]
@@ -42,7 +44,8 @@ workflow GvsRescatterCallsetInterval {
         input_vcfs = ExtractInterval.output_vcfs,
         output_vcf_name = "${vcf_basename}.vcf.gz",
         output_directory = final_output_gcs_dir,
-        merge_disk_override = merge_disk_override
+        merge_disk_override = merge_disk_override,
+        gatk_docker = GetToolVersions.gatk_docker,
     }
   }
 

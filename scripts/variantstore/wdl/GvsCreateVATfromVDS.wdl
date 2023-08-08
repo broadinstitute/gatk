@@ -20,12 +20,6 @@ workflow GvsCreateVATfromVDS {
         Int? split_intervals_disk_size_override
         Int? split_intervals_mem_override
         Int? merge_vcfs_disk_size_override
-
-        String basic_docker = "ubuntu:22.04"
-        String cloud_sdk_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
-        String variants_docker = "us.gcr.io/broad-dsde-methods/variantstore:2023-08-07-alpine-0ca773dc6"
-        String gatk_docker = "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_bulk_ingest_staging_2023_08_03"
-        String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     }
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
@@ -34,10 +28,12 @@ workflow GvsCreateVATfromVDS {
     File reference_dict = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict"
     File reference_index = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai"
 
+    call Utils.GetToolVersions
+
     call MakeSubpopulationFilesAndReadSchemaFiles {
         input:
             input_ancestry_file = ancestry_file,
-            variants_docker = variants_docker,
+            variants_docker = GetToolVersions.variants_docker,
     }
 
     call Utils.IndexVcf {
@@ -69,14 +65,14 @@ workflow GvsCreateVATfromVDS {
                 input_vcf_index = IndexVcf.output_vcf_index,
                 interval_list = SplitIntervals.interval_files[i],
                 output_basename = vcf_filename,
-                gatk_docker = gatk_docker,
+                gatk_docker = GetToolVersions.gatk_docker,
         }
 
         call RemoveDuplicatesFromSitesOnlyVCF {
             input:
                 sites_only_vcf = SelectVariants.output_vcf,
                 ref = reference,
-                variants_docker = variants_docker,
+                variants_docker = GetToolVersions.variants_docker,
         }
 
         call StripCustomAnnotationsFromSitesOnlyVCF {
@@ -85,7 +81,7 @@ workflow GvsCreateVATfromVDS {
                 custom_annotations_header = MakeSubpopulationFilesAndReadSchemaFiles.custom_annotations_template_file,
                 output_vcf_name = "${vcf_filename}.unannotated.sites_only.vcf",
                 output_custom_annotations_filename = "${vcf_filename}.custom_annotations.tsv",
-                variants_docker = variants_docker,
+                variants_docker = GetToolVersions.variants_docker,
         }
 
         ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
@@ -94,7 +90,7 @@ workflow GvsCreateVATfromVDS {
                 input_vcf = StripCustomAnnotationsFromSitesOnlyVCF.output_vcf,
                 output_annotated_file_name = "${vcf_filename}_annotated",
                 custom_annotations_file = StripCustomAnnotationsFromSitesOnlyVCF.output_custom_annotations_file,
-                variants_nirvana_docker = variants_nirvana_docker,
+                variants_nirvana_docker = GetToolVersions.variants_nirvana_docker,
         }
 
         call PrepVtAnnotationJson {
@@ -102,7 +98,7 @@ workflow GvsCreateVATfromVDS {
                 positions_annotation_json = AnnotateVCF.positions_annotation_json,
                 output_file_suffix = "${vcf_filename}.json.gz",
                 output_path = output_path,
-                variants_docker = variants_docker,
+                variants_docker = GetToolVersions.variants_docker,
         }
 
         call PrepGenesAnnotationJson {
@@ -110,7 +106,7 @@ workflow GvsCreateVATfromVDS {
                 genes_annotation_json = AnnotateVCF.genes_annotation_json,
                 output_file_suffix = "${vcf_filename}.json.gz",
                 output_path = output_path,
-                variants_docker = variants_docker,
+                variants_docker = GetToolVersions.variants_docker,
         }
 
     }
@@ -133,7 +129,7 @@ workflow GvsCreateVATfromVDS {
             vat_version = vat_version,
             prep_vt_json_done = PrepVtAnnotationJson.done,
             prep_genes_json_done = PrepGenesAnnotationJson.done,
-            cloud_sdk_docker = cloud_sdk_docker,
+            cloud_sdk_docker = GetToolVersions.cloud_sdk_docker,
     }
 
     call GvsCreateVATFilesFromBigQuery.GvsCreateVATFilesFromBigQuery {
@@ -144,7 +140,7 @@ workflow GvsCreateVATfromVDS {
             output_path = output_path,
             merge_vcfs_disk_size_override = merge_vcfs_disk_size_override,
             precondition_met = BigQueryLoadJson.done,
-            cloud_sdk_docker = cloud_sdk_docker,
+            cloud_sdk_docker = GetToolVersions.cloud_sdk_docker,
    }
 
     output {
