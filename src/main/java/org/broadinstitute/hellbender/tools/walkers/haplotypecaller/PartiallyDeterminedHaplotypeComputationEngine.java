@@ -28,6 +28,7 @@ import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * Class that manages the complicated steps involved in generating artificial haplotypes for the PDHMM:
@@ -178,25 +179,18 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                 for (Set<Event> excludeEvents : branchExcludeAlleles) {
 
                     List<Haplotype> branchHaps = new ArrayList<>();
-                    List<Event> newBranch = new ArrayList<>();
 
                     // Handle the simple case of making PD haplotypes
                     if (!pileupArgs.determinePDHaps) {
-                        for (final int otherEventGroupStart : variantsByStartPos.keySet()) {
-                            if (otherEventGroupStart == determinedLocus) {
-                                newBranch.add(determinedEventToTest);
-                            } else {
-                                // We know here that nothing illegally overlaps because there are no groups.
-                                // Also exclude any events that overlap the determined allele since we cant construct them (also this stops compound alleles from being formed)
-                                // NOTE: it is important that we allow reference alleles to overlap undetermined variants as it leads to mismatches against DRAGEN otherwise.
-                                variantsByStartPos.get(otherEventGroupStart).stream().filter(vc -> !excludeEvents.contains(vc)).forEach(newBranch::add);
-                            }
-                        }
-                        newBranch.sort(HAPLOTYPE_SNP_FIRST_COMPARATOR);
-                        PartiallyDeterminedHaplotype newPDHaplotypeFromEvents = createNewPDHaplotypeFromEvents(referenceHaplotype, determinedEventToTest, isRef, newBranch);
+                        // the partially determined haplotype contains the determined allele and anything not excluded at other loci
+                        final List<Event> eventsInPDHap = Stream.concat(Stream.of(determinedEventToTest), variantsByStartPos.entrySet().stream()
+                                .filter(locusAndEvents -> locusAndEvents.getKey() != determinedLocus)
+                                .flatMap(locusAndEvents -> locusAndEvents.getValue().stream().filter(event -> !excludeEvents.contains(event))))
+                                .sorted(HAPLOTYPE_SNP_FIRST_COMPARATOR).toList();
+
+                        PartiallyDeterminedHaplotype newPDHaplotypeFromEvents = createNewPDHaplotypeFromEvents(referenceHaplotype, determinedEventToTest, isRef, eventsInPDHap);
                         newPDHaplotypeFromEvents.setAllDeterminedEventsAtThisSite(allEventsHere); // accounting for determined variants for later in case we are in optimization mode
                         branchHaps.add(newPDHaplotypeFromEvents);
-
                     } else {
                         // TODO currently this approach doesn't properly handle a bunch of duplicate events...
                         // If we are producing determined bases, then we want to enforce that every new event at least has THIS event as a variant.
