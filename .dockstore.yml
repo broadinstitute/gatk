@@ -127,8 +127,7 @@ workflows:
          - master
          - ah_var_store
          - bulk_ingest_staging
-         - rsa_vs_1019
-         - vs_1027_sample_drop_stop
+         - vs_965_gatk_integration_stability_slash_sanity
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
@@ -138,6 +137,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_965_gatk_integration_stability_slash_sanity
    - name: GvsCreateVATfromVDS
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCreateVATfromVDS.wdl
@@ -145,6 +145,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_965_gatk_integration_stability_slash_sanity
    - name: GvsCreateVATFilesFromBigQuery
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/variant_annotations_table/GvsCreateVATFilesFromBigQuery.wdl
@@ -152,6 +153,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_965_gatk_integration_stability_slash_sanity
    - name: GvsValidateVat
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/variant_annotations_table/GvsValidateVAT.wdl
@@ -161,6 +163,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_965_gatk_integration_stability_slash_sanity
    - name: GvsExtractCohortFromSampleNames
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCohortFromSampleNames.wdl
@@ -168,6 +171,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_965_gatk_integration_stability_slash_sanity
    - name: GvsWithdrawSamples
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsWithdrawSamples.wdl
@@ -175,6 +179,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_965_gatk_integration_stability_slash_sanity
    - name: GvsJointVariantCalling
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCalling.wdl
@@ -183,7 +188,7 @@ workflows:
          - master
          - ah_var_store
          - bulk_ingest_staging
-         - gg_VS-1004_PassClassicMemArguments
+         - vs_965_gatk_integration_stability_slash_sanity
    - name: GvsJointVariantCallsetCost
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCallsetCost.wdl
@@ -192,6 +197,7 @@ workflows:
          - master
          - ah_var_store
          - bulk_ingest_staging
+         - vs_965_gatk_integration_stability_slash_sanity
    - name: GvsCalculatePrecisionAndSensitivity
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCalculatePrecisionAndSensitivity.wdl
@@ -199,7 +205,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_970_ps_input_limits
+         - vs_965_gatk_integration_stability_slash_sanity
    - name: GvsQuickstartVcfIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartVcfIntegration.wdl
@@ -207,7 +213,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_VS-1004_PassClassicMemArguments
+         - vs_965_gatk_integration_stability_slash_sanity
    - name: GvsQuickstartHailIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartHailIntegration.wdl
@@ -215,7 +221,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - gg_VS-1004_PassClassicMemArguments
+         - vs_965_gatk_integration_stability_slash_sanity
    - name: GvsQuickstartIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartIntegration.wdl
@@ -231,6 +237,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_965_gatk_integration_stability_slash_sanity
    - name: GvsCallsetCost
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCallsetCost.wdl
@@ -238,6 +245,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_965_gatk_integration_stability_slash_sanity
    - name: GvsExtractAvroFilesForHail
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractAvroFilesForHail.wdl
@@ -245,6 +253,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_965_gatk_integration_stability_slash_sanity
    - name: GvsCallsetStatistics
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCallsetStatistics.wdl
@@ -252,6 +261,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_965_gatk_integration_stability_slash_sanity
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl

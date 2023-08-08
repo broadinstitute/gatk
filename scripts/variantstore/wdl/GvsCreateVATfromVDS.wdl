@@ -25,6 +25,7 @@ workflow GvsCreateVATfromVDS {
         String cloud_sdk_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
         String variants_docker = "us.gcr.io/broad-dsde-methods/variantstore:2023-08-07-alpine-0ca773dc6"
         String gatk_docker = "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_bulk_ingest_staging_2023_08_03"
+        String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     }
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
@@ -93,6 +94,7 @@ workflow GvsCreateVATfromVDS {
                 input_vcf = StripCustomAnnotationsFromSitesOnlyVCF.output_vcf,
                 output_annotated_file_name = "${vcf_filename}_annotated",
                 custom_annotations_file = StripCustomAnnotationsFromSitesOnlyVCF.output_custom_annotations_file,
+                variants_nirvana_docker = variants_nirvana_docker,
         }
 
         call PrepVtAnnotationJson {
@@ -131,7 +133,7 @@ workflow GvsCreateVATfromVDS {
             vat_version = vat_version,
             prep_vt_json_done = PrepVtAnnotationJson.done,
             prep_genes_json_done = PrepGenesAnnotationJson.done,
-            variants_docker = variants_docker,
+            cloud_sdk_docker = cloud_sdk_docker,
     }
 
     call GvsCreateVATFilesFromBigQuery.GvsCreateVATFilesFromBigQuery {
@@ -340,6 +342,8 @@ task AnnotateVCF {
         # in Terra UI tells Cromwell to arrange for the Nirvana reference disk to be attached to this VM.
         File summon_reference_disk =
             "gs://broad-public-datasets/gvs/vat-annotations/Nirvana/3.18.1/SupplementaryAnnotation/GRCh38/MITOMAP_20200819.nsa.idx"
+
+        String variants_nirvana_docker
     }
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
@@ -426,7 +430,7 @@ task AnnotateVCF {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
+        docker: variants_nirvana_docker
         memory: "64 GB"
         cpu: "4"
         preemptible: 3
@@ -554,7 +558,7 @@ task BigQueryLoadJson {
         String output_path
         Array[Boolean] prep_vt_json_done
         Array[Boolean] prep_genes_json_done
-        String variants_docker
+        String cloud_sdk_docker
     }
 
     # If the vat version is undefined or v1 then the vat tables would be named like filter_vat, otherwise filter_vat_v2.
@@ -737,7 +741,7 @@ task BigQueryLoadJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "openbridge/ob_google-bigquery:latest"
+        docker: cloud_sdk_docker
         memory: "3 GB"
         preemptible: 3
         cpu: "1"
