@@ -115,49 +115,35 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         }
 
         /*
-          Overall Loop:
-          Iterate over every cluster of variants with the same start position.
-         */
-        for (final int thisEventGroupStart : variantsByStartPos.keySet()) {   // it's a SortedMap -- iterating over its keyset is okay!
-            final List<Event> allEventsHere = variantsByStartPos.get(thisEventGroupStart);
-            Utils.printIf(debug, () -> "working with variants: " + allEventsHere + " at position " + thisEventGroupStart);
+          There are several nested loops here:
 
-            if (!Range.closed(callingSpan.getStart(), callingSpan.getEnd()).contains(thisEventGroupStart)) {
+          Layer 1: iterate over all determined event positions
+          Layer 2: iterate over all alleles at that position, including the reference allele unless we are making determined haplotypes, to set as
+                    the "determined" allele.  Other positions are treated as undetermined,
+          Layer 3a: iterate over all event groups, computing partitions of each event group induced by this determined allele
+          Layer 3b: make partially determined haplotypes based on these event group partitions
+         */
+        for (final int determinedLocus : variantsByStartPos.keySet()) {   // it's a SortedMap -- iterating over its keyset is okay!
+            final List<Event> allEventsHere = variantsByStartPos.get(determinedLocus);
+            Utils.printIf(debug, () -> "working with variants: " + allEventsHere + " at position " + determinedLocus);
+
+            if (!Range.closed(callingSpan.getStart(), callingSpan.getEnd()).contains(determinedLocus)) {
                 Utils.printIf(debug, () -> "Skipping determined hap construction! Outside of span: " + callingSpan);
                 continue;
             }
 
-            /*
-              Determined Event Loop:
-              We iterate over every ref position and select single alleles (including ref) from that reference position (in R space) to be "determined"
-
-              NOTE: we skip the reference allele in the event that we are making determined haplotypes instead of undetermined haplotypes
-             */
             for (int determinedAlleleIndex = (pileupArgs.determinePDHaps?0:-1); determinedAlleleIndex < allEventsHere.size(); determinedAlleleIndex++) { //note -1 for I here corresponds to the reference allele at this site
                 final boolean isRef = determinedAlleleIndex == -1;
                 final Set<Event> determinedEvents = isRef ? Set.of() : Set.of(allEventsHere.get(determinedAlleleIndex));
                 final Event determinedEventToTest = allEventsHere.get(isRef ? 0 : determinedAlleleIndex);
-                Utils.printIf(debug, () -> "Working with allele at site: "+(isRef? "[ref:"+(thisEventGroupStart-referenceHaplotype.getStart())+"]" : PartiallyDeterminedHaplotype.getDRAGENDebugEventString(referenceHaplotype.getStart()).apply(determinedEventToTest)));
-                // This corresponds to the DRAGEN code for
-                // 0 0
-                // 0 1
-                // 1 0
+                Utils.printIf(debug, () -> "Working with allele at site: "+(isRef? "[ref:"+(determinedLocus-referenceHaplotype.getStart())+"]" : PartiallyDeterminedHaplotype.getDRAGENDebugEventString(referenceHaplotype.getStart()).apply(determinedEventToTest)));
 
-
-                /*
-                 * Here we handle any of the necessary work to deal with the event groups and maybe forming compound branches out of the groups
-                 */
-
-                // Loop over eventGroups, have each of them return a list of VariantContexts
                 List<Set<Event>> branchExcludeAlleles = new ArrayList<>();
                 branchExcludeAlleles.add(new HashSet<>()); // Add the null branch (assuming no exclusions)
 
-                /* Note for future posterity:
-                 * An assembly region could potentially have any number of (within some limitations) of event groups. When we are constructing
-                 * haplotypes out of the assembled variants we want to take the dot product of the branches for each set of event groups that
-                 * we find. I.E. if an event group with mutex variants (B,C) requires two branches for Variant A and Variant A also leads to two branches in
-                 * another event group with mutex variants (D,E). Then we would want to ultimately generate the branches A,B,D -> A,B,E -> A,C,D -> A,C,E.
-                 * This is why we iterate over branchExcludeAlleles internally here.
+                /* An assembly region could potentially have multiple event groups. When constructing PD haplotypes we
+                 * take the Cartesian product of the event groups' branches e.g. if determined event A splits one event group
+                 * into branches B and C and a second event group into branches D and E then we generate the branches A,B,D; A,B,E; A,C,D; and A,C,E.
                  */
                 for(EventGroup group : eventGroups ) {
                     if (group.causesBranching()) {
@@ -177,7 +163,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                         branchExcludeAlleles.addAll(newBranchesToAdd);
 
                         if (branchExcludeAlleles.size() > MAX_BRANCH_PD_HAPS) {
-                            Utils.printIf(debug, () -> "Found too many branches for variants at: " + determinedEventToTest.getStart() + " aborting and falling back to Assembly Variants!");
+                            Utils.printIf(debug, () -> "Found too many branches for variants at: " + determinedLocus + " aborting and falling back to Assembly Variants!");
                             return sourceSet;
                         }
                     }
@@ -197,7 +183,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                     // Handle the simple case of making PD haplotypes
                     if (!pileupArgs.determinePDHaps) {
                         for (final int otherEventGroupStart : variantsByStartPos.keySet()) {
-                            if (otherEventGroupStart == thisEventGroupStart) {
+                            if (otherEventGroupStart == determinedLocus) {
                                 newBranch.add(determinedEventToTest);
                             } else {
                                 // We know here that nothing illegally overlaps because there are no groups.
@@ -221,9 +207,9 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                             if (growingEventGroups.size() > MAX_BRANCH_PD_HAPS) {
                                 Utils.printIf(debug, () -> "Too many branch haplotypes ["+growingEventGroups.size()+"] generated from site, falling back on assembly variants!");
                                 return sourceSet;
-                            } else if (otherEventGroupStart == thisEventGroupStart) {
+                            } else if (otherEventGroupStart == determinedLocus) {
                                 growingEventGroups.forEach(group -> group.add(determinedEventToTest));
-                            } else if (thisEventGroupStart < otherEventGroupStart) {
+                            } else if (determinedLocus < otherEventGroupStart) {
                                 variantsByStartPos.get(otherEventGroupStart).stream()
                                         .filter(event -> !excludeEvents.contains(event))
                                         .flatMap(event -> growingEventGroups.stream().map(group -> growEventGroup(group, event)))
