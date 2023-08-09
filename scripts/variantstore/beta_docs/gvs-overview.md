@@ -94,7 +94,7 @@ This step validates that sample GVCF files contain required annotations and load
 GATK tools used: [SplitIntervals](https://gatk.broadinstitute.org/hc/en-us/articles/5358914364699), [GatherVcfsCloud](https://gatk.broadinstitute.org/hc/en-us/articles/5358884598555), ExtractVariantAnnotations, TrainVariantAnnotationsModel, ScoreVariantAnnotations, and [GatherTranches](https://gatk.broadinstitute.org/hc/en-us/articles/5358889613339).
 
 This step splits alternate alleles, calculates annotations to be used for filtering, and creates a filtering model using VETS and annotations from the input samples.
-SNPs are filtered using the annotations `AS_FS`, `AS_ReadPosRankSum`, `AS_MQRankSum`, `AS_QD`, and `AS_SOR`. Indels are filtered using the annotations `AS_FS`, `AS_ReadPosRankSum`, `AS_MQRankSum`, `AS_QD`, `AS_SOR`, and `AS_MQ`.
+SNPs and Indels are filtered using the annotations `AS_FS`, `AS_ReadPosRankSum`, `AS_MQRankSum`, `AS_QD`, `AS_SOR` and `AS_MQ`.
 
 ### 3. Extract VCF files
 
