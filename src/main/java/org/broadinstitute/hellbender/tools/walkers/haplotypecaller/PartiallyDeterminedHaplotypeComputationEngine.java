@@ -144,15 +144,25 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                 for(EventGroup group : eventGroups ) {
                     if (group.causesBranching()) {
                         List<Set<Event>> branchingSets = group.setsForBranching(determinedEvents);
-                        // Combinatorially expand the branches as necessary
-                       final List<HashSet<Event>> newBranchesToAdd = branchExcludeAlleles.stream()
+                        // If the determined events split this event group into multiple exclusion sets, form new branches
+                        // from every combination of old branches and new exclusions, except for the first new exclusion
+                        // TODO: I am deeply suspicious of this logic -- why is the first (0th) new exclusion special?
+                        final List<HashSet<Event>> newBranchesToAdd = branchExcludeAlleles.stream()
                                 .flatMap(excluded -> branchingSets.stream().skip(1).map(bs -> Sets.newHashSet(Sets.union(excluded, bs))))
                                 .toList();
 
+                        // If the determined events yield any exclusion set (that is, if the determined events are compatible with
+                        // at least one subset of this event group), add all the exclusions of the first of these to
+                        // the old branches
                         if (!branchingSets.isEmpty()) {
                             branchExcludeAlleles.forEach(excluded -> excluded.addAll(branchingSets.get(0)));
                         }
 
+                        // now we have 1) all the old branches combined with the first exclusion set, if it exists and 2) the old
+                        // branches combined with all the other exclusions
+                        // TODO: wait a sec -- how is this different from NOT special-casing the first set??
+                        // TODO: is it perhaps the case that the special casing is merely an *optimization* so that in the common
+                        // TODO: case where there is only one partition we modify the exclusion sets in-place?
                         branchExcludeAlleles.addAll(newBranchesToAdd);
 
                         if (branchExcludeAlleles.size() > MAX_BRANCH_PD_HAPS) {
