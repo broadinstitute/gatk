@@ -19,6 +19,7 @@ import org.broadinstitute.hellbender.utils.haplotype.PartiallyDeterminedHaplotyp
 import org.broadinstitute.hellbender.utils.read.CigarBuilder;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
+import org.jetbrains.annotations.NotNull;
 import org.jgrapht.Graph;
 import org.jgrapht.alg.ConnectivityInspector;
 import org.jgrapht.graph.DefaultEdge;
@@ -134,37 +135,10 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                 Utils.printIf(debug, () -> "Working with determined allele(s) at site: "+(determinedAlleleIsRef? "[ref:"+(determinedLocus-referenceHaplotype.getStart())+"]" :
                         determinedEvents.stream().map(PartiallyDeterminedHaplotype.getDRAGENDebugEventString(referenceHaplotype.getStart())).collect(Collectors.joining(", "))));
 
-                List<Set<Event>> branchExcludeAlleles = new ArrayList<>();
-                branchExcludeAlleles.add(new HashSet<>()); // Add the null branch (assuming no exclusions)
-
-                /* An assembly region could potentially have multiple event groups. When constructing PD haplotypes we
-                 * take the Cartesian product of the event groups' exclusion sets e.g. if determined event A splits one event group
-                 * into exclusion sets B and C and a second event group into exclusion set D and E then we generate the branches B,D; B,E; C,D; and C,E.
-                 * At each successive event group the branches' sets of excluded events grows.
-                 */
-                for(EventGroup group : eventGroups ) {
-                    if (group.causesBranching()) {
-                        List<Set<Event>> exclusionSets = group.exclusionSets(determinedEvents);
-
-                        // All we are doing here is taking every possible union of a previous branch's exclusions and this event group's exclusions
-                        // Although we could compute these as a new list and replace the old list completely, *as an optimization*
-                        // we add the 0th set of new exclusions in-place, avoiding construction of both a new list and new sets, and then
-                        // we form unions with the 1st, 2nd. . . new exclusions and append these, which entails new sets but not a new list.
-                        final List<HashSet<Event>> extraBranches = exclusionSets.size() < 2 ? List.of() : branchExcludeAlleles.stream()
-                                .flatMap(excluded -> exclusionSets.stream().skip(1).map(bs -> Sets.newHashSet(Sets.union(excluded, bs))))
-                                .toList();
-
-                        if (!exclusionSets.isEmpty()) { // add the 0th exclusion set in-place
-                            branchExcludeAlleles.forEach(excluded -> excluded.addAll(exclusionSets.get(0)));
-                        }
-
-                        branchExcludeAlleles.addAll(extraBranches);
-
-                        if (branchExcludeAlleles.size() > MAX_BRANCH_PD_HAPS) {
-                            Utils.printIf(debug, () -> "Found too many branches for variants at: " + determinedLocus + " aborting and falling back to Assembly Variants!");
-                            return sourceSet;
-                        }
-                    }
+                List<Set<Event>> branchExcludeAlleles = branchExclusions(eventGroups, determinedEvents);
+                if (branchExcludeAlleles == null) {
+                    Utils.printIf(debug, () -> "Found too many branches for variants at: " + determinedLocus + " aborting and falling back to Assembly Variants!");
+                    return sourceSet;
                 }
 
                 branchExcludeAllelesMessage(referenceHaplotype, debug, eventsInOrder, branchExcludeAlleles);
@@ -390,6 +364,45 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         final List<Set<Event>> components = new ConnectivityInspector<>(graph).connectedSets();
         return components.stream().anyMatch(comp -> comp.size() > MAX_VAR_IN_EVENT_GROUP) ? null :
                 components.stream().map(component -> new EventGroup(component, allMutexes)).toList();
+    }
+
+    /**
+     * Compute the branch exclusion sets that define partially determined haplotypes.  For a given set of determined events
+     * each event group has zero, one, or more subsets
+     *
+     * An assembly region could potentially have multiple event groups. When constructing PD haplotypes we
+     * take the Cartesian product of the event groups' exclusion sets e.g. if determined event A splits one event group
+     * into exclusion sets B and C and a second event group into exclusion set D and E then we generate the branches B,D; B,E; C,D; and C,E.
+     * At each successive event group the branches' sets of excluded events grows.
+     */
+    private static List<Set<Event>> branchExclusions(List<EventGroup> eventGroups, Set<Event> determinedEvents) {
+        List<Set<Event>> branchExcludeAlleles = new ArrayList<>();
+        branchExcludeAlleles.add(new HashSet<>()); // Add the null branch (assuming no exclusions)
+
+        for(EventGroup group : eventGroups) {
+            if (group.causesBranching()) {
+                final List<Set<Event>> exclusionSets = group.exclusionSets(determinedEvents);
+                Utils.validate(!exclusionSets.isEmpty(), () -> "Exclusion sets should not be empty -- determined events not in event group -> no mutexes; " +
+                        "determined events in event group -> determined events and anything compatible form a branch");
+
+                // All we are doing here is taking every possible union of a previous branch's exclusions and this event group's exclusions
+                // Although we could compute these as a new list and replace the old list completely, *as an optimization*
+                // we add the 0th set of new exclusions in-place, avoiding construction of both a new list and new sets, and then
+                // we form unions with the 1st, 2nd. . . new exclusions and append these, which entails new sets but not a new list.
+                final List<HashSet<Event>> extraBranches = exclusionSets.size() < 2 ? List.of() : branchExcludeAlleles.stream()
+                        .flatMap(excluded -> exclusionSets.stream().skip(1).map(bs -> Sets.newHashSet(Sets.union(excluded, bs))))
+                        .toList();
+
+                // add the 0th exclusion set in-place
+                branchExcludeAlleles.forEach(excluded -> excluded.addAll(exclusionSets.get(0)));
+                branchExcludeAlleles.addAll(extraBranches);
+
+                if (branchExcludeAlleles.size() > MAX_BRANCH_PD_HAPS) {
+                    return null;
+                }
+            }
+        }
+        return branchExcludeAlleles;
     }
 
     /**
