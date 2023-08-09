@@ -143,7 +143,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                  */
                 for(EventGroup group : eventGroups ) {
                     if (group.causesBranching()) {
-                        List<Set<Event>> branchingSets = group.setsForBranching(determinedEvents);
+                        List<Set<Event>> branchingSets = group.exclusionSets(determinedEvents);
                         // If the determined events split this event group into multiple exclusion sets, form new branches
                         // from every combination of old branches and new exclusions, except for the first new exclusion
                         // TODO: I am deeply suspicious of this logic -- why is the first (0th) new exclusion special?
@@ -698,13 +698,26 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         }
 
         /**
-         * For a given set of determined events, partition the event group into the largest possible subsets (i.e. smallest
-         * number of subsets in the partition)
-         * This method handles the logic involved in getting all of the allowed subsets of alleles for this event group.
+         * For a given set of determined events, find all subsets of the event group such that each subset
+         *
+         * 1) contains all determined events that overlap this event group
+         * 2) contains no two or three mutually exclusive elements i.e. is an allowed subset as computed in this object's constructor
+         * 3) is not a subset of any larger subset that satisfies 1) and 2)
+         *
+         * Note that the subsets need not be disjoint and need not cover all events in this EventGroup.
+         *
+         * Because these subsets contain no mutexes, one can sensibly make partially-determined haplotypes out of them,
+         * with each subset entailing a unique set of undetermined alleles.  Property 3) above ensures that we make as
+         * few partially-determined haplotypes as possible.
+         *
+         * For computational convenience it is easier to represent partially determined haplotypes by i) their set of determined
+         * events and ii) their set of excluded events.  Therefore, we take the complement of the subsets found above and return
+         * sets of excluded events.  Then when we build partially determined haplotypes by branching at every event group we grow
+         * haplotypes by taking the union of excluded sets.
          *
          * @return
          */
-        public List<Set<Event>> setsForBranching(final Set<Event> determinedEvents) {
+        public List<Set<Event>> exclusionSets(final Set<Event> determinedEvents) {
             final SmallBitSet determinedSubset = overlapSet(determinedEvents);
 
             // We use a cache for the recurring case where the determined events do not belong to this event group
