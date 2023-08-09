@@ -98,6 +98,7 @@ public class SomaticClusteringModel {
      * @param vc the variant context the data apply to
      */
     public void record(int[] tumorADs, final double[] tumorLogOdds, final List<Double> artifactProbabilities, final List<Double> nonSomaticProbabilities, final VariantContext vc) {
+        Utils.validateArg(tumorADs.length == vc.getNAlleles(), "tumorADs must have one entry per allele including the ref allele");
         // get all alt allele indexes for symbolic alleles
         List<Integer> symIndexes = new IndexRange(0, vc.getNAlleles()-1).filter(n -> vc.getAlternateAllele(n).isSymbolic());
 
