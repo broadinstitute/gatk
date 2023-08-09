@@ -52,9 +52,15 @@ workflow GvsBenchmarkExtractTask {
 
         String fq_samples_to_extract_table = "~{data_project}.~{dataset_name}.~{extract_table_prefix}__SAMPLES"
         String fq_cohort_extract_table  = "~{data_project}.~{dataset_name}.~{extract_table_prefix}__DATA"
+
+        String? gatk_docker
     }
 
-    call Utils.GetToolVersions
+    if (!defined(gatk_docker)) {
+        call Utils.GetToolVersions
+    }
+
+    String effective_cloud_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
 
     call ExtractTask {
         input:
@@ -84,7 +90,7 @@ workflow GvsBenchmarkExtractTask {
             extract_cpu_override            = extract_cpu_override,
             extract_memory_override         = extract_memory_override,
             extract_maxretries_override     = extract_maxretries_override,
-            gatk_docker                     = GetToolVersions.gatk_docker,
+            gatk_docker                     = effective_cloud_gatk_docker,
     }
 }
 
