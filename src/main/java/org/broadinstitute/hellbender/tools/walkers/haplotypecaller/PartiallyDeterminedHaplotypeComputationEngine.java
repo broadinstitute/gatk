@@ -114,7 +114,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
           Layer 1: iterate over all determined event positions
           Layer 2: iterate over all alleles at that position, including the reference allele unless we are making determined haplotypes, to set as
-                    the "determined" allele.  Other positions are treated as undetermined,
+                    the determined allele.  Other positions are treated as undetermined,
           Layer 3a: iterate over all event groups, computing partitions of each event group induced by this determined allele
           Layer 3b: make partially determined haplotypes based on these event group partitions
          */
@@ -131,7 +131,6 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             for (int determinedAlleleIndex = (pileupArgs.determinePDHaps?0:-1); determinedAlleleIndex < allEventsHere.size(); determinedAlleleIndex++) { //note -1 for I here corresponds to the reference allele at this site
                 final boolean determinedAlleleIsRef = determinedAlleleIndex == -1;
                 final Set<Event> determinedEvents = determinedAlleleIsRef ? Set.of() : Set.of(allEventsHere.get(determinedAlleleIndex));
-                final Event determinedEventToTest = allEventsHere.get(determinedAlleleIsRef ? 0 : determinedAlleleIndex);
                 Utils.printIf(debug, () -> "Working with determined allele(s) at site: "+(determinedAlleleIsRef? "[ref:"+(determinedLocus-referenceHaplotype.getStart())+"]" :
                         determinedEvents.stream().map(PartiallyDeterminedHaplotype.getDRAGENDebugEventString(referenceHaplotype.getStart())).collect(Collectors.joining(", "))));
 
@@ -148,10 +147,9 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                         // Combinatorially expand the branches as necessary
                         List<Set<Event>> newBranchesToAdd = new ArrayList<>();
                         for (Set<Event> excludedVars : branchExcludeAlleles) {
-                            //For every exclude group, fork it by each subset we have:
-                            for (int i = 1; i < branchingSets.size(); i++) { //NOTE: iterate starting at 1 here because we special case that branch at the end
-                                newBranchesToAdd.add(Sets.union(excludedVars, branchingSets.get(i)).immutableCopy());
-                            }
+                            // Fork every exclude group by each subset.  iterate starting at 1 here because we special case that branch at the end
+                            branchingSets.stream().skip(1).map(bs -> Sets.union(excludedVars, bs).immutableCopy()).forEach(newBranchesToAdd::add);
+
                             // Be careful since this event group might have returned nothing
                             if (!branchingSets.isEmpty()) {
                                 excludedVars.addAll(branchingSets.get(0));
