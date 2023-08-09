@@ -138,32 +138,27 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                 branchExcludeAlleles.add(new HashSet<>()); // Add the null branch (assuming no exclusions)
 
                 /* An assembly region could potentially have multiple event groups. When constructing PD haplotypes we
-                 * take the Cartesian product of the event groups' branches e.g. if determined event A splits one event group
-                 * into branches B and C and a second event group into branches D and E then we generate the branches A,B,D; A,B,E; A,C,D; and A,C,E.
+                 * take the Cartesian product of the event groups' exclusion sets e.g. if determined event A splits one event group
+                 * into exclusion sets B and C and a second event group into exclusion set D and E then we generate the branches B,D; B,E; C,D; and C,E.
+                 * At each successive event group the branches' sets of excluded events grows.
                  */
                 for(EventGroup group : eventGroups ) {
                     if (group.causesBranching()) {
-                        List<Set<Event>> branchingSets = group.exclusionSets(determinedEvents);
-                        // If the determined events split this event group into multiple exclusion sets, form new branches
-                        // from every combination of old branches and new exclusions, except for the first new exclusion
-                        // TODO: I am deeply suspicious of this logic -- why is the first (0th) new exclusion special?
-                        final List<HashSet<Event>> newBranchesToAdd = branchExcludeAlleles.stream()
-                                .flatMap(excluded -> branchingSets.stream().skip(1).map(bs -> Sets.newHashSet(Sets.union(excluded, bs))))
+                        List<Set<Event>> exclusionSets = group.exclusionSets(determinedEvents);
+
+                        // All we are doing here is taking every possible union of a previous branch's exclusions and this event group's exclusions
+                        // Although we could compute these as a new list and replace the old list completely, *as an optimization*
+                        // we add the 0th set of new exclusions in-place, avoiding construction of both a new list and new sets, and then
+                        // we form unions with the 1st, 2nd. . . new exclusions and append these, which entails new sets but not a new list.
+                        final List<HashSet<Event>> extraBranches = exclusionSets.size() < 2 ? List.of() : branchExcludeAlleles.stream()
+                                .flatMap(excluded -> exclusionSets.stream().skip(1).map(bs -> Sets.newHashSet(Sets.union(excluded, bs))))
                                 .toList();
 
-                        // If the determined events yield any exclusion set (that is, if the determined events are compatible with
-                        // at least one subset of this event group), add all the exclusions of the first of these to
-                        // the old branches
-                        if (!branchingSets.isEmpty()) {
-                            branchExcludeAlleles.forEach(excluded -> excluded.addAll(branchingSets.get(0)));
+                        if (!exclusionSets.isEmpty()) { // add the 0th exclusion set in-place
+                            branchExcludeAlleles.forEach(excluded -> excluded.addAll(exclusionSets.get(0)));
                         }
 
-                        // now we have 1) all the old branches combined with the first exclusion set, if it exists and 2) the old
-                        // branches combined with all the other exclusions
-                        // TODO: wait a sec -- how is this different from NOT special-casing the first set??
-                        // TODO: is it perhaps the case that the special casing is merely an *optimization* so that in the common
-                        // TODO: case where there is only one partition we modify the exclusion sets in-place?
-                        branchExcludeAlleles.addAll(newBranchesToAdd);
+                        branchExcludeAlleles.addAll(extraBranches);
 
                         if (branchExcludeAlleles.size() > MAX_BRANCH_PD_HAPS) {
                             Utils.printIf(debug, () -> "Found too many branches for variants at: " + determinedLocus + " aborting and falling back to Assembly Variants!");
