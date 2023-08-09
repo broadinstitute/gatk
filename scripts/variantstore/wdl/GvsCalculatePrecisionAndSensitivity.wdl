@@ -16,6 +16,11 @@ workflow GvsCalculatePrecisionAndSensitivity {
     Array[File] truth_beds
 
     File ref_fasta
+
+    String? basic_docker
+    String? variants_docker
+    String? gatk_docker
+    String? real_time_genomics_docker
   }
 
   parameter_meta {
@@ -29,7 +34,14 @@ workflow GvsCalculatePrecisionAndSensitivity {
     ref_fasta: "The cloud path for the reference fasta sequence."
   }
 
-  call Utils.GetToolVersions
+  if (!defined(variants_docker) || !defined(basic_docker) || !defined(gatk_docker) || !defined(real_time_genomics_docker)) {
+    call Utils.GetToolVersions
+  }
+
+  String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
+  String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
+  String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
+  String effective_real_time_genomics_docker = select_first([real_time_genomics_docker, GetToolVersions.real_time_genomics_docker])
 
   if ((length(sample_names) != length(truth_vcfs)) || (length(sample_names) != length(truth_vcf_indices)) || (length(sample_names) != length(truth_beds))) {
     call Utils.TerminateWorkflow {
@@ -41,7 +53,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
   call CountInputVcfs {
     input:
       input_vcf_fofn = input_vcf_fofn,
-      basic_docker = GetToolVersions.basic_docker,
+      basic_docker = effective_basic_docker,
   }
 
   scatter(i in range(CountInputVcfs.num_vcfs)) {
@@ -50,7 +62,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
         input_vcf_fofn = input_vcf_fofn,
         index = i,
         chromosomes = chromosomes,
-        variants_docker = GetToolVersions.variants_docker,
+        variants_docker = effective_variants_docker,
     }
   }
 
@@ -58,7 +70,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
     input:
       input_vcfs = flatten(IsVcfOnChromosomes.output_vcf),
       output_basename = output_basename,
-      gatk_docker = GetToolVersions.gatk_docker,
+      gatk_docker = effective_gatk_docker,
   }
 
   scatter(i in range(length(sample_names))) {
@@ -72,20 +84,20 @@ workflow GvsCalculatePrecisionAndSensitivity {
         chromosomes = chromosomes,
         sample_name = sample_name,
         output_basename = output_sample_basename,
-        gatk_docker = GetToolVersions.gatk_docker,
+        gatk_docker = effective_gatk_docker,
     }
 
     call Add_AS_MAX_VQS_SCORE_ToVcf {
       input:
         input_vcf = SelectVariants.output_vcf,
         output_basename = output_sample_basename + ".maxas",
-        variants_docker = GetToolVersions.variants_docker,
+        variants_docker = effective_variants_docker,
     }
 
     call IsVQSRLite {
       input:
         input_vcf = Add_AS_MAX_VQS_SCORE_ToVcf.output_vcf,
-        basic_docker = GetToolVersions.basic_docker,
+        basic_docker = effective_basic_docker,
     }
 
     call BgzipAndTabix {
@@ -104,7 +116,8 @@ workflow GvsCalculatePrecisionAndSensitivity {
         chromosomes = chromosomes,
         output_basename = sample_name + "-bq_roc_filtered",
         is_vqsr_lite = IsVQSRLite.is_vqsr_lite,
-        ref_fasta = ref_fasta
+        ref_fasta = ref_fasta,
+        real_time_genomics_docker = effective_real_time_genomics_docker,
     }
 
     call EvaluateVcf as EvaluateVcfAll {
@@ -118,7 +131,8 @@ workflow GvsCalculatePrecisionAndSensitivity {
         all_records = true,
         output_basename = sample_name + "-bq_all",
         is_vqsr_lite = IsVQSRLite.is_vqsr_lite,
-        ref_fasta = ref_fasta
+        ref_fasta = ref_fasta,
+        real_time_genomics_docker = effective_real_time_genomics_docker,
     }
   }
 
@@ -126,7 +140,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
     input:
       all_reports = EvaluateVcfAll.report,
       filtered_reports = EvaluateVcfFiltered.report,
-      basic_docker = GetToolVersions.basic_docker,
+      basic_docker = effective_basic_docker,
   }
 
   output {
@@ -391,7 +405,7 @@ task EvaluateVcf {
 
     Boolean is_vqsr_lite
 
-    String docker = "docker.io/realtimegenomics/rtg-tools:latest"
+    String real_time_genomics_docker
     Int cpu = 1
     Int memory_mb = 3500
     Int disk_size_gb = ceil(2 * size(ref_fasta, "GiB")) + 50
@@ -435,7 +449,7 @@ task EvaluateVcf {
     done
   >>>
   runtime {
-    docker: docker
+    docker: real_time_genomics_docker
     cpu: cpu
     memory: "${memory_mb} MiB"
     disks: "local-disk ${disk_size_gb} HDD"
