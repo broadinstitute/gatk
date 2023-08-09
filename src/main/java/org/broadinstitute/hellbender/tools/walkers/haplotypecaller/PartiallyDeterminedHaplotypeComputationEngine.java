@@ -103,8 +103,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         dragenDisallowedGroupsMessage(referenceHaplotype.getStart(), debug, disallowedCombinations);
 
         final List<EventGroup> eventGroups = getEventGroupClusters(eventsInOrder, disallowedCombinations);
-        // if any of our merged event groups is too large, abort.
-        if (eventGroups == null) {
+        if (eventGroups == null) {  // if any of our merged event groups is too large, abort.
             Utils.printIf(debug, () -> "Found event group with too many variants! Aborting haplotype building");
             return sourceSet;
         }
@@ -116,8 +115,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
           Layer 1: iterate over all determined event positions
           Layer 2: iterate over all alleles at that position, including the reference allele unless we are making determined haplotypes, to set as
                     the determined allele.  Other positions are treated as undetermined,
-          Layer 3a: iterate over all event groups, computing partitions of each event group induced by this determined allele
-          Layer 3b: make partially determined haplotypes based on these event group partitions
+          Layer 3: make partially determined haplotypes based on each set of branch exclusions
          */
         Set<Haplotype> outputHaplotypes = pileupArgs.determinePDHaps ? Sets.newHashSet(referenceHaplotype) : Sets.newHashSet();
         for (final int determinedLocus : eventsByStartPos.keySet()) {   // it's a SortedMap -- iterating over its keyset is okay!
@@ -143,9 +141,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
                 branchExcludeAllelesMessage(referenceHaplotype, debug, eventsInOrder, branchExcludeAlleles);
 
-                /*
-                  Now handle each branch independently of the others. (the logic is the same in every case except we must ensure that none of the excluded alleles get included when constructing haps.
-                 */
+                // from each set of branch exclusions make a single PD haplotype or a combinatorial number of determined haplotypes
                 for (Set<Event> excludeEvents : branchExcludeAlleles) {
                     // gather all the events that are allowable as undetermined events given this determined event(s)
                     final Map<Integer, List<Event>> undeterminedEventsByStart = eventsByStartPos.keySet().stream().filter(locus -> locus != determinedLocus)
@@ -197,17 +193,12 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             }
         }
 
+        // TODO: Sorting haplotypes is unnecessary but makes debugging against previous versions much easier.
+        final List<Haplotype> result = outputHaplotypes.stream().sorted(Comparator.comparing(Haplotype::getBaseString)).toList();
         sourceSet.storeAssemblyHaplotypes();
-
-        // TODO this is an entirely unnecessary step that can be done away with but i leave in because it makes debugging against previous versions much easier.
-        final Set<Haplotype> result = outputHaplotypes.stream().sorted(Comparator.comparing(Haplotype::getBaseString)).collect(Collectors.toCollection(LinkedHashSet::new));
         sourceSet.replaceAllHaplotypes(result);
-        Utils.printIf(debug, () -> "Constructed Haps for Branch"+sourceSet.getHaplotypeList().stream().map(Haplotype::toString).collect(Collectors.joining("\n")));
-        if (!pileupArgs.determinePDHaps) {
-            // Setting a boolean on the source-set to indicate to downstream code that we have PD haplotypes
-            sourceSet.setPartiallyDeterminedMode();
-        }
-        Utils.printIf(debug, () -> "Returning "+outputHaplotypes.size()+" to the HMM");
+        sourceSet.setPartiallyDeterminedMode(!pileupArgs.determinePDHaps);
+        Utils.printIf(debug, () -> "Constructed " + outputHaplotypes.size() + " haplotypes for Branch"+sourceSet.getHaplotypeList().stream().map(Haplotype::toString).collect(Collectors.joining("\n")));
         return sourceSet;
     }
 

@@ -588,7 +588,8 @@ public final class AssemblyResultSet {
         haplotypes.clear();
         refHaplotype = null;
     }
-    public void replaceAllHaplotypes(Set<Haplotype> list) {
+
+    public void replaceAllHaplotypes(Collection<Haplotype> list) {
         haplotypes.clear();
         refHaplotype = null;
         for ( Haplotype h : list ) {
@@ -612,8 +613,8 @@ public final class AssemblyResultSet {
         }
     }
 
-    public void setPartiallyDeterminedMode() {
-        this.isPartiallyDeterminedList = true;
+    public void setPartiallyDeterminedMode(final boolean isPartiallyDetermined) {
+        this.isPartiallyDeterminedList = isPartiallyDetermined;
     }
 
     public boolean isPartiallyDeterminedList() {
