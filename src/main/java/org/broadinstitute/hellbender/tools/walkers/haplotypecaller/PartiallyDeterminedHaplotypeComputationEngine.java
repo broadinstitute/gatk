@@ -145,16 +145,14 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                     if (group.causesBranching()) {
                         List<Set<Event>> branchingSets = group.setsForBranching(determinedEvents);
                         // Combinatorially expand the branches as necessary
-                        List<Set<Event>> newBranchesToAdd = new ArrayList<>();
-                        for (Set<Event> excludedVars : branchExcludeAlleles) {
-                            // Fork every exclude group by each subset.  iterate starting at 1 here because we special case that branch at the end
-                            branchingSets.stream().skip(1).map(bs -> Sets.union(excludedVars, bs).immutableCopy()).forEach(newBranchesToAdd::add);
+                       final List<HashSet<Event>> newBranchesToAdd = branchExcludeAlleles.stream()
+                                .flatMap(excluded -> branchingSets.stream().skip(1).map(bs -> Sets.newHashSet(Sets.union(excluded, bs))))
+                                .toList();
 
-                            // Be careful since this event group might have returned nothing
-                            if (!branchingSets.isEmpty()) {
-                                excludedVars.addAll(branchingSets.get(0));
-                            }
+                        if (!branchingSets.isEmpty()) {
+                            branchExcludeAlleles.forEach(excluded -> excluded.addAll(branchingSets.get(0)));
                         }
+
                         branchExcludeAlleles.addAll(newBranchesToAdd);
 
                         if (branchExcludeAlleles.size() > MAX_BRANCH_PD_HAPS) {
