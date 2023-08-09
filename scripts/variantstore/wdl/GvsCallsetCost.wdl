@@ -11,23 +11,30 @@ workflow GvsCallsetCost {
         String workspace_name
         String call_set_identifier
         Array[String] excluded_submission_ids = []
+        String? cloud_sdk_docker
+        String? variants_docker
     }
 
-    call Utils.GetToolVersions
+    if (!defined(cloud_sdk_docker) || !defined(variants_docker)) {
+        call Utils.GetToolVersions
+    }
+
+    String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
+    String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
 
     call WorkflowComputeCosts {
         input:
             workspace_namespace = workspace_namespace,
             workspace_name = workspace_name,
             excluded_submission_ids = excluded_submission_ids,
-            variants_docker = GetToolVersions.variants_docker,
+            variants_docker = effective_variants_docker,
     }
 
     call CoreStorageModelSizes {
         input:
             project_id = project_id,
             dataset_name = dataset_name,
-            cloud_sdk_docker = GetToolVersions.cloud_sdk_docker,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
     call ReadCostObservabilityTable {
@@ -35,7 +42,7 @@ workflow GvsCallsetCost {
             project_id = project_id,
             dataset_name = dataset_name,
             call_set_identifier = call_set_identifier,
-            cloud_sdk_docker = GetToolVersions.cloud_sdk_docker,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
     output {
