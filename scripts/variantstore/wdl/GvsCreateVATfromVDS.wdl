@@ -20,6 +20,12 @@ workflow GvsCreateVATfromVDS {
         Int? split_intervals_disk_size_override
         Int? split_intervals_mem_override
         Int? merge_vcfs_disk_size_override
+
+        String? basic_docker
+        String? cloud_sdk_docker
+        String? variants_docker
+        String? gatk_docker
+        String? variants_nirvana_docker
     }
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
@@ -28,17 +34,26 @@ workflow GvsCreateVATfromVDS {
     File reference_dict = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict"
     File reference_index = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai"
 
-    call Utils.GetToolVersions
+    if (!defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker)) {
+        call Utils.GetToolVersions
+    }
+
+    String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
+    String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
+    String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
+    String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
+    String effective_variants_nirvana_docker = select_first([variants_nirvana_docker, GetToolVersions.variants_nirvana_docker])
 
     call MakeSubpopulationFilesAndReadSchemaFiles {
         input:
             input_ancestry_file = ancestry_file,
-            variants_docker = GetToolVersions.variants_docker,
+            variants_docker = effective_variants_docker,
     }
 
     call Utils.IndexVcf {
         input:
-            input_vcf = input_sites_only_vcf
+            input_vcf = input_sites_only_vcf,
+            gatk_docker = effective_gatk_docker,
     }
 
     call Utils.SplitIntervals {
@@ -51,6 +66,7 @@ workflow GvsCreateVATfromVDS {
             output_gcs_dir = output_path + "intervals",
             split_intervals_disk_size_override = split_intervals_disk_size_override,
             split_intervals_mem_override = split_intervals_mem_override,
+            gatk_docker = effective_gatk_docker,
     }
 
     String sites_only_vcf_basename = basename(basename(input_sites_only_vcf, ".gz"), ".vcf")
@@ -65,14 +81,14 @@ workflow GvsCreateVATfromVDS {
                 input_vcf_index = IndexVcf.output_vcf_index,
                 interval_list = SplitIntervals.interval_files[i],
                 output_basename = vcf_filename,
-                gatk_docker = GetToolVersions.gatk_docker,
+                gatk_docker = effective_gatk_docker,
         }
 
         call RemoveDuplicatesFromSitesOnlyVCF {
             input:
                 sites_only_vcf = SelectVariants.output_vcf,
                 ref = reference,
-                variants_docker = GetToolVersions.variants_docker,
+                variants_docker = effective_variants_docker,
         }
 
         call StripCustomAnnotationsFromSitesOnlyVCF {
@@ -81,7 +97,7 @@ workflow GvsCreateVATfromVDS {
                 custom_annotations_header = MakeSubpopulationFilesAndReadSchemaFiles.custom_annotations_template_file,
                 output_vcf_name = "${vcf_filename}.unannotated.sites_only.vcf",
                 output_custom_annotations_filename = "${vcf_filename}.custom_annotations.tsv",
-                variants_docker = GetToolVersions.variants_docker,
+                variants_docker = effective_variants_docker,
         }
 
         ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
@@ -90,7 +106,7 @@ workflow GvsCreateVATfromVDS {
                 input_vcf = StripCustomAnnotationsFromSitesOnlyVCF.output_vcf,
                 output_annotated_file_name = "${vcf_filename}_annotated",
                 custom_annotations_file = StripCustomAnnotationsFromSitesOnlyVCF.output_custom_annotations_file,
-                variants_nirvana_docker = GetToolVersions.variants_nirvana_docker,
+                variants_nirvana_docker = effective_variants_nirvana_docker,
         }
 
         call PrepVtAnnotationJson {
@@ -98,7 +114,7 @@ workflow GvsCreateVATfromVDS {
                 positions_annotation_json = AnnotateVCF.positions_annotation_json,
                 output_file_suffix = "${vcf_filename}.json.gz",
                 output_path = output_path,
-                variants_docker = GetToolVersions.variants_docker,
+                variants_docker = effective_variants_docker,
         }
 
         call PrepGenesAnnotationJson {
@@ -106,7 +122,7 @@ workflow GvsCreateVATfromVDS {
                 genes_annotation_json = AnnotateVCF.genes_annotation_json,
                 output_file_suffix = "${vcf_filename}.json.gz",
                 output_path = output_path,
-                variants_docker = GetToolVersions.variants_docker,
+                variants_docker = effective_variants_docker,
         }
 
     }
@@ -114,7 +130,8 @@ workflow GvsCreateVATfromVDS {
     call Utils.MergeTsvs {
         input:
             input_files = RemoveDuplicatesFromSitesOnlyVCF.track_dropped,
-            output_file_name = "${sites_only_vcf_basename}.dropped.tsv"
+            output_file_name = "${sites_only_vcf_basename}.dropped.tsv",
+            basic_docker = effective_basic_docker,
     }
 
     call BigQueryLoadJson {
@@ -129,7 +146,7 @@ workflow GvsCreateVATfromVDS {
             vat_version = vat_version,
             prep_vt_json_done = PrepVtAnnotationJson.done,
             prep_genes_json_done = PrepGenesAnnotationJson.done,
-            cloud_sdk_docker = GetToolVersions.cloud_sdk_docker,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
     call GvsCreateVATFilesFromBigQuery.GvsCreateVATFilesFromBigQuery {
@@ -140,7 +157,7 @@ workflow GvsCreateVATfromVDS {
             output_path = output_path,
             merge_vcfs_disk_size_override = merge_vcfs_disk_size_override,
             precondition_met = BigQueryLoadJson.done,
-            cloud_sdk_docker = GetToolVersions.cloud_sdk_docker,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
    }
 
     output {
