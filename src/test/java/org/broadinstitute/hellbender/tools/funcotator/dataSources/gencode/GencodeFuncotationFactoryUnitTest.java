@@ -412,6 +412,25 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
     }
 
     @DataProvider
+    Object[][] provideForTestSpliceSiteWindowSettings() {
+//        final int chromosomeNumber,
+//        final int start,
+//        final int end,
+//        final GencodeFuncotation.VariantType variantType,
+//        final String ref,
+//        final String alt,
+//        final int spliceSiteWindow,
+//        final GencodeFuncotation.VariantClassification expectedVariantClassification) {
+        return new Object[][] {
+                { 19, 8987116, 8987116, GencodeFuncotation.VariantType.SNP, "C", "A", 0, GencodeFuncotation.VariantClassification.INTRON },
+                { 19, 8987116, 8987116, GencodeFuncotation.VariantType.SNP, "C", "A", 1, GencodeFuncotation.VariantClassification.INTRON },
+                { 19, 8987116, 8987116, GencodeFuncotation.VariantType.SNP, "C", "A", 2, GencodeFuncotation.VariantClassification.INTRON },
+                { 19, 8987116, 8987116, GencodeFuncotation.VariantType.SNP, "C", "A", 3, GencodeFuncotation.VariantClassification.INTRON },
+                { 19, 8987116, 8987116, GencodeFuncotation.VariantType.SNP, "C", "A", 4, GencodeFuncotation.VariantClassification.SPLICE_SITE },
+        };
+    }
+
+    @DataProvider
     Object[][] provideMuc16SnpDataForGetVariantClassificationWithOutOfCdsData() {
         final List<Object[]> l = new ArrayList<>();
 
@@ -1281,6 +1300,95 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
             (expectedVariantClassification == GencodeFuncotation.VariantClassification.DE_NOVO_START_OUT_FRAME) ||
             (expectedVariantClassification == GencodeFuncotation.VariantClassification.RNA) ||
             (expectedVariantClassification == GencodeFuncotation.VariantClassification.LINCRNA) )
+        {
+            return;
+        }
+
+        final String contig = "chr" + Integer.toString(chromosomeNumber);
+        final SimpleInterval variantInterval = new SimpleInterval( contig, start, end );
+
+        final Allele refAllele = Allele.create(ref, true);
+        final Allele altAllele = Allele.create(alt);
+
+        final VariantContextBuilder variantContextBuilder = new VariantContextBuilder(
+                FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref(),
+                contig,
+                start,
+                end,
+                Arrays.asList(refAllele, altAllele)
+        );
+        final VariantContext variantContext = variantContextBuilder.make();
+
+        // Get our gene feature iterator:
+        final CloseableTribbleIterator<GencodeGtfFeature> gtfFeatureIterator;
+        try {
+            gtfFeatureIterator = gencodeHg19FeatureReader.query(contig, start, end);
+        }
+        catch (final IOException ex) {
+            throw new GATKException("Could not finish the test!", ex);
+        }
+
+        // Get the gene.
+        // We know the first gene is the right one - the gene in question is the MUC16 gene:
+        final GencodeGtfGeneFeature             gene = (GencodeGtfGeneFeature) gtfFeatureIterator.next();
+        final GencodeGtfTranscriptFeature transcript = getMuc16Transcript(gene);
+        final GencodeGtfExonFeature             exon = getExonForVariant( gene, variantInterval );
+
+        final ReferenceContext referenceContext = new ReferenceContext( refDataSourceHg19Ch19, variantInterval );
+
+        final List<? extends Locatable> exonPositionList = GencodeFuncotationFactory.getSortedCdsAndStartStopPositions(transcript);
+
+        final ReferenceDataSource muc16TranscriptDataSource = ReferenceDataSource.of(new File(FuncotatorTestConstants.GENCODE_DATA_SOURCE_FASTA_PATH_HG19).toPath());
+        final Map<String, GencodeFuncotationFactory.MappedTranscriptIdInfo> muc16TranscriptIdMap = GencodeFuncotationFactory. createTranscriptIdMap(muc16TranscriptDataSource);
+
+        final SequenceComparison seqComp =
+                GencodeFuncotationFactory.createSequenceComparison(
+                        variantContext,
+                        altAllele,
+                        referenceContext,
+                        transcript,
+                        exonPositionList,
+                        muc16TranscriptIdMap,
+                        muc16TranscriptDataSource,
+                        true);
+
+        final GencodeFuncotation.VariantClassification varClass = GencodeFuncotationFactory.createVariantClassification(
+                variantContext,
+                altAllele,
+                variantType,
+                exon,
+                transcript.getExons().size(),
+                seqComp,
+                FuncotatorUtils.DEFAULT_SPLICE_SITE_WINDOW_SIZE
+        );
+
+        Assert.assertEquals( varClass, expectedVariantClassification );
+    }
+
+    @Test (dataProvider = "provideForTestSpliceSiteWindowSettings")
+    void testSpliceSiteWindowSettings(final int chromosomeNumber,
+                                      final int start,
+                                      final int end,
+                                      final GencodeFuncotation.VariantType variantType,
+                                      final String ref,
+                                      final String alt,
+                                      final int spliceSiteWindow,
+                                      final GencodeFuncotation.VariantClassification expectedVariantClassification) {
+
+        // This test can only deal with variants in coding regions.
+        // So we ignore any tests that are expected outside of coding regions.
+        // i.e. expectedVariantClassification is one of:
+        //     { INTRON, FIVE_PRIME_UTR, THREE_PRIME_UTR, IGR, FIVE_PRIME_FLANK, DE_NOVO_START_IN_FRAME, DE_NOVO_START_OUT_FRAME, RNA, LINCRNA }
+        // We test these cases in another unit test.
+        if ((expectedVariantClassification == GencodeFuncotation.VariantClassification.INTRON) ||
+                (expectedVariantClassification == GencodeFuncotation.VariantClassification.FIVE_PRIME_UTR) ||
+                (expectedVariantClassification == GencodeFuncotation.VariantClassification.THREE_PRIME_UTR) ||
+                (expectedVariantClassification == GencodeFuncotation.VariantClassification.IGR) ||
+                (expectedVariantClassification == GencodeFuncotation.VariantClassification.FIVE_PRIME_FLANK) ||
+                (expectedVariantClassification == GencodeFuncotation.VariantClassification.DE_NOVO_START_IN_FRAME) ||
+                (expectedVariantClassification == GencodeFuncotation.VariantClassification.DE_NOVO_START_OUT_FRAME) ||
+                (expectedVariantClassification == GencodeFuncotation.VariantClassification.RNA) ||
+                (expectedVariantClassification == GencodeFuncotation.VariantClassification.LINCRNA) )
         {
             return;
         }

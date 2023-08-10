@@ -127,6 +127,7 @@ public abstract class BaseFuncotatorArgumentCollection implements Serializable {
     @Argument(
             fullName = FuncotatorArgumentDefinitions.SPLICE_SITE_WINDOW_SIZE,
             optional = true,
+            minValue = 0,
             doc = "Number of bases on either side of a splice site for a variant to be classified as a SPLICE_SITE variant (default: " + FuncotatorUtils.DEFAULT_SPLICE_SITE_WINDOW_SIZE + ")."
     )
     public int spliceSiteWindow = FuncotatorUtils.DEFAULT_SPLICE_SITE_WINDOW_SIZE;
