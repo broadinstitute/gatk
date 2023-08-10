@@ -20,6 +20,7 @@ task GetToolVersions {
     String gatk_docker = "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_bulk_ingest_staging_2023_08_03"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"
+    String gotc_imputation_docker = "us.gcr.io/broad-gotc-prod/imputation-bcf-vcf:1.0.5-1.10.2-0.1.16-1649948623"
   }
 }
 
