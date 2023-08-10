@@ -1339,7 +1339,8 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
                 variantType,
                 exon,
                 transcript.getExons().size(),
-                seqComp
+                seqComp,
+                FuncotatorUtils.DEFAULT_SPLICE_SITE_WINDOW_SIZE
         );
 
         Assert.assertEquals( varClass, expectedVariantClassification );

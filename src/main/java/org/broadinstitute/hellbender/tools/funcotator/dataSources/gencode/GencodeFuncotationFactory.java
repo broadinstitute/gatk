@@ -73,11 +73,6 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     private static final String LOCAL_GENCODE_TRANSCRIPT_FILE_BASE_NAME = "gencodeTranscriptFastaFile";
 
     /**
-     * The window around splice sites to mark variants as {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification#SPLICE_SITE}.
-     */
-    private static final int spliceSiteVariantWindowBases = 2;
-
-    /**
      * Number of bases to the left and right of a variant in which to calculate the GC content.
      */
     private static final int gcContentWindowSizeBases = 200;
@@ -223,6 +218,11 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     private String ncbiBuildVersion = null;
 
     /**
+     * The window on either side of splice sites to mark variants as {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification#SPLICE_SITE}.
+     */
+    private int spliceSiteVariantWindowBases = FuncotatorUtils.DEFAULT_SPLICE_SITE_WINDOW_SIZE;
+
+    /**
      * Comparator to be used when sorting {@link Funcotation}s created by this {@link GencodeFuncotationFactory}.
      * Will be either {@link TranscriptSelectionMode.BestEffectGencodeFuncotationComparator} or {@link TranscriptSelectionMode.CanonicalGencodeFuncotationComparator}.
      */
@@ -352,6 +352,41 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                                      final boolean isSegmentFuncotationEnabled,
                                      final int minBasesForValidSegment) {
 
+        this(gencodeTranscriptFastaFilePath, version, name, transcriptSelectionMode, userRequestedTranscripts,
+                annotationOverrides, mainFeatureInput, flankSettings, isDataSourceB37, ncbiBuildVersion,
+                isSegmentFuncotationEnabled, minBasesForValidSegment, FuncotatorUtils.DEFAULT_SPLICE_SITE_WINDOW_SIZE);
+    }
+
+    /**
+     * Create a {@link GencodeFuncotationFactory}.
+     *
+     * @param gencodeTranscriptFastaFilePath {@link Path} to the FASTA file containing the sequences of all transcripts in the Gencode data source.
+     * @param version The version {@link String} of Gencode from which {@link Funcotation}s will be made.
+     * @param name A {@link String} containing the name of this {@link GencodeFuncotationFactory}.
+     * @param transcriptSelectionMode The {@link TranscriptSelectionMode} by which representative/verbose transcripts will be chosen for overlapping variants.
+     * @param userRequestedTranscripts A {@link Set<String>} containing Gencode TranscriptIDs that the user requests to be annotated with priority over all other transcripts for overlapping variants.
+     * @param annotationOverrides A {@link LinkedHashMap<String,String>} containing user-specified overrides for specific {@link Funcotation}s.
+     * @param mainFeatureInput The backing {@link FeatureInput} for this {@link GencodeFuncotationFactory}, from which all {@link Funcotation}s will be created.
+     * @param flankSettings Settings object containing our 5'/3' flank sizes
+     * @param isDataSourceB37 If {@code true}, indicates that the data source behind this {@link GencodeFuncotationFactory} contains B37 data.
+     * @param ncbiBuildVersion The NCBI build version for this {@link GencodeFuncotationFactory} (can be found in the datasource config file)
+     * @param minBasesForValidSegment The minimum number of bases for a segment to be considered valid.
+     * @param spliceSiteWindowSize The number of bases on either side of a splice site for a variant to be a {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification#SPLICE_SITE} variant.
+     */
+    public GencodeFuncotationFactory(final Path gencodeTranscriptFastaFilePath,
+                                     final String version,
+                                     final String name,
+                                     final TranscriptSelectionMode transcriptSelectionMode,
+                                     final Set<String> userRequestedTranscripts,
+                                     final LinkedHashMap<String, String> annotationOverrides,
+                                     final FeatureInput<? extends Feature> mainFeatureInput,
+                                     final FlankSettings flankSettings,
+                                     final boolean isDataSourceB37,
+                                     final String ncbiBuildVersion,
+                                     final boolean isSegmentFuncotationEnabled,
+                                     final int minBasesForValidSegment,
+                                     final int spliceSiteWindowSize) {
+
         super(mainFeatureInput, minBasesForValidSegment);
 
         // Set up our local transcript fasta file.
@@ -374,6 +409,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
         this.ncbiBuildVersion = ncbiBuildVersion;
 
         this.isSegmentFuncotationEnabled = isSegmentFuncotationEnabled;
+
+        this.spliceSiteVariantWindowBases = spliceSiteWindowSize;
 
         // Go through each requested transcript and remove the version numbers from them if they exist:
         this.userRequestedTranscripts = new HashSet<>();
@@ -1270,7 +1307,9 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                                      .setProteinChange(proteinChange);
 
             // Set the Variant Classification:
-            final GencodeFuncotation.VariantClassification varClass = createVariantClassification(variant, altAllele, variantType, exon, transcript.getExons().size(), sequenceComparison);
+            final GencodeFuncotation.VariantClassification varClass = createVariantClassification(
+                    variant, altAllele, variantType, exon, transcript.getExons().size(), sequenceComparison, spliceSiteVariantWindowBases
+            );
             final GencodeFuncotation.VariantClassification secondaryVarClass;
             gencodeFuncotationBuilder.setVariantClassification(varClass);
             if ( varClass == GencodeFuncotation.VariantClassification.SPLICE_SITE ) {
@@ -1354,6 +1393,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      * @param exon The {@link GencodeGtfExonFeature} in which the given {@code variant} occurs.
      * @param numberOfExonsInTranscript The number of exons in the transcript in which the given {@code variant} occurs. (Must be > 0).
      * @param sequenceComparison The {@link org.broadinstitute.hellbender.tools.funcotator.SequenceComparison} for the given {@code variant}.
+     * @param spliceSiteWindowBases The window on either side of splice sites to mark variants as {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification#SPLICE_SITE}.
      * @return A {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification} based on the given {@code allele}, {@code variant}, {@code exon}, and {@code sequenceComparison}.
      */
     @VisibleForTesting
@@ -1362,7 +1402,8 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
                                                                                 final GencodeFuncotation.VariantType variantType,
                                                                                 final GencodeGtfExonFeature exon,
                                                                                 final int numberOfExonsInTranscript,
-                                                                                final SequenceComparison sequenceComparison ){
+                                                                                final SequenceComparison sequenceComparison,
+                                                                                final int spliceSiteWindowBases){
         Utils.nonNull(variant);
         Utils.nonNull(altAllele);
         Utils.nonNull(variantType);
@@ -1423,11 +1464,11 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             final int adjustedExonEnd = adjustLocusForInsertion(exon.getEnd(), variant, altAllele, realVariationInterval);
 
             if ( doLeftOverlapCheck ) {
-                final SimpleInterval leftSideInterval = new SimpleInterval(exon.getContig(), adjustedExonStart - spliceSiteVariantWindowBases, adjustedExonStart + (spliceSiteVariantWindowBases-1));
+                final SimpleInterval leftSideInterval = new SimpleInterval(exon.getContig(), adjustedExonStart - spliceSiteWindowBases, adjustedExonStart + (spliceSiteWindowBases-1));
                 overlapsLeft = leftSideInterval.overlaps(realVariationInterval);
             }
             if ( doRightOverlapCheck ) {
-                final SimpleInterval rightSideInterval = new SimpleInterval(exon.getContig(), adjustedExonEnd - spliceSiteVariantWindowBases + 1, adjustedExonEnd + (spliceSiteVariantWindowBases-1) + 1);
+                final SimpleInterval rightSideInterval = new SimpleInterval(exon.getContig(), adjustedExonEnd - spliceSiteWindowBases + 1, adjustedExonEnd + (spliceSiteWindowBases-1) + 1);
                 overlapsRight = rightSideInterval.overlaps(realVariationInterval);
             }
 

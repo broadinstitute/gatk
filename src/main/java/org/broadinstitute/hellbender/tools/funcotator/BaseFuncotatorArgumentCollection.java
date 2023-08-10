@@ -123,4 +123,11 @@ public abstract class BaseFuncotatorArgumentCollection implements Serializable {
             doc = "TSV File containing custom Variant Classification severity map of the form: VARIANT_CLASSIFICATION\tSEV.  VARIANT_CLASSIFICATION must match one of the VariantClassification names (" + GencodeFuncotation.VariantClassification.ALL_VC_NAMES + ").  SEV is an unsigned integer, where lower is sorted first.  When using this option it is HIGHLY recommended you also use the `BEST_EFFECT` transcript selection mode."
     )
     public GATKPath customVariantClassificationOrderFile = null;
+
+    @Argument(
+            fullName = FuncotatorArgumentDefinitions.SPLICE_SITE_WINDOW_SIZE,
+            optional = true,
+            doc = "Number of bases on either side of a splice site for a variant to be classified as a SPLICE_SITE variant (default: " + FuncotatorUtils.DEFAULT_SPLICE_SITE_WINDOW_SIZE + ")."
+    )
+    public int spliceSiteWindow = FuncotatorUtils.DEFAULT_SPLICE_SITE_WINDOW_SIZE;
 }
