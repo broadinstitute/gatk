@@ -1463,12 +1463,17 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             final int adjustedExonStart = adjustLocusForInsertion(exon.getStart(), variant, altAllele, realVariationInterval);
             final int adjustedExonEnd = adjustLocusForInsertion(exon.getEnd(), variant, altAllele, realVariationInterval);
 
+            // If we have 0 padding, we want to make sure the variant overlaps the exon start itself,
+            // not within a base of the exon start, so we have to create this adjustment here so that we can
+            // not subtract one and create an invalid interval.
+            final int intervalEndCoordAdjuster = spliceSiteWindowBases > 0 ? 1 : 0;
+
             if ( doLeftOverlapCheck ) {
-                final SimpleInterval leftSideInterval = new SimpleInterval(exon.getContig(), adjustedExonStart - spliceSiteWindowBases, adjustedExonStart + (spliceSiteWindowBases-1));
+                final SimpleInterval leftSideInterval = new SimpleInterval(exon.getContig(), adjustedExonStart - spliceSiteWindowBases, adjustedExonStart + (spliceSiteWindowBases-intervalEndCoordAdjuster));
                 overlapsLeft = leftSideInterval.overlaps(realVariationInterval);
             }
             if ( doRightOverlapCheck ) {
-                final SimpleInterval rightSideInterval = new SimpleInterval(exon.getContig(), adjustedExonEnd - spliceSiteWindowBases + 1, adjustedExonEnd + (spliceSiteWindowBases-1) + 1);
+                final SimpleInterval rightSideInterval = new SimpleInterval(exon.getContig(), adjustedExonEnd - spliceSiteWindowBases + 1, adjustedExonEnd + (spliceSiteWindowBases-intervalEndCoordAdjuster) + 1);
                 overlapsRight = rightSideInterval.overlaps(realVariationInterval);
             }
 

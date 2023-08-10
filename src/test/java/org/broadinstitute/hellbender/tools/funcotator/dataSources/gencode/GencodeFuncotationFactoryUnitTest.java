@@ -413,20 +413,24 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
     @DataProvider
     Object[][] provideForTestSpliceSiteWindowSettings() {
-//        final int chromosomeNumber,
-//        final int start,
-//        final int end,
-//        final GencodeFuncotation.VariantType variantType,
-//        final String ref,
-//        final String alt,
-//        final int spliceSiteWindow,
-//        final GencodeFuncotation.VariantClassification expectedVariantClassification) {
         return new Object[][] {
-                { 19, 8987116, 8987116, GencodeFuncotation.VariantType.SNP, "C", "A", 0, GencodeFuncotation.VariantClassification.INTRON },
-                { 19, 8987116, 8987116, GencodeFuncotation.VariantType.SNP, "C", "A", 1, GencodeFuncotation.VariantClassification.INTRON },
-                { 19, 8987116, 8987116, GencodeFuncotation.VariantType.SNP, "C", "A", 2, GencodeFuncotation.VariantClassification.INTRON },
-                { 19, 8987116, 8987116, GencodeFuncotation.VariantType.SNP, "C", "A", 3, GencodeFuncotation.VariantClassification.INTRON },
-                { 19, 8987116, 8987116, GencodeFuncotation.VariantType.SNP, "C", "A", 4, GencodeFuncotation.VariantClassification.SPLICE_SITE },
+                { 19, 8987107, 8987107, GencodeFuncotation.VariantType.SNP, "A", "G", 0, GencodeFuncotation.VariantClassification.SILENT },
+                { 19, 8987107, 8987107, GencodeFuncotation.VariantType.SNP, "A", "G", 1, GencodeFuncotation.VariantClassification.SILENT },
+                { 19, 8987107, 8987107, GencodeFuncotation.VariantType.SNP, "A", "G", 2, GencodeFuncotation.VariantClassification.SILENT },
+                { 19, 8987107, 8987107, GencodeFuncotation.VariantType.SNP, "A", "G", 3, GencodeFuncotation.VariantClassification.SILENT },
+                { 19, 8987107, 8987107, GencodeFuncotation.VariantType.SNP, "A", "G", 4, GencodeFuncotation.VariantClassification.SILENT },
+                { 19, 8987107, 8987107, GencodeFuncotation.VariantType.SNP, "A", "G", 5, GencodeFuncotation.VariantClassification.SILENT },
+                { 19, 8987107, 8987107, GencodeFuncotation.VariantType.SNP, "A", "G", 6, GencodeFuncotation.VariantClassification.SPLICE_SITE },
+                { 19, 8987107, 8987107, GencodeFuncotation.VariantType.SNP, "A", "G", 7, GencodeFuncotation.VariantClassification.SPLICE_SITE },
+                { 19, 8987107, 8987107, GencodeFuncotation.VariantType.SNP, "A", "G", 8, GencodeFuncotation.VariantClassification.SPLICE_SITE },
+                { 19, 8987049, 8987049, GencodeFuncotation.VariantType.SNP, "G", "A", 0, GencodeFuncotation.VariantClassification.SILENT },
+                { 19, 8987049, 8987049, GencodeFuncotation.VariantType.SNP, "G", "A", 1, GencodeFuncotation.VariantClassification.SILENT },
+                { 19, 8987049, 8987049, GencodeFuncotation.VariantType.SNP, "G", "A", 2, GencodeFuncotation.VariantClassification.SILENT },
+                { 19, 8987049, 8987049, GencodeFuncotation.VariantType.SNP, "G", "A", 3, GencodeFuncotation.VariantClassification.SILENT },
+                { 19, 8987049, 8987049, GencodeFuncotation.VariantType.SNP, "G", "A", 4, GencodeFuncotation.VariantClassification.SILENT },
+                { 19, 8987049, 8987049, GencodeFuncotation.VariantType.SNP, "G", "A", 5, GencodeFuncotation.VariantClassification.SPLICE_SITE },
+                { 19, 8987049, 8987049, GencodeFuncotation.VariantType.SNP, "G", "A", 6, GencodeFuncotation.VariantClassification.SPLICE_SITE },
+                { 19, 8987049, 8987049, GencodeFuncotation.VariantType.SNP, "G", "A", 7, GencodeFuncotation.VariantClassification.SPLICE_SITE },
         };
     }
 
