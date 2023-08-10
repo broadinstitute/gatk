@@ -144,8 +144,8 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
         aligner = SmithWatermanAligner.getAligner(MTAC.smithWatermanImplementation);
         samplesList = new IndexedSampleList(new ArrayList<>(ReadUtils.getSamplesFromHeader(header)));
 
-        tumorPileupQualBuffer = new PileupQualBuffer(MTAC.userDefinedBaseQualCorrection);
-        normalPileupQualBuffer = new PileupQualBuffer(MTAC.userDefinedBaseQualCorrection);
+        tumorPileupQualBuffer = new PileupQualBuffer(MTAC.activeRegionMultipleSubstitutionBaseQualCorrection);
+        normalPileupQualBuffer = new PileupQualBuffer(MTAC.activeRegionMultipleSubstitutionBaseQualCorrection);
 
         // optimize set operations for the common cases of no normal and one normal
         if (MTAC.normalSamples.isEmpty()) {
@@ -678,17 +678,15 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
         // as the *particular* alt base, whereas the qual actually means the probability of *any* substitution error.
         // since there are three possible substitutions for each ref base we must divide the error probability by three
         // which corresponds to adding 10*log10(3) = 4.77 ~ 5 to the qual.
-        private static final int ONE_THIRD_QUAL_CORRECTION = 5;
-
-        private static double USER_DEFINED_QUAL_CORRECTION = 1;
+        private static double MULTIPLE_SUBSTITUTION_BASE_QUAL_CORRECTION = 5;
 
         // indices 0-3 are A,C,G,T; 4 is other substitution (just in case it's some exotic protocol); 5 is indel
         private List<ByteArrayList> buffers = IntStream.range(0,6).mapToObj(n -> new ByteArrayList()).collect(Collectors.toList());
 
         public PileupQualBuffer() { }
 
-        public PileupQualBuffer(final double userDefinedQualCorrection) {
-            USER_DEFINED_QUAL_CORRECTION = userDefinedQualCorrection;
+        public PileupQualBuffer(final double multipleSubstitutionQualCorrection) {
+            MULTIPLE_SUBSTITUTION_BASE_QUAL_CORRECTION = multipleSubstitutionQualCorrection;
         }
 
         public void accumulateQuals(final ReadPileup pileup, final byte refBase, final int pcrErrorQual) {
@@ -740,7 +738,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
             if (index == -1) {  // -1 is the hard-coded value for non-simple bases in BaseUtils
                 buffers.get(OTHER_SUBSTITUTION).add(qual);
             } else {
-                buffers.get(index).add((byte) FastMath.min(qual + ONE_THIRD_QUAL_CORRECTION * USER_DEFINED_QUAL_CORRECTION, QualityUtils.MAX_QUAL));
+                buffers.get(index).add((byte) FastMath.min(qual + MULTIPLE_SUBSTITUTION_BASE_QUAL_CORRECTION, QualityUtils.MAX_QUAL));
             }
         }
 

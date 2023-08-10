@@ -49,7 +49,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final String CALLABLE_DEPTH_LONG_NAME = "callable-depth";
     public static final String PCR_SNV_QUAL_LONG_NAME = "pcr-snv-qual";
     public static final String PCR_INDEL_QUAL_LONG_NAME = "pcr-indel-qual";
-    public static final String USER_DEFINED_BASE_QUAL_CORRECTION = "base-qual-correction-factor";
+    public static final String MULTIPLE_SUBSTITUTION_BASE_QUAL_CORRECTION = "base-qual-correction-factor";
     public static final String F1R2_TAR_GZ_NAME = "f1r2-tar-gz";
 
     public static final double DEFAULT_AF_FOR_TUMOR_ONLY_CALLING = 5e-8;
@@ -254,8 +254,8 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      * Set to zero to turn off the error model changes included in GATK 4.1.9.0.
      */
     @Advanced
-    @Argument(fullName = USER_DEFINED_BASE_QUAL_CORRECTION, optional = true, doc = "Set to zero to turn off the error model changes included in GATK 4.1.9.0.")
-    public double userDefinedBaseQualCorrection = 1;
+    @Argument(fullName = MULTIPLE_SUBSTITUTION_BASE_QUAL_CORRECTION, optional = true, doc = "Set to zero to turn off the error model changes included in GATK 4.1.9.0.")
+    public long activeRegionMultipleSubstitutionBaseQualCorrection = Math.round(10 * Math.log(3));
 
     /**
      * In tumor-only mode, we discard variants with population allele frequencies greater than this threshold.
