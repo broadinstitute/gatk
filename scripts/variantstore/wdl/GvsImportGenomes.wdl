@@ -30,6 +30,10 @@ workflow GvsImportGenomes {
     Int? load_data_preemptible_override
     Int? load_data_maxretries_override
     Boolean process_vcf_headers = false
+    String? basic_docker
+    String? cloud_sdk_docker
+    String? variants_docker
+    String? gatk_docker
     File? load_data_gatk_override
   }
 
@@ -42,10 +46,20 @@ workflow GvsImportGenomes {
   Int max_scatter_for_user =  if is_rate_limited_beta_customer then beta_customer_max_scatter
                               else broad_user_max_scatter
 
+  if (!defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker)) {
+    call Utils.GetToolVersions
+  }
+
+  String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
+  String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
+  String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
+  String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
+
   if ((num_samples > max_auto_batch_size) && !(defined(load_data_batch_size))) {
     call Utils.TerminateWorkflow as DieDueToTooManySamplesWithoutExplicitLoadDataBatchSize {
       input:
-        message = "Importing " + num_samples + " samples but 'load_data_batch_size' not explicitly specified; limit for auto batch-sizing is " + max_auto_batch_size + " samples."
+        message = "Importing " + num_samples + " samples but 'load_data_batch_size' not explicitly specified; limit for auto batch-sizing is " + max_auto_batch_size + " samples.",
+        cloud_sdk_docker = effective_cloud_sdk_docker,
     }
   }
 
@@ -73,6 +87,7 @@ workflow GvsImportGenomes {
       external_sample_names = external_sample_names,
       num_samples = num_samples,
       table_name = "sample_info",
+      cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
   call CurateInputLists {
@@ -81,6 +96,7 @@ workflow GvsImportGenomes {
       input_vcf_list = input_vcfs,
       input_sample_name_list = external_sample_names,
       input_samples_to_be_loaded_map = GetUningestedSampleIds.sample_map,
+      variants_docker = effective_variants_docker,
   }
 
   call CreateFOFNs {
@@ -89,6 +105,7 @@ workflow GvsImportGenomes {
       input_vcf_index_list = CurateInputLists.input_vcf_indexes,
       input_vcf_list = CurateInputLists.input_vcfs,
       sample_name_list = CurateInputLists.sample_name_list,
+      basic_docker = effective_basic_docker,
   }
 
   scatter (i in range(length(CreateFOFNs.vcf_sample_name_fofns))) {
@@ -103,6 +120,7 @@ workflow GvsImportGenomes {
         input_vcf_indexes = read_lines(CreateFOFNs.vcf_batch_vcf_index_fofns[i]),
         input_vcfs = read_lines(CreateFOFNs.vcf_batch_vcf_fofns[i]),
         interval_list = interval_list,
+        gatk_docker = effective_gatk_docker,
         gatk_override = load_data_gatk_override,
         load_data_preemptible = effective_load_data_preemptible,
         load_data_maxretries = effective_load_data_maxretries,
@@ -114,6 +132,7 @@ workflow GvsImportGenomes {
  if (process_vcf_headers) {
    call ProcessVCFHeaders {
      input:
+       variants_docker = effective_variants_docker,
        load_done = LoadData.done,
        dataset_name = dataset_name,
        project_id = project_id,
@@ -125,6 +144,7 @@ workflow GvsImportGenomes {
       load_done = LoadData.done,
       project_id = project_id,
       dataset_name = dataset_name,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
   output {
@@ -139,6 +159,7 @@ task CreateFOFNs {
     File input_vcf_index_list
     File input_vcf_list
     File sample_name_list
+    String basic_docker
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
@@ -154,7 +175,7 @@ task CreateFOFNs {
     split -a 5 -l ~{batch_size} ~{sample_name_list} batched_sample_names.
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:441.0.0-alpine"
+    docker: basic_docker
     bootDiskSizeGb: 15
     memory: "3 GB"
     disks: "local-disk 10 HDD"
@@ -187,6 +208,7 @@ task LoadData {
     Boolean skip_loading_vqsr_fields = false
     Boolean process_vcf_headers
 
+    String gatk_docker
     File? gatk_override
     Int load_data_preemptible
     Int load_data_maxretries
@@ -311,7 +333,7 @@ task LoadData {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_08_01"
+    docker: gatk_docker
     maxRetries: load_data_maxretries
     memory: "3.75 GB"
     disks: "local-disk 50 HDD"
@@ -329,6 +351,7 @@ task ProcessVCFHeaders {
     String dataset_name
     String project_id
     Array[String] load_done
+    String variants_docker
   }
 
   command <<<
@@ -340,7 +363,7 @@ task ProcessVCFHeaders {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-08-04-alpine-2d67c4cb4"
+    docker: variants_docker
     disks: "local-disk 500 HDD"
   }
 }
@@ -352,6 +375,7 @@ task SetIsLoadedColumn {
     String project_id
 
     Array[String] load_done
+    String cloud_sdk_docker
   }
   meta {
     # This is doing some tricky stuff with `INFORMATION_SCHEMA` so just punt and let it be `volatile`.
@@ -385,7 +409,7 @@ task SetIsLoadedColumn {
                      AND sls2.status = "FINISHED")'
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:441.0.0-alpine"
+    docker: cloud_sdk_docker
     memory: "1 GB"
     disks: "local-disk 10 HDD"
     cpu: 1
@@ -404,6 +428,7 @@ task GetUningestedSampleIds {
     File external_sample_names
     Int num_samples
     String table_name
+    String cloud_sdk_docker
   }
   meta {
     # Do not call cache this, we want to read the database state every time.
@@ -475,7 +500,7 @@ task GetUningestedSampleIds {
     bq --apilog=false --project_id=~{project_id} rm -f=true ~{temp_table}
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:441.0.0-alpine"
+    docker: cloud_sdk_docker
     memory: "1 GB"
     disks: "local-disk 10 HDD"
     preemptible: 5
@@ -495,6 +520,7 @@ task CurateInputLists {
     File input_vcf_list
     File input_samples_to_be_loaded_map
     File input_sample_name_list
+    String variants_docker
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
@@ -511,7 +537,7 @@ task CurateInputLists {
                                              --vcf_index_list_file_name  ~{input_vcf_index_list}
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-08-04-alpine-2d67c4cb4"
+    docker: variants_docker
     memory: "3 GB"
     disks: "local-disk 100 HDD"
     bootDiskSizeGb: 15

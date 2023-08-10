@@ -18,7 +18,18 @@ workflow GvsRescatterCallsetInterval {
     String? final_output_gcs_dir
     File? gatk_override
     Int? merge_disk_override
+    String? variants_docker
+    String? cloud_sdk_docker
+    String? gatk_docker
   }
+
+  if (!defined(gatk_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker)) {
+    call Utils.GetToolVersions
+  }
+
+  String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.basic_docker])
+  String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
+  String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
 
   scatter(i in range(length(intervals_to_scatter))) {
     # take out leading 0s from interval file name number for VCF and index
@@ -34,7 +45,10 @@ workflow GvsRescatterCallsetInterval {
         scatter_count = re_scatter_count,
         interval_list = sub(interval_file_dir, "/$", "") + '/' + intervals_to_scatter[i] + "-scattered.interval_list",
         extract_preemptible_override = extract_preemptible_override,
-        filter_set_name = filter_set_name
+        filter_set_name = filter_set_name,
+        gatk_docker = effective_gatk_docker,
+        cloud_sdk_docker = effective_cloud_sdk_docker,
+        variants_docker = effective_variants_docker,
     }
 
     call Utils.MergeVCFs as MergeVCFs {
@@ -42,7 +56,8 @@ workflow GvsRescatterCallsetInterval {
         input_vcfs = ExtractInterval.output_vcfs,
         output_vcf_name = "${vcf_basename}.vcf.gz",
         output_directory = final_output_gcs_dir,
-        merge_disk_override = merge_disk_override
+        merge_disk_override = merge_disk_override,
+        gatk_docker = effective_gatk_docker,
     }
   }
 

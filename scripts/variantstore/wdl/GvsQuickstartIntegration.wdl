@@ -19,6 +19,11 @@ workflow GvsQuickstartIntegration {
         String? exome_vcf_files_column_name
         String? exome_vcf_index_files_column_name
         String? exome_sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
+        String? basic_docker
+        String? cloud_sdk_docker
+        String? cloud_sdk_slim_docker
+        String? variants_docker
+        String? gatk_docker
     }
 
     File full_wgs_interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
@@ -30,16 +35,29 @@ workflow GvsQuickstartIntegration {
         File? none = ""
     }
 
+    if (!defined(cloud_sdk_docker) || !defined(cloud_sdk_slim_docker) || !defined(variants_docker) ||
+        !defined(basic_docker) || !defined(gatk_docker)) {
+        call Utils.GetToolVersions
+    }
+
+    String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
+    String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
+    String effective_cloud_sdk_slim_docker = select_first([cloud_sdk_slim_docker, GetToolVersions.cloud_sdk_slim_docker])
+    String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
+    String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
+
     call FilterIntervalListChromosomes {
         input:
             full_interval_list = full_wgs_interval_list,
             chromosomes = ["chrX", "chrY", "chr20"],
+            variants_docker = effective_variants_docker,
     }
 
     if (!use_default_dockers) {
         call Utils.BuildGATKJar {
             input:
                 branch_name = branch_name,
+                cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
         }
     }
 
@@ -58,7 +76,12 @@ workflow GvsQuickstartIntegration {
                 vcf_files_column_name = wgs_vcf_files_column_name,
                 vcf_index_files_column_name = wgs_vcf_index_files_column_name,
                 sample_set_name = select_first([wgs_sample_set_name, "wgs_integration_sample_set"]),
-                use_classic_VQSR = false
+                use_classic_VQSR = false,
+                basic_docker = effective_basic_docker,
+                cloud_sdk_docker = effective_cloud_sdk_docker,
+                cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
+                variants_docker = effective_variants_docker,
+                gatk_docker = effective_gatk_docker,
         }
         call QuickstartHailIntegration.GvsQuickstartHailIntegration as GvsQuickstartHailVQSRClassicIntegration {
             input:
@@ -74,7 +97,12 @@ workflow GvsQuickstartIntegration {
                 vcf_files_column_name = wgs_vcf_files_column_name,
                 vcf_index_files_column_name = wgs_vcf_index_files_column_name,
                 sample_set_name = select_first([wgs_sample_set_name, "wgs_integration_sample_set"]),
-                use_classic_VQSR = true
+                use_classic_VQSR = true,
+                basic_docker = effective_basic_docker,
+                cloud_sdk_docker = effective_cloud_sdk_docker,
+                cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
+                variants_docker = effective_variants_docker,
+                gatk_docker = effective_gatk_docker,
         }
     }
 
@@ -93,7 +121,12 @@ workflow GvsQuickstartIntegration {
                 vcf_files_column_name = wgs_vcf_files_column_name,
                 vcf_index_files_column_name = wgs_vcf_index_files_column_name,
                 sample_set_name = select_first([wgs_sample_set_name, "wgs_integration_sample_set"]),
-                drop_state = "FORTY"
+                drop_state = "FORTY",
+                basic_docker = effective_basic_docker,
+                cloud_sdk_docker = effective_cloud_sdk_docker,
+                cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
+                variants_docker = effective_variants_docker,
+                gatk_docker = effective_gatk_docker,
         }
         call QuickstartVcfIntegration.GvsQuickstartVcfIntegration as QuickstartVcfVQSRClassicIntegration {
             input:
@@ -109,7 +142,12 @@ workflow GvsQuickstartIntegration {
                 vcf_files_column_name = wgs_vcf_files_column_name,
                 vcf_index_files_column_name = wgs_vcf_index_files_column_name,
                 sample_set_name = select_first([wgs_sample_set_name, "wgs_integration_sample_set"]),
-                drop_state = "FORTY"
+                drop_state = "FORTY",
+                basic_docker = effective_basic_docker,
+                cloud_sdk_docker = effective_cloud_sdk_docker,
+                cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
+                variants_docker = effective_variants_docker,
+                gatk_docker = effective_gatk_docker,
         }
     }
 
@@ -129,7 +167,12 @@ workflow GvsQuickstartIntegration {
                 vcf_files_column_name = exome_vcf_files_column_name,
                 vcf_index_files_column_name = exome_vcf_index_files_column_name,
                 sample_set_name = select_first([exome_sample_set_name, "exome_integration_sample_set"]),
-                drop_state = "FORTY"
+                drop_state = "FORTY",
+                basic_docker = effective_basic_docker,
+                cloud_sdk_docker = effective_cloud_sdk_docker,
+                cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
+                variants_docker = effective_variants_docker,
+                gatk_docker = effective_gatk_docker,
         }
     }
 }
@@ -138,6 +181,7 @@ task FilterIntervalListChromosomes {
     input {
         File full_interval_list
         Array[String]+ chromosomes
+        String variants_docker
     }
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
@@ -148,7 +192,7 @@ task FilterIntervalListChromosomes {
         --output-interval-list "filtered.interval_list" --chromosome ~{sep=' --chromosome ' chromosomes}
     >>>
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-08-04-alpine-2d67c4cb4"
+        docker: variants_docker
     }
     output {
         File out = "filtered.interval_list"

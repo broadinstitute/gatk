@@ -12,7 +12,18 @@ workflow GvsExtractAvroFilesForHail {
         String call_set_identifier
         Boolean use_VQSR_lite = true
         Int scatter_width = 10
+        String? basic_docker
+        String? cloud_sdk_docker
+        String? variants_docker
     }
+
+    if (!defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker)) {
+        call Utils.GetToolVersions
+    }
+
+    String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
+    String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
+    String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
 
     String fq_gvs_dataset = "~{project_id}.~{dataset_name}"
     String filter_set_info_tablename = "filter_set_info"
@@ -22,18 +33,22 @@ workflow GvsExtractAvroFilesForHail {
         input:
             project_id = project_id,
             fq_filter_set_info_table = "~{fq_filter_set_info_table}",
-            filter_set_name = filter_set_name
+            filter_set_name = filter_set_name,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
     call Utils.IsVQSRLite {
         input:
             project_id = project_id,
             fq_filter_set_info_table = "~{project_id}.~{dataset_name}.filter_set_info",
-            filter_set_name = filter_set_name
+            filter_set_name = filter_set_name,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
     call OutputPath {
-        input: go = ValidateFilterSetName.done
+        input:
+            go = ValidateFilterSetName.done,
+            basic_docker = effective_basic_docker,
     }
 
     call ExtractFromNonSuperpartitionedTables {
@@ -44,13 +59,15 @@ workflow GvsExtractAvroFilesForHail {
             filter_set_name = filter_set_name,
             avro_sibling = OutputPath.out,
             call_set_identifier = call_set_identifier,
-            is_vqsr_lite = IsVQSRLite.is_vqsr_lite
+            is_vqsr_lite = IsVQSRLite.is_vqsr_lite,
+            variants_docker = effective_variants_docker,
     }
 
     call Utils.CountSuperpartitions {
         input:
             project_id = project_id,
-            dataset_name = dataset_name
+            dataset_name = dataset_name,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
     scatter (i in range(scatter_width)) {
@@ -62,7 +79,8 @@ workflow GvsExtractAvroFilesForHail {
                 avro_sibling = OutputPath.out,
                 num_superpartitions = CountSuperpartitions.num_superpartitions,
                 shard_index = i,
-                num_shards = scatter_width
+                num_shards = scatter_width,
+                variants_docker = effective_variants_docker,
         }
     }
 
@@ -71,6 +89,7 @@ workflow GvsExtractAvroFilesForHail {
             go_non_superpartitioned = ExtractFromNonSuperpartitionedTables.done,
             go_superpartitioned = ExtractFromSuperpartitionedTables.done,
             avro_prefix = ExtractFromNonSuperpartitionedTables.output_prefix,
+            variants_docker = effective_variants_docker,
     }
     output {
         File hail_gvs_import_script = GenerateHailScripts.hail_gvs_import_script
@@ -91,6 +110,7 @@ task OutputPath {
     }
     input {
         Boolean go = true
+        String basic_docker
     }
     command <<<
     >>>
@@ -98,7 +118,7 @@ task OutputPath {
         File out = stdout()
     }
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:441.0.0-alpine"
+        docker: basic_docker
         disks: "local-disk 500 HDD"
     }
 }
@@ -118,6 +138,7 @@ task ExtractFromNonSuperpartitionedTables {
         String avro_sibling
         String call_set_identifier
         Boolean is_vqsr_lite = true
+        String variants_docker
     }
 
     String vqs_score_field = if (is_vqsr_lite == true) then 'calibration_sensitivity' else 'vqslod'
@@ -177,7 +198,7 @@ task ExtractFromNonSuperpartitionedTables {
     }
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-08-04-alpine-2d67c4cb4"
+        docker: variants_docker
         disks: "local-disk 500 HDD"
     }
 }
@@ -197,6 +218,7 @@ task ExtractFromSuperpartitionedTables {
         Int num_superpartitions
         Int shard_index
         Int num_shards
+        String variants_docker
     }
     parameter_meta {
         avro_sibling: "Cloud path to a file that will be the sibling to the 'avro' 'directory' under which output Avro files will be written."
@@ -244,7 +266,7 @@ task ExtractFromSuperpartitionedTables {
     }
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-08-04-alpine-2d67c4cb4"
+        docker: variants_docker
         disks: "local-disk 500 HDD"
     }
 }
@@ -254,6 +276,7 @@ task GenerateHailScripts {
         String avro_prefix
         Boolean go_non_superpartitioned
         Array[Boolean] go_superpartitioned
+        String variants_docker
     }
     meta {
         # Do not cache, this doesn't know if the "tree" under `avro_prefix` has changed.
@@ -312,7 +335,7 @@ task GenerateHailScripts {
         File hail_create_vat_inputs_script = 'hail_create_vat_inputs.py'
     }
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-08-04-alpine-2d67c4cb4"
+        docker: variants_docker
         disks: "local-disk 500 HDD"
     }
 }

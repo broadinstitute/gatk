@@ -1,5 +1,28 @@
 version 1.0
 
+task GetToolVersions {
+  meta {
+    # Don't even think about caching this.
+    volatile: true
+  }
+  command <<<
+  >>>
+  runtime {
+    docker: "ubuntu:22.04"
+  }
+  output {
+    String basic_docker = "ubuntu:22.04"
+    String cloud_sdk_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
+    # GVS generally uses the smallest `alpine` version of the Google Cloud SDK as it suffices for most tasks, but
+    # there are a handlful of tasks that require the larger GNU libc-based `slim`.
+    String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-slim"
+    String variants_docker = "us.gcr.io/broad-dsde-methods/variantstore:2023-08-07-alpine-0ca773dc6"
+    String gatk_docker = "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_bulk_ingest_staging_2023_08_03"
+    String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
+    String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"
+  }
+}
+
 task MergeVCFs {
   input {
     Array[File] input_vcfs
@@ -8,6 +31,7 @@ task MergeVCFs {
     String? output_directory
     Int? merge_disk_override
     Int? preemptible_tries
+    String gatk_docker
   }
 
   Int disk_size = select_first([merge_disk_override, 100])
@@ -41,7 +65,7 @@ task MergeVCFs {
   }
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_08_01"
+    docker: gatk_docker
     preemptible: select_first([preemptible_tries, 3])
     memory: "3 GiB"
     disks: "local-disk ~{disk_size} HDD"
@@ -67,6 +91,7 @@ task SplitIntervals {
     Int? split_intervals_disk_size_override
     Int? split_intervals_mem_override
     String? output_gcs_dir
+    String gatk_docker
     File? gatk_override
   }
   meta {
@@ -127,7 +152,7 @@ task SplitIntervals {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_08_01"
+    docker: gatk_docker
     bootDiskSizeGb: 15
     memory: "~{disk_memory} GB"
     disks: "local-disk ~{disk_size} HDD"
@@ -146,6 +171,7 @@ task GetBQTableLastModifiedDatetime {
     Boolean go = true
     String project_id
     String fq_table
+    String cloud_sdk_docker
   }
   meta {
     # because this is being used to determine if the data has changed, never use call cache
@@ -182,7 +208,7 @@ task GetBQTableLastModifiedDatetime {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:441.0.0-alpine"
+    docker: cloud_sdk_docker
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -196,6 +222,7 @@ task GetBQTablesMaxLastModifiedTimestamp {
     String data_project
     String dataset_name
     Array[String] table_patterns
+    String cloud_sdk_docker
   }
   meta {
     # because this is being used to determine if the data has changed, never use call cache
@@ -225,7 +252,7 @@ task GetBQTablesMaxLastModifiedTimestamp {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:441.0.0-alpine"
+    docker: cloud_sdk_docker
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -236,6 +263,7 @@ task GetBQTablesMaxLastModifiedTimestamp {
 task BuildGATKJar {
   input {
     String branch_name
+    String cloud_sdk_slim_docker
   }
   meta {
     # Branch may be updated so do not call cache!
@@ -294,7 +322,7 @@ task BuildGATKJar {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-slim"
+    docker: cloud_sdk_slim_docker
     disks: "local-disk 500 HDD"
   }
 }
@@ -304,6 +332,7 @@ task CreateDataset {
     String branch_name
     String dataset_prefix
     String dataset_suffix
+    String cloud_sdk_docker
   }
   meta {
     # Branch may be updated so do not call cache!
@@ -321,8 +350,8 @@ task CreateDataset {
     bash ~{monitoring_script} > monitoring.log &
 
     # git
-    apt-get -qq update
-    apt-get -qq install git
+    apk update && apk upgrade
+    apk add git
 
     # GATK
     git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{branch_name} --single-branch
@@ -356,7 +385,7 @@ task CreateDataset {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-slim"
+    docker: cloud_sdk_docker
     disks: "local-disk 500 HDD"
   }
 }
@@ -366,6 +395,7 @@ task BuildGATKJarAndCreateDataset {
     String branch_name
     String dataset_prefix
     String dataset_suffix
+    String cloud_sdk_slim_docker
   }
   meta {
     # Branch may be updated so do not call cache!
@@ -440,7 +470,7 @@ task BuildGATKJarAndCreateDataset {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-slim"
+    docker: cloud_sdk_slim_docker
     disks: "local-disk 500 HDD"
   }
 }
@@ -448,6 +478,7 @@ task BuildGATKJarAndCreateDataset {
 task TerminateWorkflow {
   input {
     String message
+    String cloud_sdk_docker
   }
   meta {
     # Definitely do not call cache this!
@@ -468,7 +499,7 @@ task TerminateWorkflow {
   >>>
 
   runtime {
-    docker: "python:3.8-slim-buster"
+    docker: cloud_sdk_docker
     memory: "1 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -486,6 +517,7 @@ task ScaleXYBedValues {
         File interval_weights_bed
         Float x_bed_weight_scaling
         Float y_bed_weight_scaling
+        String variants_docker
     }
     meta {
         # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
@@ -509,7 +541,7 @@ task ScaleXYBedValues {
     }
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-08-04-alpine-2d67c4cb4"
+        docker: variants_docker
         maxRetries: 3
         memory: "7 GB"
         preemptible: 3
@@ -524,6 +556,7 @@ task GetNumSamplesLoaded {
     String project_id
     String sample_table_timestamp
     Boolean control_samples = false
+    String cloud_sdk_docker
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
@@ -552,7 +585,7 @@ task GetNumSamplesLoaded {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:441.0.0-alpine"
+    docker: cloud_sdk_docker
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -570,6 +603,7 @@ task CountSuperpartitions {
     input {
         String project_id
         String dataset_name
+        String cloud_sdk_docker
     }
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
     command <<<
@@ -583,7 +617,7 @@ task CountSuperpartitions {
         ' | sed 1d > num_superpartitions.txt
     >>>
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:441.0.0-alpine"
+        docker: cloud_sdk_docker
         disks: "local-disk 500 HDD"
     }
     output {
@@ -599,6 +633,7 @@ task ValidateFilterSetName {
         String fq_filter_set_info_table
         String filter_set_name
         String filter_set_info_timestamp = ""
+        String cloud_sdk_docker
     }
     meta {
         # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
@@ -632,7 +667,7 @@ task ValidateFilterSetName {
     }
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:441.0.0-alpine"
+        docker: cloud_sdk_docker
         memory: "3 GB"
         disks: "local-disk 500 HDD"
         preemptible: 3
@@ -645,6 +680,7 @@ task IsVQSRLite {
     String project_id
     String fq_filter_set_info_table
     String filter_set_name
+    String cloud_sdk_docker
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
@@ -692,7 +728,7 @@ task IsVQSRLite {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:441.0.0-alpine"
+    docker: cloud_sdk_docker
     memory: "3 GB"
     disks: "local-disk 500 HDD"
     preemptible: 3
@@ -706,6 +742,7 @@ task IndexVcf {
 
         Int memory_mb = 7500
         Int disk_size_gb = ceil(2 * size(input_vcf, "GiB")) + 200
+        String gatk_docker
     }
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
@@ -733,7 +770,7 @@ task IndexVcf {
     >>>
 
     runtime {
-        docker: "us.gcr.io/broad-gatk/gatk:4.2.6.1"
+        docker: gatk_docker
         cpu: 1
         memory: "${memory_mb} MiB"
         disks: "local-disk ${disk_size_gb} HDD"
@@ -758,6 +795,7 @@ task SelectVariants {
 
         Int memory_mb = 7500
         Int disk_size_gb = ceil(2*size(input_vcf, "GiB")) + 200
+        String gatk_docker
     }
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
@@ -788,7 +826,7 @@ task SelectVariants {
     >>>
 
     runtime {
-        docker: "us.gcr.io/broad-gatk/gatk:4.2.6.1"
+        docker: gatk_docker
         cpu: 1
         memory: "${memory_mb} MiB"
         disks: "local-disk ${disk_size_gb} HDD"
@@ -807,6 +845,7 @@ task MergeTsvs {
     input {
         Array[File] input_files
         String output_file_name
+        String basic_docker
     }
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
@@ -822,7 +861,7 @@ task MergeTsvs {
     >>>
 
     runtime {
-      docker: "ubuntu:latest"
+      docker: basic_docker
     }
 
     output {
@@ -835,6 +874,7 @@ task MergeTsvs {
 task SummarizeTaskMonitorLogs {
   input {
     Array[File] inputs
+    String variants_docker
   }
 
   command <<<
@@ -854,7 +894,7 @@ task SummarizeTaskMonitorLogs {
   # ------------------------------------------------
   # Runtime settings:
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-08-04-alpine-2d67c4cb4"
+    docker: variants_docker
     memory: "1 GB"
     preemptible: 3
     cpu: "1"
@@ -882,6 +922,7 @@ task PopulateFilterSetInfo {
 
     String project_id
 
+    String gatk_docker
     File? gatk_override
   }
   meta {
@@ -934,7 +975,7 @@ task PopulateFilterSetInfo {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_08_01"
+    docker: gatk_docker
     memory: "3500 MB"
     disks: "local-disk 250 HDD"
     bootDiskSizeGb: 15

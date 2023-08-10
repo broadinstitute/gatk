@@ -1,5 +1,7 @@
 version 1.0
 
+import "GvsUtils.wdl" as Utils
+
 workflow ImportArrayManifest {
 
   input {
@@ -10,16 +12,15 @@ workflow ImportArrayManifest {
     String? table_name
  
     Int? preemptible_tries
-    String? docker
   }
 
-  String docker_final = select_first([docker, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
- 
+  call Utils.GetToolVersions
+
   call CreateManifestCsv {
     input:
       extended_manifest_csv = extended_manifest_csv,
       preemptible_tries = preemptible_tries,
-      docker = docker_final
+      docker = GetToolVersions.basic_docker,
   }
 
   call LoadManifest {
@@ -30,7 +31,7 @@ workflow ImportArrayManifest {
       manifest_schema_json = manifest_schema_json,
       manifest_csv = CreateManifestCsv.manifest_csv,
       preemptible_tries = preemptible_tries,
-      docker = docker_final
+      docker = GetToolVersions.variants_docker,
   }
   output {
     File manifest_csv = CreateManifestCsv.manifest_csv
