@@ -674,16 +674,10 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
         private static final int OTHER_SUBSTITUTION = 4;
         private static final int INDEL = 5;
 
-        // our pileup likelihoods models assume that the qual corresponds to the probability that a ref base is misread
-        // as the *particular* alt base, whereas the qual actually means the probability of *any* substitution error.
-        // since there are three possible substitutions for each ref base we must divide the error probability by three
-        // which corresponds to adding 10*log10(3) = 4.77 ~ 5 to the qual.
-        private static double MULTIPLE_SUBSTITUTION_BASE_QUAL_CORRECTION = 5;
+        private static double MULTIPLE_SUBSTITUTION_BASE_QUAL_CORRECTION;
 
         // indices 0-3 are A,C,G,T; 4 is other substitution (just in case it's some exotic protocol); 5 is indel
         private List<ByteArrayList> buffers = IntStream.range(0,6).mapToObj(n -> new ByteArrayList()).collect(Collectors.toList());
-
-        public PileupQualBuffer() { }
 
         public PileupQualBuffer(final double multipleSubstitutionQualCorrection) {
             MULTIPLE_SUBSTITUTION_BASE_QUAL_CORRECTION = multipleSubstitutionQualCorrection;
