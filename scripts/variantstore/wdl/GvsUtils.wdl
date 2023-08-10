@@ -478,7 +478,7 @@ task BuildGATKJarAndCreateDataset {
 task TerminateWorkflow {
   input {
     String message
-    String cloud_sdk_docker
+    String basic_docker
   }
   meta {
     # Definitely do not call cache this!
@@ -499,7 +499,7 @@ task TerminateWorkflow {
   >>>
 
   runtime {
-    docker: cloud_sdk_docker
+    docker: basic_docker
     memory: "1 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3

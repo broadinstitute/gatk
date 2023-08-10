@@ -46,7 +46,8 @@ workflow GvsCalculatePrecisionAndSensitivity {
   if ((length(sample_names) != length(truth_vcfs)) || (length(sample_names) != length(truth_vcf_indices)) || (length(sample_names) != length(truth_beds))) {
     call Utils.TerminateWorkflow {
       input:
-        message = "The inputs 'sample_names', 'truth_vcfs', 'truth_vcf_indices', and 'truth_beds' must all contain the same number of elements"
+        message = "The inputs 'sample_names', 'truth_vcfs', 'truth_vcf_indices', and 'truth_beds' must all contain the same number of elements",
+        basic_docker = effective_basic_docker,
     }
   }
 
