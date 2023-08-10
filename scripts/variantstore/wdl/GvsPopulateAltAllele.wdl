@@ -9,21 +9,32 @@ workflow GvsPopulateAltAllele {
     String project_id
     String call_set_identifier
     Int max_alt_allele_shards = 10
+    String? variants_docker
+    String? cloud_sdk_docker
   }
 
   String fq_alt_allele_table = "~{project_id}.~{dataset_name}.alt_allele"
 
+  if (!defined(cloud_sdk_docker) || !defined(variants_docker)) {
+    call Utils.GetToolVersions
+  }
+
+  String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
+  String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
+
   call CreateAltAlleleTable {
     input:
       dataset_name = dataset_name,
-      project_id = project_id
+      project_id = project_id,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
   call GetMaxSampleId {
     input:
       go = CreateAltAlleleTable.done,
       dataset_name = dataset_name,
-      project_id = project_id
+      project_id = project_id,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
   call GetVetTableNames {
@@ -31,14 +42,16 @@ workflow GvsPopulateAltAllele {
       dataset_name = dataset_name,
       project_id = project_id,
       max_sample_id = GetMaxSampleId.max_sample_id,
-      max_alt_allele_shards = max_alt_allele_shards
+      max_alt_allele_shards = max_alt_allele_shards,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
   call Utils.GetBQTableLastModifiedDatetime {
     input:
       go = CreateAltAlleleTable.done,
       project_id = project_id,
-      fq_table = fq_alt_allele_table
+      fq_table = fq_alt_allele_table,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
   scatter (vet_table_names_file in GetVetTableNames.vet_table_names_files) {
@@ -50,7 +63,8 @@ workflow GvsPopulateAltAllele {
         create_table_done = CreateAltAlleleTable.done,
         vet_table_names_file = vet_table_names_file,
         last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
-        max_sample_id = GetMaxSampleId.max_sample_id
+        max_sample_id = GetMaxSampleId.max_sample_id,
+        variants_docker = effective_variants_docker,
     }
   }
 
@@ -64,6 +78,7 @@ task GetMaxSampleId {
     Boolean go = true
     String dataset_name
     String project_id
+    String cloud_sdk_docker
   }
   meta {
     # because this is being used to determine the current state of the GVS database, never use call cache
@@ -86,7 +101,7 @@ task GetMaxSampleId {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:441.0.0-alpine"
+    docker: cloud_sdk_docker
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -100,6 +115,7 @@ task GetVetTableNames {
     String project_id
     Int max_sample_id
     Int max_alt_allele_shards
+    String cloud_sdk_docker
   }
 
   meta {
@@ -138,7 +154,7 @@ task GetVetTableNames {
     split -l $num_tables_per_file vet_tables.csv vet_tables_
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:441.0.0-alpine"
+    docker: cloud_sdk_docker
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -155,6 +171,7 @@ task CreateAltAlleleTable {
     Boolean go = true
     String dataset_name
     String project_id
+    String cloud_sdk_docker
   }
   meta {
     # should always be run; if the table already exists, no harm no foul
@@ -199,7 +216,7 @@ task CreateAltAlleleTable {
 
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:441.0.0-alpine"
+    docker: cloud_sdk_docker
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     cpu: 1
@@ -221,6 +238,7 @@ task PopulateAltAlleleTable {
     Int max_sample_id
 
     String last_modified_timestamp
+    String variants_docker
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
@@ -243,7 +261,7 @@ task PopulateAltAlleleTable {
     done
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-08-04-alpine-2d67c4cb4"
+    docker: variants_docker
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     cpu: 1

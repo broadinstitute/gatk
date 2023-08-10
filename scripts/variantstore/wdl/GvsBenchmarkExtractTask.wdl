@@ -1,7 +1,9 @@
 version 1.0
 
+import "GvsUtils.wdl" as Utils
+
 workflow GvsBenchmarkExtractTask {
-   input {
+    input {
         String data_project
         String dataset_name
 
@@ -14,11 +16,11 @@ workflow GvsBenchmarkExtractTask {
         # For reblocking v1, the default is "SIXTY" instead of "FORTY"
         String? drop_state = "FORTY"
 
-       # NOTE: this is just the cohort table prefix, not including project or dataset qualifiers
-       # without a default value, ranges users are forced to specify a value even though it is meaningless
-       String extract_table_prefix = ""
-       String query_project = data_project
-       String fq_ranges_dataset = "~{data_project}.~{dataset_name}"
+        # NOTE: this is just the cohort table prefix, not including project or dataset qualifiers
+        # without a default value, ranges users are forced to specify a value even though it is meaningless
+        String extract_table_prefix = ""
+        String query_project = data_project
+        String fq_ranges_dataset = "~{data_project}.~{dataset_name}"
 
         Boolean do_not_filter_override = false
         String? filter_set_name
@@ -45,43 +47,51 @@ workflow GvsBenchmarkExtractTask {
 
         String output_file_base_name
         String? output_gcs_dir
-        File? gatk_override = "gs://broad-dsp-spec-ops/scratch/bigquery-jointcalling/jars/kc_vqsr_magic_20220324/gatk-package-4.2.0.0-478-gd0e381c-SNAPSHOT-local.jar"
+        File? gatk_override
         Int local_disk_for_extract = 150
 
         String fq_samples_to_extract_table = "~{data_project}.~{dataset_name}.~{extract_table_prefix}__SAMPLES"
         String fq_cohort_extract_table  = "~{data_project}.~{dataset_name}.~{extract_table_prefix}__DATA"
-   }
 
+        String? gatk_docker
+    }
 
-        call ExtractTask {
-            input:
-                gatk_override                   = gatk_override,
-                reference                       = reference,
-                reference_index                 = reference_index,
-                reference_dict                  = reference_dict,
-                fq_samples_to_extract_table     = fq_samples_to_extract_table,
-                intervals                       = wgs_intervals,
-                fq_cohort_extract_table         = fq_cohort_extract_table,
-                read_project_id                 = query_project,
-                do_not_filter_override          = do_not_filter_override,
-                fq_ranges_dataset               = fq_ranges_dataset,
-                fq_filter_set_info_table        = fq_filter_set_info_table,
-                fq_filter_set_site_table        = fq_filter_set_site_table,
-                fq_filter_set_tranches_table    = fq_filter_set_tranches_table,
-                filter_set_name                 = filter_set_name,
-                vqslod_filter_by_site           = vqslod_filter_by_site,
-                snps_truth_sensitivity_filter_level = snps_truth_sensitivity_filter_level_override,
-                indels_truth_sensitivity_filter_level = indels_truth_sensitivity_filter_level_override,
-                excluded_intervals              = excluded_intervals,
-                emit_pls                        = emit_pls,
-                drop_state                      = drop_state,
-                output_file                     = "${output_file_base_name}.vcf.gz",
-                local_disk                      = local_disk_for_extract,
-                extract_preemptible_override    = extract_preemptible_override,
-                extract_cpu_override            = extract_cpu_override,
-                extract_memory_override         = extract_memory_override,
-                extract_maxretries_override     = extract_maxretries_override
-        }
+    if (!defined(gatk_docker)) {
+        call Utils.GetToolVersions
+    }
+
+    String effective_cloud_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
+
+    call ExtractTask {
+        input:
+            gatk_override                   = gatk_override,
+            reference                       = reference,
+            reference_index                 = reference_index,
+            reference_dict                  = reference_dict,
+            fq_samples_to_extract_table     = fq_samples_to_extract_table,
+            intervals                       = wgs_intervals,
+            fq_cohort_extract_table         = fq_cohort_extract_table,
+            read_project_id                 = query_project,
+            do_not_filter_override          = do_not_filter_override,
+            fq_ranges_dataset               = fq_ranges_dataset,
+            fq_filter_set_info_table        = fq_filter_set_info_table,
+            fq_filter_set_site_table        = fq_filter_set_site_table,
+            fq_filter_set_tranches_table    = fq_filter_set_tranches_table,
+            filter_set_name                 = filter_set_name,
+            vqslod_filter_by_site           = vqslod_filter_by_site,
+            snps_truth_sensitivity_filter_level = snps_truth_sensitivity_filter_level_override,
+            indels_truth_sensitivity_filter_level = indels_truth_sensitivity_filter_level_override,
+            excluded_intervals              = excluded_intervals,
+            emit_pls                        = emit_pls,
+            drop_state                      = drop_state,
+            output_file                     = "${output_file_base_name}.vcf.gz",
+            local_disk                      = local_disk_for_extract,
+            extract_preemptible_override    = extract_preemptible_override,
+            extract_cpu_override            = extract_cpu_override,
+            extract_memory_override         = extract_memory_override,
+            extract_maxretries_override     = extract_maxretries_override,
+            gatk_docker                     = effective_cloud_gatk_docker,
+    }
 }
 
 ################################################################################
@@ -122,6 +132,7 @@ task ExtractTask {
 
         # Runtime Options:
         File? gatk_override
+        String gatk_docker
         Int? extract_preemptible_override
         Int? extract_maxretries_override
         String? extract_memory_override
@@ -171,7 +182,7 @@ task ExtractTask {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_08_01"
+        docker: gatk_docker
         memory: select_first([extract_memory_override, "12 GB"])
         disks: "local-disk ~{local_disk} HDD"
         bootDiskSizeGb: 15
@@ -190,6 +201,7 @@ task SumBytes {
 
   input {
     Array[Float] file_sizes_bytes
+    String cloud_sdk_docker
   }
 
   command <<<
@@ -206,7 +218,7 @@ task SumBytes {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
+    docker: cloud_sdk_docker
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -219,6 +231,7 @@ task CreateManifest {
     input {
         Array[String] manifest_lines
         String? output_gcs_dir
+        String cloud_sdk_docker
     }
 
     command <<<
@@ -240,7 +253,7 @@ task CreateManifest {
     }
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
+        docker: cloud_sdk_docker
         memory: "3 GB"
         disks: "local-disk 10 HDD"
         preemptible: 3

@@ -20,6 +20,12 @@ workflow GvsCreateVATfromVDS {
         Int? split_intervals_disk_size_override
         Int? split_intervals_mem_override
         Int? merge_vcfs_disk_size_override
+
+        String? basic_docker
+        String? cloud_sdk_docker
+        String? variants_docker
+        String? gatk_docker
+        String? variants_nirvana_docker
     }
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
@@ -28,14 +34,26 @@ workflow GvsCreateVATfromVDS {
     File reference_dict = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict"
     File reference_index = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai"
 
+    if (!defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker)) {
+        call Utils.GetToolVersions
+    }
+
+    String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
+    String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
+    String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
+    String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
+    String effective_variants_nirvana_docker = select_first([variants_nirvana_docker, GetToolVersions.variants_nirvana_docker])
+
     call MakeSubpopulationFilesAndReadSchemaFiles {
         input:
-            input_ancestry_file = ancestry_file
+            input_ancestry_file = ancestry_file,
+            variants_docker = effective_variants_docker,
     }
 
     call Utils.IndexVcf {
         input:
-            input_vcf = input_sites_only_vcf
+            input_vcf = input_sites_only_vcf,
+            gatk_docker = effective_gatk_docker,
     }
 
     call Utils.SplitIntervals {
@@ -48,6 +66,7 @@ workflow GvsCreateVATfromVDS {
             output_gcs_dir = output_path + "intervals",
             split_intervals_disk_size_override = split_intervals_disk_size_override,
             split_intervals_mem_override = split_intervals_mem_override,
+            gatk_docker = effective_gatk_docker,
     }
 
     String sites_only_vcf_basename = basename(basename(input_sites_only_vcf, ".gz"), ".vcf")
@@ -61,13 +80,15 @@ workflow GvsCreateVATfromVDS {
                 input_vcf = input_sites_only_vcf,
                 input_vcf_index = IndexVcf.output_vcf_index,
                 interval_list = SplitIntervals.interval_files[i],
-                output_basename = vcf_filename
+                output_basename = vcf_filename,
+                gatk_docker = effective_gatk_docker,
         }
 
         call RemoveDuplicatesFromSitesOnlyVCF {
             input:
                 sites_only_vcf = SelectVariants.output_vcf,
-                ref = reference
+                ref = reference,
+                variants_docker = effective_variants_docker,
         }
 
         call StripCustomAnnotationsFromSitesOnlyVCF {
@@ -75,7 +96,8 @@ workflow GvsCreateVATfromVDS {
                 input_vcf = RemoveDuplicatesFromSitesOnlyVCF.output_vcf,
                 custom_annotations_header = MakeSubpopulationFilesAndReadSchemaFiles.custom_annotations_template_file,
                 output_vcf_name = "${vcf_filename}.unannotated.sites_only.vcf",
-                output_custom_annotations_filename = "${vcf_filename}.custom_annotations.tsv"
+                output_custom_annotations_filename = "${vcf_filename}.custom_annotations.tsv",
+                variants_docker = effective_variants_docker,
         }
 
         ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
@@ -84,6 +106,7 @@ workflow GvsCreateVATfromVDS {
                 input_vcf = StripCustomAnnotationsFromSitesOnlyVCF.output_vcf,
                 output_annotated_file_name = "${vcf_filename}_annotated",
                 custom_annotations_file = StripCustomAnnotationsFromSitesOnlyVCF.output_custom_annotations_file,
+                variants_nirvana_docker = effective_variants_nirvana_docker,
         }
 
         call PrepVtAnnotationJson {
@@ -91,6 +114,7 @@ workflow GvsCreateVATfromVDS {
                 positions_annotation_json = AnnotateVCF.positions_annotation_json,
                 output_file_suffix = "${vcf_filename}.json.gz",
                 output_path = output_path,
+                variants_docker = effective_variants_docker,
         }
 
         call PrepGenesAnnotationJson {
@@ -98,6 +122,7 @@ workflow GvsCreateVATfromVDS {
                 genes_annotation_json = AnnotateVCF.genes_annotation_json,
                 output_file_suffix = "${vcf_filename}.json.gz",
                 output_path = output_path,
+                variants_docker = effective_variants_docker,
         }
 
     }
@@ -105,7 +130,8 @@ workflow GvsCreateVATfromVDS {
     call Utils.MergeTsvs {
         input:
             input_files = RemoveDuplicatesFromSitesOnlyVCF.track_dropped,
-            output_file_name = "${sites_only_vcf_basename}.dropped.tsv"
+            output_file_name = "${sites_only_vcf_basename}.dropped.tsv",
+            basic_docker = effective_basic_docker,
     }
 
     call BigQueryLoadJson {
@@ -119,7 +145,8 @@ workflow GvsCreateVATfromVDS {
             filter_set_name = filter_set_name,
             vat_version = vat_version,
             prep_vt_json_done = PrepVtAnnotationJson.done,
-            prep_genes_json_done = PrepGenesAnnotationJson.done
+            prep_genes_json_done = PrepGenesAnnotationJson.done,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
     call GvsCreateVATFilesFromBigQuery.GvsCreateVATFilesFromBigQuery {
@@ -129,7 +156,8 @@ workflow GvsCreateVATfromVDS {
             vat_table_name = BigQueryLoadJson.vat_table_name,
             output_path = output_path,
             merge_vcfs_disk_size_override = merge_vcfs_disk_size_override,
-            precondition_met = BigQueryLoadJson.done
+            precondition_met = BigQueryLoadJson.done,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
    }
 
     output {
@@ -148,6 +176,7 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
         String vat_schema_json_filename = "vat_schema.json"
         String variant_transcript_schema_json_filename = "vt_schema.json"
         String genes_schema_json_filename = "genes_schema.json"
+        String variants_docker
     }
     String output_ancestry_filename =  "ancestry_mapping.tsv"
     String custom_annotations_template_filename =  "custom_annotations_template.tsv"
@@ -167,7 +196,7 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-08-04-alpine-2d67c4cb4"
+        docker: variants_docker
         memory: "1 GB"
         preemptible: 3
         cpu: "1"
@@ -192,6 +221,7 @@ task StripCustomAnnotationsFromSitesOnlyVCF {
         File custom_annotations_header
         String output_vcf_name
         String output_custom_annotations_filename
+        String variants_docker
     }
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
@@ -212,7 +242,7 @@ task StripCustomAnnotationsFromSitesOnlyVCF {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-08-04-alpine-2d67c4cb4"
+        docker: variants_docker
         memory: "7 GiB"
         cpu: "2"
         preemptible: 3
@@ -232,6 +262,7 @@ task RemoveDuplicatesFromSitesOnlyVCF {
     input {
         File sites_only_vcf
         File ref
+        String variants_docker
     }
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
@@ -297,7 +328,7 @@ task RemoveDuplicatesFromSitesOnlyVCF {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-08-04-alpine-2d67c4cb4"
+        docker: variants_docker
         maxRetries: 3
         memory: "16 GB"
         preemptible: 3
@@ -324,6 +355,8 @@ task AnnotateVCF {
         # in Terra UI tells Cromwell to arrange for the Nirvana reference disk to be attached to this VM.
         File summon_reference_disk =
             "gs://broad-public-datasets/gvs/vat-annotations/Nirvana/3.18.1/SupplementaryAnnotation/GRCh38/MITOMAP_20200819.nsa.idx"
+
+        String variants_nirvana_docker
     }
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
@@ -410,7 +443,7 @@ task AnnotateVCF {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
+        docker: variants_nirvana_docker
         memory: "64 GB"
         cpu: "4"
         preemptible: 3
@@ -430,6 +463,7 @@ task PrepVtAnnotationJson {
         File positions_annotation_json
         String output_file_suffix
         String output_path
+        String variants_docker
     }
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
@@ -457,7 +491,7 @@ task PrepVtAnnotationJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-08-04-alpine-2d67c4cb4"
+        docker: variants_docker
         memory: "7 GB"
         preemptible: 3
         cpu: "1"
@@ -477,6 +511,7 @@ task PrepGenesAnnotationJson {
         File genes_annotation_json
         String output_file_suffix
         String output_path
+        String variants_docker
     }
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
@@ -503,7 +538,7 @@ task PrepGenesAnnotationJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-08-04-alpine-2d67c4cb4"
+        docker: variants_docker
         memory: "7 GB"
         preemptible: 3
         cpu: "1"
@@ -536,6 +571,7 @@ task BigQueryLoadJson {
         String output_path
         Array[Boolean] prep_vt_json_done
         Array[Boolean] prep_genes_json_done
+        String cloud_sdk_docker
     }
 
     # If the vat version is undefined or v1 then the vat tables would be named like filter_vat, otherwise filter_vat_v2.
@@ -718,7 +754,7 @@ task BigQueryLoadJson {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "openbridge/ob_google-bigquery:latest"
+        docker: cloud_sdk_docker
         memory: "3 GB"
         preemptible: 3
         cpu: "1"
