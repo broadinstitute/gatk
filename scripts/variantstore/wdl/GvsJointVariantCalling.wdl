@@ -5,6 +5,7 @@ import "GvsPopulateAltAllele.wdl" as PopulateAltAllele
 import "GvsCreateFilterSet.wdl" as CreateFilterSet
 import "GvsPrepareRangesCallset.wdl" as PrepareRangesCallset
 import "GvsExtractCallset.wdl" as ExtractCallset
+import "GvsUtils.wdl" as Utils
 
 workflow GvsJointVariantCalling {
     input {
@@ -21,8 +22,16 @@ workflow GvsJointVariantCalling {
         String? vcf_index_files_column_name
         String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
 
-        # This is the most updated snapshot of the code as of Aug 2, 2023
-        File gatk_override = "gs://gvs_quickstart_storage/jars/gatk-package-4.2.0.0-742-g1bf5503-SNAPSHOT-local.jar"
+        String? basic_docker
+        String? cloud_sdk_docker
+        String? variants_docker
+        String? gatk_docker
+
+        # NOTE: `gatk_override` is not intended for production runs of the GVS pipeline! If defined, `gatk_override`
+        # should be at least as recent as `gatk_docker`. Legitimate uses of `gatk_override` include integration test
+        # runs and feature development.
+        File? gatk_override
+
         File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
         Boolean use_interval_weights = true
         File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
@@ -62,11 +71,23 @@ workflow GvsJointVariantCalling {
       Int split_intervals_mem_override = ""
     }
 
+    if (!defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker)) {
+        call Utils.GetToolVersions
+    }
+
+    String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
+    String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
+    String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
+    String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
 
     call BulkIngestGenomes.GvsBulkIngestGenomes as BulkIngestGenomes {
         input:
             dataset_name = dataset_name,
             project_id = project_id,
+            basic_docker = effective_basic_docker,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
+            variants_docker = effective_variants_docker,
+            gatk_docker = effective_gatk_docker,
             gatk_override = gatk_override,
             interval_list = interval_list,
             drop_state = drop_state,
@@ -82,6 +103,8 @@ workflow GvsJointVariantCalling {
             go = BulkIngestGenomes.done,
             dataset_name = dataset_name,
             project_id = project_id,
+            variants_docker = effective_variants_docker,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
     call CreateFilterSet.GvsCreateFilterSet {
@@ -93,11 +116,14 @@ workflow GvsJointVariantCalling {
             filter_set_name = effective_filter_set_name,
             use_VQSR_lite = !use_classic_VQSR,
             interval_list = interval_list,
+            variants_docker = effective_variants_docker,
+            gatk_docker = effective_gatk_docker,
             gatk_override = gatk_override,
             INDEL_VQSR_CLASSIC_max_gaussians_override = INDEL_VQSR_CLASSIC_max_gaussians_override,
             INDEL_VQSR_CLASSIC_mem_gb_override = INDEL_VQSR_CLASSIC_mem_gb_override,
             SNP_VQSR_CLASSIC_max_gaussians_override = SNP_VQSR_CLASSIC_max_gaussians_override,
             SNP_VQSR_CLASSIC_mem_gb_override = SNP_VQSR_CLASSIC_mem_gb_override,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
     call PrepareRangesCallset.GvsPrepareCallset {
@@ -113,6 +139,7 @@ workflow GvsJointVariantCalling {
             fq_temp_table_dataset = fq_temp_table_dataset,
             query_labels = query_labels,
             sample_names_to_extract = sample_names_to_extract,
+            variants_docker = effective_variants_docker,
     }
 
     call ExtractCallset.GvsExtractCallset {
@@ -128,7 +155,10 @@ workflow GvsJointVariantCalling {
             interval_list = interval_list,
             use_interval_weights = use_interval_weights,
             interval_weights_bed = interval_weights_bed,
+            variants_docker = effective_variants_docker,
+            gatk_docker = effective_gatk_docker,
             gatk_override = gatk_override,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
             output_file_base_name = effective_extract_output_file_base_name,
             extract_maxretries_override = extract_maxretries_override,
             extract_preemptible_override = extract_preemptible_override,

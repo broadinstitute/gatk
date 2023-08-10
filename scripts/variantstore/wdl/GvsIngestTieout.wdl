@@ -12,7 +12,14 @@ workflow GvsIngestTieout {
         File sample_names
         File input_vcfs
         File input_vcf_indexes
+        String? cloud_sdk_docker
     }
+
+    if (!defined(cloud_sdk_docker)) {
+        call Utils.GetToolVersions
+    }
+
+    String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
 
     call Utils.BuildGATKJarAndCreateDataset {
         input:
@@ -44,7 +51,8 @@ workflow GvsIngestTieout {
             dataset_name = BuildGATKJarAndCreateDataset.dataset_name,
             reference_dataset_name = reference_dataset_name,
             project = project,
-            stderrs = GvsImportGenomes.load_data_stderrs
+            stderrs = GvsImportGenomes.load_data_stderrs,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 }
 
@@ -56,6 +64,7 @@ task IngestTieout {
         String reference_dataset_name
         String project
         Array[File] stderrs
+        String cloud_sdk_docker
     }
     meta {
         # Do not call cache, dataset may have been updated.
@@ -143,7 +152,7 @@ task IngestTieout {
     }
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
+        docker: cloud_sdk_docker
         memory: "14 GB"
         disks: "local-disk 2000 HDD"
         preemptible: 3

@@ -1,6 +1,7 @@
 version 1.0
 
 import "GvsCallsetCost.wdl" as GvsCallsetCost
+import "GvsUtils.wdl" as Utils
 
 workflow GvsJointVariantCallsetCost {
     input {
@@ -9,6 +10,7 @@ workflow GvsJointVariantCallsetCost {
         String workspace_namespace
         String workspace_name
         String call_set_identifier
+        String? variants_docker
     }
 
     if(false) {
@@ -22,6 +24,11 @@ workflow GvsJointVariantCallsetCost {
     Float query_cost = 0.005 ## Queries (on-demand): $5 per TB. The first 1 TB per month is free.
     Float storage_api_cost = 0.0011 ## Storage API GB Scanned / Streaming reads (BigQuery Storage Read API):  $1.1 per TB read. Customers can read up to 300 TB of data per month at no charge.
 
+    if (!defined(variants_docker)) {
+        call Utils.GetToolVersions
+    }
+
+    String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
 
     call GvsCallsetCost.GvsCallsetCost {
         input:
@@ -42,6 +49,7 @@ workflow GvsJointVariantCallsetCost {
             storage_api_cost = storage_api_cost,
             query_cost = query_cost,
             write_API_cost = write_API_cost,
+            variants_docker = effective_variants_docker,
     }
 
     output {
@@ -62,6 +70,7 @@ workflow GvsJointVariantCallsetCost {
             Float storage_api_cost
             Float query_cost
             Float write_API_cost
+            String variants_docker
         }
 
         ## Assign Ids
@@ -99,7 +108,7 @@ workflow GvsJointVariantCallsetCost {
         >>>
 
         runtime {
-            docker: "stedolan/jq:latest"
+            docker: variants_docker
         }
 
         output {

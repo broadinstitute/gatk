@@ -1,5 +1,7 @@
 version 1.0
 
+import "GvsUtils.wdl" as Utils
+
 workflow GvsWithdrawSamples {
 
   input {
@@ -10,7 +12,15 @@ workflow GvsWithdrawSamples {
     File sample_names_to_include_file
     # should be in the format "2022-01-01 00:00:00 UTC"
     String withdrawn_timestamp
+
+    String? gatk_docker
   }
+
+  if (!defined(gatk_docker)) {
+    call Utils.GetToolVersions
+  }
+
+  String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
 
   call WithdrawSamples {
     input:
@@ -18,7 +28,8 @@ workflow GvsWithdrawSamples {
       dataset_name = dataset_name,
       sample_name_column_name_in_file = sample_name_column_name_in_file,
       sample_names_to_include_file = sample_names_to_include_file,
-      withdrawn_timestamp = withdrawn_timestamp
+      withdrawn_timestamp = withdrawn_timestamp,
+      gatk_docker = effective_gatk_docker,
   }
 
   output {
@@ -35,6 +46,7 @@ task WithdrawSamples {
     File sample_names_to_include_file
     # should be in the format "2022-01-01 00:00:00 UTC"
     String withdrawn_timestamp
+    String gatk_docker
   }
 
   meta {
@@ -78,7 +90,7 @@ task WithdrawSamples {
     cat log_message.txt | sed -e 's/Number of affected rows: //' > rows_updated.txt
   >>>
   runtime {
-    docker: "us.gcr.io/broad-gatk/gatk:4.2.5.0"
+    docker: gatk_docker
     memory: "3.75 GB"
     disks: "local-disk 10 HDD"
     cpu: 1
