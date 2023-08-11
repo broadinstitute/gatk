@@ -86,8 +86,7 @@ If your data is already stored in the cloud, you’ll need to upload a TSV file 
 
 ---
 
-**Warning:**     
-
+**Warning:**
 The workflow in the GVS beta workspace is configured based on the format of the TSV file. To avoid reconfiguring the workflow, do **not** rearrange or rename the columns in the TSV file. If you need to customize the column names, read more about the parameters to use in [GVS Bulk Ingest Details](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/docs/gvs-bulk-ingest-details.md).
 
 ---
@@ -109,7 +108,6 @@ If your data is not stored in the cloud, you’ll need to upload it to your work
 The workflow in the GVS beta workspace is configured based on the format of the TSV file. To avoid reconfiguring the workflow, do **not** rearrange or rename the columns in the TSV file. If you need to customize the column names, read more about the parameters to use in [GVS Bulk Ingest Details](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/docs/gvs-bulk-ingest-details.md).
 
 ---
-
 4. Follow the steps in [How to use the Data Uploader](https://support.terra.bio/hc/en-us/articles/4419428208411) to **upload your data and TSV file** to Terra.
 
 ## Run the workflow
