@@ -64,9 +64,7 @@ To run the GVS workflow, your single sample GVCF files need to be stored in the 
 The GVS workflow relies on the table structure and names in the Beta workspace. Download a TSV of the `sample` table to use as a template for uploading your own data.
 
 1. Navigate to the **Data tab** in your clone of the GVS workspace.
-
 2. Click on the **three vertical dots icon** next to the **sample** data table inside the TABLES sidebar on the left side of the page.
-
 3. Select **Download TSV** to download the data table to your local machine.
 
 ### Delete the example data
@@ -74,11 +72,8 @@ The GVS workflow relies on the table structure and names in the Beta workspace. 
 You will need to delete the example sample data from your workspace so that it is not included in your callset.
 
 1. Navigate to the **Data tab** in your clone of the GVS workspace.
-
 2. Click on the **sample** data table.
-
 3. Click the **top check mark** to select all samples.
-
 4. Click **Edit** and click **Delete selected rows** to delete the data.
 
 ### Edit TSV to upload data stored in the cloud
@@ -86,9 +81,7 @@ You will need to delete the example sample data from your workspace so that it i
 If your data is already stored in the cloud, you’ll need to upload a TSV file to Terra containing the cloud paths to your files and update the cloud permissions on the data to allow your Terra proxy group to access it.
 
 1. **Open the TSV file** with a spreadsheet editor of your choice.
-
 2. **Replace the cloud paths** to the example GVCF and index files in the second and third columns with the cloud paths to your GVCF and index files.
-
 3. **Update the `sample_id` field** for each sample to anything you’d like. These will be used to name the samples in the output joint VCF files.
 
 ---
@@ -100,7 +93,6 @@ The workflow in the GVS beta workspace is configured based on the format of the 
 ---
 
 4. Follow steps 2 and 3 in [How to make a data table from scratch or a template](https://support.terra.bio/hc/en-us/articles/6197368140955) to **save and upload the TSV file** to Terra.
-
 5. Grant your Terra proxy group the Storage Object Creator and Storage Object Viewer roles on the Google Cloud Storage (GCS) bucket that holds your sample data by following the **Add a principal to a bucket-level policy** instructions in the Google Cloud documentation article, [Use IAM permissions](https://cloud.google.com/storage/docs/access-control/using-iam-permissions).
 
 ### Edit TSV to upload data NOT stored in the cloud
@@ -108,9 +100,7 @@ The workflow in the GVS beta workspace is configured based on the format of the 
 If your data is not stored in the cloud, you’ll need to upload it to your workspace storage bucket along with a TSV file containing each of the data file names.
 
 1. **Open the TSV file** with a spreadsheet editor of your choice.
-
 2. **Replace the cloud paths** to the example GVCF and index files in the second and third columns with the names of your GVCF and index files for each sample in your dataset.
-
 3. **Update the `sample_id` field** to anything you’d like for each sample in your dataset. These will be used to name the samples in the output joint VCF file.
 
 ---
