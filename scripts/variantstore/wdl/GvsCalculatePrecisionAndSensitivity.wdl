@@ -21,6 +21,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
     String? variants_docker
     String? gatk_docker
     String? real_time_genomics_docker
+    String? gotc_imputation_docker
   }
 
   parameter_meta {
@@ -34,7 +35,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
     ref_fasta: "The cloud path for the reference fasta sequence."
   }
 
-  if (!defined(variants_docker) || !defined(basic_docker) || !defined(gatk_docker) || !defined(real_time_genomics_docker)) {
+  if (!defined(variants_docker) || !defined(basic_docker) || !defined(gatk_docker) || !defined(real_time_genomics_docker) || !defined(gotc_imputation_docker)) {
     call Utils.GetToolVersions
   }
 
@@ -42,11 +43,13 @@ workflow GvsCalculatePrecisionAndSensitivity {
   String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
   String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
   String effective_real_time_genomics_docker = select_first([real_time_genomics_docker, GetToolVersions.real_time_genomics_docker])
+  String effective_gotc_imputation_docker = select_first([gotc_imputation_docker, GetToolVersions.gotc_imputation_docker])
 
   if ((length(sample_names) != length(truth_vcfs)) || (length(sample_names) != length(truth_vcf_indices)) || (length(sample_names) != length(truth_beds))) {
     call Utils.TerminateWorkflow {
       input:
-        message = "The inputs 'sample_names', 'truth_vcfs', 'truth_vcf_indices', and 'truth_beds' must all contain the same number of elements"
+        message = "The inputs 'sample_names', 'truth_vcfs', 'truth_vcf_indices', and 'truth_beds' must all contain the same number of elements",
+        basic_docker = effective_basic_docker,
     }
   }
 
@@ -103,7 +106,8 @@ workflow GvsCalculatePrecisionAndSensitivity {
     call BgzipAndTabix {
       input:
         input_vcf = Add_AS_MAX_VQS_SCORE_ToVcf.output_vcf,
-        output_basename = output_sample_basename + ".maxas"
+        output_basename = output_sample_basename + ".maxas",
+        gotc_imputation_docker = effective_gotc_imputation_docker,
     }
 
     call EvaluateVcf as EvaluateVcfFiltered {
@@ -362,7 +366,7 @@ task BgzipAndTabix {
     File input_vcf
     String output_basename
 
-    String docker = "us.gcr.io/broad-gotc-prod/imputation-bcf-vcf:1.0.5-1.10.2-0.1.16-1649948623"
+    String gotc_imputation_docker
     Int cpu = 1
     Int memory_mb = 3500
     Int disk_size_gb = ceil(3 * size(input_vcf, "GiB")) + 50
@@ -376,7 +380,7 @@ task BgzipAndTabix {
     tabix ~{output_basename}.vcf.gz
   }
   runtime {
-    docker: docker
+    docker: gotc_imputation_docker
     cpu: cpu
     memory: "${memory_mb} MiB"
     disks: "local-disk ${disk_size_gb} HDD"
