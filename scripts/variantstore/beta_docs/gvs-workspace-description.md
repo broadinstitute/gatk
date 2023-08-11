@@ -18,6 +18,14 @@ The [GVS workflow](https://github.com/broadinstitute/gatk/blob/ah_var_store/scri
 
 For workflow documentation, see the [Genomic Variant Store workflow overview](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/beta_docs/gvs-overview.md).
 
+---
+
+**Important Update:**
+
+Starting September 1, variants in GVS will be filtered using the GATK Variant Extract-Train-Score toolchain with an isolation-forest model by default. GVS maintains the ability to run VQSR on callsets up to 10,000 genomes to reproduce the same results from past analyses. See the [release notes](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/docs/release_notes/VETS_Release.pdf) for more information.
+
+---
+
 ### What data does it require as input?
 
 - Reblocked single sample GVCF files (`input_vcfs`)
@@ -96,7 +104,7 @@ If you don’t plan to create subcohorts of your data, you can delete your BigQu
 ### Additional Resources
 * For questions regarding GATK-related tools and Best Practices, see the [GATK website](https://gatk.broadinstitute.org/hc/en-us).
 * For Terra-specific documentation and support, see the [Terra Support](https://support.terra.bio/hc/en-us).
-* To learn more about Variant Quality Score Recalibration (VQSR), see the [GATK tool index](https://gatk.broadinstitute.org/hc/en-us/articles/5257893583259).
+* To learn more about the GATK Variant Extract-Train-Score (VETS) toolchain, see the [release notes](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/docs/release_notes/VETS_Release.pdf).
 
 ### Contact Information
 * If you have questions or issues while running the GVS workflow in this workspace, contact the [Broad Variants team](mailto:variants@broadinstitute.org).
@@ -121,6 +129,7 @@ The workflow script is released under the Apache License, Version 2.0 (full lice
 ### Workspace Change Log
 | Date | Change                                   | Author |
 | --- |------------------------------------------| --- |
+| 08/11/2023 | Updated to VETS | Kylee Degatano |
 | 06/29/2023 | Updated to support larger sample sizes.  | Kylee Degatano | 
 | 09/08/2022 | Updated information on workflow outputs. | Aaron Hatcher |
 | 09/07/2022 | Added licensing information.             | Kaylee Mathews |
