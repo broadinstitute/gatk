@@ -59,6 +59,11 @@ public final class FuncotatorUtils {
 
     public static final int DEFAULT_MIN_NUM_BASES_FOR_VALID_SEGMENT = 150;
 
+    /**
+     * The default window on either side of splice sites to mark variants as {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification#SPLICE_SITE}.
+     */
+    public static final int DEFAULT_SPLICE_SITE_WINDOW_SIZE = 2;
+
     private static final Map<String, AminoAcid> tableByCodon;
     private static final Map<String, AminoAcid> tableByCode;
     private static final Map<String, AminoAcid> tableByLetter;

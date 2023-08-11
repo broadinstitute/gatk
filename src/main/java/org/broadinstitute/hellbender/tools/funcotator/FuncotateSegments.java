@@ -146,7 +146,8 @@ public class FuncotateSegments extends FeatureWalker<AnnotatedInterval> {
                 funcotatorArgs.lookaheadFeatureCachingInBp,
                 new FlankSettings(0,0),
                 true,
-                funcotatorArgs.minNumBasesForValidSegment
+                funcotatorArgs.minNumBasesForValidSegment,
+                funcotatorArgs.spliceSiteWindow
         ).stream()
          .filter(DataSourceFuncotationFactory::isSupportingSegmentFuncotation)
          .collect(Collectors.toList());

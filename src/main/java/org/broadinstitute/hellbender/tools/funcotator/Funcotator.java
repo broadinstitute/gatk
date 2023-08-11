@@ -793,7 +793,8 @@ public class Funcotator extends VariantWalker {
                 funcotatorArgs.lookaheadFeatureCachingInBp,
                 new FlankSettings(funcotatorArgs.fivePrimeFlankSize, funcotatorArgs.threePrimeFlankSize),
                 false,
-                funcotatorArgs.minNumBasesForValidSegment
+                funcotatorArgs.minNumBasesForValidSegment,
+                funcotatorArgs.spliceSiteWindow
         );
 
         logger.info("Initializing Funcotator Engine...");
