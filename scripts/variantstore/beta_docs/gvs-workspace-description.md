@@ -18,6 +18,13 @@ The [GVS workflow](https://github.com/broadinstitute/gatk/blob/ah_var_store/scri
 
 For workflow documentation, see the [Genomic Variant Store workflow overview](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/beta_docs/gvs-overview.md).
 
+---
+
+Important Update:
+Starting September 1, variants in GVS will be filtered using the GATK Variant Extract-Train-Score toolchain with an isolation-forest model by default. GVS maintains the ability to run VQSR on callsets up to 10,000 genomes to reproduce the same results from past analyses. See the [release notes](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/docs/release_notes/VETS_Release.pdf) for more information.
+
+---
+
 ### What data does it require as input?
 
 - Reblocked single sample GVCF files (`input_vcfs`)
