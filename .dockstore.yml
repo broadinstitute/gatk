@@ -196,6 +196,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_1014_exome_warp_ps
    - name: GvsQuickstartVcfIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartVcfIntegration.wdl
