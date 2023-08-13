@@ -8,6 +8,7 @@ import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.Options;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.math3.util.Precision;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -81,6 +82,19 @@ import java.util.*;
 @ExperimentalFeature
 public final class FlowFeatureMapper extends ReadWalker {
 
+    static class CopyAttrInfo {
+        public final String name;
+        public final VCFHeaderLineType type;
+        public final String desc;
+
+        public CopyAttrInfo(final String spec) {
+            final String[] toks = spec.split(",");
+            name = toks[0];
+            type = toks.length > 1 ? VCFHeaderLineType.valueOf(toks[1]) : VCFHeaderLineType.String;
+            desc = toks.length > 2 ? StringUtils.join(Arrays.copyOfRange(toks, 2, toks.length), ",") : ("copy-attr: " + name);
+        }
+    }
+
     private static final Logger     logger = LogManager.getLogger(FlowFeatureMapper.class);
 
     private static final String     VCB_SOURCE = "fm";
@@ -106,6 +120,8 @@ public final class FlowFeatureMapper extends ReadWalker {
     private static final int        VENDOR_QUALITY_CHECK_FLAG = 0x200;
 
     private static final String     INCLUDE_QC_FAILED_READS_FULL_NAME = "include-qc-failed-reads";
+
+    final private List<CopyAttrInfo> copyAttrInfo = new LinkedList<>();
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -322,8 +338,10 @@ public final class FlowFeatureMapper extends ReadWalker {
         headerInfo.add(new VCFInfoHeaderLine(VCF_SMQ_RIGHT, 1, VCFHeaderLineType.Integer, "Ordinal Median quality of N bases to the right of the feature"));
         headerInfo.add(new VCFInfoHeaderLine(VCF_SMQ_LEFT_MEAN, 1, VCFHeaderLineType.Integer, "Ordinal Mean quality of N bases to the left of the feature"));
         headerInfo.add(new VCFInfoHeaderLine(VCF_SMQ_RIGHT_MEAN, 1, VCFHeaderLineType.Integer, "Ordinal Mean quality of N bases to the right of the feature"));
-        for ( String name : fmArgs.copyAttr ) {
-            headerInfo.add(new VCFInfoHeaderLine(fmArgs.copyAttrPrefix + name, 1, VCFHeaderLineType.String, "copy-attr: " + name));
+        for ( String spec : fmArgs.copyAttr ) {
+            final CopyAttrInfo info = new CopyAttrInfo(spec);
+            headerInfo.add(new VCFInfoHeaderLine(fmArgs.copyAttrPrefix + info.name, 1, info.type, info.desc));
+            copyAttrInfo.add(info);
         }
 
         final VCFHeader vcfHeader = new VCFHeader(headerInfo);
@@ -637,9 +655,16 @@ public final class FlowFeatureMapper extends ReadWalker {
             vcb.attribute(VCF_SMQ_RIGHT_MEAN, fr.smqRightMean);
         }
 
-        for ( String name : fmArgs.copyAttr ) {
-            if ( fr.read.hasAttribute(name) ) {
-                vcb.attribute(fmArgs.copyAttrPrefix + name, fr.read.getAttributeAsString(name));
+        for ( CopyAttrInfo info : copyAttrInfo ) {
+            if ( fr.read.hasAttribute(info.name) ) {
+                final String attrName = fmArgs.copyAttrPrefix + info.name;
+                if ( info.type == VCFHeaderLineType.Integer ) {
+                    vcb.attribute(attrName, fr.read.getAttributeAsString(info.name));
+                } else if ( info.type == VCFHeaderLineType.Float ) {
+                    vcb.attribute(attrName, fr.read.getAttributeAsFloat(info.name));
+                } else {
+                    vcb.attribute(attrName, fr.read.getAttributeAsString(info.name));
+                }
             }
         }
         final VariantContext      vc = vcb.make();

@@ -32,7 +32,7 @@ public class FlowFeatureMapperArgumentCollection implements Serializable{
     /**
      *  attributes to copy from bam
      **/
-    @Argument(fullName = "copy-attr", doc = "attributes to copy from bam", optional = true)
+    @Argument(fullName = "copy-attr", doc = "attributes to copy from bam. format <name>,<type>,<desc>. types: Integer, Float, String, Character, Flag", optional = true)
     public List<String> copyAttr = new LinkedList<>();
 
     /**
