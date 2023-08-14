@@ -73,7 +73,7 @@ workflow GvsExtractCallset {
     call Utils.GetToolVersions
   }
 
-  String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.basic_docker])
+  String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
   String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
   String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
 
