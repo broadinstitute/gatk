@@ -99,7 +99,7 @@ task SplitIntervals {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
-  Int disk_size = select_first([split_intervals_disk_size_override, 10])
+  Int disk_size = select_first([split_intervals_disk_size_override, 50]) # Note: disk size is cheap and lack of it can increase probability of preemption
   Int disk_memory = select_first([split_intervals_mem_override, 16])
   Int java_memory = disk_memory - 4
 
