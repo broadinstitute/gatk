@@ -128,7 +128,7 @@ Here are several more examples of the time and cost of running the workflow. Gen
 | 10000             | 13:41                   | $604.97 |  $0.06          |
 | 25000 | 63:35*                  | ---- | ---- |
 
-* Our test of 25,000 genomes hit some cloud turbulence and took longer than it should have. As it is an expensive test at this scale, we will update this chart when we have a need to run it again.
+*Our test of 25,000 genomes hit some cloud turbulence and took longer than it should have. As it is an expensive test at this scale, we will update this chart when we have a need to run it again.
 
 **Note:** The time and cost listed above represent a single run of the GVS workflow. Actual time and cost may vary depending on BigQuery and Terra load at the time of the callset creation. For example, in practice we've seen 10,000 genome runs take from 13-20 hours.
 
