@@ -60,25 +60,9 @@ workflow GvsBulkIngestGenomes {
     String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
 
     ## Start off by getting the Workspace ID to query for more information
-    call GetWorkspaceId {
-        input:
-            basic_docker = effective_basic_docker,
-    }
-
-    ## Next, use the workspace ID to get the Workspace Name
-    call GetWorkspaceName {
+    call GetWorkspaceAndDataTableInfo {
         input:
             variants_docker = effective_variants_docker,
-            workspace_id = GetWorkspaceId.workspace_id,
-            workspace_bucket = GetWorkspaceId.workspace_bucket,
-    }
-
-
-    call GetColumnNames {
-        input:
-            variants_docker = effective_variants_docker,
-            workspace_name = GetWorkspaceName.workspace_name,
-            workspace_namespace = GetWorkspaceName.workspace_namespace,
             sample_set_name = sample_set_name,
             data_table_name = data_table_name,
             user_defined_sample_id_column_name = sample_id_column_name, ## NOTE: the user needs to define this, or it will default to the <entity>_id column
@@ -89,14 +73,14 @@ workflow GvsBulkIngestGenomes {
     call GenerateImportFofnFromDataTable {
         input:
             variants_docker = effective_variants_docker,
-            google_project_id = GetWorkspaceName.workspace_namespace,
-            workspace_name = GetWorkspaceName.workspace_name,
-            workspace_namespace = GetWorkspaceName.workspace_namespace,
-            workspace_bucket = GetWorkspaceId.workspace_bucket,
-            samples_table_name = GetColumnNames.data_table,
-            sample_id_column_name = GetColumnNames.sample_name_column,  ## NOTE: if no sample_id_column_name has been specified, this is now the <entity>_id column
-            vcf_files_column_name = GetColumnNames.vcf_files_column_name_output,
-            vcf_index_files_column_name = GetColumnNames.vcf_index_files_column_name_output,
+            google_project_id = GetWorkspaceAndDataTableInfo.workspace_namespace,
+            workspace_name = GetWorkspaceAndDataTableInfo.workspace_name,
+            workspace_namespace = GetWorkspaceAndDataTableInfo.workspace_namespace,
+            workspace_bucket = GetWorkspaceAndDataTableInfo.workspace_bucket,
+            samples_table_name = GetWorkspaceAndDataTableInfo.data_table,
+            sample_id_column_name = GetWorkspaceAndDataTableInfo.sample_name_column,  ## NOTE: if no sample_id_column_name has been specified, this is now the <entity>_id column
+            vcf_files_column_name = GetWorkspaceAndDataTableInfo.vcf_files_column_name_output,
+            vcf_index_files_column_name = GetWorkspaceAndDataTableInfo.vcf_index_files_column_name_output,
             sample_set_name = sample_set_name,
     }
 
@@ -145,74 +129,10 @@ workflow GvsBulkIngestGenomes {
     }
 }
 
-task GetWorkspaceId {
-    ## In order to get the ID and bucket of the workspace, without requiring that the user input it manually, we check the delocalization script
-    input {
-        String basic_docker
-    }
-    meta {
-        volatile: true # always run this when asked otherwise you can get a previously run workspace
-    }
-    command <<<
-        # Prepend date, time and pwd to xtrace log entries.
-        PS4='\D{+%F %T} \w $ '
-        set -o errexit -o nounset -o pipefail -o xtrace
 
-        # Sniff the workspace bucket out of the delocalization script and extract the workspace id from that.
-        sed -n -E 's!.*gs://fc-(secure-)?([^\/]+).*!\2!p' /cromwell_root/gcs_delocalization.sh | sort -u > workspace_id.txt
-        sed -n -E 's!.*gs://(fc-(secure-)?[^\/]+).*!\1!p' /cromwell_root/gcs_delocalization.sh | sort -u > workspace_bucket.txt
-    >>>
-
-    runtime {
-        docker: basic_docker
-    }
-
-    output {
-        String workspace_id = read_string("workspace_id.txt")
-        String workspace_bucket = read_string("workspace_bucket.txt")
-    }
-}
-
-task GetWorkspaceName {
-    ## In order to get the name and namespace of the workspace, without requiring that the user input it manually, we hit rawls directly for the exact name
-    input {
-        String workspace_id
-        String workspace_bucket
-        String variants_docker
-    }
-
-    String workspace_name_output = "workspace_name.txt"
-    String workspace_namespace_output = "workspace_namespace.txt"
-
-    command <<<
-        # Hit rawls with the workspace ID
-
-        export WORKSPACE_BUCKET='~{workspace_bucket}'
-
-        python3 /app/get_workspace_name_for_import.py \
-        --workspace_id ~{workspace_id} \
-        --workspace_name_output ~{workspace_name_output} \
-        --workspace_namespace_output ~{workspace_namespace_output} \
-
-    >>>
-    runtime {
-        docker: variants_docker
-        memory: "3 GB"
-        disks: "local-disk 10 HDD"
-        cpu: 1
-    }
-
-    output {
-        String workspace_name = read_string(workspace_name_output)
-        String workspace_namespace = read_string(workspace_namespace_output)
-    }
-}
-
-task GetColumnNames {
+task GetWorkspaceAndDataTableInfo {
     ## In order to get the names of the columns with the GVCF and GVCF Index file paths, without requiring that the user input it manually, we apply heuristics
     input {
-        String workspace_name
-        String workspace_namespace
         String data_table_name ## NOTE: if not specified by the user, this has been set to "sample"
         String? sample_set_name
         String? user_defined_sample_id_column_name
@@ -227,20 +147,39 @@ task GetColumnNames {
 
     String entity_id = data_table_name + "_id"
 
-     command <<<
+    command <<<
+
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        # Sniff the workspace bucket out of the delocalization script and extract the workspace id from that.
+        sed -n -E 's!.*gs://fc-(secure-)?([^\/]+).*!\2!p' /cromwell_root/gcs_delocalization.sh | sort -u > workspace_id.txt
+        sed -n -E 's!.*gs://(fc-(secure-)?[^\/]+).*!\1!p' /cromwell_root/gcs_delocalization.sh | sort -u > workspace_bucket.txt
+
+        export WORKSPACE_ID="$(cat workspace_id.txt)"
+        export WORKSPACE_BUCKET="$(cat workspace_bucket.txt)"
+
+        # Hit rawls with the workspace ID
+
+        python3 /app/get_workspace_name_for_import.py \
+            --workspace_id ${WORKSPACE_ID} \
+            --workspace_name_output workspace_name.txt \
+            --workspace_namespace_output workspace_namespace.txt
+
+        export WORKSPACE_NAME="$(cat workspace_names.txt)"
+        export WORKSPACE_NAMESPACE="$(cat workspace_namespace.txt)"
+
         # Get a list of all columns in the table. Apply basic heuristics to write the resulting vcf_files_column_name and vcf_index_files_column_name.
 
-        export WORKSPACE_NAMESPACE='~{workspace_namespace}'
-        export WORKSPACE_NAME='~{workspace_name}'
-
         python3 /app/get_columns_for_import.py \
-           ~{"--user_defined_sample_id " + user_defined_sample_id_column_name} \
-           ~{"--entity_set_name " + sample_set_name} \
-           ~{"--user_defined_vcf " + vcf_files_column_name} \
-           ~{"--user_defined_index " + vcf_index_files_column_name} \
-          --entity_type ~{data_table_name} \
-          --vcf_output ~{vcf_files_column_name_output_file} \
-          --vcf_index_output ~{vcf_index_files_column_name_output_file}
+             ~{"--user_defined_sample_id " + user_defined_sample_id_column_name} \
+             ~{"--entity_set_name " + sample_set_name} \
+             ~{"--user_defined_vcf " + vcf_files_column_name} \
+             ~{"--user_defined_index " + vcf_index_files_column_name} \
+            --entity_type ~{data_table_name} \
+            --vcf_output ~{vcf_files_column_name_output_file} \
+            --vcf_index_output ~{vcf_index_files_column_name_output_file}
 
     >>>
 
@@ -256,6 +195,9 @@ task GetColumnNames {
         String vcf_index_files_column_name_output = if (defined(vcf_index_files_column_name)) then select_first([vcf_index_files_column_name]) else read_string(vcf_index_files_column_name_output_file)
         String sample_name_column = if (defined(user_defined_sample_id_column_name)) then select_first([user_defined_sample_id_column_name]) else entity_id
         String data_table = data_table_name
+        String workspace_name = read_string("workspace_name.txt")
+        String workspace_namespace= read_string("workspace_namespace.txt")
+        String workspace_bucket = read_string("workspace_bucket.txt")
     }
 }
 
