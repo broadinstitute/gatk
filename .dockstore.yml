@@ -217,7 +217,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - centralized_docker_fixups
+         - fix_docker_image_copy_paste_blunders
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
