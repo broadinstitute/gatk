@@ -79,17 +79,23 @@ To run the GVS workflow on your own sample data, follow the instructions in the 
 By default, the workflow is set up to write outputs to the workspace Google bucket. If you want to write the outputs to a different cloud storage location, you can specify the cloud path in the `extract_output_gcs_dir` optional input in the workflow configuration.
 
 ### Time and cost
-Below are several examples of the time and cost of running the workflow. Generally the cost is around 6 cents per sample, including Terra compute and BigQuery compute cost. This does not include storage costs.
+Below are several examples of the time and cost of running the workflow. Generally the cost is around 6 cents per sample, including Terra compute and BigQuery compute cost. This does not include storage costs. 
 
 | Number of Samples | Wall Clock Time (hh:mm) | Cost $  | Cost per Sample |
-|-------------------|-----------------|---------|-----------------|
-| 10                | 04:30        | $1.35   |  $0.14          |
-| 1000              | 07:24        | $59.64     |  $0.06          |
-| 2500              | 08:45        | $141.28     |  $0.06          |
-| 5000              | 12:00        | $286.71  |  $0.06          |
-| 10000             | 13:41        | $604.97 |  $0.06          |
+|-------------------|-------------------------|---------|-----------------|
+| 10                | 04:30                   | $1.35   |  $0.14          |
+| 1000              | 07:24                   | $59.64     |  $0.06          |
+| 2500              | 08:45                   | $141.28     |  $0.06          |
+| 5000              | 12:00                   | $286.71  |  $0.06          |
+| 10000             | 13:41                   | $604.97 |  $0.06          |
+| 25000 | 63:35*                  | ---- | ---- |
 
-**Note:** For more information about controlling Cloud costs, see [this article](https://support.terra.bio/hc/en-us/articles/360029748111).
+*Our test of 25,000 genomes hit some cloud turbulence and took longer than it should have. As it is an expensive test at this scale, we will update this chart when we have a need to run it again.
+  
+**Note:** The time and cost listed above represent a single run of the GVS workflow. Actual time and cost may vary depending on BigQuery and Terra load at the time of the callset creation. For example, in practice we've seen 10,000 genome runs take from 13-20 hours.
+
+For more information about controlling Cloud costs, see [this article](https://support.terra.bio/hc/en-us/articles/360029748111).
+
 
 #### Storage cost
 
