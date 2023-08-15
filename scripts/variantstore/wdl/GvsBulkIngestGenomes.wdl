@@ -167,7 +167,7 @@ task GetWorkspaceAndDataTableInfo {
             --workspace_name_output workspace_name.txt \
             --workspace_namespace_output workspace_namespace.txt
 
-        export WORKSPACE_NAME="$(cat workspace_names.txt)"
+        export WORKSPACE_NAME="$(cat workspace_name.txt)"
         export WORKSPACE_NAMESPACE="$(cat workspace_namespace.txt)"
 
         # Get a list of all columns in the table. Apply basic heuristics to write the resulting vcf_files_column_name and vcf_index_files_column_name.
