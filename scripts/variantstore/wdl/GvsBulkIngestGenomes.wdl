@@ -147,6 +147,14 @@ task GetWorkspaceAndDataTableInfo {
 
     String entity_id = data_table_name + "_id"
 
+    String output_fofn_name = "output.tsv"
+    String error_file_name = "errors.txt"
+
+    String workspace_id_output = "workspace_id.txt"
+    String workspace_name_output = "workspace_name.txt"
+    String workspace_namespace_output = "workspace_namespace.txt"
+    String workspace_bucket_output = "workspace_bucket.txt"
+
     command <<<
 
         # Prepend date, time and pwd to xtrace log entries.
@@ -154,21 +162,21 @@ task GetWorkspaceAndDataTableInfo {
         set -o errexit -o nounset -o pipefail -o xtrace
 
         # Sniff the workspace bucket out of the delocalization script and extract the workspace id from that.
-        sed -n -E 's!.*gs://fc-(secure-)?([^\/]+).*!\2!p' /cromwell_root/gcs_delocalization.sh | sort -u > workspace_id.txt
-        sed -n -E 's!.*gs://(fc-(secure-)?[^\/]+).*!\1!p' /cromwell_root/gcs_delocalization.sh | sort -u > workspace_bucket.txt
+        sed -n -E 's!.*gs://fc-(secure-)?([^\/]+).*!\2!p' /cromwell_root/gcs_delocalization.sh | sort -u > ~{workspace_id_output}
+        sed -n -E 's!.*gs://(fc-(secure-)?[^\/]+).*!\1!p' /cromwell_root/gcs_delocalization.sh | sort -u > ~{workspace_bucket_output}
 
-        export WORKSPACE_ID="$(cat workspace_id.txt)"
-        export WORKSPACE_BUCKET="$(cat workspace_bucket.txt)"
+        export WORKSPACE_ID="$(cat '~{workspace_id_output}')"
+        export WORKSPACE_BUCKET="$(cat '~{workspace_bucket_output}')"
 
         # Hit rawls with the workspace ID
 
         python3 /app/get_workspace_name_for_import.py \
             --workspace_id ${WORKSPACE_ID} \
-            --workspace_name_output workspace_name.txt \
-            --workspace_namespace_output workspace_namespace.txt
+            --workspace_name_output '~{workspace_name_output}' \
+            --workspace_namespace_output '~{workspace_namespace_output}'
 
-        export WORKSPACE_NAME="$(cat workspace_name.txt)"
-        export WORKSPACE_NAMESPACE="$(cat workspace_namespace.txt)"
+        export WORKSPACE_NAME="$(cat '~{workspace_name_output}')"
+        export WORKSPACE_NAMESPACE="$(cat '~{workspace_namespace_output}')"
 
         # Get a list of all columns in the table. Apply basic heuristics to write the resulting vcf_files_column_name and vcf_index_files_column_name.
 
@@ -181,12 +189,14 @@ task GetWorkspaceAndDataTableInfo {
             --vcf_output ~{vcf_files_column_name_output_file} \
             --vcf_index_output ~{vcf_index_files_column_name_output_file}
 
+        export GOOGLE_PROJECT="${WORKSPACE_NAMESPACE}"
+
     >>>
 
     runtime {
         docker: variants_docker
         memory: "3 GB"
-        disks: "local-disk 10 HDD"
+        disks: "local-disk 200 HDD"
         cpu: 1
     }
 
@@ -198,37 +208,6 @@ task GetWorkspaceAndDataTableInfo {
         String workspace_name = read_string("workspace_name.txt")
         String workspace_namespace= read_string("workspace_namespace.txt")
         String workspace_bucket = read_string("workspace_bucket.txt")
-    }
-}
-
-task SplitBulkImportFofn {
-    input {
-        File import_fofn
-        String basic_docker
-    }
-
-    command <<<
-        set -o errexit -o nounset -o xtrace -o pipefail
-        PS4='\D{+%F %T} \w $ '
-
-        cut -f 1 ~{import_fofn} > sample_names.txt
-        cut -f 2 ~{import_fofn} > vcf_file_names.txt
-        cut -f 3 ~{import_fofn} > vcf_index_file_names.txt
-        wc -l < ~{import_fofn} > sample_num.txt
-    >>>
-
-    runtime {
-        docker: basic_docker
-        memory: "3 GB"
-        disks: "local-disk 200 HDD"
-        cpu: 1
-    }
-
-    output {
-        File sample_name_fofn = "sample_names.txt"
-        File vcf_file_name_fofn = "vcf_file_names.txt"
-        File vcf_index_file_name_fofn = "vcf_index_file_names.txt"
-        Int sample_num = read_int("sample_num.txt")
     }
 }
 
@@ -288,5 +267,36 @@ task GenerateImportFofnFromDataTable {
 
     output {
         File output_fofn = output_fofn_name
+    }
+}
+
+task SplitBulkImportFofn {
+    input {
+        File import_fofn
+        String basic_docker
+    }
+
+    command <<<
+        set -o errexit -o nounset -o xtrace -o pipefail
+        PS4='\D{+%F %T} \w $ '
+
+        cut -f 1 ~{import_fofn} > sample_names.txt
+        cut -f 2 ~{import_fofn} > vcf_file_names.txt
+        cut -f 3 ~{import_fofn} > vcf_index_file_names.txt
+        wc -l < ~{import_fofn} > sample_num.txt
+    >>>
+
+    runtime {
+        docker: basic_docker
+        memory: "3 GB"
+        disks: "local-disk 200 HDD"
+        cpu: 1
+    }
+
+    output {
+        File sample_name_fofn = "sample_names.txt"
+        File vcf_file_name_fofn = "vcf_file_names.txt"
+        File vcf_index_file_name_fofn = "vcf_index_file_names.txt"
+        Int sample_num = read_int("sample_num.txt")
     }
 }
