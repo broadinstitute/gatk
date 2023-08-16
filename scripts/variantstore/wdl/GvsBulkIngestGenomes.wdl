@@ -59,8 +59,7 @@ workflow GvsBulkIngestGenomes {
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
     String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
 
-    ## Start off by getting the Workspace ID to query for more information
-    call GetWorkspaceAndDataTableInfo {
+    call GenerateImportFofnFromDataTable {
         input:
             variants_docker = effective_variants_docker,
             sample_set_name = sample_set_name,
@@ -68,20 +67,6 @@ workflow GvsBulkIngestGenomes {
             user_defined_sample_id_column_name = sample_id_column_name, ## NOTE: the user needs to define this, or it will default to the <entity>_id column
             vcf_files_column_name = vcf_files_column_name,
             vcf_index_files_column_name = vcf_index_files_column_name,
-    }
-
-    call GenerateImportFofnFromDataTable {
-        input:
-            variants_docker = effective_variants_docker,
-            google_project_id = GetWorkspaceAndDataTableInfo.workspace_namespace,
-            workspace_name = GetWorkspaceAndDataTableInfo.workspace_name,
-            workspace_namespace = GetWorkspaceAndDataTableInfo.workspace_namespace,
-            workspace_bucket = GetWorkspaceAndDataTableInfo.workspace_bucket,
-            samples_table_name = GetWorkspaceAndDataTableInfo.data_table,
-            sample_id_column_name = GetWorkspaceAndDataTableInfo.sample_name_column,  ## NOTE: if no sample_id_column_name has been specified, this is now the <entity>_id column
-            vcf_files_column_name = GetWorkspaceAndDataTableInfo.vcf_files_column_name_output,
-            vcf_index_files_column_name = GetWorkspaceAndDataTableInfo.vcf_index_files_column_name_output,
-            sample_set_name = sample_set_name,
     }
 
     call SplitBulkImportFofn {
@@ -130,7 +115,7 @@ workflow GvsBulkIngestGenomes {
 }
 
 
-task GetWorkspaceAndDataTableInfo {
+task GenerateImportFofnFromDataTable {
     ## In order to get the names of the columns with the GVCF and GVCF Index file paths, without requiring that the user input it manually, we apply heuristics
     input {
         String data_table_name ## NOTE: if not specified by the user, this has been set to "sample"
@@ -154,6 +139,8 @@ task GetWorkspaceAndDataTableInfo {
     String workspace_name_output = "workspace_name.txt"
     String workspace_namespace_output = "workspace_namespace.txt"
     String workspace_bucket_output = "workspace_bucket.txt"
+
+    String sample_name_column = if (defined(user_defined_sample_id_column_name)) then select_first([user_defined_sample_id_column_name]) else entity_id
 
     command <<<
 
@@ -190,61 +177,14 @@ task GetWorkspaceAndDataTableInfo {
             --vcf_index_output ~{vcf_index_files_column_name_output_file}
 
         export GOOGLE_PROJECT="${WORKSPACE_NAMESPACE}"
-
-    >>>
-
-    runtime {
-        docker: variants_docker
-        memory: "3 GB"
-        disks: "local-disk 200 HDD"
-        cpu: 1
-    }
-
-    output {
-        String vcf_files_column_name_output = if (defined(vcf_files_column_name)) then select_first([vcf_files_column_name]) else read_string(vcf_files_column_name_output_file)
-        String vcf_index_files_column_name_output = if (defined(vcf_index_files_column_name)) then select_first([vcf_index_files_column_name]) else read_string(vcf_index_files_column_name_output_file)
-        String sample_name_column = if (defined(user_defined_sample_id_column_name)) then select_first([user_defined_sample_id_column_name]) else entity_id
-        String data_table = data_table_name
-        String workspace_name = read_string("workspace_name.txt")
-        String workspace_namespace= read_string("workspace_namespace.txt")
-        String workspace_bucket = read_string("workspace_bucket.txt")
-    }
-}
-
-
-task GenerateImportFofnFromDataTable {
-    ## In order to get the <entity>_ids in the sample_set for an inclusion list, we use Terra Notebook Utils
-    ## This also allows us to validate that the requested sample_set exists
-    input {
-        String google_project_id
-        String workspace_name
-        String workspace_namespace
-        String workspace_bucket
-        String samples_table_name
-        String sample_id_column_name ## NOTE: if the user has specified a different sample name column for GVS, it needs to be used independently of the sample_set info
-        String vcf_files_column_name
-        String vcf_index_files_column_name
-        String? sample_set_name
-        String variants_docker
-    }
-
-    String output_fofn_name = "output.tsv"
-    String error_file_name = "errors.txt"
-
-    command <<<
-        set -o errexit -o nounset -o pipefail
-        PS4='\D{+%F %T} \w $ '
-
-        export GOOGLE_PROJECT='~{google_project_id}'
-        export WORKSPACE_NAMESPACE='~{workspace_namespace}'
-        export WORKSPACE_NAME='~{workspace_name}'
-        export WORKSPACE_BUCKET='~{workspace_bucket}'
+        export VCF_COLUMN_NAME="~{if (defined(vcf_files_column_name)) then select_first([vcf_files_column_name]) else read_string(vcf_files_column_name_output_file)}"
+        export VCF_INDEX_COLUMN_NAME="~{if (defined(vcf_index_files_column_name)) then select_first([vcf_index_files_column_name]) else read_string(vcf_index_files_column_name_output_file)}"
 
         python3 /app/generate_fofn_for_import.py \
-            --data-table-name ~{samples_table_name} \
-            --sample-id-column-name ~{sample_id_column_name} \
-            --vcf-files-column-name ~{vcf_files_column_name} \
-            --vcf-index-files-column-name ~{vcf_index_files_column_name} \
+            --data-table-name ~{data_table_name} \
+            --sample-id-column-name ~{sample_set_name} \
+            --vcf-files-column-name "${VCF_COLUMN_NAME}" \
+            --vcf-index-files-column-name "${VCF_INDEX_COLUMN_NAME}" \
             ~{"--sample-set-name " + sample_set_name} \
             --output-file-name ~{output_fofn_name} \
             --error-file-name ~{error_file_name}
@@ -258,6 +198,7 @@ task GenerateImportFofnFromDataTable {
         fi
 
     >>>
+
     runtime {
         docker: variants_docker
         memory: "3 GB"
@@ -269,6 +210,7 @@ task GenerateImportFofnFromDataTable {
         File output_fofn = output_fofn_name
     }
 }
+
 
 task SplitBulkImportFofn {
     input {
