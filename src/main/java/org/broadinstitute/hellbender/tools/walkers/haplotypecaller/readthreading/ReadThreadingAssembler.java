@@ -396,7 +396,9 @@ public final class ReadThreadingAssembler {
                         resultSet.add(h);
                     }
 
-                    logger.log(debug ? Level.INFO : Level.OFF, () -> "Adding haplotype " + h.getCigar() + " from graph with kmer " + assemblyResult.getKmerSize());
+                    if (debug) {
+                        logger.info("Adding haplotype " + h.getCigar() + " from graph with kmer " + assemblyResult.getKmerSize());
+                    }
                 }
             }
 
@@ -623,7 +625,7 @@ public final class ReadThreadingAssembler {
         if ( !allowNonUniqueKmersInRef && !ReadThreadingGraph.determineNonUniqueKmers(
                 new ReadThreadingGraph.SequenceForKmers("ref", refHaplotype.getBases(), 0,
                         refHaplotype.getBases().length, 1, true), kmerSize).isEmpty() ) {
-            logger.log(debug ? Level.INFO : Level.OFF, () -> "Not using kmer size of " + kmerSize + " in read threading assembler because reference contains non-unique kmers");
+            logDebugNotUsingKmerSize(debug, kmerSize);
 
             return null;
         }
@@ -655,13 +657,13 @@ public final class ReadThreadingAssembler {
 
         // sanity check: make sure there are no cycles in the graph, unless we are in experimental mode
         if ( generateSeqGraph && rtgraph.hasCycles() ) {
-            logger.log(debug ? Level.INFO : Level.OFF, () -> "Not using kmer size of " + kmerSize + " in read threading assembler because it contains a cycle");
+            logDebugNotUsingKmerSize(debug, kmerSize);
             return null;
         }
 
         // sanity check: make sure the graph had enough complexity with the given kmer
         if ( ! allowLowComplexityGraphs && rtgraph.isLowQualityGraph() ) {
-            logger.log(debug ? Level.INFO : Level.OFF, () -> "Not using kmer size of " + kmerSize + " in read threading assembler because it does not produce a graph with enough complexity");
+            logDebugNotUsingKmerSize(debug, kmerSize);
             return null;
         }
 
@@ -705,7 +707,7 @@ public final class ReadThreadingAssembler {
                 return new AssemblyResult(AssemblyResult.Status.ASSEMBLED_SOME_VARIATION, initialSeqGraph, null);
             }
 
-            logger.log(debug ? Level.INFO : Level.OFF, () -> "Using kmer size of " + rtgraph.getKmerSize() + " in read threading assembler");
+            logDebugKmerSize(debug, rtgraph.getKmerSize());
 
             initialSeqGraph.cleanNonRefPaths(); // TODO -- I don't this is possible by construction
 
@@ -719,7 +721,7 @@ public final class ReadThreadingAssembler {
                 return new AssemblyResult(AssemblyResult.Status.ASSEMBLED_SOME_VARIATION, null, rtgraph);
             }
 
-            logger.log(debug ? Level.INFO : Level.OFF, () -> "Using kmer size of " + rtgraph.getKmerSize() + " in read threading assembler");
+            logDebugKmerSize(debug, rtgraph.getKmerSize());
 
             final AssemblyResult cleaned = getResultSetForRTGraph(rtgraph);
             final AssemblyResult.Status status = cleaned.getStatus();
@@ -800,6 +802,18 @@ public final class ReadThreadingAssembler {
     public void setMinBaseQualityToUseInAssembly(byte minBaseQualityToUseInAssembly) {
         this.minBaseQualityToUseInAssembly = minBaseQualityToUseInAssembly;
     }
+
+	private void logDebugKmerSize(final boolean debug, final int kmerSize) { 
+      if (debug) {
+	    logger.info("Using kmer size of " + kmerSize + " in read threading assembler");
+      }
+	} 
+
+    private void logDebugNotUsingKmerSize(final boolean debug, final int kmerSize) {
+      if(debug) { 
+        logger.info( "Not using kmer size of " + kmerSize + " in read threading assembler because reference contains non-unique kmers"); 
+      }
+    }   
 
     public boolean isDebug() {
         return debug;
