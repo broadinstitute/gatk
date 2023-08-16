@@ -579,6 +579,32 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
+    public void testMovingFilters() throws IOException {
+        final File input = getTestFile("dragen.g.vcf");
+        final File output = createTempFile("reblockedgvcf", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(new File(hg38Reference))
+                .add("V", input)
+                .add("L", "chr1")
+                .add(ReblockGVCF.ADD_FILTERS_TO_GENOTYPE, true)
+                .addOutput(output);
+        runCommandLine(args);
+
+        final VariantContext filteredVC = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath()).getRight().get(3); // last site in the file
+        Assert.assertFalse(filteredVC.isFiltered());
+        Assert.assertTrue(filteredVC.getGenotype(0).isFiltered());
+
+        final VariantContext unfilteredVC = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath()).getRight().get(1);
+        Assert.assertFalse(unfilteredVC.isFiltered());
+        Assert.assertFalse(unfilteredVC.getGenotype(0).isFiltered());
+
+        final VariantContext filteredRefBlockVC = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath()).getRight().get(0);
+        Assert.assertFalse(filteredRefBlockVC.isFiltered()); // Ref block is unfiltered even though the input RefBlock and low qual variant were both filtered
+        Assert.assertFalse(filteredRefBlockVC.getGenotype(0).isFiltered()); // Ref block genotype is also unfiltered
+    }
+
+    @Test
     public void testRemovingFormatAnnotations() {
         final File input = getTestFile("dragen.g.vcf");
         final File output = createTempFile("reblockedgvcf", ".vcf");
