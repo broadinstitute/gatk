@@ -121,6 +121,22 @@ public class CNNVariantTrain extends CommandLineProgram {
     @Argument(fullName = "annotation-shortcut", shortName = "annotation-shortcut", doc = "Shortcut connections on the annotation layers.", optional = true)
     private boolean annotationShortcut = false;
 
+    // Optimizer parameters:
+    @Argument(fullName = "optimizer-learning-rate", shortName = "optimizer-learning-rate", doc = "Learning rate for the Adam optimizer.", optional = true)
+    private double optimizerLearningRate = 0.0001;
+
+    @Argument(fullName = "optimizer-beta-1", shortName = "optimizer-beta-1", doc = "Beta 1 parameter for the Adam optimizer.", optional = true)
+    private double optimizerBeta1 = 0.9;
+
+    @Argument(fullName = "optimizer-beta-2", shortName = "optimizer-beta-2", doc = "Beta 2 parameter for the Adam optimizer.", optional = true)
+    private double optimizerBeta2 = 0.999;
+
+    @Argument(fullName = "optimizer-epsilon", shortName = "optimizer-epsilon", doc = "Epsilon parameter for the Adam optimizer.", optional = true)
+    private double optimizerEpsilon = 1e-08;
+
+    @Argument(fullName = "optimizer-clipnorm", shortName = "optimizer-clipnorm", doc = "Clipnorm parameter for the Adam optimizer.", optional = true)
+    private double optimizerClipnorm = 1.0;
+
     @Advanced
     @Argument(fullName = "channels-last", shortName = "channels-last", doc = "Store the channels in the last axis of tensors, tensorflow->true, theano->false", optional = true)
     private boolean channelsLast = true;
@@ -157,6 +173,13 @@ public class CNNVariantTrain extends CommandLineProgram {
                 "--epochs", Integer.toString(epochs),
                 "--training_steps", Integer.toString(trainingSteps),
                 "--validation_steps", Integer.toString(validationSteps),
+
+                "--optimizer_learning_rate", Double.toString(optimizerLearningRate),
+                "--optimizer_beta_1", Double.toString(optimizerBeta1),
+                "--optimizer_beta_2", Double.toString(optimizerBeta2),
+                "--optimizer_epsilon", Double.toString(optimizerEpsilon),
+                "--optimizer_clipnorm", Double.toString(optimizerClipnorm),
+
                 "--gatk_version", this.getVersion(),
                 "--id", modelName));
 
