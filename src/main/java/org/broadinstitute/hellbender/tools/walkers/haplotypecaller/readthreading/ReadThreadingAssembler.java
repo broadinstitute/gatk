@@ -396,7 +396,9 @@ public final class ReadThreadingAssembler {
                         resultSet.add(h);
                     }
 
-                    logger.log(debug ? Level.INFO : Level.TRACE, () -> "Adding haplotype " + h.getCigar() + " from graph with kmer " + assemblyResult.getKmerSize());
+                    if (debug) {
+                        logger.info("Adding haplotype " + h.getCigar() + " from graph with kmer " + assemblyResult.getKmerSize());
+                    }
                 }
             }
 
