@@ -201,7 +201,7 @@ task IsVcfOnChromosomes {
 
   runtime {
     docker: variants_docker
-    disks: "local-disk 10 HDD"
+    disks: "local-disk 100 HDD"
     memory: "2 GiB"
     preemptible: 3
   }
@@ -218,13 +218,15 @@ task GatherVcfs {
     String gatk_docker
     Int cpu = 1
     Int memory_mb = 7500
-    Int disk_size_gb = ceil(3*size(input_vcfs, "GiB"))
+    Int disk_size_gb = ceil(3*size(input_vcfs, "GiB")) + 500
   }
   Int command_mem = memory_mb - 1000
   Int max_heap = memory_mb - 500
 
   command <<<
-    set -euo pipefail
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     CHR_VCFS_ARG=""
     for file in ~{sep=' ' input_vcfs}
@@ -272,7 +274,7 @@ task SelectVariants {
     String gatk_docker
     Int cpu = 1
     Int memory_mb = 7500
-    Int disk_size_gb = ceil(2*size(input_vcf, "GiB")) + 50
+    Int disk_size_gb = ceil(2*size(input_vcf, "GiB")) + 500
   }
   Int command_mem = memory_mb - 1000
   Int max_heap = memory_mb - 500
@@ -310,7 +312,7 @@ task Add_AS_MAX_VQS_SCORE_ToVcf {
     String variants_docker
     Int cpu = 1
     Int memory_mb = 3500
-    Int disk_size_gb = ceil(2*size(input_vcf, "GiB")) + 50
+    Int disk_size_gb = ceil(2*size(input_vcf, "GiB")) + 500
   }
 
   command <<<
@@ -369,7 +371,7 @@ task BgzipAndTabix {
     String gotc_imputation_docker
     Int cpu = 1
     Int memory_mb = 3500
-    Int disk_size_gb = ceil(3 * size(input_vcf, "GiB")) + 50
+    Int disk_size_gb = ceil(3 * size(input_vcf, "GiB")) + 500
   }
 
   command {
@@ -412,7 +414,7 @@ task EvaluateVcf {
     String real_time_genomics_docker
     Int cpu = 1
     Int memory_mb = 3500
-    Int disk_size_gb = ceil(2 * size(ref_fasta, "GiB")) + 50
+    Int disk_size_gb = ceil(2 * size(ref_fasta, "GiB")) + 500
   }
 
   String max_score_field_tag = if (is_vqsr_lite == true) then 'MAX_AS_VQS_SENS' else 'MAX_AS_VQSLOD'
@@ -490,7 +492,7 @@ task CollateReports {
 
   runtime {
     docker: basic_docker
-    disks: "local-disk 10 HDD"
+    disks: "local-disk 100 HDD"
     memory: "2 GiB"
     preemptible: 3
   }
