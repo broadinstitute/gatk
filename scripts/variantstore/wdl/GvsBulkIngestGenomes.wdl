@@ -193,7 +193,7 @@ task GenerateImportFofnFromDataTable {
         export GOOGLE_PROJECT="${WORKSPACE_NAMESPACE}"
         python3 /app/generate_fofn_for_import.py \
             --data-table-name ~{data_table_name} \
-            --sample-id-column-name ~{sample_set_name} \
+            --sample-id-column-name ~{sample_name_column} \
             --vcf-files-column-name "${VCF_COLUMN_NAME}" \
             --vcf-index-files-column-name "${VCF_INDEX_COLUMN_NAME}" \
             ~{"--sample-set-name " + sample_set_name} \
