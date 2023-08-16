@@ -185,9 +185,9 @@ task GenerateImportFofnFromDataTable {
 
         if [[ -z "~{vcf_index_files_column_name}" ]]
         then
-            export VCF_COLUMN_NAME="$(cat ~{vcf_index_files_column_name_output_file})"
+            export VCF_INDEX_COLUMN_NAME="$(cat ~{vcf_index_files_column_name_output_file})"
         else
-            export VCF_COLUMN_NAME="~{vcf_index_files_column_name}"
+            export VCF_INDEX_COLUMN_NAME="~{vcf_index_files_column_name}"
         fi
 
         export GOOGLE_PROJECT="${WORKSPACE_NAMESPACE}"
