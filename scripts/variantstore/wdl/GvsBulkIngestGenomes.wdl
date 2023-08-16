@@ -176,10 +176,21 @@ task GenerateImportFofnFromDataTable {
             --vcf_output ~{vcf_files_column_name_output_file} \
             --vcf_index_output ~{vcf_index_files_column_name_output_file}
 
-        export GOOGLE_PROJECT="${WORKSPACE_NAMESPACE}"
-        export VCF_COLUMN_NAME="~{if (defined(vcf_files_column_name)) then select_first([vcf_files_column_name]) else read_string(vcf_files_column_name_output_file)}"
-        export VCF_INDEX_COLUMN_NAME="~{if (defined(vcf_index_files_column_name)) then select_first([vcf_index_files_column_name]) else read_string(vcf_index_files_column_name_output_file)}"
+        if [[ -z "~{vcf_files_column_name}" ]]
+        then
+            export VCF_COLUMN_NAME="$(cat ~{vcf_files_column_name_output_file})"
+        else
+            export VCF_COLUMN_NAME="~{vcf_files_column_name}"
+        fi
 
+        if [[ -z "~{vcf_index_files_column_name}" ]]
+        then
+            export VCF_COLUMN_NAME="$(cat ~{vcf_index_files_column_name_output_file})"
+        else
+            export VCF_COLUMN_NAME="~{vcf_index_files_column_name}"
+        fi
+
+        export GOOGLE_PROJECT="${WORKSPACE_NAMESPACE}"
         python3 /app/generate_fofn_for_import.py \
             --data-table-name ~{data_table_name} \
             --sample-id-column-name ~{sample_set_name} \
