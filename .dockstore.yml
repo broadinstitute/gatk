@@ -56,6 +56,9 @@ workflows:
      filters:
        branches:
          - master
+   - name: GvsDockstoreWorkflow
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsDockstoreWorkflow.wdl
    - name: GvsAssignIds
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsAssignIds.wdl
@@ -127,7 +130,7 @@ workflows:
          - master
          - ah_var_store
          - bulk_ingest_staging
-         - bulk_smoosh
+         - vs_1032_beta_wdl_pin
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
@@ -182,6 +185,16 @@ workflows:
          - master
          - ah_var_store
          - bulk_ingest_staging
+         - vs_1032_beta_wdl_pin
+   - name: GvsBeta
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCalling.wdl
+     filters:
+       branches:
+         - bulk_ingest_staging
+         - vs_1032_beta_wdl_pin
+       tags:
+         - gvs_beta_0.2.0
    - name: GvsJointVariantCallsetCost
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCallsetCost.wdl
@@ -219,7 +232,9 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - fix_docker_image_copy_paste_blunders
+         - vs_1032_beta_wdl_pin
+         - gvs_early_access_0.2
+         - gvs_early_access_0.2.0
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl

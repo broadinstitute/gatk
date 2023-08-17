@@ -6,6 +6,8 @@ workflow GvsImportGenomes {
 
   input {
     Boolean go = true
+    String workflow_git_reference
+    String? workflow_git_hash
     String dataset_name
     String project_id
 
@@ -46,14 +48,18 @@ workflow GvsImportGenomes {
   Int max_scatter_for_user =  if is_rate_limited_beta_customer then beta_customer_max_scatter
                               else broad_user_max_scatter
 
-  if (!defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker)) {
-    call Utils.GetToolVersions
+  if (!defined(workflow_git_hash) || !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker)) {
+    call Utils.GetToolVersions {
+      input:
+        workflow_git_reference = workflow_git_reference,
+    }
   }
 
   String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
   String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
   String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
   String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
+  String effective_workflow_git_hash = select_first([workflow_git_hash, GetToolVersions.workflow_git_hash])
 
   if ((num_samples > max_auto_batch_size) && !(defined(load_data_batch_size))) {
     call Utils.TerminateWorkflow as DieDueToTooManySamplesWithoutExplicitLoadDataBatchSize {
@@ -149,6 +155,7 @@ workflow GvsImportGenomes {
 
   output {
     Boolean done = true
+    String recorded_workflow_git_hash = effective_workflow_git_hash
     Array[File] load_data_stderrs = LoadData.stderr
   }
 }

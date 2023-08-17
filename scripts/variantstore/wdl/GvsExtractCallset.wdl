@@ -30,6 +30,8 @@ workflow GvsExtractCallset {
     String? variants_docker
     String? cloud_sdk_docker
     String? gatk_docker
+    String workflow_git_reference
+    String? workflow_git_hash
     File? gatk_override
 
     String output_file_base_name = filter_set_name
@@ -69,13 +71,17 @@ workflow GvsExtractCallset {
 
   String intervals_file_extension = if (zero_pad_output_vcf_filenames) then '-~{output_file_base_name}.vcf.gz.interval_list' else '-scattered.interval_list'
 
-  if (!defined(gatk_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker)) {
-    call Utils.GetToolVersions
+  if (!defined(workflow_git_hash) || !defined(gatk_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker)) {
+    call Utils.GetToolVersions {
+      input:
+        workflow_git_reference = workflow_git_reference,
+    }
   }
 
   String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
   String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
   String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
+  String effective_workflow_git_hash = select_first([workflow_git_hash, GetToolVersions.workflow_git_hash])
 
   call Utils.ScaleXYBedValues {
     input:
@@ -248,6 +254,7 @@ workflow GvsExtractCallset {
     Float total_vcfs_size_mb = SumBytes.total_mb
     File manifest = CreateManifest.manifest
     File? sample_name_list = GenerateSampleListFile.sample_name_list
+    String recorded_workflow_git_hash = effective_workflow_git_hash
     Boolean done = true
   }
 }

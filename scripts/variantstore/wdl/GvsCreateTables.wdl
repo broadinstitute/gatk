@@ -6,6 +6,8 @@ workflow CreateBQTables {
   input {
     String dataset_name
     String project_id
+    String workflow_git_reference
+    String? workflow_git_hash
 
     Int max_table_id
 
@@ -17,11 +19,15 @@ workflow CreateBQTables {
   String ref_ranges_schema_json = '[{"name": "location","type": "INTEGER","mode": "REQUIRED"},{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name": "length","type": "INTEGER","mode": "REQUIRED"},{"name": "state","type": "STRING","mode": "REQUIRED"}]'
   String vet_schema_json = '[{"name": "sample_id", "type" :"INTEGER", "mode": "REQUIRED"},{"name": "location", "type" :"INTEGER", "mode": "REQUIRED"},{"name": "ref", "type" :"STRING", "mode": "REQUIRED"},{"name": "alt", "type" :"STRING", "mode": "REQUIRED"},{"name": "AS_RAW_MQ", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_RAW_MQRankSum", "type" :"STRING", "mode": "NULLABLE"},{"name": "QUALapprox", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_QUALapprox", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_RAW_ReadPosRankSum", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_SB_TABLE", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_VarDP", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_GT", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_AD", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_GQ", "type" :"INTEGER", "mode": "NULLABLE"},{"name": "call_PGT", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_PID", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_PL", "type" :"STRING", "mode": "NULLABLE"}]'
 
-  if (!defined(cloud_sdk_docker)) {
-    call Utils.GetToolVersions
+  if (!defined(workflow_git_hash) || !defined(cloud_sdk_docker)) {
+    call Utils.GetToolVersions {
+      input:
+        workflow_git_reference = workflow_git_reference,
+    }
   }
 
   String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
+  String effective_workflow_git_hash = select_first([workflow_git_hash, GetToolVersions.workflow_git_hash])
 
   call CreateTables as CreateVetTables {
     input:
@@ -50,6 +56,7 @@ workflow CreateBQTables {
   output {
     String vetDone = CreateVetTables.done
     String refDone = CreateRefRangesTables.done
+    String recorded_workflow_git_hash = effective_workflow_git_hash
   }
 }
 

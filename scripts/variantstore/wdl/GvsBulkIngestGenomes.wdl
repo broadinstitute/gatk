@@ -24,6 +24,8 @@ workflow GvsBulkIngestGenomes {
         String? cloud_sdk_docker
         String? variants_docker
         String? gatk_docker
+        String workflow_git_reference
+        String? workflow_git_hash
 
         File? gatk_override
         # End GvsAssignIds
@@ -50,14 +52,18 @@ workflow GvsBulkIngestGenomes {
         sample_set_name: "The recommended way to load samples; Sample sets must be created by the user. If no sample_set_name is specified, all samples will be loaded into GVS"
     }
 
-    if (!defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker)) {
-        call Utils.GetToolVersions
+    if (!defined(workflow_git_hash) || !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker)) {
+        call Utils.GetToolVersions {
+            input:
+                workflow_git_reference = workflow_git_reference,
+        }
     }
 
     String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
     String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
     String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
+    String effective_workflow_git_hash = select_first([workflow_git_hash, GetToolVersions.workflow_git_hash])
 
     call GenerateImportFofnFromDataTable {
         input:
@@ -77,6 +83,8 @@ workflow GvsBulkIngestGenomes {
 
     call AssignIds.GvsAssignIds as AssignIds {
         input:
+            workflow_git_reference = workflow_git_reference,
+            workflow_git_hash = effective_workflow_git_hash,
             dataset_name = dataset_name,
             project_id = project_id,
             external_sample_names = SplitBulkImportFofn.sample_name_fofn,
@@ -87,6 +95,8 @@ workflow GvsBulkIngestGenomes {
     call ImportGenomes.GvsImportGenomes as ImportGenomes {
         input:
             go = AssignIds.done,
+            workflow_git_reference = workflow_git_reference,
+            workflow_git_hash = effective_workflow_git_hash,
             dataset_name = dataset_name,
             project_id = project_id,
             external_sample_names = SplitBulkImportFofn.sample_name_fofn,
@@ -111,6 +121,7 @@ workflow GvsBulkIngestGenomes {
 
     output {
         Boolean done = true
+        String recorded_workflow_git_hash = effective_workflow_git_hash
     }
 }
 

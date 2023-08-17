@@ -9,6 +9,14 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsJointVariantCalling {
     input {
+        # If `workflow_git_reference` is not specified by a caller (i.e. integration tests), default to the current
+        # beta / early access tag. Note that setting this value does not "summon" this version of the workflow; only the
+        # version selector in Terra can do that. This value of this `workflow_git_reference` input should always be
+        # consistent with the git tag assigned to this version.
+        String workflow_git_reference = "gvs_beta_0.2.0"
+        # Potentially specified by a calling integration WDL.
+        String? workflow_git_hash
+
         String dataset_name
         String project_id
         String call_set_identifier
@@ -71,17 +79,23 @@ workflow GvsJointVariantCalling {
       Int split_intervals_mem_override = ""
     }
 
-    if (!defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker)) {
-        call Utils.GetToolVersions
+    if (!defined(workflow_git_hash) || !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker)) {
+        call Utils.GetToolVersions {
+            input:
+                workflow_git_reference = workflow_git_reference,
+        }
     }
 
     String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
     String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
     String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
+    String effective_workflow_git_hash = select_first([workflow_git_hash, GetToolVersions.workflow_git_hash])
 
     call BulkIngestGenomes.GvsBulkIngestGenomes as BulkIngestGenomes {
         input:
+            workflow_git_reference = workflow_git_reference,
+            workflow_git_hash = effective_workflow_git_hash,
             dataset_name = dataset_name,
             project_id = project_id,
             basic_docker = effective_basic_docker,
@@ -99,6 +113,8 @@ workflow GvsJointVariantCalling {
 
     call PopulateAltAllele.GvsPopulateAltAllele {
         input:
+            workflow_git_reference = workflow_git_reference,
+            workflow_git_hash = effective_workflow_git_hash,
             call_set_identifier = call_set_identifier,
             go = BulkIngestGenomes.done,
             dataset_name = dataset_name,
@@ -110,6 +126,8 @@ workflow GvsJointVariantCalling {
     call CreateFilterSet.GvsCreateFilterSet {
         input:
             go = GvsPopulateAltAllele.done,
+            workflow_git_reference = workflow_git_reference,
+            workflow_git_hash = effective_workflow_git_hash,
             dataset_name = dataset_name,
             project_id = project_id,
             call_set_identifier = call_set_identifier,
@@ -130,6 +148,8 @@ workflow GvsJointVariantCalling {
         input:
             call_set_identifier = call_set_identifier,
             go = GvsCreateFilterSet.done,
+            workflow_git_reference = workflow_git_reference,
+            workflow_git_hash = effective_workflow_git_hash,
             dataset_name = dataset_name,
             project_id = project_id,
             extract_table_prefix = effective_extract_table_prefix,
@@ -145,6 +165,8 @@ workflow GvsJointVariantCalling {
     call ExtractCallset.GvsExtractCallset {
         input:
             go = GvsPrepareCallset.done,
+            workflow_git_reference = workflow_git_reference,
+            workflow_git_hash = effective_workflow_git_hash,
             dataset_name = dataset_name,
             project_id = project_id,
             call_set_identifier = call_set_identifier,
@@ -176,6 +198,7 @@ workflow GvsJointVariantCalling {
         Float total_vcfs_size_mb = GvsExtractCallset.total_vcfs_size_mb
         File? sample_name_list = GvsExtractCallset.sample_name_list
         File manifest = GvsExtractCallset.manifest
+        String recorded_workflow_git_hash = effective_workflow_git_hash
         Boolean done = true
     }
 }

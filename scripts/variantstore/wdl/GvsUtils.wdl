@@ -1,18 +1,40 @@
 version 1.0
 
 task GetToolVersions {
+  input {
+    String workflow_git_reference
+  }
   meta {
     # Don't even think about caching this.
     volatile: true
   }
+
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+  String cloud_sdk_docker_decl = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
+
   command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    bash ~{monitoring_script} > monitoring.log &
+
+    # install git
+    apk update && apk upgrade
+    apk add git
+
+    # The `--branch` parameter to `git clone` actually does work for tags which works out well for beta.
+    # https://git-scm.com/docs/git-clone#Documentation/git-clone.txt--bltnamegt
+    git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{workflow_git_reference} --single-branch
+    cd gatk
+    git rev-parse HEAD > ../workflow_git_hash.txt
   >>>
   runtime {
-    docker: "ubuntu:22.04"
+    docker: cloud_sdk_docker_decl
   }
   output {
     String basic_docker = "ubuntu:22.04"
-    String cloud_sdk_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
+    String cloud_sdk_docker = cloud_sdk_docker_decl # Defined above as a declaration.
     # GVS generally uses the smallest `alpine` version of the Google Cloud SDK as it suffices for most tasks, but
     # there are a handlful of tasks that require the larger GNU libc-based `slim`.
     String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-slim"
@@ -21,6 +43,7 @@ task GetToolVersions {
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"
     String gotc_imputation_docker = "us.gcr.io/broad-gotc-prod/imputation-bcf-vcf:1.0.5-1.10.2-0.1.16-1649948623"
+    String workflow_git_hash = read_string("workflow_git_hash.txt")
   }
 }
 
@@ -263,7 +286,7 @@ task GetBQTablesMaxLastModifiedTimestamp {
 
 task BuildGATKJar {
   input {
-    String branch_name
+    String workflow_git_reference
     String cloud_sdk_slim_docker
   }
   meta {
@@ -303,23 +326,26 @@ task BuildGATKJar {
     apt -qq install -y temurin-11-jdk
 
     # GATK
-    git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{branch_name} --single-branch
+    git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{workflow_git_reference} --single-branch
     cd gatk
     ./gradlew shadowJar
 
     branch=$(git symbolic-ref HEAD 2>/dev/null)
     branch=${branch#refs/heads/}
 
-    hash=$(git rev-parse --short HEAD)
+    short_hash=$(git rev-parse --short HEAD)
 
     # Rename the GATK jar to embed the branch and hash of the most recent commit on the branch.
-    mv build/libs/gatk-package-unspecified-SNAPSHOT-local.jar "build/libs/gatk-${branch}-${hash}-SNAPSHOT-local.jar"
+    mv build/libs/gatk-package-unspecified-SNAPSHOT-local.jar "build/libs/gatk-${branch}-${short_hash}-SNAPSHOT-local.jar"
+
+    git rev-parse HEAD > ../workflow_git_hash.txt
   >>>
 
   output {
     Boolean done = true
     File jar = glob("gatk/build/libs/*-SNAPSHOT-local.jar")[0]
     File monitoring_log = "monitoring.log"
+    String workflow_git_hash = read_string("workflow_git_hash.txt")
   }
 
   runtime {
@@ -330,7 +356,7 @@ task BuildGATKJar {
 
 task CreateDataset {
   input {
-    String branch_name
+    String workflow_git_reference
     String dataset_prefix
     String dataset_suffix
     String cloud_sdk_docker
@@ -355,7 +381,7 @@ task CreateDataset {
     apk add git
 
     # GATK
-    git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{branch_name} --single-branch
+    git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{workflow_git_reference} --single-branch
     cd gatk
 
     branch=$(git symbolic-ref HEAD 2>/dev/null)
@@ -393,7 +419,7 @@ task CreateDataset {
 
 task BuildGATKJarAndCreateDataset {
   input {
-    String branch_name
+    String workflow_git_reference
     String dataset_prefix
     String dataset_suffix
     String cloud_sdk_slim_docker
@@ -435,7 +461,7 @@ task BuildGATKJarAndCreateDataset {
     apt -qq install -y temurin-11-jdk
 
     # GATK
-    git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{branch_name} --single-branch
+    git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{workflow_git_reference} --single-branch
     cd gatk
     ./gradlew shadowJar
 
