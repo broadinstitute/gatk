@@ -5,6 +5,7 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsCalculatePrecisionAndSensitivity {
   input {
+    String git_branch_or_tag
     File input_vcf_fofn
     String output_basename
 
@@ -35,8 +36,11 @@ workflow GvsCalculatePrecisionAndSensitivity {
     ref_fasta: "The cloud path for the reference fasta sequence."
   }
 
-  if (!defined(variants_docker) || !defined(basic_docker) || !defined(gatk_docker) || !defined(real_time_genomics_docker) || !defined(gotc_imputation_docker)) {
-    call Utils.GetToolVersions
+  # Always call `GetToolVersions` to get the git hash for this run as this is a top-level-only WDL (i.e. there are
+  # no calling WDLs that might supply `git_hash`).
+  call Utils.GetToolVersions {
+    input:
+      git_branch_or_tag = git_branch_or_tag,
   }
 
   String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
@@ -151,6 +155,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
     File report = CollateReports.report
     Array[Array[File]] filtered_eval_outputs = EvaluateVcfFiltered.outputs
     Array[Array[File]] all_eval_outputs = EvaluateVcfAll.outputs
+    String recorded_git_hash = GetToolVersions.git_hash
   }
 }
 

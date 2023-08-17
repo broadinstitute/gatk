@@ -127,7 +127,7 @@ workflows:
          - master
          - ah_var_store
          - bulk_ingest_staging
-         - bulk_smoosh
+         - vs_1032_beta_wdl_pin
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
@@ -182,6 +182,34 @@ workflows:
          - master
          - ah_var_store
          - bulk_ingest_staging
+         - vs_1032_beta_wdl_pin
+   - name: GvsBeta
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCalling.wdl
+     filters:
+       branches:
+         - bulk_ingest_staging
+         - vs_1032_beta_wdl_pin
+       tags:
+         # Steps for tagging a new version of the `GvsBeta` workflow:
+         #
+         # 1. Add the new tag to .dockstore.yml below.
+         # 2. Update the `git_branch_or_tag` input value in `GvsJointVariantCalling.wdl` to the new git tag.
+         # 3. Commit and push these changes, PR and get thumbs, merge to the target branch.
+         # 4. Assign the new git tag locally to the appropriate git reference. If no git reference is specified as an
+         #    argument, `git tag` assigns to the HEAD of the current branch.
+         #    e.g., `git tag gvs_beta_<major>.<minor>.<patch> [git reference]`.
+         # 5. Push the new git tag to `origin`. e.g. `git push origin gvs_beta_<major>.<minor>.<patch>`.
+         # 6. Update the local git tag `gvs_beta_current` to point to the same reference as in 4. above, e.g.
+         #    `git tag -f gvs_beta_current [git reference]`
+         # 7. Delete the remote `gvs_beta_current` tag
+         #    e.g., `git push --delete origin refs/tags/gvs_beta_current'
+         # 8. Push the updated `gvs_beta_current` tag to origin
+         #    e.g. `git push origin gvs_beta_current`.
+         #
+         # Done!
+         - gvs_beta_current
+         - gvs_beta_0.2.0
    - name: GvsJointVariantCallsetCost
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCallsetCost.wdl
@@ -219,7 +247,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - fix_docker_image_copy_paste_blunders
+         - vs_1032_beta_wdl_pin
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl
