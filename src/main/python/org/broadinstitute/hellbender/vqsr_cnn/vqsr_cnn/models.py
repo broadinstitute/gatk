@@ -298,7 +298,7 @@ def read_tensor_2d_annotation_model_from_args(args,
 
     # adamo = Adam(lr=0.0001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, clipnorm=1.)
     adamo = Adam(lr=args.optimizer_learning_rate, beta_1=args.optimizer_beta_1,
-                beta_2=args.optimizer_beta_1, epsilon=args.optimizer_epsilon, clipnorm=args.clipnorm)
+                beta_2=args.optimizer_beta_1, epsilon=args.optimizer_epsilon, clipnorm=args.optimizer_clipnorm)
     model.compile(loss='categorical_crossentropy', optimizer=adamo, metrics=get_metrics(args.labels))
     model.summary()
 
@@ -396,7 +396,7 @@ def build_reference_annotation_1d_model_from_args(args,
 
     # adam = Adam(lr=0.0001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, clipnorm=1.)
     adam = Adam(lr=args.optimizer_learning_rate, beta_1=args.optimizer_beta_1,
-                beta_2=args.optimizer_beta_1, epsilon=args.optimizer_epsilon, clipnorm=args.clipnorm)
+                beta_2=args.optimizer_beta_1, epsilon=args.optimizer_epsilon, clipnorm=args.optimizer_clipnorm)
     model.compile(optimizer=adam, loss='categorical_crossentropy', metrics=get_metrics(args.labels))
     model.summary()
 
