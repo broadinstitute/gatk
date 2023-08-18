@@ -413,13 +413,21 @@ public final class ProgressMeter {
 
         // If we can display percentage of time remaining, we do so here:
         if (sequenceDictionary != null) {
-            double percentageComplete = calculateEstimatedPercentComplete();
-            long timeRemaining_s = calculateEstimatedTimeRemaining_s(percentageComplete, currentTimeMs - startTimeMs);
 
-            // <FIELDS>  PERCENT_COMPLETE  ESTIMATED_TIME_REMAINING_s
-            logger.info(String.format("%20s  %15.1f  %20d  %15.1f  %10.2f  %23d",
-                    currentLocusString(), elapsedTimeInMinutes(), numRecordsProcessed, processingRate(),
-                    percentageComplete, timeRemaining_s));
+            // We must check if the contig for the current locus is set:
+            if (currentLocus.getContig() == null) {
+                logger.info(String.format("%20s  %15.1f  %20d  %15.1f  %12s  %23s",
+                        currentLocusString(), elapsedTimeInMinutes(), numRecordsProcessed, processingRate(),
+                        "UNKNOWN", "UNKNOWN"));
+            }
+            else {
+                double percentageComplete = calculateEstimatedPercentComplete();
+                long   timeRemaining_s    = calculateEstimatedTimeRemaining_s(percentageComplete, currentTimeMs - startTimeMs);
+
+                logger.info(String.format("%20s  %15.1f  %20d  %15.1f  %10.2f  %23d",
+                        currentLocusString(), elapsedTimeInMinutes(), numRecordsProcessed, processingRate(),
+                        percentageComplete, timeRemaining_s));
+            }
         }
         else {
             logger.info(String.format("%20s  %15.1f  %20d  %15.1f",
