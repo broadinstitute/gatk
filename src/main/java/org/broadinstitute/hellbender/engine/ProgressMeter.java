@@ -437,6 +437,10 @@ public final class ProgressMeter {
 
     @VisibleForTesting
     double calculateEstimatedPercentComplete() {
+        if (currentLocus.getContig() == null) {
+            return 0;
+        }
+
         final long currentOverallPos = cumulativeBasesInRefDict.get(currentLocus.getContig()) + currentLocus.getStart();
         return (100.0 * currentOverallPos) / sequenceDictionary.getReferenceLength();
     }

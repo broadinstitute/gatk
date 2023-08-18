@@ -40,6 +40,23 @@ public class ProgressMeterUnitTest extends GATKBaseTest {
         }
     }
 
+    private static class NullyLocatable implements Locatable {
+        @Override
+        public String getContig() {
+            return null;
+        }
+
+        @Override
+        public int getStart() {
+            return 0;
+        }
+
+        @Override
+        public int getEnd() {
+            return 0;
+        }
+    }
+
     @DataProvider(name = "UpdateIntervalTestData")
     public Object[][] getUpdateIntervalTestData() {
         return new Object[][] {
@@ -134,6 +151,7 @@ public class ProgressMeterUnitTest extends GATKBaseTest {
                 {sequenceDictionary, new SimpleInterval("contig1", 2000, 2000), 20.0},
                 {sequenceDictionary, new SimpleInterval("contig2", 1000, 1000), 30.0},
                 {sequenceDictionary, new SimpleInterval("contig2", 2000, 2000), 40.0},
+                {sequenceDictionary, new NullyLocatable(), 0},
         };
     }
 
