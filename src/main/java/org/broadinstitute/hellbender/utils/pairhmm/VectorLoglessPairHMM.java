@@ -128,6 +128,12 @@ public final class VectorLoglessPairHMM extends LoglessPairHMM {
             ++idx;
         }
 
+		// TODO: REMOVE DEBUGGING CODE HERE:
+		if (((readListSize * numHaplotypes) < 0) || (readListSize * numHaplotypes) > 1000000) {
+		  logger.error("Got a really large number for log likelihood array: readListSize=" + readListSize + " ; numHaplotypes=" + numHaplotypes);
+		  logger.error("Position of first read: " + processedReads.get(0).getAssignedContig() + ":" + processedReads.get(0).getAssignedStart() + "-" + (processedReads.get(0).getAssignedStart() + processedReads.get(0).getLength()));
+		}
+
         mLogLikelihoodArray = new double[readListSize * numHaplotypes];      //to store results
         if (doProfiling) {
             threadLocalSetupTimeDiff = (System.nanoTime() - startTime);
