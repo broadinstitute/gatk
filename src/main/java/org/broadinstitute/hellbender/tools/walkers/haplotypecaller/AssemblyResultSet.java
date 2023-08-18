@@ -705,7 +705,7 @@ public final class AssemblyResultSet {
                 continue;
             }
 
-            final Set<Haplotype> newPileupHaplotypes = new HashSet<>();
+            final Set<Haplotype> newPileupHaplotypes = new LinkedHashSet<>();
             for (final Haplotype baseHaplotype : baseHaplotypes) {
                 final Haplotype insertedHaplotype = makeHaplotypeWithInsertedEvent(baseHaplotype, refHaplotype, event, aligner, argumentCollection.getHaplotypeToReferenceSWParameters());
                 if (insertedHaplotype != null) {

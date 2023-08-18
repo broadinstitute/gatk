@@ -470,11 +470,20 @@ public final class AssemblyBasedCallerUtils {
                                 .filter(kmer -> kmerReadCounts.getOrDefault(kmer, new MutableInt(0)).intValue() > 0)
                                 .count()));
 
-        // if there are ties, we pass any haplotype with a score as good as the numPileupHaplotypes-th best
-        final long minimumPassingScore = scores.values().stream().sorted(Comparator.reverseOrder()).skip(numPileupHaplotypes - 1).findFirst().get();
-        return onlyNewHaplotypes.stream().filter(h -> scores.get(h) >= minimumPassingScore).collect(Collectors.toSet());
-    }
+        // Get the minimum passing score from all haplotypes:
+        final long minimumPassingScore = scores.values().stream()
+                .sorted(Comparator.reverseOrder())
+                .skip(numPileupHaplotypes - 1)
+                .findFirst().get();
 
+        // If there are ties, we pass any haplotype with a score as good as the numPileupHaplotypes-th best, with
+        // final ordering determined by string representation (for determinism).
+        return onlyNewHaplotypes.stream()
+                .filter(h -> scores.get(h) >= minimumPassingScore)
+                .sorted(Comparator.comparing(Object::toString))
+                .limit(numPileupHaplotypes)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
 
     private static Set<Kmer> kmerizeSequence(byte[] sequence, int kmerSize){
         final Set<Kmer> allKmers = new LinkedHashSet<>();
