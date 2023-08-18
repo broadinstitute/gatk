@@ -4,6 +4,7 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.Locatable;
+import htsjdk.samtools.util.SamConstants;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -118,7 +119,8 @@ public final class ProgressMeter {
      * Cached copy of the sequence dictionary from the currently running tool.
      * Used to estimate percentage completion and time remaining.
      */
-    private SAMSequenceDictionary sequenceDictionary;
+    @VisibleForTesting
+     SAMSequenceDictionary sequenceDictionary;
 
     /**
      * Map containing the cumulative number of bases in each contig in the reference dictionary.
@@ -200,6 +202,22 @@ public final class ProgressMeter {
     @VisibleForTesting
     ProgressMeter( final double secondsBetweenUpdates, final LongSupplier timeFunction ) {
         this(secondsBetweenUpdates, timeFunction, false, null);
+    }
+
+    /**
+     * Create a progress meter with a custom update interval and a custom function for getting the current
+     * time in milliseconds.
+     *
+     * Providing your own time function is only useful in unit tests -- in normal usage
+     * clients should call one of the other constructors.
+     *
+     * @param secondsBetweenUpdates number of seconds that should elapse before outputting a line to the logger
+     * @param timeFunction function that returns the current time in milliseconds.
+     * @param sequenceDictionary the {@link SAMSequenceDictionary} for the current tool.  Used to estimate % complete and remaining time.
+     */
+    @VisibleForTesting
+    ProgressMeter(final double secondsBetweenUpdates, final LongSupplier timeFunction, final SAMSequenceDictionary sequenceDictionary) {
+        this(secondsBetweenUpdates, timeFunction, false, sequenceDictionary);
     }
 
     /**
@@ -364,20 +382,26 @@ public final class ProgressMeter {
      * Print column headings labelling the output from {@link #printProgress}
      */
     private void printHeader() {
+        logger.info(getHeader());
+    }
+
+    @VisibleForTesting
+    String getHeader() {
         if (sequenceDictionary != null) {
-            logger.info(String.format("%20s  %15s  %20s  %15s  %10s  %23s",
+            return String.format("%20s  %15s  %20s  %15s  %10s  %23s",
                     "Current Locus", "Elapsed Minutes",
                     StringUtils.capitalize(recordLabel) + " Processed",
                     StringUtils.capitalize(recordLabel) + "/Minute",
                     "% Complete",
                     "Est. Time Remaining (s)"
-                    ));
+            );
         }
         else{
-            logger.info(String.format("%20s  %15s  %20s  %15s",
+            return String.format("%20s  %15s  %20s  %15s",
                     "Current Locus", "Elapsed Minutes",
                     StringUtils.capitalize(recordLabel) + " Processed",
-                    StringUtils.capitalize(recordLabel) + "/Minute"));
+                    StringUtils.capitalize(recordLabel) + "/Minute"
+            );
         }
     }
 
@@ -390,7 +414,7 @@ public final class ProgressMeter {
         // If we can display percentage of time remaining, we do so here:
         if (sequenceDictionary != null) {
             double percentageComplete = calculateEstimatedPercentComplete();
-            long timeRemaining_s = calculateEstimatedTimeRemaining_s(percentageComplete);
+            long timeRemaining_s = calculateEstimatedTimeRemaining_s(percentageComplete, currentTimeMs - startTimeMs);
 
             // <FIELDS>  PERCENT_COMPLETE  ESTIMATED_TIME_REMAINING_s
             logger.info(String.format("%20s  %15.1f  %20d  %15.1f  %10.2f  %23d",
@@ -409,10 +433,16 @@ public final class ProgressMeter {
         return (100.0 * currentOverallPos) / sequenceDictionary.getReferenceLength();
     }
 
-    long calculateEstimatedTimeRemaining_s(final double percentComplete) {
-        return (long)((currentTimeMs - startTimeMs) / percentComplete) / MILLISECONDS_PER_SECOND;
-    }
+    @VisibleForTesting
+    long calculateEstimatedTimeRemaining_s(final double percentComplete, final long elapsedTime_ms) {
 
+        // 100 in numerator to cancel out the percentage units and get a proportion:
+        double totalTime_ms = (100 * elapsedTime_ms) / percentComplete;
+
+        // Subtract percentage complete from 100 to get percent remaining.
+        // Divide by 100 to convert percentage to proportion.
+        return (long)((((100.0 - percentComplete) * totalTime_ms)/100.0) / MILLISECONDS_PER_SECOND );
+    }
 
     /**
      * @return the total minutes elapsed since we called {@link #start}
