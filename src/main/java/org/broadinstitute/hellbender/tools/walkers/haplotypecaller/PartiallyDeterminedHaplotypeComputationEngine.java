@@ -144,11 +144,6 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                 // from each set of branch exclusions make a single PD haplotype or a combinatorial number of determined haplotypes
                 for (Set<Event> branch : branches) {
                     if (!pileupArgs.determinePDHaps) {
-                        if (determinedLocus == 10024300) {
-                            if (branch.stream().filter(event -> event.getStart() == determinedLocus).count() > 1) {
-                                boolean hit = true;
-                            }
-                        }
                         // the partially determined haplotype contains the determined allele and anything not excluded at other loci
                         final List<Event> eventsInPDHap = branch.stream()
                                 .filter(event -> event.getStart() != determinedLocus || determinedEvents.contains(event))
@@ -797,7 +792,6 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         if (debug) {
             System.out.println("Branches:");
             for (int i = 0; i < branches.size(); i++) {
-                final int ifinal = i;
                 System.out.println("Branch "+i+" VCs:");
                 final Set<Event> included = branches.get(i);
                 final Set<Event> excluded = eventsInOrder.stream().filter(event -> !included.contains(event)).collect(Collectors.toSet());
