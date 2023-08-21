@@ -415,7 +415,7 @@ public final class ProgressMeter {
         if (sequenceDictionary != null) {
 
             // We must check if the contig for the current locus is set:
-            if (currentLocus.getContig() == null) {
+            if ((currentLocus == null) || (currentLocus.getContig() == null)) {
                 logger.info(String.format("%20s  %15.1f  %20d  %15.1f  %12s  %23s",
                         currentLocusString(), elapsedTimeInMinutes(), numRecordsProcessed, processingRate(),
                         "UNKNOWN", "UNKNOWN"));
@@ -437,7 +437,7 @@ public final class ProgressMeter {
 
     @VisibleForTesting
     double calculateEstimatedPercentComplete() {
-        if (currentLocus.getContig() == null) {
+        if ((currentLocus == null) || (currentLocus.getContig() == null)) {
             return 0;
         }
 

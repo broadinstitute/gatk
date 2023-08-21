@@ -152,6 +152,7 @@ public class ProgressMeterUnitTest extends GATKBaseTest {
                 {sequenceDictionary, new SimpleInterval("contig2", 1000, 1000), 30.0},
                 {sequenceDictionary, new SimpleInterval("contig2", 2000, 2000), 40.0},
                 {sequenceDictionary, new NullyLocatable(), 0},
+                {sequenceDictionary, null, 0},
         };
     }
 
