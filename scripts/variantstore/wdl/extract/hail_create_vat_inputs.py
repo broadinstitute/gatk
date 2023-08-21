@@ -189,6 +189,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     vds = hl.vds.read_vds(args.vds_input_path)
-    local_ancestry_file = create_vat_inputs.download_ancestry_file(args.ancestry_file)
+    local_ancestry_file = create_vat_inputs.download_ancestry_file(args.ancestry_input_path)
 
-    main(vds, local_ancestry_file, args.sites_only_vcf)
+    main(vds, local_ancestry_file, args.sites_only_output_path)
