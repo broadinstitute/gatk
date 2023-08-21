@@ -675,8 +675,9 @@ public final class AssemblyResultSet {
             return; // nothing to do
         }
 
-        // TODO: Remove debugging code:
-        logger.info("Number of haplotypes pre-pileup injection: " + this.getHaplotypeCount());
+        if (debug) {
+            logger.info("Number of haplotypes pre-pileup injection: " + this.getHaplotypeCount());
+        }
 
         final Haplotype refHaplotype = getReferenceHaplotype();
         final Map<Integer, List<Event>> assembledEventByStart = getVariationEvents(argumentCollection.maxMnpDistance).stream()
