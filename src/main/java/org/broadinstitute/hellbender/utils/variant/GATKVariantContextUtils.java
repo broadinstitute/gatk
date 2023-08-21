@@ -2084,6 +2084,8 @@ public final class GATKVariantContextUtils {
      *
      * This method is trying to be fast, otherwise.
      *
+     * NOTE: this will attempt to trim alleles to a minimal representation for all variant contexts.
+     *
      * @param vc variant context to split into simple biallelics.  Never {@code null}
      * @return a list of variant contexts.  Each will be biallelic.  Length will be the number of alt alleles in the input vc.
      * Note that the variant contexts are usually stripped of attributes and genotypes.  Never {@code null}.  Empty list
@@ -2094,7 +2096,7 @@ public final class GATKVariantContextUtils {
         final List<Event> result = new ArrayList<>();
 
         if (vc.isBiallelic()) {
-            return Collections.singletonList(Event.ofWithoutAttributes(vc));
+            return Collections.singletonList(Event.ofWithoutAttributes(GATKVariantContextUtils.trimAlleles(vc, true, true)));
         } else {
             // Since variant context builders are slow to keep re-creating.  Just create one and spew variant contexts from it, since
             //  the only difference will be the alternate allele.  Initialize the VCB with a dummy alternate allele,
