@@ -1,5 +1,6 @@
 import argparse
 import hail as hl
+from datetime import datetime
 
 import create_vat_inputs
 
@@ -184,9 +185,15 @@ if __name__ == '__main__':
     parser.add_argument('--ancestry_input_path', type=str, help='Input ancestry file path', required=True)
     parser.add_argument('--vds_input_path', type=str, help='Input VDS path', default="@VDS_INPUT_PATH@")
     parser.add_argument('--sites_only_output_path', type=str, help='Output sites-only VCF path',
-                        default="@SITES_ONLY_VCF_OUTPUT_PATH@")
+                        default="@SITES_ONLY_VCF_OUTPUT_PATH@"),
+    parser.add_argument('--temp-path', type=str, help='Path to temporary directory', default="@TEMP_DIR@",
+                        required=True)
 
     args = parser.parse_args()
+
+    temp_path = [temp_path if not temp_path.endswith('/') else temp_path[:-1]
+    time_stamp = datetime.today().strftime('%Y-%m-%d_%H:%M:%S')
+    hl.init(tmp_dir=f'{temp_path}/hail_tmp_create_vat_inputs_{time_stamp}')
 
     vds = hl.vds.read_vds(args.vds_input_path)
     local_ancestry_file = create_vat_inputs.download_ancestry_file(args.ancestry_input_path)
