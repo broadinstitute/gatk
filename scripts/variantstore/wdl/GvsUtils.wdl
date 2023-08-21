@@ -662,7 +662,7 @@ task IsVQSRLite {
 
     bq --apilog=false query --project_id='~{project_id}' --format=csv --use_legacy_sql=false ~{bq_labels} \
     "BEGIN \
-      "SELECT COUNT(1) AS counted FROM \`~{fq_filter_set_info_table}\` WHERE filter_set_name = '~{filter_set_name}' \
+      SELECT COUNT(1) AS counted FROM \`~{fq_filter_set_info_table}\` WHERE filter_set_name = '~{filter_set_name}' \
           AND calibration_sensitivity IS NOT NULL;
     EXCEPTION WHEN ERROR THEN \
        SELECT '0' AS counted ;
