@@ -27,20 +27,26 @@ public class ExtractCohortLiteEngine extends ExtractCohortEngine {
         return SchemaUtils.VQSLITE_YNG_FIELDS;
     }
 
+    String getScoreFieldName() { return SchemaUtils.SCORE; }
+
+    String getScoreKey() {
+        return GATKVCFConstants.SCORE_KEY;
+    }
+
     String getVQScoreFieldName() {
         return SchemaUtils.CALIBRATION_SENSITIVITY;
     }
 
     String getAlleleSpecificVQSScoreKey() {
-        return GATKVCFConstants.AS_VQS_SENS_KEY;
+        return GATKVCFConstants.CALIBRATION_SENSITIVITY_KEY;
     }
 
     String getVqScoreSNPFailureFilterName() {
-        return GATKVCFConstants.VQS_SENS_FAILURE_SNP;
+        return GATKVCFConstants.CALIBRATION_SENSITIVITY_FAILURE_SNP;
     }
 
     String getVqScoreINDELFailureFilterName() {
-        return GATKVCFConstants.VQS_SENS_FAILURE_INDEL;
+        return GATKVCFConstants.CALIBRATION_SENSITIVITY_FAILURE_INDEL;
     }
 
     public ExtractCohortLiteEngine(final String projectID,

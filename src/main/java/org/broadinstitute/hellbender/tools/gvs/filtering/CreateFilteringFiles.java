@@ -37,7 +37,7 @@ public final class CreateFilteringFiles extends VariantWalker {
     private SimpleXSVWriter writer;
 
     private final List<String> HEADER =
-        Arrays.asList("filter_set_name", "mode", "location", "ref", "alt", "calibration_sensitivity", "vqslod", "culprit", "training_label", "yng");
+        Arrays.asList("filter_set_name", "mode", "location", "ref", "alt", "calibration_sensitivity", "score", "vqslod", "culprit", "training_label", "yng");
     
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, 
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME, 
@@ -105,12 +105,14 @@ public final class CreateFilteringFiles extends VariantWalker {
         List<String> row;
 
         String calibration_sensitivity = "";
+        String score = "";
         String vqslod = "";
         String culprit = "";
         String trainingLabel = "";
         String yng = "";
         if (!usingOldVQSR) {
             calibration_sensitivity = variant.getAttributeAsString("CALIBRATION_SENSITIVITY","");
+            score = variant.getAttributeAsString("SCORE", "");
             trainingLabel = variant.hasAttribute("training") ? "POSITIVE" : "";
             yng = variant.hasAttribute("training") ? "Y" : "G";
         } else {
@@ -126,6 +128,7 @@ public final class CreateFilteringFiles extends VariantWalker {
                 ref,
                 alt,
                 calibration_sensitivity,
+                score,
                 vqslod,
                 culprit,
                 trainingLabel,
