@@ -95,7 +95,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         final List<Event> eventsInOrder = makeFinalListOfEventsInOrder(sourceSet, badPileupEvents, goodPileupEvents, referenceHaplotype, pileupArgs, debug);
 
         // TODO this is where we filter out if indels > 32 (a heuristic known from DRAGEN that is not implemented here)
-        SortedMap<Integer, List<Event>> variantsByStartPos = eventsInOrder.stream()
+        SortedMap<Integer, List<Event>> eventsByStartPos = eventsInOrder.stream()
                 .collect(Collectors.groupingBy(Event::getStart, TreeMap::new, Collectors.toList()));
 
         List<List<Event>> disallowedCombinations = smithWatermanRealignPairsOfVariantsForEquivalentEvents(referenceHaplotype, aligner, args.getHaplotypeToReferenceSWParameters(), debug, eventsInOrder);
@@ -119,11 +119,11 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
           Overall Loop:
           Iterate over every cluster of variants with the same start position.
          */
-        for (final int thisEventGroupStart : variantsByStartPos.keySet()) {   // it's a SortedMap -- iterating over its keyset is okay!
-            final List<Event> allEventsHere = variantsByStartPos.get(thisEventGroupStart);
-            Utils.printIf(debug, () -> "working with variants: " + allEventsHere + " at position " + thisEventGroupStart);
+        for (final int determinedLocus : eventsByStartPos.keySet()) {   // it's a SortedMap -- iterating over its keyset is okay!
+            final List<Event> allEventsHere = eventsByStartPos.get(determinedLocus);
+            Utils.printIf(debug, () -> "working with variants: " + allEventsHere + " at position " + determinedLocus);
 
-            if (!Range.closed(callingSpan.getStart(), callingSpan.getEnd()).contains(thisEventGroupStart)) {
+            if (!Range.closed(callingSpan.getStart(), callingSpan.getEnd()).contains(determinedLocus)) {
                 Utils.printIf(debug, () -> "Skipping determined hap construction! Outside of span: " + callingSpan);
                 continue;
             }
@@ -135,10 +135,10 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
               NOTE: we skip the reference allele in the event that we are making determined haplotypes instead of undetermined haplotypes
              */
             for (int determinedAlleleIndex = (pileupArgs.determinePDHaps?0:-1); determinedAlleleIndex < allEventsHere.size(); determinedAlleleIndex++) { //note -1 for I here corresponds to the reference allele at this site
-                final boolean isRef = determinedAlleleIndex == -1;
-                final Set<Event> determinedEvents = isRef ? Set.of() : Set.of(allEventsHere.get(determinedAlleleIndex));
-                final Event determinedEventToTest = allEventsHere.get(isRef ? 0 : determinedAlleleIndex);
-                Utils.printIf(debug, () -> "Working with allele at site: "+(isRef? "[ref:"+(thisEventGroupStart-referenceHaplotype.getStart())+"]" : PartiallyDeterminedHaplotype.getDRAGENDebugEventString(referenceHaplotype.getStart()).apply(determinedEventToTest)));
+                final boolean determinedAlleleIsRef = determinedAlleleIndex == -1;
+                final Set<Event> determinedEvents = determinedAlleleIsRef ? Set.of() : Set.of(allEventsHere.get(determinedAlleleIndex));
+                final Event determinedEventToTest = allEventsHere.get(determinedAlleleIsRef ? 0 : determinedAlleleIndex);
+                Utils.printIf(debug, () -> "Working with allele at site: "+(determinedAlleleIsRef? "[ref:"+(determinedLocus-referenceHaplotype.getStart())+"]" : PartiallyDeterminedHaplotype.getDRAGENDebugEventString(referenceHaplotype.getStart()).apply(determinedEventToTest)));
                 // This corresponds to the DRAGEN code for
                 // 0 0
                 // 0 1
@@ -197,18 +197,18 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
                     // Handle the simple case of making PD haplotypes
                     if (!pileupArgs.determinePDHaps) {
-                        for (final int otherEventGroupStart : variantsByStartPos.keySet()) {
-                            if (otherEventGroupStart == thisEventGroupStart) {
+                        for (final int locus : eventsByStartPos.keySet()) {
+                            if (locus == determinedLocus) {
                                 newBranch.add(determinedEventToTest);
                             } else {
                                 // We know here that nothing illegally overlaps because there are no groups.
                                 // Also exclude any events that overlap the determined allele since we cant construct them (also this stops compound alleles from being formed)
                                 // NOTE: it is important that we allow reference alleles to overlap undetermined variants as it leads to mismatches against DRAGEN otherwise.
-                                variantsByStartPos.get(otherEventGroupStart).stream().filter(vc -> !excludeEvents.contains(vc)).forEach(newBranch::add);
+                                eventsByStartPos.get(locus).stream().filter(vc -> !excludeEvents.contains(vc)).forEach(newBranch::add);
                             }
                         }
                         newBranch.sort(HAPLOTYPE_SNP_FIRST_COMPARATOR);
-                        PartiallyDeterminedHaplotype newPDHaplotypeFromEvents = createNewPDHaplotypeFromEvents(referenceHaplotype, determinedEventToTest, isRef, newBranch);
+                        PartiallyDeterminedHaplotype newPDHaplotypeFromEvents = createNewPDHaplotypeFromEvents(referenceHaplotype, determinedEventToTest, determinedAlleleIsRef, newBranch);
                         newPDHaplotypeFromEvents.setAllDeterminedEventsAtThisSite(allEventsHere); // accounting for determined variants for later in case we are in optimization mode
                         branchHaps.add(newPDHaplotypeFromEvents);
 
@@ -217,15 +217,15 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                         // If we are producing determined bases, then we want to enforce that every new event at least has THIS event as a variant.
                         List<List<Event>> growingEventGroups = new ArrayList<>();
                         growingEventGroups.add(new ArrayList<>());
-                        for (final int otherEventGroupStart : variantsByStartPos.keySet()) {
+                        for (final int locus : eventsByStartPos.keySet()) {
                             // Iterate through the growing combinatorial expansion of haps, split it into either having or not having the variant.
                             if (growingEventGroups.size() > MAX_BRANCH_PD_HAPS) {
                                 Utils.printIf(debug, () -> "Too many branch haplotypes ["+growingEventGroups.size()+"] generated from site, falling back on assembly variants!");
                                 return sourceSet;
-                            } else if (otherEventGroupStart == thisEventGroupStart) {
+                            } else if (locus == determinedLocus) {
                                 growingEventGroups.forEach(group -> group.add(determinedEventToTest));
-                            } else if (thisEventGroupStart < otherEventGroupStart) {
-                                variantsByStartPos.get(otherEventGroupStart).stream()
+                            } else if (determinedLocus < locus) {
+                                eventsByStartPos.get(locus).stream()
                                         .filter(event -> !excludeEvents.contains(event))
                                         .flatMap(event -> growingEventGroups.stream().map(group -> growEventGroup(group, event)))
                                         .forEach(growingEventGroups::add);

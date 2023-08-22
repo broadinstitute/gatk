@@ -162,7 +162,7 @@ public final class  PartiallyDeterminedHaplotype extends Haplotype {
         return Objects.hash(Arrays.hashCode(getBases()),Arrays.hashCode(alternateBases));
     }
 
-    public List<Event> getDeterminedAlleles() {
+    public List<Event> getDeterminedEvents() {
         return isDeterminedAlleleRef ? Collections.emptyList() : Collections.singletonList(alleleBearingEvent);
     }
 
