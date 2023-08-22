@@ -186,8 +186,7 @@ if __name__ == '__main__':
     parser.add_argument('--vds_input_path', type=str, help='Input VDS path', default="@VDS_INPUT_PATH@")
     parser.add_argument('--sites_only_output_path', type=str, help='Output sites-only VCF path',
                         default="@SITES_ONLY_VCF_OUTPUT_PATH@"),
-    parser.add_argument('--temp_path', type=str, help='Path to temporary directory', default="@TEMP_DIR@",
-                        required=True)
+    parser.add_argument('--temp_path', type=str, help='Path to temporary directory', required=True)
 
     args = parser.parse_args()
 

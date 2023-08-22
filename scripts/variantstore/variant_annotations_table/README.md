@@ -20,6 +20,7 @@ Once you have copied them, run `python3 hail_create_vat_inputs.py` with the foll
 * `--ancestry_input_path` Required, GCS path of the TSV file that maps `sample_name`s to subpopulations.
 * `--vds_input_path` Optional, should be pre-populated by the `GvsExtractAvroFilesForHail` workflow. GCS path of the top-level directory of the VDS.
 * `--sites_only_output_path` Optional, should be pre-populated by the `GvsExtractAvroFilesForHail` workflow. GCS path to write the sites-only VCF to; save this for the `GvsCreateVATfromVDS` workflow.
+* `--temp_path` Required, GCS path of a temp 'directory' that is used by Hail for storage of intermediate/temp files. Note that this script creates a time-stamped directory under this path in order to segregate temp data from different runs.
 
 When the script is done running it will print out the path to where it has written the sites-only VCF.
 
