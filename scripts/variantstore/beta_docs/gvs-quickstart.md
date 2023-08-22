@@ -120,13 +120,13 @@ Below is an example of the time and cost of running the workflow with the sample
 
 Here are several more examples of the time and cost of running the workflow. Generally the cost is around 6 cents per sample, including Terra compute and BigQuery compute cost. This does not include storage costs.
 
-| Number of Samples | Wall Clock Time (hh:mm) | Cost $ | Cost per Sample |
-|-------------------|-------------------------|-----|-----------------|
-| 1000              | 07:24                   | $59.64 | $0.06           |
-| 2500              | 08:45                   | $141.28 | $0.06           |
-| 5000              | 12:00                   | $286.71 | $0.06           |
-| 10000             | 13:41                   | $604.97 | $0.06           |
-| 25000 | 63:35*                  | $1,282.65 | $0.051          |
+| Number of Samples | Wall Clock Time (hh:mm) | Cost $     | Cost per Sample |
+|------------------|-------------------------|------------|------------|
+| 1000             | 07:24                   | $59.64     | $0.06      |
+| 2500             | 08:45                   | $141.28    | $0.06      |
+| 5000             | 12:00                   | $286.71    | $0.06      |
+| 10000            | 13:41                   | $604.97    | $0.06      |
+| 25000            | 63:35*                  | $1,282.65  | $0.051     |
 
 *Our test of 25,000 genomes hit some cloud turbulence and took longer than it should have. As it is an expensive test at this scale, we will update this chart when we have a need to run it again.
 
