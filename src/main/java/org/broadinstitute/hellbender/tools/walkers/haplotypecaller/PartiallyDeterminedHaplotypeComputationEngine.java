@@ -256,13 +256,10 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         sourceSet.storeAssemblyHaplotypes();
 
         // TODO this is an entirely unnecessary step that can be done away with but i leave in because it makes debugging against previous versions much easier.
-        final Set<Haplotype> result = outputHaplotypes.stream().sorted(Comparator.comparing(Haplotype::getBaseString)).collect(Collectors.toCollection(LinkedHashSet::new));
+        final List<Haplotype> result = outputHaplotypes.stream().sorted(Comparator.comparing(Haplotype::getBaseString)).toList();
         sourceSet.replaceAllHaplotypes(result);
         Utils.printIf(debug, () -> "Constructed Haps for Branch"+sourceSet.getHaplotypeList().stream().map(Haplotype::toString).collect(Collectors.joining("\n")));
-        if (!pileupArgs.determinePDHaps) {
-            // Setting a boolean on the source-set to indicate to downstream code that we have PD haplotypes
-            sourceSet.setPartiallyDeterminedMode();
-        }
+        sourceSet.setPartiallyDeterminedMode(!pileupArgs.determinePDHaps);
         Utils.printIf(debug, () -> "Returning "+outputHaplotypes.size()+" to the HMM");
         return sourceSet;
     }
