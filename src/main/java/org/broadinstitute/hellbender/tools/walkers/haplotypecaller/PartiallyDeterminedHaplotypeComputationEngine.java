@@ -5,12 +5,11 @@ import com.google.common.collect.*;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.util.Locatable;
-import htsjdk.samtools.util.Tuple;
 import htsjdk.variant.variantcontext.Allele;
 import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
-import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.SmallBitSet;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.haplotype.Event;
@@ -379,16 +378,25 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
     }
 
     /**
-     * Partition events into clusters that must be considered together, either because they overlap or because they belong to the
-     * same mutually exclusive pair or trio.  To find this clustering we calculate the connected components of an undirected graph
-     * with an edge connecting events that overlap or are mutually excluded.
+     * Partition events into the largest possible clusters such that events in distinct clusters are mutually compatible
+     * i.e. can exist on the same haplotype.
      *
-     * return null if any event group exceeds the allowed size -- this tells the calling code to fall back on the original
-     * GATK assembly.
+     * Incompatibility comes in two types, the first and more obvious being overlap.  The second is defined by the
+     * heuristic in which we inject two or three events into the reference haplotype and realign the resulting two- or three-event
+     * haplotype against the reference haplotype via Smith-Waterman.  If the resulting reduced representation contains other events
+     * that have already been found the two or three events are mutually forbidden.
+     *
+     * To find the desired partition we calculate the connected components of an undirected graph whose edges correspond to
+     * either type of incompatibility.  That is, overlapping events and Smith-Waterman-forbidden pairs get an edge; Smith-Waterman-forbidden
+     * trios get three edges, one for every two events in the trio.
+     *
+     * @param eventsInOrder all events in a calling region
+     * @param swForbiddenPairsAndTrios list of lists of two or three non-overlapping events that are mutually excluded according
+     *                                to the Smith-Waterman heuristic in which injecting them into the reference haplotype and
+     *                                simplifying via Smith Waterman yields other events
      */
-    private static List<EventGroup> getEventGroupClusters(List<Event> eventsInOrder, List<List<Event>> disallowedPairsAndTrios) {
-        final Graph<Event, DefaultEdge> graph = new SimpleGraph<>(DefaultEdge.class);
-        eventsInOrder.forEach(graph::addVertex);
+    private static List<EventGroup> getEventGroupClusters(List<Event> eventsInOrder, List<List<Event>> swForbiddenPairsAndTrios) {
+        final List<List<Event>> allMutexes = new ArrayList<>(swForbiddenPairsAndTrios);
 
         // edges due to overlapping position
         for (int e1 = 0; e1 < eventsInOrder.size(); e1++) {
@@ -396,22 +404,19 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             for (int e2 = e1 + 1; e2 < eventsInOrder.size() && eventsInOrder.get(e2).getStart() <= event1.getEnd() + 1; e2++) {
                 final Event event2 = eventsInOrder.get(e2);
                 if (eventsOverlapForPDHapsCode(event1, event2)) {
-                    graph.addEdge(event1, event2);
+                    allMutexes.add(List.of(event1, event2));
                 }
             }
         }
 
-        // edges due to mutual exclusion
-        for (final List<Event> excludedGroup : disallowedPairsAndTrios) {
-            graph.addEdge(excludedGroup.get(0), excludedGroup.get(1));
-            if (excludedGroup.size() == 3) {
-                graph.addEdge(excludedGroup.get(1), excludedGroup.get(2));
-            }
-        }
+        // for each mutex, add edges 0-1, 1-2. . . to put all mutex events in one connected component
+        final Graph<Event, DefaultEdge> graph = new SimpleGraph<>(DefaultEdge.class);
+        eventsInOrder.forEach(graph::addVertex);
+        allMutexes.forEach(mutex -> new IndexRange(0, mutex.size() - 1).forEach(n -> graph.addEdge(mutex.get(n), mutex.get(n+1))));
 
         final List<Set<Event>> components = new ConnectivityInspector<>(graph).connectedSets();
         return components.stream().anyMatch(comp -> comp.size() > MAX_VAR_IN_EVENT_GROUP) ? null :
-                components.stream().map(component -> new EventGroup(component, disallowedPairsAndTrios)).toList();
+                components.stream().map(component -> new EventGroup(component, allMutexes)).toList();
     }
 
     /**
@@ -645,80 +650,72 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
     }
 
-    // A helper class for managing mutually exclusive event clusters and the logic arround forming valid events vs eachother.
+    // A helper class for managing mutually exclusive event clusters and the logic around forming valid events vs each other.
     private static class EventGroup {
         private final ImmutableList<Event> eventsInOrder;
         private final ImmutableMap<Event, Integer> eventIndices;
-        private final BitSet allowedEvents;
+
+        // There are BitSets and SmallBitSets going around.  The SmallBitSets represent sets of events -- mutexes and other subsets
+        // of the event group.  This BitSet is a set of sets of events!  Each element/bit represents a subset of events.  If the bit is true
+        // then the corresponding subset of events is allowed i.e. doesn't contain a mutex.  For example, if the 11th bit is true we know
+        // that the subset containing events 0, 1, and 3 (11 = 2^3 + 2^1 + 2^0) is allowed because neither {0,1}, {0,3}, {1,3}, or {0,1,3}
+        // are mutually excluded.
+        private final BitSet allowedSubsets;
 
         // Optimization to save ourselves recomputing the subsets at every point its necessary to do so.
         List<Set<Event>> cachedEventSets = null;
 
-        public EventGroup(final Collection<Event> events, List<List<Event>> disallowedCombinations) {
+        /**
+         * @param events all events in this event group
+         * @param mutexPairsAndTrios all mutexes of two or three events, defined by overlap and by the Smith-Waterman heuristic,
+         *                           that determined the event groups in this calling region
+         */
+        public EventGroup(final Collection<Event> events, List<List<Event>> mutexPairsAndTrios) {
             Utils.validate(events.size() <= MAX_VAR_IN_EVENT_GROUP, () -> "Too many events (" + events.size() + ") for populating bitset.");
             eventsInOrder = events.stream().sorted(HAPLOTYPE_SNP_FIRST_COMPARATOR).collect(ImmutableList.toImmutableList());
             eventIndices = IntStream.range(0, events.size()).boxed().collect(ImmutableMap.toImmutableMap(eventsInOrder::get, n -> n));
-            allowedEvents = new BitSet(1 << eventsInOrder.size());
+            allowedSubsets = new BitSet(1 << eventsInOrder.size());
 
-            final List<List<Event>> overlappingMutexes = disallowedCombinations.stream()
+            final List<List<Event>> overlappingMutexes = mutexPairsAndTrios.stream()
                             .filter(mutext -> mutext.stream().anyMatch(eventIndices::containsKey)).toList();
             for (final List<Event> mutex : overlappingMutexes) {
                 Utils.validate(mutex.stream().allMatch(eventIndices::containsKey), () -> "Mutex group " + mutex + " only partially overlaps event group " + this);
             }
-            populateBitset(overlappingMutexes);
+            computeAllowedSubsets(overlappingMutexes);
         }
 
         /**
-         * This is the primary method for handling mutually exclusive events in this subgroup. This code amd methods comes directly from DRAGEN:
+         * Compute the BitSet of allowed subsets of events i.e. subsets of events that do not contain a mutex group.
          *
-         * Create a #Variants bitset to store valid pairings:
-         *      - The index of each element corresponds to an enumerated subset of alleles in this group
-         *      - Each bit in the index corresponds to the presence or absence of a variant from the vcf list.
-         *          - For example with variants [A,B,C] the number 5 corresponds to subset [A,C]
-         *      - A false in the bitset corresponds to a disallowed pair.
-         *      - NOTE: we can use 32bit ints for these bitshift operations by virtue of the fact that we limit ourselves to at most 22 variants per group.
-         * Iterate through pairs of Variants that overlap and mark off any pairings including this.
-         * Iterate through the mutex variants and ensure pairs containing all mutex variant groups are marked as true
+         * NOTE: we can use SmallBitSets because we limit ourselves to at most 22 variants per group.
          *
-         * @param mutexes Groups of mutually forbidden events.  Note that when this is called we have already ensured
-         *                that each mutex group comprises only events contained in this EventGroup.
+         * @param mutexPairsAndTrios The groups of mutually forbidden events that generated all the event groups in this calling region.
          */
-        private void populateBitset(List<List<Event>> mutexes) {
-            if (eventsInOrder.size() < 2) {
-                return;
-            }
 
-            // initialize all events as being allowed and then disallow them in turn .
-            allowedEvents.set(1, 1 << eventsInOrder.size());
 
-            final List<SmallBitSet> forbiddenCombinations = new ArrayList<>();
+         private void computeAllowedSubsets(List<List<Event>> mutexPairsAndTrios) {
+             if (eventsInOrder.size() < 2) {
+                 return;
+             }
 
-            // Mark as disallowed all events that overlap each other, excluding pairs of SNPs
-            for (int i = 0; i < eventsInOrder.size(); i++) {
-                final Event first = eventsInOrder.get(i);
-                for (int j = i+1; j < eventsInOrder.size(); j++) {
-                    final Event second = eventsInOrder.get(j);
-                    if (!(first.isSNP() && second.isSNP()) && eventsOverlapForPDHapsCode(first, second)) {
-                        forbiddenCombinations.add(new SmallBitSet(i,j));
-                    }
-                }
-            }
+             // initialize all events as being allowed and then disallow them in turn .
+             allowedSubsets.set(1, 1 << eventsInOrder.size());
 
-            // make SmallBitSet of the event indices of each mutex
-            mutexes.stream().map(mutex -> new SmallBitSet(mutex.stream().map(eventIndices::get).toList())).forEach(forbiddenCombinations::add);
+             // make SmallBitSet of the event indices of each mutex
+             final List<SmallBitSet> mutexes = mutexPairsAndTrios.stream().map(mutex -> new SmallBitSet(mutex.stream().map(eventIndices::get).toList())).toList();
 
-            // Now forbid all subsets that contain forbidden combinations
-            //TODO This method is potentially very inefficient! We don't technically have to iterate over every i,
-            //TODO we know there is an optimization involving minimizing the number of checks necessary here by iterating
-            //TODO using the bitmask values themselves for the loop
-            if (!forbiddenCombinations.isEmpty()) {
-                for (final SmallBitSet subset = new SmallBitSet().increment(); !subset.hasElementGreaterThan(eventsInOrder.size()); subset.increment()) {
-                    if (forbiddenCombinations.stream().anyMatch(subset::contains)) {
-                        allowedEvents.set(subset.index(), false);
-                    }
-                }
-            }
-        }
+             // Now forbid all subsets that contain forbidden combinations
+             //TODO This method is potentially very inefficient! We don't technically have to iterate over every i,
+             //TODO we know there is an optimization involving minimizing the number of checks necessary here by iterating
+             //TODO using the bitmask values themselves for the loop
+             if (!mutexes.isEmpty()) {
+                 for (final SmallBitSet subset = new SmallBitSet().increment(); !subset.hasElementGreaterThan(eventsInOrder.size()); subset.increment()) {
+                     if (mutexes.stream().anyMatch(subset::contains)) {
+                         allowedSubsets.set(subset.index(), false);
+                     }
+                 }
+             }
+         }
 
         /**
          * This method handles the logic involved in getting all of the allowed subsets of alleles for this event group.
@@ -739,7 +736,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             // Iterate from the full set (containing every event) to the empty set (no events), which lets us output the largest possible subsets
             // NOTE: we skip over 0 here since that corresponds to ref-only events, handle those externally to this code
             for (final SmallBitSet subset = SmallBitSet.fullSet(eventsInOrder.size()); !subset.isEmpty(); subset.decrement()) {
-                if (allowedEvents.get(subset.index()) && subset.intersection(locusOverlapSet).equals(determinedOverlapSet)) {
+                if (allowedSubsets.get(subset.index()) && subset.intersection(locusOverlapSet).equals(determinedOverlapSet)) {
                     // Only check for subsets if we need to
                     if (!disallowSubsets || allowedAndDetermined.stream().noneMatch(group -> group.contains(subset))) {
                         allowedAndDetermined.add(subset.copy());    // copy subset since the decrement() mutates it in-place
