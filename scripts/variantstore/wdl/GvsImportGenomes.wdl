@@ -6,7 +6,7 @@ workflow GvsImportGenomes {
 
   input {
     Boolean go = true
-    String workflow_git_reference
+    String git_branch_or_tag
     String? workflow_git_hash
     String dataset_name
     String project_id
@@ -51,7 +51,7 @@ workflow GvsImportGenomes {
   if (!defined(workflow_git_hash) || !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker)) {
     call Utils.GetToolVersions {
       input:
-        workflow_git_reference = workflow_git_reference,
+        git_branch_or_tag = git_branch_or_tag,
     }
   }
 

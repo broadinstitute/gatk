@@ -5,7 +5,7 @@ import "GvsJointVariantCalling.wdl" as JointVariantCalling
 
 workflow GvsQuickstartVcfIntegration {
     input {
-        String workflow_git_reference
+        String git_branch_or_tag
         String? workflow_git_hash
         Boolean is_wgs = true
         String expected_output_prefix
@@ -41,7 +41,7 @@ workflow GvsQuickstartVcfIntegration {
         !defined(basic_docker) || !defined(gatk_docker)) {
         call Utils.GetToolVersions {
             input:
-                workflow_git_reference = workflow_git_reference,
+                git_branch_or_tag = git_branch_or_tag,
         }
     }
 
@@ -55,14 +55,14 @@ workflow GvsQuickstartVcfIntegration {
     if (!use_default_dockers && !defined(gatk_override)) {
       call Utils.BuildGATKJar {
         input:
-          workflow_git_reference = workflow_git_reference,
+          git_branch_or_tag = git_branch_or_tag,
           cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
       }
     }
 
     call Utils.CreateDataset {
         input:
-            workflow_git_reference = workflow_git_reference,
+            git_branch_or_tag = git_branch_or_tag,
             dataset_prefix = "quickit",
             dataset_suffix = dataset_suffix,
             cloud_sdk_docker = effective_cloud_sdk_docker,
@@ -70,7 +70,7 @@ workflow GvsQuickstartVcfIntegration {
 
     call JointVariantCalling.GvsJointVariantCalling as JointVariantCalling {
         input:
-            call_set_identifier = workflow_git_reference,
+            call_set_identifier = git_branch_or_tag,
             dataset_name = CreateDataset.dataset_name,
             project_id = project_id,
             gatk_override = if (use_default_dockers) then none else select_first([gatk_override, BuildGATKJar.jar]),

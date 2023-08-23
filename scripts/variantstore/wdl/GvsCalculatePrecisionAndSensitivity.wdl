@@ -5,7 +5,7 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsCalculatePrecisionAndSensitivity {
   input {
-    String workflow_git_reference
+    String git_branch_or_tag
     File input_vcf_fofn
     String output_basename
 
@@ -40,7 +40,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
   # no calling WDLs that might supply `workflow_git_hash`).
   call Utils.GetToolVersions {
     input:
-      workflow_git_reference = workflow_git_reference,
+      git_branch_or_tag = git_branch_or_tag,
   }
 
   String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])

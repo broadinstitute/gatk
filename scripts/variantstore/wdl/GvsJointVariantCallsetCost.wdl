@@ -5,7 +5,7 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsJointVariantCallsetCost {
     input {
-        String workflow_git_reference
+        String git_branch_or_tag
         String project_id
         String dataset_name
         String workspace_namespace
@@ -29,7 +29,7 @@ workflow GvsJointVariantCallsetCost {
     # no calling WDLs that might supply `workflow_git_hash`).
     call Utils.GetToolVersions {
         input:
-            workflow_git_reference = workflow_git_reference,
+            git_branch_or_tag = git_branch_or_tag,
     }
 
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])

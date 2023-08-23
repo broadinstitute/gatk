@@ -37,7 +37,7 @@ workflow GvsExtractCohortFromSampleNames {
     Int? split_intervals_disk_size_override
     Int? split_intervals_mem_override
 
-    String workflow_git_reference
+    String git_branch_or_tag
     File? gatk_override
     String? cloud_sdk_docker
   }
@@ -48,7 +48,7 @@ workflow GvsExtractCohortFromSampleNames {
   # no calling WDLs that might supply `workflow_git_hash`).
   call Utils.GetToolVersions {
     input:
-      workflow_git_reference = workflow_git_reference,
+      git_branch_or_tag = git_branch_or_tag,
   }
 
   String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])

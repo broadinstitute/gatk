@@ -6,7 +6,7 @@ workflow CreateBQTables {
   input {
     String dataset_name
     String project_id
-    String workflow_git_reference
+    String git_branch_or_tag
     String? workflow_git_hash
 
     Int max_table_id
@@ -22,7 +22,7 @@ workflow CreateBQTables {
   if (!defined(workflow_git_hash) || !defined(cloud_sdk_docker)) {
     call Utils.GetToolVersions {
       input:
-        workflow_git_reference = workflow_git_reference,
+        git_branch_or_tag = git_branch_or_tag,
     }
   }
 

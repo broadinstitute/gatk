@@ -5,7 +5,7 @@ import "../wdl/GvsUtils.wdl" as Utils
 workflow GvsCreateVATFilesFromBigQuery {
     input {
         String project_id
-        String workflow_git_reference
+        String git_branch_or_tag
         String? workflow_git_hash
         String dataset_name
         String vat_table_name
@@ -21,7 +21,7 @@ workflow GvsCreateVATFilesFromBigQuery {
     if (!defined(workflow_git_hash) || !defined(cloud_sdk_docker)) {
         call Utils.GetToolVersions {
             input:
-                workflow_git_reference = workflow_git_reference,
+                git_branch_or_tag = git_branch_or_tag,
         }
     }
 

@@ -4,7 +4,7 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsBenchmarkExtractTask {
     input {
-        String workflow_git_reference
+        String git_branch_or_tag
         String data_project
         String dataset_name
 
@@ -61,7 +61,7 @@ workflow GvsBenchmarkExtractTask {
     # no calling WDLs that might supply `workflow_git_hash`).
     call Utils.GetToolVersions {
         input:
-            workflow_git_reference = workflow_git_reference,
+            git_branch_or_tag = git_branch_or_tag,
     }
 
     String effective_cloud_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])

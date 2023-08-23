@@ -7,7 +7,7 @@ workflow GvsAssignIds {
 
   input {
     Boolean go = true
-    String workflow_git_reference
+    String git_branch_or_tag
     String? workflow_git_hash
     String dataset_name
     String project_id
@@ -30,7 +30,7 @@ workflow GvsAssignIds {
   if (!defined(workflow_git_hash) || !defined(cloud_sdk_docker)) {
     call Utils.GetToolVersions {
       input:
-        workflow_git_reference = workflow_git_reference,
+        git_branch_or_tag = git_branch_or_tag,
     }
   }
 
@@ -119,7 +119,7 @@ workflow GvsAssignIds {
   call GvsCreateTables.CreateBQTables as CreateTablesForMaxId {
     input:
       project_id = project_id,
-      workflow_git_reference = workflow_git_reference,
+      git_branch_or_tag = git_branch_or_tag,
       workflow_git_hash = effective_workflow_git_hash,
       dataset_name = dataset_name,
       max_table_id = AssignIds.max_table_id,

@@ -8,7 +8,7 @@ workflow GvsIngestTieout {
     input {
         String project
         String reference_dataset_name
-        String workflow_git_reference
+        String git_branch_or_tag
         File sample_names
         File input_vcfs
         File input_vcf_indexes
@@ -19,14 +19,14 @@ workflow GvsIngestTieout {
     # no calling WDLs that might supply `workflow_git_hash`).
     call Utils.GetToolVersions {
         input:
-            workflow_git_reference = workflow_git_reference,
+            git_branch_or_tag = git_branch_or_tag,
     }
 
     String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
 
     call Utils.BuildGATKJarAndCreateDataset {
         input:
-            workflow_git_reference = workflow_git_reference,
+            git_branch_or_tag = git_branch_or_tag,
             dataset_prefix = "ingest_tieout"
     }
 

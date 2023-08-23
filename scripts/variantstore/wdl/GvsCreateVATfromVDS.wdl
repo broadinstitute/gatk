@@ -10,7 +10,7 @@ workflow GvsCreateVATfromVDS {
         File ancestry_file
 
         String project_id
-        String workflow_git_reference
+        String git_branch_or_tag
         String dataset_name
         String filter_set_name
         String? vat_version
@@ -39,7 +39,7 @@ workflow GvsCreateVATfromVDS {
     # no calling WDLs that might supply `workflow_git_hash`).
     call Utils.GetToolVersions {
         input:
-            workflow_git_reference = workflow_git_reference,
+            git_branch_or_tag = git_branch_or_tag,
     }
 
     String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
@@ -156,7 +156,7 @@ workflow GvsCreateVATfromVDS {
     call GvsCreateVATFilesFromBigQuery.GvsCreateVATFilesFromBigQuery {
         input:
             project_id = project_id,
-            workflow_git_reference = workflow_git_reference,
+            git_branch_or_tag = git_branch_or_tag,
             workflow_git_hash = GetToolVersions.workflow_git_hash,
             dataset_name = dataset_name,
             vat_table_name = BigQueryLoadJson.vat_table_name,

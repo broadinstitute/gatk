@@ -9,11 +9,11 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsJointVariantCalling {
     input {
-        # If `workflow_git_reference` is not specified by a caller (i.e. integration tests), default to the current
+        # If `git_branch_or_tag` is not specified by a caller (i.e. integration tests), default to the current
         # beta / early access tag. Note that setting this value does not "summon" this version of the workflow; only the
-        # version selector in Terra can do that. The value of this `workflow_git_reference` input should always be
+        # version selector in Terra can do that. The value of this `git_branch_or_tag` input should always be
         # consistent with the git tag assigned to its version.
-        String workflow_git_reference = "gvs_beta_0.2.0"
+        String git_branch_or_tag = "gvs_beta_0.2.0"
         # Potentially specified by a calling integration WDL.
         String? workflow_git_hash
 
@@ -82,7 +82,7 @@ workflow GvsJointVariantCalling {
     if (!defined(workflow_git_hash) || !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker)) {
         call Utils.GetToolVersions {
             input:
-                workflow_git_reference = workflow_git_reference,
+                git_branch_or_tag = git_branch_or_tag,
         }
     }
 
@@ -94,7 +94,7 @@ workflow GvsJointVariantCalling {
 
     call BulkIngestGenomes.GvsBulkIngestGenomes as BulkIngestGenomes {
         input:
-            workflow_git_reference = workflow_git_reference,
+            git_branch_or_tag = git_branch_or_tag,
             workflow_git_hash = effective_workflow_git_hash,
             dataset_name = dataset_name,
             project_id = project_id,
@@ -113,7 +113,7 @@ workflow GvsJointVariantCalling {
 
     call PopulateAltAllele.GvsPopulateAltAllele {
         input:
-            workflow_git_reference = workflow_git_reference,
+            git_branch_or_tag = git_branch_or_tag,
             workflow_git_hash = effective_workflow_git_hash,
             call_set_identifier = call_set_identifier,
             go = BulkIngestGenomes.done,
@@ -126,7 +126,7 @@ workflow GvsJointVariantCalling {
     call CreateFilterSet.GvsCreateFilterSet {
         input:
             go = GvsPopulateAltAllele.done,
-            workflow_git_reference = workflow_git_reference,
+            git_branch_or_tag = git_branch_or_tag,
             workflow_git_hash = effective_workflow_git_hash,
             dataset_name = dataset_name,
             project_id = project_id,
@@ -148,7 +148,7 @@ workflow GvsJointVariantCalling {
         input:
             call_set_identifier = call_set_identifier,
             go = GvsCreateFilterSet.done,
-            workflow_git_reference = workflow_git_reference,
+            git_branch_or_tag = git_branch_or_tag,
             workflow_git_hash = effective_workflow_git_hash,
             dataset_name = dataset_name,
             project_id = project_id,
@@ -165,7 +165,7 @@ workflow GvsJointVariantCalling {
     call ExtractCallset.GvsExtractCallset {
         input:
             go = GvsPrepareCallset.done,
-            workflow_git_reference = workflow_git_reference,
+            git_branch_or_tag = git_branch_or_tag,
             workflow_git_hash = effective_workflow_git_hash,
             dataset_name = dataset_name,
             project_id = project_id,

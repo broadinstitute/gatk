@@ -24,7 +24,7 @@ workflow GvsPrepareCallset {
     Boolean only_output_vet_tables = false
     Boolean write_cost_to_db = true
     String? variants_docker
-    String workflow_git_reference
+    String git_branch_or_tag
     String? workflow_git_hash
   }
 
@@ -36,7 +36,7 @@ workflow GvsPrepareCallset {
   if (!defined(workflow_git_hash) || !defined(variants_docker)) {
     call Utils.GetToolVersions {
       input:
-        workflow_git_reference = workflow_git_reference,
+        git_branch_or_tag = git_branch_or_tag,
     }
   }
 

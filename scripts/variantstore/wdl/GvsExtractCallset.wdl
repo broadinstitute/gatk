@@ -30,7 +30,7 @@ workflow GvsExtractCallset {
     String? variants_docker
     String? cloud_sdk_docker
     String? gatk_docker
-    String workflow_git_reference
+    String git_branch_or_tag
     String? workflow_git_hash
     File? gatk_override
 
@@ -74,7 +74,7 @@ workflow GvsExtractCallset {
   if (!defined(workflow_git_hash) || !defined(gatk_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker)) {
     call Utils.GetToolVersions {
       input:
-        workflow_git_reference = workflow_git_reference,
+        git_branch_or_tag = git_branch_or_tag,
     }
   }
 

@@ -6,7 +6,7 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsQuickstartIntegration {
     input {
-        String workflow_git_reference
+        String git_branch_or_tag
         Boolean use_default_dockers = false
         Boolean run_vcf_integration = true
         Boolean run_hail_integration = true
@@ -39,7 +39,7 @@ workflow GvsQuickstartIntegration {
     # no calling WDLs that might supply `workflow_git_hash`).
     call Utils.GetToolVersions {
         input:
-            workflow_git_reference = workflow_git_reference,
+            git_branch_or_tag = git_branch_or_tag,
     }
 
     String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
@@ -58,18 +58,18 @@ workflow GvsQuickstartIntegration {
     if (!use_default_dockers) {
         call Utils.BuildGATKJar {
             input:
-                workflow_git_reference = workflow_git_reference,
+                git_branch_or_tag = git_branch_or_tag,
                 cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
         }
     }
 
-    # Note for `GvsQuickstartIntegration` we use the workflow_git_reference *input* and its corresponding git hash. This is not
+    # Note for `GvsQuickstartIntegration` we use the git_branch_or_tag *input* and its corresponding git hash. This is not
     # necessarily the same as the branch name selected in Terra for the integration `GvsQuickstartIntegration` workflow,
     # though in practice likely they are the same.
     if (run_hail_integration) {
         call QuickstartHailIntegration.GvsQuickstartHailIntegration as GvsQuickstartHailVQSRLiteIntegration {
             input:
-                workflow_git_reference = workflow_git_reference,
+                git_branch_or_tag = git_branch_or_tag,
                 workflow_git_hash = GetToolVersions.workflow_git_hash,
                 use_VQSR_lite = true,
                 extract_do_not_filter_override = false,
@@ -91,7 +91,7 @@ workflow GvsQuickstartIntegration {
         }
         call QuickstartHailIntegration.GvsQuickstartHailIntegration as GvsQuickstartHailVQSRClassicIntegration {
             input:
-                workflow_git_reference = workflow_git_reference,
+                git_branch_or_tag = git_branch_or_tag,
                 workflow_git_hash = GetToolVersions.workflow_git_hash,
                 use_VQSR_lite = false,
                 extract_do_not_filter_override = false,
@@ -116,7 +116,7 @@ workflow GvsQuickstartIntegration {
     if (run_vcf_integration) {
         call QuickstartVcfIntegration.GvsQuickstartVcfIntegration as QuickstartVcfVQSRLiteIntegration {
             input:
-                workflow_git_reference = workflow_git_reference,
+                git_branch_or_tag = git_branch_or_tag,
                 workflow_git_hash = GetToolVersions.workflow_git_hash,
                 use_VQSR_lite = true,
                 extract_do_not_filter_override = false,
@@ -138,7 +138,7 @@ workflow GvsQuickstartIntegration {
         }
         call QuickstartVcfIntegration.GvsQuickstartVcfIntegration as QuickstartVcfVQSRClassicIntegration {
             input:
-                workflow_git_reference = workflow_git_reference,
+                git_branch_or_tag = git_branch_or_tag,
                 workflow_git_hash = GetToolVersions.workflow_git_hash,
                 use_VQSR_lite = false,
                 extract_do_not_filter_override = true,
@@ -163,7 +163,7 @@ workflow GvsQuickstartIntegration {
     if (run_exome_integration) {
         call QuickstartVcfIntegration.GvsQuickstartVcfIntegration as QuickstartVcfExomeIntegration {
             input:
-                workflow_git_reference = workflow_git_reference,
+                git_branch_or_tag = git_branch_or_tag,
                 workflow_git_hash = GetToolVersions.workflow_git_hash,
                 is_wgs = false,
                 use_VQSR_lite = true,
