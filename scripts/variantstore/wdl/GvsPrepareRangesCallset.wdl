@@ -25,7 +25,7 @@ workflow GvsPrepareCallset {
     Boolean write_cost_to_db = true
     String? variants_docker
     String git_branch_or_tag
-    String? workflow_git_hash
+    String? git_hash
   }
 
   String full_extract_prefix = if (control_samples) then "~{extract_table_prefix}_controls" else extract_table_prefix
@@ -33,7 +33,7 @@ workflow GvsPrepareCallset {
   String fq_sample_mapping_table = "~{project_id}.~{dataset_name}.sample_info"
   String fq_destination_dataset = "~{destination_project}.~{destination_dataset}"
 
-  if (!defined(workflow_git_hash) || !defined(variants_docker)) {
+  if (!defined(git_hash) || !defined(variants_docker)) {
     call Utils.GetToolVersions {
       input:
         git_branch_or_tag = git_branch_or_tag,
@@ -41,7 +41,7 @@ workflow GvsPrepareCallset {
   }
 
   String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
-  String effective_workflow_git_hash = select_first([workflow_git_hash, GetToolVersions.workflow_git_hash])
+  String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
 
   call PrepareRangesCallsetTask {
     input:
@@ -63,7 +63,7 @@ workflow GvsPrepareCallset {
 
   output {
     String fq_cohort_extract_table_prefix = PrepareRangesCallsetTask.fq_cohort_extract_table_prefix
-    String recorded_workflow_git_hash = effective_workflow_git_hash
+    String recorded_git_hash = effective_git_hash
     Boolean done = true
   }
 }

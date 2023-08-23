@@ -6,7 +6,7 @@ import "GvsJointVariantCalling.wdl" as JointVariantCalling
 workflow GvsQuickstartVcfIntegration {
     input {
         String git_branch_or_tag
-        String? workflow_git_hash
+        String? git_hash
         Boolean is_wgs = true
         String expected_output_prefix
         Boolean use_VQSR_lite = true
@@ -37,7 +37,7 @@ workflow GvsQuickstartVcfIntegration {
       File? none = ""
     }
 
-    if (!defined(workflow_git_hash) || !defined(cloud_sdk_docker) || !defined(cloud_sdk_slim_docker) || !defined(variants_docker) ||
+    if (!defined(git_hash) || !defined(cloud_sdk_docker) || !defined(cloud_sdk_slim_docker) || !defined(variants_docker) ||
         !defined(basic_docker) || !defined(gatk_docker)) {
         call Utils.GetToolVersions {
             input:
@@ -50,7 +50,7 @@ workflow GvsQuickstartVcfIntegration {
     String effective_cloud_sdk_slim_docker = select_first([cloud_sdk_slim_docker, GetToolVersions.cloud_sdk_slim_docker])
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
     String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
-    String effective_workflow_git_hash = select_first([workflow_git_hash, GetToolVersions.workflow_git_hash])
+    String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
 
     if (!use_default_dockers && !defined(gatk_override)) {
       call Utils.BuildGATKJar {
@@ -131,7 +131,7 @@ workflow GvsQuickstartVcfIntegration {
         File manifest = JointVariantCalling.manifest
         String dataset_name = CreateDataset.dataset_name
         String filter_set_name = "quickit"
-        String recorded_workflow_git_hash = effective_workflow_git_hash
+        String recorded_git_hash = effective_git_hash
         Boolean done = true
     }
 }

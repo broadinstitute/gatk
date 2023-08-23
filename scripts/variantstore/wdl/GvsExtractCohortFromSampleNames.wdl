@@ -45,7 +45,7 @@ workflow GvsExtractCohortFromSampleNames {
   Boolean write_cost_to_db = if ((gvs_project != destination_project_id) || (gvs_project != query_project)) then false else true
 
   # Always call `GetToolVersions` to get the git hash for this run as this is a top-level-only WDL (i.e. there are
-  # no calling WDLs that might supply `workflow_git_hash`).
+  # no calling WDLs that might supply `git_hash`).
   call Utils.GetToolVersions {
     input:
       git_branch_or_tag = git_branch_or_tag,
@@ -130,7 +130,7 @@ workflow GvsExtractCohortFromSampleNames {
 
   output {
     Float total_vcfs_size_mb = GvsExtractCallset.total_vcfs_size_mb
-    String recorded_workflow_git_hash = GetToolVersions.workflow_git_hash
+    String recorded_git_hash = GetToolVersions.git_hash
   }
 
 }

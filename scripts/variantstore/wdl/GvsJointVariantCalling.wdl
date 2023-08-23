@@ -15,7 +15,7 @@ workflow GvsJointVariantCalling {
         # consistent with the git tag assigned to its version.
         String git_branch_or_tag = "gvs_beta_0.2.0"
         # Potentially specified by a calling integration WDL.
-        String? workflow_git_hash
+        String? git_hash
 
         String dataset_name
         String project_id
@@ -79,7 +79,7 @@ workflow GvsJointVariantCalling {
       Int split_intervals_mem_override = ""
     }
 
-    if (!defined(workflow_git_hash) || !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker)) {
+    if (!defined(git_hash) || !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker)) {
         call Utils.GetToolVersions {
             input:
                 git_branch_or_tag = git_branch_or_tag,
@@ -90,12 +90,12 @@ workflow GvsJointVariantCalling {
     String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
     String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
-    String effective_workflow_git_hash = select_first([workflow_git_hash, GetToolVersions.workflow_git_hash])
+    String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
 
     call BulkIngestGenomes.GvsBulkIngestGenomes as BulkIngestGenomes {
         input:
             git_branch_or_tag = git_branch_or_tag,
-            workflow_git_hash = effective_workflow_git_hash,
+            git_hash = effective_git_hash,
             dataset_name = dataset_name,
             project_id = project_id,
             basic_docker = effective_basic_docker,
@@ -114,7 +114,7 @@ workflow GvsJointVariantCalling {
     call PopulateAltAllele.GvsPopulateAltAllele {
         input:
             git_branch_or_tag = git_branch_or_tag,
-            workflow_git_hash = effective_workflow_git_hash,
+            git_hash = effective_git_hash,
             call_set_identifier = call_set_identifier,
             go = BulkIngestGenomes.done,
             dataset_name = dataset_name,
@@ -127,7 +127,7 @@ workflow GvsJointVariantCalling {
         input:
             go = GvsPopulateAltAllele.done,
             git_branch_or_tag = git_branch_or_tag,
-            workflow_git_hash = effective_workflow_git_hash,
+            git_hash = effective_git_hash,
             dataset_name = dataset_name,
             project_id = project_id,
             call_set_identifier = call_set_identifier,
@@ -149,7 +149,7 @@ workflow GvsJointVariantCalling {
             call_set_identifier = call_set_identifier,
             go = GvsCreateFilterSet.done,
             git_branch_or_tag = git_branch_or_tag,
-            workflow_git_hash = effective_workflow_git_hash,
+            git_hash = effective_git_hash,
             dataset_name = dataset_name,
             project_id = project_id,
             extract_table_prefix = effective_extract_table_prefix,
@@ -166,7 +166,7 @@ workflow GvsJointVariantCalling {
         input:
             go = GvsPrepareCallset.done,
             git_branch_or_tag = git_branch_or_tag,
-            workflow_git_hash = effective_workflow_git_hash,
+            git_hash = effective_git_hash,
             dataset_name = dataset_name,
             project_id = project_id,
             call_set_identifier = call_set_identifier,
@@ -198,7 +198,7 @@ workflow GvsJointVariantCalling {
         Float total_vcfs_size_mb = GvsExtractCallset.total_vcfs_size_mb
         File? sample_name_list = GvsExtractCallset.sample_name_list
         File manifest = GvsExtractCallset.manifest
-        String recorded_workflow_git_hash = effective_workflow_git_hash
+        String recorded_git_hash = effective_git_hash
         Boolean done = true
     }
 }

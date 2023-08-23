@@ -26,7 +26,7 @@ workflow GvsJointVariantCallsetCost {
     Float storage_api_cost = 0.0011 ## Storage API GB Scanned / Streaming reads (BigQuery Storage Read API):  $1.1 per TB read. Customers can read up to 300 TB of data per month at no charge.
 
     # Always call `GetToolVersions` to get the git hash for this run as this is a top-level-only WDL (i.e. there are
-    # no calling WDLs that might supply `workflow_git_hash`).
+    # no calling WDLs that might supply `git_hash`).
     call Utils.GetToolVersions {
         input:
             git_branch_or_tag = git_branch_or_tag,
@@ -58,7 +58,7 @@ workflow GvsJointVariantCallsetCost {
 
     output {
         Float total_bq_cost = FullCosts.total_bq_cost
-        String recorded_workflow_git_hash = GetToolVersions.workflow_git_hash
+        String recorded_git_hash = GetToolVersions.git_hash
     }
 }
 

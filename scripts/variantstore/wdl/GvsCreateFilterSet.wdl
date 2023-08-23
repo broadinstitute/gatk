@@ -18,7 +18,7 @@ workflow GvsCreateFilterSet {
     String? variants_docker
     String? gatk_docker
     String git_branch_or_tag
-    String? workflow_git_hash
+    String? git_hash
     File? gatk_override
 
     Boolean use_VQSR_lite = true
@@ -45,7 +45,7 @@ workflow GvsCreateFilterSet {
 
   String filter_set_info_destination_table_schema = "filter_set_name:string,type:string,location:integer,ref:string,alt:string,calibration_sensitivity:float,score:float,vqslod:float,culprit:string,training_label:string,yng_status:string"
 
-  if (!defined(workflow_git_hash) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker)) {
+  if (!defined(git_hash) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker)) {
     call Utils.GetToolVersions {
       input:
         git_branch_or_tag = git_branch_or_tag,
@@ -55,7 +55,7 @@ workflow GvsCreateFilterSet {
   String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
   String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
   String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
-  String effective_workflow_git_hash = select_first([workflow_git_hash, GetToolVersions.workflow_git_hash])
+  String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
 
   call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
     input:
@@ -200,7 +200,7 @@ workflow GvsCreateFilterSet {
     call VQSRClassic.JointVcfFiltering as VQSRClassic {
       input:
         git_branch_or_tag = git_branch_or_tag,
-        workflow_git_hash = workflow_git_hash,
+        git_hash = git_hash,
         dataset_name = dataset_name,
         project_id = project_id,
         base_name = filter_set_name,
@@ -260,7 +260,7 @@ workflow GvsCreateFilterSet {
     File output_vcf = MergeVCFs.output_vcf
     File output_vcf_idx = MergeVCFs.output_vcf_index
     File monitoring_summary = SummarizeItAll.monitoring_summary
-    String recorded_workflow_git_hash = effective_workflow_git_hash
+    String recorded_git_hash = effective_git_hash
     Boolean done = true
   }
 }

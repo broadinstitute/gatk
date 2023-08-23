@@ -8,7 +8,7 @@ workflow GvsAssignIds {
   input {
     Boolean go = true
     String git_branch_or_tag
-    String? workflow_git_hash
+    String? git_hash
     String dataset_name
     String project_id
 
@@ -27,7 +27,7 @@ workflow GvsAssignIds {
   String sample_vcf_header_schema_json = '[{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"}, {"name":"vcf_header_lines_hash","type":"STRING","mode":"REQUIRED"}]'
   String sample_load_status_schema_json = '[{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name":"status","type":"STRING","mode":"REQUIRED"}, {"name":"event_timestamp","type":"TIMESTAMP","mode":"REQUIRED"}]'
 
-  if (!defined(workflow_git_hash) || !defined(cloud_sdk_docker)) {
+  if (!defined(git_hash) || !defined(cloud_sdk_docker)) {
     call Utils.GetToolVersions {
       input:
         git_branch_or_tag = git_branch_or_tag,
@@ -35,7 +35,7 @@ workflow GvsAssignIds {
   }
 
   String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
-  String effective_workflow_git_hash = select_first([workflow_git_hash, GetToolVersions.workflow_git_hash])
+  String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
 
   call GvsCreateTables.CreateTables as CreateSampleInfoTable {
   	input:
@@ -120,7 +120,7 @@ workflow GvsAssignIds {
     input:
       project_id = project_id,
       git_branch_or_tag = git_branch_or_tag,
-      workflow_git_hash = effective_workflow_git_hash,
+      git_hash = effective_git_hash,
       dataset_name = dataset_name,
       max_table_id = AssignIds.max_table_id,
       cloud_sdk_docker = effective_cloud_sdk_docker,
@@ -129,7 +129,7 @@ workflow GvsAssignIds {
   output {
     Boolean done = true
     File gvs_ids_tsv = AssignIds.gvs_ids_tsv
-    String recorded_workflow_git_hash = effective_workflow_git_hash
+    String recorded_git_hash = effective_git_hash
   }
 }
 

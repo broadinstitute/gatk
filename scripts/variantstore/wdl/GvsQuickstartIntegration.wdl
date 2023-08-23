@@ -36,7 +36,7 @@ workflow GvsQuickstartIntegration {
     }
 
     # Always call `GetToolVersions` to get the git hash for this run as this is a top-level-only WDL (i.e. there are
-    # no calling WDLs that might supply `workflow_git_hash`).
+    # no calling WDLs that might supply `git_hash`).
     call Utils.GetToolVersions {
         input:
             git_branch_or_tag = git_branch_or_tag,
@@ -70,7 +70,7 @@ workflow GvsQuickstartIntegration {
         call QuickstartHailIntegration.GvsQuickstartHailIntegration as GvsQuickstartHailVQSRLiteIntegration {
             input:
                 git_branch_or_tag = git_branch_or_tag,
-                workflow_git_hash = GetToolVersions.workflow_git_hash,
+                git_hash = GetToolVersions.git_hash,
                 use_VQSR_lite = true,
                 extract_do_not_filter_override = false,
                 dataset_suffix = "lite_hail",
@@ -92,7 +92,7 @@ workflow GvsQuickstartIntegration {
         call QuickstartHailIntegration.GvsQuickstartHailIntegration as GvsQuickstartHailVQSRClassicIntegration {
             input:
                 git_branch_or_tag = git_branch_or_tag,
-                workflow_git_hash = GetToolVersions.workflow_git_hash,
+                git_hash = GetToolVersions.git_hash,
                 use_VQSR_lite = false,
                 extract_do_not_filter_override = false,
                 dataset_suffix = "classic_hail",
@@ -117,7 +117,7 @@ workflow GvsQuickstartIntegration {
         call QuickstartVcfIntegration.GvsQuickstartVcfIntegration as QuickstartVcfVQSRLiteIntegration {
             input:
                 git_branch_or_tag = git_branch_or_tag,
-                workflow_git_hash = GetToolVersions.workflow_git_hash,
+                git_hash = GetToolVersions.git_hash,
                 use_VQSR_lite = true,
                 extract_do_not_filter_override = false,
                 dataset_suffix = "lite_vcf",
@@ -139,7 +139,7 @@ workflow GvsQuickstartIntegration {
         call QuickstartVcfIntegration.GvsQuickstartVcfIntegration as QuickstartVcfVQSRClassicIntegration {
             input:
                 git_branch_or_tag = git_branch_or_tag,
-                workflow_git_hash = GetToolVersions.workflow_git_hash,
+                git_hash = GetToolVersions.git_hash,
                 use_VQSR_lite = false,
                 extract_do_not_filter_override = true,
                 dataset_suffix = "classic_vcf",
@@ -164,7 +164,7 @@ workflow GvsQuickstartIntegration {
         call QuickstartVcfIntegration.GvsQuickstartVcfIntegration as QuickstartVcfExomeIntegration {
             input:
                 git_branch_or_tag = git_branch_or_tag,
-                workflow_git_hash = GetToolVersions.workflow_git_hash,
+                git_hash = GetToolVersions.git_hash,
                 is_wgs = false,
                 use_VQSR_lite = true,
                 extract_do_not_filter_override = false,
@@ -187,7 +187,7 @@ workflow GvsQuickstartIntegration {
     }
 
     output {
-        String recorded_workflow_git_hash = GetToolVersions.workflow_git_hash
+        String recorded_git_hash = GetToolVersions.git_hash
     }
 }
 

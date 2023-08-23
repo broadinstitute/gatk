@@ -7,7 +7,7 @@ import "GvsQuickstartVcfIntegration.wdl" as QuickstartVcfIntegration
 workflow GvsQuickstartHailIntegration {
     input {
         String git_branch_or_tag
-        String? workflow_git_hash
+        String? git_hash
         Boolean is_wgs = true
         Boolean use_VQSR_lite = true
         File interval_list
@@ -32,7 +32,7 @@ workflow GvsQuickstartHailIntegration {
 
     String project_id = "gvs-internal"
 
-    if (!defined(workflow_git_hash) || !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(cloud_sdk_slim_docker) ||
+    if (!defined(git_hash) || !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(cloud_sdk_slim_docker) ||
         !defined(variants_docker) || !defined(gatk_docker)) {
         call Utils.GetToolVersions {
             input:
@@ -45,12 +45,12 @@ workflow GvsQuickstartHailIntegration {
     String effective_cloud_sdk_slim_docker = select_first([cloud_sdk_slim_docker, GetToolVersions.cloud_sdk_slim_docker])
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
     String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
-    String effective_workflow_git_hash = select_first([workflow_git_hash, GetToolVersions.workflow_git_hash])
+    String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
 
     call QuickstartVcfIntegration.GvsQuickstartVcfIntegration {
         input:
             git_branch_or_tag = git_branch_or_tag,
-            workflow_git_hash = workflow_git_hash,
+            git_hash = git_hash,
             is_wgs = is_wgs,
             drop_state = "NONE",
             use_VQSR_lite = use_VQSR_lite,
@@ -75,7 +75,7 @@ workflow GvsQuickstartHailIntegration {
         input:
             go = GvsQuickstartVcfIntegration.done,
             git_branch_or_tag = git_branch_or_tag,
-            workflow_git_hash = workflow_git_hash,
+            git_hash = git_hash,
             project_id = project_id,
             use_VQSR_lite = use_VQSR_lite,
             dataset_name = GvsQuickstartVcfIntegration.dataset_name,
@@ -104,7 +104,7 @@ workflow GvsQuickstartHailIntegration {
         Float total_vcfs_size_mb = GvsQuickstartVcfIntegration.total_vcfs_size_mb
         File manifest = GvsQuickstartVcfIntegration.manifest
         String vds_output_path = GvsExtractAvroFilesForHail.vds_output_path
-        String recorded_workflow_git_hash = effective_workflow_git_hash
+        String recorded_git_hash = effective_git_hash
         Boolean done = true
     }
 }

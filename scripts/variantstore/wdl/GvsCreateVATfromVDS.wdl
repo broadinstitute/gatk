@@ -36,7 +36,7 @@ workflow GvsCreateVATfromVDS {
     File reference_index = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai"
 
     # Always call `GetToolVersions` to get the git hash for this run as this is a top-level-only WDL (i.e. there are
-    # no calling WDLs that might supply `workflow_git_hash`).
+    # no calling WDLs that might supply `git_hash`).
     call Utils.GetToolVersions {
         input:
             git_branch_or_tag = git_branch_or_tag,
@@ -157,7 +157,7 @@ workflow GvsCreateVATfromVDS {
         input:
             project_id = project_id,
             git_branch_or_tag = git_branch_or_tag,
-            workflow_git_hash = GetToolVersions.workflow_git_hash,
+            git_hash = GetToolVersions.git_hash,
             dataset_name = dataset_name,
             vat_table_name = BigQueryLoadJson.vat_table_name,
             output_path = output_path,
@@ -169,7 +169,7 @@ workflow GvsCreateVATfromVDS {
     output {
         File final_tsv_file = GvsCreateVATFilesFromBigQuery.final_tsv_file
         File dropped_sites_file = MergeTsvs.output_file
-        String recorded_workflow_git_hash = GetToolVersions.workflow_git_hash
+        String recorded_git_hash = GetToolVersions.git_hash
     }
 }
 

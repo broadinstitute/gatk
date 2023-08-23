@@ -58,7 +58,7 @@ workflow GvsBenchmarkExtractTask {
     }
 
     # Always call `GetToolVersions` to get the git hash for this run as this is a top-level-only WDL (i.e. there are
-    # no calling WDLs that might supply `workflow_git_hash`).
+    # no calling WDLs that might supply `git_hash`).
     call Utils.GetToolVersions {
         input:
             git_branch_or_tag = git_branch_or_tag,
@@ -98,7 +98,7 @@ workflow GvsBenchmarkExtractTask {
     }
 
     output {
-        String recorded_workflow_git_hash = GetToolVersions.workflow_git_hash
+        String recorded_git_hash = GetToolVersions.git_hash
     }
 }
 

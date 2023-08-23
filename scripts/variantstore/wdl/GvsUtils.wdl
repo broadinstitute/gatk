@@ -27,7 +27,7 @@ task GetToolVersions {
     # https://git-scm.com/docs/git-clone#Documentation/git-clone.txt--bltnamegt
     git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{git_branch_or_tag} --single-branch
     cd gatk
-    git rev-parse HEAD > ../workflow_git_hash.txt
+    git rev-parse HEAD > ../git_hash.txt
   >>>
   runtime {
     docker: cloud_sdk_docker_decl
@@ -43,7 +43,7 @@ task GetToolVersions {
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"
     String gotc_imputation_docker = "us.gcr.io/broad-gotc-prod/imputation-bcf-vcf:1.0.5-1.10.2-0.1.16-1649948623"
-    String workflow_git_hash = read_string("workflow_git_hash.txt")
+    String git_hash = read_string("git_hash.txt")
   }
 }
 
@@ -338,14 +338,14 @@ task BuildGATKJar {
     # Rename the GATK jar to embed the branch and hash of the most recent commit on the branch.
     mv build/libs/gatk-package-unspecified-SNAPSHOT-local.jar "build/libs/gatk-${branch}-${short_hash}-SNAPSHOT-local.jar"
 
-    git rev-parse HEAD > ../workflow_git_hash.txt
+    git rev-parse HEAD > ../git_hash.txt
   >>>
 
   output {
     Boolean done = true
     File jar = glob("gatk/build/libs/*-SNAPSHOT-local.jar")[0]
     File monitoring_log = "monitoring.log"
-    String workflow_git_hash = read_string("workflow_git_hash.txt")
+    String git_hash = read_string("git_hash.txt")
   }
 
   runtime {

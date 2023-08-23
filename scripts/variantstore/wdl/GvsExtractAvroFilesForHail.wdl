@@ -6,7 +6,7 @@ import "GvsUtils.wdl" as Utils
 workflow GvsExtractAvroFilesForHail {
     input {
         String git_branch_or_tag
-        String? workflow_git_hash
+        String? git_hash
         Boolean go = true
         String project_id
         String dataset_name
@@ -19,7 +19,7 @@ workflow GvsExtractAvroFilesForHail {
         String? variants_docker
     }
 
-    if (!defined(workflow_git_hash) || !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker)) {
+    if (!defined(git_hash) || !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker)) {
         call Utils.GetToolVersions {
             input:
                 git_branch_or_tag = git_branch_or_tag,
@@ -29,7 +29,7 @@ workflow GvsExtractAvroFilesForHail {
     String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
     String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
-    String effective_workflow_git_hash = select_first([workflow_git_hash, GetToolVersions.workflow_git_hash])
+    String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
 
     String fq_gvs_dataset = "~{project_id}.~{dataset_name}"
     String filter_set_info_tablename = "filter_set_info"
@@ -104,7 +104,7 @@ workflow GvsExtractAvroFilesForHail {
         String sites_only_vcf_output_path = GenerateHailScripts.sites_only_vcf_output_path
         String vat_inputs_output_path = GenerateHailScripts.vat_inputs_output_path
         String avro_prefix = ExtractFromNonSuperpartitionedTables.output_prefix
-        String recorded_workflow_git_hash = effective_workflow_git_hash
+        String recorded_git_hash = effective_git_hash
     }
 }
 
