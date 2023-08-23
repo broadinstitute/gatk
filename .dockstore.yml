@@ -56,9 +56,6 @@ workflows:
      filters:
        branches:
          - master
-   - name: GvsDockstoreWorkflow
-     subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsDockstoreWorkflow.wdl
    - name: GvsAssignIds
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsAssignIds.wdl
@@ -194,6 +191,14 @@ workflows:
          - bulk_ingest_staging
          - vs_1032_beta_wdl_pin
        tags:
+         # Steps for tagging a new version of the `GvsBeta` workflow:
+         # 1. Assign the new git tag to the desired version.
+         #    e.g., `git tag gvs_beta_<major>.<minor>.<patch> [git reference]`.
+         # 2. Update .dockstore.yml as appropriate: add the new git tag, remove any old git tags that should no longer
+         #    appear in the Terra version pulldown for `GvsBeta`.
+         # 3. Update the `workflow_git_reference`  input value in `GvsJointVariantCalling.wdl` to the new git tag.
+         # 4. Push the new git tag to `origin`. e.g. `git push origin gvs_beta_<major>.<minor>.<patch>`.
+         # 5. Update the `GvsBeta` workflow in Dockstore to make the new git tag be the new default version.
          - gvs_beta_0.2.0
    - name: GvsJointVariantCallsetCost
      subclass: WDL
@@ -233,8 +238,6 @@ workflows:
          - master
          - ah_var_store
          - vs_1032_beta_wdl_pin
-         - gvs_early_access_0.2
-         - gvs_early_access_0.2.0
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl

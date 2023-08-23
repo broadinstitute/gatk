@@ -11,8 +11,8 @@ workflow GvsJointVariantCalling {
     input {
         # If `workflow_git_reference` is not specified by a caller (i.e. integration tests), default to the current
         # beta / early access tag. Note that setting this value does not "summon" this version of the workflow; only the
-        # version selector in Terra can do that. This value of this `workflow_git_reference` input should always be
-        # consistent with the git tag assigned to this version.
+        # version selector in Terra can do that. The value of this `workflow_git_reference` input should always be
+        # consistent with the git tag assigned to its version.
         String workflow_git_reference = "gvs_beta_0.2.0"
         # Potentially specified by a calling integration WDL.
         String? workflow_git_hash
