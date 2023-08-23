@@ -128,8 +128,8 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             for (int determinedAlleleIndex = (pileupArgs.determinePDHaps?0:-1); determinedAlleleIndex < allEventsHere.size(); determinedAlleleIndex++) { //note -1 for I here corresponds to the reference allele at this site
                 final boolean determinedAlleleIsRef = determinedAlleleIndex == -1;
                 final Set<Event> determinedEvents = determinedAlleleIsRef ? Set.of() : Set.of(allEventsHere.get(determinedAlleleIndex));
-                final Event determinedEventToTest = allEventsHere.get(determinedAlleleIsRef ? 0 : determinedAlleleIndex);
-                Utils.printIf(debug, () -> "Working with allele at site: "+(determinedAlleleIsRef? "[ref:"+(determinedLocus-referenceHaplotype.getStart())+"]" : PartiallyDeterminedHaplotype.getDRAGENDebugEventString(referenceHaplotype.getStart()).apply(determinedEventToTest)));
+                Utils.printIf(debug, () -> "Working with determined allele(s) at site: "+(determinedAlleleIsRef? "[ref:"+(determinedLocus-referenceHaplotype.getStart())+"]" :
+                        determinedEvents.stream().map(PartiallyDeterminedHaplotype.getDRAGENDebugEventString(referenceHaplotype.getStart())).collect(Collectors.joining(", "))));
 
                 List<Set<Event>> branchExcludeAlleles = new ArrayList<>();
                 branchExcludeAlleles.add(new HashSet<>()); // Add the null branch (assuming no exclusions)
@@ -159,7 +159,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                         branchExcludeAlleles.addAll(newBranchesToAdd);
 
                         if (branchExcludeAlleles.size() > MAX_BRANCH_PD_HAPS) {
-                            Utils.printIf(debug, () -> "Found too many branches for variants at: " + determinedEventToTest.getStart() + " aborting and falling back to Assembly Variants!");
+                            Utils.printIf(debug, () -> "Found too many branches for variants at: " + determinedLocus + " aborting and falling back to Assembly Variants!");
                             return sourceSet;
                         }
                     }
@@ -178,7 +178,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                     if (!pileupArgs.determinePDHaps) {
                         for (final int locus : eventsByStartPos.keySet()) {
                             if (locus == determinedLocus) {
-                                newBranch.add(determinedEventToTest);
+                                newBranch.addAll(determinedEvents);
                             } else {
                                 // We know here that nothing illegally overlaps because there are no groups.
                                 // Also exclude any events that overlap the determined allele since we cant construct them (also this stops compound alleles from being formed)
@@ -200,7 +200,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                                 Utils.printIf(debug, () -> "Too many branch haplotypes ["+growingEventGroups.size()+"] generated from site, falling back on assembly variants!");
                                 return sourceSet;
                             } else if (locus == determinedLocus) {
-                                growingEventGroups.forEach(group -> group.add(determinedEventToTest));
+                                growingEventGroups.forEach(group -> group.addAll(determinedEvents));
                             } else if (determinedLocus < locus) {
                                 eventsByStartPos.get(locus).stream()
                                         .filter(event -> !excludeEvents.contains(event))
