@@ -1309,12 +1309,14 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
             put(new Kmer("GAA"), 1);
         }};
 
+        final List<Haplotype> bigHaplotypeList = Arrays.asList(hapA,hapB,hapB,hapB,hapB,hapB,hapC,hapD,hapF,hapF,hapF,hapF,hapF,hapF);
+
+        // NOTE: we limit the number of haplotypes that are returned by the `numPileupHaplotypes` parameter.
 
         Object[][] tests = new Object[][] {
                 new Object[]{Arrays.asList(hapA,hapB,hapC,hapD),flatSupportAllKmers,5,3,Arrays.asList(hapA,hapB,hapC,hapD)}, //returns all when no filtering required
 
                 // These haplotypes are all equivalent, these test stability of the filtering
-                // but we limit the number of haplotypes that are returned.
                 new Object[]{Arrays.asList(hapA,hapB,hapC,hapD),flatSupportAllKmers,1,3, List.of(hapD) },
                 new Object[]{Arrays.asList(hapA,hapB,hapC,hapD),flatSupportAllKmers,2,3,Arrays.asList(hapA,hapD)},
                 new Object[]{Arrays.asList(hapA,hapB,hapC,hapD),flatSupportAllKmers,3,3,Arrays.asList(hapA,hapC,hapD)},
@@ -1334,6 +1336,10 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
                 new Object[]{Arrays.asList(hapA,hapB,hapC,hapD,hapF),hapDKmers,2,3,Arrays.asList(hapD,hapA)},
                 new Object[]{Arrays.asList(hapA,hapB,hapC,hapD,hapF),hapDKmers,3,3,Arrays.asList(hapD,hapA,hapC)},
                 new Object[]{Arrays.asList(hapA,hapB,hapC,hapD,hapF),hapDKmers,4,3,Arrays.asList(hapD,hapA,hapC,hapB)},
+
+                // Test of when there are a LOT of haplotypes and we want to limit the number returned:
+                new Object[]{bigHaplotypeList, hapDKmers, 1, 3, List.of(hapD)},
+                new Object[]{bigHaplotypeList, hapDKmers, 2, 3, List.of(hapA, hapD)},
         };
 
         return tests;
