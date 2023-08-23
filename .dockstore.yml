@@ -198,7 +198,8 @@ workflows:
          #    appear in the Terra version pulldown for `GvsBeta`.
          # 3. Update the `workflow_git_reference`  input value in `GvsJointVariantCalling.wdl` to the new git tag.
          # 4. Push the new git tag to `origin`. e.g. `git push origin gvs_beta_<major>.<minor>.<patch>`.
-         # 5. Update the `GvsBeta` workflow in Dockstore to make the new git tag be the new default version.
+         # 5. Update the `GvsBeta` workflow in Dockstore to make the new git tag be the new default version:
+         #    https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsBeta
          - gvs_beta_0.2.0
    - name: GvsJointVariantCallsetCost
      subclass: WDL
