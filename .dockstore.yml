@@ -200,7 +200,7 @@ workflows:
          # 4. Push the new git tag to `origin`. e.g. `git push origin gvs_beta_<major>.<minor>.<patch>`.
          # 5. Update the `GvsBeta` workflow in Dockstore to make the new git tag be the new default version:
          #    https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsBeta
-         - gvs_beta_0.2.0
+         - gvs_beta_0.2.1
    - name: GvsJointVariantCallsetCost
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCallsetCost.wdl

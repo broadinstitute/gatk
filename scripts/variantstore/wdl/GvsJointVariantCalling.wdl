@@ -13,7 +13,7 @@ workflow GvsJointVariantCalling {
         # beta / early access tag. Note that setting this value does not "summon" this version of the workflow; only the
         # version selector in Terra can do that. The value of this `git_branch_or_tag` input should always be
         # consistent with the git tag assigned to its version.
-        String git_branch_or_tag = "gvs_beta_0.2.0"
+        String git_branch_or_tag = "gvs_beta_0.2.1"
         # Potentially specified by a calling integration WDL.
         String? git_hash
 
