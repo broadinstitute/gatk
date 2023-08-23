@@ -115,8 +115,11 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         }
 
         /*
-          Overall Loop:
-          Iterate over every cluster of variants with the same start position.
+          There are several nested loops here:
+          Layer 1: iterate over all determined event positions
+          Layer 2: iterate over all alleles at that position, including the reference allele unless we are making determined haplotypes, to set as
+                    the determined allele.  Other positions are treated as undetermined,
+          Layer 3: make partially determined haplotypes based on each set of branch exclusions
          */
         for (final int determinedLocus : eventsByStartPos.keySet()) {   // it's a SortedMap -- iterating over its keyset is okay!
             final List<Event> allEventsHere = eventsByStartPos.get(determinedLocus);
@@ -127,28 +130,12 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                 continue;
             }
 
-            /*
-              Determined Event Loop:
-              We iterate over every ref position and select single alleles (including ref) from that reference position (in R space) to be "determined"
-
-              NOTE: we skip the reference allele in the event that we are making determined haplotypes instead of undetermined haplotypes
-             */
             for (int determinedAlleleIndex = (pileupArgs.determinePDHaps?0:-1); determinedAlleleIndex < allEventsHere.size(); determinedAlleleIndex++) { //note -1 for I here corresponds to the reference allele at this site
                 final boolean determinedAlleleIsRef = determinedAlleleIndex == -1;
                 final Set<Event> determinedEvents = determinedAlleleIsRef ? Set.of() : Set.of(allEventsHere.get(determinedAlleleIndex));
                 final Event determinedEventToTest = allEventsHere.get(determinedAlleleIsRef ? 0 : determinedAlleleIndex);
                 Utils.printIf(debug, () -> "Working with allele at site: "+(determinedAlleleIsRef? "[ref:"+(determinedLocus-referenceHaplotype.getStart())+"]" : PartiallyDeterminedHaplotype.getDRAGENDebugEventString(referenceHaplotype.getStart()).apply(determinedEventToTest)));
-                // This corresponds to the DRAGEN code for
-                // 0 0
-                // 0 1
-                // 1 0
 
-
-                /*
-                 * Here we handle any of the necessary work to deal with the event groups and maybe forming compound branches out of the groups
-                 */
-
-                // Loop over eventGroups, have each of them return a list of VariantContexts
                 List<Set<Event>> branchExcludeAlleles = new ArrayList<>();
                 branchExcludeAlleles.add(new HashSet<>()); // Add the null branch (assuming no exclusions)
 
@@ -186,9 +173,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                 branchExcludeAllelesMessage(referenceHaplotype, debug, eventsInOrder, branchExcludeAlleles);
 
 
-                /*
-                  Now handle each branch independently of the others. (the logic is the same in every case except we must ensure that none of the excluded alleles get included when constructing haps.
-                 */
+                // from each set of branch exclusions make a single PD haplotype or a combinatorial number of determined haplotypes
                 for (Set<Event> excludeEvents : branchExcludeAlleles) {
 
                     List<Haplotype> branchHaps = new ArrayList<>();
