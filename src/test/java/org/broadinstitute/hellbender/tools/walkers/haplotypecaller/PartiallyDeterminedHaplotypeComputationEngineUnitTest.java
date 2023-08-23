@@ -14,6 +14,7 @@ import org.testng.annotations.Test;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.function.BiPredicate;
 
 public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKBaseTest {
@@ -159,41 +160,42 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
     @DataProvider
     public Object[][] testGeneratePDHaplotypeDataProvider() {
         return new Object[][] {
-                {List.of(SNP_C_105, SNP_C_106), SNP_C_106, false, "AAAAAACAAA", new byte[]{0,0,0,0,0,17,0,0,0,0}, "6M1X3M"},
-                {List.of(SNP_C_105, SNP_C_106), SNP_C_106, true , "AAAAAAAAAA", new byte[]{0,0,0,0,0,17,0,0,0,0}, "10M"},
+                {List.of(SNP_C_105, SNP_C_106), Set.of(SNP_C_106), 106, "AAAAAACAAA", new byte[]{0,0,0,0,0,17,0,0,0,0}, "6M1X3M"},
+                {List.of(SNP_C_105, SNP_C_106), Set.of(), 106, "AAAAAAAAAA", new byte[]{0,0,0,0,0,17,0,0,0,0}, "10M"},
 
-                {List.of(INS_TT_103, SNP_C_105, SNP_C_106), INS_TT_103, false, "AAAATAAAAAA", new byte[]{0,0,0,0,0,0,17,17,0,0,0}, "4M1I6M"},
-                {List.of(INS_TT_103, SNP_C_105, SNP_C_106), INS_TT_103, true , "AAAAAAAAAA",  new byte[]{0,0,0,0,0,17,17,0,0,0}, "10M"},
-                {List.of(INS_TT_103, SNP_C_105, SNP_C_106), SNP_C_105,  false, "AAAATACAAAA", new byte[]{0,0,0,0,6,0,0,17,0,0,0}, "4M1I1M1X4M"},
-                {List.of(INS_TT_103, SNP_C_105, SNP_C_106), SNP_C_105,  true , "AAAATAAAAAA", new byte[]{0,0,0,0,6,0,0,17,0,0,0}, "4M1I6M"},
+                {List.of(INS_TT_103, SNP_C_105, SNP_C_106), Set.of(INS_TT_103), 103, "AAAATAAAAAA", new byte[]{0,0,0,0,0,0,17,17,0,0,0}, "4M1I6M"},
+                {List.of(INS_TT_103, SNP_C_105, SNP_C_106), Set.of(), 103, "AAAAAAAAAA",  new byte[]{0,0,0,0,0,17,17,0,0,0}, "10M"},
+                {List.of(INS_TT_103, SNP_C_105, SNP_C_106), Set.of(SNP_C_105), 105, "AAAATACAAAA", new byte[]{0,0,0,0,6,0,0,17,0,0,0}, "4M1I1M1X4M"},
+                {List.of(INS_TT_103, SNP_C_105, SNP_C_106), Set.of(),  105, "AAAATAAAAAA", new byte[]{0,0,0,0,6,0,0,17,0,0,0}, "4M1I6M"},
 
-                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106), DEL_AAA_102, false, "AAAAAAAA"  , new byte[]{0,0,0,17,17,0,0,0}, "3M2D5M"},
-                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106), DEL_AAA_102, true , "AAAAAAAAAA", new byte[]{0,0,0,0,0,17,17,0,0,0}, "10M"},
-                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106), SNP_C_105,  false,  "AAAAACAAAA", new byte[]{0,0,0,2,4,0,17,0,0,0}, "5M1X4M"},
-                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106), SNP_C_105,  true ,  "AAAAAAAAAA", new byte[]{0,0,0,2,4,0,17,0,0,0}, "10M"},
-                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106), SNP_C_106,  false,  "AAAAAACAAA", new byte[]{0,0,0,2,4,17,0,0,0,0}, "6M1X3M"},
-                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106), SNP_C_106,  true ,  "AAAAAAAAAA", new byte[]{0,0,0,2,4,17,0,0,0,0}, "10M"},
+                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106), Set.of(DEL_AAA_102), 102, "AAAAAAAA"  , new byte[]{0,0,0,17,17,0,0,0}, "3M2D5M"},
+                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106), Set.of(), 102, "AAAAAAAAAA", new byte[]{0,0,0,0,0,17,17,0,0,0}, "10M"},
+                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106), Set.of(SNP_C_105), 105,  "AAAAACAAAA", new byte[]{0,0,0,2,4,0,17,0,0,0}, "5M1X4M"},
+                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106), Set.of(), 105,  "AAAAAAAAAA", new byte[]{0,0,0,2,4,0,17,0,0,0}, "10M"},
+                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106), Set.of(SNP_C_106), 106,  "AAAAAACAAA", new byte[]{0,0,0,2,4,17,0,0,0,0}, "6M1X3M"},
+                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106), Set.of(), 106,  "AAAAAAAAAA", new byte[]{0,0,0,2,4,17,0,0,0,0}, "10M"},
 
                 // making sure we support "complex alleles" from DRAGEN
-                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106, INS_GGG_106), SNP_C_105,  false ,  "AAAAACAGGAAA", new byte[]{0,0,0,2,4,0,17,2,4,0,0,0}, "5M1X1M2I3M"},
-                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106, SNP_T_106, INS_GGG_106), SNP_C_105,  true ,  "AAAAAAAGGAAA", new byte[]{0,0,0,2,4,0,81,2,4,0,0,0}, "7M2I3M"},
-                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106, INS_GGG_106), DEL_AAA_102,  false ,  "AAAAAGGAAA", new byte[]{0,0,0,17,17,2,4,0,0,0}, "3M2D2M2I3M"},
-                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106, SNP_T_106, INS_GGG_106), DEL_AAA_102,  true ,  "AAAAAAAGGAAA", new byte[]{0,0,0,0,0,17,81,2,4,0,0,0}, "7M2I3M"},
-                {List.of(SNP_G_101, SNP_C_105, DEL_AA_105), SNP_G_101,  false ,  "AGAAAAAAAA", new byte[]{0,0,0,0,0,17,6,0,0,0}, "1M1X8M"},
-                {List.of(SNP_G_101, SNP_C_105, DEL_AA_105), SNP_G_101,  true ,   "AAAAAAAAAA", new byte[]{0,0,0,0,0,17,6,0,0,0}, "10M"},
-
+                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106, INS_GGG_106), Set.of(SNP_C_105), 105,  "AAAAACAGGAAA", new byte[]{0,0,0,2,4,0,17,2,4,0,0,0}, "5M1X1M2I3M"},
+                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106, SNP_T_106, INS_GGG_106), Set.of(), 105,  "AAAAAAAGGAAA", new byte[]{0,0,0,2,4,0,81,2,4,0,0,0}, "7M2I3M"},
+                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106, INS_GGG_106), Set.of(DEL_AAA_102),  102,  "AAAAAGGAAA", new byte[]{0,0,0,17,17,2,4,0,0,0}, "3M2D2M2I3M"},
+                {List.of(DEL_AAA_102, SNP_C_105, SNP_C_106, SNP_T_106, INS_GGG_106), Set.of(), 102,  "AAAAAAAGGAAA", new byte[]{0,0,0,0,0,17,81,2,4,0,0,0}, "7M2I3M"},
+                {List.of(SNP_G_101, SNP_C_105, DEL_AA_105), Set.of(SNP_G_101), 101,  "AGAAAAAAAA", new byte[]{0,0,0,0,0,17,6,0,0,0}, "1M1X8M"},
+                {List.of(SNP_G_101, SNP_C_105, DEL_AA_105), Set.of(), 101,   "AAAAAAAAAA", new byte[]{0,0,0,0,0,17,6,0,0,0}, "10M"},
         };
     }
     @Test(dataProvider = "testGeneratePDHaplotypeDataProvider")
-    public void testGeneratePDHaplotypeFromVariants(List<Event> events, Event targetEvent, boolean useRefBase, String expectedBases, byte[] expectedAltArray, String expectedCigar) {
+    public void testGeneratePDHaplotypeFromVariants(List<Event> events, Set<Event> determinedEvents, int determinedLocus, String expectedBases, byte[] expectedAltArray, String expectedCigar) {
         Haplotype ref = new Haplotype("AAAAAAAAAA".getBytes(), true, 500, TextCigarCodec.decode("10M"));
         ref.setGenomeLocation(new SimpleInterval("20", 100, 110));
 
-        PartiallyDeterminedHaplotype result = PartiallyDeterminedHaplotypeComputationEngine.createNewPDHaplotypeFromEvents(ref, targetEvent, useRefBase, events);
+        final List<Event> allEventsAtDeterminedLocus = events.stream().filter(event -> event.getStart() == determinedLocus).toList();
+
+        PartiallyDeterminedHaplotype result = PartiallyDeterminedHaplotypeComputationEngine.createNewPDHaplotypeFromEvents(ref, determinedEvents, determinedLocus, events, allEventsAtDeterminedLocus);
         Assert.assertEquals(new String(result.getBases()), expectedBases);
         Assert.assertEquals(result.getAlternateBases(), expectedAltArray);
         Assert.assertEquals(result.getCigar(), TextCigarCodec.decode(expectedCigar));
-        Assert.assertEquals(result.getDeterminedPosition(), targetEvent.getStart());
+        Assert.assertEquals(result.getDeterminedPosition(), determinedLocus);
     }
 
     // NOTE: This is an enforcement of a behavior that I consider to be a bug in DRAGEN. Specifically my assumption that we needn't ever concern
@@ -207,7 +209,7 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
         Haplotype ref = new Haplotype("AAAAAAAAAA".getBytes(), true, 500, TextCigarCodec.decode("10M"));
         ref.setGenomeLocation(new SimpleInterval("20", 100, 110));
 
-        PartiallyDeterminedHaplotype result = PartiallyDeterminedHaplotypeComputationEngine.createNewPDHaplotypeFromEvents(ref, DEL_AA_105, true, List.of(DEL_AAAAAAA_102, DEL_AA_105));
+        PartiallyDeterminedHaplotype result = PartiallyDeterminedHaplotypeComputationEngine.createNewPDHaplotypeFromEvents(ref, Set.of(), 105, List.of(DEL_AAAAAAA_102, DEL_AA_105), List.of(DEL_AA_105));
         Assert.assertEquals(new String(result.getBases()), "AAAAAAAAAA");
         Assert.assertEquals(result.getAlternateBases(), new byte[]{0,0,0,2,0,0,0,0,4,0});
         Assert.assertEquals(result.getCigar(), TextCigarCodec.decode("10M"));
