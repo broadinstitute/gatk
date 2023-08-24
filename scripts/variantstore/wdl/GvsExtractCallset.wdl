@@ -110,10 +110,9 @@ workflow GvsExtractCallset {
                                                          else if GetNumSamplesLoaded.num_samples < 100000 then 20000 # Charlie
                                                               else 40000
 
-  Int effective_split_intervals_disk_size_override = if defined(split_intervals_disk_size_override) then select_first([split_intervals_disk_size_override])
-                                else if GetNumSamplesLoaded.num_samples < 100 then 50 # Quickstart
-                                     else 500
-
+Int effective_split_intervals_disk_size_override = select_first([split_intervals_disk_size_override, 
+                                if GetNumSamplesLoaded.num_samples < 100 then 50 # Quickstart
+                                     else 500])
   # WDL 1.0 trick to set a variable ('none') to be undefined.
   if (false) {
     File? none = ""
