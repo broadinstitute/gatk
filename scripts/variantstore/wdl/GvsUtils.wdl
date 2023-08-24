@@ -2,8 +2,9 @@ version 1.0
 
 task GetToolVersions {
   input {
-    String git_branch_or_tag
+    String? git_branch_or_tag
   }
+
   meta {
     # Don't even think about caching this.
     volatile: true
@@ -12,27 +13,43 @@ task GetToolVersions {
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
   String cloud_sdk_docker_decl = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
 
+  # For GVS releases, set `version` to match the release branch name, e.g. gvs_<major>.<minor>.<patch>.
+  # For non-release, leave the value at "unspecified".
+  String version = "unspecified"
+
+  String effective_version = select_first([git_branch_or_tag, version])
   command <<<
     # Prepend date, time and pwd to xtrace log entries.
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
 
-    bash ~{monitoring_script} > monitoring.log &
+    echo "~{effective_version}" > version.txt
 
-    # install git
-    apk update && apk upgrade
-    apk add git
+    # Only get the git hash if a branch or tag was specified.
+    if [[ "~{effective_version}" == "unspecified" ]]
+    then
+      echo "unspecified" > git_hash.txt
+    else
+      bash ~{monitoring_script} > monitoring.log &
 
-    # The `--branch` parameter to `git clone` actually does work for tags which works out well for beta.
-    # https://git-scm.com/docs/git-clone#Documentation/git-clone.txt--bltnamegt
-    git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{git_branch_or_tag} --single-branch
-    cd gatk
-    git rev-parse HEAD > ../git_hash.txt
+      # install git
+      apk update && apk upgrade
+      apk add git
+
+      # The `--branch` parameter to `git clone` actually does work for tags, though for historical reasons GVS
+      # versioning is based on branches for now.
+      # https://git-scm.com/docs/git-clone#Documentation/git-clone.txt--bltnamegt
+      git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{effective_version} --single-branch
+      cd gatk
+      git rev-parse HEAD > ../git_hash.txt
+    fi
   >>>
   runtime {
     docker: cloud_sdk_docker_decl
   }
   output {
+    String gvs_version = read_string("version.txt")
+    String git_hash = read_string("git_hash.txt")
     String basic_docker = "ubuntu:22.04"
     String cloud_sdk_docker = cloud_sdk_docker_decl # Defined above as a declaration.
     # GVS generally uses the smallest `alpine` version of the Google Cloud SDK as it suffices for most tasks, but
@@ -43,7 +60,6 @@ task GetToolVersions {
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"
     String gotc_imputation_docker = "us.gcr.io/broad-gotc-prod/imputation-bcf-vcf:1.0.5-1.10.2-0.1.16-1649948623"
-    String git_hash = read_string("git_hash.txt")
   }
 }
 
@@ -286,7 +302,7 @@ task GetBQTablesMaxLastModifiedTimestamp {
 
 task BuildGATKJar {
   input {
-    String git_branch_or_tag
+    String? git_branch_or_tag
     String cloud_sdk_slim_docker
   }
   meta {
@@ -356,7 +372,7 @@ task BuildGATKJar {
 
 task CreateDataset {
   input {
-    String git_branch_or_tag
+    String? git_branch_or_tag
     String dataset_prefix
     String dataset_suffix
     String cloud_sdk_docker
@@ -419,7 +435,7 @@ task CreateDataset {
 
 task BuildGATKJarAndCreateDataset {
   input {
-    String git_branch_or_tag
+    String? git_branch_or_tag
     String dataset_prefix
     String dataset_suffix
     String cloud_sdk_slim_docker

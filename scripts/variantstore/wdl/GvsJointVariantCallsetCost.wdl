@@ -5,7 +5,7 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsJointVariantCallsetCost {
     input {
-        String git_branch_or_tag
+        String? git_branch_or_tag
         String project_id
         String dataset_name
         String workspace_namespace

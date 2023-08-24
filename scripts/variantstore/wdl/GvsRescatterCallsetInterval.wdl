@@ -5,7 +5,7 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsRescatterCallsetInterval {
   input {
-    String git_branch_or_tag
+    String? git_branch_or_tag
     String dataset_name
     String extract_table_prefix
     String filter_set_name

@@ -5,7 +5,7 @@ import "../wdl/GvsUtils.wdl" as Utils
 workflow GvsCreateVATFilesFromBigQuery {
     input {
         String project_id
-        String git_branch_or_tag
+        String? git_branch_or_tag
         String? git_hash
         String dataset_name
         String vat_table_name

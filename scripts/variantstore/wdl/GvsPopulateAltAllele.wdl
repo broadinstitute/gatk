@@ -11,7 +11,7 @@ workflow GvsPopulateAltAllele {
     Int max_alt_allele_shards = 10
     String? variants_docker
     String? cloud_sdk_docker
-    String git_branch_or_tag
+    String? git_branch_or_tag
     String? git_hash
   }
 

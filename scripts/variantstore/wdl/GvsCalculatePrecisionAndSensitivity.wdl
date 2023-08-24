@@ -5,7 +5,7 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsCalculatePrecisionAndSensitivity {
   input {
-    String git_branch_or_tag
+    String? git_branch_or_tag
     File input_vcf_fofn
     String output_basename
 

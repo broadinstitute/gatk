@@ -8,7 +8,7 @@ workflow GvsIngestTieout {
     input {
         String project
         String reference_dataset_name
-        String git_branch_or_tag
+        String? git_branch_or_tag
         File sample_names
         File input_vcfs
         File input_vcf_indexes

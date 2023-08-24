@@ -112,7 +112,7 @@ workflow GvsQuickstartHailIntegration {
 
 task CreateAndTieOutVds {
     input {
-        String git_branch_or_tag
+        String? git_branch_or_tag
         Boolean use_VQSR_lite
         String avro_prefix
         String vds_destination_path

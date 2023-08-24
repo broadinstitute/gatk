@@ -19,7 +19,7 @@ workflow JointVcfFiltering {
     Array[File] sites_only_variant_filtered_vcf_idxs
 
     String? gatk_docker
-    String git_branch_or_tag
+    String? git_branch_or_tag
     String? git_hash
     File? gatk_override
 

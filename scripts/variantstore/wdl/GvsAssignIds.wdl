@@ -7,7 +7,7 @@ workflow GvsAssignIds {
 
   input {
     Boolean go = true
-    String git_branch_or_tag
+    String? git_branch_or_tag
     String? git_hash
     String dataset_name
     String project_id

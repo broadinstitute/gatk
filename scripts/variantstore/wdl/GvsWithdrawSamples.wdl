@@ -5,7 +5,7 @@ import "GvsUtils.wdl" as Utils
 workflow GvsWithdrawSamples {
 
   input {
-    String git_branch_or_tag
+    String? git_branch_or_tag
     String dataset_name
     String project_id
 

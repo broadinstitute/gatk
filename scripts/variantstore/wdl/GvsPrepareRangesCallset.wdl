@@ -24,7 +24,7 @@ workflow GvsPrepareCallset {
     Boolean only_output_vet_tables = false
     Boolean write_cost_to_db = true
     String? variants_docker
-    String git_branch_or_tag
+    String? git_branch_or_tag
     String? git_hash
   }
 

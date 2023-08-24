@@ -17,7 +17,7 @@ workflow GvsCreateFilterSet {
     String? cloud_sdk_docker
     String? variants_docker
     String? gatk_docker
-    String git_branch_or_tag
+    String? git_branch_or_tag
     String? git_hash
     File? gatk_override
 

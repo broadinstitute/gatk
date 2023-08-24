@@ -5,7 +5,7 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsExtractAvroFilesForHail {
     input {
-        String git_branch_or_tag
+        String? git_branch_or_tag
         String? git_hash
         Boolean go = true
         String project_id

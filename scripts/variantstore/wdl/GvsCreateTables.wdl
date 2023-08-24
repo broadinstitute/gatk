@@ -6,7 +6,7 @@ workflow CreateBQTables {
   input {
     String dataset_name
     String project_id
-    String git_branch_or_tag
+    String? git_branch_or_tag
     String? git_hash
 
     Int max_table_id

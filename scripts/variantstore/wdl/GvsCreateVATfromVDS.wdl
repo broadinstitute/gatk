@@ -10,7 +10,7 @@ workflow GvsCreateVATfromVDS {
         File ancestry_file
 
         String project_id
-        String git_branch_or_tag
+        String? git_branch_or_tag
         String dataset_name
         String filter_set_name
         String? vat_version

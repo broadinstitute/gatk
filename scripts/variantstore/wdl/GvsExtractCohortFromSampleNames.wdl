@@ -37,7 +37,7 @@ workflow GvsExtractCohortFromSampleNames {
     Int? split_intervals_disk_size_override
     Int? split_intervals_mem_override
 
-    String git_branch_or_tag
+    String? git_branch_or_tag
     File? gatk_override
     String? cloud_sdk_docker
   }

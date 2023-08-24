@@ -4,7 +4,7 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsBenchmarkExtractTask {
     input {
-        String git_branch_or_tag
+        String? git_branch_or_tag
         String data_project
         String dataset_name
 

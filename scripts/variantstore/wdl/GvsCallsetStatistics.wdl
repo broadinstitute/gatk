@@ -4,7 +4,7 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsCallsetStatistics {
     input {
-        String git_branch_or_tag
+        String? git_branch_or_tag
         String project_id
         String dataset_name
         String filter_set_name
