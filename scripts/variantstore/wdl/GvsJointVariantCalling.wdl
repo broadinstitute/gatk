@@ -9,11 +9,11 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsJointVariantCalling {
     input {
-        # If `git_branch_or_tag` is not specified by a caller (i.e. integration tests), default to the current
-        # beta / early access tag. Note that setting this value does not "summon" this version of the workflow; only the
-        # version selector in Terra can do that. The value of this `git_branch_or_tag` input should always be
-        # consistent with the git tag assigned to its version.
-        String git_branch_or_tag = "gvs_beta_0.2.0"
+        # If `git_branch_or_tag` is not specified by a caller (i.e. integration tests), default to the current tag. Note
+        # that setting this value does not "summon" this version of the workflow; only the version selector in Terra can
+        # do that. The value of this `git_branch_or_tag` input should always be consistent with the git tag assigned to
+        # its version.
+        String git_branch_or_tag = "gvs_0.2.0"
         # Potentially specified by a calling integration WDL.
         String? git_hash
 

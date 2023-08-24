@@ -188,22 +188,24 @@ workflows:
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCalling.wdl
      filters:
        branches:
-         - bulk_ingest_staging
-         - vs_1032_beta_wdl_pin
-       tags:
-         # Steps for tagging a new version of the `GvsBeta` workflow:
+         # `master` is here so there will be *something* under the branches filter, but GVS WDLs are not on `master`
+         # so this shouldn't show up in the list of available versions in Dockstore or Terra.
+         - master
+         # Steps for creating a new version of GVS:
          #
-         # 1. Add the new tag in format `gvs_beta_<major>.<minor>.<patch>` to .dockstore.yml below.
-         # 2. Update the `git_branch_or_tag` input value in `GvsJointVariantCalling.wdl` to the new git tag.
-         # 3. Commit and push these changes, PR and get thumbs, merge to the target branch.
-         # 4. Assign the new git tag locally to the appropriate git reference. If no git reference is specified as an
-         #    argument, `git tag` assigns to the HEAD of the current branch.
-         #    e.g., `git tag <new git tag> [git reference]`.
-         # 5. Push the new git tag to `origin`. e.g. `git push origin <new git tag>`.
-         # 6. Update the `GvsBeta` workflow in Dockstore to make the new git tag the default version.
+         # 1. Add the name of the new branch in the format `gvs_<major>.<minor>.<patch>` to .dockstore.yml below.
+         # 2. Update the `git_branch_or_tag` input value in `GvsJointVariantCalling.wdl` to the name of the new release
+         #    branch.
+         # 3. Commit and push these changes, PR and get thumbs, merge to the main GVS branch (currently `ah_var_store`).
+         # 4. Checkout the main GVS branch with the latest changes and create the new branch off this.
+         #    e.g. `gvs checkout -b <new branch name>`
+         # 5. Push the new branch to origin
+         #    e.g. `git push --set-upstream origin <new branch name>`
+         # 6. Update the `GvsBeta` workflow in Dockstore to make the new branch the default version.
          #
          # Done!
-         - gvs_beta_0.2.0
+       tags:
+         - /.*/
    - name: GvsJointVariantCallsetCost
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCallsetCost.wdl
