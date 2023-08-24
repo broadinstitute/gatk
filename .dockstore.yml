@@ -191,20 +191,6 @@ workflows:
          # `master` is here so there will be *something* under the branches filter, but GVS WDLs are not on `master`
          # so this shouldn't show up in the list of available versions in Dockstore or Terra.
          - master
-         # Steps for creating a new version of GVS:
-         #
-         # 1. Add the name of the new branch in the format `gvs_<major>.<minor>.<patch>` to .dockstore.yml below.
-         # 2. Update the `git_branch_or_tag` input value in `GvsJointVariantCalling.wdl` to the name of the new release
-         #    branch.
-         # 3. Commit and push these changes, PR and get thumbs, merge to the main GVS branch (currently `ah_var_store`).
-         # 4. Checkout the main GVS branch with these changes and create the new branch off this.
-         #    e.g. `gvs checkout -b <new branch name>`
-         # 5. Push the new branch to origin
-         #    e.g. `git push --set-upstream origin <new branch name>`
-         # 6. Update the `GvsBeta` workflow in Dockstore to make the new branch the default version.
-         #
-         # Done!
-         - gvs_0.2.0
        tags:
          - /.*/
    - name: GvsJointVariantCallsetCost
