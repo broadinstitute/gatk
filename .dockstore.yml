@@ -112,6 +112,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rc-vs-1004-extract
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
