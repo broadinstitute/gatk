@@ -127,7 +127,7 @@ workflows:
          - master
          - ah_var_store
          - bulk_ingest_staging
-         - bulk_smoosh
+         - vs_1032_beta_wdl_pin
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
@@ -182,6 +182,17 @@ workflows:
          - master
          - ah_var_store
          - bulk_ingest_staging
+         - vs_1032_beta_wdl_pin
+   - name: GvsBeta
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCalling.wdl
+     filters:
+       branches:
+         # `master` is here so there will be *something* under the branches filter, but GVS WDLs are not on `master`
+         # so this shouldn't show up in the list of available versions in Dockstore or Terra.
+         - master
+       tags:
+         - /.*/
    - name: GvsJointVariantCallsetCost
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCallsetCost.wdl
@@ -219,7 +230,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - fix_docker_image_copy_paste_blunders
+         - vs_1032_beta_wdl_pin
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl

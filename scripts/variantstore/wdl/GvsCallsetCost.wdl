@@ -5,6 +5,8 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsCallsetCost {
     input {
+        String? git_branch_or_tag
+        String? git_hash
         String project_id
         String dataset_name
         String workspace_namespace
@@ -15,12 +17,16 @@ workflow GvsCallsetCost {
         String? variants_docker
     }
 
-    if (!defined(cloud_sdk_docker) || !defined(variants_docker)) {
-        call Utils.GetToolVersions
+    if (!defined(git_hash) || !defined(cloud_sdk_docker) || !defined(variants_docker)) {
+        call Utils.GetToolVersions {
+            input:
+                git_branch_or_tag = git_branch_or_tag,
+        }
     }
 
     String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
+    String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
 
     call WorkflowComputeCosts {
         input:
@@ -51,6 +57,7 @@ workflow GvsCallsetCost {
         String ref_ranges_gib = CoreStorageModelSizes.ref_ranges_gib
         String alt_allele_gib = CoreStorageModelSizes.alt_allele_gib
         File cost_observability = ReadCostObservabilityTable.cost_observability
+        String recorded_git_hash = effective_git_hash
     }
 }
 

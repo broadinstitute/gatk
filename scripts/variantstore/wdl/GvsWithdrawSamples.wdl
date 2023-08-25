@@ -5,6 +5,7 @@ import "GvsUtils.wdl" as Utils
 workflow GvsWithdrawSamples {
 
   input {
+    String? git_branch_or_tag
     String dataset_name
     String project_id
 
@@ -16,8 +17,11 @@ workflow GvsWithdrawSamples {
     String? gatk_docker
   }
 
-  if (!defined(gatk_docker)) {
-    call Utils.GetToolVersions
+  # Always call `GetToolVersions` to get the git hash for this run as this is a top-level-only WDL (i.e. there are
+  # no calling WDLs that might supply `git_hash`).
+  call Utils.GetToolVersions {
+    input:
+      git_branch_or_tag = git_branch_or_tag,
   }
 
   String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
@@ -34,6 +38,7 @@ workflow GvsWithdrawSamples {
 
   output {
     Int num_rows_updated = WithdrawSamples.num_rows_updated
+    String recorded_git_hash = GetToolVersions.git_hash
   }
 }
 

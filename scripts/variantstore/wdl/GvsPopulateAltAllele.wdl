@@ -11,16 +11,22 @@ workflow GvsPopulateAltAllele {
     Int max_alt_allele_shards = 10
     String? variants_docker
     String? cloud_sdk_docker
+    String? git_branch_or_tag
+    String? git_hash
   }
 
   String fq_alt_allele_table = "~{project_id}.~{dataset_name}.alt_allele"
 
-  if (!defined(cloud_sdk_docker) || !defined(variants_docker)) {
-    call Utils.GetToolVersions
+  if (!defined(git_hash) || !defined(cloud_sdk_docker) || !defined(variants_docker)) {
+    call Utils.GetToolVersions {
+      input:
+        git_branch_or_tag = git_branch_or_tag,
+    }
   }
 
   String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
   String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
+  String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
 
   call CreateAltAlleleTable {
     input:
@@ -70,6 +76,7 @@ workflow GvsPopulateAltAllele {
 
   output {
     Boolean done = PopulateAltAlleleTable.done[0]
+    String recorded_git_hash = effective_git_hash
   }
 }
 

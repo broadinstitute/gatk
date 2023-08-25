@@ -5,6 +5,7 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsRescatterCallsetInterval {
   input {
+    String? git_branch_or_tag
     String dataset_name
     String extract_table_prefix
     String filter_set_name
@@ -23,8 +24,11 @@ workflow GvsRescatterCallsetInterval {
     String? gatk_docker
   }
 
-  if (!defined(gatk_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker)) {
-    call Utils.GetToolVersions
+  # Always call `GetToolVersions` to get the git hash for this run as this is a top-level-only WDL (i.e. there are
+  # no calling WDLs that might supply `git_hash`).
+  call Utils.GetToolVersions {
+    input:
+      git_branch_or_tag = git_branch_or_tag,
   }
 
   String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
@@ -64,5 +68,6 @@ workflow GvsRescatterCallsetInterval {
   output {
     Array[File] output_vcf = MergeVCFs.output_vcf
     Array[File] output_vcf_index = MergeVCFs.output_vcf_index
+    String recorded_git_hash = GetToolVersions.git_hash
   }
 }

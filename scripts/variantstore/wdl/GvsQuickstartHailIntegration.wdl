@@ -6,7 +6,8 @@ import "GvsQuickstartVcfIntegration.wdl" as QuickstartVcfIntegration
 
 workflow GvsQuickstartHailIntegration {
     input {
-        String branch_name
+        String git_branch_or_tag
+        String? git_hash
         Boolean is_wgs = true
         Boolean use_VQSR_lite = true
         File interval_list
@@ -31,9 +32,12 @@ workflow GvsQuickstartHailIntegration {
 
     String project_id = "gvs-internal"
 
-    if (!defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(cloud_sdk_slim_docker) ||
+    if (!defined(git_hash) || !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(cloud_sdk_slim_docker) ||
         !defined(variants_docker) || !defined(gatk_docker)) {
-        call Utils.GetToolVersions
+        call Utils.GetToolVersions {
+            input:
+                git_branch_or_tag = git_branch_or_tag,
+        }
     }
 
     String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
@@ -41,10 +45,12 @@ workflow GvsQuickstartHailIntegration {
     String effective_cloud_sdk_slim_docker = select_first([cloud_sdk_slim_docker, GetToolVersions.cloud_sdk_slim_docker])
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
     String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
+    String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
 
     call QuickstartVcfIntegration.GvsQuickstartVcfIntegration {
         input:
-            branch_name = branch_name,
+            git_branch_or_tag = git_branch_or_tag,
+            git_hash = git_hash,
             is_wgs = is_wgs,
             drop_state = "NONE",
             use_VQSR_lite = use_VQSR_lite,
@@ -68,12 +74,14 @@ workflow GvsQuickstartHailIntegration {
     call ExtractAvroFilesForHail.GvsExtractAvroFilesForHail {
         input:
             go = GvsQuickstartVcfIntegration.done,
+            git_branch_or_tag = git_branch_or_tag,
+            git_hash = git_hash,
             project_id = project_id,
             use_VQSR_lite = use_VQSR_lite,
             dataset_name = GvsQuickstartVcfIntegration.dataset_name,
             filter_set_name = GvsQuickstartVcfIntegration.filter_set_name,
             scatter_width = 10,
-            call_set_identifier = branch_name,
+            call_set_identifier = git_branch_or_tag,
             basic_docker = effective_basic_docker,
             cloud_sdk_docker = effective_cloud_sdk_docker,
             variants_docker = effective_variants_docker,
@@ -81,7 +89,7 @@ workflow GvsQuickstartHailIntegration {
 
     call CreateAndTieOutVds {
         input:
-            branch_name = branch_name,
+            git_branch_or_tag = git_branch_or_tag,
             use_VQSR_lite = use_VQSR_lite,
             avro_prefix = GvsExtractAvroFilesForHail.avro_prefix,
             vds_destination_path = GvsExtractAvroFilesForHail.vds_output_path,
@@ -96,6 +104,7 @@ workflow GvsQuickstartHailIntegration {
         Float total_vcfs_size_mb = GvsQuickstartVcfIntegration.total_vcfs_size_mb
         File manifest = GvsQuickstartVcfIntegration.manifest
         String vds_output_path = GvsExtractAvroFilesForHail.vds_output_path
+        String recorded_git_hash = effective_git_hash
         Boolean done = true
     }
 }
@@ -103,7 +112,7 @@ workflow GvsQuickstartHailIntegration {
 
 task CreateAndTieOutVds {
     input {
-        String branch_name
+        String? git_branch_or_tag
         Boolean use_VQSR_lite
         String avro_prefix
         String vds_destination_path
@@ -125,7 +134,7 @@ task CreateAndTieOutVds {
         set -o errexit -o nounset -o pipefail -o xtrace
 
         # Copy the versions of the Hail import and tieout scripts for this branch from GitHub.
-        script_url_prefix="https://raw.githubusercontent.com/broadinstitute/gatk/~{branch_name}/scripts/variantstore/wdl/extract"
+        script_url_prefix="https://raw.githubusercontent.com/broadinstitute/gatk/~{git_branch_or_tag}/scripts/variantstore/wdl/extract"
         for script in hail_gvs_import.py hail_join_vds_vcfs.py gvs_vds_tie_out.py import_gvs.py
         do
             curl --silent --location --remote-name "${script_url_prefix}/${script}"

@@ -10,6 +10,7 @@ workflow GvsCreateVATfromVDS {
         File ancestry_file
 
         String project_id
+        String? git_branch_or_tag
         String dataset_name
         String filter_set_name
         String? vat_version
@@ -34,8 +35,11 @@ workflow GvsCreateVATfromVDS {
     File reference_dict = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.dict"
     File reference_index = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta.fai"
 
-    if (!defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker)) {
-        call Utils.GetToolVersions
+    # Always call `GetToolVersions` to get the git hash for this run as this is a top-level-only WDL (i.e. there are
+    # no calling WDLs that might supply `git_hash`).
+    call Utils.GetToolVersions {
+        input:
+            git_branch_or_tag = git_branch_or_tag,
     }
 
     String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
@@ -152,6 +156,8 @@ workflow GvsCreateVATfromVDS {
     call GvsCreateVATFilesFromBigQuery.GvsCreateVATFilesFromBigQuery {
         input:
             project_id = project_id,
+            git_branch_or_tag = git_branch_or_tag,
+            git_hash = GetToolVersions.git_hash,
             dataset_name = dataset_name,
             vat_table_name = BigQueryLoadJson.vat_table_name,
             output_path = output_path,
@@ -163,6 +169,7 @@ workflow GvsCreateVATfromVDS {
     output {
         File final_tsv_file = GvsCreateVATFilesFromBigQuery.final_tsv_file
         File dropped_sites_file = MergeTsvs.output_file
+        String recorded_git_hash = GetToolVersions.git_hash
     }
 }
 

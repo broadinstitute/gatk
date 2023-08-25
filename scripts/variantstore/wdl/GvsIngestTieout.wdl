@@ -8,22 +8,25 @@ workflow GvsIngestTieout {
     input {
         String project
         String reference_dataset_name
-        String branch_name
+        String? git_branch_or_tag
         File sample_names
         File input_vcfs
         File input_vcf_indexes
         String? cloud_sdk_docker
     }
 
-    if (!defined(cloud_sdk_docker)) {
-        call Utils.GetToolVersions
+    # Always call `GetToolVersions` to get the git hash for this run as this is a top-level-only WDL (i.e. there are
+    # no calling WDLs that might supply `git_hash`).
+    call Utils.GetToolVersions {
+        input:
+            git_branch_or_tag = git_branch_or_tag,
     }
 
     String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
 
     call Utils.BuildGATKJarAndCreateDataset {
         input:
-            branch_name = branch_name,
+            git_branch_or_tag = git_branch_or_tag,
             dataset_prefix = "ingest_tieout"
     }
 
@@ -53,6 +56,9 @@ workflow GvsIngestTieout {
             project = project,
             stderrs = GvsImportGenomes.load_data_stderrs,
             cloud_sdk_docker = effective_cloud_sdk_docker,
+    }
+    output {
+        String recorded_git_hash = GetToolVersions.git_hash
     }
 }
 

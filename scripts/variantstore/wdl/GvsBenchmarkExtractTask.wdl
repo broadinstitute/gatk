@@ -4,6 +4,7 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsBenchmarkExtractTask {
     input {
+        String? git_branch_or_tag
         String data_project
         String dataset_name
 
@@ -56,8 +57,11 @@ workflow GvsBenchmarkExtractTask {
         String? gatk_docker
     }
 
-    if (!defined(gatk_docker)) {
-        call Utils.GetToolVersions
+    # Always call `GetToolVersions` to get the git hash for this run as this is a top-level-only WDL (i.e. there are
+    # no calling WDLs that might supply `git_hash`).
+    call Utils.GetToolVersions {
+        input:
+            git_branch_or_tag = git_branch_or_tag,
     }
 
     String effective_cloud_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
@@ -91,6 +95,10 @@ workflow GvsBenchmarkExtractTask {
             extract_memory_override         = extract_memory_override,
             extract_maxretries_override     = extract_maxretries_override,
             gatk_docker                     = effective_cloud_gatk_docker,
+    }
+
+    output {
+        String recorded_git_hash = GetToolVersions.git_hash
     }
 }
 

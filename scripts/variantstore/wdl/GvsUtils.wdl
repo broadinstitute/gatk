@@ -1,18 +1,57 @@
 version 1.0
 
 task GetToolVersions {
+  input {
+    String? git_branch_or_tag
+  }
+
   meta {
     # Don't even think about caching this.
     volatile: true
   }
+
+  File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+  String cloud_sdk_docker_decl = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
+
+  # For GVS releases, set `version` to match the release branch name, e.g. gvs_<major>.<minor>.<patch>.
+  # For non-release, leave the value at "unspecified".
+  String version = "unspecified"
+
+  String effective_version = select_first([git_branch_or_tag, version])
   command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    echo "~{effective_version}" > version.txt
+
+    # Only get the git hash if a branch or tag was specified.
+    if [[ "~{effective_version}" == "unspecified" ]]
+    then
+      echo "unspecified" > git_hash.txt
+    else
+      bash ~{monitoring_script} > monitoring.log &
+
+      # install git
+      apk update && apk upgrade
+      apk add git
+
+      # The `--branch` parameter to `git clone` actually does work for tags, though for historical reasons GVS
+      # versioning is based on branches for now.
+      # https://git-scm.com/docs/git-clone#Documentation/git-clone.txt--bltnamegt
+      git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{effective_version} --single-branch
+      cd gatk
+      git rev-parse HEAD > ../git_hash.txt
+    fi
   >>>
   runtime {
-    docker: "ubuntu:22.04"
+    docker: cloud_sdk_docker_decl
   }
   output {
+    String gvs_version = read_string("version.txt")
+    String git_hash = read_string("git_hash.txt")
     String basic_docker = "ubuntu:22.04"
-    String cloud_sdk_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine"
+    String cloud_sdk_docker = cloud_sdk_docker_decl # Defined above as a declaration.
     # GVS generally uses the smallest `alpine` version of the Google Cloud SDK as it suffices for most tasks, but
     # there are a handlful of tasks that require the larger GNU libc-based `slim`.
     String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-slim"
@@ -263,7 +302,7 @@ task GetBQTablesMaxLastModifiedTimestamp {
 
 task BuildGATKJar {
   input {
-    String branch_name
+    String? git_branch_or_tag
     String cloud_sdk_slim_docker
   }
   meta {
@@ -303,23 +342,26 @@ task BuildGATKJar {
     apt -qq install -y temurin-11-jdk
 
     # GATK
-    git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{branch_name} --single-branch
+    git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{git_branch_or_tag} --single-branch
     cd gatk
     ./gradlew shadowJar
 
     branch=$(git symbolic-ref HEAD 2>/dev/null)
     branch=${branch#refs/heads/}
 
-    hash=$(git rev-parse --short HEAD)
+    short_hash=$(git rev-parse --short HEAD)
 
     # Rename the GATK jar to embed the branch and hash of the most recent commit on the branch.
-    mv build/libs/gatk-package-unspecified-SNAPSHOT-local.jar "build/libs/gatk-${branch}-${hash}-SNAPSHOT-local.jar"
+    mv build/libs/gatk-package-unspecified-SNAPSHOT-local.jar "build/libs/gatk-${branch}-${short_hash}-SNAPSHOT-local.jar"
+
+    git rev-parse HEAD > ../git_hash.txt
   >>>
 
   output {
     Boolean done = true
     File jar = glob("gatk/build/libs/*-SNAPSHOT-local.jar")[0]
     File monitoring_log = "monitoring.log"
+    String git_hash = read_string("git_hash.txt")
   }
 
   runtime {
@@ -330,7 +372,7 @@ task BuildGATKJar {
 
 task CreateDataset {
   input {
-    String branch_name
+    String? git_branch_or_tag
     String dataset_prefix
     String dataset_suffix
     String cloud_sdk_docker
@@ -355,7 +397,7 @@ task CreateDataset {
     apk add git
 
     # GATK
-    git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{branch_name} --single-branch
+    git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{git_branch_or_tag} --single-branch
     cd gatk
 
     branch=$(git symbolic-ref HEAD 2>/dev/null)
@@ -393,7 +435,7 @@ task CreateDataset {
 
 task BuildGATKJarAndCreateDataset {
   input {
-    String branch_name
+    String? git_branch_or_tag
     String dataset_prefix
     String dataset_suffix
     String cloud_sdk_slim_docker
@@ -435,7 +477,7 @@ task BuildGATKJarAndCreateDataset {
     apt -qq install -y temurin-11-jdk
 
     # GATK
-    git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{branch_name} --single-branch
+    git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{git_branch_or_tag} --single-branch
     cd gatk
     ./gradlew shadowJar
 

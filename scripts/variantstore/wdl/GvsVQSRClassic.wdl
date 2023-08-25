@@ -19,6 +19,8 @@ workflow JointVcfFiltering {
     Array[File] sites_only_variant_filtered_vcf_idxs
 
     String? gatk_docker
+    String? git_branch_or_tag
+    String? git_hash
     File? gatk_override
 
     Int? INDEL_VQSR_max_gaussians_override = 4
@@ -69,11 +71,15 @@ workflow JointVcfFiltering {
   File one_thousand_genomes_resource_vcf = "gs://gcp-public-data--broad-references/hg38/v0/1000G_phase1.snps.high_confidence.hg38.vcf.gz"
   File one_thousand_genomes_resource_vcf_index = "gs://gcp-public-data--broad-references/hg38/v0/1000G_phase1.snps.high_confidence.hg38.vcf.gz.tbi"
 
-  if (!defined(gatk_docker)) {
-    call Utils.GetToolVersions
+  if (!defined(git_hash) || !defined(gatk_docker)) {
+    call Utils.GetToolVersions {
+      input:
+        git_branch_or_tag = git_branch_or_tag,
+    }
   }
 
   String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
+  String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
 
   call IndelsVariantRecalibrator {
     input:
@@ -227,6 +233,7 @@ workflow JointVcfFiltering {
     File snps_variant_recalibration_file_index = select_first([MergeRecalibrationFiles.output_vcf_index, SNPsVariantRecalibratorClassic.recalibration_index])
     File indels_variant_recalibration_file = IndelsVariantRecalibrator.recalibration
     File indels_variant_recalibration_file_index = IndelsVariantRecalibrator.recalibration_index
+    String recorded_git_hash = effective_git_hash
     Array[File] monitoring_logs = select_all(
                                   flatten(
                                    [

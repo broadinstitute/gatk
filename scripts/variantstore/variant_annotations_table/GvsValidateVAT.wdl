@@ -4,6 +4,7 @@ import "../wdl/GvsUtils.wdl" as Utils
 
 workflow GvsValidateVat {
     input {
+        String? git_branch_or_tag
         String project_id
         String dataset_name
         String vat_table_name
@@ -12,8 +13,11 @@ workflow GvsValidateVat {
 
     String fq_vat_table = "~{project_id}.~{dataset_name}.~{vat_table_name}"
 
-    if (!defined(cloud_sdk_docker)) {
-        call Utils.GetToolVersions
+    # Always call `GetToolVersions` to get the git hash for this run as this is a top-level-only WDL (i.e. there are
+    # no calling WDLs that might supply `git_hash`).
+    call Utils.GetToolVersions {
+        input:
+            git_branch_or_tag = git_branch_or_tag,
     }
 
     String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
@@ -21,7 +25,7 @@ workflow GvsValidateVat {
     call Utils.GetBQTableLastModifiedDatetime {
         input:
             project_id = project_id,
-            fq_table = fq_vat_table
+            fq_table = fq_vat_table,
     }
 
     call EnsureVatTableHasVariants {
@@ -137,11 +141,11 @@ workflow GvsValidateVat {
     }
 
     call SpotCheckForAAChangeAndExonNumberConsistency {
-         input:
+        input:
             project_id = project_id,
             fq_vat_table = fq_vat_table,
             last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
-             cloud_sdk_docker = effective_cloud_sdk_docker,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
     call GenerateFinalReport {
@@ -199,6 +203,7 @@ workflow GvsValidateVat {
 
     output {
         String validation_results = GenerateFinalReport.results
+        String recorded_git_hash = GetToolVersions.git_hash
     }
 }
 
