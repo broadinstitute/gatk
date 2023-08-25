@@ -9,8 +9,8 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsJointVariantCalling {
     input {
-        # If `git_branch_or_tag` is not specified by a caller (i.e. integration tests), default to the current tag as
-        # specified in `GvsUtils.GetToolVersions`.
+        # If `git_branch_or_tag` is not specified by a caller (i.e. integration tests), default to the current branch or
+        # tag as specified in `GvsUtils.GetToolVersions`.
         String? git_branch_or_tag
         # Potentially specified by a calling integration WDL.
         String? git_hash
