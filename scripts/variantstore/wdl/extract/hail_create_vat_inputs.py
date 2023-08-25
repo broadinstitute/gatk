@@ -191,7 +191,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     temp_path = args.temp_path if not args.temp_path.endswith('/') else args.temp_path[:-1]
-    time_stamp = datetime.today().strftime('%Y-%m-%d_%H:%M:%S')
+    time_stamp = datetime.today().strftime('%Y-%m-%d_%H-%M-%S')
     hl.init(tmp_dir=f'{temp_path}/hail_tmp_create_vat_inputs_{time_stamp}')
 
     vds = hl.vds.read_vds(args.vds_input_path)
