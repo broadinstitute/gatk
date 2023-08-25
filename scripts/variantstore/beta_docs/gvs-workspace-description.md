@@ -59,11 +59,10 @@ For troubleshooting or questions, contact the [Broad Variants team](mailto:varia
 
 ## Running the workflow
 
-The workflow in the GVS beta workspace is pre-configured to use 10 sample GVCF files in the workspace Data tab.
-
-The workflow is configured to call this input from the data table. To run:
+The `GvsBeta` workflow in the GVS beta workspace is pre-configured to use 10 sample GVCF files in the workspace Data tab. To run:
 
 1. **Select the workflow** from the Workflows tab.
+1. Select the 'Run workflow with inputs defined by file paths' radio button.
 1. Configure the workflow inputs.
     1. Enter a **name for the callset** as a string with the format “*CALLSET_NAME*” for the `call_set_identifier` variable. This string is used as to name several variables and files and should begin with a letter. Valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”.
     1. Enter the name of your **BigQuery dataset** as a string with the format “*DATASET_NAME*” for the `dataset_name` variable.
