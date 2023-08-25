@@ -5,6 +5,7 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -75,7 +76,7 @@ public class SVCallRecordUnitTest {
     @Test(dataProvider="testCreateInvalidCoordinatesData", expectedExceptions = { IllegalArgumentException.class })
     public void testCreateInvalidCoordinates(final String contigA, final int posA, final String contigB, final int posB) {
         new SVCallRecord("var1", contigA, posA, true, contigB, posB, false, GATKSVVCFConstants.StructuralVariantAnnotationType.BND,
-                null, null, SVTestUtils.PESR_ONLY_ALGORITHM_LIST, Collections.emptyList(), Collections.emptyList(),
+                null, Collections.emptyList(), null, SVTestUtils.PESR_ONLY_ALGORITHM_LIST, Collections.emptyList(), Collections.emptyList(),
                 Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
         Assert.fail("Expected exception not thrown");
     }
@@ -92,13 +93,14 @@ public class SVCallRecordUnitTest {
     @Test(dataProvider="testCreateValidCoordinatesData")
     public void testCreateValidCoordinates(final String contigA, final int posA, final String contigB, final int posB) {
         new SVCallRecord("var1", contigA, posA, true, contigB, posB, false, GATKSVVCFConstants.StructuralVariantAnnotationType.BND,
-                null, null, SVTestUtils.PESR_ONLY_ALGORITHM_LIST, Collections.emptyList(), Collections.emptyList(),
+                null, Collections.emptyList(), null, SVTestUtils.PESR_ONLY_ALGORITHM_LIST, Collections.emptyList(), Collections.emptyList(),
                 Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
     }
 
+    @Test
     public void testGetters() {
         final SVCallRecord record = new SVCallRecord("var1", "chr1", 100, true, "chr1", 200, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
-                GATKSVVCFConstants.ComplexVariantSubtype.dDUP, null, SVTestUtils.PESR_ONLY_ALGORITHM_LIST, Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
+                GATKSVVCFConstants.ComplexVariantSubtype.dDUP, Lists.newArrayList(SVCallRecord.ComplexEventInterval.decode("DUP_chr1:100-200", SVTestUtils.hg38Dict)), null, SVTestUtils.PESR_ONLY_ALGORITHM_LIST, Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
                 GenotypesContext.create(GenotypeBuilder.create("sample1", Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DEL))),
                 Collections.singletonMap("TEST_KEY", "TEST_VALUE"), Collections.singleton("TEST_FILTER"), Double.valueOf(30), SVTestUtils.hg38Dict);
         Assert.assertEquals(record.getId(), "var1");
@@ -107,12 +109,56 @@ public class SVCallRecordUnitTest {
         Assert.assertEquals(record.getStrandA(), Boolean.TRUE);
         Assert.assertEquals(record.getContigB(), "chr1");
         Assert.assertEquals(record.getPositionB(), 200);
-        Assert.assertEquals(record.getStrandA(), Boolean.FALSE);
+        Assert.assertEquals(record.getStrandB(), Boolean.FALSE);
         Assert.assertEquals(record.getAlgorithms(), SVTestUtils.PESR_ONLY_ALGORITHM_LIST);
         Assert.assertEquals(record.getGenotypes().get("sample1").getAlleles(), Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DEL));
         Assert.assertEquals(record.getAttributes(), Collections.singletonMap("TEST_KEY", "TEST_VALUE"));
         Assert.assertEquals(record.getAlleles(), Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL));
         Assert.assertEquals(record.getFilters(), Collections.singleton("TEST_FILTER"));
         Assert.assertEquals(record.getLog10PError(), Double.valueOf(30));
+        Assert.assertEquals(record.getComplexSubtype(), GATKSVVCFConstants.ComplexVariantSubtype.dDUP);
+        Assert.assertEquals(record.getComplexEventIntervals(), Lists.newArrayList(SVCallRecord.ComplexEventInterval.decode("DUP_chr1:100-200", SVTestUtils.hg38Dict)));
+    }
+
+    @Test
+    public void testComplexEventInterval() {
+        final SVCallRecord.ComplexEventInterval cpx1 = SVCallRecord.ComplexEventInterval.decode("DEL_chr1:100-200", SVTestUtils.hg38Dict);
+        Assert.assertEquals(cpx1.getIntervalSVType(), GATKSVVCFConstants.StructuralVariantAnnotationType.DEL);
+        Assert.assertEquals(cpx1.getInterval(), new SimpleInterval("chr1", 100, 200));
+        Assert.assertEquals(cpx1.getContig(), "chr1");
+        Assert.assertEquals(cpx1.getStart(), 100);
+        Assert.assertEquals(cpx1.getEnd(), 200);
+        Assert.assertEquals(cpx1.encode(), "DEL_chr1:100-200");
+    }
+
+    @DataProvider(name = "testComplexEventIntervalEqualsData")
+    public Object[][] testComplexEventIntervalEqualsData() {
+        return new Object[][]{
+                {SVCallRecord.ComplexEventInterval.decode("DEL_chr1:100-200", SVTestUtils.hg38Dict), true},
+                {new SVCallRecord.ComplexEventInterval(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, new SimpleInterval("chr1", 100, 200)), true},
+                {new SVCallRecord.ComplexEventInterval(GATKSVVCFConstants.StructuralVariantAnnotationType.DUP, new SimpleInterval("chr1", 100, 200)), false},
+                {new SVCallRecord.ComplexEventInterval(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, new SimpleInterval("chr2", 100, 200)), false},
+                {new SVCallRecord.ComplexEventInterval(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, new SimpleInterval("chr1", 101, 200)), false},
+                {new SVCallRecord.ComplexEventInterval(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, new SimpleInterval("chr1", 100, 201)), false}
+        };
+    }
+    @Test(dataProvider="testComplexEventIntervalEqualsData")
+    public void testComplexEventIntervalEquals(final SVCallRecord.ComplexEventInterval cpx2, final boolean expected) {
+        final SVCallRecord.ComplexEventInterval cpx1 = SVCallRecord.ComplexEventInterval.decode("DEL_chr1:100-200", SVTestUtils.hg38Dict);
+        Assert.assertEquals(cpx1.equals(cpx2), expected);
+        if (expected) {
+            Assert.assertEquals(cpx1.hashCode(), cpx2.hashCode());
+        }
+    }
+
+    @Test(expectedExceptions = {IllegalArgumentException.class})
+    public void testComplexEventIntervalBadContig1() {
+        // Inputs should be just 1 interval
+        SVCallRecord.ComplexEventInterval.decode("DEL_chr1:100-200,DEL_chr1:300-400", SVTestUtils.hg38Dict);
+    }
+
+    @Test(expectedExceptions = {IllegalArgumentException.class})
+    public void testComplexEventIntervalBadContig2() {
+        SVCallRecord.ComplexEventInterval.decode("DEL_chrDOESNOTEXIST:100-200", SVTestUtils.hg38Dict);
     }
 }

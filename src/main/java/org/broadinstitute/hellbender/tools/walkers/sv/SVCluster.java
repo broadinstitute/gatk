@@ -378,7 +378,7 @@ public final class SVCluster extends MultiVariantWalker {
     @Override
     public void apply(final VariantContext variant, final ReadsContext readsContext,
                       final ReferenceContext referenceContext, final FeatureContext featureContext) {
-        final SVCallRecord call = SVCallRecordUtils.create(variant);
+        final SVCallRecord call = SVCallRecordUtils.create(variant, dictionary);
         final SVCallRecord filteredCall;
         if (fastMode && call.getType() != GATKSVVCFConstants.StructuralVariantAnnotationType.CNV) {
             // Strip out non-carrier genotypes to save memory and compute
@@ -447,9 +447,9 @@ public final class SVCluster extends MultiVariantWalker {
 
         // Build new variant
         final SVCallRecord finalCall = new SVCallRecord(newId, call.getContigA(), call.getPositionA(), call.getStrandA(),
-                call.getContigB(), call.getPositionB(), call.getStrandB(), call.getType(), call.getComplexSubtype(), call.getLength(),
-                call.getAlgorithms(), call.getAlleles(), filledGenotypes, call.getAttributes(), call.getFilters(),
-                call.getLog10PError(), dictionary);
+                call.getContigB(), call.getPositionB(), call.getStrandB(), call.getType(), call.getComplexSubtype(),
+                call.getComplexEventIntervals(), call.getLength(), call.getAlgorithms(), call.getAlleles(), filledGenotypes,
+                call.getAttributes(), call.getFilters(), call.getLog10PError(), dictionary);
         final VariantContextBuilder builder = SVCallRecordUtils.getVariantBuilder(finalCall);
         if (omitMembers) {
             builder.rmAttribute(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY);
