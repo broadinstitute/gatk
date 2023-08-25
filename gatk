@@ -111,7 +111,7 @@ def main(args):
             print("                 to dataproc equivalents")
             print("")
             print("   --dry-run      may be specified to output the generated command line without running it")
-            print("   --jdk-path    sets up java executable path to a specified folder. Default:System default java path")
+            print("   --jdk-path    sets up java executable path to a specified folder.")
             print("   --java-options 'OPTION1[ OPTION2=Y ... ]'   optional - pass the given string of options to the ")
             print("                 java JVM at runtime.  ")
             print("                 Java options MUST be passed inside a single string with space-separated values.")
