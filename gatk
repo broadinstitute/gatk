@@ -32,7 +32,6 @@ GATK_RUN_SCRIPT = BUILD_LOCATION + projectName
 GATK_LOCAL_JAR_ENV_VARIABLE = "GATK_LOCAL_JAR"
 GATK_SPARK_JAR_ENV_VARIABLE = "GATK_SPARK_JAR"
 BIN_PATH = script + "/build/libs"
-BUNDLED_JAVA_PATH = script + "/gatkbundle/jdk/bin/java"
 
 EXTRA_JAVA_OPTIONS_SPARK= "-DGATK_STACKTRACE_ON_USER_EXCEPTION=true " \
                    "-Dsamjdk.use_async_io_read_samtools=false " \
@@ -112,7 +111,7 @@ def main(args):
             print("                 to dataproc equivalents")
             print("")
             print("   --dry-run      may be specified to output the generated command line without running it")
-            print("   --jdk-path    sets up java executable path to a specified folder")
+            print("   --jdk-path    sets up java executable path to a specified folder. Default:System default java path")
             print("   --java-options 'OPTION1[ OPTION2=Y ... ]'   optional - pass the given string of options to the ")
             print("                 java JVM at runtime.  ")
             print("                 Java options MUST be passed inside a single string with space-separated values.")
@@ -147,18 +146,27 @@ def main(args):
             if debugPort is None:
                 debugPort = 5005
 
-        if os.path.exists(BUNDLED_JAVA_PATH):
-            jdkPath = BUNDLED_JAVA_PATH
-        else:
-            jdkPath = os.popen("which java")
-            jdkPath = jdkPath.read().strip()
-
         jdkTempPath = getValueForArgument(args, "--jdk-path")
         if jdkTempPath is not None:
-            jdkPath = jdkTempPath
-            i = args.index("--jdk-path")
-            del args[i] #remove jdkPath
-            del args[i] #and its parameter   
+            if validateJavaRuntimePath(jdkTempPath):
+                jdkPath = jdkTempPath
+                i = args.index("--jdk-path")
+                del args[i] #remove jdkPath
+                del args[i] #and its parameter  
+            else:
+                sys.stderr.write("No Valid Java Runtime found in the --jdk-path parameter. Please specify a valid Java Runtime path\n")
+                sys.exit(1)
+        else:
+            jdkPath = os.popen("which java").read().strip()
+            if not validateJavaRuntimePath(jdkPath):
+                if os.getenv("JAVA_HOME") is not None:
+                    jdkPath = os.getenv("JAVA_HOME") + "/bin/java"
+                    if not validateJavaRuntimePath(jdkPath):
+                        sys.stderr.write("No Valid Java Runtime found. Please specify a valid Java Runtime path using --jdk-path variable or add a valid Java Runtime to your PATH\n")
+                        sys.exit(1)
+                else:
+                    sys.stderr.write("No Valid Java Runtime found. Please specify a valid Java Runtime path using --jdk-path variable or add a valid Java Runtime to your PATH\n")
+                    sys.exit(1)
         
         javaOptions = getValueForArgument(args, "--java-options")
         if javaOptions is not None:
@@ -194,6 +202,15 @@ def main(args):
         sys.exit(3)
     except CalledProcessError as e:
         sys.exit(e.returncode)
+
+def validateJavaRuntimePath(jdkPath):
+    openJdkValidationString = "OpenJDK Runtime Environment"
+    oracleJdkValidationString = "Java(TM) SE Runtime Environment"
+    javaVersionString = os.popen(jdkPath+" --version 2>&1").read().strip()
+    if openJdkValidationString in javaVersionString or oracleJdkValidationString in javaVersionString:
+        return True
+    else: 
+        return False
 
 def getSparkSubmitCommand(sparkSubmitCommand):
     if sparkSubmitCommand is None:
