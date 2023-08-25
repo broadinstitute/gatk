@@ -48,6 +48,22 @@ Variants may be filtered out of the VAT (that were in the VDS) for the following
 - they are spanning deletions
 - they are duplicate variants; they are tracked via the `GvsCreateVATfromVDS` workflow's scattered `RemoveDuplicatesFromSites` task and then merged into one file by the `MergeTsvs` task
 
+### Remove duplicates from the VAT table.
+
+There is a bug in the way we build the VAT table from the shards. If a variant (e.g. for an insertion or deletion) spans between the end of one shard and the beginning of the next shard, it will be entered TWICE into the resultant vat table as there will be duplicate entries in each of the shards. To address this issue, we run a manual SQL statement in BigQuery in order to remove these duplicates.
+**Note:** The purpose of this query is to create a NEW copy of the VAT table with the duplicates removed. So, when you run it, have BigQuery write the output to a new table (More -> Query Settings -> Destination )
+
+>     select * except(row_number) from (
+>      SELECT
+>       *,
+>       row_number()
+>       over (partition by vid, transcript)
+>       row_number
+>       FROM
+>        `<project_id>.<dataset>.<vat_table_name>`    
+>       )
+>     where row_number = 1;
+
 ### Run GvsValidateVAT
 
 This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option. The `project_id` and `dataset_name` are the same as those used for `GvsCreateVATfromVDS`, and `vat_table_name` is `filter_set_name` + "_vat" (+ "_v" + `vat_version`, if used).
