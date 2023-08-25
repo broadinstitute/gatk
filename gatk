@@ -32,6 +32,7 @@ GATK_RUN_SCRIPT = BUILD_LOCATION + projectName
 GATK_LOCAL_JAR_ENV_VARIABLE = "GATK_LOCAL_JAR"
 GATK_SPARK_JAR_ENV_VARIABLE = "GATK_SPARK_JAR"
 BIN_PATH = script + "/build/libs"
+BUNDLED_JAVA_PATH = script + "/gatkbundle/jdk/bin/java"
 
 EXTRA_JAVA_OPTIONS_SPARK= "-DGATK_STACKTRACE_ON_USER_EXCEPTION=true " \
                    "-Dsamjdk.use_async_io_read_samtools=false " \
@@ -111,6 +112,7 @@ def main(args):
             print("                 to dataproc equivalents")
             print("")
             print("   --dry-run      may be specified to output the generated command line without running it")
+            print("   --jdk-path    sets up java executable path to a specified folder")
             print("   --java-options 'OPTION1[ OPTION2=Y ... ]'   optional - pass the given string of options to the ")
             print("                 java JVM at runtime.  ")
             print("                 Java options MUST be passed inside a single string with space-separated values.")
@@ -131,7 +133,6 @@ def main(args):
             dryRun = True
             args.remove("--dry-run")
 
-
         debugPort = getValueForArgument(args, "--debug-port")
         if debugPort is not None:
             i = args.index("--debug-port")
@@ -145,8 +146,20 @@ def main(args):
             del args[i]
             if debugPort is None:
                 debugPort = 5005
-  
 
+        if os.path.exists(BUNDLED_JAVA_PATH):
+            jdkPath = BUNDLED_JAVA_PATH
+        else:
+            jdkPath = os.popen("which java")
+            jdkPath = jdkPath.read().strip()
+
+        jdkTempPath = getValueForArgument(args, "--jdk-path")
+        if jdkTempPath is not None:
+            jdkPath = jdkTempPath
+            i = args.index("--jdk-path")
+            del args[i] #remove jdkPath
+            del args[i] #and its parameter   
+        
         javaOptions = getValueForArgument(args, "--java-options")
         if javaOptions is not None:
             i = args.index("--java-options")
@@ -174,7 +187,7 @@ def main(args):
             del sparkArgs[i] #and its parameter
             gatkArgs += ["--spark-master", sparkMaster]
 
-        runGATK(sparkRunner, sparkSubmitCommand, dryRun, gatkArgs, sparkArgs, javaOptions, debugPort, debugSuspend)
+        runGATK(sparkRunner, sparkSubmitCommand, dryRun, gatkArgs, sparkArgs, jdkPath, javaOptions, debugPort, debugSuspend)
 
     except GATKLaunchException as e:
         sys.stderr.write(str(e)+"\n")
@@ -202,7 +215,7 @@ def getGCloudSubmitCommand(gcloudCmd):
     else:
         return gcloudCmd
 
-def getLocalGatkRunCommand(javaOptions, debugPort, debugSuspend):
+def getLocalGatkRunCommand(jdkPath, javaOptions, debugPort, debugSuspend):
     localJarFromEnv = getJarFromEnv(GATK_LOCAL_JAR_ENV_VARIABLE)
 
     # Add java options to our packaged local jar options
@@ -217,7 +230,7 @@ def getLocalGatkRunCommand(javaOptions, debugPort, debugSuspend):
             
 
     if localJarFromEnv is not None:
-        return formatLocalJarCommand(localJarFromEnv)
+        return formatLocalJarCommand(jdkPath, localJarFromEnv)
 
     wrapperScript = getGatkWrapperScript(throwIfNotFound=False)
     if wrapperScript is not None:
@@ -233,11 +246,11 @@ def getLocalGatkRunCommand(javaOptions, debugPort, debugSuspend):
 
         return [wrapperScript]
     
-    return formatLocalJarCommand(getLocalJar())  # will throw if local jar not found
+    return formatLocalJarCommand(jdkPath, getLocalJar())  # will throw if local jar not found
 
 
-def formatLocalJarCommand(localJar):
-    return ["java"] + PACKAGED_LOCAL_JAR_OPTIONS + [ "-jar", localJar]
+def formatLocalJarCommand(jdkPath, localJar):
+    return [jdkPath] + PACKAGED_LOCAL_JAR_OPTIONS + [ "-jar", localJar]
 
 def getGatkWrapperScript(throwIfNotFound=True):
     if not os.path.exists(GATK_RUN_SCRIPT):
@@ -354,9 +367,9 @@ def cacheJarOnGCS(jar, dryRun):
             return jar
 
 
-def runGATK(sparkRunner, suppliedSparkSubmitCommand, dryrun, gatkArgs, sparkArgs, javaOptions, debugPort, debugSuspend):
+def runGATK(sparkRunner, suppliedSparkSubmitCommand, dryrun, gatkArgs, sparkArgs, jdkPath, javaOptions, debugPort, debugSuspend):
     if sparkRunner is None or sparkRunner == "LOCAL":
-        cmd = getLocalGatkRunCommand(javaOptions, debugPort, debugSuspend) + gatkArgs + sparkArgs
+        cmd = getLocalGatkRunCommand(jdkPath, javaOptions, debugPort, debugSuspend) + gatkArgs + sparkArgs
         runCommand(cmd, dryrun)
     elif sparkRunner == "SPARK":
         sparkSubmitCmd = getSparkSubmitCommand(suppliedSparkSubmitCommand)
