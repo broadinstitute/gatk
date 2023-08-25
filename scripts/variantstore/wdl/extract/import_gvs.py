@@ -167,11 +167,6 @@ def import_gvs(refs: 'List[List[str]]',
         sdict = hl.dict(arr.map(lambda x: (x.sample_id, x.drop('sample_id', *drop))))
         return hl.rbind(sdict, lambda sdict: ids.map(lambda x: sdict.get(x)))
 
-    def add_reference_allele(mt):
-        """Adds the reference allele from a FASTA file."""
-        mt = mt.annotate_rows(ref_allele=mt.locus.sequence_context())
-        return mt
-
     info('import_gvs: Importing and collecting sample mapping lookup table')
 
     samp = hl.import_avro(sample_mapping)
