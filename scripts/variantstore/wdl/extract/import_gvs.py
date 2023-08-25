@@ -139,10 +139,24 @@ def import_gvs(refs: 'List[List[str]]',
     use_classic_vqsr : :class:`bool`
         Expect input Avro files to have been generated from VQSR 'Classic' data
 
+    Script workflow:
+    ---------------
+    * Load VQSR data into table.
+    * Convert each 4k sample group into a VDS.
+    * Run the combiner on the VDSes (which does a hierarchical merge).
+    * Annotate with VQSR / filter.
+    * Compute FT genotype annotation.
+    * Remove phase on LGT.
+    * Add GT (computed from LGT).
+    * Write final VDS.
+
     Returns
     -------
     :class:`.VariantDataset`
+
     """
+
+
     from hail.utils.java import info
     vds_paths = []
     assert len(refs) == len(vets)
