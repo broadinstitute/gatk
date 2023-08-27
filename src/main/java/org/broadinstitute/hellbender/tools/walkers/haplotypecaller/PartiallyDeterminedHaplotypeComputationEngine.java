@@ -143,10 +143,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                 // from each set of branch exclusions make a single PD haplotype or a combinatorial number of determined haplotypes
                 for (Set<Event> branch : branches) {
                     if (!pileupArgs.determinePDHaps) {
-                        // the partially determined haplotype contains the determined allele and anything not excluded at other loci
-                        final List<Event> eventsInPDHap = branch.stream()
-                                .filter(event -> event.getStart() != determinedLocus || determinedEvents.contains(event))
-                                .sorted(HAPLOTYPE_SNP_FIRST_COMPARATOR).toList();
+                        final List<Event> eventsInPDHap = branch.stream().sorted(HAPLOTYPE_SNP_FIRST_COMPARATOR).toList();
                         PartiallyDeterminedHaplotype newPDHaplotype = createNewPDHaplotypeFromEvents(referenceHaplotype, determinedEvents, determinedLocus, eventsInPDHap, allEventsHere);
                         branchHaplotypesDebugMessage(referenceHaplotype, debug, branch, List.of(newPDHaplotype));
                         outputHaplotypes.add(newPDHaplotype);
@@ -710,10 +707,6 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                 return Collections.singletonList(Set.of(eventsInOrder.get(0))); // if only one event, there are no mutexes
             }
 
-            // TODO: this yields the same behavior if the determined events belong to a different event group
-            // TODO: and if this event group contains the determined locus but the ref allele is determined (in which case
-            // TODO: the determined events set is empty).  That's not right!!!
-            // TODO: what we want to do is blacklist all locus events that are not determined
             final SmallBitSet locusOverlapSet = overlapSet(locusEvents);
             final SmallBitSet determinedOverlapSet = overlapSet(determinedEvents);
 
