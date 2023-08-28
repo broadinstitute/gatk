@@ -8,7 +8,7 @@ The [GVS beta workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Vari
 
 ## Workflow Overview
 
-![Diagram depicting the Genomic Variant Store workflow. Sample GVCF files are imported into the core data model. A filtering model is trained using Variant Quality Score Recalibration, or VQSR, and then applied while the samples are extracted as cohorts in sharded joint VCF files. Each step integrates BigQuery and GATK tools.](./genomic-variant-store_diagram.png)
+![Diagram depicting the Genomic Variant Store workflow. Sample GVCF files are imported into the core data model. A filtering model is trained using Variant Extract-Train-Score, or VETS, and then applied while the samples are extracted as cohorts in sharded joint VCF files. Each step integrates BigQuery and GATK tools.](./genomic-variant-store_diagram.png)
 
 The [GVS workflow](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/wdl/GvsJointVariantCalling.wdl) is an open-source, cloud-optimized workflow for joint calling at a large scale using the Terra platform. The workflow takes in single sample GVCF files with indices and produces sharded joint VCF files with indices, a manifest file, and metrics.
 
@@ -21,11 +21,11 @@ To learn more about the GVS workflow, see the [Genomic Variant Store workflow ov
 
 Example GVCF and index files in the Data tab of the [GVS beta workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta) are hosted in a public Google bucket and links are provided in the sample data table.
 
-While the GVS workflow has been tested with 100,000 single sample GVCF files as input, only datasets of up to 10,000 files are being used for beta testing.
+While the GVS has been tested with 250,000 single sample whole genome GVCF files as input, only datasets of up to 25,000 whole genomes are being used for beta testing.
 
 ### What does it return as output?
 
-The following files are stored in the workspace Google bucket and links to the files are written to the `sample_set` data table:
+The following files are stored in the workspace workflow execution bucket under Data>Files (within the left-hand menu on the "Data" workspace tab , under "Other Data", there is a "Files" link that allows you to navigate the files in the workspace bucket) or in the Google bucket specified in the inputs.
 
 - Sharded joint VCF files, index files, the interval lists for each sharded VCF, and a list of the sample names included in the callset.
 - Size of output VCF files in MB
@@ -96,25 +96,20 @@ The GVS beta workspace in Terra is read-only, so you’ll need to clone the work
 
 ## Running the workflow
 
-The workflow in the GVS beta workspace is pre-configured to use 10 sample GVCF files as a sample set in the sample_set data table in the workspace Data tab.
+The workflow in the GVS beta workspace is pre-configured to use the 10 sample GVCF files in the workspace Data tab.
 
 The workflow is configured to call this input from the data table. To run:
 
-1. Select the workflow from the Workflows tab.
-1. In the configuration page, select the sample_set entity in Step 1.
-1. Select the sample_set dataset in Step 2.
+1. Select the "GvsBeta" workflow from the Workflows tab.
 1. Configure the workflow inputs.
-    1. Enter a name for the callset as a string with the format “*CALLSET_NAME*” for the `call_set_identifier` variable. This string is used as to name several variables and files and should begin with a letter. Valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”.
-    1. Enter the name of the BigQuery dataset you created in Step 4 of Setup as a string with the format “*DATASET_NAME*” for the `dataset_name` variable.
-    1. Enter the name of the GCP project you created in Step 3 of Setup as a string with the format “*PROJECT_NAME*” for the `project_id` variable.
-1. Save the workflow configuration.
-1. Run the workflow.
+    1. Enter a **name for the callset** as a string with the format “*CALLSET_NAME*” for the `call_set_identifier` variable. This string is used as to name several variables and files and should begin with a letter. Valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”.
+    1. Enter the name of your **BigQuery dataset** as a string with the format “*DATASET_NAME*” for the `dataset_name` variable.
+    1. Enter the name of the **GCP project** that holds the BigQuery dataset as a string with the format “*PROJECT_NAME*” for the `project_id` variable.
+    1. Enter the path of a **Google Cloud Storage directory for writing outputs**. Enter a string in the format "*gs://your_bucket/here*" in `extract_output_gcs_dir`. If you want the data in your Terra workspace bucket you can find that on the Workspace Dashboard, right panel, under Cloud Information. Copy the "Bucket Name" and use it to the inputs to create a gs path as a string like this "*gs://fc-338fe040-3522-484c-ba48-14b48f9950c2*". If you do not enter a bucket here, the outputs will be in the execution directory under *Files*.
+1. **Save** the workflow configuration.
+1. **Run** the workflow.
 
 To run the GVS workflow on your own sample data, follow the instructions in the tutorial, [Upload data to Terra and run the GVS workflow](./run-your-own-samples.md).
-   
-### Important configuration notes
-
-By default, the workflow is set up to write outputs to the workspace Google bucket. If you want to write the outputs to a different cloud storage location, you can specify the cloud path in the `extract_output_gcs_dir` optional input in the workflow configuration. 
 
 ### Time and cost
 Below is an example of the time and cost of running the workflow with the sample data pre-loaded in the workspace.
@@ -150,7 +145,7 @@ If you don’t plan to create subcohorts of your data, you can delete your BigQu
 ### Additional Resources
 * For questions regarding GATK-related tools and Best Practices, see the [GATK website](https://gatk.broadinstitute.org/hc/en-us).
 * For Terra-specific documentation and support, see the [Terra Support](https://support.terra.bio/hc/en-us).
-* To learn more about Variant Quality Score Recalibration (VQSR), see the [GATK tool index](https://gatk.broadinstitute.org/hc/en-us/articles/5257893583259).
+* To learn more about the GATK Variant Extract-Train-Score (VETS) toolchain, see the [release notes](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/docs/release_notes/VETS_Release.pdf).
 
 ### Contact Information
 * If you have questions or issues while running the GVS workflow in the GVS beta workspace, contact the [Broad Variants team](mailto:variants@broadinstitute.org).
@@ -169,5 +164,5 @@ Details on citing Terra workspaces can be found here: [How to cite Terra](https:
 Data Sciences Platform, Broad Institute (*Year, Month Day that the workspace was last modified*) gvs-prod/Genomic_Variant_Store_Beta [workspace] Retrieved *Month Day, Year that workspace was retrieved*, https://app.terra.bio/#workspaces/gvs-prod/Genomic_Variant_Store_Beta
 
 ### License
-**Copyright Broad Institute, 2022 | Apache**
+**Copyright Broad Institute, 2023 | Apache**
 The workflow script is released under the Apache License, Version 2.0 (full license text at https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT). Note however that the programs called by the scripts may be subject to different licenses. Users are responsible for checking that they are authorized to run all programs before running these tools.

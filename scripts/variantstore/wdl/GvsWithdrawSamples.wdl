@@ -1,8 +1,11 @@
 version 1.0
 
+import "GvsUtils.wdl" as Utils
+
 workflow GvsWithdrawSamples {
 
   input {
+    String? git_branch_or_tag
     String dataset_name
     String project_id
 
@@ -10,7 +13,18 @@ workflow GvsWithdrawSamples {
     File sample_names_to_include_file
     # should be in the format "2022-01-01 00:00:00 UTC"
     String withdrawn_timestamp
+
+    String? gatk_docker
   }
+
+  # Always call `GetToolVersions` to get the git hash for this run as this is a top-level-only WDL (i.e. there are
+  # no calling WDLs that might supply `git_hash`).
+  call Utils.GetToolVersions {
+    input:
+      git_branch_or_tag = git_branch_or_tag,
+  }
+
+  String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
 
   call WithdrawSamples {
     input:
@@ -18,11 +32,13 @@ workflow GvsWithdrawSamples {
       dataset_name = dataset_name,
       sample_name_column_name_in_file = sample_name_column_name_in_file,
       sample_names_to_include_file = sample_names_to_include_file,
-      withdrawn_timestamp = withdrawn_timestamp
+      withdrawn_timestamp = withdrawn_timestamp,
+      gatk_docker = effective_gatk_docker,
   }
 
   output {
     Int num_rows_updated = WithdrawSamples.num_rows_updated
+    String recorded_git_hash = GetToolVersions.git_hash
   }
 }
 
@@ -35,6 +51,7 @@ task WithdrawSamples {
     File sample_names_to_include_file
     # should be in the format "2022-01-01 00:00:00 UTC"
     String withdrawn_timestamp
+    String gatk_docker
   }
 
   meta {
@@ -78,7 +95,7 @@ task WithdrawSamples {
     cat log_message.txt | sed -e 's/Number of affected rows: //' > rows_updated.txt
   >>>
   runtime {
-    docker: "us.gcr.io/broad-gatk/gatk:4.2.5.0"
+    docker: gatk_docker
     memory: "3.75 GB"
     disks: "local-disk 10 HDD"
     cpu: 1

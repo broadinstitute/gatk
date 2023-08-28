@@ -17,37 +17,24 @@ This quickstart assumes that you are familiar with Terra workspaces, the data mo
 3. These tools expect re-blocked gVCF files as input, which are provided in this workspace
 
 ## 1. Import Data
-A sample set for the quickstart has already been created with 10 samples and paths to re-blocked gVCFs for each sample.  Run the two import workflows against this sample set by selecting "sample_set" as the root entity type ("Step 1" on the workflow submission page) and `gvs_demo-10` for the data ("Step 2" on the workflow submission page).  If you are creating your own sample set, note that the sample table should have columns for the re-blocked gVCFs (`hg38_reblocked_v2_vcf` or `reblocked_gvcf_path`) and their index files.
+A sample set for the quickstart has already been created with 10 samples and paths to re-blocked gVCFs for each sample.  Import the sample data from this sample set by running the `GvsBulkIngestGenomes` workflow.
 
-## 1.1 Assign Gvs IDs and Create Loading Tables
-To optimize the internal queries, each sample must have a unique and consecutive integer ID assigned. Run the `GvsAssignIds` workflow, which will create an appropriate ID for each sample in the sample set and update the BigQuery dataset with the sample name to ID mapping info.
-
-This workflow should be run on a **sample set** as the root entity, for this workspace, the `gvs_demo_10` sample set.
+This workflow does not use the Terra data model to run, so be sure to select `Run workflow with inputs defined by file paths`.
 
 These are the required parameters which must be supplied to the workflow:
 
-| Parameter             | Description |
-| --------------------- | ----------- |
-| dataset_name          | the name of the dataset you created above       |
-| external_sample_names | `this.samples.sample_id` (the sample identifier column from the `gvs_demo_10` sample set) |
-| project_id            | the name of the google project containing the dataset |
+| Parameter             | Description                                                                   |
+| --------------------- |-------------------------------------------------------------------------------|
+| dataset_name          | the name of the dataset you created above                                     |
+| project_id            | the name of the google project containing the dataset                         |
 
-## 1.2 Load data
-Next, your re-blocked gVCF files will be copied into the `ref_ranges_*` and `vet_*` tables by running the `GvsImportGenomes` workflow.
+If you are creating your own sample set, note that the sample table should have columns for the re-blocked gVCFs (`hg38_reblocked_v2_vcf` or `reblocked_gvcf_path`) and their index files, and the `sample_set_name` parameter described below should be specified:
 
-This workflow should be run on a **sample set** as the root entity, for this workspace, the `gvs_demo_10` sample set.
+| Parameter       | Description                               |
+|-----------------|-------------------------------------------|
+| sample_set_name | the name of the sample set to be ingested |
 
-These are the required parameters which must be supplied to the workflow:
-
-| Parameter             | Description |
-| --------------------- | ----------- |
-| dataset_name          | the name of the dataset you created above       |
-| external_sample_names | `this.samples.sample_id` (the sample identifier from the `gvs_demo_10` sample set) |
-| input_vcf_indexes     | `this.samples.hg38_reblocked_v2_vcf_index` (reblocked gvcf index file for each sample) |
-| input_vcfs            | `this.samples.hg38_reblocked_v2_vcf` (reblocked gvcf file for each sample) |
-| project_id            | the name of the google project containing the dataset |
-
-## 2. Create Alt Allele Table
+## 1. Create Alt Allele Table
 This step loads data into the ALT_ALLELE table from the `vet_*` tables.
 
 This workflow does not use the Terra data model to run, so be sure to select `Run workflow with inputs defined by file paths`.
@@ -60,7 +47,7 @@ This is done by running the `GvsPopulateAltAllele` workflow with the following p
 | dataset_name      | the name of the dataset you created above  |
 | project_id        | the name of the google project containing the dataset |
 
-## 3. Create Filter Set
+## 1. Create Filter Set
 This step calculates features from the ALT_ALLELE table, trains the VQSR filtering model along with site-level QC filters, and loads them into BigQuery into a series of `filter_set_*` tables.  
 
 This workflow does not use the Terra data model to run, so be sure to select `Run workflow with inputs defined by file paths`.
@@ -73,7 +60,7 @@ This is done by running the `GvsCreateFilterSet` workflow with the following par
 | filter_set_name                   | a unique name to identify this filter set (e.g. `my_demo_filters`); you will want to make note of this for use in step 5 |
 | project_id                        | the name of the google project containing the dataset |
 
-## 4. Prepare Callset
+## 1. Prepare Callset
 This step performs the heavy lifting in BigQuery to gather all the data required to create a jointly called VCF.
 
 This is done by running the `GvsPrepareRangesCallset` workflow with the following parameters:
@@ -85,7 +72,7 @@ This is done by running the `GvsPrepareRangesCallset` workflow with the followin
 | extract_table_prefix | A unique, descriptive name for the tables containing the callset (for simplicity, you can use the same name you used for `filter_set_name` in step 3); you will want to make note of this for use in the next step |
 | project_id           | the name of the google project containing the dataset |
 
-## 5. Extract Cohort
+## 1. Extract Cohort
 Now the data is ready to be extracted!
 
 This workflow does not use the Terra data model to run, so be sure to select `Run workflow with inputs defined by file paths`.
@@ -99,6 +86,6 @@ This is done by running the `GvsExtractCallset` workflow with the following para
 | filter_set_name      | the name of the filter set created in step 3  |
 | project_id           | the name of the google project containing the dataset |
 
-## 6. Your VCF files are ready!
+## 1. Your VCF files are ready!
 
 The sharded VCF output files are listed in the `ExtractTask.output_vcf` workflow output, and the associated index files are listed in `ExtractTask.output_vcf_index`.

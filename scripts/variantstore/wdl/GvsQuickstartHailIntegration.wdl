@@ -6,49 +6,96 @@ import "GvsQuickstartVcfIntegration.wdl" as QuickstartVcfIntegration
 
 workflow GvsQuickstartHailIntegration {
     input {
-        String branch_name
+        String git_branch_or_tag
+        String? git_hash
+        Boolean is_wgs = true
         Boolean use_VQSR_lite = true
         File interval_list
         Boolean use_classic_VQSR = true
         Boolean extract_do_not_filter_override
         String dataset_suffix = "hail"
+        Boolean use_default_dockers = false
+
+        String? basic_docker
+        String? cloud_sdk_docker
+        String? cloud_sdk_slim_docker
+        String? variants_docker
+        String? gatk_docker
+
         String? gatk_override
         String expected_output_prefix
+        String? sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
+        String? vcf_files_column_name
+        String? vcf_index_files_column_name
+        String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
     }
 
     String project_id = "gvs-internal"
 
+    if (!defined(git_hash) || !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(cloud_sdk_slim_docker) ||
+        !defined(variants_docker) || !defined(gatk_docker)) {
+        call Utils.GetToolVersions {
+            input:
+                git_branch_or_tag = git_branch_or_tag,
+        }
+    }
+
+    String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
+    String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
+    String effective_cloud_sdk_slim_docker = select_first([cloud_sdk_slim_docker, GetToolVersions.cloud_sdk_slim_docker])
+    String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
+    String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
+    String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
+
     call QuickstartVcfIntegration.GvsQuickstartVcfIntegration {
         input:
-            branch_name = branch_name,
+            git_branch_or_tag = git_branch_or_tag,
+            git_hash = git_hash,
+            is_wgs = is_wgs,
             drop_state = "NONE",
             use_VQSR_lite = use_VQSR_lite,
             extract_do_not_filter_override = extract_do_not_filter_override,
             dataset_suffix = dataset_suffix,
+            use_default_dockers = use_default_dockers,
             gatk_override = gatk_override,
             interval_list = interval_list,
             expected_output_prefix = expected_output_prefix,
+            sample_id_column_name = sample_id_column_name,
+            vcf_files_column_name = vcf_files_column_name,
+            vcf_index_files_column_name = vcf_index_files_column_name,
+            sample_set_name = sample_set_name,
+            basic_docker = effective_basic_docker,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
+            cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
+            variants_docker = effective_variants_docker,
+            gatk_docker = effective_gatk_docker,
     }
 
     call ExtractAvroFilesForHail.GvsExtractAvroFilesForHail {
         input:
             go = GvsQuickstartVcfIntegration.done,
+            git_branch_or_tag = git_branch_or_tag,
+            git_hash = git_hash,
             project_id = project_id,
             use_VQSR_lite = use_VQSR_lite,
             dataset_name = GvsQuickstartVcfIntegration.dataset_name,
             filter_set_name = GvsQuickstartVcfIntegration.filter_set_name,
             scatter_width = 10,
-            call_set_identifier = branch_name,
+            call_set_identifier = git_branch_or_tag,
+            basic_docker = effective_basic_docker,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
+            variants_docker = effective_variants_docker,
     }
 
     call CreateAndTieOutVds {
         input:
-            branch_name = branch_name,
+            git_branch_or_tag = git_branch_or_tag,
             use_VQSR_lite = use_VQSR_lite,
             avro_prefix = GvsExtractAvroFilesForHail.avro_prefix,
             vds_destination_path = GvsExtractAvroFilesForHail.vds_output_path,
             tieout_vcfs = GvsQuickstartVcfIntegration.output_vcfs,
             tieout_vcf_indexes = GvsQuickstartVcfIntegration.output_vcf_indexes,
+            cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
     }
 
     output {
@@ -57,6 +104,7 @@ workflow GvsQuickstartHailIntegration {
         Float total_vcfs_size_mb = GvsQuickstartVcfIntegration.total_vcfs_size_mb
         File manifest = GvsQuickstartVcfIntegration.manifest
         String vds_output_path = GvsExtractAvroFilesForHail.vds_output_path
+        String recorded_git_hash = effective_git_hash
         Boolean done = true
     }
 }
@@ -64,12 +112,13 @@ workflow GvsQuickstartHailIntegration {
 
 task CreateAndTieOutVds {
     input {
-        String branch_name
+        String? git_branch_or_tag
         Boolean use_VQSR_lite
         String avro_prefix
         String vds_destination_path
         Array[File] tieout_vcfs
         Array[File] tieout_vcf_indexes
+        String cloud_sdk_slim_docker
     }
     parameter_meta {
         tieout_vcfs: {
@@ -85,7 +134,7 @@ task CreateAndTieOutVds {
         set -o errexit -o nounset -o pipefail -o xtrace
 
         # Copy the versions of the Hail import and tieout scripts for this branch from GitHub.
-        script_url_prefix="https://raw.githubusercontent.com/broadinstitute/gatk/~{branch_name}/scripts/variantstore/wdl/extract"
+        script_url_prefix="https://raw.githubusercontent.com/broadinstitute/gatk/~{git_branch_or_tag}/scripts/variantstore/wdl/extract"
         for script in hail_gvs_import.py hail_join_vds_vcfs.py gvs_vds_tie_out.py import_gvs.py
         do
             curl --silent --location --remote-name "${script_url_prefix}/${script}"
@@ -153,7 +202,7 @@ task CreateAndTieOutVds {
     >>>
     runtime {
         # `slim` here to be able to use Java
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-slim"
+        docker: cloud_sdk_slim_docker
         disks: "local-disk 2000 HDD"
         memory: "30 GiB"
     }

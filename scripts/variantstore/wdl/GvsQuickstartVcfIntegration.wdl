@@ -1,74 +1,98 @@
 version 1.0
 
-import "GvsUnified.wdl" as Unified
 import "GvsUtils.wdl" as Utils
+import "GvsJointVariantCalling.wdl" as JointVariantCalling
 
 workflow GvsQuickstartVcfIntegration {
-
     input {
-        String branch_name
-        File interval_list
+        String git_branch_or_tag
+        String? git_hash
+        Boolean is_wgs = true
         String expected_output_prefix
         Boolean use_VQSR_lite = true
         Boolean extract_do_not_filter_override = true
 
-        Array[String] external_sample_names = [
-                                              "ERS4367795",
-                                              "ERS4367796",
-                                              "ERS4367797",
-                                              ]
-
-        Array[File] input_vcfs = [
-                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00405.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
-                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00408.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
-                                 "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00418.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz",
-                                 ]
-
-        Array[File] input_vcf_indexes = [
-                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00405.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
-                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00408.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
-                                        "gs://gvs-internal-quickstart/reblocked-v2-vcfs/HG00418.haplotypeCalls.er.raw.vcf.gz.rb.g.vcf.gz.tbi",
-                                        ]
-
-        Int? extract_scatter_count
         String drop_state = "FORTY"
         String dataset_suffix
+        File interval_list
+        Boolean use_default_dockers = false
+        String? basic_docker
+        String? cloud_sdk_docker
+        String? cloud_sdk_slim_docker
+        String? variants_docker
+        String? gatk_docker
         File? gatk_override
+        String? sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
+        String? vcf_files_column_name
+        String? vcf_index_files_column_name
+        String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
     }
     String project_id = "gvs-internal"
 
-    if (!defined(gatk_override)) {
+    Boolean use_interval_weights = is_wgs
+    File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
+
+    # WDL 1.0 trick to set a variable ('none') to be undefined.
+    if (false) {
+      File? none = ""
+    }
+
+    if (!defined(git_hash) || !defined(cloud_sdk_docker) || !defined(cloud_sdk_slim_docker) || !defined(variants_docker) ||
+        !defined(basic_docker) || !defined(gatk_docker)) {
+        call Utils.GetToolVersions {
+            input:
+                git_branch_or_tag = git_branch_or_tag,
+        }
+    }
+
+    String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
+    String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
+    String effective_cloud_sdk_slim_docker = select_first([cloud_sdk_slim_docker, GetToolVersions.cloud_sdk_slim_docker])
+    String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
+    String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
+    String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
+
+    if (!use_default_dockers && !defined(gatk_override)) {
       call Utils.BuildGATKJar {
         input:
-          branch_name = branch_name,
+          git_branch_or_tag = git_branch_or_tag,
+          cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
       }
     }
 
     call Utils.CreateDataset {
         input:
-            branch_name = branch_name,
+            git_branch_or_tag = git_branch_or_tag,
             dataset_prefix = "quickit",
             dataset_suffix = dataset_suffix,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
-    call Unified.GvsUnified {
+    call JointVariantCalling.GvsJointVariantCalling as JointVariantCalling {
         input:
-            call_set_identifier = branch_name,
+            call_set_identifier = git_branch_or_tag,
             dataset_name = CreateDataset.dataset_name,
             project_id = project_id,
-            external_sample_names = external_sample_names,
-            gatk_override = select_first([gatk_override, BuildGATKJar.jar]),
-            input_vcfs = input_vcfs,
-            input_vcf_indexes = input_vcf_indexes,
+            gatk_override = if (use_default_dockers) then none else select_first([gatk_override, BuildGATKJar.jar]),
+            use_classic_VQSR = !use_VQSR_lite,
+            extract_output_file_base_name = "quickit",
             filter_set_name = "quickit",
-            use_VQSR_lite = use_VQSR_lite,
             extract_table_prefix = "quickit",
-            extract_scatter_count = extract_scatter_count,
             # optionally turn off filtering (VQSR Classic is not deterministic)
             # (and the initial version of this integration test does not allow for inexact matching of actual and expected results.)
             extract_do_not_filter_override = extract_do_not_filter_override,
             drop_state = drop_state,
             interval_list = interval_list,
+            use_interval_weights = use_interval_weights,
+            interval_weights_bed = interval_weights_bed,
+            sample_id_column_name = sample_id_column_name,
+            vcf_files_column_name = vcf_files_column_name,
+            vcf_index_files_column_name = vcf_index_files_column_name,
+            sample_set_name = sample_set_name,
+            basic_docker = effective_basic_docker,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
+            variants_docker = effective_variants_docker,
+            gatk_docker = effective_gatk_docker,
     }
 
     # Only assert identical outputs if we did not filter (filtering is not deterministic) OR if we are using VQSR Lite (which is deterministic)
@@ -77,33 +101,37 @@ workflow GvsQuickstartVcfIntegration {
         call AssertIdenticalOutputs {
             input:
                 expected_output_prefix = expected_prefix,
-                actual_vcfs = GvsUnified.output_vcfs,
+                actual_vcfs = JointVariantCalling.output_vcfs,
+                cloud_sdk_docker = effective_cloud_sdk_docker,
         }
 
         call AssertCostIsTrackedAndExpected {
             input:
-                go = GvsUnified.done,
+                go = JointVariantCalling.done,
                 dataset_name = CreateDataset.dataset_name,
                 project_id = project_id,
                 expected_output_csv = expected_prefix + "cost_observability_expected.csv",
+                cloud_sdk_docker = effective_cloud_sdk_docker,
         }
 
         call AssertTableSizesAreExpected {
             input:
-                go = GvsUnified.done,
+                go = JointVariantCalling.done,
                 dataset_name = CreateDataset.dataset_name,
                 project_id = project_id,
                 expected_output_csv = expected_prefix + "table_sizes_expected.csv",
+                cloud_sdk_docker = effective_cloud_sdk_docker,
         }
     }
 
     output {
-        Array[File] output_vcfs = GvsUnified.output_vcfs
-        Array[File] output_vcf_indexes = GvsUnified.output_vcf_indexes
-        Float total_vcfs_size_mb = GvsUnified.total_vcfs_size_mb
-        File manifest = GvsUnified.manifest
+        Array[File] output_vcfs = JointVariantCalling.output_vcfs
+        Array[File] output_vcf_indexes = JointVariantCalling.output_vcf_indexes
+        Float total_vcfs_size_mb = JointVariantCalling.total_vcfs_size_mb
+        File manifest = JointVariantCalling.manifest
         String dataset_name = CreateDataset.dataset_name
         String filter_set_name = "quickit"
+        String recorded_git_hash = effective_git_hash
         Boolean done = true
     }
 }
@@ -113,6 +141,7 @@ task AssertIdenticalOutputs {
     input {
         String expected_output_prefix
         Array[File] actual_vcfs
+        String cloud_sdk_docker
     }
     parameter_meta {
         actual_vcfs: {
@@ -207,7 +236,7 @@ task AssertIdenticalOutputs {
     >>>
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
+        docker: cloud_sdk_docker
         disks: "local-disk 500 HDD"
     }
 
@@ -227,12 +256,13 @@ task AssertCostIsTrackedAndExpected {
         String dataset_name
         String project_id
         File expected_output_csv
+        String cloud_sdk_docker
     }
 
     command <<<
-        set -o errexit
-        set -o nounset
-        set -o pipefail
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
         bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false \
@@ -305,7 +335,7 @@ task AssertCostIsTrackedAndExpected {
     >>>
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
+        docker: cloud_sdk_docker
         disks: "local-disk 10 HDD"
     }
 
@@ -325,6 +355,7 @@ task AssertTableSizesAreExpected {
         String dataset_name
         String project_id
         File expected_output_csv
+        String cloud_sdk_docker
     }
 
     command <<<
@@ -353,7 +384,7 @@ task AssertTableSizesAreExpected {
     >>>
 
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
+        docker: cloud_sdk_docker
         disks: "local-disk 10 HDD"
     }
 
