@@ -2,7 +2,7 @@ version 1.0
 
 import "../wdl/GvsUtils.wdl" as Utils
 
-# Hello!
+# Hello!!
 
 workflow GvsCreateVATFilesFromBigQuery {
     input {
@@ -85,7 +85,7 @@ task BigQueryExportVat {
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} \
         'EXPORT DATA OPTIONS(
         uri="~{export_path}",
-        format="TSV",
+        format="CSV",
         overwrite=true,
         header=true,
         field_delimiter="\t") AS
