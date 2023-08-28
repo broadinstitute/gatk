@@ -2,6 +2,8 @@ version 1.0
 
 import "../wdl/GvsUtils.wdl" as Utils
 
+# Hello!
+
 workflow GvsCreateVATFilesFromBigQuery {
     input {
         String project_id
@@ -47,7 +49,7 @@ workflow GvsCreateVATFilesFromBigQuery {
             contig_array = contig_array,
             output_path = output_path,
             merge_vcfs_disk_size_override = merge_vcfs_disk_size_override,
-            cloud_sdk_docker = effective_cloud_sdk_docker,
+            cloud_sdk_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-slim",
     }
 
     output {
@@ -83,10 +85,9 @@ task BigQueryExportVat {
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} \
         'EXPORT DATA OPTIONS(
         uri="~{export_path}",
-        format="CSV",
-        compression="GZIP",
+        format="TSV",
         overwrite=true,
-        header=false,
+        header=true,
         field_delimiter="\t") AS
         SELECT
         vid,
@@ -241,33 +242,51 @@ task MergeVatTSVs {
 
         mkdir TSVs
         contigs=( ~{sep=' ' contig_array} )
-        files="header.gz"
+        # Make sure that a zero length "header.txt" file exists
+        echo -n > "header.txt"
 
         echo_date "looping over contigs: $contigs"
         for i in "${contigs[@]}"
         do
-            echo_date "copying files from ~{output_path}export/$i/*.tsv.gz"
-            gcloud storage cp ~{output_path}export/$i/*.tsv.gz TSVs/
-            echo_date "concatenating local tsv.gz files"
+            echo_date "copying files from ~{output_path}export/$i/*.tsv"
+            gcloud storage cp ~{output_path}export/$i/*.tsv TSVs/
+            echo_date "concatenating local tsv files"
 
             # the internet says that * is deterministic, see https://serverfault.com/questions/122737/in-bash-are-wildcard-expansions-guaranteed-to-be-in-order
-            cat TSVs/*.tsv.gz > vat_$i.tsv.gz
+            # Get an array of all of the tsvs for this contig
+            tsv_files=(TSVs/*.tsv)
+            echo_date "Looks like this: ${tsv_files[@]}"
+
+            for filename in "${tsv_files[@]}";
+            do
+                echo_date $filename
+                if [ -s header.txt ]; then
+                    # The header file exists and is not empty
+                    # Skip the header line on this (all but the very first) tsv
+                    echo_date "concatenating headless $filename to vat_complete.tsv"
+                    tail -n +2 $filename >> vat_complete.tsv
+                else
+                    # Found an empty header file - this is the first tsv processed
+                    # Copy the entire tsv (including the header) into the vat_complete.tsv
+                    echo_date "copying complete $filename to vat_complete.tsv"
+                    cp $filename vat_complete.tsv
+                fi
+                # Copying ALL the headers for all the tsvs into a file (for later error checking)
+                head -1 $filename >> "header.txt"
+            done
 
             echo_date "removing now concatenated files"
-            rm TSVs/*.tsv.gz
-            files="$files vat_$i.tsv.gz"
+            rm TSVs/*.tsv
         done
 
-        echo_date "making header.gz"
-        # NOTE: Contents of tsvs exported from BigQuery are tab-separated, the header must also be tab-separated!
-        echo -e "vid\ttranscript\tcontig\tposition\tref_allele\talt_allele\tgvs_all_ac\tgvs_all_an\tgvs_all_af\tgvs_all_sc\tgvs_max_af\tgvs_max_ac\tgvs_max_an\tgvs_max_sc\tgvs_max_subpop\tgvs_afr_ac\tgvs_afr_an\tgvs_afr_af\tgvs_afr_sc\tgvs_amr_ac\tgvs_amr_an\tgvs_amr_af\tgvs_amr_sc\tgvs_eas_ac\tgvs_eas_an\tgvs_eas_af\tgvs_eas_sc\tgvs_eur_ac\tgvs_eur_an\tgvs_eur_af\tgvs_eur_sc\tgvs_mid_ac\tgvs_mid_an\tgvs_mid_af\tgvs_mid_sc\tgvs_oth_ac\tgvs_oth_an\tgvs_oth_af\tgvs_oth_sc\tgvs_sas_ac\tgvs_sas_an\tgvs_sas_af\tgvs_sas_sc\tgene_symbol\ttranscript_source\taa_change\tconsequence\tdna_change_in_transcript\tvariant_type\texon_number\tintron_number\tgenomic_location\tdbsnp_rsid\tgene_id\tgene_omim_id\tis_canonical_transcript\tgnomad_all_af\tgnomad_all_ac\tgnomad_all_an\tgnomad_failed_filter\tgnomad_max_af\tgnomad_max_ac\tgnomad_max_an\tgnomad_max_subpop\tgnomad_afr_ac\tgnomad_afr_an\tgnomad_afr_af\tgnomad_amr_ac\tgnomad_amr_an\tgnomad_amr_af\tgnomad_asj_ac\tgnomad_asj_an\tgnomad_asj_af\tgnomad_eas_ac\tgnomad_eas_an\tgnomad_eas_af\tgnomad_fin_ac\tgnomad_fin_an\tgnomad_fin_af\tgnomad_nfr_ac\tgnomad_nfr_an\tgnomad_nfr_af\tgnomad_sas_ac\tgnomad_sas_an\tgnomad_sas_af\tgnomad_oth_ac\tgnomad_oth_an\tgnomad_oth_af\trevel\tsplice_ai_acceptor_gain_score\tsplice_ai_acceptor_gain_distance\tsplice_ai_acceptor_loss_score\tsplice_ai_acceptor_loss_distance\tsplice_ai_donor_gain_score\tsplice_ai_donor_gain_distance\tsplice_ai_donor_loss_score\tsplice_ai_donor_loss_distance\tomim_phenotypes_id\tomim_phenotypes_name\tclinvar_classification\tclinvar_last_updated\tclinvar_phenotype" | gzip > header.gz
+        #TODO - check the header.txt file
+        wc -l header.txt
+        cat header.txt | sort | uniq | wc -l
 
-        echo_date "concatenating $files"
-        cat $(echo $files) > vat_complete.tsv.gz
         echo_date "bgzipping concatenated file"
-        cat vat_complete.tsv.gz | gunzip | bgzip > vat_complete.bgz.tsv.gz
+        bgzip vat_complete.tsv
         echo_date "copying bgzipped file to ~{output_path}"
-        gcloud storage cp vat_complete.bgz.tsv.gz ~{output_path}
+        gcloud storage cp vat_complete.bgz ~{output_path}
     >>>
     # ------------------------------------------------
     # Runtime settings:
@@ -281,7 +300,7 @@ task MergeVatTSVs {
     # ------------------------------------------------
     # Outputs:
     output {
-        File tsv_file = "vat_complete.bgz.tsv.gz"
+        File tsv_file = "vat_complete.bgz"
         File monitoring_log = "monitoring.log"
     }
 }
