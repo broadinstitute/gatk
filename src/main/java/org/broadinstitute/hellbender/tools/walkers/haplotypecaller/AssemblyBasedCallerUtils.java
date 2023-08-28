@@ -480,8 +480,9 @@ public final class AssemblyBasedCallerUtils {
         // final ordering determined by string representation (for determinism).
         return onlyNewHaplotypes.stream()
                 .filter(h -> scores.get(h) >= minimumPassingScore)
-                .sorted(Comparator.comparing(Haplotype::getBaseString))
-                .limit(numPileupHaplotypes)
+                .sorted(Comparator.<Haplotype, Long>comparing(scores::get).reversed()
+                        .thenComparing(Haplotype::getBaseString)
+                ).limit(numPileupHaplotypes)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
