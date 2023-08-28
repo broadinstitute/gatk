@@ -88,21 +88,21 @@ public final class ScoreVariantAnnotationsIntegrationTest extends CommandLinePro
     /**
      * Exact-match tests for (non-exhaustive) configurations given by the Cartesian product of the following options:
      * 1) non-allele-specific ("nonAS") vs. allele-specific ("AS")
-     * 2) model backend
-     *      2a) Java Bayesian Gaussian Mixture Model (BGMM) backend TODO the BGMM has been reduced to a stub for this initial PR; subsequent PRs will cover the backend code and reconnect the stub
+     * 2) model backend (note that these all have an extra "score" tag, which is later used to delimit the original train tag)
+     *      2a) Java Bayesian Gaussian Mixture Model (BGMM) backend ("BGMM.score")
      *      2b) default PYTHON_IFOREST ("IF.score")
      *      2c) specified PYTHON_SCRIPT ("IF.score"); we will simply use the same script as the default PYTHON_IFOREST backend, so this is just a test of the command-line interface
      *      We should expect 2b-c to give functionally identical results.
      * 3) SNP-only ("snp") vs. SNP+INDEL ("snpIndel") (for both of these options, we use trained models that contain both SNP and INDEL scorers as input)
-     *  TODO the BGMM has been reduced to a stub for this initial PR; subsequent PRs will cover the backend code and reconnect the stub
      */
     @DataProvider(name = "dataValidInputs")
     public Object[][] dataValidInputs() {
         final List<List<Pair<String, Function<ArgumentsBuilder, ArgumentsBuilder>>>> testConfigurations = Lists.cartesianProduct(
                 Arrays.asList(
-                        Pair.of("extract.nonAS.snpIndel.posUn.train.snpIndel.posNeg", Function.identity()),
-                        Pair.of("extract.AS.snpIndel.posUn.train.snpIndel.posNeg", Function.identity())),
+                        Pair.of("extract.nonAS.snpIndel.posUn.train.snpIndel.posOnly", Function.identity()),
+                        Pair.of("extract.AS.snpIndel.posUn.train.snpIndel.posOnly", Function.identity())),
                 Arrays.asList(
+                        Pair.of("BGMM.score", ab -> ADD_MODEL_BACKEND.apply(ab, VariantAnnotationsModelBackend.JAVA_BGMM)),
                         Pair.of("IF.score", ab -> ADD_MODEL_BACKEND.apply(ab, VariantAnnotationsModelBackend.PYTHON_IFOREST)), // this and the following case give the same results, so they are given the same IF.score tag
                         Pair.of("IF.score", ADD_ISOLATION_FOREST_PYTHON_SCRIPT
                                 .andThen(ab -> ADD_MODEL_BACKEND.apply(ab, VariantAnnotationsModelBackend.PYTHON_SCRIPT)))),
@@ -113,7 +113,7 @@ public final class ScoreVariantAnnotationsIntegrationTest extends CommandLinePro
 
         return testConfigurations.stream()
                 .map(tagAndAddFunctionPairs -> new Object[]{
-                        tagAndAddFunctionPairs.stream().map(Pair::getLeft).collect(Collectors.joining(".")), // e.g., extract.nonAS.snpIndel.posUn.train.snpIndel.posNeg.IF.score.snp
+                        tagAndAddFunctionPairs.stream().map(Pair::getLeft).collect(Collectors.joining(".")), // e.g., extract.nonAS.snpIndel.posUn.train.snpIndel.posOnly.IF.score.snp
                         tagAndAddFunctionPairs.stream().map(Pair::getRight)                                              // creates the corresponding ArgumentsBuilder
                                 .reduce(Function.identity(), Function::andThen)                                          //  by stringing together functions that add the
                                 .apply(BASE_ARGUMENTS_BUILDER_SUPPLIER.get())})                                          //  appropriate arguments
@@ -121,7 +121,7 @@ public final class ScoreVariantAnnotationsIntegrationTest extends CommandLinePro
     }
 
     /**
-     * Checks expected outputs given a tag (e.g., "extract.nonAS.snpIndel.posUn.train.snpIndel.posNeg.IF.score.snp") and arguments corresponding to the
+     * Checks expected outputs given a tag (e.g., "extract.nonAS.snpIndel.posUn.train.snpIndel.posOnly.IF.score.snp") and arguments corresponding to the
      * Cartesian products generated in {@link #dataValidInputs}.
      *
      * We perform exact-match tests of any HDF5 files produced using h5diff, which is insensitive to timestamps within the file.
@@ -136,7 +136,7 @@ public final class ScoreVariantAnnotationsIntegrationTest extends CommandLinePro
         argsBuilder.addOutput(outputPrefix);
 
         // add arguments for model prefix based on the
-        // train tag (the portion of the tag preceding ".score", e.g., extract.nonAS.snpIndel.posUn.train.snp.posNeg.IF),
+        // train tag (the portion of the tag preceding ".score", e.g., extract.nonAS.snpIndel.posUn.train.snp.posOnly.IF),
         // which gives the basename for the model files
         final String trainTag = tag.split(".score")[0];
         if (tag.contains("nonAS")) {

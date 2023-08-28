@@ -6,7 +6,6 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.LabeledVariantAnnotationsWalker;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -93,8 +92,8 @@ final class LabeledVariantAnnotationsDatum implements Locatable {
                     value = vc.getAttributeAsDouble(annotationName, Double.NaN);
                 } catch (final ClassCastException e) {
                     throw new UserException(String.format("Could not extract annotation %s from variant context: %s. " +
-                                    "Ensure that %s is specified, if desired. Encountered exception: %s",
-                            annotationName, vc, LabeledVariantAnnotationsWalker.USE_ALLELE_SPECIFIC_ANNOTATIONS_LONG_NAME, e));
+                                    "Encountered exception: %s",
+                            annotationName, vc, e));
                 }
             }
             if (Double.isInfinite(value)) {

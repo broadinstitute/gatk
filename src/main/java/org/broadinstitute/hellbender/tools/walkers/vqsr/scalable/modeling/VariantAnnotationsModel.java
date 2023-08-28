@@ -38,9 +38,10 @@ public interface VariantAnnotationsModel {
      *                                    2) we assume the model does not care about the variant type.
      *                                  TODO we could also pass additional labels to be used in training,
      *                                       but all backends would have to likewise respect directory structure
-     *
+     * @param unlabeledAnnotationsFile  Unlabeled annotations in HDF5 format, with the same structure and format as the above. May be {@code null}.
      * @param outputPrefix              Path prefix for all output files
      */
     void trainAndSerialize(final File trainingAnnotationsFile,
+                           final File unlabeledAnnotationsFile,
                            final String outputPrefix);
 }

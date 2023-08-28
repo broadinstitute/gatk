@@ -25,7 +25,7 @@ import org.broadinstitute.hellbender.tools.walkers.vqsr.VariantRecalibrator;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.LabeledVariantAnnotationsData;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.VariantType;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.BGMMVariantAnnotationsScorer;
-import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.PythonSklearnVariantAnnotationsScorer;
+import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.PythonVariantAnnotationsScorer;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.VariantAnnotationsModel;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.VariantAnnotationsModelBackend;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.VariantAnnotationsScorer;
@@ -78,7 +78,7 @@ import java.util.stream.IntStream;
  * <ul>
  *     <li>
  *         Input VCF file. Site-level annotations will be extracted from the contained variants (or alleles,
- *         if the {@value USE_ALLELE_SPECIFIC_ANNOTATIONS_LONG_NAME} argument is specified).
+ *         if at least one allele-specific annotation with {@code Number=A} is specified).
  *     </li>
  *     <li>
  *         Annotations to use for scoring. These should be identical to those used in the {@link ExtractVariantAnnotations}
@@ -146,7 +146,7 @@ import java.util.stream.IntStream;
  *             score threshold).
  *         </p>
  *         <p>
- *             If {@value USE_ALLELE_SPECIFIC_ANNOTATIONS_LONG_NAME} is true, the score, SNP flag, calibration sensitivity,
+ *             In allele-specific mode (i.e., when allele-specific annotations are requested), the score, SNP flag, calibration sensitivity,
  *             and filter appropriate for the highest scoring allele are used; however, the resource labels for all alleles
  *             are applied.
  *         </p>
@@ -245,7 +245,7 @@ import java.util.stream.IntStream;
  *     advanced users may provide their own backend via the {@value PYTHON_SCRIPT_LONG_NAME} argument.
  *     See documentation in the modeling and scoring interfaces ({@link VariantAnnotationsModel} and
  *     {@link VariantAnnotationsScorer}, respectively), as well as the default Python IsolationForest implementation at
- *     {@link PythonSklearnVariantAnnotationsScorer} and
+ *     {@link PythonVariantAnnotationsScorer} and
  *     src/main/resources/org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/isolation-forest.py.
  * </p>
  *
@@ -368,11 +368,11 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
         Utils.nonNull(lowScoreFilterName);
         Utils.nonNull(doubleFormat);
 
+        logger.info(String.format("Running in %s mode...", modelBackend));
         switch (modelBackend) {
             case JAVA_BGMM:
                 Utils.validateArg(pythonScriptFile == null,
                         "Python script should not be provided when using JAVA_BGMM backend.");
-                logger.info("Running in JAVA_BGMM mode...");
                 snpScorer = deserializeScorerFromSerFiles(VariantType.SNP);
                 indelScorer = deserializeScorerFromSerFiles(VariantType.INDEL);
                 break;
@@ -386,13 +386,11 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
                 PythonScriptExecutor.checkPythonEnvironmentForPackage("numpy");
                 PythonScriptExecutor.checkPythonEnvironmentForPackage("sklearn");
                 PythonScriptExecutor.checkPythonEnvironmentForPackage("dill");
-                logger.info("Running in PYTHON_IFOREST mode...");
                 snpScorer = deserializeScorerFromPklFiles(VariantType.SNP);
                 indelScorer = deserializeScorerFromPklFiles(VariantType.INDEL);
                 break;
             case PYTHON_SCRIPT:
                 IOUtils.canReadFile(pythonScriptFile);
-                logger.info("Running in PYTHON_SCRIPT mode...");
                 snpScorer = deserializeScorerFromPklFiles(VariantType.SNP);
                 indelScorer = deserializeScorerFromPklFiles(VariantType.INDEL);
                 break;
@@ -456,7 +454,6 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
     @Override
     protected void afterNthPass(final int n) {
         if (n == 0) {
-            // TODO if BGMM, preprocess annotations and write to HDF5 with BGMMVariantAnnotationsScorer.preprocessAnnotationsWithBGMMAndWriteHDF5
             writeAnnotationsToHDF5();
             if (data.size() > 0) {
                 data.clear();
@@ -485,15 +482,9 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
     private VariantAnnotationsScorer deserializeScorerFromPklFiles(final VariantType variantType) {
         final String variantTypeTag = '.' + variantType.toString().toLowerCase();
         final File scorerPklFile = new File(
-                modelPrefix + variantTypeTag + PythonSklearnVariantAnnotationsScorer.PYTHON_SCORER_PKL_SUFFIX);
-        final File negativeScorerPklFile = new File(
-                modelPrefix + variantTypeTag + TrainVariantAnnotationsModel.NEGATIVE_TAG + PythonSklearnVariantAnnotationsScorer.PYTHON_SCORER_PKL_SUFFIX);
+                modelPrefix + variantTypeTag + PythonVariantAnnotationsScorer.PYTHON_SCORER_PKL_SUFFIX);
         return scorerPklFile.canRead()
-                ? negativeScorerPklFile.canRead()
-                ? VariantAnnotationsScorer.combinePositiveAndNegativeScorer(
-                new PythonSklearnVariantAnnotationsScorer(pythonScriptFile, scorerPklFile),
-                new PythonSklearnVariantAnnotationsScorer(pythonScriptFile, negativeScorerPklFile))
-                : new PythonSklearnVariantAnnotationsScorer(pythonScriptFile, scorerPklFile)
+                ? new PythonVariantAnnotationsScorer(pythonScriptFile, scorerPklFile)
                 : null;
     }
 
@@ -501,14 +492,8 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
         final String variantTypeTag = '.' + variantType.toString().toLowerCase();
         final File scorerSerFile = new File(
                 modelPrefix + variantTypeTag + BGMMVariantAnnotationsScorer.BGMM_SCORER_SER_SUFFIX);
-        final File negativeScorerSerFile = new File(
-                modelPrefix + variantTypeTag + TrainVariantAnnotationsModel.NEGATIVE_TAG + BGMMVariantAnnotationsScorer.BGMM_SCORER_SER_SUFFIX);
         return scorerSerFile.canRead()
-                ? negativeScorerSerFile.canRead()
-                ? VariantAnnotationsScorer.combinePositiveAndNegativeScorer(
-                BGMMVariantAnnotationsScorer.deserialize(scorerSerFile),
-                BGMMVariantAnnotationsScorer.deserialize(negativeScorerSerFile))
-                : BGMMVariantAnnotationsScorer.deserialize(scorerSerFile)
+                ? BGMMVariantAnnotationsScorer.deserialize(scorerSerFile)
                 : null;
     }
 
