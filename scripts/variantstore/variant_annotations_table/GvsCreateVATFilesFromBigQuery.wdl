@@ -47,7 +47,7 @@ workflow GvsCreateVATFilesFromBigQuery {
             contig_array = contig_array,
             output_path = output_path,
             merge_vcfs_disk_size_override = merge_vcfs_disk_size_override,
-            cloud_sdk_docker = effective_cloud_sdk_docker,
+            cloud_sdk_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-slim",     # TODO - Miguel! needed apt-get in this docker!
     }
 
     output {
