@@ -2,7 +2,7 @@ version 1.0
 
 import "../wdl/GvsUtils.wdl" as Utils
 
-# Hello!!
+# Hello!!!
 
 workflow GvsCreateVATFilesFromBigQuery {
     input {
@@ -72,7 +72,7 @@ task BigQueryExportVat {
         String cloud_sdk_docker
     }
 
-    String export_path = output_path + "export/" + contig + "/*.tsv.gz"
+    String export_path = output_path + "export/" + contig + "/*.tsv"
 
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
