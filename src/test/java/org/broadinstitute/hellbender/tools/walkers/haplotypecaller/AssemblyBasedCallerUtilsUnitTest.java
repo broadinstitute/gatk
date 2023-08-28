@@ -1309,28 +1309,37 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
             put(new Kmer("GAA"), 1);
         }};
 
+        final List<Haplotype> bigHaplotypeList = Arrays.asList(hapA,hapB,hapB,hapB,hapB,hapB,hapC,hapD,hapF,hapF,hapF,hapF,hapF,hapF);
+
+        // NOTE: we limit the number of haplotypes that are returned by the `numPileupHaplotypes` parameter.
 
         Object[][] tests = new Object[][] {
                 new Object[]{Arrays.asList(hapA,hapB,hapC,hapD),flatSupportAllKmers,5,3,Arrays.asList(hapA,hapB,hapC,hapD)}, //returns all when no filtering required
+
                 // These haplotypes are all equivalent, these test stability of the filtering
-                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD),flatSupportAllKmers,1,3,Arrays.asList(hapA,hapB,hapC,hapD)},
-                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD),flatSupportAllKmers,2,3,Arrays.asList(hapA,hapB,hapC,hapD)},
-                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD),flatSupportAllKmers,3,3,Arrays.asList(hapA,hapB,hapC,hapD)},
+                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD),flatSupportAllKmers,1,3, List.of(hapD) },
+                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD),flatSupportAllKmers,2,3,Arrays.asList(hapA,hapD)},
+                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD),flatSupportAllKmers,3,3,Arrays.asList(hapA,hapC,hapD)},
+                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD),flatSupportAllKmers,4,3,Arrays.asList(hapA,hapB,hapC,hapD)},
 
                 // Repetitive kmers in hapF don't get double counted
-                new Object[]{Arrays.asList(hapA,hapB,hapD,hapF),hapFRepeatedKmers,2,3,Arrays.asList(hapF,hapD)},
-                new Object[]{Arrays.asList(hapA,hapB,hapD,hapF),hapFRepeatedKmers,1,3,Arrays.asList(hapF, hapD)}, //currently repeated kmers only count as singular evidence
+                new Object[]{Arrays.asList(hapA,hapB,hapD,hapF),hapFRepeatedKmers,2,3,Arrays.asList(hapF, hapD)},
+                new Object[]{Arrays.asList(hapA,hapB,hapD,hapF),hapFRepeatedKmers,1,3, List.of(hapD) }, //currently repeated kmers only count as singular evidence
 
                 // These tests demonstrate that the weights in the map don't matter
-                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD),hapDKmersHighSupport,1,3,Arrays.asList(hapA,hapB,hapC,hapD)},
-                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD),hapDKmersHighSupport,2,3,Arrays.asList(hapA,hapB,hapC,hapD)},
-                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD),hapDKmersHighSupport,3,3,Arrays.asList(hapA,hapB,hapC,hapD)}, // Despite hapD having good support it is not weighted higher
+                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD),hapDKmersHighSupport,1,3, List.of(hapD) },
+                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD),hapDKmersHighSupport,2,3,Arrays.asList(hapA,hapD)},
+                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD),hapDKmersHighSupport,3,3,Arrays.asList(hapA,hapC,hapD)}, // Despite hapD having good support it is not weighted higher
 
                 // Test of the output when only one hap has support
-                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD,hapF),hapDKmers,1,3,Arrays.asList(hapD)},
-                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD,hapF),hapDKmers,2,3,Arrays.asList(hapD,hapA, hapC)},
+                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD,hapF),hapDKmers,1,3, List.of(hapD) },
+                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD,hapF),hapDKmers,2,3,Arrays.asList(hapD,hapA)},
                 new Object[]{Arrays.asList(hapA,hapB,hapC,hapD,hapF),hapDKmers,3,3,Arrays.asList(hapD,hapA,hapC)},
-                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD,hapF),hapDKmers,4,3,Arrays.asList(hapD,hapA,hapC,hapB,hapF)},
+                new Object[]{Arrays.asList(hapA,hapB,hapC,hapD,hapF),hapDKmers,4,3,Arrays.asList(hapD,hapA,hapC,hapB)},
+
+                // Test of when there are a LOT of haplotypes and we want to limit the number returned:
+                new Object[]{bigHaplotypeList, hapDKmers, 1, 3, List.of(hapD)},
+                new Object[]{bigHaplotypeList, hapDKmers, 2, 3, List.of(hapA, hapD)},
         };
 
         return tests;
@@ -1345,7 +1354,8 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
                                            final List<Haplotype> expected) {
         final Map<Kmer, MutableInt> counts = kmerReadCounts.entrySet().stream()
                 .collect(Collectors.toMap(entry -> entry.getKey(), entry -> new MutableInt(entry.getValue())));
-        Set<Haplotype> actual = AssemblyBasedCallerUtils.filterPileupHaplotypes(new HashSet<>(inputHaplotypes), counts, numPileupHaplotypes, kmerSize);
+
+        final Set<Haplotype> actual = AssemblyBasedCallerUtils.filterPileupHaplotypes(new HashSet<>(inputHaplotypes), counts, numPileupHaplotypes, kmerSize);
 
         Assert.assertEquals(actual, new HashSet<>(expected));
     }
