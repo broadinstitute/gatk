@@ -2,7 +2,7 @@ version 1.0
 
 import "../wdl/GvsUtils.wdl" as Utils
 
-# Hello!!!
+# Hello!!!?
 
 workflow GvsCreateVATFilesFromBigQuery {
     input {
@@ -286,7 +286,7 @@ task MergeVatTSVs {
         echo_date "bgzipping concatenated file"
         bgzip vat_complete.tsv
         echo_date "copying bgzipped file to ~{output_path}"
-        gcloud storage cp vat_complete.bgz ~{output_path}
+        gcloud storage cp vat_complete.tsv.bgz ~{output_path}
     >>>
     # ------------------------------------------------
     # Runtime settings:
