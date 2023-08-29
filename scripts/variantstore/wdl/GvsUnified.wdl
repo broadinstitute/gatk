@@ -62,7 +62,7 @@ workflow GvsUnified {
         # Begin GvsExtractCallset
         Int? extract_scatter_count
 
-        File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
+        File interval_weights_bed = "gs://gvs_quickstart_storage/weights/gvs_full_vet_weights_1kb_padded.bed"
 
         String extract_output_file_base_name = sub(filter_set_name, " ", "-")
 
