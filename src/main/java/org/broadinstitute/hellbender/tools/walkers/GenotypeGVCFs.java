@@ -9,6 +9,8 @@ import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationPluginDescriptor;
+import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.DbsnpArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
@@ -17,18 +19,22 @@ import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantLocusWalker;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBArgumentCollection;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBImport;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBOptions;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StandardAnnotation;
+import org.broadinstitute.hellbender.tools.walkers.annotator.StrandBiasBySample;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.mutect.M2ArgumentCollection;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
+import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.ReducibleAnnotation;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Perform joint genotyping on one or more samples pre-called with HaplotypeCaller
@@ -130,7 +136,6 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     doc = "LOD threshold to emit variant to VCF.")
     protected double tlodThreshold = 3.5;  //allow for some lower quality variants
 
-
     /**
      * Margin of error in allele fraction to consider a somatic variant homoplasmic, i.e. if there is less than a 0.1% reference allele fraction, those reads are likely errors
      */
@@ -138,9 +143,10 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     protected double afTolerance = 1e-3;  //based on Q30 as a "good" base quality score
 
     /**
-     * If specified, keep the combined raw annotations (e.g. AS_SB_TABLE) after genotyping.  This is applicable to Allele-Specific annotations
+     * If specified, keep all the combined raw annotations (e.g. AS_SB_TABLE) after genotyping.  This is applicable to Allele-Specific annotations. See {@link ReducibleAnnotation}
      */
-    @Argument(fullName=KEEP_COMBINED_LONG_NAME, shortName = KEEP_COMBINED_SHORT_NAME, doc = "If specified, keep the combined raw annotations")
+    @Argument(fullName=KEEP_COMBINED_LONG_NAME, shortName = KEEP_COMBINED_SHORT_NAME, doc = "If specified, keep the combined raw annotations",
+            mutex = {GenotypeGVCFsAnnotationArgumentCollection.KEEP_SPECIFIED_RAW_COMBINED_ANNOTATION_LONG_NAME})
     protected boolean keepCombined = false;
 
     @ArgumentCollection
@@ -169,6 +175,9 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
      */
     @ArgumentCollection
     private final DbsnpArgumentCollection dbsnp = new DbsnpArgumentCollection();
+
+    // @ArgumentCollection deliberately omitted since this is passed to the annotation plugin
+    final GenotypeGVCFsAnnotationArgumentCollection genotypeGVCFsAnnotationArgs = new GenotypeGVCFsAnnotationArgumentCollection();
 
     // the annotation engine
     private VariantAnnotatorEngine annotationEngine;
@@ -209,6 +218,8 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
     @Override
     protected GenomicsDBOptions getGenomicsDBOptions() {
         if (genomicsDBOptions == null) {
+            //extract called genotypes so hom refs with no PLs aren't ambiguous
+            genomicsdbArgs.callGenotypes = true;
             genomicsDBOptions = new GenomicsDBOptions(referenceArguments.getReferencePath(), genomicsdbArgs, genotypeArgs);
         }
         return genomicsDBOptions;
@@ -216,6 +227,16 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
 
     @Override
     public boolean useVariantAnnotations() { return true;}
+
+    @Override
+    public List<? extends CommandLinePluginDescriptor<?>> getPluginDescriptors() {
+        GATKReadFilterPluginDescriptor readFilterDescriptor = new GATKReadFilterPluginDescriptor(getDefaultReadFilters());
+        return useVariantAnnotations()?
+                Arrays.asList(readFilterDescriptor, new GATKAnnotationPluginDescriptor(
+                        genotypeGVCFsAnnotationArgs,
+                        getDefaultVariantAnnotations(), getDefaultVariantAnnotationGroups())):
+                Collections.singletonList(readFilterDescriptor);
+    }
 
     @Override
     public List<Class<? extends Annotation>> getDefaultVariantAnnotationGroups() {
@@ -257,20 +278,34 @@ public final class GenotypeGVCFs extends VariantLocusWalker {
         intervals = hasUserSuppliedIntervals() ? intervalArgumentCollection.getIntervals(getBestAvailableSequenceDictionary()) :
                 Collections.emptyList();
 
-        annotationEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), dbsnp.dbsnp, Collections.emptyList(), false, keepCombined);
+        final Collection<Annotation>  variantAnnotations = makeVariantAnnotations();
+        final Set<Annotation> annotationsToKeep = getAnnotationsToKeep();
+        annotationEngine = new VariantAnnotatorEngine(variantAnnotations, dbsnp.dbsnp, Collections.emptyList(), false, keepCombined, annotationsToKeep);
 
-        merger = new ReferenceConfidenceVariantContextMerger(annotationEngine, getHeaderForVariants(), somaticInput);
+        merger = new ReferenceConfidenceVariantContextMerger(annotationEngine, getHeaderForVariants(), somaticInput, false, true);
 
         //methods that cannot be called in engine bc its protected
         Set<VCFHeaderLine> defaultToolVCFHeaderLines = getDefaultToolVCFHeaderLines();
         vcfWriter = createVCFWriter(outputFile);
 
         //create engine object
-        gvcfEngine = new GenotypeGVCFsEngine(annotationEngine, genotypeArgs, includeNonVariants, inputVCFHeader);
+        final boolean   keepSB = variantAnnotations.stream().map(a -> a.getClass().getSimpleName()).collect(Collectors.toList()).contains(StrandBiasBySample.class.getSimpleName());
+        gvcfEngine = new GenotypeGVCFsEngine(annotationEngine, genotypeArgs, includeNonVariants, inputVCFHeader, keepSB);
 
         //call initialize method in engine class that creates VCFWriter object and writes a header to it
         vcfWriter = gvcfEngine.setupVCFWriter(defaultToolVCFHeaderLines, keepCombined, dbsnp, vcfWriter);
 
+    }
+
+    private Set<Annotation> getAnnotationsToKeep() {
+        final GATKAnnotationPluginDescriptor pluginDescriptor = getCommandLineParser().getPluginDescriptor(GATKAnnotationPluginDescriptor.class);
+        final List<String> annotationStringsToKeep = genotypeGVCFsAnnotationArgs.getKeepSpecifiedCombinedAnnotationNames();
+        final Map<String, Annotation> resolvedInstancesMap = pluginDescriptor.getResolvedInstancesMap();
+        return annotationStringsToKeep.stream()
+                .peek(s -> {Annotation a = resolvedInstancesMap.get(s); if (a == null)
+                    throw new UserException("Requested --" + GenotypeGVCFsAnnotationArgumentCollection.KEEP_SPECIFIED_RAW_COMBINED_ANNOTATION_LONG_NAME + ": " + s + " was not found in annotation list. Was it excluded with --" + StandardArgumentDefinitions.ANNOTATIONS_TO_EXCLUDE_LONG_NAME + " or not provided with --" + StandardArgumentDefinitions.ANNOTATION_LONG_NAME + "?"); })
+                .map(resolvedInstancesMap::get)
+                .collect(Collectors.toSet());
     }
 
     @Override

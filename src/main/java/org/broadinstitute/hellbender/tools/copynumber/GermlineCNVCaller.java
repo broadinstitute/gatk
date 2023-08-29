@@ -5,13 +5,18 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.barclay.argparser.CommandLineArgumentParser;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OptionalIntervalArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.copynumber.arguments.*;
+import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
+import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
+import org.broadinstitute.hellbender.tools.copynumber.arguments.GermlineCNVHybridADVIArgumentCollection;
+import org.broadinstitute.hellbender.tools.copynumber.arguments.GermlineCallingArgumentCollection;
+import org.broadinstitute.hellbender.tools.copynumber.arguments.GermlineDenoisingModelArgumentCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AnnotatedIntervalCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleIntervalCollection;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -72,6 +77,9 @@ import static org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumbe
  * diverges the second time we suggest checking if input count or karyotype values or other inputs are abnormal
  * (an example of abnormality is a count file containing mostly zeros). </p>
  *
+ * <p> More details about the model and inference procedure can be found in the white paper
+ * https://github.com/broadinstitute/gatk/blob/master/docs/CNV/germline-cnv-caller-model.pdf</p>
+ * 
  * <h3>Python environment setup</h3>
  *
  * <p>The computation done by this tool, aside from input data parsing and validation, is performed outside of the Java
@@ -81,13 +89,42 @@ import static org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumbe
  * the python environment is already set up. Otherwise, the environment must be created and activated as described in the
  * main GATK README.md file.</p>
  *
+ * <p>OpenMP and MKL parallelism can be controlled by setting the <code>OMP_NUM_THREADS</code> and <code>MKL_NUM_THREADS</code>
+ * environment variables, respectively.</p>
+ *
  * <p>Advanced users may wish to set the <code>THEANO_FLAGS</code> environment variable to override the GATK theano
  * configuration. For example, by running
  * <code>THEANO_FLAGS="base_compiledir=PATH/TO/BASE_COMPILEDIR" gatk GermlineCNVCaller ...</code>, users can specify
  * the theano compilation directory (which is set to <code>$HOME/.theano</code> by default).  See theano documentation
- * at <a href="http://deeplearning.net/software/theano/library/config.html">
- *     http://deeplearning.net/software/theano/library/config.html</a>.
+ * at <a href="https://theano-pymc.readthedocs.io/en/latest/library/config.html">
+ *     https://theano-pymc.readthedocs.io/en/latest/library/config.html</a>.
  * </p>
+ *
+ * <h3>Resource usage</h3>
+ *
+ * <p>Runtime and memory usage for {@link GermlineCNVCaller} can be impacted by (1) the number of input samples, (2) the
+ * number of intervals, (3) the highest allowed copy-number state (set using the {@code max-copy-number} argument),
+ * (4) the number of bias factors (set using the {@code max-bias-factors} argument), and convergence criteria.</p>
+ *
+ * <p>We recommend running {@link GermlineCNVCaller} in COHORT mode for approximately 200 samples at a time, processing
+ * between 5k to 12.5k intervals, and {@code max-copy-number} set to 5 across all analyses. For 200 samples and
+ * 5k intervals, approximately 16GB of memory should be enough to optimize memory usage; for the same
+ * analysis at 12.5k intervals, we recommend 32GB of memory. Runtimes are on the order of a few hours.</p>
+ *
+ * <p>Note that {@link GermlineCNVCaller} can be run on larger interval sets by scattering them into smaller "shards."
+ * The shards can subsequently be merged together by {@link PostprocessGermlineCNVCalls} tool. In cloud
+ * and HPC environments, the tool can then process each shard in parallel within a single job.</p>
+ *
+ * <p>By default, {@link GermlineCNVCaller} will attempt to use all CPU cores accessible to it within the runtime
+ * environment. Two environment variables - <code>MKL_NUM_THREADS</code> and <code>OMP_NUM_THREADS</code> - control the
+ * parallelism of the underlying linear algebra libraries.</p>
+ *
+ * <p>Runtime is also affected by how fast the inference procedure converges. There are multiple tool arguments that can
+ * be used to set convergence criteria that could speed up this convergence, including but not limited to
+ * {@code caller-update-convergence-threshold}, {@code convergence-snr-averaging-window},
+ * {@code convergence-snr-countdown-window}, and {@code convergence-snr-trigger-threshold}. However, modifying these
+ * arguments from the default settings might affect the final results, so please exercise caution if
+ * including any of these arguments.</p>
  *
  * <h3>Tool run modes</h3>
  * <dl>
@@ -117,9 +154,12 @@ import static org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumbe
  *     <dt>CASE mode:</dt>
  *     <dd><p>The tool will be run in CASE mode using the argument {@code run-mode CASE}. The path to a previously
  *     obtained model directory must be provided via the {@code model} argument in this mode. The modeled intervals are
- *     then specified by a file contained in the model directory, all interval-related arguments are ignored in this
- *     mode, and all model intervals must be present in all of the input count files. The tool output in CASE mode
- *     is only the "-calls" subdirectory and is organized similarly to that in COHORT mode.</p>
+ *     then specified by a file contained in the model directory, and all model intervals must be present in all of the
+ *     input count files. All interval-related arguments (e.g. {@code interval-psi-scale}) are redundant in this mode
+ *     and will trigger an exception if provided. However, an advanced user can adjust various sample-related
+ *     (e.g. {@code sample-psi-scale}) and global (e.g. {@code p_alt}) arguments for custom applications of the tool.
+ *     Inference-related arguments (e.g. {@code min_training_epochs}) can be adjusted as well. The tool output in CASE
+ *     mode is only the "-calls" subdirectory and is organized similarly to that in COHORT mode.</p>
  *
  *      <p>Note that at the moment, this tool does not automatically verify the compatibility of the provided parametrization
  *      with the provided count files. Model compatibility may be assessed a posteriori by inspecting the magnitude of
@@ -355,8 +395,9 @@ public final class GermlineCNVCaller extends CommandLineProgram {
     }
 
     private void validateArguments() {
-        germlineCallingArgumentCollection.validate();
-        germlineDenoisingModelArgumentCollection.validate();
+        final CommandLineArgumentParser clpParser = (CommandLineArgumentParser) getCommandLineParser();
+        germlineCallingArgumentCollection.validate(clpParser, runMode);
+        germlineDenoisingModelArgumentCollection.validate(clpParser, runMode);
         germlineCNVHybridADVIArgumentCollection.validate();
 
         Utils.validateArg(inputReadCountPaths.size() == new HashSet<>(inputReadCountPaths).size(),
@@ -399,7 +440,7 @@ public final class GermlineCNVCaller extends CommandLineProgram {
             }
         }
 
-        if (runMode.equals(RunMode.COHORT)) {
+        if (runMode == RunMode.COHORT) {
             logger.info("Running the tool in COHORT mode...");
             Utils.validateArg(inputReadCountPaths.size() > 1, "At least two samples must be provided in " +
                     "COHORT mode.");
@@ -427,7 +468,8 @@ public final class GermlineCNVCaller extends CommandLineProgram {
         final List<File> intervalSubsetReadCountFiles = new ArrayList<>(inputReadCountPaths.size());
         streamOfSubsettedAndValidatedReadCounts(inputReadCountPaths, specifiedIntervals, logger)
                 .forEach(subsetReadCounts -> {
-                    final File intervalSubsetReadCountFile = IOUtils.createTempFile(subsetReadCounts.getMetadata().getSampleName(), ".tsv");
+                    final File intervalSubsetReadCountFile = IOUtils.createTempFile(
+                            subsetReadCounts.getMetadata().getSampleName() + ".rc", ".tsv"); // we add ".rc" to ensure prefix will be >= 3 characters, see https://github.com/broadinstitute/gatk/issues/7410
                     subsetReadCounts.write(intervalSubsetReadCountFile);
                     intervalSubsetReadCountFiles.add(intervalSubsetReadCountFile);
                 });

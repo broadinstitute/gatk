@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.funcotator.vcfOutput;
 
-import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
@@ -281,7 +280,7 @@ public class VcfOutputRenderer extends OutputRenderer {
 
         // Add in the lines about Funcotations:
         headerLines.addAll(defaultToolVcfHeaderLines);
-        headerLines.add(new VCFHeaderLine("Funcotator Version", toolVersion + " | " + getDataSourceInfoString()));
+        headerLines.add(new VCFHeaderLine(FuncotatorConstants.FUNCOTATOR_VERSION_VCF_HEADERLINE_KEY, toolVersion + " | " + getDataSourceInfoString()));
         headerLines.add(new VCFInfoHeaderLine(FUNCOTATOR_VCF_FIELD_NAME, VCFHeaderLineCount.A,
                 VCFHeaderLineType.String, "Functional annotation from the Funcotator tool.  Funcotation fields are"
                 + DESCRIPTION_PREAMBLE_DELIMITER +

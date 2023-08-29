@@ -205,9 +205,7 @@ public class CNNScoreVariants extends TwoPassVariantWalker {
     @Argument(fullName = "python-profile", shortName = "python-profile", doc = "Run the tool with the Python CProfiler on and write results to this file.", optional = true)
     private File pythonProfileResults;
 
-    // Create the Python executor. This doesn't actually start the Python process, but verifies that
-    // the requestedPython executable exists and can be located.
-    final StreamingPythonScriptExecutor<String> pythonExecutor = new StreamingPythonScriptExecutor<>(true);
+    private StreamingPythonScriptExecutor<String> pythonExecutor;
 
     private List<String> batchList = new ArrayList<>(inferenceBatchSize);
 
@@ -283,6 +281,10 @@ public class CNNScoreVariants extends TwoPassVariantWalker {
                 throw new UserException.HardwareFeatureException(String.format(CNNScoreVariants.AVXREQUIRED_ERROR, DISABLE_AVX_CHECK_NAME));
             }
         }
+
+        // Create the Python executor. This doesn't actually start the Python process, but verifies that
+        // the requestedPython executable exists and can be located.
+        pythonExecutor = new StreamingPythonScriptExecutor<>(true);
 
         final VCFHeader inputHeader = getHeaderForVariants();
         if (inputHeader.getGenotypeSamples().size() > 1) {

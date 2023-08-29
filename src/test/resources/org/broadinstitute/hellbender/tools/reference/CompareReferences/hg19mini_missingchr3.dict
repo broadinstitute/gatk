@@ -1,0 +1,4 @@
+@HD	VN:1.6
+@SQ	SN:1	LN:16000	M5:8c0c38e352d8f3309eabe4845456f274	UR:file:/Users/ocohen/workingcode/gatk/src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini_missingchr3.fasta
+@SQ	SN:2	LN:16000	M5:5f8388fe3fb34aa38375ae6cf5e45b89	UR:file:/Users/ocohen/workingcode/gatk/src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini_missingchr3.fasta
+@SQ	SN:4	LN:16000	M5:7d397ee919e379328d8f52c57a54c778	UR:file:/Users/ocohen/workingcode/gatk/src/test/resources/org/broadinstitute/hellbender/tools/reference/CompareReferences/hg19mini_missingchr3.fasta

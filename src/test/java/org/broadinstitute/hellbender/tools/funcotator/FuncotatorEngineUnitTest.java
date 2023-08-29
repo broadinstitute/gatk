@@ -64,7 +64,8 @@ public class FuncotatorEngineUnitTest extends GATKBaseTest {
                                 FuncotatorArgumentDefinitions.LOOKAHEAD_CACHE_IN_BP_DEFAULT_VALUE,
                                 new FlankSettings(0, 0),
                                 false,
-                                FuncotatorUtils.DEFAULT_MIN_NUM_BASES_FOR_VALID_SEGMENT)
+                                FuncotatorUtils.DEFAULT_MIN_NUM_BASES_FOR_VALID_SEGMENT,
+                                FuncotatorUtils.DEFAULT_SPLICE_SITE_WINDOW_SIZE)
                 );
 
         for (int i = 0; i < entireVcf.getRight().size(); i++) {

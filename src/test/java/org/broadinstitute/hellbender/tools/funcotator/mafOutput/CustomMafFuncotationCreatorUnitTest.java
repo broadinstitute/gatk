@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.tools.funcotator.DataSourceFuncotationFactory;
 import org.broadinstitute.hellbender.tools.funcotator.Funcotation;
+import org.broadinstitute.hellbender.tools.funcotator.FuncotatorConstants;
 import org.broadinstitute.hellbender.tools.funcotator.FuncotatorTestConstants;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.TableFuncotation;
 import org.broadinstitute.hellbender.tools.funcotator.dataSources.vcf.VcfFuncotationFactory;
@@ -61,7 +62,7 @@ public class CustomMafFuncotationCreatorUnitTest extends GATKBaseTest {
                         )
                         .make(),
                         Collections.singletonList(new TumorNormalPair("T1", "N1")),
-                        ImmutableMap.of(Allele.create("T", false), Arrays.asList("2", "10", "0", "20", "0.166"))
+                        ImmutableMap.of(Allele.create("T", false), Arrays.asList("A", "T", "2", "10", "0", "20", "0.166"))
                 },{new VariantContextBuilder("foo", "3", 1000000, 1000000, Arrays.asList(Allele.create("A", true), Allele.create("T", false)))
                     .genotypes(
                             Arrays.asList(
@@ -73,7 +74,7 @@ public class CustomMafFuncotationCreatorUnitTest extends GATKBaseTest {
                             )
                     .make(),
                     Collections.singletonList(new TumorNormalPair("T1", "")),
-                    ImmutableMap.of(Allele.create("T", false), Arrays.asList("2", "10", "", "", "0.166"))
+                    ImmutableMap.of(Allele.create("T", false), Arrays.asList(FuncotatorConstants.UNKNOWN_VALUE_STRING, FuncotatorConstants.UNKNOWN_VALUE_STRING, "2", "10", "", "", "0.166"))
                 },
                 {new VariantContextBuilder("foo", "3", 1000000, 1000000, Arrays.asList(Allele.create("A", true), Allele.create("T", false), Allele.create("AT", false)))
                         .genotypes(
@@ -89,8 +90,8 @@ public class CustomMafFuncotationCreatorUnitTest extends GATKBaseTest {
                         )
                         .make(),
                         Collections.singletonList(new TumorNormalPair("T1", "N1")),
-                        ImmutableMap.of(Allele.create("T", false), Arrays.asList("2", "10", "0", "20", "0.166"),
-                                Allele.create("AT", false), Arrays.asList("4", "10", "1", "20", "0.32"))
+                        ImmutableMap.of(Allele.create("T", false), Arrays.asList("A", "T", "2", "10", "0", "20", "0.166"),
+                                Allele.create("AT", false), Arrays.asList("A", "T", "4", "10", "1", "20", "0.32"))
                 },
 
                 // Test when we have no recognizable pairs that the fields are generated but empty.
@@ -108,8 +109,8 @@ public class CustomMafFuncotationCreatorUnitTest extends GATKBaseTest {
                         )
                         .make(),
                         Collections.emptyList(),
-                        ImmutableMap.of(Allele.create("T", false), Collections.nCopies(CustomMafFuncotationCreator.COUNT_FIELD_NAMES.size(), ""),
-                                Allele.create("AT", false), Collections.nCopies(CustomMafFuncotationCreator.COUNT_FIELD_NAMES.size(), ""))
+                        ImmutableMap.of(Allele.create("T", false), Arrays.asList(FuncotatorConstants.UNKNOWN_VALUE_STRING, FuncotatorConstants.UNKNOWN_VALUE_STRING, "", "", "", "",""),
+                                Allele.create("AT", false),  Arrays.asList(FuncotatorConstants.UNKNOWN_VALUE_STRING, FuncotatorConstants.UNKNOWN_VALUE_STRING, "", "", "", "",""))
                 }
 
         };

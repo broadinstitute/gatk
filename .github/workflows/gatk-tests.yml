@@ -4,12 +4,10 @@ on:
     branches:
       - 'master'
   pull_request:
-    paths-ignore:
-      - 'scripts/variantstore/**'
   workflow_dispatch:
 
 env:
-  CROMWELL_VERSION: 51
+  CROMWELL_VERSION: 84
   TERM: dumb
   GRADLE_OPTS: "-Xmx2048m -Dorg.gradle.daemon=false"
   HELLBENDER_TEST_INPUTS: gs://hellbender/test/resources/
@@ -34,7 +32,7 @@ jobs:
         env:
           GCP_CREDENTIALS: ${{ secrets.GCP_CREDENTIALS }}
         if: "${{ env.GCP_CREDENTIALS != '' }}"
-        run: echo "::set-output name=defined::true"
+        run: echo defined=true >> $GITHUB_OUTPUT
 
 
   buildDocker:
@@ -42,29 +40,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout gatk
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
+
+      - uses: ./.github/actions/purge-runner-disk
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
+        uses: docker/metadata-action@v4
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=${{github.sha}}
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
+        uses: docker/setup-buildx-action@v2
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
+        uses: docker/build-push-action@v4
         with:
           context: .
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           outputs: type=docker,dest=/tmp/myimage.tar
       # By uploading the docker image as an artifact we save ourselves the requirement for the image to be built with ghcr push permission
-      - name: Upload docker image as artifact
-        uses: actions/upload-artifact@v2
+      - name: Upload docker image as artifact 
+        uses: actions/upload-artifact@v3
         with:
           name: gatkDockerImage
           path: /tmp/myimage.tar
@@ -75,19 +75,10 @@ jobs:
     needs: check-secrets
     strategy:
       matrix:
-        java: [ 8, 11 ]
+        java: [ 17.0.6+10 ]
         experimental: [ false ]
-        scalaVersion: [ 2.11, 2.12 ]
+        scalaVersion: [ 2.13 ]
         testType: [ cloud, integration, unit ]
-        exclude:
-          - java: 11
-            scalaVersion: 2.11
-          - java: 8
-            scalaVersion: 2.12
-          - java: 8
-            testType: integration
-          - java: 8
-            testType: unit
       fail-fast: false
     continue-on-error: ${{ matrix.experimental }}
     env:
@@ -95,14 +86,15 @@ jobs:
       SCALA_VERSION: ${{ matrix.scalaVersion }}
     name: Java ${{ matrix.Java }} build and test ${{ matrix.testType }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0
+      - uses: ./.github/actions/purge-runner-disk
       - name: 'Set up java ${{ matrix.Java }}'
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           java-version: ${{ matrix.Java }}
-          distribution: 'adopt'
+          distribution: 'temurin'
           cache: gradle
 
       - name: 'Compile with Gradle'
@@ -136,7 +128,7 @@ jobs:
         if: ${{ needs.check-secrets.outputs.google-credentials == 'true' || matrix.testType != 'cloud'}}
         id: jacoco-tests
         run: |
-          ./gradlew -Dscala.version=${{ env.SCALA_VERSION }} jacocoTestReport
+          ./gradlew --daemon -Dscala.version=${{ env.SCALA_VERSION }} jacocoTestReport
 
       - uses: ./.github/actions/upload-gatk-test-results
         if: always()
@@ -156,9 +148,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        java: [ 8 ]
+        java: [ 17.0.6+10 ]
         experimental: [ false ]
-        scalaVersion: [ 2.11 ]
+        scalaVersion: [ 2.13 ]
         testType: [ integration, unit, variantcalling, conda ]
       fail-fast: false
     continue-on-error: ${{ matrix.experimental }}
@@ -168,21 +160,17 @@ jobs:
 
     name: Java ${{ matrix.Java }} test on docker ${{matrix.testType}}
     steps:
-       #Reclaim some disk space on the runner to prevent the WDL tasks from running out of space on the docker.
-       #https://stackoverflow.com/questions/75536771/github-runner-out-of-disk-space-after-building-docker-image
-      - name: Reclaim some runner disk space
-        run: |
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 0 #TODO make this shallow
 
+      - uses: ./.github/actions/purge-runner-disk
+
       - name: 'Set up java ${{ matrix.Java }}'
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           java-version: ${{ matrix.Java }}
-          distribution: 'adopt'
+          distribution: 'temurin'
           cache: gradle
 
       #Google Cloud stuff
@@ -216,7 +204,7 @@ jobs:
           cp scripts/docker/dockertest.gradle .
 
       - name: Download docker image artifact
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: gatkDockerImage
           path: /tmp
@@ -264,9 +252,16 @@ jobs:
     runs-on: ubuntu-latest
     name: Validate script WDLs using womtools
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
-          fetch: 0
+          fetch-depth: 0
+      - uses: ./.github/actions/purge-runner-disk
+      - name: Set up java 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
       - uses: ./.github/actions/install-cromwell
         with:
           CROMWELL_VERSION: ${{ env.CROMWELL_VERSION }}
@@ -278,14 +273,15 @@ jobs:
     runs-on: ubuntu-latest
     name: Validate generated WDLs using womtools
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
-          fetch: 0
-      - name: Set up java 8
-        uses: actions/setup-java@v2
+          fetch-depth: 0
+      - uses: ./.github/actions/purge-runner-disk
+      - name: Set up java 17
+        uses: actions/setup-java@v3
         with:
-          java-version: '8'
-          distribution: 'adopt'
+          java-version: '17'
+          distribution: 'temurin'
           cache: gradle
       - uses: ./.github/actions/install-cromwell
         with:
@@ -303,22 +299,17 @@ jobs:
     continue-on-error: true
     name: WDL test ${{ matrix.wdlTest }} on cromwell
     steps:
-      #Reclaim some disk space on the runner to prevent the WDL tasks from running out of space on the docker.
-      #https://stackoverflow.com/questions/75536771/github-runner-out-of-disk-space-after-building-docker-image
-      - name: Reclaim some runner disk space
-        run: |
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
+      - uses: ./.github/actions/purge-runner-disk
       - name: pull lfs files
         run: git lfs pull
-      - name: Set up java 8
-        uses: actions/setup-java@v2
+      - name: Set up java 17
+        uses: actions/setup-java@v3
         with:
-          java-version: '8'
-          distribution: 'adopt'
+          java-version: '17'
+          distribution: 'temurin'
           cache: gradle
       - uses: ./.github/actions/install-cromwell
         with:

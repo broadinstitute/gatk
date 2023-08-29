@@ -33,9 +33,6 @@ public class BaseQuality extends PerAlleleAnnotation implements StandardMutectAn
     protected String getVcfKey() { return GATKVCFConstants.MEDIAN_BASE_QUALITY_KEY; }
 
     @Override
-    protected String getDescription() { return "median base quality"; }
-
-    @Override
     protected boolean includeRefAllele() { return true; }
 
     @Override

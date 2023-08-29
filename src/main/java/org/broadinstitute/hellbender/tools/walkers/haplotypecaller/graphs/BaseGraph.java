@@ -118,7 +118,7 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
         for( final E e : edgeSet() ) {
             final SeqVertex seqInV = vertexMap.get(getEdgeSource(e));
             final SeqVertex seqOutV = vertexMap.get(getEdgeTarget(e));
-            seqGraph.addEdge(seqInV, seqOutV, new BaseEdge(e.isRef(), e.getMultiplicity()));
+            seqGraph.addEdge(seqInV, seqOutV, e.copy());
         }
 
         return seqGraph;
@@ -406,7 +406,8 @@ public abstract class BaseGraph<V extends BaseVertex, E extends BaseEdge> extend
         }
 
         for( final V v : vertexSet() ) {
-            graphWriter.println(String.format("\t%s [label=\"%s\",shape=box]", v.toString(), new String(getAdditionalSequence(v)) + v.getAdditionalInfo()));
+            graphWriter.println(String.format("\t%s [label=\"%s\",shape=box]", v.toString(),
+                    new String(getAdditionalSequence(v)) + " (" + v.hashCode() + ") " + v.getAdditionalInfo()) );
         }
 
         getExtraGraphFileLines().forEach(graphWriter::println);

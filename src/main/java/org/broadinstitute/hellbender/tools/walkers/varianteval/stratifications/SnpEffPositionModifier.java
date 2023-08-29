@@ -1,10 +1,9 @@
 package org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications;
 
 import htsjdk.variant.variantcontext.VariantContext;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEvalEngine;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.SnpEffUtil;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.util.VariantEvalContext;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,16 +25,15 @@ public class SnpEffPositionModifier extends VariantStratifier {
 		STOP_LOST      // STOP_LOST
 	}
 
-	@Override
-	public void initialize() {
+	public SnpEffPositionModifier(VariantEvalEngine engine) {
+		super(engine);
+
 		for (final PositionModifier type : PositionModifier.values()) states.add(type.name());
 	}
 
 	@Override
 	public List<Object> getRelevantStates(
-			final ReferenceContext referenceContext,
-			final ReadsContext readsContext,
-			final FeatureContext featureContext,
+			final VariantEvalContext context,
 			final VariantContext comp,
 			final String compName,
 			final VariantContext eval,

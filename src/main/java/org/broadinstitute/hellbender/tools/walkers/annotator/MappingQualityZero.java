@@ -29,8 +29,8 @@ import java.util.stream.IntStream;
  *
  * <h3>Related annotations</h3>
  * <ul>
- *     <li><b><a href="https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_annotator_MappingQualityZeroBySample.php">MappingQualityZeroBySample</a></b> gives the count of reads with MAPQ=0 for each individual sample.</li>
- *     <li><b><a href="https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_annotator_LowMQ.php">LowMQ</a></b> gives the proportion of reads with low mapping quality (MAPQ below 10, including 0).</li>
+ *     <li><b>MappingQualityZeroBySample</b> gives the count of reads with MAPQ=0 for each individual sample.</li>
+ *     <li><b>LowMQ</b> gives the proportion of reads with low mapping quality (MAPQ below 10, including 0).</li>
  * </ul>
  *
  */
@@ -61,9 +61,4 @@ public final class MappingQualityZero implements InfoFieldAnnotation {
 
     @Override
     public List<String> getKeyNames() { return Collections.singletonList(VCFConstants.MAPPING_QUALITY_ZERO_KEY); }
-
-    @Override
-    public List<VCFInfoHeaderLine> getDescriptions() {
-        return Collections.singletonList(VCFStandardHeaderLines.getInfoLine(getKeyNames().get(0)));
-    }
 }

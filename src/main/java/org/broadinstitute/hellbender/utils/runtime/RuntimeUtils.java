@@ -91,6 +91,4 @@ public final class RuntimeUtils {
         String versionString = clazz.getPackage().getImplementationVersion();
         return versionString != null ? versionString : "Unavailable";
     }
-
-
 }

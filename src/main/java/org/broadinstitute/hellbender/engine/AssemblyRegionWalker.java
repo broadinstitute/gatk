@@ -1,9 +1,7 @@
 package org.broadinstitute.hellbender.engine;
 
-import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
-import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
@@ -68,6 +66,8 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
     public String getProgressMeterRecordLabel() { return "regions"; }
 
     private List<MultiIntervalLocalReadShard> readShards;
+
+    private boolean nonRandomDownsamplingMode = nonRandomDownsamplingMode();
 
     /**
      * Initialize data sources for traversal.
@@ -141,7 +141,7 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
     }
 
     protected ReadsDownsampler createDownsampler() {
-        return assemblyRegionArgs.maxReadsPerAlignmentStart > 0 ? new PositionalDownsampler(assemblyRegionArgs.maxReadsPerAlignmentStart, getHeaderForReads()) : null;
+        return assemblyRegionArgs.maxReadsPerAlignmentStart > 0 ? new PositionalDownsampler(assemblyRegionArgs.maxReadsPerAlignmentStart, getHeaderForReads(), nonRandomDownsamplingMode) : null;
     }
 
     /**
@@ -185,7 +185,7 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
      * @param features FeatureManager
      */
     private void processReadShard(MultiIntervalLocalReadShard shard, ReferenceDataSource reference, FeatureManager features ) {
-        final Iterator<AssemblyRegion> assemblyRegionIter = new AssemblyRegionIterator(shard, getHeaderForReads(), reference, features, assemblyRegionEvaluator(), assemblyRegionArgs);
+        final Iterator<AssemblyRegion> assemblyRegionIter = new AssemblyRegionIterator(shard, getHeaderForReads(), reference, features, assemblyRegionEvaluator(), assemblyRegionArgs, shouldTrackPileupsForAssemblyRegions());
 
         // Call into the tool implementation to process each assembly region from this shard.
         while ( assemblyRegionIter.hasNext() ) {
@@ -237,6 +237,12 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
     public abstract AssemblyRegionEvaluator assemblyRegionEvaluator();
 
     /**
+     * Allows implementing tools to decide whether pileups must be tracked and attached to assembly regions for later processing.
+     * This is configurable for now in order to save on potential increases in memory consumption variant calling machinery.
+     */
+    public abstract boolean shouldTrackPileupsForAssemblyRegions();
+
+    /**
      * Process an individual AssemblyRegion. Must be implemented by tool authors.
      *
      * Each region will come pre-marked as either "active" or "inactive" using the results of the configured
@@ -248,4 +254,8 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
      * @param featureContext features overlapping the padded span of the assembly region
      */
     public abstract void apply( final AssemblyRegion region, final ReferenceContext referenceContext, final FeatureContext featureContext );
+
+    public boolean nonRandomDownsamplingMode() {
+        return false;
+    }
 }

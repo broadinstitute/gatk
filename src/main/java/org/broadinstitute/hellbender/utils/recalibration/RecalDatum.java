@@ -1,7 +1,8 @@
 package org.broadinstitute.hellbender.utils.recalibration;
 
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMUtils;
-import org.apache.commons.math3.analysis.function.Gaussian;
+import org.apache.commons.math3.distribution.NormalDistribution;
 import org.broadinstitute.hellbender.utils.IndexRange;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.QualityUtils;
@@ -257,11 +258,11 @@ public final class RecalDatum implements Serializable {
 
         final int numBins = (QualityUtils.MAX_REASONABLE_Q_SCORE + 1) * (int)RESOLUTION_BINS_PER_QUAL;
 
-        final double[] log10Posteriors = new IndexRange(0, numBins).mapToDouble(bin -> {
+        final double[] logPosteriors = new IndexRange(0, numBins).mapToDouble(bin -> {
             final double QEmpOfBin = bin / RESOLUTION_BINS_PER_QUAL;
-            return log10QempPrior(QEmpOfBin, QReported) + log10QempLikelihood(QEmpOfBin, nObservations, nErrors);
+            return logQempPrior(QEmpOfBin, QReported) + logQempLikelihood(QEmpOfBin, nObservations, nErrors);
         });
-        final int MLEbin = MathUtils.maxElementIndex(log10Posteriors);
+        final int MLEbin = MathUtils.maxElementIndex(logPosteriors);
         return MLEbin / RESOLUTION_BINS_PER_QUAL;
     }
 
@@ -270,31 +271,29 @@ public final class RecalDatum implements Serializable {
      * in the base quality score recalibrator
      */
     public static final byte MAX_GATK_USABLE_Q_SCORE = 40;
-    private static final double[] log10QempPriorCache = new double[MAX_GATK_USABLE_Q_SCORE + 1];
+    private static final double[] logQempPriorCache = new double[MAX_GATK_USABLE_Q_SCORE + 1];
     static {
-        // f(x) = a*exp(-((x - b)^2 / (2*c^2)))
-        // Note that a is the height of the curve's peak, b is the position of the center of the peak, and c controls the width of the "bell".
-        final double GF_a = 0.9;
-        final double GF_b = 0.0;
-        final double GF_c = 0.5;   // with these parameters, deltas can shift at most ~20 Q points
+        // normal distribution describing P(Q empirical - Q reported).  Its mean is zero because a priori we expect
+        // no systematic bias in the reported quality score
+        final double mean = 0.0;
+        final double sigma = 0.5;   // with these parameters, deltas can shift at most ~20 Q points
+        final NormalDistribution gaussian = new NormalDistribution(null, mean, sigma);
 
-        final Gaussian gaussian = new Gaussian(GF_a, GF_b, GF_c);
         for ( int i = 0; i <= MAX_GATK_USABLE_Q_SCORE; i++ ) {
-            double log10Prior = Math.log10(gaussian.value((double) i));
-            if ( Double.isInfinite(log10Prior) )
-                log10Prior = -Double.MAX_VALUE;
-            log10QempPriorCache[i] = log10Prior;
+            logQempPriorCache[i] = gaussian.logDensity(i);
         }
     }
 
-    protected static double log10QempPrior(final double Qempirical, final double Qreported) {
+    @VisibleForTesting
+    protected static double logQempPrior(final double Qempirical, final double Qreported) {
         final int difference = Math.min(Math.abs((int) (Qempirical - Qreported)), MAX_GATK_USABLE_Q_SCORE);
-        return log10QempPriorCache[difference];
+        return logQempPriorCache[difference];
     }
 
     private static final long MAX_NUMBER_OF_OBSERVATIONS = Integer.MAX_VALUE - 1;
 
-    protected static double log10QempLikelihood(final double Qempirical, long nObservations, long nErrors) {
+    @VisibleForTesting
+    protected static double logQempLikelihood(final double Qempirical, long nObservations, long nErrors) {
         if ( nObservations == 0 )
             return 0.0;
 
@@ -309,10 +308,7 @@ public final class RecalDatum implements Serializable {
         }
 
         // this is just a straight binomial PDF
-        double log10Prob = MathUtils.log10BinomialProbability((int) nObservations, (int) nErrors, QualityUtils.qualToErrorProbLog10(Qempirical));
-        if ( Double.isInfinite(log10Prob) || Double.isNaN(log10Prob) )
-            log10Prob = -Double.MAX_VALUE;
-
-        return log10Prob;
+        final double logLikelihood = MathUtils.logBinomialProbability((int) nObservations, (int) nErrors, QualityUtils.qualToErrorProb(Qempirical));
+        return ( Double.isInfinite(logLikelihood) || Double.isNaN(logLikelihood) ) ? -Double.MAX_VALUE : logLikelihood;
     }
 }

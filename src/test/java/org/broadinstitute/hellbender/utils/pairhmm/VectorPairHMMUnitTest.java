@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.pairhmm;
 
+import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.gatk.nativebindings.pairhmm.PairHMMNativeArguments;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -15,7 +16,7 @@ import picard.util.BasicInputParser;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public final class VectorPairHMMUnitTest extends GATKBaseTest {
@@ -56,7 +57,7 @@ public final class VectorPairHMMUnitTest extends GATKBaseTest {
             }
 
             while (parser.hasNext()) {
-                String tokens[] = parser.next();
+                final String[] tokens = parser.next();
 
                 final Haplotype hap = new Haplotype(tokens[0].getBytes(), true);
 
@@ -91,8 +92,8 @@ public final class VectorPairHMMUnitTest extends GATKBaseTest {
                         }
                     };
 
-                hmm.initialize(Arrays.asList(hap), null, 0, 0);
-                hmm.computeLog10Likelihoods(matrix(Arrays.asList(hap)), Arrays.asList(read), inputScoreImputator);
+                hmm.initialize(Collections.singletonList(hap), null, 0, 0);
+                hmm.computeLog10Likelihoods(matrix(Collections.singletonList(hap)), Collections.singletonList(read), inputScoreImputator);
 
                 final double[] la = hmm.getLogLikelihoodArray();
 
@@ -139,7 +140,7 @@ public final class VectorPairHMMUnitTest extends GATKBaseTest {
             }
 
             @Override
-            public int indexOfAllele(Haplotype allele) {
+            public int indexOfAllele(final Allele allele) {
                 throw new UnsupportedOperationException();
             }
 

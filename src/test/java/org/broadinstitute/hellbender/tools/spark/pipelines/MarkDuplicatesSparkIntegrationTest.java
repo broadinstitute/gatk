@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.spark.pipelines;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.metrics.MetricsFile;
 import org.broadinstitute.hellbender.cmdline.CommandLineProgram;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -12,6 +13,8 @@ import org.broadinstitute.hellbender.engine.ReadsPathDataSource;
 import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
+import org.broadinstitute.hellbender.testutils.SamAssertionUtils;
 import org.broadinstitute.hellbender.tools.spark.transforms.markduplicates.MarkDuplicatesSpark;
 import org.broadinstitute.hellbender.tools.walkers.markduplicates.AbstractMarkDuplicatesCommandLineProgramTest;
 import org.broadinstitute.hellbender.testutils.testers.MarkDuplicatesSparkTester;
@@ -31,6 +34,13 @@ import java.util.stream.Collectors;
 
 @Test(groups = "spark")
 public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCommandLineProgramTest {
+
+    public static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = false;
+
+    @Test
+    public void assertThatExpectedOutputUpdateToggleIsDisabled() {
+        Assert.assertFalse(UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS, "The toggle to update expected outputs should not be left enabled");
+    }
 
     @Override
     protected MarkDuplicatesSparkTester getTester() {
@@ -532,5 +542,29 @@ public class MarkDuplicatesSparkIntegrationTest extends AbstractMarkDuplicatesCo
         args.addInput(new File(TEST_DATA_DIR,"optical_dupes.unsorted.querygrouped.sam"));
         args.addFlag(MarkDuplicatesSpark.TREAT_UNSORTED_AS_ORDERED);
         runCommandLine(args);
+    }
+
+    @Test
+    public void testFlowModeFlag() throws IOException {
+        final File expectedOutput = new File(largeFileTestDir, "testFlowModeFlag_expected.bam");
+        final File expectedMetricsFile = new File(largeFileTestDir, "testFlowModeFlag_expected.txt");
+        final File output = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expectedOutput : createTempFile("testFlowModeFlag", "bam");
+        final File metricsFile = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expectedMetricsFile : createTempFile("testFlowModeFlag", ".txt");
+        final File input = new File(largeFileTestDir, "input_jukebox_for_test.bam");
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+
+        args.addOutput(output);
+        args.addInput(input);
+        args.addInterval("chr9:81149486-81177047");
+        args.addRaw("--" + StandardArgumentDefinitions.METRICS_FILE_LONG_NAME);
+        args.addRaw(metricsFile.getAbsolutePath());
+        args.addFlag(MarkDuplicatesSparkArgumentCollection.FLOW_MD_MODE_LONG_NAME);
+
+        runCommandLine(args);
+
+        if ( !UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
+            IntegrationTestSpec.assertEqualTextFiles(metricsFile, expectedMetricsFile, "#");
+            SamAssertionUtils.assertEqualBamFiles(output, expectedOutput, false, ValidationStringency.SILENT);
+        }
     }
 }

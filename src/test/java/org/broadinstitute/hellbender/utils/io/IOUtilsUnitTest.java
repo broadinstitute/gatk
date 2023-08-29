@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.io;
 
 import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
+import htsjdk.samtools.util.FileExtensions;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.logging.log4j.core.util.FileUtils;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -464,6 +465,11 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(IOUtils.appendPathToDir("dir/", "/file"), "/file");
         Assert.assertEquals(IOUtils.appendPathToDir("/path/to/dir", "anotherdir/file"), "/path/to/dir/anotherdir/file");
 
+        // see https://github.com/eclipse/jetty.project/issues/8549
+        if (isGATKDockerContainer()) {
+            // for the docker tests, the test dependencies are in a separate jar
+            throw new SkipException("skipping due to jetty jar parsing issues (https://github.com/eclipse/jetty.project/issues/8549)");
+        }
         // hdfs: URI
         MiniDFSCluster cluster = null;
         try {
@@ -528,6 +534,11 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
     @Test
     public void testCreateDirectory() throws IOException {
 
+        // see https://github.com/eclipse/jetty.project/issues/8549
+        if (isGATKDockerContainer()) {
+            // for the docker tests, the test dependencies are in a separate jar
+            throw new SkipException("skipping due to jetty jar parsing issues (https://github.com/eclipse/jetty.project/issues/8549)");
+        }
         // hdfs
         Path tempPath = IOUtils.getPath(MiniClusterUtils.getWorkingDir(MiniClusterUtils.getMiniCluster()).toUri().toString())
                 .resolve("temp");
@@ -730,5 +741,28 @@ public final class IOUtilsUnitTest extends GATKBaseTest {
         IOUtils.deleteRecursively(gcsFolderPath);
         Assert.assertFalse(Files.exists(gcsFilePath));
         Assert.assertFalse(Files.exists(IOUtils.getPath(gcsFolder)));
+    }
+
+    @DataProvider(name = "ExtensionRemoverProvider")
+    public Object[][] getExtensionData() {
+        // Files, expected to support serial iteration (false if any input is a .sam)
+        return new Object[][] {
+                { "" },
+                { "/path/to" },
+                { "gs://bucket/subdir" }
+        };
+    }
+
+    @Test(dataProvider = "ExtensionRemoverProvider")
+    public void testRemoveExtension(final String basePathString) {
+        final Path baseFilePath = Paths.get(basePathString, "test_file");
+        final List<String> extensionsList = new ArrayList<>(FileExtensions.VCF_LIST.size() + 1);
+        extensionsList.add("");
+        extensionsList.addAll(FileExtensions.VCF_LIST);
+        for (final String extension : extensionsList) {
+            final Path inputPath = Paths.get(baseFilePath.toString() + extension);
+            final Path outputPath = IOUtils.removeExtension(inputPath, FileExtensions.VCF_LIST);
+            Assert.assertEquals(outputPath, baseFilePath);
+        }
     }
 }

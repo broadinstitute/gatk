@@ -27,8 +27,7 @@ import java.util.stream.Collectors;
  *     This is a relatively naive caller that takes the modeled-segments output of {@link ModelSegments} and
  *     performs a simple statistical test on the segmented log2 copy ratios to call amplifications and deletions,
  *     given a specified range for determining copy-number neutral segments.  This caller is
- *     based on the calling functionality of
- *     <a href="https://gatkforums.broadinstitute.org/gatk/discussion/5640/recapseg-overview">ReCapSeg</a>.
+ *     based on the calling functionality of ReCapSeg.
  * </p>
  *
  * <p>
@@ -47,7 +46,7 @@ import java.util.stream.Collectors;
  *     </li>
  * </ul>
  *
- * <h3>Output</h3>
+ * <h3>Outputs</h3>
  *
  * <ul>
  *     <li>
@@ -68,7 +67,7 @@ import java.util.stream.Collectors;
  *     </li>
  * </ul>
  *
- * <h3>Usage example</h3>
+ * <h3>Usage examples</h3>
  *
  * <pre>
  *     gatk CallCopyRatioSegments \

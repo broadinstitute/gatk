@@ -1,12 +1,16 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
 import htsjdk.samtools.Cigar;
+import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
+import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignmentConstants;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 public final class PathUnitTest extends GATKBaseTest {
+    private static final SWParameters PATH_TO_REFERENCE_SW_PARAMETERS = SmithWatermanAlignmentConstants.NEW_SW_PARAMETERS;
+
     @Test
     public void testAlignReallyLongDeletion() {
         final String ref = "ATGGTGGCTCATACCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGAACATCACCTGAGGCCAGGAGTTCAAAACCAGCCTGGCTAACATAGCAAAACCCCATCTCTAATGAAAATACAAAAATTAGCTGGGTGTGGTGGTGTCCGCCTGTAGTCCCAGCTACTCAGGAGACTAAGGCATGAGAATCACTTGAACCCAGGATGCAGAGGCTGTAGTGAGCCGAGATTGCACCACGGCTGCACTCCAGCCTGGGCAACAGAGCGAGACTCTGTCTCAAATAAAATAGCGTAACGTAACATAACATAACATAACATAACATAACATAACATAACATAACATAACATAACATAACACAACAACAAAATAAAATAACATAAATCATGTTGTTAGGAAAAAAATCAGTTATGCAGCTACATGCTATTTACAAGAGATATACCTTAAAATATAAGACACAGAGGCCGGGCGCGGTAGCTCATGCCTGTAATCCCAGCACTTTGGGAGGCTGAGGCAAGCGGATCATGAGGTCAGGAGATCGAGACCATCC";
@@ -16,7 +20,7 @@ public final class PathUnitTest extends GATKBaseTest {
         final SeqVertex v = new SeqVertex(hap);
         graph.addVertex(v);
         final Path<SeqVertex,BaseEdge> path = new Path<>(v, graph);
-        final Cigar cigar = path.calculateCigar(ref.getBytes(), SmithWatermanJavaAligner.getInstance());
+        final Cigar cigar = path.calculateCigar(ref.getBytes(), SmithWatermanJavaAligner.getInstance(), PATH_TO_REFERENCE_SW_PARAMETERS);
         Assert.assertNull(cigar, "Should have failed gracefully");
     }
 

@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.cmdline.argumentcollections;
 
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.WorkflowInput;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.MultiVariantWalker;
@@ -28,6 +29,7 @@ public abstract class MultiVariantInputArgumentCollection implements Serializabl
         // from any other potential sources of Features.
         @Argument(fullName = StandardArgumentDefinitions.VARIANT_LONG_NAME, shortName = StandardArgumentDefinitions.VARIANT_SHORT_NAME,
                 doc = "One or more VCF files containing variants", common = false, optional = false)
+        @WorkflowInput(optionalCompanions = StandardArgumentDefinitions.VARIANT_INDEX_COMPANION)
         public List<GATKPath> drivingVariantPaths = new ArrayList<>();
 
         @Override

@@ -106,7 +106,7 @@ public class AsynchronousStreamWriter<T> {
      */
     public boolean terminate() {
         boolean isCancelled = true;
-        if (previousBatch != null) {
+        if (previousBatch != null && !previousBatch.isDone()) {
             logger.warn("Cancelling outstanding asynchronous writing");
             isCancelled = previousBatch.cancel(true);
         }

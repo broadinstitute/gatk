@@ -5,6 +5,11 @@ import sklearn.impute
 import numpy as np
 import dill
 import json
+import logging
+
+
+logger = logging.getLogger("isolation_forest")
+logging.basicConfig(level=logging.INFO)
 
 
 def read_annotations(h5file):
@@ -29,16 +34,16 @@ def read_annotations(h5file):
 def train(annotations_file,
           hyperparameters_json_file,
           output_prefix):
-    print('Reading annotations...')
+    logger.info('Reading annotations...')
     annotation_names_i, X_ni = read_annotations(annotations_file)
-    print(f'Annotations: {annotation_names_i}.')
+    logger.info(f'Annotations: {annotation_names_i}.')
 
-    print('Reading hyperparameters...')
+    logger.info('Reading hyperparameters...')
     with open(hyperparameters_json_file) as json_file:
         hyperparameters_kwargs = json.load(json_file)
-    print('Hyperparameters:', hyperparameters_kwargs)
+    logger.info('Hyperparameters:', hyperparameters_kwargs)
 
-    print('Imputing annotations...')
+    logger.info('Imputing annotations...')
     imputer = sklearn.impute.SimpleImputer(strategy='median')
     imputed_X_ni = imputer.fit_transform(X_ni)
 
@@ -49,10 +54,10 @@ def train(annotations_file,
         f'Shape of imputed annotations differs from shape of raw annotations; at least one feature is completely missing ' \
         f'and hence dropped during imputation.'
 
-    print(f'Training IsolationForest with {imputed_X_ni.shape[0]} training sites x {imputed_X_ni.shape[1]} annotations...')
+    logger.info(f'Training IsolationForest with {imputed_X_ni.shape[0]} training sites x {imputed_X_ni.shape[1]} annotations...')
     clf = sklearn.ensemble.IsolationForest(**hyperparameters_kwargs)
     clf.fit(imputed_X_ni)
-    print('Training complete.')
+    logger.info('Training complete.')
 
     def score_samples(test_annotation_names_i,
                       test_X_ni):
@@ -62,11 +67,11 @@ def train(annotations_file,
 
     scorer_lambda = lambda test_annotation_names_i, test_X_ni: score_samples(test_annotation_names_i, test_X_ni)
 
-    print(f'Pickling scorer...')
+    logger.info(f'Pickling scorer...')
     output_scorer_pkl_file = f'{output_prefix}.scorer.pkl'
     with open(output_scorer_pkl_file, 'wb') as f:
         dill.dump(scorer_lambda, f) # the dill package can be used to pickle lambda functions
-    print(f'Scorer pickled to {output_scorer_pkl_file}.')
+    logger.info(f'Scorer pickled to {output_scorer_pkl_file}.')
 
 
 def score(annotations_file,
