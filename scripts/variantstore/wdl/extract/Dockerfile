@@ -8,14 +8,14 @@
 # expensive to create and isn't expected to change often, while the steps in this Dockerfile are much less expensive and
 # more likely to change. Using a build-base image essentially allows the expensive layers to be globally cached which
 # should make building the final image much faster in most cases.
-FROM us.gcr.io/broad-dsde-methods/variantstore:2023-04-13-alpine-build-base as build
+FROM us.gcr.io/broad-dsde-methods/variantstore:2023-08-04-alpine-build-base as build
 
 # Install all of our variantstore Python requirements.
 COPY requirements.txt requirements.txt
 RUN pip3 install --user -r requirements.txt
 
 # The main layer does not install development tools, instead copies artifacts from the build layer above.
-FROM gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine as main
+FROM gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-alpine as main
 
 RUN apk update && apk upgrade
 RUN python3 -m ensurepip --upgrade

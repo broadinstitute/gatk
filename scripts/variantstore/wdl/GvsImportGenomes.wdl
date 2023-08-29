@@ -6,12 +6,15 @@ workflow GvsImportGenomes {
 
   input {
     Boolean go = true
+    String? git_branch_or_tag
+    String? git_hash
     String dataset_name
     String project_id
 
-    Array[String] external_sample_names
-    Array[File] input_vcfs
-    Array[File] input_vcf_indexes
+    Int num_samples
+    File external_sample_names
+    File input_vcfs
+    File input_vcf_indexes
 
     Boolean skip_loading_vqsr_fields = false
 
@@ -29,11 +32,14 @@ workflow GvsImportGenomes {
     Int? load_data_preemptible_override
     Int? load_data_maxretries_override
     Boolean process_vcf_headers = false
+    String? basic_docker
+    String? cloud_sdk_docker
+    String? variants_docker
+    String? gatk_docker
     File? load_data_gatk_override
   }
 
-  Int num_samples = length(external_sample_names)
-  Int max_auto_batch_size = 20000
+  Int max_auto_batch_size = 25000
   # Broad users enjoy higher quotas and can scatter more widely than beta users before BigQuery smacks them
   # We don't expect this to be changed at runtime, so we can keep this as a constant defined in here
   Int broad_user_max_scatter = 1000
@@ -42,10 +48,24 @@ workflow GvsImportGenomes {
   Int max_scatter_for_user =  if is_rate_limited_beta_customer then beta_customer_max_scatter
                               else broad_user_max_scatter
 
+  if (!defined(git_hash) || !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker)) {
+    call Utils.GetToolVersions {
+      input:
+        git_branch_or_tag = git_branch_or_tag,
+    }
+  }
+
+  String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
+  String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
+  String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
+  String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
+  String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
+
   if ((num_samples > max_auto_batch_size) && !(defined(load_data_batch_size))) {
     call Utils.TerminateWorkflow as DieDueToTooManySamplesWithoutExplicitLoadDataBatchSize {
       input:
-        message = "Importing " + num_samples + " samples but 'load_data_batch_size' not explicitly specified; limit for auto batch-sizing is " + max_auto_batch_size + " samples."
+        message = "Importing " + num_samples + " samples but 'load_data_batch_size' not explicitly specified; limit for auto batch-sizing is " + max_auto_batch_size + " samples.",
+        basic_docker = effective_basic_docker,
     }
   }
 
@@ -66,34 +86,23 @@ workflow GvsImportGenomes {
 
   Int effective_load_data_maxretries = select_first([load_data_maxretries_override, 5])
 
-  # return an error if the lengths are not equal
-  Int input_length = length(input_vcfs)
-  Int input_indexes_length = length(input_vcf_indexes)
-  if ((input_length != length(external_sample_names)) || (input_indexes_length != length(external_sample_names))) {
-    call Utils.TerminateWorkflow as DieDueToMismatchedVcfAndIndexLengths {
-      input:
-        message = "The lengths of workflow inputs 'external_sample_names' (" + length(external_sample_names) +
-                  "), 'input_vcfs' (" + input_length + ") and 'input_vcf_indexes' (" + input_indexes_length + ") should be the same.\n\n" +
-                  "If any of these counts are zero an incorrect or non-existent attribute may have been referenced."
-    }
-  }
-
   call GetUningestedSampleIds {
     input:
       dataset_name = dataset_name,
       project_id = project_id,
       external_sample_names = external_sample_names,
-      table_name = "sample_info"
+      num_samples = num_samples,
+      table_name = "sample_info",
+      cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
   call CurateInputLists {
     input:
-      dataset_name = dataset_name,
-      project_id = project_id,
-      input_vcf_index_list = write_lines(input_vcf_indexes),
-      input_vcf_list = write_lines(input_vcfs),
-      input_sample_name_list = write_lines(external_sample_names),
-      input_samples_to_be_loaded_map = GetUningestedSampleIds.sample_map
+      input_vcf_index_list = input_vcf_indexes,
+      input_vcf_list = input_vcfs,
+      input_sample_name_list = external_sample_names,
+      input_samples_to_be_loaded_map = GetUningestedSampleIds.sample_map,
+      variants_docker = effective_variants_docker,
   }
 
   call CreateFOFNs {
@@ -102,9 +111,10 @@ workflow GvsImportGenomes {
       input_vcf_index_list = CurateInputLists.input_vcf_indexes,
       input_vcf_list = CurateInputLists.input_vcfs,
       sample_name_list = CurateInputLists.sample_name_list,
+      basic_docker = effective_basic_docker,
   }
 
-  scatter (i in range(length(CreateFOFNs.vcf_batch_vcf_fofns))) {
+  scatter (i in range(length(CreateFOFNs.vcf_sample_name_fofns))) {
     call LoadData {
       input:
         index = i,
@@ -116,17 +126,19 @@ workflow GvsImportGenomes {
         input_vcf_indexes = read_lines(CreateFOFNs.vcf_batch_vcf_index_fofns[i]),
         input_vcfs = read_lines(CreateFOFNs.vcf_batch_vcf_fofns[i]),
         interval_list = interval_list,
+        gatk_docker = effective_gatk_docker,
         gatk_override = load_data_gatk_override,
         load_data_preemptible = effective_load_data_preemptible,
         load_data_maxretries = effective_load_data_maxretries,
         sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
         sample_map = GetUningestedSampleIds.sample_map,
-        process_vcf_headers = process_vcf_headers
+        process_vcf_headers = process_vcf_headers,
     }
   }
  if (process_vcf_headers) {
    call ProcessVCFHeaders {
      input:
+       variants_docker = effective_variants_docker,
        load_done = LoadData.done,
        dataset_name = dataset_name,
        project_id = project_id,
@@ -137,11 +149,13 @@ workflow GvsImportGenomes {
     input:
       load_done = LoadData.done,
       project_id = project_id,
-      dataset_name = dataset_name
+      dataset_name = dataset_name,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
   output {
     Boolean done = true
+    String recorded_git_hash = effective_git_hash
     Array[File] load_data_stderrs = LoadData.stderr
   }
 }
@@ -152,20 +166,23 @@ task CreateFOFNs {
     File input_vcf_index_list
     File input_vcf_list
     File sample_name_list
+    String basic_docker
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
   command <<<
-    set -e
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     split -a 5 -l ~{batch_size} ~{input_vcf_list} batched_vcfs.
     split -a 5 -l ~{batch_size} ~{input_vcf_index_list} batched_vcf_indexes.
     split -a 5 -l ~{batch_size} ~{sample_name_list} batched_sample_names.
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
+    docker: basic_docker
     bootDiskSizeGb: 15
     memory: "3 GB"
     disks: "local-disk 10 HDD"
@@ -198,6 +215,7 @@ task LoadData {
     Boolean skip_loading_vqsr_fields = false
     Boolean process_vcf_headers
 
+    String gatk_docker
     File? gatk_override
     Int load_data_preemptible
     Int load_data_maxretries
@@ -229,8 +247,9 @@ task LoadData {
   String table_name = "sample_info"
 
   command <<<
-    set -e
-    set -o errexit -o nounset -o xtrace -o pipefail
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
@@ -273,14 +292,12 @@ task LoadData {
     bq --apilog=false --project_id=~{project_id} rm -f=true ~{temp_table}
 
     ## now we want to create a sub list of these samples (without the ones that have already been loaded)
-    curl https://raw.githubusercontent.com/broadinstitute/gatk/ah_var_store/scripts/variantstore/wdl/extract/curate_input_array_files.py -o curate_input_array_files.py
 
-
-    python3 curate_input_array_files.py --sample_map_to_be_loaded_file_name sample_map.csv \
+    python3 /gatk/scripts/variantstore/wdl/extract/curate_input_array_files.py \
+      --sample_map_to_be_loaded_file_name sample_map.csv \
       --sample_name_list_file_name $NAMES_FILE \
       --vcf_list_file_name ~{write_lines(input_vcfs)} \
-      --vcf_index_list_file_name  ~{write_lines(input_vcf_indexes)} \
-      --output_files True
+      --vcf_index_list_file_name  ~{write_lines(input_vcf_indexes)}
 
     # translate files created by the python script into BASH arrays---but only of the samples that aren't there already
     VCFS_ARRAY=($(cat output_vcf_list_file |tr "\n" " "))
@@ -323,7 +340,7 @@ task LoadData {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_07_20"
+    docker: gatk_docker
     maxRetries: load_data_maxretries
     memory: "3.75 GB"
     disks: "local-disk 50 HDD"
@@ -341,6 +358,7 @@ task ProcessVCFHeaders {
     String dataset_name
     String project_id
     Array[String] load_done
+    String variants_docker
   }
 
   command <<<
@@ -352,7 +370,7 @@ task ProcessVCFHeaders {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-08-08-alpine-817d906dc"
+    docker: variants_docker
     disks: "local-disk 500 HDD"
   }
 }
@@ -364,6 +382,7 @@ task SetIsLoadedColumn {
     String project_id
 
     Array[String] load_done
+    String cloud_sdk_docker
   }
   meta {
     # This is doing some tricky stuff with `INFORMATION_SCHEMA` so just punt and let it be `volatile`.
@@ -397,7 +416,7 @@ task SetIsLoadedColumn {
                      AND sls2.status = "FINISHED")'
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
+    docker: cloud_sdk_docker
     memory: "1 GB"
     disks: "local-disk 10 HDD"
     cpu: 1
@@ -413,8 +432,10 @@ task GetUningestedSampleIds {
     String dataset_name
     String project_id
 
-    Array[String] external_sample_names
+    File external_sample_names
+    Int num_samples
     String table_name
+    String cloud_sdk_docker
   }
   meta {
     # Do not call cache this, we want to read the database state every time.
@@ -422,12 +443,13 @@ task GetUningestedSampleIds {
   }
 
   Int samples_per_table = 4000
-  Int num_samples = length(external_sample_names)
   # add labels for DSP Cloud Cost Control Labeling and Reporting
   String bq_labels = "--label service:gvs --label team:variants --label managedby:import_genomes"
   String temp_table="~{dataset_name}.sample_names_to_load"
 
   command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o xtrace -o pipefail
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
@@ -446,8 +468,7 @@ task GetUningestedSampleIds {
 
     echo "Creating the external sample name list table ~{temp_table}"
     bq --apilog=false --project_id=~{project_id} mk ~{temp_table} "sample_name:STRING"
-    NAMES_FILE=~{write_lines(external_sample_names)}
-    bq --apilog=false load --project_id=~{project_id} ~{temp_table} $NAMES_FILE "sample_name:STRING"
+    bq --apilog=false load --project_id=~{project_id} ~{temp_table} ~{external_sample_names} "sample_name:STRING"
 
     # Get the current min/max id, or 0 if there are none. Withdrawn samples still have IDs so don't filter them out.
     bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} '
@@ -486,7 +507,7 @@ task GetUningestedSampleIds {
     bq --apilog=false --project_id=~{project_id} rm -f=true ~{temp_table}
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
+    docker: cloud_sdk_docker
     memory: "1 GB"
     disks: "local-disk 10 HDD"
     preemptible: 5
@@ -502,28 +523,28 @@ task GetUningestedSampleIds {
 
 task CurateInputLists {
   input {
-    String dataset_name
-    String project_id
     File input_vcf_index_list
     File input_vcf_list
     File input_samples_to_be_loaded_map
     File input_sample_name_list
+    String variants_docker
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
   }
 
   command <<<
-    set -ex
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
 
     python3 /app/curate_input_array_files.py --sample_map_to_be_loaded_file_name ~{input_samples_to_be_loaded_map} \
                                              --sample_name_list_file_name ~{input_sample_name_list} \
                                              --vcf_list_file_name ~{input_vcf_list} \
-                                             --vcf_index_list_file_name  ~{input_vcf_index_list} \
-                                             --output_files True
+                                             --vcf_index_list_file_name  ~{input_vcf_index_list}
   >>>
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-08-08-alpine-817d906dc"
+    docker: variants_docker
     memory: "3 GB"
     disks: "local-disk 100 HDD"
     bootDiskSizeGb: 15

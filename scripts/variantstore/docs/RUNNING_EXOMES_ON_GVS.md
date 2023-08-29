@@ -16,7 +16,6 @@ This document describes the changes necessary to run exome gVCFs through the GVS
   - [GvsCalculatePrecisionAndSensitivity](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCalculatePrecisionAndSensitivity) workflow (only if you want to calculate Precision and Sensitivity)
 
 ## The Pipeline
-
 1. `GvsBulkIngestGenomes` workflow
    - Run this workflow in order to load all non-control samples into the database tables so that they can be run through the GVS workflow.
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
