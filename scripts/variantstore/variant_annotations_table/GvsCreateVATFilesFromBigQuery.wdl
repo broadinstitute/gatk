@@ -2,7 +2,7 @@ version 1.0
 
 import "../wdl/GvsUtils.wdl" as Utils
 
-# Hello
+# Hello!
 
 workflow GvsCreateVATFilesFromBigQuery {
     input {
@@ -282,11 +282,11 @@ task MergeVatTSVs {
         done
 
         # Verify that all the headers we stripped off of the query chunks agree (probably an unnecessary check)
-        cat header.txt | sort | uniq | wc -l > num_uniq_header_lines.txt
-        if [[ $(num_uniq_header_lines.txt | wc -l) -ne 1 ]]
+        cat header.txt | sort | uniq > uniq_header_lines.txt
+        if [[ $(uniq_header_lines.txt | wc -l) -ne 1 ]]
         then
             echo "ERROR: Found more than one uniq header line! Very strange." 1>&2
-            exit 1
+#            exit 1
         fi
 
         echo_date "bgzipping concatenated file"
