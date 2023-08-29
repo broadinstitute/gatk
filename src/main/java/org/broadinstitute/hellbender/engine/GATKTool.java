@@ -145,7 +145,7 @@ public abstract class GATKTool extends CommandLineProgram {
     /**
      * Our source of reference data (null if no reference was provided)
      */
-    protected ReferenceDataSource reference;
+    ReferenceDataSource reference;
 
     /**
      * Our source of reads data (null if no source of reads was provided)
@@ -574,7 +574,7 @@ public abstract class GATKTool extends CommandLineProgram {
     /**
      * Does this tool require features? Traversals types and/or tools that do should override to return true.
      *
-     * @return true if this tool requires features, otherwise false
+     * @return true if this tool requires reads, otherwise false
      */
     public boolean requiresFeatures() {
         return false;
