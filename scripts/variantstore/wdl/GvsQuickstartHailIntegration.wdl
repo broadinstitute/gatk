@@ -172,7 +172,7 @@ task CreateAndTieOutVds {
 
         export PYSPARK_SUBMIT_ARGS='--driver-memory 16g --executor-memory 16g pyspark-shell'
         pip install --upgrade pip
-        pip install hail==0.2.119
+        pip install hail==0.2.120
 
         export WORK=$PWD/work
         mkdir ${WORK}
