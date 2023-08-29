@@ -2,7 +2,7 @@ version 1.0
 
 import "../wdl/GvsUtils.wdl" as Utils
 
-# Hello!
+# Hello!!!
 
 workflow GvsCreateVATFilesFromBigQuery {
     input {
@@ -283,7 +283,7 @@ task MergeVatTSVs {
 
         # Verify that all the headers we stripped off of the query chunks agree (probably an unnecessary check)
         cat header.txt | sort | uniq > uniq_header_lines.txt
-        if [[ $(uniq_header_lines.txt | wc -l) -ne 1 ]]
+        if [[ $(cat uniq_header_lines.txt | wc -l) -ne 1 ]]
         then
             echo "ERROR: Found more than one uniq header line! Very strange." 1>&2
 #            exit 1
