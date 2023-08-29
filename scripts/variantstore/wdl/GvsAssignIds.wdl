@@ -1,19 +1,23 @@
 version 1.0
 
 import "GvsCreateTables.wdl" as GvsCreateTables
+import "GvsUtils.wdl" as Utils
 
 workflow GvsAssignIds {
 
   input {
     Boolean go = true
+    String? git_branch_or_tag
+    String? git_hash
     String dataset_name
     String project_id
 
-    Array[String] external_sample_names
+    File external_sample_names
     Boolean samples_are_controls = false
 
     File? assign_ids_gatk_override
     Boolean process_vcf_headers = false
+    String? cloud_sdk_docker
   }
 
   String sample_info_table = "sample_info"
@@ -23,6 +27,16 @@ workflow GvsAssignIds {
   String sample_vcf_header_schema_json = '[{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"}, {"name":"vcf_header_lines_hash","type":"STRING","mode":"REQUIRED"}]'
   String sample_load_status_schema_json = '[{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name":"status","type":"STRING","mode":"REQUIRED"}, {"name":"event_timestamp","type":"TIMESTAMP","mode":"REQUIRED"}]'
 
+  if (!defined(git_hash) || !defined(cloud_sdk_docker)) {
+    call Utils.GetToolVersions {
+      input:
+        git_branch_or_tag = git_branch_or_tag,
+    }
+  }
+
+  String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
+  String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
+
   call GvsCreateTables.CreateTables as CreateSampleInfoTable {
   	input:
       project_id = project_id,
@@ -31,7 +45,8 @@ workflow GvsAssignIds {
       schema_json = sample_info_schema_json,
       max_table_id = 1,
       superpartitioned = "false",
-      partitioned = "false"
+      partitioned = "false",
+      cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
   call GvsCreateTables.CreateTables as CreateSampleLoadStatusTable {
@@ -42,7 +57,8 @@ workflow GvsAssignIds {
       schema_json = sample_load_status_schema_json,
       max_table_id = 1,
       superpartitioned = "false",
-      partitioned = "false"
+      partitioned = "false",
+      cloud_sdk_docker = effective_cloud_sdk_docker,
   }
   if (process_vcf_headers) {
     call GvsCreateTables.CreateTables as CreateScratchVCFHeaderLinesTable {
@@ -53,7 +69,8 @@ workflow GvsAssignIds {
         schema_json = vcf_header_lines_scratch_schema_json,
         max_table_id = 1,
         superpartitioned = "false",
-        partitioned = "false"
+        partitioned = "false",
+        cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
     call GvsCreateTables.CreateTables as CreateVCFHeaderLinesTable {
@@ -64,7 +81,8 @@ workflow GvsAssignIds {
         schema_json = vcf_header_lines_schema_json,
         max_table_id = 1,
         superpartitioned = "false",
-        partitioned = "false"
+        partitioned = "false",
+        cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
     call GvsCreateTables.CreateTables as CreateSampleVCFHeaderTable {
@@ -75,7 +93,8 @@ workflow GvsAssignIds {
         schema_json = sample_vcf_header_schema_json,
         max_table_id = 1,
         superpartitioned = "false",
-        partitioned = "false"
+        partitioned = "false",
+        cloud_sdk_docker = effective_cloud_sdk_docker,
     }
   }
 
@@ -83,6 +102,7 @@ workflow GvsAssignIds {
     input:
       project_id = project_id,
       dataset_name = dataset_name,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
   call AssignIds {
@@ -93,18 +113,23 @@ workflow GvsAssignIds {
       sample_info_table = sample_info_table,
       samples_are_controls = samples_are_controls,
       table_creation_done = CreateSampleInfoTable.done,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
   call GvsCreateTables.CreateBQTables as CreateTablesForMaxId {
     input:
       project_id = project_id,
+      git_branch_or_tag = git_branch_or_tag,
+      git_hash = effective_git_hash,
       dataset_name = dataset_name,
-      max_table_id = AssignIds.max_table_id
+      max_table_id = AssignIds.max_table_id,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
   output {
     Boolean done = true
     File gvs_ids_tsv = AssignIds.gvs_ids_tsv
+    String recorded_git_hash = effective_git_hash
   }
 }
 
@@ -114,9 +139,10 @@ task AssignIds {
     String project_id
 
     String sample_info_table
-    Array[String] sample_names
+    File sample_names
     Boolean samples_are_controls
     String table_creation_done
+    String cloud_sdk_docker
   }
   meta {
     description: "Assigns Ids to samples"
@@ -128,13 +154,14 @@ task AssignIds {
   String bq_labels = "--label service:gvs --label team:variants --label managedby:assign_ids"
 
   command <<<
-    set -e
-    set -x
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+    num_samples=$(wc -l < ~{sample_names})
 
     # make sure that sample names were actually passed, fail if empty
-    num_samples=~{length(sample_names)}
     if [ $num_samples -eq 0 ]; then
-      echo "No sample names passed. Exiting"
+      echo "No sample names found in file ~{sample_names}. Exiting"
       exit 1
     fi
 
@@ -153,10 +180,8 @@ task AssignIds {
     # create the lock table
     bq --apilog=false --project_id=~{project_id} mk ~{dataset_name}.sample_id_assignment_lock "sample_name:STRING"
 
-    NAMES_FILE=~{write_lines(sample_names)}
-
     # first load name into the lock table - will check for dupes when adding to sample_info table
-    bq --apilog=false load --project_id=~{project_id} ~{dataset_name}.sample_id_assignment_lock $NAMES_FILE "sample_name:STRING"
+    bq --apilog=false load --project_id=~{project_id} ~{dataset_name}.sample_id_assignment_lock ~{sample_names} "sample_name:STRING"
 
     # add sample_name to sample_info_table
     bq --apilog=false --project_id=~{project_id} query --use_legacy_sql=false ~{bq_labels} \
@@ -176,15 +201,19 @@ task AssignIds {
       'SELECT sample_name, sample_id from `~{dataset_name}.~{sample_info_table}` WHERE sample_id >= @offset' > update.tsv
     cat update.tsv | sed -e 's/sample_id/gvs_id/' -e 's/sample_name/entity:sample_id/' -e 's/,/\t/g' > gvs_ids.tsv
 
-    # get the max id to create tables for
-    max_sample_id=$(cat update.tsv | cut -d, -f2 | sort -r -n | head -1)
+    # Get the max id for which to create tables.
+    # We can't safely pipe to `head -1` because while `head` will exit successfully after reading the first line, the
+    # pipeline will continue trying to write data to the `head` process. If this happens we'll get a 141 exit code and
+    # with `set -o pipefail` turned on this will fail our task. As a workaround use this `<(...)` temp file construct.
+    # https://news.ycombinator.com/item?id=9255830
+    max_sample_id=$(head -1 <(cat update.tsv | cut -d, -f2 | sort -r -n))
     python3 -c "from math import ceil; print(ceil($max_sample_id/~{samples_per_table}))" > max_table_id
 
     # remove the lock table
     bq --apilog=false --project_id=~{project_id} rm -f -t ~{dataset_name}.sample_id_assignment_lock
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
+    docker: cloud_sdk_docker
     memory: "3.75 GB"
     disks: "local-disk " + 10 + " HDD"
     cpu: 1
@@ -199,6 +228,7 @@ task CreateCostObservabilityTable {
   input {
     String project_id
     String dataset_name
+    String cloud_sdk_docker
   }
 
   String cost_observability_json =
@@ -234,7 +264,7 @@ task CreateCostObservabilityTable {
     fi
   >>>
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
+    docker: cloud_sdk_docker
   }
   output {
     Boolean done = true

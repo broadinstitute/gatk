@@ -65,6 +65,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - rsa_vs_1019
    - name: GvsBenchmarkExtractTask
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsBenchmarkExtractTask.wdl
@@ -112,6 +113,7 @@ workflows:
          - master
          - ah_var_store
          - VS-327
+         - rc-vs-1004-extract
    - name: GvsImportGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsImportGenomes.wdl
@@ -119,19 +121,15 @@ workflows:
        branches:
          - master
          - ah_var_store
-   - name: GvsPrepareBulkImport
-     subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareBulkImport.wdl
-     filters:
-       branches:
-         - ah_var_store
    - name: GvsBulkIngestGenomes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsBulkIngestGenomes.wdl
      filters:
        branches:
+         - master
          - ah_var_store
-         - gg_VS-1001_UpdateDockersForGoogleStorageLibraryUpdate
+         - bulk_ingest_staging
+         - vs_1032_beta_wdl_pin
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
@@ -178,13 +176,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-   - name: GvsUnified
-     subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsUnified.wdl
-     filters:
-       branches:
-         - master
-         - ah_var_store
    - name: GvsJointVariantCalling
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCalling.wdl
@@ -192,8 +183,18 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - rsa_vs_982
-         - rsa_jar_fix_230722
+         - bulk_ingest_staging
+         - vs_1032_beta_wdl_pin
+   - name: GvsBeta
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCalling.wdl
+     filters:
+       branches:
+         # `master` is here so there will be *something* under the branches filter, but GVS WDLs are not on `master`
+         # so this shouldn't show up in the list of available versions in Dockstore or Terra.
+         - master
+       tags:
+         - /.*/
    - name: GvsJointVariantCallsetCost
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCallsetCost.wdl
@@ -201,6 +202,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - bulk_ingest_staging
    - name: GvsCalculatePrecisionAndSensitivity
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsCalculatePrecisionAndSensitivity.wdl
@@ -208,6 +210,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_1014_exome_warp_ps
    - name: GvsQuickstartVcfIntegration
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsQuickstartVcfIntegration.wdl
@@ -229,8 +232,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1001_bigquery_storage_to_v1
-         - rc-vs-855-pin-hail
+         - vs_1032_beta_wdl_pin
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsIngestTieout.wdl

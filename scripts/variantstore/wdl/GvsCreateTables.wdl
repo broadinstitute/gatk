@@ -1,18 +1,33 @@
 version 1.0
 
+import "GvsUtils.wdl" as Utils
+
 workflow CreateBQTables {
   input {
     String dataset_name
     String project_id
+    String? git_branch_or_tag
+    String? git_hash
 
     Int max_table_id
 
     Int? preemptible_tries
+    String? cloud_sdk_docker
   }
 
   String pet_schema_json = '[{"name": "location","type": "INTEGER","mode": "REQUIRED"},{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name": "state","type": "STRING","mode": "REQUIRED"}]'
   String ref_ranges_schema_json = '[{"name": "location","type": "INTEGER","mode": "REQUIRED"},{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name": "length","type": "INTEGER","mode": "REQUIRED"},{"name": "state","type": "STRING","mode": "REQUIRED"}]'
   String vet_schema_json = '[{"name": "sample_id", "type" :"INTEGER", "mode": "REQUIRED"},{"name": "location", "type" :"INTEGER", "mode": "REQUIRED"},{"name": "ref", "type" :"STRING", "mode": "REQUIRED"},{"name": "alt", "type" :"STRING", "mode": "REQUIRED"},{"name": "AS_RAW_MQ", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_RAW_MQRankSum", "type" :"STRING", "mode": "NULLABLE"},{"name": "QUALapprox", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_QUALapprox", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_RAW_ReadPosRankSum", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_SB_TABLE", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_VarDP", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_GT", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_AD", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_GQ", "type" :"INTEGER", "mode": "NULLABLE"},{"name": "call_PGT", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_PID", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_PL", "type" :"STRING", "mode": "NULLABLE"}]'
+
+  if (!defined(git_hash) || !defined(cloud_sdk_docker)) {
+    call Utils.GetToolVersions {
+      input:
+        git_branch_or_tag = git_branch_or_tag,
+    }
+  }
+
+  String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
+  String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
 
   call CreateTables as CreateVetTables {
     input:
@@ -22,7 +37,8 @@ workflow CreateBQTables {
       max_table_id = max_table_id,
       schema_json = vet_schema_json,
       superpartitioned = "true",
-      partitioned = "true"
+      partitioned = "true",
+      cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
   call CreateTables as CreateRefRangesTables {
@@ -33,12 +49,14 @@ workflow CreateBQTables {
       max_table_id = max_table_id,
       schema_json = ref_ranges_schema_json,
       superpartitioned = "true",
-      partitioned = "true"
+      partitioned = "true",
+      cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
   output {
     String vetDone = CreateVetTables.done
     String refDone = CreateRefRangesTables.done
+    String recorded_git_hash = effective_git_hash
   }
 }
 
@@ -53,6 +71,7 @@ task CreateTables {
     String schema_json
     String superpartitioned
     String partitioned
+    String cloud_sdk_docker
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
@@ -103,7 +122,7 @@ task CreateTables {
   }
 
   runtime {
-    docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
+    docker: cloud_sdk_docker
     memory: "3 GB"
     disks: "local-disk 10 HDD"
     cpu: 1

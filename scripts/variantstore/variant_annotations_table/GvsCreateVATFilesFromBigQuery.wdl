@@ -1,17 +1,32 @@
 version 1.0
 
+import "../wdl/GvsUtils.wdl" as Utils
+
 workflow GvsCreateVATFilesFromBigQuery {
     input {
         String project_id
+        String? git_branch_or_tag
+        String? git_hash
         String dataset_name
         String vat_table_name
 
         String output_path
         Int? merge_vcfs_disk_size_override
         Boolean precondition_met = true
+        String? cloud_sdk_docker
     }
 
     Array[String] contig_array = ["chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrX", "chrY", "chrM"]
+
+    if (!defined(git_hash) || !defined(cloud_sdk_docker)) {
+        call Utils.GetToolVersions {
+            input:
+                git_branch_or_tag = git_branch_or_tag,
+        }
+    }
+
+    String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
+    String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
 
     scatter(i in range(length(contig_array)) ) {
         call BigQueryExportVat {
@@ -21,7 +36,8 @@ workflow GvsCreateVATFilesFromBigQuery {
                 dataset_name = dataset_name,
                 output_path = output_path,
                 vat_table = vat_table_name,
-                load_jsons_done = precondition_met
+                load_jsons_done = precondition_met,
+                cloud_sdk_docker = effective_cloud_sdk_docker,
         }
     }
 
@@ -30,11 +46,13 @@ workflow GvsCreateVATFilesFromBigQuery {
             export_done = BigQueryExportVat.done,
             contig_array = contig_array,
             output_path = output_path,
-            merge_vcfs_disk_size_override = merge_vcfs_disk_size_override
+            merge_vcfs_disk_size_override = merge_vcfs_disk_size_override,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
     output {
         File final_tsv_file = MergeVatTSVs.tsv_file
+        String recorded_git_hash = effective_git_hash
     }
 }
 
@@ -49,6 +67,7 @@ task BigQueryExportVat {
         String vat_table
         String output_path
         Boolean load_jsons_done
+        String cloud_sdk_docker
     }
 
     String export_path = output_path + "export/" + contig + "/*.tsv.gz"
@@ -180,7 +199,7 @@ task BigQueryExportVat {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-alpine"
+        docker: cloud_sdk_docker
         memory: "2 GB"
         preemptible: 3
         cpu: "1"
@@ -200,6 +219,7 @@ task MergeVatTSVs {
         String output_path
 
         Int? merge_vcfs_disk_size_override
+        String cloud_sdk_docker
     }
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
@@ -252,7 +272,7 @@ task MergeVatTSVs {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0-slim"
+        docker: cloud_sdk_docker
         memory: "4 GB"
         preemptible: 3
         cpu: "2"

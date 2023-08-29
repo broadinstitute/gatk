@@ -1,26 +1,46 @@
 version 1.0
 
+import "GvsUtils.wdl" as Utils
+
+
 workflow GvsCallsetCost {
     input {
+        String? git_branch_or_tag
+        String? git_hash
         String project_id
         String dataset_name
         String workspace_namespace
         String workspace_name
         String call_set_identifier
         Array[String] excluded_submission_ids = []
+        String? cloud_sdk_docker
+        String? variants_docker
     }
+
+    if (!defined(git_hash) || !defined(cloud_sdk_docker) || !defined(variants_docker)) {
+        call Utils.GetToolVersions {
+            input:
+                git_branch_or_tag = git_branch_or_tag,
+        }
+    }
+
+    String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
+    String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
+    String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
 
     call WorkflowComputeCosts {
         input:
             workspace_namespace = workspace_namespace,
             workspace_name = workspace_name,
-            excluded_submission_ids = excluded_submission_ids
+            excluded_submission_ids = excluded_submission_ids,
+            variants_docker = effective_variants_docker,
     }
 
     call CoreStorageModelSizes {
         input:
             project_id = project_id,
-            dataset_name = dataset_name
+            dataset_name = dataset_name,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
     call ReadCostObservabilityTable {
@@ -28,6 +48,7 @@ workflow GvsCallsetCost {
             project_id = project_id,
             dataset_name = dataset_name,
             call_set_identifier = call_set_identifier,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
     output {
@@ -36,6 +57,7 @@ workflow GvsCallsetCost {
         String ref_ranges_gib = CoreStorageModelSizes.ref_ranges_gib
         String alt_allele_gib = CoreStorageModelSizes.alt_allele_gib
         File cost_observability = ReadCostObservabilityTable.cost_observability
+        String recorded_git_hash = effective_git_hash
     }
 }
 
@@ -49,6 +71,7 @@ task WorkflowComputeCosts {
         String workspace_namespace
         String workspace_name
         Array[String] excluded_submission_ids
+        String variants_docker
     }
 
     Array[String] excluded_ids = prefix('--exclude ', excluded_submission_ids)
@@ -62,7 +85,7 @@ task WorkflowComputeCosts {
     >>>
 
     runtime {
-        docker: "us.gcr.io/broad-dsde-methods/variantstore:2023-06-23-alpine"
+        docker: variants_docker
     }
 
     output {
@@ -79,6 +102,7 @@ task CoreStorageModelSizes {
     input {
         String project_id
         String dataset_name
+        String cloud_sdk_docker
     }
     command <<<
 
@@ -97,7 +121,7 @@ task CoreStorageModelSizes {
         get_billable_bytes_in_gib "alt_allele"   alt_allele_gib.txt
     >>>
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
+        docker: cloud_sdk_docker
     }
     output {
         Float vet_gib = read_float("vet_gib.txt")
@@ -116,6 +140,7 @@ task ReadCostObservabilityTable {
         String project_id
         String dataset_name
         String call_set_identifier
+        String cloud_sdk_docker
     }
     command <<<
         bq --apilog=false query --project_id='~{project_id}' --format=prettyjson --use_legacy_sql=false \
@@ -125,7 +150,7 @@ task ReadCostObservabilityTable {
             > cost_observability.json
     >>>
     runtime {
-        docker: "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
+        docker: cloud_sdk_docker
     }
     output {
         File cost_observability = "cost_observability.json"

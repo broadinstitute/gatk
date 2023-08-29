@@ -18,6 +18,9 @@ workflow JointVcfFiltering {
     Array[File] sites_only_variant_filtered_vcfs
     Array[File] sites_only_variant_filtered_vcf_idxs
 
+    String? gatk_docker
+    String? git_branch_or_tag
+    String? git_hash
     File? gatk_override
 
     Int? INDEL_VQSR_max_gaussians_override = 4
@@ -68,6 +71,16 @@ workflow JointVcfFiltering {
   File one_thousand_genomes_resource_vcf = "gs://gcp-public-data--broad-references/hg38/v0/1000G_phase1.snps.high_confidence.hg38.vcf.gz"
   File one_thousand_genomes_resource_vcf_index = "gs://gcp-public-data--broad-references/hg38/v0/1000G_phase1.snps.high_confidence.hg38.vcf.gz.tbi"
 
+  if (!defined(git_hash) || !defined(gatk_docker)) {
+    call Utils.GetToolVersions {
+      input:
+        git_branch_or_tag = git_branch_or_tag,
+    }
+  }
+
+  String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
+  String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
+
   call IndelsVariantRecalibrator {
     input:
       sites_only_variant_filtered_vcf = sites_only_variant_filtered_vcf,
@@ -87,11 +100,13 @@ workflow JointVcfFiltering {
       machine_mem_gb = INDEL_VQSR_mem_gb_override,
       max_gaussians = INDEL_VQSR_max_gaussians_override,
       maximum_training_variants = INDEL_VQSR_maximum_training_variants,
+      gatk_docker = effective_gatk_docker,
   }
 
   if (num_samples_loaded > snps_variant_recalibration_threshold) {
     call SNPsVariantRecalibratorCreateModel {
       input:
+        num_samples = num_samples_loaded,
         sites_only_variant_filtered_vcf = sites_only_variant_filtered_vcf,
         sites_only_variant_filtered_vcf_index = sites_only_variant_filtered_vcf_idx,
         recalibration_filename = base_name + ".snps.recal",
@@ -112,7 +127,8 @@ workflow JointVcfFiltering {
         machine_mem_gb = SNP_VQSR_mem_gb_override,
         max_gaussians = SNP_VQSR_max_gaussians_override,
         sample_every_nth_variant = SNP_VQSR_sample_every_nth_variant,
-        maximum_training_variants = SNP_VQSR_maximum_training_variants
+        maximum_training_variants = SNP_VQSR_maximum_training_variants,
+        gatk_docker = effective_gatk_docker,
     }
 
     scatter (idx in range(length(sites_only_variant_filtered_vcfs))) {
@@ -135,7 +151,8 @@ workflow JointVcfFiltering {
           dbsnp_resource_vcf_index = dbsnp_vcf_index,
           use_allele_specific_annotations = true,
           disk_size = "1000",
-          machine_mem_gb = SNP_VQSR_mem_gb_override
+          machine_mem_gb = SNP_VQSR_mem_gb_override,
+          gatk_docker = effective_gatk_docker,
       }
     }
 
@@ -146,7 +163,8 @@ workflow JointVcfFiltering {
         output_tranche_values = snp_recalibration_tranche_values,
         mode = "SNP",
         disk_size = "200",
-        gatk_override = gatk_override
+        gatk_docker = effective_gatk_docker,
+        gatk_override = gatk_override,
     }
 
     call Utils.MergeVCFs as MergeRecalibrationFiles {
@@ -155,6 +173,7 @@ workflow JointVcfFiltering {
         gather_type = "CONVENTIONAL",
         output_vcf_name = "${base_name}.vrecalibration.vcf.gz",
         preemptible_tries = 3,
+        gatk_docker = effective_gatk_docker,
     }
   }
 
@@ -179,11 +198,13 @@ workflow JointVcfFiltering {
         disk_size = "1000",
         machine_mem_gb = SNP_VQSR_mem_gb_override,
         max_gaussians = SNP_VQSR_max_gaussians_override,
+        gatk_docker = effective_gatk_docker,
     }
   }
 
   call Utils.PopulateFilterSetInfo {
     input:
+      gatk_docker = effective_gatk_docker,
       gatk_override = gatk_override,
       filter_set_name = filter_set_name,
       filter_schema = filter_set_info_schema,
@@ -199,6 +220,7 @@ workflow JointVcfFiltering {
   call PopulateFilterSetTranches {
     input:
       project_id = project_id,
+      gatk_docker = effective_gatk_docker,
       gatk_override = gatk_override,
       filter_set_name = filter_set_name,
       snp_recal_tranches = select_first([SNPGatherTranches.tranches_file, SNPsVariantRecalibratorClassic.tranches]),
@@ -211,6 +233,7 @@ workflow JointVcfFiltering {
     File snps_variant_recalibration_file_index = select_first([MergeRecalibrationFiles.output_vcf_index, SNPsVariantRecalibratorClassic.recalibration_index])
     File indels_variant_recalibration_file = IndelsVariantRecalibrator.recalibration
     File indels_variant_recalibration_file_index = IndelsVariantRecalibrator.recalibration_index
+    String recorded_git_hash = effective_git_hash
     Array[File] monitoring_logs = select_all(
                                   flatten(
                                    [
@@ -250,13 +273,23 @@ task SNPsVariantRecalibratorCreateModel {
     Int max_gaussians = 6
     Int sample_every_nth_variant = 1
     Int maximum_training_variants = 2500000
+
+    Int num_samples
     Int? machine_mem_gb
 
     Int disk_size
+    String gatk_docker
   }
 
-  Int machine_mem = select_first([machine_mem_gb, 100])
-  Int java_mem = machine_mem - 5
+  # Based on https://docs.google.com/spreadsheets/d/1jOsudfO1-RadJXPGuHOIrjZW3Rg2SzvlL8Wg-lxZVUU/edit#gid=1056496058
+  Int default_mem_gb = if (num_samples <= 10000) then 110
+      else if (num_samples <= 15000) then 150
+      else if (num_samples <= 40000) then 256
+      else if (num_samples <= 99000) then 512
+      else 624
+
+  Int machine_mem = select_first([machine_mem_gb, default_mem_gb])
+  Int java_mem = machine_mem - 10
 
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
@@ -291,7 +324,7 @@ task SNPsVariantRecalibratorCreateModel {
     bootDiskSizeGb: 15
     disks: "local-disk " + disk_size + " HDD"
     preemptible: 1
-    docker: "us.gcr.io/broad-gatk/gatk:4.1.9.0"
+    docker: gatk_docker
   }
 
   output {
@@ -307,6 +340,7 @@ task GatherTranches {
     String output_filename
     String mode
     Int disk_size
+    String gatk_docker
     File? gatk_override
   }
 
@@ -362,7 +396,7 @@ task GatherTranches {
     bootDiskSizeGb: 15
     disks: "local-disk " + disk_size + " HDD"
     preemptible: 1
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_07_20"
+    docker: gatk_docker
   }
 
   output {
@@ -395,10 +429,11 @@ task IndelsVariantRecalibrator {
 
     Int disk_size
     Int? machine_mem_gb
+    String gatk_docker
   }
 
-  Int machine_mem = select_first([machine_mem_gb, 30])
-  Int java_mem = machine_mem - 5
+  Int machine_mem = select_first([machine_mem_gb, 35])
+  Int java_mem = machine_mem - 10
 
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
 
@@ -431,7 +466,7 @@ task IndelsVariantRecalibrator {
     cpu: "2"
     disks: "local-disk " + disk_size + " HDD"
     preemptible: 1
-    docker: "us.gcr.io/broad-gatk/gatk:4.1.9.0"
+    docker: gatk_docker
   }
 
   output {
@@ -468,7 +503,7 @@ task SNPsVariantRecalibrator {
 
     Int disk_size
     Int? machine_mem_gb
-
+    String gatk_docker
   }
 
   Int auto_mem = ceil(2 * size([sites_only_variant_filtered_vcf,
@@ -515,7 +550,7 @@ task SNPsVariantRecalibrator {
     cpu: 2
     disks: "local-disk " + disk_size + " HDD"
     preemptible: 0
-    docker: "us.gcr.io/broad-gatk/gatk:4.1.9.0"
+    docker: gatk_docker
   }
 
   output {
@@ -531,6 +566,7 @@ task PopulateFilterSetTranches {
   input {
     String project_id
 
+    String gatk_docker
     File? gatk_override
 
     String filter_set_name
@@ -565,7 +601,7 @@ task PopulateFilterSetTranches {
   >>>
 
   runtime {
-    docker: "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_07_20"
+    docker: gatk_docker
     memory: "3500 MB"
     disks: "local-disk 200 HDD"
     bootDiskSizeGb: 15

@@ -37,10 +37,21 @@ workflow GvsExtractCohortFromSampleNames {
     Int? split_intervals_disk_size_override
     Int? split_intervals_mem_override
 
+    String? git_branch_or_tag
     File? gatk_override
+    String? cloud_sdk_docker
   }
 
   Boolean write_cost_to_db = if ((gvs_project != destination_project_id) || (gvs_project != query_project)) then false else true
+
+  # Always call `GetToolVersions` to get the git hash for this run as this is a top-level-only WDL (i.e. there are
+  # no calling WDLs that might supply `git_hash`).
+  call Utils.GetToolVersions {
+    input:
+      git_branch_or_tag = git_branch_or_tag,
+  }
+
+  String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
 
   call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
     input:
@@ -70,7 +81,7 @@ workflow GvsExtractCohortFromSampleNames {
     call write_array_task {
       input:
         input_array = select_first([cohort_sample_names_array]),
-        docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:426.0.0"
+        cloud_sdk_docker = effective_cloud_sdk_docker,
     }
   }
 
@@ -119,6 +130,7 @@ workflow GvsExtractCohortFromSampleNames {
 
   output {
     Float total_vcfs_size_mb = GvsExtractCallset.total_vcfs_size_mb
+    String recorded_git_hash = GetToolVersions.git_hash
   }
 
 }
@@ -126,7 +138,7 @@ workflow GvsExtractCohortFromSampleNames {
 task write_array_task {
   input {
     Array[String] input_array
-    String docker
+    String cloud_sdk_docker
   }
 
   command <<<
@@ -137,7 +149,7 @@ task write_array_task {
   }
 
   runtime {
-    docker: docker
+    docker: cloud_sdk_docker
   }
 }
 
