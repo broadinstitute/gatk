@@ -20,6 +20,7 @@ Once you have copied them, run `python3 hail_create_vat_inputs.py` with the foll
 * `--ancestry_input_path` Required, GCS path of the TSV file that maps `sample_name`s to subpopulations.
 * `--vds_input_path` Optional, should be pre-populated by the `GvsExtractAvroFilesForHail` workflow. GCS path of the top-level directory of the VDS.
 * `--sites_only_output_path` Optional, should be pre-populated by the `GvsExtractAvroFilesForHail` workflow. GCS path to write the sites-only VCF to; save this for the `GvsCreateVATfromVDS` workflow.
+* `--temp_path` Required, GCS path of a temp 'directory' that is used by Hail for storage of intermediate/temp files. Note that this script creates a time-stamped directory under this path in order to segregate temp data from different runs.
 
 When the script is done running it will print out the path to where it has written the sites-only VCF.
 
@@ -46,6 +47,22 @@ Variants may be filtered out of the VAT (that were in the VDS) for the following
 - they have excess alternate alleles, currently that cut off is 50 alternate alleles
 - they are spanning deletions
 - they are duplicate variants; they are tracked via the `GvsCreateVATfromVDS` workflow's scattered `RemoveDuplicatesFromSites` task and then merged into one file by the `MergeTsvs` task
+
+### Remove duplicates from the VAT table.
+
+There is a bug in the way we build the VAT table from the shards. If a variant (e.g. for an insertion or deletion) spans between the end of one shard and the beginning of the next shard, it will be entered TWICE into the resultant vat table as there will be duplicate entries in each of the shards. To address this issue, we run a manual SQL statement in BigQuery in order to remove these duplicates.
+**Note:** The purpose of this query is to create a NEW copy of the VAT table with the duplicates removed. So, when you run it, have BigQuery write the output to a new table (More -> Query Settings -> Destination )
+
+>     select * except(row_number) from (
+>      SELECT
+>       *,
+>       row_number()
+>       over (partition by vid, transcript)
+>       row_number
+>       FROM
+>        `<project_id>.<dataset>.<vat_table_name>`    
+>       )
+>     where row_number = 1;
 
 ### Run GvsValidateVAT
 
