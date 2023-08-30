@@ -64,16 +64,13 @@ The [GVS beta workspace](https://app.terra.bio/#workspaces/gvs-prod/Genomic_Vari
 
 The table below describes the GVS workflow input variables:
 
-| Input variable name    | Description                                                                                                                                                                | Type            |
-|------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------|
-| dataset_name           | Name of the BigQuery dataset used to hold input samples, filtering model data, and other tables created during the workflow.                                               | String          |
-| project_id             | Name of the Google project that contains the BigQuery dataset.                                                                                                             | String          |
-| external_sample_names  | Unique sample IDs used in creation of output VCF file; `sample_id` in the sample data table in Terra.                                                                      | Array of strings |
-| input_vcfs             | Cloud paths to the sample GVCF files.                                                                                                                                      | Array of files  |
-| input_vcf_indexes      | Cloud paths to the sample GVCF index files.                                                                                                                                | Array of files  |
-| call_set_identifier    | Used to name the filter model, BigQuery extract tables, and final joint VCF shards; should begin with a letter; valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”. | String          |
-| extract_output_gcs_dir | Optional; desired cloud path for output files.                                                                                                                             | String          |
-| use_classic_VQSR       | Optional; defaults to false since September 1, 2023.                                                                                                                       | Boolean         |
+| Input variable name    | Description                                                                                                                                                                                                          | Type    |
+|------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|
+| dataset_name           | Name of the BigQuery dataset used to hold input samples, filtering model data, and other tables created during the workflow.                                                                                         | String  |
+| project_id             | Name of the Google project that contains the BigQuery dataset.                                                                                                                                                       | String  |
+| call_set_identifier    | Used to name the filter model, BigQuery extract tables, and final joint VCF shards; should begin with a letter; valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”.                                           | String  |
+| extract_output_gcs_dir | Optional; desired cloud path for output files. If unspecified, output VCFs will be copied to a GCS path like `<workspace_bucket>/<submission_id>/output_vcfs` as specified by the workflow output `output_gcs_path`. | String  |
+| use_classic_VQSR       | Optional; defaults to true until September 1, 2023.                                                                                                                                                                  | Boolean |
 
 ## Tasks and tools
 
