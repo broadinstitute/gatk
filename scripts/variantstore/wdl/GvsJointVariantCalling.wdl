@@ -160,7 +160,7 @@ workflow GvsJointVariantCalling {
             variants_docker = effective_variants_docker,
     }
 
-    String effective_output_gcs_dir = select_first([extract_output_gcs_dir, "~{BulkIngestGenomes.workspace_bucket}/~{BulkIngestGenomes.submission_id}/output_vcfs"])
+    String effective_output_gcs_dir = select_first([extract_output_gcs_dir, "gs://~{BulkIngestGenomes.workspace_bucket}/output_vcfs/by_submission/~{BulkIngestGenomes.submission_id}"])
 
     call ExtractCallset.GvsExtractCallset {
         input:
