@@ -78,7 +78,7 @@ See the "Job History" tab in the Genomic_Variant_Store_Beta workspace for a rece
 
 ### Important configuration notes
 
-By default, the workflow is set up to write outputs to the workspace Google bucket in a location under the workspace bucket specified by the workflow output `output_gcs_path`. If you want to write the outputs to a different cloud storage location, you can specify the cloud path in the `extract_output_gcs_dir` optional input in the workflow configuration.
+By default, the workflow will write outputs to the location `gs://<workspace bucket>/output_vcfs/by_submission_id/<submission id>`. If you want to write the outputs to a different cloud storage location, you can specify the cloud path in the `extract_output_gcs_dir` optional input in the workflow configuration. The actual output location will be specified by the workflow output `output_gcs_path`.
 
 ### Time and cost
 Below are several examples of the time and cost of running the workflow. Generally the cost is around 6 cents per sample, including Terra compute and BigQuery compute cost. This does not include storage costs.

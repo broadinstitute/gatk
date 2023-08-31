@@ -17,7 +17,7 @@
 
 ### Changed
 
-- Updates to Beta Documentation.
+- Updates to Beta documentation.
 
 ## 0.2.0 - 2023-08-29
 
