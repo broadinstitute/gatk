@@ -62,7 +62,7 @@ workflow GvsCreateVATFilesFromBigQuery {
             header_contig = small_contig_for_header,
             output_path = output_path + "export_for_header/",
             merge_vcfs_disk_size_override = merge_vcfs_disk_size_override,
-            cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
     call MergeVatTSVs {
@@ -245,7 +245,7 @@ task GetHeader {
         String output_path
 
         Int? merge_vcfs_disk_size_override
-        String cloud_sdk_slim_docker
+        String cloud_sdk_docker
     }
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
@@ -264,21 +264,18 @@ task GetHeader {
         echo_date () { echo "`date "+%Y/%m/%d %H:%M:%S"` $1"; }
 
         mkdir TSVs
-
         echo_date "copying files from ~{output_path}~{header_contig}/*.tsv.gz"
         gcloud storage cp ~{output_path}~{header_contig}/*.tsv.gz TSVs/
-
         tsv_files=(TSVs/*.tsv.gz)
-        echo_date "Looks like this: ${tsv_files[@]}"
-        echo_date "First element is: ${tsv_files[0]}"
 
-        zcat ${tsv_files[0]} | head -1 | gzip > header.tsv.gz
-
+        # Get the first file and strip off its header.
+        gzip -cd ${tsv_files[0]} | head -1 | gzip > header.tsv.gz
+        echo "here"
     >>>
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: cloud_sdk_slim_docker
+        docker: cloud_sdk_docker
         memory: "4 GB"
         preemptible: 3
         cpu: "2"
