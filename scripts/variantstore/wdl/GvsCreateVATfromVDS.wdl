@@ -24,7 +24,6 @@ workflow GvsCreateVATfromVDS {
 
         String? basic_docker
         String? cloud_sdk_docker
-        String? cloud_sdk_slim_docker
         String? variants_docker
         String? gatk_docker
         String? variants_nirvana_docker
@@ -45,7 +44,6 @@ workflow GvsCreateVATfromVDS {
 
     String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
     String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
-    String effective_cloud_sdk_slim_docker = select_first([cloud_sdk_slim_docker, GetToolVersions.cloud_sdk_slim_docker])
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
     String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
     String effective_variants_nirvana_docker = select_first([variants_nirvana_docker, GetToolVersions.variants_nirvana_docker])
@@ -166,7 +164,6 @@ workflow GvsCreateVATfromVDS {
             merge_vcfs_disk_size_override = merge_vcfs_disk_size_override,
             precondition_met = BigQueryLoadJson.done,
             cloud_sdk_docker = effective_cloud_sdk_docker,
-            cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
    }
 
     output {
