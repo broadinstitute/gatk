@@ -269,9 +269,14 @@ task GetHeader {
         tsv_files=(TSVs/*.tsv.gz)
 
         # Get the first file and strip off its header.
-        set -e
-        gzip -cd ${tsv_files[0]} | head -1 | gzip > header.tsv.gz
-        set +e
+        # We can't safely pipe to `head -1` because while `head` will exit successfully after reading the first line, the
+        # pipeline will continue trying to write data to the `head` process. If this happens we'll get a 141 exit code and
+        # with `set -o pipefail` turned on this will fail our task. As a workaround use this `<(...)` temp file construct.
+        # https://news.ycombinator.com/item?id=9255830
+        echo_date "Hello"
+        head -1 <(gzip -cd ${tsv_files[0]}) | gzip > header.tsv.gz
+        echo_date "There"
+#        gzip -cd ${tsv_files[0]} | head -1 | gzip > header.tsv.gz
     >>>
     # ------------------------------------------------
     # Runtime settings:
