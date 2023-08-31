@@ -346,9 +346,9 @@ task MergeVatTSVs {
         echo_date "concatenating $files"
         cat $(echo $files) > vat_complete.tsv.gz
         echo_date "bgzipping concatenated file"
-        cat vat_complete.tsv.gz | gunzip | bgzip > vat_complete.bgz.tsv.gz
+        gunzip -c vat_complete.tsv.gz | bgzip > vat_complete.tsv.bgz
         echo_date "copying bgzipped file to ~{output_path}"
-        gcloud storage cp vat_complete.bgz.tsv.gz ~{output_path}
+        gcloud storage cp vat_complete.tsv.bgz ~{output_path}
     >>>
     # ------------------------------------------------
     # Runtime settings:
@@ -362,7 +362,7 @@ task MergeVatTSVs {
     # ------------------------------------------------
     # Outputs:
     output {
-        File tsv_file = "vat_complete.bgz.tsv.gz"
+        File tsv_file = "vat_complete.tsv.bgz"
         File monitoring_log = "monitoring.log"
     }
 }
