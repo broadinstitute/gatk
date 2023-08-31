@@ -10,7 +10,7 @@ The materials in this workspace were developed by the Data Sciences Platform at 
 
 ## Workflow Overview
 
-![A diagram depicting the Genomic Variant Store workflow. Sample GVCF files are imported into the core data model. A filtering model is trained using Variant Quality Score Recalibration, or VQSR, and then applied while the samples are extracted as cohorts in sharded joint VCF files. Each step integrates BigQuery and GATK tools.](https://storage.googleapis.com/terra-featured-workspaces/Genomic-Variant-Store/genomic-variant-store_diagram.png)
+![A diagram depicting the Genomic Variant Store workflow. Sample GVCF files are imported into the core data model. A filtering model is trained using the VETS toolchain, and then applied while the samples are extracted as cohorts in sharded joint VCF files. Each step integrates BigQuery and GATK tools.](https://storage.googleapis.com/terra-featured-workspaces/Genomic-Variant-Store/genomic-variant-store_diagram.png)
 
 ### What does it do?
 
