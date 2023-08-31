@@ -26,6 +26,7 @@ workflow GvsValidateVat {
         input:
             project_id = project_id,
             fq_table = fq_vat_table,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
     call EnsureVatTableHasVariants {

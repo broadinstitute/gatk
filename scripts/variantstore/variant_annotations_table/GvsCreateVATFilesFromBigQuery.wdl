@@ -14,11 +14,12 @@ workflow GvsCreateVATFilesFromBigQuery {
         Int? merge_vcfs_disk_size_override
         Boolean precondition_met = true
         String? cloud_sdk_docker
+        String? cloud_sdk_slim_docker
     }
 
     Array[String] contig_array = ["chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrX", "chrY", "chrM"]
 
-    if (!defined(git_hash) || !defined(cloud_sdk_docker)) {
+    if (!defined(git_hash) || !defined(cloud_sdk_docker) || !defined(cloud_sdk_slim_docker)) {
         call Utils.GetToolVersions {
             input:
                 git_branch_or_tag = git_branch_or_tag,
@@ -26,6 +27,7 @@ workflow GvsCreateVATFilesFromBigQuery {
     }
 
     String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
+    String effective_cloud_sdk_slim_docker = select_first([cloud_sdk_slim_docker, GetToolVersions.cloud_sdk_slim_docker])
     String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
 
     scatter(i in range(length(contig_array)) ) {
@@ -47,7 +49,7 @@ workflow GvsCreateVATFilesFromBigQuery {
             contig_array = contig_array,
             output_path = output_path,
             merge_vcfs_disk_size_override = merge_vcfs_disk_size_override,
-            cloud_sdk_docker = effective_cloud_sdk_docker,
+            cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
     }
 
     output {
@@ -219,7 +221,7 @@ task MergeVatTSVs {
         String output_path
 
         Int? merge_vcfs_disk_size_override
-        String cloud_sdk_docker
+        String cloud_sdk_slim_docker
     }
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
@@ -272,7 +274,7 @@ task MergeVatTSVs {
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: cloud_sdk_docker
+        docker: cloud_sdk_slim_docker
         memory: "4 GB"
         preemptible: 3
         cpu: "2"

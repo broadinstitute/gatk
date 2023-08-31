@@ -6,7 +6,7 @@ workflows:
      testParameterFiles:
           - /scripts/cnv_cromwell_tests/germline/cnv_germline_case_scattered_workflow.json
      filters:
-         branches: 
+         branches:
              - master
          tags:
              - /.*/
@@ -33,7 +33,7 @@ workflows:
    - name: cnv_somatic_pair_workflow
      subclass: WDL
      primaryDescriptorPath: /scripts/cnv_wdl/somatic/cnv_somatic_pair_workflow.wdl
-     testParameterFiles: 
+     testParameterFiles:
           -  /scripts/cnv_cromwell_tests/somatic/cnv_somatic_pair_wes_do-gc_workflow.json
      filters:
          branches:
@@ -175,8 +175,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - bulk_ingest_staging
-             - vs_1032_beta_wdl_pin
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
@@ -275,7 +273,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1014_exome_warp_ps
          tags:
              - /.*/
    - name: GvsQuickstartVcfIntegration
