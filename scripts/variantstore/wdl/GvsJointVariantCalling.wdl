@@ -20,7 +20,7 @@ workflow GvsJointVariantCalling {
         String call_set_identifier
         String? extract_output_gcs_dir
         String drop_state = "FORTY"
-        Boolean use_classic_VQSR = true
+        Boolean use_classic_VQSR = false
         # Beta users have accounts with tighter quotas, and we must work around that
         Boolean tighter_gcp_quotas = true
         String? sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest

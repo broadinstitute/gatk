@@ -180,8 +180,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - bulk_ingest_staging
-         - vs_1032_beta_wdl_pin
+         - rsa_vs_1039
    - name: GvsBeta
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsJointVariantCalling.wdl
