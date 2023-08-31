@@ -22,7 +22,7 @@ For workflow documentation, see the [Genomic Variant Store workflow overview](ht
 
 **Important Update:**
 
-Starting September 1, variants in GVS will be filtered using the GATK Variant Extract-Train-Score toolchain with an isolation-forest model by default. GVS maintains the ability to run VQSR on callsets up to 10,000 genomes to reproduce the same results from past analyses. See the [release notes](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/docs/release_notes/VETS_Release.pdf) for more information.
+Starting September 1, variants in GVS are filtered using the GATK Variant Extract-Train-Score toolchain with an isolation-forest model by default. GVS maintains the ability to run VQSR on callsets up to 10,000 genomes to reproduce the same results from past analyses. See the [release notes](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/docs/release_notes/VETS_Release.pdf) for more information.
 
 ---
 
@@ -132,11 +132,12 @@ Data Sciences Platform, Broad Institute (*Year, Month Day that this workspace wa
 The workflow script is released under the Apache License, Version 2.0 (full license text at https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT). Note however that the programs called by the scripts may be subject to different licenses. Users are responsible for checking that they are authorized to run all programs before running these tools.
 
 ### Workspace Change Log
-| Date | Change                                   | Author |
-| --- |------------------------------------------| --- |
-| 08/11/2023 | Updated to VETS | Kylee Degatano |
-| 06/29/2023 | Updated to support larger sample sizes.  | Kylee Degatano | 
-| 09/08/2022 | Updated information on workflow outputs. | Aaron Hatcher |
-| 09/07/2022 | Added licensing information.             | Kaylee Mathews |
-| 09/06/2022 | Added note about storage cost.           | Kaylee Mathews |
-| 06/24/2022 | First release of the workspace.          | Kaylee Mathews |
+| Date       | Change                                    | Author         |
+|------------|-------------------------------------------|----------------|
+| 09/01/2023 | Updated to reflect VETS being the default | Bec Asch       |
+| 08/11/2023 | Updated to VETS                           | Kylee Degatano |
+| 06/29/2023 | Updated to support larger sample sizes.   | Kylee Degatano | 
+| 09/08/2022 | Updated information on workflow outputs.  | Aaron Hatcher  |
+| 09/07/2022 | Added licensing information.              | Kaylee Mathews |
+| 09/06/2022 | Added note about storage cost.            | Kaylee Mathews |
+| 06/24/2022 | First release of the workspace.           | Kaylee Mathews |
