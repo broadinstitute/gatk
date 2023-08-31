@@ -258,7 +258,7 @@ task GetHeader {
         bash ~{monitoring_script} > monitoring.log &
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
-#        set -o errexit -o nounset -o pipefail -o xtrace
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         # custom function to prepend the current datetime to an echo statement "borrowed" from ExtractAnAcAfFromVCF
         echo_date () { echo "`date "+%Y/%m/%d %H:%M:%S"` $1"; }
@@ -269,11 +269,9 @@ task GetHeader {
         tsv_files=(TSVs/*.tsv.gz)
 
         # Get the first file and strip off its header.
-        echo_date "It is ${tsv_files[0]}"
-        file ${tsv_files[0]}
-        echo_date "ola"
+        set -e
         gzip -cd ${tsv_files[0]} | head -1 | gzip > header.tsv.gz
-        echo "here"
+        set +e
     >>>
     # ------------------------------------------------
     # Runtime settings:
