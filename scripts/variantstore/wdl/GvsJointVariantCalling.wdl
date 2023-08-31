@@ -27,6 +27,7 @@ workflow GvsJointVariantCalling {
         String? vcf_files_column_name
         String? vcf_index_files_column_name
         String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
+        String? billing_project_id
 
         String? basic_docker
         String? cloud_sdk_docker
@@ -107,6 +108,7 @@ workflow GvsJointVariantCalling {
             vcf_files_column_name = vcf_files_column_name,
             vcf_index_files_column_name = vcf_index_files_column_name,
             sample_set_name = sample_set_name,
+            billing_project_id = billing_project_id,
     }
 
     call PopulateAltAllele.GvsPopulateAltAllele {
