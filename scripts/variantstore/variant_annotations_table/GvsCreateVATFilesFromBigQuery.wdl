@@ -14,7 +14,7 @@ workflow GvsCreateVATFilesFromBigQuery {
         Int? merge_vcfs_disk_size_override
         Boolean precondition_met = true
         String? cloud_sdk_docker
-        String? cloud_sdk_slim_docker
+        String? cloud_sdk_slim_docker  # TODO - probably unused.
     }
 
     Array[String] contig_array = ["chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrX", "chrY", "chrM"]
@@ -72,7 +72,7 @@ workflow GvsCreateVATFilesFromBigQuery {
             header_tsv_file = GetHeader.header_tsv_file,
             output_path = output_path + "export/",
             merge_vcfs_disk_size_override = merge_vcfs_disk_size_override,
-            cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
     output {
@@ -273,10 +273,7 @@ task GetHeader {
         # pipeline will continue trying to write data to the `head` process. If this happens we'll get a 141 exit code and
         # with `set -o pipefail` turned on this will fail our task. As a workaround use this `<(...)` temp file construct.
         # https://news.ycombinator.com/item?id=9255830
-        echo_date "Hello"
         head -1 <(gzip -cd ${tsv_files[0]}) | gzip > header.tsv.gz
-        echo_date "There"
-#        gzip -cd ${tsv_files[0]} | head -1 | gzip > header.tsv.gz
     >>>
     # ------------------------------------------------
     # Runtime settings:
@@ -303,7 +300,7 @@ task MergeVatTSVs {
         String output_path
 
         Int? merge_vcfs_disk_size_override
-        String cloud_sdk_slim_docker
+        String cloud_sdk_docker
     }
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
@@ -317,8 +314,6 @@ task MergeVatTSVs {
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
-        apt-get update
-        apt-get install tabix
 
         # custom function to prepend the current datetime to an echo statement "borrowed" from ExtractAnAcAfFromVCF
         echo_date () { echo "`date "+%Y/%m/%d %H:%M:%S"` $1"; }
@@ -345,15 +340,13 @@ task MergeVatTSVs {
 
         echo_date "concatenating $files"
         cat $(echo $files) > vat_complete.tsv.gz
-        echo_date "bgzipping concatenated file"
-        gunzip -c vat_complete.tsv.gz | bgzip > vat_complete.tsv.bgz
-        echo_date "copying bgzipped file to ~{output_path}"
-        gcloud storage cp vat_complete.tsv.bgz ~{output_path}
+        echo_date "copying output file to ~{output_path}"
+        gcloud storage cp vat_complete.tsv.gz ~{output_path}
     >>>
     # ------------------------------------------------
     # Runtime settings:
     runtime {
-        docker: cloud_sdk_slim_docker
+        docker: cloud_sdk_docker
         memory: "4 GB"
         preemptible: 3
         cpu: "2"
@@ -362,7 +355,7 @@ task MergeVatTSVs {
     # ------------------------------------------------
     # Outputs:
     output {
-        File tsv_file = "vat_complete.tsv.bgz"
+        File tsv_file = "vat_complete.tsv.gz"
         File monitoring_log = "monitoring.log"
     }
 }
