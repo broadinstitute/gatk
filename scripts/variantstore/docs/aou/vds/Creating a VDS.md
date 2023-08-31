@@ -3,11 +3,22 @@
 **NOTE:** This doc is very much a work in process and is serving as a way to keep track of Hail commands that were used for Delta after the initial VDS delivery.
 This example walks through the procedure we followed for creating a VDS.
 
+## Create avro files for VDS extract
+Run GvsExtractAvroFilesForHail to create a directory of avro files that will then be used to create a VDS
+
 ## Configuring the Terra notebook cluster
 
 Please follow the instructions
 in [AoU Delta VDS Cluster Configuration](cluster/AoU%20Delta%20VDS%20Cluster%20Configuration.md) to set up a Delta-scale
 cluster.
+
+## Using the created notebook, run the python script to create a VDS from the avro files created in the WDL
+
+```python ./hail_gvs_import.py \
+--avro-path gs://fc-<bucket id>/submissions/<workflow id>/GvsExtractAvroFilesForHail/<submission id>/call-OutputPath/avro/ \
+--vds-path gs://fc-<bucket id>/<name of the new vds>/ \
+--temp-path gs://fc-<bucket id>/<name of the test path>/
+```
 
 
 ## Now we made a VDS for Delta, and then needed to run the following to correct the GQ0s and then re-deliver it
