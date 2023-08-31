@@ -86,15 +86,15 @@ public class WeightedSplitIntervalsIntegrationTest extends CommandLineProgramTes
         // Sometimes, the remaining space in a scatter interval is non-zero, yet can't take
         // even a single base of the next interval.
         // e.g.
-        // 1 bases, 200 weight each
-        // 10 bases 1000 weight each
         // target: sum 10200 / 10 -> 1020 per shard
-        // chr20	60000	60001	.	200
-        // chr20	60001	60011	.	10000
+        // Using this new weights file with 0 weight blocks followed by
+        // chr20	60000	61000	.	200000
+        // chr20	61000	62000	.	1000000
+        // so 200 weight each in the first block then 1000 weight each in the second one
         final File weights = new File(testDir + "example_weights_chr20_test_zero.bed");
         final int scatterCount = 10;
         final File outputDir = createTempDir("output");
-        final Interval inputInterval = new Interval("chr20",60000,60109);
+        final Interval inputInterval = new Interval("chr20",60999,61108);
 
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .addInterval(inputInterval.getContig() + ":" + inputInterval.getStart() + "-" + inputInterval.getEnd())
