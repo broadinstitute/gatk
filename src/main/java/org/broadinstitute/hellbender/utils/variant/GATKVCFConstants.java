@@ -27,7 +27,6 @@ public final class GATKVCFConstants {
     public static final String AS_RAW_RMS_MAPPING_QUALITY_KEY =     "AS_RAW_MQ";
     public static final String AS_CULPRIT_KEY =                     "AS_culprit";
     public static final String AS_VQS_LOD_KEY =                     "AS_VQSLOD";
-    public static final String AS_VQS_SENS_KEY =                    "AS_VQS_SENS";
     public static final String AS_YNG_STATUS_KEY =                  "AS_YNG";
     public static final String SCORE_KEY =                          "SCORE";
     public static final String CALIBRATION_SENSITIVITY_KEY =        "CALIBRATION_SENSITIVITY";
