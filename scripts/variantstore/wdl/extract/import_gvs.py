@@ -139,10 +139,24 @@ def import_gvs(refs: 'List[List[str]]',
     use_classic_vqsr : :class:`bool`
         Expect input Avro files to have been generated from VQSR 'Classic' data
 
+    Script workflow:
+    ---------------
+    * Load VQSR data into table.
+    * Convert each 4k sample group into a VDS.
+    * Run the combiner on the VDSes (which does a hierarchical merge).
+    * Annotate with VQSR / filter.
+    * Compute FT genotype annotation.
+    * Remove phase on LGT.
+    * Add GT (computed from LGT).
+    * Write final VDS.
+
     Returns
     -------
     :class:`.VariantDataset`
+
     """
+
+
     from hail.utils.java import info
     vds_paths = []
     assert len(refs) == len(vets)
@@ -166,11 +180,6 @@ def import_gvs(refs: 'List[List[str]]',
         """Converts a coordinate-represented sparse array into a dense array used in MatrixTables."""
         sdict = hl.dict(arr.map(lambda x: (x.sample_id, x.drop('sample_id', *drop))))
         return hl.rbind(sdict, lambda sdict: ids.map(lambda x: sdict.get(x)))
-
-    def add_reference_allele(mt):
-        """Adds the reference allele from a FASTA file."""
-        mt = mt.annotate_rows(ref_allele=mt.locus.sequence_context())
-        return mt
 
     info('import_gvs: Importing and collecting sample mapping lookup table')
 
