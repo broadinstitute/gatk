@@ -43,6 +43,8 @@ The following files are stored in the workspace workflow execution bucket under 
 - Size of output VCF files in megabytes
 - Manifest file containing the destinations and sizes in bytes of the output sharded joint VCF and index files
 
+There are example outputs from the sample data in the workspace bucket.
+
 ## Setup
 
 You will need to set up several accounts and projects before you can begin testing the GVS workflow in this workspace. For detailed step-by-step instructions, see the [GVS Beta Quickstart](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/beta_docs/gvs-quickstart.md) where you will learn how to:
@@ -65,13 +67,15 @@ The `GvsBeta` workflow in the GVS beta workspace is pre-configured to use 10 sam
 1. Select the 'Run workflow with inputs defined by file paths' radio button.
 1. Configure the workflow inputs.
     1. Enter a **name for the callset** as a string with the format “*CALLSET_NAME*” for the `call_set_identifier` variable. This string is used as to name several variables and files and should begin with a letter. Valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”.
-    1. Enter the name of your **BigQuery dataset** as a string with the format “*DATASET_NAME*” for the `dataset_name` variable.
+    1. Enter the name of your **BigQuery dataset** as a string with the format “*DATASET_NAME*” for the `dataset_name` variable. Valid characters include A-z, 0-9, “,”, “-”, and “_”.
     1. Enter the name of the **GCP project** that holds the BigQuery dataset as a string with the format “*PROJECT_NAME*” for the `project_id` variable.
     2. Enter the path of a **Google Cloud Storage directory for writing outputs**.  Enter a string in the format "*gs://your_bucket/here*" in `extract_output_gcs_dir`. If you want the data in your Terra workspace bucket you can find that on the Workspace Dashboard, right panel, under Cloud Information. Copy the "Bucket Name" and use it to the inputs to create a gs path as a string like this "*gs://fc-338fe040-3522-484c-ba48-14b48f9950c2*". If you do not enter a bucket here, the outputs will be in the execution directory under *Files*.
 1. **Save** the workflow configuration.
 1. **Run** the workflow.
 
 To run the GVS workflow on your own sample data, follow the instructions in the tutorial, [Upload data to Terra and run the GVS workflow](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/beta_docs/run-your-own-samples.md).
+
+See the "Job History" tab in the Genomic_Variant_Store_Beta workspace for a recent example configuration.
 
 ### Important configuration notes
 
