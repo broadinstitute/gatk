@@ -11,9 +11,14 @@ public enum GenotypeAssignmentMethod {
     SET_TO_NO_CALL,
 
     /**
-     * Use the subsetted PLs to greedily assigned genotypes
+     * Use the subsetted PLs to greedily assign genotypes
      */
     USE_PLS_TO_ASSIGN,
+
+    /**
+     * Use the existing, subsetted posteriors array to assign genotypes
+     */
+    USE_POSTERIORS_ANNOTATION,
 
     /**
      * set all of the genotype GT values to NO_CALL and remove annotations
@@ -45,8 +50,12 @@ public enum GenotypeAssignmentMethod {
     DO_NOT_ASSIGN_GENOTYPES,
 
     /**
-     * Use posterior probabilities:
+     * Calculate posterior probabilities and use those to assign genotypes
      */
     USE_POSTERIOR_PROBABILITIES,
 
+    /**
+     * Use PLs unless they are unavailable, in which case use best match to original
+     */
+    PREFER_PLS
 }

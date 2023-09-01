@@ -5,12 +5,11 @@ import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEvalEngine;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.Analysis;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.DataPoint;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.util.VariantEvalContext;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -20,6 +19,10 @@ import java.util.Collections;
 @Analysis(description = "Evaluation summary for indels")
 public class IndelSummary extends VariantEvaluator implements StandardEval {
     final protected static Logger logger = LogManager.getLogger(IndelSummary.class);
+
+    public IndelSummary(VariantEvalEngine engine) {
+        super(engine);
+    }
 
     //
     // counts of snps and indels
@@ -142,8 +145,9 @@ public class IndelSummary extends VariantEvaluator implements StandardEval {
 
     @Override public int getComparisonOrder() { return 2; }
 
-    public void update2(VariantContext eval, VariantContext comp, final ReferenceContext referenceContext, final ReadsContext readsContext, final FeatureContext featureContext) {
-        if ( eval == null || (getWalker().ignoreAC0Sites() && eval.isMonomorphicInSamples()) )
+    @Override
+    public void update2(final VariantContext eval, final VariantContext comp, final VariantEvalContext context) {
+        if ( eval == null || (getEngine().getVariantEvalArgs().ignoreAC0Sites() && eval.isMonomorphicInSamples()) )
             return;
 
         // update counts
@@ -159,8 +163,9 @@ public class IndelSummary extends VariantEvaluator implements StandardEval {
                 }
                 break;
             case INDEL:
-                //NOTE: this matches GATK3 behavior (limiting to overlapping the start position)
-                final Collection<VariantContext> gold = getWalker().goldStandard == null ? Collections.emptySet() : featureContext.getValues(getWalker().goldStandard, new SimpleInterval(eval.getContig(), eval.getStart(), eval.getStart()));
+                // NOTE: this matches GATK3 behavior (limiting to overlapping the start position);
+                // because this can include indels that start prior to the current position, we need to re-query these sites, rather than rely on the variants from MultiVariantWalkerGroupedOnStart, which are just those starting on the current site
+                final Collection<VariantContext> gold = getEngine().getVariantEvalArgs().getGoldStand() == null ? Collections.emptySet() : context.queryFeaturesIncludingOverlapping(getEngine().getVariantEvalArgs().getGoldStand(), new SimpleInterval(eval.getContig(), eval.getStart(), eval.getStart()));
 
                 nIndelSites++;
                 if ( ! eval.isBiallelic() ) n_multiallelic_indel_sites++;
@@ -218,6 +223,7 @@ public class IndelSummary extends VariantEvaluator implements StandardEval {
         return;
     }
 
+    @Override
     public void finalizeEvaluation() {
         percent_of_sites_with_more_than_2_alleles = Utils.formattedPercent(n_multiallelic_indel_sites, nIndelSites);
         SNP_to_indel_ratio = Utils.formattedRatio(n_SNPs, n_indels);

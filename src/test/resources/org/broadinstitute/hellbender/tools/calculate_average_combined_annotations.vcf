@@ -1,0 +1,70 @@
+##fileformat=VCFv4.2
+##ALT=<ID=NON_REF,Description="Represents any possible alternative allele not already represented at this location by REF and ALT">
+##FILTER=<ID=ExcessHet,Description="ExcessHet > 54.69">
+##FILTER=<ID=LowQual,Description="Low quality">
+##FILTER=<ID=PASS,Description="All filters passed">
+##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=MIN_DP,Number=1,Type=Integer,Description="Minimum DP observed within the GVCF block">
+##FORMAT=<ID=PGT,Number=1,Type=String,Description="Physical phasing haplotype information, describing how the alternate alleles are phased in relation to one another; will always be heterozygous and is not intended to describe called alleles">
+##FORMAT=<ID=PID,Number=1,Type=String,Description="Physical phasing ID information, where each unique ID within a given sample (but not across samples) connects records within a phasing group">
+##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+##FORMAT=<ID=PS,Number=1,Type=Integer,Description="Phasing set (typically the position of the first variant in the set)">
+##FORMAT=<ID=RGQ,Number=1,Type=Integer,Description="Unconditional reference genotype confidence, encoded as a phred quality -10*log10 p(genotype call is wrong)">
+##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fisher's Exact Test to detect strand bias.">
+##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
+##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
+##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
+##INFO=<ID=ASSEMBLED_HAPS,Number=1,Type=Integer,Description="Haplotypes detected by the assembly region before haplotype filtering is applied">
+##INFO=<ID=AS_BaseQRankSum,Number=A,Type=Float,Description="allele specific Z-score from Wilcoxon rank sum test of each Alt Vs. Ref base qualities">
+##INFO=<ID=AS_FS,Number=A,Type=Float,Description="allele specific phred-scaled p-value using Fisher's exact test to detect strand bias of each alt allele">
+##INFO=<ID=AS_HmerLength,Number=A,Type=Integer,Description="Allele specific max length of hmer in ref or alt.">
+##INFO=<ID=AS_InbreedingCoeff,Number=A,Type=Float,Description="Allele-specific inbreeding coefficient as estimated from the genotype likelihoods per-sample when compared against the Hardy-Weinberg expectation">
+##INFO=<ID=AS_MQ,Number=A,Type=Float,Description="Allele-specific RMS Mapping Quality">
+##INFO=<ID=AS_MQRankSum,Number=A,Type=Float,Description="Allele-specific Mapping Quality Rank Sum">
+##INFO=<ID=AS_QD,Number=A,Type=Float,Description="Allele-specific Variant Confidence/Quality by Depth">
+##INFO=<ID=AS_QUALapprox,Number=1,Type=String,Description="Allele-specific QUAL approximations">
+##INFO=<ID=AS_RAW_BaseQRankSum,Number=1,Type=String,Description="raw data for allele specific rank sum test of base qualities">
+##INFO=<ID=AS_RAW_MQ,Number=1,Type=String,Description="Allele-specfic raw data for RMS Mapping Quality">
+##INFO=<ID=AS_RAW_MQRankSum,Number=1,Type=String,Description="Allele-specfic raw data for Mapping Quality Rank Sum">
+##INFO=<ID=AS_RAW_ReadPosRankSum,Number=1,Type=String,Description="allele specific raw data for rank sum test of read position bias">
+##INFO=<ID=AS_ReadPosRankSum,Number=A,Type=Float,Description="allele specific Z-score from Wilcoxon rank sum test of each Alt vs. Ref read position bias">
+##INFO=<ID=AS_SB_TABLE,Number=1,Type=String,Description="Allele-specific forward/reverse read counts for strand bias tests. Includes the reference and alleles separated by |.">
+##INFO=<ID=AS_SOR,Number=A,Type=Float,Description="Allele specific strand Odds Ratio of 2x|Alts| contingency table to detect allele specific strand bias">
+##INFO=<ID=AS_VarDP,Number=1,Type=String,Description="Allele-specific (informative) depth over variant genotypes -- including ref, RAW format">
+##INFO=<ID=BaseQRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt Vs. Ref base qualities">
+##INFO=<ID=DB,Number=0,Type=Flag,Description="dbSNP Membership">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
+##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
+##INFO=<ID=ExcessHet,Number=1,Type=Float,Description="Phred-scaled p-value for exact test of excess heterozygosity">
+##INFO=<ID=FILTERED_HAPS,Number=1,Type=Integer,Description="Haplotypes filtered out by the haplotype filtering code">
+##INFO=<ID=FS,Number=1,Type=Float,Description="Phred-scaled p-value using Fisher's exact test to detect strand bias">
+##INFO=<ID=HAPCOMP,Number=A,Type=Integer,Description="Edit distances of each alt allele's most common supporting haplotype from closest germline haplotype, excluding differences at the site in question.">
+##INFO=<ID=HAPDOM,Number=A,Type=Float,Description="For each alt allele, fraction of read support that best fits the most-supported haplotype containing the allele">
+##INFO=<ID=HEC,Number=.,Type=Integer,Description="Counts of support for haplotype groups excluding difference at the site in question.">
+##INFO=<ID=InbreedingCoeff,Number=1,Type=Float,Description="Inbreeding coefficient as estimated from the genotype likelihoods per-sample when compared against the Hardy-Weinberg expectation">
+##INFO=<ID=MLEAC,Number=A,Type=Integer,Description="Maximum likelihood expectation (MLE) for the allele counts (not necessarily the same as the AC), for each ALT allele, in the same order as listed">
+##INFO=<ID=MLEAF,Number=A,Type=Float,Description="Maximum likelihood expectation (MLE) for the allele frequency (not necessarily the same as the AF), for each ALT allele, in the same order as listed">
+##INFO=<ID=MQ,Number=1,Type=Float,Description="RMS Mapping Quality">
+##INFO=<ID=MQRankSum,Number=1,Type=Float,Description="Z-score From Wilcoxon rank sum test of Alt vs. Ref read mapping qualities">
+##INFO=<ID=MQ_DP,Number=1,Type=Integer,Description="Depth over variant samples for better MQ calculation (deprecated -- use RAW_MQandDP instead.)">
+##INFO=<ID=QD,Number=1,Type=Float,Description="Variant Confidence/Quality by Depth">
+##INFO=<ID=QUALapprox,Number=1,Type=Integer,Description="Sum of PL[0] values; used to approximate the QUAL score">
+##INFO=<ID=RAW_GT_COUNT,Number=3,Type=Integer,Description="Counts of genotypes w.r.t. the reference allele: 0/0, 0/*, */*, i.e. all alts lumped together; for use in calculating excess heterozygosity">
+##INFO=<ID=RAW_MQandDP,Number=2,Type=Integer,Description="Raw data (sum of squared MQ and total depth) for improved RMS Mapping Quality calculation. Incompatible with deprecated RAW_MQ formulation.">
+##INFO=<ID=ReadPosRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt vs. Ref read position bias">
+##INFO=<ID=SOR,Number=1,Type=Float,Description="Symmetric Odds Ratio of 2x2 contingency table to detect strand bias">
+##INFO=<ID=SUSP_NOISY_ADJACENT_TP_VARIANT,Number=0,Type=Flag,Description="Indicates a locus where false positive allele might be affecting a true positive allele">
+##INFO=<ID=TREE_SCORE,Number=1,Type=Float,Description="Filtering score">
+##INFO=<ID=VarDP,Number=1,Type=Integer,Description="(informative) depth over variant genotypes">
+##INFO=<ID=XC,Number=1,Type=Integer,Description="Indicates collapsing took place">
+##contig=<ID=chr1,length=248956422,assembly=38>
+##source=GenomicsDBImport
+##source=GenotypeGVCFs
+##source=HaplotypeCaller
+##source=ReblockGVCF
+##source=VariantFiltration
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+chr1	10230	rs376846324	ACC	AC,*,A	1317.54	PASS	AC=12,4,1;AF=0.026,8.658e-03,2.165e-03;AN=462;ASSEMBLED_HAPS=42;AS_BaseQRankSum=0.500,.,0.200;AS_FS=12.333,0.000,1.826;AS_InbreedingCoeff=0.2096,0.2113,0.2107;AS_MQ=13.65,0.00,8.93;AS_MQRankSum=0.100,.,-0.200;AS_QD=3.11,1.54,0.54;AS_ReadPosRankSum=0.800,.,-0.600;AS_SOR=1.527,0.061,0.293;BaseQRankSum=0.524;TREE_SCORE=6.0898;DB;DP=31018;ExcessHet=0.0001;FILTERED_HAPS=18;FS=1.403;HAPCOMP=3;HAPDOM=0.889;InbreedingCoeff=0.3050;MLEAC=134,38,12;MLEAF=0.290,0.082,0.026;MQ=12.91;MQRankSum=0.115;QD=2.93;RAW_GT_COUNT=.,9,4;ReadPosRankSum=0.896;SOR=0.862

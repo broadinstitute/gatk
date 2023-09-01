@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 
+import org.broadinstitute.hellbender.utils.python.PythonScriptExecutorException;
 import org.testng.Assert;
 import org.testng.SkipException;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -63,6 +64,22 @@ public class CNNScoreVariantsIntegrationTest extends CommandLineProgramTest {
 
         runCommandLine(argsBuilder);
         assertInfoFieldsAreClose(tempVcf, expectedVcf, GATKVCFConstants.CNN_1D_KEY);
+    }
+
+    @Test(groups = {"python"}, expectedExceptions = PythonScriptExecutorException.class)
+    public void testExceptionDuringAsyncBatch() {
+        final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
+        final File tempVcf = createTempFile("tester", ".vcf");
+        // the last variant in this vcf has a  value of "." for the float attributes in the default CNN
+        // annotation set MQ, MQRankSum, ReadPosRankSum, SOR, VQSLOD, and QD
+        //TODO: move this into the large resources dir
+        final File malformedVCF = new File("src/test/resources/cnn_1d_chr20_subset_expected.badAnnotations.vcf");
+        argsBuilder.add(StandardArgumentDefinitions.VARIANT_LONG_NAME, malformedVCF)
+                .add(StandardArgumentDefinitions.OUTPUT_LONG_NAME, tempVcf.getPath())
+                .add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, b37_reference_20_21)
+                .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false");
+
+        runCommandLine(argsBuilder);
     }
 
     @Test(groups = {"python"})

@@ -35,9 +35,6 @@ public class MappingQuality extends PerAlleleAnnotation implements StandardMutec
     protected String getVcfKey() { return GATKVCFConstants.MEDIAN_MAPPING_QUALITY_KEY; }
 
     @Override
-    protected String getDescription() { return "median mapping quality"; }
-
-    @Override
     protected OptionalInt getValueForRead(final GATKRead read, final VariantContext vc) {
         Utils.nonNull(read);
         return OptionalInt.of(read.getMappingQuality());

@@ -95,7 +95,7 @@ public abstract class SamFileTester implements CommandLineProgramTester {
     }
 
     private void setOutputDir() {
-        this.outputDir = IOUtil.createTempDir(this.getClass().getSimpleName() + ".", ".tmp");
+        this.outputDir = IOUtil.createTempDir(this.getClass().getSimpleName() + ".tmp").toFile();
         if (deleteOnExit) {
             outputDir.deleteOnExit();
         }

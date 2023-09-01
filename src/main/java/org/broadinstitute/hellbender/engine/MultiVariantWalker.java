@@ -7,6 +7,7 @@ import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.MultiVariantInputArgumentCollection;
 import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
@@ -134,10 +135,15 @@ public abstract class MultiVariantWalker extends VariantWalkerBase {
         getTransformedVariantStream( makeVariantFilter() )
                 .forEach(variant -> {
                     final SimpleInterval variantInterval = new SimpleInterval(variant);
-                    apply(variant,
-                            new ReadsContext(reads, variantInterval, readFilter),
-                            new ReferenceContext(reference, variantInterval),
-                            new FeatureContext(features, variantInterval));
+                    try {
+                        apply(variant,
+                                new ReadsContext(reads, variantInterval, readFilter),
+                                new ReferenceContext(reference, variantInterval),
+                                new FeatureContext(features, variantInterval));
+                    } catch (final Exception e) {
+                        throw new GATKException("Exception thrown at " + variant.getContig() + ":" + variant.getStart()
+                                + " " + variant.toString(), e);
+                    }
 
                     progressMeter.update(variantInterval);
                 });

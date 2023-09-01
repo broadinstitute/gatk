@@ -304,6 +304,8 @@ final public class DataSourceUtils {
      *                                                            be annotated with a gencode/transcript datasource.
      *                                                            Not all datasources support this flag and it is
      *                                                            ignored for those that don't.
+     * @param minBasesForValidSegment The minimum number of bases for a segment to be considered valid.
+     * @param spliceSiteWindowSize The number of bases on either side of a splice site for a variant to be a {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification#SPLICE_SITE} variant.
      * @return A {@link List} of {@link DataSourceFuncotationFactory} given the data source metadata, overrides, and transcript reporting priority information.
      */
     public static List<DataSourceFuncotationFactory> createDataSourceFuncotationFactoriesForDataSources(final Map<Path, Properties> dataSourceMetaData,
@@ -314,7 +316,8 @@ final public class DataSourceUtils {
                                                                                                         final int lookaheadFeatureCachingInBp,
                                                                                                         final FlankSettings flankSettings,
                                                                                                         final boolean doAttemptSegmentFuncotationForTranscriptDatasources,
-                                                                                                        final int minBasesForValidSegment) {
+                                                                                                        final int minBasesForValidSegment,
+                                                                                                        final int spliceSiteWindowSize) {
         Utils.nonNull(dataSourceMetaData);
         Utils.nonNull(annotationOverridesMap);
         Utils.nonNull(transcriptSelectionMode);
@@ -353,7 +356,7 @@ final public class DataSourceUtils {
                 case GENCODE:
                     featureInput = createAndRegisterFeatureInputs(path, properties, gatkToolInstance, lookaheadFeatureCachingInBp, GencodeGtfFeature.class, false);
                     funcotationFactory = DataSourceUtils.createGencodeDataSource(path, properties, annotationOverridesMap, transcriptSelectionMode,
-                            userTranscriptIdSet, featureInput, flankSettings, doAttemptSegmentFuncotationForTranscriptDatasources, minBasesForValidSegment);
+                            userTranscriptIdSet, featureInput, flankSettings, doAttemptSegmentFuncotationForTranscriptDatasources, minBasesForValidSegment, spliceSiteWindowSize);
                     break;
                 case VCF:
                     featureInput = createAndRegisterFeatureInputs(path, properties, gatkToolInstance, lookaheadFeatureCachingInBp, VariantContext.class, false);
@@ -557,6 +560,8 @@ final public class DataSourceUtils {
      * @param isSegmentFuncotationEnabled Do we want to allow the output Gencode Funcotation Factory to do segment annotations?  If false,
      *                                    segments will be funcotated with variant classifications of
      *                                    {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification#COULD_NOT_DETERMINE}
+     * @param minBasesForValidSegment The minimum number of bases for a segment to be considered valid.
+     * @param spliceSiteWindowSize The number of bases on either side of a splice site for a variant to be a {@link org.broadinstitute.hellbender.tools.funcotator.dataSources.gencode.GencodeFuncotation.VariantClassification#SPLICE_SITE} variant.
      * @return A new {@link GencodeFuncotationFactory} based on the given data source file information, field overrides map, and transcript information.
      */
     private static GencodeFuncotationFactory createGencodeDataSource(final Path dataSourceFile,
@@ -567,7 +572,8 @@ final public class DataSourceUtils {
                                                                      final FeatureInput<? extends Feature> featureInput,
                                                                      final FlankSettings flankSettings,
                                                                      final boolean isSegmentFuncotationEnabled,
-                                                                     final int minBasesForValidSegment) {
+                                                                     final int minBasesForValidSegment,
+                                                                     final int spliceSiteWindowSize) {
         Utils.nonNull(dataSourceFile);
         Utils.nonNull(dataSourceProperties);
         Utils.nonNull(annotationOverridesMap);
@@ -596,7 +602,8 @@ final public class DataSourceUtils {
                 isB37,
                 ncbiBuildVersion,
                 isSegmentFuncotationEnabled,
-                minBasesForValidSegment
+                minBasesForValidSegment,
+                spliceSiteWindowSize
             );
     }
 

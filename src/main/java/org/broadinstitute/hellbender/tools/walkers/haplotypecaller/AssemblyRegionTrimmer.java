@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -12,8 +11,12 @@ import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollecti
 import org.broadinstitute.hellbender.tools.walkers.annotator.TandemRepeat;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.haplotype.Event;
 
-import java.util.*;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Optional;
+import java.util.SortedSet;
 import java.util.stream.Collectors;
 
 /**
@@ -29,11 +32,6 @@ public final class AssemblyRegionTrimmer {
     private AssemblyRegionArgumentCollection assemblyRegionArgs;
 
     private SAMSequenceDictionary sequenceDictionary;
-
-    /**
-     * Holds a reference the trimmer logger.
-     */
-    private static final Logger logger = LogManager.getLogger(AssemblyRegionTrimmer.class);
 
     /**
      * Initializes the trimmer.
@@ -110,6 +108,16 @@ public final class AssemblyRegionTrimmer {
         }
 
         /**
+         * Returns the trimmed variant containing a specific region.
+         *
+         * @return never {@code null}.
+         */
+        public AssemblyRegion getVariantRegion(SimpleInterval variantSpan, SimpleInterval paddedSpan) {
+
+            return originalRegion.trim(variantSpan, paddedSpan);
+        }
+
+        /**
          *  Returns the trimmed out left non-variant region.
          *  <p/>
          *  Notice that in case of no variation, the whole original region is considered the left flanking region.
@@ -152,31 +160,31 @@ public final class AssemblyRegionTrimmer {
      * can be recovered latter.
      *
      * @param region the genome location range to trim.
-     * @param variants list of variants contained in the trimming location. Variants therein
+     * @param events list of variants contained in the trimming location. Variants therein
      *                                        not overlapping with {@code region} are simply ignored.
      * @param referenceContext
      * @return never {@code null}.
      */
-    public Result trim(final AssemblyRegion region, final SortedSet<VariantContext> variants, ReferenceContext referenceContext) {
+    public Result trim(final AssemblyRegion region, final SortedSet<Event> events, ReferenceContext referenceContext) {
         if (assemblyRegionArgs.enableLegacyAssemblyRegionTrimming) {
-            return trimLegacy(region, variants);
+            return trimLegacy(region, events);
         }
 
-        final List<VariantContext> variantsInRegion = variants.stream().filter(region::overlaps).collect(Collectors.toList());
+        final List<Event> eventsInRegion = events.stream().filter(region::overlaps).collect(Collectors.toList());
 
-        if ( variantsInRegion.isEmpty() ) {
+        if ( eventsInRegion.isEmpty() ) {
             return noVariation(region);
         }
 
-        int minStart = variantsInRegion.stream().mapToInt(VariantContext::getStart).min().getAsInt();
-        int maxEnd = variantsInRegion.stream().mapToInt(VariantContext::getEnd).max().getAsInt();
+        int minStart = eventsInRegion.stream().mapToInt(Event::getStart).min().getAsInt();
+        int maxEnd = eventsInRegion.stream().mapToInt(Event::getEnd).max().getAsInt();
         final SimpleInterval variantSpan = new SimpleInterval(region.getContig(), minStart, maxEnd).intersect(region);
 
-        for (final VariantContext vc : variantsInRegion) {
+        for (final Event event : eventsInRegion) {
             int padding = assemblyRegionArgs.snpPaddingForGenotyping;
-            if (vc.isIndel()) {
+            if (event.isIndel()) {
                 padding = assemblyRegionArgs.indelPaddingForGenotyping;
-                final Pair<List<Integer>, byte[]> numRepeatsAndUnit = TandemRepeat.getNumTandemRepeatUnits(referenceContext, vc);
+                final Pair<List<Integer>, byte[]> numRepeatsAndUnit = TandemRepeat.getNumTandemRepeatUnits(referenceContext, event);
                 if (numRepeatsAndUnit != null && numRepeatsAndUnit.getRight() != null) {
                     final int repeatLength = numRepeatsAndUnit.getRight() == null ? 0 : numRepeatsAndUnit.getRight().length;
                     final int mostRepeats = numRepeatsAndUnit.getLeft().stream().max(Integer::compareTo).orElse(0);
@@ -185,8 +193,8 @@ public final class AssemblyRegionTrimmer {
                 }
             }
 
-            minStart = Math.min(minStart, Math.max(vc.getStart() - padding,1));
-            maxEnd = Math.max(maxEnd, vc.getEnd() + padding);
+            minStart = Math.min(minStart, Math.max(event.getStart() - padding,1));
+            maxEnd = Math.max(maxEnd, event.getEnd() + padding);
         }
 
         final SimpleInterval paddedVariantSpan = new SimpleInterval(region.getContig(), minStart, maxEnd).intersect(region.getPaddedSpan());
@@ -203,28 +211,26 @@ public final class AssemblyRegionTrimmer {
      * can be recovered latter.
      *
      * @param originalRegion the genome location range to trim.
-     * @param allVariantsWithinExtendedRegion list of variants contained in the trimming location. Variants therein
+     * @param allEventsInExtendedRegion list of variants contained in the trimming location. Variants therein
      *                                        not overlapping with {@code originalRegion} are simply ignored.
      * @return never {@code null}.
      */
-    public Result trimLegacy(final AssemblyRegion originalRegion,
-                       final SortedSet<VariantContext> allVariantsWithinExtendedRegion) {
+    public Result trimLegacy(final AssemblyRegion originalRegion, final SortedSet<Event> allEventsInExtendedRegion) {
 
-        if ( allVariantsWithinExtendedRegion.isEmpty() ) // no variants,
-        {
+        if ( allEventsInExtendedRegion.isEmpty() ) {
             return noVariation(originalRegion);
         }
 
-        final List<VariantContext> withinActiveRegion = new LinkedList<>();
+        final List<Event> withinActiveRegion = new LinkedList<>();
         final SimpleInterval originalRegionRange = originalRegion.getSpan();
         boolean foundNonSnp = false;
         SimpleInterval variantSpan = null;
-        for ( final VariantContext vc : allVariantsWithinExtendedRegion ) {
-            final SimpleInterval vcLoc = new SimpleInterval(vc);
+        for ( final Event event : allEventsInExtendedRegion ) {
+            final SimpleInterval vcLoc = new SimpleInterval(event);
             if ( originalRegionRange.overlaps(vcLoc) ) {
-                foundNonSnp = foundNonSnp || ! vc.isSNP();
+                foundNonSnp = foundNonSnp || ! event.isSNP();
                 variantSpan = variantSpan == null ? vcLoc : variantSpan.spanWith(vcLoc);
-                withinActiveRegion.add(vc);
+                withinActiveRegion.add(event);
             }
         }
         final int padding = foundNonSnp ? assemblyRegionArgs.indelPaddingForGenotyping : assemblyRegionArgs.snpPaddingForGenotyping;
@@ -244,8 +250,6 @@ public final class AssemblyRegionTrimmer {
 //        final SimpleInterval callableSpan = emitReferenceConfidence ? variantSpan.intersect(originalRegionRange) : variantSpan;
         final SimpleInterval callableSpan = variantSpan;
 
-        final Pair<SimpleInterval, SimpleInterval> nonVariantRegions = nonVariantTargetRegions(originalRegion, callableSpan);
-
         // TODO add equivalent debug garbage to the real assembly region trimming code
         if (HaplotypeCallerGenotypingDebugger.isEnabled()) {
             HaplotypeCallerGenotypingDebugger.println("events       : " + withinActiveRegion);
@@ -261,33 +265,4 @@ public final class AssemblyRegionTrimmer {
         return new Result(originalRegion, variantSpan, finalSpan);
     }
 
-    /**
-     * Calculates the list of region to trim away.
-     *
-     * NOTE: This is part of the legacy assembly region trimming code
-     *
-     * @param targetRegion region for which to generate the flanking regions.
-     * @param variantSpan the span of the core region containing relevant variation and required padding.
-     * @return never {@code null}; 0, 1 or 2 element list.
-     */
-    private Pair<SimpleInterval, SimpleInterval> nonVariantTargetRegions(final AssemblyRegion targetRegion, final SimpleInterval variantSpan) {
-        final SimpleInterval targetRegionRange = targetRegion.getSpan();
-        final int finalStart = variantSpan.getStart();
-        final int finalStop = variantSpan.getEnd();
-
-        final int targetStart = targetRegionRange.getStart();
-        final int targetStop = targetRegionRange.getEnd();
-
-        final boolean preTrimmingRequired = targetStart < finalStart;
-        final boolean postTrimmingRequired = targetStop > finalStop;
-        if (preTrimmingRequired) {
-            final String contig = targetRegionRange.getContig();
-            return postTrimmingRequired ? Pair.of(new SimpleInterval(contig, targetStart, finalStart - 1), new SimpleInterval(contig, finalStop + 1, targetStop)) :
-                    Pair.of(new SimpleInterval(contig, targetStart, finalStart - 1), null);
-        } else if (postTrimmingRequired) {
-            return Pair.of(null, new SimpleInterval(targetRegionRange.getContig(), finalStop + 1, targetStop));
-        } else {
-            return Pair.of(null, null);
-        }
-    }
 }

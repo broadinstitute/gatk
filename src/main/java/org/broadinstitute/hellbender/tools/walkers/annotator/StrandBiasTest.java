@@ -6,6 +6,7 @@ import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.InverseAllele;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -120,8 +121,47 @@ public abstract class StrandBiasTest implements InfoFieldAnnotation {
     public static int[][] getContingencyTable( final AlleleLikelihoods<GATKRead, Allele> likelihoods,
                                                final VariantContext vc,
                                                final int minCount) {
-        return getContingencyTable(likelihoods, vc, minCount, likelihoods.samples());
+        if( likelihoods == null || vc == null) {
+            return null;
+        }
+        final Allele ref = vc.getReference();
+        final List<Allele> allAlts = vc.getAlternateAlleles();
+
+        return getContingencyTable(likelihoods, ref, allAlts, minCount);
     }
+
+    public static int[][] getContingencyTable( final AlleleLikelihoods<GATKRead, Allele> likelihoods,
+                                               final Allele ref,
+                                               final List<Allele> alts,
+                                               final int minCount) {
+        return getContingencyTable(likelihoods, ref, alts, minCount, likelihoods.samples());
+    }
+
+
+    /**
+     * Generates a contingency table where the strand bias of an allele is estimated relative to all alleles
+     * (total coverage) in the location. Useful when the question is about strand bias of an allele rather
+     * than of a location (like in AlleleFiltering)
+     * @param likelihoods likelihood matrix
+     * @param ref reference allele
+     * @param alts alternative alleles
+     * @param minCount minimal count (pseudocount)
+     * @return 2x2 contingency table
+     */
+    public static int[][] getContingencyTableWrtAll( final AlleleLikelihoods<GATKRead, Allele> likelihoods,
+                                               final Allele ref,
+                                               final List<Allele> alts,
+                                               final int minCount) {
+        int [][] table = getContingencyTable(likelihoods, ref, alts, minCount);
+        for (int i =0 ; i < ARRAY_DIM; i ++ ) {
+            for (int j = 1; j < ARRAY_DIM; j++) {
+                table[0][i] += table[j][i];
+            }
+        }
+        return table;
+    }
+
+
 
     /**
      Allocate and fill a 2x2 strand contingency table.  In the end, it'll look something like this:
@@ -140,6 +180,15 @@ public abstract class StrandBiasTest implements InfoFieldAnnotation {
 
         final Allele ref = vc.getReference();
         final List<Allele> allAlts = vc.getAlternateAlleles();
+        return getContingencyTable(likelihoods, ref, allAlts, minCount, samples);
+    }
+
+    private static int[][] getContingencyTable( final AlleleLikelihoods<GATKRead, Allele> likelihoods,
+                                               final Allele ref,
+                                               final List<Allele> allAlts,
+                                               final int minCount,
+                                               final Collection<String> samples) {
+
 
         final int[][] table = new int[ARRAY_DIM][ARRAY_DIM];
         for (final String sample : samples) {
@@ -155,6 +204,7 @@ public abstract class StrandBiasTest implements InfoFieldAnnotation {
         return table;
     }
 
+
     /**
      * Helper method to copy the per-sample table to the main table
      *
@@ -169,7 +219,7 @@ public abstract class StrandBiasTest implements InfoFieldAnnotation {
     }
 
     private static void updateTable(final int[] table, final Allele allele, final GATKRead read, final Allele ref, final List<Allele> allAlts) {
-        final boolean matchesRef = allele.equals(ref, true);
+        final boolean matchesRef = (ref instanceof  InverseAllele) ? (ref).equals(allele) : allele.equals(ref, true);
         final boolean matchesAnyAlt = allAlts.contains(allele);
 
         if ( matchesRef || matchesAnyAlt ) {

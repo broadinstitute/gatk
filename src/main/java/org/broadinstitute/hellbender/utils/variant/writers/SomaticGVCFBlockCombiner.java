@@ -17,11 +17,11 @@ public class SomaticGVCFBlockCombiner extends GVCFBlockCombiner{
     protected int partitionPrecision;  //number of decimal places to use for TLOD block ranges
 
     public SomaticGVCFBlockCombiner(List<Number> gqPartitions, int defaultPloidy) {
-        super(gqPartitions, defaultPloidy, false);
+        super(gqPartitions, false);
     }
 
     public SomaticGVCFBlockCombiner(List<Number> gqPartitions, int defaultPloidy, final int partitionPrecision) {
-        super(gqPartitions, defaultPloidy, false);
+        super(gqPartitions, false);
         this.partitionPrecision = partitionPrecision;
     }
 
@@ -56,9 +56,9 @@ public class SomaticGVCFBlockCombiner extends GVCFBlockCombiner{
         }
 
         // create the block, add g to it, and return it for use
-        final TLODBlock block = new TLODBlock(vc, partition.lowerEndpoint(), partition.upperEndpoint(), partitionPrecision);
-        block.add(vc.getStart(), g);
-        return block;
+        return new TLODBlock(vc, partition.lowerEndpoint(), partition.upperEndpoint(), partitionPrecision);
+        //block.add(vc.getStart(), g);
+        //return block;
     }
 
     /**
@@ -72,7 +72,7 @@ public class SomaticGVCFBlockCombiner extends GVCFBlockCombiner{
      */
     @Override
     @VisibleForTesting
-    RangeMap<Integer,Range<Integer>> parsePartitions(final List<Number> gqPartitions) {
+    RangeMap<Integer,Range<Integer>> parsePartitions(final List<? extends Number> gqPartitions) {
         partitionPrecision = calculatePartitionPrecision(gqPartitions);
         Utils.nonEmpty(gqPartitions);
         Utils.containsNoNull(gqPartitions, "The list of TLOD partitions contains a null integer");
@@ -88,7 +88,7 @@ public class SomaticGVCFBlockCombiner extends GVCFBlockCombiner{
         return result;
     }
 
-    private static int calculatePartitionPrecision(final List<Number> gqPartitions) {
+    private static int calculatePartitionPrecision(final List<? extends Number> gqPartitions) {
         double smallestDelta = Double.POSITIVE_INFINITY;
         double lastLOD = Double.NEGATIVE_INFINITY;
         for (final Number num : gqPartitions) {

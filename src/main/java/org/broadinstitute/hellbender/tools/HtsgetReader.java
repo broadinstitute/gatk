@@ -19,6 +19,7 @@ import java.util.concurrent.ThreadFactory;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 import org.apache.commons.io.Charsets;
@@ -226,12 +227,11 @@ public class HtsgetReader extends CommandLineProgram {
         }
     }
 
-    @SuppressWarnings( "deprecation" )
-    private ObjectMapper getObjectMapper() {
-        final ObjectMapper mapper = new ObjectMapper();
-        mapper.enable(DeserializationFeature.UNWRAP_ROOT_VALUE);
-        mapper.configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES, true);
-        return mapper;
+    private JsonMapper getObjectMapper() {
+        return JsonMapper.builder()
+                .enable(DeserializationFeature.UNWRAP_ROOT_VALUE)
+                .configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES, true)
+                .build();
     }
 
     @Override

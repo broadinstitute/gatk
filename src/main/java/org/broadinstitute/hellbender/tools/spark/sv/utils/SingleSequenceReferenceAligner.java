@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAligner;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemAlignment;
 import org.broadinstitute.hellbender.utils.bwa.BwaMemIndex;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -64,8 +65,7 @@ public class SingleSequenceReferenceAligner<T, U> implements AutoCloseable {
         this.alignmentFilter = Utils.nonNull(alignmentFilter);
         Utils.validate(bases.length > 0, "the reference contig bases sequence must have at least one base");
         try {
-            final File fasta = File.createTempFile("ssvh-temp", ".fasta");
-            fasta.deleteOnExit();
+            final File fasta = IOUtils.createTempFile("ssvh-temp", ".fasta");
             image = new File(fasta.getParentFile(), fasta.getName().replace(".fasta", ".img"));
             image.deleteOnExit();
             FastaReferenceWriter.writeSingleSequenceReference(fasta.toPath(), false, false, name, null, bases);

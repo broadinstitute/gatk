@@ -44,7 +44,7 @@ final class SamplePartitioner {
      *                empty, but in that case this code cannot function properly if you
      *                attempt to add data to it.
      */
-    public SamplePartitioner(final LIBSDownsamplingInfo LIBSDownsamplingInfo, final List<String> samples, final SAMFileHeader header) {
+    public SamplePartitioner(final LIBSDownsamplingInfo LIBSDownsamplingInfo, final Collection<String> samples, final SAMFileHeader header) {
         Utils.nonNull(LIBSDownsamplingInfo, "LIBSDownsamplingInfo cannot be null");
         Utils.nonNull(samples, "samples must be a non-null list");
         Utils.nonNull(header, "header must be not null");

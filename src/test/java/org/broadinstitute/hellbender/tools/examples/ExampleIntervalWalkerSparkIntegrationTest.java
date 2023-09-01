@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.examples;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -14,9 +15,8 @@ public final class ExampleIntervalWalkerSparkIntegrationTest extends CommandLine
 
     @Test
     public void testExampleIntervalWalker() throws IOException {
-        final File out = File.createTempFile("out", ".txt");
+        final File out = IOUtils.createTempFile("out", ".txt");
         out.delete();
-        out.deleteOnExit();
         final ArgumentsBuilder args = new ArgumentsBuilder();
         args.addRaw("-L 1:100-200 -L 2:500-600");
         args.addRaw("--input");

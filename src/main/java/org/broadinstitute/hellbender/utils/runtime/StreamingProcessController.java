@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.utils.runtime;
 
-import com.google.common.io.Files;
 import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -8,6 +7,7 @@ import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Random;
 import java.util.concurrent.ExecutionException;
@@ -87,7 +87,13 @@ public final class StreamingProcessController extends ProcessControllerBase<Capt
         processStdinStream = getProcess().getOutputStream();
 
         // create the fifo temp directory, and one FIFO to use for IPC signalling
-        fifoTempDir = Files.createTempDir();
+        try {
+            fifoTempDir = Files.createTempDirectory("StreamingProcessController").toFile();
+        }
+        catch ( IOException e ) {
+            throw new GATKException("Unable to create temp directory for StreamingProcessController", e);
+        }
+        
         ackFIFOFile = createFIFOFile(ACK_FIFO_FILE_NAME);
         return ackFIFOFile;
     }

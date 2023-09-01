@@ -3,8 +3,8 @@ package org.broadinstitute.hellbender.utils.help;
 import org.broadinstitute.barclay.help.DocWorkUnit;
 import org.broadinstitute.barclay.help.DocWorkUnitHandler;
 import org.broadinstitute.barclay.help.DocumentedFeature;
-
 import org.broadinstitute.hellbender.utils.runtime.RuntimeUtils;
+import javax.lang.model.element.Element;
 
 /**
  * Custom DocWorkUnit used for generating GATK help/documentation. Overrides the defaults to provide tool
@@ -19,10 +19,10 @@ public class GATKDocWorkUnit extends DocWorkUnit {
 
     public GATKDocWorkUnit(
             final DocWorkUnitHandler workUnitHandler,
-            final DocumentedFeature documentedFeatureAnnotation,
-            final com.sun.javadoc.ClassDoc classDoc,
-            final Class<?> clazz) {
-        super(workUnitHandler, documentedFeatureAnnotation, classDoc, clazz);
+            final Element classElement,
+            final Class<?> clazz,
+            final DocumentedFeature documentedFeatureAnnotation) {
+        super(workUnitHandler, classElement, clazz, documentedFeatureAnnotation);
     }
 
     @Override

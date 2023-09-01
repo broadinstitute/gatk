@@ -3,26 +3,38 @@ package org.broadinstitute.hellbender.tools.copynumber.arguments;
 import com.google.common.collect.Ordering;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
+import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.DetermineGermlineContigPloidy;
 import org.broadinstitute.hellbender.tools.copynumber.GermlineCNVCaller;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AbstractLocatableCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AbstractRecordCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AnnotatedIntervalCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleCountCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleIntervalCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.LocatableMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.Metadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.records.AnnotatedInterval;
-import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.utils.IntervalMergingRule;
+import org.broadinstitute.hellbender.utils.IntervalSetRule;
+import org.broadinstitute.hellbender.utils.IntervalUtils;
+import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.python.PythonScriptExecutor;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.OptionalInt;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -31,6 +43,8 @@ import java.util.stream.Stream;
  * @author Samuel Lee &lt;slee@broadinstitute.org&gt;
  */
 public final class CopyNumberArgumentValidationUtils {
+    private static final Logger logger = LogManager.getLogger(CopyNumberArgumentValidationUtils.class);
+
     private CopyNumberArgumentValidationUtils() {}
 
     /**
@@ -73,6 +87,7 @@ public final class CopyNumberArgumentValidationUtils {
     /**
      * Compares two non-null sequence dictionaries using sequence index, name, and length only.
      * Less stringent than {@link SAMSequenceDictionary#isSameDictionary}.
+     * Use {@link #getValidatedSequenceDictionary} to validate multiple sequence dictionaries from {@link LocatableMetadata}.
      */
     public static boolean isSameDictionary(final SAMSequenceDictionary dictionary1,
                                            final SAMSequenceDictionary dictionary2) {
@@ -116,6 +131,41 @@ public final class CopyNumberArgumentValidationUtils {
                 : readCounts.getIntervals();
 
         return new SimpleIntervalCollection(metadata, intervals);
+    }
+
+    /**
+     * For all non-null inputs, validate that all metadata are identical and return the metadata.
+     */
+    @SafeVarargs
+    @SuppressWarnings({"varargs"})
+    public static <METADATA extends Metadata> METADATA getValidatedMetadata(final AbstractRecordCollection<METADATA, ?> ... recordCollections) {
+        Utils.nonNull(recordCollections);
+        final Set<METADATA> metadataSet = Stream.of(recordCollections)
+                .filter(Objects::nonNull)
+                .map(AbstractRecordCollection::getMetadata)
+                .collect(Collectors.toSet());
+        Utils.nonEmpty(metadataSet, "At least one collection must be non-null.");
+        Utils.validateArg(metadataSet.size() == 1, "Metadata do not match.");
+        return metadataSet.stream().findFirst().get();
+    }
+
+    /**
+     * For all non-null inputs, validate that all sequence dictionaries match (using {@link #isSameDictionary})
+     * and return the sequence dictionary; otherwise, emit a warning.
+     */
+    public static SAMSequenceDictionary getValidatedSequenceDictionary(final AbstractLocatableCollection<?, ?> ... locatableCollections) {
+        Utils.nonNull(locatableCollections);
+        final List<SAMSequenceDictionary> sequenceDictionaries = Stream.of(locatableCollections)
+                .filter(Objects::nonNull)
+                .map(AbstractLocatableCollection::getMetadata)
+                .map(LocatableMetadata::getSequenceDictionary)
+                .collect(Collectors.toList());
+        Utils.nonEmpty(sequenceDictionaries, "At least one collection must be non-null.");
+        if (!IntStream.range(0, sequenceDictionaries.size() - 1).
+                allMatch(i -> CopyNumberArgumentValidationUtils.isSameDictionary(sequenceDictionaries.get(i), sequenceDictionaries.get(i + 1)))) {
+            logger.warn("Sequence dictionaries do not match across all inputs.");
+        }
+        return sequenceDictionaries.get(0);
     }
 
     /**

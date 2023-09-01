@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.variant;
 
 import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
+import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.FileExtensions;
@@ -18,11 +19,16 @@ import htsjdk.variant.vcf.*;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.FeatureManager;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.ReferenceDataSource;
+import org.broadinstitute.hellbender.engine.ReferenceMemorySource;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
+import org.broadinstitute.hellbender.tools.walkers.variantutils.LeftAlignAndTrimVariants;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
+import org.broadinstitute.hellbender.utils.reference.ReferenceBases;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
@@ -30,11 +36,13 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
 
@@ -47,6 +55,24 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
     Allele Anoref;
     Allele GT;
     SimpleInterval baseLoc = new SimpleInterval("20", 1000, 1000);
+
+    final String refBases1 = "GCAGAGCTGACCCTCCCTCCCCTCTCCCAGTGCAACAGCACGGGCGGCGACTGCTTTTACCGAGGCTACACGTCAGGCGTGGCGGCTGTCCAGGACTGGTACCACTTCCACTATGTGGATCTCTGCTGAGGACCAGGAAAGCCAGCACCCGCAGAGACTCTTCCCCAGTGCTCCATACGATCACCATTCTCTGCAGAAGG";
+    final String longStr = "AGTCGCTCGAGCTCGAGCTCGAGTGTGCGCTCTACAGCTCAGCTCGCTCGCACACAT";
+    final List<String> longPieces = Arrays.asList("AAAAAAAAAAAAAAAAAAAAAAAAAAAA", "TCTCTCTCTCTCTC", "CAGTCCAGTCCAGTCCAGTCCAGTCCAGTCCAGTCCAGTCCAGTCCAGTCCAGTC", Utils.dupString("A", 120), Utils.dupString("TCACGTC", 60), Utils.dupString(longStr, 2)); // where we'll perform tests
+    final List<Integer> strLengths = Arrays.asList(1, 2, 5, 1, 7, 57); //
+    final List<String> refBasesStrings = longPieces.stream().map(l -> refBases1 + l + refBases1).collect(Collectors.toList());
+
+    final List<Integer> contigStops = refBasesStrings.stream().map(String::length).collect(Collectors.toList());
+    final List<SAMFileHeader> headers = contigStops.stream().map(c ->
+            ArtificialReadUtils.createArtificialSamHeader(1, 1, c)).collect(Collectors.toList());
+    final String artificialContig = "1";
+    final int repeatStart = refBases1.length();
+    final List<SimpleInterval> refIntervals = contigStops.stream().map(c ->
+            new SimpleInterval(artificialContig, 1, c)).collect(Collectors.toList());
+    final List<ReferenceBases> refBases = IntStream.range(0, longPieces.size()).mapToObj(i -> new ReferenceBases(refBasesStrings.get(i).getBytes(), refIntervals.get(i)))
+            .collect(Collectors.toList());
+    final List<ReferenceMemorySource> refSources = IntStream.range(0, longPieces.size()).mapToObj(i -> new ReferenceMemorySource(refBases.get(i), headers.get(i).getSequenceDictionary()))
+            .collect(Collectors.toList());
 
     @BeforeClass
     public void setup() throws IOException {
@@ -162,6 +188,42 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
     public void testMatchingAlleles() {
         Assert.assertTrue(GATKVariantContextUtils.isAlleleInList(Allele.REF_A, Allele.ALT_T, ATCref, Arrays.asList(Allele.ALT_A, Allele.create("TTC",false))));
         Assert.assertTrue(GATKVariantContextUtils.isAlleleInList(Allele.REF_A, Allele.ALT_T, ATCref, Arrays.asList(Allele.ALT_T, Allele.create("TTC",false))));
+    }
+
+    @DataProvider
+    Object[][] alleleIndicesData() {
+        // {alleles1, alleles2, expected indices}
+        return new Object[][] {
+                // ref only
+                { Arrays.asList(Allele.REF_A), Arrays.asList(Allele.REF_A), Arrays.asList(OptionalInt.of(0))},
+
+                // extra alt
+                { Arrays.asList(Allele.REF_A), Arrays.asList(Allele.REF_A, Allele.ALT_C), Arrays.asList(OptionalInt.of(0))},
+
+                // same biallelic
+                { Arrays.asList(Allele.REF_A, Allele.ALT_C), Arrays.asList(Allele.REF_A, Allele.ALT_C), Arrays.asList(OptionalInt.of(0), OptionalInt.of(1))},
+
+                // missing alt
+                { Arrays.asList(Allele.REF_A, Allele.ALT_C), Arrays.asList(Allele.REF_A), Arrays.asList(OptionalInt.of(0), OptionalInt.empty())},
+
+                // different alt
+                { Arrays.asList(Allele.REF_A, Allele.ALT_C), Arrays.asList(Allele.REF_A, Allele.ALT_G), Arrays.asList(OptionalInt.of(0), OptionalInt.empty())},
+
+                // triallelic, order switched
+                { Arrays.asList(Allele.REF_A, Allele.ALT_C, Allele.ALT_G), Arrays.asList(Allele.REF_A, Allele.ALT_G, Allele.ALT_C), Arrays.asList(OptionalInt.of(0), OptionalInt.of(2), OptionalInt.of(1))},
+
+                // longer representation
+                { Arrays.asList(Allele.REF_A, Allele.ALT_G), Arrays.asList(ATref, GT), Arrays.asList(OptionalInt.of(0), OptionalInt.of(1))},
+
+                // shorter representation
+                { Arrays.asList(ATref, GT), Arrays.asList(Allele.REF_A, Allele.ALT_G), Arrays.asList(OptionalInt.of(0), OptionalInt.of(1))}
+        };
+    }
+
+    @Test(dataProvider = "alleleIndicesData")
+    public void testAlleleIndices(final List<Allele> alleles1, final List<Allele> alleles2, final List<OptionalInt> expected ) {
+        final List<OptionalInt> result = GATKVariantContextUtils.alleleIndices(alleles1, alleles2);
+        Assert.assertEquals(result, expected);
     }
 
     // --------------------------------------------------------------------------------
@@ -660,9 +722,9 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         // biallelic -> biallelic
         tests.add(new Object[]{root.make(), Collections.singletonList(root.make())});
 
-        // monos -> monos
+        // monos -> empty
         root.alleles(Collections.singletonList(Aref));
-        tests.add(new Object[]{root.make(), Collections.singletonList(root.make())});
+        tests.add(new Object[]{root.make(), Collections.emptyList()});
 
         root.alleles(Arrays.asList(Aref, C, T));
         tests.add(new Object[]{root.make(),
@@ -724,6 +786,39 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
                         root.alleles(Arrays.asList(twoCopies, zeroCopies)).stop(20).make())});
 
         return tests.toArray(new Object[][]{});
+    }
+
+
+    @DataProvider(name = "GQLog10PosteriorsTest")
+    public Object[][] makeGQLog10PosteriorsTest() {
+        List<Object[]> tests = new ArrayList<>();
+
+        // testing the 3 allele case
+        tests.add(new Object[]{0, new double[]{-1.0, -2.0, -2.2}, -1.787});
+        tests.add(new Object[]{1, new double[]{-1.0, -2.0, -2.2}, -0.973});
+        tests.add(new Object[]{2, new double[]{-1.0, -2.0, -2.2}, -0.958});
+
+        // testing in the 3 allele case where the choice between two genotypes is ambiguous
+        tests.add(new Object[]{0, new double[]{0.0, 0.0, -0.2}, 0});
+        tests.add(new Object[]{1, new double[]{0.0, 0.0, -0.2}, 0});
+        tests.add(new Object[]{2, new double[]{0.0, 0.0, -0.2}, 0});
+
+        // testing in the 4+ allele case where the choice between two genotypes is ambiguous (if not careful this might have resulted in a negative GQ)
+        tests.add(new Object[]{0, new double[]{0.0, 0.0, -0.2, -0.2, -0.2, 0.0}, 0});
+        tests.add(new Object[]{1, new double[]{0.0, 0.0, -0.2, -0.2, -0.2, 0.0}, 0});
+        tests.add(new Object[]{2, new double[]{0.0, 0.0, -0.2, -0.2, -0.2, 0.0}, 0});
+        tests.add(new Object[]{3, new double[]{0.0, 0.0, -0.2, -0.2, -0.2, 0.0}, 0});
+        tests.add(new Object[]{4, new double[]{0.0, 0.0, -0.2, -0.2, -0.2, 0.0}, 0});
+        tests.add(new Object[]{5, new double[]{0.0, 0.0, -0.2, -0.2, -0.2, 0.0}, 0});
+
+
+        return tests.toArray(new Object[][]{});
+    }
+
+    @Test(dataProvider = "GQLog10PosteriorsTest")
+    public void testGetGQLog10FromPosteriors(final int bestGenotypeIndex, final double[] genotypeArray, final double expectedResult)  {
+        final double actualResult = GATKVariantContextUtils.getGQLog10FromPosteriors(bestGenotypeIndex, genotypeArray);
+        assertEqualsDoubleSmart(actualResult, expectedResult);
     }
 
     // --------------------------------------------------------------------------------
@@ -947,6 +1042,9 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         List<Object[]> tests = new ArrayList<>();
 
         // this functionality can be adapted to provide input data for whatever you might want in your data
+        tests.add(new Object[]{Arrays.asList("ACC", "AC", "<NON_REF>"), Arrays.asList("AC", "A", "<NON_REF>"), 0});
+        tests.add(new Object[]{Arrays.asList("ACC", "AC", "*"), Arrays.asList("AC", "A", "*"), 0});
+
         tests.add(new Object[]{Arrays.asList("ACC", "AC"), Arrays.asList("AC", "A"), 0});
         tests.add(new Object[]{Arrays.asList("ACGC", "ACG"), Arrays.asList("GC", "G"), 2});
         tests.add(new Object[]{Arrays.asList("ACGC", "ACGA"), Arrays.asList("C", "A"), 3});
@@ -974,57 +1072,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(clipped.getStart(), unclipped.getStart() + numLeftClipped);
         for ( int i = 0; i < unclipped.getAlleles().size(); i++ ) {
             final Allele trimmed = clipped.getAlleles().get(i);
-            Assert.assertEquals(trimmed.getBaseString(), expected.get(i));
-        }
-    }
-
-    // --------------------------------------------------------------------------------
-    //
-    // test primitive allele splitting
-    //
-    // --------------------------------------------------------------------------------
-
-    @DataProvider(name = "PrimitiveAlleleSplittingData")
-    public Object[][] makePrimitiveAlleleSplittingData() {
-        List<Object[]> tests = new ArrayList<>();
-
-        // no split
-        tests.add(new Object[]{"A", "C", 0, null});
-        tests.add(new Object[]{"A", "AC", 0, null});
-        tests.add(new Object[]{"AC", "A", 0, null});
-
-        // one split
-        tests.add(new Object[]{"ACA", "GCA", 1, Collections.singletonList(0)});
-        tests.add(new Object[]{"ACA", "AGA", 1, Collections.singletonList(1)});
-        tests.add(new Object[]{"ACA", "ACG", 1, Collections.singletonList(2)});
-
-        // two splits
-        tests.add(new Object[]{"ACA", "GGA", 2, Arrays.asList(0, 1)});
-        tests.add(new Object[]{"ACA", "GCG", 2, Arrays.asList(0, 2)});
-        tests.add(new Object[]{"ACA", "AGG", 2, Arrays.asList(1, 2)});
-
-        // three splits
-        tests.add(new Object[]{"ACA", "GGG", 3, Arrays.asList(0, 1, 2)});
-
-        return tests.toArray(new Object[][]{});
-    }
-
-    @Test(dataProvider = "PrimitiveAlleleSplittingData")
-    public void testPrimitiveAlleleSplitting(final String ref, final String alt, final int expectedSplit, final List<Integer> variantPositions) {
-
-        final int start = 10;
-        final VariantContext vc = GATKVariantContextUtils.makeFromAlleles("test", "20", start, Arrays.asList(ref, alt));
-
-        final List<VariantContext> result = GATKVariantContextUtils.splitIntoPrimitiveAlleles(vc);
-
-        if ( expectedSplit > 0 ) {
-            Assert.assertEquals(result.size(), expectedSplit);
-            for ( int i = 0; i < variantPositions.size(); i++ ) {
-                Assert.assertEquals(result.get(i).getStart(), start + variantPositions.get(i));
-            }
-        } else {
-            Assert.assertEquals(result.size(), 1);
-            Assert.assertEquals(vc, result.get(0));
+            Assert.assertEquals(trimmed.getDisplayString(), expected.get(i));  //note that getBaseString doesn't work for <NON_REF>
         }
     }
 
@@ -1413,7 +1461,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
         tests.add(new Object[]{1, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, aRefPL, originalHaploidGT, haploidAllelesToUse, Collections.singletonList(Aref)});
         tests.add(new Object[]{1, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, cPL, originalHaploidGT, haploidAllelesToUse, Collections.singletonList(C)});
         tests.add(new Object[]{1, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, gPL, originalHaploidGT, haploidAllelesToUse, Collections.singletonList(G)});
-        tests.add(new Object[]{1, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, nonRefPL, originalHaploidGT, haploidAllelesWithNonRef, Collections.singletonList(Allele.NO_CALL)});
+        tests.add(new Object[]{1, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, nonRefPL, originalHaploidGT, haploidAllelesWithNonRef, Collections.singletonList(Aref)});  //this used to be no-call, but new convention is no call means NO DATA
 
         for ( final List<Allele> originalGT : Arrays.asList(AA, AC, CC, AG, CG, GG) ) {
             tests.add(new Object[]{2, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN, homRefPL, originalGT, AC, AA});
@@ -2150,13 +2198,13 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
                         new SimpleInterval("3", 69521, 69521), Arrays.asList("T", "A", "C"),
                         new int[]{1, 0, -1}},
                 {new SimpleInterval("3", 69552, 69552), Arrays.asList("G", "A"),
-                        new SimpleInterval("3", 69521, 69521), Arrays.asList("G", "T", "A", "C"),
+                        new SimpleInterval("3", 69552, 69552), Arrays.asList("G", "T", "A", "C"),
                         new int[]{1}},
-                {new SimpleInterval("3", 69552, 69552), Arrays.asList("G", "T"),
+                {new SimpleInterval("3", 69521, 69521), Arrays.asList("G", "T"),
                         new SimpleInterval("3", 69521, 69521), Arrays.asList("G", "T", "A", "C"),
                         new int[]{0}},
-                {new SimpleInterval("3", 69552, 69552), Arrays.asList("G", "C"),
-                        new SimpleInterval("3", 69521, 69521), Arrays.asList("G", "T", "A", "C"),
+                {new SimpleInterval("3", 69550, 69550), Arrays.asList("G", "C"),
+                        new SimpleInterval("3", 69550, 69550), Arrays.asList("G", "T", "A", "C"),
                         new int[]{2}},
                 {new SimpleInterval("3", 324682, 324714), Arrays.asList("ACCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT", "A"),
                         new SimpleInterval("3", 324682, 324714), Arrays.asList("ACCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT", "TCCAGGCCCAGCTCATGCTTCTTTGCAGCCTCT", "A"),
@@ -2200,7 +2248,7 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
                 .alleles(variant2Alleles)
                 .make();
 
-        final int[] matches = GATKVariantContextUtils.matchAllelesOnly(variant1, variant2);
+        final int[] matches = GATKVariantContextUtils.matchAllelesAndStart(variant1, variant2);
         Assert.assertTrue(Arrays.equals(matches, gtMatch), "Failed");
     }
 
@@ -2248,11 +2296,11 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
     }
 
     @Test(dataProvider = "multiAllelic")
-    public void testSplitMultiAllelic(final VariantContext vcToSplit, final List<VariantContext> expectedVcs, Boolean keepOriginalChrCounts) {
+    public void testSplitMultiAllelic(final VariantContext vcToSplit, final List<VariantContext> expectedVariants, Boolean keepOriginalChrCounts) {
         final List<VariantContext> outVcs = GATKVariantContextUtils.splitVariantContextToBiallelics(vcToSplit, true, GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL, keepOriginalChrCounts);
-        Assert.assertEquals(outVcs.size(), expectedVcs.size());
+        Assert.assertEquals(outVcs.size(), expectedVariants.size());
         for (int i = 0; i < outVcs.size(); i++) {
-            VariantContextTestUtils.assertVariantContextsAreEqual(outVcs.get(i), expectedVcs.get(i), new ArrayList<String>(), Collections.emptyList());
+            VariantContextTestUtils.assertVariantContextsAreEqual(outVcs.get(i), expectedVariants.get(i), new ArrayList<String>(), Collections.emptyList());
         }
     }
 
@@ -2505,5 +2553,123 @@ public final class GATKVariantContextUtilsUnitTest extends GATKBaseTest {
                 {49, "A", "ATT", Trilean.UNKNOWN},
                 {48, "AT", "ATT", Trilean.UNKNOWN},
         };
+    }
+
+    @DataProvider(name = "LeftAlignDataProvider")
+    public Object[][] LeftAlignTestData() throws UnsupportedEncodingException {
+        List<Object[]> tests = new ArrayList<Object[]>();
+        for (int iLongPiece = 0; iLongPiece < longPieces.size(); iLongPiece++) {
+            //longPiece is repeat of str
+            final String longPiece = longPieces.get(iLongPiece);
+            final ReferenceMemorySource refSource = refSources.get(iLongPiece);
+            final int strLength = strLengths.get(iLongPiece);
+            //final int nStrs=longPiece.length()/strLength; //number of strs in the repeat
+            final byte[] theseRefBases = refBases.get(iLongPiece).getBases();
+            Integer indelIndexStart, indelIndexStop;
+            if (longPiece.length() < 90) {
+                //for shorter repeats, we will place the indel at each location from just before the repeat to 20 bases into the repeat
+                indelIndexStart = repeatStart - 1;
+                indelIndexStop = repeatStart + Math.min(longPiece.length(), 20);
+            } else {
+                //for longer repeats, we will place the indel at the 61st base of the repeat, to test that automatic expansion works
+                indelIndexStart = repeatStart + 60;
+                indelIndexStop = indelIndexStart + 1;
+            }
+
+            for (int indelIndex = indelIndexStart; indelIndex < indelIndexStop; indelIndex++) {
+                //we will delete up to 50 units of the str (if possible), and insert up to 50 units of the str
+                for (int indelRepeats = Math.max(-(longPiece.length() - (indelIndex - repeatStart + 1)), -50) / strLength; indelRepeats < 50; indelRepeats++) {
+                    if (indelRepeats == 0) {
+                        continue;
+                    }
+                    final List<Allele> alleles = new ArrayList<Allele>();
+                    if (indelRepeats < 0) { // deletion
+                        byte[] basesRef = new byte[Math.abs(indelRepeats) * strLength + 1];
+                        byte[] basesAlt = new byte[1];
+                        System.arraycopy(theseRefBases, indelIndex, basesRef, 0, Math.abs(indelRepeats) * strLength + 1);
+                        System.arraycopy(theseRefBases, indelIndex, basesAlt, 0, 1);
+                        alleles.add(Allele.create(new String(basesRef, "UTF-8"), true));
+                        alleles.add(Allele.create(new String(basesAlt, "UTF-8"), false));
+                    } else { //insertion
+                        byte[] basesRef = new byte[1];
+                        byte[] basesAlt = new byte[Math.abs(indelRepeats) * strLength + 1];
+                        byte[] basesRepeat = new byte[strLength];
+                        System.arraycopy(theseRefBases, indelIndex, basesRef, 0, 1);
+                        System.arraycopy(theseRefBases, indelIndex, basesAlt, 0, 1);
+                        if (indelIndex < repeatStart + longPiece.length() - strLength) {
+                            //look at next strLength bases to find str
+                            System.arraycopy(theseRefBases, indelIndex + 1, basesRepeat, 0, strLength);
+                        } else {
+                            //look at previous strLength bases (including this one) to find str
+                            System.arraycopy(theseRefBases, indelIndex - strLength + 1, basesRepeat, 0, strLength);
+                        }
+                        System.arraycopy(Utils.dupString(new String(basesRepeat, "UTF-8"), indelRepeats).getBytes(), 0, basesAlt, 1, Math.abs(indelRepeats) * strLength);
+                        alleles.add(Allele.create(new String(basesRef, "UTF-8"), true));
+                        alleles.add(Allele.create(new String(basesAlt, "UTF-8"), false));
+                    }
+                    final SimpleInterval interval = new SimpleInterval(artificialContig, indelIndex + 1, indelIndex + alleles.get(0).length());
+                    ReferenceContext ref = new ReferenceContext(refSource, interval);
+
+                    final VariantContext vc = new VariantContextBuilder("test", artificialContig, indelIndex + 1, indelIndex + alleles.get(0).length(), alleles).make();
+                    final boolean expectRealigned = (indelIndex != repeatStart - 1);
+                    final int expectedStart = expectRealigned ? repeatStart : indelIndex + 1;
+                    tests.add(new Object[]{vc, ref, expectRealigned, expectedStart});
+                }
+            }
+            //also add an insertion of 1 str one base past end of repeat.  This insertion should not be moved
+            byte[] basesRef = new byte[1];
+            byte[] basesAlt = new byte[strLength + 1];
+            byte[] basesRepeat = new byte[strLength];
+            final int indelIndex = repeatStart + longPiece.length();
+            System.arraycopy(theseRefBases, indelIndex, basesRef, 0, 1);
+            System.arraycopy(theseRefBases, indelIndex, basesAlt, 0, 1);
+            // insert first strLength bases of repeat
+            System.arraycopy(theseRefBases, repeatStart, basesRepeat, 0, strLength);
+            System.arraycopy(Utils.dupString(new String(basesRepeat, "UTF-8"), 1).getBytes(), 0, basesAlt, 1, strLength);
+            final List<Allele> alleles = new ArrayList<Allele>();
+            alleles.add(Allele.create(new String(basesRef, "UTF-8"), true));
+            alleles.add(Allele.create(new String(basesAlt, "UTF-8"), false));
+            final SimpleInterval interval = new SimpleInterval(artificialContig, indelIndex + 1, indelIndex + alleles.get(0).length());
+            ReferenceContext ref = new ReferenceContext(refSource, interval);
+
+            final VariantContext vc = new VariantContextBuilder("test", artificialContig, indelIndex + 1, indelIndex + alleles.get(0).length(), alleles).make();
+            tests.add(new Object[]{vc, ref, false, indelIndex + 1});
+
+        }
+        return tests.toArray(new Object[][]{});
+    }
+
+    @Test(dataProvider = "LeftAlignDataProvider")
+    public void testLeftAlign(final VariantContext vc, final ReferenceContext ref, final boolean expectRealigned, final int expectedStart) {
+        final VariantContext realignedV = GATKVariantContextUtils.leftAlignAndTrim(vc, ref, LeftAlignAndTrimVariants.DEFAULT_MAX_LEADING_BASES, true);
+        Assert.assertEquals(realignedV != vc, expectRealigned);
+        Assert.assertEquals(realignedV.getStart(), expectedStart);
+    }
+
+    @Test
+    public void testLeftAlignWithVaryingMaxDistances() {
+
+        final byte[] refSequence = new byte[200];
+        Arrays.fill(refSequence, 0, 100, (byte) 'C');
+        Arrays.fill(refSequence, 100, 200, (byte) 'A');
+
+        final String contig = "1";
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(1, 1, refSequence.length);
+        final SimpleInterval interval = new SimpleInterval(contig, 1, refSequence.length);
+
+
+        final ReferenceBases refBases = new ReferenceBases(refSequence, interval);
+        final ReferenceDataSource referenceDataSource = new ReferenceMemorySource(refBases, header.getSequenceDictionary());
+        final ReferenceContext referenceContext = new ReferenceContext(referenceDataSource, interval);
+
+        final List<Allele> alleles = Arrays.asList(Allele.create("AA", true), Allele.create("A", false));
+        for (int maxShift : new int[] {0, 1, 5, 10, 30}) {
+            for (int start : new int[]{101, 105, 109, 110, 111, 115, 120, 130, 141}) {
+                final VariantContext vc = new VariantContextBuilder("source", contig, start, start + 1, alleles).make();
+                final VariantContext realignedV = GATKVariantContextUtils.leftAlignAndTrim(vc, referenceContext, maxShift, true);
+
+                Assert.assertEquals(realignedV.getStart(), Math.max(start - maxShift, 100));
+            }
+        }
     }
 }

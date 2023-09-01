@@ -1,20 +1,15 @@
 package org.broadinstitute.hellbender.utils;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 
 
 public final class BaseUtilsUnitTest extends GATKBaseTest {
@@ -223,4 +218,58 @@ public final class BaseUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(BaseUtils.basesToIUPAC(base1Byte, base2Byte), expected, "testing " + base1 + "/" + base2 + "==" + expected);
         Assert.assertEquals(BaseUtils.basesToIUPAC(base2Byte, base1Byte), expected, "testing " + base2 + "/" + base1 + "==" + expected);
     }
+
+    @DataProvider(name="hmerModificationProvider")
+    public Object[][] haplotypeModifier(){
+        boolean[] answers = {true, true, true, false, false};
+        String sourceHaplotype = "ATCGCAGGGAATTGTCCCCATGAAACTAAG";
+        String[] modifiedHaplotypes = {"ATCGCAGGGAATTGTCCCCATGAAACTAAG",
+                "ATCGCAGGGGAATTGTCCCCATGAAACTAAG",
+                "ATCGCAGGGATTGTCCCCATGAAACTAAG",
+                "ATCGCAGGGTTGTCCCCATGAAACTAAG",
+                "ATCGCAGGGAATAGTCCCCATGAAACTAAG"};
+
+
+        final List<Object[]> tests = new LinkedList<>();
+        for (int i = 0; i < modifiedHaplotypes.length; i++){
+            tests.add( new Object[]{ sourceHaplotype.getBytes(),
+                    modifiedHaplotypes[i].getBytes(), answers[i]});
+
+        }
+
+        return tests.toArray(new Object[][]{});
+    }
+
+    @Test(dataProvider = "hmerModificationProvider")
+    public void testEqualUpToHmerChange(byte[] bases1, byte[] bases2, boolean answer) {
+        Assert.assertEquals(BaseUtils.equalUpToHmerChange(bases1, bases2),answer);
+    }
+
+    @DataProvider(name="HmerIteratorDataProvider")
+    public Object[][] getDataProvider() {
+        return new Object[][] {
+                {
+                        "AAAABBBCCD", new int[]{'A', 4, 'B', 3, 'C', 2, 'D', 1}
+                }
+        };
+    }
+
+    @Test(dataProvider = "HmerIteratorDataProvider")
+    public void testHmerIterator(final String bases, int[] expectedResults) {
+
+        final BaseUtils.HmerIterator iter = new BaseUtils.HmerIterator(bases.getBytes());
+        int i = 0;
+
+        // loop over hmers
+        while ( iter.hasNext() ) {
+            Pair<Byte,Integer> pair = iter.next();
+            Assert.assertEquals(pair.getLeft().intValue(), expectedResults[i]);
+            Assert.assertEquals(pair.getRight().intValue(), expectedResults[i+1]);
+            i += 2;
+        }
+
+        // must be at end
+        Assert.assertEquals(i, expectedResults.length);
+    }
+
 }

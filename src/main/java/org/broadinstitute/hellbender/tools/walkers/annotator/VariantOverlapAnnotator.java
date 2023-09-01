@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.haplotype.Event;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
 import java.util.ArrayList;
@@ -162,7 +163,7 @@ public final class VariantOverlapAnnotator {
         Utils.nonNull(vcToAnnotate, "vcToAnnotate cannot be null");
         final List<String> rsids = new ArrayList<>();
 
-        final List<VariantContext> vcAnnotateList = GATKVariantContextUtils.splitVariantContextToBiallelics(vcToAnnotate, true,
+        final List<Event> vcAnnotateList = GATKVariantContextUtils.splitVariantContextToEvents(vcToAnnotate, true,
                 GenotypeAssignmentMethod.SET_TO_NO_CALL_NO_ANNOTATIONS, true);
 
         for ( final VariantContext vcCompSource : rsIDSourceVCs ) {
@@ -174,12 +175,12 @@ public final class VariantOverlapAnnotator {
                 throw new IllegalArgumentException("source rsID VariantContext " + vcCompSource + " is not on same chromosome as vcToAnnotate " + vcToAnnotate);
             }
 
-            final List<VariantContext> vcCompList = GATKVariantContextUtils.splitVariantContextToBiallelics(vcCompSource, true,
+            final List<Event> vcCompList = GATKVariantContextUtils.splitVariantContextToEvents(vcCompSource, true,
                     GenotypeAssignmentMethod.SET_TO_NO_CALL_NO_ANNOTATIONS, true);
             boolean addThisID = false;
-            for (final VariantContext vcComp : vcCompList) {
-                for (final VariantContext vcToAnnotateBi : vcAnnotateList) {
-                    if (vcComp.getStart() == vcToAnnotateBi.getStart() && vcToAnnotateBi.getReference().equals(vcComp.getReference()) && vcComp.getAlternateAlleles().equals(vcToAnnotateBi.getAlternateAlleles())) {
+            for (final Event vcComp : vcCompList) {
+                for (final Event vcToAnnotateBi : vcAnnotateList) {
+                    if (vcComp.equals(vcToAnnotateBi)) {
                         addThisID = true;
                         break;
                     }

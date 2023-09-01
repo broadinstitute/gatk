@@ -222,7 +222,14 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
                     LabeledVariantAnnotationsData.SNP_LABEL));
         }
 
+        if (useASAnnotations && resourceMatchingStrategy != ResourceMatchingStrategy.START_POSITION_AND_MINIMAL_REPRESENTATION) {
+            logger.warn(String.format("The %s argument is ignored when %s is set to true. The START_POSITION_AND_MINIMAL_REPRESENTATION strategy will be used.",
+                    RESOURCE_MATCHING_STRATEGY_LONG_NAME, USE_ALLELE_SPECIFIC_ANNOTATIONS_LONG_NAME));
+            resourceMatchingStrategy = ResourceMatchingStrategy.START_POSITION_AND_MINIMAL_REPRESENTATION;
+        }
+
         data = new LabeledVariantAnnotationsData(annotationNames, resourceLabels, useASAnnotations);
+        logger.info(String.format("Using %d annotations %s...", data.getSortedAnnotationNames().size(), data.getSortedAnnotationNames()));
 
         vcfWriter = createVCFWriter(outputVCFFile);
         vcfWriter.writeHeader(constructVCFHeader(data.getSortedLabels()));
@@ -276,7 +283,8 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
             logger.info(String.format("Extracted annotations for %d variants labeled as %s.",
                     data.isLabelFlat(label).stream().mapToInt(b -> b ? 1 : 0).sum(), label));
         }
-        logger.info(String.format("Extracted annotations for %s total variants.", data.size()));
+        logger.info(String.format("Extracted annotations for %s total records.", data.size()));
+        logger.info(String.format("Extracted annotations for %s total variants.", data.flatSize()));
 
         logger.info("Writing annotations...");
         data.writeHDF5(outputAnnotationsFile, omitAllelesInHDF5);
@@ -350,6 +358,9 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
         return Collections.emptyList();
     }
 
+    /**
+     * @param altAllele     {@code null} if non-allele-specific mode ({@code useASAnnotations} is false)
+     */
     private TreeSet<String> findMatchingResourceLabels(final VariantContext vc,
                                                        final Allele altAllele,
                                                        final FeatureContext featureContext) {
@@ -357,10 +368,8 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
         for (final FeatureInput<VariantContext> resource : resources) {
             final List<VariantContext> resourceVCs = featureContext.getValues(resource, featureContext.getInterval().getStart());
             for (final VariantContext resourceVC : resourceVCs) {
-                if (useASAnnotations && !doAllelesMatch(vc.getReference(), altAllele, resourceVC)) {
-                    continue;
-                }
-                if (isMatchingVariant(vc, resourceVC, !doNotTrustAllPolymorphic, resourceMatchingStrategy)) {
+                // we should have set resourceMatchingStrategy = ResourceMatchingStrategy.START_POSITION_AND_MINIMAL_REPRESENTATION if useASAnnotations is true
+                if (isMatchingVariant(vc, resourceVC, altAllele, !doNotTrustAllPolymorphic, resourceMatchingStrategy)) {
                     resource.getTagAttributes().entrySet().stream()
                             .filter(e -> e.getValue().equals("true"))
                             .map(Map.Entry::getKey)
@@ -371,8 +380,12 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
         return matchingResourceLabels;
     }
 
+    /**
+     * @param altAllele     {@code null} if non-allele-specific mode ({@code useASAnnotations} is false)
+     */
     private static boolean isMatchingVariant(final VariantContext vc,
                                              final VariantContext resourceVC,
+                                             final Allele altAllele,
                                              final boolean trustAllPolymorphic,
                                              final ResourceMatchingStrategy resourceMatchingStrategy) {
         if (resourceVC != null && resourceVC.isNotFiltered() && resourceVC.isVariant() && VariantType.checkVariantType(vc, resourceVC) &&
@@ -385,25 +398,21 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
                     return !Sets.intersection(Sets.newHashSet(vc.getAlternateAlleles()), Sets.newHashSet(resourceVC.getAlternateAlleles())).isEmpty();
                 case START_POSITION_AND_MINIMAL_REPRESENTATION:
                     // we further require that at least one alt allele is present in the resource alt alleles, and do reconcile representations
-                    return vc.getAlternateAlleles().stream()
-                            .anyMatch(altAllele -> GATKVariantContextUtils.isAlleleInList(vc.getReference(), altAllele, resourceVC.getReference(), resourceVC.getAlternateAlleles()));
+                    try {
+                        if (altAllele == null) {
+                            // non-allele-specific mode
+                            return vc.getAlternateAlleles().stream()
+                                    .anyMatch(alt -> GATKVariantContextUtils.isAlleleInList(vc.getReference(), alt, resourceVC.getReference(), resourceVC.getAlternateAlleles()));
+                        }
+                        // allele-specific mode
+                        return GATKVariantContextUtils.isAlleleInList(vc.getReference(), altAllele, resourceVC.getReference(), resourceVC.getAlternateAlleles());
+                    } catch (final IllegalStateException e) {
+                        throw new IllegalStateException("Reference allele mismatch at position " + resourceVC.getContig() + ':' + resourceVC.getStart() + ": ", e);
+                    }
                 default:
                     throw new GATKException.ShouldNeverReachHereException("Unknown ResourceMatchingStrategy.");
             }
         }
         return false;
-    }
-
-    private static boolean doAllelesMatch(final Allele refAllele,
-                                          final Allele altAllele,
-                                          final VariantContext resourceVC) {
-        if (altAllele == null) {
-            return true;
-        }
-        try {
-            return GATKVariantContextUtils.isAlleleInList(refAllele, altAllele, resourceVC.getReference(), resourceVC.getAlternateAlleles());
-        } catch (final IllegalStateException e) {
-            throw new IllegalStateException("Reference allele mismatch at position " + resourceVC.getContig() + ':' + resourceVC.getStart() + " : ", e);
-        }
     }
 }

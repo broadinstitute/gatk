@@ -1,19 +1,23 @@
 package org.broadinstitute.hellbender.utils;
 
+import org.apache.commons.math3.distribution.BinomialDistribution;
 import org.apache.commons.math3.distribution.EnumeratedDistribution;
-import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.commons.math3.exception.DimensionMismatchException;
 import org.apache.commons.math3.exception.NotStrictlyPositiveException;
 import org.apache.commons.math3.exception.NumberIsTooLargeException;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.special.Gamma;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
+import org.apache.commons.math3.stat.descriptive.rank.Percentile;
 import org.apache.commons.math3.util.FastMath;
 import org.apache.commons.math3.util.MathArrays;
 import org.apache.commons.math3.util.Pair;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.OptionalDouble;
 import java.util.function.*;
 import java.util.stream.Collectors;
 
@@ -22,26 +26,21 @@ import java.util.stream.Collectors;
  */
 public final class MathUtils {
 
-    /**
-     * The smallest log10 value we'll emit from normalizeFromLog10 and other functions
-     * where the real-space value is 0.0.
-     */
-    public static final double LOG10_P_OF_ZERO = -1000000.0;
-
     public static final double LOG10_ONE_HALF = Math.log10(0.5);
     public static final double LOG10_ONE_THIRD = -Math.log10(3.0);
     public static final double LOG_ONE_THIRD = -Math.log(3.0);
     public static final double LOG_2 = Math.log(2.0);
     public static final double INV_LOG_2 = 1.0 / Math.log(2.0);
-    private static final double LOG_10 = Math.log(10);
-    private static final double INV_LOG_10 = 1.0 / LOG_10;
+    public static final double LOG_10 = Math.log(10);
+    public static final double INV_LOG_10 = 1.0 / LOG_10;
     public static final double LOG10_E = Math.log10(Math.E);
 
     private static final double ROOT_TWO_PI = Math.sqrt(2.0 * Math.PI);
 
-    private static final Log10Cache LOG_10_CACHE = new Log10Cache();
-    private static final Log10FactorialCache LOG_10_FACTORIAL_CACHE = new Log10FactorialCache();
     private static final DigammaCache DIGAMMA_CACHE = new DigammaCache();
+
+    // represent overflow for computations returning a positive long
+    public static final int LONG_OVERFLOW = -1;
 
     /**
      * Private constructor.  No instantiating this class!
@@ -161,6 +160,11 @@ public final class MathUtils {
     public static int median(final int[] values) {
         Utils.nonNull(values);
         return (int) FastMath.round(new Median().evaluate(Arrays.stream(values).mapToDouble(n -> n).toArray()));
+    }
+
+    public static int median(final int[] values, final Percentile.EstimationType type) {
+        Utils.nonNull(values);
+        return (int) FastMath.round(new Median().withEstimationType(type).evaluate(Arrays.stream(values).mapToDouble(n -> n).toArray()));
     }
 
     public static double dotProduct(double[] a, double[] b){
@@ -366,25 +370,6 @@ public final class MathUtils {
         Utils.nonNull(y, "y is null");
         Utils.validateArg(x.length == y.length, "Lengths of x and y must be the same");
         return new IndexRange(0, x.length).mapToInteger(k -> x[k] - y[k]);
-    }
-
-    /**
-     * Calculates the log10 of the multinomial coefficient. Designed to prevent
-     * overflows even with very large numbers.
-     *
-     * @param n total number of trials
-     * @param k array of any size with the number of successes for each grouping (k1, k2, k3, ..., km)
-     * @return {@link Double#NaN NaN} if {@code a > 0}, otherwise the corresponding value.
-     */
-    public static double log10MultinomialCoefficient(final int n, final int[] k) {
-        Utils.validateArg(n >= 0, "n: Must have non-negative number of trials");
-        Utils.validateArg(allMatch(k, x -> x >= 0), "Elements of k must be non-negative");
-        Utils.validateArg(sum(k) == n, "Sum of observations k must sum to total number of trials n");
-        return log10Factorial(n) -  new IndexRange(0, k.length).sum(j -> log10Factorial(k[j]));
-    }
-
-    public static double log10(int i) {
-        return LOG_10_CACHE.get(i);
     }
 
     public static double digamma(int i) {
@@ -604,27 +589,6 @@ public final class MathUtils {
     }
 
     /**
-     * Calculates the binomial coefficient. Designed to prevent
-     * overflows even with very large numbers.
-     *
-     * @param n total number of trials
-     * @param k number of successes
-     * @return the binomial coefficient
-     */
-    public static double binomialCoefficient(final int n, final int k) {
-        return Math.pow(10, log10BinomialCoefficient(n, k));
-    }
-
-    /**
-     * @see #binomialCoefficient(int, int) with log10 applied to result
-     */
-    public static double log10BinomialCoefficient(final int n, final int k) {
-        Utils.validateArg(n >= 0, "Must have non-negative number of trials");
-        Utils.validateArg( k <= n && k >= 0, "k: Must have non-negative number of successes, and no more successes than number of trials");
-        return log10Factorial(n) - log10Factorial(k) - log10Factorial(n - k);
-    }
-
-    /**
      * Computes a binomial probability.  This is computed using the formula
      * <p/>
      * B(k; n; p) = [ n! / ( k! (n - k)! ) ] (p^k)( (1-p)^k )
@@ -634,31 +598,17 @@ public final class MathUtils {
      * @param n number of Bernoulli trials
      * @param k number of successes
      * @param p probability of success
-     * @return the binomial probability of the specified configuration.  Computes values down to about 1e-237.
+     * @return the binomial probability of the specified configuration.
      */
     public static double binomialProbability(final int n, final int k, final double p) {
-        return Math.pow(10.0, log10BinomialProbability(n, k, Math.log10(p)));
+        return new BinomialDistribution(null, n, p).probability(k);
     }
 
     /**
      * binomial Probability(int, int, double) with log applied to result
      */
-    public static double log10BinomialProbability(final int n, final int k, final double log10p) {
-        Utils.validateArg(log10p < 1.0e-18, "log10p: Log10-probability must be 0 or less");
-        if (log10p == Double.NEGATIVE_INFINITY){
-            return k == 0 ? 0 : Double.NEGATIVE_INFINITY;
-        } else if (log10p == 0) {
-            return k == n ? 0 : Double.NEGATIVE_INFINITY;
-        }
-        double log10OneMinusP = Math.log10(1 - Math.pow(10.0, log10p));
-        return log10BinomialCoefficient(n, k) + log10p * k + log10OneMinusP * (n - k);
-    }
-
-    /**
-     * @see #binomialProbability(int, int, double) with p=0.5 and log10 applied to result
-     */
-    public static double log10BinomialProbability(final int n, final int k) {
-        return log10BinomialCoefficient(n, k) + (n * LOG10_ONE_HALF);
+    public static double logBinomialProbability(final int n, final int k, final double p) {
+        return new BinomialDistribution(null, n, p).logProbability(k);
     }
 
     public static double log10SumLog10(final double[] log10Values, final int start) {
@@ -901,6 +851,18 @@ public final class MathUtils {
         return min;
     }
 
+    public static int minElementIndex(final int[] array) {
+        Utils.nonNull(array);
+        Utils.validateArg(array.length > 0, "array may not be empty");
+
+        int minI = 0;
+        for (int i = 1; i < array.length; i++) {
+            if (array[i] < array[minI])
+                minI = i;
+        }
+        return minI;
+    }
+
     public static boolean isValidLog10Probability(final double result) { return result <= 0.0; }
 
     public static boolean isValidProbability(final double result) {
@@ -917,21 +879,6 @@ public final class MathUtils {
       */
     public static double log10Gamma(final double x) {
        return logToLog10(Gamma.logGamma(x));
-    }
-
-    public static double log10Factorial(final int n) {
-        return LOG_10_FACTORIAL_CACHE.get(n);
-    }
-
-    /**
-     * Converts a real space array of numbers (typically probabilities) into a log10 array
-     *
-     * @param prRealSpace
-     * @return
-     */
-    public static double[] toLog10(final double[] prRealSpace) {
-        Utils.nonNull(prRealSpace);
-        return applyToArray(prRealSpace, Math::log10);
     }
 
     /**
@@ -1015,8 +962,8 @@ public final class MathUtils {
         Utils.validateArg(params.length == counts.length, "The number of dirichlet parameters must match the number of categories");
         final double dirichletSum = sum(params);
         final int countSum = (int) sum(counts);
-        double prefactor = log10MultinomialCoefficient(countSum,counts) + log10Gamma(dirichletSum) - log10Gamma(dirichletSum+countSum);
-        return prefactor + new IndexRange(0, counts.length).sum(n -> log10Gamma(counts[n] + params[n]) - log10Gamma(params[n]));
+        return logToLog10(Gamma.logGamma(countSum+1)  + Gamma.logGamma(dirichletSum) - Gamma.logGamma(dirichletSum+countSum)
+                + new IndexRange(0, counts.length).sum(n -> Gamma.logGamma(counts[n] + params[n]) - Gamma.logGamma(params[n]) - Gamma.logGamma(counts[n]+1) ));
     }
 
     /**
@@ -1141,5 +1088,34 @@ public final class MathUtils {
     public static final double fastBernoulliEntropy(final double p) {
         final double product = p * (1 - p);
         return product * (11 + 33 * product) / (2 + 20 * product);
+    }
+
+    // find zero of a monotonic function with binary search
+    public static OptionalDouble binarySearchFindZero(final DoubleUnaryOperator func, final double lower,
+                                                      final double upper, final double precision) {
+        double bottom = lower;
+        double top = upper;
+        while (top - bottom > precision) {
+            final double mid = (bottom + top)/2;
+            final double bottomVal = func.applyAsDouble(bottom);
+            final double topVal = func.applyAsDouble(top);
+            final double midVal = func.applyAsDouble(mid);
+
+            // if top and bottom are same sign, there may be a zero between them, but the assumption of monotonicity
+            // does not hold
+            if (FastMath.signum(bottomVal) == FastMath.signum(topVal)) {
+                return OptionalDouble.empty();
+            }
+
+
+            // bracket the zero
+            if (FastMath.signum(bottomVal) == FastMath.signum(midVal)) {
+                bottom = mid;
+            } else {
+                top = mid;
+            }
+        }
+        return OptionalDouble.of((bottom+top)/2);
+
     }
 }

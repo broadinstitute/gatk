@@ -12,17 +12,16 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceMode;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.downsampling.MutectDownsampler;
 import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsampler;
+import org.broadinstitute.hellbender.cmdline.ModeArgumentUtils;
 import org.broadinstitute.hellbender.utils.variant.writers.SomaticGVCFWriter;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 /**
  * <p>Call somatic short mutations via local assembly of haplotypes.
@@ -256,6 +255,11 @@ public final class Mutect2 extends AssemblyRegionWalker {
     public AssemblyRegionEvaluator assemblyRegionEvaluator() { return m2Engine; }
 
     @Override
+    public boolean shouldTrackPileupsForAssemblyRegions() {
+        return MTAC.pileupDetectionArgs.usePileupDetection;
+    }
+
+    @Override
     public void onTraversalStart() {
         VariantAnnotatorEngine annotatorEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), null, Collections.emptyList(), false, false);
         m2Engine = new Mutect2Engine(MTAC, assemblyRegionArgs, createOutputBamIndex, createOutputBamMD5, getHeaderForReads(), referenceArguments.getReferenceSpecifier(), annotatorEngine);
@@ -284,6 +288,7 @@ public final class Mutect2 extends AssemblyRegionWalker {
         if (MTAC.mitochondria) {
             annotations.add(new OriginalAlignment());
         }
+
         return annotations;
     }
 
@@ -305,7 +310,23 @@ public final class Mutect2 extends AssemblyRegionWalker {
             vcfWriter.close();
         }
         if (m2Engine != null) {
-            m2Engine.shutdown();
+            m2Engine.close();
         }
+    }
+
+    /**
+     * mode adjustments
+     * @return
+     */
+    @Override
+    protected String[] customCommandLineValidation() {
+        if (MTAC.flowMode != M2ArgumentCollection.FlowMode.NONE) {
+            ModeArgumentUtils.setArgValues(
+                    getCommandLineParser(),
+                    MTAC.flowMode.getNameValuePairs(),
+                    M2ArgumentCollection.FLOW_M2_MODE_LONG_NAME
+                    );
+        }
+        return null;
     }
 }

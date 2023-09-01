@@ -146,7 +146,7 @@ public class IntervalAlignmentContextIteratorUnitTest extends GATKBaseTest {
 
         final SAMSequenceDictionary dictionary = header.getSequenceDictionary();
 
-        final LocusIteratorByState locusIteratorByState = new LocusIteratorByState(filteredReads.iterator(), LocusIteratorByState.NO_DOWNSAMPLING, false, sampleNames, header, true);
+        final LocusIteratorByState locusIteratorByState = new LocusIteratorByState(filteredReads.iterator(), LocusIteratorByState.NO_DOWNSAMPLING, sampleNames, header, true);
 
 
         List<SimpleInterval> relevantIntervals = locusIntervals;

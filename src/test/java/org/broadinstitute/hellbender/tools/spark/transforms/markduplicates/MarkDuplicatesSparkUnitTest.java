@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.transforms.markduplicates;
 import htsjdk.samtools.SAMFileHeader;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.MarkDuplicatesSparkArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.OpticalDuplicatesArgumentCollection;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
@@ -42,7 +43,7 @@ public class MarkDuplicatesSparkUnitTest extends GATKBaseTest {
         OpticalDuplicatesArgumentCollection opticalDuplicatesArgumentCollection = new OpticalDuplicatesArgumentCollection();
         final OpticalDuplicateFinder finder = opticalDuplicatesArgumentCollection.READ_NAME_REGEX != null ?
                 new OpticalDuplicateFinder(opticalDuplicatesArgumentCollection.READ_NAME_REGEX, opticalDuplicatesArgumentCollection.OPTICAL_DUPLICATE_PIXEL_DISTANCE, null) : null;
-        JavaRDD<GATKRead> markedReads = MarkDuplicatesSpark.mark(reads, header, MarkDuplicatesScoringStrategy.SUM_OF_BASE_QUALITIES, finder, 1, false, MarkDuplicates.DuplicateTaggingPolicy.DontTag);
+        JavaRDD<GATKRead> markedReads = MarkDuplicatesSpark.mark(reads, header, MarkDuplicatesScoringStrategy.SUM_OF_BASE_QUALITIES, finder, 1, false, MarkDuplicates.DuplicateTaggingPolicy.DontTag, new MarkDuplicatesSparkArgumentCollection());
 
         Assert.assertEquals(markedReads.count(), totalExpected);
         JavaRDD<GATKRead> dupes = markedReads.filter(GATKRead::isDuplicate);

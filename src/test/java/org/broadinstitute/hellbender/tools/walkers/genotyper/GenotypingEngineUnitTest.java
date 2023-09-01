@@ -126,9 +126,11 @@ public class GenotypingEngineUnitTest extends GATKBaseTest {
 
     @Test
     public void testGenotypesWithNonRefSymbolicAllelesAreNotNulled(){
+        final GenotypeBuilder gBuilder = new GenotypeBuilder(SAMPLES.getSample(0), Arrays.asList(refA, Allele.NON_REF_ALLELE));
+        gBuilder.PL(new int[]{60,30,0});
         final VariantContext vc = new VariantContextBuilder(null, "1", 100, 100, Arrays.asList(refA,
                                                                                                Allele.NON_REF_ALLELE))
-                .genotypes(GenotypeBuilder.create(SAMPLES.getSample(0), Arrays.asList(refA, Allele.NON_REF_ALLELE))).make();
+                .genotypes(gBuilder.make()).make();
         Assert.assertNotNull(getGenotypingEngine().calculateGenotypes(vc));
     }
 

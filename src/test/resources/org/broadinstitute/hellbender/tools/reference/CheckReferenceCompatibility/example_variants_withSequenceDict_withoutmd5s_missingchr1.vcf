@@ -1,0 +1,7 @@
+##fileformat=VCFv4.1
+##contig=<ID=2,length=16000,assembly=mini>
+##contig=<ID=3,length=16000,assembly=mini>
+##contig=<ID=4,length=16000,assembly=mini>
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+4	775	y	G	A	232.46	PASS	.
+4	776	z	GGGG	G	232.46	PASS	.

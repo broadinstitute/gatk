@@ -307,7 +307,7 @@ public class VcfFuncotationFactory extends DataSourceFuncotationFactory {
                 //  funcotation factory variant.
                 // matchIndices length will always be the same as the number of alt alleles in the variant (first parameter)
                 //  Note that this is not the same length as the featureVariant.
-                final int[] matchIndices = GATKVariantContextUtils.matchAllelesOnly(variant, featureVariant);
+                final int[] matchIndices = GATKVariantContextUtils.matchAllelesAndStart(variant, featureVariant);
 
                 for (int i = 0; i < matchIndices.length; i++) {
                     final int matchIndex = matchIndices[i];
