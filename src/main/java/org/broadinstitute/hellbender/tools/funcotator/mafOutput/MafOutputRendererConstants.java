@@ -178,6 +178,7 @@ public class MafOutputRendererConstants {
     static final Map<String, String> VariantClassificationMapInverse;
 
     // Output Field Name Map Defaults:
+    //TODO these are hardcoded to gencode versions and should be updated to generalize to any version of gencode (see https://github.com/broadinstitute/gatk/issues/8482)
     static final List<String> OutputFieldNameMap_Hugo_Symbol                            = Arrays.asList(FieldName_Hugo_Symbol, "Gencode_19_hugoSymbol", "Gencode_27_hugoSymbol", "Gencode_28_hugoSymbol", "Gencode_34_hugoSymbol", "Gencode_43_hugoSymbol", "gene", "Gene");
     static final List<String> OutputFieldNameMap_Entrez_Gene_Id                         = Arrays.asList(FieldName_Entrez_Gene_Id, "HGNC_Entrez_Gene_ID", "HGNC_Entrez Gene ID", "HGNC_Entrez_Gene_ID(supplied_by_NCBI)", "HGNC_Entrez Gene ID(supplied by NCBI)", "entrez_id", "gene_id");
     static final List<String> OutputFieldNameMap_Center                                 = Arrays.asList(FieldName_Center, "center");
