@@ -15,7 +15,7 @@ def vds_mt(vds_path):
 
 
 def vcf_mt(vcf_paths):
-    mt = hl.import_vcf(vcf_paths, force_bgz=True, reference_genome='GRCh38').key_rows_by('locus')
+    mt = hl.import_vcf(vcf_paths, force_bgz=True, reference_genome='GRCh38', array_elements_required=False).key_rows_by('locus')
     return mt
 
 
