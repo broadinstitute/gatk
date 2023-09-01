@@ -6,12 +6,7 @@
 
 - Made VETS tool chain the default method for filtering (used to be VQSR).
 - Synced GVS development branch with GATK master, GATK-based Java tools now run on Java 17 rather than Java 8.
-
-## 0.2.2 - 2023-08-31
-
-### Changed
-
-- If no `extract_output_gcs_dir` is specified for `GvsBeta`/`GvsJointVariantCalling`, choose a sensible default value so output VCFs are collected in one convenient place.
+- If no `extract_output_gcs_dir` is specified for `GvsBeta`/`GvsJointVariantCalling`, default value will be chosen so output VCFs are collected in one convenient place. Please see the [GVS documentation for further details](../beta_docs/gvs-overview.md#input-descriptions) for further details.
 
 ## 0.2.1 - 2023-08-30
 
