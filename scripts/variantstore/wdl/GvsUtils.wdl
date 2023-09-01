@@ -15,7 +15,7 @@ task GetToolVersions {
 
   # For GVS releases, set `version` to match the release branch name, e.g. gvs_<major>.<minor>.<patch>.
   # For non-release, leave the value at "unspecified".
-  String version = "unspecified"
+  String version = "gvs_0.3.0"
 
   String effective_version = select_first([git_branch_or_tag, version])
   command <<<
