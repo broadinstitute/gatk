@@ -73,7 +73,7 @@ final public class DataSourceUtils {
     @VisibleForTesting
     static final int MAX_MINOR_VERSION_NUMBER = 8;
     @VisibleForTesting
-    static final LocalDate MAX_DATE            = LocalDate.of(2023, Month.SEPTEMBER, 9);
+    static final LocalDate MAX_DATE            = LocalDate.of(2023, Month.SEPTEMBER, 8);
 
     //==================================================================================================================
     // Public Static Members:
