@@ -93,7 +93,7 @@ public class FuncotatorDataSourceDownloader extends CommandLineProgram {
     public static final String HG19_SOMATIC_GCLOUD_DATASOURCES_BASEURL     = HG19_BASE_URL + DataSourceUtils.DS_SOMATIC_NAME_MODIFIER;;
 
     public static final Path   HG38_SOMATIC_GCLOUD_DATASOURCES_PATH        = IOUtils.getPath(HG38_SOMATIC_GCLOUD_DATASOURCES_BASEURL + DataSourceUtils.DS_EXTENSION);
-    public static final Path   HG19_SOMATIC_GCLOUD_DATASOURCES_PATH        = IOUtils.getPath(HG38_SOMATIC_GCLOUD_DATASOURCES_BASEURL + DataSourceUtils.DS_EXTENSION);
+    public static final Path   HG19_SOMATIC_GCLOUD_DATASOURCES_PATH        = IOUtils.getPath(HG19_SOMATIC_GCLOUD_DATASOURCES_BASEURL + DataSourceUtils.DS_EXTENSION);
     private static final Path   HG38_SOMATIC_GCLOUD_DATASOURCES_SHA256_PATH = IOUtils.getPath(HG38_SOMATIC_GCLOUD_DATASOURCES_BASEURL + DataSourceUtils.DS_CHECKSUM_EXTENSION);
     private static final Path   HG19_SOMATIC_GCLOUD_DATASOURCES_SHA256_PATH = IOUtils.getPath(HG19_SOMATIC_GCLOUD_DATASOURCES_BASEURL + DataSourceUtils.DS_CHECKSUM_EXTENSION);
 
