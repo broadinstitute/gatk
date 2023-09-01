@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/broadinstitute/gatk.svg?branch=master)](https://travis-ci.com/broadinstitute/gatk)
+[![Build Status](https://github.com/broadinstitute/gatk/actions/workflows/gatk-tests.yml/badge.svg?branch=master)](https://github.com/broadinstitute/gatk/actions/workflows/gatk-tests.yml)
 [![Maven Central](https://img.shields.io/maven-central/v/org.broadinstitute/gatk.svg)](https://maven-badges.herokuapp.com/maven-central/org.broadinstitute/gatk)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
@@ -51,17 +51,16 @@ releases of the toolkit.
 
 ## <a name="requirements">Requirements</a>
 * To run GATK:
-    * Java 8 is needed to run or build GATK. 
-    We recommend either of the following:
-        * OpenJDK 8 with Hotspot from [AdoptOpenJdk](https://adoptopenjdk.net/)
-        * [OracleJDK 8](https://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html)
-    which requires an Oracle account to download and comes with restrictive [license conditions](https://www.oracle.com/downloads/licenses/javase-license1.html).
+    * Java 17 is needed to run or build GATK. 
+    We recommend one of the following:
+        * Download the Eclipse Foundation's distribution of OpenJDK 17 from [adoptium.net](https://adoptium.net/). Navigate to the [release archive](https://adoptium.net/temurin/archive/?version=17) to find downloads for Java 17.
+        * On Mac OS, you can install the [Homebrew package manager](https://brew.sh/) and run `brew tap homebrew/cask-versions` followed by `brew install --cask temurin17` to install the Eclipse Foundation's OpenJDK 17. 
     * Python 2.6 or greater (required to run the `gatk` frontend script)
     * Python 3.6.2, along with a set of additional Python packages, is required to run some tools and workflows.
       See [Python Dependencies](#python) for more information.
     * R 3.2.5 (needed for producing plots in certain tools)
 * To build GATK:
-    * A Java 8 JDK
+    * A Java 17 JDK
     * Git 2.5 or greater
     * [git-lfs](https://git-lfs.github.com/) 1.1.0 or greater. Required to download the large files used to build GATK, and
       test files required to run the test suite. Run `git lfs install` after downloading, followed by `git lfs pull` from
@@ -423,12 +422,13 @@ echo "source <PATH_TO>/gatk-completion.sh" >> ~/.bashrc
 * To run tests and compute coverage reports, run **`./gradlew jacocoTestReport`**. The report is then in `build/reports/jacoco/test/html/index.html`.
   (IntelliJ has a good coverage tool that is preferable for development).
 
-* We use [Travis-CI](https://travis-ci.org/broadinstitute/gatk) as our continuous integration provider.
+* We use [Github Actions](https://github.com/broadinstitute/gatk/actions/workflows/gatk-tests.yml) as our continuous integration provider.
 
-    * Before merging any branch make sure that all required tests pass on travis.
-    * Every travis build will upload the test results to our GATK Google Cloud Storage bucket.
-      A link to the uploaded report will appear at the very bottom of the travis log.
+    * Before merging any branch make sure that all required tests pass on Github.
+    * Every Actions build will upload the test results to our GATK Google Cloud Storage bucket and a zipped artifact upload.
+      A link to the uploaded report will appear at the very bottom of the github actions log.
       Look for the line that says `See the test report at`.
+      Test github actions test artifacts will not show up on the webpage until the entire test has concluded.
       If TestNG itself crashes there will be no report generated.
 
 * We use [Broad Jenkins](https://gatk-jenkins.broadinstitute.org/view/Performance/) for our long-running tests and performance tests.
@@ -453,7 +453,7 @@ We use [git-lfs](https://git-lfs.github.com/) to version and distribute test dat
 
 #### <a name="intellij">Creating a GATK project in the IntelliJ IDE (last tested with version 2016.2.4):</a>
 
-* Ensure that you have `gradle` and the Java 8 JDK installed
+* Ensure that you have `gradle` and the Java 17 JDK installed
 
 * You may need to install the TestNG and Gradle plugins (in preferences)
 
@@ -469,13 +469,13 @@ We use [git-lfs](https://git-lfs.github.com/) to version and distribute test dat
 
 * Select "Use auto-import" and "Use default gradle wrapper".
 
-* Make sure the Gradle JVM points to Java 1.8. You may need to set this manually after creating the project, to do so find the gradle settings by clicking the wrench icon in the gradle tab on the right bar, from there edit "Gradle JVM" argument to point to Java 1.8.
+* Make sure the Gradle JVM points to Java 17. You may need to set this manually after creating the project, to do so find the gradle settings by clicking the wrench icon in the gradle tab on the right bar, from there edit "Gradle JVM" argument to point to Java 17.
 
 * Click "Finish"
 
 * After downloading project dependencies, IntelliJ should open a new window with your GATK project
 
-* Make sure that the Java version is set correctly by going to File -> "Project Structure" -> "Project". Check that the "Project SDK" is set to your Java 1.8 JDK, and "Project language level" to 8 (you may need to add your Java 8 JDK under "Platform Settings" -> SDKs if it isn't there already). Then click "Apply"/"Ok".
+* Make sure that the Java version is set correctly by going to File -> "Project Structure" -> "Project". Check that the "Project SDK" is set to your Java 17 JDK, and "Project language level" to 17 (you may need to add your Java 17 JDK under "Platform Settings" -> SDKs if it isn't there already). Then click "Apply"/"Ok".
 
 #### <a name="debugging">Setting up debugging in IntelliJ</a>
 
@@ -568,7 +568,7 @@ be found in the `build/docs/wdlGen` folder.
 * To generate WDL Wrappers and validate the resulting outputs, run `./gradlew gatkWDLGenValidation`.
 Running this task requires a local [cromwell](https://github.com/broadinstitute/cromwell) installation, and environment
 variables `CROMWELL_JAR` and `WOMTOOL_JAR` to be set to the full pathnames of the `cromwell` and `womtool` jar files.
-If no local install is available, this task will run automatically on travis in a separate job whenever a PR is submitted.
+If no local install is available, this task will run automatically on github actions in a separate job whenever a PR is submitted.
 
 * WDL wrappers for each GATK release are published to the [gatk-tool-wdls](https://github.com/broadinstitute/gatk-tool-wdls) repository.
 Only tools that have been annotated for WDL generation will show up there. 

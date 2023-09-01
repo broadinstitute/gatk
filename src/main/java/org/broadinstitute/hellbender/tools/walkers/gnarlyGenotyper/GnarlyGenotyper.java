@@ -75,7 +75,8 @@ import java.util.*;
  * <p><ul>
  * <li>This tool does not subset to the best alternate alleles and can return highly, highly multialleic variants (>1000 alts for cohorts in the 10s of thousands). Only
  * GenomicsDB instances should be used as input for this tool, because GenomicsDB will drop PLs for such sites to avoid excessive vcf size.</li>
- * <li>To generate all the annotations necessary for VQSR, input variants must include the QUALapprox, VarDP and MQ_DP annotations
+ * <li>To generate all the annotations necessary for VQSR, input variants must include the QUALapprox, VarDP and MQ_DP annotations as applied by the ReblockGVCF tool
+ * using its --do-qual-score-approximation argument.
  * </ul></p>
  *
  * <h3>Special note on ploidy</h3>
@@ -89,11 +90,8 @@ import java.util.*;
 @BetaFeature
 public final class GnarlyGenotyper extends VariantWalker {
 
-    public static final int PIPELINE_MAX_ALT_COUNT = GenotypeCalculationArgumentCollection.DEFAULT_MAX_ALTERNATE_ALLELES;
-
     private static final OneShotLogger warning = new OneShotLogger(GnarlyGenotyper.class);
 
-    private static final boolean SUMMARIZE_PLs = false;  //for very large numbers of samples, save on space and hail import time by summarizing PLs with genotype quality metrics
     private static final boolean CALL_GENOTYPES = true;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -127,6 +125,7 @@ public final class GnarlyGenotyper extends VariantWalker {
     private boolean mergeInputIntervals = false;
 
     @Hidden
+    @DeprecatedFeature(detail = "This was specific to a single, old project")
     @Argument(fullName = "strip-allele-specific-annotations", shortName = "strip-as", doc = "Remove raw AS values and don't calculate finalized values")
     private boolean stripASAnnotations = false;
 
@@ -173,7 +172,7 @@ public final class GnarlyGenotyper extends VariantWalker {
     protected GenomicsDBOptions getGenomicsDBOptions() {
         if (genomicsDBOptions == null) {
             genomicsdbArgs.callGenotypes = CALL_GENOTYPES;
-            genomicsdbArgs.maxDiploidAltAllelesThatCanBeGenotyped = PIPELINE_MAX_ALT_COUNT;
+            genomicsdbArgs.maxDiploidAltAllelesThatCanBeGenotyped = genotypeArgs.maxAlternateAlleles + 1; //plus one for internal NON_REF
             genomicsDBOptions = new GenomicsDBOptions(referenceArguments.getReferencePath(), genomicsdbArgs, genotypeArgs);
         }
         return genomicsDBOptions;
@@ -195,7 +194,7 @@ public final class GnarlyGenotyper extends VariantWalker {
 
         setupVCFWriter(inputVCFHeader, samples);
 
-        genotyperEngine = new GnarlyGenotyperEngine(keepAllSites, genotypeArgs.MAX_ALTERNATE_ALLELES, SUMMARIZE_PLs, stripASAnnotations);
+        genotyperEngine = new GnarlyGenotyperEngine(keepAllSites, genotypeArgs.maxAlternateAlleles, stripASAnnotations);
 
         Reflections reflections = new Reflections("org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific");
         //not InfoFieldAnnotation.class because we don't want AS_InbreedingCoeff
@@ -250,11 +249,6 @@ public final class GnarlyGenotyper extends VariantWalker {
 
         final Set<String> sampleNameSet = samples.asSetOfSamples();
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY));
-        if (SUMMARIZE_PLs) {
-            headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.REFERENCE_GENOTYPE_QUALITY));
-            headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.GENOTYPE_QUALITY_BY_ALLELE_BALANCE));
-            headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.GENOTYPE_QUALITY_BY_ALT_CONFIDENCE));
-        }
         final VCFHeader vcfHeader = new VCFHeader(headerLines, new TreeSet<>(sampleNameSet));
         final VCFHeader dbHeader = new VCFHeader(headerLines);
         vcfWriter.writeHeader(vcfHeader);

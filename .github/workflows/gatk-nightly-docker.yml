@@ -1,0 +1,45 @@
+name: Build and Upload GATK Nightly Docker Image
+on:
+  schedule:
+    - cron: '17 05 * * *' # trigger the job to build the image at 12:17am EST every night (UTC 05:17)
+
+# NOTE: by default schedule:cron jobs pull from the repo default branch which makes this the master branch of gatk
+jobs:
+  buildDocker:
+    name: build docker images
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout gatk
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
+        with:
+          registry: 'docker.io'
+          username: ${{ secrets.DOCKER_NIGHTLY_SERVICE_LOGIN }}
+          password: ${{ secrets.DOCKER_NIGHTLY_SERVICE_TOKEN }}
+
+      - name: Export tags to env
+        run: |
+          DATE=$(date +%Y-%m-%d);
+          echo "DOCKER_NIGHTLY_TAG=${DATE}-$(git describe)-NIGHTLY-SNAPSHOT" >> $GITHUB_ENV
+          echo "DOCKER_NIGHTLY_TAG_LATEST=latest" >> $GITHUB_ENV
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
+        with:
+          images: broadinstitute/gatk-nightly
+          tags: |
+            type=raw,value=${{env.DOCKER_NIGHTLY_TAG}}
+            type=raw,value=${{env.DOCKER_NIGHTLY_TAG_LATEST}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }},
+          labels: ${{ steps.meta.outputs.labels }}

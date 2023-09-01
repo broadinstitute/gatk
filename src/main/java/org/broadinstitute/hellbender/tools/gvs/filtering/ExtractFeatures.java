@@ -11,6 +11,7 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscoveryProgramGroup;
+import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.*;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -30,6 +31,7 @@ import java.util.*;
 @DocumentedFeature
 public class ExtractFeatures extends ExtractTool {
     private ExtractFeaturesEngine engine;
+    protected ReferenceDataSource reference;
     private SampleList sampleList;
 
     private VariantContextWriter vcfWriter = null;
@@ -140,6 +142,8 @@ public class ExtractFeatures extends ExtractTool {
 
         Set<VCFHeaderLine> extraHeaderLines = new HashSet<>();
         extraHeaderLines.add(GATKVCFHeaderLines.getFilterLine(GATKVCFConstants.LOW_QUAL_FILTER_NAME));
+
+        reference = directlyAccessEngineReferenceDataSource();
 
         VCFHeader header = generateVcfHeader(
                 new HashSet<>(), reference.getSequenceDictionary(), extraHeaderLines);

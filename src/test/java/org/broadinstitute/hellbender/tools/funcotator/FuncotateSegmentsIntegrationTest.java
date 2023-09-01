@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.An
 import org.broadinstitute.hellbender.tools.funcotator.genelistoutput.GeneListOutputRenderer;
 import org.broadinstitute.hellbender.tools.funcotator.simpletsvoutput.SimpleTsvOutputRenderer;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.io.Resource;
 import org.broadinstitute.hellbender.utils.test.FuncotatorTestUtils;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
@@ -52,7 +53,7 @@ public class FuncotateSegmentsIntegrationTest extends CommandLineProgramTest {
 
     @Test(description = "Test simple tsv and gene list when no segment overlaps a gene.")
     public void testSimpleNoOverlap() throws IOException {
-        final File outputFile = File.createTempFile("funcotatesegs_simple", ".seg");
+        final File outputFile = IOUtils.createTempFile("funcotatesegs_simple", ".seg");
 
         final ArgumentsBuilder arguments = new ArgumentsBuilder();
         arguments.addRaw("--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME);
@@ -131,7 +132,7 @@ public class FuncotateSegmentsIntegrationTest extends CommandLineProgramTest {
                                                List<String> gtRefAlleles, List<String> gtAltAlleles, List<String> gtCalls,
                                                List<String> gtSegmentMeans, List<String> gtNumProbes, List<String> gtSamples)
             throws IOException {
-        final File outputFile = File.createTempFile("funcotatesegs_simple_cntn4", ".seg");
+        final File outputFile = IOUtils.createTempFile("funcotatesegs_simple_cntn4", ".seg");
 
         final ArgumentsBuilder arguments = new ArgumentsBuilder();
         arguments.addRaw("--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME);
@@ -208,7 +209,7 @@ public class FuncotateSegmentsIntegrationTest extends CommandLineProgramTest {
 
     @Test(description = "Test simple tsv and gene list for GATK seg file where all genes completely overlap one segment.")
     public void testGatkCalledSegmentFile() throws IOException {
-        final File outputFile = File.createTempFile("funcotatesegs_gatk_called", ".seg");
+        final File outputFile = IOUtils.createTempFile("funcotatesegs_gatk_called", ".seg");
 
         final ArgumentsBuilder arguments = new ArgumentsBuilder();
         arguments.addRaw("--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME);
@@ -275,7 +276,7 @@ public class FuncotateSegmentsIntegrationTest extends CommandLineProgramTest {
 
     @Test(description = "Test simple tsv and gene list when input file has no segments.  Output files should just be headers.")
     public void testEmptyGatkCalledSegmentFile() throws IOException {
-        final File outputFile = File.createTempFile("funcotatesegs_gatk_called", ".seg");
+        final File outputFile = IOUtils.createTempFile("funcotatesegs_gatk_called", ".seg");
 
         final ArgumentsBuilder arguments = new ArgumentsBuilder();
         arguments.addRaw("--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME);
@@ -319,7 +320,7 @@ public class FuncotateSegmentsIntegrationTest extends CommandLineProgramTest {
      */
     @Test(description = "Simple smoke test for a hg38 GATK called segments file.")
     public void testHg38CalledCopyRatioSegmentsGatkFile() throws IOException {
-        final File outputFile = File.createTempFile("funcotatehg38segs_gatk_called", ".seg");
+        final File outputFile = IOUtils.createTempFile("funcotatehg38segs_gatk_called", ".seg");
 
         final ArgumentsBuilder arguments = new ArgumentsBuilder();
         arguments.addRaw("--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME);
@@ -349,7 +350,7 @@ public class FuncotateSegmentsIntegrationTest extends CommandLineProgramTest {
 
     @Test(description = "Simple smoke test for a hg38 GATK modeled segments file.")
     public void testModelSegmentsGatkFile() throws IOException {
-        final File outputFile = File.createTempFile("funcotatehg38segs_gatk_modeled_segs", ".seg");
+        final File outputFile = IOUtils.createTempFile("funcotatehg38segs_gatk_modeled_segs", ".seg");
 
         final ArgumentsBuilder arguments = new ArgumentsBuilder();
         arguments.addRaw("--" + CopyNumberStandardArgument.SEGMENTS_FILE_LONG_NAME);

@@ -11,10 +11,10 @@ inputs:
     description: 'The job-unique identifier to use for uploading the results of this run into a google bucket'
     required: true
   is-docker:
-    description: 'Whether to label the uplaod artifact as coming from a docker test'
+    description: 'Whether to label the upload artifact as coming from a docker test'
     required: false
   identifier:
-    description: 'Identifier to use for finding the unique name for jobs in order to determine html logs location (eg. "Java 8 build and test integration")'
+    description: 'Identifier to use for finding the unique name for jobs in order to determine html logs location (eg. "Java 17 build and test integration")'
     required: true
 ## Secrets and token inputs
   repo-token:
@@ -23,7 +23,7 @@ inputs:
   bot-comment-key:
     description: 'Key corresponding to the user account to be used for making comments on github about test failures'
     required: false
-## option to skip all but the artifact uplaod
+## option to skip all but the artifact upload
   only-artifact:
     description: 'if "true" this will skip any uploading steps that require permissions and only upload the artifact file'
     required: false
@@ -34,7 +34,7 @@ runs:
   steps:
     - name: Upload test results
       if: always()
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         # ternary expression syntax is workaround found here https://github.com/actions/runner/issues/409
         name: test-results-${{ inputs.is-docker == 'true' && 'docker-' ||  '' }}${{ matrix.Java }}-${{ matrix.testType }}
@@ -49,9 +49,10 @@ runs:
       id: uploadreports
       run: |
         gsutil -m cp -z html -z js -z xml -z css -r build/reports/tests gs:/${{ env.HELLBENDER_TEST_LOGS }}${{ inputs.repo-path }}/;
-        VIEW_URL=https://storage.googleapis.com${{ env.HELLBENDER_TEST_LOGS }}${{ inputs.repo-path }}/tests/test/index.html
+        VIEW_URL=https://storage.googleapis.com${{ env.HELLBENDER_TEST_LOGS }}${{ inputs.repo-path }}/tests/testOnPackagedReleaseJar/index.html
         echo "See the test report at ${VIEW_URL}";
-        echo ::set-output name=view_url::"${VIEW_URL}"
+        echo view_url="${VIEW_URL}" >> $GITHUB_OUTPUT
+
       shell: bash
 
 # This code is necessary in order to extract the URL for the logs for a particular run. The github context exposes the run_id object
@@ -69,8 +70,8 @@ runs:
         eval "$(curl --get -Ss -H "Authorization: token ${GITHUB_TOKEN}" -H "Accept: application/vnd.github.v3+json" "${GITHUB_BASEURL}${GITHUB_API}?per_page=30" \
         | jq -r --arg job_name "${{ inputs.identifier }}" '.jobs | map(select(.name == $job_name)) | .[0] | @sh "job_id=\(.id) html_url=\(.html_url)"')"
 
-        echo ::set-output name=job_id::"${job_id}"
-        echo ::set-output name=html_url::"${html_url}"
+        echo job_id="${job_id}" >> $GITHUB_OUTPUT
+        echo html_url="${html_url}" >> $GITHUB_OUTPUT
         echo ${job_id}
         echo ${html_url}
       shell: bash

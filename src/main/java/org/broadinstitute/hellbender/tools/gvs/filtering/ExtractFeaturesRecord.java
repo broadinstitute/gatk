@@ -35,6 +35,16 @@ public class ExtractFeaturesRecord implements Locatable {
     private final int hqGenotypeSamples;
     private final Double qualApprox;
 
+    // If the requested key is missing in an Avro record:
+    //
+    // Avro 1.11 throws: https://github.com/apache/avro/blob/release-1.11.0/lang/java/avro/src/main/java/org/apache/avro/generic/GenericData.java#L267-L269
+    // Avro 1.8 returns null: https://github.com/apache/avro/blob/release-1.8.0/lang/java/avro/src/main/java/org/apache/avro/generic/GenericData.java#L208
+    //
+    // Most of the code here was written for Avro 1.8 behavior; this function provides the equivalent for Avro 1.11.
+    private static Object getNoThrow(GenericRecord record, String key) {
+        return record.hasField(key) ? record.get(key) : null;
+    }
+
     // See SchemaUtils.FEATURE_EXTRACT_FIELDS for list of fields
     public ExtractFeaturesRecord(GenericRecord genericRecord) {
         this.location = Long.parseLong(genericRecord.get(SchemaUtils.LOCATION_FIELD_NAME).toString());
@@ -69,19 +79,19 @@ public class ExtractFeaturesRecord implements Locatable {
         this.asReadPosRankSumFreqTable = Objects.toString(genericRecord.get(SchemaUtils.AS_ReadPosRankSum + "_ft"));
 
         // if qualApprox is not defined, set it to zero
-        Object qualApproxNullable = genericRecord.get("sum_qualapprox");
+        Object qualApproxNullable = getNoThrow(genericRecord, "sum_qualapprox");
         this.qualApprox = ( qualApproxNullable == null ) ? 0 : Double.valueOf(Objects.toString(qualApproxNullable));
 
         // if num_snp_alleles is not defined, set it to zero
-        Object numSnpAllelesNullable = genericRecord.get("num_snp_alleles");
+        Object numSnpAllelesNullable = getNoThrow(genericRecord, "num_snp_alleles");
         this.numSnpAlleles = ( numSnpAllelesNullable == null ) ? 0 : Integer.valueOf(Objects.toString(numSnpAllelesNullable));
 
         // if ref_ad is not defined, set it to zero
-        Object refADNullable = genericRecord.get("ref_ad");
+        Object refADNullable = getNoThrow(genericRecord, "ref_ad");
         this.refAD = ( refADNullable == null ) ? 0 : Double.valueOf(Objects.toString(refADNullable));
 
         // if sum_AD is not defined, set it to zero
-        Object sumADNullable = genericRecord.get(SchemaUtils.SUM_AD);
+        Object sumADNullable = getNoThrow(genericRecord, SchemaUtils.SUM_AD);
         this.sumAD = ( sumADNullable == null ) ? 0 : Double.valueOf(Objects.toString(sumADNullable));
 
     }

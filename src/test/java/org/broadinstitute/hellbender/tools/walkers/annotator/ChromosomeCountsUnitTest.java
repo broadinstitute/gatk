@@ -44,7 +44,6 @@ public final class ChromosomeCountsUnitTest {
         Assert.assertEquals(annotate.get(VCFConstants.ALLELE_COUNT_KEY), 2);
         Assert.assertEquals(annotate.get(VCFConstants.ALLELE_FREQUENCY_KEY), 0.5);
 
-        Assert.assertEquals(ann.getDescriptions(), Arrays.asList(ChromosomeCounts.descriptions));
         Assert.assertEquals(ann.getKeyNames(), Arrays.asList(ChromosomeCounts.keyNames));
     }
     

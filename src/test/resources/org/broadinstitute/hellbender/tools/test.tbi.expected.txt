@@ -1,0 +1,10 @@
+#tigs	format	seqCol	begCol	endCol	metaChr	skip
+1	0	1	2	2	#	0
+
+chr9 binned index:
+4681	chr9:0K-16K		0:0->35:0
+chr9 summary: mapped=1	placed=0	start=0:0	end=35:0
+
+chr9 linear index:
+0K	0:0
+0 unplaced reads.

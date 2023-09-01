@@ -8,6 +8,7 @@ import htsjdk.samtools.CigarOperator;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
+import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.IndexRange;
@@ -41,7 +42,6 @@ public final class AlignmentUtils {
      * @param referenceStart the start of the reference that haplotype is aligned to.  Provides global coordinate frame.
      * @param isInformative true if the read is differentially informative for one of the haplotypes
      *
-     * @param aligner
      * @throws IllegalArgumentException if {@code originalRead} is {@code null} or {@code haplotype} is {@code null} or it
      *   does not have a Cigar or the {@code referenceStart} is invalid (less than 1).
      *
@@ -52,7 +52,8 @@ public final class AlignmentUtils {
                                                   final Haplotype refHaplotype,
                                                   final int referenceStart,
                                                   final boolean isInformative,
-                                                  final SmithWatermanAligner aligner) {
+                                                  final SmithWatermanAligner aligner,
+                                                  final SWParameters readToHaplotypeSWParameters) {
         Utils.nonNull(originalRead);
         Utils.nonNull(haplotype);
         Utils.nonNull(refHaplotype);
@@ -63,7 +64,7 @@ public final class AlignmentUtils {
         // compute the smith-waterman alignment of read -> haplotype //TODO use more efficient than the read clipper here
         final GATKRead readMinusSoftClips = ReadClipper.hardClipSoftClippedBases(originalRead);
         final int softClippedBases = originalRead.getLength() - readMinusSoftClips.getLength();
-        final SmithWatermanAlignment readToHaplotypeSWAlignment = aligner.align(haplotype.getBases(), readMinusSoftClips.getBases(), CigarUtils.ALIGNMENT_TO_BEST_HAPLOTYPE_SW_PARAMETERS, SWOverhangStrategy.SOFTCLIP);
+        final SmithWatermanAlignment readToHaplotypeSWAlignment = aligner.align(haplotype.getBases(), readMinusSoftClips.getBases(), readToHaplotypeSWParameters, SWOverhangStrategy.SOFTCLIP);
         if ( readToHaplotypeSWAlignment.getAlignmentOffset() == -1 ) {
             // sw can fail (reasons not clear) so if it happens just don't realign the read
             return originalRead;
@@ -90,9 +91,6 @@ public final class AlignmentUtils {
         // since a base that exists is not a deletion.  Thus, there is nothing to worry about, in contrast to below where we do check
         // whether left-alignment shifted the start position.
         final int readStartOnReferenceHaplotype = readStartOnReferenceHaplotype(rightPaddedHaplotypeVsRefCigar, readToHaplotypeSWAlignment.getAlignmentOffset());
-
-
-        //final int readStartOnReference = referenceStart + haplotype.getAlignmentStartHapwrtRef() + readStartOnHaplotype;
 
         final int readStartOnReference = referenceStart + haplotype.getAlignmentStartHapwrtRef() + readStartOnReferenceHaplotype;
 

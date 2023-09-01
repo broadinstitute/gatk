@@ -9,6 +9,7 @@ import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.GATKPath;
+import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.*;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -22,6 +23,7 @@ import java.util.*;
 public abstract class ExtractCohort extends ExtractTool {
     protected static final Logger logger = LogManager.getLogger(ExtractCohort.class);
     protected ExtractCohortEngine engine;
+    protected ReferenceDataSource reference;
     private SampleList sampleList;
 
     public enum VQScoreFilteringType {GENOTYPE, SITES, NONE}
@@ -355,6 +357,8 @@ public abstract class ExtractCohort extends ExtractTool {
 
         sampleList = new SampleList(sampleTableName, sampleFileName, projectID, printDebugInformation, "extract-cohort");
         Map<Long, String> sampleIdToName = sampleList.getSampleIdToNameMap();
+
+        reference = directlyAccessEngineReferenceDataSource();
 
         header = generateVcfHeader(new HashSet<>(sampleIdToName.values()), reference.getSequenceDictionary(), extraHeaderLines);
 

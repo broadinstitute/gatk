@@ -5,7 +5,6 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.StringUtil;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.util.Collections;
@@ -763,6 +762,16 @@ public interface GATKRead extends Locatable {
     Integer getAttributeAsInteger( final String attributeName );
 
     /**
+     * Retrieve the value of a particular attribute typed as a floating point value.
+     *
+     * @param attributeName name of the attribute to retrieve
+     * @return float value of the requested attribute, or {@code null} if the attribute is not present
+     * @throws GATKException.ReadAttributeTypeMismatch if the attribute
+     *         value cannot be typed as a float
+     */
+    Float getAttributeAsFloat( final String attributeName );
+
+    /**
      * Retrieve the value of a particular attribute typed as a String.
      *
      * @param attributeName name of the attribute to retrieve
@@ -933,5 +942,13 @@ public interface GATKRead extends Locatable {
             return String.format("%s %s:%d-%d", getName(), getContig(), getStart(), getEnd());
         }
     }
+
+    /**
+     * Clip key attributes that may change after a hard clipping operation
+     *  @param newStart - zero based offset of the new start of the read bases (in relationship to the original read)
+     * @param newLength - new length of read, after hard clipping
+     * @param originalLength - length of read before clipping
+     */
+    void hardClipAttributes(final int newStart, final int newLength, int originalLength);
 }
 

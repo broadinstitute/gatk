@@ -3,13 +3,12 @@ package org.broadinstitute.hellbender.tools.walkers.contamination;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.ReferenceFileSource;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 
@@ -19,7 +18,7 @@ import java.util.List;
 public class PileupSummaryUnitTest extends GATKBaseTest {
 
     @Test
-    public void test() throws IOException {
+    public void test() {
         final String contig = "chr1";
         final int position = 1;
         final int refCount = 20;
@@ -29,7 +28,7 @@ public class PileupSummaryUnitTest extends GATKBaseTest {
 
         final List<PileupSummary> ps = Arrays.asList(new PileupSummary(contig, position, refCount, altCount, otherAltCount, alleleFrequency));
 
-        final File file = File.createTempFile("pileup_sumary", ".table");
+        final File file = IOUtils.createTempFile("pileup_sumary", ".table");
         PileupSummary.writeToFile("sample", ps, file);
         final List<PileupSummary> psCopy = PileupSummary.readFromFile(file).getRight();
 

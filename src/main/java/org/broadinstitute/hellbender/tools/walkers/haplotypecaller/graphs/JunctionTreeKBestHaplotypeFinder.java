@@ -87,7 +87,7 @@ public class JunctionTreeKBestHaplotypeFinder<V extends BaseVertex, E extends Ba
      *                                             If the eldest tree has insufficient data then it is popped off the queue and a younger
      *                                             tree is consulted, if no younger tree is consulted then the raw graph edge
      *                                             weights for the fork are used to generate paths instead.
-     *  (3) Encounter a ReferenceSink - If a reference sink is encountered, close out the path and add it to the results. TODO this will be subjected to change
+     *  (3) Encounter a ReferenceSink - If a reference sink is encountered, close out the path and add it to the results. TODO: this will be subjected to change
      *
      * Note: A cache is maintained of vertexes to contiguous sequences of paths in order to cut down on repeated traversal
      *       of the same segments of the graph for each path.

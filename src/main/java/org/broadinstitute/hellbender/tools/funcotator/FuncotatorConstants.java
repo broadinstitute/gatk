@@ -25,6 +25,7 @@ public class FuncotatorConstants {
     public static final String UNKNOWN_VALUE_STRING = "__UNKNOWN__";
 
     /**
+     *
      * Datasource name to use for Funcotations created from input variants from a VCF.
      */
     public static final String DATASOURCE_NAME_FOR_INPUT_VCFS = "INPUT_VCF";
@@ -42,5 +43,9 @@ public class FuncotatorConstants {
     public static final Set<String> MITOCHONDRIAL_CONTIG_NAMES = new HashSet<>(
             Arrays.asList(B37_MITOCHONDRIAL_CONTIG_NAME, HG19_MITOCHONDRIAL_CONTIG_NAME, HG38_MITOCHONDRIAL_CONTIG_NAME)
     );
+
+    /** Name of the header line key which indicates that a file has already been annotated. */
+    public static final String FUNCOTATOR_VERSION_VCF_HEADERLINE_KEY = "Funcotator Version";
+
 
 }

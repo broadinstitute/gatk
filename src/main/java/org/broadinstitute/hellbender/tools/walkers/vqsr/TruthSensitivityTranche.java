@@ -28,9 +28,9 @@ final class TruthSensitivityTranche extends Tranche {
     public TruthSensitivityTranche(
             final double targetTruthSensitivity,
             final double minVQSLod,
-            final int numKnown,
+            final long numKnown,
             final double knownTiTv,
-            final int numNovel,
+            final long numNovel,
             final double novelTiTv,
             final int accessibleTruthSites,
             final int callsAtTruthSites,
@@ -41,9 +41,9 @@ final class TruthSensitivityTranche extends Tranche {
     public TruthSensitivityTranche(
             final double targetTruthSensitivity,
             final double minVQSLod,
-            final int numKnown,
+            final long numKnown,
             final double knownTiTv,
-            final int numNovel,
+            final long numNovel,
             final double novelTiTv,
             final int accessibleTruthSites,
             final int callsAtTruthSites,

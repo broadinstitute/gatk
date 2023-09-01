@@ -12,7 +12,11 @@ import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGrou
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
-import org.broadinstitute.hellbender.tools.copynumber.denoising.*;
+import org.broadinstitute.hellbender.tools.copynumber.denoising.GCBiasCorrector;
+import org.broadinstitute.hellbender.tools.copynumber.denoising.HDF5SVDReadCountPanelOfNormals;
+import org.broadinstitute.hellbender.tools.copynumber.denoising.SVDDenoisedCopyRatioResult;
+import org.broadinstitute.hellbender.tools.copynumber.denoising.SVDDenoisingUtils;
+import org.broadinstitute.hellbender.tools.copynumber.denoising.SVDReadCountPanelOfNormals;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AnnotatedIntervalCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.CopyRatioCollection;
 import org.broadinstitute.hellbender.tools.copynumber.formats.collections.SimpleCountCollection;

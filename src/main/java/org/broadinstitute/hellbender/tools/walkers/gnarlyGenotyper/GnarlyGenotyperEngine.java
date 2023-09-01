@@ -3,14 +3,15 @@ package org.broadinstitute.hellbender.tools.walkers.gnarlyGenotyper;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.primitives.Ints;
 import htsjdk.variant.variantcontext.*;
-import htsjdk.variant.vcf.*;
+import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.*;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.*;
-import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.utils.GenotypeCounts;
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
@@ -42,34 +43,19 @@ public final class GnarlyGenotyperEngine {
     private Set<Class<? extends InfoFieldAnnotation>> allASAnnotations;
 
     private final int maxAltAllelesToOutput;
-    private final boolean summarizePls;  //for very large numbers of samples, save on space and hail import time by summarizing PLs with genotype quality metrics
     private final boolean emitPls;
     private final boolean keepAllSites;
     private final boolean stripASAnnotations;
 
-    public GnarlyGenotyperEngine(final boolean keepAllSites, final int maxAltAllelesToOutput, final boolean summarizePls, final boolean stripASAnnotations) {
-        this(keepAllSites, maxAltAllelesToOutput, summarizePls, true, stripASAnnotations);
+    public GnarlyGenotyperEngine(final boolean keepAllSites, final int maxAltAllelesToOutput, final boolean stripASAnnotations) {
+        this(keepAllSites, maxAltAllelesToOutput, true, stripASAnnotations);
     }
 
-    public GnarlyGenotyperEngine(final boolean keepAllSites, final int maxAltAllelesToOutput, final boolean summarizePls, final boolean emitPls, final boolean stripASAnnotations) {
+    public GnarlyGenotyperEngine(final boolean keepAllSites, final int maxAltAllelesToOutput, final boolean emitPls, final boolean stripASAnnotations) {
         this.maxAltAllelesToOutput = maxAltAllelesToOutput;
-        this.summarizePls = summarizePls;
         this.emitPls = emitPls;
         this.keepAllSites = keepAllSites;
         this.stripASAnnotations = stripASAnnotations;
-
-        if (!summarizePls) {
-            final GenotypeLikelihoodCalculators GLCprovider = new GenotypeLikelihoodCalculators();
-
-            //initialize PL size cache -- HTSJDK cache only goes up to 4 alts, but I need 6
-            likelihoodSizeCache = new int[maxAltAllelesToOutput + 1 + 1]; //+1 for ref and +1 so index == numAlleles
-            glcCache.add(null); //add a null at index zero because zero alleles (incl. ref) makes no sense
-            for (final int numAlleles : IntStream.rangeClosed(1, maxAltAllelesToOutput + 1).boxed().collect(Collectors.toList())) {
-                likelihoodSizeCache[numAlleles] = GenotypeLikelihoods.numLikelihoods(numAlleles, ASSUMED_PLOIDY);
-                //GL calculator cache is indexed by the total number of alleles, including ref
-                glcCache.add(numAlleles, GLCprovider.getInstance(ASSUMED_PLOIDY, numAlleles));
-            }
-        }
 
         //TODO: fix weird reflection logging?
         final Reflections reflections = new Reflections("org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific");
@@ -140,7 +126,9 @@ public final class GnarlyGenotyperEngine {
                         if (!stripASAnnotations) {
                             //here we still have the non-ref
                             final Map<String, Object> finalValue = ann.finalizeRawData(vcfBuilder.make(), variant);
-                            finalValue.forEach((key, value) -> annotationsToBeModified.put(key, value));
+                            if (finalValue != null) {
+                                finalValue.forEach((key, value) -> annotationsToBeModified.put(key, value));
+                            }
                             if (annotationDBBuilder != null) {
                                 annotationDBBuilder.attribute(ann.getPrimaryRawKey(), variant.getAttribute(ann.getPrimaryRawKey()));
                             }
@@ -149,7 +137,7 @@ public final class GnarlyGenotyperEngine {
                 }
             }
             catch (final Exception e) {
-                throw new IllegalStateException("Something went wrong: ", e);
+                throw new IllegalStateException("Something went wrong at position " + variant.getContig() + ":" + variant.getStart() + ":", e);
             }
         }
         vcfBuilder.attributes(annotationsToBeModified);
@@ -187,9 +175,7 @@ public final class GnarlyGenotyperEngine {
         //Get AC and SB annotations
         //remove the NON_REF allele and update genotypes if necessary
         final int[] rawGenotypeCounts = new int[3];
-        final GenotypesContext calledGenotypes = 
-            iterateOnGenotypes(variant, targetAlleles, alleleCountMap, SBsum, removeNonRef, summarizePls, emitPls, variant.hasAttribute(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY) ? null : rawGenotypeCounts);
-
+        final GenotypesContext calledGenotypes = iterateOnGenotypes(variant, targetAlleles, alleleCountMap, SBsum, removeNonRef, emitPls, variant.hasAttribute(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY) ? null : rawGenotypeCounts);
         Integer numCalledAlleles = 0;
         if (variant.hasGenotypes()) {
             for (final Allele a : targetAlleles) {
@@ -266,7 +252,7 @@ public final class GnarlyGenotyperEngine {
                 }
             }
             catch (final Exception e) {
-                throw new IllegalStateException("Something went wrong: ", e);
+                throw new IllegalStateException("Unable to instantiate InfoFieldAnnotation: ", e);
             }
         }
         //since AS_FS and AS_SOR share the same raw key, we have to wait to remove raw keys until all the finalized values are added
@@ -313,8 +299,8 @@ public final class GnarlyGenotyperEngine {
      */
     @VisibleForTesting
     protected GenotypesContext iterateOnGenotypes(final VariantContext vc, final List<Allele> targetAlleles,
-                                                final Map<Allele,Integer> targetAlleleCounts, final int[] SBsum,
-                                                final boolean nonRefReturned, final boolean summarizePLs, final boolean emitPLs,
+                                                final Map<Allele, Integer> targetAlleleCounts, final int[] SBsum,
+                                                final boolean nonRefReturned, final boolean emitPLs,
                                                 final int[] rawGenotypeCounts) {
         final int maxAllelesToOutput = maxAltAllelesToOutput + 1;  //+1 for ref
         final List<Allele> inputAllelesWithNonRef = vc.getAlleles();
@@ -325,54 +311,44 @@ public final class GnarlyGenotyperEngine {
         final GenotypesContext mergedGenotypes = GenotypesContext.create();
 
         int newPLsize = -1;
-        if (!summarizePLs) {
-            final int maximumAlleleCount = inputAllelesWithNonRef.size();
-            final int numConcreteAlts = maximumAlleleCount - 2; //-1 for NON_REF and -1 for ref
-            if (maximumAlleleCount <= maxAllelesToOutput) {
-                newPLsize = likelihoodSizeCache[numConcreteAlts + 1]; //cache is indexed by #alleles with ref; don't count NON_REF
-            } else {
-                newPLsize = GenotypeLikelihoods.numLikelihoods(numConcreteAlts + 1, ASSUMED_PLOIDY);
-            }
-        }
+        final int maximumAlleleCount = inputAllelesWithNonRef.size();
+        final int numConcreteAlts = maximumAlleleCount - 2; //-1 for NON_REF and -1 for ref
 
         for ( final Genotype g : vc.getGenotypes() ) {
             final String name = g.getSampleName();
-            if(g.getPloidy() != ASSUMED_PLOIDY && !isGDBnoCall(g)) {
-                throw new UserException.BadInput("This tool assumes diploid genotypes, but sample " + name + " has ploidy "
-                        + g.getPloidy() + " at position " + vc.getContig() + ":" + vc.getStart() + ".");
-            }
             final Genotype calledGT;
             final GenotypeBuilder genotypeBuilder = new GenotypeBuilder(g);
             genotypeBuilder.name(name);
-            if (isGDBnoCall(g) || g.getAllele(0).equals(Allele.NON_REF_ALLELE) || g.getAllele(1).equals(Allele.NON_REF_ALLELE)) {
-                genotypeBuilder.alleles(GATKVariantContextUtils.noCallAlleles(ASSUMED_PLOIDY));
+            if (g.getAlleles().contains(Allele.NON_REF_ALLELE)) {
+                genotypeBuilder.alleles(GATKVariantContextUtils.noCallAlleles(g.getPloidy())).noGQ();
+            //there will be cases when we're running over Y or haploid X and we haven't seen any variants yet
+                // and we assume diploid when we shouldn't, but there's not a lot to be done about it
+            } else if (isGDBnoCall(g)) {
+                genotypeBuilder.alleles(GATKVariantContextUtils.noCallAlleles(ASSUMED_PLOIDY)).noGQ();
             }
-            else if (nonRefReturned) {
-                if (g.hasAD()) {
-                    final int[] AD = trimADs(g, targetAlleles.size());
-                    genotypeBuilder.AD(AD);
-                }
-                else if (g.countAllele(Allele.NON_REF_ALLELE) > 0) {
-                    genotypeBuilder.alleles(GATKVariantContextUtils.noCallAlleles(ASSUMED_PLOIDY)).noGQ();
-                }
+            if (nonRefReturned && g.hasAD()) {
+                final int[] AD = trimADs(g, targetAlleles.size());
+                genotypeBuilder.AD(AD);
             }
             if (g.hasPL()) {
-                if (summarizePLs) {
-                    summarizePLs(genotypeBuilder, g, vc);
+                //lookup PL size from cache if ploidy matches and cache has our number of alts
+                if (maximumAlleleCount <= maxAllelesToOutput && g.getPloidy() == ASSUMED_PLOIDY) {
+                    newPLsize = GenotypeIndexCalculator.genotypeCount(g.getPloidy(), numConcreteAlts+1);
+                    //newPLsize = likelihoodSizeCache[numConcreteAlts + 1]; //cache is indexed by #alleles with ref; don't count NON_REF
+                //otherwise calculate size on the fly
                 } else {
-                    final int[] PLs = trimPLs(g, newPLsize);
-
-                    if (emitPLs) {
-                        genotypeBuilder.PL(PLs);
-                    } else {
-                        genotypeBuilder.noPL();
-                    }
-                    
-                    genotypeBuilder.GQ(MathUtils.secondSmallestMinusSmallest(PLs, 0));
-                    //If GenomicsDB returns no-call genotypes like CombineGVCFs (depending on the GenomicsDBExportConfiguration),
-                    // then we need to actually find the GT from PLs
-                    makeGenotypeCall(genotypeBuilder, GenotypeLikelihoods.fromPLs(PLs).getAsVector(), targetAlleles);
+                    newPLsize = GenotypeLikelihoods.numLikelihoods(numConcreteAlts + 1, g.getPloidy());
                 }
+                final int[] PLs = trimPLs(g, newPLsize);
+                if (emitPLs) {
+                    genotypeBuilder.PL(PLs);
+                } else {
+                    genotypeBuilder.noPL();
+                }
+                genotypeBuilder.GQ(MathUtils.secondSmallestMinusSmallest(PLs, 0));
+                //If GenomicsDB returns no-call genotypes like CombineGVCFs (depending on the GenomicsDBExportConfiguration),
+                // then we need to actually find the GT from PLs
+                makeGenotypeCall(g, genotypeBuilder, GenotypeLikelihoods.fromPLs(PLs).getAsVector(), targetAlleles);
             }
             final Map<String, Object> attrs = new HashMap<>(g.getExtendedAttributes());
             attrs.remove(GATKVCFConstants.MIN_DP_FORMAT_KEY);
@@ -385,7 +361,7 @@ public final class GnarlyGenotyperEngine {
             }
 
             //running total for AC values
-            for (int i = 0; i < ASSUMED_PLOIDY; i++) {
+            for (int i = 0; i < calledGT.getPloidy(); i++) {
                 final Allele a = calledGT.getAllele(i);
                 final int count = targetAlleleCounts.getOrDefault(a, 0);
                 if (!a.equals(Allele.NO_CALL)) {
@@ -406,135 +382,32 @@ public final class GnarlyGenotyperEngine {
      * For a genotype with likelihoods that has a no-call GT, determine the most likely genotype from PLs and set it
      * We use a GenotypeLikelihoodCalculator to convert from the best PL index to the indexes of the alleles for that
      * genotype so we can set the GenotypeBuilder with the alleles
+     * @param g     Genotype used to make the gb GenotypeBuilder
      * @param gb    GenotypeBuilder to modify and pass back
      * @param genotypeLikelihoods   PLs to use to call genotype; count should agree with number of alleles in allelesToUse
      * @param allelesToUse  alleles in the parent VariantContext (with ref), because GenotypeBuilder needs the allele String rather than index
      */
     @VisibleForTesting
-    protected void makeGenotypeCall(final GenotypeBuilder gb,
+    protected void makeGenotypeCall(final Genotype g, final GenotypeBuilder gb,
                                         final double[] genotypeLikelihoods,
                                         final List<Allele> allelesToUse) {
-        final int maxAllelesToOutput = maxAltAllelesToOutput + 1; //+1 for ref
-
         if ( genotypeLikelihoods == null || !GATKVariantContextUtils.isInformative(genotypeLikelihoods) ) {
-            gb.alleles(GATKVariantContextUtils.noCallAlleles(ASSUMED_PLOIDY)).noGQ();
+            //gb.alleles(GATKVariantContextUtils.noCallAlleles(g.getAlleles().size())).noGQ();
+            GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(), gb, GenotypeAssignmentMethod.SET_TO_NO_CALL,
+                    genotypeLikelihoods, allelesToUse, null);
         } else {
-            final int maxLikelihoodIndex = MathUtils.maxElementIndex(genotypeLikelihoods);
-
-            GenotypeLikelihoodCalculator glCalc;
-            if ( allelesToUse.size() <= maxAllelesToOutput ) {
-                glCalc = glcCache.get(allelesToUse.size());
-            } else {
-                final GenotypeLikelihoodCalculators GLCprovider = new GenotypeLikelihoodCalculators();
-                glCalc = GLCprovider.getInstance(ASSUMED_PLOIDY, allelesToUse.size());
-            }
-
-            final GenotypeAlleleCounts alleleCounts = glCalc.genotypeAlleleCountsAt(maxLikelihoodIndex);
-
-            gb.alleles(alleleCounts.asAlleleList(allelesToUse));
-            final int numAltAlleles = allelesToUse.size() - 1;
-            if ( numAltAlleles > 0 ) {
-                gb.log10PError(GenotypeLikelihoods.getGQLog10FromLikelihoods(maxLikelihoodIndex, genotypeLikelihoods));
-            }
+            GATKVariantContextUtils.makeGenotypeCall(g.getPloidy(), gb, GenotypeAssignmentMethod.USE_PLS_TO_ASSIGN,
+                    genotypeLikelihoods, allelesToUse, null);
         }
-    }
-
-    /**
-     * Save space in the VCF output by omitting the PLs and summarizing their info in ABGQ and ALTGQ
-     * ABGQ is the next best (Phred-scaled) genotype likelihood over genotypes with the called alleles and
-     * different allele counts (e.g. het vs homRef or homVar)
-     * ALTGQ is the next best (Phred-scaled) genotype likelihood if one of the called alts is dropped from the VC
-     * (e.g. a 0/2 het might become a 0/1 het if the 2 allele is removed)
-     * @param gb a builder to be modified with ABGQ and ALTGQ
-     * @param g the original genotype (should not have NON_REF called)
-     * @param vc the original VariantContext including NON_REF
-     */
-    static void summarizePLs(final GenotypeBuilder gb,
-                                    final Genotype g,
-                                    final VariantContext vc) {
-        final List<Allele> calledAlleles = g.getAlleles();
-        final List<Integer> calledAllelePLPositions = getPLindicesForAlleles(vc, calledAlleles);
-
-        final int[] PLs = g.getPL();
-        //ABGQ is for GTs where both alleleIndex1 and alleleIndex2 are in calledAllelePLPositions
-        //ALTGQ is for GTs where not both alleleIndex1 and alleleIndex2 are in calledAllelePLPositions
-        int ABGQ = Integer.MAX_VALUE;
-        int ALTGQ = Integer.MAX_VALUE;
-
-        if (g.isHet()) {
-            for (final int i : calledAllelePLPositions) {
-                if (PLs[i] == 0) {
-                    continue;
-                }
-                if (PLs[i] < ABGQ) {
-                    ABGQ = PLs[i];
-                }
-            }
-        }
-        //ABGQ can be any position that has the homozygous allele
-        else {
-            for (int i = 0; i < PLs.length; i++) {
-                boolean match1 = false;
-                boolean match2 = false;
-                if (PLs[i] == 0) {
-                    continue;
-                }
-                //all this is matching alleles based on their index in vc.getAlleles()
-                final GenotypeLikelihoods.GenotypeLikelihoodsAllelePair PLalleleAltArrayIndexes = GenotypeLikelihoods.getAllelePair(i); //this call assumes ASSUMED_PLOIDY is 2 (diploid)
-                if (calledAllelePLPositions.contains(PLalleleAltArrayIndexes.alleleIndex1)) {
-                    match1 = true;
-                }
-                if (calledAllelePLPositions.contains(PLalleleAltArrayIndexes.alleleIndex2)) {
-                    match2 = true;
-                }
-                if (match1 || match2) {
-                    if (PLs[i] < ABGQ) {
-                        ABGQ = PLs[i];
-                    }
-                }
-            }
-            if (g.isHomRef()) {
-                ALTGQ = ABGQ;
-            }
-        }
-
-        if (!g.isHomRef()) {
-            final Set<Allele> comparisonAlleles = new HashSet<>(vc.getAlleles());
-            List<Integer> comparisonAllelePLPositions;
-            if (!g.getAllele(0).isReference()) {
-                comparisonAlleles.remove(g.getAllele(0));
-                comparisonAllelePLPositions = getPLindicesForAlleles(vc, new ArrayList<>(comparisonAlleles));
-                for (final int i : comparisonAllelePLPositions) {
-                    if (PLs[i] < ALTGQ) {
-                        ALTGQ = PLs[i];
-                    }
-                }
-                comparisonAlleles.add(g.getAllele(0));
-            }
-            if (!g.getAllele(1).isReference()) {
-                comparisonAlleles.remove(g.getAllele(1));
-                comparisonAllelePLPositions = getPLindicesForAlleles(vc, new ArrayList<>(comparisonAlleles));
-                for (final int i : comparisonAllelePLPositions) {
-                    if (PLs[i] < ALTGQ) {
-                        ALTGQ = PLs[i];
-                    }
-                }
-            }
-        }
-
-        gb.attribute(GATKVCFConstants.REFERENCE_GENOTYPE_QUALITY, PLs[0]);
-        gb.attribute(GATKVCFConstants.GENOTYPE_QUALITY_BY_ALLELE_BALANCE, ABGQ);
-        gb.attribute(GATKVCFConstants.GENOTYPE_QUALITY_BY_ALT_CONFIDENCE, ALTGQ);
-        gb.noPL();
     }
 
     /**
      * Some legacy versions of GenomicsDB report no-calls as `0` or `.`
      * @param g genotype to check
-     * @return  true if this is a genotype that should be represented as a ploidy-aware, spec compliant no-call
+     * @return  true if this is a genotype that should be represented spec compliant no-call (may need to fix ploidy)
      */
     private static boolean isGDBnoCall(final Genotype g) {
-        return g.getPloidy() == 1 && (g.getAllele(0).isReference() || g.getAllele(0).isNoCall());
+        return !g.hasPL() && !g.hasAD() && g.isNoCall();
     }
 
     /**

@@ -24,7 +24,9 @@ public enum NGSPlatform {
     ION_TORRENT(SequencerFlowClass.FLOW, "IONTORRENT"),
     CAPILLARY(SequencerFlowClass.OTHER, "CAPILLARY"),
     HELICOS(SequencerFlowClass.OTHER, "HELICOS"),
+    ULTIMA(SequencerFlowClass.FLOW, "ULTIMA"),
     UNKNOWN(SequencerFlowClass.OTHER, "UNKNOWN");
+
 
     /**
      * Array of the prefix names in a BAM file for each of the platforms.

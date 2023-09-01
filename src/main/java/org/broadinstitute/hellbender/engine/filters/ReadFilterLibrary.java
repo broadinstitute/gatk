@@ -2,6 +2,10 @@ package org.broadinstitute.hellbender.engine.filters;
 
 import htsjdk.samtools.Cigar;
 import org.broadinstitute.barclay.help.DocumentedFeature;
+import org.broadinstitute.hellbender.engine.filters.flow.FlowBasedTPAttributeSymetricReadFilter;
+import org.broadinstitute.hellbender.engine.filters.flow.FlowBasedTPAttributeValidReadFilter;
+import org.broadinstitute.hellbender.engine.filters.flow.HmerQualitySymetricReadFilter;
+import org.broadinstitute.hellbender.engine.filters.flow.ReadGroupHasFlowOrderReadFilter;
 import org.broadinstitute.hellbender.tools.AddOriginalAlignmentTags;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
@@ -328,4 +332,9 @@ public final class ReadFilterLibrary {
     public static final ValidAlignmentEndReadFilter VALID_ALIGNMENT_END = new ValidAlignmentEndReadFilter();
     public static final NonChimericOriginalAlignmentReadFilter NON_CHIMERIC_ORIGINAL_ALIGNMENT_READ_FILTER = new NonChimericOriginalAlignmentReadFilter();
     public static final MateUnmappedAndUnmappedReadFilter MATE_UNMAPPED_AND_UNMAPPED_READ_FILTER = new MateUnmappedAndUnmappedReadFilter();
+
+    public static final ReadGroupHasFlowOrderReadFilter READ_GROUP_HAS_FLOW_ORDER_READ_FILTER = new ReadGroupHasFlowOrderReadFilter();
+    public static final HmerQualitySymetricReadFilter HMER_QUALITY_SYMETRIC_READ_FILTER = new HmerQualitySymetricReadFilter();
+    public static final FlowBasedTPAttributeValidReadFilter FLOW_BASED_TP_ATTRIBUTE_VALID_READ_FILTER = new FlowBasedTPAttributeValidReadFilter();
+    public static final FlowBasedTPAttributeSymetricReadFilter FLOW_BASED_TP_ATTRIBUTE_SYMETRIC_READ_FILTER = new FlowBasedTPAttributeSymetricReadFilter();
 }

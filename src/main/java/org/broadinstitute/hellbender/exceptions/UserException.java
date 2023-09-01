@@ -264,7 +264,7 @@ public class UserException extends RuntimeException {
         public MissingReferenceFaiFile( final Path indexPath, final Path fastaPath ) {
             super(String.format("Fasta index file %s for reference %s does not exist. Please see %s for help creating it.",
                     indexPath.toUri(), fastaPath.toUri(),
-                    HelpConstants.forumPost("discussion/1601/how-can-i-prepare-a-fasta-file-to-use-as-reference")));
+                    HelpConstants.forumArticle("360035531652-FASTA-Reference-genome-format")));
         }
     }
 
@@ -281,13 +281,13 @@ public class UserException extends RuntimeException {
         public MissingReferenceDictFile( final Path dictFile, final Path fastaFile ) {
             super(String.format("Fasta dict file %s for reference %s does not exist. Please see %s for help creating it.",
                     dictFile.toUri(), fastaFile.toUri(),
-                    HelpConstants.forumPost("discussion/1601/how-can-i-prepare-a-fasta-file-to-use-as-reference")));
+                    HelpConstants.forumArticle("360035531652-FASTA-Reference-genome-format")));
         }
 
         public MissingReferenceDictFile( final String fastaFileName ) {
             super(String.format("Fasta dict file for reference %s does not exist. Please see %s for help creating it.",
                     fastaFileName,
-                    HelpConstants.forumPost("discussion/1601/how-can-i-prepare-a-fasta-file-to-use-as-reference")));
+                    HelpConstants.forumArticle("360035531652-FASTA-Reference-genome-format")));
         }
     }
 
@@ -471,5 +471,18 @@ public class UserException extends RuntimeException {
         private static final long serialVersionUID = 0L;
 
         public VQSRNegativeModelFailure(String message) { super(message); }
+    }
+
+    public static final class ValidationFailure extends UserException {
+        private static final long serialVersionUID = 0L;
+
+        public ValidationFailure(String message) { super(message); }
+    }
+
+    public static final class WarnableAnnotationFailure extends UserException {
+        private static final long serialVersionUID = 0L;
+
+        public WarnableAnnotationFailure(String message) { super(message); }
+
     }
 }

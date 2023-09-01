@@ -55,7 +55,7 @@ public class GenotypeGVCFsUnitTest extends GATKBaseTest {
 
     @Test(dataProvider= "variantContexts")
     public void testCleanupGenotypeAnnotations(VariantContext vc, boolean createRefGTs,  List<Genotype> expected){
-        final List<Genotype> genotypes = GenotypeGVCFsEngine.cleanupGenotypeAnnotations(vc, createRefGTs);
+        final List<Genotype> genotypes = GenotypeGVCFsEngine.cleanupGenotypeAnnotations(vc, createRefGTs, false);
         VariantContextTestUtils.assertGenotypesAreEqual(genotypes.get(0), expected.get(0));
     }
 
@@ -89,15 +89,15 @@ public class GenotypeGVCFsUnitTest extends GATKBaseTest {
 
     @Test(dataProvider = "getMinDPData")
     public void testMinDPReplacedWithDP(VariantContext vc, int expectedDepth){
-        Assert.assertEquals(GenotypeGVCFsEngine.cleanupGenotypeAnnotations(vc, false).get(0).getDP(), expectedDepth);
-        Assert.assertNull(GenotypeGVCFsEngine.cleanupGenotypeAnnotations(vc, false).get(0).getExtendedAttribute(GATKVCFConstants.MIN_DP_FORMAT_KEY));
+        Assert.assertEquals(GenotypeGVCFsEngine.cleanupGenotypeAnnotations(vc, false, false).get(0).getDP(), expectedDepth);
+        Assert.assertNull(GenotypeGVCFsEngine.cleanupGenotypeAnnotations(vc, false, false).get(0).getExtendedAttribute(GATKVCFConstants.MIN_DP_FORMAT_KEY));
     }
 
     @Test
     public void testSBRemoved(){
         final VariantContext vcWithSB = getHetWithGenotype(generateGenotypes(b -> b.attribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY, new int[]{6, 11, 11, 10})));
         Assert.assertNotNull(vcWithSB.getGenotype("Sample_0").getAnyAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY));
-        final Genotype afterCleanup = GenotypeGVCFsEngine.cleanupGenotypeAnnotations(vcWithSB, true).get(0);
+        final Genotype afterCleanup = GenotypeGVCFsEngine.cleanupGenotypeAnnotations(vcWithSB, true, false).get(0);
         Assert.assertNull(afterCleanup.getExtendedAttribute(GATKVCFConstants.STRAND_BIAS_BY_SAMPLE_KEY));
     }
 
@@ -105,7 +105,7 @@ public class GenotypeGVCFsUnitTest extends GATKBaseTest {
     public void testADCreated(){
         final VariantContext noAD = getHetWithGenotype(generateGenotypes(ADD_DP));
         Assert.assertNull(noAD.getGenotype("Sample_0").getAD());
-        final Genotype afterCleanup = GenotypeGVCFsEngine.cleanupGenotypeAnnotations(noAD, true).get(0);
+        final Genotype afterCleanup = GenotypeGVCFsEngine.cleanupGenotypeAnnotations(noAD, true, false).get(0);
         Assert.assertEquals(afterCleanup.getAD(), new int[]{DP, 0});
     }
 
@@ -114,9 +114,9 @@ public class GenotypeGVCFsUnitTest extends GATKBaseTest {
         final VariantContext withPhasing = getHetWithGenotype(generateGenotypes(b ->  b.attribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY, "bad")
                 .alleles(Arrays.asList(ALT,ALT)),
                 b -> b.attribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY, "something").alleles(Arrays.asList(REF,REF))));
-        final Genotype homVarAfterCleanup = GenotypeGVCFsEngine.cleanupGenotypeAnnotations(withPhasing, true).get(0);
+        final Genotype homVarAfterCleanup = GenotypeGVCFsEngine.cleanupGenotypeAnnotations(withPhasing, true, false).get(0);
         Assert.assertEquals(homVarAfterCleanup.getAnyAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY), GenotypeGVCFs.PHASED_HOM_VAR_STRING);
-        final Genotype homRefAfterCleaning = GenotypeGVCFsEngine.cleanupGenotypeAnnotations(withPhasing, true).get(1);
+        final Genotype homRefAfterCleaning = GenotypeGVCFsEngine.cleanupGenotypeAnnotations(withPhasing, true, false).get(1);
         Assert.assertEquals(homRefAfterCleaning.getAnyAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY), "something");
     }
 
@@ -125,7 +125,7 @@ public class GenotypeGVCFsUnitTest extends GATKBaseTest {
         final List<Allele> noCall = GATKVariantContextUtils.noCallAlleles(2);
         final VariantContext gq0 = getHetWithGenotype(generateGenotypes(b -> b.GQ(0).DP(10).alleles(noCall), // GQ = 0
                                                                         (b -> b.DP(10).alleles(noCall))));  //no GQ
-        final List<Genotype> genotypes = GenotypeGVCFsEngine.cleanupGenotypeAnnotations(gq0, true);
+        final List<Genotype> genotypes = GenotypeGVCFsEngine.cleanupGenotypeAnnotations(gq0, true, false);
         for( Genotype genotype : genotypes ){
             Assert.assertEquals(genotype.getAlleles(), noCall);
         }

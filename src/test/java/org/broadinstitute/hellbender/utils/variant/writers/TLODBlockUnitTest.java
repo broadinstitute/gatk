@@ -18,8 +18,12 @@ public class TLODBlockUnitTest {
         return Arrays.asList(REF, Allele.create("C"));
     }
 
+    private static Genotype getGenotype() {
+        return new GenotypeBuilder(SAMPLE_NAME, getAlleles()).make();
+    }
+
     private static VariantContext getVariantContext() {
-        return new VariantContextBuilder(SAMPLE_NAME, "20", 1, 1, getAlleles()).make();
+        return new VariantContextBuilder(SAMPLE_NAME, "20", 1, 1, getAlleles()).genotypes(getGenotype()).make();
     }
 
     private static TLODBlock getTLODBlock(VariantContext vc) {
@@ -47,8 +51,8 @@ public class TLODBlockUnitTest {
 
         int pos = band.getStart();
         for (int i = 0; i < DPs.length; i++) {
-            band.add(pos++, gb.DP(DPs[i]).attribute(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, TLODs[i]).make());
-            Assert.assertEquals(band.getEnd(), pos - 1);
+            band.add(++pos, gb.DP(DPs[i]).attribute(GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, TLODs[i]).make());
+            Assert.assertEquals(band.getEnd(), pos);
             Assert.assertEquals(band.getMinDP(), expectedMinDPs[i]);
             Assert.assertEquals(band.getMedianDP(), expectedMedianDPs[i]);
             Assert.assertEquals(band.getMinBlockLOD(), expectedTLODs[i]);
@@ -63,7 +67,7 @@ public class TLODBlockUnitTest {
 
     @Test
     public void testWithinBounds() {
-        final VariantContext vc = new VariantContextBuilder("TUMOR", "20", 1, 1, getAlleles()).make();
+        final VariantContext vc = new VariantContextBuilder("TUMOR", "20", 1, 1, getAlleles()).genotypes(getGenotype()).make();
         //Note that the default precision is 1, so the bounds on this block are actually [-0.5, 0)
         TLODBlock band = new TLODBlock(vc, -5, 0, 1);
         Assert.assertFalse(band.withinBounds(0.0));

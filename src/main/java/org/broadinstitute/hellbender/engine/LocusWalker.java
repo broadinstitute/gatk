@@ -8,7 +8,6 @@ import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.locusiterator.AlignmentContextIteratorBuilder;
 import org.broadinstitute.hellbender.utils.locusiterator.LIBSDownsamplingInfo;
@@ -42,13 +41,6 @@ public abstract class LocusWalker extends WalkerBase {
 
     @Argument(fullName = MAX_DEPTH_PER_SAMPLE_NAME, shortName = MAX_DEPTH_PER_SAMPLE_NAME, doc = "Maximum number of reads to retain per sample per locus. Reads above this threshold will be downsampled. Set to 0 to disable.", optional = true)
     protected int maxDepthPerSample = defaultMaxDepthPerSample();
-
-    /**
-     * Should the LIBS keep unique reads? Tools that do should override to return {@code true}.
-     */
-    protected boolean keepUniqueReadListInLibs() {
-        return false;
-    }
 
     /**
      * LocusWalkers requires read sources
@@ -185,7 +177,6 @@ public abstract class LocusWalker extends WalkerBase {
         alignmentContextIteratorBuilder.setDownsamplingInfo(getDownsamplingInfo());
         alignmentContextIteratorBuilder.setEmitEmptyLoci(emitEmptyLoci());
         alignmentContextIteratorBuilder.setIncludeDeletions(includeDeletions());
-        alignmentContextIteratorBuilder.setKeepUniqueReadListInLibs(keepUniqueReadListInLibs());
         alignmentContextIteratorBuilder.setIncludeNs(includeNs());
 
         return alignmentContextIteratorBuilder.build(

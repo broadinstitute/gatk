@@ -6,6 +6,7 @@ import org.apache.commons.io.FileUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.Hidden;
+import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.GATKTool;
@@ -20,12 +21,11 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * This tools look for STR sequences in the reference that will used later to estimate the Dragstr parameters values
- * using {@link CalibrateDragstrModel}.
+ * This tool looks for low-complexity STR sequences along the reference that are later used to estimate the Dragstr model 
+ * during single sample auto calibration {@link CalibrateDragstrModel}.
  * <h3>Inputs</h3>
  * <p>
- *     This command takes as input the reference (possibly traversal intervals) and a {@link STRDecimationTable decimation table} herein
- *     referred as DT.
+ *     This command takes as input the reference (possibly a subset of intervals) and an optional {@link STRDecimationTable decimation table} (herein referred as DT). 
  * </p>
  * <p>
  *     The DT modulates how often we sample a site for each possible period and repeat length. Since there is far more
@@ -33,32 +33,53 @@ import java.util.stream.Collectors;
  *     For further details about the format of this table and interpretation of its values please check the documentation
  *     in class {@link STRDecimationTable}.
  * </p>
+ * <p>
+ *    If no DT is provided, the tool uses a default one that has been tailored to work fine when run over 
+ *    the entire Human genome and it should be alright with other genomes of comparable size (i.e. 1 to 10Gbps).
+ *    With larger genomes, that default DT will likely result in an unecessarely large number of sampled sites 
+ *    that it turn may increase the run time of tools that depend on the output. In contrast, 
+ *    with smaller genomes or subsets (using targeted intervals) it might result in a number of sampled sites 
+ *    too small to build accurate Dragstr model. In this case you really need to compose and provide
+ *    your own DT or perhaps try out not to decimate at all ({@code --decimation NONE}). 
+ * </p> 
  * <h3>Output</h3>
  * <p>
- *     The output of this command is a zip file that contain the collection of sampled sites in binary form (all.bin),
- *     and index for that file for quick access by location interval (all.idx), a copy of the reference sequence dictionary
- *     (reference.dict), a copy of the DT (decimation.txt) and additional information and stats (e.g. summary.txt)
+ *    The output of this command is a zip file that contains the collection of sampled sites in 
+ *    binary form ({@code all.bin}), and index for that file for quick access by location interval 
+ *    ({@code all.idx}). Other files in the zip provide some summary and tracking information, for example
+ *    the reference sequence dictionary ({@code reference.dict}), a copy of the DT ({@code decimation.txt}) 
+ *    and summarized stats ({@code summary.txt}).
  * </p>
  * <p>
- *     The reference dictionary file may be used by commands downstream that need to verify that
- *     the reference that wa use to generate the sample sites matches the one that is provided by the user to that command.
- * </p>
- * <p>
- *     The DT also provide downstream commands with the information as to how the resulting collection of sites was downSampled,
- *     in case further down-sampling is necessary.
- * </p>
- * <p>
- * <h3>Example</h3>
+ * <h3>Examples</h3>
  * <pre>
- *     gatk ComposeSTRTableFile -R ref.fasta -O ref.str
+
+ *     # Human? just use the default.
+ *     gatk ComposeSTRTableFile -R hg19.fasta -O hg19.str.zip
+ *     # or ...
+ *     gatk ComposeSTRTableFile -R hg19.fasta --decimation DEFAULT -O hg19.str.zip
+ *
+ * </pre>
+ * <pre>
+ *
+ *     # yeast genome is roughly ~ 12Mbp long.
+ *     gatk ComposeSTRTableFile -R yeast.fasta --decimation custom-yeast.dt -O yeast.str.zip
+ *
+ * </pre>
+ * <pre>
+ *
+ *     #  Carsonella ruddii just about 160Kbps, prorably we don't want to decimate at all:
+ *     gatk ComposeSTRTableFile -R Cruddii.fasta --decimation NONE -O yeast.str.zip
+ *
  * </pre>
  * </p>
  */
 @CommandLineProgramProperties(
         programGroup = ReferenceProgramGroup.class,
-        summary = "Determine the presence of STR in a reference sequence",
-        oneLineSummary = "Determines the presence of STR in a reference sequence"
+        oneLineSummary = "Composes a genome-wide STR location table used for DragSTR model auto-calibration",
+        summary = "Composes a genome-wide STR location table used for DragSTR model auto-calibration"
 )
+@DocumentedFeature
 public final class ComposeSTRTableFile extends GATKTool {
 
     public static final String REFERENCE_SEQUENCE_BUFFER_SIZE_FULL_NAME = "reference-sequence-buffer-size";
@@ -67,9 +88,11 @@ public final class ComposeSTRTableFile extends GATKTool {
     public static final int MAXIMUM_REFERENCE_SEQUENCE_BUFFER_SIZE = 100_000_000;
     public static final int DEFAULT_REFERENCE_SEQUENCE_BUFFER_SIZE = 100_000;
 
-    @Argument(fullName="decimation", doc="decimation per period and repeat. It can be \"DEFAULT\" to use the default values (default), " +
-            " \"NONE\" to deactivate decimation (potentially resulting in a very large output file) or indicate the path to a file" +
-            " that contains the decimation matrix.", optional = true)
+    @Argument(fullName = "decimation", 
+              doc = "decimation per period and repeat. It can be \"DEFAULT\" to use the default values (DEFAULT), " +
+                    " \"NONE\" to deactivate decimation (potentially resulting in a very large output file) " + 
+                    "or indicate the path to a file that contains the decimation matrix.", 
+              optional = true)
     private STRDecimationTable decimationTable = STRDecimationTable.DEFAULT;
 
     @Argument(doc = "name of the zip file where the sites sampled will be stored",

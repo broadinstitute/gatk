@@ -54,6 +54,9 @@ public class FuncotatorTestConstants {
     public static final String GENCODE_DATA_SOURCE_FASTA_PATH_HG19 = FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER + "gencode" + File.separator + REFERENCE_VERSION_HG19 + File.separator + "gencode.v19.testVariantSubset.pc_transcripts.fa";
     public static final String GENCODE_DATA_SOURCE_GTF_PATH_HG38   = FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER + "gencode" + File.separator + REFERENCE_VERSION_HG38 + File.separator + "gencode.v28.regressionTestVariantSet.gtf";
     public static final String GENCODE_DATA_SOURCE_FASTA_PATH_HG38 = FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER + "gencode" + File.separator + REFERENCE_VERSION_HG38 + File.separator + "gencode.v28.regressionTestVariantSet.pc_transcripts.fa";
+    public static final String GENCODE_DATA_SOURCE_GTF_V43_PATH_HG38   = FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER + "gencode" + File.separator + REFERENCE_VERSION_HG38 + File.separator + "gencode.v43.regressionTestVariantSet.gtf";
+    public static final String GENCODE_DATA_SOURCE_FASTA_V43_PATH_HG38 = FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER + "gencode" + File.separator + REFERENCE_VERSION_HG38 + File.separator + "gencode.v43.regressionTestVariantSet.pc_transcripts.fa";
+
 
     public static final String XSV_CSV_FILE_PATH = FUNCOTATOR_TEST_DIR + "xsv_CSV_testFile.csv";
 

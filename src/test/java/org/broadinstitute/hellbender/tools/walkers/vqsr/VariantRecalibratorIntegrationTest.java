@@ -4,8 +4,10 @@ import org.apache.commons.lang.StringUtils;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
@@ -13,6 +15,8 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -25,8 +29,16 @@ import java.util.stream.Stream;
  * from the command line, in order to ensure that the initial state of the random number generator is the same
  * between versions. In all cases, the variants in the expected files are identical to those produced by GATK3,
  * though the VCF headers were hand modified to account for small differences in the metadata lines.
+ *
+ * UPDATE: The expected results from GATK3 were updated in https://github.com/broadinstitute/gatk/pull/7709.
+ * However, we left the original comments referencing GATK3 below untouched.
  */
 public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
+
+    private final String tmpDir = createTempDir(this.getTestedClassName()).getAbsolutePath();
+    private final String modelReportFilename = tmpDir + "/snpSampledModel.report";
+    private final String modelReportRecal = getLargeVQSRTestDataDir() + "expected/snpSampledRecal.vcf";
+    private final String modelReportTranches = getLargeVQSRTestDataDir() + "expected/snpSampledTranches.txt";
 
     private final String[] VQSRSNPParamsWithResources =
         new String[] {
@@ -144,6 +156,39 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
                     "-mode", "SNP",
                     "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"
             };
+
+
+    final private String[] variantRecalibratorSamplingParams = {
+            " --variant " + getLargeVQSRTestDataDir() + "phase1.projectConsensus.chr20.1M-10M.raw.snps.vcf" +
+                    " -L 20:1,000,000-10,000,000" +
+                    " --resource:known,known=true,prior=10.0 " + getLargeVQSRTestDataDir() + "dbsnp_132_b37.leftAligned.20.1M-10M.vcf" +
+                    " --resource:truth_training1,truth=true,training=true,prior=15.0 " + getLargeVQSRTestDataDir() + "sites_r27_nr.b37_fwd.20.1M-10M.vcf" +
+                    " --resource:truth_training2,training=true,truth=true,prior=12.0 " + getLargeVQSRTestDataDir() + "Omni25_sites_1525_samples.b37.20.1M-10M.vcf" +
+                    " -an QD -an HaplotypeScore -an HRun" +
+                    " --trust-all-polymorphic" + // for speed
+                    " --output %s" +
+                    " -tranches-file %s" +
+                    " --output-model " + modelReportFilename +
+                    " -mode SNP --max-gaussians 3" +  //reduce max gaussians so we have negative training data with the sampled input
+                    " -sample-every 2" +
+                    " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE +" false"
+    };
+
+    final private String[] variantRecalibratorSamplingParamsWithDupes = {
+            " --variant " + getLargeVQSRTestDataDir() + "phase1.projectConsensus.chr20.1M-10M.raw.snps.vcf" +
+                    " -L 20:1,000,000-10,000,000" +
+                    " --resource:known,known=true,prior=10.0 " + getLargeVQSRTestDataDir() + "dbsnp_132_b37.leftAligned.20.1M-10M.vcf" +
+                    " --resource:truth_training1,truth=true,training=true,prior=15.0 " + getLargeVQSRTestDataDir() + "sites_r27_nr.b37_fwd.20.1M-10M.vcf" +
+                    " --resource:truth_training2,training=true,truth=true,prior=12.0 " + getLargeVQSRTestDataDir() + "Omni25_sites_1525_samples.b37.20.1M-10M.vcf" +
+                    " -an QD -an HaplotypeScore -an HRun -an QD" +
+                    " --trust-all-polymorphic" + // for speed
+                    " --output %s" +
+                    " -tranches-file %s" +
+                    " --output-model " + modelReportFilename +
+                    " -mode SNP --max-gaussians 3" +  //reduce max gaussians so we have negative training data with the sampled input
+                    " -sample-every 2" +
+                    " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE +" false"
+    };
 
     @Override
     public String getToolTestDataDir(){
@@ -356,34 +401,40 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
         spec.executeTest("testBothRecalMode", this);
     }
 
-    private final String tmpDir = createTempDir(this.getTestedClassName()).getAbsolutePath();
-    private final String modelReportFilename = tmpDir + "/snpSampledModel.report";
-    private final String modelReportRecal = getLargeVQSRTestDataDir() + "expected/snpSampledRecal.vcf";
-    private final String modelReportTranches = getLargeVQSRTestDataDir() + "expected/snpSampledTranches.txt";
 
     @Test
     public void testVariantRecalibratorSampling() throws IOException {
         final String inputFile = getLargeVQSRTestDataDir() + "phase1.projectConsensus.chr20.1M-10M.raw.snps.vcf";
+        final String args = StringUtils.join(variantRecalibratorSamplingParams, " ");
 
         final IntegrationTestSpec spec = new IntegrationTestSpec(
-                " --variant " + inputFile +
-                " -L 20:1,000,000-10,000,000" +
-                " --resource:known,known=true,prior=10.0 " + getLargeVQSRTestDataDir() + "dbsnp_132_b37.leftAligned.20.1M-10M.vcf" +
-                " --resource:truth_training1,truth=true,training=true,prior=15.0 " + getLargeVQSRTestDataDir() + "sites_r27_nr.b37_fwd.20.1M-10M.vcf" +
-                " --resource:truth_training2,training=true,truth=true,prior=12.0 " + getLargeVQSRTestDataDir() + "Omni25_sites_1525_samples.b37.20.1M-10M.vcf" +
-                " -an QD -an HaplotypeScore -an HRun" +
-                " --trust-all-polymorphic" + // for speed
-                " --output %s" +
-                " -tranches-file %s" +
-                " --output-model " + modelReportFilename +
-                " -mode SNP --max-gaussians 3" +  //reduce max gaussians so we have negative training data with the sampled input
-                " -sample-every 2" +
-                " --" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE +" false",
+                args,
                 Arrays.asList(
                         modelReportRecal,
                         modelReportTranches));
         spec.executeTest("testVariantRecalibratorSampling"+  inputFile, this);
     }
+
+
+    @Test
+    public void testVariantRecalibratorRScriptOutput() throws IOException {
+        final String inputFile = getLargeVQSRTestDataDir() + "phase1.projectConsensus.chr20.1M-10M.raw.snps.vcf";
+        final File unrunRscript = createTempFile("rscriptOutput", ".R");
+        final String args = StringUtils.join(variantRecalibratorSamplingParamsWithDupes, " ");
+
+        final IntegrationTestSpec spec = new IntegrationTestSpec(
+                args +
+                        " --dont-run-rscript " +
+                        " --rscript-file " + unrunRscript,
+                Arrays.asList(
+                        modelReportRecal,
+                        modelReportTranches));
+
+        spec.executeTest("testVariantRecalibratorRscriptOutput"+  inputFile, this);
+        Assert.assertTrue(Files.exists(IOUtils.fileToPath(unrunRscript)), "Rscript file was not generated.");
+        Assert.assertTrue(Files.size(IOUtils.fileToPath(unrunRscript)) > 0, "Rscript file was empty.");
+    }
+
 
     @Test(dependsOnMethods = {"testVariantRecalibratorSampling"})
     public void testVariantRecalibratorModelInput() throws IOException {
@@ -496,8 +547,14 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
         doSNPTest(params, getLargeVQSRTestDataDir() + "/snpTranches.scattered.txt", getLargeVQSRTestDataDir() + "snpRecal.vcf"); //tranches file isn't in the expected/ directory because it's input to GatherTranchesIntegrationTest
     }
 
-    //One of the Gaussians has a covariance matrix with a determinant of zero, (can be confirmed that the entries of sigma for the row and column with the index of the constant annotation are zero) which leads to all +Inf LODs if we don't throw
-    @Test(expectedExceptions={UserException.VQSRPositiveModelFailure.class})
+    // One of the Gaussians has a covariance matrix with a determinant of zero,
+    // (can be confirmed that the entries of sigma for the row and column with the index of the constant annotation are zero)
+    // which leads to all +Inf LODs if we don't throw.
+    //
+    // UPDATE: Originally, this test checked for expectedExceptions = {UserException.VQSRPositiveModelFailure.class}.
+    // However, the convergence failure was fixed in https://github.com/broadinstitute/gatk/pull/7709,
+    // so we now expect the test to complete and can instead treat it as a regression test.
+    @Test
     public void testAnnotationsWithNoVarianceSpecified() throws IOException {
         // use an ArrayList - ArgumentBuilder tokenizes using the "=" in the resource args
         List<String> args = new ArrayList<>(alleleSpecificVQSRParamsTooManyAnnotations.length);
@@ -511,7 +568,7 @@ public class VariantRecalibratorIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(varRecalTool.instanceMain(args.toArray(new String[args.size()])), true);
     }
 
-    @Test(expectedExceptions={UserException.VQSRNegativeModelFailure.class})
+    @Test(expectedExceptions = {UserException.VQSRNegativeModelFailure.class})
     public void testNoNegativeTrainingData() throws IOException {
         // use an ArrayList - ArgumentBuilder tokenizes using the "=" in the resource args
         List<String> args = new ArrayList<>(alleleSpecificVQSRParamsNoNegativeData.length);

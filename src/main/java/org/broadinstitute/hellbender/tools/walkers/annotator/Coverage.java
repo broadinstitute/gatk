@@ -30,8 +30,8 @@ import java.util.Map;
  *
  * <h3>Related annotations</h3>
  * <ul>
- *     <li><b><a href="https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_annotator_DepthPerAlleleBySample.php">DepthPerAlleleBySample</a></b> calculates depth of coverage for each allele per sample (AD).</li>
- *     <li><b><a href="https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_annotator_DepthPerSampleHC.php">DepthPerSampleHC</a></b> calculates depth of coverage after filtering by HaplotypeCaller.</li>
+ *     <li><b>DepthPerAlleleBySample</b> calculates depth of coverage for each allele per sample (AD).</li>
+ *     <li><b>DepthPerSampleHC</b> calculates depth of coverage after filtering by HaplotypeCaller.</li>
  * </ul>
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Total depth of coverage per sample and over all samples (DP)")
@@ -52,9 +52,4 @@ public final class Coverage implements InfoFieldAnnotation, StandardAnnotation, 
 
     @Override
     public List<String> getKeyNames() { return Collections.singletonList(VCFConstants.DEPTH_KEY); }
-
-    @Override
-    public List<VCFInfoHeaderLine> getDescriptions() {
-        return Collections.singletonList(VCFStandardHeaderLines.getInfoLine(getKeyNames().get(0)));
-    }
 }

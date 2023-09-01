@@ -69,7 +69,7 @@ final public class GencodeGtfCodec extends AbstractGtfCodec {
     /**
      * Maximum version of gencode that will not generate a warning.  This parser will still attempt to parse versions above this number, but a warning about potential errors will appear.
      */
-    private static final int GENCODE_GTF_MAX_VERSION_NUM_INCLUSIVE = 34;
+    private static final int GENCODE_GTF_MAX_TESTED_VERSION = 43;
 
     private int currentLineNum = 1;
     private final List<String> header = new ArrayList<>();
@@ -315,8 +315,8 @@ final public class GencodeGtfCodec extends AbstractGtfCodec {
                 }
             }
 
-            if (versionNumber > GENCODE_GTF_MAX_VERSION_NUM_INCLUSIVE) {
-                logger.warn("GENCODE GTF Header line 1 has a version number that is above maximum tested version (v " + GENCODE_GTF_MAX_VERSION_NUM_INCLUSIVE + ") (given: " +
+            if (versionNumber > GENCODE_GTF_MAX_TESTED_VERSION) {
+                logger.warn("GENCODE GTF Header line 1 has a version number that is above maximum tested version (v " + GENCODE_GTF_MAX_TESTED_VERSION + ") (given: " +
                         versionNumber + "): " + header.get(0) + "   Continuing, but errors may occur.");
             }
         }

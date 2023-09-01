@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
-import org.broadinstitute.gatk.nativebindings.pairhmm.PairHMMNativeArguments;
+import  org.broadinstitute.gatk.nativebindings.pairhmm.PairHMMNativeArguments;
 import org.broadinstitute.barclay.argparser.Argument;
 
 /**
