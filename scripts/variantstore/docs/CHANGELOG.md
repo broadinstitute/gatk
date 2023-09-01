@@ -1,5 +1,11 @@
 # Genomic Variant Store (GVS) Changelog
 
+## 0.2.1 - 2023-09-01
+
+### Added
+
+- Made VETS tool chain the default method for filtering (used to be VQSR).
+
 ## 0.2.0 - 2023-08-29
 
 ### Added
