@@ -160,6 +160,8 @@ workflow GvsJointVariantCalling {
             variants_docker = effective_variants_docker,
     }
 
+    String effective_output_gcs_dir = select_first([extract_output_gcs_dir, "gs://~{BulkIngestGenomes.workspace_bucket}/output_vcfs/by_submission_id/~{BulkIngestGenomes.submission_id}"])
+
     call ExtractCallset.GvsExtractCallset {
         input:
             go = GvsPrepareCallset.done,
@@ -182,7 +184,7 @@ workflow GvsJointVariantCalling {
             output_file_base_name = effective_extract_output_file_base_name,
             extract_maxretries_override = extract_maxretries_override,
             extract_preemptible_override = extract_preemptible_override,
-            output_gcs_dir = extract_output_gcs_dir,
+            output_gcs_dir = effective_output_gcs_dir,
             split_intervals_disk_size_override = split_intervals_disk_size_override,
             split_intervals_mem_override = split_intervals_mem_override,
             do_not_filter_override = extract_do_not_filter_override,
@@ -190,6 +192,7 @@ workflow GvsJointVariantCalling {
     }
 
     output {
+        String output_gcs_path = effective_output_gcs_dir
         Array[File] output_vcfs = GvsExtractCallset.output_vcfs
         Array[File] output_vcf_indexes = GvsExtractCallset.output_vcf_indexes
         Array[File] output_vcf_interval_files = GvsExtractCallset.output_vcf_interval_files
