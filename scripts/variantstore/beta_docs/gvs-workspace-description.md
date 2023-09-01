@@ -22,7 +22,7 @@ For workflow documentation, see the [Genomic Variant Store workflow overview](ht
 
 **Important Update:**
 
-Starting September 1, variants in GVS are filtered using the GATK Variant Extract-Train-Score toolchain with an isolation-forest model by default. GVS maintains the ability to run VQSR on callsets up to 10,000 genomes to reproduce the same results from past analyses. See the [release notes](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/docs/release_notes/VETS_Release.pdf) for more information.
+Starting September 1 2023, variants in GVS are filtered using the GATK Variant Extract-Train-Score toolchain with an isolation-forest model by default. GVS maintains the ability to run VQSR on callsets up to 10,000 genomes to reproduce the same results from past analyses. See the [release notes](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/docs/release_notes/VETS_Release.pdf) for more information.
 
 ---
 
