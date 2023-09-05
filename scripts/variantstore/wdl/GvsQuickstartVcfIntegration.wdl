@@ -7,14 +7,15 @@ workflow GvsQuickstartVcfIntegration {
     input {
         String git_branch_or_tag
         String? git_hash
-        Boolean is_wgs = true
         String expected_output_prefix
         Boolean use_VQSR_lite = true
         Boolean extract_do_not_filter_override = true
 
         String drop_state = "FORTY"
         String dataset_suffix
-        File interval_list
+        Boolean is_wgs = true
+        File? interval_list
+        File? interval_weights_bed
         Boolean use_default_dockers = false
         String? basic_docker
         String? cloud_sdk_docker
@@ -28,9 +29,6 @@ workflow GvsQuickstartVcfIntegration {
         String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
     }
     String project_id = "gvs-internal"
-
-    Boolean use_interval_weights = is_wgs
-    File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
 
     # WDL 1.0 trick to set a variable ('none') to be undefined.
     if (false) {
@@ -82,8 +80,8 @@ workflow GvsQuickstartVcfIntegration {
             # (and the initial version of this integration test does not allow for inexact matching of actual and expected results.)
             extract_do_not_filter_override = extract_do_not_filter_override,
             drop_state = drop_state,
+            is_wgs = is_wgs,
             interval_list = interval_list,
-            use_interval_weights = use_interval_weights,
             interval_weights_bed = interval_weights_bed,
             sample_id_column_name = sample_id_column_name,
             vcf_files_column_name = vcf_files_column_name,

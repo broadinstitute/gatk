@@ -8,9 +8,10 @@ workflow GvsQuickstartHailIntegration {
     input {
         String git_branch_or_tag
         String? git_hash
-        Boolean is_wgs = true
+        Boolean is_wgs
+        File? interval_list
+        File? interval_weights_bed
         Boolean use_VQSR_lite = true
-        File interval_list
         Boolean use_classic_VQSR = true
         Boolean extract_do_not_filter_override
         String dataset_suffix = "hail"
@@ -51,14 +52,15 @@ workflow GvsQuickstartHailIntegration {
         input:
             git_branch_or_tag = git_branch_or_tag,
             git_hash = git_hash,
-            is_wgs = is_wgs,
             drop_state = "NONE",
             use_VQSR_lite = use_VQSR_lite,
             extract_do_not_filter_override = extract_do_not_filter_override,
             dataset_suffix = dataset_suffix,
             use_default_dockers = use_default_dockers,
             gatk_override = gatk_override,
+            is_wgs = is_wgs,
             interval_list = interval_list,
+            interval_weights_bed = interval_weights_bed,
             expected_output_prefix = expected_output_prefix,
             sample_id_column_name = sample_id_column_name,
             vcf_files_column_name = vcf_files_column_name,
