@@ -244,6 +244,7 @@ workflows:
              - ah_var_store
              - bulk_ingest_staging
              - vs_1032_beta_wdl_pin
+             - gg_VS-1024_BetaWorkflowForExomes
          tags:
              - /.*/
    - name: GvsBeta
@@ -282,6 +283,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1024_BetaWorkflowForExomes
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -291,6 +293,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1024_BetaWorkflowForExomes
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
@@ -300,6 +303,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1024_BetaWorkflowForExomes
              - vs_1012_master_finally
          tags:
              - /.*/
