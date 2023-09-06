@@ -1,5 +1,11 @@
 # Genomic Variant Store (GVS) Changelog
 
+## 0.3.1 - 2023-09-06
+
+### Changed
+
+- Added an optional input `billing_project_id` to allow for ingest from a GCS bucket with requester pays turned on where egress will be charged to the Google billing project ID passed.
+
 ## 0.3.0 - 2023-09-01
 
 ### Changed
