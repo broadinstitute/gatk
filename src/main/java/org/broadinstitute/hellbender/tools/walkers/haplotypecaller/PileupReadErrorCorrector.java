@@ -38,8 +38,7 @@ public class PileupReadErrorCorrector implements ReadErrorCorrector {
     public final List<GATKRead> correctReads(final Collection<GATKRead> originalReads) {
         final List<GATKRead> reads = originalReads.stream().map(GATKRead::deepCopy).collect(Collectors.toList());
 
-        final Iterator<AlignmentContext> locusIterator = new LocusIteratorByState(reads.iterator(), DownsamplingMethod.NONE,
-                false, ReadUtils.getSamplesFromHeader(header), header, false);
+        final Iterator<AlignmentContext> locusIterator = new LocusIteratorByState(reads.iterator(), DownsamplingMethod.NONE, ReadUtils.getSamplesFromHeader(header), header, false);
 
         final Map<GATKRead, List<Pair<Integer, Byte>>> potentialCorrections = reads.stream().collect(Collectors.toMap(read -> read, read -> new ArrayList<>()));
 

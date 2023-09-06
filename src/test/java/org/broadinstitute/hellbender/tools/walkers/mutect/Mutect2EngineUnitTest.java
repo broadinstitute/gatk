@@ -119,9 +119,6 @@ public class Mutect2EngineUnitTest extends GATKBaseTest {
 
             Assert.assertEquals(calculated, expected, precision);
         }
-
-
-
     }
 
     @DataProvider(name = "fewAltData")

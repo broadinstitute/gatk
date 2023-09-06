@@ -7,7 +7,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
 
-import java.io.File;
+import java.util.Optional;
 
 /**
  * Class used to direct output from a HaplotypeBAMWriter to a bam/sam file.
@@ -22,14 +22,15 @@ public final class SAMFileDestination extends HaplotypeBAMDestination {
      * @param createBamOutIndex true to create an index file for the bamout
      * @param createBamOutMD5 true to create an md5 file for the bamout
      * @param sourceHeader SAMFileHeader used to seed the output SAMFileHeader for this destination, must not be null
-     * @param haplotypeReadGroupID  read group ID used when writing haplotypes as reads
+     * @param haplotypeReadGroupID  read group ID used when writing haplotypes as reads. Empty if
+     *                              {@link HaplotypeBAMWriter.WriterType} == NO_HAPLOTYPES.
      */
     public SAMFileDestination(
             final Path outPath,
             final boolean createBamOutIndex,
             final boolean createBamOutMD5,
             final SAMFileHeader sourceHeader,
-            final String haplotypeReadGroupID)
+            final Optional<String> haplotypeReadGroupID)
     {
         super(sourceHeader, haplotypeReadGroupID);
         samWriter = new SAMFileGATKReadWriter(ReadUtils.createCommonSAMWriter(

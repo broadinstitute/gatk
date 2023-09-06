@@ -4,6 +4,7 @@ import com.esotericsoftware.kryo.DefaultSerializer;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
+import org.broadinstitute.hellbender.utils.SVInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
 /**

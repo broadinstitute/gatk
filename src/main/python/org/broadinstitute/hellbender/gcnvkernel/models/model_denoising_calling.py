@@ -36,10 +36,10 @@ class DenoisingModelConfig:
     _q_c_expectation_modes = ['map', 'exact', 'hybrid']
 
     def __init__(self,
-                 max_bias_factors: int = 5,
+                 max_bias_factors: int = 6,
                  mapping_error_rate: float = 0.01,
-                 psi_t_scale: float = 0.001,
-                 psi_s_scale: float = 0.0001,
+                 psi_t_scale: float = 0.01,
+                 psi_s_scale: float = 0.01,
                  depth_correction_tau: float = 10000.0,
                  log_mean_bias_std: float = 0.1,
                  init_ard_rel_unexplained_variance: float = 0.1,
@@ -49,7 +49,8 @@ class DenoisingModelConfig:
                  active_class_padding_hybrid_mode: int = 50000,
                  enable_bias_factors: bool = True,
                  enable_explicit_gc_bias_modeling: bool = False,
-                 disable_bias_factors_in_active_class: bool = False):
+                 disable_bias_factors_in_active_class: bool = False,
+                 num_samples_copy_ratio_approx: int = 200):
         """See `expose_args` for the description of arguments"""
         self.max_bias_factors = max_bias_factors
         self.mapping_error_rate = mapping_error_rate
@@ -65,6 +66,7 @@ class DenoisingModelConfig:
         self.enable_bias_factors = enable_bias_factors
         self.enable_explicit_gc_bias_modeling = enable_explicit_gc_bias_modeling
         self.disable_bias_factors_in_active_class = disable_bias_factors_in_active_class
+        self.num_samples_copy_ratio_approx = num_samples_copy_ratio_approx
 
     @staticmethod
     def expose_args(args: argparse.ArgumentParser,
@@ -169,6 +171,12 @@ class DenoisingModelConfig:
                               type=str_to_bool,
                               help="Disable novel bias factor discovery CNV-active regions")
 
+        process_and_maybe_add("num_samples_copy_ratio_approx",
+                              type=int,
+                              help="Number of samples to draw from the final model approximation to estimate denoised "
+                                   "copy number ratios. Note that this argument will not affect inference of the "
+                                   "model")
+
     @staticmethod
     def from_args_dict(args_dict: Dict) -> 'DenoisingModelConfig':
         """Initialize an instance of `DenoisingModelConfig` from a dictionary of arguments.
@@ -194,8 +202,8 @@ class DenoisingModelConfig:
 class CopyNumberCallingConfig:
     """Configuration of the copy number caller."""
     def __init__(self,
-                 p_alt: float = 1e-6,
-                 p_active: float = 1e-3,
+                 p_alt: float = 5e-4,
+                 p_active: float = 0.1,
                  cnv_coherence_length: float = 10000.0,
                  class_coherence_length: float = 10000.0,
                  max_copy_number: int = 5,
@@ -1226,6 +1234,10 @@ class HHMMClassAndCopyNumberBasicCaller:
         log_class_emission_cum_sum_tk = tt.zeros((self.shared_workspace.num_intervals - 1,
                                                   self.calling_config.num_copy_number_classes),
                                                  dtype=types.floatX)
+
+        # this converts TensorType from row to matrix when number in the edge case when number of intervals is equal to 2
+        # (to avoid type mismatch later on)
+        log_class_emission_cum_sum_tk = tt.unbroadcast(log_class_emission_cum_sum_tk, 0)
 
         def inc_log_class_emission_tk_except_for_first_interval(pi_jkc, q_c_tc, cum_sum_tk):
             """Adds the contribution of a given sample to the log class emission (symbolically).

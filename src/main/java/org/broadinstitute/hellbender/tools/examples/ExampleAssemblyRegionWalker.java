@@ -41,6 +41,11 @@ public final class ExampleAssemblyRegionWalker extends AssemblyRegionWalker {
     }
 
     @Override
+    public boolean shouldTrackPileupsForAssemblyRegions() {
+        return false;
+    }
+
+    @Override
     public void onTraversalStart() {
         try {
             outputStream = outputFile != null ? new PrintStream(outputFile.getOutputStream()) : System.out;

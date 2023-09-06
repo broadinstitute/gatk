@@ -1,12 +1,13 @@
 package org.broadinstitute.hellbender.tools.sv;
 
 
-import htsjdk.tribble.Feature;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Objects;
+import java.util.Set;
 
-public final class DiscordantPairEvidence implements Feature {
+/** Documents evidence of a too-close or too-far-apart read pair. */
+public final class DiscordantPairEvidence implements SVFeature {
 
     final String sample;
     final String startContig;
@@ -16,7 +17,10 @@ public final class DiscordantPairEvidence implements Feature {
     final boolean startStrand;
     final boolean endStrand;
 
-    public DiscordantPairEvidence(final String sample, final String startContig, final int start, final boolean startStrand,
+    public final static String BCI_VERSION = "1.0";
+
+    public DiscordantPairEvidence(final String sample,
+                                  final String startContig, final int start, final boolean startStrand,
                                   final String endContig, final int end, final boolean endStrand) {
         Utils.nonNull(sample);
         Utils.nonNull(startContig);
@@ -53,13 +57,13 @@ public final class DiscordantPairEvidence implements Feature {
         return endContig;
     }
 
+    /**
+     * Used for sorting/checking evidence file order, where end coordinates should not be compared.
+     * @return start position
+     */
     @Override
     public int getEnd() {
-        if (startContig.equals(endContig)) {
-            return end;
-        } else {
-            return start;
-        }
+        return start;
     }
 
     public int getEndPosition() {
@@ -68,6 +72,12 @@ public final class DiscordantPairEvidence implements Feature {
 
     public boolean getEndStrand() {
         return endStrand;
+    }
+
+    @Override
+    public DiscordantPairEvidence extractSamples( final Set<String> sampleNames,
+                                                  final Object header ) {
+        return sampleNames.contains(sample) ? this : null;
     }
 
     @Override
@@ -87,5 +97,10 @@ public final class DiscordantPairEvidence implements Feature {
     @Override
     public int hashCode() {
         return Objects.hash(sample, startContig, endContig, start, end, startStrand, endStrand);
+    }
+
+    @Override public String toString() {
+        return startContig + "\t" + start + "\t" + end + "\t" + sample + "\t" + endContig + "\t" +
+                startStrand + "\t" + endStrand;
     }
 }

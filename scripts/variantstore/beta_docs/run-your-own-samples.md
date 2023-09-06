@@ -27,22 +27,22 @@ For more information about reblocking, check out [WARP Whole Genome and Exome Pi
 
 Input GVCF files for the GVS workflow must include the annotations described in the table below:
 
-| Annotation | Description | Notes                           |
-| --- | --- |---------------------------------|
-| Ref | Reference allele. | ---                             |
-| Alt | Alternate allele. | ---                             |
-| AS_RAW_MQ, RAW_MQandDP, or RAW_MQ | RMS mapping quality (‘AS’: allele-specific). | Required for VETS training      |
+| Annotation                                | Description                                                                               | Notes                      |
+|-------------------------------------------|-------------------------------------------------------------------------------------------|----------------------------|
+| Ref                                       | Reference allele.                                                                         | ---                        |
+| Alt                                       | Alternate allele.                                                                         | ---                        |
+| AS_RAW_MQ, RAW_MQandDP, or RAW_MQ         | RMS mapping quality (‘AS’: allele-specific).                                              | Required for VETS training |
 | AS_RAW_MQRankSum or Map_QUAL_RANK_SUM_KEY | Z-score from Wilcoxon rank sum test of alternate versus reference read mapping qualities. | Required for VETS training |
-| QUALapprox | Sum of PL[0] values; used to approximate the QUAL score. | Required for VETS training      |
-| AS_QUALapprox | Allele-specific sum of PL[0] values; used to approximate the QUAL score. | Required for VETS training      |
-| AS_SB_TABLE or STRAND_BIAS_BY_SAMPLE | Allele-specific forward/reverse read counts for strand bias tests. | Required for VETS training      |
-| AS_VarDP, VarDP, or DP | Depth over variant genotypes, or read depth  (‘AS’: allele-specific). | Required for VETS training      |
-| call_GT | Genotype. | ---                             |
-| call_GQ | Genotype quality. | ---                             |
+| QUALapprox                                | Sum of PL[0] values; used to approximate the QUAL score.                                  | Required for VETS training |
+| AS_QUALapprox                             | Allele-specific sum of PL[0] values; used to approximate the QUAL score.                  | Required for VETS training |
+| AS_SB_TABLE or STRAND_BIAS_BY_SAMPLE      | Allele-specific forward/reverse read counts for strand bias tests.                        | Required for VETS training |
+| AS_VarDP, VarDP, or DP                    | Depth over variant genotypes, or read depth  (‘AS’: allele-specific).                     | Required for VETS training |
+| call_GT                                   | Genotype.                                                                                 | ---                        |
+| call_GQ                                   | Genotype quality.                                                                         | ---                        |
 
 ### What does it return as output?
 
-The following files are stored in the workspace workflow execution bucket under Data>Files, or the Google bucket specified in the `extract_output_gcs_dir` input.
+The following files are stored in the workspace workflow execution bucket under Data>Files, or the location specified by the `output_gcs_dir` workflow output.
 
 - Sharded joint VCF files, index files, the interval lists for each sharded VCF, and a list of the sample names included in the callset.
 - Size of output VCF files in MB
@@ -119,7 +119,6 @@ Now that your samples are loaded into data table in Terra, it’s time to setup 
     1. Enter a **name for the callset** as a string with the format “*CALLSET_NAME*” for the `call_set_identifier` variable. This string is used as to name several variables and files and should begin with a letter. Valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”.
     1. Enter the name of your **BigQuery dataset** as a string with the format “*DATASET_NAME*” for the `dataset_name` variable.
     1. Enter the name of the **GCP project** that holds the BigQuery dataset as a string with the format “*PROJECT_NAME*” for the `project_id` variable.
-    1. Enter the path of a **Google Cloud Storage directory for writing outputs**. Enter a string in the format "*gs://your_bucket/here*" in `extract_output_gcs_dir`. If you want the data in your Terra workspace bucket you can find that on the Workspace Dashboard, right panel, under Cloud Information. Copy the "Bucket Name" and use it to the inputs to create a gs path as a string like this "*gs://fc-338fe040-3522-484c-ba48-14b48f9950d2*". If you do not enter a bucket here, the outputs will be in the execution directory under *Files*.
 1. **Save** the workflow configuration.
 1. **Run** the workflow.
 

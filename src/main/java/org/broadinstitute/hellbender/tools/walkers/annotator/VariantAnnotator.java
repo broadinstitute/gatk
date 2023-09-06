@@ -75,7 +75,7 @@ import java.util.stream.IntStream;
  *   -V input.vcf \
  *   -o output.vcf \
  *   -L anotherInput.vcf \
- *   --resource foo:resource.vcf \
+ *   --resource:foo resource.vcf \
  *   -E foo.AF \
  *   --resource-allele-concordance
  * </pre>
@@ -86,7 +86,7 @@ import java.util.stream.IntStream;
  *   -R reference.fasta \
  *   -V input.vcf \
  *   -o output.vcf \
- *   --resource foo:resource.vcf \
+ *   --resource:foo resource.vcf \
  *   --expression foo.AF \
  *   --expression foo.FILTER
  * </pre>

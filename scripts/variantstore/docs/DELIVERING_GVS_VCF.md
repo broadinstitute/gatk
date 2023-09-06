@@ -44,7 +44,7 @@
    - This step loads data into the `alt_allele` table from the `vet_*` tables in preparation for running the filtering step.
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
 5. `GvsCreateFilterSet` workflow
-   - This step calculates features from the `alt_allele` table, and trains the VQSR filtering model along with site-level QC filters and loads them into BigQuery into a series of `filter_set_*` tables.
+   - This step calculates features from the `alt_allele` table, and creates the filtering model along with site-level QC filters and loads them into BigQuery into a series of `filter_set_*` tables.
    - See [naming conventions doc](https://docs.google.com/document/d/1pNtuv7uDoiOFPbwe4zx5sAGH7MyxwKqXkyrpNmBxeow) for guidance on what to use for `filter_set_name`, which you will need to keep track of for the `GvsExtractCallset` WDL. If, for some reason, this step needs to be run multiple times, be sure to use a different `filter_set_name` (the doc has guidance for this, as well).
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
 6. `GvsPrepareRangesCallset` workflow
@@ -53,7 +53,7 @@
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
 7. `GvsExtractCallset` workflow
    - It is strongly suggested that you provide the `output_gcs_dir` input which will collect the VCFs, VCF indexes, interval lists, sample name list and manifest in one place.  Make sure it is a path your Terra proxy account has access to (the easiest way to do this is to set it to be within the workspace bucket where you are running these workflows).
-   - This workflow extracts the data in BigQuery and transforms it into a sharded joint called VCF incorporating the VQSR filter set data.  We will probably not run this on callsets of more than 100K samples.
+   - This workflow extracts the data in BigQuery and transforms it into a sharded joint called VCF incorporating the filter model data.  We will probably not run this on callsets of more than 100K samples.
    - It also needs to be run twice if you are generating Precision and Sensitivity, once with `control_samples` set to "true", and with the `filter_set_name` and `extract_table_prefix` from step 5 & 6.  Include a valid (and secure) "output_gcs_dir" parameter, which is where the VCF, interval list, manifest, and sample name list files will go.
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
 8. `GvsCallsetStatistics` workflow

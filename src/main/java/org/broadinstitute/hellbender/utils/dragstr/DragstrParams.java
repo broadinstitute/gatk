@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
+import java.util.Arrays;
 import java.util.stream.IntStream;
 
 /**
@@ -13,7 +14,6 @@ import java.util.stream.IntStream;
  * number of repeat units.
  */
 public final class DragstrParams {
-
 
     /**
      * String returned by {@link #toString()} when this object has not been retrieved from nor persisted into a file.
@@ -256,5 +256,55 @@ public final class DragstrParams {
 
     void setName(final String name) {
         this.name = Utils.nonNull(name);
+    }
+
+    @Override
+    public boolean equals(final Object other) {
+        return other instanceof DragstrParams && equals((DragstrParams) other);
+    }
+
+    @Override
+    public int hashCode() {
+
+        int result = 1;
+        for (double[] gg : gop) {
+            for (double g : gg) {
+                long bits = Double.doubleToLongBits(g);
+                result = 31 * result + (int) (bits ^ (bits >>> 32));
+            }
+        }
+        for (double[] aa : api) {
+            for (double a : aa) {
+                long bits = Double.doubleToLongBits(a);
+                result = 31 * result + (int) (bits ^ (bits >>> 32));
+            }
+        }
+        // gcp is usualy fixed so we should not bother.
+        return result;
+    }
+
+    public boolean equals(final DragstrParams other) {
+        if (other == null) {
+            return false;
+        } else if (other == this) {
+            return false;
+        } else {
+            if (other.maximumRepeats() != maximumRepeats()) {
+                return false;
+            } else if (other.maximumPeriod() != maximumPeriod()) {
+                return false;
+            } else {
+                for (int i = 1; i <= maximumPeriod(); i++) {
+                    for (int j = 1; j <= maximumRepeats(); j++) {
+                        if (Math.abs(gop(i, j) - other.gop(i, j)) > 0.001 ||
+                            Math.abs(api(i, j) - other.api(i, j)) > 0.001 ||
+                            Math.abs(gcp(i, j) - other.gcp(i, j)) > 0.001) {
+                            return false;
+                        }
+                    }
+                }
+                return true;
+            }
+        }
     }
 }

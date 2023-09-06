@@ -7,6 +7,7 @@ import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFSimpleHeaderLine;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypingModel;
@@ -17,6 +18,7 @@ import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
@@ -37,6 +39,8 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 
 public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
@@ -59,8 +63,9 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
 
     @BeforeMethod
     public void setupModel() {
-        model = new ReferenceConfidenceModel(samples, header, 10, -1);
+        model = new ReferenceConfidenceModel(samples, header, 10, -1, (byte)30, true, false);
     }
+
 
     @DataProvider(name = "CalcNIndelInformativeReadsData")
     public Object[][] makeMyDataProvider() {
@@ -451,6 +456,7 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
         final SimpleInterval refLoc, paddedRefLoc;
         final AssemblyRegion region;
         int readCounter = 0;
+        final int DELETION_POS = 5;
 
         private RefConfData(String ref, int extension) {
             this.ref = ref;
@@ -467,6 +473,7 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
         public SimpleInterval getPaddedRefLoc() { return paddedRefLoc; }
         public AssemblyRegion getActiveRegion() { return region; }
         public Haplotype getRefHap() { return refHap; }
+        public int getDeletionPos() {return DELETION_POS;}
         public int getStart() { return 100; }
         public int getEnd() { return getStart() + getRefLength() - 1; }
         public byte[] getRefBases() { return ref.getBytes(); }
@@ -475,6 +482,40 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
         public GATKRead makeRead(final int start, final int length) {
             final byte[] quals = Utils.dupBytes((byte)30, length);
             final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "read " + readCounter++, 0, start + getStart(), ref.substring(start, start + length).getBytes(), quals, length + "M");
+            read.setReadGroup(rg.getId());
+            return read;
+        }
+        public GATKRead makeSoftClippedRead(final int start, final int length, final int startSoftClip, final int endSoftClip){
+            final int total_length = length + startSoftClip + endSoftClip;
+
+            final byte[] quals = Utils.dupBytes((byte)30, total_length);
+            final byte [] softClipStart = ArtificialReadUtils.createRandomReadBases(startSoftClip, false);
+            final byte [] softClipEnd = ArtificialReadUtils.createRandomReadBases(endSoftClip, false);
+            final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "read " + readCounter++, 0,
+                    start + getStart(),
+                    ArrayUtils.addAll(ArrayUtils.addAll(softClipStart,ref.substring(start, start + length).getBytes()), softClipEnd),
+                    quals, startSoftClip + "S" + length + "M" + endSoftClip + "S");
+            read.setAttribute(ReferenceConfidenceModel.ORIGINAL_SOFTCLIP_START_TAG, read.getStart());
+            read.setAttribute(ReferenceConfidenceModel.ORIGINAL_SOFTCLIP_END_TAG, read.getEnd());
+
+            read.setReadGroup(rg.getId());
+            return read;
+        }
+
+        public GATKRead makeReadsWithLowQualityDeletion(final int start, final int length){
+            if (length < DELETION_POS+2){
+                throw new RuntimeException("makeReadsWithLowQualityDeletion can only create reads longer than " + (DELETION_POS + 2));
+            }
+
+            final int total_length = length-1;
+            final byte[] quals = Utils.dupBytes((byte)30, total_length);
+            quals[DELETION_POS] = 0;
+
+            final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "read " + readCounter++, 0,
+                    start + getStart(),
+                    ArrayUtils.addAll(ref.substring(start, start + DELETION_POS).getBytes(),
+                            ref.substring(start+DELETION_POS+1, start+length).getBytes()),
+                    quals, DELETION_POS + "M" + "1D" + (total_length-DELETION_POS) + "M");
             read.setReadGroup(rg.getId());
             return read;
         }
@@ -613,7 +654,10 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
         return returnMap;
     }
 
-    private void checkReferenceModelResult(final RefConfData data, final List<VariantContext> contexts, final List<Integer> expectedDPs, final List<VariantContext> calls) {
+    private void checkReferenceModelResult(final RefConfData data,
+                                           final List<VariantContext> contexts,
+                                           final List<Integer> expectedDPs,
+                                           final List<VariantContext> calls) {
         Assert.assertNotNull(contexts);
 
         final SimpleInterval loc = data.getActiveRegion().getPaddedSpan();
@@ -722,6 +766,120 @@ public final class ReferenceConfidenceModelUnitTest extends GATKBaseTest {
         double[] liks = res.getGenotypeLikelihoodsCappedByHomRefLikelihood();
         liks[0] = 19;
         Assert.assertEquals(res.getGenotypeLikelihoodsCappedByHomRefLikelihood(), new double[]{0, 0, 0}); //verify that the GL array is a copy
+    }
+
+    private void setupDoNotUseSoftClippedBases(){
+        model = new ReferenceConfidenceModel(samples, header, 10, -1, (byte)30, false, false);
+
+    }
+
+    @Test
+    public void testRefConfidenceModelNoSoftClipping(){
+        setupDoNotUseSoftClippedBases();
+
+        final RefConfData data = new RefConfData("ACGTACCCGGTTACGTAACCGGTTACGTAACCGGTTACGTAACCGGTT", 0);
+
+        final PloidyModel ploidyModel = new HomogeneousPloidyModel(samples,2);
+        final GenotypingModel genotypingModel = new IndependentSampleGenotypesModel();
+        final List<Haplotype> haplotypes = Arrays.asList(data.getRefHap());
+
+        final List<VariantContext> calls = Collections.emptyList();
+        int nReads = 10;
+        int softClipLength = 10;
+        final List<Integer> expectedDPs = Stream.concat(
+                Collections.nCopies(data.getActiveRegion().getSpan().size()-softClipLength, nReads).stream(),
+                Collections.nCopies(softClipLength, 0).stream()).collect(Collectors.toList());
+
+        for ( int i = 0; i < nReads; i++ ) {
+            data.getActiveRegion().add(ReadClipper.revertSoftClippedBases(data.makeSoftClippedRead(0,
+                    data.getActiveRegion().getSpan().size()-softClipLength,softClipLength/2,softClipLength/2)));
+        }
+        final AlleleLikelihoods<GATKRead, Haplotype> likelihoods = createDummyStratifiedReadMap(data.getRefHap(), samples, data.getActiveRegion());
+
+        final List<VariantContext> contexts = model.calculateRefConfidence(data.getRefHap(), haplotypes, data.getPaddedRefLoc(),
+                data.getActiveRegion(), likelihoods, ploidyModel, calls, false, Collections.emptyList());
+        checkReferenceModelResult(data, contexts, expectedDPs, calls);
+
+    }
+
+    private void setupFlowBasedModel(){
+        model = new ReferenceConfidenceModel(samples, header, 10, -1, (byte)30, true, true);
+    }
+
+    @Test
+    public void testRefConfidenceModelFlowReadsNonHmer(){
+        setupFlowBasedModel();
+        final RefConfData data = new RefConfData("ACGTAACCGGTTACGTAACCGGTTACGTAACCGGTTACGTAACCGGTT", 0);
+
+        final PloidyModel ploidyModel = new HomogeneousPloidyModel(samples,2);
+        final GenotypingModel genotypingModel = new IndependentSampleGenotypesModel();
+        final List<Haplotype> haplotypes = Arrays.asList(data.getRefHap());
+
+        final List<VariantContext> calls = Collections.emptyList();
+        int nReads = 10;
+        int softClipLength = 10;
+        final List<Integer> expectedDPs = new ArrayList<>(Collections.nCopies(data.getActiveRegion().getSpan().size(), nReads));
+        expectedDPs.set(data.getDeletionPos()+1,0);
+
+
+        for ( int i = 0; i < nReads; i++ ) {
+            data.getActiveRegion().add(data.makeReadsWithLowQualityDeletion(0,data.getActiveRegion().getSpan().size()));
+        }
+        final AlleleLikelihoods<GATKRead, Haplotype> likelihoods = createDummyStratifiedReadMap(data.getRefHap(), samples, data.getActiveRegion());
+
+        final List<VariantContext> contexts = model.calculateRefConfidence(data.getRefHap(), haplotypes, data.getPaddedRefLoc(),
+                data.getActiveRegion(), likelihoods, ploidyModel, calls, false, Collections.emptyList());
+        checkReferenceModelResult(data, contexts, expectedDPs, calls);
+    }
+
+    @Test
+    public void testRefConfidenceModelFlowReadsHmer(){
+        setupFlowBasedModel();
+        final RefConfData data = new RefConfData("ACGTACCCGGTTACGTAACCGGTTACGTAACCGGTTACGTAACCGGTT", 0);
+
+        final PloidyModel ploidyModel = new HomogeneousPloidyModel(samples,2);
+        final GenotypingModel genotypingModel = new IndependentSampleGenotypesModel();
+        final List<Haplotype> haplotypes = Arrays.asList(data.getRefHap());
+
+        final List<VariantContext> calls = Collections.emptyList();
+        int nReads = 10;
+        final List<Integer> expectedDPs = new ArrayList<>(Collections.nCopies(data.getActiveRegion().getSpan().size(), nReads));
+        expectedDPs.set(data.getDeletionPos(),0);
+        expectedDPs.set(data.getDeletionPos()+1,0);
+
+
+        for ( int i = 0; i < nReads; i++ ) {
+            data.getActiveRegion().add(data.makeReadsWithLowQualityDeletion(0,data.getActiveRegion().getSpan().size()));
+        }
+        final AlleleLikelihoods<GATKRead, Haplotype> likelihoods = createDummyStratifiedReadMap(data.getRefHap(), samples, data.getActiveRegion());
+
+        final List<VariantContext> contexts = model.calculateRefConfidence(data.getRefHap(), haplotypes, data.getPaddedRefLoc(),
+                data.getActiveRegion(), likelihoods, ploidyModel, calls, false, Collections.emptyList());
+        checkReferenceModelResult(data, contexts, expectedDPs, calls);
+    }
+
+    @Test
+    public void testDefaultRefConfidenceModelWithLowQualDels(){
+        final RefConfData data = new RefConfData("ACGTACCCGGTTACGTAACCGGTTACGTAACCGGTTACGTAACCGGTT", 0);
+
+        final PloidyModel ploidyModel = new HomogeneousPloidyModel(samples,2);
+        final GenotypingModel genotypingModel = new IndependentSampleGenotypesModel();
+        final List<Haplotype> haplotypes = Arrays.asList(data.getRefHap());
+
+        final List<VariantContext> calls = Collections.emptyList();
+        int nReads = 10;
+        final List<Integer> expectedDPs = new ArrayList<>(Collections.nCopies(data.getActiveRegion().getSpan().size(), nReads));
+        expectedDPs.set(data.getDeletionPos()+1,0);
+
+
+        for ( int i = 0; i < nReads; i++ ) {
+            data.getActiveRegion().add(data.makeReadsWithLowQualityDeletion(0,data.getActiveRegion().getSpan().size()));
+        }
+        final AlleleLikelihoods<GATKRead, Haplotype> likelihoods = createDummyStratifiedReadMap(data.getRefHap(), samples, data.getActiveRegion());
+
+        final List<VariantContext> contexts = model.calculateRefConfidence(data.getRefHap(), haplotypes, data.getPaddedRefLoc(),
+                data.getActiveRegion(), likelihoods, ploidyModel, calls, false, Collections.emptyList());
+        checkReferenceModelResult(data, contexts, expectedDPs, calls);
     }
 
 }

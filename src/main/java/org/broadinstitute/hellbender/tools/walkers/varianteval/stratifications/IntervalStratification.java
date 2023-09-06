@@ -1,13 +1,13 @@
 package org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications;
 
-import htsjdk.tribble.Feature;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.CommandLineException;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.FeatureInput;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEvalEngine;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.util.VariantEvalContext;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -32,18 +32,23 @@ public class IntervalStratification extends VariantStratifier {
     final List<Object> OVERLAPPING = Arrays.asList((Object)"all", (Object)"overlaps.intervals");
     final List<Object> NOT_OVERLAPPING = Arrays.asList((Object)"all", (Object)"outside.intervals");
 
-    
-    @Override
-    public void initialize() {
-        if ( getVariantEvalWalker().intervalsFile == null )
+    private FeatureInput<?> intervalsFile;
+
+    public IntervalStratification(VariantEvalEngine engine) {
+        super(engine);
+
+        if ( getEngine().getVariantEvalArgs().getIntervalsFile() == null )
             throw new CommandLineException.MissingArgument("stratIntervals", "Must be provided when IntervalStratification is enabled");
+
+        intervalsFile = getEngine().getVariantEvalArgs().getIntervalsFile();
 
         states.addAll(Arrays.asList("all", "overlaps.intervals", "outside.intervals"));
     }
 
-    public List<Object> getRelevantStates(ReferenceContext referenceContext, ReadsContext readsContext, FeatureContext featureContext, VariantContext comp, String compName, VariantContext eval, String evalName, String sampleName, String FamilyName) {
+    @Override
+    public List<Object> getRelevantStates(final VariantEvalContext context, final VariantContext comp, final String compName, final VariantContext eval, final String evalName, final String sampleName, final String familyName) {
         if (eval != null) {
-            List<Feature> overlapping = featureContext.getValues(getVariantEvalWalker().intervalsFile);
+            final List<?> overlapping = context.queryFeaturesIncludingOverlapping(intervalsFile, new SimpleInterval(eval.getContig(), eval.getStart(), eval.getEnd()));
             if ( !overlapping.isEmpty() )
                 return OVERLAPPING;
             else

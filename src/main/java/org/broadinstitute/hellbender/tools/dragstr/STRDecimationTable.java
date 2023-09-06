@@ -27,6 +27,39 @@ import java.util.Arrays;
  *     Thus if the DT entry for a period and repeat-length combination is 0, all sites are sampled, if it is 1
  *     every second site is discarded, if it 10, one every 1024 sites is sampled and the rest discarded.
  * </p>
+ * <p>
+ * <h3>Example (the default) table in a text file:</h3>
+ * <pre>
+ * ###
+ * # Human b38 decimation table (3Gbp)
+ * #
+ * 0
+ * 0 10 10  9  8  7  5  3  1  0
+ * 0  0  9  6  3  0
+ * 0  0  8  4  1  0
+ * 0  0  6  0
+ * 0  0  5  0
+ * 0  0  4  0
+ * 0  0  1  0
+ * 0
+ * </pre>
+ * </p>
+ * <p>
+ * For historical reasons the first row and column represent the absurd
+ * 0-period length and 0-repeat length STR. We recommend to set them to zero although the values
+ * in these should have no effect.
+ * </p>
+ * <p>
+ * That is also true for values for the 1-repeat and n-period, for n > 1, since in practice these are
+ * interpreted as 1-period n-repeat STR. We recommend to keep them as 0.
+ * </p>
+ * <p>
+ * Missing entries (left-bottom portion of the matrix) are assumed to be 0.
+ * Therefore the 0 entries at the end of each row include the lonely zero
+ * in the last one could be omitted. However adding that extra 0 give some reasurance that the row is not truncated
+ * by mistake. Since decimation is unecessary (even contra-productive) for longer period and larger
+ * repeat count the resulting matrix is a upper-left triangular one.
+ * </p>
  */
 public class STRDecimationTable {
 

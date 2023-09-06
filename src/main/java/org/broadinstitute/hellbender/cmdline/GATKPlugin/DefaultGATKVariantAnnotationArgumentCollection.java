@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.cmdline.GATKPlugin;
 
-import com.google.common.collect.Lists;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;

@@ -33,8 +33,8 @@ import java.util.Map;
  * </ul>
  * <h3>Related annotations</h3>
  * <ul>
- *     <li><b><a href="https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_annotator_StrandBiasBySample.php">StrandBiasBySample</a></b> outputs counts of read depth per allele for each strand orientation.</li>
- *     <li><b><a href="https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_annotator_StrandOddsRatio.php">StrandOddsRatio</a></b> is an updated form of FisherStrand that uses a symmetric odds ratio calculation.</li>
+ *     <li><b>StrandBiasBySample</b> outputs counts of read depth per allele for each strand orientation.</li>
+ *     <li><b>StrandOddsRatio</b> is an updated form of FisherStrand that uses a symmetric odds ratio calculation.</li>
  * </ul>
  *
  */

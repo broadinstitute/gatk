@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.ReadOrientat
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.genotyper.*;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
+import org.broadinstitute.hellbender.utils.read.Fragment;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.testutils.ArtificialAnnotationUtils;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
@@ -93,9 +94,10 @@ public final class OrientationBiasReadCountsUnitTest {
         // these reads start at 10,000 and end at 10,009
         final Pair<VariantContext, AlleleLikelihoods<GATKRead, Allele>> pair = makeReads(altF1R2, altF2R1, refF1R2, refF2R1, refAllele, altAllele, alleles, g);
         final VariantContext vc = pair.getLeft();
-        final AlleleLikelihoods<GATKRead, Allele> likelihoods = pair.getRight();
+        final AlleleLikelihoods<GATKRead, Allele> readLikelihoods = pair.getRight();
+        AlleleLikelihoods<Fragment, Allele> fragmentLikelihoods = readLikelihoods.groupEvidence(GATKRead::getName, Fragment::createAndAvoidFailure);
         final GenotypeBuilder gb = new GenotypeBuilder(g);
-        new OrientationBiasReadCounts().annotate(null, vc, g, gb, likelihoods);
+        new OrientationBiasReadCounts().annotate(null, null, vc, g, gb, readLikelihoods, fragmentLikelihoods, null);
 
         Assert.assertEquals(ReadOrientationFilter.getF1R2(gb.make()), new int[] {refF1R2, altF1R2});
 
@@ -103,7 +105,7 @@ public final class OrientationBiasReadCountsUnitTest {
 
         //now test a no-op
         final GenotypeBuilder gb1 = new GenotypeBuilder(g);
-        new OrientationBiasReadCounts().annotate(null, vc, null, gb1, likelihoods);  //null genotype
+        new OrientationBiasReadCounts().annotate(null, null, vc, null, gb1, readLikelihoods, fragmentLikelihoods, null);  //null genotype
         Assert.assertFalse(gb1.make().hasAD());
     }
 

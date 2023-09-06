@@ -329,34 +329,37 @@ public final class CountingReadFilterUnitTest {
         final CountingReadFilter secondOfPair2 = new CountingReadFilter(ReadFilterLibrary.SECOND_OF_PAIR);
         secondOfPair2.filteredCount = 2;
 
-        final CountingReadFilter firstOfPair1AndSecondOfPair2 = firstOfPair1.and(secondOfPair2);
+        final CountingReadFilter.CountingAndReadFilter firstOfPair1AndSecondOfPair2 = (CountingReadFilter.CountingAndReadFilter)firstOfPair1.and(secondOfPair2);
         firstOfPair1AndSecondOfPair2.filteredCount = 3;
+        firstOfPair1AndSecondOfPair2.totalCount = 3;
         final String andWithCountsAbove0 = "1 read(s) filtered by: FirstOfPairReadFilter \n"
                 + "2 read(s) filtered by: SecondOfPairReadFilter \n"
-                + "3 total reads filtered";
+                + "3 total reads filtered out of 3 reads processed";
 
-        final CountingReadFilter firstOfPair1AndMappingQuality0 = firstOfPair1.and(mappingQuality0);
+        final CountingReadFilter.CountingAndReadFilter  firstOfPair1AndMappingQuality0 = (CountingReadFilter.CountingAndReadFilter)firstOfPair1.and(mappingQuality0);
         firstOfPair1AndMappingQuality0.filteredCount = 1;
+        firstOfPair1AndMappingQuality0.totalCount = 3;
         final String andWith1CountAbove0 = "1 read(s) filtered by: FirstOfPairReadFilter \n"
                 + "0 read(s) filtered by: MappingQualityAvailableReadFilter \n"
-                + "1 total reads filtered";
+                + "1 total reads filtered out of 3 reads processed";
 
-        final CountingReadFilter mappingQuality0AndGoodCigar0 = mappingQuality0.and(goodCigar0);
+        final CountingReadFilter.CountingAndReadFilter  mappingQuality0AndGoodCigar0 = (CountingReadFilter.CountingAndReadFilter)mappingQuality0.and(goodCigar0);
         mappingQuality0AndGoodCigar0.filteredCount = 0;
         final String andWithBoth0Counts = "0 read(s) filtered by: MappingQualityAvailableReadFilter \n"
                 + "0 read(s) filtered by: GoodCigarReadFilter \n"
-                + "0 total reads filtered";
+                + "0 total reads filtered out of 0 reads processed";
 
 
         final CountingReadFilter firstOfPair1AndMappingQuality0AndGoodCigar0 = firstOfPair1AndMappingQuality0.and(goodCigar0);
         firstOfPair1AndMappingQuality0AndGoodCigar0.filteredCount = 1;
-        final CountingReadFilter firstOfPair1AndMappingQuality0AndGoodCigar0AndSecondOfPair2 = firstOfPair1AndMappingQuality0AndGoodCigar0.and(secondOfPair2);
+        final CountingReadFilter.CountingAndReadFilter firstOfPair1AndMappingQuality0AndGoodCigar0AndSecondOfPair2 = (CountingReadFilter.CountingAndReadFilter)firstOfPair1AndMappingQuality0AndGoodCigar0.and(secondOfPair2);
         firstOfPair1AndMappingQuality0AndGoodCigar0AndSecondOfPair2.filteredCount = 3;
+        firstOfPair1AndMappingQuality0AndGoodCigar0AndSecondOfPair2.totalCount = 5;
         final String multiAndWithMixCounts = "1 read(s) filtered by: FirstOfPairReadFilter \n"
                 + "0 read(s) filtered by: MappingQualityAvailableReadFilter \n"
                 + "0 read(s) filtered by: GoodCigarReadFilter \n"
                 + "2 read(s) filtered by: SecondOfPairReadFilter \n"
-                + "3 total reads filtered";
+                + "3 total reads filtered out of 5 reads processed";
 
         final CountingReadFilter firstOfPair1AndMappingQuality0AndGoodCigar0OrSecondOfPair2 = firstOfPair1AndMappingQuality0AndGoodCigar0.or(secondOfPair2);
         firstOfPair1AndMappingQuality0AndGoodCigar0OrSecondOfPair2.filteredCount = 3;

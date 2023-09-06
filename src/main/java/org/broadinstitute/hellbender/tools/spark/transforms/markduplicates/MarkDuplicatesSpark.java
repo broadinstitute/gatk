@@ -21,6 +21,7 @@ import org.broadinstitute.hellbender.engine.spark.GATKSparkTool;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.cmdline.ModeArgumentUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.read.markduplicates.GATKDuplicationMetrics;
@@ -41,7 +42,7 @@ import java.util.*;
  * Here are some differences of note between MarkDuplicatesSpark and Picard MarkDuplicates.
  *
  * <ul>
- *  <li>MarkDuplicatesSpark processing can replace both the MarkDuplicates and SortSam steps of the Best Practices <a href="https://software.broadinstitute.org/gatk/documentation/article?id=7899#2">single sample pipeline</a>. After flagging duplicate sets, the tool automatically coordinate-sorts the records. It is still necessary to subsequently run SetNmMdAndUqTags before running BQSR. </li>
+ *  <li>MarkDuplicatesSpark processing can replace both the MarkDuplicates and SortSam steps of the Best Practices <a href="https://software.broadinstitute.org/gatk/documentation/article?id=7899#2">single sample pipeline</a>. After flagging duplicate sets, the tool automatically coordinate-sorts the records. It is recommended to subsequently run SetNmMdAndUqTags before running BQSR. </li>
  *  <li>The tool is optimized to run on queryname-grouped alignments (that is, all reads with the same queryname are together in the input file). If provided coordinate-sorted alignments, the tool will spend additional time first queryname sorting the reads internally. This can result in the tool being up to 2x slower processing under some circumstances.</li>
  *  <li>Due to MarkDuplicatesSpark queryname-sorting coordinate-sorted inputs internally at the start, the tool produces identical results regardless of the input sort-order. That is, it will flag duplicates sets that include secondary, and supplementary and unmapped mate records no matter the sort-order of the input. This differs from how Picard MarkDuplicates behaves given the differently sorted inputs. </li>
  *  <li>Collecting duplicate metrics slows down performance and thus the metrics collection is optional and must be specified for the Spark version of the tool with '-M'. It is possible to collect the metrics with the standalone Picard tool <a href='https://software.broadinstitute.org/gatk/documentation/tooldocs/current/picard_sam_markduplicates_EstimateLibraryComplexity.php'>EstimateLibraryComplexity</a>.</li>
@@ -119,7 +120,7 @@ import java.util.*;
  * <h3>Notes</h3>
  * <ol>
  *     <li>This Spark tool requires a significant amount of disk operations. Run with both the input data and outputs on high throughput SSDs when possible. When pipelining this tool on Google Compute Engine instances, for best performance requisition machines with LOCAL SSDs.  </li>
- *     <li>Furthermore, we recommend explicitly setting the Spark temp directory to an available SSD when running this in local mode by adding the argument --conf 'spark.local.dir=/PATH/TO/TEMP/DIR'. See <a href="https://gatkforums.broadinstitute.org/gatk/discussion/comment/56337">this forum discussion</a> for details.</li>
+ *     <li>Furthermore, we recommend explicitly setting the Spark temp directory to an available SSD when running this in local mode by adding the argument --conf 'spark.local.dir=/PATH/TO/TEMP/DIR'. See <a href="https://sites.google.com/a/broadinstitute.org/legacy-gatk-forum-discussions/2019-02-11-2018-08-12/23441-MarkDuplicateSpark-is-slower-than-normal-MarkDuplicates">this forum discussion</a> for details.</li>
  * </ol>
  */
 @DocumentedFeature
@@ -198,7 +199,8 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
                                          final MarkDuplicatesScoringStrategy scoringStrategy,
                                          final OpticalDuplicateFinder opticalDuplicateFinder,
                                          final int numReducers, final boolean dontMarkUnmappedMates,
-                                         final MarkDuplicates.DuplicateTaggingPolicy taggingPolicy) {
+                                         final MarkDuplicates.DuplicateTaggingPolicy taggingPolicy,
+                                         final MarkDuplicatesSparkArgumentCollection mdArgs) {
         final boolean markUnmappedMates = !dontMarkUnmappedMates;
         SAMFileHeader headerForTool = header.clone();
 
@@ -208,7 +210,7 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         // If we need to remove optical duplicates or tag them, then make sure we are keeping track
         final boolean markOpticalDups = (taggingPolicy != MarkDuplicates.DuplicateTaggingPolicy.DontTag);
 
-        final JavaPairRDD<MarkDuplicatesSparkUtils.IndexPair<String>, Integer> namesOfNonDuplicates = MarkDuplicatesSparkUtils.transformToDuplicateNames(headerForTool, scoringStrategy, opticalDuplicateFinder, sortedReadsForMarking, numReducers, markOpticalDups);
+        final JavaPairRDD<MarkDuplicatesSparkUtils.IndexPair<String>, Integer> namesOfNonDuplicates = MarkDuplicatesSparkUtils.transformToDuplicateNames(headerForTool, scoringStrategy, opticalDuplicateFinder, sortedReadsForMarking, numReducers, markOpticalDups, mdArgs);
 
         // Here we explicitly repartition the read names of the unmarked reads to match the partitioning of the original bam
         final JavaRDD<Tuple2<String,Integer>> repartitionedReadNames = namesOfNonDuplicates
@@ -273,7 +275,9 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
                     finder,
                     numReducers,
                     mdArgs.dontMarkUnmappedMates,
-                    mdArgs.taggingPolicy);
+                    mdArgs.taggingPolicy,
+                    mdArgs
+                    );
     }
 
 
@@ -378,5 +382,21 @@ public final class MarkDuplicatesSpark extends GATKSparkTool {
         }
         return false;
     }
+
+    /**
+     * mode adjustments
+     * @return error messages
+     */
+    @Override
+    protected String[] customCommandLineValidation() {
+        if (markDuplicatesSparkArgumentCollection.useFlowFragments) {
+            ModeArgumentUtils.setArgValues(
+                    getCommandLineParser(),
+                    markDuplicatesSparkArgumentCollection.getFlowModeArgValues(),
+                    MarkDuplicatesSparkArgumentCollection.FLOW_MD_MODE_LONG_NAME);
+        }
+        return null;
+    }
+
 
 }

@@ -251,7 +251,9 @@ public final class ExtractVariantAnnotations extends LabeledVariantAnnotationsWa
                     "of sites from input sites that are not present in the specified resources. " +
                     "Choice of this number should be guided by considerations for training the negative model in " +
                     "TrainVariantAnnotationsModel; users may wish to choose a number that is comparable to the " +
-                    "expected size of the labeled training set or that is compatible with available memory resources.",
+                    "expected size of the labeled training set or that is compatible with available memory resources. " +
+                    "Note that in allele-specific mode (--" + LabeledVariantAnnotationsWalker.USE_ALLELE_SPECIFIC_ANNOTATIONS_LONG_NAME +
+                    " true), this argument limits the number of variant records, rather than the number of alleles.",
             minValue = 0)
     private int maximumNumberOfUnlabeledVariants = 0;
 
@@ -295,21 +297,31 @@ public final class ExtractVariantAnnotations extends LabeledVariantAnnotationsWa
                     variant, featureContext, unlabeledDataReservoir != null);
             final boolean isVariantExtracted = !metadata.isEmpty();
             if (isVariantExtracted) {
-                final boolean isUnlabeled = metadata.stream().map(Triple::getRight).allMatch(Set::isEmpty);
-                if (!isUnlabeled) {
-                    addExtractedVariantToData(data, variant, metadata);
-                    writeExtractedVariantToVCF(variant, metadata);
-                } else {
-                    // Algorithm R for reservoir sampling: https://en.wikipedia.org/wiki/Reservoir_sampling#Simple_algorithm
-                    if (unlabeledIndex < maximumNumberOfUnlabeledVariants) {
-                        addExtractedVariantToData(unlabeledDataReservoir, variant, metadata);
-                    } else {
-                        final int j = rng.nextInt(unlabeledIndex);
-                        if (j < maximumNumberOfUnlabeledVariants) {
-                            setExtractedVariantInData(unlabeledDataReservoir, variant, metadata, j);
+                // metadata may contain a mix of labeled and unlabeled alleles (e.g., when extracting unlabeled variants in allele-specific mode)
+                // which we separate here accordingly
+                final List<Triple<List<Allele>, VariantType, TreeSet<String>>> labeledMetadata = metadata.stream()
+                        .filter(m -> !m.getRight().isEmpty())
+                        .collect(Collectors.toList());
+                if (!labeledMetadata.isEmpty()) {
+                    addExtractedVariantToData(data, variant, labeledMetadata);
+                    writeExtractedVariantToVCF(variant, labeledMetadata);
+                }
+                if (unlabeledDataReservoir != null) {
+                    final List<Triple<List<Allele>, VariantType, TreeSet<String>>> unlabeledMetadata = metadata.stream()
+                            .filter(m -> m.getRight().isEmpty())
+                            .collect(Collectors.toList());
+                    if (!unlabeledMetadata.isEmpty()) {
+                        // Algorithm R for reservoir sampling: https://en.wikipedia.org/wiki/Reservoir_sampling#Simple_algorithm
+                        if (unlabeledIndex < maximumNumberOfUnlabeledVariants) {
+                            addExtractedVariantToData(unlabeledDataReservoir, variant, unlabeledMetadata);
+                        } else {
+                            final int j = rng.nextInt(unlabeledIndex);
+                            if (j < maximumNumberOfUnlabeledVariants) {
+                                setExtractedVariantInData(unlabeledDataReservoir, variant, unlabeledMetadata, j);
+                            }
                         }
+                        unlabeledIndex++;
                     }
-                    unlabeledIndex++;
                 }
             }
         }
@@ -359,7 +371,8 @@ public final class ExtractVariantAnnotations extends LabeledVariantAnnotationsWa
             logger.info(String.format("Extracted unlabeled annotations for %d variants of type %s.",
                     unlabeledDataReservoir.getVariantTypeFlat().stream().mapToInt(t -> t == variantType ? 1 : 0).sum(), variantType));
         }
-        logger.info(String.format("Extracted unlabeled annotations for %s total variants.", unlabeledDataReservoir.size()));
+        logger.info(String.format("Extracted unlabeled annotations for %s total records.", unlabeledDataReservoir.size()));
+        logger.info(String.format("Extracted unlabeled annotations for %s total variants.", unlabeledDataReservoir.flatSize()));
 
         logger.info("Writing unlabeled annotations...");
         // TODO coordinate sort

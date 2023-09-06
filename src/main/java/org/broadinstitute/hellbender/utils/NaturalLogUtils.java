@@ -7,8 +7,7 @@ import java.util.Collection;
 import java.util.Collections;
 
 public class NaturalLogUtils {
-    public static final double LOG_ONE_HALF = FastMath.log(0.5);
-    public static final double LOG_ONE_THIRD = FastMath.log(1.0/3);
+    public static final double LOG_ONE_HALF = Math.log(0.5);
     private static final double LOG1MEXP_THRESHOLD = Math.log(0.5);
     private static final double PHRED_TO_LOG_ERROR_PROB_FACTOR = -Math.log(10)/10;
 
@@ -146,6 +145,6 @@ public class NaturalLogUtils {
     }
 
     public static double logSumLog(final double a, final double b) {
-        return a > b ? a + FastMath.log(1 + FastMath.exp(b - a)) : b + FastMath.log(1 + FastMath.exp(a - b));
+        return a > b ? a + Math.log(1 + FastMath.exp(b - a)) : b + Math.log(1 + FastMath.exp(a - b));
     }
 }

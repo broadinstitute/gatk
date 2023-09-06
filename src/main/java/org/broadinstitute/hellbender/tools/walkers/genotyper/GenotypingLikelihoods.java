@@ -93,7 +93,7 @@ public final class GenotypingLikelihoods<A extends Allele> implements SampleList
     }
 
     @Override
-    public int indexOfAllele(final A allele) {
+    public int indexOfAllele(final Allele allele) {
         Utils.nonNull(allele);
         return alleles.indexOfAllele(allele);
     }

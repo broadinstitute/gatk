@@ -22,6 +22,7 @@ import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
 import org.broadinstitute.hellbender.utils.read.ReadQueryNameComparator;
 import org.broadinstitute.hellbender.testutils.MiniClusterUtils;
 import org.testng.Assert;
+import org.testng.SkipException;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import scala.Tuple2;
@@ -73,6 +74,11 @@ public class SparkUtilsUnitTest extends GATKBaseTest {
 
     @Test
     public void testPathExists() throws Exception {
+        // see https://github.com/eclipse/jetty.project/issues/8549
+        if (isGATKDockerContainer()) {
+            // for the docker tests, the test dependencies are in a separate jar
+            throw new SkipException("skipping due to jetty jar parsing issues (https://github.com/eclipse/jetty.project/issues/8549)");
+        }
         MiniClusterUtils.runOnIsolatedMiniCluster( cluster -> {
             //use the HDFS on the mini cluster
             final Path workingDirectory = MiniClusterUtils.getWorkingDir(cluster);

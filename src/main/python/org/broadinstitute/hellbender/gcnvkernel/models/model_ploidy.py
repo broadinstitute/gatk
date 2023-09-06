@@ -24,10 +24,10 @@ class PloidyModelConfig:
     """Germline contig ploidy model hyper-parameters."""
     def __init__(self,
                  contig_ploidy_prior_map: Dict[str, np.ndarray] = None,
-                 mean_bias_sd: float = 1e-2,
+                 mean_bias_sd: float = 1.,
                  psi_j_scale: float = 1e-3,
                  psi_s_scale: float = 1e-4,
-                 mapping_error_rate: float = 1e-2):
+                 mapping_error_rate: float = 0.3):
         """Initializer.
 
         Args:

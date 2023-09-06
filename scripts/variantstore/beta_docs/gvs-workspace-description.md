@@ -10,7 +10,7 @@ The materials in this workspace were developed by the Data Sciences Platform at 
 
 ## Workflow Overview
 
-![A diagram depicting the Genomic Variant Store workflow. Sample GVCF files are imported into the core data model. A filtering model is trained using Variant Quality Score Recalibration, or VQSR, and then applied while the samples are extracted as cohorts in sharded joint VCF files. Each step integrates BigQuery and GATK tools.](https://storage.googleapis.com/terra-featured-workspaces/Genomic-Variant-Store/genomic-variant-store_diagram.png)
+![A diagram depicting the Genomic Variant Store workflow. Sample GVCF files are imported into the core data model. A filtering model is trained using the VETS toolchain, and then applied while the samples are extracted as cohorts in sharded joint VCF files. Each step integrates BigQuery and GATK tools.](https://storage.googleapis.com/terra-featured-workspaces/Genomic-Variant-Store/genomic-variant-store_diagram.png)
 
 ### What does it do?
 
@@ -22,7 +22,7 @@ For workflow documentation, see the [Genomic Variant Store workflow overview](ht
 
 **Important Update:**
 
-Starting September 1, variants in GVS will be filtered using the GATK Variant Extract-Train-Score toolchain with an isolation-forest model by default. GVS maintains the ability to run VQSR on callsets up to 10,000 genomes to reproduce the same results from past analyses. See the [release notes](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/docs/release_notes/VETS_Release.pdf) for more information.
+Starting September 1 2023, variants in GVS are filtered using the GATK Variant Extract-Train-Score toolchain with an isolation-forest model by default. GVS maintains the ability to run VQSR on callsets up to 10,000 genomes to reproduce the same results from past analyses. See the [release notes](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/docs/release_notes/VETS_Release.pdf) for more information.
 
 ---
 
@@ -42,6 +42,8 @@ The following files are stored in the workspace workflow execution bucket under 
 - Sharded joint VCF files, index files, the interval lists for each sharded VCF, and a list of the sample names included in the callset.
 - Size of output VCF files in megabytes
 - Manifest file containing the destinations and sizes in bytes of the output sharded joint VCF and index files
+
+There are example outputs from the sample data in the workspace bucket.
 
 ## Setup
 
@@ -65,17 +67,18 @@ The `GvsBeta` workflow in the GVS beta workspace is pre-configured to use 10 sam
 1. Select the 'Run workflow with inputs defined by file paths' radio button.
 1. Configure the workflow inputs.
     1. Enter a **name for the callset** as a string with the format “*CALLSET_NAME*” for the `call_set_identifier` variable. This string is used as to name several variables and files and should begin with a letter. Valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”.
-    1. Enter the name of your **BigQuery dataset** as a string with the format “*DATASET_NAME*” for the `dataset_name` variable.
+    1. Enter the name of your **BigQuery dataset** as a string with the format “*DATASET_NAME*” for the `dataset_name` variable. Valid characters include A-z, 0-9, “,”, “-”, and “_”.
     1. Enter the name of the **GCP project** that holds the BigQuery dataset as a string with the format “*PROJECT_NAME*” for the `project_id` variable.
-    2. Enter the path of a **Google Cloud Storage directory for writing outputs**.  Enter a string in the format "*gs://your_bucket/here*" in `extract_output_gcs_dir`. If you want the data in your Terra workspace bucket you can find that on the Workspace Dashboard, right panel, under Cloud Information. Copy the "Bucket Name" and use it to the inputs to create a gs path as a string like this "*gs://fc-338fe040-3522-484c-ba48-14b48f9950c2*". If you do not enter a bucket here, the outputs will be in the execution directory under *Files*.
 1. **Save** the workflow configuration.
 1. **Run** the workflow.
 
 To run the GVS workflow on your own sample data, follow the instructions in the tutorial, [Upload data to Terra and run the GVS workflow](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/beta_docs/run-your-own-samples.md).
 
+See the "Job History" tab in the Genomic_Variant_Store_Beta workspace for a recent example configuration.
+
 ### Important configuration notes
 
-By default, the workflow is set up to write outputs to the workspace Google bucket. If you want to write the outputs to a different cloud storage location, you can specify the cloud path in the `extract_output_gcs_dir` optional input in the workflow configuration.
+By default, the workflow will write outputs to the location `gs://<workspace bucket>/output_vcfs/by_submission_id/<submission id>`. If you want to write the outputs to a different cloud storage location, you can specify the cloud path in the `extract_output_gcs_dir` optional input in the workflow configuration. The actual output location will be specified by the workflow output `output_gcs_path`.
 
 ### Time and cost
 Below are several examples of the time and cost of running the workflow. Generally the cost is around 6 cents per sample, including Terra compute and BigQuery compute cost. This does not include storage costs.
@@ -132,11 +135,12 @@ Data Sciences Platform, Broad Institute (*Year, Month Day that this workspace wa
 The workflow script is released under the Apache License, Version 2.0 (full license text at https://github.com/broadinstitute/gatk/blob/master/LICENSE.TXT). Note however that the programs called by the scripts may be subject to different licenses. Users are responsible for checking that they are authorized to run all programs before running these tools.
 
 ### Workspace Change Log
-| Date | Change                                   | Author |
-| --- |------------------------------------------| --- |
-| 08/11/2023 | Updated to VETS | Kylee Degatano |
-| 06/29/2023 | Updated to support larger sample sizes.  | Kylee Degatano | 
-| 09/08/2022 | Updated information on workflow outputs. | Aaron Hatcher |
-| 09/07/2022 | Added licensing information.             | Kaylee Mathews |
-| 09/06/2022 | Added note about storage cost.           | Kaylee Mathews |
-| 06/24/2022 | First release of the workspace.          | Kaylee Mathews |
+| Date       | Change                                    | Author         |
+|------------|-------------------------------------------|----------------|
+| 09/01/2023 | Updated to reflect VETS being the default | Bec Asch       |
+| 08/11/2023 | Updated to VETS                           | Kylee Degatano |
+| 06/29/2023 | Updated to support larger sample sizes.   | Kylee Degatano | 
+| 09/08/2022 | Updated information on workflow outputs.  | Aaron Hatcher  |
+| 09/07/2022 | Added licensing information.              | Kaylee Mathews |
+| 09/06/2022 | Added note about storage cost.            | Kaylee Mathews |
+| 06/24/2022 | First release of the workspace.           | Kaylee Mathews |

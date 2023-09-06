@@ -29,7 +29,7 @@ public class KBestHaplotype<V extends BaseVertex, E extends BaseEdge> extends Pa
     }
 
     public static double computeLogPenaltyScore(int edgeMultiplicity, int totalOutgoingMultiplicity) {
-        return MathUtils.log10(edgeMultiplicity) - MathUtils.log10(totalOutgoingMultiplicity);
+        return Math.log10(edgeMultiplicity) - Math.log10(totalOutgoingMultiplicity);
     }
 
     public KBestHaplotype(final KBestHaplotype<V, E> p, final List<E> edgesToExtend, final double edgePenalty) {

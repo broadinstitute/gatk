@@ -11,11 +11,15 @@ import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.PedigreeAnnotation;
+import org.broadinstitute.hellbender.utils.SerializableConsumer;
+import org.broadinstitute.hellbender.utils.SerializableFunction;
+import org.broadinstitute.hellbender.utils.SerializablePredicate;
+import org.broadinstitute.hellbender.tools.walkers.annotator.flow.FlowAnnotatorBase;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.config.ConfigFactory;
 import org.broadinstitute.hellbender.utils.config.GATKConfig;
 
-import java.io.File;
+import java.io.Serializable;
 import java.lang.reflect.Modifier;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -35,7 +39,9 @@ import java.util.stream.Stream;
  * NOTE: this class enforces that annotations with required arguments must see their arguments, yet this is not currently tested
  *       as no such annotations exist in the GATK.
  */
-public class GATKAnnotationPluginDescriptor extends CommandLinePluginDescriptor<Annotation> {
+public class GATKAnnotationPluginDescriptor extends CommandLinePluginDescriptor<Annotation> implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     /**
      * At startup, set the plugin package name to the one(s) in the configuration file.
      */
@@ -81,6 +87,9 @@ public class GATKAnnotationPluginDescriptor extends CommandLinePluginDescriptor<
     @Argument(fullName = StandardArgumentDefinitions.PEDIGREE_FILE_LONG_NAME, shortName = StandardArgumentDefinitions.PEDIGREE_FILE_SHORT_NAME, doc="Pedigree file for determining the population \"founders\"", optional=true)
     private GATKPath pedigreeFile;
 
+    @Argument(fullName = StandardArgumentDefinitions.FLOW_ORDER_FOR_ANNOTATIONS,  doc = "flow order used for this annotations. [readGroup:]flowOrder", optional = true)
+    private List<String> flowOrder;
+
     /**
      * @return the class object for the base class of all plugins managed by this descriptor
      */
@@ -112,7 +121,7 @@ public class GATKAnnotationPluginDescriptor extends CommandLinePluginDescriptor<
     public GATKAnnotationPluginDescriptor(final GATKAnnotationArgumentCollection userArgs, final List<Annotation> toolDefaultAnnotations, final List<Class<? extends Annotation>> toolDefaultGroups) {
         this.userArgs = userArgs;
         if (null != toolDefaultAnnotations) {
-            toolDefaultAnnotations.forEach(f -> {
+            toolDefaultAnnotations.forEach((SerializableConsumer<Annotation>) (f -> {
                 final Class<? extends Annotation> annotClass = f.getClass();
                 // anonymous classes have a 0-length simple name, and thus cannot be accessed or
                 // controlled by the user via the command line, but they should still be valid
@@ -124,15 +133,16 @@ public class GATKAnnotationPluginDescriptor extends CommandLinePluginDescriptor<
                 }
                 populateAnnotationGroups(className, f);
                 this.toolDefaultAnnotations.put(className, f);
-            });
+            }));
         }
         if (null != toolDefaultGroups) {
-            toolDefaultGroups.forEach(a -> {if (a.isInterface() && a!=Annotation.class) {
-                this.toolDefaultGroups.add(a.getSimpleName());
-            } else {
-                throw new GATKException(String.format("Tool specified annotation group %s is not a valid annotation group, must be an interface extending Annotation", a.getSimpleName()));
-            }
-            });
+            toolDefaultGroups.forEach((SerializableConsumer<Class<? extends Annotation>>) (a -> {
+                if (a.isInterface() && a!=Annotation.class) {
+                    this.toolDefaultGroups.add(a.getSimpleName());
+                } else {
+                    throw new GATKException(String.format("Tool specified annotation group %s is not a valid annotation group, must be an interface extending Annotation", a.getSimpleName()));
+                }
+            }));
         }
     }
     /**
@@ -253,7 +263,9 @@ public class GATKAnnotationPluginDescriptor extends CommandLinePluginDescriptor<
             return allDiscoveredAnnotations.keySet();
         }
         if (longArgName.equals(StandardArgumentDefinitions.ANNOTATIONS_TO_EXCLUDE_LONG_NAME)) {
-            Set<String> annotations = toolDefaultGroups.stream().map(k -> discoveredGroups.get(k).keySet()).flatMap(Collection::stream).collect(Collectors.toSet());
+            Set<String> annotations = toolDefaultGroups.stream().map(
+                    k -> discoveredGroups.get(k).keySet())
+                    .flatMap(Collection::stream).collect(Collectors.toSet());
             annotations.addAll(toolDefaultAnnotations.keySet());
             return annotations;
         }
@@ -277,9 +289,11 @@ public class GATKAnnotationPluginDescriptor extends CommandLinePluginDescriptor<
         if (!isAllowed) {
             // Check whether any of the annotations have been added via groups (either tool default or user enabled)
             isAllowed = Stream.of(userArgs.getUserEnabledAnnotationGroups(), toolDefaultGroups)
-                    .flatMap(Collection::stream)
-                    .anyMatch(group ->
-                            discoveredGroups.containsKey(group) && discoveredGroups.get(group).keySet().stream().anyMatch(s -> s.equals(predecessorName)));
+                    .flatMap((SerializableFunction<Collection<String>, Stream<String>>) t -> t.stream())
+                    .anyMatch((SerializablePredicate<String>) (group ->
+                            discoveredGroups.containsKey(group) &&
+                                    discoveredGroups.get(group).keySet().stream()
+                                            .anyMatch((SerializablePredicate<String>) (s -> s.equals(predecessorName)))));
         }
         if (isAllowed) {
             // Keep track of the ones we allow so we can validate later that they weren't subsequently disabled
@@ -322,29 +336,29 @@ public class GATKAnnotationPluginDescriptor extends CommandLinePluginDescriptor<
         }
 
         // throw if a disabled annotation doesn't exist; warn if it wasn't enabled by the tool in the first place
-        userArgs.getUserDisabledAnnotationNames().forEach(s -> {
+        userArgs.getUserDisabledAnnotationNames().forEach((SerializableConsumer<String>) (s -> {
             if (!allDiscoveredAnnotations.containsKey(s)) {
                 throw new CommandLineException.BadArgumentValue(String.format("Disabled annotation (%s) does not exist", s));
             } else if (!toolDefaultAnnotations.containsKey(s)) {
                 logger.warn(String.format("Disabled annotation (%s) is not enabled by this tool", s));
             }
-        });
+        }));
 
         // warn if an annotation is both default and enabled by the user
         final Set<String> redundantAnnots = new HashSet<>(toolDefaultAnnotations.keySet());
         redundantAnnots.retainAll(userArgs.getUserEnabledAnnotationNames());
-        redundantAnnots.forEach(
-                s -> {
+        redundantAnnots.forEach((SerializableConsumer<String>)
+                (s -> {
                     logger.warn(String.format("Redundant enabled annotation (%s) is enabled for this tool by default", s));
-                });
+                }));
 
         // warn if an annotation group is both default and enabled by the user
         final Set<String> redundantGroups = new HashSet<>(toolDefaultGroups);
         redundantGroups.retainAll(userArgs.getUserEnabledAnnotationGroups());
-        redundantGroups.forEach(
-                s -> {
+        redundantGroups.forEach((SerializableConsumer<String>)
+                (s -> {
                     logger.warn(String.format("Redundant enabled annotation group (%s) is enabled for this tool by default", s));
-                });
+                }));
 
         // Throw if args were specified for an annotation that was also disabled, or that was not enabled by the
         // tool by default.
@@ -372,21 +386,21 @@ public class GATKAnnotationPluginDescriptor extends CommandLinePluginDescriptor<
         });
 
         // throw if an annotation name was specified that has no corresponding instance
-        userArgs.getUserEnabledAnnotationNames().forEach(s -> {
+        userArgs.getUserEnabledAnnotationNames().forEach((SerializableConsumer<String>) (s -> {
             Annotation ta = allDiscoveredAnnotations.get(s);
             if (null == ta) {
                 if (!toolDefaultAnnotations.containsKey(s)) {
                     throw new CommandLineException("Unrecognized annotation name: " + s);
                 }
             }
-        });
+        }));
 
         // throw if an annotation group was specified that has no corresponding instance
-        userArgs.getUserEnabledAnnotationGroups().forEach(s -> {
+        userArgs.getUserEnabledAnnotationGroups().forEach((SerializableConsumer<String>) (s -> {
             if (!discoveredGroups.containsKey(s)) {
                 throw new CommandLineException("Unrecognized annotation group name: " + s);
             }
-        });
+        }));
 
         // Populating the tool default annotations with the ones requested by groups
         for (String group : toolDefaultGroups ) {
@@ -413,6 +427,24 @@ public class GATKAnnotationPluginDescriptor extends CommandLinePluginDescriptor<
                             "founder-id",
                             allDiscoveredAnnotations.values().stream().filter(PedigreeAnnotation.class::isInstance).map(a -> a.getClass().getSimpleName()).collect(Collectors.joining(", "))));
         }
+
+        //TODO: fix these lambdas to have serializable types
+        // Populating any discovered flow annotations with the flowOrder arguments from the command line.
+        if (flowOrder!=null && !flowOrder.isEmpty() && getResolvedInstances().stream()
+                .filter(FlowAnnotatorBase.class::isInstance)
+                .map(a -> (FlowAnnotatorBase) a)
+                .peek(a -> {
+                    a.setFlowOrder(flowOrder);
+                })
+                .count() == 0) {
+            // Throwing an exception if no flow based annotations were found
+            throw new CommandLineException(
+                    String.format(
+                            "Flow argument \"%s\" was specified without a flow based annotation being requested, (eg: %s))",
+                            StandardArgumentDefinitions.FLOW_ORDER_FOR_ANNOTATIONS,
+                            allDiscoveredAnnotations.values().stream().filter(FlowAnnotatorBase.class::isInstance).map(a -> a.getClass().getSimpleName()).collect(Collectors.joining(", "))));
+        }
+
     }
 
     /**
@@ -444,8 +476,8 @@ public class GATKAnnotationPluginDescriptor extends CommandLinePluginDescriptor<
     @Override
     public List<Annotation> getResolvedInstances() {
         if (resolvedInstances == null) {
-            final SortedSet<Annotation> annotations = new TreeSet<>(Comparator.comparing(t -> t.getClass().getSimpleName()));
-
+            final SortedSet<Annotation> annotations = new TreeSet<>(Comparator.comparing(
+                    (SerializableFunction<Annotation, String>) t -> t.getClass().getSimpleName()));
             if (!userArgs.getDisableToolDefaultAnnotations()) {
                 annotations.addAll(toolDefaultAnnotations.values());
             }
@@ -464,6 +496,16 @@ public class GATKAnnotationPluginDescriptor extends CommandLinePluginDescriptor<
         return resolvedInstances;
     }
 
+    /**
+     * Returns a map of the String to Annotations only in the resolved instances.
+     *
+     * @return a Map of Strings to Annotations of resolved instances
+     */
+    public Map<String, Annotation> getResolvedInstancesMap() {
+        return allDiscoveredAnnotations.entrySet().stream()
+                .filter(e -> getResolvedInstances().contains(e.getValue()))
+                .collect(Collectors.toMap(e -> e.getKey(), e -> e.getValue()));
+    }
 
     /**
      * Return the class representing the instance of the plugin specified by {@code pluginName}
@@ -475,5 +517,4 @@ public class GATKAnnotationPluginDescriptor extends CommandLinePluginDescriptor<
     public Class<?> getClassForPluginHelp(final String pluginName) {
         return allDiscoveredAnnotations.containsKey(pluginName) ? allDiscoveredAnnotations.get(pluginName).getClass() : null;
     }
-
 }

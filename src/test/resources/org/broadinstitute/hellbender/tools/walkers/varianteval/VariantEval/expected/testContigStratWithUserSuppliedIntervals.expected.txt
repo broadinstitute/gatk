@@ -1,0 +1,6 @@
+#:GATKReport.v1.1:1
+#:GATKTable:29:2:%s:%s:%s:%s:%d:%d:%d:%d:%.8f:%.8f:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%d:%.2e:%.2f:%.2f:%.2e:%.2f:%.2f:;
+#:GATKTable:CountVariants:Counts different classes of variants in the sample
+CountVariants  CompFeatureInput  Contig  EvalFeatureInput  nProcessedLoci  nCalledLoci  nRefLoci  nVariantLoci  variantRate  variantRatePerBp  nSNPs  nMNPs  nInsertions  nDeletions  nComplex  nSymbolic  nMixed  nNoCalls  nHets  nHomRef  nHomVar  nSingletons  nHomDerived  heterozygosity  heterozygosityPerBp  hetHomRatio  indelRate  indelRatePerBp  insertionDeletionRatio
+CountVariants  none              1       eval                     1480226          969         0           969   0.00065463     1527.00000000    920      0           16          33         0          0       0      7519  12011   123783     6882          287            0        8.11e-03               123.00         1.75   3.31e-05        30208.00                    0.48
+CountVariants  none              all     eval                     1480226          969         0           969   0.00065463     1527.00000000    920      0           16          33         0          0       0      7519  12011   123783     6882          287            0        8.11e-03               123.00         1.75   3.31e-05        30208.00                    0.48

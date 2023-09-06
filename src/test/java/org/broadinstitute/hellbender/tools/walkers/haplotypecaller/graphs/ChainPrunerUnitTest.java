@@ -3,12 +3,14 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
 import org.apache.commons.math3.util.FastMath;
+import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReadThreadingAssemblerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.MultiDeBruijnVertex;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingGraph;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
+import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignmentConstants;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -19,6 +21,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public final class ChainPrunerUnitTest extends GATKBaseTest {
+    private static final SWParameters DANGLING_END_SW_PARAMETERS = SmithWatermanAlignmentConstants.STANDARD_NGS;
+
     @DataProvider(name = "pruneLowWeightChainsData")
     public Object[][] makePruneChainsData() {
         List<Object[]> tests = new ArrayList<>();
@@ -155,8 +159,8 @@ public final class ChainPrunerUnitTest extends GATKBaseTest {
         pruner.pruneLowWeightChains(graph);
 
         final SmithWatermanAligner aligner = SmithWatermanJavaAligner.getInstance();
-        graph.recoverDanglingTails(1, 3, false, aligner);
-        graph.recoverDanglingHeads(1, 3, false, aligner);
+        graph.recoverDanglingTails(1, 3, false, aligner, DANGLING_END_SW_PARAMETERS);
+        graph.recoverDanglingHeads(1, 3, false, aligner, DANGLING_END_SW_PARAMETERS);
         graph.removePathsNotConnectedToRef();
 
         final SeqGraph seqGraph = graph.toSequenceGraph();

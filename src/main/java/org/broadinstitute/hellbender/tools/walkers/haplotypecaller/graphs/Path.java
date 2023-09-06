@@ -2,9 +2,9 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.Cigar;
-import joptsimple.internal.Strings;
 import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
+import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
@@ -152,7 +152,7 @@ public class Path<V extends BaseVertex, E extends BaseEdge> {
 
     @Override
     public String toString() {
-        final String joinedPath = Strings.join(getVertices().stream().map(v -> v.getSequenceString()).collect(Collectors.toList()), "->");
+        final String joinedPath = getVertices().stream().map(BaseVertex::getSequenceString).collect(Collectors.joining("->"));
         return String.format("Path{path=%s}", joinedPath);
     }
 
@@ -178,7 +178,7 @@ public class Path<V extends BaseVertex, E extends BaseEdge> {
      * @return a non-null, non-empty list of vertices
      */
     public List<V> getVertices() {
-        final List<V> result = new ArrayList<>(edgesInOrder.size()+1);
+        final List<V> result = new ArrayList<>(edgesInOrder.size() + 1);
         result.add(getFirstVertex());
         result.addAll(edgesInOrder.stream().map(graph::getEdgeTarget).collect(Collectors.toList()));
         return result;
@@ -221,12 +221,11 @@ public class Path<V extends BaseVertex, E extends BaseEdge> {
      * Calculate the cigar elements for this path against the reference sequence
      *
      * @param refSeq the reference sequence that all of the bases in this path should align to
-     * @param aligner
      * @return a Cigar mapping this path to refSeq, or null if no reasonable alignment could be found
      */
-    public  Cigar calculateCigar(final byte[] refSeq, final SmithWatermanAligner aligner) {
+    public  Cigar calculateCigar(final byte[] refSeq, final SmithWatermanAligner aligner, final SWParameters pathToReferenceSWParameters) {
         //Note: CigarUtils.calculateCigar already checks for null
-        return CigarUtils.calculateCigar(refSeq, getBases(), aligner, SWOverhangStrategy.SOFTCLIP);
+        return CigarUtils.calculateCigar(refSeq, getBases(), aligner, pathToReferenceSWParameters, SWOverhangStrategy.SOFTCLIP);
     }
 
 }

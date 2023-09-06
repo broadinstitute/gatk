@@ -30,7 +30,6 @@
 ##INFO=<ID=BaseQRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt Vs. Ref base qualities">
 ##INFO=<ID=ClippingRankSum,Number=1,Type=Float,Description="Z-score From Wilcoxon rank sum test of Alt vs. Ref number of hard clipped bases">
 ##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
-##INFO=<ID=DS,Number=0,Type=Flag,Description="Were any of the samples downsampled?">
 ##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
 ##INFO=<ID=ExcessHet,Number=1,Type=Float,Description="Phred-scaled p-value for exact test of excess heterozygosity">
 ##INFO=<ID=FS,Number=1,Type=Float,Description="Phred-scaled p-value using Fisher's exact test to detect strand bias">
@@ -40,7 +39,7 @@
 ##INFO=<ID=MQ_DP,Number=1,Type=Integer,Description="Depth over variant samples for better MQ calculation (deprecated -- use RAW_MQandDP instead.)">
 ##INFO=<ID=QD,Number=1,Type=Float,Description="Variant Confidence/Quality by Depth">
 ##INFO=<ID=QUALapprox,Number=1,Type=Integer,Description="Sum of PL[0] values; used to approximate the QUAL score">
-##INFO=<ID=RAW_GT_COUNT,Number=3,Type=Integer,Description="Counts of genotypes w.r.t. the reference allele: 0/0, 0/*, */*, i.e. all alts lumped together; for use in calculating excess heterozygosity">
+##INFO=<ID=RAW_GT_COUNT,Number=3,Type=Integer,Description="Counts of genotypes w.r.t. the reference allele in the following order: 0/0, 0/*, */*, i.e. all alts lumped together; for use in calculating excess heterozygosity">
 ##INFO=<ID=RAW_MQ,Number=1,Type=Float,Description="Raw data for RMS Mapping Quality (deprecated -- use RAW_MQandDP instead.)">
 ##INFO=<ID=RAW_MQandDP,Number=2,Type=Integer,Description="Raw data (sum of squared MQ and total depth) for improved RMS Mapping Quality calculation. Incompatible with deprecated RAW_MQ formulation.">
 ##INFO=<ID=ReadPosRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt vs. Ref read position bias">

@@ -73,6 +73,24 @@ public final class GATKSVVCFConstants {
     public static final String CPX_EVENT_ALT_ARRANGEMENTS = "ALT_ARRANGEMENT";
     public static final String CPX_SV_REF_SEGMENTS = "SEGMENTS";
     public static final String CPX_EVENT_KEY = "CPX_EVENT";
+    public static final String CPX_INTERVALS = "CPX_INTERVALS";
+    public static final String CPX_TYPE = "CPX_TYPE";
+
+    public enum ComplexVariantSubtype {
+        delINV,
+        INVdel,
+        dupINV,
+        INVdup,
+        delINVdel,
+        dupINVdup,
+        delINVdup,
+        dupINVdel,
+        piDUP_FR,
+        piDUP_RF,
+        dDUP,
+        dDUP_iDEL,
+        INS_iDEL
+    }
 
     // not defined in output vcf header but used in internal id that is currently output in the ID column
     public static final String INTERVAL_VARIANT_ID_FIELD_SEPARATOR = "_";
@@ -84,10 +102,14 @@ public final class GATKSVVCFConstants {
     public static final String ALGORITHMS_ATTRIBUTE = "ALGORITHMS";
     public static final String STRANDS_ATTRIBUTE = "STRANDS";
     public static final String DEPTH_ALGORITHM = "depth";
-    public static final String END_CONTIG_ATTRIBUTE = "CHR2";
+    public static final String CONTIG2_ATTRIBUTE = "CHR2";
+    public static final String END2_ATTRIBUTE = "END2";
+    public static final String BND_DELETION_STRANDS = "+-";
+    public static final String BND_DUPLICATION_STRANDS = "-+";
 
     // format block
     public static final String COPY_NUMBER_FORMAT = "CN";
+    public static final String EXPECTED_COPY_NUMBER_FORMAT = "ECN";
     public static final String COPY_NUMBER_QUALITY_FORMAT = "CNQ";
 
     // filter block
@@ -95,6 +117,64 @@ public final class GATKSVVCFConstants {
     public static final String ASSEMBLY_BASED_VARIANT_ALN_LENGTH_FILTER_KEY = "SHORT_ALN";
     public static final String LOW_QS_SCORE_FILTER_KEY = "LOW_QS";
     public static final String FREQUENCY_FILTER_KEY = "FREQ";
+
+    // Clustering
+    public static final String CLUSTER_MEMBER_IDS_KEY = "MEMBERS";
+
+    // Concordance
+    public static final String GENOTYPE_CONCORDANCE_INFO = "GENOTYPE_CONCORDANCE";
+    public static final String NON_REF_GENOTYPE_CONCORDANCE_INFO = "NON_REF_GENOTYPE_CONCORDANCE";
+
+    public static final String HET_PPV_INFO = "HET_PPV";
+    public static final String HET_SENSITIVITY_INFO = "HET_SENSITIVITY";
+    public static final String HET_SPECIFICITY_INFO = "HET_SPECIFICITY";
+
+    public static final String HOMVAR_PPV_INFO = "HOMVAR_PPV";
+    public static final String HOMVAR_SENSITIVITY_INFO = "HOMVAR_SENSITIVITY";
+    public static final String HOMVAR_SPECIFICITY_INFO = "HOMVAR_SPECIFICITY";
+
+    public static final String VAR_PPV_INFO = "VAR_PPV";
+    public static final String VAR_SENSITIVITY_INFO = "VAR_SENSITIVITY";
+    public static final String VAR_SPECIFICITY_INFO = "VAR_SPECIFICITY";
+
+    public static final String TRUTH_CN_EQUAL_FORMAT = "TRUTH_CN_EQUAL";
+    public static final String COPY_NUMBER_CONCORDANCE_INFO = "CNV_CONCORDANCE";
+
+    public static final String TRUTH_VARIANT_ID_INFO = "TRUTH_VID";
+
+    public static final String TRUTH_ALLELE_COUNT_INFO = "TRUTH_AC";
+    public static final String TRUTH_ALLELE_NUMBER_INFO = "TRUTH_AN";
+    public static final String TRUTH_ALLELE_FREQUENCY_INFO = "TRUTH_AF";
+
+    // functional annotations
+    public static final String LOF = "PREDICTED_LOF";
+    public static final String INT_EXON_DUP = "PREDICTED_INTRAGENIC_EXON_DUP";
+    public static final String COPY_GAIN = "PREDICTED_COPY_GAIN";
+    public static final String DUP_PARTIAL = "PREDICTED_DUP_PARTIAL";
+    public static final String PARTIAL_EXON_DUP = "PREDICTED_PARTIAL_EXON_DUP";
+    public static final String INTRONIC = "PREDICTED_INTRONIC";
+    public static final String INV_SPAN = "PREDICTED_INV_SPAN";
+    public static final String UTR = "PREDICTED_UTR";
+    public static final String MSV_EXON_OVERLAP = "PREDICTED_MSV_EXON_OVERLAP";
+    public static final String PROMOTER = "PREDICTED_PROMOTER";
+    public static final String BREAKEND_EXON = "PREDICTED_BREAKEND_EXONIC";
+    public static final String INTERGENIC = "PREDICTED_INTERGENIC";
+    public static final String NONCODING_SPAN = "PREDICTED_NONCODING_SPAN";
+    public static final String NONCODING_BREAKPOINT = "PREDICTED_NONCODING_BREAKPOINT";
+    public static final String NEAREST_TSS = "PREDICTED_NEAREST_TSS";
+    public static final String TSS_DUP = "PREDICTED_TSS_DUP";
+
+    // SVTYPE classes
+    public enum StructuralVariantAnnotationType {
+        DEL,
+        DUP,
+        INS,
+        INV,
+        CPX,
+        BND,
+        CTX,
+        CNV
+    }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

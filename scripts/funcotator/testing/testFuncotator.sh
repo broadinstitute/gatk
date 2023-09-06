@@ -296,6 +296,7 @@ if [[ $r -eq 0 ]] && ${doRunLargeTests} ; then
 
   if [[ "${REF_VER}" == "hg19" ]] ; then
     INPUT=${BASE_DIR}/NON_PUBLIC/0816201804HC0_R01C01.vcf
+
     #INPUT=${BASE_DIR}/funcotator_debugging/problem_variant_fixed.vcf
     #INPUT=${BASE_DIR}/gatk/src/test/resources/large/funcotator/regressionTestVariantSet1.vcf
     #INPUT=${BASE_DIR}/gatk/src/test/resources/large/funcotator/regressionTestVariantSet2.vcf
@@ -320,7 +321,7 @@ if [[ $r -eq 0 ]] && ${doRunLargeTests} ; then
 
   # Use the AOU data sources if we need them:
 	$useV16DataSources && echo "Using v1.6 data sources." && DATA_SOURCES_PATH=${DATA_SOURCES_PATH_16}
-  
+
 	# Use the AOU data sources if we need them:
   $useAOUDataSources && echo "Using AOU data sources." && DATA_SOURCES_PATH=${BASE_DIR}/funcotator_dataSources_germline_latest
 

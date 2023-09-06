@@ -112,6 +112,17 @@ def parse_args():
     parser.add_argument('--tensor_board', default=False, action='store_true',
                         help='Add the tensor board callback.')
 
+    parser.add_argument("--optimizer_learning_rate", default=0.0001, type=float,
+                        help="Learning rate for the Adam optimizer.")
+    parser.add_argument("--optimizer_beta_1", default=0.9, type=float,
+                        help="Beta 1 parameter for the Adam optimizer.")
+    parser.add_argument("--optimizer_beta_2", default=0.999, type=float,
+                        help="Beta 2 parameter for the Adam optimizer.")
+    parser.add_argument("--optimizer_epsilon", default=1e-08, type=float,
+                        help="Epsilon parameter for the Adam optimizer.")
+    parser.add_argument("--optimizer_clipnorm", default=1.0, type=float,
+                        help="Clipnorm parameter for the Adam optimizer.")
+
     # Architecture defining arguments
     parser.add_argument('--conv_width', default=5, type=int, help='Width of convolutional kernels.')
     parser.add_argument('--conv_height', default=5, type=int, help='Height of convolutional kernels.')

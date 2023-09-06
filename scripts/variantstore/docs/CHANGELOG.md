@@ -1,5 +1,19 @@
 # Genomic Variant Store (GVS) Changelog
 
+## 0.3.0 - 2023-09-01
+
+### Changed
+
+- Made VETS tool chain the default method for filtering (used to be VQSR).
+- Synced GVS development branch with GATK master, GATK-based Java tools now run on Java 17 rather than Java 8.
+- If no `extract_output_gcs_dir` is specified for `GvsBeta`/`GvsJointVariantCalling`, default value will be chosen so output VCFs are collected in one convenient place. Please see the [GVS documentation for further details](../beta_docs/gvs-overview.md#input-descriptions) for further details.
+
+## 0.2.1 - 2023-08-30
+
+### Changed
+
+- Updates to Beta documentation.
+
 ## 0.2.0 - 2023-08-29
 
 ### Added
