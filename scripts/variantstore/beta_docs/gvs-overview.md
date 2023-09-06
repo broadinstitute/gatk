@@ -71,7 +71,7 @@ The table below describes the GVS workflow input variables:
 | call_set_identifier    | Used to name the filter model, BigQuery extract tables, and final joint VCF shards; should begin with a letter; valid characters include A-z, 0-9, “.”, “,”, “-”, and “_”.                                                                                                    | String  |
 | extract_output_gcs_dir | Optional; desired cloud path for output files. If unspecified, the workflow will write outputs to the location `gs://<workspace bucket>/output_vcfs/by_submission_id/<submission id>`. The actual output location will be specified by the workflow output `output_gcs_path`. | String  |
 | use_classic_VQSR       | Optional; defaults to false since September 1, 2023.                                                                                                                                                                                                                          | Boolean |
-| billing_project_id     | Optional; Google project ID to charge for the egress of the gVCF  and index files, useful if the bucket(s) the gVCFs are in is requester pays                                                                                                                                 | String  |
+| billing_project_id     | Optional; Google project ID to charge for the egress of the GVCF  and index files, useful if the bucket theGVCFs are in has "requester pays" enabled                                                                                                                            | String  |
 
 ## Tasks and tools
 
