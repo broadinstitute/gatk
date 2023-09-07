@@ -109,11 +109,9 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         Utils.printIf(debug,() -> "Event groups after merging:\n"+eventGroups.stream().map(eg -> eg.toDisplayString(referenceHaplotype.getStart())).collect(Collectors.joining("\n")));
 
         /*
-          There are several nested loops here:
-          Layer 1: iterate over all determined event positions
-          Layer 2: iterate over all alleles at that position, including the reference allele unless we are making determined haplotypes, to set as
-                    the determined allele.  Other positions are treated as undetermined,
-          Layer 3: make partially determined haplotypes based on each set of branch exclusions
+          Outer loop: iterate over all loci with events, setting each in turn as the determined locus with all other loci being undetermined
+          Inner loop: iterate over all alleles at the determined locus, including the reference allele unless we are making determined haplotypes, to set as
+                    the determined allele.  For each choice of determined allele generate all possible partially determined haplotypes
          */
         final Set<Haplotype> outputHaplotypes = pileupArgs.determinePDHaps ? Sets.newLinkedHashSet(List.of(referenceHaplotype)) : Sets.newLinkedHashSet();  // NOTE: output changes if this is not a LinkedHashSet!
         for (final int determinedLocus : eventsByStartPos.keySet()) {   // it's a SortedMap -- iterating over its keyset is okay!
