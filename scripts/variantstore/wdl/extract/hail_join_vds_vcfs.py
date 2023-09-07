@@ -15,6 +15,8 @@ def vds_mt(vds_path):
 
 
 def vcf_mt(vcf_paths):
+    # Import a VCF that we will use a truth data for this test
+    # Setting array_elements_required to false is done as a workaround because Hail has a hard time with unconventional fields with empty values e.g. AS_YNG=.,.,. Avoiding explicitly acknowledging the use of missing elements in arrays requires Hail to make a decision in several ambiguous cases
     mt = hl.import_vcf(vcf_paths, force_bgz=True, reference_genome='GRCh38', array_elements_required=False).key_rows_by('locus')
     return mt
 
@@ -35,7 +37,7 @@ def joined_mt(mt_path):
     return mt
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':oh
     parser = argparse.ArgumentParser()
     parser.add_argument('--vds-path', required=True,
                         help='Input VDS for tieout')
