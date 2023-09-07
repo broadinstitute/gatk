@@ -106,7 +106,7 @@ workflow GvsJointVariantCalling {
     if (!defined(interval_list) && (defined(interval_weights_bed))) {
         call Utils.TerminateWorkflow {
             input:
-                message = "If the parameter 'interval_weights_bed' is defined, the parameter 'interval_list' must also be.",
+                message = "Error: If the parameter 'interval_weights_bed' is defined, the parameter 'interval_list' must also be.",
                 basic_docker = effective_basic_docker,
         }
     }
