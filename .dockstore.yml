@@ -175,6 +175,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - rsa_vs_1038
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
@@ -282,6 +283,7 @@ workflows:
              - master
              - ah_var_store
              - gg_VS-1024_BetaWorkflowForExomes
+             - rsa_vs_1038
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
