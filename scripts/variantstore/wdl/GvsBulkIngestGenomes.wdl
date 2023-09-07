@@ -41,6 +41,7 @@ workflow GvsBulkIngestGenomes {
         Int? load_data_batch_size
         Int? load_data_preemptible_override
         Int? load_data_maxretries_override
+        String? billing_project_id
         # End GvsImportGenomes
     }
 
@@ -117,6 +118,7 @@ workflow GvsBulkIngestGenomes {
             gatk_docker = effective_gatk_docker,
             load_data_gatk_override = gatk_override,
             drop_state = drop_state,
+            billing_project_id = billing_project_id,
     }
 
     output {
