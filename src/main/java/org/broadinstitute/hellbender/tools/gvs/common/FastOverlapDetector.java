@@ -44,6 +44,19 @@ public class FastOverlapDetector {
 
     public List<WeightedInterval> getOverlaps(final Interval interval) {
         int startingBlock = interval.getStart() / blockSize;
+
+        // There are several quirks in how intervals work.  The interval 1000-2000, when passed as an input, gets
+        // interpreted as [start, end] so it would have 1001 elements.  This different from how the bed file of weights
+        // is read in and interpreted, which means that an input interval of [1000, 2000] will intersect a weight
+        // interval of (1000, 2000] and get the wrong answer for the first location.  The first overlapping location
+        // returned will be 1001.  I work around it by detecting this boundary condition and, when possible, returning
+        // the interval before the overlap that the straightforward math would otherwise give us.  This isn't a problem
+        // at the very start of a chromosome because, by convention, the first location on a chromosome is position 1.
+        if ((interval.getStart() % blockSize) == 0) {
+            startingBlock = Math.max(0, startingBlock - 1);
+        }
+
+
         // We do a -1 on the interval end because intervals are (start,end].  So one that ends on an interval boundary
         // like 140000 will not actually intersect the interal that falls in the 14000 bucket, as it goes from
         // [14001, (14000 + blockSize)].  So anyhow, subtract one from the end of the interval before placing it in a
