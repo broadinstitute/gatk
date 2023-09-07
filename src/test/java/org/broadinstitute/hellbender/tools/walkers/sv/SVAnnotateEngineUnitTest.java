@@ -175,7 +175,7 @@ public class SVAnnotateEngineUnitTest extends GATKBaseTest {
     ) {
         final GencodeGtfTranscriptFeature toyTranscript = loadToyGtfTranscript();
 
-        final String actualDuplicationConsequence = SVAnnotateEngine.annotateDuplication(toyVariant, toyTranscript);
+        final String actualDuplicationConsequence = SVAnnotateEngine.annotateDuplication(toyVariant, toyTranscript, false);
         Assert.assertEquals(actualDuplicationConsequence, expectedDuplicationConsequence);
 
         final String actualDeletionConsequence = SVAnnotateEngine.annotateDeletion(toyVariant, toyTranscript);
@@ -244,21 +244,143 @@ public class SVAnnotateEngineUnitTest extends GATKBaseTest {
         Assert.assertEquals(actualTwoBaseTranslocationConsequence, expectedTranslocationVariantConsequence);
     }
 
+    /**
+     * Create list of SV segments with SAME SVTYPE - convenience function for testing getSVSegments
+     * @param svType - SV type for all segments
+     * @param intervals - list of intervals
+     * @return - list of SV segments with provided SV type, one for each interval
+     */
+    private List<SVAnnotateEngine.SVSegment> createListOfSVSegments(final GATKSVVCFConstants.StructuralVariantAnnotationType svType,
+                                                                    final SimpleInterval[] intervals) {
+        final List<SVAnnotateEngine.SVSegment> segments = new ArrayList<>(intervals.length);
+        for (final SimpleInterval interval : intervals) {
+            segments.add(new SVAnnotateEngine.SVSegment(svType, interval));
+        }
+        return segments;
+    }
+
+    /**
+     * Create list of SV segments with different SVTYPEs - convenience function
+     * @param svTypes - list of SV types
+     * @param intervals - list of intervals
+     * @return - list of SV segments
+     */
+    private List<SVAnnotateEngine.SVSegment> createListOfSVSegmentsDifferentTypes(final GATKSVVCFConstants.StructuralVariantAnnotationType[] svTypes,
+                                                                                  final SimpleInterval[] intervals) {
+        Assert.assertEquals(svTypes.length, intervals.length);
+        final List<SVAnnotateEngine.SVSegment> segments = new ArrayList<>(intervals.length);
+        for (int i = 0; i < svTypes.length; i++) {
+            segments.add(new SVAnnotateEngine.SVSegment(svTypes[i], intervals[i]));
+        }
+        return segments;
+    }
+
+    // CPX_TYPE & CPX_INTERVALS INFO fields specifying complex variant intervals, and expected SV segments
+    @DataProvider(name = "complexVariantIntervals")
+    public Object[][] getComplexVariantIntervalsTestData() {
+        return new Object[][] {
+                { "dDUP", "DUP_chr1:280-420",
+                        createListOfSVSegmentsDifferentTypes(new GATKSVVCFConstants.StructuralVariantAnnotationType[]{
+                                GATKSVVCFConstants.StructuralVariantAnnotationType.DUP },
+                                new SimpleInterval[]{new SimpleInterval("chr1", 280, 420)}) },
+                { "dupINV", "DUP_chr1:44355904-44356327,INV_chr1:44355904-44357498",
+                        createListOfSVSegmentsDifferentTypes(new GATKSVVCFConstants.StructuralVariantAnnotationType[]{
+                                GATKSVVCFConstants.StructuralVariantAnnotationType.DUP,
+                                        GATKSVVCFConstants.StructuralVariantAnnotationType.INV},
+                        new SimpleInterval[]{new SimpleInterval("chr1", 44355904, 44356327),
+                                new SimpleInterval("chr1", 44356327, 44357498)}) },
+                { "dupINVdup", "DUP_chr1:247660974-248129213,INV_chr1:247660974-248587216,DUP_chr1:248520217-248587216",
+                        createListOfSVSegmentsDifferentTypes(new GATKSVVCFConstants.StructuralVariantAnnotationType[]{
+                                GATKSVVCFConstants.StructuralVariantAnnotationType.DUP,
+                                        GATKSVVCFConstants.StructuralVariantAnnotationType.DUP,
+                                        GATKSVVCFConstants.StructuralVariantAnnotationType.INV},
+                        new SimpleInterval[]{new SimpleInterval("chr1", 247660974, 248129213),
+                                new SimpleInterval("chr1", 248520217, 248587216),
+                                new SimpleInterval("chr1", 248129213, 248520217)}) },
+                { "dDUP_iDEL", "DUP_chr2:131488885-131489335,INV_chr2:131488885-131489335,DEL_chr2:130185450-130185720",
+                        createListOfSVSegmentsDifferentTypes(new GATKSVVCFConstants.StructuralVariantAnnotationType[]{
+                                GATKSVVCFConstants.StructuralVariantAnnotationType.DUP,
+                                GATKSVVCFConstants.StructuralVariantAnnotationType.DEL},
+                        new SimpleInterval[]{new SimpleInterval("chr2", 131488885,131489335),
+                                new SimpleInterval("chr2", 130185450,130185720)}) },
+                { "dDUP_iDEL", "DUP_chr3:95751919-95752156,DEL_chr3:95746923-95749272",
+                        createListOfSVSegmentsDifferentTypes(new GATKSVVCFConstants.StructuralVariantAnnotationType[]{
+                                GATKSVVCFConstants.StructuralVariantAnnotationType.DUP,
+                                GATKSVVCFConstants.StructuralVariantAnnotationType.DEL},
+                        new SimpleInterval[]{new SimpleInterval("chr3", 95751919,95752156),
+                                new SimpleInterval("chr3", 95746923,95749272)}) },
+                { "INS_iDEL", "DEL_chr3:60521333-60521483",
+                        createListOfSVSegmentsDifferentTypes(new GATKSVVCFConstants.StructuralVariantAnnotationType[]{
+                                GATKSVVCFConstants.StructuralVariantAnnotationType.DEL},
+                        new SimpleInterval[]{new SimpleInterval("chr3", 60521333,60521483)}) },
+                { "delINV", "DEL_chr2:120379742-120383130,INV_chr2:120383130-120384123",
+                        createListOfSVSegmentsDifferentTypes(new GATKSVVCFConstants.StructuralVariantAnnotationType[]{
+                                GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
+                                GATKSVVCFConstants.StructuralVariantAnnotationType.INV},
+                        new SimpleInterval[]{new SimpleInterval("chr2", 120379742,120383130),
+                                new SimpleInterval("chr2", 120383130,120384123)}) },
+                { "INVdel", "INV_chr2:122719025-122719803,DEL_chr2:122719803-122724929",
+                        createListOfSVSegmentsDifferentTypes(new GATKSVVCFConstants.StructuralVariantAnnotationType[]{
+                                GATKSVVCFConstants.StructuralVariantAnnotationType.INV,
+                                GATKSVVCFConstants.StructuralVariantAnnotationType.DEL},
+                        new SimpleInterval[]{new SimpleInterval("chr2", 122719025,122719803),
+                                new SimpleInterval("chr2", 122719803,122724929)}) },
+                { "delINVdup", "DEL_chr2:54002577-54003019,INV_chr2:54003019-54006204,DUP_chr2:54006057-54006204",
+                        createListOfSVSegmentsDifferentTypes(new GATKSVVCFConstants.StructuralVariantAnnotationType[]{
+                                GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
+                                GATKSVVCFConstants.StructuralVariantAnnotationType.DUP,
+                                        GATKSVVCFConstants.StructuralVariantAnnotationType.INV},
+                        new SimpleInterval[]{new SimpleInterval("chr2", 54002577,54003019),
+                                new SimpleInterval("chr2", 54006057,54006204),
+                                new SimpleInterval("chr2", 54003019,54006057)}) },
+                { "dupINVdel", "DUP_chr2:4157678-4157846,INV_chr2:4157678-4165085,DEL_chr2:4165085-4175888",
+                        createListOfSVSegmentsDifferentTypes(new GATKSVVCFConstants.StructuralVariantAnnotationType[]{
+                                GATKSVVCFConstants.StructuralVariantAnnotationType.DUP,
+                                GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
+                                GATKSVVCFConstants.StructuralVariantAnnotationType.INV},
+                        new SimpleInterval[]{new SimpleInterval("chr2", 4157678,4157846),
+                                new SimpleInterval("chr2", 4165085,4175888),
+                                new SimpleInterval("chr2", 4157846,4165085)}) },
+                { "delINVdel", "DEL_chr2:62384663-62387814,INV_chr2:62387814-62388322,DEL_chr2:62388322-62390272",
+                        createListOfSVSegmentsDifferentTypes(new GATKSVVCFConstants.StructuralVariantAnnotationType[]{
+                                GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
+                                GATKSVVCFConstants.StructuralVariantAnnotationType.INV,
+                                GATKSVVCFConstants.StructuralVariantAnnotationType.DEL},
+                        new SimpleInterval[]{new SimpleInterval("chr2", 62384663,62387814),
+                                new SimpleInterval("chr2", 62387814,62388322),
+                                new SimpleInterval("chr2", 62388322,62390272)}) }
+        };
+    }
+
+    // Test getComplexAnnotationIntervals()
+    @Test(dataProvider = "complexVariantIntervals")
+    public void testGetSegmentsFromComplexIntervals(
+            final String complexType,
+            final String cpxIntervalsString,
+            final List<SVAnnotateEngine.SVSegment> expectedSVSegments
+    ) {
+        final List<String> cpxIntervals = Arrays.asList(cpxIntervalsString.split(","));
+        final List<SVAnnotateEngine.SVSegment> actualSegments = SVAnnotateEngine.getComplexAnnotationIntervals(cpxIntervals,
+                complexType);
+        assertSegmentListEqual(actualSegments, expectedSVSegments);
+    }
+
     // CPX_INTERVALS INFO field string specifying complex variant intervals, and expected annotation(s)
     @DataProvider(name = "toyComplexVariants")
     public Object[][] getToyComplexVariantTestData() {
         return new Object[][] {
-                { "DUP_chr1:280-420", Sets.newHashSet(GATKSVVCFConstants.INT_EXON_DUP) },
-                { "INV_chr1:90-1010,DUP_chr1:890-1010",
-                        Sets.newHashSet(GATKSVVCFConstants.INV_SPAN, GATKSVVCFConstants.DUP_PARTIAL) },
-                { "DEL_chr1:250-450,INV_chr1:450-650,DUP_chr1:610-650",
-                        Sets.newHashSet(GATKSVVCFConstants.LOF, GATKSVVCFConstants.INTRONIC) }
+                { "dDUP", "DUP_chr1:280-420", Sets.newHashSet(GATKSVVCFConstants.PARTIAL_DISPERSED_DUP) },
+                { "INVdup", "INV_chr1:90-1010,DUP_chr1:890-1010",
+                        Sets.newHashSet(GATKSVVCFConstants.LOF, GATKSVVCFConstants.PARTIAL_DISPERSED_DUP) },
+                { "delINVdup", "DEL_chr1:250-450,INV_chr1:450-650,DUP_chr1:610-650",
+                        Sets.newHashSet(GATKSVVCFConstants.LOF, GATKSVVCFConstants.PARTIAL_DISPERSED_DUP) }
         };
     }
 
-    // Test annotation of CPX events from CPX_INTERVALS string
+    // Test annotation of CPX events for gene overlaps from CPX_INTERVALS string
     @Test(dataProvider = "toyComplexVariants")
     public void testAnnotateComplexEvents(
+            final String complexType,
             final String cpxIntervalsString,
             final Set<String> expectedConsequences
     ) {
@@ -272,10 +394,10 @@ public class SVAnnotateEngineUnitTest extends GATKBaseTest {
         SVAnnotateEngine svAnnotateEngine = new SVAnnotateEngine(gtfTrees, null, sequenceDictionary,
                 -1);
 
-        final String[] cpxIntervalStrings = cpxIntervalsString.split(",");
-        for (String cpxIntervalString : cpxIntervalStrings) {
-            SVAnnotateEngine.SVSegment cpxSegment = SVAnnotateEngine.parseCPXIntervalString(cpxIntervalString);
-            svAnnotateEngine.annotateGeneOverlaps(cpxSegment.getInterval(), cpxSegment.getIntervalSVType(),
+        final List<String> cpxIntervals = Arrays.asList(cpxIntervalsString.split(","));
+        final List<SVAnnotateEngine.SVSegment> cpxSegments = SVAnnotateEngine.getComplexAnnotationIntervals(cpxIntervals, complexType);
+        for (final SVAnnotateEngine.SVSegment cpxSegment: cpxSegments) {
+            svAnnotateEngine.annotateGeneOverlaps(cpxSegment.getInterval(), cpxSegment.getIntervalSVType(), true,
                     variantConsequenceDict);
         }
 
@@ -303,21 +425,6 @@ public class SVAnnotateEngineUnitTest extends GATKBaseTest {
         Assert.assertEquals(SVAnnotateEngine.sortVariantConsequenceDict(before), expectedAfter);
     }
 
-
-    /**
-     * Create list of SV segments with SAME SVTYPE - convenience function for testing getSVSegments
-     * @param svType - SV type for all segments
-     * @param intervals - list of intervals
-     * @return - list of SV segments with provided SV type, one for each interval
-     */
-    private List<SVAnnotateEngine.SVSegment> createListOfSVSegments(final GATKSVVCFConstants.StructuralVariantAnnotationType svType,
-                                                                    final SimpleInterval[] intervals) {
-        final List<SVAnnotateEngine.SVSegment> segments = new ArrayList<>(intervals.length);
-        for (final SimpleInterval interval : intervals) {
-            segments.add(new SVAnnotateEngine.SVSegment(svType, interval));
-        }
-        return segments;
-    }
 
     /**
      * Assert two lists of SVAnnotate.SVSegment objects are equal in contents
@@ -483,8 +590,6 @@ public class SVAnnotateEngineUnitTest extends GATKBaseTest {
                         Arrays.asList("INV_chr22:20267228-20267614","DUP_chr22:20267228-20267614")),
                         GATKSVVCFConstants.StructuralVariantAnnotationType.CPX,
                         Arrays.asList(
-                                new SVAnnotateEngine.SVSegment(GATKSVVCFConstants.StructuralVariantAnnotationType.INV,
-                                        new SimpleInterval("chr22", 20267228, 20267614)),
                                 new SVAnnotateEngine.SVSegment(GATKSVVCFConstants.StructuralVariantAnnotationType.DUP,
                                         new SimpleInterval("chr22", 20267228, 20267614)),
                                 new SVAnnotateEngine.SVSegment(GATKSVVCFConstants.StructuralVariantAnnotationType.INS,
@@ -524,7 +629,7 @@ public class SVAnnotateEngineUnitTest extends GATKBaseTest {
                                 new SVAnnotateEngine.SVSegment(GATKSVVCFConstants.StructuralVariantAnnotationType.DUP,
                                         new SimpleInterval("chr22", 36533058, 36533299)),
                                 new SVAnnotateEngine.SVSegment(GATKSVVCFConstants.StructuralVariantAnnotationType.INV,
-                                        new SimpleInterval("chr22", 36533058, 36538234))),
+                                        new SimpleInterval("chr22", 36533299, 36538234))),
                         null }
         };
     }
@@ -581,6 +686,38 @@ public class SVAnnotateEngineUnitTest extends GATKBaseTest {
                         createAttributesMap(
                                 Arrays.asList(GATKSVVCFConstants.PROMOTER, GATKSVVCFConstants.INTERGENIC),
                                 Arrays.asList("EMMA1", true)) },
+                // CPX with dDUP CG and promoter annotations
+                { createVariantContext("chr1", 10, 11, null, null, null,
+                        "<CPX>", 1500, null, "dDUP",
+                        Collections.singletonList("DUP_chr1:2000-3500")),
+                        createAttributesMap(
+                                Arrays.asList(GATKSVVCFConstants.PROMOTER, GATKSVVCFConstants.COPY_GAIN,
+                                        GATKSVVCFConstants.INTERGENIC),
+                                Arrays.asList("EMMA1", "EMMA2", false)) },
+                // ignore INV for dDUP; ignore dDUP for promoter; CPX noncoding span; CPX intergenic
+                { createVariantContext("chr1", 1101, 1102, null, null, null,
+                        "<CPX>", 700, null, "dDUP_iDEL",
+                        Arrays.asList("DUP_chr1:10-60", "INV_chr1:10-60","DEL_chr1:1100-1700")),
+                        createAttributesMap(
+                                Arrays.asList(GATKSVVCFConstants.NONCODING_SPAN, GATKSVVCFConstants.NEAREST_TSS,
+                                        GATKSVVCFConstants.INTERGENIC),
+                                Arrays.asList("Enhancer", "EMMA1", true)) },
+                // no noncoding breakpoint for DUP segment of CPX; modify INV interval; multiple genes for a consequence
+                { createVariantContext("chr1", 450, 3100, null, null, null,
+                        "<CPX>", 2650, null, "dupINV",
+                        Arrays.asList("DUP_chr1:450-2200", "INV_chr1:450-3100")),
+                        createAttributesMap(
+                                Arrays.asList(GATKSVVCFConstants.PARTIAL_DISPERSED_DUP, GATKSVVCFConstants.LOF,
+                                        GATKSVVCFConstants.INTERGENIC),
+                                Arrays.asList(Arrays.asList("EMMA1", "EMMA2"), "EMMA2", false)) },
+                // merge INV + DEL for nearest TSS; noncoding breakpoint for CPX
+                { createVariantContext("chr1", 10, 11, null, null, null,
+                        "<CPX>", 40, null, "delINV",
+                        Arrays.asList("DEL_chr1:1400-1500", "INV_chr1:1500-1900")),
+                        createAttributesMap(
+                                Arrays.asList(GATKSVVCFConstants.NONCODING_BREAKPOINT, GATKSVVCFConstants.NEAREST_TSS,
+                                        GATKSVVCFConstants.INTERGENIC),
+                                Arrays.asList("Enhancer", "EMMA2", true)) },
                 { createVariantContext("chr1", 50, 450, null, null, null,
                         "<DEL>", 400, null, null, null),
                         createAttributesMap(

@@ -163,6 +163,7 @@ public final class GATKSVVCFConstants {
     public static final String NONCODING_BREAKPOINT = "PREDICTED_NONCODING_BREAKPOINT";
     public static final String NEAREST_TSS = "PREDICTED_NEAREST_TSS";
     public static final String TSS_DUP = "PREDICTED_TSS_DUP";
+    public static final String PARTIAL_DISPERSED_DUP = "PREDICTED_PARTIAL_DISPERSED_DUP";
 
     // SVTYPE classes
     public enum StructuralVariantAnnotationType {
