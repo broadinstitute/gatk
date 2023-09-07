@@ -82,7 +82,7 @@ public final class  PartiallyDeterminedHaplotype extends Haplotype {
     // If we aren't careful, reads that only overlap some alleles at a site will end up with incorrect/undetermined PDHMM scores
     // for a subset of alleles in the genotyper which can lead to false positives/poorly called sites.
     //NOTE: we never want the genotyper to handle reads that were not HMM scored, caching this extent helps keep us safe from messy sites
-    private final SimpleInterval cachedExtent;
+    private final SimpleInterval determinedExtent;
 
     /**
      * @param base                          base (reference) haplotype used to construct the PDHaplotype
@@ -105,7 +105,7 @@ public final class  PartiallyDeterminedHaplotype extends Haplotype {
 
         final int minStart = allEventsAtDeterminedLocus.stream().mapToInt(Event::getStart).min().orElse(determinedPosition);
         final int maxEnd = allEventsAtDeterminedLocus.stream().mapToInt(Event::getEnd).max().orElse(determinedPosition);
-        cachedExtent = new SimpleInterval(getContig(), minStart, maxEnd);
+        determinedExtent = new SimpleInterval(getContig(), minStart, maxEnd);
 
         // TODO: eventually determined events can be at different positions
         this.determinedPosition = determinedPosition;
@@ -160,7 +160,7 @@ public final class  PartiallyDeterminedHaplotype extends Haplotype {
 
     //NOTE: we never want the genotyper to handle reads that were not HMM scored, caching this extent helps keep us safe from messy sites
     public SimpleInterval getMaximumExtentOfSiteDeterminedAlleles() {
-        return cachedExtent;
+        return determinedExtent;
     }
 
     public long getDeterminedPosition() {
