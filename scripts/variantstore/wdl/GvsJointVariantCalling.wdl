@@ -103,6 +103,14 @@ workflow GvsJointVariantCalling {
     String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
     String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
 
+    if (!defined(interval_list) && (defined(interval_weights_bed))) {
+        call Utils.TerminateWorkflow {
+            input:
+                message = "If the parameter 'interval_weights_bed' is defined, the parameter 'interval_list' must also be.",
+                basic_docker = effective_basic_docker,
+        }
+    }
+
     call BulkIngestGenomes.GvsBulkIngestGenomes as BulkIngestGenomes {
         input:
             git_branch_or_tag = git_branch_or_tag,
