@@ -9,14 +9,9 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
+import org.broadinstitute.barclay.argparser.*;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.*;
-import org.broadinstitute.barclay.argparser.CommandLineException;
-import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
-import org.broadinstitute.barclay.argparser.Advanced;
-import org.broadinstitute.barclay.argparser.Argument;
-import org.broadinstitute.barclay.argparser.ArgumentCollection;
-import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.GATKPath;
@@ -66,9 +61,8 @@ import java.util.*;
  * assigned a score and filter status.</p>
  *
  * <p>VQSR is probably the hardest part of the Best Practices to get right, so be sure to read the
- * <a href='https://software.broadinstitute.org/gatk/guide/article?id=39'>method documentation</a>,
- * <a href='https://software.broadinstitute.org/gatk/guide/article?id=1259'>parameter recommendations</a> and
- * <a href='https://software.broadinstitute.org/gatk/guide/article?id=2805'>tutorial</a> to really understand what these
+ * <a href='https://gatk.broadinstitute.org/hc/en-us/articles/360035531612-Variant-Quality-Score-Recalibration-VQSR-'>method documentation</a> and
+ * <a href='https://gatk.broadinstitute.org/hc/en-us/articles/360035531112--How-to-Filter-variants-either-with-VQSR-or-by-hard-filtering'>tutorial</a> to really understand what these
  * tools do and how to use them for best results on your own data.</p>
  *
  * <h3>Inputs</h3>
@@ -173,6 +167,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
     /**
      * These additional calls should be unfiltered and annotated with the error covariates that are intended to be used for modeling.
      */
+    @DeprecatedFeature(detail="This argument is not tested or used in any pipeline")
     @Argument(fullName="aggregate",
             shortName = "aggregate", doc="Additional raw input variants to be used in building the model",
             optional=true)
@@ -357,6 +352,12 @@ public class VariantRecalibrator extends MultiVariantWalker {
     @VisibleForTesting
     protected int max_attempts = 1;
 
+    @Advanced
+    @Argument(fullName="dont-run-rscript",
+            doc="Disable the RScriptExecutor to allow RScript to be generated but not run",
+            optional=true)
+    private boolean disableRScriptExecutor = false;
+
     /////////////////////////////
     // Debug Arguments
     /////////////////////////////
@@ -404,9 +405,9 @@ public class VariantRecalibrator extends MultiVariantWalker {
         if (RSCRIPT_FILE != null) {
             rScriptExecutor = new RScriptExecutor();
             if(!rScriptExecutor.externalExecutableExists()) {
-                Utils.warnUser(logger, String.format(
-                        "Rscript not found in environment path. %s will be generated but PDF plots will not.",
-                        RSCRIPT_FILE));
+                if(!disableRScriptExecutor) {
+                    throw new UserException("Rscript not found in environment path. Fix executor or run with --dont-run-rscript argument to generate rscript file without running.");
+                }
             }
         }
 
@@ -654,7 +655,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
                     engine.evaluateData(dataManager.getData(), goodModel, false);
                     if (goodModel.failedToConverge) {
                         if (outputModel != null) {
-                            final GATKReport report = writeModelReport(goodModel, null, USE_ANNOTATIONS);
+                            final GATKReport report = writeModelReport(goodModel, null, dataManager.getAnnotationKeys());
                             saveModelReport(report, outputModel);
                         }
                         throw new UserException.VQSRPositiveModelFailure("Positive training model failed to converge.  One or more annotations " +
@@ -677,7 +678,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
                 engine.evaluateData(dataManager.getData(), badModel, true);
 
                 if (outputModel != null) {
-                    final GATKReport report = writeModelReport(goodModel, badModel, USE_ANNOTATIONS);
+                    final GATKReport report = writeModelReport(goodModel, badModel, dataManager.getAnnotationKeys());
                     saveModelReport(report, outputModel);
                 }
 
@@ -710,7 +711,7 @@ public class VariantRecalibrator extends MultiVariantWalker {
                             goodModel,
                             badModel,
                             0.0,
-                            dataManager.getAnnotationKeys().toArray(new String[USE_ANNOTATIONS.size()]));
+                            dataManager.getAnnotationKeys().toArray(new String[dataManager.getAnnotationKeys().size()]));
                 }
 
                 if (VRAC.MODE == VariantRecalibratorArgumentCollection.Mode.INDEL) {
@@ -720,12 +721,14 @@ public class VariantRecalibrator extends MultiVariantWalker {
                     //skip R plots for scattered tranches because the format is different and the R code parses them
                     logger.info("Tranches plot will not be generated since we are running in scattered mode");
                 } else if (RSCRIPT_FILE != null) { //we don't use the RSCRIPT_FILE for tranches, but here it's an indicator if we're setup to run R
-                    // Execute the RScript command to plot the table of truth values
-                    rScriptExecutor.addScript(new Resource(PLOT_TRANCHES_RSCRIPT, VariantRecalibrator.class));
-                    rScriptExecutor.addArgs(TRANCHES_FILE.getAbsoluteFile(), TARGET_TITV);
-                    // Print out the command line to make it clear to the user what is being executed and how one might modify it
-                    logger.info("Executing: " + rScriptExecutor.getApproximateCommandLine());
-                    rScriptExecutor.exec();
+                    if(!disableRScriptExecutor) {
+                        // Execute the RScript command to plot the table of truth values
+                        rScriptExecutor.addScript(new Resource(PLOT_TRANCHES_RSCRIPT, VariantRecalibrator.class));
+                        rScriptExecutor.addArgs(TRANCHES_FILE.getAbsoluteFile(), TARGET_TITV);
+                        // Print out the command line to make it clear to the user what is being executed and how one might modify it
+                        logger.info("Executing: " + rScriptExecutor.getApproximateCommandLine());
+                        rScriptExecutor.exec();
+                    }
                 }
                 return true;
             }
@@ -1137,9 +1140,11 @@ private GATKReportTable makeVectorTable(final String tableName,
 
         // Execute Rscript command to generate the clustering plots
         final RScriptExecutor executor = new RScriptExecutor();
-        executor.addScript(RSCRIPT_FILE);
-        logger.info("Executing: " + executor.getApproximateCommandLine());
-        executor.exec();
+        if(!disableRScriptExecutor) {
+            executor.addScript(RSCRIPT_FILE);
+            logger.info("Executing: " + executor.getApproximateCommandLine());
+            executor.exec();
+        }
     }
 
     // The Arrange function is how we place the 4 model plots on one page

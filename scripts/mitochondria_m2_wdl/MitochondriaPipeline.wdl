@@ -15,7 +15,6 @@ workflow MitochondriaPipeline {
     File wgs_aligned_input_bam_or_cram
     File wgs_aligned_input_bam_or_cram_index
     String contig_name = "chrM"
-    Float autosomal_coverage = 30
 
     # Read length used for optimization only. If this is too small CollectWgsMetrics might fail, but the results are not
     # affected by this number. Default is 151.
@@ -62,7 +61,6 @@ workflow MitochondriaPipeline {
     Float? f_score_beta
     Float? verifyBamID
     Boolean compress_output_vcf = false
-    Int? max_low_het_sites
 
     #Optional runtime arguments
     Int? preemptible_tries
@@ -70,7 +68,6 @@ workflow MitochondriaPipeline {
 
   parameter_meta {
     wgs_aligned_input_bam_or_cram: "Full WGS hg38 bam or cram"
-    autosomal_coverage: "Median coverage of full input bam"
     out_vcf: "Final VCF of mitochondrial SNPs and INDELs"
     vaf_filter_threshold: "Hard threshold for filtering low VAF sites"
     f_score_beta: "F-Score beta balances the filtering strategy between recall and precision. The relative weight of recall to precision."
@@ -103,7 +100,6 @@ workflow MitochondriaPipeline {
   call AlignAndCall.AlignAndCall as AlignAndCall {
     input:
       unmapped_bam = RevertSam.unmapped_bam,
-      autosomal_coverage = autosomal_coverage,
       base_name = base_name,
       mt_dict = mt_dict,
       mt_fasta = mt_fasta,
@@ -133,7 +129,6 @@ workflow MitochondriaPipeline {
       verifyBamID = verifyBamID,
       compress_output_vcf = compress_output_vcf,
       max_read_length = max_read_length,
-      max_low_het_sites = max_low_het_sites,
       preemptible_tries = preemptible_tries
   }
 
@@ -184,6 +179,7 @@ workflow MitochondriaPipeline {
     File contamination_metrics = AlignAndCall.contamination_metrics
     File base_level_coverage_metrics = CoverageAtEveryBase.table
     Int mean_coverage = AlignAndCall.mean_coverage
+    Float median_coverage = AlignAndCall.median_coverage
     String major_haplogroup = AlignAndCall.major_haplogroup
     Float contamination = AlignAndCall.contamination
   }
@@ -205,6 +201,7 @@ task SubsetBamToChrM {
 
     # runtime
     Int? preemptible_tries
+    Int mem = 3
   }
   Float ref_size = if defined(ref_fasta) then size(ref_fasta, "GB") + size(ref_fasta_index, "GB") + size(ref_dict, "GB") else 0
   Int disk_size = ceil(size(input_bam, "GB") + ref_size) + 20
@@ -236,7 +233,7 @@ task SubsetBamToChrM {
       -O ~{basename}.bam
   >>>
   runtime {
-    memory: "3 GB"
+    memory: mem + " GB"
     disks: "local-disk " + disk_size + " HDD"
     docker: select_first([gatk_docker_override, "us.gcr.io/broad-gatk/gatk:4.1.7.0"])
     preemptible: select_first([preemptible_tries, 5])
@@ -254,8 +251,10 @@ task RevertSam {
 
     # runtime
     Int? preemptible_tries
+    Int machine_mem = 2000
+    Int disk_size = ceil(size(input_bam, "GB") * 2.5) + 20
   }
-  Int disk_size = ceil(size(input_bam, "GB") * 2.5) + 20
+  Int java_mem = machine_mem - 1000
 
   meta {
     description: "Removes alignment information while retaining recalibrated base qualities and original alignment tags"
@@ -264,7 +263,7 @@ task RevertSam {
     input_bam: "aligned bam"
   }
   command {
-    java -Xmx1000m -jar /usr/gitc/picard.jar \
+    java -Xmx~{java_mem}m -jar /usr/gitc/picard.jar \
     RevertSam \
     INPUT=~{input_bam} \
     OUTPUT_BY_READGROUP=false \
@@ -277,7 +276,7 @@ task RevertSam {
   }
   runtime {
     disks: "local-disk " + disk_size + " HDD"
-    memory: "2 GB"
+    memory: machine_mem + " MB"
     docker: "us.gcr.io/broad-gotc-prod/genomes-in-the-cloud:2.4.2-1552931386"
     preemptible: select_first([preemptible_tries, 5])
   }
@@ -302,9 +301,10 @@ task CoverageAtEveryBase {
     File shifted_ref_fasta_index
     File shifted_ref_dict
 
+    # runtime
     Int? preemptible_tries
+    Int disk_size = ceil(size(input_bam_regular_ref, "GB") + size(input_bam_shifted_ref, "GB") + size(ref_fasta, "GB") * 2) + 20
   }
-  Int disk_size = ceil(size(input_bam_regular_ref, "GB") + size(input_bam_shifted_ref, "GB") + size(ref_fasta, "GB") * 2) + 20
 
   meta {
     description: "Remove this hack once there's a GVCF solution."

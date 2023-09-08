@@ -36,7 +36,7 @@ public class SubsettedLikelihoodMatrix<EVIDENCE extends Locatable, A extends All
     public static <EVIDENCE extends Locatable, A extends Allele> SubsettedLikelihoodMatrix<EVIDENCE,A> excludingAllele(final LikelihoodMatrix<EVIDENCE,A> matrix, final Allele excludedAllele) {
         final List<A> alleles = matrix.alleles().stream().filter(a -> !basesMatch(a,excludedAllele)).collect(Collectors.toList());
         Utils.validateArg(alleles.size() == matrix.numberOfAlleles() - 1, "More than one allele excluded.");
-        return new SubsettedLikelihoodMatrix<EVIDENCE,A>(matrix, alleles);
+        return new SubsettedLikelihoodMatrix<>(matrix, alleles);
     }
 
     //TODO: take this hack out
@@ -57,7 +57,7 @@ public class SubsettedLikelihoodMatrix<EVIDENCE extends Locatable, A extends All
     public double get(final int alleleIndex, final int evidenceIndex) { return matrix.get(newToOldIndexMap.get(alleleIndex), evidenceIndex); }
 
     @Override
-    public int indexOfAllele(final A allele) { return alleles.indexOf(allele); }
+    public int indexOfAllele(final Allele allele) { return alleles.indexOf(allele); }
 
     @Override
     public int indexOfEvidence(final EVIDENCE evidence) { return matrix.indexOfEvidence(evidence); }

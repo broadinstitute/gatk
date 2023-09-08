@@ -464,6 +464,9 @@ public class ScoreVariantAnnotations extends LabeledVariantAnnotationsWalker {
                 scoresIterator = Arrays.stream(VariantAnnotationsScorer.readScores(outputScoresFile)).iterator();
                 isSNPIterator = LabeledVariantAnnotationsData.readLabel(outputAnnotationsFile, LabeledVariantAnnotationsData.SNP_LABEL).iterator();
             } else {
+                logger.warn("Found no input variants for scoring. This may be because the specified " +
+                        "genomic region contains no input variants of the requested type(s). " +
+                        "The scores HDF5 file will not be generated.");
                 scoresIterator = Collections.emptyIterator();
                 isSNPIterator = Collections.emptyIterator();
             }

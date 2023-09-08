@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.varianteval.evaluators;
 
+import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEvalEngine;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.Analysis;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.DataPoint;
 
@@ -9,6 +10,9 @@ import org.broadinstitute.hellbender.tools.walkers.varianteval.util.DataPoint;
 
 @Analysis(description = "Metrics Collection")
 public class MetricsCollection extends VariantEvaluator {
+    public MetricsCollection(VariantEvalEngine engine) {
+        super(engine);
+    }
 
     @DataPoint(description = "The concordance rate from CompOverlap", format = "%.2f")
     public double concordantRate;

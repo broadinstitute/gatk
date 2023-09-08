@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.readorientation;
 
 import htsjdk.samtools.util.SequenceUtil;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -40,7 +41,7 @@ public class ArtifactPriorUnitTest {
         artifactPriorCollectionBefore.set(new ArtifactPrior(referenceContext2, pi, numExamples2, numAltExamples2));
         artifactPriorCollectionBefore.set(new ArtifactPrior(referenceContext3, pi, numExamples3, numAltExamples3));
 
-        final File table = File.createTempFile("prior", ".tsv");
+        final File table = IOUtils.createTempFile("prior", ".tsv");
         artifactPriorCollectionBefore.writeArtifactPriors(table);
         final ArtifactPriorCollection artifactPriorCollectionAfter = ArtifactPriorCollection.readArtifactPriors(table);
 
@@ -79,7 +80,7 @@ public class ArtifactPriorUnitTest {
         artifactPriorCollectionBefore.set(new ArtifactPrior(referenceContext1, pi1, numExamples, numAltExamples));
         artifactPriorCollectionBefore.set(new ArtifactPrior(referenceContext2, pi2, numExamples, numAltExamples));
 
-        final File table = File.createTempFile("prior", ".tsv");
+        final File table = IOUtils.createTempFile("prior", ".tsv");
         artifactPriorCollectionBefore.writeArtifactPriors(table);
 
         final ArtifactPriorCollection artifactPriorCollectionAfter = ArtifactPriorCollection.readArtifactPriors(table);

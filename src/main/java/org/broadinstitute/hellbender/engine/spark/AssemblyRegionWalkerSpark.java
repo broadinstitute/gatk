@@ -107,7 +107,7 @@ public abstract class AssemblyRegionWalkerSpark extends GATKSparkTool {
         } else {
             return FindAssemblyRegionsSpark.getAssemblyRegionsFast(ctx, getReads(), getHeaderForReads(), sequenceDictionary, referenceFileName, features,
                     intervalShards, assemblyRegionEvaluatorSupplierBroadcast(ctx), shardingArgs, assemblyRegionArgs,
-                    shuffle);
+                    shuffle, false);
         }
     }
 

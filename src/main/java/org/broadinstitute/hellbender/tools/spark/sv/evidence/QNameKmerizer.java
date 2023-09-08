@@ -3,7 +3,7 @@ package org.broadinstitute.hellbender.tools.spark.sv.evidence;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVDUSTFilteredKmerizer;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmer;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerLong;
-import org.broadinstitute.hellbender.tools.spark.utils.HopscotchUniqueMultiMap;
+import org.broadinstitute.hellbender.tools.spark.utils.HopscotchUniqueMultiMapSpark;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import scala.Tuple2;
 
@@ -18,14 +18,14 @@ import java.util.function.Function;
  * The template names of reads to kmerize, along with a set of kmers to ignore are passed in (by broadcast).
  */
 public final class QNameKmerizer implements Function<GATKRead, Iterator<Tuple2<KmerAndInterval, Integer>>> {
-    private final HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> qNameAndIntervalMultiMap;
+    private final HopscotchUniqueMultiMapSpark<String, Integer, QNameAndInterval> qNameAndIntervalMultiMap;
     private final Set<SVKmer> kmersToIgnore;
     private final int kSize;
     private final int maxDUSTScore;
     private final SVReadFilter filter;
     private final ArrayList<Tuple2<KmerAndInterval, Integer>> tupleList = new ArrayList<>();
 
-    public QNameKmerizer( final HopscotchUniqueMultiMap<String, Integer, QNameAndInterval> qNameAndIntervalMultiMap,
+    public QNameKmerizer( final HopscotchUniqueMultiMapSpark<String, Integer, QNameAndInterval> qNameAndIntervalMultiMap,
                           final Set<SVKmer> kmersToIgnore, final int kSize, final int maxDUSTScore,
                           final SVReadFilter filter ) {
         this.qNameAndIntervalMultiMap = qNameAndIntervalMultiMap;

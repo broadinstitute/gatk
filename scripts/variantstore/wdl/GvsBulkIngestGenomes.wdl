@@ -41,6 +41,7 @@ workflow GvsBulkIngestGenomes {
         Int? load_data_batch_size
         Int? load_data_preemptible_override
         Int? load_data_maxretries_override
+        String? billing_project_id
         # End GvsImportGenomes
     }
 
@@ -117,10 +118,15 @@ workflow GvsBulkIngestGenomes {
             gatk_docker = effective_gatk_docker,
             load_data_gatk_override = gatk_override,
             drop_state = drop_state,
+            billing_project_id = billing_project_id,
     }
 
     output {
         Boolean done = true
+        String workspace_bucket = GenerateImportFofnFromDataTable.workspace_bucket
+        String workspace_id = GenerateImportFofnFromDataTable.workspace_id
+        String submission_id = GenerateImportFofnFromDataTable.submission_id
+        String workflow_id = GenerateImportFofnFromDataTable.workflow_id
         String recorded_git_hash = effective_git_hash
     }
 }
@@ -150,6 +156,8 @@ task GenerateImportFofnFromDataTable {
     String workspace_name_output = "workspace_name.txt"
     String workspace_namespace_output = "workspace_namespace.txt"
     String workspace_bucket_output = "workspace_bucket.txt"
+    String submission_id_output = "submission_id.txt"
+    String workflow_id_output = "workflow_id.txt"
 
     String sample_name_column = if (defined(user_defined_sample_id_column_name)) then select_first([user_defined_sample_id_column_name]) else entity_id
 
@@ -162,6 +170,8 @@ task GenerateImportFofnFromDataTable {
         # Sniff the workspace bucket out of the delocalization script and extract the workspace id from that.
         sed -n -E 's!.*gs://fc-(secure-)?([^\/]+).*!\2!p' /cromwell_root/gcs_delocalization.sh | sort -u > ~{workspace_id_output}
         sed -n -E 's!.*gs://(fc-(secure-)?[^\/]+).*!\1!p' /cromwell_root/gcs_delocalization.sh | sort -u > ~{workspace_bucket_output}
+        sed -n -E 's!.*gs://fc-(secure-)?([^\/]+)/submissions/([^\/]+).*!\3!p' /cromwell_root/gcs_delocalization.sh | sort -u > ~{submission_id_output}
+        sed -n -E 's!.*gs://fc-(secure-)?([^\/]+)/submissions/([^\/]+)/([^\/]+)/([^\/]+).*!\5!p' /cromwell_root/gcs_delocalization.sh | sort -u > ~{workflow_id_output}
 
         export WORKSPACE_ID="$(cat '~{workspace_id_output}')"
         export WORKSPACE_BUCKET="$(cat '~{workspace_bucket_output}')"
@@ -229,6 +239,10 @@ task GenerateImportFofnFromDataTable {
     }
 
     output {
+        String workspace_bucket = read_string("~{workspace_bucket_output}")
+        String workspace_id = read_string("~{workspace_id_output}")
+        String submission_id = read_string("~{submission_id_output}")
+        String workflow_id = read_string("~{workflow_id_output}")
         File output_fofn = output_fofn_name
     }
 }

@@ -1,0 +1,62 @@
+##fileformat=VCFv4.2
+##ALT=<ID=NON_REF,Description="Represents any possible alternative allele at this location">
+##FILTER=<ID=LowQual,Description="Low quality">
+##FILTER=<ID=PASS,Description="All filters passed">
+##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=MIN_DP,Number=1,Type=Integer,Description="Minimum DP observed within the GVCF block">
+##FORMAT=<ID=PGT,Number=1,Type=String,Description="Physical phasing haplotype information, describing how the alternate alleles are phased in relation to one another">
+##FORMAT=<ID=PID,Number=1,Type=String,Description="Physical phasing ID information, where each unique ID within a given sample (but not across samples) connects records within a phasing group">
+##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics which comprise the Fisher's Exact Test to detect strand bias.">
+##GATKCommandLine=<ID=GenomicsDBImport,CommandLine="GenomicsDBImport --genomicsdb-workspace-path genomicsdb --batch-size 50 --consolidate true --sample-name-map /cromwell_root/broad-gotc-test-storage/joint_genotyping/exome/plumbing/callset/reblocked_name_sample_map --merge-input-intervals true --reader-threads 5 --intervals /cromwell_root/broad-gotc-dev-cromwell-execution/JointGenotyping/0deab674-7c38-4a93-a511-51c65b5b991c/call-SplitIntervalList/glob-d928cd0f5fb17b6bd5e635f48c18ccfb/0002-scattered.interval_list --genomicsdb-segment-size 1048576 --genomicsdb-vcf-buffer-size 16384 --overwrite-existing-genomicsdb-workspace false --validate-sample-name-map false --max-num-intervals-to-import-in-parallel 1 --genomicsdb-shared-posixfs-optimizations false --interval-set-rule UNION --interval-padding 0 --interval-exclusion-padding 0 --interval-merging-rule ALL --read-validation-stringency SILENT --seconds-between-progress-updates 10.0 --disable-sequence-dictionary-validation false --create-output-bam-index true --create-output-bam-md5 false --create-output-variant-index true --create-output-variant-md5 false --lenient false --add-output-sam-program-record true --add-output-vcf-command-line true --cloud-prefetch-buffer 0 --cloud-index-prefetch-buffer 0 --disable-bam-index-caching false --sites-only-vcf-output false --help false --version false --showHidden false --verbosity INFO --QUIET false --use-jdk-deflater false --use-jdk-inflater false --gcs-max-retries 20 --gcs-project-for-requester-pays  --disable-tool-default-read-filters false",Version="4.1.8.0",Date="September 25, 2020 4:12:49 PM GMT">
+##GATKCommandLine=<ID=SelectVariants,CommandLine="SelectVariants --output homVarNoDP.g.vcf --call-genotypes true --variant gendb://genomicsdb --intervals chr4:189917428 --reference /Users/gauthier/workspaces/gatk/src/test/resources/large/Homo_sapiens_assembly38.fasta.gz --invertSelect false --exclude-non-variants false --exclude-filtered false --preserve-alleles false --remove-unused-alternates false --restrict-alleles-to ALL --keep-original-ac false --keep-original-dp false --mendelian-violation false --invert-mendelian-violation false --mendelian-violation-qual-threshold 0.0 --select-random-fraction 0.0 --remove-fraction-genotypes 0.0 --fully-decode false --max-indel-size 2147483647 --min-indel-size 0 --max-filtered-genotypes 2147483647 --min-filtered-genotypes 0 --max-fraction-filtered-genotypes 1.0 --min-fraction-filtered-genotypes 0.0 --max-nocall-number 2147483647 --max-nocall-fraction 1.0 --set-filtered-gt-to-nocall false --allow-nonoverlapping-command-line-samples false --suppress-reference-path false --genomicsdb-use-bcf-codec false --genomicsdb-shared-posixfs-optimizations false --genomicsdb-use-gcs-hdfs-connector false --interval-set-rule UNION --interval-padding 0 --interval-exclusion-padding 0 --interval-merging-rule ALL --read-validation-stringency SILENT --seconds-between-progress-updates 10.0 --disable-sequence-dictionary-validation false --create-output-bam-index true --create-output-bam-md5 false --create-output-variant-index true --create-output-variant-md5 false --max-variants-per-shard 0 --lenient false --add-output-sam-program-record true --add-output-vcf-command-line true --cloud-prefetch-buffer 40 --cloud-index-prefetch-buffer -1 --disable-bam-index-caching false --sites-only-vcf-output false --help false --version false --showHidden false --verbosity INFO --QUIET false --use-jdk-deflater false --use-jdk-inflater false --gcs-max-retries 20 --gcs-project-for-requester-pays  --disable-tool-default-read-filters false",Version="4.2.2.0-3-gc1f3737-SNAPSHOT",Date="October 4, 2021 11:09:18 AM EDT">
+##GVCFBlock0-10=minGQ=0(inclusive),maxGQ=10(exclusive)
+##GVCFBlock10-20=minGQ=10(inclusive),maxGQ=20(exclusive)
+##GVCFBlock20-30=minGQ=20(inclusive),maxGQ=30(exclusive)
+##GVCFBlock30-40=minGQ=30(inclusive),maxGQ=40(exclusive)
+##GVCFBlock40-50=minGQ=40(inclusive),maxGQ=50(exclusive)
+##GVCFBlock50-60=minGQ=50(inclusive),maxGQ=60(exclusive)
+##GVCFBlock60-100=minGQ=60(inclusive),maxGQ=100(exclusive)
+##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
+##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
+##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
+##INFO=<ID=AS_BaseQRankSum,Number=A,Type=Float,Description="allele specific Z-score from Wilcoxon rank sum test of each Alt Vs. Ref base qualities">
+##INFO=<ID=AS_FS,Number=A,Type=Float,Description="allele specific phred-scaled p-value using Fisher's exact test to detect strand bias of each alt allele">
+##INFO=<ID=AS_InbreedingCoeff,Number=A,Type=Float,Description="allele specific heterozygosity as estimated from the genotype likelihoods per-sample when compared against the Hardy-Weinberg expectation; relate to inbreeding coefficient">
+##INFO=<ID=AS_MQ,Number=A,Type=Float,Description="Allele-specific RMS Mapping Quality">
+##INFO=<ID=AS_MQRankSum,Number=A,Type=Float,Description="Allele-specific Mapping Quality Rank Sum">
+##INFO=<ID=AS_QD,Number=A,Type=Float,Description="Allele-specific Variant Confidence/Quality by Depth">
+##INFO=<ID=AS_QUALapprox,Number=1,Type=String,Description="Allele-specific QUAL approximations">
+##INFO=<ID=AS_RAW_BaseQRankSum,Number=1,Type=String,Description="raw data for allele specific rank sum test of base qualities">
+##INFO=<ID=AS_RAW_MQ,Number=1,Type=String,Description="Allele-specfic raw data for RMS Mapping Quality">
+##INFO=<ID=AS_RAW_MQRankSum,Number=1,Type=String,Description="Allele-specfic raw data for Mapping Quality Rank Sum">
+##INFO=<ID=AS_RAW_ReadPosRankSum,Number=1,Type=String,Description="allele specific raw data for rank sum test of read position bias">
+##INFO=<ID=AS_ReadPosRankSum,Number=A,Type=Float,Description="allele specific Z-score from Wilcoxon rank sum test of each Alt vs. Ref read position bias">
+##INFO=<ID=AS_SB_TABLE,Number=1,Type=String,Description="Allele-specific forward/reverse read counts for strand bias tests">
+##INFO=<ID=AS_SOR,Number=A,Type=Float,Description="Allele specific strand Odds Ratio of 2x|Alts| contingency table to detect allele specific strand bias">
+##INFO=<ID=AS_VarDP,Number=1,Type=String,Description="Allele-specific (informative) depth over variant genotypes; effectively sum of ADs">
+##INFO=<ID=BaseQRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt Vs. Ref base qualities">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth; some reads may have been filtered">
+##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
+##INFO=<ID=ExcessHet,Number=1,Type=Float,Description="Phred-scaled p-value for exact test of excess heterozygosity">
+##INFO=<ID=FS,Number=1,Type=Float,Description="Phred-scaled p-value using Fisher's exact test to detect strand bias">
+##INFO=<ID=InbreedingCoeff,Number=1,Type=Float,Description="Inbreeding coefficient as estimated from the genotype likelihoods per-sample when compared against the Hardy-Weinberg expectation">
+##INFO=<ID=MQ,Number=1,Type=Float,Description="RMS Mapping Quality">
+##INFO=<ID=MQRankSum,Number=1,Type=Float,Description="Z-score From Wilcoxon rank sum test of Alt vs. Ref read mapping qualities">
+##INFO=<ID=MQ_DP,Number=1,Type=Integer,Description="Depth over variant samples for better MQ calculation (deprecated -- use RAW_MQandDP instead.">
+##INFO=<ID=QD,Number=1,Type=Float,Description="Variant Confidence/Quality by Depth">
+##INFO=<ID=QUALapprox,Number=1,Type=Integer,Description="Sum of PL[0] values; used to approximate the QUAL score">
+##INFO=<ID=RAW_GT_COUNT,Number=3,Type=Integer,Description="Counts of genotypes w.r.t. the reference allele: 0/0, 0/*, */*, i.e. all alts lumped together; for use in calculating excess heterozygosity">
+##INFO=<ID=RAW_MQandDP,Number=2,Type=Integer,Description="Raw data (sum of squared MQ and total depth) for improved RMS Mapping Quality calculation. Incompatible with deprecated RAW_MQ formulation.">
+##INFO=<ID=ReadPosRankSum,Number=1,Type=Float,Description="Z-score from Wilcoxon rank sum test of Alt vs. Ref read position bias">
+##INFO=<ID=SOR,Number=1,Type=Float,Description="Symmetric Odds Ratio of 2x2 contingency table to detect strand bias">
+##INFO=<ID=VarDP,Number=1,Type=Integer,Description="(informative) depth over variant genotypes">
+##contig=<ID=chr4,length=190214555,assembly=Homo_sapiens_assembly38.fasta.gz>
+##reference=file:///Users/gauthier/workspaces/gatk/src/test/resources/large/Homo_sapiens_assembly38.fasta.gz
+##source=GenomicsDBImport
+##source=SelectVariants
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	CHMI_CHMI3_Nex1	NA12878	NA12891	NA12892	NA19238	NA20845	NA20846	NA20847	NA20849	NA20850	NA20851	NA20852	NA20853	NA20854	NA20856	NA20858	NA20859	NA20861	NA20862	NA20866	NA20869	NA20870	NA20871	NA20872	NA20873	NA20874	NA20875	NA20876	NA20877	NA20878	NA20881	NA20885	NA20886	NA20887	NA20888	NA20889	NA20890	NA20891	NA20892	NA20893	NA20894	NA20895	NA20896	NA20897	NA20898	NA20899	NA20901	NA20902	NA20903	NA20904	NA20905	NA20906	NA20908	NA20910	NA20911	NA21086	NA21087	NA21088	NA21093	NA21095	NA21114	NA21124	NA21126	NA21129	NA21137
+chr4	189917428	.	C	G,<NON_REF>	.	.	AS_QUALapprox=|45|;AS_RAW_BaseQRankSum=||;AS_RAW_MQ=0.000|0.000|0.000;AS_RAW_MQRankSum=||;AS_RAW_ReadPosRankSum=||;AS_SB_TABLE=0,0|0,0|0,0;AS_VarDP=0|0|0;MQ_DP=0;QUALapprox=45;RAW_GT_COUNT=0,0,1;RAW_MQandDP=0,0;VarDP=1	GT:AD:GQ:PGT:PID:PL:SB:DP	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	1/1:0,0,0:3:0|1:189917424_A_G:45,3,0,45,3,45:0,0,0,0:0	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.	.:.:.:.:.:.:.:.

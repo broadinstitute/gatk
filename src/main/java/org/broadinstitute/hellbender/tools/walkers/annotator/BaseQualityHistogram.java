@@ -12,13 +12,14 @@ import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
 public class BaseQualityHistogram implements InfoFieldAnnotation {
 
-    public static final String KEY = "BQHIST";
+    public static final String KEY = GATKVCFConstants.BASE_QUAL_HISTOGRAM_KEY;
 
     public Map<String, Object> annotate(final ReferenceContext ref,
                                         final VariantContext vc,
@@ -51,13 +52,6 @@ public class BaseQualityHistogram implements InfoFieldAnnotation {
 
 
         return ImmutableMap.of(KEY, output);
-    }
-
-    @Override
-    public List<VCFInfoHeaderLine> getDescriptions() {
-        return Arrays.asList(new VCFInfoHeaderLine(KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Integer,
-                "Base quality counts for each allele represented sparsely as alternating entries of qualities and counts for each allele." +
-                "For example [10,1,0,20,0,1] means one ref base with quality 10 and one alt base with quality 20."));
     }
 
     @Override

@@ -146,7 +146,6 @@ public class ReferenceBlockConcordanceIntegrationTest extends CommandLineProgram
         final GVCFWriter truthWriter = new GVCFWriter(
                 GATKVariantContextUtils.createVCFWriter(truthFile.toPath(), null, false, Options.ALLOW_MISSING_FIELDS_IN_HEADER),
                 IntStream.range(1, 100).boxed().collect(Collectors.toList()),
-                2,
                 true
                 );
         final VCFHeader header = new VCFHeader(new HashSet<>(), Collections.singletonList("TESTSAMPLE"));
@@ -160,7 +159,6 @@ public class ReferenceBlockConcordanceIntegrationTest extends CommandLineProgram
         final GVCFWriter evalWriter = new GVCFWriter(
                 GATKVariantContextUtils.createVCFWriter(evalFile.toPath(), null, false, Options.ALLOW_MISSING_FIELDS_IN_HEADER),
                 IntStream.range(1, 100).boxed().collect(Collectors.toList()),
-                2,
                 true
         );
         evalWriter.writeHeader(header);

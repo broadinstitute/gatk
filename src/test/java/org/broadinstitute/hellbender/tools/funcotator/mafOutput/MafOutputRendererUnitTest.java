@@ -87,7 +87,9 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
     //==================================================================================================================
     // Helper Methods:
 
-    private List<String> createFieldValuesFromNameList(final String prefix, final List<String> baseFieldList, final int fieldSize) {
+    private List<String> createFieldValuesFromNameList(final String prefix,
+                                                       final List<String> baseFieldList,
+                                                       final int fieldSize) {
         final List<String> outList = new ArrayList<>(baseFieldList.size());
 
         for ( int i = 0; i < baseFieldList.size() ; ++i ) {
@@ -121,7 +123,8 @@ public class MafOutputRendererUnitTest extends GATKBaseTest {
                 FuncotatorArgumentDefinitions.LOOKAHEAD_CACHE_IN_BP_DEFAULT_VALUE,
                 new FlankSettings(0, 0),
                 false,
-                FuncotatorUtils.DEFAULT_MIN_NUM_BASES_FOR_VALID_SEGMENT
+                FuncotatorUtils.DEFAULT_MIN_NUM_BASES_FOR_VALID_SEGMENT,
+                FuncotatorUtils.DEFAULT_SPLICE_SITE_WINDOW_SIZE
         );
 
         // Sort the datasources to ensure the same order every time:

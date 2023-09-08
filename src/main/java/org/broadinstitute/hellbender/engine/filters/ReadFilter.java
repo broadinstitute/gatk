@@ -58,6 +58,18 @@ public abstract class ReadFilter implements Predicate<GATKRead>, Serializable {
             this.lhs = lhs;
             this.rhs = rhs;
         }
+
+        @Override
+        public void setHeader(SAMFileHeader samHeader) {
+            super.setHeader(samHeader);
+            if ( lhs != null ) {
+                lhs.setHeader(samHeader);
+            }
+            if ( rhs != null ) {
+                rhs.setHeader(samHeader);
+            }
+        }
+
     }
 
     @VisibleForTesting

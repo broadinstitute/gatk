@@ -1,16 +1,11 @@
 package org.broadinstitute.hellbender.tools.walkers.varianteval.util;
 
 import htsjdk.variant.variantcontext.VariantContext;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEval;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEvalEngine;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.evaluators.VariantEvaluator;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.stratifications.manager.StratificationManager;
-import org.broadinstitute.hellbender.utils.ClassUtils;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -18,22 +13,18 @@ import java.util.TreeSet;
 
 public class EvaluationContext {
     // NOTE: must be hashset to avoid O(log n) cost of iteration in the very frequently called apply function
-    final VariantEval walker;
+    final VariantEvalEngine engine;
     private final List<VariantEvaluator> evaluationInstances;
     private final Set<Class<? extends VariantEvaluator>> evaluationClasses;
 
-    public EvaluationContext(final VariantEval walker, final Set<Class<? extends VariantEvaluator>> evaluationClasses) {
-        this(walker, evaluationClasses, true);
-    }
-
-    private EvaluationContext(final VariantEval walker, final Set<Class<? extends VariantEvaluator>> evaluationClasses, final boolean doInitialize) {
-        this.walker = walker;
+    public EvaluationContext(final VariantEvalEngine engine, final Set<Class<? extends VariantEvaluator>> evaluationClasses) {
+        this.engine = engine;
         this.evaluationClasses = evaluationClasses;
         this.evaluationInstances = new ArrayList<>(evaluationClasses.size());
 
         for ( final Class<? extends VariantEvaluator> c : evaluationClasses ) {
-            final VariantEvaluator eval = ClassUtils.makeInstanceOf(c);
-            if ( doInitialize ) eval.initialize(walker);
+            final VariantEvaluator eval = engine.createVariantEvaluator(c);
+
             evaluationInstances.add(eval);
         }
     }
@@ -65,17 +56,17 @@ public class EvaluationContext {
         return new TreeSet<>(evaluationInstances);
     }
 
-    public final void apply(ReferenceContext referenceContext, ReadsContext readsContext, FeatureContext featureContext, VariantContext comp, VariantContext eval) {
+    public final void apply(VariantEvalContext variantEvalContext, VariantContext comp, VariantContext eval) {
         for ( final VariantEvaluator evaluation : evaluationInstances ) {
             // now call the single or paired update function
             switch ( evaluation.getComparisonOrder() ) {
                 case 1:
                     if (eval != null) {
-                        evaluation.update1(eval, referenceContext, readsContext, featureContext);
+                        evaluation.update1(eval, variantEvalContext);
                     }
                     break;
                 case 2:
-                    evaluation.update2(eval, comp, referenceContext, readsContext, featureContext);
+                    evaluation.update2(eval, comp, variantEvalContext);
                     break;
                 default:
                     throw new GATKException("BUG: Unexpected evaluation order " + evaluation);
@@ -93,7 +84,7 @@ public class EvaluationContext {
         @Override
         public EvaluationContext combine(EvaluationContext lhs, final EvaluationContext rhs) {
             if ( lhs == null )
-                lhs = new EvaluationContext(rhs.walker, rhs.evaluationClasses, false);
+                lhs = new EvaluationContext(rhs.engine, rhs.evaluationClasses);
             lhs.combine(rhs);
             return lhs;
         }

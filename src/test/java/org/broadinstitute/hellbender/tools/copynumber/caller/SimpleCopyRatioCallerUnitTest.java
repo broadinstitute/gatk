@@ -24,7 +24,9 @@ import java.util.Random;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static org.broadinstitute.hellbender.tools.copynumber.formats.records.CalledCopyRatioSegment.Call.*;
+import static org.broadinstitute.hellbender.tools.copynumber.formats.records.CalledCopyRatioSegment.Call.AMPLIFICATION;
+import static org.broadinstitute.hellbender.tools.copynumber.formats.records.CalledCopyRatioSegment.Call.DELETION;
+import static org.broadinstitute.hellbender.tools.copynumber.formats.records.CalledCopyRatioSegment.Call.NEUTRAL;
 
 public final class SimpleCopyRatioCallerUnitTest extends GATKBaseTest {
     private static final double NEUTRAL_SEGMENT_COPY_RATIO_LOWER_BOUND = 0.9;

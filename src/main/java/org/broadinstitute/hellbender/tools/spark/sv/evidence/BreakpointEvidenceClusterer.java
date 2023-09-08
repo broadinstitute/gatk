@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.tools.spark.sv.evidence;
 
 import org.apache.commons.collections4.iterators.SingletonIterator;
-import org.broadinstitute.hellbender.tools.spark.sv.utils.SVInterval;
+import org.broadinstitute.hellbender.utils.SVInterval;
 
 import java.util.ArrayList;
 import java.util.Collections;

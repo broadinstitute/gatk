@@ -4,8 +4,8 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.KmerAndCount;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmer;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerLong;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.SVKmerizer;
-import org.broadinstitute.hellbender.tools.spark.utils.HopscotchMap;
-import org.broadinstitute.hellbender.tools.spark.utils.HopscotchUniqueMultiMap;
+import org.broadinstitute.hellbender.tools.spark.utils.HopscotchMapSpark;
+import org.broadinstitute.hellbender.tools.spark.utils.HopscotchUniqueMultiMapSpark;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.Iterator;
@@ -17,17 +17,17 @@ import java.util.Iterator;
 public final class KmerCounter {
     private final int kSize;
     private final int kmersPerPartitionGuess;
-    private final HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval> kmerMap;
+    private final HopscotchUniqueMultiMapSpark<SVKmer, Integer, KmerAndInterval> kmerMap;
 
     public KmerCounter( final int kSize, final int kmersPerPartitionGuess,
-                        final HopscotchUniqueMultiMap<SVKmer, Integer, KmerAndInterval> kmerMap ) {
+                        final HopscotchUniqueMultiMapSpark<SVKmer, Integer, KmerAndInterval> kmerMap ) {
         this.kSize = kSize;
         this.kmerMap = kmerMap;
         this.kmersPerPartitionGuess = kmersPerPartitionGuess;
     }
 
     public Iterator<KmerAndCount> apply( final Iterator<GATKRead> readItr ) {
-        final HopscotchMap<SVKmer, Integer, KmerAndCount> counts = new HopscotchMap<>(kmersPerPartitionGuess);
+        final HopscotchMapSpark<SVKmer, Integer, KmerAndCount> counts = new HopscotchMapSpark<>(kmersPerPartitionGuess);
         while ( readItr.hasNext() ) {
             final GATKRead read = readItr.next();
             SVKmerizer.canonicalStream(read.getBases(), kSize, new SVKmerLong())

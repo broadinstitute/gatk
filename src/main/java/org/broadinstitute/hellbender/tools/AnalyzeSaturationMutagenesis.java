@@ -16,7 +16,7 @@ import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.tools.spark.utils.HopscotchMap;
+import org.broadinstitute.hellbender.utils.collections.HopscotchMap;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Tail;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
@@ -187,8 +187,15 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
         reference = new Reference(ReferenceDataSource.of(referenceArguments.getReferencePath()));
         codonTracker = new CodonTracker(orfCoords, reference.getRefSeq(), logger);
         if ( writeRejectedReads ) {
-            rejectedReadsBAMWriter = createSAMWriter(new GATKPath(outputFilePrefix + ".rejected.bam"), false);
+            rejectedReadsBAMWriter = createSAMWriter(new GATKPath(outputFilePrefix + ".rejected.bam"), true);
         }
+    }
+
+    @Override
+    protected SAMFileHeader getHeaderForSAMWriter() {
+        final SAMFileHeader header = super.getHeaderForSAMWriter();
+        header.setSortOrder(SortOrder.unsorted);
+        return header;
     }
 
     @Override
@@ -1324,11 +1331,11 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
                     throw new UserException("Can't interpret ORF as list of pairs of coords: " + orfCoords);
                 }
                 try {
-                    final int start = Integer.valueOf(coords[0]);
+                    final int start = Integer.parseInt(coords[0]);
                     if ( start < 1 ) {
                         throw new UserException("Coordinates of ORF are 1-based.");
                     }
-                    final int end = Integer.valueOf(coords[1]);
+                    final int end = Integer.parseInt(coords[1]);
                     if ( end < start ) {
                         throw new UserException("Found ORF end coordinate less than start: " + orfCoords);
                     }

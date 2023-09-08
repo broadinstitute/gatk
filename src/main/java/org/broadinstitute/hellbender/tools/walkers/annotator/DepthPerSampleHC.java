@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.help.HelpConstants;
+import org.broadinstitute.hellbender.utils.logging.OneShotLogger;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.util.*;
@@ -34,14 +35,15 @@ import java.util.stream.Collectors;
  *
  * <h3>Related annotations</h3>
  * <ul>
- *     <li><b><a href="https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_annotator_DepthPerAlleleBySample.php">DepthPerAlleleBySample</a></b> calculates depth of coverage for each allele per sample (AD).</li>
- *     <li><b><a href="https://www.broadinstitute.org/gatk/guide/tooldocs/org_broadinstitute_gatk_tools_walkers_annotator_Coverage.php">Coverage</a></b> gives the filtered depth of coverage for each sample and the unfiltered depth across all samples.</li>
+ *     <li><b>DepthPerAlleleBySample</b> calculates depth of coverage for each allele per sample (AD).</li>
+ *     <li><b>Coverage</b> gives the filtered depth of coverage for each sample and the unfiltered depth across all samples.</li>
  * </ul>
  *
  */
 @DocumentedFeature(groupName=HelpConstants.DOC_CAT_ANNOTATORS, groupSummary=HelpConstants.DOC_CAT_ANNOTATORS_SUMMARY, summary="Depth of informative coverage for each sample (DP)")
-public final class DepthPerSampleHC implements GenotypeAnnotation, StandardHCAnnotation, StandardMutectAnnotation {
+public final class  DepthPerSampleHC implements GenotypeAnnotation, StandardHCAnnotation, StandardMutectAnnotation {
     private final static Logger logger = LogManager.getLogger(DepthPerSampleHC.class);
+    private final static OneShotLogger droppedElementLogger = new OneShotLogger(DepthPerSampleHC.class);
 
     @Override
     public void annotate( final ReferenceContext ref,
@@ -54,7 +56,7 @@ public final class DepthPerSampleHC implements GenotypeAnnotation, StandardHCAnn
         Utils.nonNull(gb);
 
         if ( likelihoods == null || !g.isCalled() ) {
-            logger.warn(AnnotationUtils.generateMissingDataWarning(vc, g, likelihoods));
+            droppedElementLogger.warn(() -> AnnotationUtils.generateMissingDataWarning(vc, g, likelihoods));
             return;
         }
 
@@ -85,10 +87,5 @@ public final class DepthPerSampleHC implements GenotypeAnnotation, StandardHCAnn
     @Override
     public List<String> getKeyNames() {
         return Collections.singletonList(VCFConstants.DEPTH_KEY);
-    }
-
-    @Override
-    public List<VCFFormatHeaderLine> getDescriptions() {
-        return Collections.singletonList(VCFStandardHeaderLines.getFormatLine(VCFConstants.DEPTH_KEY));
     }
 }

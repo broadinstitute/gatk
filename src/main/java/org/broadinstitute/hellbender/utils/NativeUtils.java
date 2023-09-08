@@ -22,6 +22,13 @@ public final class NativeUtils {
     }
 
     /**
+     * @return True if we're running on a 64-bit x86 platform, otherwise false
+     */
+    public static boolean runningOn64BitX86Architecture() {
+        return runningOnArchitecture("x86_64") || runningOnArchitecture("amd64");
+    }
+    
+    /**
      * @param architecture Architecture to look for
      * @return true if we're running on the specified architecture, otherwise false
      */

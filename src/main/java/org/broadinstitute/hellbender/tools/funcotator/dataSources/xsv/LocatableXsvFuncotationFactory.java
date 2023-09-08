@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.funcotator.dataSources.xsv;
 
 import com.google.common.annotations.VisibleForTesting;
+import htsjdk.samtools.util.IOUtil;
 import htsjdk.tribble.Feature;
 import htsjdk.tribble.readers.AsciiLineReader;
 import htsjdk.tribble.readers.AsciiLineReaderIterator;
@@ -22,15 +23,8 @@ import org.broadinstitute.hellbender.utils.codecs.xsvLocatableTable.XsvTableFeat
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Factory for creating {@link TableFuncotation}s by handling `Separated Value` files with arbitrary delimiters
@@ -267,7 +261,7 @@ public class LocatableXsvFuncotationFactory extends DataSourceFuncotationFactory
 
                     // Get the info from our path:
                     final List<String> columnNames;
-                    try (final InputStream fileInputStream = Files.newInputStream(inputDataFilePath)) {
+                    try (final InputStream fileInputStream = IOUtil.openFileForReading(inputDataFilePath)) {
 
                         final AsciiLineReaderIterator lineReaderIterator = new AsciiLineReaderIterator(AsciiLineReader.from(fileInputStream));
                         codec.readActualHeader(lineReaderIterator);

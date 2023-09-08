@@ -8,6 +8,7 @@ import org.apache.commons.math3.random.JDKRandomGenerator;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadata;
 import org.broadinstitute.hellbender.tools.spark.sv.evidence.ReadMetadataTest;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -34,10 +35,9 @@ public class InsertSizeDistributionUnitTest extends GATKBaseTest {
     @Test
     public void testFromSerializedMetaData() throws IOException {
         final ReadMetadata readMetadata = ReadMetadataTest.composeTestReadMetadata();
-        final File tempFile = File.createTempFile("test-rd", ".bin.gz");
+        final File tempFile = IOUtils.createTempFile("test-rd", ".bin.gz");
         try {
             tempFile.delete();
-            tempFile.deleteOnExit();
             ReadMetadata.Serializer.writeStandalone(readMetadata, tempFile.toString());
             final InsertSizeDistribution lnDist = new InsertSizeDistribution("LogNormal(" + tempFile.toString() + ")");
             Assert.assertEquals(lnDist.mean(), ReadMetadataTest.LIBRARY_STATISTICS_MEAN, ReadMetadataTest.LIBRARY_STATISTIC_MEAN_DIFF);
@@ -51,10 +51,9 @@ public class InsertSizeDistributionUnitTest extends GATKBaseTest {
     @Test
     public void testFromTextMetaData() throws IOException {
         final ReadMetadata readMetadata = ReadMetadataTest.composeTestReadMetadata();
-        final File tempFile = File.createTempFile("test-rd", ".txt");
+        final File tempFile = IOUtils.createTempFile("test-rd", ".txt");
         try {
             tempFile.delete();
-            tempFile.deleteOnExit();
             ReadMetadata.writeMetadata(readMetadata, tempFile.toString());
             final InsertSizeDistribution lnDist = new InsertSizeDistribution("LogNormal(" + tempFile.toString() + ")");
             Assert.assertEquals(lnDist.mean(), ReadMetadataTest.LIBRARY_STATISTICS_MEAN, ReadMetadataTest.LIBRARY_STATISTIC_MEAN_DIFF);

@@ -1,11 +1,10 @@
 package org.broadinstitute.hellbender.tools.walkers.varianteval.evaluators;
 
 import htsjdk.variant.variantcontext.VariantContext;
-import org.broadinstitute.hellbender.engine.FeatureContext;
-import org.broadinstitute.hellbender.engine.ReadsContext;
-import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.VariantEvalEngine;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.Analysis;
 import org.broadinstitute.hellbender.tools.walkers.varianteval.util.DataPoint;
+import org.broadinstitute.hellbender.tools.walkers.varianteval.util.VariantEvalContext;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 
@@ -34,6 +33,10 @@ public class TiTvVariantEvaluator extends VariantEvaluator implements StandardEv
         return 2;   // we only need to see each eval track
     }
 
+    public TiTvVariantEvaluator(VariantEvalEngine engine) {
+        super(engine);
+    }
+
     public void updateTiTv(VariantContext vc, boolean updateStandard) {
         if (vc != null && vc.isSNP() && vc.isBiallelic() && vc.isPolymorphicInSamples()) {
             if ( GATKVariantContextUtils.isTransition(vc)) {
@@ -58,7 +61,7 @@ public class TiTvVariantEvaluator extends VariantEvaluator implements StandardEv
     }
 
     @Override
-    public void update2(VariantContext eval, VariantContext comp, final ReferenceContext referenceContext, final ReadsContext readsContext, final FeatureContext featureContext) {
+    public void update2(final VariantContext eval, final VariantContext comp, final VariantEvalContext context) {
         if (eval != null)
             updateTiTv(eval, false);
         if (comp != null)

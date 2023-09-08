@@ -5,6 +5,8 @@ import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.utils.SVInterval;
+import org.broadinstitute.hellbender.utils.SVIntervalTree;
 import org.broadinstitute.hellbender.utils.Utils;
 import scala.Tuple2;
 
@@ -17,7 +19,7 @@ public class CNVInputReader {
      * are based on the sequence indices in the SAM header, _NOT_ the ReadMetadata (which we might not have access to at this
      * time).
      */
-    public static SVIntervalTree<VariantContext> loadCNVCalls(final String cnvCallsFile,
+    public static SVIntervalTree<VariantContext> loadCNVCalls( final String cnvCallsFile,
                                                                final SAMFileHeader headerForReads) {
         Utils.validate(cnvCallsFile != null, "Can't load null CNV calls file");
         try ( final FeatureDataSource<VariantContext> dataSource = new FeatureDataSource<>(cnvCallsFile, null, 0, null) ) {

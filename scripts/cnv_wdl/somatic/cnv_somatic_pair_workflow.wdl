@@ -515,9 +515,9 @@ workflow CNVSomaticPairWorkflow {
     output {
         File preprocessed_intervals = PreprocessIntervals.preprocessed_intervals
 
-        File read_counts_entity_id_tumor = CollectCountsTumor.entity_id
+        String read_counts_entity_id_tumor = CollectCountsTumor.entity_id
         File read_counts_tumor = CollectCountsTumor.counts
-        File allelic_counts_entity_id_tumor = CollectAllelicCountsTumor.entity_id
+        String allelic_counts_entity_id_tumor = CollectAllelicCountsTumor.entity_id
         File allelic_counts_tumor = CollectAllelicCountsTumor.allelic_counts
         File denoised_copy_ratios_tumor = DenoiseReadCountsTumor.denoised_copy_ratios
         File standardized_copy_ratios_tumor = DenoiseReadCountsTumor.standardized_copy_ratios
@@ -545,9 +545,9 @@ workflow CNVSomaticPairWorkflow {
         Float scaled_delta_MAD_value_tumor = PlotDenoisedCopyRatiosTumor.scaled_delta_MAD_value
         File modeled_segments_plot_tumor = PlotModeledSegmentsTumor.modeled_segments_plot
 
-        File? read_counts_entity_id_normal = CollectCountsNormal.entity_id
+        String? read_counts_entity_id_normal = CollectCountsNormal.entity_id
         File? read_counts_normal = CollectCountsNormal.counts
-        File? allelic_counts_entity_id_normal = CollectAllelicCountsNormal.entity_id
+        String? allelic_counts_entity_id_normal = CollectAllelicCountsNormal.entity_id
         File? allelic_counts_normal = CollectAllelicCountsNormal.allelic_counts
         File? denoised_copy_ratios_normal = DenoiseReadCountsNormal.denoised_copy_ratios
         File? standardized_copy_ratios_normal = DenoiseReadCountsNormal.standardized_copy_ratios
@@ -575,10 +575,10 @@ workflow CNVSomaticPairWorkflow {
         Float? scaled_delta_MAD_value_normal = PlotDenoisedCopyRatiosNormal.scaled_delta_MAD_value
         File? modeled_segments_plot_normal = PlotModeledSegmentsNormal.modeled_segments_plot
 
-        File oncotated_called_file_tumor = select_first([CNVOncotatorWorkflow.oncotated_called_file, "null"])
-        File oncotated_called_gene_list_file_tumor = select_first([CNVOncotatorWorkflow.oncotated_called_gene_list_file, "null"])
-        File funcotated_called_file_tumor = select_first([CNVFuncotateSegmentsWorkflow.funcotated_seg_simple_tsv, "null"])
-        File funcotated_called_gene_list_file_tumor = select_first([CNVFuncotateSegmentsWorkflow.funcotated_gene_list_tsv, "null"])
+        File? oncotated_called_file_tumor = CNVOncotatorWorkflow.oncotated_called_file
+        File? oncotated_called_gene_list_file_tumor = CNVOncotatorWorkflow.oncotated_called_gene_list_file
+        File? funcotated_called_file_tumor = CNVFuncotateSegmentsWorkflow.funcotated_seg_simple_tsv
+        File? funcotated_called_gene_list_file_tumor = CNVFuncotateSegmentsWorkflow.funcotated_gene_list_tsv
     }
 }
 

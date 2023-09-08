@@ -37,6 +37,7 @@ workflow GvsImportGenomes {
     String? variants_docker
     String? gatk_docker
     File? load_data_gatk_override
+    String? billing_project_id
   }
 
   Int max_auto_batch_size = 25000
@@ -133,6 +134,7 @@ workflow GvsImportGenomes {
         sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
         sample_map = GetUningestedSampleIds.sample_map,
         process_vcf_headers = process_vcf_headers,
+        billing_project_id = billing_project_id
     }
   }
  if (process_vcf_headers) {
@@ -202,6 +204,7 @@ task LoadData {
     Int index
     String dataset_name
     String project_id
+    String? billing_project_id
 
     Array[File] input_vcf_indexes
     Array[File] input_vcfs
@@ -312,8 +315,8 @@ task LoadData {
       sample_name="${SAMPLE_NAMES_ARRAY[$i]}"
 
       # we always do our own localization
-      gsutil cp $gs_input_vcf input_vcf_$i.vcf.gz
-      gsutil cp $gs_input_vcf_index input_vcf_$i.vcf.gz.tbi
+      gsutil ~{"-u " + billing_project_id} cp $gs_input_vcf input_vcf_$i.vcf.gz
+      gsutil ~{"-u " + billing_project_id} cp $gs_input_vcf_index input_vcf_$i.vcf.gz.tbi
       updated_input_vcf=input_vcf_$i.vcf.gz
 
       gatk --java-options "-Xmx2g" CreateVariantIngestFiles \

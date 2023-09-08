@@ -106,7 +106,7 @@ public class StrandBiasUtils {
     /**
      * Combine allele-specific data from two ReducibleAnnotationData data structures
      * @param toAdd input values
-     * @param combined  modified to return the combined values
+     * @param combined  modified to return the combined values; per-allele data may be empty
      */
     protected static void combineAttributeMap(final ReducibleAnnotationData<List<Integer>> toAdd, final ReducibleAnnotationData<List<Integer>> combined) {
         for (final Allele a : combined.getAlleles()) {
@@ -117,8 +117,10 @@ public class StrandBiasUtils {
                 }
                 else {
                     List<Integer> alleleData = new ArrayList<>();
-                    alleleData.add(FORWARD, toAdd.getAttribute(a).get(FORWARD));
-                    alleleData.add(REVERSE, toAdd.getAttribute(a).get(REVERSE));
+                    if (!toAdd.getAttribute(a).isEmpty()) {
+                        alleleData.add(FORWARD, toAdd.getAttribute(a).get(FORWARD));
+                        alleleData.add(REVERSE, toAdd.getAttribute(a).get(REVERSE));
+                    }
                     combined.putAttribute(a,alleleData);
                 }
             }

@@ -5,27 +5,22 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
-import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
-import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
-import org.broadinstitute.hellbender.tools.walkers.qc.Pileup;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.downsampling.DownsamplingMethod;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
 import org.broadinstitute.hellbender.utils.genotyper.IndexedAlleleList;
 import org.broadinstitute.hellbender.utils.genotyper.SampleList;
+import org.broadinstitute.hellbender.utils.haplotype.Event;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
-import org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanJavaAligner;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignment;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -34,7 +29,6 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.File;
 import java.util.*;
 
 /**
@@ -55,10 +49,10 @@ public final class HaplotypeCallerGenotypingEngineUnitTest extends GATKBaseTest 
             this.expected = expected;
         }
         
-        public Map<Integer,VariantContext> calcAlignment() {
+        public Map<Integer, Event> calcAlignment() {
             final SmithWatermanAlignment alignment = SmithWatermanJavaAligner.getInstance().align(ref, hap, new SWParameters(3, -1, -4, -1), SWOverhangStrategy.SOFTCLIP);
             final Haplotype h = new Haplotype(hap, false, alignment.getAlignmentOffset(), alignment.getCigar());
-            return new EventMap(h, ref, new SimpleInterval("4", 1, 1 + ref.length), "name", 1);
+            return EventMap.fromHaplotype(h, ref, new SimpleInterval("4", 1, 1 + ref.length), 1);
         }
 
         public String toString() {
@@ -132,7 +126,7 @@ public final class HaplotypeCallerGenotypingEngineUnitTest extends GATKBaseTest 
     
     @Test(dataProvider = "BasicGenotypingTestProvider", enabled = true)
     public void testHaplotypeToVCF(BasicGenotypingTestProvider cfg) {
-        Map<Integer,VariantContext> calculatedMap = cfg.calcAlignment();
+        Map<Integer, Event> calculatedMap = cfg.calcAlignment();
         Map<Integer,Byte> expectedMap = cfg.expected;
         logger.warn(String.format("Test: %s", cfg.toString()));
         if(!compareVCMaps(calculatedMap, expectedMap)) {
@@ -199,7 +193,7 @@ public final class HaplotypeCallerGenotypingEngineUnitTest extends GATKBaseTest 
     /**
      * Private function to compare Map of VCs, it only checks the types and start locations of the VariantContext
      */
-    private boolean compareVCMaps(Map<Integer, VariantContext> calc, Map<Integer, Byte> expected) {
+    private boolean compareVCMaps(Map<Integer, Event> calc, Map<Integer, Byte> expected) {
         if( !calc.keySet().equals(expected.keySet()) ) { return false; } // sanity check
         for( Integer loc : expected.keySet() ) {
             Byte type = expected.get(loc);
@@ -335,7 +329,7 @@ public final class HaplotypeCallerGenotypingEngineUnitTest extends GATKBaseTest 
                 mergedAlleles.size(),
                 likelihoods,
                 originalVC,
-                new VariantAnnotatorEngine(Collections.emptyList(), null, features, false, true));
+                new VariantAnnotatorEngine(Collections.emptyList(), null, features, false, true), null);
 
         // Asserting that the two alleles were trimmed after calling removeExcessAltAlleles
         Assert.assertEquals(reducedVC.getNAlleles(), 2);

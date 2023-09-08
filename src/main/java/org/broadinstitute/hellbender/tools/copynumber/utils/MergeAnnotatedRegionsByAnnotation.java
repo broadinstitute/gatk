@@ -8,7 +8,12 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CopyNumberProgramGroup;
 import org.broadinstitute.hellbender.engine.GATKTool;
 import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberStandardArgument;
-import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.*;
+import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedInterval;
+import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedIntervalCollection;
+import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedIntervalHeader;
+import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedIntervalUtils;
+import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.AnnotatedIntervalWriter;
+import org.broadinstitute.hellbender.tools.copynumber.utils.annotatedinterval.SimpleAnnotatedIntervalWriter;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.io.File;

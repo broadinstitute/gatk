@@ -27,7 +27,7 @@ public final class GermlineContigPloidyModelArgumentCollection implements Serial
             minValue = 0.,
             optional = true
     )
-    private double meanBiasStandardDeviation = 0.01;
+    private double meanBiasStandardDeviation = 1.;
 
     @Argument(
             doc = "Typical mapping error rate.",
@@ -36,7 +36,7 @@ public final class GermlineContigPloidyModelArgumentCollection implements Serial
             maxValue = 1.,
             optional = true
     )
-    private double mappingErrorRate = 0.01;
+    private double mappingErrorRate = 0.3;
 
     @Argument(
             doc = "Prior scale of contig coverage unexplained variance.  If a single sample is provided, " +

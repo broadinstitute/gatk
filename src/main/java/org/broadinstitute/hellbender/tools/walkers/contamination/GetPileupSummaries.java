@@ -13,10 +13,13 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.tsv.TableUtils;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -137,10 +140,10 @@ public class GetPileupSummaries extends LocusWalker {
     @Argument(fullName = MIN_MAPPING_QUALITY_LONG_NAME, shortName = MIN_MAPPING_QUALITY_SHORT_NAME, doc = "Minimum read mapping quality", optional = true)
     private int minMappingQuality = DEFAULT_MINIMUM_MAPPING_QUALITY;
 
-    private final List<PileupSummary> pileupSummaries = new ArrayList<>();
-
     private boolean sawVariantsWithoutAlleleFrequency = false;
     private boolean sawVariantsWithAlleleFrequency = false;
+
+    PileupSummary.PileupSummaryTableWriter writer;
 
     @Override
     public boolean requiresReads() {
@@ -185,6 +188,15 @@ public class GetPileupSummaries extends LocusWalker {
         if (!alleleFrequencyInHeader) {
             throw new UserException.BadInput("Population vcf does not have an allele frequency (AF) info field in its header.");
         }
+
+        try {
+            writer = new PileupSummary.PileupSummaryTableWriter(IOUtils.fileToPath(outputTable));
+            final String sampleName = ReadUtils.getSamplesFromHeader(getHeaderForReads()).stream().findFirst().get();
+            writer.writeMetadata(TableUtils.SAMPLE_METADATA_TAG, sampleName);
+        } catch (IOException ex) {
+            throw new UserException.CouldNotCreateOutputFile(outputTable, ex);
+        }
+
     }
 
     @Override
@@ -198,7 +210,11 @@ public class GetPileupSummaries extends LocusWalker {
         if ( vc.isBiallelic() && vc.isSNP() && alleleFrequencyInRange(vc) ) {
             final ReadPileup pileup = alignmentContext.getBasePileup()
                     .makeFilteredPileup(pe -> pe.getRead().getMappingQuality() >= minMappingQuality);
-            pileupSummaries.add(new PileupSummary(vc, pileup));
+            try {
+                writer.writeRecord(new PileupSummary(vc, pileup));
+            } catch (final IOException ex) {
+                throw new UserException(String.format("Encountered an IO exception while writing to %s", outputTable));
+            }
         }
     }
 
@@ -207,9 +223,19 @@ public class GetPileupSummaries extends LocusWalker {
         if (sawVariantsWithoutAlleleFrequency && !sawVariantsWithAlleleFrequency) {
             throw new UserException.BadInput("No variants in population vcf had an allele frequency (AF) field.");
         }
-        final String sampleName = ReadUtils.getSamplesFromHeader(getHeaderForReads()).stream().findFirst().get();
-        PileupSummary.writeToFile(sampleName, pileupSummaries, outputTable);
+
         return "SUCCESS";
+    }
+
+    @Override
+    public void closeTool() {
+        try {
+            if (writer != null) {
+                writer.close();
+            }
+        } catch (IOException ex) {
+            throw new UserException(String.format("Encountered an IO exception while closing %s", outputTable));
+        }
     }
 
     private boolean alleleFrequencyInRange(final VariantContext vc) {

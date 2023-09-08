@@ -19,6 +19,7 @@ import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.testng.Assert;
+import org.testng.SkipException;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -79,6 +80,11 @@ public final class PrintReadsSparkIntegrationTest extends AbstractPrintReadsInte
         final GATKPath testRefDict = new GATKPath(getTestFile("count_reads.dict").getAbsolutePath());
         final GATKPath testRefIndex = new GATKPath(getTestFile("count_reads.fasta.fai").getAbsolutePath());
 
+        if (isGATKDockerContainer()) {
+            // see https://github.com/eclipse/jetty.project/issues/8549
+            // for the docker tests, the test dependencies are in a separate jar
+            throw new SkipException("skipping due to jetty jar parsing issues (https://github.com/eclipse/jetty.project/issues/8549)");
+        }
         MiniClusterUtils.runOnIsolatedMiniCluster(cluster -> {
             final org.apache.hadoop.fs.Path workingDirectory = MiniClusterUtils.getWorkingDir(cluster);
 

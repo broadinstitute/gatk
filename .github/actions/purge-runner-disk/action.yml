@@ -1,0 +1,12 @@
+name: 'purge-runner-disk'
+description: 'Free up space on the runner image to prevent out-of-space errors during CI tests'
+runs:
+  using: "composite"
+  steps:
+    #Reclaim some disk space on the runner to prevent the WDL tasks from running out of space on the docker.
+    #https://github.com/actions/runner-images/issues/2840
+    - name: Reclaim some runner disk space
+      run: |
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+      shell: bash

@@ -60,6 +60,12 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
 
 
     /**
+     * allow for deterministic behavior. used by RampedHaplotypeCaller
+     */
+    private boolean nonRandomReplacementMode = false;
+
+
+    /**
      * Construct a ReservoirDownsampler
      *
      * @param targetSampleSize Size of the reservoir used by this downsampler.
@@ -110,7 +116,11 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
                 isLinkedList = false;
             }
 
-            final int randomSlot = Utils.getRandomGenerator().nextInt(totalReadsSeen);
+            // replacing overwritten slot selection by a deterministic mechanism or non-determinsitic one
+            // should still provide similar distribution
+            final int randomSlot = !nonRandomReplacementMode
+                                        ? Utils.getRandomGenerator().nextInt(totalReadsSeen)
+                                        : Math.abs(newRead.getName().hashCode()) % totalReadsSeen;
             if ( randomSlot < targetSampleSize ) {
                 reservoir.set(randomSlot, newRead);
             }
@@ -202,5 +212,9 @@ public final class ReservoirDownsampler extends ReadsDownsampler {
     public void signalNoMoreReadsBefore(final GATKRead read ) {
         Utils.nonNull(read);
         // NO-OP
+    }
+
+    public void setNonRandomReplacementMode(boolean nonRandomReplacementMode) {
+        this.nonRandomReplacementMode = nonRandomReplacementMode;
     }
 }

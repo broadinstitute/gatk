@@ -132,15 +132,21 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
     /**
      * Template method that runs the startup hook, doWork and then the shutdown hook.
      */
+    @SuppressWarnings("try")
     public final Object runTool(){
-        try {
+        //this makes use of try-with-resource exception suppression to ensure that onShutdown()
+        //doesn't hide casual exceptions thrown during onStartup() or doWork()
+        try(
+            final AutoCloseableNoCheckedExceptions thisTool =
+                    () -> {
+                        logger.info("Shutting down engine");
+                        onShutdown();
+                    }
+            ) {
             logger.info("Initializing engine");
             onStartup();
             logger.info("Done initializing engine");
             return doWork();
-        } finally {
-            logger.info("Shutting down engine");
-            onShutdown();
         }
     }
 
@@ -482,5 +488,10 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
             commandLineParser = new CommandLineArgumentParser(this, getPluginDescriptors(), Collections.emptySet());
         }
         return commandLineParser;
+    }
+
+    /** A shim to make use of try-with-resources for tool shutdown**/ 
+    protected interface AutoCloseableNoCheckedExceptions extends AutoCloseable{
+        @Override void close();
     }
 }

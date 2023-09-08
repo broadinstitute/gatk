@@ -10,6 +10,7 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.serializer.KryoRegistrator;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.cmdline.argumentcollections.MarkDuplicatesSparkArgumentCollection;
 import org.broadinstitute.hellbender.engine.spark.SAMRecordSerializer;
 import org.broadinstitute.hellbender.engine.spark.SparkContextFactory;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -80,7 +81,7 @@ public class MarkDuplicatesSparkUtilsUnitTest extends GATKBaseTest {
         SAMFileHeader header = samRecordSetBuilder.getHeader();
         header.setReadGroups(new ArrayList<>());
 
-        MarkDuplicatesSparkUtils.transformToDuplicateNames(header, MarkDuplicatesScoringStrategy.SUM_OF_BASE_QUALITIES, null, reads, 2, false).collect();
+        MarkDuplicatesSparkUtils.transformToDuplicateNames(header, MarkDuplicatesScoringStrategy.SUM_OF_BASE_QUALITIES, null, reads, 2, false, new MarkDuplicatesSparkArgumentCollection()).collect();
     }
 
     @Test
@@ -96,7 +97,7 @@ public class MarkDuplicatesSparkUtilsUnitTest extends GATKBaseTest {
         SAMFileHeader header = samRecordSetBuilder.getHeader();
 
         try {
-            MarkDuplicatesSparkUtils.transformToDuplicateNames(header, MarkDuplicatesScoringStrategy.SUM_OF_BASE_QUALITIES, null, reads, 2, false).collect();
+            MarkDuplicatesSparkUtils.transformToDuplicateNames(header, MarkDuplicatesScoringStrategy.SUM_OF_BASE_QUALITIES, null, reads, 2, false, new MarkDuplicatesSparkArgumentCollection()).collect();
             Assert.fail("Should have thrown an exception");
         } catch (Exception e){
             Assert.assertTrue(e instanceof SparkException);
@@ -125,8 +126,9 @@ public class MarkDuplicatesSparkUtilsUnitTest extends GATKBaseTest {
         sortedHeader.setSortOrder(SAMFileHeader.SortOrder.queryname);
 
         // Using the header flagged as unsorted will result in the reads being sorted again
-        JavaRDD<GATKRead> unsortedReadsMarked = MarkDuplicatesSpark.mark(unsortedReads,unsortedHeader, MarkDuplicatesScoringStrategy.SUM_OF_BASE_QUALITIES,new OpticalDuplicateFinder(),100,true,MarkDuplicates.DuplicateTaggingPolicy.DontTag);
-        JavaRDD<GATKRead> sortedReadsMarked = MarkDuplicatesSpark.mark(pariedEndsQueryGrouped,sortedHeader, MarkDuplicatesScoringStrategy.SUM_OF_BASE_QUALITIES,new OpticalDuplicateFinder(),1, true, MarkDuplicates.DuplicateTaggingPolicy.DontTag);
+        MarkDuplicatesSparkArgumentCollection mdArgs = new MarkDuplicatesSparkArgumentCollection();
+        JavaRDD<GATKRead> unsortedReadsMarked = MarkDuplicatesSpark.mark(unsortedReads,unsortedHeader, MarkDuplicatesScoringStrategy.SUM_OF_BASE_QUALITIES,new OpticalDuplicateFinder(),100,true,MarkDuplicates.DuplicateTaggingPolicy.DontTag, mdArgs);
+        JavaRDD<GATKRead> sortedReadsMarked = MarkDuplicatesSpark.mark(pariedEndsQueryGrouped,sortedHeader, MarkDuplicatesScoringStrategy.SUM_OF_BASE_QUALITIES,new OpticalDuplicateFinder(),1, true, MarkDuplicates.DuplicateTaggingPolicy.DontTag, mdArgs);
 
         Iterator<GATKRead> sortedReadsFinal = sortedReadsMarked.sortBy(GATKRead::commonToString, false, 1).collect().iterator();
         Iterator<GATKRead> unsortedReadsFinal = unsortedReadsMarked.sortBy(GATKRead::commonToString, false, 1).collect().iterator();

@@ -4,7 +4,6 @@ import htsjdk.variant.variantcontext.Allele;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.AbstractList;
-import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -13,7 +12,7 @@ import java.util.List;
 //Note: Names in this interface are unusual because of name clash in a subclass.
 // For example the name of AlleleList.alleleCount() cannot be simply size(), as would be usual,
 // because {@link ReadLikelihoods} implements AlleleList and SampleList and then size() would be ambiguous.
-public interface AlleleList<A extends Allele>{
+public interface AlleleList<A extends Allele> {
 
     static <A extends Allele> AlleleList<A> newList(final List<A> alleles) {
         return new IndexedAlleleList<A>(alleles);
@@ -29,7 +28,7 @@ public interface AlleleList<A extends Allele>{
      * Returns a negative number if the given allele is not present in this AlleleList.
      * @throws IllegalArgumentException if allele is null.
      */
-    int indexOfAllele(final A allele);
+    int indexOfAllele(final Allele allele);
 
     /**
      * Returns the allele at the given index in this AlleleList.
@@ -42,12 +41,11 @@ public interface AlleleList<A extends Allele>{
      * Returns <code>true</code> if this AlleleList contains the specified allele
      * and <code>false</code> otherwise.
      */
-    default boolean containsAllele(final A allele){
+    default boolean containsAllele(final Allele allele) {
         return indexOfAllele(allele) >= 0;
     }
 
-    @SuppressWarnings({"rawtypes"})
-    static final AlleleList EMPTY_LIST = new AlleleList() {
+    AlleleList<Allele> EMPTY_LIST = new AlleleList<Allele>() {
         @Override
         public int numberOfAlleles() {
             return 0;
@@ -72,7 +70,7 @@ public interface AlleleList<A extends Allele>{
      */
     @SuppressWarnings("unchecked")
     static <A extends Allele> AlleleList<A> emptyAlleleList() {
-        return (AlleleList<A>)EMPTY_LIST;
+        return (AlleleList<A>) EMPTY_LIST;
     }
 
     /**
@@ -134,7 +132,7 @@ public interface AlleleList<A extends Allele>{
      *
      * @return never {@code null}.
      */
-    default public List<A> asListOfAlleles() {
+    default List<A> asListOfAlleles() {
         return new AbstractList<A>() {
 
             @Override
@@ -173,7 +171,7 @@ public interface AlleleList<A extends Allele>{
 
         private final AlleleList<A> list;
 
-        public NonPermutation(final AlleleList<A> original) {
+        NonPermutation(final AlleleList<A> original) {
             list = original;
         }
 
@@ -226,7 +224,7 @@ public interface AlleleList<A extends Allele>{
         }
 
         @Override
-        public int indexOfAllele(final A allele) {
+        public int indexOfAllele(final Allele allele) {
             return list.indexOfAllele(allele);
         }
 
@@ -327,7 +325,7 @@ public interface AlleleList<A extends Allele>{
         }
 
         @Override
-        public int indexOfAllele(final A allele) {
+        public int indexOfAllele(final Allele allele) {
             return to.indexOfAllele(allele);
         }
 
