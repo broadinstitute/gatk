@@ -35,6 +35,8 @@ To see details about input requirements, see [Run Your Own Samples](https://gith
 
 While the GVS has been tested with TBD single sample exome GVCF files as input, only datasets of up to TBD exomes are being used for beta testing.
 
+Note that, by default, the Exomes Beta workflow uses the [Blended Genomes Interval List](gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list) for its calling regions.
+
 ### What does it return as output?
 
 The following files are stored in the workspace workflow execution bucket under Data>Files (within the left-hand menu on the "Data" workspace tab , under "Other Data", there is a "Files" link that allows you to navigate the files in the workspace bucket) or in the Google bucket specified in the inputs.
@@ -82,20 +84,13 @@ See the "Job History" tab in the Genomic_Variant_Store_Beta workspace for a rece
 By default, the workflow will write outputs to the location `gs://<workspace bucket>/output_vcfs/by_submission_id/<submission id>`. If you want to write the outputs to a different cloud storage location, you can specify the cloud path in the `extract_output_gcs_dir` optional input in the workflow configuration. The actual output location will be specified by the workflow output `output_gcs_path`.
 
 ### Time and cost
-Below are several examples of the time and cost of running the workflow. Generally the cost is around 6 cents per sample, including Terra compute and BigQuery compute cost. This does not include storage costs.
+Below are several examples of the time and cost of running the workflow. Generally the cost is around TBD cents per sample, including Terra compute and BigQuery compute cost. This does not include storage costs.
 
-TODO - Redo these numbers
 
-| Number of Samples | Wall Clock Time (hh:mm) | Cost $     | Cost per Sample |
-|-------------------|-------------------------|------------|-----------------|
-| 10                | 04:30                   | $1.35      | $0.14           |
-| 1000              | 07:24                   | $59.64     | $0.06           |
-| 2500              | 08:45                   | $141.28    | $0.06           |
-| 5000              | 12:00                   | $286.71    | $0.06           |
-| 10000             | 13:41                   | $604.97    | $0.06           |
-| 25000             | 63:35*                  | $1,282.65  | $0.051          |
+| Number of Samples | Wall Clock Time (hh:mm) | Cost $    | Cost per Sample |
+|-------------------|-------------------------|-----------|-----------------|
+| 10                | TBD                     | $TBD      | $TBD            |
 
-*Our test of 25,000 genomes hit some cloud turbulence and took longer than it should have. As it is an expensive test at this scale, we will update this chart when we have a need to run it again.
 
 **Note:** The time and cost listed above represent a single run of the GVS workflow. Actual time and cost may vary depending on BigQuery and Terra load at the time of the callset creation. For example, in practice we've seen 10,000 genome runs take from 13-20 hours.
 
