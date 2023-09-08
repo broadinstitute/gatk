@@ -35,7 +35,7 @@ To see details about input requirements, see [Run Your Own Samples](https://gith
 
 While the GVS has been tested with TBD single sample exome GVCF files as input, only datasets of up to TBD exomes are being used for beta testing.
 
-Note that, by default, the Exomes Beta workflow uses the [Blended Genomes Interval List](gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list) for its calling regions.
+Note that, by default, the Exomes Beta workflow uses the Blended Genomes Interval List: `gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list` for its calling regions.
 
 ### What does it return as output?
 
@@ -135,5 +135,5 @@ The workflow script is released under the Apache License, Version 2.0 (full lice
 ### Workspace Change Log
 | Date       | Change                                    | Author         |
 |------------|-------------------------------------------|----------------|
-| 09/07/2023 | First release of the exomes workspace.       | George Grant |
+| 09/08/2023 | First release of the exomes workspace.       | George Grant |
 
