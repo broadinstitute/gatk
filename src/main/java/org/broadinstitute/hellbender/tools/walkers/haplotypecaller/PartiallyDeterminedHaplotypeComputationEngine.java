@@ -150,24 +150,24 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                         // Start with a single "seed" haplotype containing the determined event(s). At each downstream locus,
                         // every haplotype can grow by every event, or remain unchanged.  For example, if we have haplotypes
                         // H1 and H2 so far and reach a locus with events A and B our list grows to H1/ref, H2/ref, H1/A, H1/B, H2/A, H2/B.
-                        List<List<Event>> haplotypeEvents = new ArrayList<>();
-                        haplotypeEvents.add(new ArrayList<>(determinedEvents)); // the seed haplotype
+                        List<List<Event>> fullyDeterminedHaplotypes = new ArrayList<>();
+                        fullyDeterminedHaplotypes.add(new ArrayList<>(determinedEvents)); // the seed haplotype
 
                         for (final int locus : eventsByStartPos.keySet()) {
                             if (determinedLocus < locus) {
                                 final List<List<Event>> children = eventsByStartPos.get(locus).stream().filter(branch::contains)
-                                        .flatMap(event -> haplotypeEvents.stream().map(group -> growEventList(group, event))).toList();
+                                        .flatMap(event -> fullyDeterminedHaplotypes.stream().map(group -> growEventList(group, event))).toList();
                                 children.forEach(child -> child.sort(HAPLOTYPE_SNP_FIRST_COMPARATOR));
-                                haplotypeEvents.addAll(children);
+                                fullyDeterminedHaplotypes.addAll(children);
 
-                                if (haplotypeEvents.size() > MAX_BRANCH_PD_HAPS) {
-                                    Utils.printIf(debug, () -> "Too many branch haplotypes [" + haplotypeEvents.size() + "] generated from site, falling back on assembly variants!");
+                                if (fullyDeterminedHaplotypes.size() > MAX_BRANCH_PD_HAPS) {
+                                    Utils.printIf(debug, () -> "Too many branch haplotypes [" + fullyDeterminedHaplotypes.size() + "] generated from site, falling back on assembly variants!");
                                     return sourceSet;
                                 }
                             }
                         }
-                        haplotypeEvents.forEach(events -> Utils.printIf(debug, () -> "Constructing Haplotype From Events:" + formatEventsLikeDragenLogs(events, referenceHaplotype.getStart())));
-                        final List<Haplotype> branchHaps = haplotypeEvents.stream()
+                        fullyDeterminedHaplotypes.forEach(events -> Utils.printIf(debug, () -> "Constructing Haplotype From Events:" + formatEventsLikeDragenLogs(events, referenceHaplotype.getStart())));
+                        final List<Haplotype> branchHaps = fullyDeterminedHaplotypes.stream()
                                 .map(events -> constructHaplotypeFromEvents(referenceHaplotype, events, true)).toList();
                         branchHaplotypesDebugMessage(referenceHaplotype, debug, branch, branchHaps);
                         outputHaplotypes.addAll(branchHaps);
