@@ -16,6 +16,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.function.BiPredicate;
+import java.util.stream.Collectors;
 
 public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKBaseTest {
 
@@ -46,6 +47,72 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
     // TODO THESE ARE FOR INVALID TEST CASES
     Event SNP_C_99 = new Event("20",99, Allele.REF_A,Allele.ALT_C);
     Event SNP_C_120 = new Event("20",120, Allele.REF_A,Allele.ALT_C);
+
+    @DataProvider
+    public Object[][] makeEventGroupClustersDataProvider() {
+        // format:
+        // 1) list of all events
+        // 2) list of 2- and 3-element groups of events that are mutually excluded due to the Smith-Waterman heuristic
+        //      (note that there is no reference sequence in this test, hence we can set whatever  exclusions we want here)
+        //      (note also that this is in addition to any mutexes due to overlapping loci)
+        //  3) list of sets of events that make up the desired partition into event groups
+        // for convenience, 2) and 3) are representing by indices within the list 1).
+        return new Object[][] {
+                // no mutexes; singleton event groups result
+                { List.of(SNP_C_90), List.of(), List.of(List.of(0))},
+                { List.of(SNP_C_90, SNP_C_100), List.of(), List.of(List.of(0), List.of(1))},
+                { List.of(SNP_C_90, SNP_C_100, SNP_C_105), List.of(), List.of(List.of(0), List.of(1), List.of(2))},
+                { List.of(SNP_C_90, SNP_C_100, INS_TT_105, SNP_C_109), List.of(), List.of(List.of(0), List.of(1), List.of(2), List.of(3))},
+
+                // all events are connected by a path of overlaps; everything belongs to a single event group
+                { List.of(SNP_C_105, SNP_G_105), List.of(), List.of(List.of(0,1))},
+                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105), List.of(), List.of(List.of(0,1,2))},
+                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105, SNP_C_106), List.of(), List.of(List.of(0,1,2,3))},
+
+                // multiple event groups due to independent overlaps -- note that insertions have 0.5 added to their start for DRAGEN
+                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105, SNP_C_120), List.of(), List.of(List.of(0,1,2), List.of(3))},
+                { List.of(SNP_C_105, SNP_G_105, INS_TT_105), List.of(), List.of(List.of(0,1), List.of(2))},
+                { List.of(SNP_C_105, SNP_G_105, INS_GGG_106, SNP_C_107), List.of(), List.of(List.of(0,1), List.of(2), List.of(3))},
+                { List.of(DEL_AA_100, SNP_G_101, DEL_AA_105, SNP_C_106), List.of(), List.of(List.of(0,1), List.of(2,3))},
+                { List.of(DEL_AA_100, SNP_G_101, DEL_AA_105, SNP_C_106, SNP_C_120), List.of(), List.of(List.of(0,1), List.of(2,3), List.of(4))},
+
+                // Smith-Waterman pair mutex joining event groups that would otherwise be independent
+                { List.of(SNP_C_90, SNP_C_100), List.of(List.of(0,1)), List.of(List.of(0,1))},
+                { List.of(SNP_C_90, SNP_C_100, SNP_C_105), List.of(List.of(0,1)), List.of(List.of(0,1), List.of(2))},
+                { List.of(SNP_C_90, SNP_C_100, SNP_C_105), List.of(List.of(0,2)), List.of(List.of(0,2), List.of(1))},    // this example is unrealistic
+                { List.of(DEL_AA_100, SNP_G_101, DEL_AA_105, SNP_C_106), List.of(List.of(1,2)), List.of(List.of(0,1,2,3))},
+                { List.of(DEL_AA_100, SNP_G_101, DEL_AA_105, SNP_C_106, SNP_C_120), List.of(List.of(1,2)), List.of(List.of(0,1, 2,3), List.of(4))},
+
+                // two Smith-Waterman pair mutexes transitively combining three event groups
+                { List.of(DEL_AA_100, SNP_G_101, DEL_AA_105, SNP_C_106, SNP_C_120), List.of(List.of(1,2), List.of(3,4)), List.of(List.of(0,1, 2, 3, 4))},
+
+                // Smith-Waterman pair mutex doing nothing because it is redundant with an overlap mutex
+                { List.of(DEL_AA_100, SNP_G_101, DEL_AA_105, SNP_C_106, SNP_C_120), List.of(List.of(2,3)), List.of(List.of(0,1), List.of(2,3), List.of(4))},
+
+                // Smith-Waterman trio mutex transitively combining three event groups
+                { List.of(DEL_AA_100, SNP_G_101, DEL_AA_105, SNP_C_106, SNP_C_120), List.of(List.of(1,2,4)), List.of(List.of(0,1, 2, 3, 4))},
+        };
+    }
+
+    @Test(dataProvider = "makeEventGroupClustersDataProvider")
+    public void testMakeEventGroupClusters(List<Event> eventsInOrder, List<List<Integer>> swMutexes, List<List<Integer>> expectedEventGroups) {
+        // convert indices to events
+        final List<List<Event>> mutexes = swMutexes.stream()
+                .map(mutexIndices -> mutexIndices.stream().map(eventsInOrder::get).toList())
+                .toList();
+
+        // set of actual partition -- each list in the set is in HAPLOTYPE_SNP_FIRST_COMPARATOR order
+        final Set<List<Event>> actualPartition = PartiallyDeterminedHaplotypeComputationEngine.getEventGroupClusters(eventsInOrder, mutexes).stream()
+                .map(eventGroup -> eventGroup.eventsInOrderForTesting())
+                .collect(Collectors.toSet());
+
+        // set of expected partition -- each list in the set is in HAPLOTYPE_SNP_FIRST_COMPARATOR order
+        final Set<List<Event>> expectedPartition = expectedEventGroups.stream()
+                .map(eventsList -> eventsList.stream().map(eventsInOrder::get).sorted(PartiallyDeterminedHaplotypeComputationEngine.HAPLOTYPE_SNP_FIRST_COMPARATOR).toList())
+                .collect(Collectors.toSet());
+
+        Assert.assertEquals(expectedPartition, actualPartition);
+    }
 
     @DataProvider
     public Object[][] testConstructHaplotypeFromVariantsDataProvider() {

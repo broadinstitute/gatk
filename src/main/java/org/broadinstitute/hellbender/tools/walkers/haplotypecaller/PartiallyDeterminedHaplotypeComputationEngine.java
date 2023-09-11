@@ -319,8 +319,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
      * The resulting event groups are a disjoint cover of the input events; that is, every input event belongs to exactly one
      * output EventGroup.
      *
-     * In the common case that all events are compatible -- they are non-overlapping SNPs, for example -- a single event group
-     * containing all events is returned.
+     * In the common case that all events are compatible -- they are non-overlapping SNPs, for example -- the result is a bunch of singleton event groups
      *
      * Incompatibility comes in two types, the first and more obvious being overlap.  The second is defined by the
      * heuristic in which we inject two or three events into the reference haplotype and realign the resulting two- or three-event
@@ -339,7 +338,8 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
      *                                to the Smith-Waterman heuristic in which injecting them into the reference haplotype and
      *                                simplifying via Smith Waterman yields other events
      */
-    private static List<EventGroup> getEventGroupClusters(List<Event> eventsInOrder, List<List<Event>> swForbiddenPairsAndTrios) {
+    @VisibleForTesting
+    static List<EventGroup> getEventGroupClusters(List<Event> eventsInOrder, List<List<Event>> swForbiddenPairsAndTrios) {
         final List<List<Event>> allMutexes = new ArrayList<>(swForbiddenPairsAndTrios);
 
         // edges due to overlapping position
@@ -632,7 +632,8 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
     }
 
     // A helper class for managing mutually exclusive event clusters and the logic around forming valid events vs each other.
-    private static class EventGroup {
+    @VisibleForTesting
+    static class EventGroup {
         private final ImmutableList<Event> eventsInOrder;
         private final ImmutableMap<Event, Integer> eventIndices;
 
@@ -768,6 +769,9 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         }
 
         public int size() { return eventsInOrder.size(); }
+
+        @VisibleForTesting
+        List<Event> eventsInOrderForTesting() { return eventsInOrder; }
     }
 
     private static List<Event> growEventList(final List<Event> eventList, final Event event) {
