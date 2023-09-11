@@ -59,7 +59,6 @@ workflow GvsJointVariantCalling {
     # else,              we'll use the Exome interval list, set 'use_interval_weights' to false, and use the WGS weights bed file (it's ignored if the boolean 'use_interval_weights' is false)
     # But, if interval_list is defined, we'll use that instead of choosing based on is_wgs
     # And, if interval_weights_bed is defined, we'll set 'use_interval_weights' to true, and use the supplied interval_weights_bed file
-    # If an interval_list is provided as an input,
     File default_interval_list = if (is_wgs) then "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
                                              else "gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list"
     File interval_list_to_use = select_first([interval_list, default_interval_list])
