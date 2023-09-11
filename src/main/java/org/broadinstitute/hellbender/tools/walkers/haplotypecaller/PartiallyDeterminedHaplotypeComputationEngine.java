@@ -113,7 +113,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
           Inner loop: iterate over all alleles at the determined locus, including the reference allele unless we are making determined haplotypes, to set as
                     the determined allele.  For each choice of determined allele generate all possible partially determined haplotypes
          */
-        final Set<Haplotype> outputHaplotypes = pileupArgs.determinePDHaps ? Sets.newLinkedHashSet(List.of(referenceHaplotype)) : Sets.newLinkedHashSet();  // NOTE: output changes if this is not a LinkedHashSet!
+        final Set<Haplotype> outputHaplotypes = pileupArgs.useDeterminedHaplotypesDespitePdhmmMode ? Sets.newLinkedHashSet(List.of(referenceHaplotype)) : Sets.newLinkedHashSet();  // NOTE: output changes if this is not a LinkedHashSet!
         for (final int determinedLocus : eventsByStartPos.keySet()) {   // it's a SortedMap -- iterating over its keyset is okay!
             final List<Event> allEventsHere = eventsByStartPos.get(determinedLocus);
             Utils.printIf(debug, () -> "working with variants: " + allEventsHere + " at position " + determinedLocus);
@@ -123,7 +123,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                 continue;
             }
 
-            for (int determinedAlleleIndex = (pileupArgs.determinePDHaps?0:-1); determinedAlleleIndex < allEventsHere.size(); determinedAlleleIndex++) { //note -1 for I here corresponds to the reference allele at this site
+            for (int determinedAlleleIndex = (pileupArgs.useDeterminedHaplotypesDespitePdhmmMode ?0:-1); determinedAlleleIndex < allEventsHere.size(); determinedAlleleIndex++) { //note -1 for I here corresponds to the reference allele at this site
                 final boolean determinedAlleleIsRef = determinedAlleleIndex == -1;
                 final Set<Event> determinedEvents = determinedAlleleIsRef ? Set.of() : Set.of(allEventsHere.get(determinedAlleleIndex));
                 Utils.printIf(debug, () -> "Working with determined allele(s) at site: "+(determinedAlleleIsRef? "[ref:"+(determinedLocus-referenceHaplotype.getStart())+"]" :
@@ -140,7 +140,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
                 // from each set of branch exclusions make a single PD haplotype or a combinatorial number of determined haplotypes
                 for (Set<Event> branch : branches) {
-                    if (!pileupArgs.determinePDHaps) {
+                    if (!pileupArgs.useDeterminedHaplotypesDespitePdhmmMode) {
                         final List<Event> eventsInPDHap = branch.stream().sorted(HAPLOTYPE_SNP_FIRST_COMPARATOR).toList();
                         PartiallyDeterminedHaplotype newPDHaplotype = createNewPDHaplotypeFromEvents(referenceHaplotype, determinedEvents, determinedLocus, eventsInPDHap, allEventsHere);
                         branchHaplotypesDebugMessage(referenceHaplotype, debug, branch, List.of(newPDHaplotype));
@@ -191,7 +191,9 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         final List<Haplotype> result = outputHaplotypes.stream().sorted(Comparator.comparing(Haplotype::getBaseString)).toList();
         sourceSet.replaceAllHaplotypes(result);
         Utils.printIf(debug, () -> "Constructed Haps for Branch"+sourceSet.getHaplotypeList().stream().map(Haplotype::toString).collect(Collectors.joining("\n")));
-        sourceSet.setPartiallyDeterminedMode(!pileupArgs.determinePDHaps);
+
+        // Set PDHMM flag to enable later PDHMM genotyping.  We only set it now because earlier code might fail and revert to non-PDHMM mode.
+        sourceSet.setPartiallyDeterminedMode(!pileupArgs.useDeterminedHaplotypesDespitePdhmmMode);
         Utils.printIf(debug, () -> "Returning "+outputHaplotypes.size()+" to the HMM");
         return sourceSet;
     }
@@ -314,6 +316,12 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
      * Partition events into the largest possible clusters such that events in distinct clusters are mutually compatible
      * i.e. can exist on the same haplotype.
      *
+     * The resulting event groups are a disjoint cover of the input events; that is, every input event belongs to exactly one
+     * output EventGroup.
+     *
+     * In the common case that all events are compatible -- they are non-overlapping SNPs, for example -- a single event group
+     * containing all events is returned.
+     *
      * Incompatibility comes in two types, the first and more obvious being overlap.  The second is defined by the
      * heuristic in which we inject two or three events into the reference haplotype and realign the resulting two- or three-event
      * haplotype against the reference haplotype via Smith-Waterman.  If the resulting reduced representation contains other events
@@ -322,6 +330,9 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
      * To find the desired partition we calculate the connected components of an undirected graph whose edges correspond to
      * either type of incompatibility.  That is, overlapping events and Smith-Waterman-forbidden pairs get an edge; Smith-Waterman-forbidden
      * trios get three edges, one for every two events in the trio.
+     *
+     * Note: Although the resulting partition is the same as DRAGEN's, the graph-based algorithm below is a very different
+     * implementation.
      *
      * @param eventsInOrder all events in a calling region
      * @param swForbiddenPairsAndTrios list of lists of two or three non-overlapping events that are mutually excluded according
@@ -358,6 +369,8 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
      * and 3) contain no mutually-exclusive pairs or trios of events.
      *
      * When constructing PD haplotypes we take all possible unions of these subsets over all event groups.
+     *
+     * Returns null if the combinatorial explosion of branches becomes too large.
      */
     private static List<Set<Event>> computeBranches(List<EventGroup> eventGroups, Set<Event> determinedEvents, final List<Event> allEventsAtDeterminedLocus) {
         List<Set<Event>> branches = new ArrayList<>();
