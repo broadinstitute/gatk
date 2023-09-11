@@ -2,7 +2,7 @@ import os
 from typing import List
 
 import hail as hl
-from hail.experimental.vcf_combiner.vcf_combiner import merge_alleles
+from hail.vds.combiner.combine import merge_alleles
 from hail.genetics.reference_genome import reference_genome_type
 from hail.typecheck import typecheck, sequenceof, numeric
 
