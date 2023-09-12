@@ -14,6 +14,7 @@ import org.testng.annotations.Test;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
@@ -101,17 +102,95 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
                 .map(mutexIndices -> mutexIndices.stream().map(eventsInOrder::get).toList())
                 .toList();
 
-        // set of actual partition -- each list in the set is in HAPLOTYPE_SNP_FIRST_COMPARATOR order
+        // set of actual partition -- each list in the set is in HAPLOTYPE_SNP_FIRST_COMPARATOR order because that's how the code works
         final Set<List<Event>> actualPartition = PartiallyDeterminedHaplotypeComputationEngine.getEventGroupClusters(eventsInOrder, mutexes).stream()
                 .map(eventGroup -> eventGroup.eventsInOrderForTesting())
                 .collect(Collectors.toSet());
 
-        // set of expected partition -- each list in the set is in HAPLOTYPE_SNP_FIRST_COMPARATOR order
+        // set of expected partition -- each list in the set is in HAPLOTYPE_SNP_FIRST_COMPARATOR order because we sort it explicitly
         final Set<List<Event>> expectedPartition = expectedEventGroups.stream()
                 .map(eventsList -> eventsList.stream().map(eventsInOrder::get).sorted(PartiallyDeterminedHaplotypeComputationEngine.HAPLOTYPE_SNP_FIRST_COMPARATOR).toList())
                 .collect(Collectors.toSet());
 
         Assert.assertEquals(expectedPartition, actualPartition);
+    }
+
+    @DataProvider
+    public Object[][] makeBranchesDataProvider() {
+        // format:
+        // 1) list of all events
+        // 2) list of 2- and 3-element groups of events that are mutually excluded due to the Smith-Waterman heuristic
+        //      (note that there is no reference sequence in this test, hence we can set whatever  exclusions we want here)
+        //      (note also that this is in addition to any mutexes due to overlapping loci)
+        //  3) determined locus
+        //  4) OptionalInt of determined event's index (if present), empty if ref allele at determined locus is determined
+        //  5) expected branches as list of sets
+        // for convenience, 2), 4), and 5) are representing by indices within the list 1).
+        return new Object[][] {
+                // no mutexes, hence no branching
+                { List.of(SNP_C_90), List.of(), 90, OptionalInt.empty(), List.of(Set.of())},
+
+                /**
+                { List.of(SNP_C_90, SNP_C_100), List.of(), List.of(List.of(0), List.of(1))},
+                { List.of(SNP_C_90, SNP_C_100, SNP_C_105), List.of(), List.of(List.of(0), List.of(1), List.of(2))},
+                { List.of(SNP_C_90, SNP_C_100, INS_TT_105, SNP_C_109), List.of(), List.of(List.of(0), List.of(1), List.of(2), List.of(3))},
+
+                // all events are connected by a path of overlaps; everything belongs to a single event group
+                { List.of(SNP_C_105, SNP_G_105), List.of(), List.of(List.of(0,1))},
+                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105), List.of(), List.of(List.of(0,1,2))},
+                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105, SNP_C_106), List.of(), List.of(List.of(0,1,2,3))},
+
+                // multiple event groups due to independent overlaps -- note that insertions have 0.5 added to their start for DRAGEN
+                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105, SNP_C_120), List.of(), List.of(List.of(0,1,2), List.of(3))},
+                { List.of(SNP_C_105, SNP_G_105, INS_TT_105), List.of(), List.of(List.of(0,1), List.of(2))},
+                { List.of(SNP_C_105, SNP_G_105, INS_GGG_106, SNP_C_107), List.of(), List.of(List.of(0,1), List.of(2), List.of(3))},
+                { List.of(DEL_AA_100, SNP_G_101, DEL_AA_105, SNP_C_106), List.of(), List.of(List.of(0,1), List.of(2,3))},
+                { List.of(DEL_AA_100, SNP_G_101, DEL_AA_105, SNP_C_106, SNP_C_120), List.of(), List.of(List.of(0,1), List.of(2,3), List.of(4))},
+
+                // Smith-Waterman pair mutex joining event groups that would otherwise be independent
+                { List.of(SNP_C_90, SNP_C_100), List.of(List.of(0,1)), List.of(List.of(0,1))},
+                { List.of(SNP_C_90, SNP_C_100, SNP_C_105), List.of(List.of(0,1)), List.of(List.of(0,1), List.of(2))},
+                { List.of(SNP_C_90, SNP_C_100, SNP_C_105), List.of(List.of(0,2)), List.of(List.of(0,2), List.of(1))},    // this example is unrealistic
+                { List.of(DEL_AA_100, SNP_G_101, DEL_AA_105, SNP_C_106), List.of(List.of(1,2)), List.of(List.of(0,1,2,3))},
+                { List.of(DEL_AA_100, SNP_G_101, DEL_AA_105, SNP_C_106, SNP_C_120), List.of(List.of(1,2)), List.of(List.of(0,1, 2,3), List.of(4))},
+
+                // two Smith-Waterman pair mutexes transitively combining three event groups
+                { List.of(DEL_AA_100, SNP_G_101, DEL_AA_105, SNP_C_106, SNP_C_120), List.of(List.of(1,2), List.of(3,4)), List.of(List.of(0,1, 2, 3, 4))},
+
+                // Smith-Waterman pair mutex doing nothing because it is redundant with an overlap mutex
+                { List.of(DEL_AA_100, SNP_G_101, DEL_AA_105, SNP_C_106, SNP_C_120), List.of(List.of(2,3)), List.of(List.of(0,1), List.of(2,3), List.of(4))},
+
+                // Smith-Waterman trio mutex transitively combining three event groups
+                { List.of(DEL_AA_100, SNP_G_101, DEL_AA_105, SNP_C_106, SNP_C_120), List.of(List.of(1,2,4)), List.of(List.of(0,1, 2, 3, 4))},
+                 **/
+        };
+    }
+
+    @Test(dataProvider = "makeBranchesDataProvider")
+    public void testMakeBranches(List<Event> eventsInOrder, List<List<Integer>> swMutexes, final int determinedLocus, final OptionalInt determinedEvent,
+                                 final List<Set<Integer>> expectedBranchIndices) {
+        // convert indices to events
+        final List<List<Event>> mutexes = swMutexes.stream()
+                .map(mutexIndices -> mutexIndices.stream().map(eventsInOrder::get).toList())
+                .toList();
+
+        final List<PartiallyDeterminedHaplotypeComputationEngine.EventGroup> eventGroups =
+                PartiallyDeterminedHaplotypeComputationEngine.getEventGroupClusters(eventsInOrder, mutexes);
+
+        // an absent determined event denotes that the ref allele is determined
+        // TODO: eventually this needs to be generalized to multiple determined events
+        final Set<Event> determinedEvents = determinedEvent.isPresent() ? Set.of(eventsInOrder.get(determinedEvent.getAsInt())) : Set.of();
+
+        final List<Event> allEventsAtDeterminedLocus = eventsInOrder.stream().filter(event -> event.getStart() == determinedLocus).toList();
+
+        final Set<Set<Event>> actualBranches = PartiallyDeterminedHaplotypeComputationEngine.computeBranches(eventGroups, determinedEvents, allEventsAtDeterminedLocus)
+                        .stream().collect(Collectors.toSet());
+
+        final Set<Set<Event>> expectedBranches = expectedBranchIndices.stream()
+                        .map(indexSet -> indexSet.stream().map(eventsInOrder::get).collect(Collectors.toSet()))
+                                .collect(Collectors.toSet());
+
+        Assert.assertEquals(actualBranches, expectedBranches);
     }
 
     @DataProvider

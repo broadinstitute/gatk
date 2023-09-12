@@ -372,7 +372,8 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
      *
      * Returns null if the combinatorial explosion of branches becomes too large.
      */
-    private static List<Set<Event>> computeBranches(List<EventGroup> eventGroups, Set<Event> determinedEvents, final List<Event> allEventsAtDeterminedLocus) {
+    @VisibleForTesting
+    static List<Set<Event>> computeBranches(List<EventGroup> eventGroups, Set<Event> determinedEvents, final List<Event> allEventsAtDeterminedLocus) {
         List<Set<Event>> branches = new ArrayList<>();
         branches.add(new HashSet<>());   // start with a single empty branch
 
