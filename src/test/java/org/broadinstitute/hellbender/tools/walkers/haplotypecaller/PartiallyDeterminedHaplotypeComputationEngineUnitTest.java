@@ -127,16 +127,22 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
         //  5) expected branches as list of sets
         // for convenience, 2), 4), and 5) are representing by indices within the list 1).
         return new Object[][] {
-                // no mutexes, hence no branching
+                // no mutexes, hence a single branch with all events, except alt events at a determined ref locus
                 { List.of(SNP_C_90), List.of(), 90, OptionalInt.empty(), List.of(Set.of())},
-
-                /**
-                { List.of(SNP_C_90, SNP_C_100), List.of(), List.of(List.of(0), List.of(1))},
-                { List.of(SNP_C_90, SNP_C_100, SNP_C_105), List.of(), List.of(List.of(0), List.of(1), List.of(2))},
-                { List.of(SNP_C_90, SNP_C_100, INS_TT_105, SNP_C_109), List.of(), List.of(List.of(0), List.of(1), List.of(2), List.of(3))},
+                { List.of(SNP_C_90), List.of(), 90, OptionalInt.of(0), List.of(Set.of(0))},
+                { List.of(SNP_C_90, SNP_C_100), List.of(), 100, OptionalInt.empty(), List.of(Set.of(0))},
+                { List.of(SNP_C_90, SNP_C_100), List.of(), 100, OptionalInt.of(1), List.of(Set.of(0,1))},
+                { List.of(SNP_C_90, SNP_C_100, SNP_C_105), List.of(), 100, OptionalInt.empty(), List.of(Set.of(0,2))},
+                { List.of(SNP_C_90, SNP_C_100, SNP_C_105), List.of(), 100, OptionalInt.of(1), List.of(Set.of(0,1,2))},
+                { List.of(SNP_C_90, SNP_C_100, INS_TT_105, SNP_C_109), List.of(), 90, OptionalInt.of(0), List.of(Set.of(0,1,2,3))},
 
                 // all events are connected by a path of overlaps; everything belongs to a single event group
-                { List.of(SNP_C_105, SNP_G_105), List.of(), List.of(List.of(0,1))},
+                { List.of(SNP_C_105, SNP_G_105), List.of(), 105, OptionalInt.empty(), List.of(Set.of())},
+                { List.of(SNP_C_105, SNP_G_105), List.of(), 105, OptionalInt.of(0), List.of(Set.of(0))},
+                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105), List.of(), 102, OptionalInt.empty(), List.of(Set.of(1,2))},
+                /**
+
+
                 { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105), List.of(), List.of(List.of(0,1,2))},
                 { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105, SNP_C_106), List.of(), List.of(List.of(0,1,2,3))},
 

@@ -660,7 +660,9 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             allowedSubsets = new BitSet(1 << eventsInOrder.size());
 
             final List<List<Event>> overlappingMutexes = mutexPairsAndTrios.stream()
-                            .filter(mutext -> mutext.stream().anyMatch(eventIndices::containsKey)).toList();
+                    // overlapping SNPs are mutexes for forming event groups, but they are NOT forbidden combinations for PD haplotypes!
+                    .filter(mutex -> !(mutex.size() == 2 && mutex.get(0).getStart() == mutex.get(1).getStart() && mutex.get(0).isSNP() && mutex.get(1).isSNP()))
+                    .filter(mutex -> mutex.stream().anyMatch(eventIndices::containsKey)).toList();
             for (final List<Event> mutex : overlappingMutexes) {
                 Utils.validate(mutex.stream().allMatch(eventIndices::containsKey), () -> "Mutex group " + mutex + " only partially overlaps event group " + this);
             }
