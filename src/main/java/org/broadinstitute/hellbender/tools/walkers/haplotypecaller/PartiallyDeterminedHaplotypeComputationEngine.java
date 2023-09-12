@@ -716,12 +716,14 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
          * @return
          */
         public List<Set<Event>> eventSetsForPDHaplotypes(final Set<Event> determinedEvents, final List<Event> locusEvents) {
-            if (eventsInOrder.size() == 1) {
-                return Collections.singletonList(Set.of(eventsInOrder.get(0))); // if only one event, there are no mutexes
-            }
-
             final SmallBitSet locusOverlapSet = overlapSet(locusEvents);
             final SmallBitSet determinedOverlapSet = overlapSet(determinedEvents);
+
+            if (eventsInOrder.size() == 1) {
+                // if this is the determined locus and ref is determined, return an empty set; otherwise return a singleton set of the lone event
+                return (!locusOverlapSet.isEmpty() && determinedEvents.isEmpty()) ? Collections.singletonList(Set.of()) :
+                        Collections.singletonList(Set.of(eventsInOrder.get(0))); // if only one event, there are no mutexes
+            }
 
             // the repeated case is when the determined locus is external to this event group
             final boolean cachedCase = locusOverlapSet.isEmpty() && determinedOverlapSet.isEmpty();
