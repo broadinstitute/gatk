@@ -1,5 +1,12 @@
 # Genomic Variant Store (GVS) Changelog
 
+## 0.3.2 - 2023-09-11
+
+### Changed
+
+- Added a new Boolean `is_wgs` flag to `GvsBeta`/`GvsJointVariantCalling` that determines whether to use the WGS interval list (and weights bed) if true, or the Exome interval list if false.
+  - The (optional) inputs `interval_list` and `interval_weights_bed` can be defined to override the default behavior.
+
 ## 0.3.1 - 2023-09-06
 
 ### Changed

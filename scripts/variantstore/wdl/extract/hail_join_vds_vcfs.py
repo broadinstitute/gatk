@@ -15,7 +15,10 @@ def vds_mt(vds_path):
 
 
 def vcf_mt(vcf_paths):
-    mt = hl.import_vcf(vcf_paths, force_bgz=True, reference_genome='GRCh38').key_rows_by('locus')
+    # Import a VCF that we will use as truth data for this test
+    # Setting array_elements_required to false is done as a workaround because Hail has a hard time with unconventional fields with empty values e.g. AS_YNG=.,.,.
+    # Avoiding explicitly acknowledging the use of missing elements in arrays requires Hail to make a decision in several ambiguous cases
+    mt = hl.import_vcf(vcf_paths, force_bgz=True, reference_genome='GRCh38', array_elements_required=False).key_rows_by('locus')
     return mt
 
 
