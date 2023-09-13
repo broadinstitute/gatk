@@ -48,6 +48,7 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
     // TODO THESE ARE FOR INVALID TEST CASES
     Event SNP_C_99 = new Event("20",99, Allele.REF_A,Allele.ALT_C);
     Event SNP_C_120 = new Event("20",120, Allele.REF_A,Allele.ALT_C);
+    Event SNP_G_120 = new Event("20",120, Allele.REF_A,Allele.ALT_G);
 
     @DataProvider
     public Object[][] makeEventGroupClustersDataProvider() {
@@ -139,36 +140,53 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
                 // all events are connected by a path of overlaps; everything belongs to a single event group
                 { List.of(SNP_C_105, SNP_G_105), List.of(), 105, OptionalInt.empty(), List.of(Set.of())},
                 { List.of(SNP_C_105, SNP_G_105), List.of(), 105, OptionalInt.of(0), List.of(Set.of(0))},
+
+                // ref is determined at the spanning deletion, the two SNPs coexist as undetermined alleles
                 { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105), List.of(), 102, OptionalInt.empty(), List.of(Set.of(1,2))},
-                /**
 
+                // spanning deletion is determined, the two SNPs are incompatible
+                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105), List.of(), 102, OptionalInt.of(0), List.of(Set.of(0))},
 
-                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105), List.of(), List.of(List.of(0,1,2))},
-                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105, SNP_C_106), List.of(), List.of(List.of(0,1,2,3))},
+                // ref is determined at the biallelic SNP locus, spanning deletion is a valid undetermined allele
+                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105), List.of(), 105, OptionalInt.empty(), List.of(Set.of(0))},
 
-                // multiple event groups due to independent overlaps -- note that insertions have 0.5 added to their start for DRAGEN
-                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105, SNP_C_120), List.of(), List.of(List.of(0,1,2), List.of(3))},
-                { List.of(SNP_C_105, SNP_G_105, INS_TT_105), List.of(), List.of(List.of(0,1), List.of(2))},
-                { List.of(SNP_C_105, SNP_G_105, INS_GGG_106, SNP_C_107), List.of(), List.of(List.of(0,1), List.of(2), List.of(3))},
-                { List.of(DEL_AA_100, SNP_G_101, DEL_AA_105, SNP_C_106), List.of(), List.of(List.of(0,1), List.of(2,3))},
-                { List.of(DEL_AA_100, SNP_G_101, DEL_AA_105, SNP_C_106, SNP_C_120), List.of(), List.of(List.of(0,1), List.of(2,3), List.of(4))},
+                // one SNP is determined, spanning deletion and the other SNP are invalid
+                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105), List.of(), 105, OptionalInt.of(1), List.of(Set.of(1))},
 
-                // Smith-Waterman pair mutex joining event groups that would otherwise be independent
-                { List.of(SNP_C_90, SNP_C_100), List.of(List.of(0,1)), List.of(List.of(0,1))},
-                { List.of(SNP_C_90, SNP_C_100, SNP_C_105), List.of(List.of(0,1)), List.of(List.of(0,1), List.of(2))},
-                { List.of(SNP_C_90, SNP_C_100, SNP_C_105), List.of(List.of(0,2)), List.of(List.of(0,2), List.of(1))},    // this example is unrealistic
-                { List.of(DEL_AA_100, SNP_G_101, DEL_AA_105, SNP_C_106), List.of(List.of(1,2)), List.of(List.of(0,1,2,3))},
-                { List.of(DEL_AA_100, SNP_G_101, DEL_AA_105, SNP_C_106, SNP_C_120), List.of(List.of(1,2)), List.of(List.of(0,1, 2,3), List.of(4))},
+                // SNP at 106 is incompatible with the spanning deletion, both SNPs at 105 are undetermined
+                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105, SNP_C_106), List.of(), 106, OptionalInt.of(3), List.of(Set.of(1,2,3))},
 
-                // two Smith-Waterman pair mutexes transitively combining three event groups
-                { List.of(DEL_AA_100, SNP_G_101, DEL_AA_105, SNP_C_106, SNP_C_120), List.of(List.of(1,2), List.of(3,4)), List.of(List.of(0,1, 2, 3, 4))},
+                // ref is determined at 106, hence we branch!  Either we have the spanning deletion or the two SNPs
+                // note that spanning deletions being compatible with the ref allele at a SNP *is* DRAGEN behavior, even if it's suspect
+                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105, SNP_C_106), List.of(), 106, OptionalInt.empty(), List.of(Set.of(0), Set.of(1,2))},
 
-                // Smith-Waterman pair mutex doing nothing because it is redundant with an overlap mutex
-                { List.of(DEL_AA_100, SNP_G_101, DEL_AA_105, SNP_C_106, SNP_C_120), List.of(List.of(2,3)), List.of(List.of(0,1), List.of(2,3), List.of(4))},
+                // spanning deletion forbids spanned SNPs and allows the other SNP
+                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105, SNP_C_120), List.of(), 102, OptionalInt.of(0), List.of(Set.of(0,3))},
 
-                // Smith-Waterman trio mutex transitively combining three event groups
-                { List.of(DEL_AA_100, SNP_G_101, DEL_AA_105, SNP_C_106, SNP_C_120), List.of(List.of(1,2,4)), List.of(List.of(0,1, 2, 3, 4))},
-                 **/
+                // spanning deletion forbids spanned SNPs and allows the other two overlapping SNPs
+                { List.of(DEL_AAAAAAA_102, SNP_C_105, SNP_G_105, SNP_C_120, SNP_G_120), List.of(), 102, OptionalInt.of(0), List.of(Set.of(0,3,4))},
+
+                // ref is determined at 105, insertion at 106 and SNP at 107 don't overlap
+                { List.of(SNP_C_105, SNP_G_105, INS_GGG_106, SNP_C_107), List.of(), 105, OptionalInt.empty(), List.of(Set.of(2,3))},
+
+                // deletion at 105 is determined, so spanned SNP at 106 is forbidden.  SNP at 120 is always allowed, and the
+                // deletion at 100 and its spanned SNP at 101 induce branching
+                { List.of(DEL_AA_100, SNP_G_101, DEL_AA_105, SNP_C_106, SNP_C_120), List.of(), 105, OptionalInt.of(2), List.of(Set.of(0,2,4), Set.of(1,2,4))},
+
+                // just a mess -- the deletion at 100 spans the SNP at 101, which is SW mutexed with the deletion at 105, which spans the SNP at 106,
+                // which has an (unrealistic) SW mutex with the SNP at 120.  We're testing here that although there is only one event group we still
+                // get several branches with more than one event.
+                { List.of(DEL_AA_100, SNP_G_101, DEL_AA_105, SNP_C_106, SNP_C_120), List.of(List.of(1,2), List.of(3,4)), 120, OptionalInt.of(4),
+                    List.of(Set.of(0,2,4), Set.of(1,4))},
+
+                // another example from the same balagan
+                { List.of(DEL_AA_100, SNP_G_101, DEL_AA_105, SNP_C_106, SNP_C_120), List.of(List.of(1,2), List.of(3,4)), 105, OptionalInt.of(2),
+                        List.of(Set.of(0,2,4))},
+
+                // another messy one -- note that the deletion at 98 overlaps events that start at 104 but not 105
+                { List.of(DEL_AAAAAAA_98, DEL_AA_100, SNP_G_101, DEL_AAAAAAA_102, DEL_AA_105, SNP_C_106, SNP_C_120), List.of(), 120, OptionalInt.of(6),
+                        List.of(Set.of(0,4,6), Set.of(0,5,6), Set.of(1,3,6), Set.of(1,4,6), Set.of(1,5,6), Set.of(2,3,6), Set.of(2,4,6), Set.of(2,5,6))},
+
         };
     }
 
