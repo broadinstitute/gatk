@@ -1,5 +1,6 @@
 Original issue link: https://github.com/broadinstitute/gatk/issues/7622
 
+Note: This is a history of why the WeightedSplitIntervals code exists, and instructions for creating the weighted bed files that it requires as input.  We'll only need to follow these steps and run the python scripts if we need to create new weight files for a new genome or a new reference.  As of now, the weighted bed file is created from statistics drawn from the AoU Delta callset, and should work for genomes and exomes.
 
 UPDATE: @lbergelson and I started creating this as an extension to SplitIntervals, but it quickly because very complex to fit it into that framework/abstraction so we decided to create a specialized tool for GVS
 

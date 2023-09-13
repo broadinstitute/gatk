@@ -27,9 +27,6 @@ workflow GvsExtractCallset {
     Boolean use_interval_weights = true
     File interval_weights_bed = "gs://gvs_quickstart_storage/weights/gvs_full_vet_weights_1kb_padded.bed"
 
-
-
-
     String? variants_docker
     String? cloud_sdk_docker
     String? gatk_docker

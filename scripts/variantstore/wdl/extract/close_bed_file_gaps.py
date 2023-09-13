@@ -12,7 +12,7 @@ argParser = argparse.ArgumentParser()
 
 argParser.add_argument("-s", "--bin-size", help="size of the bins in kb", type=int, default=binsize_kb)
 argParser.add_argument("-i", "--infile", help="bed input file", type=str, default=infile)
-argParser.add_argument("-o", "--outfile", help="bed output file", type=str, default=infile)
+argParser.add_argument("-o", "--outfile", help="bed output file", type=str, default=outfile)
 argParser.add_argument("-l", "--interval-list", help="an interval list we can use to fill in any data on a contig past the end of our samples", type=str)
 
 args = argParser.parse_args()
@@ -25,21 +25,19 @@ contigSizes = {}
 # an interval list is not required.  But if one is supplied, we'll use it to determine how long each contig is so we can
 # pad out our data to that size.  We yank the contig name and length info directly from the lines using simple regexes
 if args.interval_list:
-	interval_list_file = open(args.interval_list, 'r')
-	for header_line in interval_list_file:
-		if header_line.startswith("@SQ"):
-			# look for the contig and length fields
-			contig_result = re.search(r'SN:(\S+)', header_line);
-			length_result = re.search(r'LN:(\d+)', header_line);
-		
-			if contig_result and length_result:
-				contig = contig_result.group(1)
-				contig_length = length_result.group(1)
-				contigSizes[contig] = int(contig_length) 			
+	with open(args.interval_list, 'r') as interval_list_file:
+		for header_line in interval_list_file:
+			if header_line.startswith("@SQ"):
+				# look for the contig and length fields
+				contig_result = re.search(r'SN:(\S+)', header_line)
+				length_result = re.search(r'LN:(\d+)', header_line)
+
+				if contig_result and length_result:
+					contig = contig_result.group(1)
+					contig_length = length_result.group(1)
+					contigSizes[contig] = int(contig_length)
 else:
 	print("We do not have an interval list")
-
-
 
 lastContig = ""
 lastEnding = 0
