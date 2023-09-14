@@ -626,7 +626,7 @@ task BigQueryLoadJson {
         fi
 
         echo "Loading data into a pre-vat table ~{dataset_name}.~{genes_table}"
-        bq --apilog=false oad  --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON  ~{dataset_name}.~{genes_table} ~{genes_path}
+        bq --apilog=false load  --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON  ~{dataset_name}.~{genes_table} ~{genes_path}
 
         set +e
         bq --apilog=false show --project_id ~{project_id} ~{dataset_name}.~{vat_table} > /dev/null
