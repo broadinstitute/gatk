@@ -26,6 +26,7 @@ workflow GvsCallsetStatistics {
     }
 
     String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
+    String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
 
     call Utils.ValidateFilterSetName {
         input:
@@ -97,7 +98,7 @@ workflow GvsCallsetStatistics {
 
     output {
         File callset_statistics = ExportToCSV.callset_statistics
-        String recorded_git_hash = GetToolVersions.git_hash
+        String recorded_git_hash = effective_git_hash
     }
 }
 
