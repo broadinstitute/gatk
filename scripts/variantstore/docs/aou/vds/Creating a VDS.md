@@ -14,8 +14,8 @@ cluster.
 
 ## Using the created notebook, run the python script to create a VDS from the avro files created by the GvsExtractAvroFilesForHail WDL
 These avro files will be passed in using the --avro-path parameter
-The vds-path parameter tells the WDL where to write the final desired VDS to
-There is quite a bit of temporary data created and while it will be cleaned up later, it's helpful to hand the python script a location.
+The vds-path parameter tells the WDL where to write the final VDS to
+There is quite a bit of temporary data created and while it will be cleaned up later, we require that you give the python script a location.
 NOTE: in the WDL created to run this script, the temp directory can be easily defaulted to a date/random dir in the workspace directory
 
 ```python ./hail_gvs_import.py \
@@ -67,5 +67,5 @@ Run it with the following arguments:
 An example run (on the Anvil 3k) is illustrated below
 
 ```
-python3 validation_script.py --vds-path 'gs://fc-3ecd704c-4d2c-4360-bae1-093e214abce2/vds/vds_GQ0_max_ref_1k' --temp-path 'gs://fc-62891290-7fa3-434d-a39e-c64eeee4db8d/temp'
+python3 vds_validation.py --vds-path 'gs://fc-3ecd704c-4d2c-4360-bae1-093e214abce2/vds/vds_GQ0_max_ref_1k' --temp-path 'gs://fc-62891290-7fa3-434d-a39e-c64eeee4db8d/temp'
 ```
