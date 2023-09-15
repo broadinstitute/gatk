@@ -313,7 +313,7 @@ task CollectMetricsForChromosome {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-        bq --apilog=false query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false '
+        bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
             SELECT COUNT(*) from `~{project_id}.~{dataset_name}.~{metrics_table}` WHERE chromosome = ~{chromosome}
         ' | sed 1d > existing_row_count.txt
 
@@ -324,7 +324,7 @@ task CollectMetricsForChromosome {
             exit 1
         fi
 
-        bq --apilog=false query --location=US --project_id=~{project_id} --use_legacy_sql=false '
+        bq --apilog=false query --project_id=~{project_id} --use_legacy_sql=false '
         CREATE TEMPORARY FUNCTION titv(ref STRING, allele STRING)
         RETURNS STRING
             LANGUAGE js AS """
@@ -443,7 +443,7 @@ task AggregateMetricsAcrossChromosomes {
     command <<<
         set -o errexit -o nounset -o xtrace -o pipefail
 
-        bq --apilog=false query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false '
+        bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
             SELECT COUNT(*) from `~{project_id}.~{dataset_name}.~{aggregate_metrics_table}`
         ' | sed 1d > existing_row_count.txt
 
@@ -454,7 +454,7 @@ task AggregateMetricsAcrossChromosomes {
             exit 1
         fi
 
-        bq --apilog=false query --location=US --project_id=~{project_id} --use_legacy_sql=false '
+        bq --apilog=false query --project_id=~{project_id} --use_legacy_sql=false '
         INSERT `~{project_id}.~{dataset_name}.~{aggregate_metrics_table}` (
             filter_set_name,
             sample_id,
@@ -516,7 +516,7 @@ task CollectStatistics {
     command <<<
         set -o errexit -o nounset -o xtrace -o pipefail
 
-        bq --apilog=false query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false '
+        bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
             SELECT COUNT(*) from `~{project_id}.~{dataset_name}.~{statistics_table}`
         ' | sed 1d > existing_row_count.txt
 
@@ -527,7 +527,7 @@ task CollectStatistics {
             exit 1
         fi
 
-        bq --apilog=false query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false '
+        bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
         INSERT `~{project_id}.~{dataset_name}.~{statistics_table}` (
             sample_id,
             sample_name,

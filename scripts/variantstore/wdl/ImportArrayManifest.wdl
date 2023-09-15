@@ -75,11 +75,11 @@ task LoadManifest {
       if [ $? -ne 0 ]; then
         echo "making table ~{ingest_table}"
         # create a site info table and load - schema and TSV header need to be the same order
-        bq --apilog=false --location=US mk --project_id=~{project_id} ~{ingest_table} ~{manifest_schema_json}
+        bq --apilog=false mk --project_id=~{project_id} ~{ingest_table} ~{manifest_schema_json}
       fi
       set -e
 
-      bq --apilog=false load --location=US --project_id=~{project_id} --null_marker "null" --source_format=CSV ~{ingest_table} ~{manifest_csv} ~{manifest_schema_json}
+      bq --apilog=false load --project_id=~{project_id} --null_marker "null" --source_format=CSV ~{ingest_table} ~{manifest_csv} ~{manifest_schema_json}
     >>>
     runtime {
       docker: docker
