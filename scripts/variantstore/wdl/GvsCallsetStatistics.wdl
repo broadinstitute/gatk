@@ -5,6 +5,7 @@ import "GvsUtils.wdl" as Utils
 workflow GvsCallsetStatistics {
     input {
         String? git_branch_or_tag
+        String? git_hash
         String project_id
         String dataset_name
         String filter_set_name
@@ -17,9 +18,11 @@ workflow GvsCallsetStatistics {
 
     # Always call `GetToolVersions` to get the git hash for this run as this is a top-level-only WDL (i.e. there are
     # no calling WDLs that might supply `git_hash`).
-    call Utils.GetToolVersions {
-        input:
-            git_branch_or_tag = git_branch_or_tag,
+    if (!defined(git_hash) || !defined(cloud_sdk_docker)) {
+      call Utils.GetToolVersions {
+          input:
+              git_branch_or_tag = git_branch_or_tag,
+      }
     }
 
     String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
