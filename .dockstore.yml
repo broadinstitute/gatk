@@ -337,7 +337,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1047_RemoveLocationUSInBqCommandCalls
          tags:
              - /.*/
    - name: MitochondriaPipeline
