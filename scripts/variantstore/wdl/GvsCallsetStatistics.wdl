@@ -31,7 +31,8 @@ workflow GvsCallsetStatistics {
         input:
             project_id = project_id,
             fq_filter_set_info_table = "~{project_id}.~{dataset_name}.filter_set_info",
-            filter_set_name = filter_set_name
+            filter_set_name = filter_set_name,
+            cloud_sdk_docker = effective_cloud_sdk_docker
     }
 
     call CreateTables {
