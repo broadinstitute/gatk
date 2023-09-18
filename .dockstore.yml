@@ -88,18 +88,28 @@ workflows:
              - master
          tags:
              - /.*/
-   - name: GvsAssignIds
+   - name: GvSHelloHail
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsAssignIds.wdl
-     testParameterFiles:
-         - /scripts/variantstore/wdl/GvsAssignIds.example.inputs.json
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvSHelloHail.wdl
      filters:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1019
+             - rc-vs-1023-hello-hail
          tags:
              - /.*/
+   - name: GvsAssignIds
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsAssignIds.wdl
+     testParameterFiles:
+       - /scripts/variantstore/wdl/GvsAssignIds.example.inputs.json
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - rsa_vs_1019
+       tags:
+         - /.*/
    - name: GvsBenchmarkExtractTask
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsBenchmarkExtractTask.wdl
