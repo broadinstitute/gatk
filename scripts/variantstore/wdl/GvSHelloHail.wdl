@@ -192,7 +192,8 @@ task say_hello_hail {
         from google.cloud import dataproc_v1 as dataproc
 
         # Must match pattern (?:[a-z](?:[-a-z0-9]{0,49}[a-z0-9])?)
-        cluster_name = f'~{prefix}-~{contig}-hail-{str(uuid.uuid4())[0:13]}'
+        # cluster_name = f'~{prefix}-~{contig}-hail-{str(uuid.uuid4())[0:13]}'
+        cluster_name = f'~{prefix}-hail-{str(uuid.uuid4())[0:13]}'
 
         # Must be local filepath once a script is finally set
         # script_path = "~{submission_script}"
