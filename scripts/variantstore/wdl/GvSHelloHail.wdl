@@ -120,7 +120,6 @@ workflow GvSHelloHail {
         input:
             # vds_url = vds_url,
             # bed_url = bed_url,
-            # contig = contig,
             prefix = prefix,
             gcs_project = gcs_project,
             num_workers = num_workers,
@@ -192,7 +191,6 @@ task say_hello_hail {
         from google.cloud import dataproc_v1 as dataproc
 
         # Must match pattern (?:[a-z](?:[-a-z0-9]{0,49}[a-z0-9])?)
-        # cluster_name = f'~{prefix}-~{contig}-hail-{str(uuid.uuid4())[0:13]}'
         cluster_name = f'~{prefix}-hail-{str(uuid.uuid4())[0:13]}'
 
         # Must be local filepath once a script is finally set
@@ -219,12 +217,12 @@ task say_hello_hail {
 
                     #### THIS IS WHERE YOU CALL YOUR SCRIPT AND COPY THE OUTPUT LOCALLY (so that it can get back into WDL-space)
                     ## Maybe next step is to make a simple python script to run aside from just printing hello world
-                    # submit_cmd = f'gcloud dataproc jobs submit pyspark {script_path} --cluster={cluster_name} --project ~{gcs_project}  --region=~{region} --account {account} --driver-log-levels root=WARN -- --vds_url ~{vds_url} --bed_url ~{bed_url} --vcf_header_url ~{vcf_header_url} --contig ~{contig} --output_gs_url gs://{cluster_staging_bucket}/{cluster_name}/~{prefix}.~{contig}.vcf.bgz'
+                    # submit_cmd = f'gcloud dataproc jobs submit pyspark {script_path} --cluster={cluster_name} --project ~{gcs_project}  --region=~{region} --account {account} --driver-log-levels root=WARN -- --vds_url ~{vds_url} --bed_url ~{bed_url} --vcf_header_url ~{vcf_header_url} --output_gs_url gs://{cluster_staging_bucket}/{cluster_name}/~{prefix}.vcf.bgz'
                     # print("Running: " + submit_cmd)
                     print("Running nothing yet")
                     # os.popen(submit_cmd).read()
                     # print("Copying results out of staging bucket...")
-                    # staging_cmd = f'gsutil cp -r gs://{cluster_staging_bucket}/{cluster_name}/~{prefix}.~{contig}.vcf.bgz ~{prefix}.~{contig}.vcf.bgz'
+                    # staging_cmd = f'gsutil cp -r gs://{cluster_staging_bucket}/{cluster_name}/~{prefix}.vcf.bgz ~{prefix}.vcf.bgz'
                     # print(staging_cmd)
                     # os.popen(staging_cmd).read()
                     ###########
@@ -244,7 +242,7 @@ task say_hello_hail {
     >>>
 
     # output {
-    #    File vcf = "~{prefix}.~{contig}.vcf.bgz"
+    #    File vcf = "~{prefix}.vcf.bgz"
     # }
 
     runtime {
