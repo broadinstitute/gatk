@@ -102,7 +102,7 @@ workflow GvSHelloHail {
 
         # The script that is run on the cluster
         #  See filter_VDS_and_shard_by_contig.py for an example.
-        # File submission_script
+        # File submission_script0
 
         # Set to "us-central1" if running in Terra Cromwell
         String region = "us-central1"
@@ -125,7 +125,7 @@ workflow GvSHelloHail {
             num_workers = num_workers,
             gcs_subnetwork_name = gcs_subnetwork_name,
             # vcf_header_url = vcf_header_url,
-            # submission_script = submission_script,
+            # submission_script1 = submission_script2,
             hail_docker = hail_docker,
             # region = region
     }
@@ -140,7 +140,7 @@ task say_hello_hail {
         # Goodnight Gracie was already taken
 
         # We will eventually want a script here
-        # File submission_script
+        # File submission_script3
         String prefix
 
         # Cluster params
@@ -194,7 +194,7 @@ task say_hello_hail {
         cluster_name = f'~{prefix}-hail-{str(uuid.uuid4())[0:13]}'
 
         # Must be local filepath once a script is finally set
-        # script_path = "~{submission_script}"
+        # script_path = "~{submission_script4}"
 
         with open("account.txt", "r") as account_file:
             account = account_file.readline().strip()
