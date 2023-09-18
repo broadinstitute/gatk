@@ -5,6 +5,7 @@ import "GvsUtils.wdl" as Utils
 workflow GvsCallsetStatistics {
     input {
         String? git_branch_or_tag
+        String? git_hash
         String project_id
         String dataset_name
         String filter_set_name
@@ -17,18 +18,22 @@ workflow GvsCallsetStatistics {
 
     # Always call `GetToolVersions` to get the git hash for this run as this is a top-level-only WDL (i.e. there are
     # no calling WDLs that might supply `git_hash`).
-    call Utils.GetToolVersions {
-        input:
-            git_branch_or_tag = git_branch_or_tag,
+    if (!defined(git_hash) || !defined(cloud_sdk_docker)) {
+      call Utils.GetToolVersions {
+          input:
+              git_branch_or_tag = git_branch_or_tag,
+      }
     }
 
     String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
+    String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
 
     call Utils.ValidateFilterSetName {
         input:
             project_id = project_id,
             fq_filter_set_info_table = "~{project_id}.~{dataset_name}.filter_set_info",
-            filter_set_name = filter_set_name
+            filter_set_name = filter_set_name,
+            cloud_sdk_docker = effective_cloud_sdk_docker
     }
 
     call CreateTables {
@@ -93,7 +98,7 @@ workflow GvsCallsetStatistics {
 
     output {
         File callset_statistics = ExportToCSV.callset_statistics
-        String recorded_git_hash = GetToolVersions.git_hash
+        String recorded_git_hash = effective_git_hash
     }
 }
 
@@ -313,7 +318,7 @@ task CollectMetricsForChromosome {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-        bq --apilog=false query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false '
+        bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
             SELECT COUNT(*) from `~{project_id}.~{dataset_name}.~{metrics_table}` WHERE chromosome = ~{chromosome}
         ' | sed 1d > existing_row_count.txt
 
@@ -324,7 +329,7 @@ task CollectMetricsForChromosome {
             exit 1
         fi
 
-        bq --apilog=false query --location=US --project_id=~{project_id} --use_legacy_sql=false '
+        bq --apilog=false query --project_id=~{project_id} --use_legacy_sql=false '
         CREATE TEMPORARY FUNCTION titv(ref STRING, allele STRING)
         RETURNS STRING
             LANGUAGE js AS """
@@ -443,7 +448,7 @@ task AggregateMetricsAcrossChromosomes {
     command <<<
         set -o errexit -o nounset -o xtrace -o pipefail
 
-        bq --apilog=false query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false '
+        bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
             SELECT COUNT(*) from `~{project_id}.~{dataset_name}.~{aggregate_metrics_table}`
         ' | sed 1d > existing_row_count.txt
 
@@ -454,7 +459,7 @@ task AggregateMetricsAcrossChromosomes {
             exit 1
         fi
 
-        bq --apilog=false query --location=US --project_id=~{project_id} --use_legacy_sql=false '
+        bq --apilog=false query --project_id=~{project_id} --use_legacy_sql=false '
         INSERT `~{project_id}.~{dataset_name}.~{aggregate_metrics_table}` (
             filter_set_name,
             sample_id,
@@ -516,7 +521,7 @@ task CollectStatistics {
     command <<<
         set -o errexit -o nounset -o xtrace -o pipefail
 
-        bq --apilog=false query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false '
+        bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
             SELECT COUNT(*) from `~{project_id}.~{dataset_name}.~{statistics_table}`
         ' | sed 1d > existing_row_count.txt
 
@@ -527,7 +532,7 @@ task CollectStatistics {
             exit 1
         fi
 
-        bq --apilog=false query --location=US --project_id=~{project_id} --format=csv --use_legacy_sql=false '
+        bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
         INSERT `~{project_id}.~{dataset_name}.~{statistics_table}` (
             sample_id,
             sample_name,

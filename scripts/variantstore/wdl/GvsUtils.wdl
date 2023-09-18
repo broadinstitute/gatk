@@ -636,7 +636,7 @@ task CountSuperpartitions {
     command <<<
         bash ~{monitoring_script} > monitoring.log &
 
-        bq --apilog=false query --location=US --project_id='~{project_id}' --format=csv --use_legacy_sql=false '
+        bq --apilog=false query --project_id='~{project_id}' --format=csv --use_legacy_sql=false '
 
             SELECT COUNT(*) FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES`
                 WHERE table_name LIKE "vet_%"
