@@ -194,7 +194,6 @@ task say_hello_hail {
         cluster_name = f'~{prefix}-hail-{str(uuid.uuid4())[0:13]}'
 
         # Must be local filepath once a script is finally set
-        # script_path = "~{submission_script4}"
 
         with open("account.txt", "r") as account_file:
             account = account_file.readline().strip()
