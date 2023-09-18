@@ -142,6 +142,7 @@ task say_hello_hail {
 
         # We will eventually want a script here
         # File submission_script
+        String prefix
 
         # Cluster params
         String gcs_project
