@@ -85,7 +85,7 @@ workflow GvSHelloHail {
 
         # String used in construction of output filename
         #  Cannot contain any special characters, ie, characters must be alphanumeric or "_"
-        # String prefix
+        String prefix = "rc_test_cluster"
 
         ## CLUSTER PARAMETERS
         # Number of workers (per shard) to use in the Hail cluster.
@@ -121,7 +121,7 @@ workflow GvSHelloHail {
             # vds_url = vds_url,
             # bed_url = bed_url,
             # contig = contig,
-            # prefix = prefix,
+            prefix = prefix,
             gcs_project = gcs_project,
             num_workers = num_workers,
             gcs_subnetwork_name = gcs_subnetwork_name,
@@ -241,9 +241,9 @@ task say_hello_hail {
         echo "Goodbye cluster"
     >>>
 
-    output {
-        File vcf = "~{prefix}.~{contig}.vcf.bgz"
-    }
+    # output {
+    #    File vcf = "~{prefix}.~{contig}.vcf.bgz"
+    # }
 
     runtime {
         memory: select_first([runtime_override.mem_gb, runtime_default.mem_gb]) + " GB"
