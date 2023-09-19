@@ -171,7 +171,7 @@ workflow GvsQuickstartIntegration {
                 git_hash = GetToolVersions.git_hash,
                 use_VQSR_lite = true,
                 extract_do_not_filter_override = false,
-                dataset_suffix = "exome",
+                dataset_suffix = "exome_weighted",
                 use_default_dockers = use_default_dockers,
                 gatk_override = if (use_default_dockers) then none else BuildGATKJar.jar,
                 is_wgs = false,
