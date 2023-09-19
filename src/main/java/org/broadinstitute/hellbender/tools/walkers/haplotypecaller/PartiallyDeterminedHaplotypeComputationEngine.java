@@ -171,20 +171,16 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                                 .map(events -> constructHaplotypeFromEvents(referenceHaplotype, events, true)).toList();
                         branchHaplotypesDebugMessage(referenceHaplotype, debug, branch, branchHaps);
                         outputHaplotypes.addAll(branchHaps);
+                    }
 
-                        if (outputHaplotypes.size() > MAX_PD_HAPS_TO_GENERATE) {
-                            Utils.printIf(debug,() -> "Too many branch haplotypes found, aborting ["+outputHaplotypes.size()+"]");
-                            return sourceSet;
-                        }
+                    if (outputHaplotypes.size() > MAX_PD_HAPS_TO_GENERATE) {
+                        Utils.printIf(debug,() -> "Too many branch haplotypes found, aborting ["+outputHaplotypes.size()+"]");
+                        return sourceSet;
                     }
                 }
             }
         }
 
-        if (outputHaplotypes.size() > MAX_PD_HAPS_TO_GENERATE) {
-            Utils.printIf(debug,() -> "Too many branch haplotypes found, aborting ["+outputHaplotypes.size()+"]");
-            return sourceSet;
-        }
         sourceSet.storeAssemblyHaplotypes();
 
         // TODO: Sorting haplotypes is unnecessary but makes debugging against previous versions much easier.

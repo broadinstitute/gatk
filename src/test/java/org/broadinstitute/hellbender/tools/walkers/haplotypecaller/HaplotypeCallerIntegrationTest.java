@@ -2165,6 +2165,41 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         }
     }
 
+    @Test()
+    // Since the PDHMM isn't currently slot-in compared to the pairHMM modes this has to be computed seperately...
+    public void oneOffBugFixTest() throws Exception {
+        Utils.resetRandomGenerator();
+
+        final File vcfOutput = createTempFile("hmmResultFileTest", ".vcf");
+        final File expected = new File(largeFileTestDir, "expected.PDHMM.hmmresults.txt");
+
+
+        final String[] args = {
+                "-I", "gs://broad-dsde-methods-dragen/reprocessed_data_v3.7.5_masked/CH1_CHM13_WGS4/CH1_CHM13_WGS4.bam",
+                "-R", "gs://gcp-public-data--broad-references/hg38/v0/dragen_reference/Homo_sapiens_assembly38_masked.fasta",
+                "-L", "chr7:138621900-138622300", //"gs://fc-secure-a44694f1-6f9f-4e39-8a92-3bb74d92d547/submissions/2bdd7519-3398-4441-9d72-dd7a8d045e85/VariantCalling/1772b061-1e78-42fb-b748-a2bf1f3a7abf/call-ScatterIntervalList/glob-cb4648beeaff920acb03de7603c06f98/185scattered.interval_list",
+                "-ip", "300",
+                "-O", vcfOutput.getAbsolutePath(),
+                "--dragen-mode",
+                "--dragstr-params-path", TEST_FILES_DIR+"example.dragstr-params.txt",
+
+                // Pileup Caller args
+                "--" + PileupDetectionArgumentCollection.PILEUP_DETECTION_LONG_NAME,
+                "--" + PileupDetectionArgumentCollection.PILEUP_DETECTION_ABSOLUTE_ALT_DEPTH, "0",
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false",
+
+                // Pileup caller and PDHMM arguments
+                "--" + PileupDetectionArgumentCollection.PILEUP_DETECTION_BAD_READ_RATIO_LONG_NAME, "0.40",
+                "--" + PileupDetectionArgumentCollection.PILEUP_DETECTION_ENABLE_INDELS,
+                "--" + PileupDetectionArgumentCollection.PILEUP_DETECTION_ACTIVE_REGION_PHRED_THRESHOLD_LONG_NAME, "3.0",
+                "--" + PileupDetectionArgumentCollection.PILEUP_DETECTION_FILTER_ASSEMBLY_HAPS_THRESHOLD, "0.4",
+                "--" + PileupDetectionArgumentCollection.GENERATE_PARTIALLY_DETERMINED_HAPLOTYPES_LONG_NAME,
+
+        };
+
+        runCommandLine(args);
+    }
+
     @Test
     public void testVcfFlowLikelihoodOptimizedCompConsistentWithPreviousResults() throws Exception {
         Utils.resetRandomGenerator();
