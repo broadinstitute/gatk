@@ -77,7 +77,7 @@ task GetToolVersions {
     String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"
     String gotc_imputation_docker = "us.gcr.io/broad-gotc-prod/imputation-bcf-vcf:1.0.5-1.10.2-0.1.16-1649948623"
     # The docker to be used on the VM.  This will need both Hail and Google Cloud SDK installed.
-    String hail_docker="us.gcr.io/broad-dsde-methods/lichtens/hail_dataproc_wdl:1.1"
+    String hail_docker = "us.gcr.io/broad-dsde-methods/lichtens/hail_dataproc_wdl:1.1"
 
     String workspace_bucket = read_string(workspace_bucket_output)
     String workspace_id = read_string(workspace_id_output)

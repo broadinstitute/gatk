@@ -161,12 +161,8 @@ task filter_vds_and_export_as_vcf {
     }
 
     parameter_meta {
-        bed_url: {
-                     localization_optional: true
-                 }
-        vcf_header_url: {
-                            localization_optional: true
-                        }
+        bed_url: { localization_optional: true }
+        vcf_header_url: { localization_optional: true }
     }
 
     RuntimeAttr runtime_default = object {
