@@ -188,6 +188,7 @@ task say_hello_hail {
         import hail as hl
         import os
         import uuid
+        import time
         from google.cloud import dataproc_v1 as dataproc
 
         # Must match pattern (?:[a-z](?:[-a-z0-9]{0,49}[a-z0-9])?)
@@ -232,6 +233,7 @@ task say_hello_hail {
             print(e)
             raise
         finally:
+            time.sleep(300)
             print(f'Stopping cluster: {cluster_name}')
             os.popen("gcloud dataproc clusters delete --project {} --region {} --account {} {}".format("~{gcs_project}", "~{region}", account, cluster_name)).read()
 
