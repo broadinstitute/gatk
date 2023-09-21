@@ -96,7 +96,7 @@ workflow filter_vds_to_VCF_by_chr {
         Array[String] contigs
 
         # String used in construction of output filename
-        #  Cannot contain any special characters, ie, characters must be alphanumeric or "_"
+        #  Cannot contain any special characters, ie, characters must be alphanumeric or "-"
         String prefix
 
         ## CLUSTER PARAMETERS
