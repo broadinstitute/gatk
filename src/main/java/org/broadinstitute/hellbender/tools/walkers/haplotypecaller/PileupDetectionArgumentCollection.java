@@ -77,7 +77,7 @@ public final class PileupDetectionArgumentCollection {
     public GATKPath pdhmmDebugOutputResults = null;
     @Hidden
     @Argument(fullName= DETERMINE_PD_HAPS, doc = "PDHMM: As an alternative to using the PDHMM, run all of the haplotype branching/determination code and instead of using the PDHMM use the old HMM with determined haplotypes. NOTE: this often fails and fallsback to other code due to combinatorial expansion. (Requires '--"+GENERATE_PARTIALLY_DETERMINED_HAPLOTYPES_LONG_NAME+"' argument)", optional = true)
-    public boolean determinePDHaps = false;
+    public boolean useDeterminedHaplotypesDespitePdhmmMode = false;
     @Hidden
     @Argument(fullName= DEBUG_PILEUPCALLING_ARG, doc = "PDHMM: If set, print to stdout a prodigious amount of debugging information about each of the steps involved in artificial haplotype construction and filtering. (Requires '--"+GENERATE_PARTIALLY_DETERMINED_HAPLOTYPES_LONG_NAME+"' argument)", optional = true)
     public boolean debugPileupStdout = false;
