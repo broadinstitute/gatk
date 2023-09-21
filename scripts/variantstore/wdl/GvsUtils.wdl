@@ -37,7 +37,7 @@ task GetToolVersions {
     sed -n -E 's!.*gs://(fc-(secure-)?[^\/]+).*!\1!p' /cromwell_root/gcs_delocalization.sh | sort -u > ~{workspace_bucket_output}
     sed -n -E 's!.*gs://fc-(secure-)?([^\/]+)/submissions/([^\/]+).*!\3!p' /cromwell_root/gcs_delocalization.sh | sort -u > ~{submission_id_output}
     sed -n -E 's!.*gs://fc-(secure-)?([^\/]+)/submissions/([^\/]+)/([^\/]+)/([^\/]+).*!\5!p' /cromwell_root/gcs_delocalization.sh | sort -u > ~{workflow_id_output}
-    sed -n -E 's!.*(terra-[0-9a-f]{6}).*# project to use if requester pays$!\1!p' /cromwell_root/gcs_localization.sh | sort -u > ~{google_project_output}
+    sed -n -E 's!.*(terra-[0-9a-f]+).*# project to use if requester pays$!\1!p' /cromwell_root/gcs_localization.sh | sort -u > ~{google_project_output}
 
     echo "~{effective_version}" > version.txt
 
