@@ -217,7 +217,7 @@ task say_hello_hail {
 
                     #### THIS IS WHERE YOU CALL YOUR SCRIPT AND COPY THE OUTPUT LOCALLY (so that it can get back into WDL-space)
                     ## Maybe next step is to make a simple python script to run aside from just printing hello world
-                    # submit_cmd = f'gcloud dataproc jobs submit pyspark {script_path} --cluster={cluster_name} --project ~{gcs_project}  --region=~{region} --account {account} --driver-log-levels root=WARN -- --vds_url ~{vds_url} --bed_url ~{bed_url} --vcf_header_url ~{vcf_header_url} --output_gs_url gs://{cluster_staging_bucket}/{cluster_name}/~{prefix}.vcf.bgz'
+                    # submit_cmd = f'go find me in a commit i hate dockstore'
                     # print("Running: " + submit_cmd)
                     print("Running nothing yet")
                     # os.popen(submit_cmd).read()
