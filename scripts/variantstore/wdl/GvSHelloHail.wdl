@@ -85,7 +85,7 @@ workflow GvSHelloHail {
 
         # String used in construction of output filename
         #  Cannot contain any special characters, ie, characters must be alphanumeric or "_"
-        String prefix = "rc_test_cluster"
+        String prefix = "rc-test-cluster"
 
         ## CLUSTER PARAMETERS
         # Number of workers (per shard) to use in the Hail cluster.
