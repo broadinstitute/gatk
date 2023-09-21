@@ -84,7 +84,7 @@ workflow GvSHelloHail {
         # String vds_url
 
         # String used in construction of output filename
-        #  Cannot contain any special characters, ie, characters must be alphanumeric or "_"
+        #  Cannot contain any special characters, ie, characters must be alphanumeric or "-"
         String prefix = "rc-test-cluster"
 
         ## CLUSTER PARAMETERS
@@ -203,13 +203,14 @@ task say_hello_hail {
         try:
             cluster_start_cmd = "hailctl dataproc start --num-workers ~{num_workers} --region {} --project {} --service-account {} --num-master-local-ssds 1 --num-worker-local-ssds 1 --max-idle=60m --max-age=1440m --subnet={} {}".format("~{region}", "~{gcs_project}", account, "projects/~{gcs_project}/regions/~{region}/subnetworks/~{gcs_subnetwork_name}", cluster_name)
             print("Starting cluster...")
-            print("Hello cluster!")
             print(cluster_start_cmd)
             print(os.popen(cluster_start_cmd).read())
 
             cluster_client = dataproc.ClusterControllerClient(
                 client_options={"api_endpoint": f"~{region}-dataproc.googleapis.com:443"}
             )
+
+            print("Hello cluster!")
 
             for cluster in cluster_client.list_clusters(request={"project_id": "~{gcs_project}", "region": "~{region}"}):
                 if cluster.cluster_name == cluster_name:
