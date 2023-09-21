@@ -37,10 +37,10 @@ import java.util.stream.IntStream;
  * Trains a model for scoring variant calls based on site-level annotations.
  *
  * <p>
- *     This tool is intended to be used as the second step in a variant-filtering workflow that supersedes the
+ *     This tool is primarily intended to be used as the second step in a variant-filtering workflow that supersedes the
  *     {@link VariantRecalibrator} workflow. Given training (and optionally, calibration) sets of site-level annotations
  *     produced by {@link ExtractVariantAnnotations}, this tool can be used to train a model for scoring variant
- *     calls. For each variant type (i.e., SNP or INDEL) specified using the {@value MODE_LONG_NAME} argument, the tool
+ *     calls. For each variant type (i.e., SNP or INDEL) specified using the "--mode" argument, the tool
  *     outputs files that are either: 1) serialized scorers, each of which persists to disk a function for computing
  *     scores given subsequent annotations, or 2) HDF5 files containing a set of scores, each corresponding to training,
  *     calibration, and unlabeled sets, as appropriate.
@@ -68,7 +68,7 @@ import java.util.stream.IntStream;
  *     A positive-only approach is likely to perform well in cases where a sufficient number of reliable training sites
  *     is available. In contrast, if 1) only a small number of reliable training sites is available, and/or
  *     2) the reliability of the training sites is questionable (e.g., the sites may be contaminated by
- *     a non-negigible number of sequencing artifacts), then a positive-unlabeled approach may be beneficial.
+ *     a non-negligible number of sequencing artifacts), then a positive-unlabeled approach may be beneficial.
  *     Further note that although {@link VariantRecalibrator} (which this tool supplants) has typically been used to
  *     implement a naive positive-unlabeled approach, a positive-only approach likely suffices in many use cases.
  * </p>
@@ -84,7 +84,7 @@ import java.util.stream.IntStream;
  *     </ul>
  *
  *     In contrast, a positive-unlabeled approach may instead be specified by providing the
- *     {@value UNLABELED_ANNOTATIONS_HDF5_LONG_NAME} argument. Currently, this requires the use of a custom modeling backend;
+ *     "--unlabeled-annotations-hdf5" argument. Currently, this requires the use of a custom modeling backend;
  *     see below.
  * </p>
  *
@@ -105,14 +105,14 @@ import java.util.stream.IntStream;
  * </p>
  *
  * <p>
- *     This backend can be selected by specifying {@code PYTHON_IFOREST} to the {@value MODEL_BACKEND_LONG_NAME} argument
+ *     This backend can be selected by specifying "--model-backend PYTHON_IFOREST"
  *     and is also currently the the default backend. It is implemented by the script at
  *     src/main/resources/org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/isolation-forest.py, which
  *     requires that the argparse, h5py, numpy, sklearn, and dill packages be present in the Python environment; users
  *     may wish to simply use the provided GATK conda environment to ensure that the correct versions of all packages are available.
  *     See the IsolationForest documentation <a href="https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.IsolationForest.html">here</a>
  *     as appropriate for the version of scikit-learn used in your Python environment. The hyperparameters documented
- *     there can be specified using the {@value HYPERPARAMETERS_JSON_LONG_NAME} argument; see
+ *     there can be specified using the "--hyperparameters-json" argument; see
  *     src/main/resources/org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/isolation-forest-hyperparameters.json
  *     for an example and the default values.
  * </p>
@@ -140,8 +140,7 @@ import java.util.stream.IntStream;
  *     <li>
  *         Labeled-annotations HDF5 file (.annot.hdf5). Annotation data and metadata for labeled sites are stored in the
  *         HDF5 directory structure given in the documentation for the {@link ExtractVariantAnnotations} tool. In typical
- *         usage, both the {@value LabeledVariantAnnotationsData#TRAINING_LABEL} and
- *         {@value LabeledVariantAnnotationsData#CALIBRATION_LABEL} labels would be available for non-empty sets of
+ *         usage, both the "training" and "calibration" labels would be available for non-empty sets of
  *         sites of the requested variant type.
  *     </li>
  *     <li>
@@ -158,7 +157,7 @@ import java.util.stream.IntStream;
  *     </li>
  *     <li>
  *         (Optional) Model backend. The Python isolation-forest backend is currently the default backend.
- *         A custom backend can also be specified in conjunction with the {@value PYTHON_SCRIPT_LONG_NAME} argument.
+ *         A custom backend can also be specified in conjunction with the "--python-script" argument.
  *     </li>
  *     <li>
  *         (Optional) Model hyperparameters JSON file. This file can be used to specify backend-specific
@@ -178,10 +177,10 @@ import java.util.stream.IntStream;
  * <h3>Outputs</h3>
  *
  * <p>
- *     The following outputs are produced for each variant type specified by the {@value MODE_LONG_NAME} argument
+ *     The following outputs are produced for each variant type specified by the "--mode" argument
  *     and are delineated by type-specific tags in the filename of each output, which take the form of
- *     {@code {output-prefix}.{variant-type}.{file-suffix}}. For example, scores for the SNP calibration set
- *     will be output to the {@code {output-prefix}.snp.calibrationScores.hdf5} file.
+ *     {output-prefix}.{variant-type}.{file-suffix}. For example, scores for the SNP calibration set
+ *     will be output to the {output-prefix}.snp.calibrationScores.hdf5 file.
  * </p>
  *
  * <ul>
@@ -189,7 +188,7 @@ import java.util.stream.IntStream;
  *         Training-set positive-model scores HDF5 file (.trainingScores.hdf5).
  *     </li>
  *     <li>
- *         Positive-model serialized scorer file. (.scorer.pkl for the default {@code PYTHON_IFOREST} model backend).
+ *         Positive-model serialized scorer file. (.scorer.pkl for the default PYTHON_IFOREST model backend).
  *     </li>
  *     <li>
  *         (Optional) Calibration-set scores HDF5 file (.calibrationScores.hdf5). This is only output if a calibration
@@ -204,7 +203,7 @@ import java.util.stream.IntStream;
  *     given an input labeled-annotations HDF5 file generated by {@link ExtractVariantAnnotations} that contains
  *     labels for both training and calibration sets, producing the outputs 1) train.snp.scorer.pkl,
  *     2) train.snp.trainingScores.hdf5, and 3) train.snp.calibrationScores.hdf5, as well as analogous files
- *     for the INDEL model. Note that the {@value MODE_LONG_NAME} arguments are made explicit here, although both
+ *     for the INDEL model. Note that the "--mode" arguments are made explicit here, although both
  *     SNP and INDEL modes are selected by default.
  *
  * <pre>
@@ -224,7 +223,7 @@ import java.util.stream.IntStream;
  *     single variant type (i.e., SNP or INDEL) (as well as an analogous HDF5 file for unlabeled sites,
  *     if a positive-unlabeled modeling approach has been specified) and to output a serialized scorer for that variant type.
  *     Rather than using one of the available, implemented backends, advanced users may provide their own backend
- *     via the {@value PYTHON_SCRIPT_LONG_NAME} argument. See documentation in the modeling and scoring interfaces
+ *     via the "--python-script" argument. See documentation in the modeling and scoring interfaces
  *     ({@link VariantAnnotationsModel} and {@link VariantAnnotationsScorer}, respectively), as well as the default
  *     Python IsolationForest implementation at {@link PythonVariantAnnotationsModel} and
  *     src/main/resources/org/broadinstitute/hellbender/tools/walkers/vqsr/scalable/isolation-forest.py.

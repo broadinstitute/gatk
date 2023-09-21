@@ -52,7 +52,7 @@ import java.util.stream.IntStream;
  * Scores variant calls in a VCF file based on site-level annotations using a previously trained model.
  *
  * <p>
- *     This tool is intended to be used as the last step in a variant-filtering workflow that supersedes the
+ *     This tool is primarily intended to be used as the last step in a variant-filtering workflow that supersedes the
  *     {@link VariantRecalibrator} workflow. Using a previously trained model produced by {@link TrainVariantAnnotationsModel},
  *     this tool assigns a score to each call (with a lower score indicating that a call is more likely to be an artifact).
  *     Each score can also be converted to a corresponding sensitivity with respect to a calibration set, if the latter is available.
@@ -64,7 +64,7 @@ import java.util.stream.IntStream;
  *     Note that annotations and metadata are collected in memory during traversal until they are written to HDF5 files
  *     upon completion of the traversal. Memory and disk requirements thus roughly scale linearly with both the number
  *     of sites scored and the number of annotations. For large callsets, this tool may be run in parallel over separate
- *     genomic shards using the {@value StandardArgumentDefinitions#INTERVALS_LONG_NAME} argument as usual.
+ *     genomic shards using the "--intervals/-L" argument as usual.
  * </p>
  *
  * <p>
@@ -78,7 +78,7 @@ import java.util.stream.IntStream;
  * <ul>
  *     <li>
  *         Input VCF file. Site-level annotations will be extracted from the contained variants (or alleles,
- *         if at least one allele-specific annotation with {@code Number=A} is specified).
+ *         if at least one allele-specific annotation with "Number=A" is specified).
  *     </li>
  *     <li>
  *         Annotations to use for scoring. These should be identical to those used in the {@link ExtractVariantAnnotations}
@@ -97,7 +97,7 @@ import java.util.stream.IntStream;
  *         (Optional) Model backend. This should be identical to that specified in {@link TrainVariantAnnotationsModel}.
  *         The default Python IsolationForest implementation requires either the GATK Python environment
  *         or that certain Python packages (argparse, h5py, numpy, sklearn, and dill) are otherwise available.
- *         A custom backend can also be specified in conjunction with the {@value PYTHON_SCRIPT_LONG_NAME} argument.
+ *         A custom backend can also be specified in conjunction with the "--python-script" argument.
  *     </li>
  *     <li>
  *         (Optional) Resource VCF file(s). See the corresponding documentation in {@link ExtractVariantAnnotations}.
@@ -121,34 +121,33 @@ import java.util.stream.IntStream;
  *
  * <ul>
  *     <li>
- *         Scored VCF file and index. The VCF will not be gzipped if the {@value DO_NOT_GZIP_VCF_OUTPUT_LONG_NAME}
+ *         Scored VCF file and index. The VCF will not be gzipped if the "--do-not-gzip-vcf-output"
  *         argument is set to true. The INFO field in each VCF record will be annotated with:
  *
  *         <p>
- *             1) a score (with a key as given by the {@value SCORE_KEY_LONG_NAME} argument,
- *             which has a default value of {@value DEFAULT_SCORE_KEY}),
+ *             1) a score (with a key as given by the "--score-key" argument, which has a default value of "SCORE"),
  *         </p>
  *         <p>
  *             2) if resources are provided, flags corresponding to the labels (e.g.,
- *             {@value LabeledVariantAnnotationsData#TRAINING_LABEL}, {@value LabeledVariantAnnotationsData#CALIBRATION_LABEL}, etc.)
+ *             "training", "calibration", etc.)
  *             of resources containing the record,
  *         </p>
  *         <p>
- *             3) if the {@value SNP_KEY_LONG_NAME} argument (which has a default value of {@value DEFAULT_SNP_KEY})
+ *             3) if the "--snp-key" argument (which has a default value of "snp")
  *             is non-null, a flag corresponding to whether a site is treated as a SNP,
  *         </p>
  *         <p>
- *             4) if {@value SNP_CALIBRATION_SENSITIVITY_THRESHOLD_LONG_NAME} and/or
- *             {@value INDEL_CALIBRATION_SENSITIVITY_THRESHOLD_LONG_NAME} are provided, a filter (with name given by
- *             the {@value LOW_SCORE_FILTER_NAME_LONG_NAME} argument, which has a default value of
- *             {@value DEFAULT_LOW_SCORE_FILTER_NAME}) will be applied if a record has a calibration-set sensitivity
+ *             4) if "--snp-calibration-sensitivity-threshold" and/or
+ *             "--indel-calibration-sensitivity-threshold" are provided, a filter (with name given by
+ *             the "--low-score-filter-name" argument, which has a default value of
+ *             "LOW_SCORE") will be applied if a record has a calibration-set sensitivity
  *             falling above the appropriate threshold (i.e., if it has a score falling below the corresponding
  *             score threshold).
  *         </p>
  *         <p>
- *             In allele-specific mode (i.e., when allele-specific annotations are requested), the score, SNP flag, calibration sensitivity,
- *             and filter appropriate for the highest scoring allele are used; however, the resource labels for all alleles
- *             are applied.
+ *             In allele-specific mode (i.e., when allele-specific annotations are requested), the score, SNP flag,
+ *             calibration sensitivity, and filter appropriate for the highest scoring allele are used for any
+ *             multiallelic records; however, the resource labels for all alleles are applied.
  *         </p>
  *
  *     </li>
@@ -162,7 +161,7 @@ import java.util.stream.IntStream;
  *     </li>
  *     <li>
  *         (Optional) Scores HDF5 file (.scores.hdf5). Scores for all scored sites are stored in the
- *         HDF5 path {@value VariantAnnotationsScorer#SCORES_PATH}. Scores are given in the same order as records
+ *         HDF5 path "/data/scores". Scores are given in the same order as records
  *         in both the VCF and the annotations HDF5 file. This file will only be produced if the number of scored sites
  *         is nonzero.
  *         </p>
@@ -174,12 +173,12 @@ import java.util.stream.IntStream;
  * <p>
  *     Score sites using a model (produced by {@link TrainVariantAnnotationsModel} using the default
  *     {@link VariantAnnotationsModelBackend#PYTHON_IFOREST} model backend and contained in the directory
- *     {@code model_dir}), producing the outputs 1) {@code output.vcf.gz}, 2) {@code output.vcf.gz.tbi},
- *     3) {@code output.annot.hdf5}, and 4) {@code output.scores.hdf5}. Note that {@code extract.vcf.gz} is
+ *     model_dir), producing the outputs 1) output.vcf.gz, 2) output.vcf.gz.tbi,
+ *     3) output.annot.hdf5, and 4) output.scores.hdf5. Note that extract.vcf.gz is
  *     produced by {@link ExtractVariantAnnotations}. Records will be filtered according to the values provided to the
- *     {@value SNP_CALIBRATION_SENSITIVITY_THRESHOLD_LONG_NAME} and {@value INDEL_CALIBRATION_SENSITIVITY_THRESHOLD_LONG_NAME}
+ *     "--snp-calibration-sensitivity-threshold" and "--indel-calibration-sensitivity-threshold"
  *     arguments; the values below are only meant to be illustrative and should be set as appropriate for a given analysis.
- *     Note that the {@value MODE_LONG_NAME} arguments are made explicit here, although both SNP and INDEL modes are
+ *     Note that the "--mode" arguments are made explicit here, although both SNP and INDEL modes are
  *     selected by default.
  *
  * <pre>
@@ -204,9 +203,9 @@ import java.util.stream.IntStream;
  * <p>
  *     One may chain together two runs of this tool to score SNPs and INDELs using different models
  *     (note that SNP and INDEL models have "snp" and "indel" tags in their respective filenames, so these
- *     models can still be contained in the same {@code model_dir} directory).
+ *     models can still be contained in the same model_dir directory).
  *     This may have implications for mixed SNP/INDEL sites, especially if filters are applied; see also the
- *     {@value IGNORE_ALL_FILTERS_LONG_NAME} and {@value IGNORE_FILTER_LONG_NAME} arguments.
+ *     "--ignore-all-filters" and "--ignore-filter" arguments.
  *
  * <pre>
  *     gatk ScoreVariantAnnotations \
@@ -239,7 +238,7 @@ import java.util.stream.IntStream;
  * <p>
  *     Note that separate SNP and INDEL resources are shown in the above examples purely for demonstration purposes,
  *     as are separate training and calibration resources. However, it may be desirable to specify combined
- *     resource(s); e.g., {@code --resource:combined-resource,training=true,calibration=true combined-resource.vcf}.
+ *     resource(s); e.g., "--resource:combined-resource,training=true,calibration=true combined-resource.vcf".
  *     Recall that this is also the case in {@link ExtractVariantAnnotations}.
  * </p>
  *
@@ -249,7 +248,7 @@ import java.util.stream.IntStream;
  *     The primary scoring functionality performed by this tool is accomplished by a "scoring backend"
  *     whose fundamental contract is to take an input annotation matrix and to output corresponding scores,
  *     with both input and output given as HDF5 files. Rather than using one of the available, implemented backends,
- *     advanced users may provide their own backend via the {@value PYTHON_SCRIPT_LONG_NAME} argument.
+ *     advanced users may provide their own backend via the "--python-script" argument.
  *     See documentation in the modeling and scoring interfaces ({@link VariantAnnotationsModel} and
  *     {@link VariantAnnotationsScorer}, respectively), as well as the default Python IsolationForest implementation at
  *     {@link PythonVariantAnnotationsScorer} and

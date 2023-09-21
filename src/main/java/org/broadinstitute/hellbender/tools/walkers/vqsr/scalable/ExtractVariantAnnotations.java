@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
  * Extracts site-level variant annotations, labels, and other metadata from a VCF file to HDF5 files.
  *
  * <p>
- *     This tool is intended to be used as the first step in a variant-filtering workflow that supersedes the
+ *     This tool is primarily intended to be used as the first step in a variant-filtering workflow that supersedes the
  *     {@link VariantRecalibrator} workflow. This tool extracts site-level annotations, labels, and other relevant metadata
  *     from variant sites (or alleles, in allele-specific mode) that are or are not present in specified labeled
  *     resource VCFs (e.g., training or calibration VCFs). Input sites that are present in the resources are considered
@@ -65,7 +65,7 @@ import java.util.stream.Collectors;
  * <ul>
  *     <li>
  *         Input VCF file. Site-level annotations will be extracted from the contained variants (or alleles, 
- *         if at least one allele-specific annotation with {@code Number=A} is specified).
+ *         if at least one allele-specific annotation with "Number=A" is specified).
  *     </li>
  *     <li>
  *         Annotations to extract.
@@ -78,13 +78,12 @@ import java.util.stream.Collectors;
  *     </li>
  *     <li>
  *         (Optional) Resource VCF file(s). Each resource should be tagged with a label, which will be assigned to
- *         extracted sites that are present in the resource. In typical use, the {@value LabeledVariantAnnotationsData#TRAINING_LABEL}
- *         and {@value LabeledVariantAnnotationsData#CALIBRATION_LABEL} labels should be used to tag at least one resource
- *         apiece. The resulting sets of sites will be used for model training and conversion of scores to
+ *         extracted sites that are present in the resource. In typical use, the "training"
+ *         and "calibration" labels should be used to tag at least one resource apiece.
+ *         The resulting sets of sites will be used for model training and conversion of scores to
  *         calibration-set sensitivity, respectively; the trustworthiness of the respective resources should be
- *         taken into account accordingly. The {@value LabeledVariantAnnotationsData#SNP_LABEL} label is
- *         reserved by the tool, as it is used to label sites determined to be SNPs, and thus it cannot be used to tag
- *         provided resources.
+ *         taken into account accordingly. The "snp" label is reserved by the tool, as it is used to label sites
+ *         determined to be SNPs, and thus it cannot be used to tag provided resources.
  *     </li>
  *     <li>
  *         (Optional) Maximum number of unlabeled variants (or alleles) to randomly sample with reservoir sampling.
@@ -130,17 +129,17 @@ import java.util.stream.Collectors;
  *             See the methods {@link HDF5Utils#writeChunkedDoubleMatrix} and {@link HDF5Utils#writeIntervals} for additional details.
  *             In allele-specific mode (i.e., when allele-specific annotations are requested), each record corresponds to an individual allele;
  *             otherwise, each record corresponds to a variant site, which may contain multiple alleles.
- *             Storage of alleles can be omitted using the {@value OMIT_ALLELES_IN_HDF5_LONG_NAME} argument, which will reduce
+ *             Storage of alleles can be omitted using the "--omit-alleles-in-hdf5" argument, which will reduce
  *             the size of the file. This file will only be produced if resources are provided and the number of extracted
  *             labeled sites is nonzero.
  *         </p>
  *
  *     </li>
  *     <li>
- *         Labeled sites-only VCF file and index. The VCF will not be gzipped if the {@value DO_NOT_GZIP_VCF_OUTPUT_LONG_NAME}
+ *         Labeled sites-only VCF file and index. The VCF will not be gzipped if the "--do-not-gzip-vcf-output"
  *         argument is set to true. The VCF can be provided as a resource in subsequent runs of
  *         {@link ScoreVariantAnnotations} and used to indicate labeled sites that were extracted.
- *         This can be useful if the {@value StandardArgumentDefinitions#INTERVALS_LONG_NAME} argument was used to
+ *         This can be useful if the "--intervals/-L" argument was used to
  *         subset sites in training or calibration resources for extraction; this may occur when setting up
  *         training/validation/test splits, for example. Note that records for the random sample of unlabeled sites are
  *         currently not included in the VCF.
@@ -149,7 +148,7 @@ import java.util.stream.Collectors;
  *         (Optional) Unlabeled-annotations HDF5 file. This will have the same directory structure as in the
  *         labeled-annotations HDF5 file. However, note that records are currently written in the order they
  *         appear in the downsampling reservoir after random sampling, and hence, are not in genomic order.
- *         This file will only be produced if a nonzero value of the {@value MAXIMUM_NUMBER_OF_UNLABELED_VARIANTS_LONG_NAME}
+ *         This file will only be produced if a nonzero value of the "--maximum-number-of-unlabeled-variants"
  *         argument is provided.
  *     </li>
  * </ul>
@@ -158,9 +157,9 @@ import java.util.stream.Collectors;
  *
  * <p>
  *     Extract annotations from training/calibration SNP/INDEL sites, producing the outputs
- *     1) {@code extract.annot.hdf5}, 2) {@code extract.vcf.gz}, and 3) {@code extract.vcf.gz.tbi}.
+ *     1) extract.annot.hdf5, 2) extract.vcf.gz, and 3) extract.vcf.gz.tbi.
  *     The HDF5 file can then be provided to {@link TrainVariantAnnotationsModel}
- *     to train a model using a positive-only approach. Note that the {@value MODE_LONG_NAME} arguments are made
+ *     to train a model using a positive-only approach. Note that the "--mode" arguments are made
  *     explicit here, although both SNP and INDEL modes are selected by default.
  *
  * <pre>
@@ -182,9 +181,9 @@ import java.util.stream.Collectors;
  * <p>
  *     Extract annotations from both training/calibration SNP/INDEL sites and a random sample of
  *     1000000 unlabeled (i.e., non-training/calibration) sites, producing the outputs
- *     1) {@code extract.annot.hdf5}, 2) {@code extract.unlabeled.annot.hdf5}, 3) {@code extract.vcf.gz},
- *     and 4) {@code extract.vcf.gz.tbi}. The HDF5 files can then be provided to {@link TrainVariantAnnotationsModel}
- *     to train a model using a positive-unlabeled approach. Note that the {@value MODE_LONG_NAME} arguments
+ *     1) extract.annot.hdf5, 2) extract.unlabeled.annot.hdf5, 3) extract.vcf.gz,
+ *     and 4) extract.vcf.gz.tbi. The HDF5 files can then be provided to {@link TrainVariantAnnotationsModel}
+ *     to train a model using a positive-unlabeled approach. Note that the "--mode" arguments
  *     are made explicit here, although both SNP and INDEL modes are selected by default.
  *
  * <pre>
@@ -207,15 +206,15 @@ import java.util.stream.Collectors;
  * <p>
  *     Note that separate SNP and INDEL resources are shown in the above examples purely for demonstration purposes,
  *     as are separate training and calibration resources. However, it may be desirable to specify combined
- *     resource(s); e.g., {@code --resource:snp-and-indel-resource,training=true,calibration=true snp-and-indel-resource.vcf}.
+ *     resource(s); e.g., "--resource:snp-and-indel-resource,training=true,calibration=true snp-and-indel-resource.vcf".
  * </p>
  *
  * <p>
  *     In the (atypical) event that resource VCFs are unavailable, one can still extract annotations from a random sample of
- *     unlabeled sites, producing the outputs 1) {@code extract.unlabeled.annot.hdf5},
- *     2) {@code extract.vcf.gz} (which will contain no records), and 3) {@code extract.vcf.gz.tbi}.
+ *     unlabeled sites, producing the outputs 1) extract.unlabeled.annot.hdf5,
+ *     2) extract.vcf.gz (which will contain no records), and 3) extract.vcf.gz.tbi.
  *     This random sample cannot be used by {@link TrainVariantAnnotationsModel}, but may still be useful for
- *     exploratory analyses. Note that the {@value MODE_LONG_NAME} arguments are made explicit here, although both
+ *     exploratory analyses. Note that the "--mode" arguments are made explicit here, although both
  *     SNP and INDEL modes are selected by default.
  *
  * <pre>
