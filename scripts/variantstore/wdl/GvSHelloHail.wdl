@@ -231,6 +231,7 @@ task say_hello_hail {
                     break
 
         except Exception as e:
+            print("Yo, Miguel, did this fail?")
             print(e)
             raise
         finally:
