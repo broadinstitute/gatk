@@ -176,6 +176,7 @@ workflows:
              - master
              - ah_var_store
              - rsa_vs_1038
+             - gg_VS-1056_SupportImportOfPS
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
