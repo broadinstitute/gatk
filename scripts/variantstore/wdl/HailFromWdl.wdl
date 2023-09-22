@@ -164,7 +164,7 @@ task filter_vds_and_export_as_vcf {
     }
 
     RuntimeAttr runtime_default = object {
-                                      mem_gb: 6.5,
+                                      mem_gb: 30,
                                       disk_gb: 100,
                                       cpu_cores: 1,
                                       preemptible_tries: 0,
@@ -191,10 +191,11 @@ task filter_vds_and_export_as_vcf {
         apt -qq install -y temurin-8-jdk
 
         pip install --upgrade pip
-        # floating the hail version, but needed to pin the cloud dataproc version for compatibility with hail :/
-        pip install hail google-cloud-dataproc==5.4.2
+        pip install hail google-cloud-dataproc
 
-        if [[ -z "~{git_branch_or_tag}" && -z "~{submission_script}" ]] || [ ! -z "~{git_branch_or_tag}" && ! -z "~{submission_script}" ]]
+        export PYSPARK_SUBMIT_ARGS='--driver-memory 16g --executor-memory 16g pyspark-shell'
+
+        if [[ -z "~{git_branch_or_tag}" && -z "~{submission_script}" ]] || [[ ! -z "~{git_branch_or_tag}" && ! -z "~{submission_script}" ]]
         then
             echo "Must specify git_branch_or_tag XOR submission_script"
             exit 1
