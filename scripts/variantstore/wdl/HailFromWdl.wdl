@@ -97,7 +97,7 @@ workflow filter_vds_to_VCF_by_chr {
         #   In other words, this is a contig level intersection with the bed file.
         #     This list of contigs that must be present in the reference.  Each contig will be processed separately (shard)
         # This list should be ordered.  Eg, ["chr21", "chr22"]
-        Array[String] contigs = ["chr20"]
+        Array[String] contigs = ["chr20", "chrX", "chrY"]
 
         # String used in construction of output filename
         #  Cannot contain any special characters, ie, characters must be alphanumeric or "-"
