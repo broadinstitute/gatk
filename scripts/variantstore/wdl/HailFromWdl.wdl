@@ -84,6 +84,8 @@ workflow filter_vds_to_VCF_by_chr {
         String vds_url
 
         String? git_branch_or_tag
+        String? hail_version
+        String? worker_machine_type
 
         # Genomic region for the output VCFs to cover
         String bed_url = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
@@ -130,6 +132,8 @@ workflow filter_vds_to_VCF_by_chr {
                 gcs_subnetwork_name = gcs_subnetwork_name,
                 vcf_header_url = vcf_header_url,
                 git_branch_or_tag = git_branch_or_tag,
+                hail_version = hail_version,
+                worker_machine_type = worker_machine_type,
                 submission_script = submission_script,
                 cloud_sdk_slim_docker = GetToolVersions.cloud_sdk_slim_docker,
                 region = region,
@@ -150,6 +154,8 @@ task filter_vds_and_export_as_vcf {
 
         String? git_branch_or_tag
         File? submission_script
+        String? hail_version
+        String? worker_machine_type
 
         # contig must be in the reference
         String contig
@@ -184,16 +190,17 @@ task filter_vds_and_export_as_vcf {
 
         # Current version of Hail (0.2.124) demands Java 8 or Java 11, refuses to run on Java 17.
         # Temurin Java 8
-        apt-get -qq install wget apt-transport-https gnupg
-        wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | apt-key add -
-        echo "deb https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | tee /etc/apt/sources.list.d/adoptium.list
-        apt-get -qq update
-        apt -qq install -y temurin-8-jdk
+        # apt-get -qq install wget apt-transport-https gnupg
+        # wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | apt-key add -
+        # echo "deb https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | tee /etc/apt/sources.list.d/adoptium.list
+        # apt-get -qq update
+        # apt -qq install -y temurin-8-jdk
 
         pip install --upgrade pip
-        pip install hail google-cloud-dataproc
+        pip install hail~{'==' + hail_version}
+        pip install --upgrade google-cloud-dataproc
 
-        export PYSPARK_SUBMIT_ARGS='--driver-memory 16g --executor-memory 16g pyspark-shell'
+        # export PYSPARK_SUBMIT_ARGS='--driver-memory 16g --executor-memory 16g pyspark-shell'
 
         if [[ -z "~{git_branch_or_tag}" && -z "~{submission_script}" ]] || [[ ! -z "~{git_branch_or_tag}" && ! -z "~{submission_script}" ]]
         then
@@ -226,7 +233,7 @@ task filter_vds_and_export_as_vcf {
         print("account: " + account)
 
         try:
-            cluster_start_cmd = "hailctl dataproc start --num-workers ~{num_workers} --worker-machine-type n1-standard-16 --region {} --project {} --service-account {} --num-master-local-ssds 1 --num-worker-local-ssds 1 --max-idle=60m --max-age=1440m --subnet={} {}".format("~{region}", "~{gcs_project}", account, "projects/~{gcs_project}/regions/~{region}/subnetworks/~{gcs_subnetwork_name}", cluster_name)
+            cluster_start_cmd = "hailctl dataproc start --num-workers ~{num_workers} ~{'--worker-machine-type' + worker_machine_type} --region {} --project {} --service-account {} --num-master-local-ssds 1 --num-worker-local-ssds 1 --max-idle=60m --max-age=1440m --subnet={} {}".format("~{region}", "~{gcs_project}", account, "projects/~{gcs_project}/regions/~{region}/subnetworks/~{gcs_subnetwork_name}", cluster_name)
             print("Starting cluster...")
             print(cluster_start_cmd)
             print(os.popen(cluster_start_cmd).read())
