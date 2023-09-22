@@ -15,7 +15,6 @@ workflow GvsQuickstartVcfIntegration {
         String dataset_suffix
         Boolean is_wgs = true
         File? interval_list
-        File? interval_weights_bed
         Boolean use_default_dockers = false
         String? basic_docker
         String? cloud_sdk_docker
@@ -82,7 +81,6 @@ workflow GvsQuickstartVcfIntegration {
             drop_state = drop_state,
             is_wgs = is_wgs,
             interval_list = interval_list,
-            interval_weights_bed = interval_weights_bed,
             sample_id_column_name = sample_id_column_name,
             vcf_files_column_name = vcf_files_column_name,
             vcf_index_files_column_name = vcf_index_files_column_name,
