@@ -199,7 +199,7 @@ task filter_vds_and_export_as_vcf {
         then
             echo "Must specify git_branch_or_tag XOR submission_script"
             exit 1
-        elif [[ ! -z "~{git_branch_or_tag} ]]
+        elif [[ ! -z "~{git_branch_or_tag}" ]]
         then
             script_url="https://raw.githubusercontent.com/broadinstitute/gatk/~{git_branch_or_tag}/scripts/variantstore/wdl/extract/~{default_script_filename}"
             curl --silent --location --remote-name "${script_url}"
