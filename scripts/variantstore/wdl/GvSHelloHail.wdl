@@ -10,18 +10,6 @@ version 1.0
 #        #  ie, parameters that go to the Hail python code (submission_script below)
 #        String vds_url
 #
-#        # Genomic region for the output VCFs to cover
-#        File bed_url
-#
-#        # VCF Header that will be used in the output
-#        File vcf_header_url
-#
-#        # Contigs of interest.  If a contig is present in the bed file, but not in this list, the contig will be ignored.
-#        #   In other words, this is a contig level intersection with the bed file.
-#        #     This list of contigs that must be present in the reference.  Each contig will be processed separately (shard)
-#        # This list should be ordered.  Eg, ["chr21", "chr22"]
-#        Array[String] contigs
-#
 #        # String used in construction of output filename
 #        #  Cannot contain any special characters, ie, characters must be alphanumeric or "_"
 #        String prefix
@@ -34,6 +22,7 @@ version 1.0
 #        #  ie, terra-<hex>
 #        # This must match the workspace that this workflow is being run from.
 #        #     eg, "terra-491d5f31"
+#        # once Miguel's code has been merged, this will be available as a lookup task in GvsUtils
 #        String gcs_project
 #
 #        # Set to 'subnetwork' if running in Terra Cromwell
@@ -92,9 +81,6 @@ workflow GvSHelloHail {
         Int num_workers
 
         # The Google project ID information is necessary when spinning up dataproc.
-        #  ie, terra-<hex>
-        # This must match the workspace that this workflow is being run from.
-        #     eg, "terra-491d5f31"
         String gcs_project
 
         # Set to 'subnetwork' if running in Terra Cromwell
@@ -119,20 +105,14 @@ workflow GvSHelloHail {
     call say_hello_hail {
         input:
             # vds_url = vds_url,
-            # bed_url = bed_url,
             prefix = prefix,
             gcs_project = gcs_project,
             num_workers = num_workers,
             gcs_subnetwork_name = gcs_subnetwork_name,
-            # vcf_header_url = vcf_header_url,
             # submission_script1 = submission_script2,
             hail_docker = hail_docker,
-            # region = region
     }
 
-    # output {
-      #  Array[File] vcfs = filter_vds_and_export_as_vcf.vcf
-    # }
 }
 
 task say_hello_hail {
@@ -231,7 +211,6 @@ task say_hello_hail {
                     break
 
         except Exception as e:
-            print("Yo, Miguel, did this fail?")
             print(e)
             raise
         finally:
@@ -243,10 +222,6 @@ task say_hello_hail {
 
         echo "Goodbye cluster"
     >>>
-
-    # output {
-    #    File vcf = "~{prefix}.vcf.bgz"
-    # }
 
     runtime {
         memory: select_first([runtime_override.mem_gb, runtime_default.mem_gb]) + " GB"
