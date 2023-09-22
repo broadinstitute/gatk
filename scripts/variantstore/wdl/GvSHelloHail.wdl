@@ -164,7 +164,7 @@ task say_hello_hail {
         #### END TEST
 
         gcloud storage cp gs://fc-d5e319d4-b044-4376-afde-22ef0afc4088/auto-scale-policy.yaml auto-scale-policy.yaml
-        gcloud dataproc autoscaling-policies import rc-example-autoscaling-policy --project ~{gcs_project} --source=auto-scale-policy.yaml
+        gcloud dataproc autoscaling-policies import rc-example-autoscaling-policy --project=~{gcs_project} --source=auto-scale-policy.yaml --region=~{region}
 
         python3 <<EOF
         print("Running python code...")
