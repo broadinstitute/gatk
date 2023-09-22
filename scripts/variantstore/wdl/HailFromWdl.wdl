@@ -191,7 +191,8 @@ task filter_vds_and_export_as_vcf {
         apt -qq install -y temurin-8-jdk
 
         pip install --upgrade pip
-        pip install hail
+        # floating the hail version, but needed to pin the cloud dataproc version for compatibility with hail :/
+        pip install hail google-cloud-dataproc==5.4.2
 
         if [[ -z "~{git_branch_or_tag}" && -z "~{submission_script}" ]] || [ ! -z "~{git_branch_or_tag}" && ! -z "~{submission_script}" ]]
         then
