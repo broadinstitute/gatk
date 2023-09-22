@@ -131,7 +131,7 @@ workflow filter_vds_to_VCF_by_chr {
                 vcf_header_url = vcf_header_url,
                 git_branch_or_tag = git_branch_or_tag,
                 submission_script = submission_script,
-                hail_docker = GetToolVersions.hail_docker,
+                cloud_sdk_slim_docker = GetToolVersions.cloud_sdk_slim_docker,
                 region = region,
         }
     }
@@ -160,7 +160,7 @@ task filter_vds_and_export_as_vcf {
         RuntimeAttr? runtime_attr_override
         String gcs_subnetwork_name
 
-        String hail_docker
+        String cloud_sdk_slim_docker
     }
 
     RuntimeAttr runtime_default = object {
@@ -176,24 +176,22 @@ task filter_vds_and_export_as_vcf {
     String default_script_filename = "filter_VDS_and_shard_by_contig.py"
 
     command <<<
-        set -euxo pipefail
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         gcloud config list account --format "value(core.account)" 1> account.txt
 
-        #### TEST:  Make sure that this docker image is configured for python3
-        if which python3 > /dev/null 2>&1; then
-            pt3="$(which python3)"
-            echo "** python3 located at $pt3"
-            echo "** magic: $(file $pt3)"
-            echo "** Version info:"
-            echo "$(python3 -V)"
-            echo "** -c test"
-            python3 -c "print('hello world')"
-        else
-            echo "!! No 'python3' in path."
-            exit 1
-        fi
-        #### END TEST
+        # Current version of Hail (0.2.124) demands Java 8 or Java 11, refuses to run on Java 17.
+        # Temurin Java 8
+        apt-get -qq install wget apt-transport-https gnupg
+        wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | apt-key add -
+        echo "deb https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | tee /etc/apt/sources.list.d/adoptium.list
+        apt-get -qq update
+        apt -qq install -y temurin-8-jdk
+
+        pip install --upgrade pip
+        pip install hail
 
         if [[ -z "~{git_branch_or_tag}" && -z "~{submission_script}" ]] || [ ! -z "~{git_branch_or_tag}" && ! -z "~{submission_script}" ]]
         then
@@ -273,7 +271,8 @@ task filter_vds_and_export_as_vcf {
         cpu: select_first([runtime_override.cpu_cores, runtime_default.cpu_cores])
         preemptible: select_first([runtime_override.preemptible_tries, runtime_default.preemptible_tries])
         maxRetries: select_first([runtime_override.max_retries, runtime_default.max_retries])
-        docker: hail_docker
+        # `slim` here to be able to use Java
+        docker: cloud_sdk_slim_docker
         bootDiskSizeGb: select_first([runtime_override.boot_disk_gb, runtime_default.boot_disk_gb])
     }
 }
