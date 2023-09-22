@@ -252,7 +252,7 @@ task CreateCostObservabilityTable {
 
     # Check that the table has not been created yet
     set +o errexit
-    bq --apilog=false show --project_id ~{project_id} $TABLE > /dev/null
+    bq --apilog=false show --project_id=~{project_id} $TABLE > /dev/null
     BQ_SHOW_RC=$?
     set -o errexit
 
