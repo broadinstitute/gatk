@@ -83,32 +83,34 @@ workflow filter_vds_to_VCF_by_chr {
         #  ie, parameters that go to the Hail python code (submission_script below)
         String vds_url
 
+        String? git_branch_or_tag
+
         # Genomic region for the output VCFs to cover
-        File bed_url
+        File bed_url = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
 
         # VCF Header that will be used in the output
-        File vcf_header_url
+        File vcf_header_url = "gs://gvs_quickstart_storage/hail_from_wdl/vcf_header.txt"
 
         # Contigs of interest.  If a contig is present in the bed file, but not in this list, the contig will be ignored.
         #   In other words, this is a contig level intersection with the bed file.
         #     This list of contigs that must be present in the reference.  Each contig will be processed separately (shard)
         # This list should be ordered.  Eg, ["chr21", "chr22"]
-        Array[String] contigs
+        Array[String] contigs = ["chr20"]
 
         # String used in construction of output filename
         #  Cannot contain any special characters, ie, characters must be alphanumeric or "-"
-        String prefix
+        String prefix = "hail-from-wdl"
 
         ## CLUSTER PARAMETERS
         # Number of workers (per shard) to use in the Hail cluster.
-        Int num_workers
+        Int num_workers = 10
 
         # Set to 'subnetwork' if running in Terra Cromwell
-        String gcs_subnetwork_name='subnetwork'
+        String gcs_subnetwork_name = 'subnetwork'
 
         # The script that is run on the cluster
         #  See filter_VDS_and_shard_by_contig.py for an example.
-        File submission_script
+        File? submission_script
 
         # Set to "us-central1" if running in Terra Cromwell
         String region = "us-central1"
@@ -127,6 +129,7 @@ workflow filter_vds_to_VCF_by_chr {
                 num_workers = num_workers,
                 gcs_subnetwork_name = gcs_subnetwork_name,
                 vcf_header_url = vcf_header_url,
+                git_branch_or_tag = git_branch_or_tag,
                 submission_script = submission_script,
                 hail_docker = GetToolVersions.hail_docker,
                 region = region,
@@ -145,8 +148,8 @@ task filter_vds_and_export_as_vcf {
         File bed_url
         File vcf_header_url
 
-        # Cannot make this localization_optional
-        File submission_script
+        String? git_branch_or_tag
+        File? submission_script
 
         # contig must be in the reference
         String contig
@@ -160,11 +163,6 @@ task filter_vds_and_export_as_vcf {
         String hail_docker
     }
 
-    parameter_meta {
-        bed_url: { localization_optional: true }
-        vcf_header_url: { localization_optional: true }
-    }
-
     RuntimeAttr runtime_default = object {
                                       mem_gb: 6.5,
                                       disk_gb: 100,
@@ -174,6 +172,8 @@ task filter_vds_and_export_as_vcf {
                                       boot_disk_gb: 10
                                   }
     RuntimeAttr runtime_override = select_first([runtime_attr_override, runtime_default])
+
+    String default_script_filename = "filter_VDS_and_shard_by_contig.py"
 
     command <<<
         set -euxo pipefail
@@ -195,6 +195,16 @@ task filter_vds_and_export_as_vcf {
         fi
         #### END TEST
 
+        if [[ -z "~{git_branch_or_tag}" && -z "~{submission_script}" ]] || [ ! -z "~{git_branch_or_tag}" && ! -z "~{submission_script}" ]]
+        then
+            echo "Must specify git_branch_or_tag XOR submission_script"
+            exit 1
+        elif [[ ! -z "~{git_branch_or_tag} ]]
+        then
+            script_url="https://raw.githubusercontent.com/broadinstitute/gatk/~{git_branch_or_tag}/scripts/variantstore/wdl/extract/~{default_script_filename}"
+            curl --silent --location --remote-name "${script_url}"
+        fi
+
         python3 <<EOF
         print("Running python code...")
         import hail as hl
@@ -206,7 +216,10 @@ task filter_vds_and_export_as_vcf {
         cluster_name = f'~{prefix}-~{contig}-hail-{str(uuid.uuid4())[0:13]}'
 
         # Must be local filepath
-        script_path = "~{submission_script}"
+        if "~{submission_script}" == "":
+            script_path = "~{default_script_filename}"
+        else:
+            script_path = "~{submission_script}"
 
         with open("account.txt", "r") as account_file:
             account = account_file.readline().strip()
