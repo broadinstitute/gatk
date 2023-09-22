@@ -14,6 +14,7 @@ public final class BGMMVariantAnnotationsModel implements VariantAnnotationsMode
 
     @Override
     public void trainAndSerialize(final File trainingAnnotationsFile,
+                                  final File unlabeledAnnotationsFile,
                                   final String outputPrefix) {
         throw new NotImplementedException("BGMM module will be implemented in separate PR.");
     }
