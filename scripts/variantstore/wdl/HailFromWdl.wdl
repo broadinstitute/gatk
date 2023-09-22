@@ -226,7 +226,7 @@ task filter_vds_and_export_as_vcf {
         print("account: " + account)
 
         try:
-            cluster_start_cmd = "hailctl dataproc start --num-workers ~{num_workers} --region {} --project {} --service-account {} --num-master-local-ssds 1 --num-worker-local-ssds 1 --max-idle=60m --max-age=1440m --subnet={} {}".format("~{region}", "~{gcs_project}", account, "projects/~{gcs_project}/regions/~{region}/subnetworks/~{gcs_subnetwork_name}", cluster_name)
+            cluster_start_cmd = "hailctl dataproc start --num-workers ~{num_workers} --worker-machine-type n1-standard-16 --region {} --project {} --service-account {} --num-master-local-ssds 1 --num-worker-local-ssds 1 --max-idle=60m --max-age=1440m --subnet={} {}".format("~{region}", "~{gcs_project}", account, "projects/~{gcs_project}/regions/~{region}/subnetworks/~{gcs_subnetwork_name}", cluster_name)
             print("Starting cluster...")
             print(cluster_start_cmd)
             print(os.popen(cluster_start_cmd).read())
