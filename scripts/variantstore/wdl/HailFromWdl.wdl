@@ -14,10 +14,10 @@ version 1.0
 #        String vds_url
 #
 #        # Genomic region for the output VCFs to cover
-#        File bed_url
+#        String bed_url
 #
 #        # VCF Header that will be used in the output
-#        File vcf_header_url
+#        String vcf_header_url
 #
 #        # Contigs of interest.  If a contig is present in the bed file, but not in this list, the contig will be ignored.
 #        #   In other words, this is a contig level intersection with the bed file.
@@ -86,10 +86,10 @@ workflow filter_vds_to_VCF_by_chr {
         String? git_branch_or_tag
 
         # Genomic region for the output VCFs to cover
-        File bed_url = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
+        String bed_url = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
 
         # VCF Header that will be used in the output
-        File vcf_header_url = "gs://gvs_quickstart_storage/hail_from_wdl/vcf_header.txt"
+        String vcf_header_url = "gs://gvs_quickstart_storage/hail_from_wdl/vcf_header.txt"
 
         # Contigs of interest.  If a contig is present in the bed file, but not in this list, the contig will be ignored.
         #   In other words, this is a contig level intersection with the bed file.
@@ -145,8 +145,8 @@ task filter_vds_and_export_as_vcf {
     input {
         # You must treat a VDS as a String, since it is a directory and not a single file
         String vds_url
-        File bed_url
-        File vcf_header_url
+        String bed_url
+        String vcf_header_url
 
         String? git_branch_or_tag
         File? submission_script
