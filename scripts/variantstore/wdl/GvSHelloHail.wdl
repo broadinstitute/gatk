@@ -191,7 +191,6 @@ task say_hello_hail {
 
             cluster_client = dataproc.ClusterControllerClient(
                 client_options={"api_endpoint": f"~{region}-dataproc.googleapis.com:443"}
-                policyUri
             )
 
             print("Hello cluster!")
