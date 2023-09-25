@@ -41,7 +41,6 @@ workflow GvsJointVariantCalling {
 
         Boolean is_wgs = true
         File? interval_list
-        File? interval_weights_bed
 
         Boolean extract_do_not_filter_override = false
         String? extract_output_file_base_name
@@ -55,16 +54,12 @@ workflow GvsJointVariantCalling {
         Int? SNP_VQSR_CLASSIC_mem_gb_override
     }
 
-    # If is_wgs is true, we'll use the WGS interval list, set 'use_interval_weights' to true, and use the WGS weights bed file.
-    # else,              we'll use the Exome interval list, set 'use_interval_weights' to false, and use the WGS weights bed file (it's ignored if the boolean 'use_interval_weights' is false)
+    # If is_wgs is true, we'll use the WGS interval list else, we'll use the Exome interval list.  We'll currently use
+    # the same weighted bed file for whole genomes and exomes.
     # But, if interval_list is defined, we'll use that instead of choosing based on is_wgs
-    # And, if interval_weights_bed is defined, we'll set 'use_interval_weights' to true, and use the supplied interval_weights_bed file
     File default_interval_list = if (is_wgs) then "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
                                              else "gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list"
     File interval_list_to_use = select_first([interval_list, default_interval_list])
-    Boolean use_interval_weights = defined(interval_weights_bed) || is_wgs
-    File interval_weights_bed_to_use = select_first([interval_weights_bed, "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"])
-
 
     # the call_set_identifier string is used to name many different things throughout this workflow (BQ tables, vcfs etc),
     # and so make sure nothing is broken by creative users, we replace spaces and underscores with hyphens
@@ -102,14 +97,6 @@ workflow GvsJointVariantCalling {
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
     String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
     String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
-
-    if (!defined(interval_list) && (defined(interval_weights_bed))) {
-        call Utils.TerminateWorkflow {
-            input:
-                message = "Error: If the parameter 'interval_weights_bed' is defined, the parameter 'interval_list' must also be.",
-                basic_docker = effective_basic_docker,
-        }
-    }
 
     call BulkIngestGenomes.GvsBulkIngestGenomes as BulkIngestGenomes {
         input:
@@ -197,8 +184,6 @@ workflow GvsJointVariantCalling {
             query_project = query_project,
             scatter_count = extract_scatter_count,
             interval_list = interval_list_to_use,
-            use_interval_weights = use_interval_weights,
-            interval_weights_bed = interval_weights_bed_to_use,
             variants_docker = effective_variants_docker,
             gatk_docker = effective_gatk_docker,
             gatk_override = gatk_override,
