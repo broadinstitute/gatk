@@ -188,9 +188,9 @@ task filter_vds_and_export_as_vcf {
 
         account_name=$(gcloud config list account --format "value(core.account)")
 
-        pip install --upgrade pip
-        pip install hail~{'==' + hail_version}
-        pip install --upgrade google-cloud-dataproc
+        pip3 install --upgrade pip
+        pip3 install hail~{'==' + hail_version}
+        pip3 install --upgrade google-cloud-dataproc
 
         if [[ -z "~{git_branch_or_tag}" && -z "~{submission_script}" ]] || [[ ! -z "~{git_branch_or_tag}" && ! -z "~{submission_script}" ]]
         then
