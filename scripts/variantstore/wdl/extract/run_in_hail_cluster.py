@@ -83,7 +83,7 @@ def run_in_cluster(prefix, contig, account, num_workers, worker_machine_type, re
             """.replace("\n", "")).read()
 
 
-if __name__ == '__main':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(allow_abbrev=False,
                                      description='Get workspace information')
 
