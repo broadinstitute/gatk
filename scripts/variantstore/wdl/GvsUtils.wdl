@@ -998,12 +998,20 @@ task PopulateFilterSetInfo {
     bq_table=$(echo ~{fq_filter_set_info_destination_table} | sed s/\\./:/)
 
     echo "Loading combined TSV into ~{fq_filter_set_info_destination_table}"
+    set +e
     bq --apilog=false load --project_id=~{project_id} --skip_leading_rows 0 -F "tab" \
-    --range_partitioning=location,0,26000000000000,6500000000 \
-    --clustering_fields=location \
-    --schema "~{filter_schema}" \
-    ${bq_table} \
-    ~{filter_set_name}.filter_set_load.tsv > status_load_filter_set_info
+      --range_partitioning=location,0,26000000000000,6500000000 \
+      --clustering_fields=location \
+      --schema "~{filter_schema}" \
+      ${bq_table} \
+      ~{filter_set_name}.filter_set_load.tsv > status_load_filter_set_info
+    BQ_SHOW_RC=$?
+    set -e
+    if [ $BQ_SHOW_RC -eq 0 ]; then
+      echo "Error loading combined TSV:"
+      cat status_load_filter_set_info >&2
+      exit 1
+    fi
   >>>
 
   runtime {
