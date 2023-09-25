@@ -88,10 +88,10 @@ task MergeVCFs {
     bash ~{monitoring_script} > monitoring.log &
 
     gatk --java-options -Xmx3g GatherVcfsCloud \
-    --ignore-safety-checks --gather-type ~{gather_type} \
-    --create-output-variant-index false \
-    -I ~{sep=' -I ' input_vcfs} \
-    --output ~{output_vcf_name}
+      --ignore-safety-checks --gather-type ~{gather_type} \
+      --create-output-variant-index false \
+      -I ~{sep=' -I ' input_vcfs} \
+      --output ~{output_vcf_name}
 
     tabix ~{output_vcf_name}
 
@@ -281,7 +281,7 @@ task GetBQTablesMaxLastModifiedTimestamp {
     echo "project_id = ~{query_project}" > ~/.bigqueryrc
 
     bq --apilog=false --project_id=~{query_project} query --format=csv --use_legacy_sql=false \
-    "SELECT UNIX_MICROS(MAX(last_modified_time)) last_modified_time FROM \`~{data_project}\`.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS WHERE table_name like '~{sep="' OR table_name like '" table_patterns}'" > results.txt
+    'SELECT UNIX_MICROS(MAX(last_modified_time)) last_modified_time FROM `~{data_project}`.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS WHERE table_name like "~{sep=" OR table_name like " table_patterns}"' > results.txt
 
     tail -1 results.txt | cut -d, -f1 > max_last_modified_timestamp.txt
   >>>
@@ -636,7 +636,7 @@ task CountSuperpartitions {
     command <<<
         bash ~{monitoring_script} > monitoring.log &
 
-        bq --apilog=false query --project_id='~{project_id}' --format=csv --use_legacy_sql=false '
+        bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false '
 
             SELECT COUNT(*) FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES`
                 WHERE table_name LIKE "vet_%"
@@ -723,19 +723,19 @@ task IsVQSRLite {
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-    bq --apilog=false query --project_id='~{project_id}' --format=csv --use_legacy_sql=false ~{bq_labels} \
-    "BEGIN \
-      SELECT COUNT(1) AS counted FROM \`~{fq_filter_set_info_table}\` WHERE filter_set_name = '~{filter_set_name}' \
+    bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false ~{bq_labels} \
+    'BEGIN \
+      SELECT COUNT(1) AS counted FROM `~{fq_filter_set_info_table}` WHERE filter_set_name = "~{filter_set_name}" \
           AND calibration_sensitivity IS NOT NULL;
     EXCEPTION WHEN ERROR THEN \
-       SELECT '0' AS counted ;
-    END" | tail -1 > lite_count_file.txt
+       SELECT "0" AS counted ;
+    END' | tail -1 > lite_count_file.txt
     LITE_COUNT=`cat lite_count_file.txt`
 
 
-    bq --apilog=false query --project_id='~{project_id}' --format=csv --use_legacy_sql=false ~{bq_labels} \
-      "SELECT COUNT(1) FROM \`~{fq_filter_set_info_table}\` WHERE filter_set_name = '~{filter_set_name}' \
-      AND vqslod IS NOT NULL" | tail -1 > classic_count_file.txt
+    bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false ~{bq_labels} \
+      'SELECT COUNT(1) FROM `~{fq_filter_set_info_table}` WHERE filter_set_name = "~{filter_set_name}" \
+      AND vqslod IS NOT NULL' | tail -1 > classic_count_file.txt
     CLASSIC_COUNT=`cat classic_count_file.txt`
 
     if [[ $LITE_COUNT != "0" ]]; then
@@ -971,24 +971,22 @@ task PopulateFilterSetInfo {
     export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
     echo "Creating SNPs recalibration file"
-    gatk --java-options "-Xmx1g" \
-    CreateFilteringFiles \
-    --ref-version 38 \
-    --filter-set-name ~{filter_set_name} \
-    -mode SNP \
-    --classic ~{useClassic} \
-    -V ~{snp_recal_file} \
-    -O ~{filter_set_name}.snps.recal.tsv
+    gatk --java-options "-Xmx1g" CreateFilteringFiles \
+      --ref-version 38 \
+      --filter-set-name ~{filter_set_name} \
+      -mode SNP \
+      --classic ~{useClassic} \
+      -V ~{snp_recal_file} \
+      -O ~{filter_set_name}.snps.recal.tsv
 
     echo "Creating INDELs racalibration file"
-    gatk --java-options "-Xmx1g" \
-    CreateFilteringFiles \
-    --ref-version 38 \
-    --filter-set-name ~{filter_set_name} \
-    -mode INDEL \
-    --classic ~{useClassic} \
-    -V ~{indel_recal_file} \
-    -O ~{filter_set_name}.indels.recal.tsv
+    gatk --java-options "-Xmx1g" CreateFilteringFiles \
+      --ref-version 38 \
+      --filter-set-name ~{filter_set_name} \
+      -mode INDEL \
+      --classic ~{useClassic} \
+      -V ~{indel_recal_file} \
+      -O ~{filter_set_name}.indels.recal.tsv
 
     # merge into a single file
     echo "Merging SNP + INDELs"

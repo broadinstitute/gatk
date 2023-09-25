@@ -372,22 +372,22 @@ task PopulateFilterSetSites {
 
     echo "Generating filter set sites TSV"
     gatk --java-options "-Xmx1g" \
-    CreateSiteFilteringFiles \
-    --ref-version 38 \
-    --filter-set-name ~{filter_set_name} \
-    -V ~{sites_only_variant_filtered_vcf} \
-    -O ~{filter_set_name}.filter_sites_load.tsv
+      CreateSiteFilteringFiles \
+      --ref-version 38 \
+      --filter-set-name ~{filter_set_name} \
+      -V ~{sites_only_variant_filtered_vcf} \
+      -O ~{filter_set_name}.filter_sites_load.tsv
 
     # BQ load likes a : instead of a . after the project
     bq_table=$(echo ~{fq_filter_sites_destination_table} | sed s/\\./:/)
 
     echo "Loading filter set sites TSV into ~{fq_filter_sites_destination_table}"
     bq --apilog=false load --project_id=~{project_id} --skip_leading_rows 1 -F "tab" \
-    --range_partitioning=location,0,26000000000000,6500000000 \
-    --clustering_fields=location \
-    --schema "filter_set_name:string,location:integer,filters:string" \
-    ${bq_table} \
-    ~{filter_set_name}.filter_sites_load.tsv > status_load_filter_set_sites
+      --range_partitioning=location,0,26000000000000,6500000000 \
+      --clustering_fields=location \
+      --schema "filter_set_name:string,location:integer,filters:string" \
+      ${bq_table} \
+      ~{filter_set_name}.filter_sites_load.tsv > status_load_filter_set_sites
   >>>
 
   runtime {

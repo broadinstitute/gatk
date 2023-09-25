@@ -91,10 +91,10 @@ task IngestTieout {
             local table_name=$1
 
             bq --apilog=false query --project_id=~{project} --format=csv --use_legacy_sql=false \
-                "select actual.sample_id, expected.sample_id from
-                (select sample_id, count(*) as count from \`gvs-internal.~{dataset_name}.${table_name}\` group by sample_id) actual full outer join
-                (select sample_id, count(*) as count from \`gvs-internal.~{reference_dataset_name}.${table_name}\` group by sample_id) expected on actual.sample_id = expected.sample_id
-                where actual.count != expected.count OR actual.sample_id is null OR expected.sample_id is null" > differences.txt
+                'SELECT actual.sample_id, expected.sample_id FROM
+                (SELECT sample_id, count(*) AS count FROM `gvs-internal.~{dataset_name}.${table_name}` GROUP BY sample_id) actual FULL OUTER JOIN
+                (SELECT sample_id, count(*) AS count FROM `gvs-internal.~{reference_dataset_name}.${table_name}` GROUP BY sample_id) expected ON actual.sample_id = expected.sample_id
+                WHERE actual.count != expected.count OR actual.sample_id IS NULL OR expected.sample_id IS NULL' > differences.txt
 
             if [[ -s differences.txt ]]; then
                 fail=1

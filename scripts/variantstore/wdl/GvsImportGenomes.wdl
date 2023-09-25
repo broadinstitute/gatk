@@ -265,7 +265,7 @@ task LoadData {
 
     # Create temp table with the sample_names and load external sample names into temp table -- make sure it doesn't exist already
     set +o errexit
-    bq --apilog=false show --project_id ~{project_id} ~{temp_table} > /dev/null
+    bq --apilog=false show --project_id=~{project_id} ~{temp_table} > /dev/null
     BQ_SHOW_RC=$?
     set -o errexit
 
@@ -368,7 +368,7 @@ task ProcessVCFHeaders {
     set -o errexit -o nounset -o xtrace -o pipefail
 
     python3 /app/process_sample_vcf_headers.py \
-      --project_id ~{project_id} \
+      --project_id=~{project_id} \
       --dataset_name ~{dataset_name}
   >>>
 
@@ -459,7 +459,7 @@ task GetUningestedSampleIds {
 
     # Create temp table with the sample_names and load external sample names into temp table -- make sure it doesn't exist already
     set +o errexit
-    bq --apilog=false show --project_id ~{project_id} ~{temp_table} > /dev/null
+    bq --apilog=false show --project_id=~{project_id} ~{temp_table} > /dev/null
     BQ_SHOW_RC=$?
     set -o errexit
 

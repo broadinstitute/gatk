@@ -146,7 +146,7 @@ task GetVetTableNames {
 
     # use the number calculated from the above math to get the vet_* table names to grab data from
     bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false ~{bq_labels} \
-    "SELECT table_name FROM \`~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES\` WHERE table_name LIKE 'vet_%' AND CAST(SUBSTRING(table_name, length('vet_') + 1) AS INT64) >= ${min_vat_table_num}" > vet_tables.csv
+    'SELECT table_name FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES` WHERE table_name LIKE "vet_%" AND CAST(SUBSTRING(table_name, length("vet_") + 1) AS INT64) >= ${min_vat_table_num}' > vet_tables.csv
 
     # remove the header row from the CSV file, count the number of tables and divide them up into
     # no more than max_alt_allele_shards files (which is the estimated number of BQ queries we can run at once without
