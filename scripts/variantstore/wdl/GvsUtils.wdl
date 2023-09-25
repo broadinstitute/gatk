@@ -972,23 +972,23 @@ task PopulateFilterSetInfo {
 
     echo "Creating SNPs recalibration file"
     gatk --java-options "-Xmx1g" \
-    CreateFilteringFiles \
-    --ref-version 38 \
-    --filter-set-name ~{filter_set_name} \
-    -mode SNP \
-    --classic ~{useClassic} \
-    -V ~{snp_recal_file} \
-    -O ~{filter_set_name}.snps.recal.tsv
+      CreateFilteringFiles \
+        --ref-version 38 \
+        --filter-set-name ~{filter_set_name} \
+        -mode SNP \
+        --classic ~{useClassic} \
+        -V ~{snp_recal_file} \
+        -O ~{filter_set_name}.snps.recal.tsv
 
     echo "Creating INDELs racalibration file"
     gatk --java-options "-Xmx1g" \
-    CreateFilteringFiles \
-    --ref-version 38 \
-    --filter-set-name ~{filter_set_name} \
-    -mode INDEL \
-    --classic ~{useClassic} \
-    -V ~{indel_recal_file} \
-    -O ~{filter_set_name}.indels.recal.tsv
+      CreateFilteringFiles \
+        --ref-version 38 \
+        --filter-set-name ~{filter_set_name} \
+        -mode INDEL \
+        --classic ~{useClassic} \
+        -V ~{indel_recal_file} \
+        -O ~{filter_set_name}.indels.recal.tsv
 
     # merge into a single file
     echo "Merging SNP + INDELs"
