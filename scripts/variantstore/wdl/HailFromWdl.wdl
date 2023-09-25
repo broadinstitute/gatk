@@ -135,7 +135,7 @@ workflow filter_vds_to_VCF_by_chr {
                 hail_version = hail_version,
                 worker_machine_type = worker_machine_type,
                 submission_script = submission_script,
-                cloud_sdk_slim_docker = GetToolVersions.cloud_sdk_slim_docker,
+                variants_docker = GetToolVersions.variants_docker,
                 region = region,
         }
     }
@@ -166,7 +166,7 @@ task filter_vds_and_export_as_vcf {
         RuntimeAttr? runtime_attr_override
         String gcs_subnetwork_name
 
-        String cloud_sdk_slim_docker
+        String variants_docker
     }
 
     RuntimeAttr runtime_default = object {
@@ -186,21 +186,11 @@ task filter_vds_and_export_as_vcf {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        gcloud config list account --format "value(core.account)" 1> account.txt
-
-        # Current version of Hail (0.2.124) demands Java 8 or Java 11, refuses to run on Java 17.
-        # Temurin Java 8
-        # apt-get -qq install wget apt-transport-https gnupg
-        # wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | apt-key add -
-        # echo "deb https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | tee /etc/apt/sources.list.d/adoptium.list
-        # apt-get -qq update
-        # apt -qq install -y temurin-8-jdk
+        account_name=$(gcloud config list account --format "value(core.account)")
 
         pip install --upgrade pip
         pip install hail~{'==' + hail_version}
         pip install --upgrade google-cloud-dataproc
-
-        # export PYSPARK_SUBMIT_ARGS='--driver-memory 16g --executor-memory 16g pyspark-shell'
 
         if [[ -z "~{git_branch_or_tag}" && -z "~{submission_script}" ]] || [[ ! -z "~{git_branch_or_tag}" && ! -z "~{submission_script}" ]]
         then
@@ -212,60 +202,25 @@ task filter_vds_and_export_as_vcf {
             curl --silent --location --remote-name "${script_url}"
         fi
 
-        python3 <<EOF
-        print("Running python code...")
-        import hail as hl
-        import os
-        import uuid
-        from google.cloud import dataproc_v1 as dataproc
+        if [[ ! -z "~{submission_script}" ]]
+        then
+            script_path="~{submission_script}"
+        else
+            script_path="~{default_script_filename}"
+        fi
 
-        # Must match pattern (?:[a-z](?:[-a-z0-9]{0,49}[a-z0-9])?)
-        cluster_name = f'~{prefix}-~{contig}-hail-{str(uuid.uuid4())[0:13]}'
-
-        # Must be local filepath
-        if "~{submission_script}" == "":
-            script_path = "~{default_script_filename}"
-        else:
-            script_path = "~{submission_script}"
-
-        with open("account.txt", "r") as account_file:
-            account = account_file.readline().strip()
-        print("account: " + account)
-
-        try:
-            cluster_start_cmd = "hailctl dataproc start --num-workers ~{num_workers} ~{'--worker-machine-type' + worker_machine_type} --region {} --project {} --service-account {} --num-master-local-ssds 1 --num-worker-local-ssds 1 --max-idle=60m --max-age=1440m --subnet={} {}".format("~{region}", "~{gcs_project}", account, "projects/~{gcs_project}/regions/~{region}/subnetworks/~{gcs_subnetwork_name}", cluster_name)
-            print("Starting cluster...")
-            print(cluster_start_cmd)
-            print(os.popen(cluster_start_cmd).read())
-
-            cluster_client = dataproc.ClusterControllerClient(
-                client_options={"api_endpoint": f"~{region}-dataproc.googleapis.com:443"}
-            )
-
-            for cluster in cluster_client.list_clusters(request={"project_id": "~{gcs_project}", "region": "~{region}"}):
-                if cluster.cluster_name == cluster_name:
-                    cluster_staging_bucket = cluster.config.temp_bucket
-
-                    #### THIS IS WHERE YOU CALL YOUR SCRIPT AND COPY THE OUTPUT LOCALLY (so that it can get back into WDL-space)
-                    submit_cmd = f'gcloud dataproc jobs submit pyspark {script_path} --cluster={cluster_name} --project ~{gcs_project}  --region=~{region} --account {account} --driver-log-levels root=WARN -- --vds_url ~{vds_url} --bed_url ~{bed_url} --vcf_header_url ~{vcf_header_url} --contig ~{contig} --output_gs_url gs://{cluster_staging_bucket}/{cluster_name}/~{prefix}.~{contig}.vcf.bgz'
-                    print("Running: " + submit_cmd)
-                    os.popen(submit_cmd).read()
-                    print("Copying results out of staging bucket...")
-                    staging_cmd = f'gsutil cp -r gs://{cluster_staging_bucket}/{cluster_name}/~{prefix}.~{contig}.vcf.bgz ~{prefix}.~{contig}.vcf.bgz'
-                    print(staging_cmd)
-                    os.popen(staging_cmd).read()
-                    ###########
-
-                    break
-
-        except Exception as e:
-            print(e)
-            raise
-        finally:
-            print(f'Stopping cluster: {cluster_name}')
-            os.popen("gcloud dataproc clusters delete --project {} --region {} --account {} {}".format("~{gcs_project}", "~{region}", account, cluster_name)).read()
-
-        EOF
+        python3 /app/run_in_hail_cluster.py \
+            --script-path ${script_path} \
+            --account ${account_name} \
+            --num-workers ~{num_workers} \
+            ~{'--worker-machine-type' + worker_machine_type} \
+            --region ~{region} \
+            --gcs-project ~{gcs_project} \
+            --prefix ~{prefix} \
+            --contig ~{contig} \
+            --vds-url ~{vds_url} \
+            --vcf-header-url ~{vcf_header_url} \
+            --bed-url ~{bed_url}
 
         echo "Complete"
     >>>
@@ -281,7 +236,7 @@ task filter_vds_and_export_as_vcf {
         preemptible: select_first([runtime_override.preemptible_tries, runtime_default.preemptible_tries])
         maxRetries: select_first([runtime_override.max_retries, runtime_default.max_retries])
         # `slim` here to be able to use Java
-        docker: cloud_sdk_slim_docker
+        docker: variants_docker
         bootDiskSizeGb: select_first([runtime_override.boot_disk_gb, runtime_default.boot_disk_gb])
     }
 }
