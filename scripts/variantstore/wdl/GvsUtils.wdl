@@ -972,23 +972,23 @@ task PopulateFilterSetInfo {
 
     echo "Creating SNPs recalibration file"
     gatk --java-options "-Xmx1g" \
-    CreateFilteringFiles \
-    --ref-version 38 \
-    --filter-set-name ~{filter_set_name} \
-    -mode SNP \
-    --classic ~{useClassic} \
-    -V ~{snp_recal_file} \
-    -O ~{filter_set_name}.snps.recal.tsv
+      CreateFilteringFiles \
+        --ref-version 38 \
+        --filter-set-name ~{filter_set_name} \
+        -mode SNP \
+        --classic ~{useClassic} \
+        -V ~{snp_recal_file} \
+        -O ~{filter_set_name}.snps.recal.tsv
 
     echo "Creating INDELs racalibration file"
     gatk --java-options "-Xmx1g" \
-    CreateFilteringFiles \
-    --ref-version 38 \
-    --filter-set-name ~{filter_set_name} \
-    -mode INDEL \
-    --classic ~{useClassic} \
-    -V ~{indel_recal_file} \
-    -O ~{filter_set_name}.indels.recal.tsv
+      CreateFilteringFiles \
+        --ref-version 38 \
+        --filter-set-name ~{filter_set_name} \
+        -mode INDEL \
+        --classic ~{useClassic} \
+        -V ~{indel_recal_file} \
+        -O ~{filter_set_name}.indels.recal.tsv
 
     # merge into a single file
     echo "Merging SNP + INDELs"
@@ -998,12 +998,20 @@ task PopulateFilterSetInfo {
     bq_table=$(echo ~{fq_filter_set_info_destination_table} | sed s/\\./:/)
 
     echo "Loading combined TSV into ~{fq_filter_set_info_destination_table}"
-    bq --apilog=false load --project_id=~{project_id} --skip_leading_rows 0 -F "tab" \
-    --range_partitioning=location,0,26000000000000,6500000000 \
-    --clustering_fields=location \
-    --schema "~{filter_schema}" \
-    ${bq_table} \
-    ~{filter_set_name}.filter_set_load.tsv > status_load_filter_set_info
+    set +e
+      bq --apilog=false load --project_id=~{project_id} --skip_leading_rows 0 -F "tab" \
+      --range_partitioning=location,0,26000000000000,6500000000 \
+      --clustering_fields=location \
+      --schema "~{filter_schema}" \
+      ${bq_table} \
+      ~{filter_set_name}.filter_set_load.tsv > status_load_filter_set_info
+    BQ_SHOW_RC=$?
+    set -e
+    if [ $BQ_SHOW_RC -ne 0 ]; then
+      echo "Error loading combined TSV into ~{fq_filter_set_info_destination_table}:"
+      cat status_load_filter_set_info >&2
+      exit 1
+    fi
   >>>
 
   runtime {
