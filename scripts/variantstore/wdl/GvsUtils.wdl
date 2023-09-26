@@ -1008,7 +1008,7 @@ task PopulateFilterSetInfo {
     BQ_SHOW_RC=$?
     set -e
     if [ $BQ_SHOW_RC -ne 0 ]; then
-      echo "\nError loading combined TSV into ~{fq_filter_set_info_destination_table}:" >&2
+      echo "Error loading combined TSV into ~{fq_filter_set_info_destination_table}:" >&2
       cat status_load_filter_set_info >&2
       exit 1
     fi

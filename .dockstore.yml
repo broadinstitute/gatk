@@ -127,7 +127,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-974_BetterError
          tags:
              - /.*/
    - name: GvsPopulateAltAllele
