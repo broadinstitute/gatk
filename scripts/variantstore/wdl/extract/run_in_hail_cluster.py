@@ -1,13 +1,13 @@
 import argparse
-import logging
 import os
-import re
-import sys
 import uuid
 from google.cloud import dataproc_v1 as dataproc
+from logging import info
 
 
 def configure_logging():
+    import logging
+    import sys
     # https://stackoverflow.com/a/14058475
     root = logging.getLogger()
     root.setLevel(logging.INFO)
@@ -18,9 +18,9 @@ def configure_logging():
     root.addHandler(handler)
 
 
-def info(message):
-    # Remove multiple internal whitespaces (re.sub) as well as leading and trailing whitespace (strip).
-    logging.info(re.sub("\\s{2,}", " ", message).strip())
+def wrap(string):
+    import re
+    return re.sub("\\s{2,}", " ", string).strip()
 
 
 def run_in_cluster(prefix, contig, account, num_workers, worker_machine_type, region, gcs_project, script_path,
@@ -29,7 +29,7 @@ def run_in_cluster(prefix, contig, account, num_workers, worker_machine_type, re
     cluster_name = f'{prefix}-{contig}-hail-{str(uuid.uuid4())[0:13]}'
 
     try:
-        cluster_start_cmd = f"""
+        cluster_start_cmd = wrap(f"""
         
         hailctl dataproc start 
          --num-workers {num_workers}
@@ -44,11 +44,11 @@ def run_in_cluster(prefix, contig, account, num_workers, worker_machine_type, re
          --subnet=projects/{gcs_project}/regions/{region}/subnetworks/subnetwork
          {cluster_name}
          
-        """
+        """)
 
         info("Starting cluster...")
         info(cluster_start_cmd)
-        logging.info(os.popen(cluster_start_cmd).read())
+        info(os.popen(cluster_start_cmd).read())
 
         cluster_client = dataproc.ClusterControllerClient(
             client_options={"api_endpoint": f"{region}-dataproc.googleapis.com:443"}
@@ -59,7 +59,7 @@ def run_in_cluster(prefix, contig, account, num_workers, worker_machine_type, re
                 cluster_staging_bucket = cluster.config.temp_bucket
 
                 # THIS IS WHERE YOU CALL YOUR SCRIPT AND COPY THE OUTPUT LOCALLY (to get it back into WDL-space)
-                submit_cmd = f"""
+                submit_cmd = wrap(f"""
                 
                 gcloud dataproc jobs submit pyspark {script_path}
                  --cluster={cluster_name}
@@ -74,16 +74,16 @@ def run_in_cluster(prefix, contig, account, num_workers, worker_machine_type, re
                  --contig {contig}
                  --output_gs_url gs://{cluster_staging_bucket}/{cluster_name}/{prefix}.{contig}.vcf.bgz
                  
-                """
+                """)
 
                 info("Running: " + submit_cmd)
                 os.popen(submit_cmd).read()
                 info("Copying results out of staging bucket...")
-                staging_cmd = f"""
+                staging_cmd = wrap(f"""
                 
                 gsutil cp -r gs://{cluster_staging_bucket}/{cluster_name}/{prefix}.{contig}.vcf.bgz '{prefix}.{contig}.vcf.bgz'
                 
-                """
+                """)
 
                 info(staging_cmd)
                 os.popen(staging_cmd).read()
