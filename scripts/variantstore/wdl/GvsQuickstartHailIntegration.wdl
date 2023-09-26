@@ -10,7 +10,6 @@ workflow GvsQuickstartHailIntegration {
         String? git_hash
         Boolean is_wgs
         File? interval_list
-        File? interval_weights_bed
         Boolean use_VQSR_lite = true
         Boolean use_classic_VQSR = true
         Boolean extract_do_not_filter_override
@@ -60,7 +59,6 @@ workflow GvsQuickstartHailIntegration {
             gatk_override = gatk_override,
             is_wgs = is_wgs,
             interval_list = interval_list,
-            interval_weights_bed = interval_weights_bed,
             expected_output_prefix = expected_output_prefix,
             sample_id_column_name = sample_id_column_name,
             vcf_files_column_name = vcf_files_column_name,

@@ -303,6 +303,7 @@ workflows:
              - master
              - ah_var_store
              - vs_1012_master_finally
+             - VS-327
          tags:
              - /.*/
    - name: GvsIngestTieout

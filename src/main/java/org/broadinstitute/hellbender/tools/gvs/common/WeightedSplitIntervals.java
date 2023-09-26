@@ -27,10 +27,7 @@ import picard.cmdline.programgroups.IntervalsManipulationProgramGroup;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 import static org.broadinstitute.hellbender.tools.walkers.SplitIntervals.*;
 
@@ -87,7 +84,8 @@ public class WeightedSplitIntervals extends GATKTool {
         final SAMSequenceDictionary sequenceDictionary = getBestAvailableSequenceDictionary();
 
         final List<SimpleInterval> inputIntervals = getTraversalIntervals();
-        final IntervalList intervalsWithWeights = preprocessIntervalsWithWeights(sequenceDictionary, inputIntervals);
+        final IntervalList intervalsWithWeights = fastPreprocessIntervalsWithWeights(sequenceDictionary, inputIntervals);
+
 
         // calculate total weights and target weight per shard
         float totalWeight = 0;
@@ -163,8 +161,7 @@ public class WeightedSplitIntervals extends GATKTool {
     @Override
     public void traverse() { }  // no traversal for this tool!
 
-    private OverlapDetector<WeightedInterval> constructWeightsOverlapDetector() {
-
+    private FastOverlapDetector constructFastWeightsOverlapDetector() {
         // read the BED of weights
         try (FeatureReader<BEDFeature> bedReader = AbstractFeatureReader.getFeatureReader(weightsBedFile.toPath().toUri().toString(), new BEDCodec(), false)) {
             List<WeightedInterval> weights = new ArrayList<>();
@@ -173,19 +170,19 @@ public class WeightedSplitIntervals extends GATKTool {
             // weights should be entirely disjoint sets of intervals
             IntervalUtils.validateNoOverlappingIntervals(weights);
 
-            // create the overlap detector
-            return OverlapDetector.create(weights);
+            // create the fast overlap detector
+            return FastOverlapDetector.create(weights);
         } catch (IOException e) {
             throw new UserException("Error reading BED file", e);
         }
     }
 
-    private IntervalList preprocessIntervalsWithWeights(SAMSequenceDictionary sequenceDictionary, Collection<SimpleInterval> intervals) {
-        OverlapDetector<WeightedInterval> od = constructWeightsOverlapDetector();
+    private IntervalList fastPreprocessIntervalsWithWeights(SAMSequenceDictionary sequenceDictionary, Collection<SimpleInterval> intervals) {
+        FastOverlapDetector fod = constructFastWeightsOverlapDetector();
 
         final IntervalList intervalList = new IntervalList(sequenceDictionary);
         for (SimpleInterval si : intervals) {
-            List<WeightedInterval> l = applyWeightsToInterval(sequenceDictionary, new Interval(si), od, defaultWeightPerBase);
+            List<WeightedInterval> l = applyFastWeightsToInterval(sequenceDictionary, new Interval(si), fod, defaultWeightPerBase);
             intervalList.addall(Collections.unmodifiableList(l));
         }
 
@@ -210,6 +207,7 @@ public class WeightedSplitIntervals extends GATKTool {
         IntervalList weighted = new IntervalList(sequenceDictionary);
         weighted.addall(Collections.unmodifiableList(outputIntervals));
 
+
         IntervalList uncovered = IntervalList.subtract(original, weighted);
         for( Interval piece : uncovered ) {
             outputIntervals.add(new WeightedInterval(piece, (float) piece.length() * defaultWeightPerBase ));
@@ -219,4 +217,44 @@ public class WeightedSplitIntervals extends GATKTool {
 
         return outputIntervals;
     }
+
+    static List<WeightedInterval> applyFastWeightsToInterval(SAMSequenceDictionary sequenceDictionary, Interval interval, FastOverlapDetector weightsOverlapDetector, float defaultWeightPerBase) {
+        List<WeightedInterval> outputIntervals = new ArrayList<>();
+
+        // do a straight linear pass over the list.  It'll contain all block between the start and end, even if they have
+        // no weights in them. Group all zero weight blocks together, as they will need to be large blocks with the default weight
+        Interval lastEmpty = null;
+        for( WeightedInterval w : weightsOverlapDetector.getOverlaps(interval) ) {
+            float weightPerBase = w.getWeight() / (float) w.length();
+            // if this block has weight, see if we can intersect.
+            // Any new weighted block gets added as itself.
+            Interval intersection = interval.intersect(w);
+
+            if (w.getWeight() == 0) {
+                // this is an empty block, so it represents part of the interval for which we didn't have weight data.
+                // Track it, combining it with a previous empty interval if there was one
+                if (lastEmpty != null) {
+                    lastEmpty = new Interval(lastEmpty.getContig(), lastEmpty.getStart(), intersection.getEnd());
+                } else {
+                    lastEmpty = intersection;
+                }
+            } else {
+                // if we had previously empty intervals, write them now
+                if (lastEmpty != null) {
+                    outputIntervals.add(new WeightedInterval(lastEmpty, (float) lastEmpty.length() * defaultWeightPerBase ));
+                }
+                outputIntervals.add(new WeightedInterval(intersection, (float) intersection.length() * weightPerBase ));
+                lastEmpty = null;
+            }
+        }
+        // if it ended on an empty interval, we'll want to add that one
+        if (lastEmpty != null) {
+            outputIntervals.add(new WeightedInterval(lastEmpty, (float) lastEmpty.length() * defaultWeightPerBase ));
+        }
+
+        IntervalUtils.validateNoOverlappingIntervals(outputIntervals);
+
+        return outputIntervals;
+    }
+
 }

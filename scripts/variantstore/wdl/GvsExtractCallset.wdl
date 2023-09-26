@@ -24,8 +24,7 @@ workflow GvsExtractCallset {
     String drop_state = "NONE"
 
     File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
-    Boolean use_interval_weights = true
-    File interval_weights_bed = "gs://broad-public-datasets/gvs/weights/gvs_vet_weights_1kb.bed"
+    File interval_weights_bed = "gs://gvs_quickstart_storage/weights/gvs_full_vet_weights_1kb_padded_orig.bed"
 
     String? variants_docker
     String? cloud_sdk_docker
@@ -130,7 +129,7 @@ Int effective_split_intervals_disk_size_override = select_first([split_intervals
       ref_fasta = reference,
       ref_fai = reference_index,
       ref_dict = reference_dict,
-      interval_weights_bed = if (use_interval_weights) then ScaleXYBedValues.xy_scaled_bed else none,
+      interval_weights_bed = ScaleXYBedValues.xy_scaled_bed,
       intervals_file_extension = intervals_file_extension,
       scatter_count = effective_scatter_count,
       output_gcs_dir = output_gcs_dir,

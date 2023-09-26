@@ -56,7 +56,7 @@ task GetToolVersions {
     # there are a handlful of tasks that require the larger GNU libc-based `slim`.
     String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-slim"
     String variants_docker = "us.gcr.io/broad-dsde-methods/variantstore:2023-08-31-alpine"
-    String gatk_docker = "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_08_31"
+    String gatk_docker = "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_09_13"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"
     String gotc_imputation_docker = "us.gcr.io/broad-gotc-prod/imputation-bcf-vcf:1.0.5-1.10.2-0.1.16-1649948623"
@@ -1004,14 +1004,7 @@ task PopulateFilterSetInfo {
       --clustering_fields=location \
       --schema "~{filter_schema}" \
       ${bq_table} \
-      ~{filter_set_name}.filter_set_load.tsv > status_load_filter_set_info
-    BQ_SHOW_RC=$?
-    set -e
-    if [ $BQ_SHOW_RC -ne 0 ]; then
-      echo "Error loading combined TSV into ~{fq_filter_set_info_destination_table}:"
-      cat status_load_filter_set_info >&2
-      exit 1
-    fi
+      ~{filter_set_name}.filter_set_load.tsv
   >>>
 
   runtime {
@@ -1024,7 +1017,6 @@ task PopulateFilterSetInfo {
   }
 
   output {
-    String status_load_filter_set_info = read_string("status_load_filter_set_info")
     File monitoring_log = "monitoring.log"
   }
 }
