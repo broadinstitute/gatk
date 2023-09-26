@@ -52,6 +52,8 @@ def run_in_cluster(cluster_name, contig, account, num_workers, worker_machine_ty
             client_options={"api_endpoint": f"{region}-dataproc.googleapis.com:443"}
         )
 
+        prefix='hail-wdl'
+
         for cluster in cluster_client.list_clusters(request={"project_id": gcs_project, "region": region}):
             if cluster.cluster_name == cluster_name:
                 cluster_staging_bucket = cluster.config.temp_bucket
