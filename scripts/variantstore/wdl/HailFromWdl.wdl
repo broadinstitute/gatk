@@ -209,6 +209,12 @@ task filter_vds_and_export_as_vcf {
             script_path="~{default_script_filename}"
         fi
 
+        # Generate a UUIDish random hex string of <8 hex chars (4 bytes)>-<4 hex chars (2 bytes)>
+        hex="$(head -c4 < /dev/urandom | xxd -p)-$(head -c2 < /dev/urandom | xxd -p)"
+
+        cluster_name="~{prefix}-~{contig}-hail-${hex}"
+        echo ${cluster_name} > cluster_name.txt
+
         python3 /app/run_in_hail_cluster.py \
             --script-path ${script_path} \
             --account ${account_name} \
@@ -216,7 +222,7 @@ task filter_vds_and_export_as_vcf {
             ~{'--worker-machine-type' + worker_machine_type} \
             --region ~{region} \
             --gcs-project ~{gcs_project} \
-            --prefix ~{prefix} \
+            --cluster-name ${cluster_name} \
             --contig ~{contig} \
             --vds-url ~{vds_url} \
             --vcf-header-url ~{vcf_header_url} \
@@ -226,6 +232,7 @@ task filter_vds_and_export_as_vcf {
     >>>
 
     output {
+        String cluster_name = read_string("cluster_name.txt")
         File vcf = "~{prefix}.~{contig}.vcf.bgz"
     }
 

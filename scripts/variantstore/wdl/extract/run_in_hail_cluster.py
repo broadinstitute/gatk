@@ -23,10 +23,8 @@ def wrap(string):
     return re.sub("\\s{2,}", " ", string).strip()
 
 
-def run_in_cluster(prefix, contig, account, num_workers, worker_machine_type, region, gcs_project, script_path,
+def run_in_cluster(cluster_name, contig, account, num_workers, worker_machine_type, region, gcs_project, script_path,
                    vds_url, bed_url, vcf_header_url):
-    # Must match pattern (?:[a-z](?:[-a-z0-9]{0,49}[a-z0-9])?)
-    cluster_name = f'{prefix}-{contig}-hail-{str(uuid.uuid4())[0:13]}'
 
     try:
         cluster_start_cmd = wrap(f"""
@@ -46,7 +44,7 @@ def run_in_cluster(prefix, contig, account, num_workers, worker_machine_type, re
          
         """)
 
-        info("Starting cluster...")
+        info(f"Starting cluster '{cluster_name}'...")
         info(cluster_start_cmd)
         info(os.popen(cluster_start_cmd).read())
 
@@ -109,7 +107,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(allow_abbrev=False,
                                      description='Get workspace information')
 
-    parser.add_argument('--prefix', type=str, required=True, help='Prefix used as part of Hail cluster name')
+    parser.add_argument('--cluster-name', type=str, required=True, help='Name of the Hail cluster')
     parser.add_argument('--contig', type=str, required=True, help='Contig to extract')
     parser.add_argument('--account', type=str, required=True, help='GCP account name')
     parser.add_argument('--num-workers', type=str, required=True, help='Number of workers in Hail cluster')
@@ -124,7 +122,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    run_in_cluster(prefix=args.prefix,
+    run_in_cluster(cluster_name=args.cluster_name,
                    contig=args.contig,
                    account=args.account,
                    num_workers=args.num_workers,
