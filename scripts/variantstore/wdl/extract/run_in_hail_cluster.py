@@ -1,7 +1,26 @@
 import argparse
+import logging
 import os
+import re
+import sys
 import uuid
 from google.cloud import dataproc_v1 as dataproc
+
+
+def configure_logging():
+    # https://stackoverflow.com/a/14058475
+    root = logging.getLogger()
+    root.setLevel(logging.INFO)
+    handler = logging.StreamHandler(sys.stderr)
+    handler.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    root.addHandler(handler)
+
+
+def info(message):
+    # Remove multiple internal whitespaces (re.sub) as well as leading and trailing whitespace (strip).
+    logging.info(re.sub("\\s{2,}", " ", message).strip())
 
 
 def run_in_cluster(prefix, contig, account, num_workers, worker_machine_type, region, gcs_project, script_path,
@@ -25,11 +44,11 @@ def run_in_cluster(prefix, contig, account, num_workers, worker_machine_type, re
          --subnet=projects/{gcs_project}/regions/{region}/subnetworks/subnetwork
          {cluster_name}
          
-        """.replace("\n", "")
+        """
 
-        print("Starting cluster...")
-        print(cluster_start_cmd)
-        print(os.popen(cluster_start_cmd).read())
+        info("Starting cluster...")
+        info(cluster_start_cmd)
+        logging.info(os.popen(cluster_start_cmd).read())
 
         cluster_client = dataproc.ClusterControllerClient(
             client_options={"api_endpoint": f"{region}-dataproc.googleapis.com:443"}
@@ -55,35 +74,38 @@ def run_in_cluster(prefix, contig, account, num_workers, worker_machine_type, re
                  --contig {contig}
                  --output_gs_url gs://{cluster_staging_bucket}/{cluster_name}/{prefix}.{contig}.vcf.bgz
                  
-                """.replace("\n", "")
+                """
 
-                print("Running: " + submit_cmd)
+                info("Running: " + submit_cmd)
                 os.popen(submit_cmd).read()
-                print("Copying results out of staging bucket...")
+                info("Copying results out of staging bucket...")
                 staging_cmd = f"""
                 
                 gsutil cp -r gs://{cluster_staging_bucket}/{cluster_name}/{prefix}.{contig}.vcf.bgz '{prefix}.{contig}.vcf.bgz'
                 
-                """.replace("\n", "")
+                """
 
-                print(staging_cmd)
+                info(staging_cmd)
                 os.popen(staging_cmd).read()
                 ###########
                 break
     except Exception as e:
-        print(e)
+        info(e)
         raise
     finally:
-        print(f'Stopping cluster: {cluster_name}')
-        os.popen(
-            f"""
+        info(f'Stopping cluster: {cluster_name}')
+        delete_cmd = f"""
             
             gcloud dataproc clusters delete --project {gcs_project} --region {region} --account {account} {cluster_name}
             
-            """.replace("\n", "")).read()
+        """
+
+        os.popen(delete_cmd).read()
 
 
 if __name__ == "__main__":
+    configure_logging()
+
     parser = argparse.ArgumentParser(allow_abbrev=False,
                                      description='Get workspace information')
 
