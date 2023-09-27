@@ -57,7 +57,7 @@ version 1.0
 #   - This WDL script is still dependent on the python/Hail script that it calls.  You will see this when the parameters
 #    are passed into the script.
 #   - This WDL is boilerplate, except for input parameters, output parameters, and where marked in the main task.
-#   - We HIGHLY recommend that the WDL do NOT run on a preemptible VM
+#   - We HIGHLY recommend that the WDL is NOT run on a preemptible VM
 #    (reminder, this is a single VM that spins up the dataproc cluster and submits jobs -- it is not doing any of the
 #     actual computation.  In other words, it does not need to be a heavy machine.)
 #     In other words, always set `preemptible_tries` to zero (default).
