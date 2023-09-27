@@ -127,6 +127,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-1056_SupportImportOfPS
          tags:
              - /.*/
    - name: GvsPopulateAltAllele

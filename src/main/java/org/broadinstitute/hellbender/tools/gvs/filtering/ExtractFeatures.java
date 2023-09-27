@@ -258,7 +258,7 @@ public class ExtractFeatures extends ExtractTool {
 
         headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY));
         headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY));
-        headerLines.add(GATKVCFHeaderLines.getFormatLine(VCFConstants.PHASE_SET_KEY));
+        headerLines.add(GATKVCFHeaderLines.getFormatLine(VCFConstants.PHASE_SET_KEY, true));
 
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_RAW_RMS_MAPPING_QUALITY_KEY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_RMS_MAPPING_QUALITY_KEY));
