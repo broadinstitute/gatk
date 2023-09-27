@@ -26,7 +26,7 @@ version 1.0
 #        Array[String] contigs
 #
 #        # String used in construction of output filename
-#        #  Cannot contain any special characters, ie, characters must be alphanumeric or "_"
+#        #  Cannot contain any special characters, ie, characters must be alphanumeric or "-"
 #        String prefix
 #
 #        ## CLUSTER PARAMETERS
@@ -243,7 +243,6 @@ task filter_vds_and_export_as_vcf {
         cpu: select_first([runtime_override.cpu_cores, runtime_default.cpu_cores])
         preemptible: select_first([runtime_override.preemptible_tries, runtime_default.preemptible_tries])
         maxRetries: select_first([runtime_override.max_retries, runtime_default.max_retries])
-        # `slim` here to be able to use Java
         docker: variants_docker
         bootDiskSizeGb: select_first([runtime_override.boot_disk_gb, runtime_default.boot_disk_gb])
     }
