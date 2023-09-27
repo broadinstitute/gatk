@@ -97,7 +97,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1019
+             - vs_1045_header_creator_hang
          tags:
              - /.*/
    - name: GvsBenchmarkExtractTask
@@ -166,6 +166,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1045_header_creator_hang
          tags:
              - /.*/
    - name: GvsBulkIngestGenomes
