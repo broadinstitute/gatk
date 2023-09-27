@@ -34,6 +34,9 @@ workflow GvsJointVariantCalling {
         String? variants_docker
         String? gatk_docker
 
+        String? workspace_bucket
+        String? submission_id
+
         # NOTE: `gatk_override` is not intended for production runs of the GVS pipeline! If defined, `gatk_override`
         # should be at least as recent as `gatk_docker`. Legitimate uses of `gatk_override` include integration test
         # runs and feature development.
@@ -85,7 +88,9 @@ workflow GvsJointVariantCalling {
       Int split_intervals_mem_override = ""
     }
 
-    if (!defined(git_hash) || !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker)) {
+    if (!defined(git_hash) ||
+        !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker) ||
+        !defined(workspace_bucket) || !defined(submission_id)) {
         call Utils.GetToolVersions {
             input:
                 git_branch_or_tag = git_branch_or_tag,
@@ -169,7 +174,7 @@ workflow GvsJointVariantCalling {
             variants_docker = effective_variants_docker,
     }
 
-    String effective_output_gcs_dir = select_first([extract_output_gcs_dir, "gs://~{BulkIngestGenomes.workspace_bucket}/output_vcfs/by_submission_id/~{BulkIngestGenomes.submission_id}"])
+    String effective_output_gcs_dir = select_first([extract_output_gcs_dir, "gs://~{GetToolVersions.workspace_bucket}/output_vcfs/by_submission_id/~{GetToolVersions.submission_id}"])
 
     call ExtractCallset.GvsExtractCallset {
         input:
