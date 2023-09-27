@@ -23,8 +23,8 @@ def wrap(string):
     return re.sub("\\s{2,}", " ", string).strip()
 
 
-def run_in_cluster(cluster_name, contig, account, num_workers, worker_machine_type, region, gcs_project, script_path,
-                   vds_url, bed_url, vcf_header_url):
+def run_in_cluster(cluster_name, prefix, contig, account, num_workers, worker_machine_type, region, gcs_project,
+                   script_path, vds_url, bed_url, vcf_header_url):
 
     try:
         cluster_start_cmd = wrap(f"""
@@ -51,8 +51,6 @@ def run_in_cluster(cluster_name, contig, account, num_workers, worker_machine_ty
         cluster_client = dataproc.ClusterControllerClient(
             client_options={"api_endpoint": f"{region}-dataproc.googleapis.com:443"}
         )
-
-        prefix='hail-wdl'
 
         for cluster in cluster_client.list_clusters(request={"project_id": gcs_project, "region": region}):
             if cluster.cluster_name == cluster_name:
@@ -94,11 +92,11 @@ def run_in_cluster(cluster_name, contig, account, num_workers, worker_machine_ty
         raise
     finally:
         info(f'Stopping cluster: {cluster_name}')
-        delete_cmd = f"""
+        delete_cmd = wrap(f"""
             
             gcloud dataproc clusters delete --project {gcs_project} --region {region} --account {account} {cluster_name}
             
-        """
+        """)
 
         os.popen(delete_cmd).read()
 
@@ -110,6 +108,7 @@ if __name__ == "__main__":
                                      description='Get workspace information')
 
     parser.add_argument('--cluster-name', type=str, required=True, help='Name of the Hail cluster')
+    parser.add_argument('--prefix', type=str, required=True, help='Prefix for output VCF name')
     parser.add_argument('--contig', type=str, required=True, help='Contig to extract')
     parser.add_argument('--account', type=str, required=True, help='GCP account name')
     parser.add_argument('--num-workers', type=str, required=True, help='Number of workers in Hail cluster')
@@ -125,6 +124,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     run_in_cluster(cluster_name=args.cluster_name,
+                   prefix=args.prefix,
                    contig=args.contig,
                    account=args.account,
                    num_workers=args.num_workers,
