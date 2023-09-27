@@ -223,7 +223,7 @@ task filter_vds_and_export_as_vcf {
             --region ~{region} \
             --gcs-project ~{gcs_project} \
             --cluster-name ${cluster_name} \
-            --prefix ${prefix} \
+            --prefix ~{prefix} \
             --contig ~{contig} \
             --vds-url ~{vds_url} \
             --vcf-header-url ~{vcf_header_url} \
