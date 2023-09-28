@@ -34,6 +34,7 @@ public final class RefCreator {
     private SimpleInterval previousInterval;
     private final Set<GQStateEnum> gqStatesToIgnore = new HashSet<>();
     private final GenomeLocSortedSet coverageLocSortedSet;
+    private final boolean storeCompressedReferences;
     private static final String PREFIX_SEPARATOR = "_";
     private final static String REF_RANGES_FILETYPE_PREFIX = "ref_ranges_";
 
@@ -42,10 +43,11 @@ public final class RefCreator {
         return BigQueryUtils.doRowsExistFor(projectId, datasetName, REF_RANGES_FILETYPE_PREFIX + tableNumber, SchemaUtils.SAMPLE_ID_FIELD_NAME, sampleId);
     }
 
-    public RefCreator(String sampleIdentifierForOutputFileName, Long sampleId, String tableNumber, SAMSequenceDictionary seqDictionary, GQStateEnum gqStateToIgnore, final boolean dropAboveGqThreshold, final File outputDirectory, final CommonCode.OutputType outputType, final boolean writeReferenceRanges, final String projectId, final String datasetName) {
+    public RefCreator(String sampleIdentifierForOutputFileName, Long sampleId, String tableNumber, SAMSequenceDictionary seqDictionary, GQStateEnum gqStateToIgnore, final boolean dropAboveGqThreshold, final File outputDirectory, final CommonCode.OutputType outputType, final boolean writeReferenceRanges, final String projectId, final String datasetName, final boolean storeCompressedReferences) {
         this.sampleId = sampleId;
         this.outputType = outputType;
         this.writeReferenceRanges = writeReferenceRanges;
+        this.storeCompressedReferences = storeCompressedReferences;
 
         coverageLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(seqDictionary));
 
@@ -106,11 +108,20 @@ public final class RefCreator {
                         int localStart = start;
                         while ( localStart <= end ) {
                             int length = Math.min(end - localStart + 1, IngestConstants.MAX_REFERENCE_BLOCK_BASES);
-                            refRangesWriter.write(SchemaUtils.encodeLocation(variantChr, localStart),
-                                    sampleId,
-                                    length,
-                                    getGQStateEnum(variant.getGenotype(0).getGQ()).getValue()
-                            );
+                            if (storeCompressedReferences) {
+                                refRangesWriter.writeCompressed(
+                                        SchemaUtils.encodeCompressedRefBlock(variantChr, localStart, length,
+                                                getGQStateEnum(variant.getGenotype(0).getGQ()).getCompressedValue()),
+                                        sampleId
+                                );
+                            } else {
+                                refRangesWriter.write(SchemaUtils.encodeLocation(variantChr, localStart),
+                                        sampleId,
+                                        length,
+                                        getGQStateEnum(variant.getGenotype(0).getGQ()).getValue()
+                                );
+                            }
+
                             localStart = localStart + length ;
                         }
 

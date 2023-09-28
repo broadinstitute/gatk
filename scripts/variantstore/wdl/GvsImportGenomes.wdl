@@ -216,6 +216,7 @@ task LoadData {
     Boolean? drop_state_includes_greater_than = false
     Boolean force_loading_from_non_allele_specific = false
     Boolean skip_loading_vqsr_fields = false
+    Boolean use_compressed_references = true
     Boolean process_vcf_headers
 
     String gatk_docker

@@ -83,6 +83,17 @@ public class SchemaUtils {
         return (long) chromosomeIndex * chromAdjustment + (long) position;
     }
 
+
+    public static long encodeCompressedRefBlock(String chrom, int position, int length, int stateAsInt) {
+        int chromosomeIndex = ChromosomeEnum.valueOfContig(chrom).index;
+        long packedBytes = ((0xFFFF & chromosomeIndex) << 48) |
+                ((0xFFFFFFFF & position) << 16) |
+                ((0xFFF & length) << 4) |
+                (0xF & stateAsInt);
+
+        return packedBytes;
+    }
+
     public static String decodeContig(long location) {
         return ChromosomeEnum.valueOfIndex((int)(location/chromAdjustment)).getContigName();
     }

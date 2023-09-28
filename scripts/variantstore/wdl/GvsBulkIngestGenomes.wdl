@@ -42,6 +42,7 @@ workflow GvsBulkIngestGenomes {
         Int? load_data_preemptible_override
         Int? load_data_maxretries_override
         String? billing_project_id
+        Boolean use_compressed_references = true
         # End GvsImportGenomes
     }
 

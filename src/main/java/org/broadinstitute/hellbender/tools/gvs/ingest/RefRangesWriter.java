@@ -5,6 +5,7 @@ import java.io.IOException;
 
 public abstract class RefRangesWriter implements Closeable {
     public abstract void write(long location, long sampleId, int length, String state) throws IOException;
+    public abstract void writeCompressed(long packedData, long sampleId) throws IOException;
 
     public void commitData() {
         // no-op

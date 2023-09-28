@@ -10,6 +10,7 @@ workflow CreateBQTables {
     String? git_hash
 
     Int max_table_id
+    Boolean use_compressed_references = false
 
     Int? preemptible_tries
     String? cloud_sdk_docker
@@ -17,6 +18,7 @@ workflow CreateBQTables {
 
   String pet_schema_json = '[{"name": "location","type": "INTEGER","mode": "REQUIRED"},{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name": "state","type": "STRING","mode": "REQUIRED"}]'
   String ref_ranges_schema_json = '[{"name": "location","type": "INTEGER","mode": "REQUIRED"},{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name": "length","type": "INTEGER","mode": "REQUIRED"},{"name": "state","type": "STRING","mode": "REQUIRED"}]'
+  String ref_ranges_compressed_schema_json = '[{"name": "packed_ref_data","type": "INTEGER","mode": "REQUIRED"},{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"}]'
   String vet_schema_json = '[{"name": "sample_id", "type" :"INTEGER", "mode": "REQUIRED"},{"name": "location", "type" :"INTEGER", "mode": "REQUIRED"},{"name": "ref", "type" :"STRING", "mode": "REQUIRED"},{"name": "alt", "type" :"STRING", "mode": "REQUIRED"},{"name": "AS_RAW_MQ", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_RAW_MQRankSum", "type" :"STRING", "mode": "NULLABLE"},{"name": "QUALapprox", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_QUALapprox", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_RAW_ReadPosRankSum", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_SB_TABLE", "type" :"STRING", "mode": "NULLABLE"},{"name": "AS_VarDP", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_GT", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_AD", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_GQ", "type" :"INTEGER", "mode": "NULLABLE"},{"name": "call_PGT", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_PID", "type" :"STRING", "mode": "NULLABLE"},{"name": "call_PL", "type" :"STRING", "mode": "NULLABLE"}]'
 
   if (!defined(git_hash) || !defined(cloud_sdk_docker)) {
@@ -28,6 +30,7 @@ workflow CreateBQTables {
 
   String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
   String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
+  String refDone = ""
 
   call CreateTables as CreateVetTables {
     input:
@@ -40,17 +43,31 @@ workflow CreateBQTables {
       partitioned = "true",
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
-
-  call CreateTables as CreateRefRangesTables {
-    input:
-      project_id = project_id,
-      dataset_name = dataset_name,
-      datatype = "ref_ranges",
-      max_table_id = max_table_id,
-      schema_json = ref_ranges_schema_json,
-      superpartitioned = "true",
-      partitioned = "true",
-      cloud_sdk_docker = effective_cloud_sdk_docker,
+  if (use_compressed_references) {
+    call CreateTables as CreateCompressedRefRangesTables {
+      input:
+        project_id = project_id,
+        dataset_name = dataset_name,
+        datatype = "ref_ranges",
+        max_table_id = max_table_id,
+        schema_json = ref_ranges_compressed_schema_json,
+        superpartitioned = "true",
+        partitioned = "true",
+        cloud_sdk_docker = effective_cloud_sdk_docker,
+    }
+  }
+  if (!use_compressed_references) {
+    call CreateTables as CreateRefRangesTables {
+      input:
+        project_id = project_id,
+        dataset_name = dataset_name,
+        datatype = "ref_ranges",
+        max_table_id = max_table_id,
+        schema_json = ref_ranges_schema_json,
+        superpartitioned = "true",
+        partitioned = "true",
+        cloud_sdk_docker = effective_cloud_sdk_docker,
+    }
   }
 
   output {
