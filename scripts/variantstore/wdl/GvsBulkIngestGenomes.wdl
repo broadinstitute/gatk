@@ -19,7 +19,6 @@ workflow GvsBulkIngestGenomes {
         # Begin GvsAssignIds
         String dataset_name
         String project_id
-
         String? basic_docker
         String? cloud_sdk_docker
         String? variants_docker

@@ -32,6 +32,8 @@ workflow CreateBQTables {
   String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
   String refDone = ""
 
+  String ref_ranges_schema_used = if use_compressed_references then ref_ranges_compressed_schema_json else ref_ranges_schema_json
+
   call CreateTables as CreateVetTables {
     input:
       project_id = project_id,
@@ -43,31 +45,17 @@ workflow CreateBQTables {
       partitioned = "true",
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
-  if (use_compressed_references) {
-    call CreateTables as CreateCompressedRefRangesTables {
-      input:
-        project_id = project_id,
-        dataset_name = dataset_name,
-        datatype = "ref_ranges",
-        max_table_id = max_table_id,
-        schema_json = ref_ranges_compressed_schema_json,
-        superpartitioned = "true",
-        partitioned = "true",
-        cloud_sdk_docker = effective_cloud_sdk_docker,
-    }
-  }
-  if (!use_compressed_references) {
-    call CreateTables as CreateRefRangesTables {
-      input:
-        project_id = project_id,
-        dataset_name = dataset_name,
-        datatype = "ref_ranges",
-        max_table_id = max_table_id,
-        schema_json = ref_ranges_schema_json,
-        superpartitioned = "true",
-        partitioned = "true",
-        cloud_sdk_docker = effective_cloud_sdk_docker,
-    }
+
+  call CreateTables as CreateRefRangesTables {
+    input:
+      project_id = project_id,
+      dataset_name = dataset_name,
+      datatype = "ref_ranges",
+      max_table_id = max_table_id,
+      schema_json = ref_ranges_schema_used,
+      superpartitioned = "true",
+      partitioned = "true",
+      cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
   output {
