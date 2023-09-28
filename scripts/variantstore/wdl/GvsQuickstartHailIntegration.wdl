@@ -60,6 +60,7 @@ workflow GvsQuickstartHailIntegration {
             drop_state = "NONE",
             use_VQSR_lite = use_VQSR_lite,
             extract_do_not_filter_override = extract_do_not_filter_override,
+            process_vcf_headers = true,
             dataset_suffix = dataset_suffix,
             use_default_dockers = use_default_dockers,
             gatk_override = gatk_override,

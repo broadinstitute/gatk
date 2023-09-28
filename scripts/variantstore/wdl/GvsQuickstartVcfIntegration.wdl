@@ -10,6 +10,7 @@ workflow GvsQuickstartVcfIntegration {
         String expected_output_prefix
         Boolean use_VQSR_lite = true
         Boolean extract_do_not_filter_override = true
+        Boolean process_vcf_headers = false
 
         String drop_state = "FORTY"
         String dataset_suffix
