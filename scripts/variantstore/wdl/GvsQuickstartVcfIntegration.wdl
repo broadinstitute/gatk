@@ -100,6 +100,8 @@ workflow GvsQuickstartVcfIntegration {
             gatk_docker = effective_gatk_docker,
             workspace_bucket = effective_workspace_bucket,
             submission_id = effective_submission_id,
+            git_branch_or_tag = git_branch_or_tag,
+            git_hash = effective_git_hash,
     }
 
     # Only assert identical outputs if we did not filter (filtering is not deterministic) OR if we are using VQSR Lite (which is deterministic)
