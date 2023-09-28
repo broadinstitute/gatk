@@ -100,6 +100,7 @@ workflow GvsBulkIngestGenomes {
             project_id = project_id,
             external_sample_names = SplitBulkImportFofn.sample_name_fofn,
             samples_are_controls = false,
+            process_vcf_headers = process_vcf_headers,
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
