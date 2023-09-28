@@ -30,12 +30,14 @@ workflow GvsQuickstartHailIntegration {
         String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
 
         String? workspace_bucket
+        String? workspace_id
         String? submission_id
     }
 
     String project_id = "gvs-internal"
 
-    if (!defined(git_hash) || !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(cloud_sdk_slim_docker) ||
+    if (!defined(workspace_bucket) || !defined(workspace_id) || !defined(submission_id) ||
+        !defined(git_hash) || !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(cloud_sdk_slim_docker) ||
         !defined(variants_docker) || !defined(gatk_docker)) {
         call Utils.GetToolVersions {
             input:
@@ -51,6 +53,7 @@ workflow GvsQuickstartHailIntegration {
     String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
 
     String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
+    String effective_workspace_id = select_first([workspace_id, GetToolVersions.workspace_id])
     String effective_submission_id = select_first([submission_id, GetToolVersions.submission_id])
 
     call QuickstartVcfIntegration.GvsQuickstartVcfIntegration {
@@ -77,6 +80,7 @@ workflow GvsQuickstartHailIntegration {
             variants_docker = effective_variants_docker,
             gatk_docker = effective_gatk_docker,
             workspace_bucket = effective_workspace_bucket,
+            workspace_id = effective_workspace_id,
             submission_id = effective_submission_id,
     }
 
