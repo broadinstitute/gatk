@@ -41,8 +41,9 @@ workflow GvsBulkIngestGenomes {
         Int? load_data_preemptible_override
         Int? load_data_maxretries_override
         String? billing_project_id
-        Boolean use_compressed_references = true
         # End GvsImportGenomes
+
+        Boolean use_compressed_references = true
     }
 
     parameter_meta {
@@ -91,6 +92,7 @@ workflow GvsBulkIngestGenomes {
             external_sample_names = SplitBulkImportFofn.sample_name_fofn,
             samples_are_controls = false,
             cloud_sdk_docker = effective_cloud_sdk_docker,
+            use_compressed_references = use_compressed_references
     }
 
     call ImportGenomes.GvsImportGenomes as ImportGenomes {
@@ -119,6 +121,7 @@ workflow GvsBulkIngestGenomes {
             load_data_gatk_override = gatk_override,
             drop_state = drop_state,
             billing_project_id = billing_project_id,
+            use_compressed_references = use_compressed_references
     }
 
     output {

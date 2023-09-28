@@ -17,6 +17,7 @@ workflow GvsImportGenomes {
     File input_vcf_indexes
 
     Boolean skip_loading_vqsr_fields = false
+    Boolean use_compressed_references = false
 
     # set to "NONE" to ingest all the reference data into GVS for VDS (instead of VCF) output
     String drop_state = "NONE"
@@ -336,6 +337,7 @@ task LoadData {
         --ref-version 38 \
         --skip-loading-vqsr-fields ~{skip_loading_vqsr_fields} \
         --enable-vcf-header-processing ~{process_vcf_headers}
+        --use-compressed-refs ~{use_compressed_references}
 
       rm input_vcf_$i.vcf.gz
       rm input_vcf_$i.vcf.gz.tbi
