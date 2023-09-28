@@ -136,6 +136,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - rsa_vs_458
          tags:
              - /.*/
    - name: GvsCreateTables
@@ -310,6 +311,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - rsa_vs_458
          tags:
              - /.*/
    - name: GvsCallsetCost
@@ -319,6 +321,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - rsa_vs_458
          tags:
              - /.*/
    - name: GvsExtractAvroFilesForHail
