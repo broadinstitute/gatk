@@ -21,6 +21,7 @@ workflow GvsJointVariantCalling {
         String? extract_output_gcs_dir
         String drop_state = "FORTY"
         Boolean use_classic_VQSR = false
+        Boolean process_vcf_headers = false
         # Beta users have accounts with tighter quotas, and we must work around that
         Boolean tighter_gcp_quotas = true
         String? sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
@@ -121,6 +122,7 @@ workflow GvsJointVariantCalling {
             vcf_index_files_column_name = vcf_index_files_column_name,
             sample_set_name = sample_set_name,
             billing_project_id = billing_project_id,
+            process_vcf_headers = process_vcf_headers,
     }
 
     call PopulateAltAllele.GvsPopulateAltAllele {

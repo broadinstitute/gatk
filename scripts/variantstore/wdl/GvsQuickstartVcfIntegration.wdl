@@ -80,6 +80,7 @@ workflow GvsQuickstartVcfIntegration {
             project_id = project_id,
             gatk_override = if (use_default_dockers) then none else select_first([gatk_override, BuildGATKJar.jar]),
             use_classic_VQSR = !use_VQSR_lite,
+            process_vcf_headers = process_vcf_headers,
             extract_output_file_base_name = "quickit",
             filter_set_name = "quickit",
             extract_table_prefix = "quickit",
