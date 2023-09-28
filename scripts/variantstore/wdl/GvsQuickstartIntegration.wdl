@@ -145,6 +145,7 @@ workflow GvsQuickstartIntegration {
                 variants_docker = effective_variants_docker,
                 gatk_docker = effective_gatk_docker,
                 workspace_bucket = GetToolVersions.workspace_bucket,
+                workspace_id = GetToolVersions.workspace_id,
                 submission_id = GetToolVersions.submission_id,
         }
         call QuickstartVcfIntegration.GvsQuickstartVcfIntegration as QuickstartVcfVQSRClassicIntegration {
@@ -170,6 +171,7 @@ workflow GvsQuickstartIntegration {
                 variants_docker = effective_variants_docker,
                 gatk_docker = effective_gatk_docker,
                 workspace_bucket = GetToolVersions.workspace_bucket,
+                workspace_id = GetToolVersions.workspace_id,
                 submission_id = GetToolVersions.submission_id,
         }
     }
@@ -198,6 +200,7 @@ workflow GvsQuickstartIntegration {
                 variants_docker = effective_variants_docker,
                 gatk_docker = effective_gatk_docker,
                 workspace_bucket = GetToolVersions.workspace_bucket,
+                workspace_id = GetToolVersions.workspace_id,
                 submission_id = GetToolVersions.submission_id,
         }
     }
