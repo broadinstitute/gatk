@@ -329,6 +329,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS_1059_AddPhasingToAvro
          tags:
              - /.*/
    - name: GvsCallsetStatistics
