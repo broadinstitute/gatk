@@ -98,6 +98,7 @@ workflows:
              - master
              - ah_var_store
              - rsa_vs_1019
+             - VS-1063-bit-pack-ref-ranges-data-into-a-more-efficient-representation
          tags:
              - /.*/
    - name: GvsBenchmarkExtractTask
@@ -147,6 +148,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - VS-1063-bit-pack-ref-ranges-data-into-a-more-efficient-representation
          tags:
              - /.*/
    - name: GvsExtractCallset
@@ -166,6 +168,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - VS-1063-bit-pack-ref-ranges-data-into-a-more-efficient-representation
          tags:
              - /.*/
    - name: GvsBulkIngestGenomes
@@ -176,6 +179,7 @@ workflows:
              - master
              - ah_var_store
              - rsa_vs_1038
+             - VS-1063-bit-pack-ref-ranges-data-into-a-more-efficient-representation
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
