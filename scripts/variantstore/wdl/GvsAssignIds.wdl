@@ -15,7 +15,6 @@ workflow GvsAssignIds {
     File external_sample_names
     Boolean samples_are_controls = false
 
-    File? assign_ids_gatk_override
     Boolean process_vcf_headers = false
     String? cloud_sdk_docker
   }
