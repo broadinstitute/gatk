@@ -30,8 +30,6 @@ workflow CreateBQTables {
 
   String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
   String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
-  String refDone = ""
-
   String ref_ranges_schema_used = if use_compressed_references then ref_ranges_compressed_schema_json else ref_ranges_schema_json
 
   call CreateTables as CreateVetTables {
