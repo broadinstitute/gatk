@@ -176,7 +176,6 @@ workflows:
              - master
              - ah_var_store
              - rsa_vs_1038
-             - gg_VS-1056_SupportImportOfPS
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
@@ -283,7 +282,6 @@ workflows:
              - master
              - ah_var_store
              - rsa_vs_1038
-             - gg_VS-1056_SupportImportOfPS
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -293,7 +291,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-1056_SupportImportOfPS
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
@@ -305,7 +302,6 @@ workflows:
              - ah_var_store
              - vs_1012_master_finally
              - VS-327
-             - gg_VS-1056_SupportImportOfPS
          tags:
              - /.*/
    - name: GvsIngestTieout
