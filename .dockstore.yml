@@ -344,6 +344,15 @@ workflows:
              - ah_var_store
          tags:
              - /.*/
+   - name: HailFromWdl
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/HailFromWdl.wdl
+     filters:
+         branches:
+             - master
+             - vs_1013_hail_dataproc_wdl
+         tags:
+             - /.*/
    - name: MitochondriaPipeline
      subclass: WDL
      primaryDescriptorPath: /scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl

@@ -18,10 +18,26 @@ task GetToolVersions {
   String version = "unspecified"
 
   String effective_version = select_first([git_branch_or_tag, version])
+
+  String workspace_id_output = "workspace_id.txt"
+  String workspace_name_output = "workspace_name.txt"
+  String workspace_namespace_output = "workspace_namespace.txt"
+  String workspace_bucket_output = "workspace_bucket.txt"
+  String submission_id_output = "submission_id.txt"
+  String workflow_id_output = "workflow_id.txt"
+  String google_project_output = "google_project.txt"
+
   command <<<
     # Prepend date, time and pwd to xtrace log entries.
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
+
+    # Scrape out various workflow / workspace info from the localization and delocalization scripts.
+    sed -n -E 's!.*gs://fc-(secure-)?([^\/]+).*!\2!p' /cromwell_root/gcs_delocalization.sh | sort -u > ~{workspace_id_output}
+    sed -n -E 's!.*gs://(fc-(secure-)?[^\/]+).*!\1!p' /cromwell_root/gcs_delocalization.sh | sort -u > ~{workspace_bucket_output}
+    sed -n -E 's!.*gs://fc-(secure-)?([^\/]+)/submissions/([^\/]+).*!\3!p' /cromwell_root/gcs_delocalization.sh | sort -u > ~{submission_id_output}
+    sed -n -E 's!.*gs://fc-(secure-)?([^\/]+)/submissions/([^\/]+)/([^\/]+)/([^\/]+).*!\5!p' /cromwell_root/gcs_delocalization.sh | sort -u > ~{workflow_id_output}
+    sed -n -E 's!.*(terra-[0-9a-f]+).*# project to use if requester pays$!\1!p' /cromwell_root/gcs_localization.sh | sort -u > ~{google_project_output}
 
     echo "~{effective_version}" > version.txt
 
@@ -55,11 +71,17 @@ task GetToolVersions {
     # GVS generally uses the smallest `alpine` version of the Google Cloud SDK as it suffices for most tasks, but
     # there are a handlful of tasks that require the larger GNU libc-based `slim`.
     String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:435.0.0-slim"
-    String variants_docker = "us.gcr.io/broad-dsde-methods/variantstore:2023-08-31-alpine"
+    String variants_docker = "us.gcr.io/broad-dsde-methods/variantstore:2023-09-27-alpine"
     String gatk_docker = "us.gcr.io/broad-dsde-methods/broad-gatk-snapshots:varstore_2023_09_27"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"
     String gotc_imputation_docker = "us.gcr.io/broad-gotc-prod/imputation-bcf-vcf:1.0.5-1.10.2-0.1.16-1649948623"
+
+    String workspace_bucket = read_string(workspace_bucket_output)
+    String workspace_id = read_string(workspace_id_output)
+    String submission_id = read_string(submission_id_output)
+    String workflow_id = read_string(workflow_id_output)
+    String google_project = read_string(google_project_output)
   }
 }
 
