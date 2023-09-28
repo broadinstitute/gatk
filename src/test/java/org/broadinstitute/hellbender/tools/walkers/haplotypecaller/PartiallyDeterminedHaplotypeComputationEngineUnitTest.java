@@ -423,4 +423,19 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
         Assert.assertTrue(overlaps.test(DEL_AAAAAAA_102, INS_GGG_106));
         Assert.assertTrue(overlaps.test(INS_TT_103, DEL_AAA_102));
     }
+
+    @Test
+    public void testFindSTRs() {
+        final String contig = "CONTIG";
+        final int refStart = 100;
+        // 4 units of AC (8 bases), 9 bases of nothing, 10-base T homopolymer, 6 bases of nothing
+        final String refBases = "ACACACAC" + "GTAGGTACG" + "TTTTTTTTTT" + "ACGCTG";
+        final Haplotype refHaplotype = new Haplotype(refBases.getBytes(), new SimpleInterval(contig, refStart, refStart + refBases.length()));
+
+        final List<SimpleInterval> strs = PartiallyDeterminedHaplotypeComputationEngine.findSTRs(refHaplotype);
+
+        final List<SimpleInterval> expected = List.of(new SimpleInterval(contig, refStart + 0, refStart + 8),
+                new SimpleInterval(contig, refStart + 8 + 9, refStart + 8 + 9 + 10));
+        Assert.assertEquals(strs, expected);
+    }
 }

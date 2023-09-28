@@ -5,13 +5,16 @@ import com.google.common.collect.*;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.util.Locatable;
+import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.Allele;
 import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.utils.IndexRange;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.SmallBitSet;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.dragstr.DragstrReferenceAnalyzer;
 import org.broadinstitute.hellbender.utils.haplotype.Event;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
@@ -44,6 +47,11 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
     final static int MAX_PD_HAPS_TO_GENERATE = 256*2; //(2048 is Illumina's #) (without optimizing the hmm to some degree this is probably unattainable)
     final static int MAX_BRANCH_PD_HAPS = 128; //(128 is Illumina's #)
     final static int MAX_VAR_IN_EVENT_GROUP = 17; // (20 is Illumina's #)
+
+    // TODO: make these command line arguments?
+    // TODO: is 3 repeats the right criterion for STR, regardless of unit length?
+    final static int MAX_STR_UNIT_LENGTH = 6;
+    final static int MIN_NUM_STR_REPEATS = 3;
 
     //To make this somewhat cleaner of a port from Illumina, we have two base spaces. R and U space. R space is vcf coordinate space,
     //U is a 0->N (N = region size) based space where Insertions are +0.5 and deletions are + 1 from their original position
@@ -96,6 +104,9 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         // TODO this is where we filter out if indels > 32 (a heuristic known from DRAGEN that is not implemented here)
         SortedMap<Integer, List<Event>> eventsByStartPos = eventsInOrder.stream()
                 .collect(Collectors.groupingBy(Event::getStart, TreeMap::new, Collectors.toList()));
+
+
+        final OverlapDetector<SimpleInterval> strOverlapDetector = OverlapDetector.create(findSTRs(referenceHaplotype));
 
         List<List<Event>> disallowedCombinations = smithWatermanRealignPairsOfVariantsForEquivalentEvents(referenceHaplotype, aligner, args.getHaplotypeToReferenceSWParameters(), debug, eventsInOrder);
         dragenDisallowedGroupsMessage(referenceHaplotype.getStart(), debug, disallowedCombinations);
@@ -224,6 +235,29 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         final List<Event> eventsInOrder = passingEvents.stream().sorted(HAPLOTYPE_SNP_FIRST_COMPARATOR).toList();
         finalEventsListMessage(referenceHaplotype.getStart(), debug, eventsInOrder);
         return eventsInOrder;
+    }
+
+    // TODO: should there be any padding at the edges of STRs?
+    @VisibleForTesting
+    static List<SimpleInterval> findSTRs(final Haplotype referenceHaplotype) {
+        final List<SimpleInterval> strs = new ArrayList<>();
+        final DragstrReferenceAnalyzer analyzer = DragstrReferenceAnalyzer.of(referenceHaplotype.getBases(), 0, referenceHaplotype.length(), MAX_STR_UNIT_LENGTH);
+
+        final int refStart = referenceHaplotype.getStart();
+        final String refContig = referenceHaplotype.getContig();
+        int n = 0;
+        while (n < referenceHaplotype.length()) {
+            final int numRepeats = analyzer.repeatLength(n);
+            if (numRepeats >= MIN_NUM_STR_REPEATS) {  // found an STR starting at n
+                final int strLength = analyzer.repeatUnit(n).length * numRepeats;
+                strs.add(new SimpleInterval(refContig, refStart + n, refStart + n + strLength));
+                n += strLength; // jump to end of this STR
+            } else {
+                n++;
+            }
+        }
+
+        return strs;
     }
 
     /**
