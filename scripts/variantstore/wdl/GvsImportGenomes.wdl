@@ -135,7 +135,8 @@ workflow GvsImportGenomes {
         sample_names = read_lines(CreateFOFNs.vcf_sample_name_fofns[i]),
         sample_map = GetUningestedSampleIds.sample_map,
         process_vcf_headers = process_vcf_headers,
-        billing_project_id = billing_project_id
+        billing_project_id = billing_project_id,
+        use_compressed_references = use_compressed_references,
     }
   }
  if (process_vcf_headers) {
@@ -336,7 +337,7 @@ task LoadData {
         -SNM ~{sample_map} \
         --ref-version 38 \
         --skip-loading-vqsr-fields ~{skip_loading_vqsr_fields} \
-        --enable-vcf-header-processing ~{process_vcf_headers}
+        --enable-vcf-header-processing ~{process_vcf_headers} \
         --use-compressed-refs ~{use_compressed_references}
 
       rm input_vcf_$i.vcf.gz
