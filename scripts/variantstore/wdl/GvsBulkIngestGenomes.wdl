@@ -45,6 +45,7 @@ workflow GvsBulkIngestGenomes {
         Int? load_data_preemptible_override
         Int? load_data_maxretries_override
         String? billing_project_id
+        Boolean process_vcf_headers = false
         # End GvsImportGenomes
     }
 
@@ -99,6 +100,7 @@ workflow GvsBulkIngestGenomes {
             project_id = project_id,
             external_sample_names = SplitBulkImportFofn.sample_name_fofn,
             samples_are_controls = false,
+            process_vcf_headers = process_vcf_headers,
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
@@ -128,6 +130,7 @@ workflow GvsBulkIngestGenomes {
             load_data_gatk_override = gatk_override,
             drop_state = drop_state,
             billing_project_id = billing_project_id,
+            process_vcf_headers = process_vcf_headers,
     }
 
     output {
