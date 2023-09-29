@@ -78,7 +78,7 @@ task CreateTables {
     String superpartitioned
     String partitioned
     String cloud_sdk_docker
-    String clustering_field
+    String clustering_field = "location"
   }
   meta {
     # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
