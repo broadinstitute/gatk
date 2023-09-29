@@ -28,6 +28,9 @@ workflow GvsQuickstartHailIntegration {
         String? vcf_files_column_name
         String? vcf_index_files_column_name
         String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
+
+        String? workspace_bucket
+        String? submission_id
     }
 
     String project_id = "gvs-internal"
@@ -46,6 +49,9 @@ workflow GvsQuickstartHailIntegration {
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
     String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
     String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
+
+    String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
+    String effective_submission_id = select_first([submission_id, GetToolVersions.submission_id])
 
     call QuickstartVcfIntegration.GvsQuickstartVcfIntegration {
         input:
@@ -69,6 +75,8 @@ workflow GvsQuickstartHailIntegration {
             cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
             variants_docker = effective_variants_docker,
             gatk_docker = effective_gatk_docker,
+            workspace_bucket = effective_workspace_bucket,
+            submission_id = effective_submission_id,
     }
 
     call ExtractAvroFilesForHail.GvsExtractAvroFilesForHail {
