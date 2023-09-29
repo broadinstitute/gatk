@@ -21,6 +21,7 @@ workflow GvsJointVariantCalling {
         String? extract_output_gcs_dir
         String drop_state = "FORTY"
         Boolean use_classic_VQSR = false
+        Boolean process_vcf_headers = false
         # Beta users have accounts with tighter quotas, and we must work around that
         Boolean tighter_gcp_quotas = true
         String? sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
@@ -35,6 +36,7 @@ workflow GvsJointVariantCalling {
         String? gatk_docker
 
         String? workspace_bucket
+        String? workspace_id
         String? submission_id
 
         # NOTE: `gatk_override` is not intended for production runs of the GVS pipeline! If defined, `gatk_override`
@@ -102,6 +104,9 @@ workflow GvsJointVariantCalling {
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
     String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
     String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
+    String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
+    String effective_submission_id = select_first([submission_id, GetToolVersions.submission_id])
+    String effective_workspace_id = select_first([workspace_id, GetToolVersions.workspace_id])
 
     call BulkIngestGenomes.GvsBulkIngestGenomes as BulkIngestGenomes {
         input:
@@ -121,6 +126,9 @@ workflow GvsJointVariantCalling {
             vcf_index_files_column_name = vcf_index_files_column_name,
             sample_set_name = sample_set_name,
             billing_project_id = billing_project_id,
+            process_vcf_headers = process_vcf_headers,
+            workspace_bucket = effective_workspace_bucket,
+            workspace_id = effective_workspace_id,
     }
 
     call PopulateAltAllele.GvsPopulateAltAllele {
@@ -174,7 +182,7 @@ workflow GvsJointVariantCalling {
             variants_docker = effective_variants_docker,
     }
 
-    String effective_output_gcs_dir = select_first([extract_output_gcs_dir, "gs://~{GetToolVersions.workspace_bucket}/output_vcfs/by_submission_id/~{GetToolVersions.submission_id}"])
+    String effective_output_gcs_dir = select_first([extract_output_gcs_dir, "gs://~{effective_workspace_bucket}/output_vcfs/by_submission_id/~{effective_submission_id}"])
 
     call ExtractCallset.GvsExtractCallset {
         input:
