@@ -33,7 +33,7 @@ Starting September 1 2023, variants in GVS are filtered using the GATK Variant E
 
 To see details about input requirements, see [Run Your Own Samples](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/beta_docs/run-your-own-samples.md). Example GVCF and index files in the Data tab of this workspace are hosted in a public Google bucket and links are provided in the sample data table.
 
-While the GVS has been tested with TBD single sample exome GVCF files as input, only datasets of up to TBD exomes are being used for beta testing.
+While the GVS has been tested with almost 190,000 single sample exome GVCF files as input, only datasets of up to 100,000 exomes are being used for beta testing.
 
 Note that, by default, the Exomes Beta workflow uses the Blended Genomes Interval List: `gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list` for its calling regions.
 
@@ -84,7 +84,7 @@ See the "Job History" tab in the Genomic_Variant_Store_Beta workspace for a rece
 By default, the workflow will write outputs to the location `gs://<workspace bucket>/output_vcfs/by_submission_id/<submission id>`. If you want to write the outputs to a different cloud storage location, you can specify the cloud path in the `extract_output_gcs_dir` optional input in the workflow configuration. The actual output location will be specified by the workflow output `output_gcs_path`.
 
 ### Time and cost
-Below are several examples of the time and cost of running the workflow. Generally the cost is around TBD cents per sample, including Terra compute and BigQuery compute cost. This does not include storage costs.
+Below are several examples of the time and cost of running the workflow. Generally the cost is around a half a cent per sample, including Terra compute and BigQuery compute cost. This does not include storage costs.
 
 
 | Number of Samples | Wall Clock Time (hh:mm) | Cost $    | Cost per Sample |
