@@ -177,6 +177,7 @@ workflows:
              - master
              - ah_var_store
              - rsa_vs_1038
+             - gg_VS-857_NoGQ0
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
@@ -283,6 +284,7 @@ workflows:
              - master
              - ah_var_store
              - rsa_vs_1038
+             - gg_VS-857_NoGQ0
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -292,6 +294,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - gg_VS-857_NoGQ0
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
@@ -302,6 +305,7 @@ workflows:
              - master
              - ah_var_store
              - vs_1045_header_creator_hang
+             - gg_VS-857_NoGQ0
          tags:
              - /.*/
    - name: GvsIngestTieout

@@ -60,7 +60,7 @@ workflow GvsQuickstartHailIntegration {
         input:
             git_branch_or_tag = git_branch_or_tag,
             git_hash = git_hash,
-            drop_state = "NONE",
+            drop_state = "ZERO",
             use_VQSR_lite = use_VQSR_lite,
             extract_do_not_filter_override = extract_do_not_filter_override,
             process_vcf_headers = true,
