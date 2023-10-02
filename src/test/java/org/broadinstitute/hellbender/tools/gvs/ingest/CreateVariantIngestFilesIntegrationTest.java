@@ -85,5 +85,4 @@ public class CreateVariantIngestFilesIntegrationTest extends CommandLineProgramT
         // test file names are expected
         Assert.assertEquals(allOutputFiles, expectedFileNames);
     }
-
 }

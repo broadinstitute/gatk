@@ -49,7 +49,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     private VcfHeaderLineScratchCreator vcfHeaderLineScratchCreator;
     private LoadStatus loadStatus;
 
-    private Map<String, Boolean> allLineHeaders = new HashMap<>();
+    private final Map<String, Boolean> allLineHeaders = new HashMap<>();
 
     private GenomeLocSortedSet intervalArgumentGenomeLocSortedSet;
 
@@ -66,9 +66,9 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     public GQStateEnum gqStateToIgnore = GQStateEnum.SIXTY;
 
     @Argument(fullName = "ignore-above-gq-threshold",
-    shortName = "GTIG",
-    doc = "in addition to dropping the gq block specified by ref-block-gq-to-ignore, also drop higher gq blocks",
-    optional = true)
+            shortName = "GTIG",
+            doc = "in addition to dropping the gq block specified by ref-block-gq-to-ignore, also drop higher gq blocks",
+            optional = true)
     public boolean dropAboveGqThreshold = false;
 
     @Argument(fullName = "enable-reference-ranges",
