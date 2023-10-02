@@ -105,6 +105,9 @@ task CoreStorageModelSizes {
         String cloud_sdk_docker
     }
     command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
 
         get_billable_bytes_in_gib() {
             local table_pattern="$1"
@@ -143,6 +146,10 @@ task ReadCostObservabilityTable {
         String cloud_sdk_docker
     }
     command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
         bq --apilog=false query --project_id=~{project_id} --format=prettyjson --use_legacy_sql=false \
             'SELECT step, event_key, round(sum(event_bytes) / (1024*1024*1024), 2) AS sum_event_gibibytes \
                 FROM `~{project_id}.~{dataset_name}.cost_observability` \
