@@ -100,6 +100,7 @@ workflow GvsCreateVDS {
             hail_version = hail_version,
             prefix = prefix,
             gcs_project = GetToolVersions.google_project,
+            gcs_bucket = GetToolVersions.workspace_bucket,
             num_workers = num_workers,
             gcs_subnetwork_name = gcs_subnetwork_name,
             hail_docker = hail_docker,
@@ -116,6 +117,7 @@ task create_vds {
 
         # Cluster params
         String gcs_project  # The Google project ID information is necessary when spinning up dataproc.
+        String gcs_bucket
         String region = "us-central1"
         Int num_workers
         RuntimeAttr? runtime_attr_override
@@ -133,7 +135,7 @@ task create_vds {
                                       boot_disk_gb: 10
                                   }
     RuntimeAttr runtime_override = select_first([runtime_attr_override, runtime_default])
-    String temp_path = "gs://fc-eada2674-7c2b-42a6-8db3-0246872596dc/quickstart-vds-for-wdl-tieout/temp-dir/"
+    String temp_path = "gs://fc-eada2674-7c2b-42a6-8db3-0246872596dc/quickstart-vds-for-wdl-tieout/temp-dir/" ## use the gcs_bucket here
 
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
