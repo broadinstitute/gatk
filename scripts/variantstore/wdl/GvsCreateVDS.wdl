@@ -168,7 +168,7 @@ task create_vds {
 
         # get the scripts that we will use for the VDS creation
         curl --silent --location --remote-name https://raw.githubusercontent.com/broadinstitute/gatk/rc-vs-1025-hail-version-120/scripts/variantstore/wdl/extract/hail_gvs_import.py --output hail_gvs_import.py
-        curl --silent --location --remote-name https://raw.githubusercontent.com/broadinstitute/gatk/rc-vs-1025-hail-version-120/scripts/variantstore/wdl/extract/import_gvs.py
+        curl --silent --location --remote-name https://raw.githubusercontent.com/broadinstitute/gatk/rc-vs-1025-hail-version-120/scripts/variantstore/wdl/extract/import_gvs.py --output import_gvs.py
 
 
 
@@ -210,7 +210,7 @@ task create_vds {
 
                     submit_cmd = wrap(f"""
 
-                    gcloud dataproc jobs submit pyspark {script_path}
+                    gcloud dataproc jobs submit pyspark hail_gvs_import.py
                       --cluster={cluster_name}
                       --project {gcs_project}
                       --region={region}
