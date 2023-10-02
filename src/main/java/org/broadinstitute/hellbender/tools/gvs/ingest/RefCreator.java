@@ -127,11 +127,19 @@ public final class RefCreator {
 
                     // Write out no-calls as a single-base GQ0 reference.
                     } else if (CreateVariantIngestFiles.isNoCall(variant)) {
-                        refRangesWriter.write(SchemaUtils.encodeLocation(variantChr, start),
-                                sampleId,
-                                1,
-                                GQStateEnum.ZERO.getValue()
-                        );
+                        if (storeCompressedReferences) {
+                            refRangesWriter.writeCompressed(
+                                    SchemaUtils.encodeCompressedRefBlock(variantChr, start, 1,
+                                            GQStateEnum.ZERO.getCompressedValue()),
+                                    sampleId
+                            );
+                        } else {
+                            refRangesWriter.write(SchemaUtils.encodeLocation(variantChr, start),
+                                    sampleId,
+                                    1,
+                                    GQStateEnum.ZERO.getValue()
+                            );
+                        }
                     }
                 }
             }

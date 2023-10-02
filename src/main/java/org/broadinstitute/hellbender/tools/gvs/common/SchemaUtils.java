@@ -84,8 +84,8 @@ public class SchemaUtils {
     }
 
 
-    public static long encodeCompressedRefBlock(String chrom, int position, int length, int stateAsInt) {
-        int chromosomeIndex = ChromosomeEnum.valueOfContig(chrom).index;
+    public static long encodeCompressedRefBlock(String chrom, long position, long length, long stateAsInt) {
+        long chromosomeIndex = ChromosomeEnum.valueOfContig(chrom).index;
         long packedBytes = ((0xFFFF & chromosomeIndex) << 48) |
                 ((0xFFFFFFFF & position) << 16) |
                 ((0xFFF & length) << 4) |
