@@ -114,9 +114,9 @@ task CoreStorageModelSizes {
             local output_file_name="$2"
 
             bq --apilog=false query --project_id='~{project_id}' --format=csv --use_legacy_sql=false \
-                "SELECT round(sum(total_billable_bytes) / (1024*1024*1024),2) \
-                    FROM \`~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS\` \
-                    WHERE table_name LIKE '${table_pattern}'" | tail -1 > ${output_file_name}
+                'SELECT round(sum(total_billable_bytes) / (1024*1024*1024),2) 
+                    FROM \`~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS\`
+                    WHERE table_name LIKE "'"${table_pattern}"'"' | tail -1 > ${output_file_name}
         }
 
         get_billable_bytes_in_gib "vet_%"        vet_gib.txt
