@@ -18,13 +18,6 @@ version 1.0
 #        # Number of workers (per shard) to use in the Hail cluster.
 #        Int num_workers
 #
-#        # The Google project ID information is necessary when spinning up dataproc.
-#        #  ie, terra-<hex>
-#        # This must match the workspace that this workflow is being run from.
-#        #     eg, "terra-491d5f31"
-#        # once Miguel's code has been merged, this will be available as a lookup task in GvsUtils
-#        String gcs_project
-#
 #        # Set to 'subnetwork' if running in Terra Cromwell
 #        String gcs_subnetwork_name='subnetwork'
 #
@@ -69,6 +62,7 @@ workflow GvsCreateVDS {
         #  ie, parameters that go to the Hail python code (submission_script below)
         String vds_output_url
         String avro_path
+        String? hail_version='0.2.120'
 
         # String used in construction of output filename
         #  Cannot contain any special characters, ie, characters must be alphanumeric or "-"
@@ -77,9 +71,6 @@ workflow GvsCreateVDS {
         ## CLUSTER PARAMETERS
         # Number of workers (per shard) to use in the Hail cluster.
         Int num_workers
-
-        # The Google project ID information is necessary when spinning up dataproc.
-        String gcs_project
 
         # Set to 'subnetwork' if running in Terra Cromwell
         String gcs_subnetwork_name='subnetwork'
@@ -100,12 +91,15 @@ workflow GvsCreateVDS {
         String hail_docker="us.gcr.io/broad-dsde-methods/lichtens/hail_dataproc_wdl:1.1"
     }
 
+    call Utils.GetToolVersions
+
     call create_vds {
         input:
             vds_url = vds_output_url,
             avro_path = avro_path,
+            hail_version = hail_version,
             prefix = prefix,
-            gcs_project = gcs_project,
+            gcs_project = GetToolVersions.google_project,
             num_workers = num_workers,
             gcs_subnetwork_name = gcs_subnetwork_name,
             hail_docker = hail_docker,
@@ -118,9 +112,10 @@ task create_vds {
         String prefix
         String vds_url
         String avro_path
+        String? hail_version
 
         # Cluster params
-        String gcs_project
+        String gcs_project  # The Google project ID information is necessary when spinning up dataproc.
         String region = "us-central1"
         Int num_workers
         RuntimeAttr? runtime_attr_override
@@ -151,7 +146,28 @@ task create_vds {
         pip3 install hail~{'==' + hail_version}
         pip3 install --upgrade google-cloud-dataproc
 
-        set -euxo pipefail
+        if [[ -z "~{git_branch_or_tag}" && -z "~{submission_script}" ]] || [[ ! -z "~{git_branch_or_tag}" && ! -z "~{submission_script}" ]]
+        then
+            echo "Must specify git_branch_or_tag XOR submission_script"
+            exit 1
+        elif [[ ! -z "~{git_branch_or_tag}" ]]
+        then
+            script_url="https://raw.githubusercontent.com/broadinstitute/gatk/~{git_branch_or_tag}/scripts/variantstore/wdl/extract/~{default_script_filename}"
+            curl --silent --location --remote-name "${script_url}"
+        fi
+
+        if [[ ! -z "~{submission_script}" ]]
+        then
+            script_path="~{submission_script}"
+        else
+            script_path="~{default_script_filename}"
+        fi
+
+        # Generate a UUIDish random hex string of <8 hex chars (4 bytes)>-<4 hex chars (2 bytes)>
+        hex="$(head -c4 < /dev/urandom | xxd -p)-$(head -c2 < /dev/urandom | xxd -p)"
+
+        cluster_name="~{prefix}-~{contig}-hail-${hex}"
+        echo ${cluster_name} > cluster_name.txt
 
         gcloud config list account --format "value(core.account)" 1> account.txt
 
@@ -249,6 +265,10 @@ task create_vds {
 
         echo "Goodbye cluster"
     >>>
+
+    output {
+        String cluster_name = read_string("cluster_name.txt")
+    }
 
     runtime {
         memory: select_first([runtime_override.mem_gb, runtime_default.mem_gb]) + " GB"
