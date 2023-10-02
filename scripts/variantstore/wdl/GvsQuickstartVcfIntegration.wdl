@@ -10,6 +10,7 @@ workflow GvsQuickstartVcfIntegration {
         String expected_output_prefix
         Boolean use_VQSR_lite = true
         Boolean extract_do_not_filter_override = true
+        Boolean process_vcf_headers = false
 
         String drop_state = "FORTY"
         String dataset_suffix
@@ -26,6 +27,10 @@ workflow GvsQuickstartVcfIntegration {
         String? vcf_files_column_name
         String? vcf_index_files_column_name
         String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
+
+        String? workspace_bucket
+        String? workspace_id
+        String? submission_id
     }
     String project_id = "gvs-internal"
 
@@ -34,8 +39,9 @@ workflow GvsQuickstartVcfIntegration {
       File? none = ""
     }
 
-    if (!defined(git_hash) || !defined(cloud_sdk_docker) || !defined(cloud_sdk_slim_docker) || !defined(variants_docker) ||
-        !defined(basic_docker) || !defined(gatk_docker)) {
+    if (!defined(workspace_bucket) || !defined(workspace_id) || !defined(submission_id) ||
+        !defined(git_hash) || !defined(cloud_sdk_docker) || !defined(cloud_sdk_slim_docker) ||
+        !defined(variants_docker) || !defined(basic_docker) || !defined(gatk_docker)) {
         call Utils.GetToolVersions {
             input:
                 git_branch_or_tag = git_branch_or_tag,
@@ -48,6 +54,10 @@ workflow GvsQuickstartVcfIntegration {
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
     String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
     String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
+
+    String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
+    String effective_workspace_id = select_first([workspace_id, GetToolVersions.workspace_id])
+    String effective_submission_id = select_first([submission_id, GetToolVersions.submission_id])
 
     if (!use_default_dockers && !defined(gatk_override)) {
       call Utils.BuildGATKJar {
@@ -72,6 +82,7 @@ workflow GvsQuickstartVcfIntegration {
             project_id = project_id,
             gatk_override = if (use_default_dockers) then none else select_first([gatk_override, BuildGATKJar.jar]),
             use_classic_VQSR = !use_VQSR_lite,
+            process_vcf_headers = process_vcf_headers,
             extract_output_file_base_name = "quickit",
             filter_set_name = "quickit",
             extract_table_prefix = "quickit",
@@ -89,6 +100,11 @@ workflow GvsQuickstartVcfIntegration {
             cloud_sdk_docker = effective_cloud_sdk_docker,
             variants_docker = effective_variants_docker,
             gatk_docker = effective_gatk_docker,
+            workspace_bucket = effective_workspace_bucket,
+            workspace_id = effective_workspace_id,
+            submission_id = effective_submission_id,
+            git_branch_or_tag = git_branch_or_tag,
+            git_hash = effective_git_hash,
     }
 
     # Only assert identical outputs if we did not filter (filtering is not deterministic) OR if we are using VQSR Lite (which is deterministic)

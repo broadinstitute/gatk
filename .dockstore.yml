@@ -97,7 +97,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1019
+             - vs_1045_header_creator_hang
          tags:
              - /.*/
    - name: GvsBenchmarkExtractTask
@@ -167,6 +167,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1045_header_creator_hang
          tags:
              - /.*/
    - name: GvsBulkIngestGenomes
@@ -340,6 +341,15 @@ workflows:
          branches:
              - master
              - ah_var_store
+         tags:
+             - /.*/
+   - name: HailFromWdl
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/HailFromWdl.wdl
+     filters:
+         branches:
+             - master
+             - vs_1013_hail_dataproc_wdl
          tags:
              - /.*/
    - name: MitochondriaPipeline
