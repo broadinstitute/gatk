@@ -283,7 +283,6 @@ workflows:
              - master
              - ah_var_store
              - rsa_vs_1038
-             - gg_VS_1059_AddPhasingToAvro
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -293,7 +292,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS_1059_AddPhasingToAvro
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
@@ -304,7 +302,6 @@ workflows:
              - master
              - ah_var_store
              - vs_1045_header_creator_hang
-             - gg_VS_1059_AddPhasingToAvro
          tags:
              - /.*/
    - name: GvsIngestTieout
@@ -332,7 +329,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS_1059_AddPhasingToAvro
          tags:
              - /.*/
    - name: GvsCallsetStatistics
