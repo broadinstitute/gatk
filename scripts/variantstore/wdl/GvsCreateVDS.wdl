@@ -60,7 +60,7 @@ workflow GvsCreateVDS {
         #  ie, parameters that go to the Hail python code (submission_script below)
         String vds_output_url
         String avro_path
-        String? hail_version='0.2.120'
+        String? hail_version='0.2.119'
 
         # String used in construction of output filename
         #  Cannot contain any special characters, ie, characters must be alphanumeric or "-"
@@ -191,9 +191,9 @@ task create_vds {
 
         try:
             cluster_start_cmd = "hailctl dataproc start --num-workers ~{num_workers} --autoscaling-policy={} --region {} --project {} --service-account {} --num-master-local-ssds 1 --num-worker-local-ssds 1 --max-idle=60m --max-age=1440m --subnet={} {}".format("rc-example-autoscaling-policy", "~{region}", "~{gcs_project}", account, "projects/~{gcs_project}/regions/~{region}/subnetworks/~{gcs_subnetwork_name}", cluster_name)
-            info("Starting cluster...")
-            info(cluster_start_cmd)
-            info(os.popen(cluster_start_cmd).read())
+            print("Starting cluster...")
+            print(cluster_start_cmd)
+            print(os.popen(cluster_start_cmd).read())
 
             cluster_client = dataproc.ClusterControllerClient(
                 client_options={"api_endpoint": f"~{region}-dataproc.googleapis.com:443"}
@@ -224,7 +224,7 @@ task create_vds {
 
                     """)
 
-                    info("Running: " + submit_cmd)
+                    print("Running: " + submit_cmd)
                     os.popen(submit_cmd).read()
                     ###########
                     break
