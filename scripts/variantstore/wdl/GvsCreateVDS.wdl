@@ -189,6 +189,10 @@ task create_vds {
             account = account_file.readline().strip()
         print("account: " + account)
 
+        def wrap(string):
+            import re
+            return re.sub("\\s{2,}", " ", string).strip()
+
         try:
             cluster_start_cmd = "hailctl dataproc start --num-workers ~{num_workers} --autoscaling-policy={} --region {} --project {} --service-account {} --num-master-local-ssds 1 --num-worker-local-ssds 1 --max-idle=60m --max-age=1440m --subnet={} {}".format("rc-example-autoscaling-policy", "~{region}", "~{gcs_project}", account, "projects/~{gcs_project}/regions/~{region}/subnetworks/~{gcs_subnetwork_name}", cluster_name)
             print("Starting cluster...")
