@@ -756,7 +756,7 @@ task IsVQSRLite {
 
 
     bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false ~{bq_labels} \
-      'SELECT COUNT(1) FROM `~{fq_filter_set_info_table}` WHERE filter_set_name = "~{filter_set_name}" \
+      'SELECT COUNT(1) FROM `~{fq_filter_set_info_table}` WHERE filter_set_name = "~{filter_set_name}"
       AND vqslod IS NOT NULL' | tail -1 > classic_count_file.txt
     CLASSIC_COUNT=`cat classic_count_file.txt`
 
