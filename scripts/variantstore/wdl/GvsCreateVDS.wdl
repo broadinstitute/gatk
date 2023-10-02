@@ -193,19 +193,9 @@ task create_vds {
 
         try:
             cluster_start_cmd = "hailctl dataproc start --num-workers ~{num_workers} --autoscaling-policy={} --region {} --project {} --service-account {} --num-master-local-ssds 1 --num-worker-local-ssds 1 --max-idle=60m --max-age=1440m --subnet={} {}".format("rc-example-autoscaling-policy", "~{region}", "~{gcs_project}", account, "projects/~{gcs_project}/regions/~{region}/subnetworks/~{gcs_subnetwork_name}", cluster_name)
-            print("Starting cluster...")
-            print(cluster_start_cmd)
-            print(os.popen(cluster_start_cmd).read())
-
-            ## run python script to made a VDS with avro files using VETS / VQSRLite ( we will run using VQSR classic later )
-
-            python ./hail_gvs_import.py \
-                --avro-path ~{avro_path} \
-                --vds-path ~{vds_url} \
-                --temp-path  ~{temp_path} \
-                --use-vqsr-lite
-
-
+            info("Starting cluster...")
+            info(cluster_start_cmd)
+            info(os.popen(cluster_start_cmd).read())
 
             cluster_client = dataproc.ClusterControllerClient(
                 client_options={"api_endpoint": f"~{region}-dataproc.googleapis.com:443"}
@@ -218,17 +208,27 @@ task create_vds {
                     cluster_staging_bucket = cluster.config.temp_bucket
 
                     #### THIS IS WHERE YOU CALL YOUR SCRIPT AND COPY THE OUTPUT LOCALLY (so that it can get back into WDL-space)
-                    ## Maybe next step is to make a simple python script to run aside from just printing hello world
-                    # submit_cmd = f'go find me in a commit i hate dockstore'
-                    # print("Running: " + submit_cmd)
-                    print("Running nothing yet")
-                    # os.popen(submit_cmd).read()
-                    # print("Copying results out of staging bucket...")
-                    # staging_cmd = f'gsutil cp -r gs://{cluster_staging_bucket}/{cluster_name}/~{prefix}.vcf.bgz ~{prefix}.vcf.bgz'
-                    # print(staging_cmd)
-                    # os.popen(staging_cmd).read()
-                    ###########
+                    ## run python script to made a VDS with avro files using VETS / VQSRLite ( we will run using VQSR classic later )
 
+                    submit_cmd = wrap(f"""
+
+                    gcloud dataproc jobs submit pyspark {script_path}
+                      --cluster={cluster_name}
+                      --project {gcs_project}
+                      --region={region}
+                      --account {account}
+                      --driver-log-levels root=WARN
+                      --
+                      --avro-path {avro_path}
+                      --vds-path {vds_url}
+                      --temp-path  {temp_path}
+                      --use-vqsr-lite
+
+                    """)
+
+                    info("Running: " + submit_cmd)
+                    os.popen(submit_cmd).read()
+                    ###########
                     break
 
         except Exception as e:
