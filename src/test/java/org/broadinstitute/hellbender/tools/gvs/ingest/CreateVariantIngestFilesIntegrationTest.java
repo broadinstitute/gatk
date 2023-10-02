@@ -16,21 +16,47 @@ import static htsjdk.samtools.ValidationStringency.STRICT;
 
 public class CreateVariantIngestFilesIntegrationTest extends CommandLineProgramTest {
 
+    // *manual_nocalls.vcf.gz modified manually to introduce a no-call (./.) GT at chr20 61417
+    // no-call to test marking ./. as GQ 0 in PET and abstaining from putting variant into VET
+    // original GT at chr20 61417 = 0/1
+    final String input_vcf_file = "NA12878.haplotypeCalls.reblocked.chr20.100k.manual_nocall.vcf.gz";
+    final String interval_list_file = "wgs_calling_regions.hg38.chr20.100k.interval_list";
+    final String sample_map_file = "test_sample_map.tsv";
     @Test
-    public void testCreateVariantIngestFiles() throws Exception {
-        // *manual_nocalls.vcf.gz modified manually to introduce a no-call (./.) GT at chr20 61417
-        // no-call to test marking ./. as GQ 0 in PET and abstaining from putting variant into VET
-        // original GT at chr20 61417 = 0/1
-        final String input_vcf_file = "NA12878.haplotypeCalls.reblocked.chr20.100k.manual_nocall.vcf.gz";
-        final String interval_list_file = "wgs_calling_regions.hg38.chr20.100k.interval_list";
-        final String sample_map_file = "test_sample_map.tsv";
+    public void testCreateDefaultVariantIngestFiles() throws Exception {
+        testCreateVariantIngestFiles(
+                getToolTestDataDir() + "expected.ref_ranges_001_NA12878.tsv",
+                getToolTestDataDir() + "expected.vet_001_NA12878.tsv",
+                new String[]{});
+    }
+
+    @Test
+    public void testIgnoreGQ0CreateVariantIngestFiles() throws Exception {
+        testCreateVariantIngestFiles(
+                getToolTestDataDir() + "expected.ignore_gq0.ref_ranges_001_NA12878.tsv",
+                getToolTestDataDir() + "expected.vet_001_NA12878.tsv",
+                new String[]{"--ref-block-gq-to-ignore ZERO"});
+    }
+
+    @Test
+    public void testIgnoreGQ40AndAboveCreateVariantIngestFiles() throws Exception {
+        testCreateVariantIngestFiles(
+                getToolTestDataDir() + "expected.ignore_gq40_and_above.ref_ranges_001_NA12878.tsv",
+                getToolTestDataDir() + "expected.vet_001_NA12878.tsv",
+                new String[]{"--ref-block-gq-to-ignore ZERO"});
+    }
+
+    public void testCreateVariantIngestFiles(final String expectedRefRangesTsv,
+                                             final String expectedVetTsv,
+                                             final String[] additionalArgs) throws Exception {
+
         final File outputDir = createTempDir("output_dir");
         final List<String> expectedOutputFiles = Arrays.asList(
-                getToolTestDataDir() + "expected.ref_ranges_001_NA12878.tsv",
-                getToolTestDataDir() + "expected.vet_001_NA12878.tsv"
+                expectedRefRangesTsv,
+                expectedVetTsv
         );
 
-        final ArgumentsBuilder args = new ArgumentsBuilder();
+        final ArgumentsBuilder args = new ArgumentsBuilder(additionalArgs);
         args
                 .add("V", getToolTestDataDir() + input_vcf_file)
                 .add("L", getToolTestDataDir() + interval_list_file)
@@ -59,4 +85,5 @@ public class CreateVariantIngestFilesIntegrationTest extends CommandLineProgramT
         // test file names are expected
         Assert.assertEquals(allOutputFiles, expectedFileNames);
     }
+
 }

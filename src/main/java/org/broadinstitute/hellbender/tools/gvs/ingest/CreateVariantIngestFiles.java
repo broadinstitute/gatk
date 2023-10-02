@@ -301,7 +301,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         final GenomeLoc variantGenomeLoc = intervalArgumentGenomeLocSortedSet.getGenomeLocParser().createGenomeLoc(variant.getContig(), variant.getStart(), variant.getEnd());
         final List<GenomeLoc> intervalsToWrite = intervalArgumentGenomeLocSortedSet.getOverlapping(variantGenomeLoc);
 
-        if (intervalsToWrite.size() == 0){
+        if (intervalsToWrite.isEmpty()) {
             throw new IllegalStateException("There are no intervals being covered by this variant, something went wrong with interval parsing");
         }
 
