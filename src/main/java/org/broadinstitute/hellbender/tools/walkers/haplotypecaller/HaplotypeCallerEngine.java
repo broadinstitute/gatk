@@ -832,7 +832,7 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
         final SWParameters readToHaplotypeSWParameters = hcArgs.getReadToHaplotypeSWParameters();
         // TODO Yes we skip realignment entirely when we are in DRAGEN-GATK PDHMM mode. Realignment of the reads makes no sense when
         // TODO the bases of the haplotypes used for calling no longer reflect specified variants present.
-        if (!(hcArgs.pileupDetectionArgs.generatePDHaplotypes && !hcArgs.pileupDetectionArgs.determinePDHaps)) {
+        if (!(hcArgs.pileupDetectionArgs.generatePDHaplotypes && !hcArgs.pileupDetectionArgs.useDeterminedHaplotypesDespitePdhmmMode)) {
             final Map<GATKRead, GATKRead> readRealignments = AssemblyBasedCallerUtils.realignReadsToTheirBestHaplotype(subsettedReadLikelihoodsFinal, assemblyResult.getReferenceHaplotype(), assemblyResult.getPaddedReferenceLoc(), aligner, readToHaplotypeSWParameters);
             subsettedReadLikelihoodsFinal.changeEvidence(readRealignments);
         }

@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.stream.IntStream;
 
 /**
  * Small BitSet with a capacity of 30 elements, corresponding to the number of bits in an int.
@@ -119,6 +120,11 @@ public class SmallBitSet {
 
     public boolean get(final int element) {
         return (bits & elementIndex(element)) != 0;
+    }
+
+    // IntStream of indices set to true i.e. contained in the set
+    public IntStream stream(final int capacity) {
+        return IntStream.range(0, capacity).filter(this::get);
     }
 
     public boolean isEmpty() { return bits == 0; }
