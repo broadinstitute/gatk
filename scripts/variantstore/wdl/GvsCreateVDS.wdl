@@ -82,9 +82,6 @@ workflow GvsCreateVDS {
         # Please note that there is a RuntimeAttr struct and a task parameter that can be used to override the defaults
         #  of the VM.  These are task parameters.
         #  However, since this can be a lightweight VM, overriding is unlikely to be necessary.
-
-        # The docker to be used on the VM.  This will need both Hail and Google Cloud SDK installed.
-        String hail_docker="us.gcr.io/broad-dsde-methods/lichtens/hail_dataproc_wdl:1.1"
     }
 
     call Utils.GetToolVersions
@@ -99,7 +96,7 @@ workflow GvsCreateVDS {
             gcs_bucket = GetToolVersions.workspace_bucket,
             num_workers = num_workers,
             gcs_subnetwork_name = gcs_subnetwork_name,
-            hail_docker = hail_docker,
+            variants_docker = GetToolVersions.variants_docker,
     }
 
 }
@@ -119,7 +116,7 @@ task create_vds {
         RuntimeAttr? runtime_attr_override
         String gcs_subnetwork_name
 
-        String hail_docker
+        String variants_docker
     }
 
     RuntimeAttr runtime_default = object {
