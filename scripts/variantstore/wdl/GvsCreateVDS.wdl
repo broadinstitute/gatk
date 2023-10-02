@@ -142,10 +142,9 @@ task create_vds {
         pip3 install --upgrade google-cloud-dataproc
 
         # Generate a UUIDish random hex string of <8 hex chars (4 bytes)>-<4 hex chars (2 bytes)>
-        # hex="$(head -c4 < /dev/urandom | xxd -p)-$(head -c2 < /dev/urandom | xxd -p)"
+        hex="$(head -c4 < /dev/urandom | xxd -p)-$(head -c2 < /dev/urandom | xxd -p)"
 
-        # cluster_name="~{prefix}-hail-${hex}"
-        cluster_name="~{prefix}-hail-test"
+        cluster_name="~{prefix}-hail-${hex}"
         echo ${cluster_name} > cluster_name.txt
 
         gcloud config list account --format "value(core.account)" 1> account.txt
