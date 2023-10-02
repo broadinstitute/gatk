@@ -148,23 +148,6 @@ task create_vds {
         pip3 install hail~{'==' + hail_version}
         pip3 install --upgrade google-cloud-dataproc
 
-        if [[ -z "~{git_branch_or_tag}" && -z "~{submission_script}" ]] || [[ ! -z "~{git_branch_or_tag}" && ! -z "~{submission_script}" ]]
-        then
-            echo "Must specify git_branch_or_tag XOR submission_script"
-            exit 1
-        elif [[ ! -z "~{git_branch_or_tag}" ]]
-        then
-            script_url="https://raw.githubusercontent.com/broadinstitute/gatk/~{git_branch_or_tag}/scripts/variantstore/wdl/extract/~{default_script_filename}"
-            curl --silent --location --remote-name "${script_url}"
-        fi
-
-        if [[ ! -z "~{submission_script}" ]]
-        then
-            script_path="~{submission_script}"
-        else
-            script_path="~{default_script_filename}"
-        fi
-
         # Generate a UUIDish random hex string of <8 hex chars (4 bytes)>-<4 hex chars (2 bytes)>
         hex="$(head -c4 < /dev/urandom | xxd -p)-$(head -c2 < /dev/urandom | xxd -p)"
 
