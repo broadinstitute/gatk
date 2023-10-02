@@ -75,10 +75,6 @@ workflow GvsCreateVDS {
         # Set to 'subnetwork' if running in Terra Cromwell
         String gcs_subnetwork_name='subnetwork'
 
-        # The script that is run on the cluster
-        #  See filter_VDS_and_shard_by_contig.py for an example.
-        # File submission_script0
-
         # Set to "us-central1" if running in Terra Cromwell
         String region = "us-central1"
 
@@ -151,7 +147,7 @@ task create_vds {
         # Generate a UUIDish random hex string of <8 hex chars (4 bytes)>-<4 hex chars (2 bytes)>
         hex="$(head -c4 < /dev/urandom | xxd -p)-$(head -c2 < /dev/urandom | xxd -p)"
 
-        cluster_name="~{prefix}-~{contig}-hail-${hex}"
+        cluster_name="~{prefix}-hail-${hex}"
         echo ${cluster_name} > cluster_name.txt
 
         gcloud config list account --format "value(core.account)" 1> account.txt
