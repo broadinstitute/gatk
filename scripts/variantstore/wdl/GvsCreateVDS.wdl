@@ -60,7 +60,7 @@ workflow GvsCreateVDS {
         #  ie, parameters that go to the Hail python code (submission_script below)
         String vds_output_url
         String avro_path
-        String? hail_version='0.2.119'
+        String? hail_version='0.2.122'
 
         # String used in construction of output filename
         #  Cannot contain any special characters, ie, characters must be alphanumeric or "-"
