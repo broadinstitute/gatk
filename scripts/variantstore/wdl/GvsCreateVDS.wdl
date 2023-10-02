@@ -29,8 +29,6 @@ version 1.0
 #        #  of the VM.  These are task parameters.
 #        #  However, since this can be a lightweight VM, overriding is unlikely to be necessary.
 #
-#        # The docker to be used on the VM.  This will need both Hail and Google Cloud SDK installed.
-#        String hail_docker="us.gcr.io/broad-dsde-methods/lichtens/hail_dataproc_wdl:1.0"
 #
 # Important notes:
 #   - This WDL script is still dependent on the python/Hail script that it calls.  You will see this when the parameters
@@ -254,7 +252,7 @@ task create_vds {
         cpu: select_first([runtime_override.cpu_cores, runtime_default.cpu_cores])
         preemptible: select_first([runtime_override.preemptible_tries, runtime_default.preemptible_tries])
         maxRetries: select_first([runtime_override.max_retries, runtime_default.max_retries])
-        docker: hail_docker
+        docker: variants_docker
         bootDiskSizeGb: select_first([runtime_override.boot_disk_gb, runtime_default.boot_disk_gb])
     }
 }
