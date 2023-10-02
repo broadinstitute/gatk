@@ -301,7 +301,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1045_header_creator_hang
+             - vs_1065_merge_master
          tags:
              - /.*/
    - name: GvsIngestTieout
