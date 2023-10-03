@@ -145,23 +145,6 @@ task create_vds {
         cluster_name="~{prefix}-hail-${hex}"
         echo ${cluster_name} > cluster_name.txt
 
-        gcloud config list account --format "value(core.account)" 1> account.txt
-
-        #### TEST:  Make sure that this docker image is configured for python3
-        if which python3 > /dev/null 2>&1; then
-            pt3="$(which python3)"
-            echo "** python3 located at $pt3"
-            echo "** magic: $(file $pt3)"
-            echo "** Version info:"
-            echo "$(python3 -V)"
-            echo "** -c test"
-            python3 -c "print('hello world-- no cluster yet tho')"
-        else
-            echo "!! No 'python3' in path."
-            exit 1
-        fi
-        #### END TEST
-
         gcloud storage cp gs://fc-d5e319d4-b044-4376-afde-22ef0afc4088/auto-scale-policy.yaml auto-scale-policy.yaml
         gcloud dataproc autoscaling-policies import rc-example-autoscaling-policy --project=~{gcs_project} --source=auto-scale-policy.yaml --region=~{region}
 
@@ -169,77 +152,22 @@ task create_vds {
         # get the scripts that we will use for the VDS creation
         curl --silent --location --remote-name https://raw.githubusercontent.com/broadinstitute/gatk/rc-vs-1025-hail-version-120/scripts/variantstore/wdl/extract/hail_gvs_import.py --output hail_gvs_import.py
         curl --silent --location --remote-name https://raw.githubusercontent.com/broadinstitute/gatk/rc-vs-1025-hail-version-120/scripts/variantstore/wdl/extract/import_gvs.py --output import_gvs.py
-
-
-
-        python3 <<EOF
-        print("Running python code...")
-        import hail as hl
-        import os
-        import uuid
-        import time
-        from google.cloud import dataproc_v1 as dataproc
+        curl --silent --location --remote-name https://raw.githubusercontent.com/broadinstitute/gatk/rc-vs-1064-wdl-quickstart-vds/scripts/variantstore/wdl/extract/run_in_hail_cluster.py --output run_in_hail_cluster.py
 
         # Must be local filepath once a script is finally set
 
-        with open("account.txt", "r") as account_file:
-            account = account_file.readline().strip()
-        print("account: " + account)
-
-        try:
-            cluster_start_cmd = "hailctl dataproc start --num-workers ~{num_workers} --autoscaling-policy={} --region {} --project {} --service-account {} --num-master-local-ssds 1 --num-worker-local-ssds 1 --max-idle=60m --max-age=1440m --subnet={} {}".format("rc-example-autoscaling-policy", "~{region}", "~{gcs_project}", account, "projects/~{gcs_project}/regions/~{region}/subnetworks/~{gcs_subnetwork_name}", ${cluster_name})
-            print("Starting cluster...")
-            print(cluster_start_cmd)
-            print(os.popen(cluster_start_cmd).read())
-
-            cluster_client = dataproc.ClusterControllerClient(
-                client_options={"api_endpoint": f"~{region}-dataproc.googleapis.com:443"}
-            )
-
-            print("Hello cluster!")
-            def wrap(string):
-                import re
-                return re.sub("\\s{2,}", " ", string).strip()
-
-            for cluster in cluster_client.list_clusters(request={"project_id": "~{gcs_project}", "region": "~{region}"}):
-                if cluster.cluster_name == cluster_name:
-                    cluster_staging_bucket = cluster.config.temp_bucket
-
-                    print("Hello project!")
-
-
-                    #### THIS IS WHERE YOU CALL YOUR SCRIPT AND COPY THE OUTPUT LOCALLY (so that it can get back into WDL-space)
-                    ## run python script to made a VDS with avro files using VETS / VQSRLite ( we will run using VQSR classic later )
-
-                    submit_cmd = wrap(f"""
-
-                    gcloud dataproc jobs submit pyspark hail_gvs_import.py
-                      --cluster=${cluster_name}
-                      --project "~{gcs_project}"
-                      --region="~{region}"
-                      --driver-log-levels root=WARN
-                      --
-                      --avro-path "~{avro_path}"
-                      --vds-path "~{vds_url}"
-                      --temp-path  "~{temp_path}"
-                      --use-vqsr-lite
-
-                    """)
-
-                    print("Running: " + submit_cmd)
-                    os.popen(submit_cmd).read()
-                    ###########
-                    break
-
-        except Exception as e:
-            print(e)
-            raise
-        finally:
-            time.sleep(300)
-            print(f'Stopping cluster: {cluster_name}')
-            os.popen("gcloud dataproc clusters delete --project {} --region {} --account {} {}".format("~{gcs_project}", "~{region}", account, ${cluster_name})).read()
-
-        EOF
+        python3 run_in_hail_cluster.py \
+            --script-path hail_gvs_import.py \
+            --account ${account_name} \
+            --num-workers ~{num_workers} \
+            --region ~{region} \
+            --gcs-project ~{gcs_project} \
+            --cluster-name ${cluster_name} \
+            --prefix ~{prefix} \
+            --avro-path ~{avro_path} \
+            --vds-path ~{vds_url} \
+            --temp-path ~{temp_path} \
+            --use-vqsr-lite
 
         echo "Goodbye cluster"
     >>>
