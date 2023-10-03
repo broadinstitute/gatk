@@ -180,9 +180,6 @@ task create_vds {
         import time
         from google.cloud import dataproc_v1 as dataproc
 
-        # Must match pattern (?:[a-z](?:[-a-z0-9]{0,49}[a-z0-9])?)
-        cluster_name = f'~{prefix}-hail-{str(uuid.uuid4())[0:13]}'
-
         # Must be local filepath once a script is finally set
 
         with open("account.txt", "r") as account_file:
@@ -205,7 +202,7 @@ task create_vds {
                 return re.sub("\\s{2,}", " ", string).strip()
 
             for cluster in cluster_client.list_clusters(request={"project_id": "~{gcs_project}", "region": "~{region}"}):
-                if cluster.cluster_name == cluster_name:
+                if cluster.cluster_name == "~{cluster_name}":
                     cluster_staging_bucket = cluster.config.temp_bucket
 
                     print("Hello project!")
