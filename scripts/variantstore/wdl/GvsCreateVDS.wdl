@@ -201,13 +201,15 @@ task create_vds {
                 import re
                 return re.sub("\\s{2,}", " ", string).strip()
 
+
+
         except Exception as e:
             print(e)
             raise
         finally:
             time.sleep(300)
             print(f'Stopping cluster: {cluster_name}')
-            os.popen("gcloud dataproc clusters delete --project {} --region {} --account {} {}".format("~{gcs_project}", "~{region}", account, cluster_name)).read()
+            os.popen("gcloud dataproc clusters delete --project {} --region {} --account {} {}".format("~{gcs_project}", "~{region}", account, "${cluster_name}")).read()
 
         EOF
 
