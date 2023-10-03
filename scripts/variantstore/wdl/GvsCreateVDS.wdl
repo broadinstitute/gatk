@@ -201,36 +201,6 @@ task create_vds {
                 import re
                 return re.sub("\\s{2,}", " ", string).strip()
 
-            for cluster in cluster_client.list_clusters(request={"project_id": "~{gcs_project}", "region": "~{region}"}):
-                if cluster.cluster_name == cluster_name:
-                    cluster_staging_bucket = cluster.config.temp_bucket
-
-                    print("Hello project!")
-
-
-                    #### THIS IS WHERE YOU CALL YOUR SCRIPT AND COPY THE OUTPUT LOCALLY (so that it can get back into WDL-space)
-                    ## run python script to made a VDS with avro files using VETS / VQSRLite ( we will run using VQSR classic later )
-
-                    submit_cmd = wrap(f"""
-
-                    gcloud dataproc jobs submit pyspark hail_gvs_import.py
-                      --cluster={cluster_name}
-                      --project "~{gcs_project}"
-                      --region="~{region}"
-                      --driver-log-levels root=WARN
-                      --
-                      --avro-path "~{avro_path}"
-                      --vds-path "~{vds_url}"
-                      --temp-path  "~{temp_path}"
-                      --use-vqsr-lite
-
-                    """)
-
-                    print("Running: " + submit_cmd)
-                    os.popen(submit_cmd).read()
-                    ###########
-                    break
-
         except Exception as e:
             print(e)
             raise
