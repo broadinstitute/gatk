@@ -109,17 +109,16 @@ if __name__ == "__main__":
                                      description='Get workspace information')
 
     parser.add_argument('--cluster-name', type=str, required=True, help='Name of the Hail cluster')
-    parser.add_argument('--prefix', type=str, required=True, help='Prefix for output VCF name')
-    parser.add_argument('--contig', type=str, required=True, help='Contig to extract')
-    parser.add_argument('--account', type=str, required=True, help='GCP account name')
+    parser.add_argument('--prefix', type=str, help='Prefix for output VCF name')
+    parser.add_argument('--account', type=str, help='GCP account name')
     parser.add_argument('--num-workers', type=str, required=True, help='Number of workers in Hail cluster')
     parser.add_argument('--worker-machine-type', type=str, required=False, help='Dataproc cluster worker machine type')
     parser.add_argument('--region', type=str, required=True, help='GCS region')
     parser.add_argument('--gcs-project', type=str, required=True, help='GCS project')
     parser.add_argument('--script-path', type=str, required=True, help='Path to script to run in Hail cluster')
     parser.add_argument('--vds-url', type=str, required=True, help='VDS URL')
-    parser.add_argument('--bed-url', type=str, required=True, help='Bed URL')
-    parser.add_argument('--vcf-header-url', type=str, required=True, help='VCF Header URL')
+    parser.add_argument('--avro-path', type=str, required=True, help='Avro URL')
+    parser.add_argument('--temp-path', type=str, required=True, help='Cruft URL')
 
 
     args = parser.parse_args()
@@ -134,6 +133,6 @@ if __name__ == "__main__":
                    gcs_project=args.gcs_project,
                    script_path=args.script_path,
                    vds_url=args.vds_url,
-                   bed_url=args.bed_url,
-                   vcf_header_url=args.vcf_header_url
+                   temp_path=args.temp_path,
+                   avro_path=args.avro_path
                    )
