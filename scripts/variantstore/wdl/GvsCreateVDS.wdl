@@ -166,8 +166,7 @@ task create_vds {
             --prefix ~{prefix} \
             --avro-path ~{avro_path} \
             --vds-path ~{vds_url} \
-            --temp-path ~{temp_path} \
-            --use-vqsr-lite
+            --temp-path ~{temp_path}
 
         echo "Goodbye cluster"
     >>>
