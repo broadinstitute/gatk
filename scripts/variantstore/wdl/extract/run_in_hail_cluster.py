@@ -80,7 +80,7 @@ def run_in_cluster(cluster_name, prefix, account, num_workers, worker_machine_ty
                 info("Copying results out of staging bucket...")
                 staging_cmd = wrap(f"""
                 
-                gsutil cp -r gs://{cluster_staging_bucket}/{cluster_name}/{prefix}.vcf.bgz '{prefix}.vcf.bgz'
+                gsutil cp -r {vds_path} '{prefix}.vds'
                 
                 """)
 
