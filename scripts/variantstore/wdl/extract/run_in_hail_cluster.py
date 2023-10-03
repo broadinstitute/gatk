@@ -25,7 +25,7 @@ def wrap(string):
 
 
 def run_in_cluster(cluster_name, prefix, contig, account, num_workers, worker_machine_type, region, gcs_project,
-                   script_path, vds_url, temp_path, avro_path):
+                   script_path, vds_path, temp_path, avro_path):
 
     try:
         cluster_start_cmd = wrap(f"""
@@ -68,7 +68,7 @@ def run_in_cluster(cluster_name, prefix, contig, account, num_workers, worker_ma
                  --account {account}
                  --driver-log-levels root=WARN
                  --
-                 --vds-path {vds_url}
+                 --vds-path {vds_path}
                  --temp-path {temp_path}
                  --avro-path {avro_path}
                  --use-vqsr-lite
@@ -116,7 +116,7 @@ if __name__ == "__main__":
     parser.add_argument('--region', type=str, required=True, help='GCS region')
     parser.add_argument('--gcs-project', type=str, required=True, help='GCS project')
     parser.add_argument('--script-path', type=str, required=True, help='Path to script to run in Hail cluster')
-    parser.add_argument('--vds-url', type=str, required=True, help='VDS URL')
+    parser.add_argument('--vds-path', type=str, required=True, help='VDS URL')
     parser.add_argument('--avro-path', type=str, required=True, help='Avro URL')
     parser.add_argument('--temp-path', type=str, required=True, help='Cruft URL')
 
@@ -132,7 +132,7 @@ if __name__ == "__main__":
                    region=args.region,
                    gcs_project=args.gcs_project,
                    script_path=args.script_path,
-                   vds_url=args.vds_url,
+                   vds_path=args.vds_path,
                    temp_path=args.temp_path,
                    avro_path=args.avro_path
                    )
