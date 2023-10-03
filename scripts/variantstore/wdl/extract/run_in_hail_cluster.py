@@ -24,7 +24,7 @@ def wrap(string):
     return re.sub("\\s{2,}", " ", string).strip()
 
 
-def run_in_cluster(cluster_name, prefix, contig, account, num_workers, worker_machine_type, region, gcs_project,
+def run_in_cluster(cluster_name, prefix, account, num_workers, worker_machine_type, region, gcs_project,
                    script_path, vds_path, temp_path, avro_path):
 
     try:
@@ -80,7 +80,7 @@ def run_in_cluster(cluster_name, prefix, contig, account, num_workers, worker_ma
                 info("Copying results out of staging bucket...")
                 staging_cmd = wrap(f"""
                 
-                gsutil cp -r gs://{cluster_staging_bucket}/{cluster_name}/{prefix}.{contig}.vcf.bgz '{prefix}.{contig}.vcf.bgz'
+                gsutil cp -r gs://{cluster_staging_bucket}/{cluster_name}/{prefix}.vcf.bgz '{prefix}.vcf.bgz'
                 
                 """)
 
@@ -125,7 +125,6 @@ if __name__ == "__main__":
 
     run_in_cluster(cluster_name=args.cluster_name,
                    prefix=args.prefix,
-                   contig=args.contig,
                    account=args.account,
                    num_workers=args.num_workers,
                    worker_machine_type=args.worker_machine_type if args.worker_machine_type else "n1-standard-8",
