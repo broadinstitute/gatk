@@ -152,7 +152,7 @@ task create_vds {
         # get the scripts that we will use for the VDS creation
         curl --silent --location --remote-name https://raw.githubusercontent.com/broadinstitute/gatk/rc-vs-1025-hail-version-120/scripts/variantstore/wdl/extract/hail_gvs_import.py --output hail_gvs_import.py
         curl --silent --location --remote-name https://raw.githubusercontent.com/broadinstitute/gatk/rc-vs-1025-hail-version-120/scripts/variantstore/wdl/extract/import_gvs.py --output import_gvs.py
-        curl --silent --location --remote-name https://raw.githubusercontent.com/broadinstitute/gatk/7da7e14f57c68eeed26bca49462a853938d6c966/scripts/variantstore/wdl/extract/run_in_hail_cluster.py --output run_in_hail_cluster.py
+        curl --silent --location --remote-name https://raw.githubusercontent.com/broadinstitute/gatk/13b93fb14df32b3d1fcd88a290d9873f13bebc18/scripts/variantstore/wdl/extract/run_in_hail_cluster.py --output run_in_hail_cluster.py
 
         # Must be local filepath once a script is finally set
 
