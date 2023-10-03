@@ -220,7 +220,7 @@ task create_vds {
                       --cluster="~{cluster_name}"
                       --project "~{gcs_project}"
                       --region="~{region}"
-                      --account "~{account}"
+                      --account "~{account_name}"
                       --driver-log-levels root=WARN
                       --
                       --avro-path "~{avro_path}"
