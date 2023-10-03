@@ -217,15 +217,15 @@ task create_vds {
                     submit_cmd = wrap(f"""
 
                     gcloud dataproc jobs submit pyspark hail_gvs_import.py
-                      --cluster={cluster_name}
-                      --project {gcs_project}
-                      --region={region}
-                      --account {account}
+                      --cluster="~{cluster_name}"
+                      --project "~{gcs_project}"
+                      --region="~{region}"
+                      --account "~{account}"
                       --driver-log-levels root=WARN
                       --
-                      --avro-path {avro_path}
-                      --vds-path {vds_url}
-                      --temp-path  {temp_path}
+                      --avro-path "~{avro_path}"
+                      --vds-path "~{vds_url}"
+                      --temp-path  "~{temp_path}"
                       --use-vqsr-lite
 
                     """)
