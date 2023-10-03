@@ -133,7 +133,7 @@ task create_vds {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        account_name=$(gcloud config list account --format "value(core.account)")
+        account_name=$(gcloud config list account --format "value(core.account)") ## do we need a service account anymore?
 
         pip3 install --upgrade pip
         pip3 install hail~{'==' + hail_version}
@@ -220,7 +220,6 @@ task create_vds {
                       --cluster="~{cluster_name}"
                       --project "~{gcs_project}"
                       --region="~{region}"
-                      --account "~{account_name}"
                       --driver-log-levels root=WARN
                       --
                       --avro-path "~{avro_path}"
