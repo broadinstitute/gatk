@@ -202,7 +202,7 @@ task create_vds {
                 return re.sub("\\s{2,}", " ", string).strip()
 
             for cluster in cluster_client.list_clusters(request={"project_id": "~{gcs_project}", "region": "~{region}"}):
-                if cluster.cluster_name == "~{cluster_name}":
+                if cluster.cluster_name == cluster_name:
                     cluster_staging_bucket = cluster.config.temp_bucket
 
                     print("Hello project!")
@@ -214,7 +214,7 @@ task create_vds {
                     submit_cmd = wrap(f"""
 
                     gcloud dataproc jobs submit pyspark hail_gvs_import.py
-                      --cluster="~{cluster_name}"
+                      --cluster={cluster_name}
                       --project "~{gcs_project}"
                       --region="~{region}"
                       --driver-log-levels root=WARN
