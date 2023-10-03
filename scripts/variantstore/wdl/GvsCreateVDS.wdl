@@ -155,10 +155,11 @@ task create_vds {
         # curl --silent --location --remote-name https://raw.githubusercontent.com/broadinstitute/gatk/889186b089975d9e21b6b8e37c1ae5bdc49d2e5d/scripts/variantstore/wdl/extract/run_in_hail_cluster.py --output run_in_hail_cluster.py
 
         # Must be local filepath once a script is finally set
-        touch __init__.py
+        # touch __init__.py
 
         python3 /app/run_in_hail_cluster.py \
             --script-path /app/hail_gvs_import.py \
+            --secondary-script-path /app/import_gvs.py \
             --account ${account_name} \
             --num-workers ~{num_workers} \
             --region ~{region} \

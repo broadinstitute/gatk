@@ -25,7 +25,7 @@ def wrap(string):
 
 
 def run_in_cluster(cluster_name, prefix, account, num_workers, worker_machine_type, region, gcs_project,
-                   script_path, vds_path, temp_path, avro_path):
+                   script_path, moar_python_path, vds_path, temp_path, avro_path):
 
     try:
         cluster_start_cmd = wrap(f"""
@@ -60,8 +60,9 @@ def run_in_cluster(cluster_name, prefix, account, num_workers, worker_machine_ty
 
                 # THIS IS WHERE YOU CALL YOUR SCRIPT AND COPY THE OUTPUT LOCALLY (to get it back into WDL-space)
                 submit_cmd = wrap(f"""
-                
+
                 gcloud dataproc jobs submit pyspark {script_path}
+                 --py-files=[{moar_python_path}]
                  --cluster={cluster_name}
                  --project {gcs_project}
                  --region={region}
@@ -116,6 +117,7 @@ if __name__ == "__main__":
     parser.add_argument('--region', type=str, required=True, help='GCS region')
     parser.add_argument('--gcs-project', type=str, required=True, help='GCS project')
     parser.add_argument('--script-path', type=str, required=True, help='Path to script to run in Hail cluster')
+    parser.add_argument('--secondary-script-path', type=str, required=True, help='Path to secondary script to run in Hail cluster')
     parser.add_argument('--vds-path', type=str, required=True, help='VDS URL')
     parser.add_argument('--avro-path', type=str, required=True, help='Avro URL')
     parser.add_argument('--temp-path', type=str, required=True, help='Cruft URL')
@@ -131,6 +133,7 @@ if __name__ == "__main__":
                    region=args.region,
                    gcs_project=args.gcs_project,
                    script_path=args.script_path,
+                   moar_python_path=args.secondary_script_path,
                    vds_path=args.vds_path,
                    temp_path=args.temp_path,
                    avro_path=args.avro_path
