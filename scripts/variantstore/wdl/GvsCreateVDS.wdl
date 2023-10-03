@@ -187,7 +187,7 @@ task create_vds {
         print("account: " + account)
 
         try:
-            cluster_start_cmd = "hailctl dataproc start --num-workers ~{num_workers} --autoscaling-policy={} --region {} --project {} --service-account {} --num-master-local-ssds 1 --num-worker-local-ssds 1 --max-idle=60m --max-age=1440m --subnet={} {}".format("rc-example-autoscaling-policy", "~{region}", "~{gcs_project}", account, "projects/~{gcs_project}/regions/~{region}/subnetworks/~{gcs_subnetwork_name}", cluster_name)
+            cluster_start_cmd = "hailctl dataproc start --num-workers ~{num_workers} --autoscaling-policy={} --region {} --project {} --service-account {} --num-master-local-ssds 1 --num-worker-local-ssds 1 --max-idle=60m --max-age=1440m --subnet={} {}".format("rc-example-autoscaling-policy", "~{region}", "~{gcs_project}", account, "projects/~{gcs_project}/regions/~{region}/subnetworks/~{gcs_subnetwork_name}", ${cluster_name})
             print("Starting cluster...")
             print(cluster_start_cmd)
             print(os.popen(cluster_start_cmd).read())
@@ -201,7 +201,35 @@ task create_vds {
                 import re
                 return re.sub("\\s{2,}", " ", string).strip()
 
+            for cluster in cluster_client.list_clusters(request={"project_id": "~{gcs_project}", "region": "~{region}"}):
+                if cluster.cluster_name == cluster_name:
+                    cluster_staging_bucket = cluster.config.temp_bucket
 
+                    print("Hello project!")
+
+
+                    #### THIS IS WHERE YOU CALL YOUR SCRIPT AND COPY THE OUTPUT LOCALLY (so that it can get back into WDL-space)
+                    ## run python script to made a VDS with avro files using VETS / VQSRLite ( we will run using VQSR classic later )
+
+                    submit_cmd = wrap(f"""
+
+                    gcloud dataproc jobs submit pyspark hail_gvs_import.py
+                      --cluster=${cluster_name}
+                      --project "~{gcs_project}"
+                      --region="~{region}"
+                      --driver-log-levels root=WARN
+                      --
+                      --avro-path "~{avro_path}"
+                      --vds-path "~{vds_url}"
+                      --temp-path  "~{temp_path}"
+                      --use-vqsr-lite
+
+                    """)
+
+                    print("Running: " + submit_cmd)
+                    os.popen(submit_cmd).read()
+                    ###########
+                    break
 
         except Exception as e:
             print(e)
@@ -209,7 +237,7 @@ task create_vds {
         finally:
             time.sleep(300)
             print(f'Stopping cluster: {cluster_name}')
-            os.popen("gcloud dataproc clusters delete --project {} --region {} --account {} {}".format("~{gcs_project}", "~{region}", account, "${cluster_name}")).read()
+            os.popen("gcloud dataproc clusters delete --project {} --region {} --account {} {}".format("~{gcs_project}", "~{region}", account, ${cluster_name})).read()
 
         EOF
 
