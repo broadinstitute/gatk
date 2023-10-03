@@ -43,7 +43,7 @@ public class CreateVariantIngestFilesIntegrationTest extends CommandLineProgramT
         testCreateVariantIngestFiles(
                 getToolTestDataDir() + "expected.ignore_gq40_and_above.ref_ranges_001_NA12878.tsv",
                 getToolTestDataDir() + "expected.vet_001_NA12878.tsv",
-                new String[]{"--ref-block-gq-to-ignore ZERO"});
+                new String[]{"--ref-block-gq-to-ignore FORTY", "--ignore-above-gq-threshold true"});
     }
 
     public void testCreateVariantIngestFiles(final String expectedRefRangesTsv,
