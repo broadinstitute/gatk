@@ -5,6 +5,7 @@ from google.cloud import dataproc_v1 as dataproc
 from logging import info
 
 
+
 def configure_logging():
     import logging
     import sys
@@ -24,13 +25,14 @@ def wrap(string):
 
 
 def run_in_cluster(cluster_name, prefix, contig, account, num_workers, worker_machine_type, region, gcs_project,
-                   script_path, vds_url, bed_url, vcf_header_url):
+                   script_path, vds_url, temp_path, avro_path):
 
     try:
         cluster_start_cmd = wrap(f"""
         
         hailctl dataproc start 
          --num-workers {num_workers}
+         --autoscaling-policy="rc-example-autoscaling-policy"
          --worker-machine-type {worker_machine_type}
          --region {region}
          --project {gcs_project}
@@ -66,12 +68,11 @@ def run_in_cluster(cluster_name, prefix, contig, account, num_workers, worker_ma
                  --account {account}
                  --driver-log-levels root=WARN
                  --
-                 --vds_url {vds_url}
-                 --bed_url {bed_url}
-                 --vcf_header_url {vcf_header_url}
-                 --contig {contig}
-                 --output_gs_url gs://{cluster_staging_bucket}/{cluster_name}/{prefix}.{contig}.vcf.bgz
-                 
+                 --vds-path {vds_url}
+                 --temp-path {temp_path}
+                 --avro-path {avro_path}
+                 --use-vqsr-lite
+
                 """)
 
                 info("Running: " + submit_cmd)
