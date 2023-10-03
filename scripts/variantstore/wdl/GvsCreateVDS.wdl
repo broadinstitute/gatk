@@ -200,6 +200,9 @@ task create_vds {
             )
 
             print("Hello cluster!")
+            def wrap(string):
+                import re
+                return re.sub("\\s{2,}", " ", string).strip()
 
             for cluster in cluster_client.list_clusters(request={"project_id": "~{gcs_project}", "region": "~{region}"}):
                 if cluster.cluster_name == cluster_name:
