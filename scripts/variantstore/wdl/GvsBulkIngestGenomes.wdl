@@ -36,7 +36,7 @@ workflow GvsBulkIngestGenomes {
         # Begin GvsImportGenomes
         File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
 
-        # set to "ZERO" to drop GQ0 upon ingest into GVS
+        # set to "ZERO" to drop GQ0 upon ingest into GVS for VDS (instead of VCF) output
         String drop_state = "ZERO"
 
         # The larger the `load_data_batch_size` the greater the probability of preemptions and non-retryable BigQuery errors,

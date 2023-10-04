@@ -116,7 +116,6 @@ public final class RefCreator {
 
                     // Write out no-calls as a single-base GQ0 reference.
                     // UNLESS we are ignoring GQ0, in which case ignore them too.
-                        // TODO - double check that we might want a way to leave them in place?
                     } else if (CreateVariantIngestFiles.isNoCall(variant) && (!this.gqStatesToIgnore.contains(GQStateEnum.ZERO))) {
                         refRangesWriter.write(SchemaUtils.encodeLocation(variantChr, start),
                                 sampleId,
