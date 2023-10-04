@@ -23,6 +23,7 @@ workflow GvsPrepareCallset {
     File? sample_names_to_extract
     Boolean only_output_vet_tables = false
     Boolean write_cost_to_db = true
+    Boolean use_compressed_references = false
     String? variants_docker
     String? git_branch_or_tag
     String? git_hash
@@ -59,6 +60,7 @@ workflow GvsPrepareCallset {
       only_output_vet_tables          = only_output_vet_tables,
       write_cost_to_db                = write_cost_to_db,
       variants_docker                 = effective_variants_docker,
+      use_compressed_references       = use_compressed_references,
   }
 
   output {
@@ -84,6 +86,7 @@ task PrepareRangesCallsetTask {
     Int temp_table_ttl_in_hours = 24
     Boolean only_output_vet_tables
     Boolean write_cost_to_db
+    Boolean use_compressed_references
     String variants_docker
   }
   meta {
@@ -124,7 +127,8 @@ task PrepareRangesCallsetTask {
           --fq_sample_mapping_table ~{fq_sample_mapping_table} \
           --ttl ~{temp_table_ttl_in_hours} \
           ~{true="--only_output_vet_tables True" false='' only_output_vet_tables} \
-          ~{true="--write_cost_to_db True" false="--write_cost_to_db ''" write_cost_to_db}
+          ~{true="--write_cost_to_db True" false="--write_cost_to_db ''" write_cost_to_db} \
+          ~{true="--use_compressed_references True" false='' use_compressed_references}
 
   >>>
   output {

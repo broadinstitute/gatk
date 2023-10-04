@@ -32,6 +32,28 @@ default_config = None
 
 EXTRACT_SAMPLE_TABLE = f"{output_table_prefix}_sample_names"
 
+COMPRESSED_REFS_HELPER_FUNCTION_DEFS="""CREATE TEMP FUNCTION intToState(state INT64)
+RETURNS string
+AS (
+    CASE state
+WHEN 7 THEN 'v'
+WHEN 8 THEN '*'
+WHEN 9 THEN 'm'
+WHEN 10 THEN 'u'
+ELSE CAST(state as string)
+END
+);
+
+CREATE TEMP FUNCTION UnpackRefRangeInfo(superpackEntry int64)
+RETURNS STRUCT<location INT64, len INT64, state string>
+AS (
+    STRUCT(
+        1000000000000 * ((superpackEntry >> 48) & 0xFFFF) + ((superpackEntry >> 16) & 0xFFFFFFFF),
+        (superpackEntry >> 4) & 0xFFF,
+        intToState(superpackEntry & 0xF))
+);
+"""
+
 
 def get_partition_range(i):
     if i < 1 or i > REF_VET_TABLE_COUNT:
@@ -152,11 +174,16 @@ def create_final_extract_ref_table(fq_destination_table_ref_data):
     query_return = utils.execute_with_retry(client, "create final export ref table", sql)
     JOBS.append({'job': query_return['job'], 'label': query_return['label']})
 
-
-def populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_table_data, sample_ids):
+def populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_table_data, sample_ids, use_compressed_references):
     def get_ref_subselect(fq_ref_table, samples, id):
         sample_stanza = ','.join([str(s) for s in samples])
         sql = f"    q_{id} AS (SELECT location, sample_id, length, state FROM \n" \
+              f" `{fq_ref_table}` WHERE sample_id IN ({sample_stanza})), "
+        return sql
+
+    def get_compressed_ref_subselect(fq_ref_table, samples, id):
+        sample_stanza = ','.join([str(s) for s in samples])
+        sql = f"    q_{id} AS (SELECT UnpackRefRangeInfo(packed).location as location, sample_id, UnpackRefRangeInfo(packed).len as length, UnpackRefRangeInfo(packed).state as state FROM \n" \
               f" `{fq_ref_table}` WHERE sample_id IN ({sample_stanza})), "
         return sql
 
@@ -171,10 +198,15 @@ def populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_tabl
 
             for samples in split_lists(partition_samples, 1000):
                 id = f"{i}_{j}"
-                subs[id] = get_ref_subselect(fq_ref_table, samples, id)
+                if use_compressed_references:
+                    subs[id] = get_compressed_ref_subselect(fq_ref_table, samples, id, use_compressed_refs)
+                else:
+                    subs[id] = get_ref_subselect(fq_ref_table, samples, id)
                 j = j + 1
 
-            sql = insert + ("\n".join(subs.values())) + "\n" + \
+            helper_function_definitions = COMPRESSED_REFS_HELPER_FUNCTION_DEFS if use_compressed_refs else ""
+
+            sql = helper_function_definitions + insert + ("\n".join(subs.values())) + "\n" + \
                   "q_all AS (" + (" union all ".join([f"(SELECT * FROM q_{id})" for id in subs.keys()])) + ")\n" + \
                   f" (SELECT * FROM q_all)"
             print(sql)
@@ -229,7 +261,8 @@ def make_extract_table(call_set_identifier,
                        fq_sample_mapping_table,
                        temp_table_ttl_hours,
                        only_output_vet_tables,
-                       write_cost_to_db):
+                       write_cost_to_db,
+                       use_compressed_references):
     try:
         fq_destination_table_ref_data = f"{fq_destination_dataset}.{destination_table_prefix}__REF_DATA"
         fq_destination_table_vet_data = f"{fq_destination_dataset}.{destination_table_prefix}__VET_DATA"
@@ -298,7 +331,7 @@ def make_extract_table(call_set_identifier,
         # create and populate the tables for extract data
         if not only_output_vet_tables:
             create_final_extract_ref_table(fq_destination_table_ref_data)
-            populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_table_ref_data, sample_ids)
+            populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_table_ref_data, sample_ids, use_compressed_references)
 
         create_final_extract_vet_table(fq_destination_table_vet_data)
         populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_table_vet_data, sample_ids)
@@ -337,6 +370,8 @@ if __name__ == '__main__':
                       help='Only create __VET_DATA table, skip __REF_DATA and __SAMPLES tables', required=False, default=False)
     parser.add_argument('--write_cost_to_db', type=bool,
                         help='Populate cost_observability table with BigQuery query bytes scanned', required=False, default=True)
+    parser.add_argument('--use_compressed_references', type=bool,
+                        help='Expect compressed reference data and expand the fields', required=False, default=False)
 
     sample_args = parser.add_mutually_exclusive_group(required=True)
     sample_args.add_argument('--sample_names_to_extract', type=str,
@@ -362,4 +397,5 @@ if __name__ == '__main__':
                        args.fq_sample_mapping_table,
                        args.ttl,
                        args.only_output_vet_tables,
-                       args.write_cost_to_db)
+                       args.write_cost_to_db,
+                       args.use_compressed_references)
