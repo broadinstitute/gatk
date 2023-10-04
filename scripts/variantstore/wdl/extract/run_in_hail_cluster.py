@@ -72,6 +72,7 @@ def run_in_cluster(cluster_name, prefix, account, num_workers, worker_machine_ty
                  --vds-path {vds_path}
                  --temp-path {temp_path}
                  --avro-path {avro_path}
+                 --use-vqsr-lite
 
                 """)
 
