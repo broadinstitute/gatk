@@ -199,7 +199,7 @@ def populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_tabl
             for samples in split_lists(partition_samples, 1000):
                 id = f"{i}_{j}"
                 if use_compressed_references:
-                    subs[id] = get_compressed_ref_subselect(fq_ref_table, samples, id, use_compressed_references)
+                    subs[id] = get_compressed_ref_subselect(fq_ref_table, samples, id)
                 else:
                     subs[id] = get_ref_subselect(fq_ref_table, samples, id)
                 j = j + 1
