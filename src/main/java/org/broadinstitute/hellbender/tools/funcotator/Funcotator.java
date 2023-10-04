@@ -874,7 +874,6 @@ public class Funcotator extends VariantWalker {
         // Get the correct reference for B37/HG19 compliance:
         // This is necessary because of the variant transformation that gets applied in VariantWalkerBase::apply.
         final ReferenceContext correctReferenceContext = funcotatorEngine.getCorrectReferenceContext(variant, referenceContext);
-
         // Place the variant on our queue to be funcotated:
         enqueueAndHandleVariant(variant, correctReferenceContext, featureContext);
     }
@@ -924,7 +923,10 @@ public class Funcotator extends VariantWalker {
 
         final FuncotationMap funcotationMap = funcotatorEngine.createFuncotationMapForVariant(variant, referenceContext, featureContext);
 
+        // This is necessary because we want to revert the variant contig namechange if it was applied in the VariantWalkerBase::apply method before output.
+        final VariantContext variantContextForOutput = funcotatorEngine.getCorrectVariantContextForOutput(variant);
+
         // At this point there is only one transcript ID in the funcotation map if canonical or best effect are selected
-        outputRenderer.write(variant, funcotationMap);
+        outputRenderer.write(variantContextForOutput, funcotationMap);
     }
 }
