@@ -199,12 +199,12 @@ def populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_tabl
             for samples in split_lists(partition_samples, 1000):
                 id = f"{i}_{j}"
                 if use_compressed_references:
-                    subs[id] = get_compressed_ref_subselect(fq_ref_table, samples, id, use_compressed_refs)
+                    subs[id] = get_compressed_ref_subselect(fq_ref_table, samples, id, use_compressed_references)
                 else:
                     subs[id] = get_ref_subselect(fq_ref_table, samples, id)
                 j = j + 1
 
-            helper_function_definitions = COMPRESSED_REFS_HELPER_FUNCTION_DEFS if use_compressed_refs else ""
+            helper_function_definitions = COMPRESSED_REFS_HELPER_FUNCTION_DEFS if use_compressed_references else ""
 
             sql = helper_function_definitions + insert + ("\n".join(subs.values())) + "\n" + \
                   "q_all AS (" + (" union all ".join([f"(SELECT * FROM q_{id})" for id in subs.keys()])) + ")\n" + \
