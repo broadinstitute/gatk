@@ -183,7 +183,7 @@ def populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_tabl
 
     def get_compressed_ref_subselect(fq_ref_table, samples, id):
         sample_stanza = ','.join([str(s) for s in samples])
-        sql = f"    q_{id} AS (SELECT UnpackRefRangeInfo(packed).location as location, sample_id, UnpackRefRangeInfo(packed).len as length, UnpackRefRangeInfo(packed).state as state FROM \n" \
+        sql = f"    q_{id} AS (SELECT UnpackRefRangeInfo(packed_ref_data).location as location, sample_id, UnpackRefRangeInfo(packed_ref_data).len as length, UnpackRefRangeInfo(packed_ref_data).state as state FROM \n" \
               f" `{fq_ref_table}` WHERE sample_id IN ({sample_stanza})), "
         return sql
 
