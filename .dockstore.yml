@@ -335,6 +335,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - VS-1063-bit-pack-ref-ranges-data-into-a-more-efficient-representation
          tags:
              - /.*/
    - name: GvsCallsetStatistics
