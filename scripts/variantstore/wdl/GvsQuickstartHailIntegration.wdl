@@ -12,6 +12,7 @@ workflow GvsQuickstartHailIntegration {
         File? interval_list
         Boolean use_VQSR_lite = true
         Boolean use_classic_VQSR = true
+        Boolean use_compressed_references = false
         Boolean extract_do_not_filter_override
         String dataset_suffix = "hail"
         Boolean use_default_dockers = false
@@ -85,6 +86,7 @@ workflow GvsQuickstartHailIntegration {
             basic_docker = effective_basic_docker,
             cloud_sdk_docker = effective_cloud_sdk_docker,
             variants_docker = effective_variants_docker,
+            use_compressed_references = use_compressed_references,
     }
 
     call CreateAndTieOutVds {
