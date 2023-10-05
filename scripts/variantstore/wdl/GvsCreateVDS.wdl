@@ -61,10 +61,11 @@ workflow GvsCreateVDS {
         String vds_output_url
         String avro_path
         String? hail_version='0.2.122'
+        String filter_set_name
 
         # String used in construction of output filename
         #  Cannot contain any special characters, ie, characters must be alphanumeric or "-"
-        String prefix = "rc-test-cluster" ## TODO: what are we going to want to hardcode this as?
+        String prefix = "vds-creation-cluster"
 
         ## CLUSTER PARAMETERS
         # Number of workers (per shard) to use in the Hail cluster.
@@ -83,6 +84,15 @@ workflow GvsCreateVDS {
     }
 
     call Utils.GetToolVersions
+
+    call Utils.IsVQSRLite {
+        input:
+            project_id = GetToolVersions.google_project,
+            fq_filter_set_info_table = "~{fq_filter_set_info_table}",
+            filter_set_name = filter_set_name,
+            cloud_sdk_docker = GetToolVersions.cloud_sdk_docker,
+    }
+
 
     call create_vds {
         input:
@@ -145,22 +155,16 @@ task create_vds {
         cluster_name="~{prefix}-hail-${hex}"
         echo ${cluster_name} > cluster_name.txt
 
+        # Set up the autoscaling policy
         gcloud storage cp gs://fc-d5e319d4-b044-4376-afde-22ef0afc4088/auto-scale-policy.yaml auto-scale-policy.yaml
         gcloud dataproc autoscaling-policies import rc-example-autoscaling-policy --project=~{gcs_project} --source=auto-scale-policy.yaml --region=~{region}
 
-
-        # get the scripts that we will use for the VDS creation
-        # curl --silent --location --remote-name https://raw.githubusercontent.com/broadinstitute/gatk/ah_var_store/scripts/variantstore/wdl/extract/hail_gvs_import.py --output hail_gvs_import.py
-        # curl --silent --location --remote-name https://raw.githubusercontent.com/broadinstitute/gatk/ah_var_store/scripts/variantstore/wdl/extract/import_gvs.py --output import_gvs.py
-        # curl --silent --location --remote-name https://raw.githubusercontent.com/broadinstitute/gatk/889186b089975d9e21b6b8e37c1ae5bdc49d2e5d/scripts/variantstore/wdl/extract/run_in_hail_cluster.py --output run_in_hail_cluster.py
-
-        # Must be local filepath once a script is finally set
-        # touch __init__.py
-
+        # Run the hail python script to make a VDS
         python3 /app/run_in_hail_cluster.py \
             --script-path /app/hail_gvs_import.py \
             --secondary-script-path /app/import_gvs.py \
             --account ${account_name} \
+            --autoscaling-policy rc-example-autoscaling-policy \
             --num-workers ~{num_workers} \
             --region ~{region} \
             --gcs-project ~{gcs_project} \
@@ -169,6 +173,9 @@ task create_vds {
             --avro-path ~{avro_path} \
             --vds-path ~{vds_url} \
             --temp-path ~{temp_path}
+
+
+    ## TODO make sure the autoscaling policy name is passed
 
         echo "Goodbye cluster"
     >>>
