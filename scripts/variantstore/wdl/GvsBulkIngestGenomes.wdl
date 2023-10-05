@@ -43,7 +43,7 @@ workflow GvsBulkIngestGenomes {
         String? billing_project_id
         # End GvsImportGenomes
 
-        Boolean use_compressed_references = true
+        Boolean use_compressed_references = false
     }
 
     parameter_meta {
