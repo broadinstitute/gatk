@@ -61,7 +61,6 @@ workflow GvsCreateVDS {
         String vds_output_url
         String avro_path
         String? hail_version='0.2.122'
-        String filter_set_name
 
         # String used in construction of output filename
         #  Cannot contain any special characters, ie, characters must be alphanumeric or "-"
@@ -84,14 +83,6 @@ workflow GvsCreateVDS {
     }
 
     call Utils.GetToolVersions
-
-    call Utils.IsVQSRLite {
-        input:
-            project_id = GetToolVersions.google_project,
-            fq_filter_set_info_table = "~{fq_filter_set_info_table}",
-            filter_set_name = filter_set_name,
-            cloud_sdk_docker = GetToolVersions.cloud_sdk_docker,
-    }
 
 
     call create_vds {
