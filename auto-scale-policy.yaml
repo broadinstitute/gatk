@@ -1,6 +1,6 @@
 workerConfig:
-  minInstances: 10
-  maxInstances: 10
+  minInstances: 2
+  maxInstances: 20
 secondaryWorkerConfig:
   maxInstances: 50
 basicAlgorithm:
