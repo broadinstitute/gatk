@@ -21,6 +21,7 @@ workflow GvsJointVariantCalling {
         String? extract_output_gcs_dir
         String drop_state = "FORTY"
         Boolean use_classic_VQSR = false
+        Boolean use_compressed_references = false
         # Beta users have accounts with tighter quotas, and we must work around that
         Boolean tighter_gcp_quotas = true
         String? sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
@@ -116,6 +117,7 @@ workflow GvsJointVariantCalling {
             vcf_index_files_column_name = vcf_index_files_column_name,
             sample_set_name = sample_set_name,
             billing_project_id = billing_project_id,
+            use_compressed_references = use_compressed_references,
     }
 
     call PopulateAltAllele.GvsPopulateAltAllele {
@@ -167,6 +169,7 @@ workflow GvsJointVariantCalling {
             query_labels = query_labels,
             sample_names_to_extract = sample_names_to_extract,
             variants_docker = effective_variants_docker,
+            use_compressed_references = use_compressed_references,
     }
 
     String effective_output_gcs_dir = select_first([extract_output_gcs_dir, "gs://~{BulkIngestGenomes.workspace_bucket}/output_vcfs/by_submission_id/~{BulkIngestGenomes.submission_id}"])
