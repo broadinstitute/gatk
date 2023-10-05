@@ -13,6 +13,7 @@ workflow GvsExtractAvroFilesForHail {
         String filter_set_name
         String call_set_identifier
         Boolean use_VQSR_lite = true
+        Boolean use_compressed_references = false
         Int scatter_width = 10
         String? basic_docker
         String? cloud_sdk_docker
@@ -67,6 +68,7 @@ workflow GvsExtractAvroFilesForHail {
             call_set_identifier = call_set_identifier,
             is_vqsr_lite = IsVQSRLite.is_vqsr_lite,
             variants_docker = effective_variants_docker,
+
     }
 
     call Utils.CountSuperpartitions {
@@ -87,6 +89,7 @@ workflow GvsExtractAvroFilesForHail {
                 shard_index = i,
                 num_shards = scatter_width,
                 variants_docker = effective_variants_docker,
+                use_compressed_references = use_compressed_references,
         }
     }
 
@@ -226,6 +229,7 @@ task ExtractFromSuperpartitionedTables {
         Int shard_index
         Int num_shards
         String variants_docker
+        Boolean use_compressed_references = false
     }
     parameter_meta {
         avro_sibling: "Cloud path to a file that will be the sibling to the 'avro' 'directory' under which output Avro files will be written."
@@ -233,6 +237,8 @@ task ExtractFromSuperpartitionedTables {
         shard_index: "0-based index of this superpartition extract shard"
         num_shards: "Count of all superpartition extract shards"
     }
+
+
 
     command <<<
         set -o errexit -o nounset -o xtrace -o pipefail
@@ -255,16 +261,48 @@ task ExtractFromSuperpartitionedTables {
                 ORDER BY location
             " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name vet_${str_table_index} --project_id ~{project_id}
 
-            python3 /app/run_avro_query.py --sql "
-                EXPORT DATA OPTIONS(
-                uri='${avro_prefix}/refs/ref_ranges_${str_table_index}/ref_ranges_${str_table_index}_*.avro', format='AVRO', compression='SNAPPY') AS
-                SELECT location, r.sample_id, length, state
-                FROM \`~{project_id}.~{dataset_name}.ref_ranges_${str_table_index}\` r
-                INNER JOIN \`~{project_id}.~{dataset_name}.sample_info\` s ON s.sample_id = r.sample_id
-                WHERE withdrawn IS NULL AND
-                is_control = false
-                ORDER BY location
-            " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name ref_ranges_${str_table_index} --project_id ~{project_id}
+            if [ ~{use_compressed_references} = false ]; then
+                python3 /app/run_avro_query.py --sql "
+                    EXPORT DATA OPTIONS(
+                    uri='${avro_prefix}/refs/ref_ranges_${str_table_index}/ref_ranges_${str_table_index}_*.avro', format='AVRO', compression='SNAPPY') AS
+                    SELECT location, r.sample_id, length, state
+                    FROM \`~{project_id}.~{dataset_name}.ref_ranges_${str_table_index}\` r
+                    INNER JOIN \`~{project_id}.~{dataset_name}.sample_info\` s ON s.sample_id = r.sample_id
+                    WHERE withdrawn IS NULL AND
+                    is_control = false
+                    ORDER BY location
+                " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name ref_ranges_${str_table_index} --project_id ~{project_id}
+            else
+                python3 /app/run_avro_query.py --sql "
+                    CREATE TEMP FUNCTION intToState(state INT64)
+                        RETURNS string
+                        AS (
+                          CASE state
+                            WHEN 7 THEN 'v'
+                            WHEN 8 THEN '*'
+                            WHEN 9 THEN 'm'
+                            WHEN 10 THEN 'u'
+                            ELSE CAST(state as string)
+                          END
+                    );
+                    CREATE TEMP FUNCTION UnpackRefRangeInfo(superpackEntry int64)
+                        RETURNS STRUCT<location INT64, len INT64, state string>
+                        AS (
+                          STRUCT(
+                          1000000000000 * ((superpackEntry >> 48) & 0xFFFF) + ((superpackEntry >> 16) & 0xFFFFFFFF),
+                          (superpackEntry >> 4) & 0xFFF,
+                          intToState(superpackEntry & 0xF))
+                    );
+                    EXPORT DATA OPTIONS(
+                    uri='${avro_prefix}/refs/ref_ranges_${str_table_index}/ref_ranges_${str_table_index}_*.avro', format='AVRO', compression='SNAPPY') AS
+                    SELECT UnpackRefRangeInfo(packed_ref_data).location as location, r.sample_id, UnpackRefRangeInfo(packed_ref_data).len as length, UnpackRefRangeInfo(packed_ref_data).state as state
+                    FROM \`~{project_id}.~{dataset_name}.ref_ranges_${str_table_index}\` r
+                    INNER JOIN \`~{project_id}.~{dataset_name}.sample_info\` s ON s.sample_id = r.sample_id
+                    WHERE withdrawn IS NULL AND
+                    is_control = false
+                    ORDER BY location
+                    " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name ref_ranges_${str_table_index} --project_id ~{project_id}
+            fi
         done
     >>>
 
