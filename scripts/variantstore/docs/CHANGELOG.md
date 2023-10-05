@@ -1,5 +1,15 @@
 # Genomic Variant Store (GVS) Changelog
 
+## 0.4.0 - 2023-??-??
+
+### Changed
+
+- `call_PS` added and populated in variant data tables. This change makes 0.4.0 incompatible for loading sample data into GVS schemas created by earlier versions of GVS.
+
+### Fixed
+
+- Support for quota-restricted `GvsBeta` users was accidentally removed in a prior release and has now been restored.
+
 ## 0.3.2 - 2023-09-11
 
 ### Changed
