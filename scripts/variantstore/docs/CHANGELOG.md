@@ -2,9 +2,13 @@
 
 ## 0.4.0 - 2023-??-??
 
+### Added
+
+- `call_PS` column added in variant data tables for phasing set support. This change makes GVS 0.4.0 incompatible with ingesting sample data into GVS schemas created by earlier versions of GVS.
+
 ### Changed
 
-- `call_PS` added and populated in variant data tables. This change makes 0.4.0 incompatible for loading sample data into GVS schemas created by earlier versions of GVS.
+- Updated to latest version of VETS variant calling toolchain.
 
 ### Fixed
 
