@@ -924,6 +924,7 @@ public class Funcotator extends VariantWalker {
         final FuncotationMap funcotationMap = funcotatorEngine.createFuncotationMapForVariant(variant, referenceContext, featureContext);
 
         // This is necessary because we want to revert the variant contig name change if it was applied in the FuncotatorEngine::getCorrectVariantContextForReference method before outputting the vcf.
+        // NOTE: this will only revert the variantContext if it was originally changed (only for B37 VCFs)
         final VariantContext variantContextForOutput = funcotatorEngine.getCorrectVariantContextForOutput(variant);
 
         // At this point there is only one transcript ID in the funcotation map if canonical or best effect are selected
