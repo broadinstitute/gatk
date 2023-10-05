@@ -307,6 +307,7 @@ workflows:
              - ah_var_store
              - vs_1012_master_finally
              - VS-327
+             - VS-1063-bit-pack-ref-ranges-data-into-a-more-efficient-representation
          tags:
              - /.*/
    - name: GvsIngestTieout
