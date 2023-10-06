@@ -9,7 +9,7 @@ import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.LabeledVariantAnnotationsData;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.data.VariantType;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.BGMMVariantAnnotationsScorer;
-import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.PythonSklearnVariantAnnotationsScorer;
+import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.PythonVariantAnnotationsScorer;
 import org.broadinstitute.hellbender.tools.walkers.vqsr.scalable.modeling.VariantAnnotationsModelBackend;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.io.Resource;
@@ -69,10 +69,6 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
         argsBuilder.add(TrainVariantAnnotationsModel.UNLABELED_ANNOTATIONS_HDF5_LONG_NAME, unlabeledAnnotationsHDF5);
         return argsBuilder;
     };
-    private static final BiFunction<ArgumentsBuilder, Double, ArgumentsBuilder> ADD_CALIBRATION_SENSITIVITY_THRESHOLD = (argsBuilder, calibrationSensitivityThreshold) -> {
-        argsBuilder.add(TrainVariantAnnotationsModel.CALIBRATION_SENSITIVITY_THRESHOLD_LONG_NAME, calibrationSensitivityThreshold);
-        return argsBuilder;
-    };
     private static final Function<ArgumentsBuilder, ArgumentsBuilder> ADD_SNP_MODE = argsBuilder -> {
         argsBuilder.add(LabeledVariantAnnotationsWalker.MODE_LONG_NAME, VariantType.SNP);
         return argsBuilder;
@@ -98,13 +94,12 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
      * Exact-match tests for (non-exhaustive) configurations given by the Cartesian product of the following options:
      *  1) non-allele-specific ("nonAS") vs. allele-specific ("AS")
      *  2) SNP-only ("snp") vs. SNP+INDEL ("snpIndel") (for both of these options, we use extracted annotations that contain both SNP and INDEL variants as input)
-     *  3) positive training with {extract-tag}.annot.hdf5 ("posOnly") vs. positive-negative training with {extract-tag}.annot.hdf5 and {extract-tag}.unlabeled.annot.hdf5 ("posNeg")
-     *  4) model backend
-     *      4a) Java Bayesian Gaussian Mixture Model (BGMM) backend TODO the BGMM has been reduced to a stub for this initial PR; subsequent PRs will cover the backend code and reconnect the stub
-     *      4b) default PYTHON_IFOREST with default hyperparameters ("IF")
-     *      4c) default PYTHON_IFOREST with non-default seed hyperparameter ("IFDifferentSeed")
-     *      4d) specified PYTHON_SCRIPT with non-default seed hyperparameter ("IFDifferentSeed"); we will simply use the same script as the default PYTHON_IFOREST backend, so this is just a test of the command-line interface
-     *      We should expect 4c-d to give functionally identical results.
+     *  3) model backend
+     *      3a) Java Bayesian Gaussian Mixture Model (BGMM) backend TODO the BGMM has been reduced to a stub for this initial PR; subsequent PRs will cover the backend code and reconnect the stub
+     *      3b) default PYTHON_IFOREST with default hyperparameters ("IF")
+     *      3c) default PYTHON_IFOREST with non-default seed hyperparameter ("IFDifferentSeed")
+     *      3d) specified PYTHON_SCRIPT with non-default seed hyperparameter ("IFDifferentSeed"); we will simply use the same script as the default PYTHON_IFOREST backend, so this is just a test of the command-line interface
+     *      We should expect 3c-d to give functionally identical results.
      */
     @DataProvider(name = "dataValidInputs")
     public Object[][] dataValidInputs() {
@@ -115,9 +110,8 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
                 Arrays.asList(
                         Pair.of("snp", ADD_SNP_MODE),
                         Pair.of("snpIndel", ADD_SNP_MODE.andThen(ADD_INDEL_MODE))),
-                Arrays.asList(              // we will consume the tag and add appropriate arguments for positive and positive-negative training below
-                        Pair.of("posOnly", Function.identity()),
-                        Pair.of("posNeg", Function.identity())),
+                Collections.singletonList(
+                        Pair.of("posOnly", Function.identity())),
                 Arrays.asList(
                         Pair.of("IF", ab -> ADD_MODEL_BACKEND.apply(ab, VariantAnnotationsModelBackend.PYTHON_IFOREST)),
                         Pair.of("IFDifferentSeed", ADD_ISOLATION_FOREST_HYPERPARAMETERS_JSON
@@ -157,17 +151,7 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
                 extractTag + LabeledVariantAnnotationsWalker.ANNOTATIONS_HDF5_SUFFIX);
         final Function<ArgumentsBuilder, ArgumentsBuilder> addPositiveAnnotations = ab ->
                 ADD_ANNOTATIONS_HDF5.apply(ab, positiveAnnotationsHDF5);
-        if (tag.contains("posNeg")) {
-            final File unlabeledAnnotationsHDF5 = new File(INPUT_FROM_EXTRACT_EXPECTED_TEST_FILES_DIR,
-                    extractTag + ExtractVariantAnnotations.UNLABELED_TAG + LabeledVariantAnnotationsWalker.ANNOTATIONS_HDF5_SUFFIX);
-            final Function<ArgumentsBuilder, ArgumentsBuilder> addUnlabeledAnnotations = ab ->
-                    ADD_UNLABELED_ANNOTATIONS_HDF5.apply(ab, unlabeledAnnotationsHDF5);
-            final Function<ArgumentsBuilder, ArgumentsBuilder> addCalibrationSensitivityThreshold = ab ->
-                    ADD_CALIBRATION_SENSITIVITY_THRESHOLD.apply(ab, CALIBRATION_SENSITIVITY_THRESHOLD);
-            addPositiveAnnotations.andThen(addUnlabeledAnnotations).andThen(addCalibrationSensitivityThreshold).apply(argsBuilder);
-        } else {
-            addPositiveAnnotations.apply(argsBuilder);
-        }
+        addPositiveAnnotations.apply(argsBuilder);
 
         runCommandLine(argsBuilder);
 
@@ -204,18 +188,10 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
                 tagAndVariantType + TrainVariantAnnotationsModel.CALIBRATION_SCORES_HDF5_SUFFIX,
                 outputPrefixAndVariantType + TrainVariantAnnotationsModel.CALIBRATION_SCORES_HDF5_SUFFIX));
 
-        assertScorerExpectedOutputs(tagAndVariantType, outputPrefixAndVariantType, false);
+        assertScorerExpectedOutputs(tagAndVariantType, outputPrefixAndVariantType);
 
-        if (tag.contains("posNeg")) {
-            SystemCommandUtilsTest.runSystemCommand(String.format("h5diff %s/%s %s",
-                    EXPECTED_TEST_FILES_DIR,
-                    tagAndVariantType + TrainVariantAnnotationsModel.UNLABELED_SCORES_HDF5_SUFFIX,
-                    outputPrefixAndVariantType + TrainVariantAnnotationsModel.UNLABELED_SCORES_HDF5_SUFFIX));
-            assertScorerExpectedOutputs(tagAndVariantType, outputPrefixAndVariantType, true);
-        } else {
+        if (tag.contains("posOnly")) {
             Assert.assertFalse(new File(outputPrefixAndVariantType + TrainVariantAnnotationsModel.UNLABELED_SCORES_HDF5_SUFFIX).exists());
-            Assert.assertFalse(new File(outputPrefixAndVariantType + TrainVariantAnnotationsModel.NEGATIVE_TAG + BGMMVariantAnnotationsScorer.BGMM_SCORER_SER_SUFFIX).exists());
-            Assert.assertFalse(new File(outputPrefixAndVariantType + TrainVariantAnnotationsModel.NEGATIVE_TAG + PythonSklearnVariantAnnotationsScorer.PYTHON_SCORER_PKL_SUFFIX).exists());
         }
     }
 
@@ -226,9 +202,7 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
         Assert.assertFalse(new File(outputPrefixAndVariantType + TrainVariantAnnotationsModel.CALIBRATION_SCORES_HDF5_SUFFIX).exists());
         Assert.assertFalse(new File(outputPrefixAndVariantType + TrainVariantAnnotationsModel.UNLABELED_SCORES_HDF5_SUFFIX).exists());
         Assert.assertFalse(new File(outputPrefixAndVariantType + BGMMVariantAnnotationsScorer.BGMM_SCORER_SER_SUFFIX).exists());
-        Assert.assertFalse(new File(outputPrefixAndVariantType + PythonSklearnVariantAnnotationsScorer.PYTHON_SCORER_PKL_SUFFIX).exists());
-        Assert.assertFalse(new File(outputPrefixAndVariantType + TrainVariantAnnotationsModel.NEGATIVE_TAG + BGMMVariantAnnotationsScorer.BGMM_SCORER_SER_SUFFIX).exists());
-        Assert.assertFalse(new File(outputPrefixAndVariantType + TrainVariantAnnotationsModel.NEGATIVE_TAG + PythonSklearnVariantAnnotationsScorer.PYTHON_SCORER_PKL_SUFFIX).exists());
+        Assert.assertFalse(new File(outputPrefixAndVariantType + PythonVariantAnnotationsScorer.PYTHON_SCORER_PKL_SUFFIX).exists());
     }
 
     /**
@@ -237,15 +211,13 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
      * coverage.
      */
     private static void assertScorerExpectedOutputs(final String tagAndVariantType,
-                                                    final String outputPrefixAndVariantType,
-                                                    final boolean isNegative) {
-        final String positiveOrNegativeTag = isNegative ? ".negative" : "";
-        final String scorerTag = outputPrefixAndVariantType + positiveOrNegativeTag;
+                                                    final String outputPrefixAndVariantType) {
+        final String scorerTag = outputPrefixAndVariantType;
         if (tagAndVariantType.contains("BGMM")) {
             Assert.assertTrue(new File(scorerTag + BGMMVariantAnnotationsScorer.BGMM_SCORER_SER_SUFFIX).exists());
-            Assert.assertFalse(new File(scorerTag + PythonSklearnVariantAnnotationsScorer.PYTHON_SCORER_PKL_SUFFIX).exists());
+            Assert.assertFalse(new File(scorerTag + PythonVariantAnnotationsScorer.PYTHON_SCORER_PKL_SUFFIX).exists());
         } else if (tagAndVariantType.contains("IF")) {
-            Assert.assertTrue(new File(scorerTag + PythonSklearnVariantAnnotationsScorer.PYTHON_SCORER_PKL_SUFFIX).exists());
+            Assert.assertTrue(new File(scorerTag + PythonVariantAnnotationsScorer.PYTHON_SCORER_PKL_SUFFIX).exists());
             Assert.assertFalse(new File(scorerTag + BGMMVariantAnnotationsScorer.BGMM_SCORER_SER_SUFFIX).exists());
         } else {
             Assert.fail("Unknown model-backend tag.");
@@ -288,46 +260,6 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
                 outputPrefixSNPPlusIndel + ".snp" + TrainVariantAnnotationsModel.CALIBRATION_SCORES_HDF5_SUFFIX));
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
-    public void testUnlabeledAnnotationsSpecifiedWithoutCalibrationSensitivityThreshold() {
-        final File outputDir = createTempDir("train");
-        final String outputPrefix = String.format("%s/test", outputDir);
-        final ArgumentsBuilder argsBuilder = BASE_ARGUMENTS_BUILDER_SUPPLIER.get();
-        argsBuilder.addOutput(outputPrefix);
-        final String extractTag = "extract.nonAS.snpIndel.posUn";
-        final File positiveAnnotationsHDF5 = new File(INPUT_FROM_EXTRACT_EXPECTED_TEST_FILES_DIR,
-                extractTag + LabeledVariantAnnotationsWalker.ANNOTATIONS_HDF5_SUFFIX);
-        final Function<ArgumentsBuilder, ArgumentsBuilder> addPositiveAnnotations = ab ->
-                ADD_ANNOTATIONS_HDF5.apply(ab, positiveAnnotationsHDF5);
-        final File unlabeledAnnotationsHDF5 = new File(INPUT_FROM_EXTRACT_EXPECTED_TEST_FILES_DIR,
-                extractTag + ExtractVariantAnnotations.UNLABELED_TAG + LabeledVariantAnnotationsWalker.ANNOTATIONS_HDF5_SUFFIX);
-        final Function<ArgumentsBuilder, ArgumentsBuilder> addUnlabeledAnnotations = ab ->
-                ADD_UNLABELED_ANNOTATIONS_HDF5.apply(ab, unlabeledAnnotationsHDF5);
-        addPositiveAnnotations
-                .andThen(addUnlabeledAnnotations)
-                .apply(argsBuilder);
-        runCommandLine(argsBuilder);
-    }
-
-    @Test(expectedExceptions = IllegalArgumentException.class)
-    public void testCalibrationSensitivityThresholdSpecifiedWithoutUnlabeledAnnotations() {
-        final File outputDir = createTempDir("train");
-        final String outputPrefix = String.format("%s/test", outputDir);
-        final ArgumentsBuilder argsBuilder = BASE_ARGUMENTS_BUILDER_SUPPLIER.get();
-        argsBuilder.addOutput(outputPrefix);
-        final String extractTag = "extract.nonAS.snpIndel.posUn";
-        final File positiveAnnotationsHDF5 = new File(INPUT_FROM_EXTRACT_EXPECTED_TEST_FILES_DIR,
-                extractTag + LabeledVariantAnnotationsWalker.ANNOTATIONS_HDF5_SUFFIX);
-        final Function<ArgumentsBuilder, ArgumentsBuilder> addPositiveAnnotations = ab ->
-                ADD_ANNOTATIONS_HDF5.apply(ab, positiveAnnotationsHDF5);
-        final Function<ArgumentsBuilder, ArgumentsBuilder> addCalibrationSensitivityThreshold = ab ->
-                ADD_CALIBRATION_SENSITIVITY_THRESHOLD.apply(ab, CALIBRATION_SENSITIVITY_THRESHOLD);
-        addPositiveAnnotations
-                .andThen(addCalibrationSensitivityThreshold)
-                .apply(argsBuilder);
-        runCommandLine(argsBuilder);
-    }
-
     @Test(expectedExceptions = IllegalArgumentException.class) // python environment is required to run tool
     public void testPositiveAndUnlabeledAnnotationNamesAreNotIdentical() {
         final File outputDir = createTempDir("train");
@@ -342,11 +274,8 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
                 "extract.AS.snpIndel.posUn" + ExtractVariantAnnotations.UNLABELED_TAG + LabeledVariantAnnotationsWalker.ANNOTATIONS_HDF5_SUFFIX);  // allele-specific
         final Function<ArgumentsBuilder, ArgumentsBuilder> addUnlabeledAnnotations = ab ->
                 ADD_UNLABELED_ANNOTATIONS_HDF5.apply(ab, unlabeledAnnotationsHDF5);
-        final Function<ArgumentsBuilder, ArgumentsBuilder> addCalibrationSensitivityThreshold = ab ->
-                ADD_CALIBRATION_SENSITIVITY_THRESHOLD.apply(ab, CALIBRATION_SENSITIVITY_THRESHOLD);
         addPositiveAnnotations
                 .andThen(addUnlabeledAnnotations)
-                .andThen(addCalibrationSensitivityThreshold)
                 .apply(argsBuilder);
         runCommandLine(argsBuilder);
     }
@@ -368,7 +297,8 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
         runCommandLine(argsBuilder);
     }
 
-    @Test(expectedExceptions = UserException.BadInput.class, groups = {"python"}) // python environment is required to run tool
+    // we will enable this once a positive-unlabeled backend is implemented
+    @Test(expectedExceptions = UserException.BadInput.class, groups = {"python"}, enabled = false) // python environment is required to run tool
     public void testUnlabeledAnnotationsOfSpecifiedVariantTypesNotPresent() {
         final File outputDir = createTempDir("train");
         final String outputPrefix = String.format("%s/test", outputDir);
@@ -382,12 +312,9 @@ public final class TrainVariantAnnotationsModelIntegrationTest extends CommandLi
                 "extract.nonAS.snp.posUn" + ExtractVariantAnnotations.UNLABELED_TAG + LabeledVariantAnnotationsWalker.ANNOTATIONS_HDF5_SUFFIX);    // contains only SNPs, but SNP+INDEL is specified
         final Function<ArgumentsBuilder, ArgumentsBuilder> addUnlabeledAnnotations = ab ->
                 ADD_UNLABELED_ANNOTATIONS_HDF5.apply(ab, unlabeledAnnotationsHDF5);
-        final Function<ArgumentsBuilder, ArgumentsBuilder> addCalibrationSensitivityThreshold = ab ->
-                ADD_CALIBRATION_SENSITIVITY_THRESHOLD.apply(ab, CALIBRATION_SENSITIVITY_THRESHOLD);
         ADD_SNP_MODE.andThen(ADD_INDEL_MODE)
                 .andThen(addPositiveAnnotations)
                 .andThen(addUnlabeledAnnotations)
-                .andThen(addCalibrationSensitivityThreshold)
                 .apply(argsBuilder);
         runCommandLine(argsBuilder);
     }

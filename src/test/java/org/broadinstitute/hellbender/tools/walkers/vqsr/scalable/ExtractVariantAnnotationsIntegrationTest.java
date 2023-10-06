@@ -83,7 +83,6 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
         return argsBuilder;
     };
     static final Function<ArgumentsBuilder, ArgumentsBuilder> ADD_ALLELE_SPECIFIC_ANNOTATIONS = argsBuilder -> {
-        argsBuilder.addFlag(LabeledVariantAnnotationsWalker.USE_ALLELE_SPECIFIC_ANNOTATIONS_LONG_NAME);
         ALLELE_SPECIFIC_ANNOTATIONS.forEach(a -> argsBuilder.add(StandardArgumentDefinitions.ANNOTATION_LONG_NAME, a));
         return argsBuilder;
     };
@@ -228,16 +227,6 @@ public final class ExtractVariantAnnotationsIntegrationTest extends CommandLineP
         Assert.assertFalse(new File(outputPrefix + ScoreVariantAnnotations.SCORES_HDF5_SUFFIX).exists());
         Assert.assertTrue(new File(outputPrefix + ".vcf").exists());
         Assert.assertTrue(new File(outputPrefix + ".vcf.idx").exists());
-    }
-
-    @Test(expectedExceptions = UserException.class)
-    public void testForgotToSpecifyUseAlleleSpecificAnnotationsFlag() {
-        final File outputDir = createTempDir("extract");
-        final String outputPrefix = String.format("%s/test", outputDir);
-        final ArgumentsBuilder argsBuilder = ADD_SNP_MODE_AND_RESOURCES.apply(BASE_ARGUMENTS_BUILDER_SUPPLIER.get());
-        ALLELE_SPECIFIC_ANNOTATIONS.forEach(a -> argsBuilder.add(StandardArgumentDefinitions.ANNOTATION_LONG_NAME, a));
-        argsBuilder.addOutput(outputPrefix);
-        runCommandLine(argsBuilder);
     }
 
     @Test(expectedExceptions = UserException.class)

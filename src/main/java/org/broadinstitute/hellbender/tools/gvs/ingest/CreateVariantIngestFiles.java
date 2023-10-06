@@ -390,7 +390,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             vetCreator.closeTool();
         }
         if (vcfHeaderLineScratchCreator != null) {
-            vetCreator.closeTool();
+            vcfHeaderLineScratchCreator.closeTool();
         }
     }
 }

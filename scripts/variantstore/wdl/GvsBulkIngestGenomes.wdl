@@ -26,6 +26,9 @@ workflow GvsBulkIngestGenomes {
         String? git_branch_or_tag
         String? git_hash
 
+        String? workspace_id
+        String? workspace_bucket
+
         File? gatk_override
         # End GvsAssignIds
 
@@ -41,6 +44,8 @@ workflow GvsBulkIngestGenomes {
         Int? load_data_preemptible_override
         Int? load_data_maxretries_override
         String? billing_project_id
+        Boolean process_vcf_headers = false
+        Boolean tighter_gcp_quotas = false
         # End GvsImportGenomes
 
         Boolean use_compressed_references = false
@@ -54,7 +59,9 @@ workflow GvsBulkIngestGenomes {
         sample_set_name: "The recommended way to load samples; Sample sets must be created by the user. If no sample_set_name is specified, all samples will be loaded into GVS"
     }
 
-    if (!defined(git_hash) || !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker)) {
+    if (!defined(git_hash) ||
+        !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker) ||
+        !defined(workspace_id) || !defined(workspace_bucket)) {
         call Utils.GetToolVersions {
             input:
                 git_branch_or_tag = git_branch_or_tag,
@@ -66,6 +73,8 @@ workflow GvsBulkIngestGenomes {
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
     String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
     String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
+    String effective_workspace_id = select_first([workspace_id, GetToolVersions.workspace_id])
+    String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
 
     call GenerateImportFofnFromDataTable {
         input:
@@ -75,6 +84,8 @@ workflow GvsBulkIngestGenomes {
             user_defined_sample_id_column_name = sample_id_column_name, ## NOTE: the user needs to define this, or it will default to the <entity>_id column
             vcf_files_column_name = vcf_files_column_name,
             vcf_index_files_column_name = vcf_index_files_column_name,
+            workspace_id = effective_workspace_id,
+            workspace_bucket = effective_workspace_bucket,
     }
 
     call SplitBulkImportFofn {
@@ -91,6 +102,7 @@ workflow GvsBulkIngestGenomes {
             project_id = project_id,
             external_sample_names = SplitBulkImportFofn.sample_name_fofn,
             samples_are_controls = false,
+            process_vcf_headers = process_vcf_headers,
             cloud_sdk_docker = effective_cloud_sdk_docker,
             use_compressed_references = use_compressed_references
     }
@@ -122,14 +134,12 @@ workflow GvsBulkIngestGenomes {
             drop_state = drop_state,
             billing_project_id = billing_project_id,
             use_compressed_references = use_compressed_references
+            process_vcf_headers = process_vcf_headers,
+            is_rate_limited_beta_customer = tighter_gcp_quotas,
     }
 
     output {
         Boolean done = true
-        String workspace_bucket = GenerateImportFofnFromDataTable.workspace_bucket
-        String workspace_id = GenerateImportFofnFromDataTable.workspace_id
-        String submission_id = GenerateImportFofnFromDataTable.submission_id
-        String workflow_id = GenerateImportFofnFromDataTable.workflow_id
         String recorded_git_hash = effective_git_hash
     }
 }
@@ -143,6 +153,8 @@ task GenerateImportFofnFromDataTable {
         String? user_defined_sample_id_column_name
         String? vcf_files_column_name
         String? vcf_index_files_column_name
+        String workspace_id
+        String workspace_bucket
         String variants_docker
     }
 
@@ -155,12 +167,8 @@ task GenerateImportFofnFromDataTable {
     String output_fofn_name = "output.tsv"
     String error_file_name = "errors.txt"
 
-    String workspace_id_output = "workspace_id.txt"
     String workspace_name_output = "workspace_name.txt"
     String workspace_namespace_output = "workspace_namespace.txt"
-    String workspace_bucket_output = "workspace_bucket.txt"
-    String submission_id_output = "submission_id.txt"
-    String workflow_id_output = "workflow_id.txt"
 
     String sample_name_column = if (defined(user_defined_sample_id_column_name)) then select_first([user_defined_sample_id_column_name]) else entity_id
 
@@ -170,14 +178,8 @@ task GenerateImportFofnFromDataTable {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        # Sniff the workspace bucket out of the delocalization script and extract the workspace id from that.
-        sed -n -E 's!.*gs://fc-(secure-)?([^\/]+).*!\2!p' /cromwell_root/gcs_delocalization.sh | sort -u > ~{workspace_id_output}
-        sed -n -E 's!.*gs://(fc-(secure-)?[^\/]+).*!\1!p' /cromwell_root/gcs_delocalization.sh | sort -u > ~{workspace_bucket_output}
-        sed -n -E 's!.*gs://fc-(secure-)?([^\/]+)/submissions/([^\/]+).*!\3!p' /cromwell_root/gcs_delocalization.sh | sort -u > ~{submission_id_output}
-        sed -n -E 's!.*gs://fc-(secure-)?([^\/]+)/submissions/([^\/]+)/([^\/]+)/([^\/]+).*!\5!p' /cromwell_root/gcs_delocalization.sh | sort -u > ~{workflow_id_output}
-
-        export WORKSPACE_ID="$(cat '~{workspace_id_output}')"
-        export WORKSPACE_BUCKET="$(cat '~{workspace_bucket_output}')"
+        export WORKSPACE_ID="~{workspace_id}"
+        export WORKSPACE_BUCKET="~{workspace_bucket}"
 
         # Hit rawls with the workspace ID
 
@@ -242,10 +244,6 @@ task GenerateImportFofnFromDataTable {
     }
 
     output {
-        String workspace_bucket = read_string("~{workspace_bucket_output}")
-        String workspace_id = read_string("~{workspace_id_output}")
-        String submission_id = read_string("~{submission_id_output}")
-        String workflow_id = read_string("~{workflow_id_output}")
         File output_fofn = output_fofn_name
     }
 }

@@ -93,8 +93,8 @@ final class LabeledVariantAnnotationsDatum implements Locatable {
                     value = vc.getAttributeAsDouble(annotationName, Double.NaN);
                 } catch (final ClassCastException e) {
                     throw new UserException(String.format("Could not extract annotation %s from variant context: %s. " +
-                                    "Ensure that %s is specified, if desired. Encountered exception: %s",
-                            annotationName, vc, LabeledVariantAnnotationsWalker.USE_ALLELE_SPECIFIC_ANNOTATIONS_LONG_NAME, e));
+                                    "Encountered exception: %s",
+                            annotationName, vc, e));
                 }
             }
             if (Double.isInfinite(value)) {

@@ -42,6 +42,7 @@ import static org.broadinstitute.hellbender.utils.variant.GATKVCFConstants.VARIA
  *     call_GQ, // req
  *     call_PGT,
  *     call_PID,
+ *     call_PS,
  *     call_PL
  *
  */
@@ -400,6 +401,12 @@ public enum VetFieldEnum {
     call_PID {
         public String getColumnValue(final VariantContext variant, final boolean forceLoadingFromNonAlleleSpecific) {
             return variant.getGenotype(0).hasAnyAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY) ? String.valueOf(variant.getGenotype(0).getAnyAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY)) : "";
+        }
+    },
+
+    call_PS {
+        public String getColumnValue(final VariantContext variant, final boolean forceLoadingFromNonAlleleSpecific) {
+            return variant.getGenotype(0).hasAnyAttribute(VCFConstants.PHASE_SET_KEY) ? String.valueOf(variant.getGenotype(0).getAnyAttribute(VCFConstants.PHASE_SET_KEY)) : "";
         }
     },
 

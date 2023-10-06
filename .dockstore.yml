@@ -97,8 +97,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1019
-             - VS-1063-bit-pack-ref-ranges-data-into-a-more-efficient-representation
          tags:
              - /.*/
    - name: GvsBenchmarkExtractTask
@@ -168,7 +166,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - VS-1063-bit-pack-ref-ranges-data-into-a-more-efficient-representation
          tags:
              - /.*/
    - name: GvsBulkIngestGenomes
@@ -178,8 +175,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1038
-             - VS-1063-bit-pack-ref-ranges-data-into-a-more-efficient-representation
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
@@ -248,6 +243,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1072_beta_throttling
          tags:
              - /.*/
    - name: GvsBeta
@@ -286,7 +282,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rsa_vs_1038
+             - vs_1072_beta_throttling
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -296,7 +292,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - VS-1063-bit-pack-ref-ranges-data-into-a-more-efficient-representation
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
@@ -306,9 +301,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1012_master_finally
-             - VS-327
-             - VS-1063-bit-pack-ref-ranges-data-into-a-more-efficient-representation
          tags:
              - /.*/
    - name: GvsIngestTieout
@@ -346,6 +338,15 @@ workflows:
          branches:
              - master
              - ah_var_store
+         tags:
+             - /.*/
+   - name: HailFromWdl
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/HailFromWdl.wdl
+     filters:
+         branches:
+             - master
+             - vs_1013_hail_dataproc_wdl
          tags:
              - /.*/
    - name: MitochondriaPipeline
