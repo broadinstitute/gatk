@@ -54,6 +54,7 @@ workflow GvsQuickstartHailIntegration {
             git_hash = git_hash,
             drop_state = "NONE",
             use_VQSR_lite = use_VQSR_lite,
+            use_compressed_references = use_compressed_references,
             extract_do_not_filter_override = extract_do_not_filter_override,
             dataset_suffix = dataset_suffix,
             use_default_dockers = use_default_dockers,
