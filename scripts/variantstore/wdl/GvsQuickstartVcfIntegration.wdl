@@ -105,6 +105,7 @@ workflow GvsQuickstartVcfIntegration {
             submission_id = effective_submission_id,
             git_branch_or_tag = git_branch_or_tag,
             git_hash = effective_git_hash,
+            tighter_gcp_quotas = false,
     }
 
     # Only assert identical outputs if we did not filter (filtering is not deterministic) OR if we are using VQSR Lite (which is deterministic)

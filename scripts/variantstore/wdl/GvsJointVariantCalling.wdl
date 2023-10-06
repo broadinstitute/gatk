@@ -132,6 +132,7 @@ workflow GvsJointVariantCalling {
             process_vcf_headers = process_vcf_headers,
             workspace_bucket = effective_workspace_bucket,
             workspace_id = effective_workspace_id,
+            tighter_gcp_quotas = tighter_gcp_quotas,
     }
 
     call PopulateAltAllele.GvsPopulateAltAllele {
