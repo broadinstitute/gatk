@@ -138,6 +138,7 @@ workflow GvsBulkIngestGenomes {
     output {
         Boolean done = true
         String recorded_git_hash = effective_git_hash
+        Boolean used_tighter_gcp_quotas = ImportGenomes.used_tighter_gcp_quotas
     }
 }
 

@@ -121,6 +121,22 @@ workflow GvsQuickstartIntegration {
                 workspace_id = GetToolVersions.workspace_id,
                 submission_id = GetToolVersions.submission_id,
         }
+
+        if (GvsQuickstartHailVQSRLiteIntegration.used_tighter_gcp_quotas) {
+            call Utils.TerminateWorkflow as HailVQSRLiteQuotaFail {
+                input:
+                    message = "GvsQuickstartHailVQSRLiteIntegration should not have used tighter GCP quotas but did!",
+                    basic_docker = effective_gatk_docker,
+            }
+        }
+
+        if (GvsQuickstartHailVQSRClassicIntegration.used_tighter_gcp_quotas) {
+            call Utils.TerminateWorkflow as HailVQSRClassicQuotaFail {
+                input:
+                    message = "GvsQuickstartHailVQSRClassicIntegration should not have used tighter GCP quotas but did!",
+                    basic_docker = effective_gatk_docker,
+            }
+        }
     }
 
     if (run_vcf_integration) {
@@ -176,6 +192,22 @@ workflow GvsQuickstartIntegration {
                 workspace_id = GetToolVersions.workspace_id,
                 submission_id = GetToolVersions.submission_id,
         }
+
+        if (QuickstartVcfVQSRClassicIntegration.used_tighter_gcp_quotas) {
+            call Utils.TerminateWorkflow as VcfVQSRClassicQuotaFail {
+                input:
+                    message = "QuickstartVcfVQSRLiteIntegration should not have used tighter GCP quotas but did!",
+                    basic_docker = effective_gatk_docker,
+            }
+        }
+
+        if (QuickstartVcfVQSRLiteIntegration.used_tighter_gcp_quotas) {
+            call Utils.TerminateWorkflow as VcfVQSRLiteQuotaFail {
+                input:
+                    message = "QuickstartVcfVQSRLiteIntegration should not have used tighter GCP quotas but did!",
+                    basic_docker = effective_gatk_docker,
+            }
+        }
     }
 
     if (run_exome_integration) {
@@ -205,6 +237,14 @@ workflow GvsQuickstartIntegration {
                 workspace_id = GetToolVersions.workspace_id,
                 submission_id = GetToolVersions.submission_id,
         }
+
+        if (QuickstartVcfExomeIntegration.used_tighter_gcp_quotas) {
+            call Utils.TerminateWorkflow as ExomeQuotaFail {
+                input:
+                    message = "QuickstartVcfExomeIntegration should not have used tighter GCP quotas but did!",
+                    basic_docker = effective_gatk_docker,
+            }
+        }
     }
 
     if (run_beta_integration) {
@@ -218,7 +258,7 @@ workflow GvsQuickstartIntegration {
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
 
-        call JointVariantCalling.GvsJointVariantCalling as JointVariantCalling {
+        call JointVariantCalling.GvsJointVariantCalling as Beta {
             input:
                 call_set_identifier = git_branch_or_tag,
                 dataset_name = CreateDataset.dataset_name,
@@ -235,6 +275,14 @@ workflow GvsQuickstartIntegration {
                 workspace_id = GetToolVersions.workspace_id,
                 submission_id = GetToolVersions.submission_id,
                 git_branch_or_tag = git_branch_or_tag,
+        }
+
+        if (!Beta.used_tighter_gcp_quotas) {
+            call Utils.TerminateWorkflow as BetaQuotaFail {
+                input:
+                    message = "Beta should have used tighter GCP quotas but did not!",
+                    basic_docker = effective_gatk_docker,
+            }
         }
     }
 
