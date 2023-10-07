@@ -258,7 +258,7 @@ workflow GvsQuickstartIntegration {
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
 
-        call JointVariantCalling.GvsJointVariantCalling as Beta {
+        call JointVariantCalling.GvsJointVariantCalling as QuickstartBeta {
             input:
                 call_set_identifier = git_branch_or_tag,
                 dataset_name = CreateDataset.dataset_name,
@@ -277,10 +277,10 @@ workflow GvsQuickstartIntegration {
                 git_branch_or_tag = git_branch_or_tag,
         }
 
-        if (!Beta.used_tighter_gcp_quotas) {
-            call Utils.TerminateWorkflow as BetaQuotaFail {
+        if (!QuickstartBeta.used_tighter_gcp_quotas) {
+            call Utils.TerminateWorkflow as QuickstartBetaQuotaFail {
                 input:
-                    message = "Beta should have used tighter GCP quotas but did not!",
+                    message = "QuickstartBeta should have used tighter GCP quotas but did not!",
                     basic_docker = effective_basic_docker,
             }
         }
