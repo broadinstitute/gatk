@@ -126,7 +126,7 @@ workflow GvsQuickstartIntegration {
             call Utils.TerminateWorkflow as HailVQSRLiteQuotaFail {
                 input:
                     message = "GvsQuickstartHailVQSRLiteIntegration should not have used tighter GCP quotas but did!",
-                    basic_docker = effective_gatk_docker,
+                    basic_docker = effective_basic_docker,
             }
         }
 
@@ -134,7 +134,7 @@ workflow GvsQuickstartIntegration {
             call Utils.TerminateWorkflow as HailVQSRClassicQuotaFail {
                 input:
                     message = "GvsQuickstartHailVQSRClassicIntegration should not have used tighter GCP quotas but did!",
-                    basic_docker = effective_gatk_docker,
+                    basic_docker = effective_basic_docker,
             }
         }
     }
@@ -197,7 +197,7 @@ workflow GvsQuickstartIntegration {
             call Utils.TerminateWorkflow as VcfVQSRClassicQuotaFail {
                 input:
                     message = "QuickstartVcfVQSRLiteIntegration should not have used tighter GCP quotas but did!",
-                    basic_docker = effective_gatk_docker,
+                    basic_docker = effective_basic_docker,
             }
         }
 
@@ -205,7 +205,7 @@ workflow GvsQuickstartIntegration {
             call Utils.TerminateWorkflow as VcfVQSRLiteQuotaFail {
                 input:
                     message = "QuickstartVcfVQSRLiteIntegration should not have used tighter GCP quotas but did!",
-                    basic_docker = effective_gatk_docker,
+                    basic_docker = effective_basic_docker,
             }
         }
     }
@@ -242,7 +242,7 @@ workflow GvsQuickstartIntegration {
             call Utils.TerminateWorkflow as ExomeQuotaFail {
                 input:
                     message = "QuickstartVcfExomeIntegration should not have used tighter GCP quotas but did!",
-                    basic_docker = effective_gatk_docker,
+                    basic_docker = effective_basic_docker,
             }
         }
     }
@@ -281,7 +281,7 @@ workflow GvsQuickstartIntegration {
             call Utils.TerminateWorkflow as BetaQuotaFail {
                 input:
                     message = "Beta should have used tighter GCP quotas but did not!",
-                    basic_docker = effective_gatk_docker,
+                    basic_docker = effective_basic_docker,
             }
         }
     }
