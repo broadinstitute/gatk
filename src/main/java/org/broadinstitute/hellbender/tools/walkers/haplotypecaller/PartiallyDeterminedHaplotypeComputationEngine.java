@@ -5,15 +5,11 @@ import com.google.common.collect.*;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.util.Locatable;
-import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.Allele;
 import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
-import org.broadinstitute.hellbender.utils.IndexRange;
-import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.SmallBitSet;
-import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.dragstr.DragstrReferenceAnalyzer;
 import org.broadinstitute.hellbender.utils.haplotype.Event;
 import org.broadinstitute.hellbender.utils.haplotype.EventMap;
@@ -22,10 +18,6 @@ import org.broadinstitute.hellbender.utils.haplotype.PartiallyDeterminedHaplotyp
 import org.broadinstitute.hellbender.utils.read.CigarBuilder;
 import org.broadinstitute.hellbender.utils.read.CigarUtils;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
-import org.jgrapht.Graph;
-import org.jgrapht.alg.ConnectivityInspector;
-import org.jgrapht.graph.DefaultEdge;
-import org.jgrapht.graph.SimpleGraph;
 
 import java.nio.ByteBuffer;
 import java.util.*;
@@ -106,13 +98,13 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                 .collect(Collectors.groupingBy(Event::getStart, TreeMap::new, Collectors.toList()));
 
 
-        final OverlapDetector<SimpleInterval> strOverlapDetector = OverlapDetector.create(findSTRs(referenceHaplotype));
+        final List<SimpleInterval> strIntervals = findSTRs(referenceHaplotype);
 
         List<List<Event>> disallowedCombinations = smithWatermanRealignPairsOfVariantsForEquivalentEvents(referenceHaplotype, aligner, args.getHaplotypeToReferenceSWParameters(), debug, eventsInOrder);
         dragenDisallowedGroupsMessage(referenceHaplotype.getStart(), debug, disallowedCombinations);
 
         // TODO: add in command line argument to activate joint detection and only use the STR overlap detector if joint detection is turned on
-        final List<EventGroup> eventGroups = getEventGroupClusters(eventsInOrder, disallowedCombinations, Optional.of(strOverlapDetector));
+        final List<EventGroup> eventGroups = getEventGroupClusters(eventsInOrder, disallowedCombinations, strIntervals);
         // if any of our merged event groups is too large, abort.
         if (eventGroups == null) {
             Utils.printIf(debug, () -> "Found event group with too many variants! Aborting haplotype building");
@@ -344,25 +336,36 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
     }
 
     /**
-     * Partition events into the largest possible clusters such that events in distinct clusters are mutually compatible
-     * i.e. can exist on the same haplotype.
+     * Partition events into the smallest possible contiguous clusters such that events in different clusters are compatible i.e. can
+     * exist on the same haplotype.
      *
-     * The resulting event groups are a disjoint cover of the input events; that is, every input event belongs to exactly one
-     * output EventGroup.
+     * More precisely, given a collection of Events, a list of tuples of events that are mutually excluded, and (optionally)
+     * a set of STR intervals, the resulting partition into EventGroups satisfies the following:
+     *  1) Each Event is assigned to exactly one EventGroup.
+     *  2) Events that overlap are assigned to the same EventGroup.
+     *  3) Events that overlap the same STR interval are assigned to the same EventGroup.
+     *  4) Events that belong to the same mutex are assigned to the same EventGroup.
+     *  5) Each EventGroup contains every Event in its span.  That is, between the first Event start and the last Event end
+     *     of an EventGroup there are no Events assigned to another EventGroup.
+     *  6) No EventGroup can be split into proper subsets while satisfying 2-5.
      *
-     * In the common case that all events are compatible -- they are non-overlapping SNPs, for example -- the result is a bunch of singleton event groups
+     * In the common case that all events are compatible and don't overlap the same STRs -- they are non-overlapping SNPs, for example --
+     * the result is a bunch of singleton event groups.
      *
-     * Incompatibility comes in two types, the first and more obvious being overlap.  The second is defined by the
-     * heuristic in which we inject two or three events into the reference haplotype and realign the resulting two- or three-event
-     * haplotype against the reference haplotype via Smith-Waterman.  If the resulting reduced representation contains other events
-     * that have already been found the two or three events are mutually forbidden.
+     * The input mutexes are defined by the heuristic in which we inject two or three events into the reference haplotype and
+     * realign the resulting two- or three-event haplotype against the reference haplotype via Smith-Waterman.  If the resulting
+     * reduced representation contains other events that have already been found the two or three events are mutually forbidden.
      *
-     * To find the desired partition we calculate the connected components of an undirected graph whose edges correspond to
-     * either type of incompatibility.  That is, overlapping events and Smith-Waterman-forbidden pairs get an edge; Smith-Waterman-forbidden
-     * trios get three edges, one for every two events in the trio.
+     * To find the desired partition we imagine lighting up genomic intervals:
+     *  1) light up the span of every STR
+     *  2) light up the span from the leftmost start to the rightmost end of every mutex
+     *  3) light up the span from the start to the end of each Event
+     * Each resulting contiguous lit-up interval defines an EventGroup.
      *
-     * Note: Although the resulting partition is the same as DRAGEN's, the graph-based algorithm below is a very different
-     * implementation.
+     * Note: The resulting partition is the same as DRAGEN's except for the extremely rare (perhaps impossible) edge case in which
+     * DRAGEN would yield a non-contiguous EventGroup.  This could *only* occur if a Smith-Waterman mutex somehow happened
+     * without an STR (which itself is extremely dubious) and the Events of that mutex spanned an intervening non-overlapping
+     * Event that was compatible with all the Events of the mutex.
      *
      * @param eventsInOrder all events in a calling region
      * @param swForbiddenPairsAndTrios list of lists of two or three non-overlapping events that are mutually excluded according
@@ -370,11 +373,52 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
      *                                simplifying via Smith Waterman yields other events
      */
     @VisibleForTesting
-    static List<EventGroup> getEventGroupClusters(List<Event> eventsInOrder, List<List<Event>> swForbiddenPairsAndTrios, Optional<OverlapDetector<SimpleInterval>> strIntervals) {
-        final List<List<Event>> allMutexes = new ArrayList<>(swForbiddenPairsAndTrios);
+    static List<EventGroup> getEventGroupClusters(List<Event> eventsInOrder, List<List<Event>> swForbiddenPairsAndTrios, List<SimpleInterval> strIntervals) {
+        List<SimpleInterval> allIntervals = new ArrayList<>(strIntervals);  // light up STRs
+        eventsInOrder.forEach(event -> allIntervals.add(new SimpleInterval(event)));    // light up each Event
+        swForbiddenPairsAndTrios.forEach(tuple -> allIntervals.add(IntervalUtils.getSpanningInterval(tuple)));  // light up each mutex
 
+        allIntervals.sort(Comparator.comparingInt(SimpleInterval::getStart));   // no need to break ties here -- the end result is unique regardless
+
+        final List<SimpleInterval> eventGroupSpans = new ArrayList<>();
+        final String contig = eventsInOrder.get(0).getContig();
+        int start = allIntervals.get(0).getStart();
+        int end = allIntervals.get(0).getEnd();
+
+        for (final SimpleInterval interval : allIntervals) {
+            if (interval.getStart() < end) {    // contiguous with previous span
+                end = Math.max(end, interval.getEnd());
+            } else {    // add the previous span and begin a new one
+                eventGroupSpans.add(new SimpleInterval(contig, start, end));
+                start = interval.getStart();
+                end = interval.getEnd();
+            }
+        }
+        eventGroupSpans.add(new SimpleInterval(contig, start, end));    // add the last span
+
+        final List<EventGroup> eventGroups = new ArrayList<>();
+        int eventIndex = 0;
+        for (final SimpleInterval eventGroupSpan : eventGroupSpans) {
+            final List<Event> eventsInSpan = new ArrayList<>();
+            while (eventIndex < eventsInOrder.size() && eventsInOrder.get(eventIndex).overlaps(eventGroupSpan)) {
+                eventsInSpan.add(eventsInOrder.get(eventIndex));
+                eventIndex++;
+            }
+            if (eventsInSpan.size() > MAX_VAR_IN_EVENT_GROUP) {
+                return null;
+            } else {
+                // TODO: put in the appropriate mutexes here
+                eventGroups.add(new EventGroup(eventsInSpan, ))
+            }
+        }
+
+
+        // TODO: this is wrong -- overlapping events are mutexed in the determined span of PD haplotypes, but overlapping
+        // TODO: SNPS *are* compatible in the undetermined spans
+        // TODO: really each EventGroup should keep track of two types of mutex -- determined and undetermined
         // edges due to overlapping position
         // if STR intervals are given, two events that intersect the same STR are treated as overlapping for the purpose of DRAGEN joint detection
+        final List<List<Event>> allMutexes = new ArrayList<>(swForbiddenPairsAndTrios);
         for (int e1 = 0; e1 < eventsInOrder.size(); e1++) {
             final Event event1 = eventsInOrder.get(e1);
             for (int e2 = e1 + 1; e2 < eventsInOrder.size() && eventsInOrder.get(e2).getStart() <= event1.getEnd() + 1; e2++) {
@@ -386,38 +430,14 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             }
         }
 
-
-        // for each mutex, add edges 0-1, 1-2. . . to put all mutex events in one connected component
-        final Graph<Event, DefaultEdge> graph = new SimpleGraph<>(DefaultEdge.class);
-        eventsInOrder.forEach(graph::addVertex);
-        allMutexes.forEach(mutex -> connectVertices(graph, mutex));
-
-        // STR extended overlap is used to cluster by EventGroups but is *not* a mutex.
-        strIntervals.ifPresent(strs -> {
-            // we're going to fill a map from STR intervals to the events they contain, then add graph edges to ensure that
-            // all events incident on the same STR belong to one connected component
-            final Multimap<SimpleInterval, Event> eventsBySTRInterval = MultimapBuilder.hashKeys().arrayListValues().build();
-            for (final Event event : eventsInOrder) {
-                strs.getOverlaps(event).forEach(str -> eventsBySTRInterval.put(str, event));
-            }
-
-            eventsBySTRInterval.asMap().values().forEach(eventsInSTR -> connectVertices(graph, List.copyOf(eventsInSTR)));
-        });
-        
-        final List<Set<Event>> components = new ConnectivityInspector<>(graph).connectedSets();
-        return components.stream().anyMatch(comp -> comp.size() > MAX_VAR_IN_EVENT_GROUP) ? null :
-                components.stream().map(component -> new EventGroup(component, allMutexes)).toList();
+        return eventGroups;
     }
 
-    // helper method to ensure that all elements of a list of vertices end up in one connected component of a graph
-    private static <T> void connectVertices(final Graph<T, DefaultEdge> graph, final List<T> verticesToConnect) {
-        new IndexRange(0, verticesToConnect.size() - 1).forEach(n -> graph.addEdge(verticesToConnect.get(n), verticesToConnect.get(n+1)));
-    }
 
     // same as above without the STR overlap detector
     @VisibleForTesting
     static List<EventGroup> getEventGroupClusters(List<Event> eventsInOrder, List<List<Event>> swForbiddenPairsAndTrios) {
-        return getEventGroupClusters(eventsInOrder, swForbiddenPairsAndTrios, Optional.empty());
+        return getEventGroupClusters(eventsInOrder, swForbiddenPairsAndTrios, List.of());
     }
 
     /**
