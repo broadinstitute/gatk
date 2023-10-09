@@ -375,6 +375,21 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
      */
     @VisibleForTesting
     static List<EventGroup> getEventGroupClusters(List<Event> eventsInOrder, List<List<Event>> swForbiddenPairsAndTrios, List<SimpleInterval> strIntervals) {
+        // In addition to the Smith-Waterman mutexes, we find the mutexes due to overlap
+        // Note that overlapping SNPs are allowed on the undetermined parts of PD haplotypes.  Here we include overlapping SNPS
+        // as mutexes and let the EventGroup class handle them.
+        final List<List<Event>> allMutexes = new ArrayList<>(swForbiddenPairsAndTrios);
+        for (int e1 = 0; e1 < eventsInOrder.size(); e1++) {
+            final Event event1 = eventsInOrder.get(e1);
+            for (int e2 = e1 + 1; e2 < eventsInOrder.size() && eventsInOrder.get(e2).getStart() <= event1.getEnd() + 1; e2++) {
+                final Event event2 = eventsInOrder.get(e2);
+
+                if (eventsOverlapForPDHapsCode(event1, event2)) {
+                    allMutexes.add(List.of(event1, event2));
+                }
+            }
+        }
+
         List<SimpleInterval> allIntervals = new ArrayList<>(strIntervals);  // light up STRs
         eventsInOrder.forEach(event -> allIntervals.add(new SimpleInterval(event)));    // light up each Event
         swForbiddenPairsAndTrios.forEach(tuple -> allIntervals.add(IntervalUtils.getSpanningInterval(tuple)));  // light up each mutex
@@ -391,31 +406,12 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             if (interval.getStart() < end) {    // contiguous with previous span
                 end = Math.max(end, interval.getEnd());
             } else {    // add the previous span and begin a new one
-                // TODO: put in the appropriate mutexes here
-                eventGroups.add(new EventGroup(eventOD.getOverlaps(new SimpleInterval(contig, start, end)), ));
+                eventGroups.add(new EventGroup(eventOD.getOverlaps(new SimpleInterval(contig, start, end)), allMutexes));
                 start = interval.getStart();
                 end = interval.getEnd();
             }
         }
-        // TODO: put in the appropriate mutexes here
-        eventGroups.add(new EventGroup(eventOD.getOverlaps(new SimpleInterval(contig, start, end)), ));    // add the last EventGroup
-
-        // TODO: this is wrong -- overlapping events are mutexed in the determined span of PD haplotypes, but overlapping
-        // TODO: SNPS *are* compatible in the undetermined spans
-        // TODO: really each EventGroup should keep track of two types of mutex -- determined and undetermined
-        // edges due to overlapping position
-        // if STR intervals are given, two events that intersect the same STR are treated as overlapping for the purpose of DRAGEN joint detection
-        final List<List<Event>> allMutexes = new ArrayList<>(swForbiddenPairsAndTrios);
-        for (int e1 = 0; e1 < eventsInOrder.size(); e1++) {
-            final Event event1 = eventsInOrder.get(e1);
-            for (int e2 = e1 + 1; e2 < eventsInOrder.size() && eventsInOrder.get(e2).getStart() <= event1.getEnd() + 1; e2++) {
-                final Event event2 = eventsInOrder.get(e2);
-
-                if (eventsOverlapForPDHapsCode(event1, event2)) {
-                    allMutexes.add(List.of(event1, event2));
-                }
-            }
-        }
+        eventGroups.add(new EventGroup(eventOD.getOverlaps(new SimpleInterval(contig, start, end)), allMutexes));    // add the last EventGroup
 
         return eventGroups;
     }
