@@ -5,6 +5,7 @@ import com.google.common.collect.*;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.util.Locatable;
+import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.Allele;
 import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
@@ -379,8 +380,9 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         swForbiddenPairsAndTrios.forEach(tuple -> allIntervals.add(IntervalUtils.getSpanningInterval(tuple)));  // light up each mutex
 
         allIntervals.sort(Comparator.comparingInt(SimpleInterval::getStart));   // no need to break ties here -- the end result is unique regardless
+        final List<EventGroup> eventGroups = new ArrayList<>();
+        final OverlapDetector<Event> eventOD = OverlapDetector.create(eventsInOrder);  // for querying which events overlap each EventGroup
 
-        final List<SimpleInterval> eventGroupSpans = new ArrayList<>();
         final String contig = eventsInOrder.get(0).getContig();
         int start = allIntervals.get(0).getStart();
         int end = allIntervals.get(0).getEnd();
@@ -389,29 +391,14 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             if (interval.getStart() < end) {    // contiguous with previous span
                 end = Math.max(end, interval.getEnd());
             } else {    // add the previous span and begin a new one
-                eventGroupSpans.add(new SimpleInterval(contig, start, end));
+                // TODO: put in the appropriate mutexes here
+                eventGroups.add(new EventGroup(eventOD.getOverlaps(new SimpleInterval(contig, start, end)), ));
                 start = interval.getStart();
                 end = interval.getEnd();
             }
         }
-        eventGroupSpans.add(new SimpleInterval(contig, start, end));    // add the last span
-
-        final List<EventGroup> eventGroups = new ArrayList<>();
-        int eventIndex = 0;
-        for (final SimpleInterval eventGroupSpan : eventGroupSpans) {
-            final List<Event> eventsInSpan = new ArrayList<>();
-            while (eventIndex < eventsInOrder.size() && eventsInOrder.get(eventIndex).overlaps(eventGroupSpan)) {
-                eventsInSpan.add(eventsInOrder.get(eventIndex));
-                eventIndex++;
-            }
-            if (eventsInSpan.size() > MAX_VAR_IN_EVENT_GROUP) {
-                return null;
-            } else {
-                // TODO: put in the appropriate mutexes here
-                eventGroups.add(new EventGroup(eventsInSpan, ))
-            }
-        }
-
+        // TODO: put in the appropriate mutexes here
+        eventGroups.add(new EventGroup(eventOD.getOverlaps(new SimpleInterval(contig, start, end)), ));    // add the last EventGroup
 
         // TODO: this is wrong -- overlapping events are mutexed in the determined span of PD haplotypes, but overlapping
         // TODO: SNPS *are* compatible in the undetermined spans
