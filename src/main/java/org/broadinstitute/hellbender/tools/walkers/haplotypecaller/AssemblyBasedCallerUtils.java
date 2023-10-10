@@ -656,10 +656,11 @@ public final class AssemblyBasedCallerUtils {
         //in eventsAtThisLoc, when in mergedVC it would yield AAA* AA A
         mergedVC.getAlternateAlleles().stream().filter(a -> !a.isSymbolic()).forEach(a -> result.put(a, new ArrayList<>()));
 
+        final Locatable locus = new SimpleInterval(mergedVC.getContig(), loc, loc);
         for (final Haplotype h : haplotypes) {
 
             // Partially determined haplotypes know at what position they are determined, only determined position haps should be considered for genotyping
-            if (h.isPartiallyDetermined() && ((PartiallyDeterminedHaplotype) h).getDeterminedPosition() != loc) {
+            if (h.isPartiallyDetermined() && ((PartiallyDeterminedHaplotype) h).getDeterminedSpan().overlaps(locus)) {
                 continue;
             }
             final List<Event> overlappingEvents = h.getEventMap().getOverlappingEvents(loc);

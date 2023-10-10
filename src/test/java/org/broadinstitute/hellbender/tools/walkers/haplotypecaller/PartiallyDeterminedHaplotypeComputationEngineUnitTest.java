@@ -363,10 +363,12 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
 
         final List<Event> allEventsAtDeterminedLocus = events.stream().filter(event -> event.getStart() == determinedLocus).toList();
 
-        PartiallyDeterminedHaplotype result = PartiallyDeterminedHaplotypeComputationEngine.createNewPDHaplotypeFromEvents(ref, determinedEvents, determinedLocus, events, allEventsAtDeterminedLocus);
+        PartiallyDeterminedHaplotype result = PartiallyDeterminedHaplotypeComputationEngine.createNewPDHaplotypeFromEvents(ref, determinedEvents, determinedLocus, events);
         Assert.assertEquals(new String(result.getBases()), expectedBases);
         Assert.assertEquals(result.getAlternateBases(), expectedAltArray);
         Assert.assertEquals(result.getCigar(), TextCigarCodec.decode(expectedCigar));
+
+        // TODO: replace with determinedSpan
         Assert.assertEquals(result.getDeterminedPosition(), determinedLocus);
     }
 
@@ -381,10 +383,12 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
         Haplotype ref = new Haplotype("AAAAAAAAAA".getBytes(), true, 500, TextCigarCodec.decode("10M"));
         ref.setGenomeLocation(new SimpleInterval("20", 100, 110));
 
-        PartiallyDeterminedHaplotype result = PartiallyDeterminedHaplotypeComputationEngine.createNewPDHaplotypeFromEvents(ref, Set.of(), 105, List.of(DEL_AAAAAAA_102, DEL_AA_105), List.of(DEL_AA_105));
+        PartiallyDeterminedHaplotype result = PartiallyDeterminedHaplotypeComputationEngine.createNewPDHaplotypeFromEvents(ref, Set.of(), 105, List.of(DEL_AAAAAAA_102, DEL_AA_105));
         Assert.assertEquals(new String(result.getBases()), "AAAAAAAAAA");
         Assert.assertEquals(result.getAlternateBases(), new byte[]{0,0,0,2,0,0,0,0,4,0});
         Assert.assertEquals(result.getCigar(), TextCigarCodec.decode("10M"));
+
+        // TODO: replace with determined span
         Assert.assertEquals(result.getDeterminedPosition(), DEL_AA_105.getStart());
     }
 

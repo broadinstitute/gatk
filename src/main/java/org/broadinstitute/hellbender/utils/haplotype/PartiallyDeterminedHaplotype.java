@@ -75,26 +75,25 @@ public final class  PartiallyDeterminedHaplotype extends Haplotype {
 
     //TODO Eventually these will have to be refactored to support multiple determined alleles per PDHaplotype
     private final Set<Event> determinedEvents; // NOTE this must be a subset (possibly empty if the determined allele is ref) of both of the previous lists
-    private final int determinedPosition;
 
     // NOTE: we need all of the events at the determined site (all of which are determined in *some* PD haplotype) for the purposes
     // of the overlapping reads PDHMM optimization.  At Multiallelic sites, we ultimately genotype all of the alleles at once.
     // If we aren't careful, reads that only overlap some alleles at a site will end up with incorrect/undetermined PDHMM scores
     // for a subset of alleles in the genotyper which can lead to false positives/poorly called sites.
     //NOTE: we never want the genotyper to handle reads that were not HMM scored, caching this extent helps keep us safe from messy sites
-    private final SimpleInterval determinedExtent;
+    private final SimpleInterval determinedSpan;
 
     /**
+     * @param determinedSpan                interval (wrt the reference contig) over which the haplotype should be considered determined
      * @param base                          base (reference) haplotype used to construct the PDHaplotype
      * @param pdBytes                       array of bytes indicating what bases are skips for the pdhmm
      * @param constituentEvents             events (both determined and undetermined) covered by this haplotype, should follow the rules for PD variants
      * @param determinedEvents              events from @param constituentEvents that are determined for this pd haplotype. Empty if determined allele is ref
      * @param cigar                         haplotype cigar agianst the reference
-     * @param determinedPosition            position (wrt the reference contig) that the haplotype should be considered determined //TODO this will be refactored to be a range of events in JointDetection
      * @param getAlignmentStartHapwrtRef    alignment startHapwrtRef from baseHaplotype corresponding to the in-memory storage of reference bases (must be set for trimming/clipping ops to work)
      */
     public PartiallyDeterminedHaplotype(final Haplotype base, byte[] pdBytes, List<Event> constituentEvents, final Set<Event> determinedEvents,
-                                        final Cigar cigar, final int determinedPosition, List<Event> allEventsAtDeterminedLocus, int getAlignmentStartHapwrtRef) {
+                                        final Cigar cigar, final SimpleInterval determinedSpan, int getAlignmentStartHapwrtRef) {
         super(base.getBases(), false, base.getAlignmentStartHapwrtRef(), cigar);
         Utils.validateArg(base.length() == pdBytes.length, "pdBytes array must have same length as base haplotype.");
         this.setGenomeLocation(base.getGenomeLocation());
@@ -103,12 +102,7 @@ public final class  PartiallyDeterminedHaplotype extends Haplotype {
         // TODO: this needs to generalize to a set of determined events or empty if ref is determined
         this.determinedEvents = determinedEvents;
 
-        final int minStart = allEventsAtDeterminedLocus.stream().mapToInt(Event::getStart).min().orElse(determinedPosition);
-        final int maxEnd = allEventsAtDeterminedLocus.stream().mapToInt(Event::getEnd).max().orElse(determinedPosition);
-        determinedExtent = new SimpleInterval(getContig(), minStart, maxEnd);
-
-        // TODO: eventually determined events can be at different positions
-        this.determinedPosition = determinedPosition;
+        this.determinedSpan = determinedSpan;
         setAlignmentStartHapwrtRef(getAlignmentStartHapwrtRef);
     }
 
@@ -144,7 +138,7 @@ public final class  PartiallyDeterminedHaplotype extends Haplotype {
         return h instanceof PartiallyDeterminedHaplotype
                 && getUniquenessValue() == ((Haplotype) h).getUniquenessValue()
                 && isReference() == ((Haplotype) h).isReference()
-                && determinedPosition == ((PartiallyDeterminedHaplotype) h).determinedPosition // (even if the basees exactly match we still want to be cautious)
+                && determinedSpan.equals(((PartiallyDeterminedHaplotype) h).determinedSpan) // (even if the bases exactly match we still want to be cautious)
                 && Arrays.equals(getBases(), ((Haplotype) h).getBases())
                 && Arrays.equals(alternateBases, ((PartiallyDeterminedHaplotype) h).alternateBases);
     }
@@ -159,14 +153,9 @@ public final class  PartiallyDeterminedHaplotype extends Haplotype {
     }
 
     //NOTE: we never want the genotyper to handle reads that were not HMM scored, caching this extent helps keep us safe from messy sites
-    public SimpleInterval getMaximumExtentOfSiteDeterminedAlleles() {
-        return determinedExtent;
+    public SimpleInterval getDeterminedSpan() {
+        return determinedSpan;
     }
-
-    public long getDeterminedPosition() {
-        return determinedPosition;
-    }
-
 
     /**
      * A helper method for computing what the alternative bases array should look like for a particular set of alleles.

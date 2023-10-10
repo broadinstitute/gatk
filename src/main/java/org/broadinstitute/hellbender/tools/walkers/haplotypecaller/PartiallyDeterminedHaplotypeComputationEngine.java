@@ -153,7 +153,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                 for (Set<Event> branch : branches) {
                     if (!pileupArgs.useDeterminedHaplotypesDespitePdhmmMode) {
                         final List<Event> eventsInPDHap = branch.stream().sorted(HAPLOTYPE_SNP_FIRST_COMPARATOR).toList();
-                        PartiallyDeterminedHaplotype newPDHaplotype = createNewPDHaplotypeFromEvents(referenceHaplotype, determinedEvents, determinedLocus, eventsInPDHap, allEventsHere);
+                        PartiallyDeterminedHaplotype newPDHaplotype = createNewPDHaplotypeFromEvents(referenceHaplotype, determinedEvents, determinedEventGroup.getSpan(), eventsInPDHap);
                         branchHaplotypesDebugMessage(referenceHaplotype, debug, branch, List.of(newPDHaplotype));
                         outputHaplotypes.add(newPDHaplotype);
                     } else {
@@ -165,7 +165,8 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                         fullyDeterminedHaplotypes.add(new ArrayList<>(determinedEvents)); // the seed haplotype
 
                         for (final int locus : eventsByStartPos.keySet()) {
-                            if (determinedLocus < locus) {
+                            // TODO: don't know if the logic on the next line is right, but this code path could probably be deleted anyway
+                            if (determinedEventGroup.getSpan().getEnd() < locus) {
                                 final List<List<Event>> children = eventsByStartPos.get(locus).stream().filter(branch::contains)
                                         .flatMap(event -> fullyDeterminedHaplotypes.stream().map(group -> growEventList(group, event))).toList();
                                 children.forEach(child -> child.sort(HAPLOTYPE_SNP_FIRST_COMPARATOR));
@@ -608,10 +609,9 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
      */
     @VisibleForTesting
     //TODO When we implement JointDetection we will need to allow multiple eventWithVariants to be prsent...
-    static PartiallyDeterminedHaplotype createNewPDHaplotypeFromEvents(final Haplotype refHap, final Set<Event> determinedEvents, final int determinedLocus,
-                                                                       final List<Event> constituentEvents, final List<Event> allEventsAtDeterminedLocus) {
+    static PartiallyDeterminedHaplotype createNewPDHaplotypeFromEvents(final Haplotype refHap, final Set<Event> determinedEvents, final SimpleInterval determinedSpan,
+                                                                       final List<Event> constituentEvents) {
         Utils.validate(refHap.isReference() && refHap.getCigar().numCigarElements() == 1, "This is not a valid base haplotype for construction");
-        final boolean refIsDetermined = determinedEvents.isEmpty();
 
         //TODO add a more stringent check that the format of constituentEvents works
         int refStart = refHap.getStart();
@@ -638,9 +638,6 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                 final byte byteForLastSnp = pdBytes.get(bufferPositionOfLastSnp);
                 pdBytes.put(bufferPositionOfLastSnp,(byte) (byteForLastSnp | byteForThisSnp) );
                 continue;
-            } else if (event.getStart() == determinedLocus && refIsDetermined) {
-                // Ref alleles (even if they overlap undetermined events) should be skipped
-                continue;
             }
 
             Utils.validate(basesBeforeNextEvent >= 0, () -> "Event " + event + " is out of order in PD event list: " + constituentEvents + ".");
@@ -650,20 +647,25 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             final int altRefLengthDiff = altAllele.length() - refAllele.length();
 
             boolean isInsertion = altRefLengthDiff > 0; // If it's an insertion we flip to "ADD" the bases to the ref.
-            final boolean isEvent = determinedEvents.stream().anyMatch(event::equals);
+            final boolean isDeterminedEvent = determinedEvents.stream().anyMatch(event::equals);    // TODO: could this be replaced by simply a call to contains?
             runningCigar.add(new CigarElement(basesBeforeNextEvent, CigarOperator.M));
 
             // Figure out the cigar element to add:
             // - If we are in the ref, simply add the cigar corresponding to the allele we are using
             if (event.isSNP()) {    // SNPs are straightforward, whether or not it's the special event
-                runningCigar.add(new CigarElement(refAllele.length(), refIsDetermined || !isEvent ? CigarOperator.M : CigarOperator.X));
-            } else if (isEvent) {   // special indel
+                runningCigar.add(new CigarElement(refAllele.length(), !isDeterminedEvent ? CigarOperator.M : CigarOperator.X));
+            } else if (isDeterminedEvent) {
+                // TODO: this comment seems wrong -- it seems like for determined events there is no hocus pocus where we treat insertions as deletions
                 // The event is considered a deletion of the longer allele, regardless of which is ref
                 // we subtract 1 for the dummy initial indel base.
-                final int elementLength = isInsertion && refIsDetermined ? 0 : Math.max(refAllele.length(), altAllele.length()) - 1;
-                final CigarOperator operator = isInsertion ? CigarOperator.I : (refIsDetermined ? CigarOperator.M : CigarOperator.D);
+                final int elementLength = Math.max(refAllele.length(), altAllele.length()) - 1;
+                final CigarOperator operator = isInsertion ? CigarOperator.I : CigarOperator.D;
                 runningCigar.add(new CigarElement(elementLength, operator));
             } else {    // non-special indel. Insertions are treated as such; deletions become matches
+                // in the undetermined part of PD haplotypes, indels are always treated as deletions relative to the longer allele,
+                // regardless of which is ref.  Hence when we have an insertion the alt allele is treated as a match and the ref allele is
+                // treated as a deletion
+                // TODO: double-check this line
                 runningCigar.add(new CigarElement(Math.abs(altRefLengthDiff), altRefLengthDiff > 0 ? CigarOperator.I : CigarOperator.M));
             }
 
@@ -673,12 +675,12 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
             // Now add event bases.  If this is the blessed variant, add the ref or alt as appropriate
             // Otherwise make sure we are adding the longest allele (for indels) or the ref allele for snps.
-            final boolean alleleToUseIsRef = (isEvent && refIsDetermined) || (!isEvent && altRefLengthDiff <= 0);
+            final boolean alleleToUseIsRef = (!isDeterminedEvent && altRefLengthDiff <= 0);
             final Allele alleleToUse = alleleToUseIsRef ? refAllele : altAllele;
             final Allele otherAllele = alleleToUseIsRef ? altAllele : refAllele;
             final byte[] basesToAdd = event.isIndel() ? basesAfterFirst(alleleToUse) : alleleToUse.getBases();
             newHapBases.put(basesToAdd); // refbases added
-            pdBytes.put(isEvent ? new byte[basesToAdd.length] :
+            pdBytes.put(isDeterminedEvent ? new byte[basesToAdd.length] :
                     PartiallyDeterminedHaplotype.getPDBytesForHaplotypes(alleleToUse, otherAllele)); // refbases added
 
             lastPositionAdded = event.getEnd() + 1; //TODO this is probably not set for future reference
@@ -697,8 +699,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
                 constituentEvents,
                 determinedEvents,
                 runningCigar.make(),
-                determinedLocus,
-                allEventsAtDeterminedLocus,
+                determinedSpan,
                 refHap.getAlignmentStartHapwrtRef());
 
     }
@@ -720,6 +721,8 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         private final BitSet allowedDeterminedSubsets;
 
         private final Lazy<List<Set<Event>>> lazyUndeterminedEventSets;
+
+        private final SimpleInterval span;
 
         /**
          * @param events all events in this event group
@@ -748,6 +751,11 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             allowedUndeterminedSubsets = computeAllowedSubsets(mutexesForUndeterminedEvents);
             allowedDeterminedSubsets = computeAllowedSubsets(mutexesForDeterminedEvents);
             lazyUndeterminedEventSets = new Lazy<>(() -> computeUndeterminedEventSetsForPDHaplotypes());
+
+            final String contig = eventsInOrder.get(0).getContig();
+            final int minStart = eventsInOrder.stream().mapToInt(Event::getStart).min().getAsInt();
+            final int maxEnd = eventsInOrder.stream().mapToInt(Event::getEnd).max().getAsInt();
+            span = new SimpleInterval(contig, minStart, maxEnd);
         }
 
         /**
@@ -839,6 +847,8 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
             return result;
         }
+
+        public SimpleInterval getSpan() { return span; }
 
         //Print The event group in Illumina indexed ordering:
         public String toDisplayString(int startPos) {
