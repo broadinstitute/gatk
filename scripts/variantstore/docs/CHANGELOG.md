@@ -1,6 +1,6 @@
 # Genomic Variant Store (GVS) Changelog
 
-## 0.4.0 - 2023-??-??
+## 0.4.0 - 2023-10-10
 
 ### Added
 
@@ -13,6 +13,7 @@
 ### Fixed
 
 - Support for quota-restricted `GvsBeta` users was accidentally removed in a prior release and has now been restored.
+- Fix bug with `GenerateImportFofnFromDataTable` task inappropriately not being marked `volatile`.
 
 ## 0.3.2 - 2023-09-11
 
