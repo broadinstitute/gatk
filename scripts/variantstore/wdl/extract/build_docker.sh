@@ -1,10 +1,9 @@
 usage() {
     echo "
 
-USAGE: ./build_docker.sh [-r|--release|-b|--branch]
+USAGE: ./build_docker.sh
 
-One of the options -r|--release or -b|--branch must be given, which determines the format of the Docker image tag.
-Release tags will be <ISO 8601 Date>-alpine, branch tags will be <ISO 8601 Date>-alpine-<short git hash>.
+Tags will be of the form <ISO 8601 Date>-alpine-<short git hash>.
 
 e.g. 2023-06-06-alpine or 2023-06-06-alpine-ed338e48e
 "
