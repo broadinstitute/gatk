@@ -175,7 +175,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-857_NoGQ0
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
@@ -281,7 +280,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-857_NoGQ0
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -291,7 +289,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-857_NoGQ0
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
@@ -301,7 +298,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-857_NoGQ0
          tags:
              - /.*/
    - name: GvsIngestTieout
