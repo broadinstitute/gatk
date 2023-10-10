@@ -11,7 +11,6 @@ import create_vat_inputs
 # hard filter bad sites: hard_filter_non_passing_sites()
 # hard filter based on FT flag:
 # get GT, ~replace_lgt_with_gt()~, swap to no-calls: failing_gts_to_no_call(), (no longer need to replace_lgt_with_gt now that lgt is included in the VDS)
-# turn the GQ0s into no calls so that ANs are correct -- hmmm maybe we should check with Lee about this because we do have GQ0s in the VDS
 # track how many sites have more than 50 alt alleles TODO: we currently aren't tracking this, are we?
 # drop 50+ alternate alleles
 # calculate the AC, AN, AF, SC, for the full population and for the subpopulations
@@ -71,15 +70,6 @@ def remove_too_many_alt_allele_sites(vds):
 
     return hl.vds.VariantDataset(vds.reference_data, vd_50_aa_cutoff)
 
-
-def gq0_to_no_call(vds):
-    """
-    Turn the GQ0s into no calls so that ANs are correct
-    """
-    rd = vds.reference_data
-    # TODO would be better to drop these once its a dense mt?
-    rd = rd.filter_entries(rd.GQ > 0)
-    return hl.vds.VariantDataset(rd, vds.variant_data)
 
 
 def matrix_table_ac_an_af(mt, ancestry_file):
@@ -142,8 +132,7 @@ def main(vds, ancestry_file_location, sites_only_vcf_path):
     transforms = [
         hard_filter_non_passing_sites,
         failing_gts_to_no_call,
-        remove_too_many_alt_allele_sites,
-        gq0_to_no_call
+        remove_too_many_alt_allele_sites
     ]
     transformed_vds=vds
     for transform in transforms:
