@@ -115,36 +115,41 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         Utils.printIf(debug,() -> "Event groups after merging:\n"+eventGroups.stream().map(eg -> eg.toDisplayString(referenceHaplotype.getStart())).collect(Collectors.joining("\n")));
 
         /*
-          Outer loop: iterate over all loci with events, setting each in turn as the determined locus with all other loci being undetermined
-          Inner loop: iterate over all alleles at the determined locus, including the reference allele unless we are making determined haplotypes, to set as
-                    the determined allele.  For each choice of determined allele generate all possible partially determined haplotypes
+          Outer loop: iterate over which EventGroup to treat as determined
+          Inner loop: iterate over subsets of the determined EventGroup, building PD haplotypes from these determined subsets
+                      and branches of undetermined events drawn from other EventGroups
+
+          To be clear, each EventGroup may have multiple determined subsets, and
          */
         final Set<Haplotype> outputHaplotypes = pileupArgs.useDeterminedHaplotypesDespitePdhmmMode ? Sets.newLinkedHashSet(List.of(referenceHaplotype)) : Sets.newLinkedHashSet();  // NOTE: output changes if this is not a LinkedHashSet!
-        for (final int determinedLocus : eventsByStartPos.keySet()) {   // it's a SortedMap -- iterating over its keyset is okay!
-            final List<Event> allEventsHere = eventsByStartPos.get(determinedLocus);
-            Utils.printIf(debug, () -> "working with variants: " + allEventsHere + " at position " + determinedLocus);
 
-            if (!Range.closed(callingSpan.getStart(), callingSpan.getEnd()).contains(determinedLocus)) {
-                Utils.printIf(debug, () -> "Skipping determined hap construction! Outside of span: " + callingSpan);
-                continue;
+        for (int determinedEventGroupIndex = 0; determinedEventGroupIndex < eventGroups.size(); determinedEventGroupIndex++) {
+            final EventGroup determinedEventGroup = eventGroups.get(determinedEventGroupIndex);
+            Utils.printIf(debug, () -> "working with determined EventGroup: " + determinedEventGroup.toDisplayString(referenceHaplotype.getStart()));
+
+            // TODO: do we need this check?
+            // if (!Range.closed(callingSpan.getStart(), callingSpan.getEnd()).contains(determinedLocus)) {
+            //    Utils.printIf(debug, () -> "Skipping determined hap construction! Outside of span: " + callingSpan);
+            //    continue;
+            //}
+
+            // note that the undetermined event branching from other EventGroups is independent of the determined subset
+            final List<Set<Event>> undeterminedBranches = computeUndeterminedBranches(eventGroups, determinedEventGroupIndex);
+
+            if (undeterminedBranches == null) {
+                Utils.printIf(debug, () -> "Found too many branches, aborting and falling back to Assembly Variants!");
+                return sourceSet;
             }
 
-            for (int determinedAlleleIndex = (pileupArgs.useDeterminedHaplotypesDespitePdhmmMode ?0:-1); determinedAlleleIndex < allEventsHere.size(); determinedAlleleIndex++) { //note -1 for I here corresponds to the reference allele at this site
-                final boolean determinedAlleleIsRef = determinedAlleleIndex == -1;
-                final Set<Event> determinedEvents = determinedAlleleIsRef ? Set.of() : Set.of(allEventsHere.get(determinedAlleleIndex));
-                Utils.printIf(debug, () -> "Working with determined allele(s) at site: "+(determinedAlleleIsRef? "[ref:"+(determinedLocus-referenceHaplotype.getStart())+"]" :
-                        determinedEvents.stream().map(PartiallyDeterminedHaplotype.getDRAGENDebugEventString(referenceHaplotype.getStart())).collect(Collectors.joining(", "))));
+            for (final Set<Event> determinedEvents : determinedEventGroup.determinedEventSets()) {
+                Utils.printIf(debug, () -> "Constructing PD haplotypes with determined events (if no determined events, PD haplotypes match the reference over the determined span): " +
+                        determinedEvents.stream().map(PartiallyDeterminedHaplotype.getDRAGENDebugEventString(referenceHaplotype.getStart())).collect(Collectors.joining(", ")));
 
-                final List<Set<Event>> branches = computeBranches(eventGroups, determinedEvents, allEventsHere);
+                // add the determined events to the undetermined branches
+                final List<ImmutableSet<Event>> branches = undeterminedBranches.stream()
+                        .map(branch -> Sets.union(branch, determinedEvents).immutableCopy()).toList();
+                branchExcludeAllelesMessage(referenceHaplotype, debug, eventsInOrder, branches);
 
-                if (branches == null) {
-                    Utils.printIf(debug, () -> "Found too many branches for variants at: " + determinedLocus + " aborting and falling back to Assembly Variants!");
-                    return sourceSet;
-                }
-
-                branchExcludeAllelesMessage(referenceHaplotype, debug, eventsInOrder, determinedEvents, branches);
-
-                // from each set of branch exclusions make a single PD haplotype or a combinatorial number of determined haplotypes
                 for (Set<Event> branch : branches) {
                     if (!pileupArgs.useDeterminedHaplotypesDespitePdhmmMode) {
                         final List<Event> eventsInPDHap = branch.stream().sorted(HAPLOTYPE_SNP_FIRST_COMPARATOR).toList();
@@ -426,21 +431,25 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
     }
 
     /**
-     * Compute the branches (sets of mutually allowed Events) that define partially determined haplotypes.  For a given set of determined events
-     * each event group has one or more 1) maximal subsets that 2) contain all the determined events (if they belong to the event group)
-     * and 3) contain no mutually-exclusive pairs or trios of events.
+     * Compute the branches (sets of mutually allowed Events) that define partially determined haplotypes over their undetermined parts.
      *
-     * When constructing PD haplotypes we take all possible unions of these subsets over all event groups.
+     * Each undetermined event group has one or more 1) maximal subsets that 2) contain no mutually-exclusive pairs or trios of events.
+     * When constructing PD haplotypes we take all possible unions of these subsets over all undetermined event groups.
      *
      * Returns null if the combinatorial explosion of branches becomes too large.
      */
     @VisibleForTesting
-    static List<Set<Event>> computeBranches(List<EventGroup> eventGroups, Set<Event> determinedEvents, final List<Event> allEventsAtDeterminedLocus) {
+    static List<Set<Event>> computeUndeterminedBranches(final List<EventGroup> eventGroups, final int determinedEventGroupIndex) {
         List<Set<Event>> branches = new ArrayList<>();
         branches.add(new HashSet<>());   // start with a single empty branch
 
-        for (EventGroup group : eventGroups) {
-            final List<Set<Event>> setsToAdd = group.eventSetsForPDHaplotypes(determinedEvents, allEventsAtDeterminedLocus);
+        for (int eventGroupIndex = 0; eventGroupIndex < eventGroups.size(); eventGroupIndex++) {
+            if (eventGroupIndex == determinedEventGroupIndex) {
+                continue;
+            }
+            final EventGroup group = eventGroups.get(eventGroupIndex);
+
+            final List<Set<Event>> setsToAdd = group.undeterminedEventSets();
 
             // Take every possible union of existing branches and this event group's sets to add. As an optimization
             // we add the 0th set's elements in-place, and append unions with the 1st, 2nd etc sets to add.
@@ -883,8 +892,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         Utils.printIf(debug, () -> "disallowed groups:" + disallowedPairs.stream().map(group -> formatEventsLikeDragenLogs(group, refStart)).collect(Collectors.joining("\n")));
     }
 
-    private static void branchExcludeAllelesMessage(Haplotype referenceHaplotype, boolean debug, Collection<Event> eventsInOrder,
-                                                    final Set<Event> determinedEvents, List<Set<Event>> branches) {
+    private static void branchExcludeAllelesMessage(Haplotype referenceHaplotype, boolean debug, Collection<Event> eventsInOrder, List<? extends Set<Event>> branches) {
         if (debug) {
             System.out.println("Branches:");
             for (int i = 0; i < branches.size(); i++) {

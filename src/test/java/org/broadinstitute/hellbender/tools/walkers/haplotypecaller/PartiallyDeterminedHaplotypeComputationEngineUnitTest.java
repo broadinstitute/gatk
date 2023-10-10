@@ -190,6 +190,8 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
         };
     }
 
+    // TODO: update this test: previously the method computed the entire branch, both determined and undetermined
+    // TODO: now the method computes only the event sets for the undetermined part of PD haplotypes
     @Test(dataProvider = "makeBranchesDataProvider")
     public void testMakeBranches(List<Event> eventsInOrder, List<List<Integer>> swMutexes, final int determinedLocus, final OptionalInt determinedEvent,
                                  final List<Set<Integer>> expectedBranchIndices) {
@@ -207,7 +209,7 @@ public class PartiallyDeterminedHaplotypeComputationEngineUnitTest extends GATKB
 
         final List<Event> allEventsAtDeterminedLocus = eventsInOrder.stream().filter(event -> event.getStart() == determinedLocus).toList();
 
-        final Set<Set<Event>> actualBranches = PartiallyDeterminedHaplotypeComputationEngine.computeBranches(eventGroups, determinedEvents, allEventsAtDeterminedLocus)
+        final Set<Set<Event>> actualBranches = PartiallyDeterminedHaplotypeComputationEngine.computeUndeterminedBranches(eventGroups, determinedEvents, allEventsAtDeterminedLocus)
                         .stream().collect(Collectors.toSet());
 
         final Set<Set<Event>> expectedBranches = expectedBranchIndices.stream()
