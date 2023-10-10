@@ -395,6 +395,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         swForbiddenPairsAndTrios.forEach(tuple -> allIntervals.add(IntervalUtils.getSpanningInterval(tuple)));  // light up each mutex
 
         allIntervals.sort(Comparator.comparingInt(SimpleInterval::getStart));   // no need to break ties here -- the end result is unique regardless
+
         final List<EventGroup> eventGroups = new ArrayList<>();
         final OverlapDetector<Event> eventOD = OverlapDetector.create(eventsInOrder);  // for querying which events overlap each EventGroup
 
@@ -703,7 +704,10 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         // then the corresponding subset of events is allowed i.e. doesn't contain a mutex.  For example, if the 11th bit is true we know
         // that the subset containing events 0, 1, and 3 (11 = 2^3 + 2^1 + 2^0) is allowed because neither {0,1}, {0,3}, {1,3}, or {0,1,3}
         // are mutually excluded.
-        private final BitSet allowedSubsets;
+        private final BitSet allowedUndeterminedSubsets;
+
+        // same as above, except that overlapping SNPs are not allowed to coexist in determined subsets of event
+        private final BitSet allowedDeterminedSubsets;
 
         // Optimization to save ourselves recomputing the subsets at every point its necessary to do so.
         List<Set<Event>> cachedEventSets = null;
@@ -717,16 +721,23 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             Utils.validate(events.size() <= MAX_VAR_IN_EVENT_GROUP, () -> "Too many events (" + events.size() + ") for populating bitset.");
             eventsInOrder = events.stream().sorted(HAPLOTYPE_SNP_FIRST_COMPARATOR).collect(ImmutableList.toImmutableList());
             eventIndices = IntStream.range(0, events.size()).boxed().collect(ImmutableMap.toImmutableMap(eventsInOrder::get, n -> n));
-            allowedSubsets = new BitSet(1 << eventsInOrder.size());
 
-            final List<List<Event>> overlappingMutexes = mutexPairsAndTrios.stream()
-                    // overlapping SNPs are mutexes for forming event groups, but they are NOT forbidden combinations for PD haplotypes!
-                    .filter(mutex -> !(mutex.size() == 2 && mutex.get(0).getStart() == mutex.get(1).getStart() && mutex.get(0).isSNP() && mutex.get(1).isSNP()))
+            // for determined events, all mutexes that involve the given events apply
+            final List<List<Event>> mutexesForDeterminedEvents = mutexPairsAndTrios.stream()
                     .filter(mutex -> mutex.stream().anyMatch(eventIndices::containsKey)).toList();
-            for (final List<Event> mutex : overlappingMutexes) {
+
+            for (final List<Event> mutex : mutexesForDeterminedEvents) {
                 Utils.validate(mutex.stream().allMatch(eventIndices::containsKey), () -> "Mutex group " + mutex + " only partially overlaps event group " + this);
             }
-            computeAllowedSubsets(overlappingMutexes);
+
+            // for undetermined events we exclude mutexes of two overlapping SNPs -- the undetermined part of PD haplotypes
+            // allows multiple SNPs to coexist at a single locus
+            final List<List<Event>> mutexesForUndeterminedEvents = mutexesForDeterminedEvents.stream()
+                    .filter(mutex -> !(mutex.size() == 2 && mutex.get(0).getStart() == mutex.get(1).getStart() && mutex.get(0).isSNP() && mutex.get(1).isSNP()))
+                    .toList();
+
+            allowedUndeterminedSubsets = computeAllowedSubsets(mutexesForUndeterminedEvents);
+            allowedDeterminedSubsets = computeAllowedSubsets(mutexesForDeterminedEvents);
         }
 
         /**
@@ -736,16 +747,15 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
          *
          * @param mutexPairsAndTrios The groups of mutually forbidden events that generated all the event groups in this calling region.
          */
+         private BitSet computeAllowedSubsets(List<List<Event>> mutexPairsAndTrios) {
+             final BitSet result = new BitSet(1 << eventsInOrder.size());
+             // initialize all subsets as being allowed and then disallow any subset containing a mutex below
+             result.set(0, 1 << eventsInOrder.size());
 
-
-         private void computeAllowedSubsets(List<List<Event>> mutexPairsAndTrios) {
              if (eventsInOrder.size() < 2) {
-                 return;
+                 return result;
              }
-
-             // initialize all events as being allowed and then disallow them in turn .
-             allowedSubsets.set(1, 1 << eventsInOrder.size());
-
+             
              // make SmallBitSet of the event indices of each mutex
              final List<SmallBitSet> mutexes = mutexPairsAndTrios.stream().map(mutex -> new SmallBitSet(mutex.stream().map(eventIndices::get).toList())).toList();
 
@@ -756,10 +766,11 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
              if (!mutexes.isEmpty()) {
                  for (final SmallBitSet subset = new SmallBitSet().increment(); !subset.hasElementGreaterThan(eventsInOrder.size()); subset.increment()) {
                      if (mutexes.stream().anyMatch(subset::contains)) {
-                         allowedSubsets.set(subset.index(), false);
+                         result.set(subset.index(), false);
                      }
                  }
              }
+             return result;
          }
 
         /**
@@ -800,7 +811,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
             // Iterate from the full set (containing every event) to the empty set (no events), which lets us output the largest possible subsets
             // NOTE: we skip over 0 here since that corresponds to ref-only events, handle those externally to this code
             for (final SmallBitSet subset = SmallBitSet.fullSet(eventsInOrder.size()); !subset.isEmpty(); subset.decrement()) {
-                if (allowedSubsets.get(subset.index()) && subset.intersection(locusOverlapSet).equals(determinedOverlapSet)) {
+                if (allowedUndeterminedSubsets.get(subset.index()) && subset.intersection(locusOverlapSet).equals(determinedOverlapSet)) {
                     // Only check for subsets if we need to
                     if (maximalAllowedContainingDetermined.stream().noneMatch(group -> group.contains(subset))) {
                         maximalAllowedContainingDetermined.add(subset.copy());    // copy subset since the decrement() mutates it in-place
