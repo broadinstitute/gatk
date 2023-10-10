@@ -119,6 +119,7 @@ workflow GvsQuickstartHailIntegration {
         String vds_output_path = GvsExtractAvroFilesForHail.vds_output_path
         String recorded_git_hash = effective_git_hash
         Boolean done = true
+        Boolean used_tighter_gcp_quotas = GvsQuickstartVcfIntegration.used_tighter_gcp_quotas
     }
 }
 
