@@ -157,7 +157,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - rc-vs-1004-extract
+             - rsa_vs_458
          tags:
              - /.*/
    - name: GvsImportGenomes
