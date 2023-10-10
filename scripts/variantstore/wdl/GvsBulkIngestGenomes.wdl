@@ -155,6 +155,10 @@ task GenerateImportFofnFromDataTable {
         String workspace_bucket
         String variants_docker
     }
+    meta {
+        # Do not cache as this relies heavily on workspace state.
+        volatile: true
+    }
 
     ## set some output files
     String vcf_files_column_name_output_file = "vcf_files_column_name.txt"

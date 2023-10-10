@@ -298,7 +298,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1076_throttling_integration_test
          tags:
              - /.*/
    - name: GvsIngestTieout
