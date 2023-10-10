@@ -47,6 +47,15 @@ public class SmallBitSetUnitTest {
     }
 
     @Test
+    public void testStream() {
+        Assert.assertEquals((new SmallBitSet(1,3,5)).stream(10).toArray(),
+                new int[] {1,3,5});
+
+        Assert.assertEquals((new SmallBitSet(1,5,11)).stream(10).toArray(),
+                new int[] {1, 5});
+    }
+
+    @Test
     public void testContains() {
         Assert.assertTrue(THREE_ELEMENTS.contains(TWO_ELEMENTS));
         Assert.assertTrue(THREE_ELEMENTS.contains(ONE_ELEMENT));

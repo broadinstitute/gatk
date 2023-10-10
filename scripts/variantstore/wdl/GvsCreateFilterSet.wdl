@@ -31,6 +31,9 @@ workflow GvsCreateFilterSet {
     RuntimeAttributes? vqsr_lite_extract_runtime_attributes = {"command_mem_gb": 27}
     RuntimeAttributes? vqsr_lite_train_runtime_attributes = {"command_mem_gb": 27}
     RuntimeAttributes? vqsr_lite_score_runtime_attributes = {"command_mem_gb": 15}
+
+    File? training_python_script
+    File? scoring_python_script
   }
 
   File reference = "gs://gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta"
@@ -136,14 +139,17 @@ workflow GvsCreateFilterSet {
         output_prefix = filter_set_name,
         annotations = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"],
         resource_args = "--resource:hapmap,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/hapmap_3.3.hg38.vcf.gz --resource:omni,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/1000G_omni2.5.hg38.vcf.gz --resource:1000G,training=true,calibration=false gs://gcp-public-data--broad-references/hg38/v0/1000G_phase1.snps.high_confidence.hg38.vcf.gz --resource:mills,training=true,calibration=true gs://gcp-public-data--broad-references/hg38/v0/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz --resource:axiom,training=true,calibration=false gs://gcp-public-data--broad-references/hg38/v0/Axiom_Exome_Plus.genotypes.all_populations.poly.hg38.vcf.gz",
-        extract_extra_args = "-L ${interval_list} --use-allele-specific-annotations",
-        score_extra_args = "-L ${interval_list} --use-allele-specific-annotations",
+        extract_extra_args = "-L ${interval_list}",
+        score_extra_args = "-L ${interval_list}",
         extract_runtime_attributes = vqsr_lite_extract_runtime_attributes,
         train_runtime_attributes = vqsr_lite_train_runtime_attributes,
         score_runtime_attributes = vqsr_lite_score_runtime_attributes,
         gatk_docker = effective_gatk_docker,
         gatk_override = gatk_override,
-        monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+        monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh",
+        scoring_python_script = scoring_python_script,
+        training_python_script = training_python_script,
+
     }
 
     call Utils.MergeVCFs as MergeScoredVCFs {

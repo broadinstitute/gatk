@@ -9,6 +9,7 @@ import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
+import htsjdk.variant.vcf.VCFHeaderLineCount;
 import htsjdk.variant.vcf.VCFHeaderLineType;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.commons.collections4.ListUtils;
@@ -34,6 +35,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -87,7 +89,6 @@ import java.util.stream.Collectors;
 public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVariantWalker {
 
     public static final String MODE_LONG_NAME = "mode";
-    public static final String USE_ALLELE_SPECIFIC_ANNOTATIONS_LONG_NAME = "use-allele-specific-annotations";
     public static final String IGNORE_FILTER_LONG_NAME = "ignore-filter";
     public static final String IGNORE_ALL_FILTERS_LONG_NAME = "ignore-all-filters";
     public static final String DO_NOT_TRUST_ALL_POLYMORPHIC_LONG_NAME = "do-not-trust-all-polymorphic";
@@ -130,12 +131,6 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
     private List<VariantType> variantTypesToExtractList = new ArrayList<>(Arrays.asList(VariantType.SNP, VariantType.INDEL));
 
     @Argument(
-            fullName = USE_ALLELE_SPECIFIC_ANNOTATIONS_LONG_NAME,
-            doc = "If true, use the allele-specific versions of the specified annotations.",
-            optional = true)
-    boolean useASAnnotations = false;
-
-    @Argument(
             fullName = IGNORE_FILTER_LONG_NAME,
             doc = "Ignore the specified filter(s) in the input VCF.",
             optional = true)
@@ -159,13 +154,13 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
     @Argument(
             fullName = RESOURCE_MATCHING_STRATEGY_LONG_NAME,
             doc = "The strategy to use for determining whether an input variant is present in a resource " +
-                    "in non-allele-specific mode (--" + USE_ALLELE_SPECIFIC_ANNOTATIONS_LONG_NAME + " false). " +
+                    "in non-allele-specific mode. " +
                     "START_POSITION: Start positions of input and resource variants must match. " +
                     "START_POSITION_AND_GIVEN_REPRESENTATION: The intersection of the sets of input and resource alleles " +
                     "(in their given representations) must also be non-empty. " +
                     "START_POSITION_AND_MINIMAL_REPRESENTATION: The intersection of the sets of input and resource alleles " +
                     "(after converting alleles to their minimal representations) must also be non-empty. " +
-                    "This argument has no effect in allele-specific mode (--" + USE_ALLELE_SPECIFIC_ANNOTATIONS_LONG_NAME + " true), " +
+                    "This argument has no effect in allele-specific mode, " +
                     "in which the minimal representations of the input and resource alleles must match.",
             optional = true)
     private ResourceMatchingStrategy resourceMatchingStrategy = ResourceMatchingStrategy.START_POSITION;
@@ -186,6 +181,7 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
     private final Set<String> ignoreInputFilterSet = new TreeSet<>();
     Set<VariantType> variantTypesToExtract;
     TreeSet<String> resourceLabels = new TreeSet<>();
+    boolean useASAnnotations;
 
     File outputAnnotationsFile;
     VariantContextWriter vcfWriter;
@@ -222,9 +218,11 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
                     LabeledVariantAnnotationsData.SNP_LABEL));
         }
 
+        useASAnnotations = isAlleleSpecificAnnotationRequested();
+
         if (useASAnnotations && resourceMatchingStrategy != ResourceMatchingStrategy.START_POSITION_AND_MINIMAL_REPRESENTATION) {
-            logger.warn(String.format("The %s argument is ignored when %s is set to true. The START_POSITION_AND_MINIMAL_REPRESENTATION strategy will be used.",
-                    RESOURCE_MATCHING_STRATEGY_LONG_NAME, USE_ALLELE_SPECIFIC_ANNOTATIONS_LONG_NAME));
+            logger.warn(String.format("The %s argument is ignored when allele-specific annotations are requested. The START_POSITION_AND_MINIMAL_REPRESENTATION strategy will be used.",
+                    RESOURCE_MATCHING_STRATEGY_LONG_NAME));
             resourceMatchingStrategy = ResourceMatchingStrategy.START_POSITION_AND_MINIMAL_REPRESENTATION;
         }
 
@@ -249,6 +247,12 @@ public abstract class LabeledVariantAnnotationsWalker extends MultiplePassVarian
     @Override
     public Object onTraversalSuccess() {
         return null;
+    }
+
+    private boolean isAlleleSpecificAnnotationRequested() {
+        final Set<String> distinctAnnotationNames = new LinkedHashSet<>(annotationNames);
+        final VCFHeader inputHeader = getHeaderForVariants();
+        return distinctAnnotationNames.stream().anyMatch(a -> inputHeader.getInfoHeaderLine(a).getCountType() == VCFHeaderLineCount.A);
     }
 
     static void addExtractedVariantToData(final LabeledVariantAnnotationsData data,

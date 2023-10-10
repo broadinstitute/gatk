@@ -57,6 +57,9 @@ workflow GvsJointVariantCalling {
         Int? INDEL_VQSR_CLASSIC_mem_gb_override
         Int? SNP_VQSR_CLASSIC_max_gaussians_override = 6
         Int? SNP_VQSR_CLASSIC_mem_gb_override
+
+        File? training_python_script
+        File? scoring_python_script
     }
 
     # If is_wgs is true, we'll use the WGS interval list else, we'll use the Exome interval list.  We'll currently use
@@ -129,6 +132,7 @@ workflow GvsJointVariantCalling {
             process_vcf_headers = process_vcf_headers,
             workspace_bucket = effective_workspace_bucket,
             workspace_id = effective_workspace_id,
+            tighter_gcp_quotas = tighter_gcp_quotas,
     }
 
     call PopulateAltAllele.GvsPopulateAltAllele {
@@ -162,6 +166,8 @@ workflow GvsJointVariantCalling {
             SNP_VQSR_CLASSIC_max_gaussians_override = SNP_VQSR_CLASSIC_max_gaussians_override,
             SNP_VQSR_CLASSIC_mem_gb_override = SNP_VQSR_CLASSIC_mem_gb_override,
             cloud_sdk_docker = effective_cloud_sdk_docker,
+            training_python_script = training_python_script,
+            scoring_python_script = scoring_python_script,
     }
 
     call PrepareRangesCallset.GvsPrepareCallset {

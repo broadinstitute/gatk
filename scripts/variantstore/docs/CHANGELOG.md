@@ -1,5 +1,19 @@
 # Genomic Variant Store (GVS) Changelog
 
+## 0.4.0 - 2023-??-??
+
+### Added
+
+- `call_PS` column added in variant data tables for phasing set support. This change makes GVS 0.4.0 incompatible with ingesting sample data into GVS schemas created by earlier versions of GVS.
+
+### Changed
+
+- Updated to latest version of VETS variant calling toolchain.
+
+### Fixed
+
+- Support for quota-restricted `GvsBeta` users was accidentally removed in a prior release and has now been restored.
+
 ## 0.3.2 - 2023-09-11
 
 ### Changed

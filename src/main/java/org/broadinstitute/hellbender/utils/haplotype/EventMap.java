@@ -250,7 +250,7 @@ public final class EventMap extends TreeMap<Integer, Event> {
             //TODO h.recomputeAndSetEventMap() with overrides for the two haplotype classes should replace this casting+checking code here which is prone to error.
 
             // Since PD haplotypes Know what alleles are variants, simply ask it and generate the map that way.
-            final EventMap events = h.isPartiallyDetermined() ? new EventMap(((PartiallyDeterminedHaplotype) h).getDeterminedAlleles()) :
+            final EventMap events = h.isPartiallyDetermined() ? new EventMap(((PartiallyDeterminedHaplotype) h).getDeterminedEvents()) :
                     fromHaplotype(h, ref, refLoc, maxMnpDistance);
             h.setEventMap(events);
 
