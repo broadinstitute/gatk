@@ -6,6 +6,9 @@ import org.broadinstitute.hellbender.utils.param.ParamUtils;
 
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
@@ -100,6 +103,12 @@ public class SmallBitSet {
         final SmallBitSet result = new SmallBitSet();
         result.bits = this.bits | other.bits;
         return result;
+    }
+
+    // convert this Bitset of integer indices into a set of objects by indexing into some list
+    public <T> Set<T> asSet(final List<T> elements) {
+        Utils.validateArg(!hasElementGreaterThan(elements.size()-1), "this bitset contains indices too big for the given list");
+        return stream(elements.size()).mapToObj(elements::get).collect(Collectors.toSet());
     }
 
     public boolean contains(final SmallBitSet other) {

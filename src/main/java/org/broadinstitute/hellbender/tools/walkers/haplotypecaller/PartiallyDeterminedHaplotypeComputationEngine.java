@@ -4,6 +4,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.*;
 import htsjdk.samtools.CigarElement;
 import htsjdk.samtools.CigarOperator;
+import htsjdk.samtools.util.Lazy;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.Allele;
@@ -709,8 +710,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
         // same as above, except that overlapping SNPs are not allowed to coexist in determined subsets of event
         private final BitSet allowedDeterminedSubsets;
 
-        // Optimization to save ourselves recomputing the subsets at every point its necessary to do so.
-        List<Set<Event>> cachedEventSets = null;
+        private final Lazy<List<Set<Event>>> lazyUndeterminedEventSets;
 
         /**
          * @param events all events in this event group
@@ -738,6 +738,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
 
             allowedUndeterminedSubsets = computeAllowedSubsets(mutexesForUndeterminedEvents);
             allowedDeterminedSubsets = computeAllowedSubsets(mutexesForDeterminedEvents);
+            lazyUndeterminedEventSets = new Lazy<>(() -> computeUndeterminedEventSetsForPDHaplotypes());
         }
 
         /**
@@ -755,7 +756,7 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
              if (eventsInOrder.size() < 2) {
                  return result;
              }
-             
+
              // make SmallBitSet of the event indices of each mutex
              final List<SmallBitSet> mutexes = mutexPairsAndTrios.stream().map(mutex -> new SmallBitSet(mutex.stream().map(eventIndices::get).toList())).toList();
 
@@ -774,69 +775,60 @@ public class PartiallyDeterminedHaplotypeComputationEngine {
          }
 
         /**
-         * For a given set of determined events, find all subsets of the event group such that each subset
+         * Find a minimal and complete collection of allowed subsets of this EventGroup for the purposes of the
+         * undetermined parts of PD haplotypes.
          *
-         * 1) contains all determined events that overlap this event group
-         * 2) contains no two or three mutually exclusive elements i.e. is an allowed subset as computed in this object's constructor
-         * 3) is not a subset of any larger subset that satisfies 1) and 2)
+         * That is, we find every subset of this EventGroup that satisfies
          *
-         * Note that the subsets need not be disjoint and need not cover all events in this EventGroup.
+         * 1) contains no two or three mutually exclusive elements i.e. is an allowed subset as computed in this object's constructor
+         * 2) is not a subset of any larger subset that satisfies 1) and 2)
+         *
+         * The resulting subsets need not be disjoint.
          *
          * Because these subsets contain no mutexes, one can sensibly make partially-determined haplotypes out of them,
-         * with each subset entailing a unique set of undetermined alleles.  Property 3) above ensures that we make as
+         * with each subset entailing a unique set of undetermined alleles.  Property 2) above ensures that we make as
          * few partially-determined haplotypes as possible.
          *
          * @return
          */
-        public List<Set<Event>> eventSetsForPDHaplotypes(final Set<Event> determinedEvents, final List<Event> locusEvents) {
-            final SmallBitSet locusOverlapSet = overlapSet(locusEvents);
-            final SmallBitSet determinedOverlapSet = overlapSet(determinedEvents);
-
+        private List<Set<Event>> computeUndeterminedEventSetsForPDHaplotypes() {
             if (eventsInOrder.size() == 1) {
-                // if this is the determined locus and ref is determined, return an empty set; otherwise return a singleton set of the lone event
-                return (!locusOverlapSet.isEmpty() && determinedEvents.isEmpty()) ? Collections.singletonList(Set.of()) :
-                        Collections.singletonList(Set.of(eventsInOrder.get(0))); // if only one event, there are no mutexes
+                return Collections.singletonList(Set.of(eventsInOrder.get(0))); // if only one event, there are no mutexes
             }
 
-            // the repeated case is when the determined locus is external to this event group
-            final boolean cachedCase = locusOverlapSet.isEmpty() && determinedOverlapSet.isEmpty();
-
-            // We use a cache for the recurring case where the determined events do not belong to this event group
-            if (cachedCase && cachedEventSets != null) {
-                return cachedEventSets;
-            }
-
-            final List<SmallBitSet> maximalAllowedContainingDetermined = new ArrayList<>();
+            final List<SmallBitSet> maximalAllowedSubsets = new ArrayList<>();
 
             // Iterate from the full set (containing every event) to the empty set (no events), which lets us output the largest possible subsets
             // NOTE: we skip over 0 here since that corresponds to ref-only events, handle those externally to this code
             for (final SmallBitSet subset = SmallBitSet.fullSet(eventsInOrder.size()); !subset.isEmpty(); subset.decrement()) {
-                if (allowedUndeterminedSubsets.get(subset.index()) && subset.intersection(locusOverlapSet).equals(determinedOverlapSet)) {
-                    // Only check for subsets if we need to
-                    if (maximalAllowedContainingDetermined.stream().noneMatch(group -> group.contains(subset))) {
-                        maximalAllowedContainingDetermined.add(subset.copy());    // copy subset since the decrement() mutates it in-place
-                    }
+                if (allowedUndeterminedSubsets.get(subset.index()) && maximalAllowedSubsets.stream().noneMatch(group -> group.contains(subset))) {
+                    maximalAllowedSubsets.add(subset.copy());    // copy subset since the decrement() mutates it in-place
                 }
             }
 
             // Now that we have all the maximal sets, map bitset indices to Events
-            List<Set<Event>> output = maximalAllowedContainingDetermined.stream()
-                    .map(bitset -> bitset.stream(eventsInOrder.size()).mapToObj(eventsInOrder::get).collect(Collectors.toSet())).toList();
+            return maximalAllowedSubsets.stream().map(bitset -> bitset.asSet(eventsInOrder)).toList();
+        }
 
-            // Cache the result
-            if(cachedCase) {
-                cachedEventSets = Collections.unmodifiableList(output);
+        public List<Set<Event>> undeterminedEventSets() {
+            return lazyUndeterminedEventSets.get();
+        }
+
+        /**
+         * Find every allowed subset of this EventGroup for the purposes of the determined part of PD haplotypes.  This simply
+         * means every subset (including the empty and full subsets) that does not contain a mutex.
+         *
+         * @return
+         */
+        public List<Set<Event>> determinedEventSets() {
+            final List<Set<Event>> result = new ArrayList<>();
+            for (final SmallBitSet subset = new SmallBitSet(); !subset.hasElementGreaterThan(eventsInOrder.size()); subset.increment()) {
+                if (allowedDeterminedSubsets.get(subset.index())) {
+                    result.add(subset.asSet(eventsInOrder));
+                }
             }
-            return output;
-        }
 
-        // create the SmallBitSet of those elements from some collection of events that overlap this EventGroup
-        private SmallBitSet overlapSet(final Collection<Event> events) {
-            return new SmallBitSet(events.stream().map(e -> eventIndices.getOrDefault(e, -1)).filter(n -> n != -1).toList());
-        }
-
-        public boolean causesBranching() {
-            return eventsInOrder.size() > 1;
+            return result;
         }
 
         //Print The event group in Illumina indexed ordering:
