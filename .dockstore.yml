@@ -167,7 +167,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1072_beta_throttling
          tags:
              - /.*/
    - name: GvsBulkIngestGenomes
@@ -177,7 +176,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1072_beta_throttling
          tags:
              - /.*/
    - name: GvsPrepareRangesCallset
@@ -284,7 +282,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1072_beta_throttling
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -294,7 +291,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1072_beta_throttling
          tags:
              - /.*/
    - name: GvsQuickstartIntegration

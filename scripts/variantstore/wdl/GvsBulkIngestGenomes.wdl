@@ -138,6 +138,7 @@ workflow GvsBulkIngestGenomes {
     output {
         Boolean done = true
         String recorded_git_hash = effective_git_hash
+        Boolean used_tighter_gcp_quotas = ImportGenomes.used_tighter_gcp_quotas
     }
 }
 
@@ -153,6 +154,10 @@ task GenerateImportFofnFromDataTable {
         String workspace_id
         String workspace_bucket
         String variants_docker
+    }
+    meta {
+        # Do not cache as this relies heavily on workspace state.
+        volatile: true
     }
 
     ## set some output files
