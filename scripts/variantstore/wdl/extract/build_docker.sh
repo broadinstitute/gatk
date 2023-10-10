@@ -3,9 +3,10 @@ usage() {
 
 USAGE: ./build_docker.sh
 
+Generate a tag suitable for publication of a Variants Docker image.
 Tags will be of the form <ISO 8601 Date>-alpine-<short git hash>.
 
-e.g. 2023-06-06-alpine or 2023-06-06-alpine-ed338e48e
+e.g. 2023-10-10-alpine-f000ba44
 "
     exit 1
 }
