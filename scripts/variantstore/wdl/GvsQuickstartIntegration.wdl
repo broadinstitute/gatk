@@ -2,6 +2,7 @@ version 1.0
 
 import "GvsQuickstartVcfIntegration.wdl" as QuickstartVcfIntegration
 import "GvsQuickstartHailIntegration.wdl" as QuickstartHailIntegration
+import "GvsJointVariantCalling.wdl" as JointVariantCalling
 import "GvsUtils.wdl" as Utils
 
 workflow GvsQuickstartIntegration {
@@ -11,6 +12,7 @@ workflow GvsQuickstartIntegration {
         Boolean run_vcf_integration = true
         Boolean run_hail_integration = true
         Boolean run_exome_integration = true
+        Boolean run_beta_integration = true
         String? wgs_sample_id_column_name ## Note that a column WILL exist that is the <entity>_id from the table name. However, some users will want to specify an alternate column for the sample_name during ingest
         String? wgs_vcf_files_column_name
         String? wgs_vcf_index_files_column_name
@@ -119,6 +121,22 @@ workflow GvsQuickstartIntegration {
                 workspace_id = GetToolVersions.workspace_id,
                 submission_id = GetToolVersions.submission_id,
         }
+
+        if (GvsQuickstartHailVQSRLiteIntegration.used_tighter_gcp_quotas) {
+            call Utils.TerminateWorkflow as HailVQSRLiteQuotaFail {
+                input:
+                    message = "GvsQuickstartHailVQSRLiteIntegration should not have used tighter GCP quotas but did!",
+                    basic_docker = effective_basic_docker,
+            }
+        }
+
+        if (GvsQuickstartHailVQSRClassicIntegration.used_tighter_gcp_quotas) {
+            call Utils.TerminateWorkflow as HailVQSRClassicQuotaFail {
+                input:
+                    message = "GvsQuickstartHailVQSRClassicIntegration should not have used tighter GCP quotas but did!",
+                    basic_docker = effective_basic_docker,
+            }
+        }
     }
 
     if (run_vcf_integration) {
@@ -174,6 +192,22 @@ workflow GvsQuickstartIntegration {
                 workspace_id = GetToolVersions.workspace_id,
                 submission_id = GetToolVersions.submission_id,
         }
+
+        if (QuickstartVcfVQSRClassicIntegration.used_tighter_gcp_quotas) {
+            call Utils.TerminateWorkflow as VcfVQSRClassicQuotaFail {
+                input:
+                    message = "QuickstartVcfVQSRLiteIntegration should not have used tighter GCP quotas but did!",
+                    basic_docker = effective_basic_docker,
+            }
+        }
+
+        if (QuickstartVcfVQSRLiteIntegration.used_tighter_gcp_quotas) {
+            call Utils.TerminateWorkflow as VcfVQSRLiteQuotaFail {
+                input:
+                    message = "QuickstartVcfVQSRLiteIntegration should not have used tighter GCP quotas but did!",
+                    basic_docker = effective_basic_docker,
+            }
+        }
     }
 
     if (run_exome_integration) {
@@ -202,6 +236,53 @@ workflow GvsQuickstartIntegration {
                 workspace_bucket = GetToolVersions.workspace_bucket,
                 workspace_id = GetToolVersions.workspace_id,
                 submission_id = GetToolVersions.submission_id,
+        }
+
+        if (QuickstartVcfExomeIntegration.used_tighter_gcp_quotas) {
+            call Utils.TerminateWorkflow as ExomeQuotaFail {
+                input:
+                    message = "QuickstartVcfExomeIntegration should not have used tighter GCP quotas but did!",
+                    basic_docker = effective_basic_docker,
+            }
+        }
+    }
+
+    if (run_beta_integration) {
+        String project_id = "gvs-internal"
+
+        call Utils.CreateDataset {
+            input:
+                git_branch_or_tag = git_branch_or_tag,
+                dataset_prefix = "quickit",
+                dataset_suffix = "beta",
+                cloud_sdk_docker = effective_cloud_sdk_docker,
+        }
+
+        call JointVariantCalling.GvsJointVariantCalling as QuickstartBeta {
+            input:
+                call_set_identifier = git_branch_or_tag,
+                dataset_name = CreateDataset.dataset_name,
+                project_id = project_id,
+                gatk_override = if (use_default_dockers) then none else BuildGATKJar.jar,
+                extract_output_file_base_name = "quickit",
+                filter_set_name = "quickit",
+                extract_table_prefix = "quickit",
+                basic_docker = effective_basic_docker,
+                cloud_sdk_docker = effective_cloud_sdk_docker,
+                variants_docker = effective_variants_docker,
+                gatk_docker = effective_gatk_docker,
+                workspace_bucket = GetToolVersions.workspace_bucket,
+                workspace_id = GetToolVersions.workspace_id,
+                submission_id = GetToolVersions.submission_id,
+                git_branch_or_tag = git_branch_or_tag,
+        }
+
+        if (!QuickstartBeta.used_tighter_gcp_quotas) {
+            call Utils.TerminateWorkflow as QuickstartBetaQuotaFail {
+                input:
+                    message = "QuickstartBeta should have used tighter GCP quotas but did not!",
+                    basic_docker = effective_basic_docker,
+            }
         }
     }
 

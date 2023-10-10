@@ -146,6 +146,7 @@ workflow GvsQuickstartVcfIntegration {
         String filter_set_name = "quickit"
         String recorded_git_hash = effective_git_hash
         Boolean done = true
+        Boolean used_tighter_gcp_quotas = JointVariantCalling.used_tighter_gcp_quotas
     }
 }
 
