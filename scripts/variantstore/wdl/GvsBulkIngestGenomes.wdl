@@ -133,7 +133,7 @@ workflow GvsBulkIngestGenomes {
             load_data_gatk_override = gatk_override,
             drop_state = drop_state,
             billing_project_id = billing_project_id,
-            use_compressed_references = use_compressed_references
+            use_compressed_references = use_compressed_references,
             process_vcf_headers = process_vcf_headers,
             is_rate_limited_beta_customer = tighter_gcp_quotas,
     }

@@ -68,7 +68,6 @@ workflow GvsExtractAvroFilesForHail {
             call_set_identifier = call_set_identifier,
             is_vqsr_lite = IsVQSRLite.is_vqsr_lite,
             variants_docker = effective_variants_docker,
-
     }
 
     call Utils.CountSuperpartitions {
@@ -237,8 +236,6 @@ task ExtractFromSuperpartitionedTables {
         shard_index: "0-based index of this superpartition extract shard"
         num_shards: "Count of all superpartition extract shards"
     }
-
-
 
     command <<<
         set -o errexit -o nounset -o xtrace -o pipefail
