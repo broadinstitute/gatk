@@ -191,7 +191,7 @@ workflow GvsJointVariantCalling {
             use_compressed_references = use_compressed_references,
     }
 
-    String effective_output_gcs_dir = select_first([extract_output_gcs_dir, "gs://~{effective_workspace_bucket}/output_vcfs/by_submission_id/~{effective_submission_id}"])
+    String effective_output_gcs_dir = select_first([extract_output_gcs_dir, "~{effective_workspace_bucket}/output_vcfs/by_submission_id/~{effective_submission_id}"])
 
     call ExtractCallset.GvsExtractCallset {
         input:

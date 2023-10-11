@@ -309,6 +309,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - rc-vs-1064-wdl-quickstart-vds
          tags:
              - /.*/
    - name: GvsIngestTieout

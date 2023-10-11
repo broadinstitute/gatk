@@ -5,7 +5,6 @@ from google.cloud import dataproc_v1 as dataproc
 from logging import info
 
 
-
 def configure_logging():
     import logging
     import sys
@@ -24,7 +23,7 @@ def wrap(string):
     return re.sub("\\s{2,}", " ", string).strip()
 
 
-def run_in_cluster(cluster_name, prefix, account, num_workers, worker_machine_type, region, gcs_project,
+def run_in_cluster(cluster_name, account, worker_machine_type, region, gcs_project,
                    autoscaling_policy, script_path, secondary_script_path, vds_path, temp_path, avro_path):
 
     try:
@@ -55,8 +54,6 @@ def run_in_cluster(cluster_name, prefix, account, num_workers, worker_machine_ty
 
         for cluster in cluster_client.list_clusters(request={"project_id": gcs_project, "region": region}):
             if cluster.cluster_name == cluster_name:
-                cluster_staging_bucket = cluster.config.temp_bucket
-
                 submit_cmd = wrap(f"""
 
                 gcloud dataproc jobs submit pyspark {script_path}
@@ -76,16 +73,6 @@ def run_in_cluster(cluster_name, prefix, account, num_workers, worker_machine_ty
 
                 info("Running: " + submit_cmd)
                 os.popen(submit_cmd).read()
-                info("Copying results out of staging bucket...")
-                staging_cmd = wrap(f"""
-                
-                gsutil cp -r {vds_path} '{prefix}.vds'
-                
-                """)
-
-                info(staging_cmd)
-                os.popen(staging_cmd).read()
-                ###########
                 break
     except Exception as e:
         info(e)
@@ -108,9 +95,7 @@ if __name__ == "__main__":
                                      description='Get workspace information')
 
     parser.add_argument('--cluster-name', type=str, required=True, help='Name of the Hail cluster')
-    parser.add_argument('--prefix', type=str, help='Prefix for output VCF name')
     parser.add_argument('--account', type=str, help='GCP account name')
-    parser.add_argument('--num-workers', type=str, required=True, help='Number of workers in Hail cluster')
     parser.add_argument('--worker-machine-type', type=str, required=False, help='Dataproc cluster worker machine type')
     parser.add_argument('--region', type=str, required=True, help='GCS region')
     parser.add_argument('--gcs-project', type=str, required=True, help='GCS project')
@@ -121,13 +106,10 @@ if __name__ == "__main__":
     parser.add_argument('--avro-path', type=str, required=True, help='Avro URL')
     parser.add_argument('--temp-path', type=str, required=True, help='Cruft URL')
 
-
     args = parser.parse_args()
 
     run_in_cluster(cluster_name=args.cluster_name,
-                   prefix=args.prefix,
                    account=args.account,
-                   num_workers=args.num_workers,
                    worker_machine_type=args.worker_machine_type if args.worker_machine_type else "n1-standard-8",
                    region=args.region,
                    gcs_project=args.gcs_project,

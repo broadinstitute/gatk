@@ -15,8 +15,6 @@ version 1.0
 #        String vds_output_url
 #
 #        ## CLUSTER PARAMETERS
-#        # Number of workers (per shard) to use in the Hail cluster.
-#        Int num_workers
 #
 #        # Set to 'subnetwork' if running in Terra Cromwell
 #        String gcs_subnetwork_name='subnetwork'
@@ -60,16 +58,13 @@ workflow GvsCreateVDS {
         #  ie, parameters that go to the Hail python code (submission_script below)
         String vds_output_url
         String avro_path
-        String? hail_version='0.2.122'
+        String? hail_version='0.2.124'
 
-        # String used in construction of output filename
+        # String used in construction of cluster name
         #  Cannot contain any special characters, ie, characters must be alphanumeric or "-"
         String prefix = "vds-creation-cluster"
 
         ## CLUSTER PARAMETERS
-        # Number of workers (per shard) to use in the Hail cluster.
-        Int num_workers
-
         # Set to 'subnetwork' if running in Terra Cromwell
         String gcs_subnetwork_name='subnetwork'
 
@@ -87,13 +82,12 @@ workflow GvsCreateVDS {
 
     call create_vds {
         input:
+            prefix = prefix,
             vds_url = vds_output_url,
             avro_path = avro_path,
             hail_version = hail_version,
-            prefix = prefix,
             gcs_project = GetToolVersions.google_project,
-            gcs_bucket = GetToolVersions.workspace_bucket,
-            num_workers = num_workers,
+            workspace_bucket = GetToolVersions.workspace_bucket,
             gcs_subnetwork_name = gcs_subnetwork_name,
             variants_docker = GetToolVersions.variants_docker,
     }
@@ -109,9 +103,8 @@ task create_vds {
 
         # Cluster params
         String gcs_project  # The Google project ID information is necessary when spinning up dataproc.
-        String gcs_bucket
+        String workspace_bucket
         String region = "us-central1"
-        Int num_workers
         RuntimeAttr? runtime_attr_override
         String gcs_subnetwork_name
 
@@ -127,7 +120,7 @@ task create_vds {
                                       boot_disk_gb: 10
                                   }
     RuntimeAttr runtime_override = select_first([runtime_attr_override, runtime_default])
-    String temp_path = "gs://fc-eada2674-7c2b-42a6-8db3-0246872596dc/quickstart-vds-for-wdl-tieout/temp-dir/" ## use the gcs_bucket here
+    String temp_path = "~{workspace_bucket}/quickstart-vds-for-wdl-tieout/temp-dir/"
 
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
@@ -147,7 +140,19 @@ task create_vds {
         echo ${cluster_name} > cluster_name.txt
 
         # Set up the autoscaling policy
-        gcloud storage cp gs://fc-d5e319d4-b044-4376-afde-22ef0afc4088/auto-scale-policy.yaml auto-scale-policy.yaml
+        cat > auto-scale-policy.yaml <<FIN
+        workerConfig:
+            minInstances: 2
+            maxInstances: 20
+        secondaryWorkerConfig:
+            maxInstances: 50
+        basicAlgorithm:
+            cooldownPeriod: 4m
+            yarnConfig:
+                scaleUpFactor: 0.05
+                scaleDownFactor: 1.0
+                gracefulDecommissionTimeout: 1h
+        FIN
         gcloud dataproc autoscaling-policies import rc-example-autoscaling-policy --project=~{gcs_project} --source=auto-scale-policy.yaml --region=~{region}
 
         # Run the hail python script to make a VDS
@@ -156,17 +161,12 @@ task create_vds {
             --secondary-script-path /app/import_gvs.py \
             --account ${account_name} \
             --autoscaling-policy rc-example-autoscaling-policy \
-            --num-workers ~{num_workers} \
             --region ~{region} \
             --gcs-project ~{gcs_project} \
             --cluster-name ${cluster_name} \
-            --prefix ~{prefix} \
             --avro-path ~{avro_path} \
             --vds-path ~{vds_url} \
             --temp-path ~{temp_path}
-
-
-    ## TODO make sure the autoscaling policy name is passed
 
         echo "Goodbye cluster"
     >>>
