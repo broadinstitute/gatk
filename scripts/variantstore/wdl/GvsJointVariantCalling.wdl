@@ -230,5 +230,6 @@ workflow GvsJointVariantCalling {
         File manifest = GvsExtractCallset.manifest
         String recorded_git_hash = effective_git_hash
         Boolean done = true
+        Boolean used_tighter_gcp_quotas = BulkIngestGenomes.used_tighter_gcp_quotas
     }
 }

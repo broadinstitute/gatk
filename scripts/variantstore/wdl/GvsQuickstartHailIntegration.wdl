@@ -61,7 +61,7 @@ workflow GvsQuickstartHailIntegration {
         input:
             git_branch_or_tag = git_branch_or_tag,
             git_hash = git_hash,
-            drop_state = "NONE",
+            drop_state = "ZERO",
             use_VQSR_lite = use_VQSR_lite,
             use_compressed_references = use_compressed_references,
             extract_do_not_filter_override = extract_do_not_filter_override,
@@ -122,6 +122,7 @@ workflow GvsQuickstartHailIntegration {
         String vds_output_path = GvsExtractAvroFilesForHail.vds_output_path
         String recorded_git_hash = effective_git_hash
         Boolean done = true
+        Boolean used_tighter_gcp_quotas = GvsQuickstartVcfIntegration.used_tighter_gcp_quotas
     }
 }
 

@@ -159,6 +159,7 @@ workflow GvsImportGenomes {
 
   output {
     Boolean done = true
+    Boolean used_tighter_gcp_quotas = is_rate_limited_beta_customer
     String recorded_git_hash = effective_git_hash
     Array[File] load_data_stderrs = LoadData.stderr
   }
@@ -325,9 +326,9 @@ task LoadData {
       gatk --java-options "-Xmx2g" CreateVariantIngestFiles \
         -V ${updated_input_vcf} \
         -L ~{interval_list} \
-        ~{"-IG " + drop_state} \
-        --force-loading-from-non-allele-specific ~{force_loading_from_non_allele_specific} \
+        ~{"--ref-block-gq-to-ignore " + drop_state} \
         --ignore-above-gq-threshold ~{drop_state_includes_greater_than} \
+        --force-loading-from-non-allele-specific ~{force_loading_from_non_allele_specific} \
         --project-id ~{project_id} \
         --dataset-name ~{dataset_name} \
         --output-type BQ \

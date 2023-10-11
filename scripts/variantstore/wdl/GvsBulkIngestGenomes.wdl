@@ -35,8 +35,8 @@ workflow GvsBulkIngestGenomes {
         # Begin GvsImportGenomes
         File interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
 
-        # set to "NONE" to ingest all the reference data into GVS for VDS (instead of VCF) output
-        String drop_state = "NONE"
+        # set to "ZERO" to drop GQ0 upon ingest into GVS for VDS (instead of VCF) output
+        String drop_state = "ZERO"
 
         # The larger the `load_data_batch_size` the greater the probability of preemptions and non-retryable BigQuery errors,
         # so if specifying `load_data_batch_size`, adjust preemptible and maxretries accordingly. Or just take the defaults, as those should work fine in most cases.
@@ -141,6 +141,7 @@ workflow GvsBulkIngestGenomes {
     output {
         Boolean done = true
         String recorded_git_hash = effective_git_hash
+        Boolean used_tighter_gcp_quotas = ImportGenomes.used_tighter_gcp_quotas
     }
 }
 
@@ -156,6 +157,10 @@ task GenerateImportFofnFromDataTable {
         String workspace_id
         String workspace_bucket
         String variants_docker
+    }
+    meta {
+        # Do not cache as this relies heavily on workspace state.
+        volatile: true
     }
 
     ## set some output files

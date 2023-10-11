@@ -147,6 +147,7 @@ workflow GvsQuickstartVcfIntegration {
         String filter_set_name = "quickit"
         String recorded_git_hash = effective_git_hash
         Boolean done = true
+        Boolean used_tighter_gcp_quotas = JointVariantCalling.used_tighter_gcp_quotas
     }
 }
 
@@ -384,10 +385,10 @@ task AssertTableSizesAreExpected {
             UNION ALL \
             SELECT 'ref_ranges_total' AS total_name, sum(total_billable_bytes) AS total_bytes \
             FROM \`~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS\` \
-            WHERE table_name LIKE 'ref_ranges_%' ORDER BY total_name" > table_size_output.csv
+            WHERE table_name LIKE 'ref_ranges_%' ORDER BY total_name" > table_sizes_output.csv
 
         set +o errexit
-        diff -w table_size_output.csv ~{expected_output_csv} > differences.txt
+        diff -w table_sizes_output.csv ~{expected_output_csv} > differences.txt
         set -o errexit
 
         if [[ -s differences.txt ]]; then
@@ -403,7 +404,7 @@ task AssertTableSizesAreExpected {
     }
 
     output {
-        File table_size_output_csv = "table_size_output.csv"
+        File table_sizes_output_csv = "table_sizes_output.csv"
         File differences = "differences.txt"
     }
 }
