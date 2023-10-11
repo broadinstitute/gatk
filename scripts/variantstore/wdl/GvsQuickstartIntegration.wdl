@@ -30,7 +30,7 @@ workflow GvsQuickstartIntegration {
 
     File full_wgs_interval_list = "gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list"
     File full_exome_interval_list = "gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list"
-    File expected_output_prefix = "gs://gvs-internal-quickstart/integration/2023-07-25-quicker/"
+    File expected_output_prefix = "gs://gvs-internal-quickstart/integration/2023-10-03-quicker/"
 
     # WDL 1.0 trick to set a variable ('none') to be undefined.
     if (false) {
@@ -217,7 +217,7 @@ workflow GvsQuickstartIntegration {
                 git_hash = GetToolVersions.git_hash,
                 use_VQSR_lite = true,
                 extract_do_not_filter_override = false,
-                dataset_suffix = "exome_weighted",
+                dataset_suffix = "exome",
                 use_default_dockers = use_default_dockers,
                 gatk_override = if (use_default_dockers) then none else BuildGATKJar.jar,
                 is_wgs = false,

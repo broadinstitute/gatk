@@ -24,37 +24,7 @@ NOTE: in the WDL created to run this script, the temp directory can be easily de
 --temp-path gs://fc-<bucket id>/<name of the temp path>/
 ```
 
-Once a VDS has been created, we like to run the validation script outlined at the bottom of this document 
-
-## Now we made a VDS for Delta, and then needed to run the following to correct the GQ0s and then re-deliver it
-
-```
-pip install --force-reinstall  hail==0.2.109
-python3
-
->>> import hail as hl
->>> hl.init(tmp_dir='gs://fc-secure-fb908548-fe3c-41d6-adaf-7ac20d541375/temp/')
->>> vds = hl.vds.read_vds('gs://fc-secure-fb908548-fe3c-41d6-adaf-7ac20d541375/vds/01-04-2023-correct-GT/aou_srwgs_short_variants_v7_without_ext_aian_prod.vds')
-```
-
-## Turn the GQ0s into no calls
-
-```python
->>> rd = vds.reference_data
->>> rd = rd.filter_entries(rd.GQ > 0)
->>> rd = rd.filter_rows(hl.agg.count() > 0) # remove sites with no block starts
->>> rd = rd.annotate_globals(ref_block_max_length=1000) # set the max length
->>> vds2 = hl.vds.VariantDataset(reference_data=rd, variant_data=vds.variant_data)
-```
-
-## Put it back in the cloud
-
-```python
->>> final_path = 'gs://prod-drc-broad/aou-wgs-delta/vds/2023-02-13-GQ0/aou_srwgs_short_variants_v7_without_ext_aian_prod_gq0.vds'
->>> vds2.write(final_path, overwrite=True)
-```
-
-## Validate it to ensure that it is ready to be shared
+## Validate the VDS to ensure that it is ready to be shared
 
 Copy the [VDS Validation python script](vds_validation.py) to the notebook environment.
 Run it with the following arguments:

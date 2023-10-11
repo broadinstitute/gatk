@@ -323,9 +323,9 @@ task LoadData {
       gatk --java-options "-Xmx2g" CreateVariantIngestFiles \
         -V ${updated_input_vcf} \
         -L ~{interval_list} \
-        ~{"-IG " + drop_state} \
-        --force-loading-from-non-allele-specific ~{force_loading_from_non_allele_specific} \
+        ~{"--ref-block-gq-to-ignore " + drop_state} \
         --ignore-above-gq-threshold ~{drop_state_includes_greater_than} \
+        --force-loading-from-non-allele-specific ~{force_loading_from_non_allele_specific} \
         --project-id ~{project_id} \
         --dataset-name ~{dataset_name} \
         --output-type BQ \
