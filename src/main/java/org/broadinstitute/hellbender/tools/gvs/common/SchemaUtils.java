@@ -83,7 +83,13 @@ public class SchemaUtils {
         return (long) chromosomeIndex * chromAdjustment + (long) position;
     }
 
-
+    /*
+        Dense packing scheme for ref table:
+        Top 16 - chromosome (65,536 values)
+        Next 32 - position	(4,294,967,296 values)
+        Next 12 - length (4096 values)
+        Next 4 - state (16 values)
+     */
     public static long encodeCompressedRefBlock(String chrom, long position, long length, long stateAsInt) {
         long chromosomeIndex = ChromosomeEnum.valueOfContig(chrom).index;
         long packedBytes = ((0xFFFF & chromosomeIndex) << 48) |
