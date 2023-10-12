@@ -30,6 +30,7 @@
 1. `GvsBulkIngestGenomes` workflow
    - For use with **non-control** samples only! To ingest control samples (required for running `GvsCalculatePrecisionAndSensitivity`), use the`GvsAssignIds` and `GvsImportGenomes` workflows described below.
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
+   - **NOTE** Be sure to set the input `drop_state` to ZERO. This will have the effect of dropping GQ0 reference blocks.
    - `GvsBulkIngestGenomes` performs the functions of both `GvsAssignIds` and `GvsImportGenomes` with a much more scalable design. Detailed bulk ingest documentation can be found [here](../gvs-bulk-ingest-details.md).
 1. `GvsAssignIds` workflow
    - For use with **control** samples only!
@@ -42,6 +43,7 @@
    - This will import the re-blocked gVCF files into GVS. The workflow will check whether data for that sample has already been loaded into GVS. It is designed to be re-run (with the same inputs) if there is a failure during one of the workflow tasks (e.g. BigQuery write API interrupts).
    - Run at the `sample set` level ("Step 1" in workflow submission).  You can either run this on a sample_set of all the samples and rely on the workflow logic to break it up into batches (or manually set the `load_data_batch_size` input) or run it on smaller sample_sets created by the "Fetch WGS metadata for samples from list" notebook mentioned above.  
    - You will want to set the `external_sample_names`, `input_vcfs` and `input_vcf_indexes` inputs based on the columns in the workspace Data table, e.g. "this.samples.research_id", "this.samples.reblocked_gvcf_v2" and "this.samples.reblocked_gvcf_index_v2".
+   - **NOTE** Be sure to set the input `drop_state` to ZERO. This will have the effect of dropping GQ0 reference blocks.
    - **NOTE** It appears that there is a rawls limit on the size of the input (list of gvcf files and indexes) per workflow run. 25K samples in a list worked for the Intermediate call set, 50K did not.
 1. `GvsWithdrawSamples` workflow
    - Run if there are any samples to withdraw from the last callset.

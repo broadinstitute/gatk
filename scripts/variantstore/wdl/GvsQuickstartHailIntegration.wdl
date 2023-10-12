@@ -218,6 +218,7 @@ task CreateAndTieOutVds {
     runtime {
         # `slim` here to be able to use Java
         docker: cloud_sdk_slim_docker
+        maxRetries: 2
         disks: "local-disk 2000 HDD"
         memory: "30 GiB"
     }
