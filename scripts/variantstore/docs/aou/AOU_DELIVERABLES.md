@@ -2,7 +2,7 @@
 
 ## Setup
 - Create a Terra workspace
-  - Request a new AoU workspace per AoU DRC protocols as described in Section 3.D. of [AoU DRC Protocols](https://docs.google.com/document/d/1ooK0wbHLgSueiepjTTyLLI6Zz7vi1-GhKTjmCd8ZHwU/edit?usp=sharing).
+  - Request a new AoU workspace as described in Section 3.D. of [AoU DRC Protocols](https://docs.google.com/document/d/1ooK0wbHLgSueiepjTTyLLI6Zz7vi1-GhKTjmCd8ZHwU/edit?usp=sharing).
   - As described in the "Getting Started" of [Operational concerns for running Hail in Terra Cromwell/WDL](https://docs.google.com/document/d/1_OY2rKwZ-qKCDldSZrte4jRIZf4eAw2d7Jd-Asi50KE/edit?usp=sharing), this workspace will need permission in Terra to run Hail dataproc clusters within WDL. Contact Emily to request this access as part of setting up the new workspace.
 - Once the workspace has been created and permissioned, populate with the following:
   - [Fetch WGS metadata for samples from list](http://app.terra.bio/#workspaces/allofus-drc-wgs-dev/GVS%20AoU%20WGS%20Charlie/notebooks/launch/Fetch%20WGS%20metadata%20for%20samples%20from%20list.ipynb) notebook
