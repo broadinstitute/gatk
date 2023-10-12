@@ -280,7 +280,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-857_MakeDropStateNoneTheDefaultInBulk
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -290,7 +289,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-857_MakeDropStateNoneTheDefaultInBulk
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
@@ -300,7 +298,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - gg_VS-857_MakeDropStateNoneTheDefaultInBulk
          tags:
              - /.*/
    - name: GvsIngestTieout
